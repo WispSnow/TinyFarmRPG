@@ -135,6 +135,9 @@ target_sources(game PRIVATE
     game/factory/entity_factory.cpp
     # Loader
     game/loader/entity_builder.cpp
+    # Runtime
+    game/runtime/system_bundle.cpp
+    game/runtime/game_runtime_assembler.cpp
     # UI
     game/ui/time_clock_ui.cpp
     game/ui/inventory_ui.cpp

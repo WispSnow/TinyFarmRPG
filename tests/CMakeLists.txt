@@ -78,6 +78,7 @@ set(GAME_TEST_SOURCES
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
+    game/game_scene_runtime_assembly_test.cpp
     game/title_scene_menu_button_test.cpp
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/time_advance_sleep_test.cpp
