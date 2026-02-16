@@ -1,0 +1,96 @@
+{
+    "inventory_panel": {
+        "path": "assets/farm-rpg/UI/Inventory/inventory.png",
+        "source": [0, 64, 48, 48],
+        "nine_slice": {
+            "left": 10,
+            "top": 10,
+            "right": 10,
+            "bottom": 10
+        }
+    },
+    "inventory_slot": {
+        "path": "assets/farm-rpg/UI/Inventory/inventory.png",
+        "source": [39, 9, 18, 18],
+        "nine_slice": {
+            "left": 2,
+            "top": 2,
+            "right": 2,
+            "bottom": 2
+        }
+    },
+    "quick_bar_panel": {
+        "path": "assets/farm-rpg/UI/Inventory/Slots.png",
+        "source": [6, 105, 164, 28],
+        "nine_slice": {
+            "left": 7,
+            "top": 7,
+            "right": 7,
+            "bottom": 6
+        }
+    },
+    "quick_bar_slot": {
+        "path": "assets/farm-rpg/UI/Inventory/Slots.png",
+        "source": [151, 38, 18, 18],
+        "nine_slice": {
+            "left": 2,
+            "top": 2,
+            "right": 2,
+            "bottom": 3
+        }
+    },
+    "quick_bar_selected": {
+        "path": "assets/farm-rpg/UI/Inventory/Slots.png",
+        "source": [119, 6, 18, 18],
+        "nine_slice": {
+            "left": 4,
+            "top": 4,
+            "right": 4,
+            "bottom": 4
+        }
+    },
+    "time_panel_bg": {
+        "path": "assets/farm-rpg/UI/Clock/Extras.png",
+        "source": [66, 65, 59, 28],
+        "nine_slice": {
+            "left": 1,
+            "top": 3,
+            "right": 1,
+            "bottom": 1
+        }
+    },
+    "time_panel_label": {
+        "path": "assets/farm-rpg/UI/Clock/Extras.png",
+        "source": [71, 99, 33, 10],
+        "nine_slice": {
+            "left": 1,
+            "top": 1,
+            "right": 1,
+            "bottom": 1
+        }
+    },
+    "dialogue_bubble": {
+        "path": "assets/farm-rpg/UI/dialogue box.png",
+        "source": [0, 48, 48, 48],
+        "nine_slice": {
+            "left": 3,
+            "top": 4,
+            "right": 3,
+            "bottom": 3
+        }
+    },
+    "hover_panel": {
+        "path": "assets/farm-rpg/UI/Inventory/Banner.png",
+        "source": [3, 3, 42, 42],
+        "nine_slice": {
+            "left": 9,
+            "top": 9,
+            "right": 9,
+            "bottom": 9
+        }
+    },
+    "cursor": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [3, 2, 11, 12]
+    }
+}

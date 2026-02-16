@@ -1,0 +1,55 @@
+{
+    "items": [
+        {
+            "id": "strawberry_item",
+            "category": "crop",
+            "stack_limit": 999,
+            "on_use": {
+                "consume": 1,
+                "effects": [
+                    {
+                        "type": "add_item",
+                        "id": "strawberry_seed",
+                        "count": 3
+                    }
+                ]
+            },
+            "display_name": "Strawberry"
+        },
+        {
+            "id": "potato_item",
+            "category": "crop",
+            "stack_limit": 999,
+            "on_use": {
+                "consume": 1,
+                "effects": [
+                    {
+                        "type": "add_item",
+                        "id": "potato_seed",
+                        "count": 3
+                    }
+                ]
+            },
+            "display_name": "Potato"
+        },
+        {
+            "id": "strawberry_seed",
+            "category": "seed",
+            "stack_limit": 999,
+            "display_name": "Strawberry Seed"
+        },
+        {
+            "id": "potato_seed",
+            "category": "seed",
+            "stack_limit": 999,
+            "display_name": "Potato Seed"
+        },
+        {
+            "id": "dummy_full",
+            "category": "material",
+            "stack_limit": 1,
+            "display_name": "Dummy"
+        }
+    ]
+}
+

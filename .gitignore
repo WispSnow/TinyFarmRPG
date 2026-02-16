@@ -1,0 +1,109 @@
+# Mac
+.DS_Store
+**/.DS_Store
+**/*.$*
+
+# IDE
+.config/
+.idea/
+.vscode/
+.cursor/
+.worktrees/
+.playwright-mcp/
+
+# build
+build/
+build-*/
+build_*/
+cmake-build-*/
+*-darwin
+*-Darwin
+
+# msc
+.clang-tidy
+.cache/
+Doxyfile
+doc/
+doxygen_*
+lecture_plan/.obsidian/
+
+# prebuilt
+prebuilt/
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.pdb
+*.out
+*.app
+*.-Darwin
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+tasks.json
+tasks/ 
+
+# Tiled
+**/*.tiled-session
+
+# Saves
+saves/*.json
+
+# AI config
+.agents
+.agent
+.claude
+.codex
+.cursor
+.gemini
+.goose
+.kiro
+.openai
+.windsurf
+.opencode

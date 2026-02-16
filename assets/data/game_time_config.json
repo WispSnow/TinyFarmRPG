@@ -1,0 +1,27 @@
+{
+    "minutes_per_real_second": 10.0,
+    "time_periods": {
+        "dawn": {
+            "start": 4.0,
+            "end": 8.0
+        },
+        "day": {
+            "start": 8.0,
+            "end": 16.0
+        },
+        "dusk": {
+            "start": 16.0,
+            "end": 20.0
+        },
+        "night": {
+            "start": 20.0,
+            "end": 4.0
+        }
+    },
+    "initial_time": {
+        "day": 1,
+        "hour": 6.0,
+        "minute": 0.0
+    }
+}
+

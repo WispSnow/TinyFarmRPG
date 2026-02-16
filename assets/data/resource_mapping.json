@@ -1,0 +1,25 @@
+{
+  "ui_button_presets": "assets/data/ui_button_presets.json",
+  "ui_image_presets": "assets/data/ui_image_presets.json",
+  "sound": {
+    "watering": "assets/audio/water_splash.wav",
+    "hoe": "assets/audio/shovel-stab.wav",
+    "harvest": "assets/audio/plant_harvest.wav",
+    "plant": "assets/audio/planting-sounds.wav",
+    "axe": "assets/audio/chop-wood.wav",
+    "pickaxe": "assets/audio/pick-axe-striking.mp3",
+    "pop": "assets/audio/pop.mp3",
+    "ui_hover": "assets/audio/Fantasy_UI (1).wav",
+    "ui_click": "assets/audio/Fantasy_UI (10).wav",
+    "cow_moo": "assets/audio/calf-and-cow.wav",
+    "sheep_baa": "assets/audio/sheep-baaing-3.wav"
+  },
+  "music": {
+    "title-bg-music": "assets/audio/02_spring_fairy_tale.ogg",
+    "scene-bg-music": "assets/audio/01_spring_journey.ogg"
+  },
+  "texture": {
+    "title-bg": "assets/textures/UI/farm-rpg-bg.png",
+    "title-logo": "assets/textures/UI/farm-rpg-logo.png"
+  }
+}

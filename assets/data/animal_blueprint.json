@@ -1,0 +1,118 @@
+{
+    "sheep": {
+        "name": "sheep",
+        "description": "The sheep's animal",
+        "wander_radius": 32.0,
+        "sleep_at_night": true,
+        "sounds": {
+            "idle": { "sound": "sheep_baa", "probability": 0.35, "cooldown": 7.0 }
+        },
+        "sprite": {
+            "path": "assets/farm-rpg/Farm Animals/Sheep/Sheep Male 2.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.906}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Farm Animals/Sheep/Sheep Male 2.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0],
+                "duration": 200,
+                "direction": ["left", "down", "up"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Farm Animals/Sheep/Sheep Male 2.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["left", "down", "up"]
+            },
+            "sleep": {
+                "path": "assets/farm-rpg/Farm Animals/Sheep/Sheep Male 2.png",
+                "position": {"x": 0, "y": 96},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0,1,2,3],
+                "duration": 1000,
+                "direction": ["left", "down"]
+            },
+            "eat": {
+                "path": "assets/farm-rpg/Farm Animals/Sheep/Sheep Male 2.png",
+                "position": {"x": 0, "y": 160},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0,1,2,2,2,3],
+                "duration": 200,
+                "direction": ["left", "down"]
+            }
+        },
+        "speed": 10.0
+    },
+    "cow": {
+        "name": "cow",
+        "description": "The cow's animal",
+        "wander_radius": 32.0,
+        "sleep_at_night": true,
+        "sounds": {
+            "idle": { "sound": "cow_moo", "probability": 0.4, "cooldown": 6.0 }
+        },
+        "sprite": {
+            "path": "assets/farm-rpg/Farm Animals/Cow/Common Cow/Female Cow Black.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.906}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Farm Animals/Cow/Common Cow/Female Cow Black.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0],
+                "duration": 200,
+                "direction": ["left", "down", "up"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Farm Animals/Cow/Common Cow/Female Cow Black.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["left", "down", "up"]
+            },
+            "sleep": {
+                "path": "assets/farm-rpg/Farm Animals/Cow/Common Cow/Female Cow Black.png",
+                "position": {"x": 0, "y": 96},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0,1,2,3],
+                "duration": 1000,
+                "direction": ["left", "down"]
+            },
+            "eat": {
+                "path": "assets/farm-rpg/Farm Animals/Cow/Common Cow/Female Cow Black.png",
+                "position": {"x": 0, "y": 160},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.906},
+                "frames": [0,1,2,2,2,3],
+                "duration": 200,
+                "direction": ["left", "down"]
+            }
+        },
+        "speed": 10.0
+    }
+}

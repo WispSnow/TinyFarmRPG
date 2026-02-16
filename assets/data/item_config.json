@@ -1,0 +1,121 @@
+{
+    "items": [
+        {
+            "id": "tool_hoe",
+            "category": "tool",
+            "icon_id": "tools/hoe",
+            "stack_limit": 1,
+            "tool": "hoe",
+            "display_name": "Hoe",
+            "description": "A tool for tilling the soil"
+        },
+        {
+            "id": "tool_watering_can",
+            "category": "tool",
+            "icon_id": "tools/watering_can",
+            "stack_limit": 1,
+            "tool": "watering_can",
+            "display_name": "Watering Can",
+            "description": "A tool for watering the crops"
+        },
+        {
+            "id": "tool_pickaxe",
+            "category": "tool",
+            "icon_id": "tools/pickaxe",
+            "stack_limit": 1,
+            "tool": "pickaxe",
+            "display_name": "Pickaxe",
+            "description": "A tool for mining resources"
+        },
+        {
+            "id": "tool_axe",
+            "category": "tool",
+            "icon_id": "tools/axe",
+            "stack_limit": 1,
+            "tool": "axe",
+            "display_name": "Axe",
+            "description": "A tool for chopping trees"
+        },
+        {
+            "id": "tool_sickle",
+            "category": "tool",
+            "icon_id": "tools/sickle",
+            "stack_limit": 1,
+            "tool": "sickle",
+            "display_name": "Sickle",
+            "description": "A tool for harvesting crops"
+        },
+        {
+            "id": "strawberry_item",
+            "category": "crop",
+            "icon_id": "crops/strawberry",
+            "stack_limit": 999,
+            "crop_type": "strawberry",
+            "on_use": {
+                "consume": 1,
+                "effects": [
+                    {
+                        "type": "add_item",
+                        "id": "strawberry_seed",
+                        "count": 3
+                    }
+                ]
+            },
+            "display_name": "Strawberry",
+            "description": "harvested from strawberry plants, consume to get 3 strawberry seeds"
+        },
+        {
+            "id": "potato_item",
+            "category": "crop",
+            "icon_id": "crops/potato",
+            "stack_limit": 999,
+            "crop_type": "potato",
+            "on_use": {
+                "consume": 1,
+                "effects": [
+                    {
+                        "type": "add_item",
+                        "id": "potato_seed",
+                        "count": 3
+                    }
+                ]
+            },
+            "display_name": "Potato",
+            "description": "harvested from potato plants, consume to get 3 potato seeds"
+        },
+        {
+            "id": "strawberry_seed",
+            "category": "seed",
+            "icon_id": "seeds/strawberry_seed",
+            "stack_limit": 999,
+            "crop_type": "strawberry",
+            "display_name": "Strawberry Seed",
+            "description": "A seed for producing strawberries"
+        },
+        {
+            "id": "potato_seed",
+            "category": "seed",
+            "icon_id": "seeds/potato_seed",
+            "stack_limit": 999,
+            "crop_type": "potato",
+            "display_name": "Potato Seed",
+            "description": "A seed for producing potatoes"
+        },
+        {
+            "id": "material_timber",
+            "category": "material",
+            "icon_id": "materials/timber",
+            "stack_limit": 999,
+            "display_name": "Timber",
+            "description": "A material for building structures, generated from trees."
+        },
+        {
+            "id": "material_stone",
+            "category": "material",
+            "icon_id": "materials/stone",
+            "stack_limit": 999,
+            "display_name": "Stone",
+            "description": "A material for building structures, generated from rocks."
+        }
+    ]
+}

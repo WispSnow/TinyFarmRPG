@@ -1,0 +1,106 @@
+{
+    "tools":{
+        "hoe": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [96, 0, 16, 16]
+        },
+        "watering_can": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [0, 0, 16, 16]
+        },
+        "pickaxe": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [16, 0, 16, 16]
+        },
+        "axe": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [48, 0, 16, 16]
+        },
+        "sickle": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [128, 0, 16, 16]
+        }
+    },
+    "crops":{
+        "strawberry": {
+            "path": "assets/farm-rpg/Icons/Crops.png",
+            "source": [32, 32, 16, 16]
+        },
+        "potato": {
+            "path": "assets/farm-rpg/Icons/Crops.png",
+            "source": [32, 64, 16, 16]
+        }
+    },
+    "seeds":{
+        "strawberry_seed": {
+            "path": "assets/farm-rpg/Icons/Crops.png",
+            "source": [0, 32, 16, 16]
+        },
+        "potato_seed": {
+            "path": "assets/farm-rpg/Icons/Crops.png",
+            "source": [0, 64, 16, 16]
+        }
+    },
+    "materials":{
+        "timber": {
+            "path": "assets/farm-rpg/Icons/Weapons/14.png",
+            "source": [0, 0, 16, 16]
+        },
+        "stone": {
+            "path": "assets/farm-rpg/Icons/Weapons/14.png",
+            "source": [0, 16, 16, 16]
+        }
+    },
+    "indicator":{
+        "cursor": {
+            "path": "assets/farm-rpg/UI/HUD.png",
+            "source": [0, 0, 16, 16]
+        },
+        "hand_open": {
+            "path": "assets/farm-rpg/UI/HUD.png",
+            "source": [0, 32, 16, 16]
+        },
+        "hand_closed": {
+            "path": "assets/farm-rpg/UI/HUD.png",
+            "source": [16, 32, 16, 16]
+        }
+    },
+    "time": {
+        "clock": {
+            "path": "assets/farm-rpg/UI/Clock/Clock.png",
+            "source": [0, 0, 32, 32]
+        },
+        "clock_hand_N": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [0, 0, 32, 32]
+        },
+        "clock_hand_NE": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [32, 0, 32, 32]
+        },
+        "clock_hand_E": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [64, 0, 32, 32]
+        },
+        "clock_hand_SE": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [96, 0, 32, 32]
+        },
+        "clock_hand_S": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [128, 0, 32, 32]
+        },
+        "clock_hand_SW": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [160, 0, 32, 32]
+        },
+        "clock_hand_W": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [192, 0, 32, 32]
+        },
+        "clock_hand_NW": {
+            "path": "assets/farm-rpg/UI/Clock/clock hand.png",
+            "source": [224, 0, 32, 32]
+        }
+    }
+}

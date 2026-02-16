@@ -1,0 +1,196 @@
+#include "engine/scene/scene_manager.h"
+#include "engine/scene/scene.h"
+#include "engine/core/context.h"
+#include <spdlog/spdlog.h>
+#include <entt/signal/dispatcher.hpp>
+#include <string_view>
+
+namespace engine::scene {
+
+SceneManager::SceneManager(engine::core::Context& context)
+    : context_(context) {
+    // 注册事件处理函数
+    context_.getDispatcher().sink<engine::utils::PopSceneEvent>().connect<&SceneManager::onPopScene>(this);
+    context_.getDispatcher().sink<engine::utils::PushSceneEvent>().connect<&SceneManager::onPushScene>(this);
+    context_.getDispatcher().sink<engine::utils::ReplaceSceneEvent>().connect<&SceneManager::onReplaceScene>(this);
+    spdlog::trace("场景管理器已创建。");
+}
+
+SceneManager::~SceneManager() {
+    spdlog::trace("场景管理器已销毁。");
+    close(); // 即使不手动调用 close 也能确保清理
+}
+
+Scene* SceneManager::getCurrentScene() const {
+    if (scene_stack_.empty()) {
+        return nullptr;
+    }
+    return scene_stack_.back().get(); // 返回栈顶场景的裸指针
+}
+
+void SceneManager::update(float delta_time) {
+    // 约定：
+    // - update() 只更新栈顶场景：让覆盖式 Scene（例如 PauseMenu/对话框）可以冻结底层逻辑。
+    // - render() 叠加渲染整个栈：让覆盖式 Scene 显示在底层画面之上。
+    Scene* current_scene = getCurrentScene();
+    if (current_scene) {
+        current_scene->update(delta_time);
+    }
+    // 执行可能的切换场景操作
+    processPendingActions();
+}
+
+void SceneManager::render() {
+    // 渲染时需要叠加渲染所有场景，而不只是栈顶（用于 PauseMenu/模态 UI 覆盖在游戏画面之上）。
+    for (const auto& scene : scene_stack_) {
+        if (scene) {
+            scene->render();
+        }
+    }
+}
+
+void SceneManager::close() {
+    spdlog::trace("正在关闭场景管理器并清理场景栈...");
+    // 清理栈中所有剩余的场景（从顶到底）
+    while (!scene_stack_.empty()) {
+        if (scene_stack_.back()) {
+            spdlog::debug("正在清理场景 '{}' 。", scene_stack_.back()->getName());
+            scene_stack_.back()->clean();
+        }
+        scene_stack_.pop_back();
+    }
+    // 断开事件处理函数 (一次断开所有和当前实例绑定的回调函数)
+    context_.getDispatcher().disconnect(this);
+}
+
+void SceneManager::onPopScene() {
+    if (pending_action_ != PendingAction::None) {
+        spdlog::warn("SceneManager: 已有待处理动作，忽略 PopSceneEvent。");
+        return;
+    }
+    pending_action_ = PendingAction::Pop;
+    pending_scene_.reset();
+}
+
+void SceneManager::onPushScene(engine::utils::PushSceneEvent& event) {
+    if (pending_action_ != PendingAction::None) {
+        spdlog::warn("SceneManager: 已有待处理动作，忽略 PushSceneEvent。");
+        return;
+    }
+    pending_action_ = PendingAction::Push;
+    pending_scene_ = std::move(event.scene);
+}
+
+void SceneManager::onReplaceScene(engine::utils::ReplaceSceneEvent& event) {
+    if (pending_action_ != PendingAction::None) {
+        spdlog::warn("SceneManager: 已有待处理动作，忽略 ReplaceSceneEvent。");
+        return;
+    }
+    pending_action_ = PendingAction::Replace;
+    pending_scene_ = std::move(event.scene);
+}
+
+// --- Private Methods ---
+
+void SceneManager::processPendingActions()
+{
+    if (pending_action_ == PendingAction::None) {
+        return;
+    }
+
+    switch (pending_action_) {
+        case PendingAction::Pop:
+            popScene();
+            break;
+        case PendingAction::Replace:
+            replaceScene(std::move(pending_scene_));
+            break;
+        case PendingAction::Push:
+            pushScene(std::move(pending_scene_));
+            break;
+        default:
+            break;
+    }
+
+    pending_action_ = PendingAction::None;
+}
+
+void SceneManager::pushScene(std::unique_ptr<Scene>&& scene) {
+    if (!scene) {
+        spdlog::warn("尝试将空场景压入栈。");
+        return;
+    }
+    const size_t stack_size_before = scene_stack_.size();
+    const std::string_view from_scene = getCurrentScene() ? getCurrentScene()->getName() : "<none>";
+    const std::string_view to_scene = scene->getName();
+
+    // 初始化新场景
+    if (!scene->isInitialized()) { // 确保只初始化一次
+        if (!scene->init()) {
+            spdlog::error("场景 '{}' 初始化失败。", scene->getName());
+            // 场景初始化失败则退出游戏
+            context_.getDispatcher().trigger<engine::utils::QuitEvent>();
+            scene->clean();
+            return;
+        }
+    }
+
+    // 将新场景移入栈顶
+    scene_stack_.push_back(std::move(scene));
+    spdlog::debug("SceneManager: push '{}' (from '{}'), stack {} -> {}", to_scene, from_scene, stack_size_before, scene_stack_.size());
+}
+
+void SceneManager::popScene() {
+    if (scene_stack_.empty()) {
+        spdlog::warn("尝试从空场景栈中弹出。");
+        return;
+    }
+    const size_t stack_size_before = scene_stack_.size();
+    const std::string_view from_scene = scene_stack_.back()->getName();
+
+    // 清理并移除栈顶场景
+    if (scene_stack_.back()) {
+        scene_stack_.back()->clean();       // 显式调用清理
+    }
+    scene_stack_.pop_back();
+    const std::string_view to_scene = getCurrentScene() ? getCurrentScene()->getName() : "<none>";
+    spdlog::debug("SceneManager: pop '{}' (to '{}'), stack {} -> {}", from_scene, to_scene, stack_size_before, scene_stack_.size());
+    if (scene_stack_.empty()) {
+        spdlog::warn("弹出最后一个场景，退出游戏。");
+        context_.getDispatcher().trigger<engine::utils::QuitEvent>();
+    }
+}
+
+void SceneManager::replaceScene(std::unique_ptr<Scene>&& scene) {
+    if (!scene) {
+        spdlog::warn("尝试用空场景替换。");
+        return;
+    }
+    const size_t stack_size_before = scene_stack_.size();
+    const std::string_view from_scene = getCurrentScene() ? getCurrentScene()->getName() : "<none>";
+    const std::string_view to_scene = scene->getName();
+
+    // 清理并移除场景栈中所有场景
+    while (!scene_stack_.empty()) {
+        if (scene_stack_.back()) {
+            scene_stack_.back()->clean();
+        }
+        scene_stack_.pop_back();
+    }
+
+    // 初始化新场景
+    if (!scene->isInitialized()) {
+        if (!scene->init()) {
+            spdlog::error("场景 '{}' 初始化失败。", scene->getName());
+            context_.getDispatcher().trigger<engine::utils::QuitEvent>();
+            scene->clean();
+            return;
+        }
+    }
+
+    // 将新场景压入栈顶
+    scene_stack_.push_back(std::move(scene));
+    spdlog::debug("SceneManager: replace '{}' -> '{}', stack {} -> {}", from_scene, to_scene, stack_size_before, scene_stack_.size());
+}
+
+} // namespace engine::scene

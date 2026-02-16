@@ -1,0 +1,125 @@
+{
+    "automappingRulesFile": "",
+    "commands": [
+    ],
+    "extensionsPath": "extensions",
+    "folders": [
+        "."
+    ],
+    "properties": [
+        {
+            "name": "ExpandRPGMTileset_IntermediateFormat",
+            "propertytype": "",
+            "type": "int",
+            "value": 0
+        },
+        {
+            "name": "ExpandRPGMTileset_TileHeight",
+            "propertytype": "",
+            "type": "int",
+            "value": 48
+        },
+        {
+            "name": "ExpandRPGMTileset_TileWidth",
+            "propertytype": "",
+            "type": "int",
+            "value": 48
+        },
+        {
+            "name": "ExpandRPGMTileset_UseTransparentColor",
+            "propertytype": "",
+            "type": "bool",
+            "value": false
+        },
+        {
+            "name": "proj",
+            "propertytype": "",
+            "type": "int",
+            "value": 1
+        }
+    ],
+    "propertyTypes": [
+        {
+            "color": "#ffa0a0a4",
+            "drawFill": true,
+            "id": 4,
+            "members": [
+                {
+                    "name": "blue",
+                    "type": "float",
+                    "value": 0
+                },
+                {
+                    "name": "green",
+                    "type": "float",
+                    "value": 0
+                },
+                {
+                    "name": "red",
+                    "type": "float",
+                    "value": 0
+                }
+            ],
+            "name": "Ambient",
+            "type": "class",
+            "useAs": [
+                "property",
+                "map",
+                "project"
+            ]
+        },
+        {
+            "color": "#ffa0a0a4",
+            "drawFill": true,
+            "id": 2,
+            "members": [
+                {
+                    "name": "direction_deg",
+                    "type": "float",
+                    "value": 0
+                },
+                {
+                    "name": "inner_deg",
+                    "type": "float",
+                    "value": 0
+                },
+                {
+                    "name": "outer_deg",
+                    "type": "float",
+                    "value": 0
+                },
+                {
+                    "name": "radius",
+                    "type": "float",
+                    "value": 0
+                }
+            ],
+            "name": "Spotlight",
+            "type": "class",
+            "useAs": [
+                "property",
+                "object",
+                "project"
+            ]
+        },
+        {
+            "id": 1,
+            "name": "TileFlag",
+            "storageType": "string",
+            "type": "enum",
+            "values": [
+                "BLOCK_N",
+                "BLOCK_S",
+                "BLOCK_W",
+                "BLOCK_E",
+                "HAZARD",
+                "WATER",
+                "INTERACT",
+                "ARABLE",
+                "SOLID",
+                "OCCUPIED"
+            ],
+            "valuesAsFlags": true
+        }
+    ]
+}

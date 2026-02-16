@@ -1,0 +1,75 @@
+{
+  "input_mappings": {
+    "pause": [
+      "P",
+      "Escape"
+    ],
+    "move_down": [
+      "S",
+      "Down"
+    ],
+    "move_up": [
+      "W",
+      "Up"
+    ],
+    "move_right": [
+      "D",
+      "Right"
+    ],
+    "move_left": [
+      "A",
+      "Left"
+    ],
+    "rotate_left": [
+      "Q"
+    ],
+    "rotate_right": [
+      "E"
+    ],
+    "interact": [
+      "F"
+    ],
+    "player_light": [
+      "L"
+    ],
+    "inventory": [
+      "I"
+    ],
+    "hotbar": [
+      "Tab"
+    ],
+    "hotbar_1": [
+      "1"
+    ],
+    "hotbar_2": [
+      "2"
+    ],
+    "hotbar_3": [
+      "3"
+    ],
+    "hotbar_4": [
+      "4"
+    ],
+    "hotbar_5": [
+      "5"
+    ],
+    "hotbar_6": [
+      "6"
+    ],
+    "hotbar_7": [
+      "7"
+    ],
+    "hotbar_8": [
+      "8"
+    ],
+    "hotbar_9": [
+      "9"
+    ],
+    "hotbar_10": [
+      "0"
+    ],
+    "camera_reset_zoom": [
+      "MouseMiddle"
+    ]
+  }
+}

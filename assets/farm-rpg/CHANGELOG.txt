@@ -1,0 +1,13 @@
+FOLDERS
+
+info: 
+The new update includes separated character PNGs, the continuation of the village update, farm buildings with three upgrade levels (Normal, Big, and Deluxe), and a train.
+
+It also includes new crops, and the previous version of the trees has been restored.
+
+Modular barn tileset included!
+
+Sorry for the delay in the updates!
+
+
+

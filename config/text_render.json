@@ -1,0 +1,62 @@
+{
+  "text_renderer": {
+    "direction": "ltr",
+    "language": "zh-Hans",
+    "layout_cache_capacity": 256,
+    "features": [
+      "kern=1"
+    ],
+    "default_style_keys": {
+      "ui": "ui/default",
+      "world": "world/default"
+    },
+    "styles": {
+      "ui/default": {
+        "color": {
+          "start_color": "#FFFFFFFF",
+          "end_color": "#FFFFFFFF",
+          "use_gradient": false
+        },
+        "shadow": {
+          "enabled": true,
+          "offset": [
+            1.0,
+            1.0
+          ],
+          "color": "#000000FF"
+        },
+        "layout": {
+          "letter_spacing": 0.0,
+          "line_spacing_scale": 1.0,
+          "glyph_scale": [
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "world/default": {
+        "color": {
+          "start_color": "#FFFFFFFF",
+          "end_color": "#FFFFFFFF",
+          "use_gradient": false
+        },
+        "shadow": {
+          "enabled": true,
+          "offset": [
+            1.0,
+            1.0
+          ],
+          "color": "#000000FF"
+        },
+        "layout": {
+          "letter_spacing": 0.0,
+          "line_spacing_scale": 1.0,
+          "glyph_scale": [
+            1.0,
+            1.0
+          ]
+        }
+      }
+    }
+  }
+}

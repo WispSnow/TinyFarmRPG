@@ -1,0 +1,18 @@
+{
+    "window": {
+        "_note": "window_scale 控制窗口初始尺寸（window coordinates）；logical_scale 控制逻辑分辨率（logical_size），用于离屏渲染与 UI/输入坐标。",
+        "title": "TinyFarm",
+        "width": 1280,
+        "height": 720,
+        "window_scale": 1.4,
+        "logical_scale": 0.5,
+        "resizable": true
+    },
+    "graphics": {
+        "vsync": true,
+        "debug_ui": true
+    },
+    "performance": {
+        "target_fps": 60
+    }
+}
