@@ -1,0 +1,14 @@
+{ "columns":22,
+ "image":"..\/..\/farm-rpg\/Farm\/Tileset\/Modular\/ALL props seasons.png",
+ "imageheight":192,
+ "imagewidth":352,
+ "margin":0,
+ "name":"ALL props seasons",
+ "spacing":0,
+ "tilecount":264,
+ "tiledversion":"1.11.2",
+ "tileheight":16,
+ "tilewidth":16,
+ "type":"tileset",
+ "version":"1.11"
+}

@@ -1,0 +1,188 @@
+{
+  "primary": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 16, 48, 16],
+        "flipped": false
+      },
+      "hover": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 16, 48, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 32, 48, 16]
+      }
+    },
+    "nine_slice": { "left": 3.0, "top": 5.0, "right": 3.0, "bottom": 5.0 },
+    "label": {
+      "text": "按钮",
+      "font_path": "assets/fonts/VonwaonBitmap-16px.ttf",
+      "font_size": 16,
+      "color": [1.0, 1.0, 1.0, 1.0]
+    },
+    "overrides": {
+      "hover": { "offset": [0.0, -0.5], "color": [0.99, 0.91, 0.53, 1.0] },
+      "pressed": { "offset": [0.0, 2.0], "color": [0.6, 0.6, 0.6, 1.0] },
+      "disabled": { "offset": [0.0, 0.0], "color": [0.4, 0.4, 0.4, 1.0] }
+    },
+    "sounds": {
+      "hover": "assets/audio/UI_button11.wav",
+      "click": "assets/audio/UI_button08.wav"
+    }
+  },
+  "secondary": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 64, 48, 16]
+      },
+      "hover": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 64, 48, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [0, 80, 48, 16]
+      }
+    },
+    "overrides": {
+      "hover": { "offset": [0.0, -0.5], "color": [0.99, 0.91, 0.53, 1.0] },
+      "pressed": { "offset": [0.0, 2.0], "color": [0.6, 0.6, 0.6, 1.0] },
+      "disabled": { "offset": [0.0, 0.0], "color": [0.4, 0.4, 0.4, 1.0] }
+    },
+    "nine_slice": { "left": 3.0, "top": 5.0, "right": 3.0, "bottom": 5.0 },
+    "label": {
+      "text": "次级按钮",
+      "font_path": "assets/fonts/VonwaonBitmap-16px.ttf",
+      "font_size": 16,
+      "color": [1.0, 1.0, 1.0, 1.0]
+    }
+  },
+  "page_left": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [384, 0, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [384, 16, 16, 16]
+      }
+    },
+    "sounds": { "hover": null }
+  },
+  "page_right": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [400, 0, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [400, 16, 16, 16]
+      }
+    },
+    "sounds": { "hover": null }
+  },
+  "page_up": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [224, 0, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [224, 16, 16, 16]
+      }
+    },
+    "sounds": { "hover": null }
+  },
+  "page_down": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [240, 0, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [240, 16, 16, 16]
+      }
+    },
+    "sounds": { "hover": null }
+  },
+  "menu" :{
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [432, 208, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [432, 224, 16, 16]
+      }
+    }
+  },
+  "volume_up": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [240, 16, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [240, 32, 16, 16]
+      }
+    }
+  },
+  "volume_down": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [256, 16, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [256, 32, 16, 16]
+      }
+    }
+  },
+  "arrow_left": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [384, 16, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [384, 32, 16, 16]
+      }
+    }
+  },
+  "arrow_right": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [368, 16, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/button.png",
+        "source": [368, 32, 16, 16]
+      }
+    }
+  },
+  "close": {
+    "images": {
+      "normal": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [272, 64, 16, 16]
+      },
+      "pressed": {
+        "path": "assets/farm-rpg/UI/HUD.png",
+        "source": [272, 80, 16, 16]
+      }
+    },
+    "sounds": { "hover": null }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "audio": {
+    "music_volume": 0.2,
+    "sound_volume": 0.5,
+    "spatial": {
+      "falloff_distance": 320.0,
+      "pan_range": 160.0
+    }
+  }
+}
+

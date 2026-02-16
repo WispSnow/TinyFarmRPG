@@ -1,0 +1,9 @@
+{
+    "comment": "地图加载/预加载配置",
+    "preload": {
+        "mode": "off",
+        "comment": "off | neighbors | all"
+    },
+    "log_timings": true
+}
+

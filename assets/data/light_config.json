@@ -1,0 +1,105 @@
+{
+    "comment": "昼夜光照系统配置文件",
+    "transition_periods": {
+        "sunrise": {
+            "start": 5.0,
+            "end": 7.0,
+            "comment": "日出过渡期（太阳升起，月亮落下）"
+        },
+        "sunset": {
+            "start": 17.0,
+            "end": 19.0,
+            "comment": "日落过渡期（太阳落下，月亮升起）"
+        }
+    },
+    "emissive_visibility": {
+        "dark_time": {
+            "start": 18.0,
+            "end": 6.0,
+            "comment": "用于路灯/窗户等自发光：当处于“视觉上足够暗”的时间窗口时启用（允许跨天）"
+        },
+        "comment": "仅用于 NightOnlyTag/DayOnlyTag 的显隐规则；与玩法 TimeOfDay::Night（game_time_config.json）是不同概念"
+    },
+    "player_follow_light": {
+        "enabled_by_default": false,
+        "radius": 128.0,
+        "intensity": 1.0,
+        "color": {
+            "r": 1.0,
+            "g": 0.95,
+            "b": 0.8,
+            "comment": "光源颜色（0..1），偏暖更像手电筒/提灯"
+        },
+        "offset": {
+            "x": 0.0,
+            "y": -10.0,
+            "comment": "世界像素偏移：y 轴向下为正，“略高于脚下”通常为负 y"
+        },
+        "comment": "玩家跟随点光源：室外仅在 emissive_visibility.dark_time 内可点亮，室内任意时间可点亮"
+    },
+    "sun": {
+        "color": {
+            "warmth_variation": 0.2,
+            "comment": "颜色随时间变化的幅度，早晚更暖（橙色），正午更冷（白色）"
+        },
+        "intensity": {
+            "base_min": 0.4,
+            "base_max": 0.8,
+            "comment": "太阳强度范围：正午最强，早晚较弱"
+        },
+        "offset": {
+            "min": 0.1,
+            "max": 0.2,
+            "comment": "方向光偏移范围（地平线位置）"
+        },
+        "softness": 0.22,
+        "comment": "太阳光参数配置"
+    },
+    "moon": {
+        "color": {
+            "r": 0.65,
+            "g": 0.7,
+            "b": 0.9,
+            "comment": "月光颜色：冷蓝色"
+        },
+        "intensity": 0.2,
+        "offset": 0.25,
+        "softness": 0.38,
+        "comment": "月光参数配置"
+    },
+    "ambient": {
+        "keyframes": [
+            {
+                "hour": 4.0,
+                "color": {"r": 0.08, "g": 0.08, "b": 0.12},
+                "comment": "深夜末尾 - 深蓝"
+            },
+            {
+                "hour": 6.0,
+                "color": {"r": 0.15, "g": 0.13, "b": 0.12},
+                "comment": "黎明 - 暗橙"
+            },
+            {
+                "hour": 9.0,
+                "color": {"r": 0.28, "g": 0.28, "b": 0.26},
+                "comment": "早晨 - 中灰"
+            },
+            {
+                "hour": 14.0,
+                "color": {"r": 0.35, "g": 0.35, "b": 0.35},
+                "comment": "正午 - 明亮"
+            },
+            {
+                "hour": 18.0,
+                "color": {"r": 0.22, "g": 0.20, "b": 0.18},
+                "comment": "黄昏 - 暖灰"
+            },
+            {
+                "hour": 22.0,
+                "color": {"r": 0.08, "g": 0.08, "b": 0.12},
+                "comment": "深夜 - 深蓝"
+            }
+        ],
+        "comment": "环境光关键帧配置"
+    }
+}

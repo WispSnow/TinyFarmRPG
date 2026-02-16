@@ -1,0 +1,137 @@
+{
+    "player": {
+        "name": "player",
+        "description": "The player's actor",
+        "sprite": {
+            "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1,2,3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Walk.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "hoe": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Hoe.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "events": {"tool_hit": 5},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "watering": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Watering.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5, 6, 7],
+                "events": {"tool_hit": 5},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "planting": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Throwing items.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4],
+                "events": {"seed_plant": 2},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "sickle": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Sickle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "events": {"harvest": 3},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "axe": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Axe.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "events": {"tool_hit": 3},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            },
+            "pickaxe": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Pickaxe.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "events": {"tool_hit": 3},
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 100.0
+    },
+    "friend": {
+        "name": "Lyria",
+        "description": "Lyria is a friend of the player",
+        "dialogue_id": "friend_intro",
+        "wander_radius": 48.0,
+        "interact_distance": 64.0,
+        "sprite": {
+            "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Lyria/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Lyria/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1,2,3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Lyria/Walk.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 20.0
+    }
+}

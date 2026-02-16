@@ -1,0 +1,23 @@
+{
+  "test": {
+    "images": {
+      "normal": { "path": "assets/farm-rpg/UI/button.png", "source": [0, 0, 1, 1] }
+    },
+    "sounds": {
+      "hover": null,
+      "click": "assets/audio/UI_button08.wav",
+      "drag_begin": "assets/audio/UI_button11.wav"
+    }
+  },
+  "default": {
+    "images": {
+      "normal": { "path": "assets/farm-rpg/UI/button.png", "source": [0, 0, 1, 1] }
+    }
+  },
+  "disable_by_empty": {
+    "images": {
+      "normal": { "path": "assets/farm-rpg/UI/button.png", "source": [0, 0, 1, 1] }
+    },
+    "sounds": { "click": "" }
+  }
+}
