@@ -1,5 +1,6 @@
 #include "ui_interactive.h"
 #include "state/ui_state.h"
+#include "state/ui_normal_state.h"
 #include "engine/core/context.h"
 #include "engine/render/renderer.h"
 #include "engine/resource/resource_manager.h"
@@ -74,8 +75,54 @@ void UIInteractive::setCurrentImage(entt::id_type name_id)
 
 void UIInteractive::applyStateVisual(entt::id_type state_id)
 {
-    // 目前只需要切换图片，但未来可能有其它逻辑（例如特效、动画等）
-    setCurrentImage(state_id);
+    if (images_.contains(state_id)) {
+        setCurrentImage(state_id);
+        return;
+    }
+
+    if (state_id != UI_IMAGE_NORMAL_ID && images_.contains(UI_IMAGE_NORMAL_ID)) {
+        setCurrentImage(UI_IMAGE_NORMAL_ID);
+    }
+}
+
+void UIInteractive::setEnabled(bool enabled)
+{
+    if (!enabled) {
+        if (!interactive_) {
+            applyStateVisual(UI_IMAGE_DISABLED_ID);
+            return;
+        }
+
+        // 若处于按下链路，先走 release(false) 收敛回调，再进入禁用态。
+        if (interactive_ && is_pressed_) {
+            mouseReleased(false);
+        }
+
+        interactive_ = false;
+        is_pressed_ = false;
+        is_dragging_ = false;
+        next_state_.reset();
+
+        if (state_) {
+            setState(std::make_unique<engine::ui::state::UINormalState>(this));
+        }
+        applyStateVisual(UI_IMAGE_DISABLED_ID);
+        return;
+    }
+
+    if (interactive_) {
+        return;
+    }
+
+    interactive_ = true;
+    is_pressed_ = false;
+    is_dragging_ = false;
+    next_state_.reset();
+
+    if (state_) {
+        setState(std::make_unique<engine::ui::state::UINormalState>(this));
+    }
+    applyStateVisual(UI_IMAGE_NORMAL_ID);
 }
 
 void UIInteractive::setSoundEvent(entt::id_type event_id, entt::id_type sound_id, std::string_view path)

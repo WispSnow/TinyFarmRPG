@@ -301,8 +301,7 @@ void PauseMenuScene::disableButton(engine::ui::UIButton* button) {
     if (!button) {
         return;
     }
-    button->setInteractive(false);
-    button->applyStateVisual(engine::ui::UI_IMAGE_DISABLED_ID);
+    button->setEnabled(false);
 }
 
 void PauseMenuScene::refreshVolumeLabels() {
@@ -322,8 +321,8 @@ void PauseMenuScene::refreshTimeScaleLabel() {
 
     if (!game_time_) {
         time_scale_label_->setText("Speed N/A");
-        if (time_scale_down_button_) time_scale_down_button_->setInteractive(false);
-        if (time_scale_up_button_) time_scale_up_button_->setInteractive(false);
+        if (time_scale_down_button_) time_scale_down_button_->setEnabled(false);
+        if (time_scale_up_button_) time_scale_up_button_->setEnabled(false);
         return;
     }
 
