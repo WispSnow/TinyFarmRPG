@@ -1,5 +1,6 @@
 #include "ui_normal_state.h"
 #include "ui_hover_state.h"
+#include "ui_pressed_state.h"
 #include "engine/ui/ui_interactive.h"
 #include <spdlog/spdlog.h>
 #include <entt/core/hashed_string.hpp>
@@ -18,6 +19,11 @@ void UINormalState::onMouseEnter()
 {
     owner_->playSoundEvent(UI_SOUND_EVENT_HOVER_ID);
     owner_->setNextState(std::make_unique<UIHoverState>(owner_));
+}
+
+void UINormalState::onMousePressed()
+{
+    owner_->setNextState(std::make_unique<UIPressedState>(owner_));
 }
 
 } // namespace engine::ui::state
