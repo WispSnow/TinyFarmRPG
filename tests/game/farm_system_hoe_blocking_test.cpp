@@ -12,8 +12,10 @@
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 
+#include "game/data/item_catalog.h"
 #include "game/defs/constants.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/defs/render_layers.h"
 #include "game/defs/spatial_layers.h"
 
@@ -82,7 +84,15 @@ TEST(FarmSystemHoeBlockingTest, AabbColliderOverTile_BlocksHoeButOtherTileCanHoe
 
     game::factory::BlueprintManager blueprint_manager;
     game::factory::EntityFactory entity_factory(registry, blueprint_manager, &spatial, &auto_tile_library);
-    FarmSystem farm(registry, dispatcher, spatial, entity_factory, blueprint_manager, nullptr);
+    game::data::ItemCatalog item_catalog;
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    FarmSystem farm(registry,
+                    dispatcher,
+                    spatial,
+                    entity_factory,
+                    blueprint_manager,
+                    nullptr,
+                    inventory_domain_service);
 
     const glm::ivec2 free_tile(1, 1);
     const glm::ivec2 blocked_tile(2, 1);
@@ -120,7 +130,15 @@ TEST(FarmSystemHoeBlockingTest, CircleColliderOverTile_DoesNotBlockHoe) {
 
     game::factory::BlueprintManager blueprint_manager;
     game::factory::EntityFactory entity_factory(registry, blueprint_manager, &spatial, &auto_tile_library);
-    FarmSystem farm(registry, dispatcher, spatial, entity_factory, blueprint_manager, nullptr);
+    game::data::ItemCatalog item_catalog;
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    FarmSystem farm(registry,
+                    dispatcher,
+                    spatial,
+                    entity_factory,
+                    blueprint_manager,
+                    nullptr,
+                    inventory_domain_service);
 
     const glm::ivec2 tile(1, 1);
     spatial.setTileType(tile, engine::component::TileType::ARABLE);
@@ -151,7 +169,15 @@ TEST(FarmSystemHoeBlockingTest, HoeUsesMainLayerTileAsBase) {
 
     game::factory::BlueprintManager blueprint_manager;
     game::factory::EntityFactory entity_factory(registry, blueprint_manager, &spatial, &auto_tile_library);
-    FarmSystem farm(registry, dispatcher, spatial, entity_factory, blueprint_manager, nullptr);
+    game::data::ItemCatalog item_catalog;
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    FarmSystem farm(registry,
+                    dispatcher,
+                    spatial,
+                    entity_factory,
+                    blueprint_manager,
+                    nullptr,
+                    inventory_domain_service);
 
     const glm::ivec2 tile(1, 1);
     const glm::vec2 pos = tileWorldPos(tile);
@@ -193,7 +219,15 @@ TEST(FarmSystemHoeBlockingTest, NeedRemoveTaggedAabbCollider_IgnoredForHoeBlocki
 
     game::factory::BlueprintManager blueprint_manager;
     game::factory::EntityFactory entity_factory(registry, blueprint_manager, &spatial, &auto_tile_library);
-    FarmSystem farm(registry, dispatcher, spatial, entity_factory, blueprint_manager, nullptr);
+    game::data::ItemCatalog item_catalog;
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    FarmSystem farm(registry,
+                    dispatcher,
+                    spatial,
+                    entity_factory,
+                    blueprint_manager,
+                    nullptr,
+                    inventory_domain_service);
 
     const glm::ivec2 tile(1, 1);
     spatial.setTileType(tile, engine::component::TileType::ARABLE);

@@ -126,6 +126,8 @@ target_sources(game PRIVATE
     # Data
     game/data/game_time.cpp
     game/data/item_catalog.cpp
+    # Domain
+    game/domain/inventory_domain_service.cpp
     # Save
     game/save/save_data.cpp
     game/save/save_slot_summary.cpp

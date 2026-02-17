@@ -7,6 +7,7 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/world/world_state.h"
 #include "engine/component/animation_component.h"
 #include "engine/component/sprite_component.h"
@@ -60,11 +61,13 @@ namespace game::system {
 ChestSystem::ChestSystem(entt::registry& registry,
                          entt::dispatcher& dispatcher,
                          game::world::WorldState& world_state,
-                         game::data::ItemCatalog& item_catalog)
+                         game::data::ItemCatalog& item_catalog,
+                         game::domain::InventoryDomainService& inventory_domain_service)
     : registry_(registry),
       dispatcher_(dispatcher),
       world_state_(world_state),
-      item_catalog_(item_catalog) {
+      item_catalog_(item_catalog),
+      inventory_domain_service_(inventory_domain_service) {
     dispatcher_.sink<engine::utils::AnimationFinishedEvent>().connect<&ChestSystem::onAnimationFinished>(this);
     dispatcher_.sink<game::defs::InteractCommand>().connect<&ChestSystem::onInteractCommand>(this);
 }
@@ -140,7 +143,7 @@ bool ChestSystem::tryOpenChest(entt::entity player, entt::entity chest_entity) {
 
     for (const auto& reward : chest->rewards_) {
         if (reward.item_id_ == entt::null || reward.count_ <= 0) continue;
-        dispatcher_.trigger(game::defs::AddItemCommand{player, reward.item_id_, reward.count_});
+        (void)inventory_domain_service_.addItem(player, reward.item_id_, reward.count_);
     }
 
     dispatcher_.enqueue(engine::utils::PlayAnimationEvent{chest_entity, CHEST_OPEN_ANIM, false});

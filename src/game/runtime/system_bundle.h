@@ -18,6 +18,10 @@ namespace game::data {
 class ItemCatalog;
 }
 
+namespace game::domain {
+class InventoryDomainService;
+}
+
 namespace game::save {
 class SaveService;
 }
@@ -37,6 +41,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::world::WorldState> world_state;
     std::unique_ptr<game::factory::EntityFactory> entity_factory;
     std::unique_ptr<game::world::MapManager> map_manager;
+    std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
     std::unique_ptr<game::save::SaveService> save_service;
 
     GameRuntimeServices();

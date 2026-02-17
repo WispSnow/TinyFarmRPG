@@ -1,11 +1,16 @@
 #pragma once
 
 #include "game/defs/commands.h"
+
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 namespace game::data {
 class ItemCatalog;
+}
+
+namespace game::domain {
+class InventoryDomainService;
 }
 
 namespace game::system {
@@ -14,12 +19,16 @@ class ItemUseSystem final {
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
     game::data::ItemCatalog& catalog_;
+    game::domain::InventoryDomainService& inventory_domain_service_;
 
     float notification_timer_{0.0f};
     entt::entity notification_target_{entt::null};
 
 public:
-    ItemUseSystem(entt::registry& registry, entt::dispatcher& dispatcher, game::data::ItemCatalog& catalog);
+    ItemUseSystem(entt::registry& registry,
+                  entt::dispatcher& dispatcher,
+                  game::data::ItemCatalog& catalog,
+                  game::domain::InventoryDomainService& inventory_domain_service);
     ~ItemUseSystem();
 
     void update(float delta_time);

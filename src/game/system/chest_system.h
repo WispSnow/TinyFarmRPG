@@ -18,6 +18,10 @@ namespace game::data {
 class ItemCatalog;
 }
 
+namespace game::domain {
+class InventoryDomainService;
+}
+
 namespace game::world {
 class WorldState;
 }
@@ -29,6 +33,7 @@ class ChestSystem final {
     entt::dispatcher& dispatcher_;
     game::world::WorldState& world_state_;
     game::data::ItemCatalog& item_catalog_;
+    game::domain::InventoryDomainService& inventory_domain_service_;
 
     float notification_timer_{0.0f};
     entt::entity notification_target_{entt::null};
@@ -37,7 +42,8 @@ public:
     ChestSystem(entt::registry& registry,
                 entt::dispatcher& dispatcher,
                 game::world::WorldState& world_state,
-                game::data::ItemCatalog& item_catalog);
+                game::data::ItemCatalog& item_catalog,
+                game::domain::InventoryDomainService& inventory_domain_service);
     ~ChestSystem();
 
     void update(float delta_time);

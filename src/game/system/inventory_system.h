@@ -1,11 +1,18 @@
 #pragma once
 
-#include "game/component/inventory_component.h"
-#include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
-#include <entt/entity/registry.hpp>
-#include <entt/signal/dispatcher.hpp>
+
+#include <entt/entity/fwd.hpp>
+#include <entt/signal/fwd.hpp>
+
+namespace game::data {
+class ItemCatalog;
+}
+
+namespace game::domain {
+class InventoryDomainService;
+}
 
 namespace game::system {
 
@@ -13,9 +20,13 @@ class InventorySystem final {
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
     game::data::ItemCatalog& catalog_;
+    game::domain::InventoryDomainService& inventory_domain_service_;
 
 public:
-    InventorySystem(entt::registry& registry, entt::dispatcher& dispatcher, game::data::ItemCatalog& catalog);
+    InventorySystem(entt::registry& registry,
+                    entt::dispatcher& dispatcher,
+                    game::data::ItemCatalog& catalog,
+                    game::domain::InventoryDomainService& inventory_domain_service);
     ~InventorySystem();
 
     void subscribe();

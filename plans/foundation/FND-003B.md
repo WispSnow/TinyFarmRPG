@@ -4,7 +4,7 @@
 - 任务ID：`FND-003B`
 - 任务标题：`消除跨系统 Command 链耦合`
 - 优先级：`P0`
-- 状态：`Todo`
+- 状态：`Done`
 - 负责人：`TBD`
 - 计划时间：`2026-02-17` ～ `2026-02-19`（2d）
 - 依赖任务：`FND-003`（已完成）
@@ -99,15 +99,15 @@
    说明：新增 service 测试，更新链路回归，执行全量 `ctest`。
 
 ## 待办清单（用于追踪）
-- [ ] T1 新增 `inventory_domain_service.h/.cpp`
-- [ ] T2 新增 `inventory_domain_service_test.cpp`
-- [ ] T3 `ItemUseSystem` 改为调用 `InventoryDomainService`
-- [ ] T4 `Farm/Chest/Pickup` 改为调用 `InventoryDomainService`
-- [ ] T5 `InventorySystem` 移除内部 `HotbarBind/Unbind` 命令转发
-- [ ] T6 `HotbarSystem::onInventoryChanged` 完成映射收敛与自动绑定
-- [ ] T7 更新 `command_event_flow_test.cpp`
-- [ ] T8 更新 `item_use_system_test.cpp` 与 `inventory_hotbar_consistency_test.cpp`
-- [ ] T9 执行 `ctest --test-dir build --output-on-failure -j4`
+- [x] T1 新增 `inventory_domain_service.h/.cpp`
+- [x] T2 新增 `inventory_domain_service_test.cpp`
+- [x] T3 `ItemUseSystem` 改为调用 `InventoryDomainService`
+- [x] T4 `Farm/Chest/Pickup` 改为调用 `InventoryDomainService`
+- [x] T5 `InventorySystem` 移除内部 `HotbarBind/Unbind` 命令转发
+- [x] T6 `HotbarSystem::onInventoryChanged` 完成映射收敛与自动绑定
+- [x] T7 更新 `command_event_flow_test.cpp`
+- [x] T8 更新 `item_use_system_test.cpp` 与 `inventory_hotbar_consistency_test.cpp`
+- [x] T9 执行 `ctest --test-dir build --output-on-failure -j4`
 
 ## 测试计划
 - 必跑：
@@ -137,6 +137,10 @@
 
 ## 进度日志
 - `2026-02-17` 根据审阅意见精简方案，聚焦 InventoryDomainService + Hotbar 收敛。
+- `2026-02-17` 实现完成并通过全量回归：`ctest --test-dir build --output-on-failure -j4`。
+- `2026-02-17` 已按约束保持 Hotbar 自动绑定策略：仅在“新增物品”语义路径触发。
 
-## 疑问与待澄清
-- `Hotbar` 自动绑定策略是否要求与当前完全一致（仅“新增物品”触发），还是可接受“有空位时更积极绑定”？
+## 后续跟进（非阻塞）
+- `FND-003C` 候选：将 `InventoryMoveCommand` 的 hotbar 跟随语义（swap/merge/move）从 `InventorySystem` 迁移到 `HotbarSystem` 统一收敛。  
+  当前实现在 move 场景仍有少量 `InventorySystem` 直接改 hotbar 映射的逻辑；虽已通过测试且行为正确，但与“单点收敛”目标仍有距离。  
+  预计需要在 `InventoryChanged` 中补充 move 语义元信息（如 `from_slot/to_slot/move_kind`）后再安全迁移。

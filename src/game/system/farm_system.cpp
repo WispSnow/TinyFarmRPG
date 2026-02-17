@@ -5,13 +5,13 @@
 #include "game/component/inventory_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/defs/crop_defs.h"
-#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/constants.h"
 #include "game/defs/spatial_layers.h"
 #include "game/defs/render_layers.h"
 #include "game/data/item_catalog.h"
 #include "game/data/game_time.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/factory/entity_factory.h"
 #include "game/factory/blueprint_manager.h"
 #include "engine/utils/events.h"
@@ -119,13 +119,15 @@ FarmSystem::FarmSystem(entt::registry& registry,
                        engine::spatial::SpatialIndexManager& spatial_index,
                        game::factory::EntityFactory& entity_factory,
                        const game::factory::BlueprintManager& blueprint_manager,
-                       game::data::ItemCatalog* item_catalog)
+                       game::data::ItemCatalog* item_catalog,
+                       game::domain::InventoryDomainService& inventory_domain_service)
     : registry_(registry),
       dispatcher_(dispatcher),
       spatial_index_(spatial_index),
       entity_factory_(entity_factory),
       blueprint_manager_(blueprint_manager),
-      item_catalog_(item_catalog) {
+      item_catalog_(item_catalog),
+      inventory_domain_service_(inventory_domain_service) {
     dispatcher_.sink<game::defs::UseToolEvent>().connect<&FarmSystem::onUseToolEvent>(this);
     dispatcher_.sink<game::defs::UseSeedEvent>().connect<&FarmSystem::onUseSeedEvent>(this);
 }
@@ -291,12 +293,8 @@ void FarmSystem::onUseSeedEvent(const game::defs::UseSeedEvent& event) {
     }
 
     // 种植成功，扣减对应槽位的种子
-    game::defs::RemoveItemCommand remove_evt{};
-    remove_evt.target = event.source;
-    remove_evt.item_id = event.seed_item_id_;
-    remove_evt.count = 1;
-    remove_evt.slot_index = event.inventory_slot_index_;
-    dispatcher_.trigger(remove_evt);
+    (void)inventory_domain_service_.removeItem(
+        event.source, event.seed_item_id_, 1, event.inventory_slot_index_);
 }
 
 bool FarmSystem::plantSeed(const glm::vec2& world_pos, game::defs::CropType seed_type) {
@@ -393,7 +391,7 @@ bool FarmSystem::harvestCrop(const glm::vec2& world_pos) {
             return false;
         }
 
-        dispatcher_.trigger(game::defs::AddItemCommand{player, harvest_item_id, 1});
+        (void)inventory_domain_service_.addItem(player, harvest_item_id, 1);
     }
     
     // 播放收获音效

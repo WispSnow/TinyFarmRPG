@@ -5,6 +5,7 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/system/hotbar_system.h"
 #include "game/system/inventory_system.h"
 
@@ -19,7 +20,8 @@ TEST(InventoryHotbarConsistencyTest, MergeIntoReferencedSlot_KeepsTargetHotkeyAn
     entt::dispatcher dispatcher;
 
     game::data::ItemCatalog catalog;
-    InventorySystem inventory_system(registry, dispatcher, catalog);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
 
     const entt::entity player = registry.create();

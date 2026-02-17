@@ -12,6 +12,7 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/constants.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/defs/spatial_layers.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
@@ -63,9 +64,16 @@ TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAnd
 
     data::ItemCatalog item_catalog;
     ASSERT_TRUE(item_catalog.loadItemConfig(std::string(PROJECT_SOURCE_DIR) + "/assets/data/item_config.json"));
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
 
     factory::EntityFactory entity_factory(registry, blueprint_manager, &spatial, nullptr);
-    FarmSystem farm(registry, dispatcher, spatial, entity_factory, blueprint_manager, &item_catalog);
+    FarmSystem farm(registry,
+                    dispatcher,
+                    spatial,
+                    entity_factory,
+                    blueprint_manager,
+                    &item_catalog,
+                    inventory_domain_service);
 
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
