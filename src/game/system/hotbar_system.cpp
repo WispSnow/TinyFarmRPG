@@ -42,6 +42,35 @@ namespace {
     return std::nullopt;
 }
 
+[[nodiscard]] bool hotbarReferencesInventorySlot(const game::component::HotbarComponent& hotbar, int inventory_slot) {
+    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+        if (hotbar.slot(i).inventory_slot_index_ == inventory_slot) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void swapHotbarInventorySlotMappings(game::component::HotbarComponent& hotbar,
+                                     int from_slot,
+                                     int to_slot,
+                                     std::vector<int>& changed_hotbar_slots) {
+    if (from_slot == to_slot) return;
+
+    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+        auto& slot = hotbar.slot(i);
+        const int before = slot.inventory_slot_index_;
+        if (before == from_slot) {
+            slot.inventory_slot_index_ = to_slot;
+        } else if (before == to_slot) {
+            slot.inventory_slot_index_ = from_slot;
+        }
+        if (slot.inventory_slot_index_ != before) {
+            changed_hotbar_slots.push_back(i);
+        }
+    }
+}
+
 [[nodiscard]] bool inventorySlotAffected(const game::defs::InventoryChanged& evt, int slot_index) {
     if (evt.full_sync) return true;
     return std::any_of(evt.slots.begin(), evt.slots.end(), [slot_index](const auto& update) {
@@ -250,6 +279,48 @@ void HotbarSystem::onInventoryChanged(const game::defs::InventoryChanged& evt) {
 
     std::vector<game::defs::HotbarSlotUpdate> updates;
     updates.reserve(game::component::HotbarComponent::SLOT_COUNT);
+
+    if (evt.move_kind != game::defs::InventoryMoveKind::None) {
+        const bool valid_from = evt.move_from_slot >= 0 && evt.move_from_slot < inventory.slotCount();
+        const bool valid_to = evt.move_to_slot >= 0 && evt.move_to_slot < inventory.slotCount();
+        if (valid_from && valid_to && evt.move_from_slot != evt.move_to_slot) {
+            std::vector<int> changed_hotbar_slots;
+            changed_hotbar_slots.reserve(game::component::HotbarComponent::SLOT_COUNT);
+
+            switch (evt.move_kind) {
+                case game::defs::InventoryMoveKind::MoveToEmpty: {
+                    if (hotbarReferencesInventorySlot(hotbar, evt.move_from_slot)) {
+                        swapHotbarInventorySlotMappings(hotbar, evt.move_from_slot, evt.move_to_slot, changed_hotbar_slots);
+                    }
+                    break;
+                }
+                case game::defs::InventoryMoveKind::Swap: {
+                    swapHotbarInventorySlotMappings(hotbar, evt.move_from_slot, evt.move_to_slot, changed_hotbar_slots);
+                    break;
+                }
+                case game::defs::InventoryMoveKind::Merge: {
+                    if (!inventory.slot(evt.move_from_slot).empty()) {
+                        break;
+                    }
+                    if (!hotbarReferencesInventorySlot(hotbar, evt.move_from_slot)) {
+                        break;
+                    }
+                    const bool target_has_hotkey = hotbarReferencesInventorySlot(hotbar, evt.move_to_slot);
+                    if (!target_has_hotkey) {
+                        swapHotbarInventorySlotMappings(hotbar, evt.move_from_slot, evt.move_to_slot, changed_hotbar_slots);
+                    }
+                    break;
+                }
+                case game::defs::InventoryMoveKind::None:
+                default:
+                    break;
+            }
+
+            for (const int hotbar_index : changed_hotbar_slots) {
+                pushSlotUpdate(updates, inventory, hotbar_index, hotbar.slot(hotbar_index).inventory_slot_index_);
+            }
+        }
+    }
 
     for (int hb_index = 0; hb_index < game::component::HotbarComponent::SLOT_COUNT; ++hb_index) {
         const int inv_index = hotbar.slot(hb_index).inventory_slot_index_;

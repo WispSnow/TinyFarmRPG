@@ -4,7 +4,7 @@
 - 任务ID：`FND-003C`
 - 任务标题：`Move 语义下的 Hotbar 单点收敛`
 - 优先级：`P1`
-- 状态：`Todo`
+- 状态：`Done`
 - 负责人：`TBD`
 - 计划时间：`2026-02-18` ～ `2026-02-19`（1d）
 - 依赖任务：`FND-003B`（已完成）
@@ -91,14 +91,14 @@
    说明：`ctest --test-dir build --output-on-failure -j4`。
 
 ## 待办清单（用于追踪）
-- [ ] T1 扩展 `InventoryChanged` move 元信息（`move_kind/from_slot/to_slot`）
-- [ ] T2 `InventorySystem::onMoveItem` 移除 Hotbar 直接写入
-- [ ] T3 `InventorySystem` 发布带 move 语义的 `InventoryChanged`
-- [ ] T4 `HotbarSystem` 接入 move/swap/merge 跟随规则
-- [ ] T5 保持 `from_add` 自动绑定策略不变并回归验证
-- [ ] T6 新增 `inventory_move_hotbar_follow_test.cpp`（含部分合并场景）
-- [ ] T7 更新 `inventory_hotbar_consistency_test.cpp`
-- [ ] T8 执行 `ctest --test-dir build --output-on-failure -j4`
+- [x] T1 扩展 `InventoryChanged` move 元信息（`move_kind/from_slot/to_slot`）
+- [x] T2 `InventorySystem::onMoveItem` 移除 Hotbar 直接写入
+- [x] T3 `InventorySystem` 发布带 move 语义的 `InventoryChanged`
+- [x] T4 `HotbarSystem` 接入 move/swap/merge 跟随规则
+- [x] T5 保持 `from_add` 自动绑定策略不变并回归验证
+- [x] T6 新增 `inventory_move_hotbar_follow_test.cpp`（含部分合并场景）
+- [x] T7 更新 `inventory_hotbar_consistency_test.cpp`
+- [x] T8 执行 `ctest --test-dir build --output-on-failure -j4`
 
 ## 验收标准（DoD）
 - `InventorySystem` 不再在任何 move 分支写入 `HotbarComponent`。
@@ -119,3 +119,8 @@
 
 ## 疑问与待澄清
 - 暂无。
+
+## 进度日志
+- `2026-02-17` 完成 FND-003C 实施：InventoryMove 路径下 Hotbar 映射写入已从 InventorySystem 迁移到 HotbarSystem。
+- `2026-02-17` 新增 `InventoryMoveHotbarFollowTest`（5 个用例，含部分合并场景）。
+- `2026-02-17` 全量回归通过：`ctest --test-dir build --output-on-failure -j4`（146/146 通过，含既有 skip）。
