@@ -44,6 +44,20 @@ TEST(UIInteractionStateSourceTest, PressedStateReleaseInsideOutsideContractIsPre
         << "Pressed release outside should transition back to normal.";
 }
 
+TEST(UIInteractionStateSourceTest, NormalStatePressTransitionsToPressedContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_normal_state.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UINormalState::onMousePressed()"), std::string::npos)
+        << "UINormalState should explicitly handle mouse press.";
+    EXPECT_NE(source.find("owner_->setNextState(std::make_unique<UIPressedState>(owner_));"), std::string::npos)
+        << "Normal state press should transition to pressed state.";
+}
+
 // NOTE:
 // For UIR-010, Normal->Pressed path is expected to skip HoverState::enter(),
 // so hover_enter() is not triggered on same-frame press. This avoids hover flash.

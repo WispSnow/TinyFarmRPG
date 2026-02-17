@@ -20,8 +20,9 @@ private:
     void enter() override;
     void update(float, engine::core::Context&) override {}
 
-    // 正常状态只需要考虑鼠标进入事件
+    // 正常状态需要考虑鼠标进入、按下事件
     void onMouseEnter() override;
+    void onMousePressed() override;
 };
 
 } // namespace engine::ui::state

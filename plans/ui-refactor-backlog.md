@@ -64,13 +64,14 @@
 
 ## Iteration 1：先修正确性（不动大架构，可并行）
 
-### UIR-010（P0）修复“同帧移入并按下”点击丢失
+### UIR-010（P0）修复“同帧移入并按下”点击丢失（已完成：代码+自动化）
 - 目标：消除最关键行为 bug。
 - 主要改动：
   - 在 `UINormalState::onMousePressed()` 直接切换到 `UIPressedState`
   - 说明：不采用 “`UIManager::onMousePressed()` 先 `updateHovered()` 再 `mousePressed()`” 方案；当前 `setNextState` 是延迟生效，该方案在同一调用链内仍可能停留在 `Normal`，不能根治问题
 - 验收标准：
   - 同帧移入并按下 -> 释放于元素内，必触发 click
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-011（P1）补齐 `onReleased` 与取消路径
 - 目标：保证行为链事件完整、可收尾。
