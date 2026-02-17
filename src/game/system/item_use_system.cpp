@@ -6,6 +6,7 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 
 #include <algorithm>
 #include <sstream>
@@ -50,8 +51,14 @@ using game::system::detail::stackLimitOrDefault;
 
 } // namespace
 
-ItemUseSystem::ItemUseSystem(entt::registry& registry, entt::dispatcher& dispatcher, game::data::ItemCatalog& catalog)
-    : registry_(registry), dispatcher_(dispatcher), catalog_(catalog) {
+ItemUseSystem::ItemUseSystem(entt::registry& registry,
+                             entt::dispatcher& dispatcher,
+                             game::data::ItemCatalog& catalog,
+                             game::domain::InventoryDomainService& inventory_domain_service)
+    : registry_(registry),
+      dispatcher_(dispatcher),
+      catalog_(catalog),
+      inventory_domain_service_(inventory_domain_service) {
     dispatcher_.sink<game::defs::UseItemCommand>().connect<&ItemUseSystem::onUseItem>(this);
 }
 
@@ -143,18 +150,15 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     }
 
     // Consume first (may free the source slot), then trigger effects.
-    dispatcher_.trigger(game::defs::RemoveItemCommand{evt.target, stack.item_id_, consume_total, evt.inventory_slot_index});
+    (void)inventory_domain_service_.removeItem(
+        evt.target, stack.item_id_, consume_total, evt.inventory_slot_index);
 
     for (const auto& effect : use_cfg.effects) {
         if (effect.type != game::data::ItemUseEffectType::AddItem) continue;
         const int add_total = effect.count * use_times;
         if (effect.item_id == entt::null || add_total <= 0) continue;
-        game::defs::AddItemCommand add{};
-        add.target = evt.target;
-        add.item_id = effect.item_id;
-        add.count = add_total;
-        add.preferred_slot_index = evt.inventory_slot_index;
-        dispatcher_.trigger(add);
+        (void)inventory_domain_service_.addItem(
+            evt.target, effect.item_id, add_total, evt.inventory_slot_index);
     }
 
     if (evt.show_prompt) {

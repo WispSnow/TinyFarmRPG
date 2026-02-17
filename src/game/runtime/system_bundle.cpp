@@ -34,6 +34,7 @@
 #include "game/system/interaction_system.h"
 #include "game/system/rest_system.h"
 #include "game/system/map_transition_system.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/factory/entity_factory.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/data/item_catalog.h"

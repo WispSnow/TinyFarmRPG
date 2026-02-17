@@ -5,6 +5,7 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/system/hotbar_system.h"
 #include "game/system/inventory_system.h"
 #include "game/system/item_use_system.h"
@@ -55,10 +56,11 @@ TEST(CommandEventFlowTest, UseItemCommand_EmitsDomainEventsAndUpdatesHotbarView)
 
     game::data::ItemCatalog catalog;
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog);
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
-    ItemUseSystem item_use_system(registry, dispatcher, catalog);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     const entt::entity player = registry.create();
     auto& inv = registry.emplace<game::component::InventoryComponent>(player);

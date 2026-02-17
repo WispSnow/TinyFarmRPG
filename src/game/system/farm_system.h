@@ -1,4 +1,5 @@
 #pragma once
+
 #include "game/defs/events.h"
 #include "game/component/resource_node_component.h"
 #include <entt/entity/fwd.hpp>
@@ -18,6 +19,10 @@ namespace game::data {
     class ItemCatalog;
 }
 
+namespace game::domain {
+    class InventoryDomainService;
+}
+
 namespace game::system {
 
 class FarmSystem {
@@ -27,6 +32,7 @@ class FarmSystem {
     game::factory::EntityFactory& entity_factory_;
     const game::factory::BlueprintManager& blueprint_manager_;
     game::data::ItemCatalog* item_catalog_{nullptr};
+    game::domain::InventoryDomainService& inventory_domain_service_;
 
 public:
     FarmSystem(entt::registry& registry,
@@ -34,7 +40,8 @@ public:
                engine::spatial::SpatialIndexManager& spatial_index,
                game::factory::EntityFactory& entity_factory,
                const game::factory::BlueprintManager& blueprint_manager,
-               game::data::ItemCatalog* item_catalog);
+               game::data::ItemCatalog* item_catalog,
+               game::domain::InventoryDomainService& inventory_domain_service);
     ~FarmSystem();
 
 private:

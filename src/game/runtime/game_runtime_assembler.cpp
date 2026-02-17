@@ -24,6 +24,7 @@
 #include "game/factory/entity_factory.h"
 #include "game/data/game_time.h"
 #include "game/data/item_catalog.h"
+#include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
@@ -303,6 +304,13 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         engine::debug::PanelCategory::Engine);
 #endif
 
+    if (!services.inventory_domain_service) {
+        services.inventory_domain_service = std::make_unique<game::domain::InventoryDomainService>(
+            params.registry,
+            dispatcher,
+            *services.item_catalog);
+    }
+
     systems.render_system = std::make_unique<engine::system::RenderSystem>();
     systems.light_system = std::make_unique<engine::system::LightSystem>();
     systems.ysort_system = std::make_unique<engine::system::YSortSystem>();
@@ -334,8 +342,12 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         spatial_index_manager,
         *services.entity_factory,
         *services.blueprint_manager,
-        services.item_catalog.get());
-    systems.pickup_system = std::make_unique<game::system::PickupSystem>(params.registry, dispatcher);
+        services.item_catalog.get(),
+        *services.inventory_domain_service);
+    systems.pickup_system = std::make_unique<game::system::PickupSystem>(
+        params.registry,
+        dispatcher,
+        *services.inventory_domain_service);
     systems.render_target_system = std::make_unique<game::system::RenderTargetSystem>(params.registry);
     systems.animation_event_system = std::make_unique<game::system::AnimationEventSystem>(params.registry, dispatcher);
 
@@ -356,7 +368,8 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         params.registry,
         dispatcher,
         *services.world_state,
-        *services.item_catalog);
+        *services.item_catalog,
+        *services.inventory_domain_service);
     systems.interaction_system = std::make_unique<game::system::InteractionSystem>(
         params.registry,
         dispatcher,
@@ -368,12 +381,14 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     systems.inventory_system = std::make_unique<game::system::InventorySystem>(
         params.registry,
         dispatcher,
-        *services.item_catalog);
+        *services.item_catalog,
+        *services.inventory_domain_service);
     systems.hotbar_system = std::make_unique<game::system::HotbarSystem>(params.registry, dispatcher);
     systems.item_use_system = std::make_unique<game::system::ItemUseSystem>(
         params.registry,
         dispatcher,
-        *services.item_catalog);
+        *services.item_catalog,
+        *services.inventory_domain_service);
 
     if (!systems.day_night_system->loadConfig("assets/data/light_config.json")) {
         spdlog::warn("光照配置加载失败，将使用默认配置");

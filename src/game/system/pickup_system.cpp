@@ -3,8 +3,7 @@
 #include "game/component/pickup_component.h"
 #include "game/component/map_component.h"
 #include "game/component/tags.h"
-#include "game/defs/commands.h"
-#include "game/defs/events.h"
+#include "game/domain/inventory_domain_service.h"
 
 #include "engine/component/collider_component.h"
 #include "engine/component/tags.h"
@@ -47,8 +46,12 @@ bool rectCircleOverlap(const glm::vec2& rect_min,
 
 namespace game::system {
 
-PickupSystem::PickupSystem(entt::registry& registry, entt::dispatcher& dispatcher)
-    : registry_(registry), dispatcher_(dispatcher) {
+PickupSystem::PickupSystem(entt::registry& registry,
+                           entt::dispatcher& dispatcher,
+                           game::domain::InventoryDomainService& inventory_domain_service)
+    : registry_(registry),
+      dispatcher_(dispatcher),
+      inventory_domain_service_(inventory_domain_service) {
 }
 
 void PickupSystem::update(float delta_time) {
@@ -131,7 +134,7 @@ void PickupSystem::update(float delta_time) {
             continue;
         }
 
-        dispatcher_.trigger(game::defs::AddItemCommand{player, pickup.item_id_, pickup.count_});
+        (void)inventory_domain_service_.addItem(player, pickup.item_id_, pickup.count_);
         dispatcher_.enqueue(engine::utils::PlaySoundEvent{entt::null, "pop"_hs});
         registry_.emplace_or_replace<engine::component::NeedRemoveTag>(entity);
     }

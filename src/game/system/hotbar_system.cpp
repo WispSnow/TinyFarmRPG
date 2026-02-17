@@ -1,8 +1,101 @@
 #include "hotbar_system.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
+#include <optional>
 
 namespace game::system {
+
+namespace {
+
+[[nodiscard]] bool isItemOnHotbar(const game::component::HotbarComponent& hotbar,
+                                  const game::component::InventoryComponent& inventory,
+                                  entt::id_type item_id) {
+    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+        const int inv_index = hotbar.slot(i).inventory_slot_index_;
+        if (inv_index < 0 || inv_index >= inventory.slotCount()) continue;
+        const auto& stack = inventory.slot(inv_index);
+        if (!stack.empty() && stack.item_id_ == item_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] std::optional<int> findHotbarSlotToFill(const game::component::HotbarComponent& hotbar,
+                                                      const game::component::InventoryComponent& inventory) {
+    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+        if (hotbar.slot(i).empty()) {
+            return i;
+        }
+    }
+
+    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+        const int inv_index = hotbar.slot(i).inventory_slot_index_;
+        if (inv_index < 0 || inv_index >= inventory.slotCount()) {
+            return i;
+        }
+        if (inventory.slot(inv_index).empty()) {
+            return i;
+        }
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] bool inventorySlotAffected(const game::defs::InventoryChanged& evt, int slot_index) {
+    if (evt.full_sync) return true;
+    return std::any_of(evt.slots.begin(), evt.slots.end(), [slot_index](const auto& update) {
+        return update.slot_index == slot_index;
+    });
+}
+
+[[nodiscard]] int selectInventorySlotForItem(const std::vector<game::defs::InventorySlotUpdate>& diff,
+                                             const game::component::InventoryComponent& inventory,
+                                             entt::id_type item_id) {
+    int best = -1;
+    for (const auto& update : diff) {
+        if (update.item_id != item_id || update.count <= 0) continue;
+        best = best < 0 ? update.slot_index : std::min(best, update.slot_index);
+    }
+    if (best >= 0) return best;
+
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        const auto& stack = inventory.slot(i);
+        if (!stack.empty() && stack.item_id_ == item_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void upsertUpdate(std::vector<game::defs::HotbarSlotUpdate>& updates,
+                  game::defs::HotbarSlotUpdate update) {
+    const auto it = std::find_if(updates.begin(), updates.end(), [idx = update.hotbar_index](const auto& current) {
+        return current.hotbar_index == idx;
+    });
+    if (it == updates.end()) {
+        updates.push_back(update);
+    } else {
+        *it = update;
+    }
+}
+
+void pushSlotUpdate(std::vector<game::defs::HotbarSlotUpdate>& updates,
+                    const game::component::InventoryComponent& inventory,
+                    int hotbar_index,
+                    int inventory_slot_index) {
+    game::defs::HotbarSlotUpdate update{};
+    update.hotbar_index = hotbar_index;
+    update.inventory_slot_index = inventory_slot_index;
+    if (inventory_slot_index >= 0 && inventory_slot_index < inventory.slotCount()) {
+        const auto& stack = inventory.slot(inventory_slot_index);
+        update.item_id = stack.item_id_;
+        update.count = stack.count_;
+    }
+    upsertUpdate(updates, update);
+}
+
+} // namespace
 
 HotbarSystem::HotbarSystem(entt::registry& registry, entt::dispatcher& dispatcher)
     : registry_(registry), dispatcher_(dispatcher) {
@@ -152,7 +245,7 @@ void HotbarSystem::onInventoryChanged(const game::defs::InventoryChanged& evt) {
     if (!validateTarget(evt.target)) return;
     if (evt.slots.empty()) return;
 
-    const auto& hotbar = registry_.get<game::component::HotbarComponent>(evt.target);
+    auto& hotbar = registry_.get<game::component::HotbarComponent>(evt.target);
     const auto& inventory = registry_.get<game::component::InventoryComponent>(evt.target);
 
     std::vector<game::defs::HotbarSlotUpdate> updates;
@@ -161,21 +254,56 @@ void HotbarSystem::onInventoryChanged(const game::defs::InventoryChanged& evt) {
     for (int hb_index = 0; hb_index < game::component::HotbarComponent::SLOT_COUNT; ++hb_index) {
         const int inv_index = hotbar.slot(hb_index).inventory_slot_index_;
         if (inv_index < 0) continue;
+        if (!inventorySlotAffected(evt, inv_index)) continue;
 
-        const bool affected = std::any_of(evt.slots.begin(), evt.slots.end(), [inv_index](const auto& s) {
-            return s.slot_index == inv_index;
-        });
-        if (!affected) continue;
-
-        game::defs::HotbarSlotUpdate update{};
-        update.hotbar_index = hb_index;
-        update.inventory_slot_index = inv_index;
-        if (inv_index < inventory.slotCount()) {
-            const auto& stack = inventory.slot(inv_index);
-            update.item_id = stack.item_id_;
-            update.count = stack.count_;
+        const bool valid_index = inv_index >= 0 && inv_index < inventory.slotCount();
+        const bool slot_empty = valid_index ? inventory.slot(inv_index).empty() : true;
+        if (!valid_index || slot_empty) {
+            hotbar.slot(hb_index).inventory_slot_index_ = -1;
+            pushSlotUpdate(updates, inventory, hb_index, -1);
+            continue;
         }
-        updates.push_back(update);
+
+        pushSlotUpdate(updates, inventory, hb_index, inv_index);
+    }
+
+    if (evt.from_add) {
+        std::vector<entt::id_type> candidates;
+        candidates.reserve(evt.slots.size());
+        for (const auto& slot : evt.slots) {
+            if (slot.item_id == entt::null || slot.count <= 0) continue;
+            if (std::find(candidates.begin(), candidates.end(), slot.item_id) == candidates.end()) {
+                candidates.push_back(slot.item_id);
+            }
+        }
+
+        for (const entt::id_type item_id : candidates) {
+            if (isItemOnHotbar(hotbar, inventory, item_id)) {
+                continue;
+            }
+
+            const auto hotbar_index_to_fill = findHotbarSlotToFill(hotbar, inventory);
+            if (!hotbar_index_to_fill) {
+                break;
+            }
+
+            const int inventory_slot_to_bind = selectInventorySlotForItem(evt.slots, inventory, item_id);
+            if (inventory_slot_to_bind < 0) {
+                continue;
+            }
+
+            for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+                if (i == *hotbar_index_to_fill) continue;
+                if (hotbar.slot(i).inventory_slot_index_ != inventory_slot_to_bind) continue;
+                hotbar.slot(i).inventory_slot_index_ = -1;
+                pushSlotUpdate(updates, inventory, i, -1);
+            }
+
+            if (hotbar.slot(*hotbar_index_to_fill).inventory_slot_index_ != inventory_slot_to_bind) {
+                hotbar.slot(*hotbar_index_to_fill).inventory_slot_index_ = inventory_slot_to_bind;
+                pushSlotUpdate(updates, inventory, *hotbar_index_to_fill, inventory_slot_to_bind);
+            }
+        }
     }
 
     if (!updates.empty()) {
