@@ -127,6 +127,26 @@ TEST(UIInteractionStateSourceTest, ClearMouseStateCancelsPressedCaptureContractI
         << "clearMouseState should avoid re-entrancy by clearing capture before cancel release.";
 }
 
+TEST(UIInteractionStateSourceTest, SetEnabledUnifiedSemanticsContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::setEnabled(bool enabled)"), std::string::npos)
+        << "UIInteractive should expose setEnabled(bool) as unified enable/disable entry.";
+    EXPECT_NE(source.find("mouseReleased(false);"), std::string::npos)
+        << "setEnabled(false) should cancel an active press via release(false).";
+    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_DISABLED_ID);"), std::string::npos)
+        << "setEnabled(false) should drive disabled visual state.";
+    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_NORMAL_ID);"), std::string::npos)
+        << "setEnabled(true) should restore normal visual state.";
+    EXPECT_NE(source.find("std::make_unique<engine::ui::state::UINormalState>(this)"), std::string::npos)
+        << "setEnabled should normalize interaction state when toggling enabled flag.";
+}
+
 } // namespace
 } // namespace engine::ui
 // NOLINTEND

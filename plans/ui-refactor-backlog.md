@@ -82,13 +82,14 @@
   - 拖拽中隐藏 UI / clearElements 时，行为层能收到结束或取消通知
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-012（P1）统一启用/禁用语义
+### UIR-012（P1）统一启用/禁用语义（已完成：代码+自动化）
 - 目标：避免 `setInteractive(false)` 与视觉状态脱钩。
 - 主要改动：
   - 新增 `setEnabled(bool)`（内部处理交互开关 + 视觉切换 + 按下态清理）
   - 场景代码迁移：`pause_menu_scene`、`save_slot_select_scene` 等
 - 验收标准：
   - disabled 元素不可 hover/press/click，且视觉一致
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ---
 

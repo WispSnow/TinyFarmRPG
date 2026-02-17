@@ -277,8 +277,7 @@ void SaveSlotSelectScene::refreshSlotButtons() {
 
         button->setLabelText(label_text);
 
-        button->setInteractive(enabled);
-        button->applyStateVisual(enabled ? engine::ui::UI_IMAGE_NORMAL_ID : engine::ui::UI_IMAGE_DISABLED_ID);
+        button->setEnabled(enabled);
     }
 }
 

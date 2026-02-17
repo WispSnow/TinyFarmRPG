@@ -78,6 +78,7 @@ public:
     engine::ui::state::UIState* getState() const { return state_.get(); }   ///< @brief 获取当前状态
 
     void setInteractive(bool interactive) { interactive_ = interactive; }   ///< @brief 设置是否可交互
+    void setEnabled(bool enabled);                                           ///< @brief 统一启用/禁用语义（交互+视觉+按下态清理）
     bool isInteractive() const { return interactive_; }                     ///< @brief 获取是否可交互
 
     InteractionBehavior* addBehavior(std::unique_ptr<InteractionBehavior> behavior); ///< @brief 挂载行为

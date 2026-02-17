@@ -36,6 +36,8 @@ TEST(PauseMenuSceneSaveLoadDisabledTest, DisablesButtonsWhenSaveServiceMissing) 
         << "PauseMenuScene should disable the Save button when SaveService is missing.";
     EXPECT_NE(source.find("disableButton(load_button_)"), std::string::npos)
         << "PauseMenuScene should disable the Load button when SaveService is missing.";
+    EXPECT_NE(source.find("button->setEnabled(false);"), std::string::npos)
+        << "PauseMenuScene disableButton should use unified setEnabled(false).";
 }
 
 } // namespace
