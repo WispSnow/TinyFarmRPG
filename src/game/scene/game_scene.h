@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "game/runtime/game_mode.h"
 #include "game/defs/events.h"
 
 #include <memory>
@@ -24,6 +25,7 @@ namespace engine::ui {
 namespace game::runtime {
     struct GameRuntimeServices;
     struct GameSystemBundle;
+    class SystemScheduler;
 }
 
 namespace game::scene {
@@ -31,6 +33,8 @@ namespace game::scene {
 class GameScene : public engine::scene::Scene {
     std::unique_ptr<game::runtime::GameRuntimeServices> services_;
     std::unique_ptr<game::runtime::GameSystemBundle> systems_;
+    std::unique_ptr<game::runtime::SystemScheduler> scheduler_;
+    game::runtime::GameMode game_mode_{game::runtime::GameMode::Exploration};
 
     std::shared_ptr<game::data::GameTime> game_time_;
     std::optional<int> load_slot_{};
@@ -53,6 +57,8 @@ public:
     void render() override;
 
     void clean() override;
+    void setGameMode(game::runtime::GameMode mode);
+    [[nodiscard]] game::runtime::GameMode getGameMode() const { return game_mode_; }
 
 private:
     void bindSceneInputActions();
