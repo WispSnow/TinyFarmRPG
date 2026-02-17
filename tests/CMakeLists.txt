@@ -79,6 +79,9 @@ set(GAME_TEST_SOURCES
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
     game/game_scene_runtime_assembly_test.cpp
+    game/system_scheduler_profile_test.cpp
+    game/system_scheduler_transition_gate_test.cpp
+    game/system_scheduler_invariant_test.cpp
     game/title_scene_menu_button_test.cpp
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/time_advance_sleep_test.cpp

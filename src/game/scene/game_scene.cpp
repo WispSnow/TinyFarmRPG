@@ -1,6 +1,7 @@
 #include "game_scene.h"
 
 #include "game/runtime/game_runtime_assembler.h"
+#include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
 #include "pause_menu_scene.h"
 #include "title_scene.h"
@@ -82,6 +83,7 @@ GameScene::GameScene(std::string_view name,
     : engine::scene::Scene(name, context),
       services_(std::make_unique<game::runtime::GameRuntimeServices>()),
       systems_(std::make_unique<game::runtime::GameSystemBundle>()),
+      scheduler_(std::make_unique<game::runtime::SystemScheduler>()),
       game_time_(std::move(game_time)),
       load_slot_(load_slot) {
 }
@@ -167,45 +169,14 @@ void GameScene::update(float delta_time) {
         return;
     }
 
-    auto* map_transition_system_ = systems_->map_transition_system.get();
-    auto* light_toggle_system_ = systems_->light_toggle_system.get();
-
-    systems_->remove_entity_system->update(registry_);
-
-    if (map_transition_system_ && map_transition_system_->isTransitionActive()) {
-        map_transition_system_->update();
-        light_toggle_system_->update();
-        Scene::update(delta_time);
-        return;
+    if (scheduler_) {
+        (void)scheduler_->tick({
+            game_mode_,
+            *systems_,
+            registry_,
+            delta_time
+        });
     }
-
-    systems_->time_system->update(delta_time);
-    systems_->day_night_system->update();
-
-    systems_->player_control_system->update(delta_time);
-    systems_->npc_wander_system->update(delta_time);
-    systems_->animal_behavior_system->update(delta_time);
-    systems_->chest_system->update(delta_time);
-    systems_->item_use_system->update(delta_time);
-    systems_->dialogue_system->update(delta_time);
-    systems_->action_sound_system->update(delta_time);
-    systems_->auto_tile_system->update();
-    systems_->state_system->update();
-    systems_->movement_system->update(registry_, delta_time);
-
-    map_transition_system_->update();
-    light_toggle_system_->update();
-
-    if (map_transition_system_ && map_transition_system_->isTransitionActive()) {
-        Scene::update(delta_time);
-        return;
-    }
-
-    systems_->spatial_index_system->update(registry_);
-    systems_->pickup_system->update(delta_time);
-    systems_->interaction_system->update();
-    systems_->camera_follow_system->update(delta_time);
-    systems_->animation_system->update(delta_time);
 
     Scene::update(delta_time);
 }
@@ -237,6 +208,10 @@ void GameScene::clean() {
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
     Scene::clean();
+}
+
+void GameScene::setGameMode(game::runtime::GameMode mode) {
+    game_mode_ = mode;
 }
 
 void GameScene::bindSceneInputActions() {
