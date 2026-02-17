@@ -6,6 +6,7 @@
 #include "engine/component/transform_component.h"
 #include "engine/component/sprite_component.h"
 #include "engine/component/name_component.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include <nlohmann/json.hpp>
 #include <entt/entity/registry.hpp>
@@ -24,7 +25,7 @@ namespace game::system {
 
 DialogueSystem::DialogueSystem(entt::registry& registry, entt::dispatcher& dispatcher)
     : registry_(registry), dispatcher_(dispatcher) {
-    dispatcher_.sink<game::defs::InteractRequest>().connect<&DialogueSystem::onInteractRequest>(this);
+    dispatcher_.sink<game::defs::InteractCommand>().connect<&DialogueSystem::onInteractCommand>(this);
 }
 
 DialogueSystem::~DialogueSystem() {
@@ -90,7 +91,7 @@ void DialogueSystem::update(float delta_time) {
     }
 }
 
-void DialogueSystem::onInteractRequest(const game::defs::InteractRequest& event) {
+void DialogueSystem::onInteractCommand(const game::defs::InteractCommand& event) {
     const entt::entity player = helpers::getPlayerEntity(registry_);
     if (player == entt::null || event.player != player) return;
     if (event.target == entt::null || !registry_.valid(event.target)) return;

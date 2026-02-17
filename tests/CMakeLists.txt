@@ -72,7 +72,9 @@ set(GAME_TEST_SOURCES
     game/action_sound_system_test.cpp
     game/farm_system_hoe_blocking_test.cpp
     game/farm_system_harvest_inventory_full_test.cpp
+    game/command_event_flow_test.cpp
     game/inventory_hotbar_consistency_test.cpp
+    game/interaction_command_pipeline_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
     game/save_slot_summary_test.cpp

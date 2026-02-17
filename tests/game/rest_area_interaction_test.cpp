@@ -20,6 +20,7 @@
 #include "game/component/map_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/spatial_layers.h"
 #include "game/system/interaction_system.h"
@@ -90,15 +91,15 @@ protected:
 };
 
 struct InteractCapture {
-    std::vector<game::defs::InteractRequest> events{};
-    void onEvent(const game::defs::InteractRequest& evt) { events.push_back(evt); }
+    std::vector<game::defs::InteractCommand> events{};
+    void onEvent(const game::defs::InteractCommand& evt) { events.push_back(evt); }
 };
 
 } // namespace
 
 namespace game::system {
 
-TEST_F(RestAreaInteractionTest, FacingTileRestArea_TriggersInteractRequest) {
+TEST_F(RestAreaInteractionTest, FacingTileRestArea_TriggersInteractCommand) {
     entt::registry registry;
     engine::spatial::SpatialIndexManager spatial;
     constexpr glm::ivec2 MAP_SIZE(4, 4);
@@ -136,7 +137,7 @@ TEST_F(RestAreaInteractionTest, FacingTileRestArea_TriggersInteractRequest) {
     spatial.addTileEntity(rest_tile, rest_area, game::defs::spatial_layer::REST);
 
 	    InteractCapture capture{};
-	    dispatcher_->sink<game::defs::InteractRequest>().connect<&InteractCapture::onEvent>(&capture);
+	    dispatcher_->sink<game::defs::InteractCommand>().connect<&InteractCapture::onEvent>(&capture);
 
 	    InteractionSystem system(registry, *dispatcher_, *input, spatial, world_state);
 

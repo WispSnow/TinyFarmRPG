@@ -2,6 +2,7 @@
 #include "game/component/inventory_component.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/data/item_catalog.h"
 #include <entt/entity/registry.hpp>
@@ -79,21 +80,21 @@ void InventoryDebugPanel::draw(bool& is_open) {
     ImGui::InputInt("Remove Count", &remove_count_);
 
     if (ImGui::Button("Add Item")) {
-        dispatcher_.trigger(game::defs::AddItemRequest{player, selected_item_id_, std::max(1, add_count_)});
+        dispatcher_.trigger(game::defs::AddItemCommand{player, selected_item_id_, std::max(1, add_count_)});
     }
 
     ImGui::SameLine();
     if (ImGui::Button("Remove Item")) {
-        dispatcher_.trigger(game::defs::RemoveItemRequest{player, selected_item_id_, std::max(1, remove_count_)});
+        dispatcher_.trigger(game::defs::RemoveItemCommand{player, selected_item_id_, std::max(1, remove_count_)});
     }
 
     ImGui::Separator();
     if (ImGui::Button("Sync Inventory")) {
-        dispatcher_.trigger(game::defs::InventorySyncRequest{player});
+        dispatcher_.trigger(game::defs::InventorySyncCommand{player});
     }
     ImGui::SameLine();
     if (ImGui::Button("Sync Hotbar")) {
-        dispatcher_.trigger(game::defs::HotbarSyncRequest{player});
+        dispatcher_.trigger(game::defs::HotbarSyncCommand{player});
     }
 
     ImGui::End();

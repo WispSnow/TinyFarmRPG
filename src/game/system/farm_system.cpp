@@ -5,6 +5,7 @@
 #include "game/component/inventory_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/defs/crop_defs.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/constants.h"
 #include "game/defs/spatial_layers.h"
@@ -290,7 +291,7 @@ void FarmSystem::onUseSeedEvent(const game::defs::UseSeedEvent& event) {
     }
 
     // 种植成功，扣减对应槽位的种子
-    game::defs::RemoveItemRequest remove_evt{};
+    game::defs::RemoveItemCommand remove_evt{};
     remove_evt.target = event.source;
     remove_evt.item_id = event.seed_item_id_;
     remove_evt.count = 1;
@@ -392,7 +393,7 @@ bool FarmSystem::harvestCrop(const glm::vec2& world_pos) {
             return false;
         }
 
-        dispatcher_.trigger(game::defs::AddItemRequest{player, harvest_item_id, 1});
+        dispatcher_.trigger(game::defs::AddItemCommand{player, harvest_item_id, 1});
     }
     
     // 播放收获音效

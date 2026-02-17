@@ -3,6 +3,7 @@
 #include "game/component/pickup_component.h"
 #include "game/component/map_component.h"
 #include "game/component/tags.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 
 #include "engine/component/collider_component.h"
@@ -130,11 +131,10 @@ void PickupSystem::update(float delta_time) {
             continue;
         }
 
-        dispatcher_.trigger(game::defs::AddItemRequest{player, pickup.item_id_, pickup.count_});
+        dispatcher_.trigger(game::defs::AddItemCommand{player, pickup.item_id_, pickup.count_});
         dispatcher_.enqueue(engine::utils::PlaySoundEvent{entt::null, "pop"_hs});
         registry_.emplace_or_replace<engine::component::NeedRemoveTag>(entity);
     }
 }
 
 } // namespace game::system
-

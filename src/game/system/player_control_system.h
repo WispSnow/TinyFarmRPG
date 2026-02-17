@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/constants.h"
 #include "game/component/hotbar_component.h"
@@ -107,7 +108,7 @@ private:
     // 事件回调函数
     void onSwitchToolEvent(const game::defs::SwitchToolEvent& event);
     void onSwitchSeedEvent(const game::defs::SwitchSeedEvent& event);
-    void onHotbarActivateRequest(const game::defs::HotbarActivateRequest& event);
+    void onHotbarActivateCommand(const game::defs::HotbarActivateCommand& event);
     void onHotbarChanged(const game::defs::HotbarChanged& event);
 };
 

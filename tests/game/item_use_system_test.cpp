@@ -2,6 +2,7 @@
 
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/system/inventory_system.h"
 #include "game/system/item_use_system.h"
@@ -40,7 +41,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountOne_ReplacesWithSeeds) {
     inv.slot(0).item_id_ = entt::hashed_string{"strawberry_item"}.value();
     inv.slot(0).count_ = 1;
 
-    dispatcher.trigger(game::defs::UseItemRequest{player, 0, 1, false});
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, false});
 
     EXPECT_EQ(inv.slot(0).item_id_, entt::hashed_string{"strawberry_seed"}.value());
     EXPECT_EQ(inv.slot(0).count_, 3);
@@ -69,7 +70,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountTwo_NoSpace_DoesNotConsume) {
     inv.slot(0).item_id_ = entt::hashed_string{"strawberry_item"}.value();
     inv.slot(0).count_ = 2; // consume 1 still leaves the slot occupied
 
-    dispatcher.trigger(game::defs::UseItemRequest{player, 0, 1, false});
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, false});
 
     EXPECT_EQ(inv.slot(0).item_id_, entt::hashed_string{"strawberry_item"}.value());
     EXPECT_EQ(inv.slot(0).count_, 2);
@@ -99,7 +100,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountOne_FullInventoryStillSucceeds) {
     inv.slot(0).item_id_ = entt::hashed_string{"strawberry_item"}.value();
     inv.slot(0).count_ = 1; // consuming frees the slot for seeds
 
-    dispatcher.trigger(game::defs::UseItemRequest{player, 0, 1, false});
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, false});
 
     EXPECT_EQ(inv.slot(0).item_id_, entt::hashed_string{"strawberry_seed"}.value());
     EXPECT_EQ(inv.slot(0).count_, 3);
@@ -123,7 +124,7 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
     inv.slot(0).item_id_ = entt::hashed_string{"potato_item"}.value();
     inv.slot(0).count_ = 1;
 
-    dispatcher.trigger(game::defs::UseItemRequest{player, 0, 1, true});
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, true});
     dispatcher.update();
 
     ASSERT_EQ(capture.shows.size(), 1u);
@@ -131,4 +132,3 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
 }
 
 } // namespace game::system
-

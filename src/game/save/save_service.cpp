@@ -13,6 +13,7 @@
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/defs/constants.h"
+#include "game/defs/commands.h"
 #include "game/defs/render_layers.h"
 #include "game/defs/spatial_layers.h"
 #include "game/defs/events.h"
@@ -628,9 +629,9 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     }
 
     auto& dispatcher = context_.getDispatcher();
-    dispatcher.trigger(game::defs::InventorySyncRequest{player});
-    dispatcher.trigger(game::defs::HotbarSyncRequest{player, true});
-    dispatcher.trigger(game::defs::HotbarActivateRequest{player, hotbar->active_slot_index_});
+    dispatcher.trigger(game::defs::InventorySyncCommand{player});
+    dispatcher.trigger(game::defs::HotbarSyncCommand{player, true});
+    dispatcher.trigger(game::defs::HotbarActivateCommand{player, hotbar->active_slot_index_});
 
     spdlog::info("SaveService: 已载入存档 '{}'", data.player.map_name);
     return true;

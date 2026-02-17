@@ -4,6 +4,7 @@
 
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 
 #include <algorithm>
@@ -51,11 +52,11 @@ using game::system::detail::stackLimitOrDefault;
 
 ItemUseSystem::ItemUseSystem(entt::registry& registry, entt::dispatcher& dispatcher, game::data::ItemCatalog& catalog)
     : registry_(registry), dispatcher_(dispatcher), catalog_(catalog) {
-    dispatcher_.sink<game::defs::UseItemRequest>().connect<&ItemUseSystem::onUseItem>(this);
+    dispatcher_.sink<game::defs::UseItemCommand>().connect<&ItemUseSystem::onUseItem>(this);
 }
 
 ItemUseSystem::~ItemUseSystem() {
-    dispatcher_.sink<game::defs::UseItemRequest>().disconnect<&ItemUseSystem::onUseItem>(this);
+    dispatcher_.sink<game::defs::UseItemCommand>().disconnect<&ItemUseSystem::onUseItem>(this);
 }
 
 void ItemUseSystem::update(float delta_time) {
@@ -82,7 +83,7 @@ void ItemUseSystem::updateNotification(float delta_time) {
     }
 }
 
-void ItemUseSystem::onUseItem(const game::defs::UseItemRequest& evt) {
+void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     if (evt.target == entt::null || evt.inventory_slot_index < 0 || evt.count <= 0) return;
     if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
 
@@ -142,13 +143,13 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemRequest& evt) {
     }
 
     // Consume first (may free the source slot), then trigger effects.
-    dispatcher_.trigger(game::defs::RemoveItemRequest{evt.target, stack.item_id_, consume_total, evt.inventory_slot_index});
+    dispatcher_.trigger(game::defs::RemoveItemCommand{evt.target, stack.item_id_, consume_total, evt.inventory_slot_index});
 
     for (const auto& effect : use_cfg.effects) {
         if (effect.type != game::data::ItemUseEffectType::AddItem) continue;
         const int add_total = effect.count * use_times;
         if (effect.item_id == entt::null || add_total <= 0) continue;
-        game::defs::AddItemRequest add{};
+        game::defs::AddItemCommand add{};
         add.target = evt.target;
         add.item_id = effect.item_id;
         add.count = add_total;

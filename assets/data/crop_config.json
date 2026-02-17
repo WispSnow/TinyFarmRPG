@@ -7,7 +7,7 @@
                     "stage": "seed",
                     "days_required": 1,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 0, "y": 16},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -18,7 +18,7 @@
                     "stage": "sprout",
                     "days_required": 2,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 16, "y": 16},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -29,7 +29,7 @@
                     "stage": "growing",
                     "days_required": 2,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 32, "y": 16},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -40,7 +40,7 @@
                     "stage": "mature",
                     "days_required": 0,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 80, "y": 16},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -57,7 +57,7 @@
                     "stage": "seed",
                     "days_required": 1,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 0, "y": 80},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -68,7 +68,7 @@
                     "stage": "sprout",
                     "days_required": 2,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 32, "y": 80},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -79,7 +79,7 @@
                     "stage": "growing",
                     "days_required": 2,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 48, "y": 80},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},
@@ -90,7 +90,7 @@
                     "stage": "mature",
                     "days_required": 0,
                     "sprite": {
-                        "path": "assets/farm-rpg/Farm Crops/Spring Crops.png",
+                        "path": "assets/farm-rpg/Farm Crops/Spring/Spring Crops.png",
                         "position": {"x": 80, "y": 80},
                         "src_size": {"width": 16, "height": 16},
                         "dst_size": {"width": 16, "height": 16},

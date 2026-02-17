@@ -14,16 +14,16 @@ HotbarSystem::~HotbarSystem() {
 }
 
 void HotbarSystem::subscribe() {
-    dispatcher_.sink<game::defs::HotbarBindRequest>().connect<&HotbarSystem::onBind>(this);
-    dispatcher_.sink<game::defs::HotbarUnbindRequest>().connect<&HotbarSystem::onUnbind>(this);
-    dispatcher_.sink<game::defs::HotbarSyncRequest>().connect<&HotbarSystem::onSync>(this);
+    dispatcher_.sink<game::defs::HotbarBindCommand>().connect<&HotbarSystem::onBind>(this);
+    dispatcher_.sink<game::defs::HotbarUnbindCommand>().connect<&HotbarSystem::onUnbind>(this);
+    dispatcher_.sink<game::defs::HotbarSyncCommand>().connect<&HotbarSystem::onSync>(this);
     dispatcher_.sink<game::defs::InventoryChanged>().connect<&HotbarSystem::onInventoryChanged>(this);
 }
 
 void HotbarSystem::unsubscribe() {
-    dispatcher_.sink<game::defs::HotbarBindRequest>().disconnect<&HotbarSystem::onBind>(this);
-    dispatcher_.sink<game::defs::HotbarUnbindRequest>().disconnect<&HotbarSystem::onUnbind>(this);
-    dispatcher_.sink<game::defs::HotbarSyncRequest>().disconnect<&HotbarSystem::onSync>(this);
+    dispatcher_.sink<game::defs::HotbarBindCommand>().disconnect<&HotbarSystem::onBind>(this);
+    dispatcher_.sink<game::defs::HotbarUnbindCommand>().disconnect<&HotbarSystem::onUnbind>(this);
+    dispatcher_.sink<game::defs::HotbarSyncCommand>().disconnect<&HotbarSystem::onSync>(this);
     dispatcher_.sink<game::defs::InventoryChanged>().disconnect<&HotbarSystem::onInventoryChanged>(this);
 }
 
@@ -66,7 +66,7 @@ std::vector<game::defs::HotbarSlotUpdate> HotbarSystem::collectAll(entt::entity 
     return result;
 }
 
-void HotbarSystem::onBind(const game::defs::HotbarBindRequest& evt) {
+void HotbarSystem::onBind(const game::defs::HotbarBindCommand& evt) {
     if (!validateTarget(evt.target)) return;
     if (evt.hotbar_index < 0 || evt.hotbar_index >= game::component::HotbarComponent::SLOT_COUNT) return;
 
@@ -113,7 +113,7 @@ void HotbarSystem::onBind(const game::defs::HotbarBindRequest& evt) {
     }
 }
 
-void HotbarSystem::onUnbind(const game::defs::HotbarUnbindRequest& evt) {
+void HotbarSystem::onUnbind(const game::defs::HotbarUnbindCommand& evt) {
     if (!validateTarget(evt.target)) return;
     if (evt.hotbar_index < 0 || evt.hotbar_index >= game::component::HotbarComponent::SLOT_COUNT) return;
 
@@ -129,7 +129,7 @@ void HotbarSystem::onUnbind(const game::defs::HotbarUnbindRequest& evt) {
     emitChanged(evt.target, {update}, false);
 }
 
-void HotbarSystem::onSync(const game::defs::HotbarSyncRequest& evt) {
+void HotbarSystem::onSync(const game::defs::HotbarSyncCommand& evt) {
     if (!validateTarget(evt.target)) return;
 
     auto& hotbar = registry_.get<game::component::HotbarComponent>(evt.target);

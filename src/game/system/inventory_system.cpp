@@ -111,19 +111,19 @@ InventorySystem::~InventorySystem() {
 }
 
 void InventorySystem::subscribe() {
-    dispatcher_.sink<game::defs::AddItemRequest>().connect<&InventorySystem::onAddItem>(this);
-    dispatcher_.sink<game::defs::RemoveItemRequest>().connect<&InventorySystem::onRemoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySyncRequest>().connect<&InventorySystem::onSync>(this);
-    dispatcher_.sink<game::defs::InventoryMoveRequest>().connect<&InventorySystem::onMoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySetActivePageRequest>().connect<&InventorySystem::onSetActivePage>(this);
+    dispatcher_.sink<game::defs::AddItemCommand>().connect<&InventorySystem::onAddItem>(this);
+    dispatcher_.sink<game::defs::RemoveItemCommand>().connect<&InventorySystem::onRemoveItem>(this);
+    dispatcher_.sink<game::defs::InventorySyncCommand>().connect<&InventorySystem::onSync>(this);
+    dispatcher_.sink<game::defs::InventoryMoveCommand>().connect<&InventorySystem::onMoveItem>(this);
+    dispatcher_.sink<game::defs::InventorySetActivePageCommand>().connect<&InventorySystem::onSetActivePage>(this);
 }
 
 void InventorySystem::unsubscribe() {
-    dispatcher_.sink<game::defs::AddItemRequest>().disconnect<&InventorySystem::onAddItem>(this);
-    dispatcher_.sink<game::defs::RemoveItemRequest>().disconnect<&InventorySystem::onRemoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySyncRequest>().disconnect<&InventorySystem::onSync>(this);
-    dispatcher_.sink<game::defs::InventoryMoveRequest>().disconnect<&InventorySystem::onMoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySetActivePageRequest>().disconnect<&InventorySystem::onSetActivePage>(this);
+    dispatcher_.sink<game::defs::AddItemCommand>().disconnect<&InventorySystem::onAddItem>(this);
+    dispatcher_.sink<game::defs::RemoveItemCommand>().disconnect<&InventorySystem::onRemoveItem>(this);
+    dispatcher_.sink<game::defs::InventorySyncCommand>().disconnect<&InventorySystem::onSync>(this);
+    dispatcher_.sink<game::defs::InventoryMoveCommand>().disconnect<&InventorySystem::onMoveItem>(this);
+    dispatcher_.sink<game::defs::InventorySetActivePageCommand>().disconnect<&InventorySystem::onSetActivePage>(this);
 }
 
 bool InventorySystem::ensureInventory(entt::entity target) {
@@ -143,7 +143,7 @@ void InventorySystem::emitChanged(entt::entity target, const std::vector<game::d
     dispatcher_.trigger(evt);
 }
 
-void InventorySystem::onAddItem(const game::defs::AddItemRequest& evt) {
+void InventorySystem::onAddItem(const game::defs::AddItemCommand& evt) {
     if (evt.target == entt::null || evt.item_id == entt::null || evt.count <= 0) return;
     if (!ensureInventory(evt.target)) return;
 
@@ -198,7 +198,7 @@ void InventorySystem::onAddItem(const game::defs::AddItemRequest& evt) {
             if (slot_to_fill) {
                 const int inv_slot = selectInventorySlotForItem(diff, inv, evt.item_id);
                 if (inv_slot >= 0) {
-                    dispatcher_.trigger(game::defs::HotbarBindRequest{evt.target, *slot_to_fill, inv_slot});
+                    dispatcher_.trigger(game::defs::HotbarBindCommand{evt.target, *slot_to_fill, inv_slot});
                 }
             }
         }
@@ -213,7 +213,7 @@ void InventorySystem::onAddItem(const game::defs::AddItemRequest& evt) {
     }
 }
 
-void InventorySystem::onRemoveItem(const game::defs::RemoveItemRequest& evt) {
+void InventorySystem::onRemoveItem(const game::defs::RemoveItemCommand& evt) {
     if (evt.target == entt::null || evt.item_id == entt::null || evt.count <= 0) return;
     if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
 
@@ -248,7 +248,7 @@ void InventorySystem::onRemoveItem(const game::defs::RemoveItemRequest& evt) {
     }
 }
 
-void InventorySystem::onSync(const game::defs::InventorySyncRequest& evt) {
+void InventorySystem::onSync(const game::defs::InventorySyncCommand& evt) {
     if (evt.target == entt::null) return;
     if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
     auto& inv = registry_.get<game::component::InventoryComponent>(evt.target);
@@ -262,7 +262,7 @@ void InventorySystem::onSync(const game::defs::InventorySyncRequest& evt) {
     emitChanged(evt.target, all, true, inv.active_page_);
 }
 
-void InventorySystem::onSetActivePage(const game::defs::InventorySetActivePageRequest& evt) {
+void InventorySystem::onSetActivePage(const game::defs::InventorySetActivePageCommand& evt) {
     if (evt.target == entt::null) return;
     if (!ensureInventory(evt.target)) return;
 
@@ -270,7 +270,7 @@ void InventorySystem::onSetActivePage(const game::defs::InventorySetActivePageRe
     inv.active_page_ = std::clamp(evt.active_page, 0, game::component::InventoryComponent::PAGE_COUNT - 1);
 }
 
-void InventorySystem::onMoveItem(const game::defs::InventoryMoveRequest& evt) {
+void InventorySystem::onMoveItem(const game::defs::InventoryMoveCommand& evt) {
     if (evt.target == entt::null) return;
     if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
 
@@ -309,7 +309,7 @@ void InventorySystem::onMoveItem(const game::defs::InventoryMoveRequest& evt) {
                 // Rule A: 保留 target(to) 的 hotkey，清空 source(from) 的 hotkey。
                 const auto indices = collectHotbarSlotIndicesReferencingInventorySlot(*hotbar, evt.from_slot);
                 for (const int hb_index : indices) {
-                    dispatcher_.trigger(game::defs::HotbarUnbindRequest{evt.target, hb_index});
+                    dispatcher_.trigger(game::defs::HotbarUnbindCommand{evt.target, hb_index});
                     // fallback：若 HotbarSystem 不存在，至少保证组件状态正确（GameScene 可通过 InventoryChanged 兜底刷新 UI）。
                     hotbar->slot(hb_index).inventory_slot_index_ = -1;
                 }

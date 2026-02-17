@@ -2,6 +2,7 @@
 
 #include "game/component/map_component.h"
 #include "game/data/game_time.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/scene/rest_dialog_scene.h"
 
@@ -22,14 +23,14 @@ RestSystem::RestSystem(entt::registry& registry, engine::core::Context& context)
     : registry_(registry),
       context_(context),
       dispatcher_(context.getDispatcher()) {
-    dispatcher_.sink<game::defs::InteractRequest>().connect<&RestSystem::onInteractRequest>(this);
+    dispatcher_.sink<game::defs::InteractCommand>().connect<&RestSystem::onInteractCommand>(this);
 }
 
 RestSystem::~RestSystem() {
     dispatcher_.disconnect(this);
 }
 
-void RestSystem::onInteractRequest(const game::defs::InteractRequest& event) {
+void RestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
     if (context_.getGameState().isPaused()) {
         return;
     }

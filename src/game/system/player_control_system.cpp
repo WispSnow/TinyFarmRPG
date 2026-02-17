@@ -4,6 +4,7 @@
 #include "game/component/actor_component.h"
 #include "game/component/target_component.h"
 #include "game/component/inventory_component.h"
+#include "game/defs/commands.h"
 #include "game/defs/constants.h"
 #include "game/defs/crop_defs.h"
 #include "game/defs/events.h"
@@ -94,7 +95,7 @@ PlayerControlSystem::PlayerControlSystem(entt::registry& registry,
     input_manager_.onAction("player_light"_hs).connect<&PlayerControlSystem::onPlayerLightToggle>(this);
     dispatcher_.sink<game::defs::SwitchToolEvent>().connect<&PlayerControlSystem::onSwitchToolEvent>(this);
     dispatcher_.sink<game::defs::SwitchSeedEvent>().connect<&PlayerControlSystem::onSwitchSeedEvent>(this);
-    dispatcher_.sink<game::defs::HotbarActivateRequest>().connect<&PlayerControlSystem::onHotbarActivateRequest>(this);
+    dispatcher_.sink<game::defs::HotbarActivateCommand>().connect<&PlayerControlSystem::onHotbarActivateCommand>(this);
     dispatcher_.sink<game::defs::HotbarChanged>().connect<&PlayerControlSystem::onHotbarChanged>(this);
 }
 
@@ -417,7 +418,7 @@ void PlayerControlSystem::switchToHotbarSlot(int slot_index) {
     applySelectionForActiveSlot();
 }
 
-void PlayerControlSystem::onHotbarActivateRequest(const game::defs::HotbarActivateRequest& event) {
+void PlayerControlSystem::onHotbarActivateCommand(const game::defs::HotbarActivateCommand& event) {
     if (!registry_.valid(player_entity_)) return;
     if (event.target != player_entity_) return;
     switchToHotbarSlot(event.hotbar_index);

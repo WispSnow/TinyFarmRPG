@@ -3,6 +3,7 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/system/hotbar_system.h"
 #include "game/system/inventory_system.h"
@@ -34,7 +35,7 @@ TEST(InventoryHotbarConsistencyTest, MergeIntoReferencedSlot_KeepsTargetHotkeyAn
     hotbar.slot(0).inventory_slot_index_ = 0; // source
     hotbar.slot(1).inventory_slot_index_ = 1; // target
 
-    dispatcher.trigger(game::defs::InventoryMoveRequest{player, 0, 1, true});
+    dispatcher.trigger(game::defs::InventoryMoveCommand{player, 0, 1, true});
 
     EXPECT_TRUE(inv.slot(0).empty());
     EXPECT_EQ(inv.slot(1).item_id_, item_id);
@@ -59,7 +60,7 @@ TEST(InventoryHotbarConsistencyTest, HotbarSync_ClearsOutOfRangeMappings) {
     hotbar.slot(1).inventory_slot_index_ = -2;  // invalid negative
     hotbar.slot(2).inventory_slot_index_ = 3;   // valid
 
-    dispatcher.trigger(game::defs::HotbarSyncRequest{player, true});
+    dispatcher.trigger(game::defs::HotbarSyncCommand{player, true});
 
     EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, -1);
     EXPECT_EQ(hotbar.slot(1).inventory_slot_index_, -1);
@@ -67,4 +68,3 @@ TEST(InventoryHotbarConsistencyTest, HotbarSync_ClearsOutOfRangeMappings) {
 }
 
 } // namespace game::system
-

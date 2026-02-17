@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/defs/events.h"
+#include "game/defs/commands.h"
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
@@ -25,9 +25,8 @@ public:
     void update(float delta_time);
 
 private:
-    void onUseItem(const game::defs::UseItemRequest& evt);
+    void onUseItem(const game::defs::UseItemCommand& evt);
     void updateNotification(float delta_time);
 };
 
 } // namespace game::system
-
