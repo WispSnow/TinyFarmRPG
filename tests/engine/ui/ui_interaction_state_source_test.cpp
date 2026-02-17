@@ -12,6 +12,11 @@
 namespace engine::ui {
 namespace {
 
+// NOTE:
+// This file uses source-contract checks (string matching) as a temporary safeguard.
+// It does NOT prove runtime behavior correctness. Runtime interaction-state tests
+// should be added in UIR-022.
+
 [[nodiscard]] std::string readTextFile(const std::filesystem::path& path) {
     std::ifstream file(path);
     EXPECT_TRUE(file.is_open()) << path;
@@ -38,6 +43,10 @@ TEST(UIInteractionStateSourceTest, PressedStateReleaseInsideOutsideContractIsPre
     EXPECT_NE(source.find("owner_->setNextState(std::make_unique<UINormalState>(owner_));"), std::string::npos)
         << "Pressed release outside should transition back to normal.";
 }
+
+// NOTE:
+// For UIR-010, Normal->Pressed path is expected to skip HoverState::enter(),
+// so hover_enter() is not triggered on same-frame press. This avoids hover flash.
 
 TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) {
     const std::filesystem::path source_path =
