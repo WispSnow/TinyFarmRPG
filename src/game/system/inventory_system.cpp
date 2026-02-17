@@ -1,5 +1,4 @@
 #include "inventory_system.h"
-#include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/domain/inventory_domain_service.h"
@@ -10,31 +9,6 @@
 #include <algorithm>
 
 namespace game::system {
-
-namespace {
-
-bool hotbarReferencesInventorySlot(const game::component::HotbarComponent& hotbar, int inventory_slot) {
-    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
-        if (hotbar.slot(i).inventory_slot_index_ == inventory_slot) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void swapHotbarInventorySlotMappings(game::component::HotbarComponent& hotbar, int a, int b) {
-    if (a == b) return;
-    for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
-        auto& slot = hotbar.slot(i);
-        if (slot.inventory_slot_index_ == a) {
-            slot.inventory_slot_index_ = b;
-        } else if (slot.inventory_slot_index_ == b) {
-            slot.inventory_slot_index_ = a;
-        }
-    }
-}
-
-} // namespace
 
 InventorySystem::InventorySystem(entt::registry& registry,
                                  entt::dispatcher& dispatcher,
@@ -75,13 +49,22 @@ bool InventorySystem::ensureInventory(entt::entity target) {
     return true;
 }
 
-void InventorySystem::emitChanged(entt::entity target, const std::vector<game::defs::InventorySlotUpdate>& diff, bool full_sync, int active_page) {
+void InventorySystem::emitChanged(entt::entity target,
+                                  const std::vector<game::defs::InventorySlotUpdate>& diff,
+                                  bool full_sync,
+                                  int active_page,
+                                  game::defs::InventoryMoveKind move_kind,
+                                  int move_from_slot,
+                                  int move_to_slot) {
     game::defs::InventoryChanged evt{};
     evt.target = target;
     evt.slots = diff;
     evt.full_sync = full_sync;
     evt.active_page = active_page;
     evt.from_add = false;
+    evt.move_kind = move_kind;
+    evt.move_from_slot = move_from_slot;
+    evt.move_to_slot = move_to_slot;
     dispatcher_.trigger(evt);
 }
 
@@ -130,15 +113,15 @@ void InventorySystem::onMoveItem(const game::defs::InventoryMoveCommand& evt) {
     auto& to = inv.slot(evt.to_slot);
     if (from.empty()) return;
 
-    auto* hotbar = registry_.try_get<game::component::HotbarComponent>(evt.target);
-
     const auto* item = catalog_.findItem(from.item_id_);
     const int stack_limit = item ? item->stack_limit_ : 999;
 
     std::vector<game::defs::InventorySlotUpdate> diff;
     diff.reserve(2);
+    game::defs::InventoryMoveKind move_kind = game::defs::InventoryMoveKind::None;
 
     if (evt.allow_merge && !to.empty() && to.item_id_ == from.item_id_ && to.count_ < stack_limit) {
+        move_kind = game::defs::InventoryMoveKind::Merge;
         const int space = stack_limit - to.count_;
         const int moved = std::min(space, from.count_);
         to.count_ += moved;
@@ -146,38 +129,23 @@ void InventorySystem::onMoveItem(const game::defs::InventoryMoveCommand& evt) {
         if (from.count_ <= 0) {
             from.clear();
         }
-        if (from.empty() && hotbar && hotbarReferencesInventorySlot(*hotbar, evt.from_slot)) {
-            // 快捷栏“跟随物品”而不是“跟随槽位”：
-            // - 一般情况下，移动/交换物品时会同步交换 hotbar 的 inventory_slot_index_ 映射，让 hotkey 继续指向原物品。
-            // - 合并堆叠（merge）会让 source 槽位清空：若 target 槽位也被 hotkey 引用，则必须清空 source 的 hotkey，
-            //   但该“清空”应由 HotbarSystem 在 InventoryChanged 中统一收敛并发出 HotbarChanged，
-            //   不能在这里直接改映射，否则会跳过 HotbarChanged 事件链。
-            const bool target_has_hotkey = hotbarReferencesInventorySlot(*hotbar, evt.to_slot);
-            if (!target_has_hotkey) {
-                swapHotbarInventorySlotMappings(*hotbar, evt.from_slot, evt.to_slot);
-            }
-        }
         diff.push_back({evt.from_slot, from.item_id_, from.count_});
         diff.push_back({evt.to_slot, to.item_id_, to.count_});
     } else if (to.empty()) {
+        move_kind = game::defs::InventoryMoveKind::MoveToEmpty;
         to = from;
         from.clear();
-        if (hotbar && hotbarReferencesInventorySlot(*hotbar, evt.from_slot)) {
-            swapHotbarInventorySlotMappings(*hotbar, evt.from_slot, evt.to_slot);
-        }
         diff.push_back({evt.from_slot, from.item_id_, from.count_});
         diff.push_back({evt.to_slot, to.item_id_, to.count_});
     } else {
+        move_kind = game::defs::InventoryMoveKind::Swap;
         std::swap(from, to);
-        if (hotbar) {
-            swapHotbarInventorySlotMappings(*hotbar, evt.from_slot, evt.to_slot);
-        }
         diff.push_back({evt.from_slot, from.item_id_, from.count_});
         diff.push_back({evt.to_slot, to.item_id_, to.count_});
     }
 
     if (!diff.empty()) {
-        emitChanged(evt.target, diff, false, inv.active_page_);
+        emitChanged(evt.target, diff, false, inv.active_page_, move_kind, evt.from_slot, evt.to_slot);
     }
 }
 

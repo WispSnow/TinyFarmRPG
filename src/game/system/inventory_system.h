@@ -40,7 +40,13 @@ private:
     void onSetActivePage(const game::defs::InventorySetActivePageCommand& evt);
 
     bool ensureInventory(entt::entity target);
-    void emitChanged(entt::entity target, const std::vector<game::defs::InventorySlotUpdate>& diff, bool full_sync, int active_page);
+    void emitChanged(entt::entity target,
+                     const std::vector<game::defs::InventorySlotUpdate>& diff,
+                     bool full_sync,
+                     int active_page,
+                     game::defs::InventoryMoveKind move_kind = game::defs::InventoryMoveKind::None,
+                     int move_from_slot = -1,
+                     int move_to_slot = -1);
 };
 
 } // namespace game::system

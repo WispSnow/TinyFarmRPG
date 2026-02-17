@@ -69,4 +69,37 @@ TEST(InventoryHotbarConsistencyTest, HotbarSync_ClearsOutOfRangeMappings) {
     EXPECT_EQ(hotbar.slot(2).inventory_slot_index_, 3);
 }
 
+TEST(InventoryHotbarConsistencyTest, MergePartial_KeepsHotbarMappingsUnchanged) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    HotbarSystem hotbar_system(registry, dispatcher);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
+
+    const entt::id_type item_id = entt::hashed_string{"partial_merge_item"}.value();
+    inv.slot(0).item_id_ = item_id;
+    inv.slot(0).count_ = 5;
+    inv.slot(1).item_id_ = item_id;
+    inv.slot(1).count_ = 998; // stack_limit 默认为 999，触发部分合并
+
+    hotbar.slot(0).inventory_slot_index_ = 0;
+    hotbar.slot(1).inventory_slot_index_ = 1;
+
+    dispatcher.trigger(game::defs::InventoryMoveCommand{player, 0, 1, true});
+
+    EXPECT_EQ(inv.slot(0).item_id_, item_id);
+    EXPECT_EQ(inv.slot(0).count_, 4);
+    EXPECT_EQ(inv.slot(1).item_id_, item_id);
+    EXPECT_EQ(inv.slot(1).count_, 999);
+
+    EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, 0);
+    EXPECT_EQ(hotbar.slot(1).inventory_slot_index_, 1);
+}
+
 } // namespace game::system
