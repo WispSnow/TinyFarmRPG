@@ -10,7 +10,6 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/text_renderer.h"
 #include "engine/ui/layout/ui_stack_layout.h"
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_input_blocker.h"
