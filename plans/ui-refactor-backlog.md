@@ -73,13 +73,14 @@
   - 同帧移入并按下 -> 释放于元素内，必触发 click
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-011（P1）补齐 `onReleased` 与取消路径
+### UIR-011（P1）补齐 `onReleased` 与取消路径（已完成：代码+自动化）
 - 目标：保证行为链事件完整、可收尾。
 - 主要改动：
   - `UIInteractive::mouseReleased()` 中调用 `InteractionBehavior::onReleased()`
   - `UIManager::clearMouseState()` 增加取消释放流程（避免仅置空指针）
 - 验收标准：
   - 拖拽中隐藏 UI / clearElements 时，行为层能收到结束或取消通知
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-012（P1）统一启用/禁用语义
 - 目标：避免 `setInteractive(false)` 与视觉状态脱钩。
