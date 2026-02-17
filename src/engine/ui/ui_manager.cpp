@@ -213,7 +213,11 @@ void UIManager::clearMouseState() {
         hovered_element_->mouseExit();
         hovered_element_ = nullptr;
     }
-    pressed_element_ = nullptr;
+    if (pressed_element_) {
+        auto* pressed = pressed_element_;
+        pressed_element_ = nullptr;
+        pressed->mouseReleased(false);
+    }
 }
 
 void UIManager::initCursor() {

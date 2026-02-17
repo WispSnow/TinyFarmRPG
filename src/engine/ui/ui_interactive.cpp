@@ -244,6 +244,11 @@ void UIInteractive::mouseReleased(bool is_inside)
     is_dragging_ = false;
     is_pressed_ = false;
     if (state_) state_->onMouseReleased(is_inside);
+    for (auto& behavior : behaviors_) {
+        if (behavior) {
+            behavior->onReleased(*this, is_inside);
+        }
+    }
     if (is_inside) {
         for (auto& behavior : behaviors_) {
             if (behavior) {
