@@ -182,19 +182,23 @@ game_engine/
 │   │   │   └── item_catalog.cpp/h    # 物品目录
 │   │   ├── debug/                   # 游戏调试面板
 │   │   │   ├── blueprint_inspector_debug_panel.cpp/h # 蓝图检查调试面板
-│   │   │   │   ├── game_time_debug_panel.cpp/h     # 游戏时间调试面板
+│   │   │   ├── game_time_debug_panel.cpp/h     # 游戏时间调试面板
 │   │   │   ├── inventory_debug_panel.cpp/h     # 物品栏调试面板
 │   │   │   ├── map_inspector_debug_panel.cpp/h # 地图检查调试面板
-│   │   │   ├── map_loading_debug_panel.cpp/h   # 地图载入设置调试面板
 │   │   │   ├── player_debug_panel.cpp/h        # 玩家调试面板
-│   │   │   └── save_load_debug_panel.cpp/h     # 存档/读档调试面板
+│   │   │   ├── save_load_debug_panel.cpp/h     # 存档/读档调试面板
+│   │   │   ├── scheduler_profiler.cpp/h        # 调度器耗时采样
+│   │   │   └── scheduler_debug_panel.cpp/h     # 调度器调试面板
 │   │   ├── defs/                    # 游戏预定义
-│   │   │   │   ├── audio_ids.h           # 音频ID定义
-│   │   │   │   ├── constants.h           # 常量定义
+│   │   │   ├── audio_ids.h           # 音频ID定义
+│   │   │   ├── commands.h            # Command 定义（输入意图）
+│   │   │   ├── constants.h           # 常量定义
 │   │   │   ├── crop_defs.h           # 作物定义
-│   │   │   │   ├── render_layers.h       # 渲染层定义
-│   │   │   │   └── spatial_layers.h      # 空间层定义
-│   │   │   │   └── events.h              # 游戏事件定义
+│   │   │   ├── events.h              # DomainEvent/结果事件定义
+│   │   │   ├── render_layers.h       # 渲染层定义
+│   │   │   └── spatial_layers.h      # 空间层定义
+│   │   ├── domain/                  # 领域服务
+│   │   │   └── inventory_domain_service.cpp/h # 库存统一写入入口
 │   │   ├── factory/                 # 实体工厂和蓝图
 │   │   │   ├── blueprint.h           # 实体蓝图
 │   │   │   ├── blueprint_manager.cpp/h # 蓝图管理器
@@ -212,6 +216,11 @@ game_engine/
 │   │   │   ├── save_data.cpp/h      # 存档数据结构（JSON序列化/反序列化）
 │   │   │   ├── save_service.cpp/h   # 存档服务（统一save/load接口）
 │   │   │   └── save_slot_summary.cpp/h # 存档槽位摘要
+│   │   ├── runtime/                 # 运行时装配与调度
+│   │   │   ├── game_runtime_assembler.cpp/h # GameScene 运行时装配
+│   │   │   ├── system_bundle.cpp/h         # 系统/服务句柄集合
+│   │   │   ├── game_mode.h                 # GameMode 定义
+│   │   │   └── system_scheduler.cpp/h      # 系统调度器
 │   │   ├── scene/                   # 游戏场景
 │   │   │   ├── save_slot_select_scene.cpp/h    # 存档/读档场景
 │   │   │   ├── pause_menu_scene.cpp/h          # 菜单场景
