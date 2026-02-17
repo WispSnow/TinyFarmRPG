@@ -28,12 +28,19 @@ namespace game::runtime {
     class SystemScheduler;
 }
 
+namespace game::debug {
+    class SchedulerProfiler;
+}
+
 namespace game::scene {
 
 class GameScene : public engine::scene::Scene {
     std::unique_ptr<game::runtime::GameRuntimeServices> services_;
     std::unique_ptr<game::runtime::GameSystemBundle> systems_;
     std::unique_ptr<game::runtime::SystemScheduler> scheduler_;
+#ifdef TF_ENABLE_DEBUG_UI
+    std::unique_ptr<game::debug::SchedulerProfiler> scheduler_profiler_;
+#endif
     game::runtime::GameMode game_mode_{game::runtime::GameMode::Exploration};
 
     std::shared_ptr<game::data::GameTime> game_time_;

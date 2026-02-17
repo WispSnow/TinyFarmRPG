@@ -82,6 +82,9 @@ const std::vector<SchedulerStage>& cutscene_profile() {
 }
 
 void trace_stage(const game::runtime::SystemScheduler::TickParams& params, SchedulerStage stage) {
+    if (params.on_stage_started) {
+        params.on_stage_started(stage);
+    }
     if (params.on_stage_executed) {
         params.on_stage_executed(stage);
     }
@@ -197,6 +200,10 @@ void execute_stage(const game::runtime::SystemScheduler::TickParams& params, Sch
                 systems.animation_system->update(delta_time);
             }
             break;
+    }
+
+    if (params.on_stage_completed) {
+        params.on_stage_completed(stage);
     }
 }
 

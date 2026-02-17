@@ -193,6 +193,8 @@ if(ENABLE_DEBUG_UI)
         game/debug/save_load_debug_panel.cpp
         game/debug/map_inspector_debug_panel.cpp
         game/debug/blueprint_inspector_debug_panel.cpp
+        game/debug/scheduler_profiler.cpp
+        game/debug/scheduler_debug_panel.cpp
     )
 endif()
 
