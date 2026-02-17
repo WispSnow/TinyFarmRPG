@@ -30,7 +30,7 @@
 
 ## Sprint 1（第1周）：运行时解耦与调度收口
 
-### FND-001（P0）拆分 GameScene 装配职责
+### FND-001（P0）拆分 GameScene 装配职责 （已完成）
 - 目标：把 `GameScene` 从“全能组合根”拆成更小的 runtime 组装单元。
 - 主要改动：
   - 新建 `game/runtime/`（建议：`game_runtime.h/.cpp`, `system_graph.h/.cpp`）
@@ -41,7 +41,7 @@
   - 初始化顺序通过单测或集成测试锁定
   - 现有场景流（Title -> Game -> Pause -> Save/Load）行为不变
 
-### FND-002（P0）引入显式 SystemScheduler + GameMode
+### FND-002（P0）引入显式 SystemScheduler + GameMode （已完成）
 - 目标：把“系统更新顺序”从硬编码改为可声明、可切模式。
 - 主要改动：
   - 增加 `GameMode`（`Exploration / Battle / PauseOverlay / Cutscene`）
@@ -52,7 +52,7 @@
   - 可通过一个入口切换 mode（即使 Battle 还未完整实现）
   - 增加至少 2 个顺序相关测试（例如移动->空间索引、时间->光照）
 
-### FND-003（P0）建立 Command -> DomainEvent 边界
+### FND-003（P0）建立 Command -> DomainEvent 边界 （已完成）
 - 目标：减少 UI 直接触发业务事件造成的耦合，统一“请求”和“结果”。
 - 主要改动：
   - 新增 `game/defs/commands.h`
