@@ -20,6 +20,7 @@
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/defs/audio_ids.h"
+#include "game/defs/commands.h"
 #include "game/save/save_service.h"
 #include "game/system/camera_follow_system.h"
 #include "game/system/interaction_system.h"
@@ -126,8 +127,8 @@ bool GameScene::init() {
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (!player_view.empty()) {
         const entt::entity player = *player_view.begin();
-        dispatcher.enqueue<game::defs::InventorySyncRequest>(player);
-        dispatcher.enqueue<game::defs::HotbarSyncRequest>(player);
+        dispatcher.enqueue<game::defs::InventorySyncCommand>(player);
+        dispatcher.enqueue<game::defs::HotbarSyncCommand>(player);
     }
 
     context_.getGameState().setState(engine::core::State::Playing);
@@ -374,8 +375,8 @@ bool GameScene::onInventoryToggle() {
             auto view = registry_.view<game::component::PlayerTag>();
             if (!view.empty()) {
                 const entt::entity player = *view.begin();
-                context_.getDispatcher().enqueue<game::defs::InventorySyncRequest>(player);
-                context_.getDispatcher().enqueue<game::defs::HotbarSyncRequest>(player);
+                context_.getDispatcher().enqueue<game::defs::InventorySyncCommand>(player);
+                context_.getDispatcher().enqueue<game::defs::HotbarSyncCommand>(player);
             }
         }
         return true;
@@ -399,7 +400,7 @@ bool GameScene::onHotbarToggle() {
             auto view = registry_.view<game::component::PlayerTag>();
             if (!view.empty()) {
                 const entt::entity player = *view.begin();
-                context_.getDispatcher().enqueue<game::defs::HotbarSyncRequest>(player);
+                context_.getDispatcher().enqueue<game::defs::HotbarSyncCommand>(player);
             }
         }
         return true;

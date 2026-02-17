@@ -16,6 +16,7 @@
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/ui_drag_drop_helpers.h"
 #include "game/component/inventory_component.h"
+#include "game/defs/commands.h"
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -331,7 +332,7 @@ bool InventoryUI::onMouseRightPressed() {
     }
 
     if (can_use) {
-        context_.getDispatcher().trigger(game::defs::UseItemRequest{target_, inventory_index, 1, true});
+        context_.getDispatcher().trigger(game::defs::UseItemCommand{target_, inventory_index, 1, true});
     }
 
     return true;
@@ -383,7 +384,7 @@ void InventoryUI::changePage(int delta) {
     updatePageLabel();
     renderPage(current_page_);
     if (target_ != entt::null) {
-        context_.getDispatcher().trigger(game::defs::InventorySetActivePageRequest{target_, current_page_});
+        context_.getDispatcher().trigger(game::defs::InventorySetActivePageCommand{target_, current_page_});
     }
 }
 
@@ -460,12 +461,12 @@ void InventoryUI::handleDragEnd(int local_index, engine::ui::UIInteractive& owne
             const int to_index = current_page_ * page_size + local_target;
             if (to_index != from_index) {
                 restore_source = false;
-                context_.getDispatcher().trigger(game::defs::InventoryMoveRequest{target_, from_index, to_index, true});
+                context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{target_, from_index, to_index, true});
             }
         } else if (hotbar_ui_) {
             const int hotbar_index = hotbar_ui_->findSlotIndex(item_slot);
             if (hotbar_index >= 0) {
-                context_.getDispatcher().trigger(game::defs::HotbarBindRequest{target_, hotbar_index, from_index});
+                context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, hotbar_index, from_index});
             }
         }
     }

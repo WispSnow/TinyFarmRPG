@@ -2,6 +2,7 @@
 
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -21,9 +22,9 @@ public:
     void unsubscribe();
 
 private:
-    void onBind(const game::defs::HotbarBindRequest& evt);
-    void onUnbind(const game::defs::HotbarUnbindRequest& evt);
-    void onSync(const game::defs::HotbarSyncRequest& evt);
+    void onBind(const game::defs::HotbarBindCommand& evt);
+    void onUnbind(const game::defs::HotbarUnbindCommand& evt);
+    void onSync(const game::defs::HotbarSyncCommand& evt);
     void onInventoryChanged(const game::defs::InventoryChanged& evt);
 
     bool validateTarget(entt::entity target) const;

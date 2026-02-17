@@ -13,7 +13,7 @@ struct DialogueComponent;
 }
 
 namespace game::defs {
-struct InteractRequest;
+struct InteractCommand;
 }
 
 namespace game::system {
@@ -32,7 +32,7 @@ public:
     void update(float delta_time);
 
 private:
-    void onInteractRequest(const game::defs::InteractRequest& event);
+    void onInteractCommand(const game::defs::InteractCommand& event);
     void startDialogue(entt::entity entity,
                        game::component::DialogueComponent& dialogue,
                        const std::vector<std::string>& lines,

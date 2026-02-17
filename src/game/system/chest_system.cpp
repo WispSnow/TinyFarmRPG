@@ -5,6 +5,7 @@
 #include "game/component/map_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/world/world_state.h"
 #include "engine/component/animation_component.h"
@@ -65,7 +66,7 @@ ChestSystem::ChestSystem(entt::registry& registry,
       world_state_(world_state),
       item_catalog_(item_catalog) {
     dispatcher_.sink<engine::utils::AnimationFinishedEvent>().connect<&ChestSystem::onAnimationFinished>(this);
-    dispatcher_.sink<game::defs::InteractRequest>().connect<&ChestSystem::onInteractRequest>(this);
+    dispatcher_.sink<game::defs::InteractCommand>().connect<&ChestSystem::onInteractCommand>(this);
 }
 
 ChestSystem::~ChestSystem() {
@@ -110,7 +111,7 @@ void ChestSystem::hideNotification(entt::entity player) {
     helpers::emitDialogueBubbleHide(dispatcher_, NOTIFICATION_CHANNEL, player);
 }
 
-void ChestSystem::onInteractRequest(const game::defs::InteractRequest& event) {
+void ChestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
     const entt::entity player = helpers::getPlayerEntity(registry_);
     if (player == entt::null || event.player != player) return;
     if (event.target == entt::null || !registry_.valid(event.target)) return;
@@ -139,7 +140,7 @@ bool ChestSystem::tryOpenChest(entt::entity player, entt::entity chest_entity) {
 
     for (const auto& reward : chest->rewards_) {
         if (reward.item_id_ == entt::null || reward.count_ <= 0) continue;
-        dispatcher_.trigger(game::defs::AddItemRequest{player, reward.item_id_, reward.count_});
+        dispatcher_.trigger(game::defs::AddItemCommand{player, reward.item_id_, reward.count_});
     }
 
     dispatcher_.enqueue(engine::utils::PlayAnimationEvent{chest_entity, CHEST_OPEN_ANIM, false});

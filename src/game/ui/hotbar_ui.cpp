@@ -11,6 +11,7 @@
 #include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/ui_drag_drop_helpers.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/component/hotbar_component.h"
 #include <algorithm>
@@ -265,11 +266,11 @@ bool HotbarUI::handleDropOnHotbar(int dst_hotbar_index) {
     auto& dispatcher = context_.getDispatcher();
     const int dst_mapped = slot_inventory_indices_[static_cast<std::size_t>(dst_hotbar_index)];
     if (dst_mapped >= 0) {
-        dispatcher.trigger(game::defs::HotbarBindRequest{target_, dst_hotbar_index, dragging_inventory_slot_});
-        dispatcher.trigger(game::defs::HotbarBindRequest{target_, dragging_slot_, dst_mapped});
+        dispatcher.trigger(game::defs::HotbarBindCommand{target_, dst_hotbar_index, dragging_inventory_slot_});
+        dispatcher.trigger(game::defs::HotbarBindCommand{target_, dragging_slot_, dst_mapped});
     } else {
-        dispatcher.trigger(game::defs::HotbarBindRequest{target_, dst_hotbar_index, dragging_inventory_slot_});
-        dispatcher.trigger(game::defs::HotbarUnbindRequest{target_, dragging_slot_});
+        dispatcher.trigger(game::defs::HotbarBindCommand{target_, dst_hotbar_index, dragging_inventory_slot_});
+        dispatcher.trigger(game::defs::HotbarUnbindCommand{target_, dragging_slot_});
     }
     return false;
 }
@@ -282,7 +283,7 @@ bool HotbarUI::handleDropOnInventory(engine::ui::UIItemSlot* item_slot) {
     if (inventory_index < 0 || inventory_index == dragging_inventory_slot_) {
         return true;
     }
-    context_.getDispatcher().trigger(game::defs::InventoryMoveRequest{target_, dragging_inventory_slot_, inventory_index, true});
+    context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{target_, dragging_inventory_slot_, inventory_index, true});
     return false;
 }
 
@@ -300,7 +301,7 @@ void HotbarUI::handleDragEnd(int slot_index, engine::ui::UIInteractive& owner, c
 
     if (!dragging_ || slot_index != dragging_slot_ || target_ == entt::null) {
         if (target_ != entt::null && target_hotbar_index >= 0) {
-            context_.getDispatcher().trigger(game::defs::HotbarActivateRequest{target_, target_hotbar_index});
+            context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, target_hotbar_index});
         }
         finishDrag();
         return;
@@ -309,13 +310,13 @@ void HotbarUI::handleDragEnd(int slot_index, engine::ui::UIInteractive& owner, c
     bool restore_source = false;
 
     if (target == nullptr) {
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindRequest{target_, dragging_slot_});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, dragging_slot_});
     } else if (auto* item_slot = dynamic_cast<engine::ui::UIItemSlot*>(target)) {
         restore_source = target_hotbar_index >= 0
             ? handleDropOnHotbar(target_hotbar_index)
             : handleDropOnInventory(item_slot);
     } else {
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindRequest{target_, dragging_slot_});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, dragging_slot_});
     }
 
     if (restore_source && dragging_item_ &&
@@ -324,7 +325,7 @@ void HotbarUI::handleDragEnd(int slot_index, engine::ui::UIInteractive& owner, c
     }
 
     if (target_hotbar_index >= 0) {
-        context_.getDispatcher().trigger(game::defs::HotbarActivateRequest{target_, target_hotbar_index});
+        context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, target_hotbar_index});
     }
 
     finishDrag();
@@ -411,7 +412,7 @@ bool HotbarUI::onMouseRightPressed() {
     }
 
     if (can_use) {
-        context_.getDispatcher().trigger(game::defs::UseItemRequest{target_, inventory_index, 1, false});
+        context_.getDispatcher().trigger(game::defs::UseItemCommand{target_, inventory_index, 1, false});
     }
 
     return true;

@@ -11,7 +11,7 @@ struct AnimationFinishedEvent;
 }
 
 namespace game::defs {
-struct InteractRequest;
+struct InteractCommand;
 }
 
 namespace game::data {
@@ -47,7 +47,7 @@ private:
     void showNotification(entt::entity player, std::string text);
     void hideNotification(entt::entity player);
 
-    void onInteractRequest(const game::defs::InteractRequest& event);
+    void onInteractCommand(const game::defs::InteractCommand& event);
     bool tryOpenChest(entt::entity player, entt::entity chest_entity);
     void onAnimationFinished(const engine::utils::AnimationFinishedEvent& event);
 };

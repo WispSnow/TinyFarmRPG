@@ -8,7 +8,7 @@ class Context;
 }
 
 namespace game::defs {
-struct InteractRequest;
+struct InteractCommand;
 }
 
 namespace game::system {
@@ -23,7 +23,7 @@ public:
     ~RestSystem();
 
 private:
-    void onInteractRequest(const game::defs::InteractRequest& event);
+    void onInteractCommand(const game::defs::InteractCommand& event);
 };
 
 } // namespace game::system

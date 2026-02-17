@@ -6,6 +6,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
+#include "game/defs/commands.h"
 #include "game/defs/constants.h"
 #include "game/defs/events.h"
 #include "game/defs/spatial_layers.h"
@@ -85,12 +86,12 @@ void InteractionSystem::update() {
 
     const entt::id_type current_map = world_state_.getCurrentMap();
     if (auto target = findActiveDialogueTarget(current_map); target != entt::null) {
-        dispatcher_.trigger(game::defs::InteractRequest{player, target});
+        dispatcher_.trigger(game::defs::InteractCommand{player, target});
         return;
     }
 
     if (auto target = chooseFacingTarget(player, current_map); target != entt::null) {
-        dispatcher_.trigger(game::defs::InteractRequest{player, target});
+        dispatcher_.trigger(game::defs::InteractCommand{player, target});
     }
 }
 
