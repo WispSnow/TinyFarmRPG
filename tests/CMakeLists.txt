@@ -96,6 +96,12 @@ set(GAME_TEST_SOURCES
     game/world_state_test.cpp
 )
 
+if(ENABLE_DEBUG_UI)
+    list(APPEND GAME_TEST_SOURCES
+        game/system_scheduler_profiler_test.cpp
+    )
+endif()
+
 add_executable(game_tests ${GAME_TEST_SOURCES})
 
 target_link_libraries(game_tests

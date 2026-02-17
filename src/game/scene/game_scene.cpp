@@ -40,6 +40,8 @@
 #include "game/debug/inventory_debug_panel.h"
 #include "game/debug/map_inspector_debug_panel.h"
 #include "game/debug/player_debug_panel.h"
+#include "game/debug/scheduler_debug_panel.h"
+#include "game/debug/scheduler_profiler.h"
 #include "game/debug/save_load_debug_panel.h"
 #endif
 
@@ -62,6 +64,9 @@ GameScene::GameScene(std::string_view name,
       services_(std::make_unique<game::runtime::GameRuntimeServices>()),
       systems_(std::make_unique<game::runtime::GameSystemBundle>()),
       scheduler_(std::make_unique<game::runtime::SystemScheduler>()),
+#ifdef TF_ENABLE_DEBUG_UI
+      scheduler_profiler_(std::make_unique<game::debug::SchedulerProfiler>()),
+#endif
       game_time_(std::move(game_time)),
       load_slot_(load_slot) {
 }
@@ -148,12 +153,34 @@ void GameScene::update(float delta_time) {
     }
 
     if (scheduler_) {
-        (void)scheduler_->tick({
-            game_mode_,
-            *systems_,
-            registry_,
-            delta_time
-        });
+#ifdef TF_ENABLE_DEBUG_UI
+        if (scheduler_profiler_ && scheduler_profiler_->isEnabled()) {
+            scheduler_profiler_->beginFrame(game_mode_);
+            const auto tick_result = scheduler_->tick({
+                game_mode_,
+                *systems_,
+                registry_,
+                delta_time,
+                {},
+                {},
+                [this](const game::runtime::SchedulerStage stage) {
+                    scheduler_profiler_->onStageStarted(stage);
+                },
+                [this](const game::runtime::SchedulerStage stage) {
+                    scheduler_profiler_->onStageCompleted(stage);
+                }
+            });
+            scheduler_profiler_->endFrame(tick_result, spdlog::should_log(spdlog::level::trace));
+        } else
+#endif
+        {
+            (void)scheduler_->tick({
+                game_mode_,
+                *systems_,
+                registry_,
+                delta_time
+            });
+        }
     }
 
     Scene::update(delta_time);
@@ -240,6 +267,13 @@ bool GameScene::registerDebugPanels() {
     if (services_->blueprint_manager) {
         debug_ui_manager.registerPanel(
             std::make_unique<game::debug::BlueprintInspectorDebugPanel>(*services_->blueprint_manager),
+            false,
+            engine::debug::PanelCategory::Game);
+    }
+
+    if (scheduler_profiler_) {
+        debug_ui_manager.registerPanel(
+            std::make_unique<game::debug::SchedulerDebugPanel>(*scheduler_profiler_, &game_mode_),
             false,
             engine::debug::PanelCategory::Game);
     }

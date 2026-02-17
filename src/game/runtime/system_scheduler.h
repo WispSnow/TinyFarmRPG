@@ -45,6 +45,8 @@ public:
         float delta_time{0.0f};
         std::function<void(SchedulerStage)> on_stage_executed{};
         std::function<bool()> is_transition_active{};
+        std::function<void(SchedulerStage)> on_stage_started{};
+        std::function<void(SchedulerStage)> on_stage_completed{};
     };
 
     struct TickResult {
