@@ -1,6 +1,5 @@
 #pragma once
 #include "ui_element.h"
-#include "state/ui_state.h"
 #include "behavior/interaction_behavior.h"
 #include "engine/render/image.h"   // 需要引入头文件而不是前置声明（map容器创建时可能会检查内部元素是否有析构定义）
 #include <entt/core/hashed_string.hpp>
@@ -43,8 +42,6 @@ enum class InteractionPhase : std::uint8_t {
 class UIInteractive : public UIElement {
 protected:
     engine::core::Context& context_;                        ///< @brief 可交互元素很可能需要其他引擎组件
-    std::unique_ptr<engine::ui::state::UIState> state_;     ///< @brief 当前状态
-    std::unique_ptr<engine::ui::state::UIState> next_state_;///< @brief 下一个状态，用于处理状态切换
     std::unordered_map<entt::id_type, engine::render::Image> images_;   ///< @brief 图片集合
     std::unordered_map<entt::id_type, entt::id_type> sound_overrides_;  ///< @brief 事件音效覆盖，key为事件ID，value为音效ID (entt::null = disabled)
     entt::id_type current_image_id_ = entt::null;           ///< @brief 当前显示的图片ID
@@ -84,9 +81,6 @@ public:
     // --- Getters and Setters ---
     engine::core::Context& getContext() const { return context_; }
     void transitionTo(InteractionPhase target_phase);                          ///< @brief 请求状态迁移（UIR-030 起为立即生效）
-    void setState(std::unique_ptr<engine::ui::state::UIState> state);       ///< @brief 设置当前状态
-    void setNextState(std::unique_ptr<engine::ui::state::UIState> state);   ///< @brief 设置下一个状态
-    engine::ui::state::UIState* getState() const { return state_.get(); }   ///< @brief 获取当前状态
 
     void setInteractive(bool interactive);                                   ///< @brief 设置是否可交互
     void setEnabled(bool enabled);                                           ///< @brief 统一启用/禁用语义（交互+视觉+按下态清理）
@@ -98,9 +92,9 @@ public:
     glm::vec2 screenToLocal(const glm::vec2& screen_pos) const;             ///< @brief 将屏幕坐标转换为本地坐标
     void setPositionByScreen(const glm::vec2& screen_pos);                 ///< @brief 通过屏幕坐标设置位置
 
-    // 状态查询方法（委托给state_）
-    bool isHovered() const { return state_ && state_->isHovered(); }        ///< @brief 查询是否处于悬停状态
-    bool isPressed() const { return state_ && state_->isPressed(); }        ///< @brief 查询是否处于按下状态
+    // 状态查询方法（基于 InteractionPhase）
+    bool isHovered() const { return interaction_phase_ == InteractionPhase::Hovered || interaction_phase_ == InteractionPhase::Pressed; } ///< @brief 查询是否处于悬停状态
+    bool isPressed() const { return interaction_phase_ == InteractionPhase::Pressed; } ///< @brief 查询是否处于按下状态
     bool isDragging() const { return is_dragging_; }                        ///< @brief 查询是否处于拖拽状态
     InteractionPhase getInteractionPhase() const { return interaction_phase_; }  ///< @brief 查询当前交互阶段（并行模型）
 
@@ -116,6 +110,7 @@ protected:
 
 private:
     void applyPhaseEnterEffects(InteractionPhase phase);
+    void notifyPhaseChanged(InteractionPhase old_phase, InteractionPhase new_phase, std::string_view reason);
     InteractionPhase computeInteractionPhase() const;
     void refreshInteractionPhase(std::string_view reason);
 };

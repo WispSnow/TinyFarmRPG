@@ -152,20 +152,25 @@
   - 文档记录并验证时序变化对外部行为的影响（尤其点击、hover 音效、drag begin/end）
   - `ctest --test-dir build --output-on-failure -j4` 通过（运行时测试在无 SDL video 的环境下为 `GTEST_SKIP`，不影响结果）
 
-### UIR-031（P0）删除 `UIState` 遗留实现
+### UIR-031（P0）删除 `UIState` 遗留实现（已完成：代码+自动化）
 - 目标：完成架构收口。
 - 主要改动：
   - 删除 `src/engine/ui/state/*`
-  - 删除 `setState/setNextState/getState` 及引用
-  - 更新构建脚本/CMake
+  - 删除 `UIInteractive` 中 `setState/setNextState/getState` 及 `state_/next_state_` 成员
+  - `transitionTo()` 直接维护 `interaction_phase_` 并应用 enter side effects，不再依赖 legacy 状态对象
+  - `UIInteractive` 查询接口改为 phase 驱动：`isHovered()/isPressed()`
+  - 控件初始化去除 legacy 状态依赖（`UIButton`、`UIItemSlot` 不再初始化 `UINormalState`）
+  - 更新构建脚本/CMake，移除 `engine/ui/state/*.cpp`
+  - 更新源码契约测试，新增“legacy state 工件已移除”断言
 - 验收标准：
   - 全仓通过编译与测试
   - 无对 `state/` 路径的 include
+  - `ctest --test-dir build --output-on-failure -j4` 通过（运行时测试在无 SDL video 的环境下为 `GTEST_SKIP`，不影响结果）
 
-### UIR-032（P1）迁移控件初始化路径
+### UIR-032（P1）迁移控件初始化路径（已完成：并入 UIR-031）
 - 目标：去掉控件构造时对旧状态类的依赖。
 - 主要改动：
-  - `UIButton`、`UIItemSlot` 初始化改为 phase 初始化
+  - `UIButton`、`UIItemSlot` 移除 `UINormalState` 初始化，改为直接应用 Normal 视觉/phase 语义
 - 验收标准：
   - 按钮与槽位交互行为保持一致
 
@@ -173,13 +178,22 @@
 
 ## Iteration 4：事件回调机制收敛（参考 Claude 建议，分步做）
 
-### UIR-040（P1）补 `ClickBehavior` 与 `onStateChanged` 钩子
+### UIR-040（P1）补 `ClickBehavior` 与 `onStateChanged` 钩子（已完成：代码+自动化）
 - 目标：增强 behavior 作为统一扩展层的表达能力。
 - 主要改动：
   - 新增 `behavior/click_behavior.h`
   - `InteractionBehavior` 增加可选 `onStateChanged(UIInteractive&, old, now)`
+  - `UIInteractive` 在 phase 迁移点统一触发 behavior `onStateChanged`（`transitionTo`、`setEnabled`、`refreshInteractionPhase`）
+  - 运行时测试补充：
+    - `ClickBehavior` 点击回调可挂载并触发
+    - `onStateChanged` 迁移序列（`Normal -> Hovered -> Pressed -> Hovered -> Normal`）可观测
+  - 源码契约测试补充：
+    - `InteractionBehavior` 状态变更钩子声明
+    - `ClickBehavior` 类接口
+    - `UIInteractive` 状态变更通知路径
 - 验收标准：
   - 可不改业务逻辑即挂载点击/状态行为
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-041（P1）将 `UIButton` 回调路径迁移到 behavior（兼容期）
 - 目标：减少“虚函数 + behavior”双轨并存。

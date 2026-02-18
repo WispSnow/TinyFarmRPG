@@ -8,6 +8,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "engine/audio/audio_player.h"
@@ -24,7 +25,7 @@
 #include "engine/render/text_renderer.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/state/ui_normal_state.h"
+#include "engine/ui/behavior/click_behavior.h"
 #include "engine/ui/ui_interactive.h"
 #include "engine/ui/ui_manager.h"
 
@@ -45,8 +46,10 @@ struct RuntimeProbe {
     int behavior_click_count{0};
     int behavior_drag_begin_count{0};
     int behavior_drag_end_count{0};
+    int click_behavior_click_count{0};
     bool last_release_inside{true};
     bool last_drag_end_inside{true};
+    std::vector<std::pair<InteractionPhase, InteractionPhase>> phase_transitions{};
 };
 
 class ProbeBehavior final : public InteractionBehavior {
@@ -83,6 +86,10 @@ public:
         probe_->last_drag_end_inside = accepted;
     }
 
+    void onStateChanged(UIInteractive&, InteractionPhase old_phase, InteractionPhase new_phase) override {
+        probe_->phase_transitions.emplace_back(old_phase, new_phase);
+    }
+
 private:
     std::shared_ptr<RuntimeProbe> probe_;
 };
@@ -93,9 +100,7 @@ public:
                     std::shared_ptr<RuntimeProbe> probe,
                     glm::vec2 position,
                     glm::vec2 size)
-        : UIInteractive(context, position, size), probe_(std::move(probe)) {
-        setState(std::make_unique<engine::ui::state::UINormalState>(this));
-    }
+        : UIInteractive(context, position, size), probe_(std::move(probe)) {}
 
     ~TestInteractive() override {
         if (probe_) {
@@ -300,6 +305,12 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
     TestInteractive element(*context_, probe, {0.0F, 0.0F}, {80.0F, 40.0F});
     element.addBehavior(std::make_unique<ProbeBehavior>(probe));
 
+    auto click_behavior = std::make_unique<ClickBehavior>();
+    click_behavior->setOnClick([probe](UIInteractive&) {
+        ++probe->click_behavior_click_count;
+    });
+    element.addBehavior(std::move(click_behavior));
+
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
 
     element.mouseEnter();
@@ -318,6 +329,7 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_TRUE(probe->last_release_inside);
     EXPECT_EQ(probe->behavior_click_count, 1);
+    EXPECT_EQ(probe->click_behavior_click_count, 1);
     EXPECT_EQ(probe->behavior_drag_end_count, 1);
     EXPECT_TRUE(probe->last_drag_end_inside);
     EXPECT_EQ(probe->hover_enter_count, 2);
@@ -326,6 +338,16 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
     EXPECT_EQ(probe->hover_leave_count, 1);
     EXPECT_EQ(probe->behavior_hover_exit_count, 1);
+
+    ASSERT_EQ(probe->phase_transitions.size(), 4);
+    EXPECT_EQ(probe->phase_transitions[0].first, InteractionPhase::Normal);
+    EXPECT_EQ(probe->phase_transitions[0].second, InteractionPhase::Hovered);
+    EXPECT_EQ(probe->phase_transitions[1].first, InteractionPhase::Hovered);
+    EXPECT_EQ(probe->phase_transitions[1].second, InteractionPhase::Pressed);
+    EXPECT_EQ(probe->phase_transitions[2].first, InteractionPhase::Pressed);
+    EXPECT_EQ(probe->phase_transitions[2].second, InteractionPhase::Hovered);
+    EXPECT_EQ(probe->phase_transitions[3].first, InteractionPhase::Hovered);
+    EXPECT_EQ(probe->phase_transitions[3].second, InteractionPhase::Normal);
 }
 
 TEST_F(UIInteractionRuntimeTest, NormalPressPathSkipsHoverEnterUntilReleaseInside) {

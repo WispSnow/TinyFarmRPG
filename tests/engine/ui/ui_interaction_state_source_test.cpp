@@ -22,44 +22,157 @@ namespace {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
-TEST(UIInteractionStateSourceTest, PressedStateReleaseInsideOutsideContractIsPresent) {
+TEST(UIInteractionStateSourceTest, InteractionPhaseEnumAndGetterContractIsPresent) {
     const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_pressed_state.cpp").lexically_normal();
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.h").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    // inside release -> hover + clicked
-    EXPECT_NE(source.find("if (is_inside)"), std::string::npos)
-        << "Pressed release should branch by inside/outside.";
-    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
-        << "Pressed release inside should transition to hovered phase.";
-    EXPECT_NE(source.find("owner_->clicked();"), std::string::npos)
-        << "Pressed release inside should trigger clicked callback.";
-
-    // outside release -> normal
-    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
-        << "Pressed release outside should transition back to normal phase.";
+    EXPECT_NE(source.find("enum class InteractionPhase : std::uint8_t"), std::string::npos)
+        << "UIInteractive should define a typed InteractionPhase enum.";
+    EXPECT_NE(source.find("Normal"), std::string::npos)
+        << "InteractionPhase should include Normal.";
+    EXPECT_NE(source.find("Hovered"), std::string::npos)
+        << "InteractionPhase should include Hovered.";
+    EXPECT_NE(source.find("Pressed"), std::string::npos)
+        << "InteractionPhase should include Pressed.";
+    EXPECT_NE(source.find("Disabled"), std::string::npos)
+        << "InteractionPhase should include Disabled.";
+    EXPECT_NE(source.find("InteractionPhase getInteractionPhase() const"), std::string::npos)
+        << "UIInteractive should expose read-only interaction phase query.";
 }
 
-TEST(UIInteractionStateSourceTest, NormalStatePressTransitionsToPressedContractIsPresent) {
+TEST(UIInteractionStateSourceTest, InteractionBehaviorStateChangedHookContractIsPresent) {
     const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_normal_state.cpp").lexically_normal();
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/behavior/interaction_behavior.h").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("void UINormalState::onMousePressed()"), std::string::npos)
-        << "UINormalState should explicitly handle mouse press.";
-    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
-        << "Normal state press should transition to pressed phase.";
+    EXPECT_NE(source.find("enum class InteractionPhase : std::uint8_t;"), std::string::npos)
+        << "InteractionBehavior should forward declare InteractionPhase.";
+    EXPECT_NE(source.find("virtual void onStateChanged(UIInteractive&"), std::string::npos)
+        << "InteractionBehavior should expose optional onStateChanged hook.";
 }
 
-// NOTE:
-// For UIR-010, Normal->Pressed path is expected to skip HoverState::enter(),
-// so hover_enter() is not triggered on same-frame press. This avoids hover flash.
+TEST(UIInteractionStateSourceTest, ClickBehaviorContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/behavior/click_behavior.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("class ClickBehavior final : public InteractionBehavior"), std::string::npos)
+        << "ClickBehavior should inherit from InteractionBehavior.";
+    EXPECT_NE(source.find("using ClickCallback = std::function<void(UIInteractive&)>;"), std::string::npos)
+        << "ClickBehavior should expose click callback alias.";
+    EXPECT_NE(source.find("void setOnClick(ClickCallback cb)"), std::string::npos)
+        << "ClickBehavior should allow setting click callback.";
+    EXPECT_NE(source.find("void onClick(UIInteractive& owner) override"), std::string::npos)
+        << "ClickBehavior should dispatch click callback.";
+}
+
+TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("InteractionPhase UIInteractive::computeInteractionPhase() const"), std::string::npos)
+        << "UIInteractive should keep a dedicated phase normalization method.";
+    EXPECT_NE(source.find("void UIInteractive::refreshInteractionPhase(std::string_view reason)"), std::string::npos)
+        << "UIInteractive should centralize phase refresh and debug tracing.";
+    EXPECT_NE(source.find("UIInteractive phase changed"), std::string::npos)
+        << "Phase refresh should emit trace logs on phase transition.";
+    EXPECT_NE(source.find("refreshInteractionPhase(\"setInteractive\")"), std::string::npos)
+        << "setInteractive should refresh interaction phase.";
+}
+
+TEST(UIInteractionStateSourceTest, UIInteractiveNotifiesBehaviorOnPhaseChangedContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::notifyPhaseChanged"), std::string::npos)
+        << "UIInteractive should provide a dedicated phase change notifier.";
+    EXPECT_NE(source.find("behavior->onStateChanged(*this, old_phase, new_phase);"), std::string::npos)
+        << "UIInteractive should dispatch onStateChanged to mounted behaviors.";
+    EXPECT_NE(source.find("notifyPhaseChanged(source_phase, interaction_phase_, \"transitionTo\");"), std::string::npos)
+        << "transitionTo should notify behavior layer on phase transition.";
+    EXPECT_NE(source.find("notifyPhaseChanged(old_phase, interaction_phase_, \"setEnabled(false)\");"), std::string::npos)
+        << "setEnabled(false) should notify behavior layer on phase transition.";
+    EXPECT_NE(source.find("notifyPhaseChanged(old_phase, interaction_phase_, \"setEnabled(true)\");"), std::string::npos)
+        << "setEnabled(true) should notify behavior layer on phase transition.";
+}
+
+TEST(UIInteractionStateSourceTest, TransitionToImmediateAndHoverSoundContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::transitionTo(InteractionPhase target_phase)"), std::string::npos)
+        << "UIInteractive should provide transitionTo() for phase transitions.";
+    EXPECT_NE(source.find("playSoundEvent(UI_SOUND_EVENT_HOVER_ID);"), std::string::npos)
+        << "transitionTo should keep hover sound on Normal->Hovered transition.";
+    EXPECT_NE(source.find("hover_leave();"), std::string::npos)
+        << "transitionTo should keep hover_leave callback on Hovered->Normal transition request.";
+    EXPECT_NE(source.find("interaction_phase_ = target_phase;"), std::string::npos)
+        << "transitionTo should mutate phase directly at UIR-031.";
+    EXPECT_NE(source.find("applyPhaseEnterEffects(interaction_phase_);"), std::string::npos)
+        << "transitionTo should apply phase enter effects immediately.";
+    EXPECT_EQ(source.find("setNextState(std::move(next));"), std::string::npos)
+        << "transitionTo should not queue deferred transitions.";
+    EXPECT_EQ(source.find("setState(std::move(next));"), std::string::npos)
+        << "transitionTo should not depend on legacy UIState objects.";
+    EXPECT_EQ(source.find("makeLegacyStateForPhase"), std::string::npos)
+        << "transitionTo should not build legacy UIState objects.";
+}
+
+TEST(UIInteractionStateSourceTest, MouseEventsDrivePhaseDirectlyWithoutStateDispatchContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::mouseEnter()"), std::string::npos)
+        << "mouseEnter handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mouseExit()"), std::string::npos)
+        << "mouseExit handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mousePressed()"), std::string::npos)
+        << "mousePressed handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mouseReleased(bool is_inside)"), std::string::npos)
+        << "mouseReleased handler should exist.";
+
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Hovered);"), std::string::npos)
+        << "mouseEnter/mouseReleased should drive hovered transition directly.";
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Pressed);"), std::string::npos)
+        << "mousePressed should drive pressed transition directly.";
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Normal);"), std::string::npos)
+        << "mouseExit/mouseReleased should drive normal transition directly.";
+
+    EXPECT_EQ(source.find("state_->onMouseEnter()"), std::string::npos)
+        << "mouseEnter should not dispatch via legacy state handlers after UIR-031.";
+    EXPECT_EQ(source.find("state_->onMouseExit()"), std::string::npos)
+        << "mouseExit should not dispatch via legacy state handlers after UIR-031.";
+    EXPECT_EQ(source.find("state_->onMousePressed()"), std::string::npos)
+        << "mousePressed should not dispatch via legacy state handlers after UIR-031.";
+    EXPECT_EQ(source.find("state_->onMouseReleased(is_inside)"), std::string::npos)
+        << "mouseReleased should not dispatch via legacy state handlers after UIR-031.";
+}
 
 TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) {
     const std::filesystem::path source_path =
@@ -115,7 +228,7 @@ TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) 
         << "Inside guard should appear before behavior click dispatch.";
 }
 
-TEST(UIInteractionStateSourceTest, MouseEventsDrivePhaseDirectlyWithoutStateDispatchContractIsPresent) {
+TEST(UIInteractionStateSourceTest, SetEnabledUnifiedSemanticsContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -123,30 +236,20 @@ TEST(UIInteractionStateSourceTest, MouseEventsDrivePhaseDirectlyWithoutStateDisp
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("void UIInteractive::mouseEnter()"), std::string::npos)
-        << "mouseEnter handler should exist.";
-    EXPECT_NE(source.find("void UIInteractive::mouseExit()"), std::string::npos)
-        << "mouseExit handler should exist.";
-    EXPECT_NE(source.find("void UIInteractive::mousePressed()"), std::string::npos)
-        << "mousePressed handler should exist.";
-    EXPECT_NE(source.find("void UIInteractive::mouseReleased(bool is_inside)"), std::string::npos)
-        << "mouseReleased handler should exist.";
-
-    EXPECT_NE(source.find("transitionTo(InteractionPhase::Hovered);"), std::string::npos)
-        << "mouseEnter/mouseReleased should drive hovered transition directly.";
-    EXPECT_NE(source.find("transitionTo(InteractionPhase::Pressed);"), std::string::npos)
-        << "mousePressed should drive pressed transition directly.";
-    EXPECT_NE(source.find("transitionTo(InteractionPhase::Normal);"), std::string::npos)
-        << "mouseExit/mouseReleased should drive normal transition directly.";
-
-    EXPECT_EQ(source.find("state_->onMouseEnter()"), std::string::npos)
-        << "mouseEnter should not dispatch via legacy state handlers after UIR-030.";
-    EXPECT_EQ(source.find("state_->onMouseExit()"), std::string::npos)
-        << "mouseExit should not dispatch via legacy state handlers after UIR-030.";
-    EXPECT_EQ(source.find("state_->onMousePressed()"), std::string::npos)
-        << "mousePressed should not dispatch via legacy state handlers after UIR-030.";
-    EXPECT_EQ(source.find("state_->onMouseReleased(is_inside)"), std::string::npos)
-        << "mouseReleased should not dispatch via legacy state handlers after UIR-030.";
+    EXPECT_NE(source.find("void UIInteractive::setEnabled(bool enabled)"), std::string::npos)
+        << "UIInteractive should expose setEnabled(bool) as unified enable/disable entry.";
+    EXPECT_NE(source.find("mouseReleased(false);"), std::string::npos)
+        << "setEnabled(false) should cancel an active press via release(false).";
+    EXPECT_NE(source.find("interaction_phase_ = InteractionPhase::Disabled;"), std::string::npos)
+        << "setEnabled(false) should normalize phase to disabled.";
+    EXPECT_NE(source.find("interaction_phase_ = InteractionPhase::Normal;"), std::string::npos)
+        << "setEnabled(true) should normalize phase to normal.";
+    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_DISABLED_ID);"), std::string::npos)
+        << "setEnabled(false) should drive disabled visual state.";
+    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_NORMAL_ID);"), std::string::npos)
+        << "setEnabled(true) should restore normal visual state.";
+    EXPECT_EQ(source.find("std::make_unique<engine::ui::state::UINormalState>(this)"), std::string::npos)
+        << "setEnabled should not rely on legacy UIState normalization at UIR-031.";
 }
 
 TEST(UIInteractionStateSourceTest, ClearMouseStateCancelsPressedCaptureContractIsPresent) {
@@ -178,122 +281,38 @@ TEST(UIInteractionStateSourceTest, ClearMouseStateCancelsPressedCaptureContractI
         << "clearMouseState should avoid re-entrancy by clearing capture before cancel release.";
 }
 
-TEST(UIInteractionStateSourceTest, SetEnabledUnifiedSemanticsContractIsPresent) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+TEST(UIInteractionStateSourceTest, LegacyStateArtifactsRemovedContractIsPresent) {
+    const std::filesystem::path state_dir =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state").lexically_normal();
+    const std::filesystem::path state_h = (state_dir / "ui_state.h").lexically_normal();
+    const std::filesystem::path normal_h = (state_dir / "ui_normal_state.h").lexically_normal();
+    const std::filesystem::path hover_h = (state_dir / "ui_hover_state.h").lexically_normal();
+    const std::filesystem::path pressed_h = (state_dir / "ui_pressed_state.h").lexically_normal();
+    const std::filesystem::path normal_cpp = (state_dir / "ui_normal_state.cpp").lexically_normal();
+    const std::filesystem::path hover_cpp = (state_dir / "ui_hover_state.cpp").lexically_normal();
+    const std::filesystem::path pressed_cpp = (state_dir / "ui_pressed_state.cpp").lexically_normal();
 
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
+    EXPECT_FALSE(std::filesystem::exists(state_h)) << state_h;
+    EXPECT_FALSE(std::filesystem::exists(normal_h)) << normal_h;
+    EXPECT_FALSE(std::filesystem::exists(hover_h)) << hover_h;
+    EXPECT_FALSE(std::filesystem::exists(pressed_h)) << pressed_h;
+    EXPECT_FALSE(std::filesystem::exists(normal_cpp)) << normal_cpp;
+    EXPECT_FALSE(std::filesystem::exists(hover_cpp)) << hover_cpp;
+    EXPECT_FALSE(std::filesystem::exists(pressed_cpp)) << pressed_cpp;
 
-    EXPECT_NE(source.find("void UIInteractive::setEnabled(bool enabled)"), std::string::npos)
-        << "UIInteractive should expose setEnabled(bool) as unified enable/disable entry.";
-    EXPECT_NE(source.find("mouseReleased(false);"), std::string::npos)
-        << "setEnabled(false) should cancel an active press via release(false).";
-    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_DISABLED_ID);"), std::string::npos)
-        << "setEnabled(false) should drive disabled visual state.";
-    EXPECT_NE(source.find("applyStateVisual(UI_IMAGE_NORMAL_ID);"), std::string::npos)
-        << "setEnabled(true) should restore normal visual state.";
-    EXPECT_NE(source.find("std::make_unique<engine::ui::state::UINormalState>(this)"), std::string::npos)
-        << "setEnabled should normalize interaction state when toggling enabled flag.";
-}
-
-TEST(UIInteractionStateSourceTest, InteractionPhaseEnumAndGetterContractIsPresent) {
-    const std::filesystem::path source_path =
+    const std::filesystem::path interactive_h_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.h").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(interactive_h_path)) << interactive_h_path;
+    const std::string interactive_h = readTextFile(interactive_h_path);
 
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
-
-    EXPECT_NE(source.find("enum class InteractionPhase : std::uint8_t"), std::string::npos)
-        << "UIInteractive should define a typed InteractionPhase enum.";
-    EXPECT_NE(source.find("Normal"), std::string::npos)
-        << "InteractionPhase should include Normal.";
-    EXPECT_NE(source.find("Hovered"), std::string::npos)
-        << "InteractionPhase should include Hovered.";
-    EXPECT_NE(source.find("Pressed"), std::string::npos)
-        << "InteractionPhase should include Pressed.";
-    EXPECT_NE(source.find("Disabled"), std::string::npos)
-        << "InteractionPhase should include Disabled.";
-    EXPECT_NE(source.find("InteractionPhase getInteractionPhase() const"), std::string::npos)
-        << "UIInteractive should expose read-only interaction phase query.";
-}
-
-TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
-
-    EXPECT_NE(source.find("InteractionPhase UIInteractive::computeInteractionPhase() const"), std::string::npos)
-        << "UIInteractive should compute phase from current legacy state.";
-    EXPECT_NE(source.find("void UIInteractive::refreshInteractionPhase(std::string_view reason)"), std::string::npos)
-        << "UIInteractive should centralize phase refresh and debug tracing.";
-    EXPECT_NE(source.find("UIInteractive phase changed"), std::string::npos)
-        << "Phase refresh should emit trace logs on phase transition.";
-    EXPECT_NE(source.find("refreshInteractionPhase(\"setState\")"), std::string::npos)
-        << "setState should refresh interaction phase.";
-    EXPECT_NE(source.find("refreshInteractionPhase(\"setInteractive\")"), std::string::npos)
-        << "setInteractive should refresh interaction phase.";
-}
-
-TEST(UIInteractionStateSourceTest, TransitionToImmediateAndHoverSoundContractIsPresent) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
-
-    EXPECT_NE(source.find("void UIInteractive::transitionTo(InteractionPhase target_phase)"), std::string::npos)
-        << "UIInteractive should provide transitionTo() for phase transitions.";
-    EXPECT_NE(source.find("playSoundEvent(UI_SOUND_EVENT_HOVER_ID);"), std::string::npos)
-        << "transitionTo should keep hover sound on Normal->Hovered transition.";
-    EXPECT_NE(source.find("setState(std::move(next));"), std::string::npos)
-        << "transitionTo should apply state immediately at UIR-030.";
-    EXPECT_EQ(source.find("setNextState(std::move(next));"), std::string::npos)
-        << "transitionTo should no longer queue deferred transition at UIR-030.";
-    EXPECT_NE(source.find("makeLegacyStateForPhase(this, target_phase)"), std::string::npos)
-        << "transitionTo should centralize legacy state object selection by phase.";
-}
-
-TEST(UIInteractionStateSourceTest, LegacyStateClassesDelegateToTransitionToContractIsPresent) {
-    const std::filesystem::path normal_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_normal_state.cpp").lexically_normal();
-    const std::filesystem::path hover_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_hover_state.cpp").lexically_normal();
-    const std::filesystem::path pressed_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_pressed_state.cpp").lexically_normal();
-
-    ASSERT_TRUE(std::filesystem::exists(normal_path)) << normal_path;
-    ASSERT_TRUE(std::filesystem::exists(hover_path)) << hover_path;
-    ASSERT_TRUE(std::filesystem::exists(pressed_path)) << pressed_path;
-
-    const std::string normal_source = readTextFile(normal_path);
-    const std::string hover_source = readTextFile(hover_path);
-    const std::string pressed_source = readTextFile(pressed_path);
-
-    ASSERT_FALSE(normal_source.empty());
-    ASSERT_FALSE(hover_source.empty());
-    ASSERT_FALSE(pressed_source.empty());
-
-    EXPECT_NE(normal_source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
-        << "UINormalState mouse enter should delegate to transitionTo(Hovered).";
-    EXPECT_NE(normal_source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
-        << "UINormalState mouse press should delegate to transitionTo(Pressed).";
-
-    EXPECT_NE(hover_source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
-        << "UIHoverState mouse exit should delegate to transitionTo(Normal).";
-    EXPECT_NE(hover_source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
-        << "UIHoverState mouse press should delegate to transitionTo(Pressed).";
-
-    EXPECT_NE(pressed_source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
-        << "UIPressedState release inside should delegate to transitionTo(Hovered).";
-    EXPECT_NE(pressed_source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
-        << "UIPressedState release outside should delegate to transitionTo(Normal).";
+    EXPECT_EQ(interactive_h.find("#include \"state/ui_state.h\""), std::string::npos)
+        << "UIInteractive header should not include legacy UIState.";
+    EXPECT_EQ(interactive_h.find("void setState(std::unique_ptr<engine::ui::state::UIState> state)"), std::string::npos)
+        << "UIInteractive should not expose setState API after UIR-031.";
+    EXPECT_EQ(interactive_h.find("void setNextState(std::unique_ptr<engine::ui::state::UIState> state)"), std::string::npos)
+        << "UIInteractive should not expose setNextState API after UIR-031.";
+    EXPECT_EQ(interactive_h.find("engine::ui::state::UIState* getState() const"), std::string::npos)
+        << "UIInteractive should not expose getState API after UIR-031.";
 }
 
 } // namespace

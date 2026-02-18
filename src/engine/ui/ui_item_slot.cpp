@@ -4,7 +4,6 @@
 #include <string>
 #include <glm/geometric.hpp> // for glm::distance
 #include "engine/core/context.h" // Ensure context is fully defined if needed
-#include "state/ui_normal_state.h"
 
 namespace engine::ui {
 
@@ -50,8 +49,8 @@ UIItemSlot::UIItemSlot(engine::core::Context& context, glm::vec2 position, glm::
     disableHoverSound();
     disableClickSound();
 
-    // 初始化交互状态机，确保悬停/点击事件可用
-    setState(std::make_unique<engine::ui::state::UINormalState>(this));
+    // 默认采用 Normal 视觉状态。
+    applyStateVisual(UI_IMAGE_NORMAL_ID);
 }
 
 void UIItemSlot::setItem(const engine::render::Image& icon, int count) {
