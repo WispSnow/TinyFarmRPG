@@ -56,7 +56,7 @@
 - 主要改动：
   - 在现有测试体系中补 1~2 个可执行的 UI 交互状态测试（可先是 `UIInteractive` 级别）
   - 明确当前测试缺口：`tests/engine/ui/` 现有 `ui_button_factory_api_test.cpp`、`ui_preset_manager_*`，但没有交互状态迁移测试
-  - 现阶段先采用源码契约测试做快速防护；后续在 `UIR-022` 增补运行时行为测试
+  - 现阶段先采用源码契约测试做快速防护；已在 `UIR-022` 增补运行时行为测试
 - 验收标准：
   - 至少覆盖 `press/release inside/outside` 的基本语义
 
@@ -116,14 +116,21 @@
   - `Normal -> Hovered` 迁移必须保留 hover 音效触发（与当前 `UINormalState::onMouseEnter()` 语义一致）
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-022（P1）补状态迁移测试
+### UIR-022（P1）补状态迁移测试（已完成：代码+自动化）
 - 目标：为“删除状态类”提供安全垫。
 - 主要改动：
   - 覆盖边界迁移：disabled 切入/切出、按下中取消、隐藏/清空时的状态收敛
   - 补充声音与回调时序断言（hover/click 不重复、不丢失）
   - 增补运行时行为测试（替代/补强源码字符串契约测试）
+  - 新增 `tests/engine/ui/ui_interaction_runtime_test.cpp`，覆盖：
+    - `Normal -> Hovered -> Pressed -> (Hovered|Normal)` 主链行为
+    - `Normal -> Pressed` 路径不触发 `hover_enter()`（UIR-010 期望语义）
+    - `setEnabled(false)` 按下中取消（release(false)/no click）
+    - `UIManager::clearElements()` 收敛按下捕获并触发取消释放
+  - 接入构建：`tests/CMakeLists.txt` 新增 `ui_interaction_runtime_test.cpp`
 - 验收标准：
   - 关键迁移均有自动化断言
+  - `ctest --test-dir build --output-on-failure -j4` 通过（运行时测试在无 SDL video 的环境下为 `GTEST_SKIP`，不影响结果）
 
 ---
 
