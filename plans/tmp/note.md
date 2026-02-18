@@ -4,4 +4,4 @@ tag: v3.5.0
 
 # Lua
 url: https://github.com/lua/lua
-tag: v5.5.0
+tag: v5.4.8
