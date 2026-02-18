@@ -13,9 +13,8 @@ namespace engine::ui {
 namespace {
 
 // NOTE:
-// This file uses source-contract checks (string matching) as a temporary safeguard.
-// It does NOT prove runtime behavior correctness. Runtime interaction-state tests
-// should be added in UIR-022.
+// This file uses source-contract checks (string matching) as a safeguard.
+// It does NOT replace runtime behavior tests.
 
 [[nodiscard]] std::string readTextFile(const std::filesystem::path& path) {
     std::ifstream file(path);
@@ -70,32 +69,84 @@ TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
+    const auto fn_pos = source.find("void UIInteractive::mouseReleased(bool is_inside)");
+    ASSERT_NE(fn_pos, std::string::npos) << "mouseReleased implementation should exist.";
+
+    const std::string phase_snapshot = "const InteractionPhase phase_before_release = computeInteractionPhase();";
     const std::string drag_end_call = "behavior->onDragEnd(*this, current, is_inside);";
-    const std::string state_release_call = "if (state_) state_->onMouseReleased(is_inside);";
+    const std::string inside_transition = "transitionTo(InteractionPhase::Hovered);";
+    const std::string outside_transition = "transitionTo(InteractionPhase::Normal);";
+    const std::string clicked_call = "clicked();";
     const std::string behavior_release_call = "behavior->onReleased(*this, is_inside);";
-    const std::string click_guard = "if (is_inside)";
+    const std::string click_guard = "if (is_inside && phase_before_release == InteractionPhase::Pressed)";
     const std::string click_call = "behavior->onClick(*this);";
 
-    const auto drag_pos = source.find(drag_end_call);
-    const auto state_pos = source.find(state_release_call);
-    const auto release_pos = source.find(behavior_release_call);
-    const auto guard_pos = source.find(click_guard);
-    const auto click_pos = source.find(click_call);
+    const auto phase_pos = source.find(phase_snapshot, fn_pos);
+    const auto drag_pos = source.find(drag_end_call, fn_pos);
+    const auto inside_transition_pos = source.find(inside_transition, fn_pos);
+    const auto outside_transition_pos = source.find(outside_transition, fn_pos);
+    const auto clicked_pos = source.find(clicked_call, fn_pos);
+    const auto release_pos = source.find(behavior_release_call, fn_pos);
+    const auto guard_pos = source.find(click_guard, fn_pos);
+    const auto click_pos = source.find(click_call, fn_pos);
 
+    ASSERT_NE(phase_pos, std::string::npos) << "mouseReleased should snapshot phase before state changes.";
     ASSERT_NE(drag_pos, std::string::npos) << "mouseReleased should dispatch drag end to behaviors.";
-    ASSERT_NE(state_pos, std::string::npos) << "mouseReleased should dispatch state onMouseReleased.";
+    ASSERT_NE(inside_transition_pos, std::string::npos)
+        << "mouseReleased inside should transition to hovered when releasing from pressed.";
+    ASSERT_NE(outside_transition_pos, std::string::npos)
+        << "mouseReleased outside should transition to normal when releasing from pressed.";
+    ASSERT_NE(clicked_pos, std::string::npos) << "mouseReleased inside should call clicked callback.";
     ASSERT_NE(release_pos, std::string::npos) << "mouseReleased should dispatch behavior onReleased.";
     ASSERT_NE(guard_pos, std::string::npos) << "mouseReleased should guard click by inside check.";
     ASSERT_NE(click_pos, std::string::npos) << "mouseReleased should dispatch click to behaviors.";
 
-    EXPECT_LT(drag_pos, state_pos)
-        << "Drag end should be dispatched before state release handling.";
-    EXPECT_LT(state_pos, release_pos)
-        << "State release handling should occur before behavior onReleased dispatch.";
+    EXPECT_LT(phase_pos, drag_pos)
+        << "Phase snapshot should happen before drag end/callback pipeline.";
+    EXPECT_LT(drag_pos, inside_transition_pos)
+        << "Drag end should be dispatched before transition/click handling.";
+    EXPECT_LT(inside_transition_pos, clicked_pos)
+        << "Inside transition should happen before clicked callback.";
+    EXPECT_LT(clicked_pos, release_pos)
+        << "clicked callback should happen before behavior onReleased dispatch.";
     EXPECT_LT(release_pos, guard_pos)
         << "Behavior onReleased should occur before inside click dispatch.";
     EXPECT_LT(guard_pos, click_pos)
         << "Inside guard should appear before behavior click dispatch.";
+}
+
+TEST(UIInteractionStateSourceTest, MouseEventsDrivePhaseDirectlyWithoutStateDispatchContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::mouseEnter()"), std::string::npos)
+        << "mouseEnter handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mouseExit()"), std::string::npos)
+        << "mouseExit handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mousePressed()"), std::string::npos)
+        << "mousePressed handler should exist.";
+    EXPECT_NE(source.find("void UIInteractive::mouseReleased(bool is_inside)"), std::string::npos)
+        << "mouseReleased handler should exist.";
+
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Hovered);"), std::string::npos)
+        << "mouseEnter/mouseReleased should drive hovered transition directly.";
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Pressed);"), std::string::npos)
+        << "mousePressed should drive pressed transition directly.";
+    EXPECT_NE(source.find("transitionTo(InteractionPhase::Normal);"), std::string::npos)
+        << "mouseExit/mouseReleased should drive normal transition directly.";
+
+    EXPECT_EQ(source.find("state_->onMouseEnter()"), std::string::npos)
+        << "mouseEnter should not dispatch via legacy state handlers after UIR-030.";
+    EXPECT_EQ(source.find("state_->onMouseExit()"), std::string::npos)
+        << "mouseExit should not dispatch via legacy state handlers after UIR-030.";
+    EXPECT_EQ(source.find("state_->onMousePressed()"), std::string::npos)
+        << "mousePressed should not dispatch via legacy state handlers after UIR-030.";
+    EXPECT_EQ(source.find("state_->onMouseReleased(is_inside)"), std::string::npos)
+        << "mouseReleased should not dispatch via legacy state handlers after UIR-030.";
 }
 
 TEST(UIInteractionStateSourceTest, ClearMouseStateCancelsPressedCaptureContractIsPresent) {
@@ -189,7 +240,7 @@ TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent
         << "setInteractive should refresh interaction phase.";
 }
 
-TEST(UIInteractionStateSourceTest, TransitionToDeferredAndHoverSoundContractIsPresent) {
+TEST(UIInteractionStateSourceTest, TransitionToImmediateAndHoverSoundContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -201,8 +252,10 @@ TEST(UIInteractionStateSourceTest, TransitionToDeferredAndHoverSoundContractIsPr
         << "UIInteractive should provide transitionTo() for phase transitions.";
     EXPECT_NE(source.find("playSoundEvent(UI_SOUND_EVENT_HOVER_ID);"), std::string::npos)
         << "transitionTo should keep hover sound on Normal->Hovered transition.";
-    EXPECT_NE(source.find("setNextState(std::move(next));"), std::string::npos)
-        << "transitionTo should remain deferred at UIR-021 (setNextState).";
+    EXPECT_NE(source.find("setState(std::move(next));"), std::string::npos)
+        << "transitionTo should apply state immediately at UIR-030.";
+    EXPECT_EQ(source.find("setNextState(std::move(next));"), std::string::npos)
+        << "transitionTo should no longer queue deferred transition at UIR-030.";
     EXPECT_NE(source.find("makeLegacyStateForPhase(this, target_phase)"), std::string::npos)
         << "transitionTo should centralize legacy state object selection by phase.";
 }

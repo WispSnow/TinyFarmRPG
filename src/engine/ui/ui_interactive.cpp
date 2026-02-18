@@ -105,7 +105,7 @@ void UIInteractive::transitionTo(InteractionPhase target_phase)
         return;
     }
 
-    // 与旧实现保持一致：进入 Hover 的音效在迁移请求时触发，不等待下帧。
+    // 与旧实现保持一致：进入 Hover 的音效在迁移请求时触发。
     if (source_phase == InteractionPhase::Normal && target_phase == InteractionPhase::Hovered) {
         playSoundEvent(UI_SOUND_EVENT_HOVER_ID);
     }
@@ -123,7 +123,8 @@ void UIInteractive::transitionTo(InteractionPhase target_phase)
     spdlog::trace("UIInteractive transition requested: {} -> {}",
                   toString(source_phase),
                   toString(target_phase));
-    setNextState(std::move(next));
+    // UIR-030: 迁移时序从“下一帧 update()”切换为“事件回调内立即生效”。
+    setState(std::move(next));
 }
 
 void UIInteractive::applyPhaseEnterEffects(InteractionPhase phase)
@@ -382,8 +383,9 @@ void UIInteractive::renderSelf(engine::core::Context &context)
 void UIInteractive::mouseEnter()
 {
     if (!interactive_) return;
-    // 委托给状态处理
-    if (state_) state_->onMouseEnter();
+    if (computeInteractionPhase() == InteractionPhase::Normal) {
+        transitionTo(InteractionPhase::Hovered);
+    }
     for (auto& behavior : behaviors_) {
         if (behavior) {
             behavior->onHoverEnter(*this);
@@ -394,7 +396,9 @@ void UIInteractive::mouseEnter()
 void UIInteractive::mouseExit()
 {
     if (!interactive_) return;
-    if (state_) state_->onMouseExit();
+    if (computeInteractionPhase() == InteractionPhase::Hovered) {
+        transitionTo(InteractionPhase::Normal);
+    }
     for (auto& behavior : behaviors_) {
         if (behavior) {
             behavior->onHoverExit(*this);
@@ -405,9 +409,12 @@ void UIInteractive::mouseExit()
 void UIInteractive::mousePressed()
 {
     if (!interactive_) return;
+    const InteractionPhase phase_before_press = computeInteractionPhase();
     is_pressed_ = true;
     last_mouse_pos_ = context_.getInputManager().getLogicalMousePosition();
-    if (state_) state_->onMousePressed();
+    if (phase_before_press == InteractionPhase::Normal || phase_before_press == InteractionPhase::Hovered) {
+        transitionTo(InteractionPhase::Pressed);
+    }
     for (auto& behavior : behaviors_) {
         if (behavior) {
             behavior->onPressed(*this);
@@ -419,6 +426,7 @@ void UIInteractive::mousePressed()
 void UIInteractive::mouseReleased(bool is_inside)
 {
     if (!interactive_) return;
+    const InteractionPhase phase_before_release = computeInteractionPhase();
     const glm::vec2 current = context_.getInputManager().getLogicalMousePosition();
     for (auto& behavior : behaviors_) {
         if (behavior) {
@@ -427,13 +435,20 @@ void UIInteractive::mouseReleased(bool is_inside)
     }
     is_dragging_ = false;
     is_pressed_ = false;
-    if (state_) state_->onMouseReleased(is_inside);
+    if (phase_before_release == InteractionPhase::Pressed) {
+        if (is_inside) {
+            transitionTo(InteractionPhase::Hovered);
+            clicked();
+        } else {
+            transitionTo(InteractionPhase::Normal);
+        }
+    }
     for (auto& behavior : behaviors_) {
         if (behavior) {
             behavior->onReleased(*this, is_inside);
         }
     }
-    if (is_inside) {
+    if (is_inside && phase_before_release == InteractionPhase::Pressed) {
         for (auto& behavior : behaviors_) {
             if (behavior) {
                 behavior->onClick(*this);

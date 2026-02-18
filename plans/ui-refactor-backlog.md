@@ -136,15 +136,21 @@
 
 ## Iteration 3：切换主路径并移除 `state/` 目录
 
-### UIR-030（P0）`mouse*` 事件改为直接驱动 `InteractionPhase`
+### UIR-030（P0）`mouse*` 事件改为直接驱动 `InteractionPhase`（已完成：代码+自动化）
 - 目标：让类状态机退场，事件路径扁平化。
 - 主要改动：
-  - `UIInteractive::mouseEnter/Exit/Pressed/Released` 直接调用 `transitionTo()`
-  - 保留短期兼容开关（必要时可快速回退）
-  - 显式切换时序语义：从 `setNextState -> update()` 的“延迟到下一帧生效”改为事件回调中的“立即生效”
+  - `UIInteractive::mouseEnter/Exit/Pressed/Released` 改为基于 `InteractionPhase` 直接驱动迁移，不再走 `state_->onMouse*` 分发
+  - `UIInteractive::transitionTo()` 从 `setNextState()` 切换为 `setState()`，迁移在事件回调内立即生效
+  - `mouseReleased()` 内联 Pressed release 语义（inside -> Hovered + `clicked()`；outside -> Normal），并保持 `onReleased/onClick` 行为分发
+  - 同步更新源码契约测试：
+    - 新增 mouse 事件“直接驱动 phase”契约
+    - `transitionTo` 契约从 deferred 改为 immediate
+    - 更新 release 回调顺序契约
+  - 运行时测试断言同步为“事件内立即生效”时序
 - 验收标准：
   - 功能无回退，且无额外内存分配状态对象
   - 文档记录并验证时序变化对外部行为的影响（尤其点击、hover 音效、drag begin/end）
+  - `ctest --test-dir build --output-on-failure -j4` 通过（运行时测试在无 SDL video 的环境下为 `GTEST_SKIP`，不影响结果）
 
 ### UIR-031（P0）删除 `UIState` 遗留实现
 - 目标：完成架构收口。
