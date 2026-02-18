@@ -45,7 +45,7 @@ public:
     void showLabel(bool show);
     void setLabelText(std::string_view text); // 手动设置文本
 
-    void setFillType(ProgressBarFillType type) { fill_type_ = type; updateFillVisual(); }
+    void setFillType(ProgressBarFillType type);
     
 protected:
     void onLayout() override;

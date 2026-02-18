@@ -1,4 +1,5 @@
 #include "ui_grid_layout.h"
+#include <algorithm>
 #include <glm/geometric.hpp>
 
 namespace engine::ui {
@@ -35,7 +36,9 @@ void UIGridLayout::onLayout() {
     const bool use_fixed_cell = cell_size_.x > 0.0f && cell_size_.y > 0.0f;
     
     int current_col = 0;
-    int current_row = 0;
+    float cursor_x = start_offset.x;
+    float cursor_y = start_offset.y;
+    float row_max_height = 0.0f;
 
     for (auto& child : children_) {
         if (use_fixed_cell) {
@@ -46,23 +49,25 @@ void UIGridLayout::onLayout() {
 
         if (!child->isVisible()) continue;
 
-        // 确定当前子元素大小（优先使用固定 Cell Size）
+        // 固定 cell 优先；否则使用 intrinsic requested size。最终定位采用逐项流式排布。
         glm::vec2 size = use_fixed_cell ? cell_size_ : child->getRequestedSize();
+        size.x = std::max(0.0f, size.x);
+        size.y = std::max(0.0f, size.y);
 
-        // 计算位置
-        float x = start_offset.x + current_col * (size.x + spacing_.x);
-        float y = start_offset.y + current_row * (size.y + spacing_.y);
-
-        glm::vec2 new_pos = {x, y};
+        glm::vec2 new_pos = {cursor_x, cursor_y};
         if (glm::distance(child->getPosition(), new_pos) > 0.001f) {
             child->setPosition(new_pos);
         }
 
-        // 更新行列索引
+        row_max_height = std::max(row_max_height, size.y);
         current_col++;
         if (current_col >= column_count_) {
             current_col = 0;
-            current_row++;
+            cursor_x = start_offset.x;
+            cursor_y += row_max_height + spacing_.y;
+            row_max_height = 0.0f;
+        } else {
+            cursor_x += size.x + spacing_.x;
         }
     }
 }

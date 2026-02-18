@@ -33,7 +33,9 @@ set(TEST_SOURCES
     engine/ui/ui_preset_manager_invalid_input_test.cpp
     engine/ui/ui_preset_manager_debug_api_test.cpp
     engine/ui/ui_interaction_state_source_test.cpp
+    engine/ui/ui_layout_source_test.cpp
     engine/ui/ui_interaction_runtime_test.cpp
+    engine/ui/ui_layout_invalidation_test.cpp
     engine/ui/ui_stack_layout_test.cpp
     engine/ui/ui_grid_layout_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
