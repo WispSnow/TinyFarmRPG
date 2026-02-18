@@ -46,7 +46,8 @@
 
 ### 3.2 尺寸计算规则
 - 若元素无父节点（根节点）：
-  - `layout_size = requested_size`
+  - 若存在 `layout_override_size`：`layout_size = override_size`
+  - 否则：`layout_size = requested_size`
   - `layout_position = position`
   - 注意：根节点路径不会调用 `onLayout()`。
 - 若元素有父节点：

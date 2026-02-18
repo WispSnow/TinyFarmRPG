@@ -41,6 +41,7 @@ void UIGridLayout::onLayout() {
     float row_max_height = 0.0f;
 
     for (auto& child : children_) {
+        // 对可见/不可见子项都统一维护 override，避免可见性切换后状态不一致。
         if (use_fixed_cell) {
             child->setLayoutOverrideSize(cell_size_);
         } else {
