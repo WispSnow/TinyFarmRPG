@@ -43,6 +43,14 @@ TEST(UIGridLayoutTest, FixedCellSizeAndSpacingDriveChildPositions) {
     expectVec2Near(first_ptr->getPosition(), 0.0F, 0.0F);
     expectVec2Near(second_ptr->getPosition(), 22.0F, 0.0F);
     expectVec2Near(third_ptr->getPosition(), 0.0F, 13.0F);
+
+    // UIL-010 contract: fixed cell uses layout override, requested size must stay unchanged.
+    expectVec2Near(first_ptr->getRequestedSize(), 5.0F, 4.0F);
+    expectVec2Near(second_ptr->getRequestedSize(), 7.0F, 8.0F);
+    expectVec2Near(third_ptr->getRequestedSize(), 11.0F, 12.0F);
+    expectVec2Near(first_ptr->getLayoutSize(), 20.0F, 10.0F);
+    expectVec2Near(second_ptr->getLayoutSize(), 20.0F, 10.0F);
+    expectVec2Near(third_ptr->getLayoutSize(), 20.0F, 10.0F);
 }
 
 TEST(UIGridLayoutTest, InvisibleChildrenDoNotConsumeGridSlots) {
@@ -96,6 +104,30 @@ TEST(UIGridLayoutTest, RejectsNonPositiveColumnCountAndKeepsPreviousValue) {
     // Default column_count_ is 5. If setColumnCount(0) is ignored, the 6th child starts a new row.
     expectVec2Near(children[4]->getPosition(), 40.0F, 0.0F);
     expectVec2Near(children[5]->getPosition(), 0.0F, 10.0F);
+}
+
+TEST(UIGridLayoutTest, ClearingFixedCellFallsBackToIntrinsicRequestedSize) {
+    UIElement root({0.0F, 0.0F}, {400.0F, 300.0F});
+    auto layout = std::make_unique<UIGridLayout>(glm::vec2{0.0F, 0.0F}, glm::vec2{80.0F, 60.0F});
+    layout->setColumnCount(1);
+    layout->setSpacing({0.0F, 0.0F});
+    layout->setCellSize({20.0F, 10.0F});
+
+    auto child = std::make_unique<UIElement>(glm::vec2{0.0F, 0.0F}, glm::vec2{7.0F, 9.0F});
+    UIElement* child_ptr = child.get();
+    layout->addChild(std::move(child));
+
+    UIGridLayout* layout_ptr = layout.get();
+    root.addChild(std::move(layout));
+
+    layout_ptr->forceLayout();
+    expectVec2Near(child_ptr->getLayoutSize(), 20.0F, 10.0F);
+    expectVec2Near(child_ptr->getRequestedSize(), 7.0F, 9.0F);
+
+    layout_ptr->setCellSize({0.0F, 0.0F});
+    layout_ptr->forceLayout();
+    expectVec2Near(child_ptr->getLayoutSize(), 7.0F, 9.0F);
+    expectVec2Near(child_ptr->getRequestedSize(), 7.0F, 9.0F);
 }
 
 } // namespace engine::ui

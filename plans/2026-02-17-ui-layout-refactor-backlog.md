@@ -55,7 +55,7 @@
   - 至少覆盖 6 个核心断言场景
   - 在无图形环境下可稳定执行
 
-### UIL-002（P0）冻结布局语义文档
+### UIL-002（P0）冻结布局语义文档（已完成）
 - 目标：明确 `requested size` 与 `layout size` 的契约。
 - 主要改动：
   - 新增 `docs/ui/layout-contract.md`
@@ -69,7 +69,7 @@
 
 ## Iteration 1：先修当前布局实现中的高风险不一致
 
-### UIL-010（P0）消除 `UIGridLayout::onLayout()` 的尺寸副作用
+### UIL-010（P0）消除 `UIGridLayout::onLayout()` 的尺寸副作用（已完成）
 - 目标：避免布局阶段写入子节点请求尺寸导致链式脏化。
 - 主要改动：
   - 在 `UIElement` 引入布局期覆盖尺寸（建议字段：`layout_override_size_`）
@@ -168,8 +168,8 @@
 |---|---|---|---|---|
 | UIL-000 | 建立布局行为清单（已完成） | P0 | 0.5d | - |
 | UIL-001 | 补首批布局自动化测试（已完成） | P0 | 1d | UIL-000 |
-| UIL-002 | 冻结布局语义文档 | P0 | 0.5d | UIL-000 |
-| UIL-010 | 消除 Grid 尺寸副作用 | P0 | 1d | UIL-001, UIL-002 |
+| UIL-002 | 冻结布局语义文档（已完成） | P0 | 0.5d | UIL-000 |
+| UIL-010 | 消除 Grid 尺寸副作用（已完成） | P0 | 1d | UIL-001, UIL-002 |
 | UIL-011 | Stack 使用一致尺寸语义 | P0 | 1d | UIL-001, UIL-002 |
 | UIL-012 | 增加跨场景布局断言 | P1 | 1d | UIL-001 |
 | UIL-020 | 完善 layout_override_size 管线 | P0 | 1d | UIL-010 |
