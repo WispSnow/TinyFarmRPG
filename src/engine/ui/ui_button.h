@@ -55,14 +55,12 @@ private:
         Fixed = 0,
         ScaleToFit
     };
-    static std::optional<UIButtonVisualState> fromStateId(entt::id_type state_id);
 
     std::function<void()> click_callback_{};
     std::function<void()> hover_enter_callback_{};
     std::function<void()> hover_leave_callback_{};
 
     entt::id_type preset_id_{entt::null};
-    UIButtonVisualState current_visual_state_{UIButtonVisualState::Normal};
 
     TextLayoutMode text_layout_mode_{TextLayoutMode::Fixed};
     Thickness text_padding_{};
@@ -93,7 +91,6 @@ public:
     ~UIButton() override = default;
 
     void update(float delta_time, engine::core::Context& context) override;
-    void applyStateVisual(entt::id_type state_id) override;
 
     void setLabelText(std::string text);
     [[nodiscard]] std::string_view getLabelText() const { return label_text_; }

@@ -157,6 +157,41 @@ TEST(UIInteractionStateSourceTest, UIButtonNoLongerReliesOnLegacyVirtualCallback
         << "UIButton should remove hover_leave() implementation after UIR-042.";
 }
 
+TEST(UIInteractionStateSourceTest, UIButtonVisualStateUsesInteractionPhaseAsSingleSourceContractIsPresent) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    const std::string header_source = readTextFile(header_path);
+    ASSERT_FALSE(header_source.empty());
+
+    EXPECT_EQ(header_source.find("UIButtonVisualState current_visual_state_"), std::string::npos)
+        << "UIButton should not store duplicated current visual state after UIR-050.";
+    EXPECT_EQ(header_source.find("fromStateId("), std::string::npos)
+        << "UIButton should remove legacy state-id to visual-state mapping API after UIR-050.";
+    EXPECT_EQ(header_source.find("void applyStateVisual(entt::id_type state_id) override;"), std::string::npos)
+        << "UIButton should no longer override applyStateVisual for local visual state sync after UIR-050.";
+
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("[[nodiscard]] UIButtonVisualState mapVisualState(InteractionPhase phase)"), std::string::npos)
+        << "UIButton should map InteractionPhase to visual state at render time.";
+    EXPECT_NE(source.find("const InteractionPhase phase = getInteractionPhase();"), std::string::npos)
+        << "UIButton render path should read interaction phase as single source of truth.";
+    EXPECT_NE(source.find("resolvePresetImageForState(*skin, phase)"), std::string::npos)
+        << "UIButton image resolve should be phase-driven.";
+    EXPECT_NE(source.find("resolvePresetLabelVisual(skin, getInteractionPhase())"), std::string::npos)
+        << "UIButton label visual resolve should be phase-driven.";
+
+    EXPECT_EQ(source.find("void UIButton::applyStateVisual(entt::id_type state_id)"), std::string::npos)
+        << "UIButton should remove legacy applyStateVisual override implementation after UIR-050.";
+    EXPECT_EQ(source.find("std::optional<UIButtonVisualState> UIButton::fromStateId"), std::string::npos)
+        << "UIButton should remove legacy fromStateId implementation after UIR-050.";
+}
+
 TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
