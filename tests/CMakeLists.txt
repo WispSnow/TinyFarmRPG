@@ -99,6 +99,7 @@ set(GAME_TEST_SOURCES
     game/item_use_system_test.cpp
     game/map_loading_settings_test.cpp
     game/world_state_test.cpp
+    game/ui_layout_integration_test.cpp
 )
 
 if(ENABLE_DEBUG_UI)
