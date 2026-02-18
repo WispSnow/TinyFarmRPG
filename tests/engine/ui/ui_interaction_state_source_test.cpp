@@ -72,6 +72,41 @@ TEST(UIInteractionStateSourceTest, UIInteractiveBusinessVirtualCallbacksRemovedC
         << "UIInteractive should not call legacy hover_leave() virtual callback after UIR-042.";
 }
 
+TEST(UIInteractionStateSourceTest, UIElementFindInteractiveAtAvoidsRttiContractIsPresent) {
+    const std::filesystem::path element_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_element.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(element_header_path)) << element_header_path;
+    const std::string element_header = readTextFile(element_header_path);
+    ASSERT_FALSE(element_header.empty());
+
+    EXPECT_NE(element_header.find("virtual UIInteractive* asInteractive() { return nullptr; }"), std::string::npos)
+        << "UIElement should provide a non-RTTI interactive downcast hook.";
+    EXPECT_NE(element_header.find("virtual const UIInteractive* asInteractive() const { return nullptr; }"), std::string::npos)
+        << "UIElement should provide const interactive downcast hook.";
+
+    const std::filesystem::path interactive_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(interactive_header_path)) << interactive_header_path;
+    const std::string interactive_header = readTextFile(interactive_header_path);
+    ASSERT_FALSE(interactive_header.empty());
+
+    EXPECT_NE(interactive_header.find("UIInteractive* asInteractive() override { return this; }"), std::string::npos)
+        << "UIInteractive should override asInteractive() for direct cast-free dispatch.";
+    EXPECT_NE(interactive_header.find("const UIInteractive* asInteractive() const override { return this; }"), std::string::npos)
+        << "UIInteractive should override const asInteractive() for direct cast-free dispatch.";
+
+    const std::filesystem::path element_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_element.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(element_source_path)) << element_source_path;
+    const std::string element_source = readTextFile(element_source_path);
+    ASSERT_FALSE(element_source.empty());
+
+    EXPECT_NE(element_source.find("const UIInteractive* interactive = asInteractive();"), std::string::npos)
+        << "findInteractiveAt should query interactive pointer via asInteractive().";
+    EXPECT_EQ(element_source.find("dynamic_cast<const UIInteractive*>(this)"), std::string::npos)
+        << "findInteractiveAt should avoid RTTI dynamic_cast after UIR-051.";
+}
+
 TEST(UIInteractionStateSourceTest, InteractionBehaviorStateChangedHookContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/behavior/interaction_behavior.h").lexically_normal();

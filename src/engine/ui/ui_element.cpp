@@ -195,7 +195,7 @@ const UIInteractive* UIElement::findInteractiveAt(const glm::vec2& point) const 
     }
 
     // 只有UIInteractive才能被交互，其它类型跳过检查
-    const auto* interactive = dynamic_cast<const UIInteractive*>(this);
+    const UIInteractive* interactive = asInteractive();
     if (interactive && interactive->isInteractive() && isPointInside(point)) {
         return interactive;
     }
