@@ -168,7 +168,8 @@ void UIInteractive::setEnabled(bool enabled)
         }
 
         // 若处于按下链路，先走 release(false) 收敛回调，再进入禁用态。
-        if (interactive_ && is_pressed_) {
+        // 必须在 interactive_ = false 之前调用，否则 mouseReleased 会被 early return 短路。
+        if (is_pressed_) {
             mouseReleased(false);
         }
 
