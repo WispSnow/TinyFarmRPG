@@ -23,7 +23,23 @@ namespace {
     return image.getTextureId() != entt::null || !image.getTexturePath().empty();
 }
 
-[[nodiscard]] const engine::render::Image* resolvePresetImageForState(const UIButtonSkin& skin, UIButtonVisualState state) {
+[[nodiscard]] UIButtonVisualState mapVisualState(InteractionPhase phase) {
+    switch (phase) {
+        case InteractionPhase::Normal:
+            return UIButtonVisualState::Normal;
+        case InteractionPhase::Hovered:
+            return UIButtonVisualState::Hover;
+        case InteractionPhase::Pressed:
+            return UIButtonVisualState::Pressed;
+        case InteractionPhase::Disabled:
+            return UIButtonVisualState::Disabled;
+        default:
+            return UIButtonVisualState::Normal;
+    }
+}
+
+[[nodiscard]] const engine::render::Image* resolvePresetImageForState(const UIButtonSkin& skin, InteractionPhase phase) {
+    const UIButtonVisualState state = mapVisualState(phase);
     auto getImage = [](const std::optional<engine::render::Image>& image) -> const engine::render::Image* {
         if (image && isValidPresetImage(*image)) {
             return &*image;
@@ -61,7 +77,8 @@ struct ResolvedLabelVisual {
     glm::vec2 offset{0.0f, 0.0f};
 };
 
-[[nodiscard]] ResolvedLabelVisual resolvePresetLabelVisual(const UIButtonSkin& skin, UIButtonVisualState state) {
+[[nodiscard]] ResolvedLabelVisual resolvePresetLabelVisual(const UIButtonSkin& skin, InteractionPhase phase) {
+    const UIButtonVisualState state = mapVisualState(phase);
     ResolvedLabelVisual result{};
     if (!skin.normal_label) {
         return result;
@@ -231,7 +248,6 @@ bool UIButton::initFromPreset(entt::id_type preset_id) {
     }
 
     refreshBaseTextSize();
-    applyStateVisual(UI_IMAGE_NORMAL_ID);
     return true;
 }
 
@@ -277,12 +293,6 @@ void UIButton::invokeHoverLeaveCallback() {
 void UIButton::update(float delta_time, engine::core::Context& context) {
     UIInteractive::update(delta_time, context);
     refreshBaseTextSizeIfNeeded();
-}
-
-void UIButton::applyStateVisual(entt::id_type state_id) {
-    if (const auto state = fromStateId(state_id)) {
-        current_visual_state_ = *state;
-    }
 }
 
 void UIButton::setLabelText(std::string text) {
@@ -356,14 +366,6 @@ void UIButton::refreshBaseTextSize() {
     base_text_size_ = text_renderer.getTextSize(label_text_, label_font_id_, label_font_size_, label.font_path, &layout);
 }
 
-std::optional<UIButtonVisualState> UIButton::fromStateId(entt::id_type state_id) {
-    if (state_id == UI_IMAGE_NORMAL_ID) return UIButtonVisualState::Normal;
-    if (state_id == UI_IMAGE_HOVER_ID) return UIButtonVisualState::Hover;
-    if (state_id == UI_IMAGE_PRESSED_ID) return UIButtonVisualState::Pressed;
-    if (state_id == UI_IMAGE_DISABLED_ID) return UIButtonVisualState::Disabled;
-    return std::nullopt;
-}
-
 void UIButton::renderSelf(engine::core::Context& context) {
     const glm::vec2 size = getLayoutSize();
     if (size.x <= 0.0f || size.y <= 0.0f) {
@@ -375,7 +377,8 @@ void UIButton::renderSelf(engine::core::Context& context) {
         return;
     }
 
-    const auto* image_to_draw = resolvePresetImageForState(*skin, current_visual_state_);
+    const InteractionPhase phase = getInteractionPhase();
+    const auto* image_to_draw = resolvePresetImageForState(*skin, phase);
     if (!image_to_draw) {
         return;
     }
@@ -396,7 +399,7 @@ void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& s
     const auto default_style = text_renderer.getDefaultUIStyleId();
     const auto base_glyph_scale = text_renderer.getTextStyle(default_style).layout.glyph_scale;
 
-    const auto visual = resolvePresetLabelVisual(skin, current_visual_state_);
+    const auto visual = resolvePresetLabelVisual(skin, getInteractionPhase());
     engine::utils::TextRenderOverrides overrides{};
     overrides.color = visual.color;
 

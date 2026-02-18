@@ -229,13 +229,22 @@
 
 ## Iteration 5：状态与视觉模型收口 + 低风险优化（仍属于交互域）
 
-### UIR-050（P1）收敛 `UIButtonVisualState` 与通用交互状态
+### UIR-050（P1）收敛 `UIButtonVisualState` 与通用交互状态（已完成：代码+自动化）
 - 目标：消除按钮的双重状态来源。
 - 主要改动：
-  - 明确 `Disabled` 的统一来源（建议由 `InteractionPhase` 主导）
-  - `UIButton` 仅保留必要视觉映射层
+  - `UIButton` 去除本地状态真相：
+    - 删除 `current_visual_state_`
+    - 删除 `fromStateId` 与 `applyStateVisual` 覆写路径
+  - 渲染阶段按需映射：
+    - 基于 `getInteractionPhase()` 映射到 `UIButtonVisualState`
+    - 图片与文本视觉均改为 phase 驱动
+  - 保留 `UIButtonVisualState` 作为“视觉映射层”，不再作为独立状态存储
+  - 增补源码契约测试：
+    - 断言 `UIButton` 不再存储重复视觉状态
+    - 断言渲染路径使用 `InteractionPhase` 作为单一来源
 - 验收标准：
   - `UIButton` 不再维护重复状态真相
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-051（P2）命中测试去 RTTI 热点
 - 目标：降低 `findInteractiveAt()` 递归命中成本。
