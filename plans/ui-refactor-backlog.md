@@ -201,7 +201,7 @@
   - `UIButton` 构造路径绑定行为桥接：
     - click：`ClickBehavior`
     - hover：`onStateChanged`（`Normal -> Hovered` / `Hovered -> Normal`）
-  - `clicked()/hover_enter()/hover_leave()` 保留兼容入口，并在 behavior 桥接启用时短路，避免重复分发
+  - `clicked()/hover_enter()/hover_leave()` 在本步保留兼容入口并短路避免重复分发（后续已于 `UIR-042` 移除）
   - 增补源码契约测试：
     - `UIButton` 回调桥接已接入 behavior
     - 兼容虚回调入口仍保留
@@ -209,12 +209,21 @@
   - `UIButton` 外部 API 不破坏
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-042（P2）移除 `UIInteractive` 业务型虚回调
+### UIR-042（P2）移除 `UIInteractive` 业务型虚回调（已完成：代码+自动化）
 - 目标：交互层只保留状态与事件分发，不承载业务行为接口。
 - 主要改动：
-  - 删除或废弃 `clicked()/hover_enter()/hover_leave()`
+  - 从 `UIInteractive` 移除业务虚回调与调用点：
+    - 删除 `clicked()/hover_enter()/hover_leave()` 声明
+    - 删除交互主路径中的 `clicked()/hover_enter()/hover_leave()` 调用
+  - `UIButton` 完成最终收口：
+    - 删除兼容虚回调重载与兼容标记字段
+    - click/hover 回调完全由 behavior 负责（hover 进入条件统一为“进入 Hovered phase”）
+  - 更新自动化：
+    - 运行时测试从“虚回调计数”迁移为“behavior + phase 迁移计数”
+    - 源码契约测试新增 `UIInteractive` 业务虚回调移除断言、`UIButton` 兼容路径移除断言
 - 验收标准：
   - 全部调用方迁移完成
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ---
 

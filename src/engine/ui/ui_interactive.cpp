@@ -70,11 +70,6 @@ void UIInteractive::transitionTo(InteractionPhase target_phase)
     if (source_phase == InteractionPhase::Normal && target_phase == InteractionPhase::Hovered) {
         playSoundEvent(UI_SOUND_EVENT_HOVER_ID);
     }
-    // 与旧实现保持一致：离开 Hover 时回调在迁移请求时触发。
-    if (source_phase == InteractionPhase::Hovered && target_phase == InteractionPhase::Normal) {
-        hover_leave();
-    }
-
     spdlog::trace("UIInteractive transition requested: {} -> {}",
                   toString(source_phase),
                   toString(target_phase));
@@ -92,7 +87,6 @@ void UIInteractive::applyPhaseEnterEffects(InteractionPhase phase)
             break;
         case InteractionPhase::Hovered:
             applyStateVisual(UI_IMAGE_HOVER_ID);
-            hover_enter();
             spdlog::trace("切换到悬停状态");
             break;
         case InteractionPhase::Pressed:
@@ -387,7 +381,6 @@ void UIInteractive::mouseReleased(bool is_inside)
     if (phase_before_release == InteractionPhase::Pressed) {
         if (is_inside) {
             transitionTo(InteractionPhase::Hovered);
-            clicked();
         } else {
             transitionTo(InteractionPhase::Normal);
         }

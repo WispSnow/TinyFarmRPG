@@ -44,6 +44,34 @@ TEST(UIInteractionStateSourceTest, InteractionPhaseEnumAndGetterContractIsPresen
         << "UIInteractive should expose read-only interaction phase query.";
 }
 
+TEST(UIInteractionStateSourceTest, UIInteractiveBusinessVirtualCallbacksRemovedContractIsPresent) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    const std::string header_source = readTextFile(header_path);
+    ASSERT_FALSE(header_source.empty());
+
+    EXPECT_EQ(header_source.find("virtual void clicked()"), std::string::npos)
+        << "UIInteractive should remove business clicked() virtual callback after UIR-042.";
+    EXPECT_EQ(header_source.find("virtual void hover_enter()"), std::string::npos)
+        << "UIInteractive should remove business hover_enter() virtual callback after UIR-042.";
+    EXPECT_EQ(header_source.find("virtual void hover_leave()"), std::string::npos)
+        << "UIInteractive should remove business hover_leave() virtual callback after UIR-042.";
+
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_EQ(source.find("clicked();"), std::string::npos)
+        << "UIInteractive should not call legacy clicked() virtual callback after UIR-042.";
+    EXPECT_EQ(source.find("hover_enter();"), std::string::npos)
+        << "UIInteractive should not call legacy hover_enter() virtual callback after UIR-042.";
+    EXPECT_EQ(source.find("hover_leave();"), std::string::npos)
+        << "UIInteractive should not call legacy hover_leave() virtual callback after UIR-042.";
+}
+
 TEST(UIInteractionStateSourceTest, InteractionBehaviorStateChangedHookContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/behavior/interaction_behavior.h").lexically_normal();
@@ -92,13 +120,13 @@ TEST(UIInteractionStateSourceTest, UIButtonCreateBindsClickAndHoverCallbacksViaB
         << "UIButton should bind hover callbacks through behavior layer.";
     EXPECT_NE(source.find("void onStateChanged(UIInteractive& owner, InteractionPhase old_phase, InteractionPhase new_phase) override"), std::string::npos)
         << "UIButton hover behavior should use onStateChanged hook.";
-    EXPECT_NE(source.find("old_phase == InteractionPhase::Normal && new_phase == InteractionPhase::Hovered"), std::string::npos)
-        << "UIButton hover enter callback should be mapped from Normal->Hovered transition.";
+    EXPECT_NE(source.find("new_phase == InteractionPhase::Hovered && old_phase != InteractionPhase::Hovered"), std::string::npos)
+        << "UIButton hover enter callback should be mapped from any transition into hovered phase.";
     EXPECT_NE(source.find("old_phase == InteractionPhase::Hovered && new_phase == InteractionPhase::Normal"), std::string::npos)
         << "UIButton hover leave callback should be mapped from Hovered->Normal transition.";
 }
 
-TEST(UIInteractionStateSourceTest, UIButtonLegacyVirtualCallbacksRemainAsCompatibilityContractIsPresent) {
+TEST(UIInteractionStateSourceTest, UIButtonNoLongerReliesOnLegacyVirtualCallbacksContractIsPresent) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.h").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
@@ -106,12 +134,14 @@ TEST(UIInteractionStateSourceTest, UIButtonLegacyVirtualCallbacksRemainAsCompati
     const std::string header_source = readTextFile(header_path);
     ASSERT_FALSE(header_source.empty());
 
-    EXPECT_NE(header_source.find("void clicked() override;"), std::string::npos)
-        << "UIButton should keep clicked() override for compatibility window.";
-    EXPECT_NE(header_source.find("void hover_enter() override;"), std::string::npos)
-        << "UIButton should keep hover_enter() override for compatibility window.";
-    EXPECT_NE(header_source.find("void hover_leave() override;"), std::string::npos)
-        << "UIButton should keep hover_leave() override for compatibility window.";
+    EXPECT_EQ(header_source.find("void clicked() override;"), std::string::npos)
+        << "UIButton should remove clicked() override after UIR-042.";
+    EXPECT_EQ(header_source.find("void hover_enter() override;"), std::string::npos)
+        << "UIButton should remove hover_enter() override after UIR-042.";
+    EXPECT_EQ(header_source.find("void hover_leave() override;"), std::string::npos)
+        << "UIButton should remove hover_leave() override after UIR-042.";
+    EXPECT_EQ(header_source.find("callbacks_bound_to_behaviors_"), std::string::npos)
+        << "UIButton should drop compatibility guard flag once legacy virtual callbacks are removed.";
 
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.cpp").lexically_normal();
@@ -119,8 +149,12 @@ TEST(UIInteractionStateSourceTest, UIButtonLegacyVirtualCallbacksRemainAsCompati
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("if (callbacks_bound_to_behaviors_)"), std::string::npos)
-        << "Legacy virtual callback entry should guard against duplicate dispatch when behavior bridge is active.";
+    EXPECT_EQ(source.find("void UIButton::clicked()"), std::string::npos)
+        << "UIButton should remove clicked() implementation after UIR-042.";
+    EXPECT_EQ(source.find("void UIButton::hover_enter()"), std::string::npos)
+        << "UIButton should remove hover_enter() implementation after UIR-042.";
+    EXPECT_EQ(source.find("void UIButton::hover_leave()"), std::string::npos)
+        << "UIButton should remove hover_leave() implementation after UIR-042.";
 }
 
 TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
@@ -173,8 +207,8 @@ TEST(UIInteractionStateSourceTest, TransitionToImmediateAndHoverSoundContractIsP
         << "UIInteractive should provide transitionTo() for phase transitions.";
     EXPECT_NE(source.find("playSoundEvent(UI_SOUND_EVENT_HOVER_ID);"), std::string::npos)
         << "transitionTo should keep hover sound on Normal->Hovered transition.";
-    EXPECT_NE(source.find("hover_leave();"), std::string::npos)
-        << "transitionTo should keep hover_leave callback on Hovered->Normal transition request.";
+    EXPECT_EQ(source.find("hover_leave();"), std::string::npos)
+        << "transitionTo should not dispatch legacy hover_leave virtual callbacks after UIR-042.";
     EXPECT_NE(source.find("interaction_phase_ = target_phase;"), std::string::npos)
         << "transitionTo should mutate phase directly at UIR-031.";
     EXPECT_NE(source.find("applyPhaseEnterEffects(interaction_phase_);"), std::string::npos)
@@ -236,7 +270,6 @@ TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) 
     const std::string drag_end_call = "behavior->onDragEnd(*this, current, is_inside);";
     const std::string inside_transition = "transitionTo(InteractionPhase::Hovered);";
     const std::string outside_transition = "transitionTo(InteractionPhase::Normal);";
-    const std::string clicked_call = "clicked();";
     const std::string behavior_release_call = "behavior->onReleased(*this, is_inside);";
     const std::string click_guard = "if (is_inside && phase_before_release == InteractionPhase::Pressed)";
     const std::string click_call = "behavior->onClick(*this);";
@@ -245,7 +278,6 @@ TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) 
     const auto drag_pos = source.find(drag_end_call, fn_pos);
     const auto inside_transition_pos = source.find(inside_transition, fn_pos);
     const auto outside_transition_pos = source.find(outside_transition, fn_pos);
-    const auto clicked_pos = source.find(clicked_call, fn_pos);
     const auto release_pos = source.find(behavior_release_call, fn_pos);
     const auto guard_pos = source.find(click_guard, fn_pos);
     const auto click_pos = source.find(click_call, fn_pos);
@@ -256,19 +288,18 @@ TEST(UIInteractionStateSourceTest, MouseReleasedDispatchOrderContractIsPresent) 
         << "mouseReleased inside should transition to hovered when releasing from pressed.";
     ASSERT_NE(outside_transition_pos, std::string::npos)
         << "mouseReleased outside should transition to normal when releasing from pressed.";
-    ASSERT_NE(clicked_pos, std::string::npos) << "mouseReleased inside should call clicked callback.";
     ASSERT_NE(release_pos, std::string::npos) << "mouseReleased should dispatch behavior onReleased.";
     ASSERT_NE(guard_pos, std::string::npos) << "mouseReleased should guard click by inside check.";
     ASSERT_NE(click_pos, std::string::npos) << "mouseReleased should dispatch click to behaviors.";
+    EXPECT_EQ(source.find("clicked();", fn_pos), std::string::npos)
+        << "mouseReleased should not dispatch legacy clicked() callback after UIR-042.";
 
     EXPECT_LT(phase_pos, drag_pos)
         << "Phase snapshot should happen before drag end/callback pipeline.";
     EXPECT_LT(drag_pos, inside_transition_pos)
         << "Drag end should be dispatched before transition/click handling.";
-    EXPECT_LT(inside_transition_pos, clicked_pos)
-        << "Inside transition should happen before clicked callback.";
-    EXPECT_LT(clicked_pos, release_pos)
-        << "clicked callback should happen before behavior onReleased dispatch.";
+    EXPECT_LT(inside_transition_pos, release_pos)
+        << "Inside transition should happen before behavior onReleased dispatch.";
     EXPECT_LT(release_pos, guard_pos)
         << "Behavior onReleased should occur before inside click dispatch.";
     EXPECT_LT(guard_pos, click_pos)

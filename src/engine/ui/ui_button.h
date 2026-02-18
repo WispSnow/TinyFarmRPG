@@ -60,7 +60,6 @@ private:
     std::function<void()> click_callback_{};
     std::function<void()> hover_enter_callback_{};
     std::function<void()> hover_leave_callback_{};
-    bool callbacks_bound_to_behaviors_{false};
 
     entt::id_type preset_id_{entt::null};
     UIButtonVisualState current_visual_state_{UIButtonVisualState::Normal};
@@ -95,11 +94,6 @@ public:
 
     void update(float delta_time, engine::core::Context& context) override;
     void applyStateVisual(entt::id_type state_id) override;
-
-    // Compatibility entry points kept for UIR-042 migration window.
-    void clicked() override;
-    void hover_enter() override;
-    void hover_leave() override;
 
     void setLabelText(std::string text);
     [[nodiscard]] std::string_view getLabelText() const { return label_text_; }

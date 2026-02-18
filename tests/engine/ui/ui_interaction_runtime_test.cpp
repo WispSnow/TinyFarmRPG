@@ -33,9 +33,6 @@ namespace engine::ui {
 namespace {
 
 struct RuntimeProbe {
-    int clicked_count{0};
-    int hover_enter_count{0};
-    int hover_leave_count{0};
     int destroyed_count{0};
     std::vector<entt::id_type> visual_states{};
 
@@ -46,6 +43,8 @@ struct RuntimeProbe {
     int behavior_click_count{0};
     int behavior_drag_begin_count{0};
     int behavior_drag_end_count{0};
+    int state_hover_enter_count{0};
+    int state_hover_leave_count{0};
     int click_behavior_click_count{0};
     bool last_release_inside{true};
     bool last_drag_end_inside{true};
@@ -87,6 +86,12 @@ public:
     }
 
     void onStateChanged(UIInteractive&, InteractionPhase old_phase, InteractionPhase new_phase) override {
+        if (new_phase == InteractionPhase::Hovered && old_phase != InteractionPhase::Hovered) {
+            ++probe_->state_hover_enter_count;
+        }
+        if (old_phase == InteractionPhase::Hovered && new_phase == InteractionPhase::Normal) {
+            ++probe_->state_hover_leave_count;
+        }
         probe_->phase_transitions.emplace_back(old_phase, new_phase);
     }
 
@@ -106,18 +111,6 @@ public:
         if (probe_) {
             ++probe_->destroyed_count;
         }
-    }
-
-    void clicked() override {
-        ++probe_->clicked_count;
-    }
-
-    void hover_enter() override {
-        ++probe_->hover_enter_count;
-    }
-
-    void hover_leave() override {
-        ++probe_->hover_leave_count;
     }
 
     void applyStateVisual(entt::id_type state_id) override {
@@ -315,7 +308,7 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
 
     element.mouseEnter();
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
-    EXPECT_EQ(probe->hover_enter_count, 1);
+    EXPECT_EQ(probe->state_hover_enter_count, 1);
     EXPECT_EQ(probe->behavior_hover_enter_count, 1);
 
     element.mousePressed();
@@ -325,18 +318,17 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
 
     element.mouseReleased(true);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
-    EXPECT_EQ(probe->clicked_count, 1);
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_TRUE(probe->last_release_inside);
     EXPECT_EQ(probe->behavior_click_count, 1);
     EXPECT_EQ(probe->click_behavior_click_count, 1);
     EXPECT_EQ(probe->behavior_drag_end_count, 1);
     EXPECT_TRUE(probe->last_drag_end_inside);
-    EXPECT_EQ(probe->hover_enter_count, 2);
+    EXPECT_EQ(probe->state_hover_enter_count, 2);
 
     element.mouseExit();
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
-    EXPECT_EQ(probe->hover_leave_count, 1);
+    EXPECT_EQ(probe->state_hover_leave_count, 1);
     EXPECT_EQ(probe->behavior_hover_exit_count, 1);
 
     ASSERT_EQ(probe->phase_transitions.size(), 4);
@@ -353,17 +345,25 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
 TEST_F(UIInteractionRuntimeTest, NormalPressPathSkipsHoverEnterUntilReleaseInside) {
     auto probe = std::make_shared<RuntimeProbe>();
     TestInteractive element(*context_, probe, {0.0F, 0.0F}, {80.0F, 40.0F});
+    element.addBehavior(std::make_unique<ProbeBehavior>(probe));
+
+    auto click_behavior = std::make_unique<ClickBehavior>();
+    click_behavior->setOnClick([probe](UIInteractive&) {
+        ++probe->click_behavior_click_count;
+    });
+    element.addBehavior(std::move(click_behavior));
 
     element.mousePressed();
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
-    EXPECT_EQ(probe->hover_enter_count, 0);
+    EXPECT_EQ(probe->state_hover_enter_count, 0);
 
     // UIR-010 expected behavior:
-    // Normal -> Pressed path does not go through Hovered enter callback.
+    // Normal -> Pressed path does not go through Hovered enter callback in the press frame.
     element.mouseReleased(true);
-    EXPECT_EQ(probe->clicked_count, 1);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
-    EXPECT_EQ(probe->hover_enter_count, 1);
+    EXPECT_EQ(probe->state_hover_enter_count, 1);
+    EXPECT_EQ(probe->behavior_click_count, 1);
+    EXPECT_EQ(probe->click_behavior_click_count, 1);
 }
 
 TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurtherInput) {
@@ -377,7 +377,6 @@ TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurth
     element.setEnabled(false);
     EXPECT_FALSE(element.isInteractive());
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Disabled);
-    EXPECT_EQ(probe->clicked_count, 0);
     EXPECT_EQ(probe->behavior_click_count, 0);
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_FALSE(probe->last_release_inside);
@@ -389,7 +388,7 @@ TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurth
     element.mouseReleased(true);
     EXPECT_EQ(probe->behavior_pressed_count, 1);
     EXPECT_EQ(probe->behavior_released_count, 1);
-    EXPECT_EQ(probe->clicked_count, 0);
+    EXPECT_EQ(probe->behavior_click_count, 0);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Disabled);
 
     element.setEnabled(true);
@@ -400,10 +399,11 @@ TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurth
 TEST_F(UIInteractionRuntimeTest, EnableToggleFromHoveredConvergesAndCanHoverAgain) {
     auto probe = std::make_shared<RuntimeProbe>();
     TestInteractive element(*context_, probe, {0.0F, 0.0F}, {80.0F, 40.0F});
+    element.addBehavior(std::make_unique<ProbeBehavior>(probe));
 
     element.mouseEnter();
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
-    EXPECT_EQ(probe->hover_enter_count, 1);
+    EXPECT_EQ(probe->state_hover_enter_count, 1);
 
     element.setEnabled(false);
     EXPECT_FALSE(element.isInteractive());
@@ -415,7 +415,7 @@ TEST_F(UIInteractionRuntimeTest, EnableToggleFromHoveredConvergesAndCanHoverAgai
 
     element.mouseEnter();
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
-    EXPECT_EQ(probe->hover_enter_count, 2);
+    EXPECT_EQ(probe->state_hover_enter_count, 2);
 }
 
 TEST_F(UIInteractionRuntimeTest, UIManagerClearElementsCancelsPressedCaptureWithoutClick) {
@@ -439,7 +439,6 @@ TEST_F(UIInteractionRuntimeTest, UIManagerClearElementsCancelsPressedCaptureWith
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_FALSE(probe->last_release_inside);
     EXPECT_EQ(probe->behavior_click_count, 0);
-    EXPECT_EQ(probe->clicked_count, 0);
     EXPECT_EQ(probe->destroyed_count, 1);
 }
 
