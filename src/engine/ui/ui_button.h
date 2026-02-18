@@ -60,6 +60,7 @@ private:
     std::function<void()> click_callback_{};
     std::function<void()> hover_enter_callback_{};
     std::function<void()> hover_leave_callback_{};
+    bool callbacks_bound_to_behaviors_{false};
 
     entt::id_type preset_id_{entt::null};
     UIButtonVisualState current_visual_state_{UIButtonVisualState::Normal};
@@ -95,9 +96,10 @@ public:
     void update(float delta_time, engine::core::Context& context) override;
     void applyStateVisual(entt::id_type state_id) override;
 
-    void clicked() override { if (click_callback_) click_callback_(); }
-    void hover_enter() override { if (hover_enter_callback_) hover_enter_callback_(); }
-    void hover_leave() override { if (hover_leave_callback_) hover_leave_callback_(); }
+    // Compatibility entry points kept for UIR-042 migration window.
+    void clicked() override;
+    void hover_enter() override;
+    void hover_leave() override;
 
     void setLabelText(std::string text);
     [[nodiscard]] std::string_view getLabelText() const { return label_text_; }
@@ -120,10 +122,13 @@ private:
              std::function<void()> hover_leave_callback);
 
     [[nodiscard]] bool initFromPreset(entt::id_type preset_id);
+    void bindCallbacksToBehaviors();
+    void invokeClickCallback();
+    void invokeHoverEnterCallback();
+    void invokeHoverLeaveCallback();
 
     void refreshBaseTextSize();
     void refreshBaseTextSizeIfNeeded();
 };
 
 } // namespace engine::ui
-
