@@ -121,4 +121,26 @@ TEST(UIStackLayoutTest, AutoResizeUpdatesMainAxisSizeUsingVisibleChildrenOnly) {
     expectVec2Near(second_ptr->getPosition(), 0.0F, 12.0F);
 }
 
+TEST(UIStackLayoutTest, MainAxisStretchUsesLayoutSizeForAlignment) {
+    UIElement root({0.0F, 0.0F}, {400.0F, 300.0F});
+    auto layout = std::make_unique<UIStackLayout>(glm::vec2{0.0F, 0.0F}, glm::vec2{200.0F, 40.0F});
+    layout->setOrientation(Orientation::Horizontal);
+    layout->setContentAlignment(Alignment::Center);
+
+    auto stretched = std::make_unique<UIElement>(glm::vec2{0.0F, 0.0F}, glm::vec2{10.0F, 10.0F});
+    stretched->setAnchor({0.0F, 0.0F}, {1.0F, 0.0F});
+    UIElement* stretched_ptr = stretched.get();
+
+    layout->addChild(std::move(stretched));
+
+    UIStackLayout* layout_ptr = layout.get();
+    root.addChild(std::move(layout));
+    layout_ptr->forceLayout();
+
+    // With layout-size semantics, centered offset is zero because child stretches to full main-axis length.
+    // Current UIElement contract couples axes in stretch mode: if one axis stretches, both axes take available size.
+    expectVec2Near(stretched_ptr->getLayoutSize(), 200.0F, 0.0F);
+    expectVec2Near(stretched_ptr->getPosition(), 0.0F, 0.0F);
+}
+
 } // namespace engine::ui
