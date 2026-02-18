@@ -4,10 +4,12 @@
 #include "behavior/interaction_behavior.h"
 #include "engine/render/image.h"   // 需要引入头文件而不是前置声明（map容器创建时可能会检查内部元素是否有析构定义）
 #include <entt/core/hashed_string.hpp>
+#include <cstdint>
 #include <unordered_map>
 #include <memory>
 #include <entt/entity/fwd.hpp>
 #include <glm/vec2.hpp>
+#include <string_view>
 #include <vector>
 
 namespace engine::core {
@@ -23,6 +25,13 @@ inline constexpr entt::id_type UI_IMAGE_DISABLED_ID = entt::hashed_string{"disab
 
 inline constexpr entt::id_type UI_SOUND_EVENT_HOVER_ID = UI_IMAGE_HOVER_ID;
 inline constexpr entt::id_type UI_SOUND_EVENT_CLICK_ID = entt::hashed_string{"click"}.value();
+
+enum class InteractionPhase : std::uint8_t {
+    Normal = 0,
+    Hovered,
+    Pressed,
+    Disabled
+};
 
 /**
  * @brief 可交互UI元素的基类,继承自UIElement
@@ -44,6 +53,7 @@ protected:
     bool is_pressed_{false};
     bool is_dragging_{false};
     glm::vec2 last_mouse_pos_{0.0f, 0.0f};
+    InteractionPhase interaction_phase_{InteractionPhase::Normal};
 
 public:
     UIInteractive(engine::core::Context& context, glm::vec2 position = {0.0f, 0.0f}, glm::vec2 size = {0.0f, 0.0f});
@@ -77,7 +87,7 @@ public:
     void setNextState(std::unique_ptr<engine::ui::state::UIState> state);   ///< @brief 设置下一个状态
     engine::ui::state::UIState* getState() const { return state_.get(); }   ///< @brief 获取当前状态
 
-    void setInteractive(bool interactive) { interactive_ = interactive; }   ///< @brief 设置是否可交互
+    void setInteractive(bool interactive);                                   ///< @brief 设置是否可交互
     void setEnabled(bool enabled);                                           ///< @brief 统一启用/禁用语义（交互+视觉+按下态清理）
     bool isInteractive() const { return interactive_; }                     ///< @brief 获取是否可交互
 
@@ -91,6 +101,7 @@ public:
     bool isHovered() const { return state_ && state_->isHovered(); }        ///< @brief 查询是否处于悬停状态
     bool isPressed() const { return state_ && state_->isPressed(); }        ///< @brief 查询是否处于按下状态
     bool isDragging() const { return is_dragging_; }                        ///< @brief 查询是否处于拖拽状态
+    InteractionPhase getInteractionPhase() const { return interaction_phase_; }  ///< @brief 查询当前交互阶段（并行模型）
 
     void mouseEnter();                                                      ///< @brief 鼠标进入
     void mouseExit();                                                       ///< @brief 鼠标离开
@@ -101,6 +112,10 @@ public:
     void update(float delta_time, engine::core::Context& context) override;
 protected:
     void renderSelf(engine::core::Context& context) override;
+
+private:
+    InteractionPhase computeInteractionPhase() const;
+    void refreshInteractionPhase(std::string_view reason);
 };
 
 } // namespace engine::ui

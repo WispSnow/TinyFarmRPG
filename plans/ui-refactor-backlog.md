@@ -95,13 +95,14 @@
 
 ## Iteration 2：并行引入新状态内核（不删旧实现）
 
-### UIR-020（P0）在 `UIInteractive` 引入 `InteractionPhase`
+### UIR-020（P0）在 `UIInteractive` 引入 `InteractionPhase`（已完成：代码+自动化）
 - 目标：建立未来主状态模型，但不立即切流量。
 - 主要改动：
   - 增加 `enum class InteractionPhase { Normal, Hovered, Pressed, Disabled }`
   - 增加只读查询与调试日志（phase 变化可观测）
 - 验收标准：
   - 不改变现有行为，编译与回归通过
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-021（P0）新增 `transitionTo()` 并让旧状态类委托到它
 - 目标：先合并状态副作用逻辑（视觉/音效/回调）到一处。

@@ -147,6 +147,48 @@ TEST(UIInteractionStateSourceTest, SetEnabledUnifiedSemanticsContractIsPresent) 
         << "setEnabled should normalize interaction state when toggling enabled flag.";
 }
 
+TEST(UIInteractionStateSourceTest, InteractionPhaseEnumAndGetterContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("enum class InteractionPhase : std::uint8_t"), std::string::npos)
+        << "UIInteractive should define a typed InteractionPhase enum.";
+    EXPECT_NE(source.find("Normal"), std::string::npos)
+        << "InteractionPhase should include Normal.";
+    EXPECT_NE(source.find("Hovered"), std::string::npos)
+        << "InteractionPhase should include Hovered.";
+    EXPECT_NE(source.find("Pressed"), std::string::npos)
+        << "InteractionPhase should include Pressed.";
+    EXPECT_NE(source.find("Disabled"), std::string::npos)
+        << "InteractionPhase should include Disabled.";
+    EXPECT_NE(source.find("InteractionPhase getInteractionPhase() const"), std::string::npos)
+        << "UIInteractive should expose read-only interaction phase query.";
+}
+
+TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("InteractionPhase UIInteractive::computeInteractionPhase() const"), std::string::npos)
+        << "UIInteractive should compute phase from current legacy state.";
+    EXPECT_NE(source.find("void UIInteractive::refreshInteractionPhase(std::string_view reason)"), std::string::npos)
+        << "UIInteractive should centralize phase refresh and debug tracing.";
+    EXPECT_NE(source.find("UIInteractive phase changed"), std::string::npos)
+        << "Phase refresh should emit trace logs on phase transition.";
+    EXPECT_NE(source.find("refreshInteractionPhase(\"setState\")"), std::string::npos)
+        << "setState should refresh interaction phase.";
+    EXPECT_NE(source.find("refreshInteractionPhase(\"setInteractive\")"), std::string::npos)
+        << "setInteractive should refresh interaction phase.";
+}
+
 } // namespace
 } // namespace engine::ui
 // NOLINTEND
