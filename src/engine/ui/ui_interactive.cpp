@@ -1,6 +1,8 @@
 #include "ui_interactive.h"
 #include "state/ui_state.h"
 #include "state/ui_normal_state.h"
+#include "state/ui_hover_state.h"
+#include "state/ui_pressed_state.h"
 #include "engine/core/context.h"
 #include "engine/render/renderer.h"
 #include "engine/resource/resource_manager.h"
@@ -41,6 +43,23 @@ namespace {
     }
 }
 
+[[nodiscard]] std::unique_ptr<engine::ui::state::UIState> makeLegacyStateForPhase(engine::ui::UIInteractive* owner,
+                                                                                    InteractionPhase phase) {
+    switch (phase) {
+        case InteractionPhase::Normal:
+            return std::make_unique<engine::ui::state::UINormalState>(owner);
+        case InteractionPhase::Hovered:
+            return std::make_unique<engine::ui::state::UIHoverState>(owner);
+        case InteractionPhase::Pressed:
+            return std::make_unique<engine::ui::state::UIPressedState>(owner);
+        case InteractionPhase::Disabled:
+            break;
+        default:
+            break;
+    }
+    return nullptr;
+}
+
 } // namespace
 
 UIInteractive::~UIInteractive() = default;
@@ -60,13 +79,77 @@ void UIInteractive::setState(std::unique_ptr<engine::ui::state::UIState> state)
     }
 
     state_ = std::move(state);
-    state_->enter();
     refreshInteractionPhase("setState");
+    applyPhaseEnterEffects(interaction_phase_);
+    state_->enter();
 }
 
 void UIInteractive::setNextState(std::unique_ptr<engine::ui::state::UIState> state)
 {
     next_state_ = std::move(state);
+}
+
+void UIInteractive::transitionTo(InteractionPhase target_phase)
+{
+    const InteractionPhase source_phase = computeInteractionPhase();
+    if (source_phase == target_phase) {
+        return;
+    }
+
+    if (target_phase == InteractionPhase::Disabled) {
+        setEnabled(false);
+        return;
+    }
+
+    if (!interactive_) {
+        return;
+    }
+
+    // 与旧实现保持一致：进入 Hover 的音效在迁移请求时触发，不等待下帧。
+    if (source_phase == InteractionPhase::Normal && target_phase == InteractionPhase::Hovered) {
+        playSoundEvent(UI_SOUND_EVENT_HOVER_ID);
+    }
+    // 与旧实现保持一致：离开 Hover 时回调在迁移请求时触发。
+    if (source_phase == InteractionPhase::Hovered && target_phase == InteractionPhase::Normal) {
+        hover_leave();
+    }
+
+    auto next = makeLegacyStateForPhase(this, target_phase);
+    if (!next) {
+        spdlog::warn("UIInteractive transition requested unsupported phase: {}", static_cast<int>(target_phase));
+        return;
+    }
+
+    spdlog::trace("UIInteractive transition requested: {} -> {}",
+                  toString(source_phase),
+                  toString(target_phase));
+    setNextState(std::move(next));
+}
+
+void UIInteractive::applyPhaseEnterEffects(InteractionPhase phase)
+{
+    switch (phase) {
+        case InteractionPhase::Normal:
+            applyStateVisual(UI_IMAGE_NORMAL_ID);
+            spdlog::trace("切换到正常状态");
+            break;
+        case InteractionPhase::Hovered:
+            applyStateVisual(UI_IMAGE_HOVER_ID);
+            hover_enter();
+            spdlog::trace("切换到悬停状态");
+            break;
+        case InteractionPhase::Pressed:
+            applyStateVisual(UI_IMAGE_PRESSED_ID);
+            playSoundEvent(UI_SOUND_EVENT_CLICK_ID);
+            spdlog::trace("切换到按下状态");
+            break;
+        case InteractionPhase::Disabled:
+            applyStateVisual(UI_IMAGE_DISABLED_ID);
+            spdlog::trace("切换到禁用状态");
+            break;
+        default:
+            break;
+    }
 }
 
 InteractionPhase UIInteractive::computeInteractionPhase() const

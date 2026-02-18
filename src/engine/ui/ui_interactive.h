@@ -83,6 +83,7 @@ public:
 
     // --- Getters and Setters ---
     engine::core::Context& getContext() const { return context_; }
+    void transitionTo(InteractionPhase target_phase);                          ///< @brief 请求状态迁移（当前仍为延迟生效）
     void setState(std::unique_ptr<engine::ui::state::UIState> state);       ///< @brief 设置当前状态
     void setNextState(std::unique_ptr<engine::ui::state::UIState> state);   ///< @brief 设置下一个状态
     engine::ui::state::UIState* getState() const { return state_.get(); }   ///< @brief 获取当前状态
@@ -114,6 +115,7 @@ protected:
     void renderSelf(engine::core::Context& context) override;
 
 private:
+    void applyPhaseEnterEffects(InteractionPhase phase);
     InteractionPhase computeInteractionPhase() const;
     void refreshInteractionPhase(std::string_view reason);
 };
