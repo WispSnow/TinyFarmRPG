@@ -34,14 +34,14 @@ TEST(UIInteractionStateSourceTest, PressedStateReleaseInsideOutsideContractIsPre
     // inside release -> hover + clicked
     EXPECT_NE(source.find("if (is_inside)"), std::string::npos)
         << "Pressed release should branch by inside/outside.";
-    EXPECT_NE(source.find("owner_->setNextState(std::make_unique<UIHoverState>(owner_));"), std::string::npos)
-        << "Pressed release inside should transition to hover.";
+    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
+        << "Pressed release inside should transition to hovered phase.";
     EXPECT_NE(source.find("owner_->clicked();"), std::string::npos)
         << "Pressed release inside should trigger clicked callback.";
 
     // outside release -> normal
-    EXPECT_NE(source.find("owner_->setNextState(std::make_unique<UINormalState>(owner_));"), std::string::npos)
-        << "Pressed release outside should transition back to normal.";
+    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
+        << "Pressed release outside should transition back to normal phase.";
 }
 
 TEST(UIInteractionStateSourceTest, NormalStatePressTransitionsToPressedContractIsPresent) {
@@ -54,8 +54,8 @@ TEST(UIInteractionStateSourceTest, NormalStatePressTransitionsToPressedContractI
 
     EXPECT_NE(source.find("void UINormalState::onMousePressed()"), std::string::npos)
         << "UINormalState should explicitly handle mouse press.";
-    EXPECT_NE(source.find("owner_->setNextState(std::make_unique<UIPressedState>(owner_));"), std::string::npos)
-        << "Normal state press should transition to pressed state.";
+    EXPECT_NE(source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
+        << "Normal state press should transition to pressed phase.";
 }
 
 // NOTE:
@@ -187,6 +187,60 @@ TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent
         << "setState should refresh interaction phase.";
     EXPECT_NE(source.find("refreshInteractionPhase(\"setInteractive\")"), std::string::npos)
         << "setInteractive should refresh interaction phase.";
+}
+
+TEST(UIInteractionStateSourceTest, TransitionToDeferredAndHoverSoundContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("void UIInteractive::transitionTo(InteractionPhase target_phase)"), std::string::npos)
+        << "UIInteractive should provide transitionTo() for phase transitions.";
+    EXPECT_NE(source.find("playSoundEvent(UI_SOUND_EVENT_HOVER_ID);"), std::string::npos)
+        << "transitionTo should keep hover sound on Normal->Hovered transition.";
+    EXPECT_NE(source.find("setNextState(std::move(next));"), std::string::npos)
+        << "transitionTo should remain deferred at UIR-021 (setNextState).";
+    EXPECT_NE(source.find("makeLegacyStateForPhase(this, target_phase)"), std::string::npos)
+        << "transitionTo should centralize legacy state object selection by phase.";
+}
+
+TEST(UIInteractionStateSourceTest, LegacyStateClassesDelegateToTransitionToContractIsPresent) {
+    const std::filesystem::path normal_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_normal_state.cpp").lexically_normal();
+    const std::filesystem::path hover_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_hover_state.cpp").lexically_normal();
+    const std::filesystem::path pressed_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/state/ui_pressed_state.cpp").lexically_normal();
+
+    ASSERT_TRUE(std::filesystem::exists(normal_path)) << normal_path;
+    ASSERT_TRUE(std::filesystem::exists(hover_path)) << hover_path;
+    ASSERT_TRUE(std::filesystem::exists(pressed_path)) << pressed_path;
+
+    const std::string normal_source = readTextFile(normal_path);
+    const std::string hover_source = readTextFile(hover_path);
+    const std::string pressed_source = readTextFile(pressed_path);
+
+    ASSERT_FALSE(normal_source.empty());
+    ASSERT_FALSE(hover_source.empty());
+    ASSERT_FALSE(pressed_source.empty());
+
+    EXPECT_NE(normal_source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
+        << "UINormalState mouse enter should delegate to transitionTo(Hovered).";
+    EXPECT_NE(normal_source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
+        << "UINormalState mouse press should delegate to transitionTo(Pressed).";
+
+    EXPECT_NE(hover_source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
+        << "UIHoverState mouse exit should delegate to transitionTo(Normal).";
+    EXPECT_NE(hover_source.find("owner_->transitionTo(InteractionPhase::Pressed);"), std::string::npos)
+        << "UIHoverState mouse press should delegate to transitionTo(Pressed).";
+
+    EXPECT_NE(pressed_source.find("owner_->transitionTo(InteractionPhase::Hovered);"), std::string::npos)
+        << "UIPressedState release inside should delegate to transitionTo(Hovered).";
+    EXPECT_NE(pressed_source.find("owner_->transitionTo(InteractionPhase::Normal);"), std::string::npos)
+        << "UIPressedState release outside should delegate to transitionTo(Normal).";
 }
 
 } // namespace

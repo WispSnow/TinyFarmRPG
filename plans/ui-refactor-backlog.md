@@ -104,7 +104,7 @@
   - 不改变现有行为，编译与回归通过
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-021（P0）新增 `transitionTo()` 并让旧状态类委托到它
+### UIR-021（P0）新增 `transitionTo()` 并让旧状态类委托到它（已完成：代码+自动化）
 - 目标：先合并状态副作用逻辑（视觉/音效/回调）到一处。
 - 主要改动：
   - `UIInteractive::transitionTo()` 承接状态进入副作用
@@ -114,6 +114,7 @@
   - 逻辑等价，回归不变
   - 新旧路径输出一致（可用 trace 校验）
   - `Normal -> Hovered` 迁移必须保留 hover 音效触发（与当前 `UINormalState::onMouseEnter()` 语义一致）
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-022（P1）补状态迁移测试
 - 目标：为“删除状态类”提供安全垫。
