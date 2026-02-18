@@ -32,7 +32,8 @@ flowchart LR
   SaveData -->|serialize| JSON["slotX.json"]
 
   %% Load path
-  JSON -->|deserialize| SaveData2["SaveData"]
+  JSON -->|migrateToLatest| Migrator["SaveMigrator\n(v2 -> v3)"]
+  Migrator -->|deserialize| SaveData2["SaveData"]
   SaveData2 -->|apply| SaveSvcLoad["SaveService"]
   SaveSvcLoad --> World
 
@@ -42,8 +43,10 @@ flowchart LR
 
 读图要点：
 - `SaveService`：流程层唯一入口（保存/加载），内部做 `capture/apply + 文件读写`。
+- `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v3`）。
 - `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节。
 - `MapManager::snapshotCurrentMap()`：把“当前地图的动态实体”写回持久层（否则存档可能漏掉当前地图状态）。
+- `schema v3` 预留字段：`quest_state`、`skill_state`、`appearance_state`、`combat_state`，当前默认写入 `{}` 作为后续系统扩展位。
 
 ## 3) 关键不变量：保存前必须 snapshot 当前地图
 
@@ -56,6 +59,7 @@ flowchart LR
 
 - 存档入口：`src/game/save/save_service.h`, `src/game/save/save_service.cpp`
 - 存档格式：`src/game/save/save_data.h`, `src/game/save/save_data.cpp`
+- 存档迁移：`src/game/save/save_migrator.h`, `src/game/save/save_migrator.cpp`
 - Slot 摘要读取：`src/game/save/save_slot_summary.h`, `src/game/save/save_slot_summary.cpp`
 - 流程场景：`src/game/scene/title_scene.cpp`, `src/game/scene/save_slot_select_scene.cpp`, `src/game/scene/pause_menu_scene.cpp`, `src/game/scene/game_scene.cpp`
 - 地图持久化：`src/game/world/map_manager.cpp`, `src/game/world/world_state.cpp`, `src/game/world/map_snapshot_serializer.cpp`
@@ -64,7 +68,7 @@ flowchart LR
 
 - 文件不存在 / 无法打开：检查 `saves/slotX.json` 路径与权限。
 - JSON 解析失败：文件损坏/半写入（可优先看 SaveService 是否使用临时文件替换）。
+- 存档迁移失败：检查 `schema_version` 与新增状态字段类型（应为 object）。
 - `schema_version` 不支持：新版本存档拒绝加载（避免误读导致更坏状态）。
 - 地图加载失败：`player.map_name` 不存在或 world 文件不包含对应地图。
-- UI 不同步：确认 `SaveService::apply` 是否触发了必要的 `InventorySyncRequest/HotbarSyncRequest/HotbarActivateRequest`。
-
+- UI 不同步：确认 `SaveService::apply` 是否触发了必要的 `InventorySyncCommand/HotbarSyncCommand/HotbarActivateCommand`。

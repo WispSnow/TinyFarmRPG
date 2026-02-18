@@ -127,6 +127,7 @@ target_sources(game PRIVATE
     game/domain/inventory_domain_service.cpp
     # Save
     game/save/save_data.cpp
+    game/save/save_migrator.cpp
     game/save/save_slot_summary.cpp
     game/save/save_service.cpp
     # Factory

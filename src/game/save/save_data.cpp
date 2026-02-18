@@ -12,6 +12,10 @@ constexpr std::string_view KEY_SCHEMA_VERSION = json_keys::SCHEMA_VERSION;
 constexpr std::string_view KEY_TIMESTAMP = json_keys::TIMESTAMP;
 constexpr std::string_view KEY_WORLD_FILE = json_keys::WORLD_FILE;
 constexpr std::string_view KEY_GAME_TIME = json_keys::GAME_TIME;
+constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
+constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
+constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
+constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
 constexpr std::string_view KEY_PLAYER = "player";
 constexpr std::string_view KEY_MAPS = "maps";
 
@@ -84,6 +88,17 @@ bool readVec2i(const nlohmann::json& json, Vec2i& out) {
     }
     out.x = json.value<int>(KEY_X.data(), 0);
     out.y = json.value<int>(KEY_Y.data(), 0);
+    return true;
+}
+
+bool readPlaceholderObject(const nlohmann::json& json, std::string_view key, std::string& out_error) {
+    if (!json.contains(key)) {
+        return true;
+    }
+    if (!json[key].is_object()) {
+        out_error = "SaveData: " + std::string(key) + " 不是 object";
+        return false;
+    }
     return true;
 }
 
@@ -178,6 +193,11 @@ nlohmann::json serialize(const SaveData& data) {
 
         root[KEY_MAPS].push_back(std::move(map_json));
     }
+
+    root[KEY_QUEST_STATE] = nlohmann::json::object();
+    root[KEY_SKILL_STATE] = nlohmann::json::object();
+    root[KEY_APPEARANCE_STATE] = nlohmann::json::object();
+    root[KEY_COMBAT_STATE] = nlohmann::json::object();
 
     return root;
 }
@@ -343,6 +363,19 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
 
             out.maps.push_back(std::move(map));
         }
+    }
+
+    if (!readPlaceholderObject(json, KEY_QUEST_STATE, out_error)) {
+        return false;
+    }
+    if (!readPlaceholderObject(json, KEY_SKILL_STATE, out_error)) {
+        return false;
+    }
+    if (!readPlaceholderObject(json, KEY_APPEARANCE_STATE, out_error)) {
+        return false;
+    }
+    if (!readPlaceholderObject(json, KEY_COMBAT_STATE, out_error)) {
+        return false;
     }
 
     return true;

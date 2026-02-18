@@ -1,5 +1,6 @@
 #include "save_service.h"
 
+#include "save_migrator.h"
 #include "game/world/map_snapshot_serializer.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
@@ -247,6 +248,12 @@ bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::stri
         in >> json;
     } catch (const std::exception& e) {
         out_error = std::string("解析存档 JSON 失败: ") + e.what();
+        return false;
+    }
+
+    std::string migrate_error;
+    if (!migrateToLatest(json, migrate_error)) {
+        out_error = "存档迁移失败: " + migrate_error;
         return false;
     }
 
