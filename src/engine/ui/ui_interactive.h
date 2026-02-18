@@ -56,10 +56,6 @@ public:
     UIInteractive(engine::core::Context& context, glm::vec2 position = {0.0f, 0.0f}, glm::vec2 size = {0.0f, 0.0f});
     ~UIInteractive() override;
 
-    virtual void clicked() {}       ///< @brief 如果有点击事件，则重写该方法
-    virtual void hover_enter() {}   ///< @brief 如果有悬停进入事件，则重写该方法
-    virtual void hover_leave() {}   ///< @brief 如果有悬停离开事件，则重写该方法
-
     void addImage(entt::id_type name_id, engine::render::Image image);      ///< @brief 添加/替换图片
     void setCurrentImage(entt::id_type name_id);                            ///< @brief 设置当前显示的图片
     virtual void applyStateVisual(entt::id_type state_id);                  ///< @brief 根据状态ID应用视觉效果

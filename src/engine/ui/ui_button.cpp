@@ -118,7 +118,7 @@ public:
     void setOnLeave(Callback cb) { on_leave_ = std::move(cb); }
 
     void onStateChanged(UIInteractive& owner, InteractionPhase old_phase, InteractionPhase new_phase) override {
-        if (old_phase == InteractionPhase::Normal && new_phase == InteractionPhase::Hovered) {
+        if (new_phase == InteractionPhase::Hovered && old_phase != InteractionPhase::Hovered) {
             if (on_enter_) {
                 on_enter_(owner);
             }
@@ -251,9 +251,8 @@ void UIButton::bindCallbacksToBehaviors() {
 
     const bool click_bound = addBehavior(std::move(click_behavior)) != nullptr;
     const bool hover_bound = addBehavior(std::move(hover_behavior)) != nullptr;
-    callbacks_bound_to_behaviors_ = click_bound && hover_bound;
-    if (!callbacks_bound_to_behaviors_) {
-        spdlog::warn("UIButton callback behaviors binding incomplete, fallback to legacy virtual callbacks.");
+    if (!(click_bound && hover_bound)) {
+        spdlog::warn("UIButton callback behaviors binding incomplete.");
     }
 }
 
@@ -273,27 +272,6 @@ void UIButton::invokeHoverLeaveCallback() {
     if (hover_leave_callback_) {
         hover_leave_callback_();
     }
-}
-
-void UIButton::clicked() {
-    if (callbacks_bound_to_behaviors_) {
-        return;
-    }
-    invokeClickCallback();
-}
-
-void UIButton::hover_enter() {
-    if (callbacks_bound_to_behaviors_) {
-        return;
-    }
-    invokeHoverEnterCallback();
-}
-
-void UIButton::hover_leave() {
-    if (callbacks_bound_to_behaviors_) {
-        return;
-    }
-    invokeHoverLeaveCallback();
 }
 
 void UIButton::update(float delta_time, engine::core::Context& context) {
