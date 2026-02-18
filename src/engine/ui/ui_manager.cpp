@@ -65,6 +65,8 @@ void UIManager::clearElements() {
 }
 
 void UIManager::update(float delta_time, engine::core::Context& context) {
+    UIElement::resetLayoutRecomputeCounter();
+
     // 只处理鼠标悬停（轮询鼠标位置）
     processMouseHover();
 
@@ -72,6 +74,9 @@ void UIManager::update(float delta_time, engine::core::Context& context) {
         // 从根元素开始向下更新
         root_element_->update(delta_time, context);
     }
+
+    spdlog::trace("UIManager::update layout_recompute_count={}",
+                  UIElement::consumeLayoutRecomputeCounter());
 }
 
 void UIManager::render(engine::core::Context& context) {

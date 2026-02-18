@@ -101,7 +101,7 @@
 
 ## Iteration 2：语义收敛与管线加固（不强推完整两阶段）
 
-### UIL-020（P0）完善 `layout_override_size_` 管线与调试能力
+### UIL-020（P0）完善 `layout_override_size_` 管线与调试能力（已完成）
 - 目标：把“父布局可覆盖子布局尺寸”做成稳定机制。
 - 主要改动：
   - 补充 override 清理/继承规则，避免跨帧残留
@@ -109,7 +109,7 @@
 - 验收标准：
   - 默认行为不变，且可定位 override 来源
 
-### UIL-021（P1）收敛 `UIStackLayout` 对子项尺寸读取策略
+### UIL-021（P1）收敛 `UIStackLayout` 对子项尺寸读取策略（已完成）
 - 目标：在 Stack 中统一“读哪一种尺寸”语义。
 - 主要改动：
   - 统一主轴总长计算与定位的尺寸来源（优先 layout 语义）
@@ -117,7 +117,7 @@
 - 验收标准：
   - 线性布局对齐结果可预测，测试可稳定复现
 
-### UIL-022（P1）收敛 `UIGridLayout` cell 语义与边界行为
+### UIL-022（P1）收敛 `UIGridLayout` cell 语义与边界行为（已完成）
 - 目标：明确 fixed cell 与 intrinsic size 的优先级，不留隐式行为。
 - 主要改动：
   - 明确 fixed cell 与 intrinsic cell 的优先级
@@ -125,7 +125,7 @@
 - 验收标准：
   - 网格类场景无重叠、无抖动、无尺寸回写副作用
 
-### UIL-023（P1）迁移依赖控件并删除过渡分支
+### UIL-023（P1）迁移依赖控件并删除过渡分支（已完成）
 - 目标：减少双路径维护成本。
 - 主要改动：
   - 适配 `UIProgressBar`、`UIItemSlot`、`UIDragPreview` 的布局依赖点
@@ -137,7 +137,7 @@
 
 ## Iteration 3：稳定性与性能收口
 
-### UIL-030（P1）优化脏标记传播与重复布局开销
+### UIL-030（P1）优化脏标记传播与重复布局开销（已完成）
 - 目标：减少无效 `invalidateLayout` 传播成本。
 - 主要改动：
   - 收敛“值未变化仍触发脏化”的路径
@@ -145,18 +145,19 @@
 - 验收标准：
   - 典型场景 layout 次数下降或不高于基线
 
-### UIL-031（P2）补充对齐能力（可选）
+### UIL-031（P2）补充对齐能力（可选，已完成）
 - 目标：补齐 `UIStackLayout` 交叉轴对齐能力（当前主要是 Start）。
 - 主要改动：
   - 增加 cross-axis `Start/Center/End`（保持向后兼容）
 - 验收标准：
   - 新增对齐模式测试通过，旧布局不回退
 
-### UIL-032（P2）评估完整 measure/arrange 原型（仅探索）
+### UIL-032（P2）评估完整 measure/arrange 原型（仅探索，已完成）
 - 目标：为未来复杂控件预研，不纳入当前主线交付。
 - 主要改动：
   - 输出设计草案：是否需要 bottom-up measure pass
   - 基于 1~2 个复杂示例评估收益/改造成本
+  - 决策记录：`plans/2026-02-18-ui-layout-measure-arrange-decision.md`（结论：保持当前方案）
 - 验收标准：
   - 形成决策记录（继续演进 or 保持当前方案）
 
@@ -172,13 +173,13 @@
 | UIL-010 | 消除 Grid 尺寸副作用（已完成） | P0 | 1d | UIL-001, UIL-002 |
 | UIL-011 | Stack 使用一致尺寸语义（已完成） | P0 | 1d | UIL-001, UIL-002 |
 | UIL-012 | 增加跨场景布局断言（已完成） | P1 | 1d | UIL-001 |
-| UIL-020 | 完善 layout_override_size 管线 | P0 | 1d | UIL-010 |
-| UIL-021 | Stack 尺寸读取策略收敛 | P1 | 1d | UIL-011, UIL-020 |
-| UIL-022 | Grid cell 语义与边界收敛 | P1 | 1d | UIL-020 |
-| UIL-023 | 迁移依赖控件并清理过渡 | P1 | 1d | UIL-021, UIL-022 |
-| UIL-030 | 优化脏标记与重复布局开销 | P1 | 1d | UIL-023 |
-| UIL-031 | 交叉轴对齐能力补齐（可选） | P2 | 1d | UIL-023 |
-| UIL-032 | 完整 measure/arrange 预研（可选） | P2 | 1d | UIL-023 |
+| UIL-020 | 完善 layout_override_size 管线（已完成） | P0 | 1d | UIL-010 |
+| UIL-021 | Stack 尺寸读取策略收敛（已完成） | P1 | 1d | UIL-011, UIL-020 |
+| UIL-022 | Grid cell 语义与边界收敛（已完成） | P1 | 1d | UIL-020 |
+| UIL-023 | 迁移依赖控件并清理过渡（已完成） | P1 | 1d | UIL-021, UIL-022 |
+| UIL-030 | 优化脏标记与重复布局开销（已完成） | P1 | 1d | UIL-023 |
+| UIL-031 | 交叉轴对齐能力补齐（可选，已完成） | P2 | 1d | UIL-023 |
+| UIL-032 | 完整 measure/arrange 预研（可选，已完成） | P2 | 1d | UIL-023 |
 
 ---
 

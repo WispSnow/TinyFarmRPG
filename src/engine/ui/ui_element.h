@@ -1,5 +1,6 @@
 #pragma once
 #include "engine/utils/math.h"
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -101,10 +102,10 @@ public:
     glm::vec2 getAnchorMax() const { return anchor_max_; }          ///< @brief 获取锚点最大值
     glm::vec2 getPivot() const { return pivot_; }                   ///< @brief 获取枢轴
 
-    void setSize(glm::vec2 size) { setSizeInternal(std::move(size)); }  ///< @brief 设置元素大小
+    void setSize(glm::vec2 size);                                    ///< @brief 设置元素大小
     void setVisible(bool visible) { visible_ = visible; }               ///< @brief 设置元素的可见性
     void setParent(UIElement* parent) { setParentInternal(parent); }    ///< @brief 设置父节点
-    void setPosition(glm::vec2 position) { position_ = std::move(position); invalidateLayout(); }   ///< @brief 设置元素位置(相对于父节点)
+    void setPosition(glm::vec2 position);                            ///< @brief 设置元素位置(相对于父节点)
     void setNeedRemove(bool need_remove) { need_remove_ = need_remove; }    ///< @brief 设置元素是否需要移除
     void setOrderIndex(int order_index);                                    ///< @brief 设置元素的排序索引
     void setId(entt::id_type id) { id_ = id; }                              ///< @brief 设置元素的ID
@@ -118,6 +119,8 @@ public:
     // --- 辅助方法 ---
     void sortChildrenByOrderIndex();                                ///< @brief 根据order_index_排序子元素
     bool isPointInside(const glm::vec2& point) const;               ///< @brief 检查给定点是否在元素的边界内
+    static void resetLayoutRecomputeCounter();                      ///< @brief 重置布局重算计数（调试）
+    static std::uint64_t consumeLayoutRecomputeCounter();           ///< @brief 读取并清零布局重算计数（调试）
 
     UIInteractive* findInteractiveAt(const glm::vec2& point);
     const UIInteractive* findInteractiveAt(const glm::vec2& point) const;

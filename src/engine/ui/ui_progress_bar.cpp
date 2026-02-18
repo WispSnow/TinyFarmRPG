@@ -7,6 +7,9 @@
 #include "engine/core/context.h"
 
 namespace engine::ui {
+namespace {
+constexpr float kAnchorEpsilon = 0.001F;
+}
 
 UIProgressBar::UIProgressBar(engine::core::Context& context, glm::vec2 position, glm::vec2 size)
     : UIElement(position, size) {
@@ -34,6 +37,8 @@ UIProgressBar::UIProgressBar(engine::core::Context& context, glm::vec2 position,
     label->setVisible(false);
     label_ = label.get();
     addChild(std::move(label));
+
+    updateFillVisual();
 }
 
 void UIProgressBar::setValue(float value) {
@@ -53,13 +58,16 @@ void UIProgressBar::setBackground(const engine::render::Image& image) {
 void UIProgressBar::setFill(const engine::render::Image& image) {
     if (fill_image_) {
         fill_image_->setImage(image);
-        updateFillVisual(); // 刷新一下
+        updateFillVisual();
     }
 }
 
 void UIProgressBar::showLabel(bool show) {
     if (label_) {
-        label_->setVisible(show);
+        if (label_->isVisible() != show) {
+            label_->setVisible(show);
+            invalidateLayout();
+        }
     }
 }
 
@@ -72,34 +80,49 @@ void UIProgressBar::setLabelText(std::string_view text) {
     }
 }
 
+void UIProgressBar::setFillType(ProgressBarFillType type) {
+    if (fill_type_ == type) {
+        return;
+    }
+    fill_type_ = type;
+    updateFillVisual();
+}
+
 void UIProgressBar::updateFillVisual() {
     if (!fill_image_) return;
 
-    // 修改 fill_image_ 的 Anchor 以调整大小
-    // 例如：LeftToRight, value=0.5 -> AnchorMax.x = 0.5
-    
+    glm::vec2 anchor_min{0.0f, 0.0f};
+    glm::vec2 anchor_max{1.0f, 1.0f};
+
     switch (fill_type_) {
         case ProgressBarFillType::LeftToRight:
-            fill_image_->setAnchor({0, 0}, {value_, 1});
+            anchor_min = {0.0f, 0.0f};
+            anchor_max = {value_, 1.0f};
             break;
         case ProgressBarFillType::RightToLeft:
-            fill_image_->setAnchor({1.0f - value_, 0}, {1, 1});
+            anchor_min = {1.0f - value_, 0.0f};
+            anchor_max = {1.0f, 1.0f};
             break;
         case ProgressBarFillType::BottomToTop:
-            fill_image_->setAnchor({0, 1.0f - value_}, {1, 1});
+            anchor_min = {0.0f, 1.0f - value_};
+            anchor_max = {1.0f, 1.0f};
             break;
         case ProgressBarFillType::TopToBottom:
-            fill_image_->setAnchor({0, 0}, {1, value_});
+            anchor_min = {0.0f, 0.0f};
+            anchor_max = {1.0f, value_};
             break;
         default:
             break;
     }
+
+    if (glm::distance(fill_image_->getAnchorMin(), anchor_min) <= kAnchorEpsilon &&
+        glm::distance(fill_image_->getAnchorMax(), anchor_max) <= kAnchorEpsilon) {
+        return;
+    }
+    fill_image_->setAnchor(anchor_min, anchor_max);
 }
 
 void UIProgressBar::onLayout() {
-    // 确保可更新
-    updateFillVisual();
-    
     // 居中标签
     if (label_ && label_->isVisible()) {
         glm::vec2 size = label_->getSize();

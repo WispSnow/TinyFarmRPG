@@ -38,8 +38,11 @@
   - `setSize`、`setPosition`、`setAnchor`、`setPadding`、`setMargin`
   - `addChild/removeChild/removeAllChildren`
   - `setParent`
+  - `setLayoutOverrideSize/clearLayoutOverrideSize`（仅当 override 值实际变化时）
 - `setPivot` 会脏化自己与后代（`invalidateLayout(true)`）。
+- 对 `setSize/setPosition/setAnchor/setPadding/setMargin`，若新值与旧值等价（epsilon 比较）则跳过脏化。
 - 布局为惰性计算：在 `update/render/getLayoutSize/getBounds/getScreenPosition/...` 中通过 `ensureLayout()` 触发。
+- 当元素 `setParent`（含 remove/reparent）时，会清理 `layout_override_size`，避免 fixed cell 覆盖残留到新容器。
 
 ### 3.2 尺寸计算规则
 - 若元素无父节点（根节点）：
@@ -69,6 +72,12 @@
 - `getSize()` 返回 `layout size`（不是 `requested size`）。
 - 需要“配置尺寸”时必须使用 `getRequestedSize()`。
 
+### 3.5 可观测性（Debug Trace）
+- `setLayoutOverrideSize(...)` 会输出 trace，记录 override 的 set/clear 以及旧值/新值。
+- `ensureLayout()` 会输出 trace，记录 `requested/layout/override` 三元组、最终位置与 stretch 判定。
+- `UIManager::update()` 会输出本轮 `layout_recompute_count`（调试计数器）。
+- 以上日志默认为 trace 级别，不改变运行时行为，仅用于排查布局链路。
+
 ## 4. padding / margin / anchor / pivot 优先级
 - 父节点 `padding` 先定义子节点可用布局区域（`content bounds`）。
 - 子节点 `anchor` 决定参考区域与是否 stretch。
@@ -87,28 +96,39 @@
 
 ### 6.1 UIStackLayout
 - 主轴长度统计使用 `child->getLayoutSize()`（最终布局尺寸语义）。
+- 若子项存在 `layout_override_size`，主轴统计直接使用 override 后的结果，不回退到 requested size。
+- stretch 子项与 override 子项混合时，仍按“当前布局结果的一次读取”参与对齐计算，不做二次协商。
 - 仅统计可见子项，`spacing` 也只在可见子项间生效。
 - `Alignment` 仅作用主轴（`Start/Center/End`）。
-- 交叉轴固定 `Start`（Vertical=Left，Horizontal=Top）。
+- 交叉轴支持 `Start/Center/End`（默认 `Start`），按子项 `layout size` 计算偏移。
 - 当内容总长度大于容器主轴可用空间时，Center/End 允许出现负偏移（不自动裁剪）。
 - `auto_resize=true` 时会更新容器自身 requested size（通过 `setSizeInternal`）。
-- 若检测到“主轴 stretch 子项”，会输出一次调试告警（提示完整伸缩协商仍待 `UIL-021` 收敛）。
 
 ### 6.2 UIGridLayout
 - 可见子项按行优先填充，隐藏子项不占格子。
 - `column_count <= 0` 的设置请求会被忽略，保留原值。
 - `cell_size` 同时大于 0 时使用固定 cell；否则使用子项 requested size。
 - 固定 cell 模式通过 `setLayoutOverrideSize(cell_size)` 生效，不会修改子项 requested size。
+- intrinsic 模式使用逐项流式排布：主轴按“前一项宽度 + spacing”推进，换行使用该行最大高度 + `spacing.y`。
+- 当前实现不对超出容器边界的子项坐标做裁剪（位置可为容器外）。
 
 ## 7. 已知偏差与后续任务
-- 偏差 A：`UIStackLayout` 对主轴 stretch 子项的处理仍是兼容实现，完整协商语义待 `UIL-021` 继续收敛。
-- 偏差 B：部分控件在 `onLayout()` 中修改会触发脏化的属性（如 `UIProgressBar` 调整 fill anchor，`UIL-023` 收敛）。
+- 当前无阻塞级已知偏差；后续以 `UIL-030` 聚焦脏标记与重复布局开销优化。
 
 ## 8. 测试映射（当前已覆盖）
 - `tests/engine/ui/ui_stack_layout_test.cpp`
   - visible 子项跳过、spacing、Center/End 对齐、auto_resize、主轴 stretch 对齐语义。
+  - 交叉轴 `Center/End` 对齐语义。
 - `tests/engine/ui/ui_grid_layout_test.cpp`
   - fixed cell + spacing、visible 子项跳过、列数边界、fixed→intrinsic 回退。
+  - intrinsic 变尺寸流式排布、容器溢出时不裁剪坐标。
+- `tests/engine/ui/ui_layout_source_test.cpp`
+  - `UIProgressBar` 不在 `onLayout()` 中写 fill anchor、anchor 写入有 diff guard。
+  - `UIItemSlot` 计数标签 fallback 使用局部坐标原点。
+  - `UIDragPreview` 使用布局尺寸对齐计数标签。
+- `tests/engine/ui/ui_layout_invalidation_test.cpp`
+  - 同值 `setPosition/setSize/setAnchor` 不触发重复 relayout。
+  - 布局重算计数器仅统计 dirty 重算。
 
 ## 9. 变更纪律
 - 任何影响上述语义的改动，必须同时更新：

@@ -86,8 +86,8 @@ void UIDragPreview::onLayout() {
         return;
     }
 
-    const glm::vec2 lbl_size = count_label_->getSize();
-    glm::vec2 pos = getSize();
+    const glm::vec2 lbl_size = count_label_->getLayoutSize();
+    glm::vec2 pos = getLayoutSize();
     pos -= (lbl_size + COUNT_PADDING);
 
     if (glm::distance(count_label_->getPosition(), pos) > 0.001f) {

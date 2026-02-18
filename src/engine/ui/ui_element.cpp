@@ -11,6 +11,7 @@ namespace engine::ui {
 namespace {
 
 constexpr float kLayoutEpsilon = 0.001F;
+std::uint64_t g_layout_recompute_counter = 0;
 
 [[nodiscard]] bool sameLayoutOverride(const std::optional<glm::vec2>& lhs,
                                       const std::optional<glm::vec2>& rhs) {
@@ -21,7 +22,19 @@ constexpr float kLayoutEpsilon = 0.001F;
         return true;
     }
     return std::fabs(lhs->x - rhs->x) <= kLayoutEpsilon &&
-           std::fabs(lhs->y - rhs->y) <= kLayoutEpsilon;
+	   std::fabs(lhs->y - rhs->y) <= kLayoutEpsilon;
+}
+
+[[nodiscard]] bool sameVec2(const glm::vec2& lhs, const glm::vec2& rhs) {
+    return std::fabs(lhs.x - rhs.x) <= kLayoutEpsilon &&
+           std::fabs(lhs.y - rhs.y) <= kLayoutEpsilon;
+}
+
+[[nodiscard]] bool sameThickness(const Thickness& lhs, const Thickness& rhs) {
+    return std::fabs(lhs.left - rhs.left) <= kLayoutEpsilon &&
+           std::fabs(lhs.top - rhs.top) <= kLayoutEpsilon &&
+           std::fabs(lhs.right - rhs.right) <= kLayoutEpsilon &&
+           std::fabs(lhs.bottom - rhs.bottom) <= kLayoutEpsilon;
 }
 
 } // namespace
@@ -139,6 +152,9 @@ void UIElement::sortChildrenByOrderIndex() {
 }
 
 void UIElement::setOrderIndex(int order_index) {
+    if (order_index_ == order_index) {
+        return;
+    }
     order_index_ = order_index;
     if (parent_) {
         parent_->sortChildrenByOrderIndex();
@@ -174,6 +190,9 @@ engine::utils::Rect UIElement::getContentBounds() const {
 }
 
 void UIElement::setAnchor(glm::vec2 anchor_min, glm::vec2 anchor_max) {
+    if (sameVec2(anchor_min_, anchor_min) && sameVec2(anchor_max_, anchor_max)) {
+        return;
+    }
     anchor_min_ = anchor_min;
     anchor_max_ = anchor_max;
     invalidateLayout();
@@ -186,11 +205,17 @@ void UIElement::setPivot(glm::vec2 pivot) {
 }
 
 void UIElement::setPadding(const Thickness& padding) {
+    if (sameThickness(padding_, padding)) {
+        return;
+    }
     padding_ = padding;
     invalidateLayout();
 }
 
 void UIElement::setMargin(const Thickness& margin) {
+    if (sameThickness(margin_, margin)) {
+        return;
+    }
     margin_ = margin;
     invalidateLayout();
 }
@@ -205,7 +230,24 @@ void UIElement::setLayoutOverrideSize(std::optional<glm::vec2> size) {
         return;
     }
 
+    const bool had_override = layout_override_size_.has_value();
+    const glm::vec2 previous_override =
+            had_override ? *layout_override_size_ : glm::vec2{0.0F, 0.0F};
+
     layout_override_size_ = size;
+
+    if (layout_override_size_.has_value()) {
+        spdlog::trace(
+                "UIElement::setLayoutOverrideSize id={} ptr={} old_override={}({}, {}) new_override=({}, {})",
+                id_, static_cast<const void*>(this), had_override, previous_override.x,
+                previous_override.y, layout_override_size_->x, layout_override_size_->y);
+    } else {
+        spdlog::trace(
+                "UIElement::setLayoutOverrideSize id={} ptr={} old_override={}({}, {}) new_override=cleared",
+                id_, static_cast<const void*>(this), had_override, previous_override.x,
+                previous_override.y);
+    }
+
     invalidateLayout();
 }
 
@@ -243,7 +285,13 @@ void UIElement::renderSelf(engine::core::Context& /*context*/) {
 }
 
 void UIElement::invalidateLayout(bool propagate) {
+    const bool was_dirty = layout_dirty_;
     layout_dirty_ = true;
+
+    if (!propagate || was_dirty) {
+        return;
+    }
+
     if (propagate) {
         for (auto& child : children_) {
             if (child) {
@@ -257,10 +305,19 @@ void UIElement::ensureLayout() const {
     if (!layout_dirty_) {
         return;
     }
+    ++g_layout_recompute_counter;
 
     if (!parent_) {
         layout_size_ = size_;
         layout_position_ = position_;
+        const bool has_override = layout_override_size_.has_value();
+        const glm::vec2 override_size =
+                has_override ? *layout_override_size_ : glm::vec2{0.0F, 0.0F};
+        spdlog::trace(
+                "UIElement::ensureLayout(root) id={} ptr={} requested=({}, {}) layout=({}, {}) override={}({}, {}) position=({}, {})",
+                id_, static_cast<const void*>(this), size_.x, size_.y, layout_size_.x,
+                layout_size_.y, has_override, override_size.x, override_size.y,
+                layout_position_.x, layout_position_.y);
         layout_dirty_ = false;
         return;
     }
@@ -309,17 +366,57 @@ void UIElement::ensureLayout() const {
 
     // 调用子类布局回调
     const_cast<UIElement*>(this)->onLayout();
+
+    const bool has_override = layout_override_size_.has_value();
+    const glm::vec2 override_size =
+            has_override ? *layout_override_size_ : glm::vec2{0.0F, 0.0F};
+    spdlog::trace(
+            "UIElement::ensureLayout id={} ptr={} requested=({}, {}) layout=({}, {}) override={}({}, {}) position=({}, {}) stretched={}",
+            id_, static_cast<const void*>(this), size_.x, size_.y, layout_size_.x,
+            layout_size_.y, has_override, override_size.x, override_size.y,
+            layout_position_.x, layout_position_.y, stretched);
 }
 
 void UIElement::setParentInternal(UIElement* parent) {
+    if (layout_override_size_.has_value()) {
+        spdlog::trace(
+                "UIElement::setParentInternal id={} ptr={} parent_change clears override=({}, {})",
+                id_, static_cast<const void*>(this), layout_override_size_->x,
+                layout_override_size_->y);
+    }
     parent_ = parent;
     layout_override_size_.reset();
     invalidateLayout();
 }
 
 void UIElement::setSizeInternal(glm::vec2 size) {
+    if (sameVec2(size_, size)) {
+        return;
+    }
     size_ = std::move(size);
     invalidateLayout();
+}
+
+void UIElement::setSize(glm::vec2 size) {
+    setSizeInternal(std::move(size));
+}
+
+void UIElement::setPosition(glm::vec2 position) {
+    if (sameVec2(position_, position)) {
+        return;
+    }
+    position_ = std::move(position);
+    invalidateLayout();
+}
+
+void UIElement::resetLayoutRecomputeCounter() {
+    g_layout_recompute_counter = 0;
+}
+
+std::uint64_t UIElement::consumeLayoutRecomputeCounter() {
+    const std::uint64_t current = g_layout_recompute_counter;
+    g_layout_recompute_counter = 0;
+    return current;
 }
 
 } // namespace engine::ui 

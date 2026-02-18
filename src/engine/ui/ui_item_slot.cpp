@@ -166,7 +166,7 @@ void UIItemSlot::onLayout() {
         glm::vec2 padding = {2.0f, 2.0f}; // 图标内部的小边距
 
         // 优先放在图标内部的右下角
-        glm::vec2 pos = getPosition(); // fallback 使用父坐标系
+        glm::vec2 pos{0.0f, 0.0f}; // fallback 使用自身局部坐标系
         if (icon_image_) {
             const auto icon_bounds = icon_image_->getBounds(); // 屏幕坐标
             const auto parent_screen_pos = getScreenPosition();
