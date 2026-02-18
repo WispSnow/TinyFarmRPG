@@ -26,6 +26,21 @@ namespace {
     return entt::null;
 }
 
+[[nodiscard]] const char* toString(InteractionPhase phase) {
+    switch (phase) {
+        case InteractionPhase::Normal:
+            return "Normal";
+        case InteractionPhase::Hovered:
+            return "Hovered";
+        case InteractionPhase::Pressed:
+            return "Pressed";
+        case InteractionPhase::Disabled:
+            return "Disabled";
+        default:
+            return "Unknown";
+    }
+}
+
 } // namespace
 
 UIInteractive::~UIInteractive() = default;
@@ -46,11 +61,41 @@ void UIInteractive::setState(std::unique_ptr<engine::ui::state::UIState> state)
 
     state_ = std::move(state);
     state_->enter();
+    refreshInteractionPhase("setState");
 }
 
 void UIInteractive::setNextState(std::unique_ptr<engine::ui::state::UIState> state)
 {
     next_state_ = std::move(state);
+}
+
+InteractionPhase UIInteractive::computeInteractionPhase() const
+{
+    if (!interactive_) {
+        return InteractionPhase::Disabled;
+    }
+    if (!state_) {
+        return InteractionPhase::Normal;
+    }
+    if (state_->isPressed()) {
+        return InteractionPhase::Pressed;
+    }
+    if (state_->isHovered()) {
+        return InteractionPhase::Hovered;
+    }
+    return InteractionPhase::Normal;
+}
+
+void UIInteractive::refreshInteractionPhase(std::string_view reason)
+{
+    const InteractionPhase old_phase = interaction_phase_;
+    interaction_phase_ = computeInteractionPhase();
+    if (old_phase != interaction_phase_) {
+        spdlog::trace("UIInteractive phase changed: {} -> {} ({})",
+                      toString(old_phase),
+                      toString(interaction_phase_),
+                      reason);
+    }
 }
 
 void UIInteractive::addImage(entt::id_type name_id, engine::render::Image image)
@@ -85,11 +130,18 @@ void UIInteractive::applyStateVisual(entt::id_type state_id)
     }
 }
 
+void UIInteractive::setInteractive(bool interactive)
+{
+    interactive_ = interactive;
+    refreshInteractionPhase("setInteractive");
+}
+
 void UIInteractive::setEnabled(bool enabled)
 {
     if (!enabled) {
         if (!interactive_) {
             applyStateVisual(UI_IMAGE_DISABLED_ID);
+            refreshInteractionPhase("setEnabled(false)");
             return;
         }
 
@@ -107,6 +159,7 @@ void UIInteractive::setEnabled(bool enabled)
             setState(std::make_unique<engine::ui::state::UINormalState>(this));
         }
         applyStateVisual(UI_IMAGE_DISABLED_ID);
+        refreshInteractionPhase("setEnabled(false)");
         return;
     }
 
@@ -123,6 +176,7 @@ void UIInteractive::setEnabled(bool enabled)
         setState(std::make_unique<engine::ui::state::UINormalState>(this));
     }
     applyStateVisual(UI_IMAGE_NORMAL_ID);
+    refreshInteractionPhase("setEnabled(true)");
 }
 
 void UIInteractive::setSoundEvent(entt::id_type event_id, entt::id_type sound_id, std::string_view path)
