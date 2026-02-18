@@ -246,12 +246,19 @@
   - `UIButton` 不再维护重复状态真相
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-051（P2）命中测试去 RTTI 热点
+### UIR-051（P2）命中测试去 RTTI 热点（已完成：代码+自动化）
 - 目标：降低 `findInteractiveAt()` 递归命中成本。
 - 主要改动：
-  - `dynamic_cast` 改为 `asInteractive()` 或类型标志
+  - `UIElement` 增加轻量 downcast 钩子：
+    - `virtual asInteractive()` 默认返回 `nullptr`
+    - `UIInteractive` 覆写返回 `this`
+  - `UIElement::findInteractiveAt()` 中将 RTTI `dynamic_cast` 改为 `asInteractive()` 调用
+  - 增补源码契约测试：
+    - 断言 `findInteractiveAt` 不再使用 `dynamic_cast<const UIInteractive*>(this)`
+    - 断言 `asInteractive()` 钩子在 `UIElement/UIInteractive` 两侧均存在
 - 验收标准：
   - 行为一致，性能不回退
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ---
 

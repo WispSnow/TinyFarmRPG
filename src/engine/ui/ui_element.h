@@ -117,6 +117,8 @@ public:
 
     UIInteractive* findInteractiveAt(const glm::vec2& point);
     const UIInteractive* findInteractiveAt(const glm::vec2& point) const;
+    virtual UIInteractive* asInteractive() { return nullptr; }
+    virtual const UIInteractive* asInteractive() const { return nullptr; }
 
     // --- 禁用拷贝和移动语义 ---
     UIElement(const UIElement&) = delete;

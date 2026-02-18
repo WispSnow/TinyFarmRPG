@@ -55,6 +55,8 @@ protected:
 public:
     UIInteractive(engine::core::Context& context, glm::vec2 position = {0.0f, 0.0f}, glm::vec2 size = {0.0f, 0.0f});
     ~UIInteractive() override;
+    UIInteractive* asInteractive() override { return this; }
+    const UIInteractive* asInteractive() const override { return this; }
 
     void addImage(entt::id_type name_id, engine::render::Image image);      ///< @brief 添加/替换图片
     void setCurrentImage(entt::id_type name_id);                            ///< @brief 设置当前显示的图片
