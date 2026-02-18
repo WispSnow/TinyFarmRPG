@@ -10,7 +10,7 @@
 
 namespace game::save {
 
-constexpr std::uint32_t SAVE_SCHEMA_VERSION = 2;
+constexpr std::uint32_t SAVE_SCHEMA_VERSION = 3;
 
 namespace json_keys {
 inline constexpr std::string_view SCHEMA_VERSION = "schema_version";
@@ -18,6 +18,10 @@ inline constexpr std::string_view TIMESTAMP = "timestamp";
 inline constexpr std::string_view WORLD_FILE = "world_file";
 inline constexpr std::string_view GAME_TIME = "game_time";
 inline constexpr std::string_view DAY = "day";
+inline constexpr std::string_view QUEST_STATE = "quest_state";
+inline constexpr std::string_view SKILL_STATE = "skill_state";
+inline constexpr std::string_view APPEARANCE_STATE = "appearance_state";
+inline constexpr std::string_view COMBAT_STATE = "combat_state";
 } // namespace json_keys
 
 struct Vec2f {
@@ -94,6 +98,18 @@ struct MapSaveData {
     std::optional<std::vector<ResourceNodeSaveData>> resource_nodes{};
 };
 
+struct QuestStateSaveData {
+};
+
+struct SkillStateSaveData {
+};
+
+struct AppearanceStateSaveData {
+};
+
+struct CombatStateSaveData {
+};
+
 struct SaveData {
     std::uint32_t schema_version{SAVE_SCHEMA_VERSION};
     std::optional<std::string> timestamp{};
@@ -102,6 +118,10 @@ struct SaveData {
     GameTimeSaveData game_time{};
     PlayerSaveData player{};
     std::vector<MapSaveData> maps{};
+    QuestStateSaveData quest_state{};
+    SkillStateSaveData skill_state{};
+    AppearanceStateSaveData appearance_state{};
+    CombatStateSaveData combat_state{};
 };
 
 [[nodiscard]] nlohmann::json serialize(const SaveData& data);

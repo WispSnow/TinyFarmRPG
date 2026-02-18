@@ -85,6 +85,8 @@ set(GAME_TEST_SOURCES
     game/interaction_command_pipeline_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
+    game/save_data_v3_roundtrip_test.cpp
+    game/save_migrator_test.cpp
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
