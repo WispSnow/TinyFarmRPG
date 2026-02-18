@@ -1,6 +1,7 @@
 #include "ui_button.h"
 
 #include "ui_preset_manager.h"
+#include "behavior/click_behavior.h"
 
 #include "engine/core/context.h"
 #include "engine/render/renderer.h"
@@ -109,6 +110,32 @@ struct ResolvedLabelVisual {
     return result;
 }
 
+class UIButtonHoverStateBehavior final : public InteractionBehavior {
+public:
+    using Callback = std::function<void(UIInteractive&)>;
+
+    void setOnEnter(Callback cb) { on_enter_ = std::move(cb); }
+    void setOnLeave(Callback cb) { on_leave_ = std::move(cb); }
+
+    void onStateChanged(UIInteractive& owner, InteractionPhase old_phase, InteractionPhase new_phase) override {
+        if (old_phase == InteractionPhase::Normal && new_phase == InteractionPhase::Hovered) {
+            if (on_enter_) {
+                on_enter_(owner);
+            }
+            return;
+        }
+        if (old_phase == InteractionPhase::Hovered && new_phase == InteractionPhase::Normal) {
+            if (on_leave_) {
+                on_leave_(owner);
+            }
+        }
+    }
+
+private:
+    Callback on_enter_{};
+    Callback on_leave_{};
+};
+
 } // namespace
 
 std::unique_ptr<UIButton> UIButton::create(engine::core::Context& context,
@@ -161,7 +188,9 @@ UIButton::UIButton(engine::core::Context& context,
     : UIInteractive(context, position, size),
       click_callback_(std::move(click_callback)),
       hover_enter_callback_(std::move(hover_enter_callback)),
-      hover_leave_callback_(std::move(hover_leave_callback)) {}
+      hover_leave_callback_(std::move(hover_leave_callback)) {
+    bindCallbacksToBehaviors();
+}
 
 const UIButtonSkin* UIButton::getPreset() const {
     return context_.getResourceManager().getUIPresetManager().getButtonPreset(preset_id_);
@@ -204,6 +233,67 @@ bool UIButton::initFromPreset(entt::id_type preset_id) {
     refreshBaseTextSize();
     applyStateVisual(UI_IMAGE_NORMAL_ID);
     return true;
+}
+
+void UIButton::bindCallbacksToBehaviors() {
+    auto click_behavior = std::make_unique<ClickBehavior>();
+    click_behavior->setOnClick([this](UIInteractive&) {
+        invokeClickCallback();
+    });
+
+    auto hover_behavior = std::make_unique<UIButtonHoverStateBehavior>();
+    hover_behavior->setOnEnter([this](UIInteractive&) {
+        invokeHoverEnterCallback();
+    });
+    hover_behavior->setOnLeave([this](UIInteractive&) {
+        invokeHoverLeaveCallback();
+    });
+
+    const bool click_bound = addBehavior(std::move(click_behavior)) != nullptr;
+    const bool hover_bound = addBehavior(std::move(hover_behavior)) != nullptr;
+    callbacks_bound_to_behaviors_ = click_bound && hover_bound;
+    if (!callbacks_bound_to_behaviors_) {
+        spdlog::warn("UIButton callback behaviors binding incomplete, fallback to legacy virtual callbacks.");
+    }
+}
+
+void UIButton::invokeClickCallback() {
+    if (click_callback_) {
+        click_callback_();
+    }
+}
+
+void UIButton::invokeHoverEnterCallback() {
+    if (hover_enter_callback_) {
+        hover_enter_callback_();
+    }
+}
+
+void UIButton::invokeHoverLeaveCallback() {
+    if (hover_leave_callback_) {
+        hover_leave_callback_();
+    }
+}
+
+void UIButton::clicked() {
+    if (callbacks_bound_to_behaviors_) {
+        return;
+    }
+    invokeClickCallback();
+}
+
+void UIButton::hover_enter() {
+    if (callbacks_bound_to_behaviors_) {
+        return;
+    }
+    invokeHoverEnterCallback();
+}
+
+void UIButton::hover_leave() {
+    if (callbacks_bound_to_behaviors_) {
+        return;
+    }
+    invokeHoverLeaveCallback();
 }
 
 void UIButton::update(float delta_time, engine::core::Context& context) {

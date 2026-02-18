@@ -76,6 +76,53 @@ TEST(UIInteractionStateSourceTest, ClickBehaviorContractIsPresent) {
         << "ClickBehavior should dispatch click callback.";
 }
 
+TEST(UIInteractionStateSourceTest, UIButtonCreateBindsClickAndHoverCallbacksViaBehaviorContractIsPresent) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("bindCallbacksToBehaviors();"), std::string::npos)
+        << "UIButton constructor should bind callback behaviors.";
+    EXPECT_NE(source.find("std::make_unique<ClickBehavior>()"), std::string::npos)
+        << "UIButton should install ClickBehavior for click callback dispatch.";
+    EXPECT_NE(source.find("class UIButtonHoverStateBehavior final : public InteractionBehavior"), std::string::npos)
+        << "UIButton should bind hover callbacks through behavior layer.";
+    EXPECT_NE(source.find("void onStateChanged(UIInteractive& owner, InteractionPhase old_phase, InteractionPhase new_phase) override"), std::string::npos)
+        << "UIButton hover behavior should use onStateChanged hook.";
+    EXPECT_NE(source.find("old_phase == InteractionPhase::Normal && new_phase == InteractionPhase::Hovered"), std::string::npos)
+        << "UIButton hover enter callback should be mapped from Normal->Hovered transition.";
+    EXPECT_NE(source.find("old_phase == InteractionPhase::Hovered && new_phase == InteractionPhase::Normal"), std::string::npos)
+        << "UIButton hover leave callback should be mapped from Hovered->Normal transition.";
+}
+
+TEST(UIInteractionStateSourceTest, UIButtonLegacyVirtualCallbacksRemainAsCompatibilityContractIsPresent) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+
+    const std::string header_source = readTextFile(header_path);
+    ASSERT_FALSE(header_source.empty());
+
+    EXPECT_NE(header_source.find("void clicked() override;"), std::string::npos)
+        << "UIButton should keep clicked() override for compatibility window.";
+    EXPECT_NE(header_source.find("void hover_enter() override;"), std::string::npos)
+        << "UIButton should keep hover_enter() override for compatibility window.";
+    EXPECT_NE(header_source.find("void hover_leave() override;"), std::string::npos)
+        << "UIButton should keep hover_leave() override for compatibility window.";
+
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_button.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("if (callbacks_bound_to_behaviors_)"), std::string::npos)
+        << "Legacy virtual callback entry should guard against duplicate dispatch when behavior bridge is active.";
+}
+
 TEST(UIInteractionStateSourceTest, InteractionPhaseRefreshTraceContractIsPresent) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/ui_interactive.cpp").lexically_normal();

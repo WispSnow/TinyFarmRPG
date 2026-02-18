@@ -195,13 +195,19 @@
   - 可不改业务逻辑即挂载点击/状态行为
   - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
-### UIR-041（P1）将 `UIButton` 回调路径迁移到 behavior（兼容期）
+### UIR-041（P1）将 `UIButton` 回调路径迁移到 behavior（兼容期）（已完成：代码+自动化）
 - 目标：减少“虚函数 + behavior”双轨并存。
 - 主要改动：
-  - `UIButton::create()` 内部使用 behavior 绑定 click/hover
-  - `clicked()/hover_enter()/hover_leave()` 保留一版兼容
+  - `UIButton` 构造路径绑定行为桥接：
+    - click：`ClickBehavior`
+    - hover：`onStateChanged`（`Normal -> Hovered` / `Hovered -> Normal`）
+  - `clicked()/hover_enter()/hover_leave()` 保留兼容入口，并在 behavior 桥接启用时短路，避免重复分发
+  - 增补源码契约测试：
+    - `UIButton` 回调桥接已接入 behavior
+    - 兼容虚回调入口仍保留
 - 验收标准：
   - `UIButton` 外部 API 不破坏
+  - 代码与自动化已完成；手工回归按 `docs/testing/ui-regression-checklist.md` 执行
 
 ### UIR-042（P2）移除 `UIInteractive` 业务型虚回调
 - 目标：交互层只保留状态与事件分发，不承载业务行为接口。
