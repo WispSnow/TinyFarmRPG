@@ -74,5 +74,16 @@ TEST(UILayoutInvalidationTest, LayoutRecomputeCounterTracksDirtyRecomputes) {
     EXPECT_GE(UIElement::consumeLayoutRecomputeCounter(), 1U);
 }
 
+TEST(UILayoutInvalidationTest, RootElementCanUseLayoutOverrideSize) {
+    UIElement root({5.0F, 6.0F}, {100.0F, 80.0F});
+    EXPECT_EQ(root.getLayoutSize(), glm::vec2(100.0F, 80.0F));
+
+    root.setLayoutOverrideSize(glm::vec2{20.0F, 10.0F});
+    EXPECT_EQ(root.getLayoutSize(), glm::vec2(20.0F, 10.0F));
+
+    root.clearLayoutOverrideSize();
+    EXPECT_EQ(root.getLayoutSize(), glm::vec2(100.0F, 80.0F));
+}
+
 } // namespace
 } // namespace engine::ui

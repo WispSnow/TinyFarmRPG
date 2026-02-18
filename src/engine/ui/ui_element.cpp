@@ -292,11 +292,9 @@ void UIElement::invalidateLayout(bool propagate) {
         return;
     }
 
-    if (propagate) {
-        for (auto& child : children_) {
-            if (child) {
-                child->invalidateLayout(true);
-            }
+    for (auto& child : children_) {
+        if (child) {
+            child->invalidateLayout(true);
         }
     }
 }
@@ -308,7 +306,7 @@ void UIElement::ensureLayout() const {
     ++g_layout_recompute_counter;
 
     if (!parent_) {
-        layout_size_ = size_;
+        layout_size_ = layout_override_size_.value_or(size_);
         layout_position_ = position_;
         const bool has_override = layout_override_size_.has_value();
         const glm::vec2 override_size =
