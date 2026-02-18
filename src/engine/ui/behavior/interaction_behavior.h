@@ -1,8 +1,10 @@
 #pragma once
+#include <cstdint>
 #include <glm/vec2.hpp>
 
 namespace engine::ui {
 class UIInteractive;
+enum class InteractionPhase : std::uint8_t;
 
 /**
  * @brief 交互行为基类，可挂载到 UIInteractive 以扩展输入响应。
@@ -24,6 +26,7 @@ public:
     virtual void onPressed(UIInteractive& /*owner*/) {}
     virtual void onReleased(UIInteractive& /*owner*/, bool /*inside*/) {}
     virtual void onClick(UIInteractive& /*owner*/) {}
+    virtual void onStateChanged(UIInteractive& /*owner*/, InteractionPhase /*old_phase*/, InteractionPhase /*new_phase*/) {}
 
     virtual void onDragBegin(UIInteractive& /*owner*/, const glm::vec2& /*pos*/) {}
     virtual void onDragUpdate(UIInteractive& /*owner*/, const glm::vec2& /*pos*/, const glm::vec2& /*delta*/) {}

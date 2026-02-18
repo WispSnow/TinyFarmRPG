@@ -79,9 +79,6 @@ target_sources(engine PRIVATE
     engine/ui/ui_preset_manager.cpp
     engine/ui/ui_drag_preview.cpp
     engine/ui/ui_screen_fade.cpp
-    engine/ui/state/ui_normal_state.cpp
-    engine/ui/state/ui_pressed_state.cpp
-    engine/ui/state/ui_hover_state.cpp
     # UI - Layout
     engine/ui/layout/ui_layout.cpp
     engine/ui/layout/ui_stack_layout.cpp

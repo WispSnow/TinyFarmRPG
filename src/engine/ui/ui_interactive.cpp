@@ -1,8 +1,4 @@
 #include "ui_interactive.h"
-#include "state/ui_state.h"
-#include "state/ui_normal_state.h"
-#include "state/ui_hover_state.h"
-#include "state/ui_pressed_state.h"
 #include "engine/core/context.h"
 #include "engine/render/renderer.h"
 #include "engine/resource/resource_manager.h"
@@ -43,23 +39,6 @@ namespace {
     }
 }
 
-[[nodiscard]] std::unique_ptr<engine::ui::state::UIState> makeLegacyStateForPhase(engine::ui::UIInteractive* owner,
-                                                                                    InteractionPhase phase) {
-    switch (phase) {
-        case InteractionPhase::Normal:
-            return std::make_unique<engine::ui::state::UINormalState>(owner);
-        case InteractionPhase::Hovered:
-            return std::make_unique<engine::ui::state::UIHoverState>(owner);
-        case InteractionPhase::Pressed:
-            return std::make_unique<engine::ui::state::UIPressedState>(owner);
-        case InteractionPhase::Disabled:
-            break;
-        default:
-            break;
-    }
-    return nullptr;
-}
-
 } // namespace
 
 UIInteractive::~UIInteractive() = default;
@@ -71,27 +50,9 @@ UIInteractive::UIInteractive(engine::core::Context &context, glm::vec2 position,
     last_mouse_pos_ = context_.getInputManager().getLogicalMousePosition();
 }
 
-void UIInteractive::setState(std::unique_ptr<engine::ui::state::UIState> state)
-{
-    if (!state) {
-        spdlog::warn("尝试设置空的状态！");
-        return;
-    }
-
-    state_ = std::move(state);
-    refreshInteractionPhase("setState");
-    applyPhaseEnterEffects(interaction_phase_);
-    state_->enter();
-}
-
-void UIInteractive::setNextState(std::unique_ptr<engine::ui::state::UIState> state)
-{
-    next_state_ = std::move(state);
-}
-
 void UIInteractive::transitionTo(InteractionPhase target_phase)
 {
-    const InteractionPhase source_phase = computeInteractionPhase();
+    const InteractionPhase source_phase = interaction_phase_;
     if (source_phase == target_phase) {
         return;
     }
@@ -114,17 +75,12 @@ void UIInteractive::transitionTo(InteractionPhase target_phase)
         hover_leave();
     }
 
-    auto next = makeLegacyStateForPhase(this, target_phase);
-    if (!next) {
-        spdlog::warn("UIInteractive transition requested unsupported phase: {}", static_cast<int>(target_phase));
-        return;
-    }
-
     spdlog::trace("UIInteractive transition requested: {} -> {}",
                   toString(source_phase),
                   toString(target_phase));
-    // UIR-030: 迁移时序从“下一帧 update()”切换为“事件回调内立即生效”。
-    setState(std::move(next));
+    interaction_phase_ = target_phase;
+    applyPhaseEnterEffects(interaction_phase_);
+    notifyPhaseChanged(source_phase, interaction_phase_, "transitionTo");
 }
 
 void UIInteractive::applyPhaseEnterEffects(InteractionPhase phase)
@@ -158,28 +114,17 @@ InteractionPhase UIInteractive::computeInteractionPhase() const
     if (!interactive_) {
         return InteractionPhase::Disabled;
     }
-    if (!state_) {
+    if (interaction_phase_ == InteractionPhase::Disabled) {
         return InteractionPhase::Normal;
     }
-    if (state_->isPressed()) {
-        return InteractionPhase::Pressed;
-    }
-    if (state_->isHovered()) {
-        return InteractionPhase::Hovered;
-    }
-    return InteractionPhase::Normal;
+    return interaction_phase_;
 }
 
 void UIInteractive::refreshInteractionPhase(std::string_view reason)
 {
     const InteractionPhase old_phase = interaction_phase_;
     interaction_phase_ = computeInteractionPhase();
-    if (old_phase != interaction_phase_) {
-        spdlog::trace("UIInteractive phase changed: {} -> {} ({})",
-                      toString(old_phase),
-                      toString(interaction_phase_),
-                      reason);
-    }
+    notifyPhaseChanged(old_phase, interaction_phase_, reason);
 }
 
 void UIInteractive::addImage(entt::id_type name_id, engine::render::Image image)
@@ -225,7 +170,6 @@ void UIInteractive::setEnabled(bool enabled)
     if (!enabled) {
         if (!interactive_) {
             applyStateVisual(UI_IMAGE_DISABLED_ID);
-            refreshInteractionPhase("setEnabled(false)");
             return;
         }
 
@@ -234,16 +178,13 @@ void UIInteractive::setEnabled(bool enabled)
             mouseReleased(false);
         }
 
+        const InteractionPhase old_phase = interaction_phase_;
         interactive_ = false;
         is_pressed_ = false;
         is_dragging_ = false;
-        next_state_.reset();
-
-        if (state_) {
-            setState(std::make_unique<engine::ui::state::UINormalState>(this));
-        }
+        interaction_phase_ = InteractionPhase::Disabled;
         applyStateVisual(UI_IMAGE_DISABLED_ID);
-        refreshInteractionPhase("setEnabled(false)");
+        notifyPhaseChanged(old_phase, interaction_phase_, "setEnabled(false)");
         return;
     }
 
@@ -251,16 +192,13 @@ void UIInteractive::setEnabled(bool enabled)
         return;
     }
 
+    const InteractionPhase old_phase = interaction_phase_;
     interactive_ = true;
     is_pressed_ = false;
     is_dragging_ = false;
-    next_state_.reset();
-
-    if (state_) {
-        setState(std::make_unique<engine::ui::state::UINormalState>(this));
-    }
+    interaction_phase_ = InteractionPhase::Normal;
     applyStateVisual(UI_IMAGE_NORMAL_ID);
-    refreshInteractionPhase("setEnabled(true)");
+    notifyPhaseChanged(old_phase, interaction_phase_, "setEnabled(true)");
 }
 
 void UIInteractive::setSoundEvent(entt::id_type event_id, entt::id_type sound_id, std::string_view path)
@@ -337,14 +275,6 @@ void UIInteractive::update(float delta_time, engine::core::Context &context)
     // 先更新子节点
     UIElement::update(delta_time, context);
 
-    // 再更新自己（状态）
-    if (state_ && interactive_) {
-        if (next_state_) {
-            setState(std::move(next_state_));
-        }
-        state_->update(delta_time, context);
-    }
-
     if (interactive_ && is_pressed_) {
         const glm::vec2 current = context_.getInputManager().getLogicalMousePosition();
         const glm::vec2 delta = current - last_mouse_pos_;
@@ -378,6 +308,25 @@ void UIInteractive::renderSelf(engine::core::Context &context)
     }
 
     context.getRenderer().drawUIImage(it->second, getScreenPosition(), size);
+}
+
+void UIInteractive::notifyPhaseChanged(InteractionPhase old_phase,
+                                       InteractionPhase new_phase,
+                                       std::string_view reason)
+{
+    if (old_phase == new_phase) {
+        return;
+    }
+
+    spdlog::trace("UIInteractive phase changed: {} -> {} ({})",
+                  toString(old_phase),
+                  toString(new_phase),
+                  reason);
+    for (auto& behavior : behaviors_) {
+        if (behavior) {
+            behavior->onStateChanged(*this, old_phase, new_phase);
+        }
+    }
 }
 
 void UIInteractive::mouseEnter()

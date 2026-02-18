@@ -1,6 +1,5 @@
 #include "ui_button.h"
 
-#include "state/ui_normal_state.h"
 #include "ui_preset_manager.h"
 
 #include "engine/core/context.h"
@@ -203,7 +202,7 @@ bool UIButton::initFromPreset(entt::id_type preset_id) {
     }
 
     refreshBaseTextSize();
-    setState(std::make_unique<engine::ui::state::UINormalState>(this));
+    applyStateVisual(UI_IMAGE_NORMAL_ID);
     return true;
 }
 
@@ -377,4 +376,3 @@ void UIButton::renderLabel(engine::core::Context& context, const UIButtonSkin& s
 }
 
 } // namespace engine::ui
-
