@@ -86,12 +86,13 @@
 ## 6. 布局容器当前行为
 
 ### 6.1 UIStackLayout
-- 主轴长度统计使用 `child->getRequestedSize()`（当前实现基线）。
+- 主轴长度统计使用 `child->getLayoutSize()`（最终布局尺寸语义）。
 - 仅统计可见子项，`spacing` 也只在可见子项间生效。
 - `Alignment` 仅作用主轴（`Start/Center/End`）。
 - 交叉轴固定 `Start`（Vertical=Left，Horizontal=Top）。
 - 当内容总长度大于容器主轴可用空间时，Center/End 允许出现负偏移（不自动裁剪）。
 - `auto_resize=true` 时会更新容器自身 requested size（通过 `setSizeInternal`）。
+- 若检测到“主轴 stretch 子项”，会输出一次调试告警（提示完整伸缩协商仍待 `UIL-021` 收敛）。
 
 ### 6.2 UIGridLayout
 - 可见子项按行优先填充，隐藏子项不占格子。
@@ -100,12 +101,12 @@
 - 固定 cell 模式通过 `setLayoutOverrideSize(cell_size)` 生效，不会修改子项 requested size。
 
 ## 7. 已知偏差与后续任务
-- 偏差 A：`UIStackLayout` 主轴使用 requested size，stretch 语义不完整（`UIL-011`/`UIL-021`）。
+- 偏差 A：`UIStackLayout` 对主轴 stretch 子项的处理仍是兼容实现，完整协商语义待 `UIL-021` 继续收敛。
 - 偏差 B：部分控件在 `onLayout()` 中修改会触发脏化的属性（如 `UIProgressBar` 调整 fill anchor，`UIL-023` 收敛）。
 
 ## 8. 测试映射（当前已覆盖）
 - `tests/engine/ui/ui_stack_layout_test.cpp`
-  - visible 子项跳过、spacing、Center/End 对齐、auto_resize。
+  - visible 子项跳过、spacing、Center/End 对齐、auto_resize、主轴 stretch 对齐语义。
 - `tests/engine/ui/ui_grid_layout_test.cpp`
   - fixed cell + spacing、visible 子项跳过、列数边界、fixed→intrinsic 回退。
 

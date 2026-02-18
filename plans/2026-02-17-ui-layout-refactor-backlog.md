@@ -80,7 +80,7 @@
   - `cell_size` 固定网格用例视觉不回退（背包/快捷栏）
   - 既有网格 UI 行为不回退
 
-### UIL-011（P0）`UIStackLayout` 主轴计算改用最终布局尺寸语义
+### UIL-011（P0）`UIStackLayout` 主轴计算改用最终布局尺寸语义（已完成）
 - 目标：减少 `requested size` 与实际显示尺寸不一致导致的偏移。
 - 主要改动：
   - 主轴长度计算与定位逻辑收敛到一致的数据来源（遵循 `layout-contract.md`）
@@ -170,7 +170,7 @@
 | UIL-001 | 补首批布局自动化测试（已完成） | P0 | 1d | UIL-000 |
 | UIL-002 | 冻结布局语义文档（已完成） | P0 | 0.5d | UIL-000 |
 | UIL-010 | 消除 Grid 尺寸副作用（已完成） | P0 | 1d | UIL-001, UIL-002 |
-| UIL-011 | Stack 使用一致尺寸语义 | P0 | 1d | UIL-001, UIL-002 |
+| UIL-011 | Stack 使用一致尺寸语义（已完成） | P0 | 1d | UIL-001, UIL-002 |
 | UIL-012 | 增加跨场景布局断言 | P1 | 1d | UIL-001 |
 | UIL-020 | 完善 layout_override_size 管线 | P0 | 1d | UIL-010 |
 | UIL-021 | Stack 尺寸读取策略收敛 | P1 | 1d | UIL-011, UIL-020 |

@@ -30,6 +30,7 @@ private:
     float spacing_{0.0f};
     Alignment alignment_{Alignment::Start};
     bool auto_resize_{false}; // 是否根据内容自动调整自身大小
+    bool main_axis_stretch_warning_emitted_{false}; // 主轴拉伸语义告警（避免每帧刷屏）
     
 public:
     UIStackLayout(glm::vec2 position = {0.0f, 0.0f}, glm::vec2 size = {0.0f, 0.0f});
