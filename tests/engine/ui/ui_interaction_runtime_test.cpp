@@ -266,10 +266,6 @@ protected:
         drainPendingEvents();
     }
 
-    void tick(UIInteractive& element) const {
-        element.update(0.0F, *context_);
-    }
-
     void pushMouseMotion(float x, float y) {
         SDL_Event motion{};
         motion.type = SDL_EVENT_MOUSE_MOTION;
@@ -307,36 +303,29 @@ TEST_F(UIInteractionRuntimeTest, HoverPressReleaseInsideMatrixKeepsCallbacksCons
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
 
     element.mouseEnter();
-    EXPECT_EQ(probe->hover_enter_count, 0);
-    EXPECT_EQ(probe->behavior_hover_enter_count, 1);
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->hover_enter_count, 1);
+    EXPECT_EQ(probe->behavior_hover_enter_count, 1);
 
     element.mousePressed();
+    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
     EXPECT_EQ(probe->behavior_pressed_count, 1);
     EXPECT_EQ(probe->behavior_drag_begin_count, 1);
-    tick(element);
-    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
 
     element.mouseReleased(true);
+    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->clicked_count, 1);
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_TRUE(probe->last_release_inside);
     EXPECT_EQ(probe->behavior_click_count, 1);
     EXPECT_EQ(probe->behavior_drag_end_count, 1);
     EXPECT_TRUE(probe->last_drag_end_inside);
-    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
-
-    tick(element);
-    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->hover_enter_count, 2);
 
     element.mouseExit();
+    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
     EXPECT_EQ(probe->hover_leave_count, 1);
     EXPECT_EQ(probe->behavior_hover_exit_count, 1);
-    tick(element);
-    EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
 }
 
 TEST_F(UIInteractionRuntimeTest, NormalPressPathSkipsHoverEnterUntilReleaseInside) {
@@ -344,7 +333,6 @@ TEST_F(UIInteractionRuntimeTest, NormalPressPathSkipsHoverEnterUntilReleaseInsid
     TestInteractive element(*context_, probe, {0.0F, 0.0F}, {80.0F, 40.0F});
 
     element.mousePressed();
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
     EXPECT_EQ(probe->hover_enter_count, 0);
 
@@ -352,7 +340,6 @@ TEST_F(UIInteractionRuntimeTest, NormalPressPathSkipsHoverEnterUntilReleaseInsid
     // Normal -> Pressed path does not go through Hovered enter callback.
     element.mouseReleased(true);
     EXPECT_EQ(probe->clicked_count, 1);
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->hover_enter_count, 1);
 }
@@ -363,7 +350,6 @@ TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurth
     element.addBehavior(std::make_unique<ProbeBehavior>(probe));
 
     element.mousePressed();
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Pressed);
 
     element.setEnabled(false);
@@ -379,7 +365,6 @@ TEST_F(UIInteractionRuntimeTest, DisableWhilePressedCancelsReleaseAndBlocksFurth
     element.mouseEnter();
     element.mousePressed();
     element.mouseReleased(true);
-    tick(element);
     EXPECT_EQ(probe->behavior_pressed_count, 1);
     EXPECT_EQ(probe->behavior_released_count, 1);
     EXPECT_EQ(probe->clicked_count, 0);
@@ -395,7 +380,6 @@ TEST_F(UIInteractionRuntimeTest, EnableToggleFromHoveredConvergesAndCanHoverAgai
     TestInteractive element(*context_, probe, {0.0F, 0.0F}, {80.0F, 40.0F});
 
     element.mouseEnter();
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->hover_enter_count, 1);
 
@@ -408,7 +392,6 @@ TEST_F(UIInteractionRuntimeTest, EnableToggleFromHoveredConvergesAndCanHoverAgai
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Normal);
 
     element.mouseEnter();
-    tick(element);
     EXPECT_EQ(element.getInteractionPhase(), InteractionPhase::Hovered);
     EXPECT_EQ(probe->hover_enter_count, 2);
 }
