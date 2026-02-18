@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/utils/math.h"
 #include <memory>
+#include <optional>
 #include <vector>
 #include <entt/entity/entity.hpp>
 
@@ -52,6 +53,7 @@ protected:
     mutable bool layout_dirty_{true};                       ///< @brief 布局是否需要重新计算
     mutable glm::vec2 layout_position_{0.0f, 0.0f};         ///< @brief 计算后的屏幕坐标
     mutable glm::vec2 layout_size_{0.0f, 0.0f};             ///< @brief 计算后的尺寸
+    std::optional<glm::vec2> layout_override_size_{};       ///< @brief 布局阶段覆盖尺寸（不污染requested size）
 
 public:
     /**
@@ -110,6 +112,8 @@ public:
     void setPivot(glm::vec2 pivot);                                 ///< @brief 设置枢轴
     void setPadding(const Thickness& padding);                      ///< @brief 设置内边距
     void setMargin(const Thickness& margin);                        ///< @brief 设置外边距
+    void setLayoutOverrideSize(std::optional<glm::vec2> size);      ///< @brief 设置布局覆盖尺寸
+    void clearLayoutOverrideSize() { setLayoutOverrideSize(std::nullopt); } ///< @brief 清除布局覆盖尺寸
 
     // --- 辅助方法 ---
     void sortChildrenByOrderIndex();                                ///< @brief 根据order_index_排序子元素

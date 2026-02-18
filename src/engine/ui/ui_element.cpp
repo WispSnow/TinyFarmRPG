@@ -8,6 +8,23 @@
 #include <spdlog/spdlog.h>
 
 namespace engine::ui {
+namespace {
+
+constexpr float kLayoutEpsilon = 0.001F;
+
+[[nodiscard]] bool sameLayoutOverride(const std::optional<glm::vec2>& lhs,
+                                      const std::optional<glm::vec2>& rhs) {
+    if (lhs.has_value() != rhs.has_value()) {
+        return false;
+    }
+    if (!lhs.has_value()) {
+        return true;
+    }
+    return std::fabs(lhs->x - rhs->x) <= kLayoutEpsilon &&
+           std::fabs(lhs->y - rhs->y) <= kLayoutEpsilon;
+}
+
+} // namespace
 
 UIElement::UIElement(glm::vec2 position, glm::vec2 size)
     : position_(std::move(position)), size_(std::move(size)) {
@@ -178,6 +195,20 @@ void UIElement::setMargin(const Thickness& margin) {
     invalidateLayout();
 }
 
+void UIElement::setLayoutOverrideSize(std::optional<glm::vec2> size) {
+    if (size.has_value()) {
+        size->x = std::max(0.0F, size->x);
+        size->y = std::max(0.0F, size->y);
+    }
+
+    if (sameLayoutOverride(layout_override_size_, size)) {
+        return;
+    }
+
+    layout_override_size_ = size;
+    invalidateLayout();
+}
+
 const UIInteractive* UIElement::findInteractiveAt(const glm::vec2& point) const {
     if (!visible_) {
         return nullptr;
@@ -251,7 +282,9 @@ void UIElement::ensureLayout() const {
 
     // 计算最终大小
     glm::vec2 final_size = size_;
-    if (stretched) {
+    if (layout_override_size_.has_value()) {
+        final_size = *layout_override_size_;
+    } else if (stretched) {
         // 可拉伸：使用可用区域大小，减去margin
         final_size = available_size;
         final_size.x = std::max(0.0f, final_size.x - margin_.width());
@@ -280,6 +313,7 @@ void UIElement::ensureLayout() const {
 
 void UIElement::setParentInternal(UIElement* parent) {
     parent_ = parent;
+    layout_override_size_.reset();
     invalidateLayout();
 }
 
