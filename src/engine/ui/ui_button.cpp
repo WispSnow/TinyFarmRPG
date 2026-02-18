@@ -141,6 +141,9 @@ public:
             }
             return;
         }
+        // 仅 Hovered -> Normal 触发 leave：
+        // Hovered -> Pressed 仍属于按钮交互链路，不视为离开；
+        // Hovered -> Disabled 会在禁用切换链路中统一收敛，不在此处重复分发。
         if (old_phase == InteractionPhase::Hovered && new_phase == InteractionPhase::Normal) {
             if (on_leave_) {
                 on_leave_(owner);

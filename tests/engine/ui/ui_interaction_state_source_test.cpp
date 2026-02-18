@@ -15,6 +15,8 @@ namespace {
 // NOTE:
 // This file uses source-contract checks (string matching) as a safeguard.
 // It does NOT replace runtime behavior tests.
+// Long-term direction: move critical behavior assertions to runtime tests
+// when environment coverage allows, and keep source-contract tests as fast guards.
 
 [[nodiscard]] std::string readTextFile(const std::filesystem::path& path) {
     std::ifstream file(path);
