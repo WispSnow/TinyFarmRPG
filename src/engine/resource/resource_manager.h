@@ -7,7 +7,7 @@
 #include <entt/signal/fwd.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include "resource_debug_info.h"
-#include "audio_manager.h"
+#include "audio_loader.h"
 #include "texture_loader.h"
 
 // 前向声明 SDL 类型
@@ -78,42 +78,42 @@ public:
     void clearTextures();                                                     ///< @brief 清空所有纹理资源
 
     // -- Sound Effects (Chunks) --
-    AudioManager::AudioBufferHandle loadSound(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音效资源(通过id + 文件路径)
+    AudioBufferHandle loadSound(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音效资源(通过id + 文件路径)
     /**
      * @brief 缓存音效资源（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
      *       若你传入的是“语义 key”（如 `"ui_click"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `loadSound(id, file_path)`。
      */
-    AudioManager::AudioBufferHandle loadSound(entt::hashed_string str_hs);
-    AudioManager::AudioBufferHandle getSound(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音效缓存(通过id + 文件路径)
+    AudioBufferHandle loadSound(entt::hashed_string str_hs);
+    AudioBufferHandle getSound(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音效缓存(通过id + 文件路径)
     /**
      * @brief 获取音效缓存（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
      *       若你传入的是“语义 key”（如 `"ui_click"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `getSound(id, file_path)`。
      */
-    AudioManager::AudioBufferHandle getSound(entt::hashed_string str_hs);
+    AudioBufferHandle getSound(entt::hashed_string str_hs);
     void unloadSound(entt::id_type id);                                             ///< @brief 卸载指定的音效资源
     void clearSounds();                                                             ///< @brief 清空所有音效资源
 
     // -- Music --
-    AudioManager::AudioBufferHandle loadMusic(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音乐资源(通过id + 文件路径)
+    AudioBufferHandle loadMusic(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音乐资源(通过id + 文件路径)
     /**
      * @brief 缓存音乐资源（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
      *       若你传入的是“语义 key”（如 `"title-bg-music"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `loadMusic(id, file_path)`。
      */
-    AudioManager::AudioBufferHandle loadMusic(entt::hashed_string str_hs);
-    AudioManager::AudioBufferHandle getMusic(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音乐缓存(通过id + 文件路径)
+    AudioBufferHandle loadMusic(entt::hashed_string str_hs);
+    AudioBufferHandle getMusic(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音乐缓存(通过id + 文件路径)
     /**
      * @brief 获取音乐缓存（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
      *       若你传入的是“语义 key”（如 `"title-bg-music"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `getMusic(id, file_path)`。
      */
-    AudioManager::AudioBufferHandle getMusic(entt::hashed_string str_hs);
+    AudioBufferHandle getMusic(entt::hashed_string str_hs);
     void unloadMusic(entt::id_type id);                                             ///< @brief 卸载指定的音乐资源
     void clearMusic();                                                              ///< @brief 清空所有音乐资源
 

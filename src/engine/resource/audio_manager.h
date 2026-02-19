@@ -1,12 +1,9 @@
 #pragma once
-#include <cstdint>
-#include <memory>
-#include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 #include <entt/core/fwd.hpp>
 #include "resource_debug_info.h"
+#include "audio_loader.h"
 
 namespace engine::resource {
 
@@ -18,31 +15,9 @@ namespace engine::resource {
 class AudioManager final{
     friend class ResourceManager;
 
-public:
-    struct AudioBuffer {
-        std::vector<float> samples;
-        std::uint32_t channels{0};
-        std::uint32_t sample_rate{0};
-        std::uint64_t frame_count{0};
-
-        [[nodiscard]] bool empty() const noexcept { return samples.empty() || channels == 0 || frame_count == 0; }
-    };
-
-    using AudioBufferHandle = std::shared_ptr<const AudioBuffer>;
-
 private:
-    // 音频需要持续播放，必须保证播放期间缓存的音频数据不释放，因此使用shared_ptr
-    using AudioBufferPtr = std::shared_ptr<AudioBuffer>;
-
-    struct AudioResourceEntry {
-        AudioBufferPtr buffer;
-        std::string source_path;
-    };
-
-    // 音效存储 (资源ID -> 音频数据)
-    std::unordered_map<entt::id_type, AudioResourceEntry> sounds_;
-    // 音乐存储 (资源ID -> 音频数据)
-    std::unordered_map<entt::id_type, AudioResourceEntry> music_;
+    SoundCache sound_cache_{};
+    MusicCache music_cache_{};
 
 public:
     /**
@@ -59,7 +34,6 @@ public:
     AudioManager& operator=(AudioManager&&) = delete;
 
 private:  // 仅供 ResourceManager 访问的方法
-    [[nodiscard]] AudioBufferPtr decodeAudio(std::string_view file_path);
     [[nodiscard]] AudioBufferHandle findSound(entt::id_type id) const;
     [[nodiscard]] AudioBufferHandle findMusic(entt::id_type id) const;
 
@@ -67,18 +41,18 @@ private:  // 仅供 ResourceManager 访问的方法
      * @brief 从文件路径加载音效
      * @param id 音效的唯一标识符, 通过entt::hashed_string生成
      * @param file_path 音效文件的路径
-     * @return 加载的音效的指针
-     * @note 如果音效已经加载，则返回已加载音效的指针
-     * @note 如果音效未加载，则从文件路径加载音效，并返回加载的音效的指针
+     * @return 加载的音效句柄
+     * @note 如果音效已经加载，则返回已加载的音效句柄
+     * @note 如果音效未加载，则从文件路径加载音效，并返回加载的音效句柄
      */
     AudioBufferHandle loadSound(entt::id_type id, std::string_view file_path);
 
     /**
      * @brief 从字符串哈希值加载音效
      * @param str_hs entt::hashed_string类型
-     * @return 加载的音效的指针
-     * @note 如果音效已经加载，则返回已加载音效的指针
-     * @note 如果音效未加载，则从哈希字符串对应的文件路径加载音效，并返回加载的音效的指针
+     * @return 加载的音效句柄
+     * @note 如果音效已经加载，则返回已加载的音效句柄
+     * @note 如果音效未加载，则从哈希字符串对应的文件路径加载音效，并返回加载的音效句柄
      */
     AudioBufferHandle loadSound(entt::hashed_string str_hs);
 
@@ -97,18 +71,18 @@ private:  // 仅供 ResourceManager 访问的方法
      * @brief 从文件路径加载音乐
      * @param id 音乐的唯一标识符, 通过entt::hashed_string生成
      * @param file_path 音乐文件的路径
-     * @return 加载的音乐的指针
-     * @note 如果音乐已经加载，则返回已加载音乐的指针
-     * @note 如果音乐未加载，则从文件路径加载音乐，并返回加载的音乐的指针
+     * @return 加载的音乐句柄
+     * @note 如果音乐已经加载，则返回已加载的音乐句柄
+     * @note 如果音乐未加载，则从文件路径加载音乐，并返回加载的音乐句柄
      */
     AudioBufferHandle loadMusic(entt::id_type id, std::string_view file_path);
 
     /**
      * @brief 从字符串哈希值加载音乐
      * @param str_hs entt::hashed_string类型
-     * @return 加载的音乐的指针
-     * @note 如果音乐已经加载，则返回已加载音乐的指针
-     * @note 如果音乐未加载，则从哈希字符串对应的文件路径加载音乐，并返回加载的音乐的指针
+     * @return 加载的音乐句柄
+     * @note 如果音乐已经加载，则返回已加载的音乐句柄
+     * @note 如果音乐未加载，则从哈希字符串对应的文件路径加载音乐，并返回加载的音乐句柄
      */
     AudioBufferHandle loadMusic(entt::hashed_string str_hs);
 
@@ -133,7 +107,7 @@ private:  // 仅供 ResourceManager 访问的方法
 
 private:
     void collectAudioDebugInfo(
-        const std::unordered_map<entt::id_type, AudioResourceEntry>& cache,
+        const SoundCache& cache,
         AudioKind kind,
         std::vector<AudioDebugInfo>& out) const;
 };

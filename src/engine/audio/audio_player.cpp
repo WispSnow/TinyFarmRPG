@@ -35,7 +35,7 @@ namespace {
 } // namespace
 
 struct AudioPlayer::Impl {
-    using AudioBufferHandle = engine::resource::AudioManager::AudioBufferHandle;
+    using AudioBufferHandle = engine::resource::AudioBufferHandle;
 
     struct ManagedSound {
         ma_sound handle{};
