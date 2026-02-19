@@ -55,13 +55,15 @@
 
 #### 步骤 2: 构建完整资产索引
 
-**目标：** 扩充 `resource_mapping.json`（或引入新的索引机制），使所有运行时所需资源（tileset 纹理、blueprint 纹理、UI preset 纹理、字体）都能通过 ID 预加载，为后续切换到严格预加载模式做前置准备。
+**目标：** 引入 `AssetRegistry` 类（`id → path` 映射表），使所有运行时所需资源在使用前均已注册。为后续切换到严格预加载模式做前置准备。
 
 **实现思路：**
-- 梳理当前所有依赖 path 回退加载的调用点（Renderer、EntityFactory、TextRenderer、LevelLoader、UIButton 等），统计其引用的资源路径
-- 扩展 `resource_mapping.json` 或引入分类索引文件（如按 tileset/blueprint/font 分文件），覆盖所有资源
-- 可考虑构建时自动扫描 `assets/` 目录生成索引，减少手动维护
-- 此步骤**不改动** API，只补全数据；现有 path 回退仍保留作为安全网
+- 新增 `AssetRegistry` 类，归 ResourceManager 所有（`unique_ptr`），维护纹理/音频/字体的 `id → path` 映射
+- 数据层类（BlueprintManager / ItemCatalog / UIPresetManager）**不引入 AssetRegistry 依赖**，构造函数不变
+- 注册工作集中在 GameRuntimeAssembler 装配层：各模块 load 完成后，由 assembler 遍历已解析数据提取映射并注册
+- tileset 纹理通过解析 `.world → .tmj → .tsj` 链路确定性扫描，不依赖 preload 模式
+- 现有 `get(id, path)` 的 path 回退仍保留作为安全网
+- 详见 `plans/resource/step-02-asset-registry.md`
 
 ---
 
