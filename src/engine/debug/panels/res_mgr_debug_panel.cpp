@@ -150,7 +150,7 @@ void ResMgrDebugPanel::drawTexturesSection() {
         for (const auto& info : textures_) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            ImGui::Text("0x%08X", static_cast<unsigned int>(info.id));
+            ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.id));
 
             ImGui::TableNextColumn();
             ImGui::Text("%u", info.texture);
@@ -209,7 +209,7 @@ void ResMgrDebugPanel::drawFontsSection() {
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
-            ImGui::Text("0x%08X", static_cast<unsigned int>(info.id));
+            ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.id));
 
             ImGui::TableNextColumn();
             ImGui::Text("%d", info.pixel_size);
@@ -245,8 +245,8 @@ void ResMgrDebugPanel::drawFontsSection() {
         const auto& info = fonts_[i];
         ImGui::PushID(static_cast<int>(i));
         if (ImGui::TreeNodeEx("Font", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth,
-                              "Font 0x%08X (%dpx) - %zu glyphs, %zu pages",
-                              static_cast<unsigned int>(info.id),
+                              "Font 0x%016llX (%dpx) - %zu glyphs, %zu pages",
+                              static_cast<unsigned long long>(info.id),
                               info.pixel_size,
                               info.glyph_count,
                               info.atlas_pages.size())) {
@@ -338,7 +338,7 @@ void ResMgrDebugPanel::drawAudioTable(const char* label, const std::vector<engin
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
-            ImGui::Text("0x%08X", static_cast<unsigned int>(info.id));
+            ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.id));
 
             ImGui::TableNextColumn();
             if (info.source.empty()) {
@@ -401,7 +401,7 @@ void ResMgrDebugPanel::drawAutoTileSection() {
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
-            ImGui::Text("0x%08X", static_cast<unsigned int>(info.rule_id));
+            ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.rule_id));
 
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(info.name.c_str());
@@ -422,7 +422,7 @@ void ResMgrDebugPanel::drawAutoTileSection() {
             ImGui::ProgressBar(manual_ratio, ImVec2(-FLT_MIN, 0.0f), manual_overlay);
 
             ImGui::TableNextColumn();
-            ImGui::Text("0x%08X", static_cast<unsigned int>(info.texture_id));
+            ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.texture_id));
 
             ImGui::TableNextColumn();
             if (info.missing_mask_count == 0) {

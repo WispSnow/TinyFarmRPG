@@ -321,7 +321,7 @@ SaveData SaveService::capture(std::string& out_error) const {
         out.player.inventory.slots.reserve(inv->slots_.size());
         for (const auto& slot : inv->slots_) {
             out.player.inventory.slots.push_back(ItemStackSaveData{
-                static_cast<std::uint32_t>(slot.item_id_),
+                static_cast<std::uint64_t>(slot.item_id_),
                 slot.count_,
             });
         }
@@ -398,7 +398,7 @@ SaveData SaveService::capture(std::string& out_error) const {
                         resourceNodeTypeToString(node.type_),
                         node.hit_count_,
                         node.hits_to_break_,
-                        static_cast<std::uint32_t>(node.drop_item_id_),
+                        static_cast<std::uint64_t>(node.drop_item_id_),
                     });
                 }
                 map.resource_nodes = std::move(nodes);

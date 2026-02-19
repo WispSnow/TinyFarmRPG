@@ -1,6 +1,8 @@
 #include "input_debug_panel.h"
 #include <imgui.h>
 
+#include <cstdint>
+
 namespace engine::debug {
 
 namespace {
@@ -12,6 +14,15 @@ const char* actionStateToString(engine::input::ActionState state) {
         case engine::input::ActionState::INACTIVE: return "Inactive";
         default: return "Unknown";
     }
+}
+
+[[nodiscard]] unsigned long long toUnsignedLongLong(entt::id_type id) {
+    return static_cast<unsigned long long>(id);
+}
+
+[[nodiscard]] const void* makeImGuiId(entt::id_type id, std::uintptr_t salt) {
+    const auto raw = static_cast<std::uintptr_t>(id) ^ salt;
+    return reinterpret_cast<const void*>(raw);
 }
 }
 
@@ -69,13 +80,13 @@ void InputDebugPanel::draw(bool& is_open) {
                 ImGui::TextUnformatted(action_name);
 
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text("0x%X", static_cast<unsigned int>(id));
+                ImGui::Text("0x%016llX", toUnsignedLongLong(id));
 
                 ImGui::TableSetColumnIndex(2);
                 ImGui::TextUnformatted(actionStateToString(state));
 
                 ImGui::TableSetColumnIndex(3);
-                ImGui::PushID(static_cast<int>(id));
+                ImGui::PushID(makeImGuiId(id, 0u));
                 if (ImGui::Button("Press")) {
                     input_manager_.setActionStateDebug(id, engine::input::ActionState::PRESSED);
                 }
@@ -86,7 +97,7 @@ void InputDebugPanel::draw(bool& is_open) {
                 ImGui::PopID();
 
                 ImGui::TableSetColumnIndex(4);
-                ImGui::PushID(static_cast<int>(id) + 10000);
+                ImGui::PushID(makeImGuiId(id, 1u));
                 if (ImGui::Button("Release")) {
                     input_manager_.setActionStateDebug(id, engine::input::ActionState::RELEASED);
                 }

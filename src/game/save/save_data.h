@@ -43,7 +43,7 @@ struct GameTimeSaveData {
 };
 
 struct ItemStackSaveData {
-    std::uint32_t item_id{0};
+    std::uint64_t item_id{0};
     int count{0};
 };
 
@@ -85,7 +85,7 @@ struct ResourceNodeSaveData {
     std::string node_type{"unknown"};
     int hit_count{0};
     int hits_to_break{0};
-    std::uint32_t drop_item_id{0};
+    std::uint64_t drop_item_id{0};
 };
 
 struct MapSaveData {
