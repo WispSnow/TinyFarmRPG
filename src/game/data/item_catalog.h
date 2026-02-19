@@ -71,6 +71,7 @@ public:
     /// @brief 根据 item_id 直接获取其图标（内部查 ItemData → icon_id → Image），找不到则返回 fallback
     [[nodiscard]] engine::render::Image getItemIcon(entt::id_type item_id) const;
     [[nodiscard]] std::vector<const ItemData*> listItems() const;
+    [[nodiscard]] const std::unordered_map<entt::id_type, engine::render::Image>& icons() const { return icons_; }
 
     [[nodiscard]] bool hasItem(entt::id_type item_id) const { return items_.find(item_id) != items_.end(); }
 

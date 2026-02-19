@@ -4,6 +4,7 @@
 #include "engine/debug/panels/spatial_index_debug_panel.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
+#include "engine/resource/asset_registry.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/collision_resolver.h"
 #include "engine/system/animation_system.h"
@@ -20,6 +21,7 @@
 #include "engine/debug/debug_ui_manager.h"
 #endif
 #include "engine/scene/scene.h"
+#include "engine/ui/ui_preset_manager.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/data/game_time.h"
@@ -57,13 +59,240 @@
 #include "game/world/world_state.h"
 
 #include <entt/core/hashed_string.hpp>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 // Use filesystem only to distinguish "bootstrap script missing" from execution errors in logs.
 #include <filesystem>
+#include <fstream>
+#include <unordered_set>
 
 using namespace entt::literals;
 
 namespace {
+
+[[nodiscard]] entt::id_type hashPath(std::string_view path) {
+    if (path.empty()) {
+        return entt::null;
+    }
+    return entt::hashed_string{path.data(), path.size()}.value();
+}
+
+void registerTexturePath(engine::resource::AssetRegistry& registry, entt::id_type id, std::string_view path) {
+    if (path.empty()) {
+        return;
+    }
+    const entt::id_type resolved_id = (id != entt::null) ? id : hashPath(path);
+    if (resolved_id == entt::null) {
+        return;
+    }
+    registry.registerTexture(resolved_id, path);
+}
+
+void registerImageTexture(engine::resource::AssetRegistry& registry, const engine::render::Image& image) {
+    registerTexturePath(registry, image.getTextureId(), image.getTexturePath());
+}
+
+void collectBlueprintAssets(const game::factory::BlueprintManager& manager, engine::resource::AssetRegistry& registry) {
+    const auto collect_animations = [&registry](const auto& animations) {
+        for (const auto& [_, animation] : animations) {
+            registerTexturePath(registry, animation.texture_id_, animation.texture_path_);
+        }
+    };
+
+    for (const auto& [_, blueprint] : manager.actorBlueprints()) {
+        registerTexturePath(registry, blueprint.sprite_.id_, blueprint.sprite_.path_);
+        collect_animations(blueprint.animations_);
+    }
+
+    for (const auto& [_, blueprint] : manager.animalBlueprints()) {
+        registerTexturePath(registry, blueprint.sprite_.id_, blueprint.sprite_.path_);
+        collect_animations(blueprint.animations_);
+    }
+
+    for (const auto& [_, blueprint] : manager.cropBlueprints()) {
+        for (const auto& stage : blueprint.stages_) {
+            registerTexturePath(registry, stage.sprite_.id_, stage.sprite_.path_);
+        }
+    }
+}
+
+void collectItemCatalogAssets(const game::data::ItemCatalog& catalog, engine::resource::AssetRegistry& registry) {
+    for (const auto& [_, icon] : catalog.icons()) {
+        registerImageTexture(registry, icon);
+    }
+}
+
+void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, engine::resource::AssetRegistry& registry) {
+    const auto register_skin_images = [&registry](const engine::ui::UIButtonSkin& skin) {
+        if (skin.normal_image) {
+            registerImageTexture(registry, *skin.normal_image);
+        }
+        if (skin.hover_image) {
+            registerImageTexture(registry, *skin.hover_image);
+        }
+        if (skin.pressed_image) {
+            registerImageTexture(registry, *skin.pressed_image);
+        }
+        if (skin.disabled_image) {
+            registerImageTexture(registry, *skin.disabled_image);
+        }
+    };
+
+    for (const entt::id_type preset_id : preset_manager.listButtonPresetIds()) {
+        const auto* skin = preset_manager.getButtonPreset(preset_id);
+        if (!skin) {
+            continue;
+        }
+        register_skin_images(*skin);
+
+        if (skin->normal_label && !skin->normal_label->font_path.empty() && skin->normal_label->font_size > 0) {
+            const auto font_path = std::string_view(skin->normal_label->font_path);
+            const entt::id_type font_id = hashPath(font_path);
+            if (font_id != entt::null) {
+                registry.registerFont(font_id, skin->normal_label->font_size, font_path);
+            }
+        }
+
+        for (const auto& [_, sound_path] : skin->sound_events) {
+            if (sound_path.empty()) {
+                continue;
+            }
+            const entt::id_type sound_id = hashPath(sound_path);
+            if (sound_id != entt::null) {
+                registry.registerSound(sound_id, sound_path);
+            }
+        }
+    }
+
+    for (const entt::id_type preset_id : preset_manager.listImagePresetIds()) {
+        const auto* image = preset_manager.getImagePreset(preset_id);
+        if (!image) {
+            continue;
+        }
+        registerImageTexture(registry, *image);
+    }
+}
+
+[[nodiscard]] std::string resolveRelativePath(std::string_view relative_path, std::string_view anchor_file) {
+    const auto anchor_dir = std::filesystem::path(anchor_file).parent_path();
+    return (anchor_dir / std::filesystem::path(relative_path)).lexically_normal().string();
+}
+
+[[nodiscard]] bool loadJsonObjectFile(std::string_view file_path, nlohmann::json& out_json) {
+    std::ifstream file{std::string(file_path)};
+    if (!file.is_open()) {
+        spdlog::warn("AssetRegistry: 无法打开 JSON 文件 '{}'", file_path);
+        return false;
+    }
+
+    const std::string file_content(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+
+    out_json = nlohmann::json::parse(file_content, nullptr, false);
+    if (out_json.is_discarded()) {
+        spdlog::warn("AssetRegistry: 解析 JSON 文件 '{}' 失败。", file_path);
+        return false;
+    }
+
+    if (!out_json.is_object()) {
+        spdlog::warn("AssetRegistry: JSON 文件 '{}' 根节点不是对象", file_path);
+        return false;
+    }
+
+    return true;
+}
+
+void registerTilesetTexturesFromTsj(std::string_view tsj_path, engine::resource::AssetRegistry& registry) {
+    nlohmann::json tsj_json;
+    if (!loadJsonObjectFile(tsj_path, tsj_json)) {
+        return;
+    }
+
+    if (const auto image_it = tsj_json.find("image");
+        image_it != tsj_json.end() && image_it->is_string() && !image_it->get_ref<const std::string&>().empty()) {
+        const auto texture_path = resolveRelativePath(image_it->get_ref<const std::string&>(), tsj_path);
+        registerTexturePath(registry, hashPath(texture_path), texture_path);
+    }
+
+    if (const auto tiles_it = tsj_json.find("tiles"); tiles_it != tsj_json.end() && tiles_it->is_array()) {
+        for (const auto& tile_json : *tiles_it) {
+            if (!tile_json.is_object()) {
+                continue;
+            }
+            if (const auto tile_image_it = tile_json.find("image");
+                tile_image_it != tile_json.end() && tile_image_it->is_string() &&
+                !tile_image_it->get_ref<const std::string&>().empty()) {
+                const auto texture_path = resolveRelativePath(tile_image_it->get_ref<const std::string&>(), tsj_path);
+                registerTexturePath(registry, hashPath(texture_path), texture_path);
+            }
+        }
+    }
+}
+
+void registerMapTilesetTextures(std::string_view tmj_path,
+                                engine::resource::AssetRegistry& registry,
+                                std::unordered_set<std::string>& scanned_tilesets) {
+    nlohmann::json map_json;
+    if (!loadJsonObjectFile(tmj_path, map_json)) {
+        return;
+    }
+
+    if (const auto layers_it = map_json.find("layers"); layers_it != map_json.end() && layers_it->is_array()) {
+        for (const auto& layer_json : *layers_it) {
+            if (!layer_json.is_object()) {
+                continue;
+            }
+            const std::string layer_type = layer_json.value("type", "");
+            if (layer_type != "imagelayer") {
+                continue;
+            }
+            const std::string image_path = layer_json.value("image", "");
+            if (image_path.empty()) {
+                continue;
+            }
+            const auto resolved_path = resolveRelativePath(image_path, tmj_path);
+            registerTexturePath(registry, hashPath(resolved_path), resolved_path);
+        }
+    }
+
+    const auto tilesets_it = map_json.find("tilesets");
+    if (tilesets_it == map_json.end() || !tilesets_it->is_array()) {
+        return;
+    }
+
+    for (const auto& tileset_ref : *tilesets_it) {
+        if (!tileset_ref.is_object()) {
+            continue;
+        }
+
+        if (const auto source_it = tileset_ref.find("source");
+            source_it != tileset_ref.end() && source_it->is_string()) {
+            const auto tsj_path = resolveRelativePath(source_it->get_ref<const std::string&>(), tmj_path);
+            if (!scanned_tilesets.insert(tsj_path).second) {
+                continue;
+            }
+            registerTilesetTexturesFromTsj(tsj_path, registry);
+            continue;
+        }
+
+        if (const auto image_it = tileset_ref.find("image"); image_it != tileset_ref.end() && image_it->is_string()) {
+            const auto texture_path = resolveRelativePath(image_it->get_ref<const std::string&>(), tmj_path);
+            registerTexturePath(registry, hashPath(texture_path), texture_path);
+        }
+    }
+}
+
+void collectWorldMapAssets(const game::world::WorldState& world_state, engine::resource::AssetRegistry& registry) {
+    std::unordered_set<std::string> scanned_tilesets{};
+    for (const auto& [_, map_state] : world_state.maps()) {
+        if (map_state.info.file_path.empty()) {
+            continue;
+        }
+        registerMapTilesetTextures(map_state.info.file_path, registry, scanned_tilesets);
+    }
+}
 
 [[nodiscard]] bool ensureBlueprintManager(game::runtime::GameRuntimeServices& services) {
     if (!services.blueprint_manager) {
@@ -176,6 +405,8 @@ namespace {
         *services.entity_factory,
         *services.blueprint_manager);
 
+    collectWorldMapAssets(*services.world_state, context.getResourceManager().getAssetRegistry());
+
     const auto settings = game::world::MapLoadingSettings::loadFromFile("assets/data/map_loading_config.json");
     services.map_manager->setLoadingSettings(settings);
 
@@ -271,12 +502,23 @@ void tryInitScriptHost(entt::registry& registry,
 namespace game::runtime {
 
 bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
+    auto& resource_manager = params.context.getResourceManager();
+    auto& asset_registry = resource_manager.getAssetRegistry();
+
+    collectUIPresetAssets(resource_manager.getUIPresetManager(), asset_registry);
+
     if (!ensureBlueprintManager(params.services)) {
         return false;
+    }
+    if (params.services.blueprint_manager) {
+        collectBlueprintAssets(*params.services.blueprint_manager, asset_registry);
     }
 
     if (!ensureItemCatalog(params.services)) {
         return false;
+    }
+    if (params.services.item_catalog) {
+        collectItemCatalogAssets(*params.services.item_catalog, asset_registry);
     }
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(

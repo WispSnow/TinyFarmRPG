@@ -99,11 +99,24 @@ AudioManager::AudioBufferPtr AudioManager::decodeAudio(std::string_view file_pat
     return buffer;
 }
 
+AudioManager::AudioBufferHandle AudioManager::findSound(entt::id_type id) const {
+    if (const auto it = sounds_.find(id); it != sounds_.end()) {
+        return it->second.buffer;
+    }
+    return {};
+}
+
+AudioManager::AudioBufferHandle AudioManager::findMusic(entt::id_type id) const {
+    if (const auto it = music_.find(id); it != music_.end()) {
+        return it->second.buffer;
+    }
+    return {};
+}
+
 // --- 音效管理 ---
 AudioManager::AudioBufferHandle AudioManager::loadSound(entt::id_type id, std::string_view file_path) {
-    auto it = sounds_.find(id);
-    if (it != sounds_.end()) {
-        return it->second.buffer;
+    if (auto cached = findSound(id)) {
+        return cached;
     }
 
     auto buffer = decodeAudio(file_path);
@@ -122,25 +135,6 @@ AudioManager::AudioBufferHandle AudioManager::loadSound(entt::id_type id, std::s
 
 AudioManager::AudioBufferHandle AudioManager::loadSound(entt::hashed_string str_hs) {
     return loadSound(str_hs.value(), str_hs.data());
-}
-
-AudioManager::AudioBufferHandle AudioManager::getSound(entt::id_type id, std::string_view file_path) {
-    auto it = sounds_.find(id);
-    if (it != sounds_.end()) {
-        return it->second.buffer;
-    }
-
-    if (file_path.empty()) {
-        spdlog::error("AudioManager: 音效 '{}' 未缓存且未提供加载路径。", id);
-        return {};
-    }
-
-    spdlog::trace("AudioManager: 音效 '{}' 未缓存，尝试即时加载。", id);
-    return loadSound(id, file_path);
-}
-
-AudioManager::AudioBufferHandle AudioManager::getSound(entt::hashed_string str_hs) {
-    return getSound(str_hs.value(), str_hs.data());
 }
 
 void AudioManager::unloadSound(entt::id_type id) {
@@ -162,9 +156,8 @@ void AudioManager::clearSounds() {
 
 // --- 音乐管理 ---
 AudioManager::AudioBufferHandle AudioManager::loadMusic(entt::id_type id, std::string_view file_path) {
-    auto it = music_.find(id);
-    if (it != music_.end()) {
-        return it->second.buffer;
+    if (auto cached = findMusic(id)) {
+        return cached;
     }
 
     auto buffer = decodeAudio(file_path);
@@ -183,25 +176,6 @@ AudioManager::AudioBufferHandle AudioManager::loadMusic(entt::id_type id, std::s
 
 AudioManager::AudioBufferHandle AudioManager::loadMusic(entt::hashed_string str_hs) {
     return loadMusic(str_hs.value(), str_hs.data());
-}
-
-AudioManager::AudioBufferHandle AudioManager::getMusic(entt::id_type id, std::string_view file_path) {
-    auto it = music_.find(id);
-    if (it != music_.end()) {
-        return it->second.buffer;
-    }
-
-    if (file_path.empty()) {
-        spdlog::error("AudioManager: 音乐 '{}' 未缓存且未提供加载路径。", id);
-        return {};
-    }
-
-    spdlog::trace("AudioManager: 音乐 '{}' 未缓存，尝试即时加载。", id);
-    return loadMusic(id, file_path);
-}
-
-AudioManager::AudioBufferHandle AudioManager::getMusic(entt::hashed_string str_hs) {
-    return getMusic(str_hs.value(), str_hs.data());
 }
 
 void AudioManager::unloadMusic(entt::id_type id) {

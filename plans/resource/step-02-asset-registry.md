@@ -159,10 +159,10 @@ GameRuntimeAssembler
 
 ## 待办
 
-- [ ] 2.1 实现 AssetRegistry 类（asset_registry.h / .cpp），加入 CMakeLists.txt
-- [ ] 2.2 集成到 ResourceManager，loadResources() 同步注册
-- [ ] 2.3 注册引擎硬编码资源和默认字体
-- [ ] 2.4 LevelLoader 追加 registry 注册调用
-- [ ] 2.5 GameRuntimeAssembler 集中注册 blueprint/item/UI preset 资源
-- [ ] 2.6 确定性扫描 world 中全部 tileset 纹理并注册
-- [ ] 2.7 验证：运行游戏 + 运行测试，无新增报警，现有测试全通过
+- [x] 2.1 实现 AssetRegistry 类（asset_registry.h / .cpp），加入 CMakeLists.txt
+- [x] 2.2 集成到 ResourceManager，loadResources() 同步注册
+- [x] 2.3 注册引擎硬编码资源和默认字体
+- [x] 2.4 LevelLoader 追加 registry 注册调用
+- [x] 2.5 GameRuntimeAssembler 集中注册 blueprint/item/UI preset 资源
+- [x] 2.6 确定性扫描 world 中全部 tileset 纹理并注册
+- [x] 2.7 验证：运行游戏 + 运行测试，无新增报警，现有测试全通过
