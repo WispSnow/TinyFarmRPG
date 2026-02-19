@@ -44,6 +44,14 @@ std::unique_ptr<GLRenderer> GLRenderer::create(SDL_Window* window,
     return renderer;
 }
 
+std::unique_ptr<GLRenderer> GLRenderer::createHeadless(const glm::vec2& logical_size) {
+    auto renderer = std::unique_ptr<GLRenderer>(new GLRenderer());
+    renderer->logical_size_ = logical_size;
+    renderer->window_size_pixels_ = logical_size;
+    renderer->viewport_clipping_enabled_ = false;
+    return renderer;
+}
+
 GLRenderer::~GLRenderer() {
     clean();
 }
@@ -339,7 +347,7 @@ void GLRenderer::beginFrame(const Camera& camera) {
 
 void GLRenderer::beginDebugUI() {
 #ifdef TF_ENABLE_DEBUG_UI
-    if (!debug_ui_enabled_) {
+    if (!debug_ui_enabled_ || !imgui_layer_) {
         return;
     }
     imgui_layer_->newFrame();
@@ -348,7 +356,7 @@ void GLRenderer::beginDebugUI() {
 
 void GLRenderer::endDebugUI() {
 #ifdef TF_ENABLE_DEBUG_UI
-    if (!debug_ui_enabled_) {
+    if (!debug_ui_enabled_ || !imgui_layer_) {
         return;
     }
     if (debug_ui_manager_) {
@@ -359,6 +367,9 @@ void GLRenderer::endDebugUI() {
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
 #ifdef TF_ENABLE_DEBUG_UI
+    if (!imgui_layer_) {
+        return;
+    }
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && debug_ui_manager_) {
         const size_t category_count = engine::debug::DebugUIManager::getCategoryCount();
         // F5开始，根据面板类别数量自动扩展按键: F5 + category_index。
@@ -414,6 +425,9 @@ int GLRenderer::getSwapInterval() const {
 }
 
 void GLRenderer::clear() {
+    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_) {
+        return;
+    }
     // 清空物理窗口（包括信箱区域）以及用于延迟管线的离屏渲染目标。
     // 这样可以确保在开始本帧渲染任务前，每个缓冲区都处于已知的初始状态。
     if (viewport_manager_->dirty()) [[unlikely]] {
@@ -434,6 +448,10 @@ void GLRenderer::clear() {
 }
 
 void GLRenderer::present() {
+    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !bloom_pass_ || !composite_pass_ ||
+        !ui_pass_ || !render_context_) {
+        return;
+    }
     if (viewport_manager_->dirty()) [[unlikely]] {
         viewport_manager_->update();
     }
@@ -545,6 +563,9 @@ void GLRenderer::present() {
 }
 
 void GLRenderer::resize(int width, int height) {
+    if (!viewport_manager_) {
+        return;
+    }
     // 仅更新视口管理器（letterbox），离屏缓冲保持逻辑分辨率
     viewport_manager_->setWindowSize(glm::vec2(width, height));
     viewport_manager_->update();
@@ -565,34 +586,43 @@ void GLRenderer::clean() {
 
 void GLRenderer::setBloomEnabled(bool enabled) {
     bloom_enabled_ = enabled;
-    composite_pass_->setBloomEnabled(enabled);
+    if (composite_pass_) {
+        composite_pass_->setBloomEnabled(enabled);
+    }
     if (!bloom_enabled_ && bloom_pass_) {
         bloom_pass_->clear();
     }
 }
 
 void GLRenderer::setAmbient(const glm::vec3& ambient) {
-    composite_pass_->setAmbient(ambient);
+    if (composite_pass_) {
+        composite_pass_->setAmbient(ambient);
+    }
 }
 
 void GLRenderer::setBloomStrength(float strength) {
-    composite_pass_->setBloomStrength(strength);
+    if (composite_pass_) {
+        composite_pass_->setBloomStrength(strength);
+    }
 }
 
 void GLRenderer::setBloomSigma(float sigma) {
-    bloom_pass_->setSigma(sigma);
+    if (bloom_pass_) {
+        bloom_pass_->setSigma(sigma);
+    }
 }
 
 const glm::vec3& GLRenderer::getAmbient() const {
-    return composite_pass_->getAmbient();
+    static const glm::vec3 kDefaultAmbient{0.0f, 0.0f, 0.0f};
+    return composite_pass_ ? composite_pass_->getAmbient() : kDefaultAmbient;
 }
 
 float GLRenderer::getBloomStrength() const {
-    return composite_pass_->getBloomStrength();
+    return composite_pass_ ? composite_pass_->getBloomStrength() : 0.0f;
 }
 
 float GLRenderer::getBloomSigma() const {
-    return bloom_pass_->getSigma();
+    return bloom_pass_ ? bloom_pass_->getSigma() : 0.0f;
 }
 
 uint32_t GLRenderer::getBloomLevelCount() const {

@@ -98,6 +98,12 @@ public:
     [[nodiscard]] static std::unique_ptr<GLRenderer> create(SDL_Window* window,
                                                             const glm::vec2& logical_size,
                                                             std::string_view params_json_path = "");
+    /**
+     * @brief 创建一个无 OpenGL 上下文的 headless 渲染器（主要用于单元测试）。
+     *
+     * 该实例不会初始化 RenderContext/Pass，相关渲染调用将安全退化为 no-op。
+     */
+    [[nodiscard]] static std::unique_ptr<GLRenderer> createHeadless(const glm::vec2& logical_size);
     ~GLRenderer();
 
     // 绘制场景中精灵(矩形/纹理)
@@ -233,6 +239,7 @@ public:
     [[nodiscard]] glm::vec2 getWindowSizePixels() const;
     [[nodiscard]] engine::utils::Rect getViewportPixels() const;
     [[nodiscard]] engine::utils::LetterboxMetrics getLetterboxMetricsPixels() const;
+    [[nodiscard]] bool isHeadless() const { return render_context_ == nullptr; }
 
     void setSceneDefaultColorOptions(const engine::utils::ColorOptions& options);
     void setSceneDefaultTransformOptions(const engine::utils::TransformOptions& options);

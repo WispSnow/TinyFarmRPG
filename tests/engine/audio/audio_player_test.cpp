@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <SDL3/SDL.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <chrono>
@@ -33,6 +34,7 @@ protected:
         : project_root_(std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal()) {}
 
     void SetUp() override {
+        SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
         resource_manager_ = engine::resource::ResourceManager::create(&dispatcher_);
         audio_player_ = AudioPlayer::create(resource_manager_.get());
         if (!resource_manager_ || !audio_player_) {
@@ -76,7 +78,7 @@ TEST_F(AudioPlayerTest, PlaySoundWithoutPathReturnsError) {
 TEST_F(AudioPlayerTest, PlaySoundWithPathReturnsSuccess) {
     ASSERT_NE(audio_player_, nullptr);
 
-    const std::filesystem::path sound_path = resolveAsset("assets/audio/level-win.mp3");
+    const std::filesystem::path sound_path = resolveAsset("assets/audio/calf-and-cow.wav");
     if (!std::filesystem::exists(sound_path)) {
         GTEST_SKIP() << "测试音频文件缺失: " << sound_path;
     }
@@ -90,7 +92,7 @@ TEST_F(AudioPlayerTest, PlaySoundWithPathReturnsSuccess) {
 TEST_F(AudioPlayerTest, PlaySound2DWithPositionsReturnsSuccess) {
     ASSERT_NE(audio_player_, nullptr);
 
-    const std::filesystem::path sound_path = resolveAsset("assets/audio/Bow Impact Hit 1.ogg");
+    const std::filesystem::path sound_path = resolveAsset("assets/audio/plant_harvest.wav");
     if (!std::filesystem::exists(sound_path)) {
         GTEST_SKIP() << "测试音频文件缺失: " << sound_path;
     }
@@ -107,7 +109,7 @@ TEST_F(AudioPlayerTest, PlaySound2DWithPositionsReturnsSuccess) {
 TEST_F(AudioPlayerTest, PlayMusicCanStopAndReplay) {
     ASSERT_NE(audio_player_, nullptr);
 
-    const std::filesystem::path music_path = resolveAsset("assets/audio/4 Battle Track INTRO TomMusic.ogg");
+    const std::filesystem::path music_path = resolveAsset("assets/audio/01_spring_journey.ogg");
     if (!std::filesystem::exists(music_path)) {
         GTEST_SKIP() << "测试音乐文件缺失: " << music_path;
     }

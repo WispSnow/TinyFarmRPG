@@ -32,6 +32,12 @@
 namespace engine::ui {
 namespace {
 
+[[nodiscard]] bool initSdlVideoWithDummyFallback(Uint32 flags) {
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
+    return SDL_Init(flags);
+}
+
 struct RuntimeProbe {
     int destroyed_count{0};
     std::vector<entt::id_type> visual_states{};
@@ -145,7 +151,7 @@ protected:
     std::unique_ptr<engine::core::Context> context_{};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     }
 
     static void TearDownTestSuite() {
@@ -159,7 +165,7 @@ protected:
             GTEST_SKIP() << "SDL video subsystem not available in this environment.";
         }
 
-        window_ = SDL_CreateWindow("UIInteractionRuntimeTest", 160, 120, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+        window_ = SDL_CreateWindow("UIInteractionRuntimeTest", 160, 120, SDL_WINDOW_HIDDEN);
         if (!window_) {
             GTEST_SKIP() << "Failed to create SDL window.";
         }
@@ -194,7 +200,7 @@ protected:
             GTEST_SKIP() << "Failed to create AudioPlayer.";
         }
 
-        gl_renderer_ = engine::render::opengl::GLRenderer::create(window_, game_state_->getLogicalSize());
+        gl_renderer_ = engine::render::opengl::GLRenderer::createHeadless(game_state_->getLogicalSize());
         if (!gl_renderer_) {
             GTEST_SKIP() << "Failed to create GLRenderer.";
         }

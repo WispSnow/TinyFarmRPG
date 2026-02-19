@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
+#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -33,6 +35,7 @@
 #include "engine/ui/ui_element.h"
 #include "engine/ui/ui_item_slot.h"
 #include "engine/ui/ui_label.h"
+#include "engine/ui/ui_preset_manager.h"
 #include "game/component/hotbar_component.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/inventory_ui.h"
@@ -43,6 +46,25 @@
 
 namespace game::ui {
 namespace {
+
+[[nodiscard]] bool initSdlVideoWithDummyFallback(Uint32 flags) {
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
+    return SDL_Init(flags);
+}
+
+engine::render::Image makeTestPresetImage(std::string_view key,
+                                          const glm::vec2& size,
+                                          std::optional<engine::render::NineSliceMargins> margins = std::nullopt) {
+    engine::render::Image image(
+        std::string{"test://"} + std::string(key),
+        engine::utils::Rect{glm::vec2{0.0F, 0.0F}, size}
+    );
+    if (margins.has_value()) {
+        image.setNineSliceMargins(*margins);
+    }
+    return image;
+}
 
 constexpr float kEpsilon = 0.001F;
 
@@ -81,6 +103,8 @@ protected:
 
     SDL_Window* window_{nullptr};
     std::filesystem::path input_config_path_{};
+    std::filesystem::path original_working_dir_{};
+    std::filesystem::path runtime_root_{};
 
     entt::dispatcher dispatcher_{};
     std::unique_ptr<engine::core::GameState> game_state_{};
@@ -99,7 +123,7 @@ protected:
     std::unique_ptr<engine::core::Context> context_{};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     }
 
     static void TearDownTestSuite() {
@@ -112,8 +136,24 @@ protected:
         if (!sdl_ready_) {
             GTEST_SKIP() << "SDL video subsystem not available in this environment.";
         }
+        original_working_dir_ = std::filesystem::current_path();
+        runtime_root_ = original_working_dir_;
+        if (!std::filesystem::exists(runtime_root_ / "assets") &&
+            std::filesystem::exists(runtime_root_.parent_path() / "assets")) {
+            runtime_root_ = runtime_root_.parent_path();
+        }
+        if (!std::filesystem::exists(runtime_root_ / "assets")) {
+            GTEST_SKIP() << "Unable to locate runtime assets directory for layout integration test.";
+        }
+        {
+            std::error_code ec;
+            std::filesystem::current_path(runtime_root_, ec);
+            if (ec) {
+                GTEST_SKIP() << "Failed to switch working directory to runtime root.";
+            }
+        }
 
-        window_ = SDL_CreateWindow("UILayoutIntegrationTest", 640, 360, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+        window_ = SDL_CreateWindow("UILayoutIntegrationTest", 640, 360, SDL_WINDOW_HIDDEN);
         if (!window_) {
             GTEST_SKIP() << "Failed to create SDL window.";
         }
@@ -142,16 +182,56 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        const std::filesystem::path mapping_path =
-            (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/resource_mapping.json").lexically_normal();
-        resource_manager_->loadResources(mapping_path.string());
+        auto& preset_manager = resource_manager_->getUIPresetManager();
+
+        ASSERT_TRUE(preset_manager.registerImagePreset(
+            entt::hashed_string{"inventory_panel"}.value(),
+            makeTestPresetImage("inventory_panel",
+                                {48.0F, 48.0F},
+                                engine::render::NineSliceMargins{10.0F, 10.0F, 10.0F, 10.0F})));
+        ASSERT_TRUE(preset_manager.registerImagePreset(
+            entt::hashed_string{"inventory_slot"}.value(),
+            makeTestPresetImage("inventory_slot",
+                                {18.0F, 18.0F},
+                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 2.0F})));
+        ASSERT_TRUE(preset_manager.registerImagePreset(
+            entt::hashed_string{"quick_bar_panel"}.value(),
+            makeTestPresetImage("quick_bar_panel",
+                                {164.0F, 28.0F},
+                                engine::render::NineSliceMargins{7.0F, 7.0F, 7.0F, 6.0F})));
+        ASSERT_TRUE(preset_manager.registerImagePreset(
+            entt::hashed_string{"quick_bar_slot"}.value(),
+            makeTestPresetImage("quick_bar_slot",
+                                {18.0F, 18.0F},
+                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 3.0F})));
+        ASSERT_TRUE(preset_manager.registerImagePreset(
+            entt::hashed_string{"quick_bar_selected"}.value(),
+            makeTestPresetImage("quick_bar_selected",
+                                {18.0F, 18.0F},
+                                engine::render::NineSliceMargins{4.0F, 4.0F, 4.0F, 4.0F})));
+
+        auto make_button_skin = [](std::string_view key, const glm::vec2& size) {
+            engine::ui::UIButtonSkin skin{};
+            const auto image = makeTestPresetImage(key, size);
+            skin.normal_image = image;
+            skin.hover_image = image;
+            skin.pressed_image = image;
+            skin.disabled_image = image;
+            return skin;
+        };
+        ASSERT_TRUE(preset_manager.registerButtonPreset(
+            entt::hashed_string{"close"}.value(), make_button_skin("close", {16.0F, 16.0F})));
+        ASSERT_TRUE(preset_manager.registerButtonPreset(
+            entt::hashed_string{"page_left"}.value(), make_button_skin("page_left", {20.0F, 20.0F})));
+        ASSERT_TRUE(preset_manager.registerButtonPreset(
+            entt::hashed_string{"page_right"}.value(), make_button_skin("page_right", {20.0F, 20.0F})));
 
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
             GTEST_SKIP() << "Failed to create AudioPlayer.";
         }
 
-        gl_renderer_ = engine::render::opengl::GLRenderer::create(window_, game_state_->getLogicalSize());
+        gl_renderer_ = engine::render::opengl::GLRenderer::createHeadless(game_state_->getLogicalSize());
         if (!gl_renderer_) {
             GTEST_SKIP() << "Failed to create GLRenderer.";
         }
@@ -218,6 +298,9 @@ protected:
 
         std::error_code ec;
         std::filesystem::remove(input_config_path_, ec);
+        if (!original_working_dir_.empty()) {
+            std::filesystem::current_path(original_working_dir_, ec);
+        }
         drainPendingEvents();
     }
 
