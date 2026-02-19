@@ -332,4 +332,5 @@ function(setup_project_dependencies)
         "external/googletest-1.17.0"
         STATIC  # 使用静态链接，避免运行时依赖
     )
+
 endfunction()

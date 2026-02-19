@@ -26,6 +26,9 @@
 #include "game/data/item_catalog.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
+#ifdef TF_ENABLE_SCRIPTING
+#include "game/script/script_host.h"
+#endif
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
 #include "game/system/animation_event_system.h"
@@ -55,6 +58,8 @@
 
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
+// Use filesystem only to distinguish "bootstrap script missing" from execution errors in logs.
+#include <filesystem>
 
 using namespace entt::literals;
 
@@ -236,6 +241,31 @@ void configureCamera(engine::core::Context& context) {
     camera.setZoom(2.0f);
 }
 
+#ifdef TF_ENABLE_SCRIPTING
+void tryInitScriptHost(entt::registry& registry,
+                       engine::core::Context& context,
+                       game::runtime::GameRuntimeServices& services) {
+    services.script_host = std::make_unique<game::script::ScriptHost>(registry, context.getDispatcher());
+    if (!services.script_host->init()) {
+        spdlog::warn("ScriptHost 初始化失败，脚本功能将禁用。");
+        services.script_host.reset();
+        return;
+    }
+
+    const std::filesystem::path bootstrap_script = "scripts/bootstrap.lua";
+    if (!std::filesystem::exists(bootstrap_script)) {
+        spdlog::info("ScriptHost: 未找到启动脚本 {}", bootstrap_script.string());
+        return;
+    }
+
+    if (!services.script_host->loadFile(bootstrap_script.string())) {
+        spdlog::warn("ScriptHost: 启动脚本执行失败，将继续游戏主流程。");
+    } else {
+        spdlog::info("ScriptHost: 启动脚本执行成功 {}", bootstrap_script.string());
+    }
+}
+#endif
+
 } // namespace
 
 namespace game::runtime {
@@ -278,6 +308,9 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     }
 
     configureCamera(params.context);
+#ifdef TF_ENABLE_SCRIPTING
+    tryInitScriptHost(params.registry, params.context, params.services);
+#endif
     return true;
 }
 

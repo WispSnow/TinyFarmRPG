@@ -23,6 +23,23 @@ function(setup_asset_copy TARGET_NAME)
 endfunction()
 
 # ============================================
+# 配置脚本文件复制（Lua 脚本层）
+# 用法：setup_script_copy(目标名称)
+# ============================================
+function(setup_script_copy TARGET_NAME)
+    set(COPY_SCRIPT ${CMAKE_SOURCE_DIR}/cmake/scripts/CopyAssets.cmake)
+
+    add_custom_command(TARGET ${TARGET_NAME} PRE_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}/scripts
+            -DTARGET_DIR=$<TARGET_FILE_DIR:${TARGET_NAME}>/scripts
+            -P ${COPY_SCRIPT}
+        COMMENT "Check and copy script files"
+        VERBATIM
+    )
+endfunction()
+
+# ============================================
 # 配置配置文件复制
 # 用法：setup_config_copy(目标名称)
 # ============================================
