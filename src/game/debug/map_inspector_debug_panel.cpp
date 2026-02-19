@@ -107,7 +107,7 @@ void MapInspectorDebugPanel::draw(bool& is_open) {
     const auto current_map_id = map_manager_.currentMapId();
     const auto* map_state = world_state_.getMapState(current_map_id);
 
-    ImGui::Text("current_map_id: %u", static_cast<unsigned>(current_map_id));
+    ImGui::Text("current_map_id: 0x%016llX", static_cast<unsigned long long>(current_map_id));
     if (map_state) {
         ImGui::Text("name: %s", map_state->info.name.empty() ? "(unknown)" : map_state->info.name.c_str());
         ImGui::Text("file: %s", map_state->info.file_path.empty() ? "(unknown)" : map_state->info.file_path.c_str());

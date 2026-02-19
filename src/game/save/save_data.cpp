@@ -267,7 +267,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                 for (const auto& slot_json : inv[KEY_SLOTS]) {
                     ItemStackSaveData slot{};
                     if (slot_json.is_object()) {
-                        slot.item_id = slot_json.value<std::uint32_t>(KEY_ITEM_ID.data(), 0u);
+                        slot.item_id = slot_json.value<std::uint64_t>(KEY_ITEM_ID.data(), 0u);
                         slot.count = slot_json.value<int>(KEY_COUNT.data(), 0);
                     }
                     out.player.inventory.slots.push_back(slot);
@@ -355,7 +355,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                     node.node_type = node_json.value<std::string>(KEY_NODE_TYPE.data(), "unknown");
                     node.hit_count = node_json.value<int>(KEY_HIT_COUNT.data(), 0);
                     node.hits_to_break = node_json.value<int>(KEY_HITS_TO_BREAK.data(), 0);
-                    node.drop_item_id = node_json.value<std::uint32_t>(KEY_DROP_ITEM_ID.data(), 0u);
+                    node.drop_item_id = node_json.value<std::uint64_t>(KEY_DROP_ITEM_ID.data(), 0u);
                     nodes.push_back(std::move(node));
                 }
                 map.resource_nodes = std::move(nodes);

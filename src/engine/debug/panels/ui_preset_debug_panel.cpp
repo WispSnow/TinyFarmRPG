@@ -39,13 +39,14 @@ bool editColor(const char* label, engine::utils::FColor& color) {
 }
 
 [[nodiscard]] std::string formatPresetLabel(std::string_view key, entt::id_type id) {
+    const auto numeric = static_cast<unsigned long long>(id);
     if (key.empty()) {
-        return std::format("0x{:08X}", static_cast<unsigned int>(id));
+        return std::format("0x{:016X}", numeric);
     }
-    return std::format("{} (0x{:08X})##{:08X}",
+    return std::format("{} (0x{:016X})##{:016X}",
                        key,
-                       static_cast<unsigned int>(id),
-                       static_cast<unsigned int>(id));
+                       numeric,
+                       numeric);
 }
 
 bool editOffset(const char* label, glm::vec2& offset) {
@@ -69,7 +70,7 @@ void drawImageInfo(const char* label, const std::optional<engine::render::Image>
         const auto& img = *image;
         const auto& rect = img.getSourceRect();
 
-        ImGui::Text("Texture ID: 0x%08X", static_cast<unsigned int>(img.getTextureId()));
+        ImGui::Text("Texture ID: 0x%016llX", static_cast<unsigned long long>(img.getTextureId()));
         const auto texture_path = img.getTexturePath();
         ImGui::Text("Texture Path: %.*s", static_cast<int>(texture_path.size()), texture_path.data());
         ImGui::Text("Source Rect: pos(%.1f, %.1f) size(%.1f, %.1f)", rect.pos.x, rect.pos.y, rect.size.x, rect.size.y);
@@ -255,14 +256,14 @@ void UIPresetDebugPanel::drawButtonsTab() {
     ImGui::SameLine();
     const std::string_view selected_key = presets.getButtonPresetKey(selected_button_preset_);
     if (selected_key.empty()) {
-        ImGui::Text("Selected: 0x%08X %s",
-                    static_cast<unsigned int>(selected_button_preset_),
+        ImGui::Text("Selected: 0x%016llX %s",
+                    static_cast<unsigned long long>(selected_button_preset_),
                     has_selected ? "(found)" : "(missing)");
     } else {
-        ImGui::Text("Selected: %.*s (0x%08X) %s",
+        ImGui::Text("Selected: %.*s (0x%016llX) %s",
                     static_cast<int>(selected_key.size()),
                     selected_key.data(),
-                    static_cast<unsigned int>(selected_button_preset_),
+                    static_cast<unsigned long long>(selected_button_preset_),
                     has_selected ? "(found)" : "(missing)");
     }
 
@@ -294,7 +295,7 @@ void UIPresetDebugPanel::drawButtonsTab() {
         if (!preset_key.empty()) {
             ImGui::Text("Preset Key: %.*s", static_cast<int>(preset_key.size()), preset_key.data());
         }
-        ImGui::Text("Preset ID: 0x%08X", static_cast<unsigned int>(selected_button_preset_));
+        ImGui::Text("Preset ID: 0x%016llX", static_cast<unsigned long long>(selected_button_preset_));
         if (skin->nine_slice_margins) {
             const auto& m = *skin->nine_slice_margins;
             ImGui::Text("NineSlice (skin): L %.1f T %.1f R %.1f B %.1f", m.left, m.top, m.right, m.bottom);
@@ -322,17 +323,17 @@ void UIPresetDebugPanel::drawButtonsTab() {
         ImGui::Text("Font: %s (%d)", normal_label.font_path.c_str(), normal_label.font_size);
         bool changed = false;
         changed |= editColor("Normal Color", normal_label.color);
-    changed |= editOffset("Normal Offset", normal_label.offset);
+        changed |= editOffset("Normal Offset", normal_label.offset);
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("Overrides");
-    changed |= drawLabelOverridesEditor("hover", *skin, skin->hover_label);
-    changed |= drawLabelOverridesEditor("pressed", *skin, skin->pressed_label);
-    changed |= drawLabelOverridesEditor("disabled", *skin, skin->disabled_label);
+        ImGui::Separator();
+        ImGui::TextUnformatted("Overrides");
+        changed |= drawLabelOverridesEditor("hover", *skin, skin->hover_label);
+        changed |= drawLabelOverridesEditor("pressed", *skin, skin->pressed_label);
+        changed |= drawLabelOverridesEditor("disabled", *skin, skin->disabled_label);
 
-    if (changed) {
-        // Live edits: UIButton renders from UIPresetManager directly.
-    }
+        if (changed) {
+            // Live edits: UIButton renders from UIPresetManager directly.
+        }
 
         ImGui::EndTable();
     }
@@ -378,9 +379,9 @@ void UIPresetDebugPanel::drawImagesTab() {
         if (!preset_key.empty()) {
             ImGui::Text("Preset Key: %.*s", static_cast<int>(preset_key.size()), preset_key.data());
         }
-        ImGui::Text("Preset ID: 0x%08X", static_cast<unsigned int>(selected_image_preset_));
+        ImGui::Text("Preset ID: 0x%016llX", static_cast<unsigned long long>(selected_image_preset_));
         const auto& rect = image->getSourceRect();
-        ImGui::Text("Texture ID: 0x%08X", static_cast<unsigned int>(image->getTextureId()));
+        ImGui::Text("Texture ID: 0x%016llX", static_cast<unsigned long long>(image->getTextureId()));
         const auto texture_path = image->getTexturePath();
         ImGui::Text("Texture Path: %.*s", static_cast<int>(texture_path.size()), texture_path.data());
         ImGui::Text("Source Rect: pos(%.1f, %.1f) size(%.1f, %.1f)", rect.pos.x, rect.pos.y, rect.size.x, rect.size.y);

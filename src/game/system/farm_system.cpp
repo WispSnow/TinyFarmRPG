@@ -284,7 +284,7 @@ void FarmSystem::onUseSeedEvent(const game::defs::UseSeedEvent& event) {
     }
     const auto& stack = inventory.slot(event.inventory_slot_index_);
     if (stack.empty() || stack.item_id_ != event.seed_item_id_) {
-        spdlog::warn("激活槽没有匹配的种子，id: {}", static_cast<std::uint32_t>(event.seed_item_id_));
+        spdlog::warn("激活槽没有匹配的种子，id: {}", static_cast<unsigned long long>(event.seed_item_id_));
         return;
     }
 
@@ -553,7 +553,7 @@ void FarmSystem::dropResource(const game::component::ResourceNodeComponent& node
         entity_factory_.createResourcePickup(node.drop_item_id_, sprite, origin, origin + offset, flight_time, arc_height);
     }
 
-    spdlog::info("生成资源掉落实体，物品: {}，数量: {}", static_cast<std::uint32_t>(node.drop_item_id_), drop_count);
+    spdlog::info("生成资源掉落实体，物品: {}，数量: {}", static_cast<unsigned long long>(node.drop_item_id_), drop_count);
 }
 
 } // namespace game::system
