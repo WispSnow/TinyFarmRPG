@@ -1,5 +1,7 @@
 #include "script_bindings.h"
 
+#include "script_entity_handle.h"
+#include "script_host.h"
 #include "engine/component/transform_component.h"
 #include "game/data/game_time.h"
 #include "game/defs/commands.h"
@@ -14,27 +16,53 @@
 #include <algorithm>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <tuple>
+
+extern "C" {
+#include <lauxlib.h>
+#include <lua.h>
+}
 
 namespace {
 
-/// 解析 Lua 侧可选的 target_id 参数：
-/// - 有值时验证实体有效性后返回
-/// - 无值时默认返回玩家实体
-/// 大多数命令绑定都复用此函数，使 Lua 脚本可省略 target_id 来简化调用。
-[[nodiscard]] entt::entity resolveTargetEntity(entt::registry& registry, sol::optional<std::uint32_t> raw_target) {
-    if (raw_target.has_value()) {
-        const entt::entity target = static_cast<entt::entity>(raw_target.value());
-        if (registry.valid(target)) {
-            return target;
+[[nodiscard]] sol::table createReadOnlyProxy(sol::state& lua, sol::table source, std::string_view name) {
+    sol::table proxy = lua.create_table();
+    sol::table metatable = lua.create_table();
+    const std::string table_name(name);
+
+    metatable[sol::meta_function::index] = source;
+    metatable[sol::meta_function::new_index] = [table_name](lua_State* lua_state) -> int {
+        const char* raw_key = lua_tostring(lua_state, 2);
+        if (raw_key) {
+            return luaL_error(lua_state, "%s is read-only (key='%s')", table_name.c_str(), raw_key);
         }
-        spdlog::warn("ScriptHost: 指定目标实体无效: {}", raw_target.value());
-        return entt::null;
-    }
-    return game::system::helpers::getPlayerEntity(registry);
+        return luaL_error(lua_state, "%s is read-only", table_name.c_str());
+    };
+    metatable[sol::meta_function::metatable] = "locked";
+
+    proxy[sol::metatable_key] = metatable;
+    return proxy;
 }
 
-/// 将 Lua 传入的 int 钳位到 [0, 255] 范围内，安全转为 uint8 对话频道号。
+[[nodiscard]] bool resolveTargetEntity(game::script::ScriptHost& host,
+                                       entt::registry& registry,
+                                       const sol::optional<game::script::ScriptEntityHandle>& raw_target,
+                                       std::string_view api_name,
+                                       entt::entity& out_target,
+                                       bool require_default_player) {
+    if (raw_target.has_value()) {
+        return host.validateHandle(raw_target.value(), out_target, api_name);
+    }
+
+    out_target = game::system::helpers::getPlayerEntity(registry);
+    if (out_target == entt::null && require_default_player) {
+        spdlog::warn("ScriptHost: {} 失败，未找到默认玩家实体", api_name);
+        return false;
+    }
+    return true;
+}
+
 [[nodiscard]] std::uint8_t sanitizeChannel(int value) {
     const int clamped = std::clamp(value, 0, 255);
     return static_cast<std::uint8_t>(clamped);
@@ -44,46 +72,53 @@ namespace {
 
 namespace game::script {
 
-void bindScriptAPI(sol::state& lua, entt::registry& registry, entt::dispatcher& dispatcher) {
-    // 创建顶层命名空间 "tf"，所有游戏 API 挂载在此表下（tf.time / tf.player / ...）
-    sol::table tf = lua.create_named_table("tf");
+void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, entt::dispatcher& dispatcher) {
+    lua.new_usertype<ScriptEntityHandle>(
+        "ScriptEntityHandle",
+        sol::no_constructor,
+        "entity_id",
+        sol::readonly_property([](const ScriptEntityHandle& handle) { return toRawEntity(handle); }),
+        "is_valid",
+        [](const ScriptEntityHandle& handle) { return !isNullHandle(handle); });
 
-    // ── tf.time ── 只读查询游戏内时间 ──
-    sol::table time_api = lua.create_table();
-    // Lambda 通过引用捕获 registry；ctx().find 返回指针，
-    // 找不到 GameTime 时返回安全默认值，不会崩溃。
-    time_api.set_function("day", [&registry]() -> std::uint32_t {
+    sol::table tf_impl = lua.create_table();
+
+    // ── tf.time ──
+    sol::table time_impl = lua.create_table();
+    time_impl.set_function("day", [&registry]() -> std::uint32_t {
         const auto* game_time = registry.ctx().find<game::data::GameTime>();
         return game_time ? game_time->day_ : 0u;
     });
-    time_api.set_function("hour", [&registry]() -> float {
+    time_impl.set_function("hour", [&registry]() -> float {
         const auto* game_time = registry.ctx().find<game::data::GameTime>();
         return game_time ? game_time->hour_ : 0.0f;
     });
-    time_api.set_function("minute", [&registry]() -> float {
+    time_impl.set_function("minute", [&registry]() -> float {
         const auto* game_time = registry.ctx().find<game::data::GameTime>();
         return game_time ? game_time->minute_ : 0.0f;
     });
-    time_api.set_function("formatted", [&registry]() -> std::string {
+    time_impl.set_function("formatted", [&registry]() -> std::string {
         const auto* game_time = registry.ctx().find<game::data::GameTime>();
         if (!game_time) {
             return "Day 0, 00:00";
         }
         return game_time->getFormattedTime();
     });
-    tf["time"] = time_api;
+    tf_impl["time"] = createReadOnlyProxy(lua, time_impl, "tf.time");
 
-    // ── tf.player ── 只读查询玩家实体状态 ──
-    sol::table player_api = lua.create_table();
-    player_api.set_function("exists", [&registry]() -> bool {
+    // ── tf.player ──
+    sol::table player_impl = lua.create_table();
+    player_impl.set_function("exists", [&registry]() -> bool {
         return game::system::helpers::getPlayerEntity(registry) != entt::null;
     });
-    player_api.set_function("id", [&registry]() -> std::uint32_t {
-        return static_cast<std::uint32_t>(game::system::helpers::getPlayerEntity(registry));
+    player_impl.set_function("handle", [&registry, &host]() -> sol::optional<ScriptEntityHandle> {
+        const entt::entity player = game::system::helpers::getPlayerEntity(registry);
+        if (player == entt::null) {
+            return {};
+        }
+        return host.makeHandle(player);
     });
-    // 返回 std::tuple<float,float>，Sol2 自动映射为 Lua 多返回值：
-    //   local x, y = tf.player.position()
-    player_api.set_function("position", [&registry]() -> std::tuple<float, float> {
+    player_impl.set_function("position", [&registry]() -> std::tuple<float, float> {
         const entt::entity player = game::system::helpers::getPlayerEntity(registry);
         if (player == entt::null) {
             return {0.0f, 0.0f};
@@ -94,30 +129,26 @@ void bindScriptAPI(sol::state& lua, entt::registry& registry, entt::dispatcher& 
         }
         return {transform->position_.x, transform->position_.y};
     });
-    tf["player"] = player_api;
+    tf_impl["player"] = createReadOnlyProxy(lua, player_impl, "tf.player");
 
-    // ── tf.command ── 通过 dispatcher.trigger 同步发射命令 ──
-    // 命令由对应的 C++ System 订阅处理，脚本不直接修改 ECS 数据。
-    sol::table command_api = lua.create_table();
-    // sol::optional<T> 映射 Lua 的可选参数（不传时为 nil → has_value() == false）。
-    // 这样 Lua 侧可以 tf.command.add_item("wheat_seed", 5) 省略后两个参数。
-    command_api.set_function(
+    // ── tf.command ──
+    sol::table command_impl = lua.create_table();
+    command_impl.set_function(
         "add_item",
-        [&registry, &dispatcher](const std::string& item_id,
-                                 int count,
-                                 sol::optional<std::uint32_t> target_id,
-                                 sol::optional<int> preferred_slot) -> bool {
+        [&host, &registry, &dispatcher](const std::string& item_id,
+                                        int count,
+                                        sol::optional<ScriptEntityHandle> target_handle,
+                                        sol::optional<int> preferred_slot) -> bool {
             if (item_id.empty() || count <= 0) {
                 spdlog::warn("ScriptHost: add_item 参数无效 item_id='{}', count={}", item_id, count);
                 return false;
             }
 
-            const entt::entity target = resolveTargetEntity(registry, target_id);
-            if (target == entt::null) {
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.command.add_item", target, true)) {
                 return false;
             }
 
-            // Lua 字符串 → hashed_string → entt::id_type，与 ECS 组件中的物品 ID 格式一致
             dispatcher.trigger(game::defs::AddItemCommand{
                 target,
                 entt::hashed_string{item_id.c_str()}.value(),
@@ -125,19 +156,19 @@ void bindScriptAPI(sol::state& lua, entt::registry& registry, entt::dispatcher& 
                 preferred_slot.value_or(-1)});
             return true;
         });
-    command_api.set_function(
+    command_impl.set_function(
         "remove_item",
-        [&registry, &dispatcher](const std::string& item_id,
-                                 int count,
-                                 sol::optional<std::uint32_t> target_id,
-                                 sol::optional<int> slot_index) -> bool {
+        [&host, &registry, &dispatcher](const std::string& item_id,
+                                        int count,
+                                        sol::optional<ScriptEntityHandle> target_handle,
+                                        sol::optional<int> slot_index) -> bool {
             if (item_id.empty() || count <= 0) {
                 spdlog::warn("ScriptHost: remove_item 参数无效 item_id='{}', count={}", item_id, count);
                 return false;
             }
 
-            const entt::entity target = resolveTargetEntity(registry, target_id);
-            if (target == entt::null) {
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.command.remove_item", target, true)) {
                 return false;
             }
 
@@ -148,70 +179,71 @@ void bindScriptAPI(sol::state& lua, entt::registry& registry, entt::dispatcher& 
                 slot_index.value_or(-1)});
             return true;
         });
-    command_api.set_function(
+    command_impl.set_function(
         "inventory_sync",
-        [&registry, &dispatcher](sol::optional<std::uint32_t> target_id) -> bool {
-            const entt::entity target = resolveTargetEntity(registry, target_id);
-            if (target == entt::null) {
+        [&host, &registry, &dispatcher](sol::optional<ScriptEntityHandle> target_handle) -> bool {
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.command.inventory_sync", target, true)) {
                 return false;
             }
             dispatcher.trigger(game::defs::InventorySyncCommand{target});
             return true;
         });
-    command_api.set_function(
+    command_impl.set_function(
         "hotbar_sync",
-        [&registry, &dispatcher](sol::optional<std::uint32_t> target_id,
-                                 sol::optional<bool> full_sync) -> bool {
-            const entt::entity target = resolveTargetEntity(registry, target_id);
-            if (target == entt::null) {
+        [&host, &registry, &dispatcher](sol::optional<ScriptEntityHandle> target_handle,
+                                        sol::optional<bool> full_sync) -> bool {
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.command.hotbar_sync", target, true)) {
                 return false;
             }
             dispatcher.trigger(game::defs::HotbarSyncCommand{target, full_sync.value_or(true)});
             return true;
         });
-    // interact 的 target_id 是必填参数（不用 sol::optional），
-    // 因为交互必须指定明确目标；player_id 可选，默认用当前玩家。
-    command_api.set_function(
+    command_impl.set_function(
         "interact",
-        [&registry, &dispatcher](std::uint32_t target_id,
-                                 sol::optional<std::uint32_t> player_id) -> bool {
-            const entt::entity target = static_cast<entt::entity>(target_id);
-            if (!registry.valid(target)) {
-                spdlog::warn("ScriptHost: interact 目标实体无效: {}", target_id);
+        [&host, &registry, &dispatcher](const ScriptEntityHandle& target_handle,
+                                        sol::optional<ScriptEntityHandle> player_handle) -> bool {
+            entt::entity target = entt::null;
+            if (!host.validateHandle(target_handle, target, "tf.command.interact.target")) {
                 return false;
             }
 
-            entt::entity player = game::system::helpers::getPlayerEntity(registry);
-            if (player_id.has_value()) {
-                const entt::entity explicit_player = static_cast<entt::entity>(player_id.value());
-                if (registry.valid(explicit_player)) {
-                    player = explicit_player;
+            entt::entity player = entt::null;
+            if (player_handle.has_value()) {
+                if (!host.validateHandle(player_handle.value(), player, "tf.command.interact.player")) {
+                    return false;
                 }
-            }
-            if (player == entt::null) {
-                return false;
+            } else {
+                player = game::system::helpers::getPlayerEntity(registry);
+                if (player == entt::null) {
+                    spdlog::warn("ScriptHost: tf.command.interact 失败，未找到默认玩家实体");
+                    return false;
+                }
             }
 
             dispatcher.trigger(game::defs::InteractCommand{player, target});
             return true;
         });
-    tf["command"] = command_api;
+    tf_impl["command"] = createReadOnlyProxy(lua, command_impl, "tf.command");
 
-    // ── tf.dialogue ── 通过 dispatcher.enqueue 延迟发射 UI 事件 ──
-    // 与 command 的 trigger（同步）不同，对话事件使用 enqueue（下一帧处理），
-    // 避免在当前帧中途修改 UI 状态。
-    sol::table dialogue_api = lua.create_table();
-    dialogue_api.set_function(
+    // ── tf.dialogue ──
+    sol::table dialogue_impl = lua.create_table();
+    dialogue_impl.set_function(
         "show",
-        [&registry, &dispatcher](const std::string& text,
-                                 sol::optional<std::string> speaker,
-                                 sol::optional<int> channel,
-                                 sol::optional<std::uint32_t> target_id) -> bool {
+        [&host, &registry, &dispatcher](const std::string& text,
+                                        sol::optional<std::string> speaker,
+                                        sol::optional<int> channel,
+                                        sol::optional<ScriptEntityHandle> target_handle) -> bool {
             if (text.empty()) {
                 return false;
             }
 
-            const entt::entity target = resolveTargetEntity(registry, target_id);
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.dialogue.show", target, false)) {
+                return false;
+            }
+
             const std::uint8_t resolved_channel = sanitizeChannel(channel.value_or(1));
             const glm::vec2 world_position = target == entt::null
                                                  ? glm::vec2{0.0f}
@@ -226,17 +258,24 @@ void bindScriptAPI(sol::state& lua, entt::registry& registry, entt::dispatcher& 
             dispatcher.enqueue(evt);
             return true;
         });
-    dialogue_api.set_function(
+    dialogue_impl.set_function(
         "hide",
-        [&registry, &dispatcher](sol::optional<int> channel,
-                                 sol::optional<std::uint32_t> target_id) -> bool {
+        [&host, &registry, &dispatcher](sol::optional<int> channel,
+                                        sol::optional<ScriptEntityHandle> target_handle) -> bool {
+            entt::entity target = entt::null;
+            if (!resolveTargetEntity(host, registry, target_handle, "tf.dialogue.hide", target, false)) {
+                return false;
+            }
+
             game::defs::DialogueHideEvent evt{};
-            evt.target = resolveTargetEntity(registry, target_id);
+            evt.target = target;
             evt.channel = sanitizeChannel(channel.value_or(1));
             dispatcher.enqueue(evt);
             return true;
         });
-    tf["dialogue"] = dialogue_api;
+    tf_impl["dialogue"] = createReadOnlyProxy(lua, dialogue_impl, "tf.dialogue");
+
+    lua["tf"] = createReadOnlyProxy(lua, tf_impl, "tf");
 }
 
 } // namespace game::script

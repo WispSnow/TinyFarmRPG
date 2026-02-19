@@ -184,6 +184,7 @@ target_sources(game PRIVATE
 
 if(ENABLE_SCRIPTING)
     target_sources(game PRIVATE
+        game/script/script_entity_handle.cpp
         game/script/script_host.cpp
         game/script/script_bindings.cpp
     )

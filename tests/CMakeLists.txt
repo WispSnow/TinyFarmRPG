@@ -110,6 +110,8 @@ if(ENABLE_SCRIPTING)
     list(APPEND GAME_TEST_SOURCES
         game/script_host_smoke_test.cpp
         game/script_host_command_bridge_test.cpp
+        game/script_host_security_boundary_test.cpp
+        game/script_host_handle_lifecycle_test.cpp
     )
 endif()
 
