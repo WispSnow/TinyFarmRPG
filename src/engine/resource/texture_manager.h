@@ -1,11 +1,8 @@
 #pragma once
-#include "engine/utils/defs.h"
-#include <memory>
-#include <string>
+#include "texture_loader.h"
+
 #include <string_view>
-#include <unordered_map>
 #include <entt/core/fwd.hpp>
-#include <glm/vec2.hpp>
 #include <vector>
 #include "resource_debug_info.h"
 
@@ -21,29 +18,7 @@ class TextureManager final{
     friend class ResourceManager;
 
 private:
-    // GLuint 的删除器函数对象，用于智能指针管理
-    struct TextureDeleter {
-        void operator()(engine::utils::GL_Texture* texture) const noexcept {
-            if (!texture) {
-                return;
-            }
-            if (texture->texture != 0) {
-                glDeleteTextures(1, &texture->texture);
-            }
-            delete texture;
-        }
-    };
-
-    using TexturePtr = std::unique_ptr<engine::utils::GL_Texture, TextureDeleter>;
-
-    struct TextureResource {
-        TexturePtr texture;
-        std::string source_path;
-        std::size_t memory_bytes{0};
-    };
-
-    // 存储文件路径和指向管理纹理的 unique_ptr 的映射。(容器的键不可使用entt::hashed_string)
-    std::unordered_map<entt::id_type, TextureResource> textures_;
+    TextureCache texture_cache_{};
 
 public:
     TextureManager() = default;
@@ -60,24 +35,23 @@ private: // 仅供 ResourceManager 访问的方法
      * @brief 从文件路径加载纹理
      * @param id 纹理的唯一标识符, 通过entt::hashed_string生成
      * @param file_path 纹理文件的路径
-     * @return 加载的纹理的指针
-     * @note 如果纹理已经加载，则返回已加载的纹理
-     * @note 如果纹理未加载，则从文件路径加载纹理，并返回加载的纹理的指针
+     * @return 加载的纹理句柄
+     * @note 如果纹理已经加载，则返回已加载的纹理句柄
+     * @note 如果纹理未加载，则从文件路径加载纹理，并返回加载的纹理句柄
      */
-    engine::utils::GL_Texture* loadTexture(entt::id_type id, std::string_view file_path);
-    engine::utils::GL_Texture* findTexture(entt::id_type id) const;
+    TextureHandle loadTexture(entt::id_type id, std::string_view file_path);
+    TextureHandle findTexture(entt::id_type id);
     
     /**
      * @brief 从字符串哈希值加载纹理（path-hash）
      * @param str_hs entt::hashed_string类型
-     * @return 加载的纹理的指针
-     * @note 如果纹理已经加载，则返回已加载的纹理
+     * @return 加载的纹理句柄
+     * @note 如果纹理已经加载，则返回已加载的纹理句柄
      * @note 如果纹理未加载，则从 `str_hs.data()` 指向的 file_path 加载纹理并缓存
      * @note 如果你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载，
      *       否则会把 key 当作路径而加载失败
      */
-    engine::utils::GL_Texture* loadTexture(entt::hashed_string str_hs);
-    [[nodiscard]] glm::vec2 getTextureSize(entt::id_type id) const;
+    TextureHandle loadTexture(entt::hashed_string str_hs);
     
     /**
      * @brief 卸载纹理

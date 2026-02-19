@@ -1,110 +1,78 @@
 #include "texture_manager.h"
-#include "engine/render/opengl/gl_helper.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+
 #include <spdlog/spdlog.h>
 #include <entt/core/hashed_string.hpp>
-#include <vector>
+
+#include <cassert>
 
 namespace engine::resource {
 
-engine::utils::GL_Texture* TextureManager::loadTexture(entt::id_type id, std::string_view file_path) {
-    // 检查是否已加载
-    if (auto* cached = findTexture(id)) {
-        return cached;
+TextureHandle TextureManager::loadTexture(entt::id_type id, std::string_view file_path) {
+    auto [it, _] = texture_cache_.load(id, file_path);
+    TextureHandle handle = it->second;
+    if (!handle) {
+        texture_cache_.erase(id);
+        spdlog::error("TextureManager: 纹理加载失败，已移除无效缓存条目: id={}, path='{}'", id, file_path);
     }
-
-    // 如果没加载则尝试加载纹理
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-    unsigned char* data = stbi_load(file_path.data(), &width, &height, &channels, STBI_rgb_alpha);
-    if (!data) {
-        spdlog::error("加载纹理失败: '{}': {}", file_path.data(), stbi_failure_reason());
-        return nullptr;
-    }
-
-    GLuint texture_id = 0;
-    glGenTextures(1, &texture_id);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    {
-        render::opengl::ScopedGLUnpackAlignment unpack_alignment(1);
-        // 以 sRGB 格式上传纹理，这样合成着色器可以在线性空间工作，
-        // 同时最终输出仍然能够正确处理伽马校正。
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    render::opengl::logGlErrors("TextureManager::loadTexture");
-    stbi_image_free(data);
-
-    // 使用带有自定义删除器的 unique_ptr 存储加载的纹理
-    TextureResource resource{};
-    resource.texture = TextureManager::TexturePtr(new engine::utils::GL_Texture(texture_id, width, height));
-    resource.source_path = std::string(file_path);
-    resource.memory_bytes = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u;
-
-    auto [inserted_it, _] = textures_.emplace(id, std::move(resource));
-    spdlog::debug("成功加载并缓存纹理: {}", file_path.data());
-
-    return inserted_it->second.texture.get();
+    return handle;
 }
 
-engine::utils::GL_Texture* TextureManager::loadTexture(entt::hashed_string str_hs) {
+TextureHandle TextureManager::loadTexture(entt::hashed_string str_hs) {
     return loadTexture(str_hs.value(), str_hs.data());
 }
 
-engine::utils::GL_Texture* TextureManager::findTexture(entt::id_type id) const {
-    const auto it = textures_.find(id);
-    if (it != textures_.end()) {
-        return it->second.texture.get();
-    }
-    return nullptr;
-}
-
-glm::vec2 TextureManager::getTextureSize(entt::id_type id) const {
-    if (const auto* texture = findTexture(id)) {
-        return glm::vec2(texture->width, texture->height);
-    }
-    return glm::vec2(0.0f, 0.0f);
+TextureHandle TextureManager::findTexture(entt::id_type id) {
+    return texture_cache_[id];
 }
 
 void TextureManager::unloadTexture(entt::id_type id) {
-    auto it = textures_.find(id);
-    if (it != textures_.end()) {
+    if (texture_cache_.erase(id) > 0U) {
         spdlog::debug("卸载纹理: id = {}", id);
-        textures_.erase(it); // unique_ptr 通过自定义删除器处理删除
     } else {
         spdlog::warn("尝试卸载不存在的纹理: id = {}", id);
     }
 }
 
 void TextureManager::clearTextures() {
-    if (!textures_.empty()) {
-        spdlog::debug("正在清除所有 {} 个缓存的纹理。", textures_.size());
-        textures_.clear(); // unique_ptr 处理所有元素的删除
+#ifndef NDEBUG
+    for (const auto [id, handle] : texture_cache_) {
+        if (!handle) {
+            continue;
+        }
+        const long observed_use_count = handle.handle().use_count();
+        // EnTT 迭代器按值返回 resource 句柄，当前 probe 会额外引入 1 次 shared_ptr 引用。
+        constexpr long EXPECTED_USE_COUNT_DURING_PROBE = 2;
+        if (observed_use_count > EXPECTED_USE_COUNT_DURING_PROBE) {
+            spdlog::error(
+                "TextureManager::clearTextures: 检测到外部纹理句柄仍被持有 id={} gl_handle={} use_count={} external_refs={}",
+                id,
+                handle->texture,
+                observed_use_count,
+                observed_use_count - EXPECTED_USE_COUNT_DURING_PROBE
+            );
+            assert(observed_use_count <= EXPECTED_USE_COUNT_DURING_PROBE && "TextureHandle leaked across clear boundary");
+        }
+    }
+#endif
+
+    if (!texture_cache_.empty()) {
+        spdlog::debug("正在清除所有 {} 个缓存的纹理。", texture_cache_.size());
+        texture_cache_.clear();
     }
 }
 
 void TextureManager::collectDebugInfo(std::vector<TextureDebugInfo>& out) const {
     out.clear();
-    out.reserve(textures_.size());
-    for (const auto& [id, resource] : textures_) {
-        if (!resource.texture) {
+    out.reserve(texture_cache_.size());
+    for (const auto [id, handle] : texture_cache_) {
+        if (!handle) {
             continue;
         }
         TextureDebugInfo info{};
         info.id = id;
-        info.texture = resource.texture->texture;
-        info.width = resource.texture->width;
-        info.height = resource.texture->height;
-        info.source = resource.source_path;
-        info.memory_bytes = resource.memory_bytes;
+        info.texture = handle->texture;
+        info.width = handle->width;
+        info.height = handle->height;
         out.push_back(info);
     }
 }

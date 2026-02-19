@@ -15,6 +15,7 @@ set(TEST_SOURCES
     engine/factory_visibility_test.cpp
     engine/resource/font_manager_create_test.cpp
     engine/resource/resource_manager_no_exceptions_test.cpp
+    engine/resource/resource_manager_texture_handle_api_test.cpp
     engine/ui/ui_button_factory_api_test.cpp
     engine/loader/level_loader_layer_name_test.cpp
     engine/loader/level_loader_no_exceptions_test.cpp

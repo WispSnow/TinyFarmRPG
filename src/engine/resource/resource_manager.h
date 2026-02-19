@@ -8,13 +8,11 @@
 #include <nlohmann/json_fwd.hpp>
 #include "resource_debug_info.h"
 #include "audio_manager.h"
+#include "texture_loader.h"
 
 // 前向声明 SDL 类型
 struct SDL_Renderer;
 struct SDL_Texture;
-namespace engine::utils {
-struct GL_Texture;
-}
 
 namespace engine::resource {
 
@@ -58,22 +56,22 @@ public:
 
     // --- 统一资源访问接口 ---
     // -- Texture --
-    engine::utils::GL_Texture* loadTexture(entt::id_type id, std::string_view file_path);         ///< @brief 载入纹理资源(通过id + 文件路径)
+    TextureHandle loadTexture(entt::id_type id, std::string_view file_path);         ///< @brief 载入纹理资源(通过id + 文件路径)
     /**
      * @brief 载入纹理资源（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
      *       若你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `loadTexture(id, file_path)`。
      */
-    engine::utils::GL_Texture* loadTexture(entt::hashed_string str_hs);
-    engine::utils::GL_Texture* getTexture(entt::id_type id, std::string_view file_path = "");     ///< @brief 尝试获取已加载纹理的指针，如果未加载则尝试加载(通过id + 文件路径)
+    TextureHandle loadTexture(entt::hashed_string str_hs);
+    TextureHandle getTexture(entt::id_type id, std::string_view file_path = "");     ///< @brief 尝试获取已加载纹理句柄，如果未加载则尝试加载(通过id + 文件路径)
     /**
-     * @brief 尝试获取已加载纹理的指针，如果未加载则尝试加载（path-hash）。
+     * @brief 尝试获取已加载纹理句柄，如果未加载则尝试加载（path-hash）。
      * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
      *       若你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载；
      *       或改用 `getTexture(id, file_path)`。
      */
-    engine::utils::GL_Texture* getTexture(entt::hashed_string str_hs);
+    TextureHandle getTexture(entt::hashed_string str_hs);
     void unloadTexture(entt::id_type id);                                     ///< @brief 卸载指定的纹理资源
     glm::vec2 getTextureSize(entt::id_type id, std::string_view file_path = "");    ///< @brief 获取指定纹理的尺寸(通过id + 文件路径)
     glm::vec2 getTextureSize(entt::hashed_string str_hs);                           ///< @brief 获取指定纹理的尺寸(通过字符串哈希值)
