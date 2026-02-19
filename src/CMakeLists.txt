@@ -182,6 +182,13 @@ target_sources(game PRIVATE
     game/scene/rest_dialog_scene.cpp
 )
 
+if(ENABLE_SCRIPTING)
+    target_sources(game PRIVATE
+        game/script/script_host.cpp
+        game/script/script_bindings.cpp
+    )
+endif()
+
 # Game Debug 面板（仅在启用 Debug UI 时编译）
 if(ENABLE_DEBUG_UI)
     target_sources(game PRIVATE

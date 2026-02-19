@@ -6,7 +6,7 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 
 ## 技术栈
 
-- **构建系统**: CMake 3.10+
+- **构建系统**: CMake 3.13+
 - **窗口与输入**: SDL3
 - **ECS 框架**: EnTT
 - **图形渲染**: OpenGL + GLAD
@@ -17,8 +17,11 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 - **数学库**: GLM
 - **日志**: spdlog
 - **JSON 解析**: nlohmann-json
+- **脚本宿主（可选）**: Lua 5.4.8 + Sol2 v3.5.0（project version 4.0.0）
 - **测试框架**: Google Test
 - **地图编辑**: Tiled (生成 .tmj 格式地图)
+
+> 脚本功能默认关闭，可通过 `-DENABLE_SCRIPTING=ON` 启用。启用后优先使用 `external/lua-5.4.8` 与 `external/sol2-3.5.0`，缺失时会自动下载对应版本。
 
 ## 目录结构
 
@@ -284,6 +287,8 @@ game_engine/
 │   ├── shaders/                     # 着色器文件 (.vert, .frag)
 │   ├── textures/                    # 纹理资源 (.png, .gif, .json)
 │   └── farm-rpg/                    # Farm RPG 素材资源包 (2863+ 文件)
+├── scripts/                         # Lua 脚本层（可选，ENABLE_SCRIPTING=ON 时部署）
+│   └── bootstrap.lua               # 脚本宿主启动脚本
 ├── config/                          # 配置文件
 │   ├── audio.json                   # 音频配置
 │   ├── input.json                   # 输入配置

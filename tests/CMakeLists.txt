@@ -106,6 +106,13 @@ set(GAME_TEST_SOURCES
     game/ui_layout_integration_test.cpp
 )
 
+if(ENABLE_SCRIPTING)
+    list(APPEND GAME_TEST_SOURCES
+        game/script_host_smoke_test.cpp
+        game/script_host_command_bridge_test.cpp
+    )
+endif()
+
 if(ENABLE_DEBUG_UI)
     list(APPEND GAME_TEST_SOURCES
         game/system_scheduler_profiler_test.cpp

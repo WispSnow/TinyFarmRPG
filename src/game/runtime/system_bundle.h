@@ -31,6 +31,12 @@ class WorldState;
 class MapManager;
 }
 
+#ifdef TF_ENABLE_SCRIPTING
+namespace game::script {
+class ScriptHost;
+}
+#endif
+
 namespace game::runtime {
 
 struct GameRuntimeServices {
@@ -43,6 +49,9 @@ struct GameRuntimeServices {
     std::unique_ptr<game::world::MapManager> map_manager;
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
     std::unique_ptr<game::save::SaveService> save_service;
+#ifdef TF_ENABLE_SCRIPTING
+    std::unique_ptr<game::script::ScriptHost> script_host;
+#endif
 
     GameRuntimeServices();
     ~GameRuntimeServices() noexcept;

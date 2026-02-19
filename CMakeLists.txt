@@ -19,6 +19,7 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 # 注意：可以在Dependencies.cmake中为每个库单独指定
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
+option(ENABLE_SCRIPTING "启用 Lua + Sol2 脚本宿主层" ON)
 
 # ============================================
 # 引入模块化配置
@@ -32,6 +33,9 @@ include(cmake/RuntimePath.cmake)
 
 # 依赖管理
 include(cmake/Dependencies.cmake)
+
+# 脚本依赖管理（Lua / Sol2）
+include(cmake/ScriptingDependencies.cmake)
 
 # ImGui配置
 include(cmake/ImGui.cmake)
@@ -54,6 +58,10 @@ include(CTest)
 
 # 调用依赖配置函数（定义在Dependencies.cmake中）
 setup_project_dependencies()
+
+if(ENABLE_SCRIPTING)
+    setup_scripting_dependencies()
+endif()
 
 # ============================================
 # 构建目标
@@ -96,6 +104,15 @@ target_link_libraries(game
         engine
 )
 
+if(ENABLE_SCRIPTING)
+    target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)
+    target_link_libraries(game
+        PUBLIC
+            Lua::Lua
+            sol2::sol2
+    )
+endif()
+
 # 创建可执行文件
 add_executable(${TARGET})
 
@@ -123,6 +140,11 @@ setup_compiler_options(${TARGET})
 
 # 配置资源文件复制（定义在BuildHelpers.cmake中）
 setup_asset_copy(${TARGET})
+
+# 配置脚本文件复制（定义在BuildHelpers.cmake中，仅脚本开启时）
+if(ENABLE_SCRIPTING)
+    setup_script_copy(${TARGET})
+endif()
 
 # 配置配置文件复制（定义在BuildHelpers.cmake中）
 setup_config_copy(${TARGET})
