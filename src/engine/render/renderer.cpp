@@ -77,21 +77,21 @@ void Renderer::drawSprite(const component::Sprite& sprite,
         return;
     }
 
-    auto texture = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
-    if (!texture) {
+    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
+    if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", sprite.texture_id_);
         return;
     }
 
     glm::vec4 dest_rect = {position.x, position.y, size.x, size.y};
-    glm::vec4 uv_rect = getSrcRectUV(*texture, sprite.src_rect_);
+    glm::vec4 uv_rect = getSrcRectUV(*texture_handle, sprite.src_rect_);
 
     engine::utils::TransformOptions resolved_transform = transform_options
         ? *transform_options
         : gl_renderer_->getSceneDefaultTransformOptions();
     resolved_transform.flip_horizontal = sprite.is_flipped_ ^ resolved_transform.flip_horizontal;
 
-    gl_renderer_->drawTexture(texture->texture,
+    gl_renderer_->drawTexture(texture_handle->texture,
                               dest_rect,
                               uv_rect,
                               color_options,
@@ -178,8 +178,8 @@ void Renderer::drawFilledCircle(const glm::vec2& position,
         return;
     }
 
-    auto circle_texture = resource_manager_->getTexture("assets/textures/UI/circle.png"_hs);
-    if (!circle_texture) {
+    auto circle_texture_handle = resource_manager_->getTexture("assets/textures/UI/circle.png"_hs);
+    if (!circle_texture_handle) {
         spdlog::error("无法获取引擎自带的圆形纹理。");
         return;
     }
@@ -190,7 +190,7 @@ void Renderer::drawFilledCircle(const glm::vec2& position,
         ? *transform_options
         : gl_renderer_->getSceneDefaultTransformOptions();
 
-    gl_renderer_->drawTexture(circle_texture->texture,
+    gl_renderer_->drawTexture(circle_texture_handle->texture,
                               dest_rect,
                               uv_rect,
                               color_options,
@@ -255,8 +255,8 @@ void Renderer::drawUIImage(const Image& image,
         return;
     }
 
-    auto texture = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
-    if (!texture) {
+    auto texture_handle = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
+    if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", image.getTextureId());
         return;
     }
@@ -268,14 +268,14 @@ void Renderer::drawUIImage(const Image& image,
         size.y,
     };
 
-    glm::vec4 src_rect_uv = getSrcRectUV(*texture, source_rect);
+    glm::vec4 src_rect_uv = getSrcRectUV(*texture_handle, source_rect);
 
     engine::utils::TransformOptions resolved_transform = transform_options
         ? *transform_options
         : gl_renderer_->getUIDefaultTransformOptions();
     resolved_transform.flip_horizontal = image.isFlipped() ^ resolved_transform.flip_horizontal;
 
-    gl_renderer_->drawUITexture(texture->texture,
+    gl_renderer_->drawUITexture(texture_handle->texture,
                                 dest_rect,
                                 src_rect_uv,
                                 color_options,
@@ -303,8 +303,8 @@ void Renderer::drawUINineSliceInternal(const Image& image,
         return;
     }
 
-    auto texture = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
-    if (!texture) {
+    auto texture_handle = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
+    if (!texture_handle) {
         spdlog::error("Renderer::drawUINineSlice: 无法加载纹理 (id: {}, path: {}).",
                       image.getTextureId(), image.getTexturePath());
         return;
@@ -363,9 +363,9 @@ void Renderer::drawUINineSliceInternal(const Image& image,
 
             auto section = static_cast<NineSliceSection>(row * 3 + col);
             const auto src_rect = nine_slice.getSliceRect(section);
-            glm::vec4 uv_rect = getSrcRectUV(*texture, src_rect);
+            glm::vec4 uv_rect = getSrcRectUV(*texture_handle, src_rect);
 
-            gl_renderer_->drawUITexture(texture->texture,
+            gl_renderer_->drawUITexture(texture_handle->texture,
                                         dest_rect,
                                         uv_rect,
                                         color_options,
@@ -436,16 +436,16 @@ void Renderer::addEmissiveSprite(const component::Sprite& sprite, const glm::vec
         return;
     }
 
-    auto texture = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
-    if (!texture) {
+    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
+    if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", sprite.texture_id_);
         return;
     }
 
     glm::vec4 dest_rect{position.x, position.y, size.x, size.y};
-    glm::vec4 uv_rect = getSrcRectUV(*texture, sprite.src_rect_);
+    glm::vec4 uv_rect = getSrcRectUV(*texture_handle, sprite.src_rect_);
 
-    gl_renderer_->addEmissiveTexture(texture->texture, dest_rect, uv_rect,
+    gl_renderer_->addEmissiveTexture(texture_handle->texture, dest_rect, uv_rect,
                                      sprite.is_flipped_, params);
 }
 

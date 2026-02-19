@@ -228,6 +228,9 @@ void GameApp::close() {
     // 必须确保此时 OpenGL 上下文仍然有效，因此要在 GLRenderer 之前销毁。
     ui_preset_manager_.reset();
     auto_tile_library_.reset();
+    if (resource_manager_) {
+        resource_manager_->clear();
+    }
     resource_manager_.reset();
 
     // ImGui 依赖的 OpenGL 上下文必须在窗口销毁前清理

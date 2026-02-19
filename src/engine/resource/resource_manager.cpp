@@ -195,18 +195,18 @@ void ResourceManager::loadResources(std::string_view file_path) {
 }
 
 // --- 纹理接口实现 ---
-engine::utils::GL_Texture* ResourceManager::loadTexture(entt::id_type id, std::string_view file_path) {
+TextureHandle ResourceManager::loadTexture(entt::id_type id, std::string_view file_path) {
     // 构造函数已经确保了 texture_manager_ 不为空，因此不需要再进行if检查，以免性能浪费
     asset_registry_->registerTexture(id, file_path);
     return texture_manager_->loadTexture(id, file_path);
 }
 
-engine::utils::GL_Texture* ResourceManager::loadTexture(entt::hashed_string str_hs) {
+TextureHandle ResourceManager::loadTexture(entt::hashed_string str_hs) {
     return loadTexture(str_hs.value(), str_hs.data());
 }
 
-engine::utils::GL_Texture* ResourceManager::getTexture(entt::id_type id, std::string_view file_path) {
-    if (auto* cached = texture_manager_->findTexture(id)) {
+TextureHandle ResourceManager::getTexture(entt::id_type id, std::string_view file_path) {
+    if (auto cached = texture_manager_->findTexture(id)) {
         return cached;
     }
 
@@ -219,19 +219,19 @@ engine::utils::GL_Texture* ResourceManager::getTexture(entt::id_type id, std::st
 #ifndef NDEBUG
         spdlog::error("ResourceManager::getTexture: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
 #endif
-        return nullptr;
+        return {};
     }
 
     return loadTexture(id, resolved_path);
 }
 
-engine::utils::GL_Texture* ResourceManager::getTexture(entt::hashed_string str_hs) {
+TextureHandle ResourceManager::getTexture(entt::hashed_string str_hs) {
     return getTexture(str_hs.value(), str_hs.data());
 }
 
 glm::vec2 ResourceManager::getTextureSize(entt::id_type id, std::string_view file_path) {
-    if (getTexture(id, file_path)) {
-        return texture_manager_->getTextureSize(id);
+    if (const auto texture = getTexture(id, file_path)) {
+        return glm::vec2(texture->width, texture->height);
     }
     return glm::vec2(0.0f, 0.0f);
 }
@@ -385,6 +385,15 @@ std::vector<TextureDebugInfo> ResourceManager::getTextureDebugInfo() const {
     std::vector<TextureDebugInfo> result;
     if (texture_manager_) {
         texture_manager_->collectDebugInfo(result);
+        for (auto& info : result) {
+            const std::string_view source_path = asset_registry_ ? asset_registry_->findTexturePath(info.id) : std::string_view{};
+            info.source = source_path.empty() ? std::string{} : std::string(source_path);
+            if (info.width > 0 && info.height > 0) {
+                info.memory_bytes = static_cast<std::size_t>(info.width) * static_cast<std::size_t>(info.height) * 4u;
+            } else {
+                info.memory_bytes = 0;
+            }
+        }
         // 仅按 id 排序的 Ranges 写法。参数含义: (容器, 比较器(默认less), 投影(取成员变量))
         std::ranges::sort(result, {}, &TextureDebugInfo::id);
     }
