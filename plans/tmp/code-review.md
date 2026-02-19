@@ -33,7 +33,7 @@
 | S2 软失败模式 | 已落实（`tryInitScriptHost` 不阻塞 `assembleServices`） |
 | S3 步骤排序 | 已落实 |
 | S4 FetchContent 回退 | 已落实（`FetchContent_Populate` 不走 `MakeAvailable`） |
-| S5 测试资源路径 | 已落实（`PROJECT_SOURCE_DIR` 宏 + `tests/data/scripts/`） |
+| S5 测试资源路径 | 已落实（`PROJECT_SOURCE_DIR` 宏 + `tests/scripts/`） |
 | A1 `TF_ENABLE_SCRIPTING` 宏 | 已落实（`target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)`） |
 | A3 `system_bundle.cpp` include | 已落实 |
 
@@ -135,7 +135,7 @@ endif()
 | `assets/scripts/bootstrap.lua` | 8 | 最小示例脚本，防御性检查合理 |
 | `tests/game/script_host_smoke_test.cpp` | 67 | 覆盖内联执行和文件加载两个路径 |
 | `tests/game/script_host_command_bridge_test.cpp` | 68 | 端到端验证 脚本 -> command -> domain effect 完整链路 |
-| `tests/data/scripts/test_command.lua` | 6 | 最小测试辅助脚本 |
+| `tests/scripts/test_command.lua` | 6 | 最小测试辅助脚本 |
 
 ### 修改文件
 

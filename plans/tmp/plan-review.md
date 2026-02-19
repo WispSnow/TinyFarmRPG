@@ -190,7 +190,7 @@ endif()
 **建议**：
 1. 测试中用 `PROJECT_SOURCE_DIR "/assets/scripts/bootstrap.lua"` 拼接路径，或在 `tests/data/` 下放置测试专用的小型 Lua 脚本（推荐后者，避免测试依赖运行时资产）。
 2. 对于 `ScriptHostSmokeTest.LoadAndRunFileWithoutCrash`，可以使用内联字符串执行（`host.exec("local x = 1 + 1")`）避免文件依赖。
-3. 对于 `ScriptHostCommandBridgeTest`，需一个小型 Lua 脚本触发 command，建议放在 `tests/data/scripts/test_command.lua`。
+3. 对于 `ScriptHostCommandBridgeTest`，需一个小型 Lua 脚本触发 command，建议放在 `tests/scripts/test_command.lua`。
 
 ---
 
