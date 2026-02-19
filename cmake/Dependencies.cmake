@@ -292,8 +292,8 @@ function(setup_project_dependencies)
         EnTT
         EnTT
         "https://github.com/skypjack/entt.git"
-        "v3.15.0"
-        "external/entt-3.15.0"
+        "v3.16.0"
+        "external/entt-3.16.0"
         STATIC  # header-only库，实际不影响
     )
 
