@@ -46,9 +46,10 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScriptWithoutCrash) {
         assert(tf.time.day() == 3)
         assert(tf.time.hour() == 7)
         assert(tf.time.minute() == 15)
+        local self_handle = tf.player.handle()
+        assert(self_handle ~= nil)
+        assert(tf.command.interact(self_handle) == true)
     )"));
-
-    EXPECT_TRUE(host.exec("assert(tf.command.interact(0xffffffff) == false)"));
 }
 
 TEST(ScriptHostSmokeTest, LoadAndRunFileWithoutCrash) {

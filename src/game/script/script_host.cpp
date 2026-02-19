@@ -8,19 +8,49 @@
 
 #include <string>
 
+extern "C" {
+#include <lauxlib.h>
+#include <lua.h>
+}
+
 namespace game::script {
 
+namespace {
+
+constexpr int SCRIPT_INSTRUCTION_LIMIT = 200000;
+std::uint64_t g_next_scene_token = 1;
+
+std::uint64_t allocateSceneToken() {
+    return g_next_scene_token++;
+}
+
+void onInstructionLimitReached(lua_State* lua_state, lua_Debug*) {
+    luaL_error(lua_state, "ScriptHost: script exceeded instruction limit");
+}
+
+} // namespace
+
 ScriptHost::ScriptHost(entt::registry& registry, entt::dispatcher& dispatcher)
-    : registry_(registry), dispatcher_(dispatcher) {
+    : registry_(registry), dispatcher_(dispatcher), scene_token_(allocateSceneToken()) {
 }
 
 bool ScriptHost::init() {
+    if (ready_) {
+        return true;
+    }
+
+    if (scene_token_ == 0) {
+        scene_token_ = allocateSceneToken();
+    }
+
     try {
-        // 选择性加载标准库：不加载 io / os 以限制脚本的文件系统和系统调用权限
-        lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string, sol::lib::package);
+        // 选择性加载标准库：不加载 io / os / package。
+        lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
+        hardenLuaGlobals();
+        configureInstructionLimit();
 
         // 注册 tf.* 命名空间下的全部 C++ → Lua 绑定
-        bindScriptAPI(lua_, registry_, dispatcher_);
+        bindScriptAPI(lua_, *this, registry_, dispatcher_);
         ready_ = true;
         return true;
     } catch (const std::exception& e) {
@@ -28,6 +58,13 @@ bool ScriptHost::init() {
         ready_ = false;
         return false;
     }
+}
+
+void ScriptHost::shutdown() {
+    lua_ = sol::state{};
+    last_loaded_file_.clear();
+    ready_ = false;
+    scene_token_ = 0;
 }
 
 bool ScriptHost::loadFile(std::string_view file_path) {
@@ -83,6 +120,55 @@ bool ScriptHost::isReady() const noexcept {
     return ready_;
 }
 
+std::uint64_t ScriptHost::sceneToken() const noexcept {
+    return scene_token_;
+}
+
+ScriptEntityHandle ScriptHost::makeHandle(const entt::entity entity) const noexcept {
+    if (entity == entt::null || scene_token_ == 0) {
+        return {};
+    }
+
+    return ScriptEntityHandle{
+        entity,
+        scene_token_,
+    };
+}
+
+bool ScriptHost::validateHandle(const ScriptEntityHandle& handle,
+                                entt::entity& out_entity,
+                                std::string_view source) const {
+    out_entity = entt::null;
+
+    if (!ready_) {
+        spdlog::warn("ScriptHost: 句柄校验失败 [{}]，宿主未初始化", source);
+        return false;
+    }
+
+    if (isNullHandle(handle)) {
+        spdlog::warn("ScriptHost: 句柄校验失败 [{}]，空句柄", source);
+        return false;
+    }
+
+    if (handle.scene_token != scene_token_) {
+        spdlog::warn("ScriptHost: 句柄校验失败 [{}]，scene_token 不匹配（got={}, expect={}）",
+                     source,
+                     handle.scene_token,
+                     scene_token_);
+        return false;
+    }
+
+    if (!registry_.valid(handle.entity)) {
+        spdlog::warn("ScriptHost: 句柄校验失败 [{}]，entity 无效（raw={}）",
+                     source,
+                     toRawEntity(handle));
+        return false;
+    }
+
+    out_entity = handle.entity;
+    return true;
+}
+
 /// 使用 sol::protected_function（内部走 lua_pcall）而非 sol::function，
 /// 确保脚本运行时错误被捕获为返回值，而非向上传播 C++ 异常导致崩溃。
 bool ScriptHost::runResult(sol::protected_function_result&& result, std::string_view source) {
@@ -101,6 +187,27 @@ bool ScriptHost::ensureReady(std::string_view op_name) const {
     }
     spdlog::warn("ScriptHost: {} 被忽略，宿主未初始化", op_name);
     return false;
+}
+
+void ScriptHost::hardenLuaGlobals() {
+    // 阻止脚本动态加载任意 chunk / 文件。
+    lua_["dofile"] = sol::lua_nil;
+    lua_["loadfile"] = sol::lua_nil;
+    lua_["load"] = sol::lua_nil;
+    // 避免绕过只读代理表（rawset 不触发 __newindex）。
+    lua_["rawset"] = sol::lua_nil;
+    lua_["rawget"] = sol::lua_nil;
+
+    // 可选进一步收敛：避免脚本导出字节码。
+    sol::object string_obj = lua_["string"];
+    if (string_obj.is<sol::table>()) {
+        sol::table string_table = string_obj.as<sol::table>();
+        string_table["dump"] = sol::lua_nil;
+    }
+}
+
+void ScriptHost::configureInstructionLimit() {
+    lua_sethook(lua_.lua_state(), &onInstructionLimitReached, LUA_MASKCOUNT, SCRIPT_INSTRUCTION_LIMIT);
 }
 
 } // namespace game::script

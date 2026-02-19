@@ -22,6 +22,9 @@
 #include "game/defs/audio_ids.h"
 #include "game/defs/commands.h"
 #include "game/save/save_service.h"
+#ifdef TF_ENABLE_SCRIPTING
+#include "game/script/script_host.h"
+#endif
 #include "game/system/camera_follow_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
@@ -209,6 +212,16 @@ void GameScene::render() {
 }
 
 void GameScene::clean() {
+#ifdef TF_ENABLE_SCRIPTING
+    if (services_ && services_->script_host) {
+        services_->script_host->shutdown();
+        services_->script_host.reset();
+    }
+
+    auto& dispatcher = context_.getDispatcher();
+    dispatcher.clear<game::defs::DialogueShowEvent>();
+    dispatcher.clear<game::defs::DialogueHideEvent>();
+#endif
 #ifdef TF_ENABLE_DEBUG_UI
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
