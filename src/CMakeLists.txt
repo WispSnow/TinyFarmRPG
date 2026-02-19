@@ -23,6 +23,7 @@ target_sources(engine PRIVATE
     engine/resource/resource_manager.cpp
     engine/resource/texture_loader.cpp
     engine/resource/texture_manager.cpp
+    engine/resource/audio_loader.cpp
     engine/resource/audio_manager.cpp
     engine/resource/font_manager.cpp
     engine/resource/auto_tile_library.cpp

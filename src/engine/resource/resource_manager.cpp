@@ -249,16 +249,16 @@ void ResourceManager::clearTextures() {
 }
 
 // --- 音频接口实现 ---
-AudioManager::AudioBufferHandle ResourceManager::loadSound(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::loadSound(entt::id_type id, std::string_view file_path) {
     asset_registry_->registerSound(id, file_path);
     return audio_manager_->loadSound(id, file_path);
 }
 
-AudioManager::AudioBufferHandle ResourceManager::loadSound(entt::hashed_string str_hs) {
+AudioBufferHandle ResourceManager::loadSound(entt::hashed_string str_hs) {
     return loadSound(str_hs.value(), str_hs.data());
 }
 
-AudioManager::AudioBufferHandle ResourceManager::getSound(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::getSound(entt::id_type id, std::string_view file_path) {
     if (auto cached = audio_manager_->findSound(id)) {
         return cached;
     }
@@ -278,7 +278,7 @@ AudioManager::AudioBufferHandle ResourceManager::getSound(entt::id_type id, std:
     return loadSound(id, resolved_path);
 }
 
-AudioManager::AudioBufferHandle ResourceManager::getSound(entt::hashed_string str_hs) {
+AudioBufferHandle ResourceManager::getSound(entt::hashed_string str_hs) {
     return getSound(str_hs.value(), str_hs.data());
 }
 
@@ -290,16 +290,16 @@ void ResourceManager::clearSounds() {
     audio_manager_->clearSounds();
 }
 
-AudioManager::AudioBufferHandle ResourceManager::loadMusic(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::loadMusic(entt::id_type id, std::string_view file_path) {
     asset_registry_->registerMusic(id, file_path);
     return audio_manager_->loadMusic(id, file_path);
 }
 
-AudioManager::AudioBufferHandle ResourceManager::loadMusic(entt::hashed_string str_hs) {
+AudioBufferHandle ResourceManager::loadMusic(entt::hashed_string str_hs) {
     return loadMusic(str_hs.value(), str_hs.data());
 }
 
-AudioManager::AudioBufferHandle ResourceManager::getMusic(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::getMusic(entt::id_type id, std::string_view file_path) {
     if (auto cached = audio_manager_->findMusic(id)) {
         return cached;
     }
@@ -319,7 +319,7 @@ AudioManager::AudioBufferHandle ResourceManager::getMusic(entt::id_type id, std:
     return loadMusic(id, resolved_path);
 }
 
-AudioManager::AudioBufferHandle ResourceManager::getMusic(entt::hashed_string str_hs) {
+AudioBufferHandle ResourceManager::getMusic(entt::hashed_string str_hs) {
     return getMusic(str_hs.value(), str_hs.data());
 }
 
@@ -416,6 +416,11 @@ std::vector<AudioDebugInfo> ResourceManager::getSoundDebugInfo() const {
     std::vector<AudioDebugInfo> result;
     if (audio_manager_) {
         audio_manager_->collectSoundDebugInfo(result);
+        for (auto& info : result) {
+            const std::string_view source_path = asset_registry_ ? asset_registry_->findSoundPath(info.id) : std::string_view{};
+            info.source = source_path.empty() ? std::string{} : std::string(source_path);
+            info.memory_bytes = info.sample_count * sizeof(float);
+        }
         std::ranges::sort(result, {}, &AudioDebugInfo::id);
     }
     return result;
@@ -425,6 +430,11 @@ std::vector<AudioDebugInfo> ResourceManager::getMusicDebugInfo() const {
     std::vector<AudioDebugInfo> result;
     if (audio_manager_) {
         audio_manager_->collectMusicDebugInfo(result);
+        for (auto& info : result) {
+            const std::string_view source_path = asset_registry_ ? asset_registry_->findMusicPath(info.id) : std::string_view{};
+            info.source = source_path.empty() ? std::string{} : std::string(source_path);
+            info.memory_bytes = info.sample_count * sizeof(float);
+        }
         std::ranges::sort(result, {}, &AudioDebugInfo::id);
     }
     return result;
