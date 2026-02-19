@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "engine/render/image.h"
-#include "engine/resource/resource_manager.h"
 #include "engine/ui/ui_preset_manager.h"
 
 namespace engine::debug {
@@ -173,8 +172,8 @@ bool drawLabelOverridesEditor(const char* label,
 
 } // namespace
 
-UIPresetDebugPanel::UIPresetDebugPanel(engine::resource::ResourceManager& resource_manager)
-    : resource_manager_(resource_manager) {
+UIPresetDebugPanel::UIPresetDebugPanel(engine::ui::UIPresetManager& preset_manager)
+    : preset_manager_(preset_manager) {
     button_key_.fill('\0');
 }
 
@@ -212,7 +211,7 @@ void UIPresetDebugPanel::draw(bool& is_open) {
 }
 
 void UIPresetDebugPanel::ensureSelectionsValid() {
-    auto& presets = resource_manager_.getUIPresetManager();
+    auto& presets = preset_manager_;
 
     const auto button_ids = presets.listButtonPresetIds();
     if (button_ids.empty()) {
@@ -232,7 +231,7 @@ void UIPresetDebugPanel::ensureSelectionsValid() {
 }
 
 void UIPresetDebugPanel::drawButtonsTab() {
-    auto& presets = resource_manager_.getUIPresetManager();
+    auto& presets = preset_manager_;
     const auto button_ids = presets.listButtonPresetIds();
 
     ImGui::Text("Button Presets: %zu", button_ids.size());
@@ -340,7 +339,7 @@ void UIPresetDebugPanel::drawButtonsTab() {
 }
 
 void UIPresetDebugPanel::drawImagesTab() {
-    auto& presets = resource_manager_.getUIPresetManager();
+    auto& presets = preset_manager_;
     const auto image_ids = presets.listImagePresetIds();
 
     ImGui::Text("Image Presets: %zu", image_ids.size());

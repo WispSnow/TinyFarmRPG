@@ -140,7 +140,7 @@ glm::vec2 InventoryUI::calculateGridSize() const {
 }
 
 void InventoryUI::createPanel() {
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
     const auto* panel_preset = preset_manager.getImagePreset(INVENTORY_PANEL_PRESET.value());
     engine::render::Image panel_skin = panel_preset ? *panel_preset : makeFallbackPanelImage();
     auto panel_margins = panel_skin.getNineSliceMargins();
@@ -186,7 +186,7 @@ void InventoryUI::createGridAndSlots() {
     grid->setCellSize(slot_size_);
     grid->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
 
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
     const auto* slot_preset = preset_manager.getImagePreset(INVENTORY_SLOT_PRESET.value());
     engine::render::Image slot_bg = slot_preset ? *slot_preset : makeFallbackSlotImage();
 

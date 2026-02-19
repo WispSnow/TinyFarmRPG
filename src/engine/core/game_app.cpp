@@ -4,6 +4,7 @@
 #include "engine/core/config.h"
 #include "engine/core/game_state.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
 #include "engine/render/renderer.h"
 #include "engine/render/camera.h"
@@ -11,6 +12,8 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
 #include "engine/scene/scene_manager.h"
+#include "engine/ui/ui_preset_manager.h"
+#include "engine/utils/json_file_loader.h"
 #include "engine/utils/events.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -29,6 +32,41 @@
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
+#include <nlohmann/json.hpp>
+#include <string_view>
+
+namespace {
+
+template <typename Loader>
+void loadPresetList(const nlohmann::json& root,
+                    std::string_view field,
+                    std::string_view mapping_path,
+                    Loader&& loader) {
+    const auto it = root.find(std::string(field));
+    if (it == root.end()) {
+        return;
+    }
+
+    if (it->is_string()) {
+        loader(it->get<std::string>());
+        return;
+    }
+
+    if (it->is_array()) {
+        for (const auto& entry : *it) {
+            if (entry.is_string()) {
+                loader(entry.get<std::string>());
+            } else {
+                spdlog::warn("GameApp: 资源映射 '{}' 的 '{}' 数组包含无效条目 (应为 string)。", mapping_path, field);
+            }
+        }
+        return;
+    }
+
+    spdlog::warn("GameApp: 资源映射 '{}' 的 '{}' 字段格式无效 (应为 string 或 array)。", mapping_path, field);
+}
+
+} // namespace
 
 namespace engine::core {
 
@@ -105,6 +143,8 @@ bool GameApp::init() {
     if (!initGameState()) return false;
     if (!initTime()) return false;
     if (!initResourceManager()) return false;
+    if (!initAutoTileLibrary()) return false;
+    if (!initUIPresetManager()) return false;
     if (!initAudioPlayer()) return false;
     if (!initRenderer()) return false;
     if (!initCamera()) return false;
@@ -186,6 +226,8 @@ void GameApp::close() {
 
     // ResourceManager/FontManager/TextureManager 在析构时会释放 GL 资源（glDeleteTextures 等），
     // 必须确保此时 OpenGL 上下文仍然有效，因此要在 GLRenderer 之前销毁。
+    ui_preset_manager_.reset();
+    auto_tile_library_.reset();
     resource_manager_.reset();
 
     // ImGui 依赖的 OpenGL 上下文必须在窗口销毁前清理
@@ -281,8 +323,14 @@ bool GameApp::registerDebugPanels() {
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::InputDebugPanel>(*input_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::AudioDebugPanel>(*audio_player_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::TextRendererDebugPanel>(*text_renderer_), false, engine::debug::PanelCategory::Engine);
-    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::ResMgrDebugPanel>(*resource_manager_), false, engine::debug::PanelCategory::Engine);
-    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::UIPresetDebugPanel>(*resource_manager_), false, engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(
+        std::make_unique<engine::debug::ResMgrDebugPanel>(*resource_manager_, *auto_tile_library_),
+        false,
+        engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(
+        std::make_unique<engine::debug::UIPresetDebugPanel>(*ui_preset_manager_),
+        false,
+        engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SceneDebugPanel>(*scene_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SpatialIndexDebugPanel>(*scene_manager_, *spatial_index_manager_), false, engine::debug::PanelCategory::Engine);
     return true;
@@ -320,6 +368,40 @@ bool GameApp::initResourceManager() {
     }
     spdlog::trace("资源管理器初始化成功。");
     resource_manager_->loadResources("assets/data/resource_mapping.json");  // 载入默认资源映射文件
+    return true;
+}
+
+bool GameApp::initAutoTileLibrary() {
+    auto_tile_library_ = std::make_unique<engine::resource::AutoTileLibrary>();
+    return true;
+}
+
+bool GameApp::initUIPresetManager() {
+    ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
+
+    constexpr std::string_view kResourceMappingPath = "assets/data/resource_mapping.json";
+    nlohmann::json mapping_json{};
+    if (!engine::utils::loadJsonObjectFile(kResourceMappingPath, mapping_json, "GameApp")) {
+        spdlog::warn("GameApp: UI 预设映射未加载，将使用空预设表。");
+        return true;
+    }
+
+    loadPresetList(mapping_json,
+                   "ui_button_presets",
+                   kResourceMappingPath,
+                   [this](const std::string& preset_path) {
+                       if (!ui_preset_manager_->loadButtonPresets(preset_path)) {
+                           spdlog::warn("GameApp: 加载按钮预设失败: {}", preset_path);
+                       }
+                   });
+    loadPresetList(mapping_json,
+                   "ui_image_presets",
+                   kResourceMappingPath,
+                   [this](const std::string& preset_path) {
+                       if (!ui_preset_manager_->loadImagePresets(preset_path)) {
+                           spdlog::warn("GameApp: 加载图片预设失败: {}", preset_path);
+                       }
+                   });
     return true;
 }
 
@@ -394,6 +476,8 @@ bool GameApp::initContext()
                                              *camera_,
                                              *text_renderer_,
                                              *resource_manager_,
+                                             *auto_tile_library_,
+                                             *ui_preset_manager_,
                                              *audio_player_,
                                              *game_state_,
                                              *time_,

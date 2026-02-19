@@ -230,7 +230,7 @@ void UIManager::initCursor() {
     hid_system_cursor_ = false;
 
     auto& resource_manager = context_.getResourceManager();
-    const auto* preset = resource_manager.getUIPresetManager().getImagePreset(CURSOR_PRESET_ID);
+    const auto* preset = context_.getUIPresetManager().getImagePreset(CURSOR_PRESET_ID);
     if (!preset) {
         spdlog::warn("UIManager: 未找到图片预设 '{}'，将继续使用系统鼠标。", CURSOR_PRESET_ID.data());
         cursor_image_.reset();

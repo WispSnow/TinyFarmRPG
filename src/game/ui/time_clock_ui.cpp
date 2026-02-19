@@ -124,7 +124,7 @@ void TimeClockUI::update(float delta_time, engine::core::Context& context) {
 }
 
 void TimeClockUI::buildImages(engine::core::Context& context) {
-    auto& preset_mgr = context.getResourceManager().getUIPresetManager();
+    auto& preset_mgr = context.getUIPresetManager();
 
     panel_image_ = makePanelFallback();
     label_image_ = makeLabelFallback();

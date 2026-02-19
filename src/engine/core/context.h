@@ -18,6 +18,11 @@ namespace engine::render::opengl {
 
 namespace engine::resource {
     class ResourceManager;
+    class AutoTileLibrary;
+}
+
+namespace engine::ui {
+    class UIPresetManager;
 }
 
 namespace engine::audio {
@@ -53,6 +58,8 @@ private:
     engine::render::Camera& camera_;                        ///< @brief 相机
     engine::render::TextRenderer& text_renderer_;           ///< @brief 文本渲染器
     engine::resource::ResourceManager& resource_manager_;   ///< @brief 资源管理器
+    engine::resource::AutoTileLibrary& auto_tile_library_;  ///< @brief 自动图块规则库
+    engine::ui::UIPresetManager& ui_preset_manager_;        ///< @brief UI 预设管理器
     engine::audio::AudioPlayer& audio_player_;              ///< @brief 音频播放器
     engine::core::GameState& game_state_;                   ///< @brief 游戏状态
     engine::core::Time& time_;                              ///< @brief 时间
@@ -68,6 +75,8 @@ private:
             engine::render::Camera& camera,
             engine::render::TextRenderer& text_renderer,
             engine::resource::ResourceManager& resource_manager,
+            engine::resource::AutoTileLibrary& auto_tile_library,
+            engine::ui::UIPresetManager& ui_preset_manager,
             engine::audio::AudioPlayer& audio_player,
             engine::core::GameState& game_state,
             engine::core::Time& time,
@@ -86,6 +95,8 @@ public:
                                                          engine::render::Camera& camera,
                                                          engine::render::TextRenderer& text_renderer,
                                                          engine::resource::ResourceManager& resource_manager,
+                                                         engine::resource::AutoTileLibrary& auto_tile_library,
+                                                         engine::ui::UIPresetManager& ui_preset_manager,
                                                          engine::audio::AudioPlayer& audio_player,
                                                          engine::core::GameState& game_state,
                                                          engine::core::Time& time,
@@ -108,6 +119,8 @@ public:
     [[nodiscard]] engine::render::Camera& getCamera() const { return camera_; }
     [[nodiscard]] engine::render::TextRenderer& getTextRenderer() const { return text_renderer_; }
     [[nodiscard]] engine::resource::ResourceManager& getResourceManager() const { return resource_manager_; }
+    [[nodiscard]] engine::resource::AutoTileLibrary& getAutoTileLibrary() const { return auto_tile_library_; }
+    [[nodiscard]] engine::ui::UIPresetManager& getUIPresetManager() const { return ui_preset_manager_; }
     [[nodiscard]] engine::audio::AudioPlayer& getAudioPlayer() const { return audio_player_; }
     [[nodiscard]] engine::core::GameState& getGameState() const { return game_state_; }
     [[nodiscard]] engine::core::Time& getTime() const { return time_; }

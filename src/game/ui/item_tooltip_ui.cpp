@@ -78,7 +78,7 @@ void ItemTooltipUI::buildSkin() {
 }
 
 void ItemTooltipUI::buildLayout() {
-    auto& preset_mgr = context_.getResourceManager().getUIPresetManager();
+    auto& preset_mgr = context_.getUIPresetManager();
     auto& text_renderer = context_.getTextRenderer();
     engine::render::Image panel_image{};
     if (const auto* preset = preset_mgr.getImagePreset(HOVER_PANEL_PRESET_ID)) {

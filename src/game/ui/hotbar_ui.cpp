@@ -96,7 +96,7 @@ glm::vec2 HotbarUI::calculatePanelSize() const {
 }
 
 void HotbarUI::createPanel() {
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
     const auto* panel_preset = preset_manager.getImagePreset(QUICK_BAR_PANEL_PRESET.value());
     engine::render::Image panel_skin = panel_preset ? *panel_preset : makeFallbackPanelImage();
 
@@ -123,7 +123,7 @@ void HotbarUI::createSlots() {
         return;
     }
 
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
     const auto* slot_preset = preset_manager.getImagePreset(QUICK_BAR_SLOT_PRESET.value());
     const auto* selected_preset = preset_manager.getImagePreset(QUICK_BAR_SELECTED_PRESET.value());
 

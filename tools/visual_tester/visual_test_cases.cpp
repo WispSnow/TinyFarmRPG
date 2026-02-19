@@ -173,7 +173,7 @@ void TileAutoTileYSortVisualTest::initialize(engine::core::Context& context) {
                                                map_pixel_size,
                                                glm::vec2(tile_size_.x * 4.0f, tile_size_.y * 4.0f));
 
-    auto& library = context.getResourceManager().getAutoTileLibrary();
+    auto& library = context.getAutoTileLibrary();
     constexpr entt::id_type kRuleSoilTilled = entt::hashed_string{"soil_tilled"}.value();
     constexpr std::string_view kTilledSoilTexturePath = "assets/farm-rpg/Farm/Tileset/Modular/Tilled Soil and wet soil.png";
     constexpr int kTilesetColumns = 24;

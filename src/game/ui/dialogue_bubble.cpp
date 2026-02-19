@@ -45,7 +45,7 @@ DialogueBubble::~DialogueBubble() {
 }
 
 void DialogueBubble::buildSkin(engine::core::Context& context) {
-    auto& preset_mgr = context.getResourceManager().getUIPresetManager();
+    auto& preset_mgr = context.getUIPresetManager();
     if (const auto* preset = preset_mgr.getImagePreset(DIALOGUE_PRESET_ID)) {
         bubble_image_ = *preset;
     } else {
