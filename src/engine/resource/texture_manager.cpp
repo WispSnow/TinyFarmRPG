@@ -10,9 +10,8 @@ namespace engine::resource {
 
 engine::utils::GL_Texture* TextureManager::loadTexture(entt::id_type id, std::string_view file_path) {
     // 检查是否已加载
-    auto it = textures_.find(id);
-    if (it != textures_.end()) {
-        return it->second.texture.get();
+    if (auto* cached = findTexture(id)) {
+        return cached;
     }
 
     // 如果没加载则尝试加载纹理
@@ -60,39 +59,19 @@ engine::utils::GL_Texture* TextureManager::loadTexture(entt::hashed_string str_h
     return loadTexture(str_hs.value(), str_hs.data());
 }
 
-engine::utils::GL_Texture* TextureManager::getTexture(entt::id_type id, std::string_view file_path) {
-    // 查找现有纹理
-    auto it = textures_.find(id);
+engine::utils::GL_Texture* TextureManager::findTexture(entt::id_type id) const {
+    const auto it = textures_.find(id);
     if (it != textures_.end()) {
         return it->second.texture.get();
     }
+    return nullptr;
+}
 
-    // 如果未找到，判断是否提供了file_path
-    if (file_path.empty()) {
-        spdlog::error("纹理 '{}' 未找到缓存，且未提供文件路径，返回nullptr。", id);
-        return nullptr;
+glm::vec2 TextureManager::getTextureSize(entt::id_type id) const {
+    if (const auto* texture = findTexture(id)) {
+        return glm::vec2(texture->width, texture->height);
     }
-
-    spdlog::info("纹理 '{}' 未找到缓存，尝试从文件路径加载。", id);
-    return loadTexture(id, file_path);
-}
-
-engine::utils::GL_Texture* TextureManager::getTexture(entt::hashed_string str_hs) {
-    return getTexture(str_hs.value(), str_hs.data());
-}
-
-glm::vec2 TextureManager::getTextureSize(entt::id_type id, std::string_view file_path) {
-    // 获取纹理
-    engine::utils::GL_Texture* texture = getTexture(id, file_path);
-    if (!texture) {
-        spdlog::error("无法获取纹理: {}", file_path.data());
-        return glm::vec2(0.0f, 0.0f);
-    }
-    return glm::vec2(texture->width, texture->height);
-}
-
-glm::vec2 TextureManager::getTextureSize(entt::hashed_string str_hs) {
-    return getTextureSize(str_hs.value(), str_hs.data());
+    return glm::vec2(0.0f, 0.0f);
 }
 
 void TextureManager::unloadTexture(entt::id_type id) {

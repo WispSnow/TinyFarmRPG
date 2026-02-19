@@ -28,6 +28,7 @@ class AudioManager;
 class FontManager;
 class AutoTileLibrary;
 class Font;
+class AssetRegistry;
 
 /**
  * @brief 作为访问各种资源管理器的中央控制点（外观模式 Facade）。
@@ -40,6 +41,7 @@ private:
     std::unique_ptr<AudioManager> audio_manager_;
     std::unique_ptr<FontManager> font_manager_;
     std::unique_ptr<AutoTileLibrary> auto_tile_library_;
+    std::unique_ptr<AssetRegistry> asset_registry_;
     std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_;
     entt::dispatcher* dispatcher_{nullptr};
 
@@ -52,6 +54,8 @@ public:
     // -- Auto Tile Library --
     AutoTileLibrary& getAutoTileLibrary();
     const AutoTileLibrary& getAutoTileLibrary() const;
+    [[nodiscard]] AssetRegistry& getAssetRegistry();
+    [[nodiscard]] const AssetRegistry& getAssetRegistry() const;
 
     // 当前设计中，我们只需要一个ResourceManager，所有权不变，所以不需要拷贝、移动相关构造及赋值运算符
     ResourceManager(const ResourceManager&) = delete;
@@ -164,6 +168,7 @@ private:
                     std::unique_ptr<AudioManager> audio_manager,
                     std::unique_ptr<FontManager> font_manager,
                     std::unique_ptr<AutoTileLibrary> auto_tile_library,
+                    std::unique_ptr<AssetRegistry> asset_registry,
                     std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager);
 };
 

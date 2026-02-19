@@ -19,6 +19,7 @@ target_sources(engine PRIVATE
     engine/core/context.cpp
     engine/core/game_state.cpp
     # Resource
+    engine/resource/asset_registry.cpp
     engine/resource/resource_manager.cpp
     engine/resource/texture_manager.cpp
     engine/resource/audio_manager.cpp

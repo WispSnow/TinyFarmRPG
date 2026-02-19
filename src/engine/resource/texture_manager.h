@@ -4,8 +4,8 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <glm/glm.hpp>
 #include <entt/core/fwd.hpp>
+#include <glm/vec2.hpp>
 #include <vector>
 #include "resource_debug_info.h"
 
@@ -65,6 +65,7 @@ private: // 仅供 ResourceManager 访问的方法
      * @note 如果纹理未加载，则从文件路径加载纹理，并返回加载的纹理的指针
      */
     engine::utils::GL_Texture* loadTexture(entt::id_type id, std::string_view file_path);
+    engine::utils::GL_Texture* findTexture(entt::id_type id) const;
     
     /**
      * @brief 从字符串哈希值加载纹理（path-hash）
@@ -76,46 +77,8 @@ private: // 仅供 ResourceManager 访问的方法
      *       否则会把 key 当作路径而加载失败
      */
     engine::utils::GL_Texture* loadTexture(entt::hashed_string str_hs);
+    [[nodiscard]] glm::vec2 getTextureSize(entt::id_type id) const;
     
-    /**
-     * @brief 获取纹理
-     * @param id 纹理的唯一标识符, 通过entt::hashed_string生成
-     * @param file_path 纹理文件的路径
-     * @return 加载的纹理的指针
-     * @note 如果纹理已经加载，则返回已加载的纹理
-     * @note 如果纹理未加载，且提供了file_path，则尝试从文件路径加载纹理，并返回加载的纹理的指针
-     * @note 如果纹理未加载，且没有提供file_path，则返回nullptr
-     */
-    engine::utils::GL_Texture* getTexture(entt::id_type id, std::string_view file_path = "");
-
-    /**
-     * @brief 从字符串哈希值获取纹理（path-hash）
-     * @param str_hs entt::hashed_string类型
-     * @return 加载的纹理的指针
-     * @note 如果纹理已经加载，则返回已加载的纹理
-     * @note 如果纹理未加载，则尝试从 `str_hs.data()` 指向的 file_path 加载并缓存
-     * @note 如果你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载，
-     *       否则会把 key 当作路径而加载失败
-     */
-    engine::utils::GL_Texture* getTexture(entt::hashed_string str_hs);
-
-    /**
-     * @brief 获取纹理的尺寸
-     * @param id 纹理的唯一标识符, 通过entt::hashed_string生成
-     * @param file_path 纹理文件的路径
-     * @return 纹理的尺寸
-     * @note 如果纹理未加载，且提供了file_path，则尝试从文件路径加载纹理，并返回加载的纹理的尺寸
-     */
-    glm::vec2 getTextureSize(entt::id_type id, std::string_view file_path = "");
-
-    /**
-     * @brief 从字符串哈希值获取纹理的尺寸
-     * @param str_hs entt::hashed_string类型
-     * @return 纹理的尺寸
-     * @note 如果纹理未加载，则返回glm::vec2(0.0f, 0.0f)
-     */
-    glm::vec2 getTextureSize(entt::hashed_string str_hs);
-
     /**
      * @brief 卸载纹理
      * @param id 纹理的唯一标识符, 通过entt::hashed_string生成

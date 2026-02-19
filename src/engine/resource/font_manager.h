@@ -151,6 +151,7 @@ public:
 private: // 仅由 ResourceManager（和内部）访问的方法
     FontManager() = default;
     [[nodiscard]] bool init();
+    [[nodiscard]] Font* findFont(entt::id_type id, int pixel_size) const;
 
     /**
      * @brief 从文件路径加载指定像素大小的字体
@@ -172,27 +173,6 @@ private: // 仅由 ResourceManager（和内部）访问的方法
      * @note 如果字体未加载，则从哈希字符串对应的文件路径加载字体，并返回加载的字体的指针
      */
     Font* loadFont(entt::hashed_string str_hs, int pixel_size);
-
-    /**
-     * @brief 尝试获取已加载字体的指针，如果未加载则尝试加载
-     * @param id 字体的唯一标识符, 通过entt::hashed_string生成
-     * @param pixel_size 字体的像素大小
-     * @param file_path 字体文件的路径
-     * @return 加载的字体的指针
-     * @note 如果字体已经加载，则返回已加载字体的指针
-     * @note 如果字体未加载，且提供了file_path，则尝试从文件路径加载字体，并返回加载的字体的指针
-     */
-    Font* getFont(entt::id_type id, int pixel_size, std::string_view file_path = "");
-
-    /**
-     * @brief 从字符串哈希值获取字体
-     * @param str_hs entt::hashed_string类型
-     * @param pixel_size 字体的像素大小
-     * @return 加载的字体的指针
-     * @note 如果字体已经加载，则返回已加载字体的指针
-     * @note 如果字体未加载，则从哈希字符串对应的文件路径加载字体，并返回加载的字体的指针
-     */
-    Font* getFont(entt::hashed_string str_hs, int pixel_size);
 
     /**
      * @brief 卸载特定字体（通过路径哈希值和大小标识）

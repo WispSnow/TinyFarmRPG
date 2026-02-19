@@ -461,6 +461,14 @@ bool FontManager::init() {
     return true;
 }
 
+Font* FontManager::findFont(entt::id_type id, int pixel_size) const {
+    const FontKey key{id, pixel_size};
+    if (const auto it = fonts_.find(key); it != fonts_.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
 FontManager::~FontManager() {
     if (!fonts_.empty()) {
         spdlog::debug("FontManager 不为空，调用 clearFonts 处理清理逻辑。");
@@ -508,9 +516,8 @@ Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view f
     }
 
     // 步骤1：检查字体缓存，避免重复加载
-    FontKey key = {id, pixel_size};
-    if (auto it = fonts_.find(key); it != fonts_.end()) {
-        return it->second.get();
+    if (auto* cached = findFont(id, pixel_size)) {
+        return cached;
     }
 
     // 步骤2：使用 FreeType 打开字体文件
@@ -542,6 +549,7 @@ Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view f
     }
     Font* font_ptr = font.get();
     // 步骤5：缓存字体对象
+    const FontKey key{id, pixel_size};
     fonts_.emplace(key, std::move(font));
     spdlog::debug("成功加载并缓存字体：{} (id = {}, {}px)", file_path, id, pixel_size);
     return font_ptr;
@@ -549,24 +557,6 @@ Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view f
 
 Font* FontManager::loadFont(entt::hashed_string str_hs, int pixel_size) {
     return loadFont(str_hs.value(), pixel_size, str_hs.data());
-}
-
-Font* FontManager::getFont(entt::id_type id, int pixel_size, std::string_view file_path) {
-    FontKey key = {id, pixel_size};
-    if (auto it = fonts_.find(key); it != fonts_.end()) {
-        return it->second.get();
-    }
-    if (file_path.empty()) {
-        spdlog::debug("字体 (id = {}, {}px) 不在缓存中，且未提供文件路径，返回 nullptr。", id, pixel_size);
-        return nullptr;
-    }
-
-    spdlog::info("字体 '{}' (id = {}, {}px) 不在缓存中，尝试加载。", file_path, id, pixel_size);
-    return loadFont(id, pixel_size, file_path);
-}
-
-Font* FontManager::getFont(entt::hashed_string str_hs, int pixel_size) {
-    return getFont(str_hs.value(), pixel_size, str_hs.data());
 }
 
 void FontManager::unloadFont(entt::id_type id, int pixel_size) {

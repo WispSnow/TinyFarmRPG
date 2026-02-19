@@ -1,9 +1,11 @@
 #include "resource_manager.h"
+#include "asset_registry.h"
 #include "texture_manager.h"
 #include "audio_manager.h"
 #include "font_manager.h" 
 #include "auto_tile_library.h"
 #include "engine/ui/ui_preset_manager.h"
+#include "engine/ui/ui_defaults.h"
 #include <fstream>
 #include <filesystem>
 #include <system_error>
@@ -34,6 +36,7 @@ std::unique_ptr<ResourceManager> ResourceManager::create(entt::dispatcher* dispa
         return nullptr;
     }
     auto auto_tile_library = std::make_unique<AutoTileLibrary>();
+    auto asset_registry = std::make_unique<AssetRegistry>();
     auto ui_preset_manager = std::make_unique<engine::ui::UIPresetManager>();
 
     return std::unique_ptr<ResourceManager>(new ResourceManager(dispatcher,
@@ -41,6 +44,7 @@ std::unique_ptr<ResourceManager> ResourceManager::create(entt::dispatcher* dispa
                                                                 std::move(audio_manager),
                                                                 std::move(font_manager),
                                                                 std::move(auto_tile_library),
+                                                                std::move(asset_registry),
                                                                 std::move(ui_preset_manager)));
 }
 
@@ -49,11 +53,13 @@ ResourceManager::ResourceManager(entt::dispatcher* dispatcher,
                                  std::unique_ptr<AudioManager> audio_manager,
                                  std::unique_ptr<FontManager> font_manager,
                                  std::unique_ptr<AutoTileLibrary> auto_tile_library,
+                                 std::unique_ptr<AssetRegistry> asset_registry,
                                  std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager)
     : texture_manager_(std::move(texture_manager)),
       audio_manager_(std::move(audio_manager)),
       font_manager_(std::move(font_manager)),
       auto_tile_library_(std::move(auto_tile_library)),
+      asset_registry_(std::move(asset_registry)),
       ui_preset_manager_(std::move(ui_preset_manager)),
       dispatcher_(dispatcher) {
     spdlog::trace("ResourceManager 构造成功。");
@@ -78,6 +84,14 @@ AutoTileLibrary& ResourceManager::getAutoTileLibrary() {
 
 const AutoTileLibrary& ResourceManager::getAutoTileLibrary() const {
     return *auto_tile_library_;
+}
+
+AssetRegistry& ResourceManager::getAssetRegistry() {
+    return *asset_registry_;
+}
+
+const AssetRegistry& ResourceManager::getAssetRegistry() const {
+    return *asset_registry_;
 }
 
 void ResourceManager::loadResources(std::string_view file_path) {
@@ -221,6 +235,14 @@ void ResourceManager::loadResources(std::string_view file_path) {
 
     loadPresetList("ui_button_presets", [this](const std::string& preset_path) { loadUIButtonPresets(preset_path); });
     loadPresetList("ui_image_presets", [this](const std::string& preset_path) { loadUIImagePresets(preset_path); });
+
+    constexpr std::string_view CIRCLE_TEXTURE_PATH{"assets/textures/UI/circle.png"};
+    const entt::id_type circle_texture_id = entt::hashed_string{CIRCLE_TEXTURE_PATH.data(), CIRCLE_TEXTURE_PATH.size()};
+    asset_registry_->registerTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
+
+    const entt::id_type default_font_id =
+        entt::hashed_string{engine::ui::DEFAULT_UI_FONT_PATH.data(), engine::ui::DEFAULT_UI_FONT_PATH.size()};
+    asset_registry_->registerFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
 }
 
 void ResourceManager::loadUIButtonPresets(std::string_view file_path) {
@@ -248,27 +270,47 @@ void ResourceManager::loadUIImagePresets(std::string_view file_path) {
 // --- 纹理接口实现 ---
 engine::utils::GL_Texture* ResourceManager::loadTexture(entt::id_type id, std::string_view file_path) {
     // 构造函数已经确保了 texture_manager_ 不为空，因此不需要再进行if检查，以免性能浪费
+    asset_registry_->registerTexture(id, file_path);
     return texture_manager_->loadTexture(id, file_path);
 }
 
 engine::utils::GL_Texture* ResourceManager::loadTexture(entt::hashed_string str_hs) {
-    return texture_manager_->loadTexture(str_hs);
+    return loadTexture(str_hs.value(), str_hs.data());
 }
 
 engine::utils::GL_Texture* ResourceManager::getTexture(entt::id_type id, std::string_view file_path) {
-    return texture_manager_->getTexture(id, file_path);
+    if (auto* cached = texture_manager_->findTexture(id)) {
+        return cached;
+    }
+
+    std::string_view resolved_path = file_path;
+    if (resolved_path.empty()) {
+        resolved_path = asset_registry_->findTexturePath(id);
+    }
+
+    if (resolved_path.empty()) {
+#ifndef NDEBUG
+        spdlog::error("ResourceManager::getTexture: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
+#endif
+        return nullptr;
+    }
+
+    return loadTexture(id, resolved_path);
 }
 
 engine::utils::GL_Texture* ResourceManager::getTexture(entt::hashed_string str_hs) {
-    return texture_manager_->getTexture(str_hs);
+    return getTexture(str_hs.value(), str_hs.data());
 }
 
 glm::vec2 ResourceManager::getTextureSize(entt::id_type id, std::string_view file_path) {
-    return texture_manager_->getTextureSize(id, file_path);
+    if (getTexture(id, file_path)) {
+        return texture_manager_->getTextureSize(id);
+    }
+    return glm::vec2(0.0f, 0.0f);
 }
 
 glm::vec2 ResourceManager::getTextureSize(entt::hashed_string str_hs) {
-    return texture_manager_->getTextureSize(str_hs);
+    return getTextureSize(str_hs.value(), str_hs.data());
 }
 
 void ResourceManager::unloadTexture(entt::id_type id) {
@@ -281,19 +323,36 @@ void ResourceManager::clearTextures() {
 
 // --- 音频接口实现 ---
 AudioManager::AudioBufferHandle ResourceManager::loadSound(entt::id_type id, std::string_view file_path) {
+    asset_registry_->registerSound(id, file_path);
     return audio_manager_->loadSound(id, file_path);
 }
 
 AudioManager::AudioBufferHandle ResourceManager::loadSound(entt::hashed_string str_hs) {
-    return audio_manager_->loadSound(str_hs);
+    return loadSound(str_hs.value(), str_hs.data());
 }
 
 AudioManager::AudioBufferHandle ResourceManager::getSound(entt::id_type id, std::string_view file_path) {
-    return audio_manager_->getSound(id, file_path);
+    if (auto cached = audio_manager_->findSound(id)) {
+        return cached;
+    }
+
+    std::string_view resolved_path = file_path;
+    if (resolved_path.empty()) {
+        resolved_path = asset_registry_->findSoundPath(id);
+    }
+
+    if (resolved_path.empty()) {
+#ifndef NDEBUG
+        spdlog::error("ResourceManager::getSound: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
+#endif
+        return {};
+    }
+
+    return loadSound(id, resolved_path);
 }
 
 AudioManager::AudioBufferHandle ResourceManager::getSound(entt::hashed_string str_hs) {
-    return audio_manager_->getSound(str_hs);
+    return getSound(str_hs.value(), str_hs.data());
 }
 
 void ResourceManager::unloadSound(entt::id_type id) {
@@ -305,19 +364,36 @@ void ResourceManager::clearSounds() {
 }
 
 AudioManager::AudioBufferHandle ResourceManager::loadMusic(entt::id_type id, std::string_view file_path) {
+    asset_registry_->registerMusic(id, file_path);
     return audio_manager_->loadMusic(id, file_path);
 }
 
 AudioManager::AudioBufferHandle ResourceManager::loadMusic(entt::hashed_string str_hs) {
-    return audio_manager_->loadMusic(str_hs);
+    return loadMusic(str_hs.value(), str_hs.data());
 }
 
 AudioManager::AudioBufferHandle ResourceManager::getMusic(entt::id_type id, std::string_view file_path) {
-    return audio_manager_->getMusic(id, file_path);
+    if (auto cached = audio_manager_->findMusic(id)) {
+        return cached;
+    }
+
+    std::string_view resolved_path = file_path;
+    if (resolved_path.empty()) {
+        resolved_path = asset_registry_->findMusicPath(id);
+    }
+
+    if (resolved_path.empty()) {
+#ifndef NDEBUG
+        spdlog::error("ResourceManager::getMusic: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
+#endif
+        return {};
+    }
+
+    return loadMusic(id, resolved_path);
 }
 
 AudioManager::AudioBufferHandle ResourceManager::getMusic(entt::hashed_string str_hs) {
-    return audio_manager_->getMusic(str_hs);
+    return getMusic(str_hs.value(), str_hs.data());
 }
 
 void ResourceManager::unloadMusic(entt::id_type id) {
@@ -330,19 +406,40 @@ void ResourceManager::clearMusic() {
 
 // --- 字体接口实现 ---
 Font* ResourceManager::loadFont(entt::id_type id, int pixel_size, std::string_view file_path) {
+    asset_registry_->registerFont(id, pixel_size, file_path);
     return font_manager_->loadFont(id, pixel_size, file_path);
 }
 
 Font* ResourceManager::loadFont(entt::hashed_string str_hs, int pixel_size) {
-    return font_manager_->loadFont(str_hs, pixel_size);
+    return loadFont(str_hs.value(), pixel_size, str_hs.data());
 }
 
 Font* ResourceManager::getFont(entt::id_type id, int pixel_size, std::string_view file_path) {
-    return font_manager_->getFont(id, pixel_size, file_path);
+    if (auto* cached = font_manager_->findFont(id, pixel_size)) {
+        return cached;
+    }
+
+    std::string_view resolved_path = file_path;
+    if (resolved_path.empty()) {
+        resolved_path = asset_registry_->findFontPath(id, pixel_size);
+    }
+
+    if (resolved_path.empty()) {
+#ifndef NDEBUG
+        spdlog::error(
+            "ResourceManager::getFont: id={} size={} 未命中缓存且 AssetRegistry 未注册路径。",
+            id,
+            pixel_size
+        );
+#endif
+        return nullptr;
+    }
+
+    return loadFont(id, pixel_size, resolved_path);
 }
 
 Font* ResourceManager::getFont(entt::hashed_string str_hs, int pixel_size) {
-    return font_manager_->getFont(str_hs, pixel_size);
+    return getFont(str_hs.value(), pixel_size, str_hs.data());
 }
 
 void ResourceManager::unloadFont(entt::id_type id, int pixel_size) {

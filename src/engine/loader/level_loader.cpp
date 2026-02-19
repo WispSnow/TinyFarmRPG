@@ -2,6 +2,7 @@
 #include "engine/scene/scene.h"
 #include "engine/core/context.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/resource/asset_registry.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/component/tilelayer_component.h"
 #include "engine/component/name_component.h"
@@ -208,7 +209,8 @@ bool LevelLoader::preloadLevelData(std::string_view level_path) {
                 const auto& ts_json = *ts_json_ptr;
                 if (ts_json.contains("image") && ts_json["image"].is_string()) {
                     const auto texture_path = resolvePath(ts_json["image"].get<std::string>(), tileset_path);
-                    resource_manager_.loadTexture(entt::hashed_string(texture_path.c_str()), texture_path);
+                    const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+                    resource_manager_.loadTexture(texture_id, texture_path);
                 }
             }
         }
@@ -228,7 +230,8 @@ bool LevelLoader::preloadLevelData(std::string_view level_path) {
                 continue;
             }
             const auto texture_path = resolvePath(image_path, map_path_);
-            resource_manager_.loadTexture(entt::hashed_string(texture_path.c_str()), texture_path);
+            const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+            resource_manager_.loadTexture(texture_id, texture_path);
         }
     }
 
@@ -681,6 +684,7 @@ bool LevelLoader::parseSingleImageSprite(const nlohmann::json& tileset, int firs
     const auto texture_rect = getTextureRect(tileset, local_id);
     const auto image_path = tileset["image"].get<std::string>();
     const auto texture_path = resolvePath(image_path, file_path);
+    resource_manager_.getAssetRegistry().registerTexture(entt::hashed_string(texture_path.c_str()), texture_path);
     out.sprite_ = engine::component::Sprite(texture_path, texture_rect, is_flipped);
     out.type_ = getTileTypeById(tileset, first_gid, local_id);
     return true;
@@ -714,7 +718,8 @@ bool LevelLoader::parseMultiImageSprite(const nlohmann::json* tile_json, int loc
     };
 
     out.sprite_ = engine::component::Sprite(texture_path, texture_rect, is_flipped);
-    resource_manager_.loadTexture(entt::hashed_string(texture_path.c_str()), texture_path);
+    const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+    resource_manager_.loadTexture(texture_id, texture_path);
     out.type_ = getTileType(*tile_json, file_path, local_id);
     return true;
 }
