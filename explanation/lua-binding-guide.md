@@ -554,4 +554,4 @@ end
 | `scripts/bootstrap.lua` | 运行时启动脚本示例 |
 | `tests/game/script_host_smoke_test.cpp` | 绑定正确性测试 |
 | `tests/game/script_host_command_bridge_test.cpp` | 端到端链路测试 |
-| `tests/data/scripts/test_command.lua` | 测试用 Lua 辅助脚本 |
+| `tests/scripts/test_command.lua` | 测试用 Lua 辅助脚本 |

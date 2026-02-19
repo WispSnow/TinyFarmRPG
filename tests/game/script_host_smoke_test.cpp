@@ -18,7 +18,7 @@
 namespace {
 
 [[nodiscard]] std::string testCommandScriptPath() {
-    return (std::filesystem::path{PROJECT_SOURCE_DIR} / "tests/data/scripts/test_command.lua").string();
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / "tests/scripts/test_command.lua").string();
 }
 
 } // namespace
