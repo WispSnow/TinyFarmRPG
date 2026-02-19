@@ -7,7 +7,9 @@
 #include "engine/render/text_renderer.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
+#include "engine/ui/ui_preset_manager.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -24,6 +26,8 @@ std::unique_ptr<Context> Context::create(entt::dispatcher& dispatcher,
                                         engine::render::Camera& camera,
                                         engine::render::TextRenderer& text_renderer,
                                         engine::resource::ResourceManager& resource_manager,
+                                        engine::resource::AutoTileLibrary& auto_tile_library,
+                                        engine::ui::UIPresetManager& ui_preset_manager,
                                         engine::audio::AudioPlayer& audio_player,
                                         engine::core::GameState& game_state,
                                         engine::core::Time& time,
@@ -39,6 +43,8 @@ std::unique_ptr<Context> Context::create(entt::dispatcher& dispatcher,
                     camera,
                     text_renderer,
                     resource_manager,
+                    auto_tile_library,
+                    ui_preset_manager,
                     audio_player,
                     game_state,
                     time,
@@ -56,6 +62,8 @@ Context::Context(entt::dispatcher& dispatcher,
                  engine::render::Camera& camera,
                  engine::render::TextRenderer& text_renderer,
                  engine::resource::ResourceManager& resource_manager,
+                 engine::resource::AutoTileLibrary& auto_tile_library,
+                 engine::ui::UIPresetManager& ui_preset_manager,
                  engine::audio::AudioPlayer& audio_player,
                  engine::core::GameState& game_state,
                  engine::core::Time& time,
@@ -70,6 +78,8 @@ Context::Context(entt::dispatcher& dispatcher,
       camera_(camera),
       text_renderer_(text_renderer),
       resource_manager_(resource_manager),
+      auto_tile_library_(auto_tile_library),
+      ui_preset_manager_(ui_preset_manager),
       audio_player_(audio_player),
       game_state_(game_state),
       time_(time),

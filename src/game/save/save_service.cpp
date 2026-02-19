@@ -440,7 +440,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         state.persistent.opened_chests.clear();
     }
 
-    const auto& auto_tile_library = context_.getResourceManager().getAutoTileLibrary();
+    const auto& auto_tile_library = context_.getAutoTileLibrary();
 
     for (const auto& map_save : data.maps) {
         if (map_save.map_name.empty()) {

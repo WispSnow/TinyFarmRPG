@@ -3,8 +3,6 @@
 #include "texture_manager.h"
 #include "audio_manager.h"
 #include "font_manager.h" 
-#include "auto_tile_library.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "engine/ui/ui_defaults.h"
 #include <fstream>
 #include <filesystem>
@@ -35,32 +33,24 @@ std::unique_ptr<ResourceManager> ResourceManager::create(entt::dispatcher* dispa
         spdlog::error("ResourceManager::create: FontManager 初始化失败。");
         return nullptr;
     }
-    auto auto_tile_library = std::make_unique<AutoTileLibrary>();
     auto asset_registry = std::make_unique<AssetRegistry>();
-    auto ui_preset_manager = std::make_unique<engine::ui::UIPresetManager>();
 
     return std::unique_ptr<ResourceManager>(new ResourceManager(dispatcher,
                                                                 std::move(texture_manager),
                                                                 std::move(audio_manager),
                                                                 std::move(font_manager),
-                                                                std::move(auto_tile_library),
-                                                                std::move(asset_registry),
-                                                                std::move(ui_preset_manager)));
+                                                                std::move(asset_registry)));
 }
 
 ResourceManager::ResourceManager(entt::dispatcher* dispatcher,
                                  std::unique_ptr<TextureManager> texture_manager,
                                  std::unique_ptr<AudioManager> audio_manager,
                                  std::unique_ptr<FontManager> font_manager,
-                                 std::unique_ptr<AutoTileLibrary> auto_tile_library,
-                                 std::unique_ptr<AssetRegistry> asset_registry,
-                                 std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager)
+                                 std::unique_ptr<AssetRegistry> asset_registry)
     : texture_manager_(std::move(texture_manager)),
       audio_manager_(std::move(audio_manager)),
       font_manager_(std::move(font_manager)),
-      auto_tile_library_(std::move(auto_tile_library)),
       asset_registry_(std::move(asset_registry)),
-      ui_preset_manager_(std::move(ui_preset_manager)),
       dispatcher_(dispatcher) {
     spdlog::trace("ResourceManager 构造成功。");
     // RAII: 构造成功即代表资源管理器可以正常工作，无需再初始化，无需检查指针是否为空
@@ -70,20 +60,7 @@ void ResourceManager::clear() {
     clearFonts();
     audio_manager_->clearAudio();
     texture_manager_->clearTextures();
-    auto_tile_library_->clearRules();
-    if (ui_preset_manager_) {
-        ui_preset_manager_->clearButtonPresets();
-        ui_preset_manager_->clearImagePresets();
-    }
     spdlog::trace("ResourceManager 中的资源通过 clear() 清空。");
-}
-
-AutoTileLibrary& ResourceManager::getAutoTileLibrary() {
-    return *auto_tile_library_;
-}
-
-const AutoTileLibrary& ResourceManager::getAutoTileLibrary() const {
-    return *auto_tile_library_;
 }
 
 AssetRegistry& ResourceManager::getAssetRegistry() {
@@ -208,34 +185,6 @@ void ResourceManager::loadResources(std::string_view file_path) {
         }
     }
 
-    auto loadPresetList = [&](std::string_view field, auto&& loader) {
-        const auto it = json.find(std::string(field));
-        if (it == json.end()) {
-            return;
-        }
-
-        if (it->is_string()) {
-            loader(it->get<std::string>());
-            return;
-        }
-
-        if (it->is_array()) {
-            for (const auto& entry : *it) {
-                if (entry.is_string()) {
-                    loader(entry.get<std::string>());
-                } else {
-                    spdlog::warn("资源映射文件 '{}' 的 '{}' 数组包含无效条目 (应为 string)。", file_path, field);
-                }
-            }
-            return;
-        }
-
-        spdlog::warn("资源映射文件 '{}' 的 '{}' 字段格式无效 (应为 string 或 array)。", file_path, field);
-    };
-
-    loadPresetList("ui_button_presets", [this](const std::string& preset_path) { loadUIButtonPresets(preset_path); });
-    loadPresetList("ui_image_presets", [this](const std::string& preset_path) { loadUIImagePresets(preset_path); });
-
     constexpr std::string_view CIRCLE_TEXTURE_PATH{"assets/textures/UI/circle.png"};
     const entt::id_type circle_texture_id = entt::hashed_string{CIRCLE_TEXTURE_PATH.data(), CIRCLE_TEXTURE_PATH.size()};
     asset_registry_->registerTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
@@ -243,28 +192,6 @@ void ResourceManager::loadResources(std::string_view file_path) {
     const entt::id_type default_font_id =
         entt::hashed_string{engine::ui::DEFAULT_UI_FONT_PATH.data(), engine::ui::DEFAULT_UI_FONT_PATH.size()};
     asset_registry_->registerFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
-}
-
-void ResourceManager::loadUIButtonPresets(std::string_view file_path) {
-    if (!ui_preset_manager_) {
-        spdlog::warn("ResourceManager: UIPresetManager 未初始化，无法加载预设。");
-        return;
-    }
-
-    if (!ui_preset_manager_->loadButtonPresets(file_path)) {
-        spdlog::warn("ResourceManager: 加载按钮预设失败: {}", file_path);
-    }
-}
-
-void ResourceManager::loadUIImagePresets(std::string_view file_path) {
-    if (!ui_preset_manager_) {
-        spdlog::warn("ResourceManager: UIPresetManager 未初始化，无法加载图片预设。");
-        return;
-    }
-
-    if (!ui_preset_manager_->loadImagePresets(file_path)) {
-        spdlog::warn("ResourceManager: 加载图片预设失败: {}", file_path);
-    }
 }
 
 // --- 纹理接口实现 ---
@@ -492,25 +419,6 @@ std::vector<AudioDebugInfo> ResourceManager::getMusicDebugInfo() const {
         std::ranges::sort(result, {}, &AudioDebugInfo::id);
     }
     return result;
-}
-
-std::vector<AutoTileRuleDebugInfo> ResourceManager::getAutoTileDebugInfo() const {
-    if (!auto_tile_library_) {
-        return {};
-    }
-    auto result = auto_tile_library_->getDebugInfo();
-    std::ranges::sort(result, std::less{}, [](const AutoTileRuleDebugInfo& info) {
-        return std::tie(info.name, info.rule_id);
-    });
-    return result;
-}
-
-engine::ui::UIPresetManager& ResourceManager::getUIPresetManager() {
-    return *ui_preset_manager_;
-}
-
-const engine::ui::UIPresetManager& ResourceManager::getUIPresetManager() const {
-    return *ui_preset_manager_;
 }
 
 } // namespace engine::resource

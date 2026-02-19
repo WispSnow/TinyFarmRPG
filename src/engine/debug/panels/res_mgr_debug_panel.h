@@ -5,6 +5,7 @@
 
 namespace engine::resource {
     class ResourceManager;
+    class AutoTileLibrary;
     struct TextureDebugInfo;
     struct FontDebugInfo;
     struct AudioDebugInfo;
@@ -15,6 +16,7 @@ namespace engine::debug {
 
 class ResMgrDebugPanel final : public DebugPanel {
     engine::resource::ResourceManager& resource_manager_;
+    engine::resource::AutoTileLibrary& auto_tile_library_;
     std::vector<engine::resource::TextureDebugInfo> textures_;
     std::vector<engine::resource::FontDebugInfo> fonts_;
     std::vector<engine::resource::AudioDebugInfo> sounds_;
@@ -23,7 +25,8 @@ class ResMgrDebugPanel final : public DebugPanel {
     std::size_t cached_font_atlas_bytes_{0};
 
 public:
-    explicit ResMgrDebugPanel(engine::resource::ResourceManager& resource_manager);
+    explicit ResMgrDebugPanel(engine::resource::ResourceManager& resource_manager,
+                              engine::resource::AutoTileLibrary& auto_tile_library);
     ~ResMgrDebugPanel();
 
     std::string_view name() const override;

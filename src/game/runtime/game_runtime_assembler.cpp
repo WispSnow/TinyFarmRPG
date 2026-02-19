@@ -17,6 +17,7 @@
 #include "engine/system/render_system.h"
 #include "engine/system/spatial_index_system.h"
 #include "engine/system/ysort_system.h"
+#include "engine/utils/json_file_loader.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -63,7 +64,6 @@
 #include <spdlog/spdlog.h>
 // Use filesystem only to distinguish "bootstrap script missing" from execution errors in logs.
 #include <filesystem>
-#include <fstream>
 #include <unordered_set>
 
 using namespace entt::literals;
@@ -178,35 +178,9 @@ void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, en
     return (anchor_dir / std::filesystem::path(relative_path)).lexically_normal().string();
 }
 
-[[nodiscard]] bool loadJsonObjectFile(std::string_view file_path, nlohmann::json& out_json) {
-    std::ifstream file{std::string(file_path)};
-    if (!file.is_open()) {
-        spdlog::warn("AssetRegistry: 无法打开 JSON 文件 '{}'", file_path);
-        return false;
-    }
-
-    const std::string file_content(
-        (std::istreambuf_iterator<char>(file)),
-        std::istreambuf_iterator<char>()
-    );
-
-    out_json = nlohmann::json::parse(file_content, nullptr, false);
-    if (out_json.is_discarded()) {
-        spdlog::warn("AssetRegistry: 解析 JSON 文件 '{}' 失败。", file_path);
-        return false;
-    }
-
-    if (!out_json.is_object()) {
-        spdlog::warn("AssetRegistry: JSON 文件 '{}' 根节点不是对象", file_path);
-        return false;
-    }
-
-    return true;
-}
-
 void registerTilesetTexturesFromTsj(std::string_view tsj_path, engine::resource::AssetRegistry& registry) {
     nlohmann::json tsj_json;
-    if (!loadJsonObjectFile(tsj_path, tsj_json)) {
+    if (!engine::utils::loadJsonObjectFile(tsj_path, tsj_json, "AssetRegistry")) {
         return;
     }
 
@@ -235,7 +209,7 @@ void registerMapTilesetTextures(std::string_view tmj_path,
                                 engine::resource::AssetRegistry& registry,
                                 std::unordered_set<std::string>& scanned_tilesets) {
     nlohmann::json map_json;
-    if (!loadJsonObjectFile(tmj_path, map_json)) {
+    if (!engine::utils::loadJsonObjectFile(tmj_path, map_json, "AssetRegistry")) {
         return;
     }
 
@@ -378,7 +352,7 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     }
 
     auto& spatial_index_manager = context.getSpatialIndexManager();
-    auto& auto_tile_library = context.getResourceManager().getAutoTileLibrary();
+    auto& auto_tile_library = context.getAutoTileLibrary();
 
     services.entity_factory = std::make_unique<game::factory::EntityFactory>(
         registry,
@@ -505,7 +479,7 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     auto& resource_manager = params.context.getResourceManager();
     auto& asset_registry = resource_manager.getAssetRegistry();
 
-    collectUIPresetAssets(resource_manager.getUIPresetManager(), asset_registry);
+    collectUIPresetAssets(params.context.getUIPresetManager(), asset_registry);
 
     if (!ensureBlueprintManager(params.services)) {
         return false;
@@ -570,8 +544,7 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     auto& input_manager = params.context.getInputManager();
     auto& camera = params.context.getCamera();
     auto& spatial_index_manager = params.context.getSpatialIndexManager();
-    auto& resource_manager = params.context.getResourceManager();
-    auto& auto_tile_library = resource_manager.getAutoTileLibrary();
+    auto& auto_tile_library = params.context.getAutoTileLibrary();
 
 #ifdef TF_ENABLE_DEBUG_UI
     auto& debug_ui_manager = params.context.getDebugUIManager();

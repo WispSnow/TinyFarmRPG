@@ -56,7 +56,7 @@ LevelLoader::LevelLoader(engine::scene::Scene& scene)
     registry_(scene.getRegistry()), 
     spatial_index_manager_(scene.getContext().getSpatialIndexManager()), 
     resource_manager_(scene.getContext().getResourceManager()), 
-    auto_tile_library_(resource_manager_.getAutoTileLibrary()) {}
+    auto_tile_library_(scene.getContext().getAutoTileLibrary()) {}
 
 LevelLoader::~LevelLoader() = default;
 

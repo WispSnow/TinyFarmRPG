@@ -213,7 +213,7 @@ UIButton::UIButton(engine::core::Context& context,
 }
 
 const UIButtonSkin* UIButton::getPreset() const {
-    return context_.getResourceManager().getUIPresetManager().getButtonPreset(preset_id_);
+    return context_.getUIPresetManager().getButtonPreset(preset_id_);
 }
 
 bool UIButton::initFromPreset(entt::id_type preset_id) {

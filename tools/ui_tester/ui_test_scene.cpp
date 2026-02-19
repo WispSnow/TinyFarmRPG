@@ -189,7 +189,7 @@ void UITestScene::clean() {
 }
 
 void UITestScene::applyImagePresets() {
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
 
     if (const auto* panel_preset = preset_manager.getImagePreset(kInventoryPanelPresetKey.value())) {
         panel_skin_image_ = *panel_preset;
@@ -292,7 +292,7 @@ void UITestScene::buildUI() {
         grid->setCellSize(grid_layout_cell_size_); // 假设 Slot 大小
         grid_layout_ = grid.get();
 
-        auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+        auto& preset_manager = context_.getUIPresetManager();
         const auto* slot_bg_preset = preset_manager.getImagePreset(kQuickBarSlotPresetKey.value());
         const auto* slot_selected_preset = preset_manager.getImagePreset(kQuickBarSelectedPresetKey.value());
         auto fallback_slot_bg = engine::render::Image(SLOT_ATLAS, engine::utils::Rect{glm::vec2{151,6}, glm::vec2{18, 18}});
@@ -615,7 +615,7 @@ void UITestScene::createButton(engine::ui::UIPanel& panel) {
 }
 
 void UITestScene::createPreviewImage(engine::ui::UIPanel& panel) {
-    auto& preset_manager = context_.getResourceManager().getUIPresetManager();
+    auto& preset_manager = context_.getUIPresetManager();
     engine::render::Image preview_image_def = engine::render::Image(
         INVENTORY_ATLAS,
         engine::utils::Rect{glm::vec2{0.0f, 64.0f}, glm::vec2{48.0f, 48.0f}}
@@ -898,7 +898,7 @@ void UITestScene::drawControlPanel() {
 	            }
 
 	            if (mode == 0) {
-	                const auto* preset = context_.getResourceManager().getUIPresetManager().getButtonPreset(kStartButtonPresetKey.value());
+	                const auto* preset = context_.getUIPresetManager().getButtonPreset(kStartButtonPresetKey.value());
 	                if (!preset) {
 	                    start_button_->clearSoundEventOverride(event_id);
 	                    return;

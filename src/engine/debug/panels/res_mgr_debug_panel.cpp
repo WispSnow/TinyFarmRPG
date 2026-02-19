@@ -8,7 +8,9 @@
 #include <cfloat>
 #include <cstdio>
 #include <numeric>
+#include <ranges>
 #include <string>
+#include <tuple>
 
 namespace engine::debug {
 
@@ -35,8 +37,10 @@ const char* topologyToString(engine::resource::AutoTileTopology topology) {
 
 ResMgrDebugPanel::~ResMgrDebugPanel() = default;
 
-ResMgrDebugPanel::ResMgrDebugPanel(engine::resource::ResourceManager& resource_manager)
-    : resource_manager_(resource_manager) {}
+ResMgrDebugPanel::ResMgrDebugPanel(engine::resource::ResourceManager& resource_manager,
+                                   engine::resource::AutoTileLibrary& auto_tile_library)
+    : resource_manager_(resource_manager),
+      auto_tile_library_(auto_tile_library) {}
 
 std::string_view ResMgrDebugPanel::name() const {
     return "Resource";
@@ -111,7 +115,10 @@ void ResMgrDebugPanel::refreshCaches() {
     fonts_ = resource_manager_.getFontDebugInfo();
     sounds_ = resource_manager_.getSoundDebugInfo();
     music_ = resource_manager_.getMusicDebugInfo();
-    auto_tiles_ = resource_manager_.getAutoTileDebugInfo();
+    auto_tiles_ = auto_tile_library_.getDebugInfo();
+    std::ranges::sort(auto_tiles_, std::less{}, [](const auto& info) {
+        return std::tie(info.name, info.rule_id);
+    });
 
     cached_font_atlas_bytes_ = 0;
     for (const auto& info : fonts_) {

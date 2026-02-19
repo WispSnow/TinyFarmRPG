@@ -166,14 +166,14 @@
 
 ## 待办
 
-- [ ] 3.1 在 `GameApp` 增加 `AutoTileLibrary/UIPresetManager` 所有权与初始化流程
-- [ ] 3.2 在 `Context` 增加 `getAutoTileLibrary()` / `getUIPresetManager()` 访问接口
-- [ ] 3.3 从 `ResourceManager` 删除 AutoTile/UIPreset 相关成员与 API，收敛 `loadResources()` 职责
-- [ ] 3.4 迁移 `LevelLoader/GameRuntimeAssembler/SaveService/UI` 调用点到 Context 直连
-- [ ] 3.5 重构 `UIPresetDebugPanel/ResMgrDebugPanel` 依赖注入
-- [ ] 3.6 将 UI preset 加载逻辑从 `ResourceManager::loadResources()` 迁移到 `GameApp::initUIPresetManager()`（读取 `resource_mapping.json`）
-- [ ] 3.7 运行 `cmake --build build -j 8` 与 `ctest --test-dir build --output-on-failure`
-- [ ] 3.8 手动启动验证：UI 预设、AutoTile、Debug 面板行为正常
+- [x] 3.1 在 `GameApp` 增加 `AutoTileLibrary/UIPresetManager` 所有权与初始化流程
+- [x] 3.2 在 `Context` 增加 `getAutoTileLibrary()` / `getUIPresetManager()` 访问接口
+- [x] 3.3 从 `ResourceManager` 删除 AutoTile/UIPreset 相关成员与 API，收敛 `loadResources()` 职责
+- [x] 3.4 迁移 `LevelLoader/GameRuntimeAssembler/SaveService/UI` 调用点到 Context 直连
+- [x] 3.5 重构 `UIPresetDebugPanel/ResMgrDebugPanel` 依赖注入
+- [x] 3.6 将 UI preset 加载逻辑从 `ResourceManager::loadResources()` 迁移到 `GameApp::initUIPresetManager()`（读取 `resource_mapping.json`）
+- [x] 3.7 运行 `cmake --build build -j 8` 与 `ctest --test-dir build --output-on-failure`
+- [x] 3.8 手动启动验证：UI 预设、AutoTile、Debug 面板行为正常
 
 ## 需要澄清
 

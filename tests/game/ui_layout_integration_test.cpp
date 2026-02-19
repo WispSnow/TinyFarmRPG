@@ -29,6 +29,7 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/renderer.h"
 #include "engine/render/text_renderer.h"
+#include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "engine/ui/ui_button.h"
@@ -110,6 +111,8 @@ protected:
     std::unique_ptr<engine::core::GameState> game_state_{};
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
+    engine::resource::AutoTileLibrary auto_tile_library_{};
+    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -182,7 +185,8 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        auto& preset_manager = resource_manager_->getUIPresetManager();
+        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
+        auto& preset_manager = *ui_preset_manager_;
 
         ASSERT_TRUE(preset_manager.registerImagePreset(
             entt::hashed_string{"inventory_panel"}.value(),
@@ -262,6 +266,8 @@ protected:
                                                  *camera_,
                                                  *text_renderer_,
                                                  *resource_manager_,
+                                                 auto_tile_library_,
+                                                 *ui_preset_manager_,
                                                  *audio_player_,
                                                  *game_state_,
                                                  *time_,
@@ -281,6 +287,7 @@ protected:
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_.reset();
 #endif
+        ui_preset_manager_.reset();
         time_.reset();
         text_renderer_.reset();
         camera_.reset();

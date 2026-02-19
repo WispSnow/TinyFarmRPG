@@ -16,17 +16,12 @@ namespace engine::utils {
 struct GL_Texture;
 }
 
-namespace engine::ui {
-class UIPresetManager;
-}
-
 namespace engine::resource {
 
 // 前向声明内部管理器
 class TextureManager;
 class AudioManager;
 class FontManager;
-class AutoTileLibrary;
 class Font;
 class AssetRegistry;
 
@@ -40,9 +35,7 @@ private:
     std::unique_ptr<TextureManager> texture_manager_;
     std::unique_ptr<AudioManager> audio_manager_;
     std::unique_ptr<FontManager> font_manager_;
-    std::unique_ptr<AutoTileLibrary> auto_tile_library_;
     std::unique_ptr<AssetRegistry> asset_registry_;
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_;
     entt::dispatcher* dispatcher_{nullptr};
 
 public:
@@ -51,9 +44,6 @@ public:
 
     void clear();        ///< @brief 清空所有资源
 
-    // -- Auto Tile Library --
-    AutoTileLibrary& getAutoTileLibrary();
-    const AutoTileLibrary& getAutoTileLibrary() const;
     [[nodiscard]] AssetRegistry& getAssetRegistry();
     [[nodiscard]] const AssetRegistry& getAssetRegistry() const;
 
@@ -65,8 +55,6 @@ public:
 
     // 加载资源
     void loadResources(std::string_view file_path);
-    void loadUIButtonPresets(std::string_view file_path);
-    void loadUIImagePresets(std::string_view file_path);
 
     // --- 统一资源访问接口 ---
     // -- Texture --
@@ -151,25 +139,18 @@ public:
     void unloadFont(entt::id_type id, int pixel_size);                              ///< @brief 卸载指定的字体资源
     void clearFonts();                                                              ///< @brief 清空所有字体资源
 
-    // -- UI Presets --
-    [[nodiscard]] engine::ui::UIPresetManager& getUIPresetManager();
-    [[nodiscard]] const engine::ui::UIPresetManager& getUIPresetManager() const;
-
     // --- 调试接口 ---
     [[nodiscard]] std::vector<TextureDebugInfo> getTextureDebugInfo() const;      ///< @brief 获取所有纹理的调试信息
     [[nodiscard]] std::vector<FontDebugInfo> getFontDebugInfo() const;            ///< @brief 获取所有字体的调试信息
     [[nodiscard]] std::vector<AudioDebugInfo> getSoundDebugInfo() const;          ///< @brief 获取所有音效的调试信息
     [[nodiscard]] std::vector<AudioDebugInfo> getMusicDebugInfo() const;          ///< @brief 获取所有音乐的调试信息
-    [[nodiscard]] std::vector<AutoTileRuleDebugInfo> getAutoTileDebugInfo() const;///< @brief 获取自动图块规则调试信息
 
 private:
     ResourceManager(entt::dispatcher* dispatcher,
                     std::unique_ptr<TextureManager> texture_manager,
                     std::unique_ptr<AudioManager> audio_manager,
                     std::unique_ptr<FontManager> font_manager,
-                    std::unique_ptr<AutoTileLibrary> auto_tile_library,
-                    std::unique_ptr<AssetRegistry> asset_registry,
-                    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager);
+                    std::unique_ptr<AssetRegistry> asset_registry);
 };
 
 } // namespace engine::resource

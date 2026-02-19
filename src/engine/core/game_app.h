@@ -10,6 +10,11 @@ struct SDL_Renderer;
 
 namespace engine::resource {
 class ResourceManager;
+class AutoTileLibrary;
+}
+
+namespace engine::ui {
+class UIPresetManager;
 }
 
 namespace engine::render {
@@ -65,6 +70,8 @@ private:
     std::unique_ptr<entt::dispatcher> dispatcher_;  // 事件分发器
     std::unique_ptr<engine::core::Time> time_;
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_;
+    std::unique_ptr<engine::resource::AutoTileLibrary> auto_tile_library_;
+    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_;
     std::unique_ptr<engine::render::Renderer> renderer_;
     std::unique_ptr<engine::render::Camera> camera_;
     std::unique_ptr<engine::render::TextRenderer> text_renderer_;
@@ -122,6 +129,8 @@ private:
     [[nodiscard]] bool initGameState();
     [[nodiscard]] bool initTime();
     [[nodiscard]] bool initResourceManager();
+    [[nodiscard]] bool initAutoTileLibrary();
+    [[nodiscard]] bool initUIPresetManager();
     [[nodiscard]] bool initAudioPlayer();
     [[nodiscard]] bool initRenderer();
     [[nodiscard]] bool initTextRenderer();

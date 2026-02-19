@@ -1,8 +1,8 @@
 #include "blueprint_manager.h"
+#include "engine/utils/json_file_loader.h"
 #include "game/defs/crop_defs.h"
+#include <string>
 #include <string_view>
-#include <filesystem>
-#include <fstream>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <entt/core/hashed_string.hpp>
@@ -208,27 +208,9 @@ MobBlueprintCommon parseMobBlueprintCommon(const nlohmann::json& json, float def
     return common;
 }
 
-[[nodiscard]] bool loadJsonObjectFile(std::string_view file_path, nlohmann::json& out_json, std::string_view label) {
-    const auto path = std::filesystem::path(file_path);
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        spdlog::error("无法打开{}配置文件: {}", label, file_path);
-        return false;
-    }
-
-    try {
-        file >> out_json;
-    } catch (const nlohmann::json::exception& e) {
-        spdlog::error("解析{}配置文件失败: {} ({})", label, file_path, e.what());
-        return false;
-    }
-
-    if (!out_json.is_object()) {
-        spdlog::error("{}配置文件格式错误: {}", label, file_path);
-        return false;
-    }
-
-    return true;
+[[nodiscard]] bool loadBlueprintJsonObjectFile(std::string_view file_path, nlohmann::json& out_json, std::string_view label) {
+    const std::string prefix = std::string(label) + "配置";
+    return engine::utils::loadJsonObjectFile(file_path, out_json, prefix, spdlog::level::err);
 }
 
 } // anonymous namespace
@@ -239,7 +221,7 @@ BlueprintManager::~BlueprintManager() = default;
 
 bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
     nlohmann::json json;
-    if (!loadJsonObjectFile(file_path, json, "角色")) {
+    if (!loadBlueprintJsonObjectFile(file_path, json, "角色")) {
         return false;
     }
 
@@ -263,7 +245,7 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
 
 bool BlueprintManager::loadAnimalBlueprints(std::string_view file_path) {
     nlohmann::json json;
-    if (!loadJsonObjectFile(file_path, json, "动物")) {
+    if (!loadBlueprintJsonObjectFile(file_path, json, "动物")) {
         return false;
     }
 
@@ -289,7 +271,7 @@ bool BlueprintManager::loadAnimalBlueprints(std::string_view file_path) {
 
 bool BlueprintManager::loadCropBlueprints(std::string_view file_path) {
     nlohmann::json json;
-    if (!loadJsonObjectFile(file_path, json, "作物")) {
+    if (!loadBlueprintJsonObjectFile(file_path, json, "作物")) {
         return false;
     }
 

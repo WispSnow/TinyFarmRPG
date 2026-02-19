@@ -42,7 +42,7 @@
 
 ### Phase A: 基础设施准备
 
-#### 步骤 1: 升级 ENTT_ID_TYPE 到 64 位
+#### 步骤 1: 升级 ENTT_ID_TYPE 到 64 位 (已完成)
 
 **目标：** 降低资源 ID 的 hash 碰撞风险，为后续统一 ID 策略奠定基础。
 
@@ -53,7 +53,7 @@
 
 ---
 
-#### 步骤 2: 构建完整资产索引
+#### 步骤 2: 构建完整资产索引 (已完成)
 
 **目标：** 引入 `AssetRegistry` 类（`id → path` 映射表），使所有运行时所需资源在使用前均已注册。为后续切换到严格预加载模式做前置准备。
 
@@ -67,7 +67,7 @@
 
 ---
 
-#### 步骤 3: 分离 AutoTileLibrary 和 UIPresetManager
+#### 步骤 3: 分离 AutoTileLibrary 和 UIPresetManager (已完成)
 
 **目标：** 让 ResourceManager 专注于"可加载资源的缓存管理"，将非资源缓存职责移出。
 
