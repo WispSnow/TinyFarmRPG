@@ -714,6 +714,26 @@ glm::vec2 TextRenderer::getTextSize(std::string_view text,
                                     int font_size,
                                     std::string_view font_path,
                                     const engine::utils::LayoutOptions* layout_options) const {
+    if (gl_renderer_ && gl_renderer_->isHeadless()) {
+        const int line_count = static_cast<int>(std::count(text.begin(), text.end(), '\n')) + 1;
+        int max_line_chars = 0;
+        int current_line_chars = 0;
+        for (const char ch : text) {
+            if (ch == '\n') {
+                max_line_chars = std::max(max_line_chars, current_line_chars);
+                current_line_chars = 0;
+            } else {
+                ++current_line_chars;
+            }
+        }
+        max_line_chars = std::max(max_line_chars, current_line_chars);
+
+        const float safe_font_size = static_cast<float>(std::max(font_size, 1));
+        const float width = static_cast<float>(max_line_chars) * safe_font_size * 0.5f;
+        const float height = static_cast<float>(std::max(line_count, 1)) * safe_font_size;
+        return {width, height};
+    }
+
     if (!resource_manager_) {
         return glm::vec2(0.0f);
     }

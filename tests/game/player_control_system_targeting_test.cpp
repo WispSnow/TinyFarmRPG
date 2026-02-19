@@ -28,6 +28,12 @@
 
 namespace {
 
+[[nodiscard]] bool initSdlVideoWithDummyFallback(Uint32 flags) {
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
+    return SDL_Init(flags);
+}
+
 class PlayerControlSystemTest : public ::testing::Test {
 protected:
     SDL_Window* window_{nullptr};
@@ -37,7 +43,7 @@ protected:
     static inline bool sdl_ready_{false};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = SDL_Init(SDL_INIT_VIDEO);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO);
     }
 
     static void TearDownTestSuite() {
