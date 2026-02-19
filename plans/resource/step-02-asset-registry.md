@@ -1,5 +1,7 @@
 # 步骤 2: 构建完整资产索引
 
+- 对应上层计划：`plans/resource-refactor.md`
+
 ## 思路
 
 当前 `resource_mapping.json` 仅覆盖 2 张 title 纹理、11 音效、2 音乐、0 字体。其余所有资源（tileset 纹理、blueprint 纹理、UI preset 纹理、icon 纹理、字体等）完全依赖 `get(id, path)` 的 path 回退懒加载。

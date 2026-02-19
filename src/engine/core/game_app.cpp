@@ -265,6 +265,7 @@ bool GameApp::initDebugUIManager() {
     if (gl_renderer_) {
         gl_renderer_->setDebugUIManager(debug_ui_manager_.get());
     }
+    spdlog::debug("DebugUI 开启，可使用F5/F6切换面板。");
     return true;
 }
 
