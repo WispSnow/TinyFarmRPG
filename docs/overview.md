@@ -216,7 +216,7 @@ game_engine/
 │   │   │   └── map_snapshot_serializer.cpp/h # 地图快照序列化工具（离线生长补偿）
 │   │   ├── save/                    # 存档系统
 │   │   │   ├── save_data.cpp/h      # 存档数据结构（JSON序列化/反序列化）
-│   │   │   ├── save_data.cpp/h      # 存档数据结构（JSON序列化/反序列化）
+│   │   │   ├── save_migrator.cpp/h  # 存档迁移器（v2→v3 schema 迁移）
 │   │   │   ├── save_service.cpp/h   # 存档服务（统一save/load接口）
 │   │   │   └── save_slot_summary.cpp/h # 存档槽位摘要
 │   │   ├── runtime/                 # 运行时装配与调度
@@ -224,6 +224,9 @@ game_engine/
 │   │   │   ├── system_bundle.cpp/h         # 系统/服务句柄集合
 │   │   │   ├── game_mode.h                 # GameMode 定义
 │   │   │   └── system_scheduler.cpp/h      # 系统调度器
+│   │   ├── script/                  # 脚本宿主层（可选，ENABLE_SCRIPTING=ON）
+│   │   │   ├── script_host.cpp/h        # Lua 脚本宿主（加载/执行/reload/错误处理）
+│   │   │   └── script_bindings.cpp/h    # 最小脚本 API 绑定（time/player/command/dialogue）
 │   │   ├── scene/                   # 游戏场景
 │   │   │   ├── save_slot_select_scene.cpp/h    # 存档/读档场景
 │   │   │   ├── pause_menu_scene.cpp/h          # 菜单场景
