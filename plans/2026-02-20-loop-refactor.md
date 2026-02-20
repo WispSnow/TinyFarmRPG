@@ -13,7 +13,7 @@
 - [x] Step 4：输入语义前置修正（`src/engine/input/input_manager.*` + `tests/engine/input/input_manager_test.cpp`）
 - [x] Step 5：Scene 双通道更新拆分（`src/engine/scene/scene*` + `src/engine/core/game_app.*`）
 - [x] Step 6：`GameScene` 固定逻辑迁移（`src/game/scene/game_scene.*`）
-- [ ] Step 7：渲染插值通道（方案B接口 + 方案A落地范围）
+- [x] Step 7：渲染插值通道（方案B接口 + 方案A落地范围）（`GameApp/SceneManager/Scene/GameScene` 渲染链路 alpha 透传 + `Transform/Camera` 插值）
 - [x] Step 8：配置与调试面板升级（`src/engine/core/config.*`、`src/engine/core/game_app.cpp`、`src/engine/debug/panels/time_debug_panel.*`、`config/window.json` + `tests/engine/core/config_loop_timing_test.cpp`）
 - [ ] Step 9：测试与文档回归
 

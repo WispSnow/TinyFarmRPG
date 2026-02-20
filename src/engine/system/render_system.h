@@ -31,7 +31,7 @@ public:
      * @param renderer Renderer 的引用
      * @param camera Camera 的引用
      */
-    void update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera);
+    void update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha);
 };
 
 } // namespace engine::system 

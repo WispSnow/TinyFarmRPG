@@ -190,7 +190,10 @@ void GameApp::run() {
         }
 
         updateFrame(time_->getUnscaledDeltaTime());
-        render();
+        const float interpolation_alpha = config_->render_interpolation_enabled_
+            ? time_->getInterpolationAlpha()
+            : 1.0f;
+        render(interpolation_alpha);
 
         // 给 tracer 提供一个作用域的标记，用于区分 immediate 和 queued 事件
 #ifdef TF_ENABLE_DEBUG_UI
@@ -275,7 +278,7 @@ void GameApp::updateFrame(float delta_time) {
     scene_manager_->update(delta_time);
 }
 
-void GameApp::render() {
+void GameApp::render(float interpolation_alpha) {
     // 1. 清除屏幕
     renderer_->clearScreen();
 #ifdef TF_ENABLE_DEBUG_UI
@@ -283,7 +286,7 @@ void GameApp::render() {
 #endif
 
     // 2. 具体渲染代码
-    scene_manager_->render();
+    scene_manager_->render(interpolation_alpha);
 #ifdef TF_ENABLE_DEBUG_UI
     gl_renderer_->endDebugUI();
 #endif
@@ -415,7 +418,10 @@ bool GameApp::registerDebugPanels() {
     }
 
     debug_ui_manager_->registerPanel(std::make_unique<engine::render::opengl::GLRendererDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
-    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::TimeDebugPanel>(*time_), false, engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(
+        std::make_unique<engine::debug::TimeDebugPanel>(*time_, config_->render_interpolation_enabled_),
+        false,
+        engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::GameStateDebugPanel>(*game_state_, *camera_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::InputDebugPanel>(*input_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::AudioDebugPanel>(*audio_player_), false, engine::debug::PanelCategory::Engine);

@@ -5,8 +5,9 @@
 
 namespace engine::debug {
 
-TimeDebugPanel::TimeDebugPanel(engine::core::Time& time)
-    : time_(time) {
+TimeDebugPanel::TimeDebugPanel(engine::core::Time& time, bool& render_interpolation_enabled)
+    : time_(time),
+      render_interpolation_enabled_(render_interpolation_enabled) {
 }
 
 std::string_view TimeDebugPanel::name() const {
@@ -30,13 +31,17 @@ void TimeDebugPanel::draw(bool& is_open) {
     const float logic_hz = fixed_delta > 0.0f ? (1.0f / fixed_delta) : 0.0f;
     const float accumulator = time_.getAccumulator();
     const float backlog_ticks = fixed_delta > 0.0f ? (accumulator / fixed_delta) : 0.0f;
+    const float interpolation_alpha = time_.getInterpolationAlpha();
+    const float effective_render_alpha = render_interpolation_enabled_ ? interpolation_alpha : 1.0f;
 
     ImGui::Text("Frame Delta: %.3f ms (scaled: %.3f ms)", unscaled_delta * 1000.0f, scaled_delta * 1000.0f);
     ImGui::Text("Render FPS: %.1f", render_fps);
     ImGui::Text("Logic Step: %.3f ms (%.1f Hz)", fixed_delta * 1000.0f, logic_hz);
     ImGui::Text("Fixed Ticks This Frame: %d", time_.getFixedTicksThisFrame());
     ImGui::Text("Accumulator: %.3f ms (%.2f ticks)", accumulator * 1000.0f, backlog_ticks);
-    ImGui::Text("Interpolation Alpha: %.3f", time_.getInterpolationAlpha());
+    ImGui::Text("Interpolation Alpha (raw): %.3f", interpolation_alpha);
+    ImGui::Text("Interpolation Alpha (effective): %.3f", effective_render_alpha);
+    ImGui::Text("Render Interpolation: %s", render_interpolation_enabled_ ? "Enabled" : "Disabled");
     ImGui::Text("Catch-up Clamped This Frame: %s", time_.wasCatchUpClampedThisFrame() ? "Yes" : "No");
     ImGui::Text("Dropped Fixed Ticks (Total): %llu",
                 static_cast<unsigned long long>(time_.getDroppedFixedTicksTotal()));
@@ -64,6 +69,11 @@ void TimeDebugPanel::draw(bool& is_open) {
     if (ImGui::SliderInt("Max Ticks Per Frame", &max_ticks, 1, 20)) {
         max_ticks_per_frame_ = max_ticks;
         time_.setMaxTicksPerFrame(max_ticks_per_frame_);
+    }
+
+    bool render_interpolation_enabled = render_interpolation_enabled_;
+    if (ImGui::Checkbox("Enable Render Interpolation", &render_interpolation_enabled)) {
+        render_interpolation_enabled_ = render_interpolation_enabled;
     }
 
     ImGui::End();

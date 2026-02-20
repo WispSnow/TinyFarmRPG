@@ -44,7 +44,7 @@ public:
     // 核心循环函数
     void fixedUpdate(float delta_time);
     void update(float delta_time);
-    void render();
+    void render(float interpolation_alpha);
     void close();
 
 private:

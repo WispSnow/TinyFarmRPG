@@ -7,10 +7,14 @@
 #include "engine/component/tags.h"
 #include <spdlog/spdlog.h>
 #include <entt/entity/registry.hpp>
+#include <glm/common.hpp>
+#include <algorithm>
 
 namespace engine::system {
 
-void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera) {
+void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha) {
+    const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
+
     // 对RenderComponent进行排序 (需要自定义RenderComponent的比较运算符)
     registry.sort<component::RenderComponent>([](const auto& lhs, const auto& rhs) {
         return lhs < rhs;
@@ -26,8 +30,9 @@ void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, 
         const auto& render = view.get<component::RenderComponent>(entity);
         const auto& transform = view.get<component::TransformComponent>(entity);
         const auto& sprite = view.get<component::SpriteComponent>(entity);
+        const glm::vec2 render_position = glm::mix(transform.previous_position_, transform.position_, clamped_alpha);
         auto size = sprite.size_ * transform.scale_;                    // 大小 = 精灵的大小 * 变换组件的缩放
-        auto position = transform.position_ - sprite.pivot_ * size;     // 位置 = 变换组件的位置 - 精灵的锚点 * 大小
+        auto position = render_position - sprite.pivot_ * size;         // 位置 = 插值后位置 - 精灵的锚点 * 大小
         // 绘制时应用Render组件中的颜色调整参数
         color_options_.start_color = render.color_;
         color_options_.end_color = render.color_;
