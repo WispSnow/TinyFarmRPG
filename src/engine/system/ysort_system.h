@@ -13,7 +13,7 @@ namespace engine::system {
  */
 class YSortSystem {
 public:
-    void update(entt::registry& registry, float interpolation_alpha);
+    void render(entt::registry& registry, float interpolation_alpha);
 };
 
 } // namespace engine::system

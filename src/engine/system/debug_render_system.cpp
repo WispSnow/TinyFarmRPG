@@ -44,7 +44,7 @@ DebugRenderSystem::DebugRenderSystem(engine::spatial::SpatialIndexManager& spati
                                      engine::debug::SpatialIndexDebugPanel* spatial_panel)
     : spatial_index_manager_(spatial_index_manager), spatial_panel_(spatial_panel) {}
 
-void DebugRenderSystem::update(entt::registry& registry, render::Renderer& renderer) const {
+void DebugRenderSystem::render(entt::registry& registry, render::Renderer& renderer) const {
     if (!spatial_panel_ || !spatial_panel_->hasAnyVisualizationEnabled()) {
         return;
     }

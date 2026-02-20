@@ -27,7 +27,7 @@ public:
     DebugRenderSystem(engine::spatial::SpatialIndexManager& spatial_index_manager,
                       engine::debug::SpatialIndexDebugPanel* spatial_panel = nullptr);
 
-    void update(entt::registry& registry, render::Renderer& renderer) const;
+    void render(entt::registry& registry, render::Renderer& renderer) const;
 
 private:
     void drawStaticGrid(render::Renderer& renderer) const;

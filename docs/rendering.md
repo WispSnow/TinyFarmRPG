@@ -13,7 +13,7 @@ TinyFarm 的 2D 渲染可以用一句话概括：
 - `src/engine/core/game_app.cpp`：`GameApp::render(alpha)`：clear → `scene_manager.render(alpha)` → present（Debug UI 也在这帧的 render 阶段插入）
 - `src/engine/scene/scene_manager.cpp`：`SceneManager::render(float)`：从栈底到栈顶渲染（叠加渲染）
 - `src/game/scene/game_scene.cpp`：`GameScene::render(alpha)`：组织 world 渲染系统（YSort → Render → Lighting → UI/Debug）
-- `src/engine/system/render_system.cpp`：`RenderSystem::update(..., alpha)`：排序并遍历 view，逐个 `drawSprite`
+- `src/engine/system/render_system.cpp`：`RenderSystem::render(..., alpha)`：排序并遍历 view，逐个 `drawSprite`
 - `src/engine/render/renderer.cpp`：`Renderer::drawSprite()`：纹理获取 + 视口剔除 + 提交给 GLRenderer
 - `src/engine/render/opengl/gl_renderer.cpp`：底层绘制与 pass（更深入内容见 `docs/resolution_and_viewport.md` 等相关文档）
 

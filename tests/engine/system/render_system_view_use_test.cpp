@@ -29,7 +29,7 @@ TEST(RenderSystemViewUseTest, ForcesViewToIterateSortedRenderComponentStorage) {
     ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
 
     const std::size_t view_pos = content.find("auto view = registry.view<component::RenderComponent");
-    ASSERT_NE(view_pos, std::string::npos) << "未找到 RenderSystem::update 的 view 创建语句";
+    ASSERT_NE(view_pos, std::string::npos) << "未找到 RenderSystem::render 的 view 创建语句";
 
     const std::size_t scan_end = std::min(content.size(), view_pos + 1200);
     const std::string_view view_slice(content.data() + view_pos, scan_end - view_pos);
@@ -42,4 +42,3 @@ TEST(RenderSystemViewUseTest, ForcesViewToIterateSortedRenderComponentStorage) {
 } // namespace
 } // namespace engine::system
 // NOLINTEND
-
