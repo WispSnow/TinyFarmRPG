@@ -9,7 +9,7 @@
 ## 执行进度
 - [x] Step 1：循环契约与边界冻结（见 `docs/loop_timing_contract.md`）
 - [x] Step 2：时间管理职责拆分（`src/engine/core/time.h/.cpp` + `tests/engine/core/time_test.cpp`）
-- [ ] Step 3：`GameApp::run()` accumulator 化
+- [x] Step 3：`GameApp::run()` accumulator 化（`src/engine/core/game_app.cpp` + `tests/engine/core/game_app_dispatcher_trace_test.cpp`）
 - [ ] Step 4：输入语义前置修正
 - [ ] Step 5：Scene 双通道更新拆分
 - [ ] Step 6：`GameScene` 固定逻辑迁移
@@ -31,7 +31,8 @@
 
 ### 3. 改造 `GameApp::run()` 为 accumulator 主循环
 - 目标：在引擎入口真正把逻辑循环和渲染循环拆开。
-- 实现思路：外层循环按“事件采样 + 时间推进 + 多次固定逻辑 tick + 一次渲染提交 + dispatcher.update”执行；把单帧 `update(delta)` 改为“按固定 dt 重复执行逻辑”，并接入 `max_ticks_per_frame` 限制与超限丢帧保护；若检测到场景栈变更，则立即清空 accumulator。
+- 实现思路：外层循环按“事件采样 + 时间推进 + 多次固定逻辑 tick + 一次渲染提交 + dispatcher.update”执行；把单帧 `update(delta)` 改为“按固定 dt 重复执行逻辑”，并接入 `max_ticks_per_frame` 限制与超限丢帧保护；若检测到场景栈变更，则立即清空 accumulator。  
+  输出产物：`src/engine/core/game_app.cpp`、`tests/engine/core/game_app_dispatcher_trace_test.cpp`（已完成）。
 
 ### 4. 前置修正输入帧语义（与步骤3紧耦合）
 - 目标：确保 accumulator 上线后 `PRESSED/HELD/RELEASED` 语义不回退。

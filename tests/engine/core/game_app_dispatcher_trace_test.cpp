@@ -32,6 +32,20 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp should allow the debug UI to observe dispatcher.update() scope (begin).";
     EXPECT_NE(source.find("debug_ui_manager_->onDispatcherUpdateEnd()"), std::string::npos)
         << "GameApp should allow the debug UI to observe dispatcher.update() scope (end).";
+
+    EXPECT_NE(source.find("time_->tryConsumeFixedTick()"), std::string::npos)
+        << "GameApp run loop should use fixed-step consumption from Time.";
+    EXPECT_NE(source.find("time_->getFixedDeltaTime()"), std::string::npos)
+        << "GameApp run loop should drive update with fixed delta time.";
+    EXPECT_NE(source.find("time_->clearAccumulator()"), std::string::npos)
+        << "GameApp should clear accumulator when scene stack changes.";
+
+    const auto render_pos = source.find("render();");
+    const auto dispatch_pos = source.find("dispatcher_->update();");
+    ASSERT_NE(render_pos, std::string::npos);
+    ASSERT_NE(dispatch_pos, std::string::npos);
+    EXPECT_LT(render_pos, dispatch_pos)
+        << "Queued event dispatch should remain after render to preserve frame-tail semantics.";
 }
 
 } // namespace
