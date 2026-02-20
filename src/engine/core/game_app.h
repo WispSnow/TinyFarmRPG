@@ -115,6 +115,7 @@ private:
     [[nodiscard]] bool init();      // nodiscard 表示该函数返回值不应该被忽略
     void handleEvents();
     void update(float delta_time);
+    void updateFrame(float delta_time);
     void render();
     void close();
 

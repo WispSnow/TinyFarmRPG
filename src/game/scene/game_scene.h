@@ -60,6 +60,7 @@ public:
     ~GameScene() noexcept override;
 
     bool init() override;
+    void fixedUpdate(float delta_time) override;
     void update(float delta_time) override;
     void render() override;
 

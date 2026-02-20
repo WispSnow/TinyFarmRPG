@@ -11,8 +11,8 @@
 - [x] Step 2：时间管理职责拆分（`src/engine/core/time.h/.cpp` + `tests/engine/core/time_test.cpp`）
 - [x] Step 3：`GameApp::run()` accumulator 化（`src/engine/core/game_app.cpp` + `tests/engine/core/game_app_dispatcher_trace_test.cpp`）
 - [x] Step 4：输入语义前置修正（`src/engine/input/input_manager.*` + `tests/engine/input/input_manager_test.cpp`）
-- [ ] Step 5：Scene 双通道更新拆分
-- [ ] Step 6：`GameScene` 固定逻辑迁移
+- [x] Step 5：Scene 双通道更新拆分（`src/engine/scene/scene*` + `src/engine/core/game_app.*`）
+- [x] Step 6：`GameScene` 固定逻辑迁移（`src/game/scene/game_scene.*`）
 - [ ] Step 7：渲染插值（可选后置）
 - [ ] Step 8：配置与调试面板升级
 - [ ] Step 9：测试与文档回归
@@ -41,11 +41,13 @@
 
 ### 5. 拆分 Scene 层更新职责并明确非 GameScene 策略
 - 目标：避免 UI/表现逻辑被固定 tick 过驱动，同时保持场景栈冻结语义。
-- 实现思路：Scene 基类增加“固定逻辑更新入口 + 帧表现更新入口”双通道，默认固定更新为空；仅 `GameScene` 实现固定逻辑更新，`TitleScene/PauseMenuScene/RestDialogScene` 等继续走帧表现更新；SceneManager 仍保持“仅更新栈顶场景”的规则。
+- 实现思路：Scene 基类增加“固定逻辑更新入口 + 帧表现更新入口”双通道，默认固定更新为空；仅 `GameScene` 实现固定逻辑更新，`TitleScene/PauseMenuScene/RestDialogScene` 等继续走帧表现更新；SceneManager 仍保持“仅更新栈顶场景”的规则。  
+  输出产物：`src/engine/scene/scene.h`、`src/engine/scene/scene.cpp`、`src/engine/scene/scene_manager.h`、`src/engine/scene/scene_manager.cpp`、`src/engine/core/game_app.h`、`src/engine/core/game_app.cpp`（已完成）。
 
 ### 6. 迁移 `GameScene` 调度路径到固定逻辑 tick
 - 目标：保证 gameplay `SystemScheduler` 完全运行在固定步长下，渲染链路继续独立。
-- 实现思路：将 `GameScene` 中 scheduler 调用迁移到固定逻辑入口，保留 `render` 中渲染系统链路；并在场景切换触发点验证 accumulator 清零策略，避免新场景收到残余时间爆发。
+- 实现思路：将 `GameScene` 中 scheduler 调用迁移到固定逻辑入口，保留 `render` 中渲染系统链路；并在场景切换触发点验证 accumulator 清零策略，避免新场景收到残余时间爆发。  
+  输出产物：`src/game/scene/game_scene.h`、`src/game/scene/game_scene.cpp`（已完成）。
 
 ### 7. 渲染插值/快照通道（可选后置优化）
 - 目标：在确认出现可见抖动时，再以最小范围引入插值提升观感。

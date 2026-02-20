@@ -22,6 +22,10 @@ bool Scene::init() {
     return true;
 }
 
+void Scene::fixedUpdate(float /* delta_time */) {
+    // 默认场景不参与固定步长逻辑更新。
+}
+
 void Scene::update(float delta_time) {
     if (!is_initialized_) return;
 

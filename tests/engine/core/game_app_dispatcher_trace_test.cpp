@@ -37,8 +37,12 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should use fixed-step consumption from Time.";
     EXPECT_NE(source.find("time_->getFixedDeltaTime()"), std::string::npos)
         << "GameApp run loop should drive update with fixed delta time.";
+    EXPECT_NE(source.find("updateFrame(time_->getUnscaledDeltaTime())"), std::string::npos)
+        << "GameApp run loop should execute per-frame update once after fixed ticks.";
     EXPECT_NE(source.find("time_->clearAccumulator()"), std::string::npos)
         << "GameApp should clear accumulator when scene stack changes.";
+    EXPECT_NE(source.find("scene_manager_->fixedUpdate(delta_time)"), std::string::npos)
+        << "GameApp fixed-step update should route to SceneManager::fixedUpdate.";
     EXPECT_NE(source.find("input_manager_->sampleInputEvents()"), std::string::npos)
         << "Input events should be sampled once per render frame.";
     EXPECT_NE(source.find("input_manager_->dispatchActionCallbacks()"), std::string::npos)

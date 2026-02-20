@@ -29,14 +29,25 @@ Scene* SceneManager::getCurrentScene() const {
 }
 
 void SceneManager::update(float delta_time) {
-    // 约定：
-    // - update() 只更新栈顶场景：让覆盖式 Scene（例如 PauseMenu/对话框）可以冻结底层逻辑。
-    // - render() 叠加渲染整个栈：让覆盖式 Scene 显示在底层画面之上。
+    // frame update 约定：
+    // - 只更新栈顶场景：让覆盖式 Scene（例如 PauseMenu/对话框）可以冻结底层逻辑。
+    // - 主要承载表现层更新（UI 动画、菜单动效等）。
     Scene* current_scene = getCurrentScene();
     if (current_scene) {
         current_scene->update(delta_time);
     }
-    // 执行可能的切换场景操作
+    processPendingActions();
+}
+
+void SceneManager::fixedUpdate(float delta_time) {
+    // 约定：
+    // - fixedUpdate() 只更新栈顶场景：让覆盖式 Scene（例如 PauseMenu/对话框）可以冻结底层逻辑。
+    // - render() 叠加渲染整个栈：让覆盖式 Scene 显示在底层画面之上。
+    Scene* current_scene = getCurrentScene();
+    if (current_scene) {
+        current_scene->fixedUpdate(delta_time);
+    }
+    // 执行可能的切换场景操作（固定逻辑阶段）
     processPendingActions();
 }
 
