@@ -12,6 +12,8 @@ class TimeDebugPanel final : public DebugPanel {
     engine::core::Time& time_;
     float time_scale_{1.0f};
     int target_fps_{0};
+    int logic_tick_hz_{60};
+    int max_ticks_per_frame_{5};
 
 public:
     explicit TimeDebugPanel(engine::core::Time& time);

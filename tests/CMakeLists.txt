@@ -3,6 +3,7 @@
 set(TEST_SOURCES
     engine/core/time_test.cpp
     engine/core/config_factory_api_test.cpp
+    engine/core/config_loop_timing_test.cpp
     engine/core/game_app_no_exceptions_test.cpp
     engine/core/game_app_dispatcher_trace_test.cpp
     engine/core/ecs_safety_test.cpp

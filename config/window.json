@@ -13,6 +13,9 @@
         "debug_ui": true
     },
     "performance": {
-        "target_fps": 60
+        "target_fps": 60,
+        "logic_tick_hz": 60,
+        "max_ticks_per_frame": 5,
+        "render_interpolation": false
     }
 }
