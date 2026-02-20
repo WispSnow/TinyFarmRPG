@@ -8,7 +8,7 @@
 
 ## 执行进度
 - [x] Step 1：循环契约与边界冻结（见 `docs/loop_timing_contract.md`）
-- [ ] Step 2：时间管理职责拆分
+- [x] Step 2：时间管理职责拆分（`src/engine/core/time.h/.cpp` + `tests/engine/core/time_test.cpp`）
 - [ ] Step 3：`GameApp::run()` accumulator 化
 - [ ] Step 4：输入语义前置修正
 - [ ] Step 5：Scene 双通道更新拆分
@@ -26,7 +26,8 @@
 
 ### 2. 拆分时间管理职责（逻辑时钟 vs 渲染时钟）
 - 目标：让时间模块同时支持固定逻辑步长和可变渲染帧间隔，而不是只有单一 `delta_time`。
-- 实现思路：重构 `Time` 接口与内部状态，提供固定步长配置、frame delta 采样、accumulator、追赶计数与统计；明确 `fixed_dt` 为常量，`scaled_frame_delta = frame_delta * time_scale` 仅用于累积与 tick 预算计算。
+- 实现思路：重构 `Time` 接口与内部状态，提供固定步长配置、frame delta 采样、accumulator、追赶计数与统计；明确 `fixed_dt` 为常量，`scaled_frame_delta = frame_delta * time_scale` 仅用于累积与 tick 预算计算。  
+  输出产物：`src/engine/core/time.h`、`src/engine/core/time.cpp`、`tests/engine/core/time_test.cpp`（已完成）。
 
 ### 3. 改造 `GameApp::run()` 为 accumulator 主循环
 - 目标：在引擎入口真正把逻辑循环和渲染循环拆开。
