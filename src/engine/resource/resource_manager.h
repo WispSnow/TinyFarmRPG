@@ -9,6 +9,7 @@
 #include "resource_debug_info.h"
 #include "audio_loader.h"
 #include "texture_loader.h"
+#include "font_handle.h"
 
 // 前向声明 SDL 类型
 struct SDL_Renderer;
@@ -20,7 +21,6 @@ namespace engine::resource {
 class TextureManager;
 class AudioManager;
 class FontManager;
-class Font;
 class AssetRegistry;
 
 /**
@@ -76,8 +76,8 @@ public:
     void clearMusic();                                                              ///< @brief 清空所有音乐资源
 
     // -- Fonts --
-    Font* loadFont(entt::id_type id, int pixel_size, std::string_view file_path);     ///< @brief 载入字体资源(通过id + 文件路径)
-    Font* getFont(entt::id_type id, int pixel_size); ///< @brief 获取字体缓存（仅通过id + size）
+    FontHandle loadFont(entt::id_type id, int pixel_size, std::string_view file_path);     ///< @brief 载入字体资源(通过id + 文件路径)
+    FontHandle getFont(entt::id_type id, int pixel_size); ///< @brief 获取字体缓存（仅通过id + size）
     void unloadFont(entt::id_type id, int pixel_size);                              ///< @brief 卸载指定的字体资源
     void clearFonts();                                                              ///< @brief 清空所有字体资源
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/utils/math.h"
-#include "resource_debug_info.h"
+#include "auto_tile_debug_info.h"
 #include <entt/entity/entity.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <array>
@@ -10,13 +10,6 @@
 #include <vector>
 
 namespace engine::resource {
-
-enum class AutoTileTopology : std::uint8_t {
-    CORNER,
-    EDGE,
-    MIXED,
-    UNKNOWN,
-};
 
 // 一个自动图块规则集
 struct AutoTileRule {

@@ -13,8 +13,6 @@ namespace engine::resource {
  * 负责缓存音效、音乐的解码数据。真正的播放逻辑由 AudioPlayer 负责。
  */
 class AudioManager final{
-    friend class ResourceManager;
-
 private:
     SoundCache sound_cache_{};
     MusicCache music_cache_{};
@@ -33,7 +31,6 @@ public:
     AudioManager(AudioManager&&) = delete;
     AudioManager& operator=(AudioManager&&) = delete;
 
-private:  // 仅供 ResourceManager 访问的方法
     [[nodiscard]] AudioBufferHandle findSound(entt::id_type id) const;
     [[nodiscard]] AudioBufferHandle findMusic(entt::id_type id) const;
 

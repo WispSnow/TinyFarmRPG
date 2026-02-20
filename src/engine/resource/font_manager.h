@@ -13,6 +13,7 @@
 #include <hb-ft.h>        // HarfBuzz-FreeType 桥接，用于将FreeType与HarfBuzz结合
 #include <vector>
 #include "resource_debug_info.h"
+#include "font_handle.h"
 
 namespace engine::resource {
 
@@ -128,11 +129,9 @@ private:
  * @brief 管理 FreeType 字体资源（Font）。
  *
  * 提供字体的加载和缓存功能，通过文件路径和像素大小来标识。
- * 请通过 create() 创建实例，失败返回 nullptr。仅供 ResourceManager 内部使用。
+ * 请通过 create() 创建实例，失败返回 nullptr。
  */
 class FontManager final{
-    friend class ResourceManager;
-
 private:
     FT_Library ft_library_{nullptr};    ///< @brief FreeType 库对象
     std::unordered_map<FontKey, std::unique_ptr<Font>, FontKeyHash> fonts_;    ///< @brief 字体缓存
@@ -148,10 +147,7 @@ public:
     FontManager(FontManager&&) = delete;
     FontManager& operator=(FontManager&&) = delete;
 
-private: // 仅由 ResourceManager（和内部）访问的方法
-    FontManager() = default;
-    [[nodiscard]] bool init();
-    [[nodiscard]] Font* findFont(entt::id_type id, int pixel_size) const;
+    [[nodiscard]] FontHandle findFont(entt::id_type id, int pixel_size) const;
 
     /**
      * @brief 从文件路径加载指定像素大小的字体
@@ -162,7 +158,7 @@ private: // 仅由 ResourceManager（和内部）访问的方法
      * @note 如果字体已经加载，则返回已加载字体的指针
      * @note 如果字体未加载，则从文件路径加载字体，并返回加载的字体的指针
      */
-    Font* loadFont(entt::id_type id, int pixel_size, std::string_view file_path);
+    FontHandle loadFont(entt::id_type id, int pixel_size, std::string_view file_path);
 
     /**
      * @brief 卸载特定字体（通过路径哈希值和大小标识）
@@ -181,6 +177,10 @@ private: // 仅由 ResourceManager（和内部）访问的方法
      * @param out 输出调试信息容器
      */
     void collectDebugInfo(std::vector<FontDebugInfo>& out) const;   
+
+private:
+    FontManager() = default;
+    [[nodiscard]] bool init();
 };
 
 } // namespace engine::resource
