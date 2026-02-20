@@ -6,11 +6,23 @@
 - `src/engine/scene/scene.cpp` 的 `Scene::update` 会推进 UI，`src/game/scene/game_scene.cpp` 的 `GameScene::update` 会推进 gameplay scheduler。
 - 渲染与逻辑已在 `GameScene` 内部分离为 `update`/`render` 两个函数，但两者仍共享同一外层帧节拍。
 
+## 执行进度
+- [x] Step 1：循环契约与边界冻结（见 `docs/loop_timing_contract.md`）
+- [ ] Step 2：时间管理职责拆分
+- [ ] Step 3：`GameApp::run()` accumulator 化
+- [ ] Step 4：输入语义前置修正
+- [ ] Step 5：Scene 双通道更新拆分
+- [ ] Step 6：`GameScene` 固定逻辑迁移
+- [ ] Step 7：渲染插值（可选后置）
+- [ ] Step 8：配置与调试面板升级
+- [ ] Step 9：测试与文档回归
+
 ## 重构步骤
 
 ### 1. 明确新循环契约与阶段边界
 - 目标：确定“固定逻辑步长 + 可变渲染步长”的统一语义，避免后续实现阶段边界反复变动。
-- 实现思路：在引擎层先锁定以下约束，再按约束推进改造：固定逻辑步长不随时间缩放变化；`time_scale` 仅作用于 accumulator 输入；`dispatcher.update()` 维持“每个渲染帧一次，且在 render 后”以保持现有事件语义；设置默认 `max_ticks_per_frame = 5` 防止追赶爆帧；场景切换后清空 accumulator 残余时间。
+- 实现思路：在引擎层先锁定以下约束，再按约束推进改造：固定逻辑步长不随时间缩放变化；`time_scale` 仅作用于 accumulator 输入；`dispatcher.update()` 维持“每个渲染帧一次，且在 render 后”以保持现有事件语义；设置默认 `max_ticks_per_frame = 5` 防止追赶爆帧；场景切换后清空 accumulator 残余时间。  
+  输出产物：`docs/loop_timing_contract.md`（已完成）。
 
 ### 2. 拆分时间管理职责（逻辑时钟 vs 渲染时钟）
 - 目标：让时间模块同时支持固定逻辑步长和可变渲染帧间隔，而不是只有单一 `delta_time`。
