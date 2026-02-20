@@ -32,10 +32,16 @@ concept SupportsGetTextureByIdPath = requires(T& rm, entt::id_type id, std::stri
     rm.getTexture(id, path);
 };
 
+template <typename T>
+concept SupportsGetFontByIdSizePath = requires(T& rm, entt::id_type id, int font_size, std::string_view path) {
+    rm.getFont(id, font_size, path);
+};
+
 TEST(ResourceManagerStrictPreloadApiTest, LegacyGetByIdPathOverloadsAreRemoved) {
     static_assert(!SupportsGetSoundByIdPath<ResourceManager>);
     static_assert(!SupportsGetMusicByIdPath<ResourceManager>);
     static_assert(!SupportsGetTextureByIdPath<ResourceManager>);
+    static_assert(!SupportsGetFontByIdSizePath<ResourceManager>);
     SUCCEED();
 }
 
@@ -120,6 +126,30 @@ TEST(ResourceManagerStrictPreloadApiTest, GetMusicDoesNotImplicitlyLoadRegistere
 
     resource_manager->preloadRegisteredResources();
     EXPECT_TRUE(resource_manager->getMusic(music_id));
+}
+
+TEST(ResourceManagerStrictPreloadApiTest, GetFontDoesNotImplicitlyLoadRegisteredAsset) {
+    entt::dispatcher dispatcher{};
+    auto resource_manager = ResourceManager::create(&dispatcher);
+    ASSERT_NE(resource_manager, nullptr);
+
+    const std::filesystem::path font_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/fonts/VonwaonBitmap-16px.ttf").lexically_normal();
+    if (!std::filesystem::exists(font_path)) {
+        GTEST_SKIP() << "测试字体文件缺失: " << font_path;
+    }
+
+    const std::string path_str = font_path.string();
+    const entt::id_type font_id = entt::hashed_string{path_str.c_str(), path_str.size()}.value();
+    constexpr int kPixelSize = 16;
+
+    auto& registry = resource_manager->getAssetRegistry();
+    registry.registerFont(font_id, kPixelSize, path_str);
+
+    EXPECT_EQ(resource_manager->getFont(font_id, kPixelSize), nullptr);
+
+    resource_manager->preloadRegisteredResources();
+    EXPECT_NE(resource_manager->getFont(font_id, kPixelSize), nullptr);
 }
 
 } // namespace engine::resource
