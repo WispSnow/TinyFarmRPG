@@ -59,8 +59,9 @@ ResourceManager::ResourceManager(entt::dispatcher* dispatcher,
 
 void ResourceManager::clear() {
     clearFonts();
-    audio_manager_->clearAudio();
-    texture_manager_->clearTextures();
+    clearSounds();
+    clearMusic();
+    clearTextures();
     spdlog::trace("ResourceManager 中的资源通过 clear() 清空。");
 }
 
@@ -363,12 +364,12 @@ void ResourceManager::clearMusic() {
 }
 
 // --- 字体接口实现 ---
-Font* ResourceManager::loadFont(entt::id_type id, int pixel_size, std::string_view file_path) {
+FontHandle ResourceManager::loadFont(entt::id_type id, int pixel_size, std::string_view file_path) {
     asset_registry_->registerFont(id, pixel_size, file_path);
     return font_manager_->loadFont(id, pixel_size, file_path);
 }
 
-Font* ResourceManager::getFont(entt::id_type id, int pixel_size) {
+FontHandle ResourceManager::getFont(entt::id_type id, int pixel_size) {
     if (auto* cached = font_manager_->findFont(id, pixel_size)) {
         return cached;
     }

@@ -9,8 +9,6 @@
 
 namespace engine::resource {
 
-enum class AutoTileTopology : std::uint8_t;
-
 struct TextureDebugInfo {
     entt::id_type id{};
     GLuint texture{0};
@@ -56,17 +54,6 @@ struct AudioDebugInfo {
     std::size_t sample_count{0};
     std::size_t memory_bytes{0};
     double duration_seconds{0.0};
-};
-
-struct AutoTileRuleDebugInfo {
-    entt::id_type rule_id{};
-    std::string name;
-    entt::id_type texture_id{};
-    AutoTileTopology topology;
-    std::size_t defined_mask_count{0};
-    std::size_t manual_mask_count{0};
-    std::size_t missing_mask_count{0};
-    std::vector<std::uint8_t> missing_masks;
 };
 
 } // namespace engine::resource

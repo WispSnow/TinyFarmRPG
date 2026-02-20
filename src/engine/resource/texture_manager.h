@@ -15,8 +15,6 @@ namespace engine::resource {
  * 在构造时初始化。使用文件路径作为键，确保纹理只加载一次并正确释放。
  */
 class TextureManager final{
-    friend class ResourceManager;
-
 private:
     TextureCache texture_cache_{};
 
@@ -28,8 +26,6 @@ public:
     TextureManager& operator=(const TextureManager&) = delete;
     TextureManager(TextureManager&&) = delete;
     TextureManager& operator=(TextureManager&&) = delete;
-
-private: // 仅供 ResourceManager 访问的方法
 
     /**
      * @brief 从文件路径加载纹理

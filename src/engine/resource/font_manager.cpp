@@ -461,7 +461,7 @@ bool FontManager::init() {
     return true;
 }
 
-Font* FontManager::findFont(entt::id_type id, int pixel_size) const {
+FontHandle FontManager::findFont(entt::id_type id, int pixel_size) const {
     const FontKey key{id, pixel_size};
     if (const auto it = fonts_.find(key); it != fonts_.end()) {
         return it->second.get();
@@ -501,7 +501,7 @@ FontManager::~FontManager() {
  * @param file_path 字体文件路径
  * @return 字体指针，失败返回 nullptr
  */
-Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view file_path) {
+FontHandle FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view file_path) {
     if (!ft_library_) {
         spdlog::error("无法加载字体 (id = {})：FontManager 未初始化 FreeType。", id);
         return nullptr;
@@ -547,7 +547,7 @@ Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view f
         spdlog::error("构造 Font 对象失败：{} (id = {}, {}px)", file_path, id, pixel_size);
         return nullptr;
     }
-    Font* font_ptr = font.get();
+    FontHandle font_ptr = font.get();
     // 步骤5：缓存字体对象
     const FontKey key{id, pixel_size};
     fonts_.emplace(key, std::move(font));
