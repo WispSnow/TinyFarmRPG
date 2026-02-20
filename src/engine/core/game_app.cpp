@@ -189,6 +189,7 @@ void GameApp::run() {
             input_manager_->consumeTick();
         }
 
+        updateFrame(time_->getUnscaledDeltaTime());
         render();
 
         // 给 tracer 提供一个作用域的标记，用于区分 immediate 和 queued 事件
@@ -265,7 +266,12 @@ void GameApp::handleEvents() {
 }
 
 void GameApp::update(float delta_time) {
-    // 固定步长逻辑更新（当前阶段仍复用 Scene::update 入口）
+    // 固定步长逻辑更新
+    scene_manager_->fixedUpdate(delta_time);
+}
+
+void GameApp::updateFrame(float delta_time) {
+    // 每渲染帧执行一次的表现层更新
     scene_manager_->update(delta_time);
 }
 

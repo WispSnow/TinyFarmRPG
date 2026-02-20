@@ -49,6 +49,7 @@ public:
 
     // 核心循环方法
     [[nodiscard]] virtual bool init();          ///< @brief 初始化场景（注意UI管理器并未初始化，派生类若需要UI，需要自行初始化）
+    virtual void fixedUpdate(float delta_time); ///< @brief 固定步长逻辑更新（默认空实现；仅需要固定逻辑的场景重写）
     virtual void update(float delta_time);      ///< @brief 更新场景。
     virtual void render();                      ///< @brief 渲染场景。
     virtual void clean();                       ///< @brief 清理场景。

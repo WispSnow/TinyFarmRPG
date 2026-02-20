@@ -149,9 +149,8 @@ bool GameScene::init() {
     return true;
 }
 
-void GameScene::update(float delta_time) {
+void GameScene::fixedUpdate(float delta_time) {
     if (abort_to_title_) {
-        Scene::update(delta_time);
         return;
     }
 
@@ -185,7 +184,11 @@ void GameScene::update(float delta_time) {
             });
         }
     }
+}
 
+void GameScene::update(float delta_time) {
+    // GameScene 的 frame update 仅承载 UI/表现层更新；
+    // gameplay scheduler 已迁移到 fixedUpdate。
     Scene::update(delta_time);
 }
 

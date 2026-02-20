@@ -42,6 +42,7 @@ public:
     [[nodiscard]] size_t getSceneStackSize() const { return scene_stack_.size(); }  ///< @brief 获取场景栈中的场景数量。
 
     // 核心循环函数
+    void fixedUpdate(float delta_time);
     void update(float delta_time);
     void render();
     void close();
