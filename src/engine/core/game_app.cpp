@@ -453,6 +453,8 @@ bool GameApp::initGameState()
 bool GameApp::initTime() {
     time_ = std::make_unique<engine::core::Time>();
     time_->setTargetFps(config_->target_fps_);
+    time_->setFixedDeltaTime(1.0F / static_cast<float>(config_->logic_tick_hz_));
+    time_->setMaxTicksPerFrame(config_->max_ticks_per_frame_);
     spdlog::trace("时间管理初始化成功。");
     return true;
 }

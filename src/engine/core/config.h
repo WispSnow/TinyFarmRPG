@@ -28,7 +28,10 @@ public:
     bool debug_ui_enabled_ = true;          ///< @brief 是否启用 ImGui 调试界面
 
     // 性能设置
-    int target_fps_ = 144;                  ///< @brief 目标 FPS 设置，0 表示不限制
+    int target_fps_ = 144;                  ///< @brief 渲染目标 FPS 设置，0 表示不限制
+    int logic_tick_hz_ = 60;                ///< @brief 固定逻辑更新频率（Hz），用于计算 fixed_dt
+    int max_ticks_per_frame_ = 5;           ///< @brief 单渲染帧允许执行的最大逻辑 tick 数（catch-up 上限）
+    bool render_interpolation_enabled_ = false; ///< @brief 是否启用渲染插值（Step 7 预留开关）
 
     [[nodiscard]] static std::unique_ptr<Config> create(std::string_view filepath);
 

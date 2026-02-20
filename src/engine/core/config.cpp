@@ -156,9 +156,21 @@ void Config::fromJson(const nlohmann::json& j) {
     if (const auto it = j.find("performance"); it != j.end() && it->is_object()) {
         const auto& perf_config = *it;
         assignInt(perf_config, "target_fps", target_fps_);
+        assignInt(perf_config, "logic_tick_hz", logic_tick_hz_);
+        assignInt(perf_config, "max_ticks_per_frame", max_ticks_per_frame_);
+        assignBool(perf_config, "render_interpolation", render_interpolation_enabled_);
+
         if (target_fps_ < 0) {
             spdlog::warn("目标 FPS 不能为负数。设置为 0（无限制）。");
             target_fps_ = 0;
+        }
+        if (logic_tick_hz_ <= 0) {
+            spdlog::warn("logic_tick_hz 必须大于 0。设置为默认值 60。");
+            logic_tick_hz_ = 60;
+        }
+        if (max_ticks_per_frame_ < 1) {
+            spdlog::warn("max_ticks_per_frame 不能小于 1。设置为 1。");
+            max_ticks_per_frame_ = 1;
         }
     }
 }
@@ -178,7 +190,10 @@ nlohmann::ordered_json Config::toJson() const {
             {"debug_ui", debug_ui_enabled_}
         }},
         {"performance", {
-            {"target_fps", target_fps_}
+            {"target_fps", target_fps_},
+            {"logic_tick_hz", logic_tick_hz_},
+            {"max_ticks_per_frame", max_ticks_per_frame_},
+            {"render_interpolation", render_interpolation_enabled_}
         }}
     };
 }

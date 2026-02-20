@@ -49,6 +49,10 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "Input callbacks should be dispatched per fixed tick.";
     EXPECT_NE(source.find("input_manager_->consumeTick()"), std::string::npos)
         << "Input transient states should be consumed per fixed tick.";
+    EXPECT_NE(source.find("time_->setFixedDeltaTime(1.0F / static_cast<float>(config_->logic_tick_hz_));"), std::string::npos)
+        << "GameApp initTime should apply fixed tick frequency from config.";
+    EXPECT_NE(source.find("time_->setMaxTicksPerFrame(config_->max_ticks_per_frame_);"), std::string::npos)
+        << "GameApp initTime should apply catch-up cap from config.";
 
     const auto render_pos = source.find("render();");
     const auto dispatch_pos = source.find("dispatcher_->update();");
