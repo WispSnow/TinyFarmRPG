@@ -161,19 +161,25 @@ void GameApp::run() {
     }
 
     while (is_running_) {
-        // 每帧节拍（从“玩家输入”到“屏幕呈现”）：
-        // 1) 时间推进：计算本帧 deltaTime（用于驱动更新）
-        // 2) 输入/事件：轮询 SDL 事件、更新动作状态，并触发必要的引擎事件（例如 Quit/WindowResized）
-        // 3) 更新：只更新栈顶场景（以及其系统/逻辑）；场景切换通过事件请求，在 update 末尾统一处理
-        // 4) 渲染：清屏 → 渲染场景/调试 UI → present
-        // 5) 分发队列事件：处理本帧 enqueue 的事件
-        //    TinyFarm 把 dispatcher.update 放在 render 之后：队列事件在“本帧画面已呈现”后才会被分发，
-        //    这样可以避免递归触发导致的时序混乱，并把大多数数据类事件自然变成“下一帧的输入”。
-        time_->update();
-        float delta_time = time_->getDeltaTime();
-        
         handleEvents();
-        update(delta_time);
+        time_->update();
+
+        const float fixed_delta_time = time_->getFixedDeltaTime();
+        while (is_running_ && time_->tryConsumeFixedTick()) {
+            // 若 fixed update 引发场景切换（push/pop/replace），清空 accumulator，
+            // 防止新场景收到旧场景遗留时间片导致同帧“追赶爆发”。
+            const size_t stack_size_before = scene_manager_->getSceneStackSize();
+            auto* current_scene_before = scene_manager_->getCurrentScene();
+
+            update(fixed_delta_time);
+
+            const size_t stack_size_after = scene_manager_->getSceneStackSize();
+            auto* current_scene_after = scene_manager_->getCurrentScene();
+            if (stack_size_before != stack_size_after || current_scene_before != current_scene_after) {
+                time_->clearAccumulator();
+            }
+        }
+
         render();
 
         // 给 tracer 提供一个作用域的标记，用于区分 immediate 和 queued 事件
@@ -189,8 +195,6 @@ void GameApp::run() {
             debug_ui_manager_->onDispatcherUpdateEnd();
         }
 #endif
-
-        // spdlog::info("delta_time: {}", delta_time);
     }
 
     close();
@@ -252,7 +256,7 @@ void GameApp::handleEvents() {
 }
 
 void GameApp::update(float delta_time) {
-    // 游戏逻辑更新
+    // 固定步长逻辑更新（当前阶段仍复用 Scene::update 入口）
     scene_manager_->update(delta_time);
 }
 
