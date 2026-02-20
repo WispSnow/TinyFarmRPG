@@ -28,7 +28,8 @@ TinyFarm 的输入系统可以用一句话概括：
 ### 1.2 GameApp（输入阶段与 ImGui 转发）
 - 入口：`src/engine/core/game_app.cpp`
 - 关键点：
-  - 主循环的输入阶段调用 `InputManager::update()`
+  - 主循环先调用 `InputManager::sampleInputEvents()`（每渲染帧一次）
+  - 每个 fixed tick 调用 `InputManager::dispatchActionCallbacks()`（逻辑前）与 `InputManager::consumeTick()`（逻辑后）
   - `InputManager` 会把 SDL 事件先转发给 ImGui（通过 `setImGuiEventForwarder`），再决定是否映射成游戏动作
 
 ### 1.3 UI（占用/转发的落地点）
@@ -47,19 +48,23 @@ TinyFarm 的输入系统可以用一句话概括：
 
 ## 2) 动作状态机（帧语义）
 
-InputManager 的动作状态机可按每帧理解为：
+InputManager 的动作状态机可按“逻辑 tick”理解为：
 - `PRESSED`：本帧第一次按下（边沿）
 - `HELD`：持续按住（SDL 不会每帧产生 KEY_DOWN，因此需要该状态）
 - `RELEASED`：本帧释放（边沿）
 - `INACTIVE`：未激活
 
-状态推进（每帧 update 开始时）：
+状态推进（每个逻辑 tick 的 `consumeTick()`）：
 - `PRESSED → HELD`
 - `RELEASED → INACTIVE`
 
 这允许上层清晰地区分：
 - “按下一次触发”（只看 `isActionPressed` / 绑定 `PRESSED`）
 - “持续按住移动”（看 `isActionDown` / 绑定 `HELD`）
+
+补充说明：
+- `sampleInputEvents()` 只负责采样与更新输入事实，不推进边沿生命周期。
+- 因为 `consumeTick()` 发生在 fixed tick 末尾，所以同一渲染帧内多 tick 也能保持边沿语义一致。
 
 ---
 

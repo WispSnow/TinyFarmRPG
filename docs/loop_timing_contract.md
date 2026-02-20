@@ -57,10 +57,16 @@
 ## 5. Scene 分层契约
 
 - Scene 提供两类更新入口：
-  - `fixed_update(fixed_dt)`：固定逻辑更新（默认空实现）
+  - `fixedUpdate(fixed_dt)`：固定逻辑更新（默认空实现）
   - `update(frame_dt)`：帧表现更新
-- `GameScene` 实现 `fixed_update` 承载 gameplay scheduler。
-- `TitleScene`、`PauseMenuScene`、`RestDialogScene` 等非 gameplay 场景默认不实现 `fixed_update`，继续走 `update(frame_dt)`。
+- `render(alpha)`：渲染入口（全栈叠加），`alpha` 为渲染插值系数。
+- `GameScene` 实现 `fixedUpdate` 承载 gameplay scheduler。
+- `TitleScene`、`PauseMenuScene`、`RestDialogScene` 等非 gameplay 场景默认不实现 `fixedUpdate`，继续走 `update(frame_dt)`。
+
+### 5.1 渲染插值通道（Step 7）
+- `alpha` 沿 `GameApp -> SceneManager -> Scene -> GameScene -> Render/Light` 透传。
+- `render_interpolation=false` 时，`alpha` 固定为 `1.0`，行为等价于“不插值”。
+- 当前插值范围限定在 `Transform(position)` 与相机，不扩散到其他组件。
 
 ## 6. 输入语义契约（为 Step 3/4 准备）
 
@@ -79,6 +85,7 @@
 - 每帧执行的逻辑 tick 数
 - `accumulator` 值
 - catch-up 丢弃计数
+- 插值 `alpha`（raw/effective）与 `render_interpolation` 开关状态
 
 ## 8. 验收条件（Step 1）
 

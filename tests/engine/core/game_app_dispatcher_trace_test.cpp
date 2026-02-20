@@ -43,6 +43,10 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should sample interpolation alpha from Time.";
     EXPECT_NE(source.find("config_->render_interpolation_enabled_"), std::string::npos)
         << "GameApp run loop should gate interpolation by config.";
+    EXPECT_NE(source.find("? time_->getInterpolationAlpha()"), std::string::npos)
+        << "GameApp should use Time::getInterpolationAlpha when interpolation is enabled.";
+    EXPECT_NE(source.find(": 1.0f;"), std::string::npos)
+        << "GameApp should fall back to alpha=1.0f when interpolation is disabled.";
     EXPECT_NE(source.find("render(interpolation_alpha);"), std::string::npos)
         << "GameApp run loop should pass alpha into render stage.";
     EXPECT_NE(source.find("time_->clearAccumulator()"), std::string::npos)
