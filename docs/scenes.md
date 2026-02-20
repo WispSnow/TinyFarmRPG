@@ -8,25 +8,27 @@ TinyFarm 的 Scene 系统由两部分组成：
 
 ---
 
-## 1) Scene 栈的核心约定：update 只更新栈顶，render 叠加渲染整栈
+## 1) Scene 栈的核心约定：fixedUpdate/update 只更新栈顶，render 叠加渲染整栈
 `SceneManager` 对场景栈的调度规则是：
-- `update()`：只更新栈顶（current/top）场景
-- `render()`：从栈底到栈顶依次渲染（叠加渲染）
+- `fixedUpdate()`：只更新栈顶（fixed timestep 逻辑）
+- `update()`：只更新栈顶（frame presentation 更新）
+- `render(alpha)`：从栈底到栈顶依次渲染（叠加渲染）
 
 这样做的直接收益是：
 - **覆盖式 Scene（PauseMenu/模态对话框）** 可以冻结底层逻辑（底层 Scene 不再 update）
 - 同时仍能显示底层画面（底层 Scene 仍会 render），覆盖层 Scene 的 UI 叠在上面
 
 对应实现线索：
-- `src/engine/scene/scene_manager.cpp`：`SceneManager::update()` / `SceneManager::render()`
+- `src/engine/scene/scene_manager.cpp`：`SceneManager::fixedUpdate()` / `SceneManager::update()` / `SceneManager::render(float)`
 
 ---
 
-## 2) Scene 的生命周期：init / update / render / clean
+## 2) Scene 的生命周期：init / fixedUpdate / update / render / clean
 在本项目中，一个 Scene 的生命周期接口含义约定为：
 - `init()`：一次性初始化（创建 UI、注册输入/事件回调、初始化 registry 等）
-- `update(dt)`：每帧更新（仅栈顶会被调用）
-- `render()`：每帧渲染（整栈都会被调用，用于叠加）
+- `fixedUpdate(fixed_dt)`：固定步长逻辑更新（仅栈顶会被调用）
+- `update(frame_dt)`：帧表现更新（仅栈顶会被调用）
+- `render(alpha)`：每渲染帧渲染（整栈都会被调用，用于叠加）
 - `clean()`：退出/弹出前的清理（清空 registry、释放 UI、取消订阅等）
 
 常见线索：
@@ -78,7 +80,7 @@ TinyFarm 的一个关键约定是：**每个 Scene 都拥有自己的 `entt::reg
 项目约定：Scene 不直接操作 `SceneManager`，而是通过事件表达切换意图：
 - `Scene::requestPushScene/Pop/Replace` 内部会 `trigger<Push/Pop/ReplaceSceneEvent>()`
 - `SceneManager` 监听这些事件，但不会立刻改栈，而是记录为 pending action
-- 在 `SceneManager::update()` 的末尾调用 `processPendingActions()` 统一落地切换
+- 在 `SceneManager::fixedUpdate()` 与 `SceneManager::update()` 末尾调用 `processPendingActions()` 统一落地切换
 
 这样做的原因是：避免在 update 的中途改栈导致的递归/时序不确定性，让切换点可控。
 
@@ -88,17 +90,17 @@ flowchart TD
   S["Scene / UI callback"] -->|requestPush/Pop/Replace<br/>trigger Scene*Event| D["dispatcher"]
   D -->|sink/connect| SM["SceneManager::on*"]
   SM --> P["pending action"]
-  P -->|end of SceneManager::update| A["processPendingActions()"]
+  P -->|end of SceneManager::fixedUpdate / update| A["processPendingActions()"]
   A --> Stack["(scene_stack_)"]
 ```
 
-一个关键细节：切换发生在 `update()` 末尾，因此：
-- 新 push 的 Scene **本帧不会 update**（update 已结束），但 **可能参与本帧 render**（render 在之后执行）
-- pop/replace 会影响本帧 render（因为 render 使用切换后的栈）
+一个关键细节：切换发生在 fixed 或 frame 更新阶段末尾，因此：
+- 新 push 的 Scene 可能在同一渲染帧内被初始化并参与 render
+- pop/replace 会影响同一渲染帧 render（因为 render 使用切换后的栈）
 
 实现线索：
 - `src/engine/scene/scene_manager.cpp`：`onPush/onPop/onReplace` + `processPendingActions`
-- `src/engine/core/game_app.cpp`：主循环中调用 `scene_manager.update()` / `scene_manager.render()`
+- `src/engine/core/game_app.cpp`：主循环中调用 `scene_manager.fixedUpdate()` / `scene_manager.update()` / `scene_manager.render(alpha)`
 
 ---
 

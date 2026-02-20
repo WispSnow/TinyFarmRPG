@@ -13,6 +13,7 @@ set(TEST_SOURCES
     engine/input/input_manager_no_exceptions_test.cpp
     engine/scene/entry_to_first_frame_safety_test.cpp
     engine/scene/scene_manager_safety_test.cpp
+    engine/scene/render_interpolation_pipeline_test.cpp
     engine/factory_visibility_test.cpp
     engine/resource/font_manager_create_test.cpp
     engine/resource/resource_manager_no_exceptions_test.cpp

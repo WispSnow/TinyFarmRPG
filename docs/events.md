@@ -5,7 +5,7 @@
 本项目使用 `entt::dispatcher` 作为事件总线；核心差异是：
 - `trigger<T>(...)`：**立即同步分发**，当前调用栈内就会触达所有已连接的监听者。
 - `enqueue<T>(...)`：**入队**，不会立刻触发监听者；需要在之后调用 `dispatcher.update()` 才会真正分发。
-- `dispatcher.update()`：处理并分发本次 update 前已入队的事件；在 TinyFarm 中，它在 `GameApp::run()` 的帧尾（`render()` 之后）被调用一次（见 `src/engine/core/game_app.cpp`），因此 **enqueue 的事件通常会在“本帧画面呈现之后”才被处理，更像是“下一帧的输入”。**
+- `dispatcher.update()`：处理并分发本次 update 前已入队的事件；在 TinyFarm 中，它在 `GameApp::run()` 的帧尾（`render()` 之后）按“每渲染帧一次”调用（见 `src/engine/core/game_app.cpp`），即使该帧执行了多个 fixed tick 也不会额外调用。
 
 下面这张图只表达“分发时机”，不展开具体 payload：
 ```mermaid
@@ -58,9 +58,10 @@ flowchart LR
 ### 案例 3：enqueue（时间事件链路：TimeSystem → DayChangedEvent → 作物/地图系统）
 这是一个典型“数据类事件帧尾结算”的例子（不要求立刻改变控制流，且可能在一帧内批量产生）：
 1. `TimeSystem::update()` 推进时间；当跨天时 `enqueue<DayChangedEvent>()`（见 `src/game/system/time_system.cpp`）。
-2. 帧尾 `GameApp::run()` 调用 `dispatcher.update()`，统一分发本帧入队的事件（见 `src/engine/core/game_app.cpp`）。
-3. `CropSystem` 监听 `DayChangedEvent` 并推进作物生长（见 `src/game/system/crop_system.cpp`）。
-4. `MapManager` 监听 `DayChangedEvent` 并执行“跨天”相关的地图状态更新（见 `src/game/world/map_manager.cpp`）。
+2. 本渲染帧可能执行多个 fixed tick；各 tick 中 enqueue 的事件都会累积到同一个队列。
+3. 帧尾 `GameApp::run()` 调用一次 `dispatcher.update()`，统一分发该渲染帧内入队的事件（见 `src/engine/core/game_app.cpp`）。
+4. `CropSystem` 监听 `DayChangedEvent` 并推进作物生长（见 `src/game/system/crop_system.cpp`）。
+5. `MapManager` 监听 `DayChangedEvent` 并执行“跨天”相关的地图状态更新（见 `src/game/world/map_manager.cpp`）。
 
 > 由于 `dispatcher.update()` 在 `render()` 之后，以上第 3/4 步的处理发生在“本帧已渲染完成之后”，其结果通常会在下一帧的更新/渲染中可见。
 

@@ -10,10 +10,10 @@ TinyFarm 的 2D 渲染可以用一句话概括：
 ## 1) 一帧渲染调用链（从入口到 drawSprite）
 
 线索（只看文件/函数名即可）：
-- `src/engine/core/game_app.cpp`：`GameApp::render()`：clear → `scene_manager.render()` → present（Debug UI 也在这帧的 render 阶段插入）
-- `src/engine/scene/scene_manager.cpp`：`SceneManager::render()`：从栈底到栈顶渲染（叠加渲染）
-- `src/game/scene/game_scene.cpp`：`GameScene::render()`：组织 world 渲染系统（YSort → Render → Lighting → UI/Debug）
-- `src/engine/system/render_system.cpp`：`RenderSystem::update()`：排序并遍历 view，逐个 `drawSprite`
+- `src/engine/core/game_app.cpp`：`GameApp::render(alpha)`：clear → `scene_manager.render(alpha)` → present（Debug UI 也在这帧的 render 阶段插入）
+- `src/engine/scene/scene_manager.cpp`：`SceneManager::render(float)`：从栈底到栈顶渲染（叠加渲染）
+- `src/game/scene/game_scene.cpp`：`GameScene::render(alpha)`：组织 world 渲染系统（YSort → Render → Lighting → UI/Debug）
+- `src/engine/system/render_system.cpp`：`RenderSystem::update(..., alpha)`：排序并遍历 view，逐个 `drawSprite`
 - `src/engine/render/renderer.cpp`：`Renderer::drawSprite()`：纹理获取 + 视口剔除 + 提交给 GLRenderer
 - `src/engine/render/opengl/gl_renderer.cpp`：底层绘制与 pass（更深入内容见 `docs/resolution_and_viewport.md` 等相关文档）
 
@@ -49,7 +49,7 @@ TinyFarm 的 Sprite 渲染最小数据组合是：
 ## 4) YSort：用 y 坐标驱动 depth（遮挡在前）
 
 `engine::system::YSortSystem`（`src/engine/system/ysort_system.cpp`）的约定：
-- `Render.depth_ = Transform.position_.y`
+- `Render.depth_ = lerp(Transform.previous_position_, Transform.position_, alpha).y`
 
 如果世界坐标 y 越大表示越靠下，则：
 - y 越大 → depth 越大 → 越晚绘制 → 视觉上更“在前面”遮挡其他对象
