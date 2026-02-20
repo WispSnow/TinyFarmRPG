@@ -187,6 +187,58 @@ protected:
 	    EXPECT_FLOAT_EQ(logical_position.y, 144.0F);
 	}
 
+    TEST_F(InputManagerTest, PressedStatePersistsAcrossSampleFramesUntilConsumeTick) {
+        auto manager = InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+        ASSERT_NE(manager, nullptr);
+        const entt::id_type action_id = entt::hashed_string{"move_left"};
+
+        SDL_Event key_down{};
+        key_down.type = SDL_EVENT_KEY_DOWN;
+        key_down.key.scancode = SDL_SCANCODE_A;
+        key_down.key.down = true;
+        key_down.key.repeat = false;
+        ASSERT_EQ(SDL_PushEvent(&key_down), true);
+
+        manager->sampleInputEvents();
+        EXPECT_TRUE(manager->isActionPressed(action_id));
+
+        // 没有 consumeTick 时，边沿状态应保留到下一个逻辑 tick。
+        manager->sampleInputEvents();
+        EXPECT_TRUE(manager->isActionPressed(action_id));
+
+        manager->dispatchActionCallbacks();
+        manager->consumeTick();
+        EXPECT_FALSE(manager->isActionPressed(action_id));
+        EXPECT_TRUE(manager->isActionDown(action_id));
+    }
+
+    TEST_F(InputManagerTest, MouseWheelDeltaPersistsUntilConsumeTick) {
+        auto manager = InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+        ASSERT_NE(manager, nullptr);
+
+        SDL_Event wheel{};
+        wheel.type = SDL_EVENT_MOUSE_WHEEL;
+        wheel.wheel.x = 0.0f;
+        wheel.wheel.y = 1.0f;
+        ASSERT_EQ(SDL_PushEvent(&wheel), true);
+
+        manager->sampleInputEvents();
+        auto delta = manager->getMouseWheelDelta();
+        EXPECT_FLOAT_EQ(delta.x, 0.0f);
+        EXPECT_FLOAT_EQ(delta.y, 1.0f);
+
+        // 未 consumeTick 前，滚轮输入不应被“帧采样”清空。
+        manager->sampleInputEvents();
+        delta = manager->getMouseWheelDelta();
+        EXPECT_FLOAT_EQ(delta.x, 0.0f);
+        EXPECT_FLOAT_EQ(delta.y, 1.0f);
+
+        manager->consumeTick();
+        delta = manager->getMouseWheelDelta();
+        EXPECT_FLOAT_EQ(delta.x, 0.0f);
+        EXPECT_FLOAT_EQ(delta.y, 0.0f);
+    }
+
 } // namespace
 } // namespace engine::input
 // NOLINTEND

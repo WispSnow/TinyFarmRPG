@@ -85,18 +85,14 @@ entt::sink<entt::sigh<bool()>> InputManager::onAction(entt::id_type action_name_
 // --- 更新和事件处理 ---
 
 void InputManager::update() {
-    // 1. 根据上一帧的值更新默认的动作状态
-    for (auto& [action_name_id, state] : action_states_) {
-        if (state == ActionState::PRESSED) {
-            state = ActionState::HELD;                 // 当某个键按下不动时，并不会生成SDL_Event。
-        } else if (state == ActionState::RELEASED) {
-            state = ActionState::INACTIVE;
-        }
-    }
+    // 兼容旧路径：每次 update 视作“一个逻辑 tick + 一次输入采样”。
+    consumeTick();
+    sampleInputEvents();
+    dispatchActionCallbacks();
+}
 
-    mouse_wheel_delta_ = {0.0f, 0.0f};  // 滚轮数据每帧重置
-
-    // 2. 处理所有待处理的 SDL 事件 (这将设定 action_states_ 的值)
+void InputManager::sampleInputEvents() {
+    // 处理所有待处理的 SDL 事件（这将更新 action_states_ 与鼠标数据）
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
 #ifdef TF_ENABLE_DEBUG_UI
@@ -107,7 +103,10 @@ void InputManager::update() {
         processEvent(event);
     }
 
-    // 3. 触发回调
+}
+
+void InputManager::dispatchActionCallbacks() {
+    // 根据当前状态分发回调
     for (auto& [action_name_id, state] : action_states_) {
         if (state != ActionState::INACTIVE) {   // 如果动作状态不是 INACTIVE，
             // 且有绑定回调函数
@@ -121,6 +120,20 @@ void InputManager::update() {
             }
         }
     }
+}
+
+void InputManager::consumeTick() {
+    // 推进边沿状态生命周期
+    for (auto& [_, state] : action_states_) {
+        if (state == ActionState::PRESSED) {
+            state = ActionState::HELD;
+        } else if (state == ActionState::RELEASED) {
+            state = ActionState::INACTIVE;
+        }
+    }
+
+    // 滚轮数据视为“单 tick 有效”的一次性输入
+    mouse_wheel_delta_ = {0.0f, 0.0f};
 }
 
 void InputManager::quit() {
@@ -186,7 +199,8 @@ void InputManager::processEvent(const SDL_Event& event) {
             if (block_mouse) {
                 break;
             }
-            mouse_wheel_delta_ = {event.wheel.x, event.wheel.y};
+            mouse_wheel_delta_.x += event.wheel.x;
+            mouse_wheel_delta_.y += event.wheel.y;
             break;
         }
         case SDL_EVENT_WINDOW_RESIZED: {

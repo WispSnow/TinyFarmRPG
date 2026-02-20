@@ -39,6 +39,12 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should drive update with fixed delta time.";
     EXPECT_NE(source.find("time_->clearAccumulator()"), std::string::npos)
         << "GameApp should clear accumulator when scene stack changes.";
+    EXPECT_NE(source.find("input_manager_->sampleInputEvents()"), std::string::npos)
+        << "Input events should be sampled once per render frame.";
+    EXPECT_NE(source.find("input_manager_->dispatchActionCallbacks()"), std::string::npos)
+        << "Input callbacks should be dispatched per fixed tick.";
+    EXPECT_NE(source.find("input_manager_->consumeTick()"), std::string::npos)
+        << "Input transient states should be consumed per fixed tick.";
 
     const auto render_pos = source.find("render();");
     const auto dispatch_pos = source.find("dispatcher_->update();");

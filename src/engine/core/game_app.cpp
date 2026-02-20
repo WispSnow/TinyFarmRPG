@@ -166,6 +166,13 @@ void GameApp::run() {
 
         const float fixed_delta_time = time_->getFixedDeltaTime();
         while (is_running_ && time_->tryConsumeFixedTick()) {
+            input_manager_->dispatchActionCallbacks();
+
+            if (!is_running_) {
+                input_manager_->consumeTick();
+                break;
+            }
+
             // 若 fixed update 引发场景切换（push/pop/replace），清空 accumulator，
             // 防止新场景收到旧场景遗留时间片导致同帧“追赶爆发”。
             const size_t stack_size_before = scene_manager_->getSceneStackSize();
@@ -178,6 +185,8 @@ void GameApp::run() {
             if (stack_size_before != stack_size_after || current_scene_before != current_scene_after) {
                 time_->clearAccumulator();
             }
+
+            input_manager_->consumeTick();
         }
 
         render();
@@ -251,8 +260,8 @@ bool GameApp::init() {
 }
 
 void GameApp::handleEvents() {
-    // 处理并分发输入事件
-    input_manager_->update();
+    // 每渲染帧采样一次 SDL 事件；固定 tick 内的分发/消费在 run() 中处理
+    input_manager_->sampleInputEvents();
 }
 
 void GameApp::update(float delta_time) {
