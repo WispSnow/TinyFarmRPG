@@ -13,7 +13,7 @@
 - [x] Step 4：输入语义前置修正（`src/engine/input/input_manager.*` + `tests/engine/input/input_manager_test.cpp`）
 - [x] Step 5：Scene 双通道更新拆分（`src/engine/scene/scene*` + `src/engine/core/game_app.*`）
 - [x] Step 6：`GameScene` 固定逻辑迁移（`src/game/scene/game_scene.*`）
-- [ ] Step 7：渲染插值（可选后置）
+- [ ] Step 7：渲染插值通道（方案B接口 + 方案A落地范围）
 - [x] Step 8：配置与调试面板升级（`src/engine/core/config.*`、`src/engine/core/game_app.cpp`、`src/engine/debug/panels/time_debug_panel.*`、`config/window.json` + `tests/engine/core/config_loop_timing_test.cpp`）
 - [ ] Step 9：测试与文档回归
 
@@ -49,9 +49,11 @@
 - 实现思路：将 `GameScene` 中 scheduler 调用迁移到固定逻辑入口，保留 `render` 中渲染系统链路；并在场景切换触发点验证 accumulator 清零策略，避免新场景收到残余时间爆发。  
   输出产物：`src/game/scene/game_scene.h`、`src/game/scene/game_scene.cpp`（已完成）。
 
-### 7. 渲染插值/快照通道（可选后置优化）
-- 目标：在确认出现可见抖动时，再以最小范围引入插值提升观感。
-- 实现思路：将该项标记为不阻塞主改造的后置优化；仅对 `Transform(position)` 与相机建立前后状态插值，不扩散到全部组件。
+### 7. 渲染插值通道（方案B接口 + 方案A落地范围）
+- 目标：在不扩大本次实现复杂度的前提下，先把 `alpha` 沿渲染调用链打通，冻结可扩展接口，避免未来为新渲染系统再做签名重构。
+- 实现思路：采用“两阶段同一步”推进。  
+  第一阶段（接口先行，方案B）：把 `render(alpha)` 从 `GameApp -> SceneManager -> Scene -> GameScene -> 渲染系统` 全链路透传，非 `GameScene` 场景默认忽略 `alpha`。  
+  第二阶段（实现收敛，方案A）：当前仅在 `Transform(position)` 与相机上应用插值；`YSort/RenderSystem/LightSystem` 读取插值后位置，其他系统保持不变；通过 `render_interpolation` 配置开关控制启用。
 
 ### 8. 配置与调试面板升级
 - 目标：让新循环参数可配置、可观测，便于调优与排查。
@@ -59,4 +61,4 @@
 
 ### 9. 测试与文档回归
 - 目标：锁定新循环行为，避免时序回退。
-- 实现思路：补充循环时序与输入语义测试（固定步长执行次数、追赶上限、render 后 `dispatcher.update` 语义、输入边沿语义、场景切换清零 accumulator），并更新 `docs/entry_to_first_frame.md`、`docs/events.md`、`docs/input_system.md` 等文档。
+- 实现思路：补充循环时序与输入语义测试（固定步长执行次数、追赶上限、render 后 `dispatcher.update` 语义、输入边沿语义、场景切换清零 accumulator），并新增插值回归测试（`alpha` 传递链路、开关关闭时行为等价、开启时位置平滑）；同步更新 `docs/entry_to_first_frame.md`、`docs/events.md`、`docs/input_system.md` 等文档。
