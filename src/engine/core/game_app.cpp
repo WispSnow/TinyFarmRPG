@@ -189,7 +189,20 @@ void GameApp::run() {
             input_manager_->consumeTick();
         }
 
+        // 若 frame update 引发场景切换（常见于 UI 回调触发 push/pop/replace），
+        // 同样清空 accumulator，避免新场景继承旧场景残余时间片。
+        const size_t frame_stack_size_before = scene_manager_->getSceneStackSize();
+        auto* frame_current_scene_before = scene_manager_->getCurrentScene();
+
         updateFrame(time_->getUnscaledDeltaTime());
+
+        const size_t frame_stack_size_after = scene_manager_->getSceneStackSize();
+        auto* frame_current_scene_after = scene_manager_->getCurrentScene();
+        if (frame_stack_size_before != frame_stack_size_after
+            || frame_current_scene_before != frame_current_scene_after) {
+            time_->clearAccumulator();
+        }
+
         const float interpolation_alpha = config_->render_interpolation_enabled_
             ? time_->getInterpolationAlpha()
             : 1.0f;
