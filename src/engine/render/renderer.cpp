@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "opengl/gl_renderer.h"
+#include "engine/resource/default_resource_ids.h"
 #include "engine/resource/resource_manager.h"
 #include "camera.h"
 #include "image.h"
@@ -15,9 +16,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <entt/core/hashed_string.hpp>
-
-using namespace entt::literals;
 
 namespace engine::render {
 
@@ -178,7 +176,7 @@ void Renderer::drawFilledCircle(const glm::vec2& position,
         return;
     }
 
-    auto circle_texture_handle = resource_manager_->getTexture("assets/textures/UI/circle.png"_hs.value());
+    auto circle_texture_handle = resource_manager_->getTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID);
     if (!circle_texture_handle) {
         spdlog::error("无法获取引擎自带的圆形纹理。");
         return;
