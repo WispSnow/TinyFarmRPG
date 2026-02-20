@@ -1,9 +1,9 @@
 #include "resource_manager.h"
 #include "asset_registry.h"
+#include "default_resource_ids.h"
 #include "texture_manager.h"
 #include "audio_manager.h"
-#include "font_manager.h" 
-#include "engine/ui/ui_defaults.h"
+#include "font_manager.h"
 #include <fstream>
 #include <filesystem>
 #include <system_error>
@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <tuple>
 #include <ranges>
+#include <vector>
  
 namespace engine::resource {
 
@@ -143,35 +144,56 @@ void ResourceManager::loadResources(std::string_view file_path) {
         if (!it->is_object()) {
             spdlog::warn("资源映射文件 '{}' 的 'font' 字段格式无效 (应为对象)。", file_path);
         } else {
+            const auto parse_positive_size = [](const nlohmann::json& size_value) -> int {
+                if (const auto* v = size_value.get_ptr<const nlohmann::json::number_integer_t*>()) {
+                    return (*v > 0) ? static_cast<int>(*v) : 0;
+                }
+                if (const auto* v = size_value.get_ptr<const nlohmann::json::number_unsigned_t*>()) {
+                    return (*v > 0) ? static_cast<int>(*v) : 0;
+                }
+                return 0;
+            };
+
             for (const auto& [key, value] : it->items()) {
                 const entt::id_type id = entt::hashed_string{key.c_str(), key.size()};
-
-                int point_size = 0;
                 std::string font_path{};
+                std::vector<int> point_sizes{};
+
+                const auto add_point_size = [&point_sizes](const int candidate) {
+                    if (candidate <= 0) {
+                        return;
+                    }
+                    if (std::find(point_sizes.begin(), point_sizes.end(), candidate) == point_sizes.end()) {
+                        point_sizes.push_back(candidate);
+                    }
+                };
 
                 if (value.is_object()) {
                     if (const auto path_it = value.find("path"); path_it != value.end() && path_it->is_string()) {
                         font_path = path_it->get<std::string>();
-                    }
-                    if (font_path.empty()) {
-                        if (const auto path_it = value.find("file_path"); path_it != value.end() && path_it->is_string()) {
-                            font_path = path_it->get<std::string>();
-                        }
+                    } else if (
+                        const auto legacy_path_it = value.find("file_path");
+                        legacy_path_it != value.end() && legacy_path_it->is_string()
+                    ) {
+                        font_path = legacy_path_it->get<std::string>();
                     }
 
                     if (const auto size_it = value.find("size"); size_it != value.end()) {
-                        if (const auto* v = size_it->get_ptr<const nlohmann::json::number_integer_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        } else if (const auto* v = size_it->get_ptr<const nlohmann::json::number_unsigned_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        }
+                        add_point_size(parse_positive_size(*size_it));
                     }
-                    if (point_size == 0) {
-                        if (const auto size_it = value.find("point_size"); size_it != value.end()) {
-                            if (const auto* v = size_it->get_ptr<const nlohmann::json::number_integer_t*>()) {
-                                point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                            } else if (const auto* v = size_it->get_ptr<const nlohmann::json::number_unsigned_t*>()) {
-                                point_size = (*v > 0) ? static_cast<int>(*v) : 0;
+                    if (const auto legacy_size_it = value.find("point_size"); legacy_size_it != value.end()) {
+                        add_point_size(parse_positive_size(*legacy_size_it));
+                    }
+                    if (const auto sizes_it = value.find("sizes"); sizes_it != value.end()) {
+                        if (!sizes_it->is_array()) {
+                            spdlog::warn(
+                                "资源映射文件 '{}' 的 'font.{}.sizes' 格式无效 (应为数组)。",
+                                file_path,
+                                key
+                            );
+                        } else {
+                            for (const auto& size_item : *sizes_it) {
+                                add_point_size(parse_positive_size(size_item));
                             }
                         }
                     }
@@ -180,39 +202,55 @@ void ResourceManager::loadResources(std::string_view file_path) {
                     const auto& second = value[1];
                     if (first.is_string()) {
                         font_path = first.get<std::string>();
-                        if (const auto* v = second.get_ptr<const nlohmann::json::number_integer_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        } else if (const auto* v = second.get_ptr<const nlohmann::json::number_unsigned_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        }
+                        add_point_size(parse_positive_size(second));
                     } else if (second.is_string()) {
                         font_path = second.get<std::string>();
-                        if (const auto* v = first.get_ptr<const nlohmann::json::number_integer_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        } else if (const auto* v = first.get_ptr<const nlohmann::json::number_unsigned_t*>()) {
-                            point_size = (*v > 0) ? static_cast<int>(*v) : 0;
-                        }
+                        add_point_size(parse_positive_size(first));
                     }
                 }
 
-                if (font_path.empty() || point_size <= 0) {
-                    spdlog::warn("资源映射文件 '{}' 的 'font.{}' 缺少有效的 path/size，已跳过。", file_path, key);
+                if (font_path.empty() || point_sizes.empty()) {
+                    spdlog::warn("资源映射文件 '{}' 的 'font.{}' 缺少有效的 path/size(s)，已跳过。", file_path, key);
                     continue;
                 }
-                loadFont(id, point_size, font_path);
+
+                for (const int point_size : point_sizes) {
+                    loadFont(id, point_size, font_path);
+                }
             }
         }
     }
 
-    constexpr std::string_view CIRCLE_TEXTURE_PATH{"assets/textures/UI/circle.png"};
-    const entt::id_type circle_texture_id = entt::hashed_string{CIRCLE_TEXTURE_PATH.data(), CIRCLE_TEXTURE_PATH.size()};
-    asset_registry_->registerTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
-    loadTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
+    // 核心引擎资源兜底：优先使用 mapping 中的注册条目，仅在缺失时回落到内置默认值。
+    if (asset_registry_->findTexturePath(engine::resource::defaults::CIRCLE_TEXTURE_ID).empty()) {
+        spdlog::warn(
+            "资源映射文件 '{}' 未配置默认圆形纹理 '{}'(id={})，回退到内置路径 '{}'",
+            file_path,
+            engine::resource::defaults::CIRCLE_TEXTURE_KEY,
+            engine::resource::defaults::CIRCLE_TEXTURE_ID,
+            engine::resource::defaults::CIRCLE_TEXTURE_PATH
+        );
+        loadTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID, engine::resource::defaults::CIRCLE_TEXTURE_PATH);
+    }
 
-    const entt::id_type default_font_id =
-        entt::hashed_string{engine::ui::DEFAULT_UI_FONT_PATH.data(), engine::ui::DEFAULT_UI_FONT_PATH.size()};
-    asset_registry_->registerFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
-    loadFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
+    if (asset_registry_->findFontPath(
+            engine::resource::defaults::UI_DEFAULT_FONT_ID,
+            engine::resource::defaults::UI_DEFAULT_FONT_SIZE_PX
+        ).empty()) {
+        spdlog::warn(
+            "资源映射文件 '{}' 未配置默认UI字体 '{}'(id={}, size={})，回退到内置路径 '{}'",
+            file_path,
+            engine::resource::defaults::UI_DEFAULT_FONT_KEY,
+            engine::resource::defaults::UI_DEFAULT_FONT_ID,
+            engine::resource::defaults::UI_DEFAULT_FONT_SIZE_PX,
+            engine::resource::defaults::UI_DEFAULT_FONT_PATH
+        );
+        loadFont(
+            engine::resource::defaults::UI_DEFAULT_FONT_ID,
+            engine::resource::defaults::UI_DEFAULT_FONT_SIZE_PX,
+            engine::resource::defaults::UI_DEFAULT_FONT_PATH
+        );
+    }
 }
 
 // --- 纹理接口实现 ---

@@ -104,7 +104,7 @@ public:
 
     /**
      * @brief 绘制填充圆形
-     * @note 必须存在默认圆形纹理"assets/textures/UI/circle.png"
+     * @note 依赖默认圆形纹理资源ID: `engine/texture/circle`
      * 
      * @param position 圆形中心位置
      * @param radius 圆形半径

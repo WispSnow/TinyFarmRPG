@@ -19,9 +19,16 @@
     "scene-bg-music": "assets/audio/01_spring_journey.ogg"
   },
   "texture": {
+    "engine/texture/circle": "assets/textures/UI/circle.png",
     "title-bg": "assets/textures/UI/farm-rpg-bg.png",
     "title-logo": "assets/textures/UI/farm-rpg-logo.png",
     "time/clock": "assets/farm-rpg/UI/Clock/Clock.png",
     "time/clock_hand": "assets/farm-rpg/UI/Clock/clock hand.png"
+  },
+  "font": {
+    "engine/font/ui_default": {
+      "path": "assets/fonts/VonwaonBitmap-16px.ttf",
+      "sizes": [14, 16]
+    }
   }
 }
