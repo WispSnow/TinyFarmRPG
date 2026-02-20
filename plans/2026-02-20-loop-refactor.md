@@ -10,7 +10,7 @@
 - [x] Step 1：循环契约与边界冻结（见 `docs/loop_timing_contract.md`）
 - [x] Step 2：时间管理职责拆分（`src/engine/core/time.h/.cpp` + `tests/engine/core/time_test.cpp`）
 - [x] Step 3：`GameApp::run()` accumulator 化（`src/engine/core/game_app.cpp` + `tests/engine/core/game_app_dispatcher_trace_test.cpp`）
-- [ ] Step 4：输入语义前置修正
+- [x] Step 4：输入语义前置修正（`src/engine/input/input_manager.*` + `tests/engine/input/input_manager_test.cpp`）
 - [ ] Step 5：Scene 双通道更新拆分
 - [ ] Step 6：`GameScene` 固定逻辑迁移
 - [ ] Step 7：渲染插值（可选后置）
@@ -36,7 +36,8 @@
 
 ### 4. 前置修正输入帧语义（与步骤3紧耦合）
 - 目标：确保 accumulator 上线后 `PRESSED/HELD/RELEASED` 语义不回退。
-- 实现思路：将 InputManager 拆为“每渲染帧一次的事件采样阶段”和“每固定 tick 的状态消费阶段”，保证边沿输入在同一渲染帧内不会被重复触发或提前丢失。
+- 实现思路：将 InputManager 拆为“每渲染帧一次的事件采样阶段”和“每固定 tick 的状态消费阶段”，保证边沿输入在同一渲染帧内不会被重复触发或提前丢失。  
+  输出产物：`src/engine/input/input_manager.h`、`src/engine/input/input_manager.cpp`、`tests/engine/input/input_manager_test.cpp`（已完成）。
 
 ### 5. 拆分 Scene 层更新职责并明确非 GameScene 策略
 - 目标：避免 UI/表现逻辑被固定 tick 过驱动，同时保持场景栈冻结语义。

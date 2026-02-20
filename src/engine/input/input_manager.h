@@ -86,7 +86,35 @@ public:
     entt::sink<entt::sigh<bool()>> onAction(entt::id_type action_name_id, ActionState action_state = ActionState::PRESSED);
 
 
-    void update();                                    ///< @brief 更新输入状态，每轮循环最先调用
+    /**
+     * @brief 兼容入口：执行一次“消费上一 tick 的边沿状态 -> 采样事件 -> 分发回调”。
+     *
+     * 该接口保留给旧调用路径和测试；fixed-step 主循环应改用 sampleInputEvents /
+     * dispatchActionCallbacks / consumeTick 三段式接口。
+     */
+    void update();
+
+    /**
+     * @brief 采样 SDL 事件（建议每个渲染帧调用一次）。
+     *
+     * 只负责更新动作状态与鼠标数据，不推进 PRESSED/RELEASED 的生命周期。
+     */
+    void sampleInputEvents();
+
+    /**
+     * @brief 按当前动作状态分发回调（建议每个逻辑 tick 调用一次，且在逻辑更新前）。
+     */
+    void dispatchActionCallbacks();
+
+    /**
+     * @brief 消费一个逻辑 tick：推进边沿状态生命周期并清理一次性输入（如滚轮 delta）。
+     *
+     * 状态推进：
+     * - PRESSED -> HELD
+     * - RELEASED -> INACTIVE
+     */
+    void consumeTick();
+
     void quit();                                      ///< @brief 退出游戏
 
     // 保留动作状态检查, 提供不同的使用选择
