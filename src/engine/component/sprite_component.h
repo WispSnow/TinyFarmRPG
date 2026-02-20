@@ -4,7 +4,6 @@
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
 #include <glm/common.hpp>
-#include <string>
 #include <string_view>
 
 namespace engine::component {
@@ -16,7 +15,6 @@ namespace engine::component {
  */
 struct Sprite{
     entt::id_type texture_id_{entt::null};  ///< @brief 纹理ID
-    std::string texture_path_;              ///< @brief 纹理路径
     engine::utils::Rect src_rect_{};        ///< @brief 源矩形(为了保证效率，不再使用std::optional，构造时必须提供)
     bool is_flipped_{false};                ///< @brief 是否翻转
 
@@ -29,9 +27,9 @@ struct Sprite{
      * @param is_flipped 是否翻转，默认false
      */
     Sprite(std::string_view texture_path, const engine::utils::Rect& source_rect, bool is_flipped = false)
-        : texture_path_(texture_path), src_rect_(source_rect), is_flipped_(is_flipped) {
-              texture_id_ = entt::hashed_string(texture_path_.c_str());
-        }
+        : texture_id_(entt::hashed_string{texture_path.data(), texture_path.size()}.value()),
+          src_rect_(source_rect),
+          is_flipped_(is_flipped) {}
 
     /**
      * @brief 构造函数 (通过纹理ID构造)

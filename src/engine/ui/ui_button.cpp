@@ -230,8 +230,12 @@ bool UIButton::initFromPreset(entt::id_type preset_id) {
     }
 
     clearSoundOverrides();
-    for (const auto& [event_id, path] : preset->sound_events) {
-        setSoundEvent(event_id, path);
+    for (const auto& [event_id, sound_id] : preset->sound_events) {
+        if (sound_id == entt::null) {
+            disableSoundEvent(event_id);
+            continue;
+        }
+        setSoundEvent(event_id, sound_id);
     }
 
     if (label_text_.empty() && preset->normal_label && !preset->normal_label->text.empty()) {
@@ -242,8 +246,7 @@ bool UIButton::initFromPreset(entt::id_type preset_id) {
         glm::vec2 image_size = preset->normal_image->getSourceRect().size;
         if (image_size.x <= 0.0f || image_size.y <= 0.0f) {
             image_size = context_.getResourceManager().getTextureSize(
-                preset->normal_image->getTextureId(),
-                preset->normal_image->getTexturePath());
+                preset->normal_image->getTextureId());
         }
         if (image_size.x > 0.0f && image_size.y > 0.0f) {
             setSizeInternal(image_size);
@@ -330,7 +333,7 @@ void UIButton::refreshBaseTextSizeIfNeeded() {
     }
 
     const auto& label = *preset->normal_label;
-    const entt::id_type font_id = entt::hashed_string{label.font_path.c_str(), label.font_path.size()}.value();
+    const entt::id_type font_id = label.font_id;
     if (font_id != label_font_id_ || label.font_size != label_font_size_) {
         refreshBaseTextSize();
     }
@@ -354,19 +357,16 @@ void UIButton::refreshBaseTextSize() {
     }
 
     const auto& label = *preset->normal_label;
-    if (label.font_path.empty() || label.font_size <= 0) {
+    if (label.font_id == entt::null || label.font_size <= 0) {
         return;
     }
 
-    label_font_id_ = entt::hashed_string{label.font_path.c_str(), label.font_path.size()}.value();
-    if (label_font_id_ == entt::null) {
-        return;
-    }
+    label_font_id_ = label.font_id;
     label_font_size_ = label.font_size;
 
     const auto default_style = text_renderer.getDefaultUIStyleId();
     const auto layout = text_renderer.getTextStyle(default_style).layout;
-    base_text_size_ = text_renderer.getTextSize(label_text_, label_font_id_, label_font_size_, label.font_path, &layout);
+    base_text_size_ = text_renderer.getTextSize(label_text_, label_font_id_, label_font_size_, &layout);
 }
 
 void UIButton::renderSelf(engine::core::Context& context) {

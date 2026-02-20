@@ -1,8 +1,6 @@
 #include "texture_manager.h"
 
 #include <spdlog/spdlog.h>
-#include <entt/core/hashed_string.hpp>
-
 #include <cassert>
 
 namespace engine::resource {
@@ -15,10 +13,6 @@ TextureHandle TextureManager::loadTexture(entt::id_type id, std::string_view fil
         spdlog::error("TextureManager: 纹理加载失败，已移除无效缓存条目: id={}, path='{}'", id, file_path);
     }
     return handle;
-}
-
-TextureHandle TextureManager::loadTexture(entt::hashed_string str_hs) {
-    return loadTexture(str_hs.value(), str_hs.data());
 }
 
 TextureHandle TextureManager::findTexture(entt::id_type id) {
@@ -39,9 +33,14 @@ void TextureManager::clearTextures() {
         if (!handle) {
             continue;
         }
-        const long observed_use_count = handle.handle().use_count();
-        // EnTT 迭代器按值返回 resource 句柄，当前 probe 会额外引入 1 次 shared_ptr 引用。
-        constexpr long EXPECTED_USE_COUNT_DURING_PROBE = 2;
+        // resource::handle() 按值返回 shared_ptr，本地 probe 会产生 1 次额外拷贝引用。
+        const auto probe_handle = handle.handle();
+        const long observed_use_count = probe_handle.use_count();
+        // 基线引用计数:
+        // 1) cache 内部持有的 shared_ptr
+        // 2) for-range 按值解包出的 resource 句柄副本
+        // 3) probe_handle（由 handle.handle() 返回值构造）
+        constexpr long EXPECTED_USE_COUNT_DURING_PROBE = 3;
         if (observed_use_count > EXPECTED_USE_COUNT_DURING_PROBE) {
             spdlog::error(
                 "TextureManager::clearTextures: 检测到外部纹理句柄仍被持有 id={} gl_handle={} use_count={} external_refs={}",

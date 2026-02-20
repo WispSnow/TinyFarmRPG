@@ -24,7 +24,6 @@ private:
     engine::render::TextRenderer& text_renderer_;   ///< @brief 需要文本渲染器，用于获取/更新文本尺寸
 
     std::string text_;                          ///< @brief 文本内容  
-    std::string font_path_;                     ///< @brief 字体路径
     entt::id_type font_id_;                     ///< @brief 字体ID
     int font_size_;                             ///< @brief 字体大小   
     entt::id_type style_id_{entt::null};        ///< @brief 文本样式 ID (entt::hashed_string，null=使用 TextRenderer 默认UI样式)
@@ -34,7 +33,7 @@ private:
 public:
     UILabel(engine::render::TextRenderer& text_renderer,
             std::string_view text,
-            std::string_view font_path = DEFAULT_UI_FONT_PATH,
+            entt::id_type font_id = entt::null,
             int font_size = DEFAULT_UI_FONT_SIZE_PX,
             glm::vec2 position = {0.0f, 0.0f},
             std::optional<engine::utils::FColor> text_color = std::nullopt);
@@ -55,7 +54,7 @@ public:
     }
 
     void setText(std::string_view text);                      ///< @brief 设置文本内容, 同时更新尺寸
-    void setFontPath(std::string_view font_path);              ///< @brief 设置字体路径, 同时更新ID和尺寸
+    void setFontId(entt::id_type font_id);                    ///< @brief 设置字体ID, 同时更新尺寸
     void setFontSize(int font_size);                            ///< @brief 设置字体大小, 同时更新尺寸
     void setStyleKey(std::string_view style_key);               ///< @brief 设置样式 key (空=默认)
     void setTextColor(engine::utils::FColor text_color);       ///< @brief 设置文本颜色（会同步到渐变起止色，并关闭渐变）

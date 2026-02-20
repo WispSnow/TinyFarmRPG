@@ -43,17 +43,6 @@ private: // 仅供 ResourceManager 访问的方法
     TextureHandle findTexture(entt::id_type id);
     
     /**
-     * @brief 从字符串哈希值加载纹理（path-hash）
-     * @param str_hs entt::hashed_string类型
-     * @return 加载的纹理句柄
-     * @note 如果纹理已经加载，则返回已加载的纹理句柄
-     * @note 如果纹理未加载，则从 `str_hs.data()` 指向的 file_path 加载纹理并缓存
-     * @note 如果你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载，
-     *       否则会把 key 当作路径而加载失败
-     */
-    TextureHandle loadTexture(entt::hashed_string str_hs);
-    
-    /**
      * @brief 卸载纹理
      * @param id 纹理的唯一标识符, 通过entt::hashed_string生成
      */

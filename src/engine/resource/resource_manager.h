@@ -41,6 +41,7 @@ public:
     ~ResourceManager();  // 显式声明析构函数，这是为了能让智能指针正确管理仅有前向声明的类
 
     void clear();        ///< @brief 清空所有资源
+    void preloadRegisteredResources();   ///< @brief 预加载 AssetRegistry 中已注册的所有资源
 
     [[nodiscard]] AssetRegistry& getAssetRegistry();
     [[nodiscard]] const AssetRegistry& getAssetRegistry() const;
@@ -57,83 +58,26 @@ public:
     // --- 统一资源访问接口 ---
     // -- Texture --
     TextureHandle loadTexture(entt::id_type id, std::string_view file_path);         ///< @brief 载入纹理资源(通过id + 文件路径)
-    /**
-     * @brief 载入纹理资源（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
-     *       若你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `loadTexture(id, file_path)`。
-     */
-    TextureHandle loadTexture(entt::hashed_string str_hs);
-    TextureHandle getTexture(entt::id_type id, std::string_view file_path = "");     ///< @brief 尝试获取已加载纹理句柄，如果未加载则尝试加载(通过id + 文件路径)
-    /**
-     * @brief 尝试获取已加载纹理句柄，如果未加载则尝试加载（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
-     *       若你传入的是“语义 key”（如 `"title-bg"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `getTexture(id, file_path)`。
-     */
-    TextureHandle getTexture(entt::hashed_string str_hs);
+    TextureHandle getTexture(entt::id_type id);                                       ///< @brief 仅获取已加载纹理句柄(通过id)
     void unloadTexture(entt::id_type id);                                     ///< @brief 卸载指定的纹理资源
-    glm::vec2 getTextureSize(entt::id_type id, std::string_view file_path = "");    ///< @brief 获取指定纹理的尺寸(通过id + 文件路径)
-    glm::vec2 getTextureSize(entt::hashed_string str_hs);                           ///< @brief 获取指定纹理的尺寸(通过字符串哈希值)
+    glm::vec2 getTextureSize(entt::id_type id);                                 ///< @brief 获取指定纹理的尺寸(通过id)
     void clearTextures();                                                     ///< @brief 清空所有纹理资源
 
     // -- Sound Effects (Chunks) --
     AudioBufferHandle loadSound(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音效资源(通过id + 文件路径)
-    /**
-     * @brief 缓存音效资源（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
-     *       若你传入的是“语义 key”（如 `"ui_click"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `loadSound(id, file_path)`。
-     */
-    AudioBufferHandle loadSound(entt::hashed_string str_hs);
-    AudioBufferHandle getSound(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音效缓存(通过id + 文件路径)
-    /**
-     * @brief 获取音效缓存（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
-     *       若你传入的是“语义 key”（如 `"ui_click"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `getSound(id, file_path)`。
-     */
-    AudioBufferHandle getSound(entt::hashed_string str_hs);
+    AudioBufferHandle getSound(entt::id_type id); ///< @brief 获取音效缓存(仅通过id)
     void unloadSound(entt::id_type id);                                             ///< @brief 卸载指定的音效资源
     void clearSounds();                                                             ///< @brief 清空所有音效资源
 
     // -- Music --
     AudioBufferHandle loadMusic(entt::id_type id, std::string_view file_path);     ///< @brief 缓存音乐资源(通过id + 文件路径)
-    /**
-     * @brief 缓存音乐资源（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
-     *       若你传入的是“语义 key”（如 `"title-bg-music"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `loadMusic(id, file_path)`。
-     */
-    AudioBufferHandle loadMusic(entt::hashed_string str_hs);
-    AudioBufferHandle getMusic(entt::id_type id, std::string_view file_path = ""); ///< @brief 获取音乐缓存(通过id + 文件路径)
-    /**
-     * @brief 获取音乐缓存（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
-     *       若你传入的是“语义 key”（如 `"title-bg-music"`），请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `getMusic(id, file_path)`。
-     */
-    AudioBufferHandle getMusic(entt::hashed_string str_hs);
+    AudioBufferHandle getMusic(entt::id_type id); ///< @brief 获取音乐缓存(仅通过id)
     void unloadMusic(entt::id_type id);                                             ///< @brief 卸载指定的音乐资源
     void clearMusic();                                                              ///< @brief 清空所有音乐资源
 
     // -- Fonts --
     Font* loadFont(entt::id_type id, int pixel_size, std::string_view file_path);     ///< @brief 载入字体资源(通过id + 文件路径)
-    /**
-     * @brief 载入字体资源（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用。
-     *       若你传入的是“语义 key”，请确保它能被解析到真实路径（例如通过 `resource_mapping.json` 预加载）；
-     *       或改用 `loadFont(id, pixel_size, file_path)`。
-     */
-    Font* loadFont(entt::hashed_string str_hs, int pixel_size);
-    Font* getFont(entt::id_type id, int pixel_size, std::string_view file_path = ""); ///< @brief 尝试获取已加载字体的指针，如果未加载则尝试加载(通过id + 文件路径)
-    /**
-     * @brief 获取字体缓存（path-hash）。
-     * @note 该 overload 把 `str_hs.data()` 当作 file_path 使用：未命中缓存时，会尝试加载该路径。
-     *       若你传入的是“语义 key”，请确保它已通过 `resource_mapping.json` 预加载；
-     *       或改用 `getFont(id, pixel_size, file_path)`。
-     */
-    Font* getFont(entt::hashed_string str_hs, int pixel_size);
+    Font* getFont(entt::id_type id, int pixel_size); ///< @brief 获取字体缓存（仅通过id + size）
     void unloadFont(entt::id_type id, int pixel_size);                              ///< @brief 卸载指定的字体资源
     void clearFonts();                                                              ///< @brief 清空所有字体资源
 

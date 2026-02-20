@@ -52,7 +52,6 @@ engine::component::Animation toRuntimeAnimation(const AnimationBlueprint& animat
     engine::component::Animation animation{};
     animation.name_ = animation_blueprint.name_;
     animation.texture_id_ = animation_blueprint.texture_id_;
-    animation.texture_path_ = animation_blueprint.texture_path_;
     animation.pivot_ = pivot;
     animation.dst_size_ = dst_size;
     animation.frames_ = std::move(frames);

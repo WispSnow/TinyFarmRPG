@@ -47,7 +47,7 @@ class TimeClockUI final : public engine::ui::UIElement {
     engine::render::Image clock_face_image_;             ///< 表盘资源
     std::array<engine::render::Image, 8> clock_hand_images_{}; ///< 8向指针资源
 
-    std::string font_path_;                              ///< 字体路径
+    entt::id_type font_id_{entt::null};                 ///< 字体 ID
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};  ///< 字体大小
     engine::utils::FColor text_color_{1.0f, 1.0f, 1.0f, 1.0f};  ///< 文本颜色
     int active_hand_index_{-1};                          ///< 当前指针方向
@@ -61,7 +61,7 @@ public:
      * @param context 上下文引用（用于访问UI预设/资源）
      * @param registry ECS注册表引用（用于访问GameTime上下文）
      * @param text_renderer 文本渲染器引用
-     * @param font_path 字体路径
+     * @param font_id 字体 ID
      * @param font_size 字体大小
      * @param text_color 文本颜色
      * @param position 屏幕位置
@@ -69,7 +69,7 @@ public:
     TimeClockUI(engine::core::Context& context,
                 entt::registry& registry,
                 engine::render::TextRenderer& text_renderer,
-                std::string_view font_path = engine::ui::DEFAULT_UI_FONT_PATH,
+                entt::id_type font_id = entt::null,
                 int font_size = engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                 engine::utils::FColor text_color = {1.0f, 1.0f, 1.0f, 1.0f},
                 glm::vec2 position = {10.0f, 10.0f});
@@ -80,7 +80,7 @@ public:
     void update(float delta_time, engine::core::Context& context) override;
 
     // --- Setters ---
-    void setFontPath(std::string_view font_path);
+    void setFontId(entt::id_type font_id);
     void setFontSize(int font_size);
     void setTextColor(engine::utils::FColor text_color);
 

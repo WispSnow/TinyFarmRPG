@@ -27,7 +27,6 @@ struct AnimationFrame {
 struct Animation {
     std::string name_;
     entt::id_type texture_id_{entt::null};
-    std::string texture_path_;
     glm::vec2 pivot_{0.0f};
     glm::vec2 dst_size_{0.0f};
     std::vector<AnimationFrame> frames_;

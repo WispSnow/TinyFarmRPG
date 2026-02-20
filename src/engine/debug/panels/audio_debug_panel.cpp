@@ -1,5 +1,6 @@
 #include "audio_debug_panel.h"
 #include <imgui.h>
+#include <entt/core/hashed_string.hpp>
 
 namespace engine::debug {
 

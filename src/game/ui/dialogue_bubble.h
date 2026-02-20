@@ -25,7 +25,7 @@ class DialogueBubble final : public engine::ui::UIElement {
     glm::vec2 world_position_{0.0f};
     glm::vec2 offset_{0.0f, -4.0f};    ///< @brief 屏幕偏移，让气泡出现在头顶
     float padding_{8.0f};
-    std::string font_path_;
+    entt::id_type font_id_{entt::null};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
     std::uint8_t channel_{0};
 
@@ -33,7 +33,7 @@ public:
     DialogueBubble(engine::core::Context& context,
                    entt::dispatcher& dispatcher,
                    engine::render::TextRenderer& text_renderer,
-                   std::string_view font_path = engine::ui::DEFAULT_UI_FONT_PATH,
+                   entt::id_type font_id = entt::null,
                    int font_size = engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                    std::uint8_t channel = 0);
     ~DialogueBubble() override;

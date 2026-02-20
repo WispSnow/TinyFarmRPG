@@ -56,7 +56,7 @@ public:
                           int count,
                           const glm::vec2& slot_size,
                           float alpha = 0.6f,
-                          std::string_view font_path = DEFAULT_UI_FONT_PATH);
+                          entt::id_type font_id = entt::null);
     void updateDragPreview(const glm::vec2& screen_pos);
     void endDragPreview();
     bool hasDragPreview() const { return drag_preview_ != nullptr; }

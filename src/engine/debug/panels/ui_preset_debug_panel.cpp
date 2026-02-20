@@ -319,7 +319,12 @@ void UIPresetDebugPanel::drawButtonsTab() {
 
         auto& normal_label = *skin->normal_label;
         ImGui::Text("Text: %s", normal_label.text.c_str());
-        ImGui::Text("Font: %s (%d)", normal_label.font_path.c_str(), normal_label.font_size);
+        ImGui::Text("Font ID: 0x%016llX (%d)",
+                    static_cast<unsigned long long>(normal_label.font_id),
+                    normal_label.font_size);
+        if (const auto font_path = preset_manager_.findFontPath(normal_label.font_id); !font_path.empty()) {
+            ImGui::Text("Font Path: %.*s", static_cast<int>(font_path.size()), font_path.data());
+        }
         bool changed = false;
         changed |= editColor("Normal Color", normal_label.color);
         changed |= editOffset("Normal Offset", normal_label.offset);

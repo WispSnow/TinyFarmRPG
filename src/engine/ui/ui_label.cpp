@@ -24,7 +24,7 @@ namespace {
 
 UILabel::UILabel(engine::render::TextRenderer& text_renderer,
                  std::string_view text,
-                 std::string_view font_path,
+                 entt::id_type font_id,
                  int font_size,
                  glm::vec2 position,
                  std::optional<engine::utils::FColor> text_color
@@ -32,8 +32,7 @@ UILabel::UILabel(engine::render::TextRenderer& text_renderer,
     : UIElement(std::move(position)),
       text_renderer_(text_renderer),
       text_(text),
-      font_path_(font_path),
-      font_id_(entt::hashed_string{font_path.data(), font_path.size()}),
+      font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
     if (text_color) {
         overrides_.color = *text_color;
@@ -68,10 +67,9 @@ void UILabel::setText(std::string_view text)
     refreshSize();
 }
 
-void UILabel::setFontPath(std::string_view font_path)
+void UILabel::setFontId(entt::id_type font_id)
 {
-    font_path_ = font_path;
-    font_id_ = entt::hashed_string{font_path_.c_str(), font_path_.size()};
+    font_id_ = engine::ui::resolveUIFontId(font_id);
     refreshSize();
 }
 
@@ -116,7 +114,7 @@ void UILabel::clearOverrides() {
 
 void UILabel::refreshSize() {
     const auto layout = resolveLabelLayout(text_renderer_, style_id_, overrides_);
-    setSize(text_renderer_.getTextSize(text_, font_id_, font_size_, font_path_, &layout));
+    setSize(text_renderer_.getTextSize(text_, font_id_, font_size_, &layout));
 }
 
 } // namespace engine::ui

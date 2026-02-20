@@ -367,8 +367,7 @@ float TextRenderer::shapeLine(std::string_view line_text,
 const TextRenderer::TextLayout* TextRenderer::buildLayout(std::string_view text,
                                                           entt::id_type font_id,
                                                           int font_size,
-                                                          const engine::utils::LayoutOptions& layout_options,
-                                                          std::string_view font_path) const {
+                                                          const engine::utils::LayoutOptions& layout_options) const {
     if (!resource_manager_) {
         return nullptr;
     }
@@ -383,7 +382,7 @@ const TextRenderer::TextLayout* TextRenderer::buildLayout(std::string_view text,
         return &it->second;
     }
 
-    engine::resource::Font* font = resource_manager_->getFont(font_id, font_size, font_path);
+    engine::resource::Font* font = resource_manager_->getFont(font_id, font_size);
     if (!font) {
         return nullptr;
     }
@@ -712,7 +711,6 @@ void TextRenderer::drawText(std::string_view text,
 glm::vec2 TextRenderer::getTextSize(std::string_view text,
                                     entt::id_type font_id,
                                     int font_size,
-                                    std::string_view font_path,
                                     const engine::utils::LayoutOptions* layout_options) const {
     if (gl_renderer_ && gl_renderer_->isHeadless()) {
         const int line_count = static_cast<int>(std::count(text.begin(), text.end(), '\n')) + 1;
@@ -739,18 +737,11 @@ glm::vec2 TextRenderer::getTextSize(std::string_view text,
     }
 
     const engine::utils::LayoutOptions options = layout_options ? *layout_options : engine::utils::LayoutOptions{};
-    const TextLayout* layout = buildLayout(text, font_id, font_size, options, font_path);
+    const TextLayout* layout = buildLayout(text, font_id, font_size, options);
     if (!layout) {
-        if (font_path.empty()) {
-            spdlog::warn("getTextSize 获取字体失败: font_id={} size={} (未提供 font_path，且缓存未命中)",
-                         font_id,
-                         font_size);
-        } else {
-            spdlog::warn("getTextSize 获取字体失败: font_id={} size={} path='{}'",
-                         font_id,
-                         font_size,
-                         font_path);
-        }
+        spdlog::warn("getTextSize 获取字体失败: font_id={} size={} (缓存未命中或未预加载)",
+                     font_id,
+                     font_size);
         return glm::vec2(0.0f);
     }
     return layout->size;
@@ -768,7 +759,7 @@ void TextRenderer::drawTextInternal(std::string_view text,
 
     const TextLayout* layout = buildLayout(text, font_id, font_size, params.layout);
     if (!layout || !layout->font) {
-        spdlog::debug("drawTextInternal 获取字体失败: font_id={} size={} (提示：先调用 getTextSize(..., font_path) 预加载字体)",
+        spdlog::debug("drawTextInternal 获取字体失败: font_id={} size={}",
                       font_id,
                       font_size);
         return;

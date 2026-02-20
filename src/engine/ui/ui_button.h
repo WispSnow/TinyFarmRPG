@@ -23,7 +23,7 @@ enum class UIButtonVisualState : std::uint8_t {
 
 struct UIButtonLabelStyle {
     std::string text;
-    std::string font_path;
+    entt::id_type font_id{entt::null};
     int font_size{16};
     engine::utils::FColor color{1.0f, 1.0f, 1.0f, 1.0f};
     glm::vec2 offset{0.0f, 0.0f};
@@ -46,7 +46,7 @@ struct UIButtonSkin {
     std::optional<UIButtonLabelOverrides> pressed_label{};
     std::optional<UIButtonLabelOverrides> disabled_label{};
 
-    std::unordered_map<entt::id_type, std::string> sound_events{};
+    std::unordered_map<entt::id_type, entt::id_type> sound_events{};
 };
 
 class UIButton final : public UIInteractive {

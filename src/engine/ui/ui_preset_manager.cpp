@@ -110,6 +110,8 @@ bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
 
     button_presets_.clear();
     button_preset_keys_.clear();
+    sound_paths_.clear();
+    font_paths_.clear();
 
     std::size_t loaded_count = 0;
     for (const auto& [key, value] : root.items()) {
@@ -177,9 +179,22 @@ bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
                     }
 
                     if (sound_value.is_null()) {
-                        skin.sound_events.insert_or_assign(event_id, std::string{});
+                        skin.sound_events.insert_or_assign(event_id, entt::null);
                     } else if (sound_value.is_string()) {
-                        skin.sound_events.insert_or_assign(event_id, sound_value.get<std::string>());
+                        const std::string sound_path = sound_value.get<std::string>();
+                        if (sound_path.empty()) {
+                            skin.sound_events.insert_or_assign(event_id, entt::null);
+                            continue;
+                        }
+
+                        const entt::id_type sound_id = entt::hashed_string{sound_path.c_str(), sound_path.size()};
+                        if (sound_id == entt::null) {
+                            skin.sound_events.insert_or_assign(event_id, entt::null);
+                            continue;
+                        }
+
+                        skin.sound_events.insert_or_assign(event_id, sound_id);
+                        sound_paths_.insert_or_assign(sound_id, sound_path);
                     } else {
                         spdlog::warn(
                             "UIPresetManager: 预设 '{}' 的 sounds.{} 格式无效 (应为 string 或 null)。",
@@ -204,6 +219,8 @@ bool UIPresetManager::loadButtonPresets(std::string_view file_path) {
 void UIPresetManager::clearButtonPresets() {
     button_presets_.clear();
     button_preset_keys_.clear();
+    sound_paths_.clear();
+    font_paths_.clear();
 }
 
 bool UIPresetManager::loadImagePresets(std::string_view file_path) {
@@ -324,6 +341,20 @@ std::string_view UIPresetManager::getButtonPresetKey(entt::id_type preset_id) co
 
 std::string_view UIPresetManager::getImagePresetKey(entt::id_type preset_id) const {
     if (auto it = image_preset_keys_.find(preset_id); it != image_preset_keys_.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+std::string_view UIPresetManager::findSoundPath(entt::id_type sound_id) const {
+    if (auto it = sound_paths_.find(sound_id); it != sound_paths_.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+std::string_view UIPresetManager::findFontPath(entt::id_type font_id) const {
+    if (auto it = font_paths_.find(font_id); it != font_paths_.end()) {
         return it->second;
     }
     return {};
@@ -470,9 +501,19 @@ std::optional<UIButtonLabelStyle> UIPresetManager::parseLabelStyle(const nlohman
             style.text = std::move(*text);
         }
     }
+    if (auto it = json_value.find("font_id"); it != json_value.end()) {
+        if (auto font_id = jsonToString(*it); font_id && !font_id->empty()) {
+            style.font_id = entt::hashed_string{font_id->c_str(), font_id->size()};
+        }
+    }
     if (auto it = json_value.find("font_path"); it != json_value.end()) {
-        if (auto font_path = jsonToString(*it); font_path) {
-            style.font_path = std::move(*font_path);
+        if (auto font_path = jsonToString(*it); font_path && !font_path->empty()) {
+            if (style.font_id == entt::null) {
+                style.font_id = entt::hashed_string{font_path->c_str(), font_path->size()};
+            }
+            if (style.font_id != entt::null) {
+                font_paths_.insert_or_assign(style.font_id, *font_path);
+            }
         }
     }
     if (auto it = json_value.find("font_size"); it != json_value.end()) {

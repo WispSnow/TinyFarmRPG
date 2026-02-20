@@ -147,7 +147,7 @@ void PauseMenuScene::buildLayout() {
     auto& text_renderer = context_.getTextRenderer();
     auto message = std::make_unique<engine::ui::UILabel>(text_renderer,
                                                          "",
-                                                         engine::ui::DEFAULT_UI_FONT_PATH,
+                                                         entt::null,
                                                          engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                                                          glm::vec2{0.0f, MESSAGE_TOP_MARGIN},
                                                          engine::utils::FColor{1.0f, 0.25f, 0.25f, 1.0f});

@@ -241,7 +241,7 @@ void InventoryUI::createPageButtons() {
 
     auto page_label = std::make_unique<engine::ui::UILabel>(context_.getTextRenderer(),
                                                             label_text_max,
-                                                            engine::ui::DEFAULT_UI_FONT_PATH,
+                                                            entt::null,
                                                             engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                                                             glm::vec2{center_x, y + BUTTON_SIZE * 0.5f},
                                                             engine::utils::FColor::black());

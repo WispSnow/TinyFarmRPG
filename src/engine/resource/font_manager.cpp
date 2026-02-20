@@ -555,10 +555,6 @@ Font* FontManager::loadFont(entt::id_type id, int pixel_size, std::string_view f
     return font_ptr;
 }
 
-Font* FontManager::loadFont(entt::hashed_string str_hs, int pixel_size) {
-    return loadFont(str_hs.value(), pixel_size, str_hs.data());
-}
-
 void FontManager::unloadFont(entt::id_type id, int pixel_size) {
     FontKey key = {id, pixel_size};
     if (auto it = fonts_.find(key); it != fonts_.end()) {

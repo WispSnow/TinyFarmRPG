@@ -198,7 +198,7 @@ void SaveSlotSelectScene::buildLayout() {
     auto& text_renderer = context_.getTextRenderer();
     auto label = std::make_unique<engine::ui::UILabel>(text_renderer,
                                                        "Overwrite?",
-                                                       engine::ui::DEFAULT_UI_FONT_PATH,
+                                                       entt::null,
                                                        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                                                        glm::vec2{0.0f, 0.0f});
     label->setAnchor({0.5f, 0.0f}, {0.5f, 0.0f});

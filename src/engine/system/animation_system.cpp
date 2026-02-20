@@ -94,7 +94,6 @@ void AnimationSystem::onPlayAnimationEvent(const engine::utils::PlayAnimationEve
         // 同步精灵纹理与基础属性
         if (auto sprite = registry_.try_get<engine::component::SpriteComponent>(event.entity_); sprite) {
             sprite->sprite_.texture_id_ = animation.texture_id_;
-            sprite->sprite_.texture_path_ = animation.texture_path_;
             sprite->sprite_.is_flipped_ = animation.flip_horizontal_;
             sprite->size_ = animation.dst_size_;
             sprite->pivot_ = animation.pivot_;

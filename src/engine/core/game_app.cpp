@@ -3,6 +3,7 @@
 #include "engine/core/context.h"
 #include "engine/core/config.h"
 #include "engine/core/game_state.h"
+#include "engine/resource/asset_registry.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
@@ -32,6 +33,7 @@
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
+#include <entt/core/hashed_string.hpp>
 #include <nlohmann/json.hpp>
 #include <string_view>
 
@@ -64,6 +66,79 @@ void loadPresetList(const nlohmann::json& root,
     }
 
     spdlog::warn("GameApp: 资源映射 '{}' 的 '{}' 字段格式无效 (应为 string 或 array)。", mapping_path, field);
+}
+
+[[nodiscard]] entt::id_type hashPath(std::string_view path) {
+    if (path.empty()) {
+        return entt::null;
+    }
+    return entt::hashed_string{path.data(), path.size()}.value();
+}
+
+void registerTexturePath(engine::resource::AssetRegistry& registry, entt::id_type id, std::string_view path) {
+    if (path.empty()) {
+        return;
+    }
+    const entt::id_type resolved_id = (id != entt::null) ? id : hashPath(path);
+    if (resolved_id == entt::null) {
+        return;
+    }
+    registry.registerTexture(resolved_id, path);
+}
+
+void registerImageTexture(engine::resource::AssetRegistry& registry, const engine::render::Image& image) {
+    registerTexturePath(registry, image.getTextureId(), image.getTexturePath());
+}
+
+void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, engine::resource::AssetRegistry& registry) {
+    const auto register_skin_images = [&registry](const engine::ui::UIButtonSkin& skin) {
+        if (skin.normal_image) {
+            registerImageTexture(registry, *skin.normal_image);
+        }
+        if (skin.hover_image) {
+            registerImageTexture(registry, *skin.hover_image);
+        }
+        if (skin.pressed_image) {
+            registerImageTexture(registry, *skin.pressed_image);
+        }
+        if (skin.disabled_image) {
+            registerImageTexture(registry, *skin.disabled_image);
+        }
+    };
+
+    for (const entt::id_type preset_id : preset_manager.listButtonPresetIds()) {
+        const auto* skin = preset_manager.getButtonPreset(preset_id);
+        if (!skin) {
+            continue;
+        }
+
+        register_skin_images(*skin);
+
+        if (skin->normal_label && skin->normal_label->font_id != entt::null && skin->normal_label->font_size > 0) {
+            const std::string_view font_path = preset_manager.findFontPath(skin->normal_label->font_id);
+            if (!font_path.empty()) {
+                registry.registerFont(skin->normal_label->font_id, skin->normal_label->font_size, font_path);
+            }
+        }
+
+        for (const auto& [_, sound_id] : skin->sound_events) {
+            if (sound_id == entt::null) {
+                continue;
+            }
+            const std::string_view sound_path = preset_manager.findSoundPath(sound_id);
+            if (!sound_path.empty()) {
+                registry.registerSound(sound_id, sound_path);
+            }
+        }
+    }
+
+    for (const entt::id_type preset_id : preset_manager.listImagePresetIds()) {
+        const auto* image = preset_manager.getImagePreset(preset_id);
+        if (!image) {
+            continue;
+        }
+        registerImageTexture(registry, *image);
+    }
 }
 
 } // namespace
@@ -405,6 +480,12 @@ bool GameApp::initUIPresetManager() {
                            spdlog::warn("GameApp: 加载图片预设失败: {}", preset_path);
                        }
                    });
+
+    if (resource_manager_) {
+        auto& asset_registry = resource_manager_->getAssetRegistry();
+        collectUIPresetAssets(*ui_preset_manager_, asset_registry);
+        resource_manager_->preloadRegisteredResources();
+    }
     return true;
 }
 

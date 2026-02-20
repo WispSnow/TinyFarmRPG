@@ -323,7 +323,7 @@ bool GameScene::initUI() {
         context_,
         dispatcher_ref,
         text_renderer,
-        engine::ui::DEFAULT_UI_FONT_PATH,
+        entt::null,
         engine::ui::DEFAULT_UI_FONT_SIZE_PX,
         0);
     dialogue_bubble_ = dialogue_bubble.get();
@@ -333,7 +333,7 @@ bool GameScene::initUI() {
         context_,
         dispatcher_ref,
         text_renderer,
-        engine::ui::DEFAULT_UI_FONT_PATH,
+        entt::null,
         engine::ui::DEFAULT_UI_FONT_SIZE_PX,
         1));
 
@@ -341,7 +341,7 @@ bool GameScene::initUI() {
         context_,
         dispatcher_ref,
         text_renderer,
-        engine::ui::DEFAULT_UI_FONT_PATH,
+        entt::null,
         engine::ui::DEFAULT_UI_FONT_SIZE_PX,
         2);
     item_use_bubble->setOffset(glm::vec2{0.0f, -56.0f});

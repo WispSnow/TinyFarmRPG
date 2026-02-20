@@ -24,15 +24,16 @@ TEST(UIPresetManagerTest, ButtonPresetSoundEventsTriState) {
     const entt::id_type hover_event = entt::hashed_string{"hover"}.value();
     const entt::id_type click_event = entt::hashed_string{"click"}.value();
     const entt::id_type drag_begin_event = entt::hashed_string{"drag_begin"}.value();
+    const entt::id_type disabled_sound_id = static_cast<entt::id_type>(entt::null);
 
     ASSERT_TRUE(test_preset->sound_events.contains(hover_event));
-    EXPECT_TRUE(test_preset->sound_events.at(hover_event).empty());
+    EXPECT_EQ(test_preset->sound_events.at(hover_event), disabled_sound_id);
 
     ASSERT_TRUE(test_preset->sound_events.contains(click_event));
-    EXPECT_EQ(test_preset->sound_events.at(click_event), "assets/audio/UI_button08.wav");
+    EXPECT_EQ(test_preset->sound_events.at(click_event), entt::hashed_string{"assets/audio/UI_button08.wav"}.value());
 
     ASSERT_TRUE(test_preset->sound_events.contains(drag_begin_event));
-    EXPECT_EQ(test_preset->sound_events.at(drag_begin_event), "assets/audio/UI_button11.wav");
+    EXPECT_EQ(test_preset->sound_events.at(drag_begin_event), entt::hashed_string{"assets/audio/UI_button11.wav"}.value());
 
     const entt::id_type default_id = entt::hashed_string{"default"}.value();
     const auto* default_preset = presets.getButtonPreset(default_id);
@@ -44,7 +45,7 @@ TEST(UIPresetManagerTest, ButtonPresetSoundEventsTriState) {
     ASSERT_NE(disabled_preset, nullptr);
 
     ASSERT_TRUE(disabled_preset->sound_events.contains(click_event));
-    EXPECT_TRUE(disabled_preset->sound_events.at(click_event).empty());
+    EXPECT_EQ(disabled_preset->sound_events.at(click_event), disabled_sound_id);
 }
 
 } // namespace engine::ui

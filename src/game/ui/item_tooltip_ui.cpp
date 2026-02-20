@@ -51,11 +51,11 @@ void trimRightSpaces(std::string& s) {
 namespace game::ui {
 
 ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
-                             std::string_view font_path,
+                             entt::id_type font_id,
                              int font_size)
     : UIElement(glm::vec2{0.0f, 0.0f}),
       context_(context),
-      font_path_(font_path),
+      font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
     setPivot({0.0f, 0.0f});
@@ -94,19 +94,19 @@ void ItemTooltipUI::buildLayout() {
     panel_ = panel.get();
 
     auto name_label =
-        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_path_, font_size_, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
+        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_id_, font_size_, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
     name_label_ = name_label.get();
     name_label_->setPivot({0.0f, 0.0f});
     name_label_->setShadowColor(engine::utils::FColor::white());
 
     auto category_label = std::make_unique<engine::ui::UILabel>(
-        text_renderer, "", font_path_, 14, glm::vec2{0.0f, 0.0f}, engine::utils::FColor{0.2, 0.2, 0.2, 1.0f});
+        text_renderer, "", font_id_, 14, glm::vec2{0.0f, 0.0f}, engine::utils::FColor{0.2, 0.2, 0.2, 1.0f});
     category_label_ = category_label.get();
     category_label_->setPivot({0.0f, 0.0f});
     category_label_->setShadowEnabled(false);
 
     auto description_label =
-        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_path_, 16, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
+        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_id_, 16, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
     description_label_ = description_label.get();
     description_label_->setPivot({0.0f, 0.0f});
     description_label_->setShadowEnabled(false);
@@ -121,7 +121,6 @@ std::string ItemTooltipUI::wrapText(std::string_view text) const {
     if (text.empty()) return {};
 
     auto& text_renderer = context_.getTextRenderer();
-    const entt::id_type font_id = entt::hashed_string{font_path_.c_str(), font_path_.size()};
 
     std::string out;
     out.reserve(text.size() + 8);
@@ -131,7 +130,7 @@ std::string ItemTooltipUI::wrapText(std::string_view text) const {
     std::size_t last_break_pos = std::string::npos; // 在 line 中可断行的位置（通常是空格后）
 
     const auto fits = [&](const std::string& s) {
-        return text_renderer.getTextSize(s, font_id, font_size_, font_path_).x <= max_text_width_;
+        return text_renderer.getTextSize(s, font_id_, font_size_).x <= max_text_width_;
     };
 
     std::size_t i = 0;

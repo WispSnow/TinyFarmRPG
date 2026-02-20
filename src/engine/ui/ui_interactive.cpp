@@ -125,7 +125,7 @@ void UIInteractive::addImage(entt::id_type name_id, engine::render::Image image)
 {
     // 可交互UI元素必须有一个size用于交互检测，因此如果参数列表中没有指定，则用图片大小作为size
     if (size_.x == 0.0f && size_.y == 0.0f) {
-        auto texture_size = context_.getResourceManager().getTextureSize(image.getTextureId(), image.getTexturePath());
+        auto texture_size = context_.getResourceManager().getTextureSize(image.getTextureId());
         setSizeInternal(texture_size);
     }
     // 添加图片 (如果name_id已存在，则替换)
@@ -196,27 +196,12 @@ void UIInteractive::setEnabled(bool enabled)
     notifyPhaseChanged(old_phase, interaction_phase_, "setEnabled(true)");
 }
 
-void UIInteractive::setSoundEvent(entt::id_type event_id, entt::id_type sound_id, std::string_view path)
+void UIInteractive::setSoundEvent(entt::id_type event_id, entt::id_type sound_id)
 {
     if (event_id == entt::null) {
         return;
     }
-
-    if (!path.empty() && sound_id != entt::null) {
-        context_.getResourceManager().loadSound(sound_id, path);    // 确保音效资源被加载
-    }
     sound_overrides_.insert_or_assign(event_id, sound_id);
-}
-
-void UIInteractive::setSoundEvent(entt::id_type event_id, std::string_view path)
-{
-    if (path.empty()) {
-        disableSoundEvent(event_id);
-        return;
-    }
-
-    const entt::id_type sound_id = entt::hashed_string{path.data(), path.size()}.value();
-    setSoundEvent(event_id, sound_id, path);
 }
 
 void UIInteractive::disableSoundEvent(entt::id_type event_id)

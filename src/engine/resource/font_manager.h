@@ -165,16 +165,6 @@ private: // 仅由 ResourceManager（和内部）访问的方法
     Font* loadFont(entt::id_type id, int pixel_size, std::string_view file_path);
 
     /**
-     * @brief 从字符串哈希值加载指定像素大小的字体
-     * @param str_hs entt::hashed_string类型
-     * @param pixel_size 字体的像素大小
-     * @return 加载的字体的指针
-     * @note 如果字体已经加载，则返回已加载字体的指针
-     * @note 如果字体未加载，则从哈希字符串对应的文件路径加载字体，并返回加载的字体的指针
-     */
-    Font* loadFont(entt::hashed_string str_hs, int pixel_size);
-
-    /**
      * @brief 卸载特定字体（通过路径哈希值和大小标识）
      * @param id 字体的唯一标识符, 通过entt::hashed_string生成
      * @param pixel_size 字体的像素大小

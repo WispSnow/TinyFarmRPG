@@ -191,13 +191,11 @@ public:
      * @param text 要测量的文本。
      * @param font_id 字体 ID。
      * @param font_size 字体大小。
-     * @param font_path 字体路径（可选，用于首次加载）
      * @return 文本的尺寸。
      */
     [[nodiscard]] glm::vec2 getTextSize(std::string_view text,
                                         entt::id_type font_id,
                                         int font_size,
-                                        std::string_view font_path = "",
                                         const engine::utils::LayoutOptions* layout_options = nullptr) const;
 
     /**
@@ -249,8 +247,7 @@ private:
     [[nodiscard]] const TextLayout* buildLayout(std::string_view text,
                                                 entt::id_type font_id,
                                                 int font_size,
-                                                const engine::utils::LayoutOptions& layout_options,
-                                                std::string_view font_path = "") const;
+                                                const engine::utils::LayoutOptions& layout_options) const;
 
     /// @brief 对单行文本执行 HarfBuzz 整形并生成字形放置信息。
     /// @return 该行的像素宽度。

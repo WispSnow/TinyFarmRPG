@@ -48,15 +48,6 @@ private:  // 仅供 ResourceManager 访问的方法
     AudioBufferHandle loadSound(entt::id_type id, std::string_view file_path);
 
     /**
-     * @brief 从字符串哈希值加载音效
-     * @param str_hs entt::hashed_string类型
-     * @return 加载的音效句柄
-     * @note 如果音效已经加载，则返回已加载的音效句柄
-     * @note 如果音效未加载，则从哈希字符串对应的文件路径加载音效，并返回加载的音效句柄
-     */
-    AudioBufferHandle loadSound(entt::hashed_string str_hs);
-
-    /**
      * @brief 卸载指定的音效资源
      * @param id 音效的唯一标识符, 通过entt::hashed_string生成
      */
@@ -76,15 +67,6 @@ private:  // 仅供 ResourceManager 访问的方法
      * @note 如果音乐未加载，则从文件路径加载音乐，并返回加载的音乐句柄
      */
     AudioBufferHandle loadMusic(entt::id_type id, std::string_view file_path);
-
-    /**
-     * @brief 从字符串哈希值加载音乐
-     * @param str_hs entt::hashed_string类型
-     * @return 加载的音乐句柄
-     * @note 如果音乐已经加载，则返回已加载的音乐句柄
-     * @note 如果音乐未加载，则从哈希字符串对应的文件路径加载音乐，并返回加载的音乐句柄
-     */
-    AudioBufferHandle loadMusic(entt::hashed_string str_hs);
 
     /**
      * @brief 卸载指定的音乐资源

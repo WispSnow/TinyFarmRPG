@@ -1,6 +1,5 @@
 #include "audio_manager.h"
 #include <spdlog/spdlog.h>
-#include <entt/core/hashed_string.hpp>
 
 namespace engine::resource {
 
@@ -37,10 +36,6 @@ AudioBufferHandle AudioManager::loadSound(entt::id_type id, std::string_view fil
     return handle;
 }
 
-AudioBufferHandle AudioManager::loadSound(entt::hashed_string str_hs) {
-    return loadSound(str_hs.value(), str_hs.data());
-}
-
 void AudioManager::unloadSound(entt::id_type id) {
     if (sound_cache_.erase(id) > 0U) {
         spdlog::debug("AudioManager: 卸载音效 {}", id);
@@ -68,10 +63,6 @@ AudioBufferHandle AudioManager::loadMusic(entt::id_type id, std::string_view fil
 
     spdlog::debug("AudioManager: 缓存音乐 {} -> {}", id, file_path);
     return handle;
-}
-
-AudioBufferHandle AudioManager::loadMusic(entt::hashed_string str_hs) {
-    return loadMusic(str_hs.value(), str_hs.data());
 }
 
 void AudioManager::unloadMusic(entt::id_type id) {

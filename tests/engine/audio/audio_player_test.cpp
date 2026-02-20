@@ -77,6 +77,7 @@ TEST_F(AudioPlayerTest, PlaySoundWithoutPathReturnsError) {
 
 TEST_F(AudioPlayerTest, PlaySoundWithPathReturnsSuccess) {
     ASSERT_NE(audio_player_, nullptr);
+    ASSERT_NE(resource_manager_, nullptr);
 
     const std::filesystem::path sound_path = resolveAsset("assets/audio/calf-and-cow.wav");
     if (!std::filesystem::exists(sound_path)) {
@@ -84,13 +85,16 @@ TEST_F(AudioPlayerTest, PlaySoundWithPathReturnsSuccess) {
     }
 
     const std::string sound_path_str = sound_path.string();
-    const bool result = audio_player_->playSound(makeResourceId(sound_path_str), sound_path_str);
+    const entt::id_type sound_id = makeResourceId(sound_path_str);
+    ASSERT_TRUE(resource_manager_->loadSound(sound_id, sound_path_str));
+    const bool result = audio_player_->playSound(sound_id);
 
     EXPECT_TRUE(result);
 }
 
 TEST_F(AudioPlayerTest, PlaySound2DWithPositionsReturnsSuccess) {
     ASSERT_NE(audio_player_, nullptr);
+    ASSERT_NE(resource_manager_, nullptr);
 
     const std::filesystem::path sound_path = resolveAsset("assets/audio/plant_harvest.wav");
     if (!std::filesystem::exists(sound_path)) {
@@ -98,16 +102,19 @@ TEST_F(AudioPlayerTest, PlaySound2DWithPositionsReturnsSuccess) {
     }
 
     const std::string sound_path_str = sound_path.string();
+    const entt::id_type sound_id = makeResourceId(sound_path_str);
+    ASSERT_TRUE(resource_manager_->loadSound(sound_id, sound_path_str));
     const glm::vec2 source{150.0F, 25.0F};
     const glm::vec2 listener{0.0F, 0.0F};
 
-    const bool result = audio_player_->playSound2D(makeResourceId(sound_path_str), source, listener, sound_path_str);
+    const bool result = audio_player_->playSound2D(sound_id, source, listener);
 
     EXPECT_TRUE(result);
 }
 
 TEST_F(AudioPlayerTest, PlayMusicCanStopAndReplay) {
     ASSERT_NE(audio_player_, nullptr);
+    ASSERT_NE(resource_manager_, nullptr);
 
     const std::filesystem::path music_path = resolveAsset("assets/audio/01_spring_journey.ogg");
     if (!std::filesystem::exists(music_path)) {
@@ -116,12 +123,13 @@ TEST_F(AudioPlayerTest, PlayMusicCanStopAndReplay) {
 
     const std::string music_path_str = music_path.string();
     const entt::id_type music_id = makeResourceId(music_path_str);
+    ASSERT_TRUE(resource_manager_->loadMusic(music_id, music_path_str));
 
-    ASSERT_TRUE(audio_player_->playMusic(music_id, true, 0, music_path_str));
+    ASSERT_TRUE(audio_player_->playMusic(music_id, true, 0));
 
     audio_player_->stopMusic();
 
-    EXPECT_TRUE(audio_player_->playMusic(music_id, false, 0, music_path_str));
+    EXPECT_TRUE(audio_player_->playMusic(music_id, false, 0));
 }
 
 TEST_F(AudioPlayerTest, SoundVolumeClampsIntoRange) {
