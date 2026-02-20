@@ -16,13 +16,13 @@ constexpr glm::vec2 COUNT_PADDING{2.0f, 2.0f};
 } // namespace
 
 UIDragPreview::UIDragPreview(engine::core::Context& context,
-                             std::string_view font_path,
+                             entt::id_type font_id,
                              int font_size,
                              glm::vec2 size)
     : UIElement({0.0f, 0.0f}, size),
       context_(context),
       alpha_(DEFAULT_ALPHA) {
-    auto label = std::make_unique<UILabel>(context_.getTextRenderer(), "", font_path, font_size);
+    auto label = std::make_unique<UILabel>(context_.getTextRenderer(), "", font_id, font_size);
     label->setVisible(false);
     count_label_ = label.get();
     addChild(std::move(label));
@@ -52,9 +52,9 @@ void UIDragPreview::setAlpha(float alpha) {
     alpha_ = std::clamp(alpha, 0.0f, 1.0f);
 }
 
-void UIDragPreview::setFontPath(std::string_view font_path) {
+void UIDragPreview::setFontId(entt::id_type font_id) {
     if (count_label_) {
-        count_label_->setFontPath(font_path);
+        count_label_->setFontId(font_id);
     }
 }
 

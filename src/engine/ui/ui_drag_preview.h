@@ -4,6 +4,7 @@
 #include "ui_label.h"
 #include "engine/render/image.h"
 #include <string_view>
+#include <entt/entity/fwd.hpp>
 
 namespace engine::ui {
 
@@ -16,13 +17,13 @@ private:
 
 public:
     UIDragPreview(engine::core::Context& context,
-                  std::string_view font_path,
+                  entt::id_type font_id,
                   int font_size = 16,
                   glm::vec2 size = {0.0f, 0.0f});
 
     void setContent(const engine::render::Image& image, int count, glm::vec2 slot_size);
     void setAlpha(float alpha);
-    void setFontPath(std::string_view font_path);
+    void setFontId(entt::id_type font_id);
 
 private:
     void renderSelf(engine::core::Context& context) override;

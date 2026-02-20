@@ -77,7 +77,7 @@ void Renderer::drawSprite(const component::Sprite& sprite,
         return;
     }
 
-    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
+    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_);
     if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", sprite.texture_id_);
         return;
@@ -178,7 +178,7 @@ void Renderer::drawFilledCircle(const glm::vec2& position,
         return;
     }
 
-    auto circle_texture_handle = resource_manager_->getTexture("assets/textures/UI/circle.png"_hs);
+    auto circle_texture_handle = resource_manager_->getTexture("assets/textures/UI/circle.png"_hs.value());
     if (!circle_texture_handle) {
         spdlog::error("无法获取引擎自带的圆形纹理。");
         return;
@@ -255,7 +255,7 @@ void Renderer::drawUIImage(const Image& image,
         return;
     }
 
-    auto texture_handle = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
+    auto texture_handle = resource_manager_->getTexture(image.getTextureId());
     if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", image.getTextureId());
         return;
@@ -303,7 +303,7 @@ void Renderer::drawUINineSliceInternal(const Image& image,
         return;
     }
 
-    auto texture_handle = resource_manager_->getTexture(image.getTextureId(), image.getTexturePath());
+    auto texture_handle = resource_manager_->getTexture(image.getTextureId());
     if (!texture_handle) {
         spdlog::error("Renderer::drawUINineSlice: 无法加载纹理 (id: {}, path: {}).",
                       image.getTextureId(), image.getTexturePath());
@@ -436,7 +436,7 @@ void Renderer::addEmissiveSprite(const component::Sprite& sprite, const glm::vec
         return;
     }
 
-    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_, sprite.texture_path_);
+    auto texture_handle = resource_manager_->getTexture(sprite.texture_id_);
     if (!texture_handle) {
         spdlog::error("无法为 ID {} 获取纹理。", sprite.texture_id_);
         return;

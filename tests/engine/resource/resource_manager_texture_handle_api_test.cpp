@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <concepts>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -13,16 +14,41 @@
 
 namespace engine::resource {
 
+template <typename T>
+concept SupportsLoadTextureByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    { rm.loadTexture(id, path) } -> std::same_as<TextureHandle>;
+};
+
+template <typename T>
+concept SupportsLoadTextureSingleArg = requires(T& rm, entt::id_type id) {
+    rm.loadTexture(id);
+};
+
+template <typename T>
+concept SupportsGetTextureByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    rm.getTexture(id, path);
+};
+
+template <typename T>
+concept SupportsGetTextureSizeByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    rm.getTextureSize(id, path);
+};
+
 TEST(ResourceManagerTextureHandleApiTest, TextureApisReturnTextureHandle) {
     using LoadByIdReturn = decltype(std::declval<ResourceManager&>().loadTexture(entt::id_type{}, std::string_view{}));
-    using LoadByHashReturn = decltype(std::declval<ResourceManager&>().loadTexture(std::declval<entt::hashed_string>()));
-    using GetByIdReturn = decltype(std::declval<ResourceManager&>().getTexture(entt::id_type{}, std::string_view{}));
-    using GetByHashReturn = decltype(std::declval<ResourceManager&>().getTexture(std::declval<entt::hashed_string>()));
+    using GetByIdReturn = decltype(std::declval<ResourceManager&>().getTexture(entt::id_type{}));
 
     static_assert(std::is_same_v<LoadByIdReturn, TextureHandle>);
-    static_assert(std::is_same_v<LoadByHashReturn, TextureHandle>);
     static_assert(std::is_same_v<GetByIdReturn, TextureHandle>);
-    static_assert(std::is_same_v<GetByHashReturn, TextureHandle>);
+    static_assert(SupportsLoadTextureByIdPath<ResourceManager>);
+
+    // 已移除的旧 API（步骤 6）：
+    // - loadTexture(single-arg)
+    // - getTexture(id, path)
+    // - getTextureSize(id, path)
+    static_assert(!SupportsLoadTextureSingleArg<ResourceManager>);
+    static_assert(!SupportsGetTextureByIdPath<ResourceManager>);
+    static_assert(!SupportsGetTextureSizeByIdPath<ResourceManager>);
     SUCCEED();
 }
 

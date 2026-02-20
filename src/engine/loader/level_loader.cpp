@@ -248,7 +248,10 @@ void LevelLoader::loadImageLayer(const nlohmann::json& layer_json) {
 
     // 创建精灵 (在获取纹理大小时会确保纹理加载)
     auto texture_path = resolvePath(image_path, map_path_); 
-    auto texture_size = resource_manager_.getTextureSize(entt::hashed_string(texture_path.c_str()), texture_path);
+    const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+    // ResourceManager::loadTexture 会同步写入 AssetRegistry（register + load）。
+    resource_manager_.loadTexture(texture_id, texture_path);
+    auto texture_size = resource_manager_.getTextureSize(texture_id);
     auto sprite = engine::component::Sprite(texture_path, engine::utils::Rect{glm::vec2(0.0f), texture_size});
     
     // 获取图层偏移量（json中没有则代表未设置，给默认值即可）
@@ -684,7 +687,9 @@ bool LevelLoader::parseSingleImageSprite(const nlohmann::json& tileset, int firs
     const auto texture_rect = getTextureRect(tileset, local_id);
     const auto image_path = tileset["image"].get<std::string>();
     const auto texture_path = resolvePath(image_path, file_path);
-    resource_manager_.getAssetRegistry().registerTexture(entt::hashed_string(texture_path.c_str()), texture_path);
+    const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+    // ResourceManager::loadTexture 会同步写入 AssetRegistry（register + load）。
+    resource_manager_.loadTexture(texture_id, texture_path);
     out.sprite_ = engine::component::Sprite(texture_path, texture_rect, is_flipped);
     out.type_ = getTileTypeById(tileset, first_gid, local_id);
     return true;
@@ -719,6 +724,7 @@ bool LevelLoader::parseMultiImageSprite(const nlohmann::json* tile_json, int loc
 
     out.sprite_ = engine::component::Sprite(texture_path, texture_rect, is_flipped);
     const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
+    // ResourceManager::loadTexture 会同步写入 AssetRegistry（register + load）。
     resource_manager_.loadTexture(texture_id, texture_path);
     out.type_ = getTileType(*tile_json, file_path, local_id);
     return true;

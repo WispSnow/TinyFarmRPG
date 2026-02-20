@@ -91,20 +91,22 @@ void UIManager::beginDragPreview(const engine::render::Image& image,
                                  int count,
                                  const glm::vec2& slot_size,
                                  float alpha,
-                                 std::string_view font_path) {
+                                 entt::id_type font_id) {
     if (!root_element_) {
         spdlog::warn("UIManager::beginDragPreview: 根元素为空，无法创建预览。");
         return;
     }
 
+    const entt::id_type resolved_font_id = engine::ui::resolveUIFontId(font_id);
+
     if (!drag_preview_) {
-        auto preview = std::make_unique<UIDragPreview>(context_, font_path, DEFAULT_UI_FONT_SIZE_PX, slot_size);
+        auto preview = std::make_unique<UIDragPreview>(context_, resolved_font_id, DEFAULT_UI_FONT_SIZE_PX, slot_size);
         preview->setAlpha(alpha);
         drag_preview_ = preview.get();
         root_element_->addChild(std::move(preview));
     }
 
-    drag_preview_->setFontPath(font_path);
+    drag_preview_->setFontId(resolved_font_id);
     drag_preview_->setAlpha(alpha);
     drag_preview_->setContent(image, count, slot_size);
     drag_preview_->setVisible(true);
@@ -244,7 +246,7 @@ void UIManager::initCursor() {
     cursor_hotspot_ = {0.0f, 0.0f};
 
     if (cursor_size_.x <= 0.0f || cursor_size_.y <= 0.0f) {
-        cursor_size_ = resource_manager.getTextureSize(preset->getTextureId(), preset->getTexturePath());
+        cursor_size_ = resource_manager.getTextureSize(preset->getTextureId());
     }
 
     if (cursor_size_.x <= 0.0f || cursor_size_.y <= 0.0f) {

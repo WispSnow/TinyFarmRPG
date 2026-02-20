@@ -44,17 +44,7 @@ constexpr float MINUTES_PER_SEGMENT = 180.0f;
 constexpr entt::hashed_string TIME_PANEL_BG_PRESET{"time_panel_bg"};
 constexpr entt::hashed_string TIME_PANEL_LABEL_PRESET{"time_panel_label"};
 constexpr entt::hashed_string CLOCK_IMAGE_ID{"time/clock"};
-
-const std::array<entt::hashed_string, 8> HAND_IDS{
-    entt::hashed_string{"time/clock_hand_N"},
-    entt::hashed_string{"time/clock_hand_NE"},
-    entt::hashed_string{"time/clock_hand_E"},
-    entt::hashed_string{"time/clock_hand_SE"},
-    entt::hashed_string{"time/clock_hand_S"},
-    entt::hashed_string{"time/clock_hand_SW"},
-    entt::hashed_string{"time/clock_hand_W"},
-    entt::hashed_string{"time/clock_hand_NW"}
-};
+constexpr entt::hashed_string CLOCK_HAND_IMAGE_ID{"time/clock_hand"};
 
 engine::render::Image makePanelFallback() {
     engine::render::Image image(
@@ -86,7 +76,7 @@ engine::render::Image makeClockHand(int index) {
     const float x = static_cast<float>(index) * BASE_CLOCK_SIZE.x;
     return engine::render::Image(
         "assets/farm-rpg/UI/Clock/clock hand.png",
-        HAND_IDS.at(static_cast<std::size_t>(index)).value(),
+        CLOCK_HAND_IMAGE_ID.value(),
         engine::utils::Rect{glm::vec2{x, 0.0f}, BASE_CLOCK_SIZE}
     );
 }
@@ -98,14 +88,14 @@ namespace game::ui {
 TimeClockUI::TimeClockUI(engine::core::Context& context,
                          entt::registry& registry,
                          engine::render::TextRenderer& text_renderer,
-                         std::string_view font_path,
+                         entt::id_type font_id,
                          int font_size,
                          engine::utils::FColor text_color,
                          glm::vec2 position)
     : UIElement(std::move(position)),
       registry_(registry),
       text_renderer_(text_renderer),
-      font_path_(font_path),
+      font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size),
       text_color_(std::move(text_color)) {
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
@@ -174,7 +164,7 @@ void TimeClockUI::buildLayout() {
     auto day_bg = std::make_unique<engine::ui::UIPanel>(glm::vec2{0.0f, 0.0f}, LABEL_SIZE, std::nullopt, label_image_);
     auto day_label = std::make_unique<engine::ui::UILabel>(text_renderer_,
                                                            "",
-                                                           font_path_,
+                                                           font_id_,
                                                            font_size_,
                                                            glm::vec2{0.0f, 0.0f},
                                                            text_color_);
@@ -188,7 +178,7 @@ void TimeClockUI::buildLayout() {
     auto time_bg = std::make_unique<engine::ui::UIPanel>(glm::vec2{0.0f, 0.0f}, LABEL_SIZE, std::nullopt, label_image_);
     auto time_label = std::make_unique<engine::ui::UILabel>(text_renderer_,
                                                             "",
-                                                            font_path_,
+                                                            font_id_,
                                                             font_size_,
                                                             glm::vec2{0.0f, 0.0f},
                                                             text_color_);
@@ -288,13 +278,13 @@ void TimeClockUI::applyFallbackText() {
     updateLabel(time_label_, time_label_bg_, "??:??");
 }
 
-void TimeClockUI::setFontPath(std::string_view font_path) {
-    font_path_ = font_path;
+void TimeClockUI::setFontId(entt::id_type font_id) {
+    font_id_ = engine::ui::resolveUIFontId(font_id);
     if (day_label_) {
-        day_label_->setFontPath(font_path_);
+        day_label_->setFontId(font_id_);
     }
     if (time_label_) {
-        time_label_->setFontPath(font_path_);
+        time_label_->setFontId(font_id_);
     }
     refreshFromGameTime();
 }

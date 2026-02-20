@@ -20,6 +20,8 @@
   },
   "texture": {
     "title-bg": "assets/textures/UI/farm-rpg-bg.png",
-    "title-logo": "assets/textures/UI/farm-rpg-logo.png"
+    "title-logo": "assets/textures/UI/farm-rpg-logo.png",
+    "time/clock": "assets/farm-rpg/UI/Clock/Clock.png",
+    "time/clock_hand": "assets/farm-rpg/UI/Clock/clock hand.png"
   }
 }

@@ -37,7 +37,7 @@ TEST(UIPresetManagerDebugApiTest, ListButtonPresetIdsSortedAndMutableAccessWorks
     alpha.normal_image = makeTestImage("assets/ui/alpha.png");
     UIButtonLabelStyle alpha_label{};
     alpha_label.text = "Alpha";
-    alpha_label.font_path = "assets/fonts/VonwaonBitmap-16px.ttf";
+    alpha_label.font_id = entt::hashed_string{"assets/fonts/VonwaonBitmap-16px.ttf"}.value();
     alpha_label.font_size = 16;
     alpha_label.color = engine::utils::FColor{1.0f, 1.0f, 1.0f, 1.0f};
     alpha_label.offset = {0.0f, 0.0f};
@@ -47,7 +47,7 @@ TEST(UIPresetManagerDebugApiTest, ListButtonPresetIdsSortedAndMutableAccessWorks
     beta.normal_image = makeTestImage("assets/ui/beta.png");
     UIButtonLabelStyle beta_label{};
     beta_label.text = "Beta";
-    beta_label.font_path = "assets/fonts/VonwaonBitmap-16px.ttf";
+    beta_label.font_id = entt::hashed_string{"assets/fonts/VonwaonBitmap-16px.ttf"}.value();
     beta_label.font_size = 16;
     beta_label.color = engine::utils::FColor{0.0f, 1.0f, 0.0f, 1.0f};
     beta_label.offset = {1.0f, 2.0f};

@@ -52,6 +52,7 @@ private:
 namespace {
 constexpr std::string_view INVENTORY_ATLAS{"assets/farm-rpg/UI/Inventory/inventory.png"};
 constexpr std::string_view FONT_PATH{"assets/fonts/VonwaonBitmap-16px.ttf"};
+constexpr entt::id_type FONT_ID = entt::hashed_string{FONT_PATH.data(), FONT_PATH.size()}.value();
 constexpr std::string_view SLOT_ATLAS{"assets/farm-rpg/UI/Inventory/Slots.png"};
 constexpr std::string_view BAR_ATLAS{"assets/farm-rpg/UI/Bars.png"};
 constexpr std::string_view CROPS_ATLAS{"assets/farm-rpg/Icons/Crops.png"};
@@ -340,7 +341,7 @@ void UITestScene::buildUI() {
 	                    drag_item_icon_ = item->icon;
 	                    slot->clearItem(); // 拖起时暂时清空源槽显示
 	                    if (ui_manager_) {
-	                        ui_manager_->beginDragPreview(drag_item_icon_, drag_item_count_, preview_size, drag_preview_alpha_, FONT_PATH);
+	                        ui_manager_->beginDragPreview(drag_item_icon_, drag_item_count_, preview_size, drag_preview_alpha_, FONT_ID);
 	                        ui_manager_->updateDragPreview(pos);
 	                    }
 	                } else {
@@ -912,7 +913,8 @@ void UITestScene::drawControlPanel() {
 	            }
 
 	            const int clamped = std::clamp(choice, 0, static_cast<int>(IM_ARRAYSIZE(kSoundChoiceLabels)) - 1);
-	            start_button_->setSoundEvent(event_id, kSoundChoiceLabels[clamped]);
+	            const entt::id_type sound_id = entt::hashed_string{kSoundChoiceLabels[clamped]}.value();
+	            start_button_->setSoundEvent(event_id, sound_id);
 	        };
 
 	        if (ImGui::Combo("Hover Sound", &hover_sound_mode_, kSoundModeLabels, IM_ARRAYSIZE(kSoundModeLabels))) {

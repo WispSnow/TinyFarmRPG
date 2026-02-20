@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <concepts>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -12,26 +13,58 @@
 
 namespace engine::resource {
 
+template <typename T>
+concept SupportsLoadSoundByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    { rm.loadSound(id, path) } -> std::same_as<AudioBufferHandle>;
+};
+
+template <typename T>
+concept SupportsLoadMusicByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    { rm.loadMusic(id, path) } -> std::same_as<AudioBufferHandle>;
+};
+
+template <typename T>
+concept SupportsLoadSoundSingleArg = requires(T& rm, entt::id_type id) {
+    rm.loadSound(id);
+};
+
+template <typename T>
+concept SupportsLoadMusicSingleArg = requires(T& rm, entt::id_type id) {
+    rm.loadMusic(id);
+};
+
+template <typename T>
+concept SupportsGetSoundByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    rm.getSound(id, path);
+};
+
+template <typename T>
+concept SupportsGetMusicByIdPath = requires(T& rm, entt::id_type id, std::string_view path) {
+    rm.getMusic(id, path);
+};
+
 TEST(ResourceManagerAudioHandleApiTest, AudioApisReturnAudioBufferHandle) {
     using LoadSoundByIdReturn = decltype(std::declval<ResourceManager&>().loadSound(entt::id_type{}, std::string_view{}));
-    using LoadSoundByHashReturn = decltype(std::declval<ResourceManager&>().loadSound(std::declval<entt::hashed_string>()));
-    using GetSoundByIdReturn = decltype(std::declval<ResourceManager&>().getSound(entt::id_type{}, std::string_view{}));
-    using GetSoundByHashReturn = decltype(std::declval<ResourceManager&>().getSound(std::declval<entt::hashed_string>()));
+    using GetSoundByIdReturn = decltype(std::declval<ResourceManager&>().getSound(entt::id_type{}));
 
     using LoadMusicByIdReturn = decltype(std::declval<ResourceManager&>().loadMusic(entt::id_type{}, std::string_view{}));
-    using LoadMusicByHashReturn = decltype(std::declval<ResourceManager&>().loadMusic(std::declval<entt::hashed_string>()));
-    using GetMusicByIdReturn = decltype(std::declval<ResourceManager&>().getMusic(entt::id_type{}, std::string_view{}));
-    using GetMusicByHashReturn = decltype(std::declval<ResourceManager&>().getMusic(std::declval<entt::hashed_string>()));
+    using GetMusicByIdReturn = decltype(std::declval<ResourceManager&>().getMusic(entt::id_type{}));
 
     static_assert(std::is_same_v<LoadSoundByIdReturn, AudioBufferHandle>);
-    static_assert(std::is_same_v<LoadSoundByHashReturn, AudioBufferHandle>);
     static_assert(std::is_same_v<GetSoundByIdReturn, AudioBufferHandle>);
-    static_assert(std::is_same_v<GetSoundByHashReturn, AudioBufferHandle>);
+    static_assert(SupportsLoadSoundByIdPath<ResourceManager>);
 
     static_assert(std::is_same_v<LoadMusicByIdReturn, AudioBufferHandle>);
-    static_assert(std::is_same_v<LoadMusicByHashReturn, AudioBufferHandle>);
     static_assert(std::is_same_v<GetMusicByIdReturn, AudioBufferHandle>);
-    static_assert(std::is_same_v<GetMusicByHashReturn, AudioBufferHandle>);
+    static_assert(SupportsLoadMusicByIdPath<ResourceManager>);
+
+    // 已移除的旧 API（步骤 6）：
+    // - loadSound(single-arg), loadMusic(single-arg)
+    // - getSound(id, path), getMusic(id, path)
+    static_assert(!SupportsLoadSoundSingleArg<ResourceManager>);
+    static_assert(!SupportsLoadMusicSingleArg<ResourceManager>);
+    static_assert(!SupportsGetSoundByIdPath<ResourceManager>);
+    static_assert(!SupportsGetMusicByIdPath<ResourceManager>);
     SUCCEED();
 }
 

@@ -162,9 +162,6 @@ void BasicEntityBuilder::buildSprite() {
         level_loader_.getCurrentLayerName() == tiled::LAYER_NAME_SOLID) {
         return;
     }
-    // 创建Sprite时候确保纹理加载
-    auto& resource_manager = context_.getResourceManager();
-    resource_manager.loadTexture(tile_info_->sprite_.texture_id_, tile_info_->sprite_.texture_path_);
     auto pivot = glm::vec2(0.0f, 0.0f);
     // 如果是对象层对象，则需要调整pivot
     if (object_json_) {
@@ -234,7 +231,6 @@ void BasicEntityBuilder::buildAnimation() {
                 animation.dst_size_ = sprite->size_;
             }
             animation.texture_id_ = sprite->sprite_.texture_id_;
-            animation.texture_path_ = sprite->sprite_.texture_path_;
             animation.flip_horizontal_ = sprite->sprite_.is_flipped_;
             animation.loop_ = animation_name ? false : true;
         }

@@ -4,6 +4,7 @@
 #include "engine/ui/ui_label.h"
 #include "engine/ui/ui_panel.h"
 #include <glm/vec2.hpp>
+#include <entt/entity/fwd.hpp>
 #include <string>
 #include <string_view>
 
@@ -25,12 +26,12 @@ class ItemTooltipUI final : public engine::ui::UIElement {
     glm::vec2 offset_{12.0f, 16.0f};
     float max_text_width_{240.0f};
 
-    std::string font_path_{};
+    entt::id_type font_id_{entt::null};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
 
 public:
     ItemTooltipUI(engine::core::Context& context,
-                  std::string_view font_path = engine::ui::DEFAULT_UI_FONT_PATH,
+                  entt::id_type font_id = entt::null,
                   int font_size = engine::ui::DEFAULT_UI_FONT_SIZE_PX);
 
     void showItem(std::string_view display_name,

@@ -21,13 +21,13 @@ namespace game::ui {
 DialogueBubble::DialogueBubble(engine::core::Context& context,
                                entt::dispatcher& dispatcher,
                                engine::render::TextRenderer& text_renderer,
-                               std::string_view font_path,
+                               entt::id_type font_id,
                                int font_size,
                                std::uint8_t channel)
     : UIElement(glm::vec2{0.0f}, glm::vec2{DEFAULT_WIDTH, DEFAULT_HEIGHT}),
       text_renderer_(text_renderer),
       dispatcher_(dispatcher),
-      font_path_(font_path),
+      font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size),
       channel_(channel) {
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
@@ -60,7 +60,7 @@ void DialogueBubble::buildLayout() {
     panel_ = panel.get();
 
     auto label = std::make_unique<engine::ui::UILabel>(
-        text_renderer_, "", font_path_, font_size_, glm::vec2{padding_, padding_}, engine::utils::FColor::black());
+        text_renderer_, "", font_id_, font_size_, glm::vec2{padding_, padding_}, engine::utils::FColor::black());
     label->setPivot({0.0f, 0.0f});
     label_ = label.get();
     label_->setShadowEnabled(false);

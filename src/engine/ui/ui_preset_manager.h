@@ -15,10 +15,12 @@ class UIPresetManager final {
     std::unordered_map<entt::id_type, engine::render::Image> image_presets_{};
     std::unordered_map<entt::id_type, std::string> button_preset_keys_{};
     std::unordered_map<entt::id_type, std::string> image_preset_keys_{};
+    std::unordered_map<entt::id_type, std::string> sound_paths_{};
+    std::unordered_map<entt::id_type, std::string> font_paths_{};
 
     static std::optional<engine::render::Image> parseImageDefinition(const nlohmann::json& json_value);
     static std::optional<engine::render::NineSliceMargins> parseNineSlice(const nlohmann::json& json_value);
-    static std::optional<UIButtonLabelStyle> parseLabelStyle(const nlohmann::json& json_value);
+    std::optional<UIButtonLabelStyle> parseLabelStyle(const nlohmann::json& json_value);
     static std::optional<UIButtonLabelOverrides> parseLabelOverrides(const nlohmann::json& json_value);
 
 public:
@@ -37,6 +39,8 @@ public:
     [[nodiscard]] std::vector<entt::id_type> listImagePresetIds() const;
     [[nodiscard]] std::string_view getButtonPresetKey(entt::id_type preset_id) const;
     [[nodiscard]] std::string_view getImagePresetKey(entt::id_type preset_id) const;
+    [[nodiscard]] std::string_view findSoundPath(entt::id_type sound_id) const;
+    [[nodiscard]] std::string_view findFontPath(entt::id_type font_id) const;
     bool registerButtonPreset(entt::id_type preset_id, UIButtonSkin skin, bool overwrite = true);
     bool registerImagePreset(entt::id_type preset_id, engine::render::Image image, bool overwrite = true);
 };

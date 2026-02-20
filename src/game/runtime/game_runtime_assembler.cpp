@@ -145,20 +145,20 @@ void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, en
         }
         register_skin_images(*skin);
 
-        if (skin->normal_label && !skin->normal_label->font_path.empty() && skin->normal_label->font_size > 0) {
-            const auto font_path = std::string_view(skin->normal_label->font_path);
-            const entt::id_type font_id = hashPath(font_path);
-            if (font_id != entt::null) {
+        if (skin->normal_label && skin->normal_label->font_id != entt::null && skin->normal_label->font_size > 0) {
+            const entt::id_type font_id = skin->normal_label->font_id;
+            const std::string_view font_path = preset_manager.findFontPath(font_id);
+            if (!font_path.empty()) {
                 registry.registerFont(font_id, skin->normal_label->font_size, font_path);
             }
         }
 
-        for (const auto& [_, sound_path] : skin->sound_events) {
-            if (sound_path.empty()) {
+        for (const auto& [_, sound_id] : skin->sound_events) {
+            if (sound_id == entt::null) {
                 continue;
             }
-            const entt::id_type sound_id = hashPath(sound_path);
-            if (sound_id != entt::null) {
+            const std::string_view sound_path = preset_manager.findSoundPath(sound_id);
+            if (!sound_path.empty()) {
                 registry.registerSound(sound_id, sound_path);
             }
         }
@@ -514,6 +514,8 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     if (!initMapManager(params.scene, params.context, params.registry, params.services)) {
         return false;
     }
+
+    resource_manager.preloadRegisteredResources();
 
     if (!initSaveService(params.context, params.registry, params.services)) {
         return false;

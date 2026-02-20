@@ -191,8 +191,8 @@ struct AudioPlayer::Impl {
         return true;
     }
 
-    [[nodiscard]] bool playSound(entt::id_type id, std::string_view sound_path) {
-        auto buffer = resource_manager_->getSound(id, sound_path);
+    [[nodiscard]] bool playSound(entt::id_type id) {
+        auto buffer = resource_manager_->getSound(id);
         if (!buffer) {
             spdlog::error("AudioPlayer: 找不到音效资源 id={}", id);
             return false;
@@ -200,28 +200,10 @@ struct AudioPlayer::Impl {
         return playSoundInternal(buffer, 1.0f, std::nullopt);
     }
 
-    [[nodiscard]] bool playSound(entt::hashed_string hashed_path) {
-        auto buffer = resource_manager_->getSound(hashed_path);
-        if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音效资源 id={}, path={}", hashed_path.value(), hashed_path.data());
-            return false;
-        }
-        return playSoundInternal(buffer, 1.0f, std::nullopt);
-    }
-
-    [[nodiscard]] bool playSound2D(entt::id_type id, const glm::vec2& source, const glm::vec2& listener, std::string_view sound_path) {
-        auto buffer = resource_manager_->getSound(id, sound_path);
+    [[nodiscard]] bool playSound2D(entt::id_type id, const glm::vec2& source, const glm::vec2& listener) {
+        auto buffer = resource_manager_->getSound(id);
         if (!buffer) {
             spdlog::error("AudioPlayer: 找不到音效资源 id={} (2D)", id);
-            return false;
-        }
-        return playSoundSpatialInternal(buffer, source, listener);
-    }
-
-    [[nodiscard]] bool playSound2D(entt::hashed_string hashed_path, const glm::vec2& source, const glm::vec2& listener) {
-        auto buffer = resource_manager_->getSound(hashed_path);
-        if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音效资源 id={}, path={} (2D)", hashed_path.value(), hashed_path.data());
             return false;
         }
         return playSoundSpatialInternal(buffer, source, listener);
@@ -299,27 +281,18 @@ struct AudioPlayer::Impl {
         return true;
     }
 
-    [[nodiscard]] bool playMusic(entt::id_type id, bool loop, int fade_in_ms, std::string_view music_path) {
+    [[nodiscard]] bool playMusic(entt::id_type id, bool loop, int fade_in_ms) {
         if (id == current_music_id_ && music_sound_ && ma_sound_is_playing(&music_sound_->handle) == MA_TRUE) {
             return true;
         }
 
-        auto buffer = resource_manager_->getMusic(id, music_path);
+        auto buffer = resource_manager_->getMusic(id);
         if (!buffer) {
             spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
             return false;
         }
 
         return playMusicInternal(buffer, id, loop, fade_in_ms);
-    }
-
-    [[nodiscard]] bool playMusic(entt::hashed_string hashed_path, bool loop, int fade_in_ms) {
-        auto buffer = resource_manager_->getMusic(hashed_path, hashed_path.data());
-        if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音乐资源 id={}, path={}", hashed_path.value(), hashed_path.data());
-            return false;
-        }
-        return playMusicInternal(buffer, hashed_path.value(), loop, fade_in_ms);
     }
 
     void stopMusic(int fade_out_ms) {
@@ -433,28 +406,16 @@ AudioPlayer::AudioPlayer(std::unique_ptr<Impl> impl)
 
 AudioPlayer::~AudioPlayer() = default;
 
-bool AudioPlayer::playSound(entt::id_type sound_id, std::string_view sound_path) {
-    return impl_->playSound(sound_id, sound_path);
+bool AudioPlayer::playSound(entt::id_type sound_id) {
+    return impl_->playSound(sound_id);
 }
 
-bool AudioPlayer::playSound(entt::hashed_string hashed_path) {
-    return impl_->playSound(hashed_path);
+bool AudioPlayer::playSound2D(entt::id_type sound_id, const glm::vec2& source, const glm::vec2& listener) {
+    return impl_->playSound2D(sound_id, source, listener);
 }
 
-bool AudioPlayer::playSound2D(entt::id_type sound_id, const glm::vec2& source, const glm::vec2& listener, std::string_view sound_path) {
-    return impl_->playSound2D(sound_id, source, listener, sound_path);
-}
-
-bool AudioPlayer::playSound2D(entt::hashed_string hashed_path, const glm::vec2& source, const glm::vec2& listener) {
-    return impl_->playSound2D(hashed_path, source, listener);
-}
-
-bool AudioPlayer::playMusic(entt::id_type music_id, bool loop, int fade_in_ms, std::string_view music_path) {
-    return impl_->playMusic(music_id, loop, fade_in_ms, music_path);
-}
-
-bool AudioPlayer::playMusic(entt::hashed_string hashed_path, bool loop, int fade_in_ms) {
-    return impl_->playMusic(hashed_path, loop, fade_in_ms);
+bool AudioPlayer::playMusic(entt::id_type music_id, bool loop, int fade_in_ms) {
+    return impl_->playMusic(music_id, loop, fade_in_ms);
 }
 
 void AudioPlayer::stopMusic(int fade_out_ms) {

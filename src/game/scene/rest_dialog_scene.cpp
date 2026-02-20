@@ -100,7 +100,7 @@ void RestDialogScene::buildLayout() {
     auto& text_renderer = context_.getTextRenderer();
     auto title = std::make_unique<engine::ui::UILabel>(text_renderer,
                                                        "Rest",
-                                                       engine::ui::DEFAULT_UI_FONT_PATH,
+                                                       entt::null,
                                                        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                                                        glm::vec2{0.0f, 0.0f},
                                                        engine::utils::FColor{1.0f, 1.0f, 1.0f, 1.0f});
@@ -139,7 +139,7 @@ void RestDialogScene::buildLayout() {
 
     auto hours_label = std::make_unique<engine::ui::UILabel>(text_renderer,
                                                              "24h",
-                                                             engine::ui::DEFAULT_UI_FONT_PATH,
+                                                             entt::null,
                                                              engine::ui::DEFAULT_UI_FONT_SIZE_PX,
                                                              glm::vec2{selector_size.x * 0.5f, selector_size.y * 0.5f},
                                                              engine::utils::FColor{1.0f, 1.0f, 1.0f, 1.0f});

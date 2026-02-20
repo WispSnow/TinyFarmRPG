@@ -3,7 +3,6 @@
 #include <string_view>
 #include <entt/entity/fwd.hpp>
 #include <glm/vec2.hpp>
-#include <entt/core/hashed_string.hpp>
 
 namespace engine::resource {
     class ResourceManager;
@@ -39,36 +38,18 @@ public:
      * @brief 播放音效（chunk）。
      * @note 必须确保 ResourceManager 加载了音效。
      * @param sound_id 音效ID。
-     * @param sound_path 音效文件路径。
      * @return 成功返回 true，失败返回 false。
      */
-    [[nodiscard]] bool playSound(entt::id_type sound_id, std::string_view sound_path = "");
-    /**
-     * @brief 播放音效（chunk）。
-     * @note 如果尚未缓存，则通过 ResourceManager 加载音效。
-     * @param hashed_path 音效文件路径。
-     * @return 成功返回 true，失败返回 false。
-     */
-    [[nodiscard]] bool playSound(entt::hashed_string hashed_path);
+    [[nodiscard]] bool playSound(entt::id_type sound_id);
 
     /**
      * @brief 播放带有 2D 空间感知效果的音效。
      * @param sound_id 音效ID。
      * @param source 音源位置。
      * @param listener 监听者位置。
-     * @param sound_path 音效文件路径。
      * @return 成功返回 true，失败返回 false。
      */
-    [[nodiscard]] bool playSound2D(entt::id_type sound_id, const glm::vec2& source, const glm::vec2& listener, std::string_view sound_path = "");
-
-    /**
-     * @brief 播放带有 2D 空间感知效果的音效。
-     * @param hashed_path 音效文件路径（哈希）。
-     * @param source 音源位置。
-     * @param listener 监听者位置。
-     * @return 成功返回 true，失败返回 false。
-     */
-    [[nodiscard]] bool playSound2D(entt::hashed_string hashed_path, const glm::vec2& source, const glm::vec2& listener);
+    [[nodiscard]] bool playSound2D(entt::id_type sound_id, const glm::vec2& source, const glm::vec2& listener);
 
     /**
      * @brief 播放背景音乐。如果正在播放，且本次指定了淡入时间，则旧音乐会按同样时长淡出（形成短暂的 cross-fade）。
@@ -76,20 +57,9 @@ public:
      * @param music_id 音乐ID。
      * @param loop 是否循环播放。
      * @param fade_in_ms 音乐淡入的时间（毫秒）（0 表示不淡入）。默认为 0。
-     * @param music_path 音乐文件路径。
      * @return 成功返回 true，出错返回 false。
      */
-    bool playMusic(entt::id_type music_id, bool loop = true, int fade_in_ms = 0, std::string_view music_path = "");
-
-    /**
-     * @brief 播放背景音乐。如果正在播放，且本次指定了淡入时间，则旧音乐会按同样时长淡出（形成短暂的 cross-fade）。
-     * @note 如果尚未缓存，则通过 ResourceManager 加载音乐。
-     * @param hashed_path 音乐文件路径。
-     * @param loop 是否循环播放。
-     * @param fade_in_ms 音乐淡入的时间（毫秒）（0 表示不淡入）。默认为 0。
-     * @return 成功返回 true，出错返回 false。
-     */
-    bool playMusic(entt::hashed_string hashed_path, bool loop = true, int fade_in_ms = 0);
+    bool playMusic(entt::id_type music_id, bool loop = true, int fade_in_ms = 0);
 
     /**
      * @brief 停止当前正在播放的背景音乐。

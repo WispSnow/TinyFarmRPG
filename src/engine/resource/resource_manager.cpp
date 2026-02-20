@@ -71,6 +71,25 @@ const AssetRegistry& ResourceManager::getAssetRegistry() const {
     return *asset_registry_;
 }
 
+void ResourceManager::preloadRegisteredResources() {
+    if (!asset_registry_) {
+        return;
+    }
+
+    asset_registry_->forEachTexture([this](entt::id_type id, std::string_view path) {
+        (void)texture_manager_->loadTexture(id, path);
+    });
+    asset_registry_->forEachSound([this](entt::id_type id, std::string_view path) {
+        (void)audio_manager_->loadSound(id, path);
+    });
+    asset_registry_->forEachMusic([this](entt::id_type id, std::string_view path) {
+        (void)audio_manager_->loadMusic(id, path);
+    });
+    asset_registry_->forEachFont([this](entt::id_type id, int pixel_size, std::string_view path) {
+        (void)font_manager_->loadFont(id, pixel_size, path);
+    });
+}
+
 void ResourceManager::loadResources(std::string_view file_path) {
     std::filesystem::path path(file_path);
     std::error_code error_code;
@@ -188,10 +207,12 @@ void ResourceManager::loadResources(std::string_view file_path) {
     constexpr std::string_view CIRCLE_TEXTURE_PATH{"assets/textures/UI/circle.png"};
     const entt::id_type circle_texture_id = entt::hashed_string{CIRCLE_TEXTURE_PATH.data(), CIRCLE_TEXTURE_PATH.size()};
     asset_registry_->registerTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
+    loadTexture(circle_texture_id, CIRCLE_TEXTURE_PATH);
 
     const entt::id_type default_font_id =
         entt::hashed_string{engine::ui::DEFAULT_UI_FONT_PATH.data(), engine::ui::DEFAULT_UI_FONT_PATH.size()};
     asset_registry_->registerFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
+    loadFont(default_font_id, engine::ui::DEFAULT_UI_FONT_SIZE_PX, engine::ui::DEFAULT_UI_FONT_PATH);
 }
 
 // --- 纹理接口实现 ---
@@ -201,43 +222,31 @@ TextureHandle ResourceManager::loadTexture(entt::id_type id, std::string_view fi
     return texture_manager_->loadTexture(id, file_path);
 }
 
-TextureHandle ResourceManager::loadTexture(entt::hashed_string str_hs) {
-    return loadTexture(str_hs.value(), str_hs.data());
-}
-
-TextureHandle ResourceManager::getTexture(entt::id_type id, std::string_view file_path) {
+TextureHandle ResourceManager::getTexture(entt::id_type id) {
     if (auto cached = texture_manager_->findTexture(id)) {
         return cached;
     }
 
-    std::string_view resolved_path = file_path;
-    if (resolved_path.empty()) {
-        resolved_path = asset_registry_->findTexturePath(id);
-    }
-
-    if (resolved_path.empty()) {
 #ifndef NDEBUG
+    const std::string_view registered_path = asset_registry_->findTexturePath(id);
+    if (registered_path.empty()) {
         spdlog::error("ResourceManager::getTexture: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
-#endif
-        return {};
+    } else {
+        spdlog::error(
+            "ResourceManager::getTexture: id={} 未命中缓存，资源未预加载。registered_path='{}'",
+            id,
+            registered_path
+        );
     }
-
-    return loadTexture(id, resolved_path);
+#endif
+    return {};
 }
 
-TextureHandle ResourceManager::getTexture(entt::hashed_string str_hs) {
-    return getTexture(str_hs.value(), str_hs.data());
-}
-
-glm::vec2 ResourceManager::getTextureSize(entt::id_type id, std::string_view file_path) {
-    if (const auto texture = getTexture(id, file_path)) {
+glm::vec2 ResourceManager::getTextureSize(entt::id_type id) {
+    if (const auto texture = getTexture(id)) {
         return glm::vec2(texture->width, texture->height);
     }
     return glm::vec2(0.0f, 0.0f);
-}
-
-glm::vec2 ResourceManager::getTextureSize(entt::hashed_string str_hs) {
-    return getTextureSize(str_hs.value(), str_hs.data());
 }
 
 void ResourceManager::unloadTexture(entt::id_type id) {
@@ -254,32 +263,24 @@ AudioBufferHandle ResourceManager::loadSound(entt::id_type id, std::string_view 
     return audio_manager_->loadSound(id, file_path);
 }
 
-AudioBufferHandle ResourceManager::loadSound(entt::hashed_string str_hs) {
-    return loadSound(str_hs.value(), str_hs.data());
-}
-
-AudioBufferHandle ResourceManager::getSound(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::getSound(entt::id_type id) {
     if (auto cached = audio_manager_->findSound(id)) {
         return cached;
     }
 
-    std::string_view resolved_path = file_path;
-    if (resolved_path.empty()) {
-        resolved_path = asset_registry_->findSoundPath(id);
-    }
-
-    if (resolved_path.empty()) {
 #ifndef NDEBUG
+    const std::string_view registered_path = asset_registry_->findSoundPath(id);
+    if (registered_path.empty()) {
         spdlog::error("ResourceManager::getSound: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
-#endif
-        return {};
+    } else {
+        spdlog::error(
+            "ResourceManager::getSound: id={} 未命中缓存，资源未预加载。registered_path='{}'",
+            id,
+            registered_path
+        );
     }
-
-    return loadSound(id, resolved_path);
-}
-
-AudioBufferHandle ResourceManager::getSound(entt::hashed_string str_hs) {
-    return getSound(str_hs.value(), str_hs.data());
+#endif
+    return {};
 }
 
 void ResourceManager::unloadSound(entt::id_type id) {
@@ -295,32 +296,24 @@ AudioBufferHandle ResourceManager::loadMusic(entt::id_type id, std::string_view 
     return audio_manager_->loadMusic(id, file_path);
 }
 
-AudioBufferHandle ResourceManager::loadMusic(entt::hashed_string str_hs) {
-    return loadMusic(str_hs.value(), str_hs.data());
-}
-
-AudioBufferHandle ResourceManager::getMusic(entt::id_type id, std::string_view file_path) {
+AudioBufferHandle ResourceManager::getMusic(entt::id_type id) {
     if (auto cached = audio_manager_->findMusic(id)) {
         return cached;
     }
 
-    std::string_view resolved_path = file_path;
-    if (resolved_path.empty()) {
-        resolved_path = asset_registry_->findMusicPath(id);
-    }
-
-    if (resolved_path.empty()) {
 #ifndef NDEBUG
+    const std::string_view registered_path = asset_registry_->findMusicPath(id);
+    if (registered_path.empty()) {
         spdlog::error("ResourceManager::getMusic: id={} 未命中缓存且 AssetRegistry 未注册路径。", id);
-#endif
-        return {};
+    } else {
+        spdlog::error(
+            "ResourceManager::getMusic: id={} 未命中缓存，资源未预加载。registered_path='{}'",
+            id,
+            registered_path
+        );
     }
-
-    return loadMusic(id, resolved_path);
-}
-
-AudioBufferHandle ResourceManager::getMusic(entt::hashed_string str_hs) {
-    return getMusic(str_hs.value(), str_hs.data());
+#endif
+    return {};
 }
 
 void ResourceManager::unloadMusic(entt::id_type id) {
@@ -337,36 +330,29 @@ Font* ResourceManager::loadFont(entt::id_type id, int pixel_size, std::string_vi
     return font_manager_->loadFont(id, pixel_size, file_path);
 }
 
-Font* ResourceManager::loadFont(entt::hashed_string str_hs, int pixel_size) {
-    return loadFont(str_hs.value(), pixel_size, str_hs.data());
-}
-
-Font* ResourceManager::getFont(entt::id_type id, int pixel_size, std::string_view file_path) {
+Font* ResourceManager::getFont(entt::id_type id, int pixel_size) {
     if (auto* cached = font_manager_->findFont(id, pixel_size)) {
         return cached;
     }
 
-    std::string_view resolved_path = file_path;
-    if (resolved_path.empty()) {
-        resolved_path = asset_registry_->findFontPath(id, pixel_size);
-    }
-
-    if (resolved_path.empty()) {
 #ifndef NDEBUG
+    const std::string_view registered_path = asset_registry_->findFontPath(id, pixel_size);
+    if (registered_path.empty()) {
         spdlog::error(
             "ResourceManager::getFont: id={} size={} 未命中缓存且 AssetRegistry 未注册路径。",
             id,
             pixel_size
         );
-#endif
-        return nullptr;
+    } else {
+        spdlog::error(
+            "ResourceManager::getFont: id={} size={} 未命中缓存，资源未预加载。registered_path='{}'",
+            id,
+            pixel_size,
+            registered_path
+        );
     }
-
-    return loadFont(id, pixel_size, resolved_path);
-}
-
-Font* ResourceManager::getFont(entt::hashed_string str_hs, int pixel_size) {
-    return getFont(str_hs.value(), pixel_size, str_hs.data());
+#endif
+    return nullptr;
 }
 
 void ResourceManager::unloadFont(entt::id_type id, int pixel_size) {

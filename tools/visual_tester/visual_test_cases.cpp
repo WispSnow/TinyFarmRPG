@@ -275,8 +275,8 @@ void TileAutoTileYSortVisualTest::initialize(engine::core::Context& context) {
         auto& registry = scene_->getRegistry();
 
         constexpr std::string_view kCirclePath = "assets/textures/reserve/circle.png";
-        const glm::vec2 circle_size = context.getResourceManager().getTextureSize(entt::hashed_string{kCirclePath.data(), kCirclePath.size()},
-                                                                                  kCirclePath);
+        const glm::vec2 circle_size = context.getResourceManager().getTextureSize(
+            entt::hashed_string{kCirclePath.data(), kCirclePath.size()});
         const engine::utils::Rect circle_rect{glm::vec2{0.0f, 0.0f}, circle_size};
 
         const glm::vec2 tree_pos{128.0f, 112.0f};
@@ -1237,7 +1237,7 @@ void TextRenderingVisualTest::onRender(engine::core::Context& context) {
 
         text_renderer.setTextStyle("world/visual_test_edge", world_params);
 
-        const glm::vec2 size = text_renderer.getTextSize(kWorldText, font_id_, font_size_, font_path_, &layout);
+        const glm::vec2 size = text_renderer.getTextSize(kWorldText, font_id_, font_size_, &layout);
         glm::vec2 pos = world_anchor_;
         if (alignment_ == 1) {
             pos.x -= size.x * 0.5f;
@@ -1266,7 +1266,7 @@ void TextRenderingVisualTest::onRender(engine::core::Context& context) {
 
         text_renderer.setTextStyle("ui/visual_test_edge", ui_params);
 
-        const glm::vec2 size = text_renderer.getTextSize(kUIText, font_id_, font_size_, font_path_, &layout);
+        const glm::vec2 size = text_renderer.getTextSize(kUIText, font_id_, font_size_, &layout);
         glm::vec2 pos = ui_anchor_;
         if (alignment_ == 1) {
             pos.x -= size.x * 0.5f;
@@ -1390,7 +1390,7 @@ void AudioVisualTest::onEnter(engine::core::Context& context) {
     resources.loadSound(sound_id_, sound_path_);
     audio_loaded_ = true;
     auto& audio_player = context.getAudioPlayer();
-    audio_player.playMusic(music_id_, true, 0, music_path_);
+    audio_player.playMusic(music_id_, true, 0);
 }
 
 void AudioVisualTest::onExit(engine::core::Context& context) {
@@ -1421,13 +1421,13 @@ void AudioVisualTest::onImGui(engine::core::Context& context) {
 
     if (ImGui::Button("Reset (Stop + Replay Music)")) {
         audio_player.stopMusic();
-        audio_player.playMusic(music_id_, true, 0, music_path_);
+        audio_player.playMusic(music_id_, true, 0);
     }
     ImGui::Separator();
 
     ImGui::TextUnformatted("音频测试");
     if (ImGui::Button("播放音乐")) {
-        audio_player.playMusic(music_id_, true, 0, music_path_);
+        audio_player.playMusic(music_id_, true, 0);
     }
     ImGui::SameLine();
     if (ImGui::Button("停止音乐")) {
@@ -1435,7 +1435,7 @@ void AudioVisualTest::onImGui(engine::core::Context& context) {
     }
     if (ImGui::Button("播放音效")) {
         [[maybe_unused]] const bool played =
-            audio_player.playSound2D(sound_id_, glm::vec2{0.0f, 0.0f}, glm::vec2{200.0f, 200.0f}, sound_path_);
+            audio_player.playSound2D(sound_id_, glm::vec2{0.0f, 0.0f}, glm::vec2{200.0f, 200.0f});
     }
 }
 

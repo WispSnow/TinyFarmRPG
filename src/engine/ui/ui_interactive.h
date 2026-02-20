@@ -62,15 +62,14 @@ public:
     void setCurrentImage(entt::id_type name_id);                            ///< @brief 设置当前显示的图片
     virtual void applyStateVisual(entt::id_type state_id);                  ///< @brief 根据状态ID应用视觉效果
 
-    void setSoundEvent(entt::id_type event_id, entt::id_type sound_id, std::string_view path = ""); ///< @brief 设置事件音效覆盖（可选加载路径）
-    void setSoundEvent(entt::id_type event_id, std::string_view path);                                ///< @brief 通过路径设置事件音效覆盖（空路径=禁用）
+    void setSoundEvent(entt::id_type event_id, entt::id_type sound_id); ///< @brief 设置事件音效覆盖
     void disableSoundEvent(entt::id_type event_id);                                                   ///< @brief 禁用指定事件音效
     void clearSoundEventOverride(entt::id_type event_id);                                             ///< @brief 清除指定事件音效覆盖（恢复默认）
     void clearSoundOverrides();                                                                       ///< @brief 清除全部事件音效覆盖（恢复默认）
     void playSoundEvent(entt::id_type event_id);                                                      ///< @brief 播放事件音效
 
-    void setHoverSound(entt::id_type id, std::string_view path = "") { setSoundEvent(UI_SOUND_EVENT_HOVER_ID, id, path); }
-    void setClickSound(entt::id_type id, std::string_view path = "") { setSoundEvent(UI_SOUND_EVENT_CLICK_ID, id, path); }
+    void setHoverSound(entt::id_type id) { setSoundEvent(UI_SOUND_EVENT_HOVER_ID, id); }
+    void setClickSound(entt::id_type id) { setSoundEvent(UI_SOUND_EVENT_CLICK_ID, id); }
     void disableHoverSound() { disableSoundEvent(UI_SOUND_EVENT_HOVER_ID); }
     void disableClickSound() { disableSoundEvent(UI_SOUND_EVENT_CLICK_ID); }
     void clearHoverSoundOverride() { clearSoundEventOverride(UI_SOUND_EVENT_HOVER_ID); }

@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 namespace engine::resource {
 
@@ -35,6 +36,34 @@ public:
     [[nodiscard]] std::string_view findFontPath(entt::id_type id, int pixel_size) const;
     [[nodiscard]] std::string_view findSoundPath(entt::id_type id) const;
     [[nodiscard]] std::string_view findMusicPath(entt::id_type id) const;
+
+    template <typename Fn>
+    void forEachTexture(Fn&& visitor) const {
+        for (const auto& [id, path] : texture_paths_) {
+            visitor(id, std::string_view(path));
+        }
+    }
+
+    template <typename Fn>
+    void forEachFont(Fn&& visitor) const {
+        for (const auto& [key, path] : font_paths_) {
+            visitor(key.id, key.pixel_size, std::string_view(path));
+        }
+    }
+
+    template <typename Fn>
+    void forEachSound(Fn&& visitor) const {
+        for (const auto& [id, path] : sound_paths_) {
+            visitor(id, std::string_view(path));
+        }
+    }
+
+    template <typename Fn>
+    void forEachMusic(Fn&& visitor) const {
+        for (const auto& [id, path] : music_paths_) {
+            visitor(id, std::string_view(path));
+        }
+    }
 
 private:
     std::unordered_map<entt::id_type, std::string> texture_paths_{};
