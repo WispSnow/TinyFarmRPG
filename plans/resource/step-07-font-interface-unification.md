@@ -105,14 +105,14 @@
 
 ## 待办
 
-- [ ] 7.1 复核并收敛 Font API 到 `id + pixel_size`，确保 `getFont` 严格只读缓存
-- [ ] 7.2 将 `unloadFont/clearFonts` 事件从 `enqueue` 改为 `trigger`
-- [ ] 7.2A 在 `resource_manager.cpp` 标注 Font 事件顺序与 listener 重入约束
-- [ ] 7.2B 更新 `events.h` 的 Font 资源事件注释为 trigger 语义
-- [ ] 7.3 复核 TextRenderer 字体失效处理，确保同帧缓存清理生效
-- [ ] 7.4 在严格预加载测试中补齐 Font 语义与“旧路径型 get 不可调用”防回归断言
-- [ ] 7.5 新增字体事件分发时序测试（含 unload 后立即 `getFont == nullptr`）并接入构建
-- [ ] 7.6 完成构建、自动化测试与场景切换手动回归
+- [x] 7.1 复核并收敛 Font API 到 `id + pixel_size`，确保 `getFont` 严格只读缓存
+- [x] 7.2 将 `unloadFont/clearFonts` 事件从 `enqueue` 改为 `trigger`
+- [x] 7.2A 在 `resource_manager.cpp` 标注 Font 事件顺序与 listener 重入约束
+- [x] 7.2B 更新 `events.h` 的 Font 资源事件注释为 trigger 语义
+- [x] 7.3 复核 TextRenderer 字体失效处理，确保同帧缓存清理生效
+- [x] 7.4 在严格预加载测试中补齐 Font 语义与“旧路径型 get 不可调用”防回归断言
+- [x] 7.5 新增字体事件分发时序测试（含 unload 后立即 `getFont == nullptr`）并接入构建
+- [x] 7.6 完成构建、自动化测试与场景切换手动回归
 
 ## 需要澄清
 

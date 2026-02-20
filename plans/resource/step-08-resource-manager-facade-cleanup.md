@@ -117,13 +117,13 @@
 
 ## 待办
 
-- [ ] 8.1 明确“过渡 API 已清零”并完成防回归基线对齐（不做重复清理）
-- [ ] 8.2 去掉三个子管理器的 `friend` 并公开业务操作接口
-- [ ] 8.3 统一 `ResourceManager::clear()` 编排路径（仅走 Facade clear 接口）
-- [ ] 8.3A 引入 `FontHandle` 类型别名并统一 Facade 层接口表达
-- [ ] 8.4 将 AutoTile debug 类型移出 `resource_debug_info.h`
-- [ ] 8.5 新增并接入子管理器可见性与 clear 编排测试
-- [ ] 8.6 完成构建、全量自动化测试与关键场景手动回归
+- [x] 8.1 明确“过渡 API 已清零”并完成防回归基线对齐（不做重复清理）
+- [x] 8.2 去掉三个子管理器的 `friend` 并公开业务操作接口
+- [x] 8.3 统一 `ResourceManager::clear()` 编排路径（仅走 Facade clear 接口）
+- [x] 8.3A 引入 `FontHandle` 类型别名并统一 Facade 层接口表达
+- [x] 8.4 将 AutoTile debug 类型移出 `resource_debug_info.h`
+- [x] 8.5 新增并接入子管理器可见性与 clear 编排测试
+- [x] 8.6 完成构建、全量自动化测试与关键场景手动回归
 
 ## 需要澄清
 

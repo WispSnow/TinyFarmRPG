@@ -40,8 +40,7 @@
 - 本步骤不处理 `Sprite::texture_path_` 去除（该项属于步骤 6）。
 - 本步骤不处理 Audio/Font 缓存迁移（分别在步骤 5/7）。
 
-## 需要新增的文件
-
+## 需要新增的文件x
 | 文件 | 说明 |
 |------|------|
 | `src/engine/resource/texture_loader.h` | `TextureLoader` 声明、`TextureHandle/TextureCache` 类型别名 |
@@ -127,13 +126,13 @@
 
 ## 待办
 
-- [ ] 4.1 新增 `TextureLoader` 并完成 OpenGL 纹理加载逻辑迁移
-- [ ] 4.2 用 `entt::resource_cache` 重写 `TextureManager` 缓存实现
-- [ ] 4.3 将 `ResourceManager` Texture 接口改为 `TextureHandle`
-- [ ] 4.4 迁移 `Renderer` 到句柄访问，清理裸指针使用
-- [ ] 4.5 增加 `GameApp::close()` 清理收口与 Debug 引用计数检查
-- [ ] 4.6 新增并接入 Texture 句柄编译期测试 + 失败路径运行时语义测试
-- [ ] 4.7 执行全量构建、测试与启动回归验证
+- [x] 4.1 新增 `TextureLoader` 并完成 OpenGL 纹理加载逻辑迁移
+- [x] 4.2 用 `entt::resource_cache` 重写 `TextureManager` 缓存实现
+- [x] 4.3 将 `ResourceManager` Texture 接口改为 `TextureHandle`
+- [x] 4.4 迁移 `Renderer` 到句柄访问，清理裸指针使用
+- [x] 4.5 增加 `GameApp::close()` 清理收口与 Debug 引用计数检查
+- [x] 4.6 新增并接入 Texture 句柄编译期测试 + 失败路径运行时语义测试
+- [x] 4.7 执行全量构建、测试与启动回归验证
 
 ## 需要澄清
 

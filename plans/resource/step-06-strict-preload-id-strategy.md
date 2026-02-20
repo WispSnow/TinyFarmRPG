@@ -137,13 +137,13 @@
 
 ## 待办
 
-- [ ] 6.1 为 AssetRegistry 增加可枚举能力，并在 ResourceManager 实现批量预加载
-- [ ] 6.2 在 GameApp / GameRuntimeAssembler / LevelLoader 接入严格预加载时序（含 Title 场景前的 UIPreset 预加载）
-- [ ] 6.3 删除 `Sprite::texture_path_` 并完成 Sprite + UI 图片访问迁移到 ID-only
-- [ ] 6.4 移除 TextRenderer 的 `font_path` 参数，并完成 UIFont 数据流迁移（UIPreset/UILabel/UIButton/UI调用点）
-- [ ] 6.5 收敛 AudioPlayer 与 UI 音效 API 到 ID-only，并完成 UIPreset sounds path->id
-- [ ] 6.6 删除 ResourceManager/子管理器的 path-hash 与 `get(id,path)` 入口
-- [ ] 6.7 完成编译、自动化测试与关键场景手动回归
+- [x] 6.1 为 AssetRegistry 增加可枚举能力，并在 ResourceManager 实现批量预加载
+- [x] 6.2 在 GameApp / GameRuntimeAssembler / LevelLoader 接入严格预加载时序（含 Title 场景前的 UIPreset 预加载）
+- [x] 6.3 删除 `Sprite::texture_path_` 并完成 Sprite + UI 图片访问迁移到 ID-only
+- [x] 6.4 移除 TextRenderer 的 `font_path` 参数，并完成 UIFont 数据流迁移（UIPreset/UILabel/UIButton/UI调用点）
+- [x] 6.5 收敛 AudioPlayer 与 UI 音效 API 到 ID-only，并完成 UIPreset sounds path->id
+- [x] 6.6 删除 ResourceManager/子管理器的 path-hash 与 `get(id,path)` 入口
+- [x] 6.7 完成编译、自动化测试与关键场景手动回归
 
 ## 需要澄清
 
