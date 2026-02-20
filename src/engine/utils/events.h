@@ -29,7 +29,9 @@ struct ReplaceSceneEvent {
     std::unique_ptr<engine::scene::Scene> scene; 
 };
 
-// --- 资源/渲染相关事件（通常推荐 enqueue + dispatcher.update()） ---
+// --- 资源/渲染相关事件 ---
+// Font 失效事件推荐 trigger<T>() 立即分发，避免 TextRenderer 等缓存跨帧持有悬垂引用。
+// 注意：监听者应避免在回调中重入 ResourceManager 的 load/unload/clear 接口。
 struct FontUnloadedEvent {
     entt::id_type font_id{entt::null};
     int font_size{0};

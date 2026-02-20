@@ -395,14 +395,18 @@ Font* ResourceManager::getFont(entt::id_type id, int pixel_size) {
 
 void ResourceManager::unloadFont(entt::id_type id, int pixel_size) {
     font_manager_->unloadFont(id, pixel_size);
-    dispatcher_->enqueue<engine::utils::FontUnloadedEvent>(engine::utils::FontUnloadedEvent{id, pixel_size});
+    // 顺序约束：先释放字体，再同步通知监听者清理缓存（例如 TextRenderer 的布局缓存）。
+    // 监听者不得在该回调链中重入 ResourceManager 的 load/unload/clear 系列接口，
+    // 以避免 trigger 同步分发下的资源重入修改风险。
+    dispatcher_->trigger<engine::utils::FontUnloadedEvent>(engine::utils::FontUnloadedEvent{id, pixel_size});
     spdlog::trace("卸载字体: {} ({}px)", id, pixel_size);
 }
 
 void ResourceManager::clearFonts() {
     font_manager_->clearFonts();
-    dispatcher_->enqueue<engine::utils::FontsClearedEvent>();
-
+    // 与 unloadFont 保持一致：先清空缓存，再同步通知监听者立即失效相关布局状态。
+    // 同样禁止监听者在回调链中重入 ResourceManager 的 load/unload/clear 接口。
+    dispatcher_->trigger<engine::utils::FontsClearedEvent>();
 }
 
 std::vector<TextureDebugInfo> ResourceManager::getTextureDebugInfo() const {
