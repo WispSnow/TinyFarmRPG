@@ -39,6 +39,10 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should drive update with fixed delta time.";
     EXPECT_NE(source.find("updateFrame(time_->getUnscaledDeltaTime())"), std::string::npos)
         << "GameApp run loop should execute per-frame update once after fixed ticks.";
+    EXPECT_NE(source.find("const size_t frame_stack_size_before = scene_manager_->getSceneStackSize();"), std::string::npos)
+        << "GameApp should snapshot scene stack before frame update for accumulator reset safety.";
+    EXPECT_NE(source.find("frame_current_scene_before != frame_current_scene_after"), std::string::npos)
+        << "GameApp should clear accumulator when frame update triggers scene switching.";
     EXPECT_NE(source.find("time_->getInterpolationAlpha()"), std::string::npos)
         << "GameApp run loop should sample interpolation alpha from Time.";
     EXPECT_NE(source.find("config_->render_interpolation_enabled_"), std::string::npos)
