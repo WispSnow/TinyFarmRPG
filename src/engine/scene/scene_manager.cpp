@@ -51,11 +51,11 @@ void SceneManager::fixedUpdate(float delta_time) {
     processPendingActions();
 }
 
-void SceneManager::render() {
+void SceneManager::render(float interpolation_alpha) {
     // 渲染时需要叠加渲染所有场景，而不只是栈顶（用于 PauseMenu/模态 UI 覆盖在游戏画面之上）。
     for (const auto& scene : scene_stack_) {
         if (scene) {
-            scene->render();
+            scene->render(interpolation_alpha);
         }
     }
 }

@@ -20,7 +20,7 @@ public:
 
     bool init() override;
     void update(float delta_time) override;
-    void render() override;
+    void render(float interpolation_alpha) override;
     void clean() override;
 
 private:
@@ -32,4 +32,3 @@ private:
 };
 
 } // namespace tools::visual
-

@@ -4,6 +4,8 @@
 #include "game/runtime/game_mode.h"
 #include "game/defs/events.h"
 
+#include <glm/vec2.hpp>
+
 #include <memory>
 #include <optional>
 
@@ -52,6 +54,8 @@ class GameScene : public engine::scene::Scene {
     game::ui::DialogueBubble* dialogue_bubble_{nullptr};
     game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
     engine::ui::UIScreenFade* screen_fade_{nullptr};
+    glm::vec2 previous_camera_position_{0.0f, 0.0f};
+    bool has_previous_camera_position_{false};
 
 public:
     GameScene(std::string_view name, engine::core::Context& context,
@@ -62,13 +66,14 @@ public:
     bool init() override;
     void fixedUpdate(float delta_time) override;
     void update(float delta_time) override;
-    void render() override;
+    void render(float interpolation_alpha) override;
 
     void clean() override;
     void setGameMode(game::runtime::GameMode mode);
     [[nodiscard]] game::runtime::GameMode getGameMode() const { return game_mode_; }
 
 private:
+    void snapshotInterpolationState();
     void bindSceneInputActions();
     [[nodiscard]] bool initUI();  // 在具体场景中初始化UI管理器，且位置要靠后，确保按键注册顺序正确
 #ifdef TF_ENABLE_DEBUG_UI

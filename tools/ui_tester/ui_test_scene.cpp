@@ -159,8 +159,8 @@ void UITestScene::update(float delta_time) {
     clampLayoutPanelToRoot();
 }
 
-void UITestScene::render() {
-    Scene::render();
+void UITestScene::render(float interpolation_alpha) {
+    Scene::render(interpolation_alpha);
     renderDebugOverlay();
 }
 

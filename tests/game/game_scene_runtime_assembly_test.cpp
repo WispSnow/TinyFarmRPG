@@ -48,6 +48,18 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     EXPECT_NE(assembler_source.find("bool GameRuntimeAssembler::assembleSystems"), std::string::npos);
 }
 
+TEST(GameSceneRuntimeAssemblyTest, CleanResetsCameraInterpolationState) {
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+
+    const std::string scene_source = readTextFile(scene_source_path);
+    ASSERT_FALSE(scene_source.empty());
+
+    EXPECT_NE(scene_source.find("has_previous_camera_position_ = false;"), std::string::npos)
+        << "GameScene::clean should reset camera interpolation state.";
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

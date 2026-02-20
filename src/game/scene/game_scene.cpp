@@ -6,9 +6,11 @@
 #include "pause_menu_scene.h"
 #include "title_scene.h"
 #include "engine/audio/audio_player.h"
+#include "engine/component/transform_component.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/render/camera.h"
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_defaults.h"
 #include "engine/ui/ui_manager.h"
@@ -50,6 +52,8 @@
 
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
+#include <algorithm>
+#include <glm/common.hpp>
 
 using namespace entt::literals;
 
@@ -154,6 +158,8 @@ void GameScene::fixedUpdate(float delta_time) {
         return;
     }
 
+    snapshotInterpolationState();
+
     if (scheduler_) {
 #ifdef TF_ENABLE_DEBUG_UI
         if (scheduler_profiler_ && scheduler_profiler_->isEnabled()) {
@@ -192,18 +198,25 @@ void GameScene::update(float delta_time) {
     Scene::update(delta_time);
 }
 
-void GameScene::render() {
+void GameScene::render(float interpolation_alpha) {
     if (abort_to_title_) {
-        Scene::render();
+        Scene::render(interpolation_alpha);
         return;
     }
 
     auto& renderer = context_.getRenderer();
     auto& camera = context_.getCamera();
+    const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
+    const glm::vec2 camera_position_before = camera.getPosition();
+    if (has_previous_camera_position_) {
+        const glm::vec2 render_camera_position =
+            glm::mix(previous_camera_position_, camera_position_before, clamped_alpha);
+        camera.setPosition(render_camera_position);
+    }
 
-    systems_->ysort_system->update(registry_);
-    systems_->render_system->update(registry_, renderer, camera);
-    systems_->light_system->update(registry_, renderer);
+    systems_->ysort_system->update(registry_, clamped_alpha);
+    systems_->render_system->update(registry_, renderer, camera, clamped_alpha);
+    systems_->light_system->update(registry_, renderer, clamped_alpha);
     systems_->render_target_system->update(renderer);
 #ifdef TF_ENABLE_DEBUG_UI
     if (systems_->debug_render_system) {
@@ -211,7 +224,22 @@ void GameScene::render() {
     }
 #endif
 
-    Scene::render();
+    if (has_previous_camera_position_) {
+        camera.setPosition(camera_position_before);
+    }
+
+    Scene::render(interpolation_alpha);
+}
+
+void GameScene::snapshotInterpolationState() {
+    auto view = registry_.view<engine::component::TransformComponent>();
+    for (auto entity : view) {
+        auto& transform = view.get<engine::component::TransformComponent>(entity);
+        transform.previous_position_ = transform.position_;
+    }
+
+    previous_camera_position_ = context_.getCamera().getPosition();
+    has_previous_camera_position_ = true;
 }
 
 void GameScene::clean() {
@@ -228,6 +256,8 @@ void GameScene::clean() {
 #ifdef TF_ENABLE_DEBUG_UI
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
+    has_previous_camera_position_ = false;
+    previous_camera_position_ = glm::vec2{0.0f, 0.0f};
     Scene::clean();
 }
 

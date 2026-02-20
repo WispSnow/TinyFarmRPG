@@ -35,7 +35,7 @@ void VisualTestSuiteScene::update(float delta_time) {
     Scene::update(delta_time);
 }
 
-void VisualTestSuiteScene::render() {
+void VisualTestSuiteScene::render(float interpolation_alpha) {
     auto* active = getActiveTest();
     auto& renderer = context_.getRenderer();
     auto& camera = context_.getCamera();
@@ -46,7 +46,7 @@ void VisualTestSuiteScene::render() {
     }
 
     drawOverlay(last_delta_time_, active);
-    Scene::render();
+    Scene::render(interpolation_alpha);
 }
 
 void VisualTestSuiteScene::clean() {

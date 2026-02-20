@@ -39,6 +39,12 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should drive update with fixed delta time.";
     EXPECT_NE(source.find("updateFrame(time_->getUnscaledDeltaTime())"), std::string::npos)
         << "GameApp run loop should execute per-frame update once after fixed ticks.";
+    EXPECT_NE(source.find("time_->getInterpolationAlpha()"), std::string::npos)
+        << "GameApp run loop should sample interpolation alpha from Time.";
+    EXPECT_NE(source.find("config_->render_interpolation_enabled_"), std::string::npos)
+        << "GameApp run loop should gate interpolation by config.";
+    EXPECT_NE(source.find("render(interpolation_alpha);"), std::string::npos)
+        << "GameApp run loop should pass alpha into render stage.";
     EXPECT_NE(source.find("time_->clearAccumulator()"), std::string::npos)
         << "GameApp should clear accumulator when scene stack changes.";
     EXPECT_NE(source.find("scene_manager_->fixedUpdate(delta_time)"), std::string::npos)
@@ -54,7 +60,7 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
     EXPECT_NE(source.find("time_->setMaxTicksPerFrame(config_->max_ticks_per_frame_);"), std::string::npos)
         << "GameApp initTime should apply catch-up cap from config.";
 
-    const auto render_pos = source.find("render();");
+    const auto render_pos = source.find("render(interpolation_alpha);");
     const auto dispatch_pos = source.find("dispatcher_->update();");
     ASSERT_NE(render_pos, std::string::npos);
     ASSERT_NE(dispatch_pos, std::string::npos);

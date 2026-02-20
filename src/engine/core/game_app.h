@@ -116,7 +116,7 @@ private:
     void handleEvents();
     void update(float delta_time);
     void updateFrame(float delta_time);
-    void render();
+    void render(float interpolation_alpha);
     void close();
 
     // 各模块的初始化/创建函数，在init()中调用

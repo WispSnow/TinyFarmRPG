@@ -8,6 +8,7 @@ namespace engine::component {
  */
 struct TransformComponent {
     glm::vec2 position_{};          ///< @brief 位置
+    glm::vec2 previous_position_{}; ///< @brief 上一个逻辑 tick 的位置（用于渲染插值）
     glm::vec2 scale_{1.0f};         ///< @brief 缩放
     float rotation_{};              ///< @brief 旋转（弧度制，0 表示不旋转）
 
@@ -23,6 +24,7 @@ struct TransformComponent {
                        glm::vec2 scale = glm::vec2(1.0f, 1.0f), 
                        float rotation = 0.0f) :
                        position_(position),
+                       previous_position_(position),
                        scale_(scale),
                        rotation_(rotation) {}
 };

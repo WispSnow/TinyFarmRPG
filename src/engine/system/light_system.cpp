@@ -9,12 +9,16 @@
 #include <entt/entity/registry.hpp>
 #include <glm/geometric.hpp>
 #include <glm/vec2.hpp>
+#include <glm/common.hpp>
 #include <limits>
 #include <ranges>
+#include <algorithm>
 
 namespace engine::system {
 
-void LightSystem::update(entt::registry& registry, engine::render::Renderer& renderer) {
+void LightSystem::update(entt::registry& registry, engine::render::Renderer& renderer, float interpolation_alpha) {
+    const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
+
     if (const auto* lighting = registry.ctx().find<engine::render::GlobalLightingState>(); lighting) {
         renderer.setAmbient(lighting->ambient);
         for (const auto& directional : lighting->directional_lights
@@ -35,7 +39,8 @@ void LightSystem::update(entt::registry& registry, engine::render::Renderer& ren
             continue;
         }
         const auto& transform = point_view.get<engine::component::TransformComponent>(entity);
-        renderer.addPointLight(transform.position_ + light.offset, light.radius, &light.options);
+        const glm::vec2 render_position = glm::mix(transform.previous_position_, transform.position_, clamped_alpha);
+        renderer.addPointLight(render_position + light.offset, light.radius, &light.options);
     }
 
     auto spot_view = registry.view<engine::component::SpotLightComponent, engine::component::TransformComponent>(
@@ -55,7 +60,8 @@ void LightSystem::update(entt::registry& registry, engine::render::Renderer& ren
         }
 
         const auto& transform = spot_view.get<engine::component::TransformComponent>(entity);
-        renderer.addSpotLight(transform.position_, light.radius, direction, &light.options);
+        const glm::vec2 render_position = glm::mix(transform.previous_position_, transform.position_, clamped_alpha);
+        renderer.addSpotLight(render_position, light.radius, direction, &light.options);
     }
 
     auto emissive_rect_view = registry.view<engine::component::EmissiveRectComponent, engine::component::TransformComponent>(
@@ -67,7 +73,8 @@ void LightSystem::update(entt::registry& registry, engine::render::Renderer& ren
             continue;
         }
         const auto& transform = emissive_rect_view.get<engine::component::TransformComponent>(entity);
-        renderer.addEmissiveRect(engine::utils::Rect(transform.position_, emissive.size), &emissive.params);
+        const glm::vec2 render_position = glm::mix(transform.previous_position_, transform.position_, clamped_alpha);
+        renderer.addEmissiveRect(engine::utils::Rect(render_position, emissive.size), &emissive.params);
     }
 
     auto emissive_sprite_view = registry.view<
@@ -84,7 +91,8 @@ void LightSystem::update(entt::registry& registry, engine::render::Renderer& ren
         if (size.x <= 0.0f || size.y <= 0.0f) {
             continue;
         }
-        const glm::vec2 position = transform.position_ - sprite.pivot_ * size;
+        const glm::vec2 render_position = glm::mix(transform.previous_position_, transform.position_, clamped_alpha);
+        const glm::vec2 position = render_position - sprite.pivot_ * size;
 
         engine::utils::EmissiveParams params = emissive.params;
         params.transform.rotation_radians = transform.rotation_;
