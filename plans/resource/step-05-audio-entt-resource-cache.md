@@ -127,16 +127,16 @@
 
 ## 待办
 
-- [ ] 5.1 新增 `AudioLoader` 并迁移解码逻辑
-- [ ] 5.1A 提升 `AudioBuffer` 到 `audio_loader.h` 并完成句柄类型统一
-- [ ] 5.1B 明确并落实 `miniaudio` 单实现单元约束（`audio_player.cpp` 独占实现宏）
-- [ ] 5.2 用 `entt::resource_cache` 重写 `AudioManager` Sound/Music 缓存
-- [ ] 5.2A 重构 `collectAudioDebugInfo` helper 签名以匹配新 cache 类型
-- [ ] 5.3 切换 `ResourceManager` Audio API 到句柄类型
-- [ ] 5.4 迁移 `AudioPlayer` 到句柄语义并保持行为不变
-- [ ] 5.5 修正音频调试信息采集与 `AssetRegistry` 回填
-- [ ] 5.6 新增并接入 Audio 句柄 API 与失败路径测试
-- [ ] 5.7 执行全量构建、测试与手动回归
+- [x] 5.1 新增 `AudioLoader` 并迁移解码逻辑
+- [x] 5.1A 提升 `AudioBuffer` 到 `audio_loader.h` 并完成句柄类型统一
+- [x] 5.1B 明确并落实 `miniaudio` 单实现单元约束（`audio_player.cpp` 独占实现宏）
+- [x] 5.2 用 `entt::resource_cache` 重写 `AudioManager` Sound/Music 缓存
+- [x] 5.2A 重构 `collectAudioDebugInfo` helper 签名以匹配新 cache 类型
+- [x] 5.3 切换 `ResourceManager` Audio API 到句柄类型
+- [x] 5.4 迁移 `AudioPlayer` 到句柄语义并保持行为不变
+- [x] 5.5 修正音频调试信息采集与 `AssetRegistry` 回填
+- [x] 5.6 新增并接入 Audio 句柄 API 与失败路径测试
+- [x] 5.7 执行全量构建、测试与手动回归
 
 ## 需要澄清
 

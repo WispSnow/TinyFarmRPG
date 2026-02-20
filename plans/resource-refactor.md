@@ -86,7 +86,7 @@
 
 ### Phase B: 缓存迁移
 
-#### 步骤 4: Texture 迁移到 entt::resource_cache
+#### 步骤 4: Texture 迁移到 entt::resource_cache (已完成)
 
 **目标：** 使用 `entt::resource_cache<GL_Texture, TextureLoader>` 替换手写的 `unordered_map` 缓存，消费方获得 `entt::resource<GL_Texture>` 句柄，消除裸指针悬垂风险。
 
@@ -104,7 +104,7 @@
 
 ---
 
-#### 步骤 5: Audio 迁移到 entt::resource_cache
+#### 步骤 5: Audio 迁移到 entt::resource_cache (已完成)
 
 **目标：** 统一 Sound 和 Music 的缓存实现，利用 `entt::resource_cache` 替换两个 `unordered_map`。
 
@@ -119,7 +119,7 @@
 
 ### Phase C: API 整理
 
-#### 步骤 6: 切换到严格预加载，统一资源 ID 策略
+#### 步骤 6: 切换到严格预加载，统一资源 ID 策略 (已完成)
 
 **目标：** 在步骤 2 构建的完整资产索引基础上，切换到严格预加载模式——所有资源在使用前必须已加载。移除 path 回退机制，简化 API。
 
@@ -132,7 +132,7 @@
 
 ---
 
-#### 步骤 7: Font 接口统一（保留现有缓存实现）
+#### 步骤 7: Font 接口统一（保留现有缓存实现） (已完成)
 
 **目标：** Font 不迁移到 `entt::resource_cache`，但统一接口风格，修复 TextRenderer 的缓存失效隐患。
 
@@ -146,7 +146,7 @@
 
 ---
 
-#### 步骤 8: 精简 ResourceManager Facade，删除旧 API
+#### 步骤 8: 精简 ResourceManager Facade，删除旧 API (已完成)
 
 **目标：** 在前述步骤完成后，精简 ResourceManager 的公有接口，删除所有过渡期兼容代码。
 
@@ -161,7 +161,7 @@
 
 ### Phase D: 可选
 
-#### 步骤 9（可选）: Debug 模式 hash 冲突检测
+#### 步骤 9（可选）: Debug 模式 hash 冲突检测 （略过）
 
 **目标：** 在 debug 构建中检测资源 ID 冲突，防止不同路径的 hash 碰撞导致静默覆盖。
 
