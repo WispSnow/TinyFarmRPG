@@ -14,7 +14,7 @@ RenderTargetSystem::RenderTargetSystem(entt::registry& registry)
 
 }
 
-void RenderTargetSystem::update(engine::render::Renderer& renderer) {
+void RenderTargetSystem::render(engine::render::Renderer& renderer) {
     if (cursor_entity_ == entt::null) {
         createCursorEntity();
         if (cursor_entity_ == entt::null) {

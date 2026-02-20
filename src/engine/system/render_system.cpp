@@ -12,7 +12,7 @@
 
 namespace engine::system {
 
-void RenderSystem::update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha) {
+void RenderSystem::render(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha) {
     const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
 
     // 对RenderComponent进行排序 (需要自定义RenderComponent的比较运算符)

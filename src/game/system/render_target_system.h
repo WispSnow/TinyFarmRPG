@@ -20,7 +20,7 @@ class RenderTargetSystem {
 public:
     explicit RenderTargetSystem(entt::registry& registry);
 
-    void update(engine::render::Renderer& renderer);
+    void render(engine::render::Renderer& renderer);
 
 private:
     void createCursorEntity();

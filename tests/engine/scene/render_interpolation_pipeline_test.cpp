@@ -64,11 +64,11 @@ TEST(RenderInterpolationPipelineTest, GameSceneConsumesAlphaForRenderSystems) {
         << "GameScene render signature should accept alpha.";
     EXPECT_NE(source.find("const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);"), std::string::npos)
         << "GameScene render should clamp incoming alpha before use.";
-    EXPECT_NE(source.find("systems_->ysort_system->update(registry_, clamped_alpha);"), std::string::npos)
+    EXPECT_NE(source.find("systems_->ysort_system->render(registry_, clamped_alpha);"), std::string::npos)
         << "YSort should consume interpolated alpha path.";
-    EXPECT_NE(source.find("systems_->render_system->update(registry_, renderer, camera, clamped_alpha);"), std::string::npos)
+    EXPECT_NE(source.find("systems_->render_system->render(registry_, renderer, camera, clamped_alpha);"), std::string::npos)
         << "RenderSystem should consume interpolated alpha path.";
-    EXPECT_NE(source.find("systems_->light_system->update(registry_, renderer, clamped_alpha);"), std::string::npos)
+    EXPECT_NE(source.find("systems_->light_system->render(registry_, renderer, clamped_alpha);"), std::string::npos)
         << "LightSystem should consume interpolated alpha path.";
     EXPECT_NE(source.find("Scene::render(interpolation_alpha);"), std::string::npos)
         << "GameScene should forward alpha to Scene base render for UI stack.";

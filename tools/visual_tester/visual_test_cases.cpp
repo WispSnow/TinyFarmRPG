@@ -393,7 +393,7 @@ void TileAutoTileYSortVisualTest::onUpdate(float /*delta_time*/, engine::core::C
 
     // Update render.depth_ from transform.y (ysort).
     engine::system::YSortSystem ysort{};
-    ysort.update(scene_->getRegistry(), 1.0f);
+    ysort.render(scene_->getRegistry(), 1.0f);
 }
 
 void TileAutoTileYSortVisualTest::onRender(engine::core::Context& context) {

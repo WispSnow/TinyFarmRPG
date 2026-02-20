@@ -214,13 +214,13 @@ void GameScene::render(float interpolation_alpha) {
         camera.setPosition(render_camera_position);
     }
 
-    systems_->ysort_system->update(registry_, clamped_alpha);
-    systems_->render_system->update(registry_, renderer, camera, clamped_alpha);
-    systems_->light_system->update(registry_, renderer, clamped_alpha);
-    systems_->render_target_system->update(renderer);
+    systems_->ysort_system->render(registry_, clamped_alpha);
+    systems_->render_system->render(registry_, renderer, camera, clamped_alpha);
+    systems_->light_system->render(registry_, renderer, clamped_alpha);
+    systems_->render_target_system->render(renderer);
 #ifdef TF_ENABLE_DEBUG_UI
     if (systems_->debug_render_system) {
-        systems_->debug_render_system->update(registry_, renderer);
+        systems_->debug_render_system->render(registry_, renderer);
     }
 #endif
 

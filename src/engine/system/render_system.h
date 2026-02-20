@@ -25,13 +25,13 @@ class RenderSystem {
     
 public:
     /**
-     * @brief 更新渲染系统
+     * @brief 渲染阶段入口
      * 
      * @param registry entt::registry 的引用
      * @param renderer Renderer 的引用
      * @param camera Camera 的引用
      */
-    void update(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha);
+    void render(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha);
 };
 
 } // namespace engine::system 

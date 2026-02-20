@@ -7,7 +7,7 @@
 
 namespace engine::system {
 
-void YSortSystem::update(entt::registry& registry, float interpolation_alpha) {
+void YSortSystem::render(entt::registry& registry, float interpolation_alpha) {
     const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
 
     // 让 RenderComponent.depth_ 等于 TransformComponent.position_.y（y 越大越靠下 → 越晚绘制 → 越遮挡在前）。
