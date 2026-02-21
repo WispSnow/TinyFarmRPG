@@ -8,19 +8,22 @@
 
 ## 架构总览
 
-```
-              submit(task)
- 主线程 ────────────────────► ┌─────────────┐
-                              │  WorkQueue   │ ◄─── 有界队列（上一章）
-                              │  (bounded)   │
-                              └──────┬───┬───┘
-                                     │   │
-                          ┌──────────┘   └──────────┐
-                          ▼                          ▼
-                    ┌──────────┐              ┌──────────┐
-                    │ Worker 1 │              │ Worker N │
-                    │ (jthread)│              │ (jthread)│
-                    └──────────┘              └──────────┘
+```mermaid
+graph TD
+    M["主线程"] -->|"submit(task)"| Q["WorkQueue﹤Task﹥<br/>有界队列（上一章）"]
+    Q --> W1["Worker 1<br/>(jthread)"]
+    Q --> W2["Worker 2<br/>(jthread)"]
+    Q --> WN["Worker N<br/>(jthread)"]
+
+    W1 -->|执行完毕| I["idle_cv_ 通知"]
+    W2 -->|执行完毕| I
+    WN -->|执行完毕| I
+
+    style M fill:#e3f2fd
+    style Q fill:#fff3e0
+    style W1 fill:#e8f5e9
+    style W2 fill:#e8f5e9
+    style WN fill:#e8f5e9
 ```
 
 ---
@@ -147,6 +150,27 @@ void ThreadPool::workerLoop(std::stop_token stop_token) {
 }
 ```
 
+Worker 循环的完整流程：
+
+```mermaid
+flowchart TD
+    A[Worker 启动] --> B{stop_requested?}
+    B -->|是| EXIT[退出循环]
+    B -->|否| C["queue_.pop(stop_token)<br/>阻塞等待任务"]
+    C --> D{取到任务？}
+    D -->|否| EXIT
+    D -->|是| E["active_tasks_ +1"]
+    E --> F["执行 task()"]
+    F --> G["active_tasks_ -1"]
+    G --> H{队列空 且<br/>active_tasks_ == 0?}
+    H -->|是| I["idle_cv_.notify_all()"]
+    H -->|否| B
+    I --> B
+
+    style F fill:#e3f2fd
+    style EXIT fill:#ffcdd2
+```
+
 **为什么需要 `active_tasks_`？** 「队列为空」不等于「所有任务都完成了」——可能有任务已被取出但还在执行。`waitForIdle()` 需要同时检查队列为空 **且** 没有正在执行的任务。
 
 ---
@@ -172,19 +196,20 @@ void ThreadPool::stop() {
 
 **停机流程图**：
 
-```
-stop() 被调用
-  │
-  ├─ stopping_ = true          ← 拒绝新的 submit
-  │
-  ├─ queue_.close()            ← 唤醒所有在 pop() 中等待的 worker
-  │                               worker 的 pop() 返回 nullopt → break
-  │
-  ├─ request_stop() on each    ← 设置每个 jthread 的 stop_token
-  │                               正在执行任务的 worker 下次检查 stop_token 时退出
-  │
-  └─ workers_.clear()          ← jthread 析构 = request_stop + join
-                                  阻塞直到所有 worker 退出
+```mermaid
+flowchart TD
+    A["stop() 被调用"] --> B{"stopping_ 已为 true？"}
+    B -->|是| Z["直接返回（幂等）"]
+    B -->|否| C["stopping_ = true<br/>拒绝新的 submit"]
+    C --> D["queue_.close()<br/>唤醒所有在 pop() 中等待的 worker"]
+    D --> E["对每个 jthread 调用 request_stop()<br/>设置 stop_token"]
+    E --> F["workers_.clear()<br/>jthread 析构 = request_stop + join"]
+    F --> G["阻塞直到所有 worker 退出 ✅"]
+
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style G fill:#e8f5e9
 ```
 
 **关键特性**：

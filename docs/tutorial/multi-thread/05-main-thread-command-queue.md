@@ -126,28 +126,42 @@ main_queue->enqueue([&main_queue] {
 
 两阶段设计避免了这个问题：取出命令后释放锁，然后在无锁状态下执行。
 
+```mermaid
+sequenceDiagram
+    participant W as Worker 线程
+    participant Q as 命令队列 (mutex_)
+    participant M as 主线程 drain()
+
+    W->>Q: enqueue(cmd_A)
+    W->>Q: enqueue(cmd_B)
+
+    Note over M: ═══ 阶段 1：加锁取出 ═══
+    M->>Q: lock(mutex_)
+    M->>Q: 取出 cmd_A, cmd_B
+    M->>Q: unlock(mutex_)
+    Note over Q: 锁已释放，Worker 可继续 enqueue
+
+    Note over M: ═══ 阶段 2：无锁执行 ═══
+    M->>M: cmd_A()
+    M->>M: cmd_B()
+    Note over M: 执行期间无需持锁<br/>避免死锁风险
+```
+
 ---
 
 ## 在游戏循环中的位置
 
-```cpp
-// src/engine/core/game_app.cpp — 主循环
+```mermaid
+graph TD
+    A["handleEvents()<br/>输入采样"] --> B["time_->update()"]
+    B --> C["fixed tick 循环<br/>物理 / 逻辑"]
+    C --> D["scene.update(dt)<br/>帧更新"]
+    D --> E["🔶 drainMainThreadCommands()<br/>执行异步命令"]
+    E --> F["render(alpha)<br/>渲染"]
+    F --> G["dispatcher_->update()<br/>事件结算"]
+    G -.->|下一帧| A
 
-while (running_) {
-    handleEvents();                      // 输入
-    time_->update();
-
-    while (time_->tryConsumeFixedTick()) {
-        // fixed update...              // 物理/逻辑
-    }
-
-    scene_manager_->currentScene().update(dt);  // 帧更新
-
-    drainMainThreadCommands();           // ← 在这里执行异步命令
-
-    render(interpolation_alpha);         // 渲染
-    dispatcher_->update();               // 事件结算
-}
+    style E fill:#fff3e0,stroke:#f57c00,stroke-width:3px
 ```
 
 **为什么放在 update 和 render 之间？**
@@ -162,27 +176,31 @@ while (running_) {
 
 以地图纹理预加载为例：
 
-```
-主线程                              Worker 线程
-  │                                    │
-  ├─ scheduleAsyncPreloadTask()        │
-  │    └─ pool.submit(lambda) ────────►│
-  │                                    │
-  │  ┌─────────────────────────────────┤
-  │  │                                 ├─ preprocessLevel() [解析 JSON]
-  │  │                                 ├─ decodeRGBA()      [解码图片]
-  │  │                                 │
-  │  │                                 ├─ main_queue.enqueue(command)
-  │  │                                 │    command 内容：
-  │  │                                 │    "调用 loadTextureFromDecoded()"
-  │  │                                 │
-  │  │  drainMainThreadCommands()      │
-  │  │    └─ command()                 │
-  │  │        └─ glTexImage2D(...)     │
-  │  │        └─ state = Ready         │
-  │  └─────────────────────────────────┘
-  │
-  ├─ render()  ← 纹理已上传，本帧可见
+```mermaid
+sequenceDiagram
+    participant M as 主线程
+    participant Q as MainThreadCommandQueue
+    participant W as Worker 线程
+
+    M->>W: scheduleAsyncPreloadTask()<br/>pool.submit(lambda)
+    activate W
+
+    W->>W: preprocessLevel() 解析 JSON
+    W->>W: decodeRGBA() 解码图片
+    Note over W: 产出 DecodedImage<br/>（CPU 像素数据）
+
+    W->>Q: enqueue(command)<br/>std::move(decoded)
+    deactivate W
+    Note over Q: command 内容：<br/>loadTextureFromDecoded()
+
+    M->>Q: drainMainThreadCommands()
+    activate M
+    Q->>M: 取出并执行 command
+    M->>M: glTexImage2D(...) 上传 GPU
+    M->>M: state = Ready
+    deactivate M
+
+    Note over M: render() — 纹理已上传，本帧可见 ✅
 ```
 
 **数据传递方式**：`DecodedImage`（含像素数据的 vector）被 `std::move` 捕获到 lambda 中，从 worker 线程转移到主线程。没有共享——是**所有权转移**。
