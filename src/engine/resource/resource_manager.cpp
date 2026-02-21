@@ -261,6 +261,13 @@ TextureHandle ResourceManager::loadTexture(entt::id_type id, std::string_view fi
     return texture_manager_->loadTexture(id, file_path);
 }
 
+TextureHandle ResourceManager::loadTextureFromDecoded(entt::id_type id,
+                                                      std::string_view file_path,
+                                                      const DecodedImage& decoded) {
+    asset_registry_->registerTexture(id, file_path);
+    return texture_manager_->loadTextureFromDecoded(id, file_path, decoded);
+}
+
 TextureHandle ResourceManager::getTexture(entt::id_type id) {
     if (auto cached = texture_manager_->findTexture(id)) {
         return cached;

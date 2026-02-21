@@ -9,6 +9,9 @@
 # ============================================
 
 target_sources(engine PRIVATE
+    # Async
+    engine/async/thread_pool.cpp
+    engine/async/main_thread_command_queue.cpp
     # Audio
     engine/audio/audio_player.cpp
     engine/audio/stb_vorbis_impl.c
@@ -21,6 +24,8 @@ target_sources(engine PRIVATE
     # Resource
     engine/resource/asset_registry.cpp
     engine/resource/resource_manager.cpp
+    engine/resource/image_decode_service.cpp
+    engine/resource/font_preprocess_service.cpp
     engine/resource/texture_loader.cpp
     engine/resource/texture_manager.cpp
     engine/resource/audio_loader.cpp
@@ -50,6 +55,7 @@ target_sources(engine PRIVATE
     engine/input/input_manager.cpp
     # Loader
     engine/loader/level_loader.cpp
+    engine/loader/level_preprocess_service.cpp
     engine/loader/basic_entity_builder.cpp
     # Scene
     engine/scene/scene.cpp

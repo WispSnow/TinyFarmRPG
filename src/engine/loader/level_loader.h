@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/utils/math.h"
 #include "basic_entity_builder.h"
+#include "engine/loader/level_preprocess_data.h"
 #include <string>
 #include <string_view>
 #include <memory>
@@ -26,6 +27,7 @@ namespace engine::scene {
 namespace engine::resource {
     class ResourceManager;
     class AutoTileLibrary;
+    struct DecodedImage;
 }
 
 namespace engine::spatial {
@@ -87,6 +89,10 @@ public:
     [[nodiscard]] bool loadLevel(std::string_view level_path);
     /// @brief 预加载关卡相关 JSON/tileset/纹理/自动图块规则（不创建实体）
     [[nodiscard]] bool preloadLevelData(std::string_view level_path);
+    /// @brief worker 线程阶段：仅做 JSON 预处理/路径收集，不触碰 GL/registry。
+    [[nodiscard]] static LevelPreprocessResult preprocessLevelDataWorker(std::string_view level_path);
+    /// @brief 主线程提交阶段：根据预处理结果提交资源（允许触碰 GL）。
+    [[nodiscard]] bool preloadLevelDataFromPreprocess(const LevelPreprocessData& data, bool preload_textures = true);
 
     // --- getters and setters ---
     void setUseSpatialIndex(bool use) { use_spatial_index_ = use; }

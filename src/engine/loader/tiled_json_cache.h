@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -23,6 +25,7 @@ inline std::deque<std::string> g_level_json_cache_order{};
 
 inline std::unordered_map<std::string, JsonPtr> g_tileset_json_cache{};
 inline std::deque<std::string> g_tileset_json_cache_order{};
+inline std::shared_mutex g_json_cache_mutex{};
 
 [[nodiscard]] inline JsonPtr loadJsonFromFile(std::string_view file_path, std::string_view kind) {
     std::ifstream file{std::filesystem::path(std::string(file_path))};
@@ -46,6 +49,7 @@ inline std::deque<std::string> g_tileset_json_cache_order{};
 }
 
 inline void clearJsonCache() {
+    std::unique_lock lock(g_json_cache_mutex);
     g_level_json_cache.clear();
     g_level_json_cache_order.clear();
     g_tileset_json_cache.clear();
@@ -53,10 +57,12 @@ inline void clearJsonCache() {
 }
 
 [[nodiscard]] inline std::size_t levelJsonCacheSize() {
+    std::shared_lock lock(g_json_cache_mutex);
     return g_level_json_cache.size();
 }
 
 [[nodiscard]] inline std::size_t tilesetJsonCacheSize() {
+    std::shared_lock lock(g_json_cache_mutex);
     return g_tileset_json_cache.size();
 }
 
@@ -79,13 +85,21 @@ inline void enforceCapacity(std::unordered_map<std::string, JsonPtr>& cache,
                                           std::string_view file_path,
                                           std::string_view kind) {
     const std::string key(file_path);
-    if (auto it = cache.find(key); it != cache.end()) {
-        return it->second;
+    {
+        std::shared_lock read_lock(g_json_cache_mutex);
+        if (auto it = cache.find(key); it != cache.end()) {
+            return it->second;
+        }
     }
 
     auto json_ptr = loadJsonFromFile(file_path, kind);
     if (!json_ptr) {
         return nullptr;
+    }
+
+    std::unique_lock write_lock(g_json_cache_mutex);
+    if (auto it = cache.find(key); it != cache.end()) {
+        return it->second;
     }
 
     cache.emplace(key, json_ptr);

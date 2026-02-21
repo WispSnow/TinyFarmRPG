@@ -39,6 +39,10 @@ namespace engine::spatial {
     class SpatialIndexManager;
 }
 
+namespace engine::async {
+    class MainThreadCommandQueue;
+}
+
 namespace engine::core {
     class GameState;
     class Time;
@@ -63,6 +67,7 @@ private:
     engine::audio::AudioPlayer& audio_player_;              ///< @brief 音频播放器
     engine::core::GameState& game_state_;                   ///< @brief 游戏状态
     engine::core::Time& time_;                              ///< @brief 时间
+    engine::async::MainThreadCommandQueue& main_thread_command_queue_; ///< @brief 主线程命令队列
 #ifdef TF_ENABLE_DEBUG_UI
     engine::debug::DebugUIManager& debug_ui_manager_;       ///< @brief 调试面板管理器
 #endif
@@ -80,6 +85,7 @@ private:
             engine::audio::AudioPlayer& audio_player,
             engine::core::GameState& game_state,
             engine::core::Time& time,
+            engine::async::MainThreadCommandQueue& main_thread_command_queue,
 #ifdef TF_ENABLE_DEBUG_UI
             engine::debug::DebugUIManager& debug_ui_manager,
 #endif
@@ -100,6 +106,7 @@ public:
                                                          engine::audio::AudioPlayer& audio_player,
                                                          engine::core::GameState& game_state,
                                                          engine::core::Time& time,
+                                                         engine::async::MainThreadCommandQueue& main_thread_command_queue,
 #ifdef TF_ENABLE_DEBUG_UI
                                                          engine::debug::DebugUIManager& debug_ui_manager,
 #endif
@@ -124,6 +131,7 @@ public:
     [[nodiscard]] engine::audio::AudioPlayer& getAudioPlayer() const { return audio_player_; }
     [[nodiscard]] engine::core::GameState& getGameState() const { return game_state_; }
     [[nodiscard]] engine::core::Time& getTime() const { return time_; }
+    [[nodiscard]] engine::async::MainThreadCommandQueue& getMainThreadCommandQueue() const { return main_thread_command_queue_; }
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] engine::debug::DebugUIManager& getDebugUIManager() const { return debug_ui_manager_; }
 #endif

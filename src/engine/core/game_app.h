@@ -47,6 +47,10 @@ namespace engine::spatial {
 class SpatialIndexManager;
 }
 
+namespace engine::async {
+class MainThreadCommandQueue;
+}
+
 namespace engine::core {        // 命名空间的最佳实践：与文件路径一致
 class Time;
 class Config;
@@ -82,6 +86,7 @@ private:
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_;
     std::unique_ptr<engine::core::GameState> game_state_;
     std::unique_ptr<engine::spatial::SpatialIndexManager> spatial_index_manager_;
+    std::unique_ptr<engine::async::MainThreadCommandQueue> main_thread_command_queue_;
 
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<engine::debug::DebugUIManager> debug_ui_manager_;
@@ -117,6 +122,7 @@ private:
     void update(float delta_time);
     void updateFrame(float delta_time);
     void render(float interpolation_alpha);
+    void drainMainThreadCommands();
     void close();
 
     // 各模块的初始化/创建函数，在init()中调用
@@ -129,6 +135,7 @@ private:
 #endif
     [[nodiscard]] bool initGameState();
     [[nodiscard]] bool initTime();
+    [[nodiscard]] bool initMainThreadCommandQueue();
     [[nodiscard]] bool initResourceManager();
     [[nodiscard]] bool initAutoTileLibrary();
     [[nodiscard]] bool initUIPresetManager();

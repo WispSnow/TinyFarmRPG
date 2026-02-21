@@ -14,6 +14,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/scene/scene_manager.h"
 #include "engine/ui/ui_preset_manager.h"
+#include "engine/async/main_thread_command_queue.h"
 #include "engine/utils/json_file_loader.h"
 #include "engine/utils/events.h"
 #ifdef TF_ENABLE_DEBUG_UI
@@ -203,6 +204,8 @@ void GameApp::run() {
             time_->clearAccumulator();
         }
 
+        drainMainThreadCommands();
+
         const float interpolation_alpha = config_->render_interpolation_enabled_
             ? time_->getInterpolationAlpha()
             : 1.0f;
@@ -247,6 +250,7 @@ bool GameApp::init() {
 #endif
     if (!initGameState()) return false;
     if (!initTime()) return false;
+    if (!initMainThreadCommandQueue()) return false;
     if (!initResourceManager()) return false;
     if (!initAutoTileLibrary()) return false;
     if (!initUIPresetManager()) return false;
@@ -308,6 +312,13 @@ void GameApp::render(float interpolation_alpha) {
     renderer_->present();
 }
 
+void GameApp::drainMainThreadCommands() {
+    if (!main_thread_command_queue_) {
+        return;
+    }
+    (void)main_thread_command_queue_->drain();
+}
+
 void GameApp::close() {
     spdlog::trace("关闭 GameApp ...");
 
@@ -319,6 +330,10 @@ void GameApp::close() {
     if (scene_manager_) {
         scene_manager_->close();
         scene_manager_.reset();
+    }
+
+    if (main_thread_command_queue_) {
+        main_thread_command_queue_->clear();
     }
 
     // 释放持有引用关系的 Context，再依次释放依赖的渲染对象
@@ -342,6 +357,7 @@ void GameApp::close() {
         resource_manager_->clear();
     }
     resource_manager_.reset();
+    main_thread_command_queue_.reset();
 
     // ImGui 依赖的 OpenGL 上下文必须在窗口销毁前清理
     gl_renderer_.reset();
@@ -478,6 +494,11 @@ bool GameApp::initTime() {
     return true;
 }
 
+bool GameApp::initMainThreadCommandQueue() {
+    main_thread_command_queue_ = std::make_unique<engine::async::MainThreadCommandQueue>();
+    return true;
+}
+
 bool GameApp::initResourceManager() {
     resource_manager_ = engine::resource::ResourceManager::create(dispatcher_.get());
     if (!resource_manager_) {
@@ -593,6 +614,11 @@ bool GameApp::initSpatialIndexManager()
 
 bool GameApp::initContext()
 {
+    if (!main_thread_command_queue_) {
+        spdlog::error("初始化上下文失败：MainThreadCommandQueue 未初始化。");
+        return false;
+    }
+
     context_ = engine::core::Context::create(*dispatcher_,
                                              *input_manager_,
                                              *gl_renderer_,
@@ -605,6 +631,7 @@ bool GameApp::initContext()
                                              *audio_player_,
                                              *game_state_,
                                              *time_,
+                                             *main_thread_command_queue_,
 #ifdef TF_ENABLE_DEBUG_UI
                                              *debug_ui_manager_,
 #endif

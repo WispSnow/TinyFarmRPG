@@ -10,6 +10,7 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
 #include "engine/ui/ui_preset_manager.h"
+#include "engine/async/main_thread_command_queue.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -31,6 +32,7 @@ std::unique_ptr<Context> Context::create(entt::dispatcher& dispatcher,
                                         engine::audio::AudioPlayer& audio_player,
                                         engine::core::GameState& game_state,
                                         engine::core::Time& time,
+                                        engine::async::MainThreadCommandQueue& main_thread_command_queue,
 #ifdef TF_ENABLE_DEBUG_UI
                                         engine::debug::DebugUIManager& debug_ui_manager,
 #endif
@@ -48,6 +50,7 @@ std::unique_ptr<Context> Context::create(entt::dispatcher& dispatcher,
                     audio_player,
                     game_state,
                     time,
+                    main_thread_command_queue,
 #ifdef TF_ENABLE_DEBUG_UI
                     debug_ui_manager,
 #endif
@@ -67,6 +70,7 @@ Context::Context(entt::dispatcher& dispatcher,
                  engine::audio::AudioPlayer& audio_player,
                  engine::core::GameState& game_state,
                  engine::core::Time& time,
+                 engine::async::MainThreadCommandQueue& main_thread_command_queue,
 #ifdef TF_ENABLE_DEBUG_UI
                  engine::debug::DebugUIManager& debug_ui_manager,
 #endif
@@ -83,6 +87,7 @@ Context::Context(entt::dispatcher& dispatcher,
       audio_player_(audio_player),
       game_state_(game_state),
       time_(time),
+      main_thread_command_queue_(main_thread_command_queue),
 #ifdef TF_ENABLE_DEBUG_UI
       debug_ui_manager_(debug_ui_manager),
 #endif

@@ -1,5 +1,6 @@
 #pragma once
 #include "texture_loader.h"
+#include "decoded_image.h"
 
 #include <string_view>
 #include <entt/core/fwd.hpp>
@@ -36,6 +37,7 @@ public:
      * @note 如果纹理未加载，则从文件路径加载纹理，并返回加载的纹理句柄
      */
     TextureHandle loadTexture(entt::id_type id, std::string_view file_path);
+    TextureHandle loadTextureFromDecoded(entt::id_type id, std::string_view file_path, const DecodedImage& decoded);
     TextureHandle findTexture(entt::id_type id);
     
     /**

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "engine/audio/audio_player.h"
+#include "engine/async/main_thread_command_queue.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/core/time.h"
@@ -149,6 +150,7 @@ protected:
     std::unique_ptr<engine::render::TextRenderer> text_renderer_{};
     engine::spatial::SpatialIndexManager spatial_index_manager_{};
     std::unique_ptr<engine::core::Time> time_{};
+    std::unique_ptr<engine::async::MainThreadCommandQueue> main_thread_command_queue_{};
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<engine::debug::DebugUIManager> debug_ui_manager_{};
 #endif
@@ -226,6 +228,7 @@ protected:
         }
 
         time_ = std::make_unique<engine::core::Time>();
+        main_thread_command_queue_ = std::make_unique<engine::async::MainThreadCommandQueue>();
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_ = std::make_unique<engine::debug::DebugUIManager>();
 #endif
@@ -241,6 +244,7 @@ protected:
                                                  *audio_player_,
                                                  *game_state_,
                                                  *time_,
+                                                 *main_thread_command_queue_,
 #ifdef TF_ENABLE_DEBUG_UI
                                                  *debug_ui_manager_,
 #endif
@@ -259,6 +263,7 @@ protected:
 #endif
         ui_preset_manager_.reset();
         time_.reset();
+        main_thread_command_queue_.reset();
         text_renderer_.reset();
         camera_.reset();
         renderer_.reset();
