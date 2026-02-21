@@ -39,6 +39,8 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
         << "GameApp run loop should drive update with fixed delta time.";
     EXPECT_NE(source.find("updateFrame(time_->getUnscaledDeltaTime())"), std::string::npos)
         << "GameApp run loop should execute per-frame update once after fixed ticks.";
+    EXPECT_NE(source.find("drainMainThreadCommands();"), std::string::npos)
+        << "GameApp run loop should drain main-thread commands at a fixed commit point.";
     EXPECT_NE(source.find("const size_t frame_stack_size_before = scene_manager_->getSceneStackSize();"), std::string::npos)
         << "GameApp should snapshot scene stack before frame update for accumulator reset safety.";
     EXPECT_NE(source.find("frame_current_scene_before != frame_current_scene_after"), std::string::npos)
@@ -68,10 +70,18 @@ TEST(GameAppDispatcherTraceTest, RunLoopMarksQueueDispatchForUpdate) {
     EXPECT_NE(source.find("time_->setMaxTicksPerFrame(config_->max_ticks_per_frame_);"), std::string::npos)
         << "GameApp initTime should apply catch-up cap from config.";
 
+    const auto frame_update_pos = source.find("updateFrame(time_->getUnscaledDeltaTime())");
+    const auto drain_pos = source.find("drainMainThreadCommands();");
     const auto render_pos = source.find("render(interpolation_alpha);");
     const auto dispatch_pos = source.find("dispatcher_->update();");
+    ASSERT_NE(frame_update_pos, std::string::npos);
+    ASSERT_NE(drain_pos, std::string::npos);
     ASSERT_NE(render_pos, std::string::npos);
     ASSERT_NE(dispatch_pos, std::string::npos);
+    EXPECT_LT(frame_update_pos, drain_pos)
+        << "Main-thread command drain should happen after frame update.";
+    EXPECT_LT(drain_pos, render_pos)
+        << "Main-thread command drain should happen before render.";
     EXPECT_LT(render_pos, dispatch_pos)
         << "Queued event dispatch should remain after render to preserve frame-tail semantics.";
 }

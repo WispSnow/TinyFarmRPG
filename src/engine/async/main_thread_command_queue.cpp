@@ -44,37 +44,103 @@ bool MainThreadCommandQueue::enqueueWithWait(Command command, std::chrono::milli
 }
 
 std::size_t MainThreadCommandQueue::drain(std::size_t max_commands) {
+    return drain(DrainPolicy{.max_commands = max_commands}).executed;
+}
+
+MainThreadCommandQueue::DrainResult MainThreadCommandQueue::drain(const DrainPolicy& policy) {
+    DrainResult result{};
     if (!isOnOwnerThread()) {
         spdlog::warn("MainThreadCommandQueue::drain called from non-owner thread");
-        return 0;
+        return result;
     }
 
-    std::vector<Command> commands{};
-    {
+    if (policy.max_commands == 0) {
         std::lock_guard lock(mutex_);
-        if (queue_.empty()) {
-            return 0;
-        }
-
-        const std::size_t drain_count = std::min(max_commands, queue_.size());
-        commands.reserve(drain_count);
-        for (std::size_t i = 0; i < drain_count; ++i) {
-            commands.push_back(std::move(queue_.front()));
-            queue_.pop_front();
-        }
-        cv_not_full_.notify_all();
+        result.remaining = queue_.size();
+        return result;
     }
 
-    std::size_t executed = 0;
-    for (auto& command : commands) {
-        if (!command) {
-            continue;
+    const auto start = std::chrono::steady_clock::now();
+    const bool has_time_budget = policy.time_budget > std::chrono::microseconds::zero() &&
+                                 policy.time_budget != std::chrono::microseconds::max();
+
+    // 快速路径：无 time budget 时一次加锁批量搬运，减少锁争用。
+    if (!has_time_budget) {
+        std::vector<Command> commands{};
+        {
+            std::lock_guard lock(mutex_);
+            const std::size_t drain_count = std::min(policy.max_commands, queue_.size());
+            if (drain_count > 0) {
+                commands.reserve(drain_count);
+                for (std::size_t i = 0; i < drain_count; ++i) {
+                    commands.push_back(std::move(queue_.front()));
+                    queue_.pop_front();
+                }
+                result.remaining = queue_.size();
+            } else {
+                result.remaining = queue_.size();
+            }
         }
-        // 约束：提交到主线程命令队列的命令不得抛异常。
-        command();
-        ++executed;
+
+        if (!commands.empty()) {
+            cv_not_full_.notify_all();
+        }
+        for (auto& command : commands) {
+            if (!command) {
+                continue;
+            }
+            // 约束：提交到主线程命令队列的命令不得抛异常。
+            command();
+            ++result.executed;
+        }
+    } else {
+        // 预算路径：逐条取出执行，以便在命令之间检查 time budget。
+        while (result.executed < policy.max_commands) {
+            if (result.executed > 0) {
+                const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - start);
+                if (elapsed >= policy.time_budget) {
+                    result.budget_hit = true;
+                    break;
+                }
+            }
+
+            Command command{};
+            bool has_command = false;
+            {
+                std::lock_guard lock(mutex_);
+                if (!queue_.empty()) {
+                    command = std::move(queue_.front());
+                    queue_.pop_front();
+                    has_command = true;
+                }
+            }
+            if (has_command) {
+                cv_not_full_.notify_one();
+            }
+
+            if (!has_command) {
+                break;
+            }
+            if (command) {
+                // 约束：提交到主线程命令队列的命令不得抛异常。
+                command();
+                ++result.executed;
+            }
+        }
+        {
+            std::lock_guard lock(mutex_);
+            result.remaining = queue_.size();
+        }
     }
-    return executed;
+
+    result.elapsed_us = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - start).count());
+    if (result.remaining > 0 && !result.budget_hit) {
+        result.budget_hit = result.executed >= policy.max_commands;
+    }
+
+    return result;
 }
 
 void MainThreadCommandQueue::clear() {

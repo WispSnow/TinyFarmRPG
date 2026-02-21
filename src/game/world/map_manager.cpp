@@ -528,7 +528,6 @@ bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
         return false;
     }
 
-    auto& command_queue = context_.getMainThreadCommandQueue();
     const auto deadline = std::chrono::steady_clock::now()
                         + std::chrono::milliseconds(loading_settings_.async_wait_budget_ms);
 
@@ -541,11 +540,13 @@ bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
             return false;
         }
 
-        (void)command_queue.drain();
+        // 提交执行权只在 GameApp::drainMainThreadCommands()；
+        // MapManager 仅做状态轮询，不直接 drain。
+        // 注意：如果异步任务在同一帧内提交且命令尚未被 drain，此处会超时并降级同步加载。
+        // 典型用法（preloadAllMaps 预热 → 后续帧 loadMap）不受影响。
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    (void)command_queue.drain();
     return isAsyncReadyState(mapPreloadTaskState(map_id));
 }
 
