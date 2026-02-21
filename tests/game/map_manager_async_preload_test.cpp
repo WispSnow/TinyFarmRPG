@@ -258,6 +258,62 @@ TEST_F(MapManagerAsyncPreloadTest, InitialStatesAreNotScheduled) {
     }
 }
 
+TEST_F(MapManagerAsyncPreloadTest, PreloadAllMapsDrainsMainThreadCommandsAndReachesTerminalState) {
+    ASSERT_FALSE(world_state_.maps().empty());
+
+    map_manager_->preloadAllMaps();
+    auto& main_thread_queue = context_->getMainThreadCommandQueue();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    bool saw_running_state = false;
+    bool all_maps_completed = false;
+    std::size_t total_drained_commands = 0;
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        total_drained_commands += main_thread_queue.drain();
+
+        all_maps_completed = true;
+        for (const auto& [map_id, _] : world_state_.maps()) {
+            const auto state = map_manager_->mapPreloadTaskState(map_id);
+            if (state == game::world::MapPreloadTaskState::Running) {
+                saw_running_state = true;
+            }
+            if (state == game::world::MapPreloadTaskState::NotScheduled ||
+                state == game::world::MapPreloadTaskState::Running) {
+                all_maps_completed = false;
+            }
+        }
+        if (all_maps_completed) {
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    total_drained_commands += main_thread_queue.drain();
+
+    EXPECT_TRUE(saw_running_state);
+    EXPECT_TRUE(all_maps_completed);
+    EXPECT_GT(total_drained_commands, 0U);
+
+    std::size_t ready_or_applied_count = 0;
+    std::size_t failed_count = 0;
+    for (const auto& [map_id, _] : world_state_.maps()) {
+        const auto state = map_manager_->mapPreloadTaskState(map_id);
+        EXPECT_NE(state, game::world::MapPreloadTaskState::NotScheduled);
+        EXPECT_NE(state, game::world::MapPreloadTaskState::Running);
+        if (state == game::world::MapPreloadTaskState::Ready ||
+            state == game::world::MapPreloadTaskState::Applied) {
+            ++ready_or_applied_count;
+        }
+        if (state == game::world::MapPreloadTaskState::Failed) {
+            ++failed_count;
+        }
+    }
+
+    EXPECT_EQ(ready_or_applied_count + failed_count, world_state_.maps().size());
+    EXPECT_EQ(map_manager_->preloadedMapCount(), ready_or_applied_count);
+}
+
 } // namespace
 } // namespace game::world
 // NOLINTEND

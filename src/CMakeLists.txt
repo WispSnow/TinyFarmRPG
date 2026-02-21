@@ -25,6 +25,7 @@ target_sources(engine PRIVATE
     engine/resource/asset_registry.cpp
     engine/resource/resource_manager.cpp
     engine/resource/image_decode_service.cpp
+    engine/resource/stb_image_mutex.cpp
     engine/resource/font_preprocess_service.cpp
     engine/resource/texture_loader.cpp
     engine/resource/texture_manager.cpp
