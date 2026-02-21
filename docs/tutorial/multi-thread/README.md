@@ -13,6 +13,7 @@
 | [05](05-main-thread-command-queue.md) | 主线程命令队列 | 跨线程提交、线程亲和性、两阶段 drain |
 | [06](06-async-pipeline.md) | 异步管线实战 | 地图预加载全流程、generation 防过期、降级回退 |
 | [07](07-thread-safety-practices.md) | 线程安全实践 | `shared_mutex`、线程断言、数据竞争防范 |
+| [08](08-why-not-async-future.md) | 为什么不能用 async/future 替代 | 线程亲和性、跨线程提交执行、架构选择 |
 
 ## 前置知识
 
@@ -42,6 +43,7 @@ graph LR
     end
 
     A --> B --> C --> D --> E --> F --> G
+    G --> H["08 为什么不能用 async/future 替代<br/>线程亲和性 / 架构选择"]
     A --> C
     B --> E
 ```
