@@ -4,13 +4,34 @@
 
 TinyFarmRPG 的主循环是严格串行的：
 
-```
-输入采样 → fixed tick → frame update → render → 事件结算
+```mermaid
+graph LR
+    A[输入采样] --> B[fixed tick] --> C[frame update] --> D[render] --> E[事件结算]
+    E -.->|下一帧| A
+
+    style A fill:#e1f5fe
+    style D fill:#fff3e0
 ```
 
 > 参见 `src/engine/core/game_app.cpp:157`
 
 当 `MapManager::loadMap()` 在主线程同步执行时，文件读取、JSON 解析、图片解码这些耗时操作会直接阻塞渲染——玩家看到的就是「卡了一下」。
+
+```mermaid
+graph LR
+    subgraph 主线程被阻塞
+        A[输入采样] --> B[fixed tick] --> L["loadMap()<br/>~80ms 阻塞❌"]
+        L --> C[frame update] --> D[render]
+    end
+
+    subgraph 理想状态
+        A2[输入采样] --> B2[fixed tick] --> C2[frame update] --> D2[render]
+        W["Worker 线程<br/>IO / 解析 / 解码"] -.->|结果投递| D2
+    end
+
+    style L fill:#ffcdd2
+    style W fill:#c8e6c9
+```
 
 多线程的目标：**把耗时的 CPU/IO 工作搬到后台线程，主线程保持流畅渲染**。
 
@@ -96,6 +117,35 @@ void ThreadPool::workerLoop(std::stop_token stop_token) {
 - `queue_.pop(stop_token)` 是一个阻塞调用，但它会在 `stop_token` 被触发时**立即醒来**并返回空值。
 - 这意味着 worker 不会永远卡在等待任务的状态——当线程池要关闭时，所有 worker 都能及时退出。
 
+### `stop_token` 的协作流程
+
+下图展示了线程池关闭时 `stop_token` 如何协调 worker 退出：
+
+```mermaid
+sequenceDiagram
+    participant Main as 主线程
+    participant Pool as ThreadPool
+    participant W as Worker 线程
+    participant Q as WorkQueue
+
+    Main->>Pool: stop()
+    Pool->>Q: close()
+    Pool->>W: request_stop()
+    Note over W: stop_token 被触发
+
+    alt Worker 正在等待任务
+        Q-->>W: pop() 立即返回 nullopt
+        W->>W: break 退出循环
+    else Worker 正在执行任务
+        W->>W: 完成当前任务
+        W->>W: 下次检查 stop_requested() → true
+        W->>W: 退出循环
+    end
+
+    Pool->>Pool: workers_.clear()
+    Note over Pool: jthread 析构自动 join<br/>阻塞直到 Worker 退出
+```
+
 ### `stop_token` 与条件变量的配合
 
 `std::condition_variable_any`（注意不是 `std::condition_variable`）可以直接接受 `stop_token`：
@@ -128,26 +178,31 @@ std::optional<T> pop(std::stop_token stop_token) {
 
 ### 启动顺序
 
-```
-GameApp::init()
-  ├─ initMainThreadCommandQueue()   // 先建好命令队列
-  ├─ initContext()                   // 让 Context 持有队列引用
-  └─ ...
+```mermaid
+graph TD
+    A["GameApp::init()"] --> B["initMainThreadCommandQueue()<br/>先建好命令队列"]
+    B --> C["initContext()<br/>让 Context 持有队列引用"]
+    C --> D[...]
+    D --> E["MapManager::applyLoadingSettings()"]
+    E --> F["创建 preload_thread_pool_<br/>需要时才建线程池"]
 
-MapManager::applyLoadingSettings()
-  └─ 创建 preload_thread_pool_      // 需要时才建线程池
+    style B fill:#e8f5e9
+    style F fill:#e8f5e9
 ```
 
 > 参见 `src/engine/core/game_app.cpp:138` 和 `src/game/world/map_manager.cpp`
 
 ### 关闭顺序
 
-```
-GameApp::close()
-  ├─ 场景析构（MapManager 析构）
-  │   └─ preload_thread_pool_->stop()  // 先停线程池
-  ├─ 等待所有后台任务结束
-  └─ 清理资源（GL 上下文、窗口等）
+```mermaid
+graph TD
+    A["GameApp::close()"] --> B["场景析构（MapManager 析构）"]
+    B --> C["preload_thread_pool_->stop()<br/>❶ 先停线程池"]
+    C --> D["等待所有后台任务结束"]
+    D --> E["清理资源（GL 上下文、窗口等）<br/>❷ 再清理资源"]
+
+    style C fill:#fff3e0
+    style E fill:#ffcdd2
 ```
 
 **关键原则：先停线程池，再清理资源。** 如果先释放了资源（比如 GL 上下文），而后台线程还在运行并试图访问这些资源，就会产生悬空引用——轻则崩溃，重则数据损坏。

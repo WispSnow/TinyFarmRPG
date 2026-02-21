@@ -23,6 +23,29 @@
 
 建议按编号顺序阅读。01-02 是基础概念，03-05 是基础设施实现，06-07 是实战集成与工程实践。
 
+```mermaid
+graph LR
+    subgraph 基础概念
+        A["01 线程基础<br/>jthread / stop_token"]
+        B["02 同步原语<br/>mutex / CV / atomic"]
+    end
+
+    subgraph 基础设施实现
+        C["03 有界队列<br/>生产者-消费者 / 背压"]
+        D["04 线程池<br/>任务分发 / 优雅停机"]
+        E["05 主线程命令队列<br/>线程亲和性 / 两阶段drain"]
+    end
+
+    subgraph 实战与工程
+        F["06 异步管线实战<br/>地图预加载全流程"]
+        G["07 线程安全实践<br/>shared_mutex / TSAN"]
+    end
+
+    A --> B --> C --> D --> E --> F --> G
+    A --> C
+    B --> E
+```
+
 ## 对应源码
 
 所有教程引用的源码均位于本项目中：

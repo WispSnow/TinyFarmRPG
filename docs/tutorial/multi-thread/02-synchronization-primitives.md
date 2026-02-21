@@ -145,15 +145,28 @@ std::optional<T> pop(std::stop_token stop_token) {
 
 **信号流图**：
 
-```
-生产者                     消费者（Worker 线程）
-  │                           │
-  ├─ push(task)               ├─ pop() — 阻塞等待 cv_not_empty_
-  │  └─ notify_one()  ──────►│  └─ 醒来，取出任务
-  │                           │
-  ├─ pushWithWait(task)       ├─ pop() 取出后
-  │  └─ 等待 cv_not_full_ ◄──│  └─ notify_one() 通知有空间
-  │  └─ 醒来，放入任务        │
+```mermaid
+sequenceDiagram
+    participant P as 生产者（主线程）
+    participant Q as WorkQueue
+    participant C as 消费者（Worker）
+
+    Note over C: pop() 阻塞等待<br/>cv_not_empty_
+
+    P->>Q: push(task)
+    Q->>C: cv_not_empty_.notify_one()
+    activate C
+    C->>Q: 取出任务
+    C->>Q: cv_not_full_.notify_one()
+    deactivate C
+
+    Note over Q: 队列已满
+
+    P->>Q: pushWithWait(task)
+    Note over P: 等待 cv_not_full_...
+    C->>Q: pop() 取出一个元素
+    Q->>P: cv_not_full_.notify_one()
+    Note over P: 醒来，放入任务
 ```
 
 ### `condition_variable` vs `condition_variable_any`
@@ -252,24 +265,42 @@ if (shared->generation.load(std::memory_order_acquire) != expected_gen) {
 `release` 保证：调度时设置的所有数据（路径、配置等）在 worker 读到 generation 时都可见。
 `acquire` 保证：worker 读到 generation 后，能看到调度时写入的所有数据。
 
+```mermaid
+sequenceDiagram
+    participant M as 主线程
+    participant G as generation (atomic)
+    participant W as Worker 线程
+
+    M->>M: 设置路径、配置等数据
+    M->>G: store(gen, release) 🔒
+    Note over M,G: release 保证：<br/>之前的写入对读者可见
+
+    G->>W: load(acquire) 🔓
+    Note over G,W: acquire 保证：<br/>能看到 store 之前的所有写入
+    W->>W: 安全读取路径、配置等数据
+    Note over M,W: release → acquire 构成 happens-before 关系
+```
+
 > 这对 `release-acquire` 构成了一个 **happens-before** 关系，是跨线程数据传递的最低开销方式。
 
 ---
 
 ## 选择指南：何时用什么？
 
-```
-需要保护共享数据结构（map/vector/deque）？
-  └─ 用 mutex + lock_guard/unique_lock
+```mermaid
+flowchart TD
+    Start{需要保护什么？} --> A{只是计数器或标志？}
+    A -->|是| A1["用 std::atomic<br/>（无锁，最轻量）"]
+    A -->|否| B{需要等待某个条件成立？}
+    B -->|是| B1["用 condition_variable<br/>+ mutex + unique_lock"]
+    B -->|否| C{读多写少？}
+    C -->|是| C1["用 shared_mutex<br/>（见第 07 章）"]
+    C -->|否| D["用 mutex<br/>+ lock_guard / unique_lock"]
 
-需要等待某个条件？
-  └─ 用 condition_variable（配合 mutex）
-
-只是一个计数器或标志？
-  └─ 用 atomic
-
-需要读写分离（多读少写）？
-  └─ 用 shared_mutex（见第 07 章）
+    style A1 fill:#e8f5e9
+    style B1 fill:#e3f2fd
+    style C1 fill:#fff3e0
+    style D fill:#fce4ec
 ```
 
 ---

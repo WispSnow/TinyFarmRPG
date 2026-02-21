@@ -113,9 +113,23 @@ std::optional<T> pop(std::stop_token stop_token) {
 
 **三路退出**：这是消费者端最精巧的设计。`pop` 可以因为三种原因返回：
 
-1. **队列有数据** → 返回 `optional<T>` 包含值。正常工作路径。
-2. **队列关闭且为空** → 返回 `nullopt`。优雅关闭。
-3. **`stop_token` 触发** → 返回 `nullopt`。线程被取消。
+```mermaid
+flowchart TD
+    A["pop(stop_token) 被调用"] --> B["cv_not_empty_.wait(lock, stop_token, pred)"]
+
+    B --> C{为什么醒来？}
+    C -->|队列有数据| D["返回 optional﹤T﹥ 包含值 ✅"]
+    C -->|队列关闭且为空| E["返回 nullopt<br/>优雅关闭"]
+    C -->|stop_token 触发| F["返回 nullopt<br/>线程被取消"]
+
+    D --> G[正常工作路径]
+    E --> H[Worker 退出循环]
+    F --> H
+
+    style D fill:#e8f5e9
+    style E fill:#fff3e0
+    style F fill:#ffcdd2
+```
 
 > 使用 `std::optional` 作为返回类型，优雅地区分了「有值」和「无值」，无需异常或输出参数。
 
@@ -138,19 +152,24 @@ void close() {
 
 ## 状态机视角
 
-```
-                 push()
-    ┌──────────────────────────────┐
-    │                              ▼
- ┌──┴───┐    pop()    ┌────────┐    push()    ┌──────┐
- │ 空   │ ◄────────── │ 有数据 │ ◄──────────  │ 满   │
- │      │             │        │              │      │
- └──────┘             └────────┘              └──┬───┘
-    ▲                     │                      │
-    │                     │                      │ push() → false
-    │                     ▼                      │ 或 pushWithWait()
-    │              close() → 所有等待者醒来       │
-    └─────────────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> 空
+
+    空 --> 有数据 : push() 成功
+    有数据 --> 空 : pop() 取走最后一个
+    有数据 --> 满 : push() 达到容量
+    有数据 --> 有数据 : push() / pop()
+    满 --> 有数据 : pop() 腾出空间
+    满 --> 满 : push() → false<br/>或 pushWithWait()
+
+    空 --> 已关闭 : close()
+    有数据 --> 已关闭 : close()
+    满 --> 已关闭 : close()
+
+    note right of 空 : 消费者在此等待<br/>cv_not_empty_
+    note right of 满 : 生产者在此等待/被拒绝<br/>cv_not_full_
+    note right of 已关闭 : 所有等待者被唤醒<br/>push() 始终返回 false<br/>不可逆
 ```
 
 队列在三个状态间切换：空（消费者等待）、有数据（正常工作）、满（生产者等待或被拒绝）。`close()` 打断所有等待。

@@ -30,18 +30,43 @@ loadMap(map_id)
 
 ## 三层流水线
 
+```mermaid
+graph LR
+    subgraph S1["Stage 1: 预处理<br/>(Worker 线程)"]
+        A1["读取 JSON"]
+        A2["解析 tileset"]
+        A3["解码图片到 RGBA"]
+        A1 --> A2 --> A3
+    end
+
+    subgraph S2["Stage 2: 提交<br/>(主线程命令队列)"]
+        B1["上传纹理到 GPU"]
+        B2["注册到资源管理"]
+        B3["标记 Ready"]
+        B1 --> B2 --> B3
+    end
+
+    subgraph S3["Stage 3: 应用<br/>(主线程)"]
+        C1["loadLevel()"]
+        C2["创建 ECS 实体"]
+        C3["初始化空间索引"]
+        C4["恢复存档状态"]
+        C1 --> C2 --> C3 --> C4
+    end
+
+    S1 -->|"std::move<br/>所有权转移"| S2
+    S2 -->|"drain()"| S3
+
+    style S1 fill:#e3f2fd
+    style S2 fill:#fff3e0
+    style S3 fill:#e8f5e9
 ```
-           Worker 线程                    主线程命令队列                   主线程
-    ┌─────────────────────┐         ┌──────────────────┐         ┌───────────────────┐
-    │  Stage 1: 预处理    │         │  Stage 2: 提交   │         │  Stage 3: 应用    │
-    │                     │         │                  │         │                   │
-    │  · 读取 JSON        │  move   │  · 上传纹理到 GPU│         │  · loadLevel()    │
-    │  · 解析 tileset     │ ──────► │  · 注册到资源管理│  drain  │  · 创建 ECS 实体  │
-    │  · 解码图片到 RGBA  │         │  · 标记 Ready    │ ──────► │  · 初始化空间索引 │
-    │                     │         │                  │         │  · 恢复存档状态   │
-    └─────────────────────┘         └──────────────────┘         └───────────────────┘
-           (CPU/IO)                     (GPU/资源注册)                  (ECS/游戏逻辑)
-```
+
+| 阶段 | 运行线程 | 允许的操作 | 禁止的操作 |
+|------|---------|-----------|-----------|
+| Stage 1 | Worker | CPU 计算、文件 IO | GL API、registry 写入、dispatcher |
+| Stage 2 | 主线程（命令） | GPU 上传、资源注册 | 创建实体、修改游戏状态 |
+| Stage 3 | 主线程（逻辑） | ECS 实体构建、游戏逻辑 | — |
 
 每一层只做自己该做的事，严格遵守线程边界。
 
@@ -191,12 +216,24 @@ void MapManager::scheduleAsyncPreloadTask(entt::id_type map_id, const std::strin
 
 ### 问题场景
 
-```
-时间线：
-  t0: 调度预加载 map_A（generation=1）
-  t1: 玩家快速移动，调度预加载 map_B（generation=2）
-  t2: map_A 的 worker 完成，投递命令「上传 map_A 的纹理」
-  t3: 主线程执行命令——但此时玩家已经不在 map_A 附近了！
+```mermaid
+sequenceDiagram
+    participant M as 主线程
+    participant W as Worker 线程
+
+    Note over M: t0: 调度预加载 map_A
+    M->>W: submit(preload map_A, gen=1)
+    activate W
+
+    Note over M: t1: 玩家快速移动
+    M->>M: 调度预加载 map_B (gen=2)
+
+    W->>W: t2: map_A 解码完成
+    W->>M: enqueue(上传 map_A 纹理)
+    deactivate W
+
+    Note over M: t3: 执行命令<br/>但玩家已不在 map_A 附近！❌
+    Note over M: 过期纹理白白占用 GPU 内存
 ```
 
 如果不加检查，过期任务的结果会白白占用 GPU 内存。
@@ -220,6 +257,29 @@ if (shared->generation.load(std::memory_order_acquire) != generation) {
 ```
 
 **三次检查**：
+
+```mermaid
+flowchart LR
+    subgraph Worker线程
+        A["预处理完成"] --> B{"检查 ①<br/>generation 匹配？"}
+        B -->|否| X1["丢弃结果 🗑️"]
+        B -->|是| C["解码图片"]
+        C --> D{"检查 ②<br/>generation 匹配？"}
+        D -->|否| X2["丢弃结果 🗑️"]
+        D -->|是| E["投递到命令队列"]
+    end
+
+    subgraph 主线程
+        E --> F{"检查 ③<br/>generation 匹配？"}
+        F -->|否| X3["丢弃命令 🗑️"]
+        F -->|是| G["上传纹理 ✅"]
+    end
+
+    style B fill:#fff3e0
+    style D fill:#fff3e0
+    style F fill:#fff3e0
+```
+
 1. 预处理完成后（丢弃已过期的解码工作）
 2. 投递命令前（避免不必要的队列占用）
 3. 命令执行时（最后一道防线，因为命令在队列中可能等了几帧）
@@ -242,22 +302,24 @@ void MapManager::clearAsyncPreloadTasks() {
 
 ## 任务状态机
 
-```
-                schedule()
- NotScheduled ─────────────► Running
-      ▲                        │
-      │                    ┌───┴───┐
-      │              success    fail
-      │                │         │
-      │                ▼         ▼
-      │             Ready     Failed
-      │                │         │
-      │          apply/load      │
-      │                │         │
-      │                ▼         │
-      │            Applied       │
-      │                          │
-      └──── clearTasks() ────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> NotScheduled
+
+    NotScheduled --> Running : schedule()
+    Running --> Ready : 预处理 + GPU上传成功
+    Running --> Failed : 预处理或解码失败
+
+    Ready --> Applied : loadMap() 应用结果
+
+    Failed --> NotScheduled : clearTasks()
+    Applied --> NotScheduled : clearTasks()
+    Ready --> NotScheduled : clearTasks()
+    Running --> NotScheduled : clearTasks()<br/>(通过 generation 失效)
+
+    note right of Running : Worker 线程执行中<br/>可通过 generation 检查取消
+    note right of Ready : 纹理已在 GPU<br/>等待 loadLevel() 使用
+    note right of Failed : 回退到同步加载
 ```
 
 状态转换通过 `std::atomic<MapPreloadTaskState>` 实现，不需要额外的锁。
@@ -265,6 +327,30 @@ void MapManager::clearAsyncPreloadTasks() {
 ---
 
 ## `loadMap()` 中的等待与降级
+
+```mermaid
+flowchart TD
+    A["loadMap(map_id)"] --> B{异步已启用？}
+    B -->|否| SYNC["同步 loadLevel()"]
+    B -->|是| C{查询预加载状态}
+
+    C -->|Ready| D["纹理已在缓存 ✅<br/>直接用缓存"]
+    C -->|Running| E["waitForAsyncPreloadReady()<br/>等待 budget_ms"]
+    C -->|NotScheduled| F["preloadMap(map_id)<br/>来不及了，现在开始"]
+    C -->|Failed| SYNC
+
+    E --> G{等到了？}
+    G -->|是| D
+    G -->|否| SYNC
+
+    F --> E
+
+    D --> SYNC
+    SYNC --> H["loadLevel() 完成<br/>（命中缓存则极快）"]
+
+    style D fill:#e8f5e9
+    style SYNC fill:#fff3e0
+```
 
 ```cpp
 bool MapManager::loadMap(entt::id_type map_id) {
@@ -361,32 +447,42 @@ enum class MapPreloadMode : std::uint8_t {
 
 ## 完整时序图
 
-```
-主线程                                     Worker 线程
-────────────────────────────────────────────────────────────
- loadMap(farm)
-   └─ preloadRelatedMaps()
-       ├─ preloadMap(town)  ──submit──►  ┐
-       ├─ preloadMap(mine)  ──submit──►  │
-       └─ preloadMap(beach) ──submit──►  │
-                                          │
- [继续正常渲染帧...]                      ├─ preprocessLevel(town)
-                                          │  ├─ 解析 JSON
- drainMainThreadCommands()                │  ├─ decodeRGBA(town_tiles.png)
-   └─ (空，worker 还在忙)                 │  └─ enqueue(upload_town_textures)
-                                          │
- drainMainThreadCommands()  ◄─────────────┘
-   └─ upload_town_textures()              ├─ preprocessLevel(mine)
-       ├─ glTexImage2D(...)               │  ├─ 解析 JSON
-       └─ state = Ready                   │  └─ ...
-                                          │
- ...(若干帧后)...                         │
-                                          │
- loadMap(town)                            │
-   ├─ state == Ready ✓                    │
-   ├─ 纹理已在缓存，无需再次读取/解码     │
-   └─ loadLevel(town) ← 快速完成         │
-────────────────────────────────────────────────────────────
+```mermaid
+sequenceDiagram
+    participant M as 主线程
+    participant Q as 命令队列
+    participant W as Worker 线程
+
+    M->>M: loadMap(farm)
+    M->>W: preloadMap(town)
+    M->>W: preloadMap(mine)
+    M->>W: preloadMap(beach)
+    Note over M: 继续正常渲染帧...
+
+    activate W
+    W->>W: preprocessLevel(town)<br/>解析 JSON
+    W->>W: decodeRGBA(town_tiles.png)
+
+    M->>Q: drainMainThreadCommands()
+    Note over Q: 空，worker 还在忙
+
+    W->>Q: enqueue(upload_town_textures)
+    deactivate W
+
+    activate W
+    M->>Q: drainMainThreadCommands()
+    Q->>M: upload_town_textures()
+    M->>M: glTexImage2D(...)
+    M->>M: town.state = Ready ✅
+
+    W->>W: preprocessLevel(mine)<br/>解析 JSON...
+    deactivate W
+
+    Note over M: ...若干帧后，玩家走向 town...
+
+    M->>M: loadMap(town)
+    Note over M: state == Ready ✅<br/>纹理已在缓存<br/>无需再次读取/解码
+    M->>M: loadLevel(town) ← 快速完成
 ```
 
 ---

@@ -21,12 +21,28 @@
 | 共享锁（读锁） | `std::shared_lock` | 多个线程可同时持有 | 只读操作 |
 | 排他锁（写锁） | `std::unique_lock` | 只有一个线程能持有 | 写入操作 |
 
+```mermaid
+gantt
+    title shared_mutex 并发时序
+    dateFormat X
+    axisFormat %s
+
+    section 线程 A
+    shared_lock 读        :a1, 0, 3
+
+    section 线程 B
+    shared_lock 读        :b1, 0, 2
+
+    section 线程 C
+    等待读锁释放          :crit, c0, 0, 3
+    unique_lock 写        :c1, 3, 5
+
+    section 线程 D
+    等待写锁释放          :crit, d0, 2, 5
+    shared_lock 读        :d1, 5, 7
 ```
-线程 A: shared_lock ──读──读──读──
-线程 B: shared_lock ──读──读──────   ← 同时读，互不阻塞
-线程 C: unique_lock  等等等 ──写──   ← 写操作等所有读结束
-线程 D: shared_lock       等等 ──读── ← 等写操作结束后继续读
-```
+
+> 线程 A、B 同时持有共享锁（读），互不阻塞。线程 C 需要排他锁（写），必须等所有读锁释放。线程 D 的读锁要等线程 C 写完才能获取。
 
 ### 在 `tiled_json_cache` 中的使用
 
@@ -65,14 +81,25 @@ const nlohmann::json& getOrLoadLevelJson(std::string_view path) {
 
 上面的代码用了**双重检查锁定**模式：
 
-```
-1. 共享锁 → 查缓存 → 命中 → 返回（快路径，不阻塞其他读者）
-2. 释放共享锁
-3. 排他锁 → 再次查缓存（可能其他线程刚写入了！）→ 命中 → 返回
-4. 未命中 → 写入缓存 → 返回
+```mermaid
+flowchart TD
+    A["getOrLoadLevelJson(path)"] --> B["❶ 加共享锁（读锁）"]
+    B --> C{缓存命中？}
+    C -->|是| D["返回缓存值<br/>（快路径，不阻塞其他读者）✅"]
+    C -->|否| E["释放共享锁"]
+    E --> F["❷ 加排他锁（写锁）"]
+    F --> G{"再次检查缓存<br/>（可能其他线程<br/>刚写入了！）"}
+    G -->|命中| H["返回缓存值 ✅"]
+    G -->|未命中| I["读文件 + 解析 JSON"]
+    I --> J["写入缓存"]
+    J --> K["返回新值 ✅"]
+
+    style B fill:#e3f2fd
+    style F fill:#fff3e0
+    style G fill:#ffcdd2
 ```
 
-如果省掉第 3 步的第二次检查，可能出现两个线程同时发现缓存未命中，都去读文件并写入缓存——浪费了资源。
+如果省掉第二次检查（步骤 ❷ 中的再次检查），可能出现两个线程同时发现缓存未命中，都去读文件并写入缓存——浪费了资源。
 
 ---
 
@@ -184,6 +211,24 @@ TSAN 会精确报告：哪两个线程、在哪一行代码、对哪个内存地
 ---
 
 ## 4. 避免数据竞争的实践模式
+
+```mermaid
+graph TD
+    ROOT["如何避免数据竞争？"] --> P1["模式 1：所有权转移<br/>std::move"]
+    ROOT --> P2["模式 2：不可变共享<br/>shared_ptr﹤const T﹥"]
+    ROOT --> P3["模式 3：原子状态机<br/>std::atomic"]
+    ROOT --> P4["模式 4：线程隔离<br/>每线程独立实例"]
+
+    P1 --> P1D["数据从 Worker → 主线程<br/>任何时刻只有一个线程拥有"]
+    P2 --> P2D["JSON 缓存解析后不再修改<br/>多线程只读安全"]
+    P3 --> P3D["任务状态 / generation<br/>无锁轻量"]
+    P4 --> P4D["FreeType 字体上下文<br/>每 Worker 独立创建/销毁"]
+
+    style P1 fill:#e8f5e9
+    style P2 fill:#e3f2fd
+    style P3 fill:#fff3e0
+    style P4 fill:#fce4ec
+```
 
 ### 模式 1：所有权转移（Move Semantics）
 
@@ -416,6 +461,39 @@ TEST(LevelPreprocessServiceTest, CollectsTilesetAndTexturePathsFromLevel) {
 ## 总结
 
 回顾整个教程系列，Phase 1 多线程改造的核心原则是：
+
+```mermaid
+graph TB
+    subgraph 主线程["主线程（线程亲和）"]
+        GL["OpenGL 调用"]
+        ECS["entt::registry 写入"]
+        EVT["entt::dispatcher 分发"]
+        DRAIN["drainMainThreadCommands()"]
+    end
+
+    subgraph Worker["Worker 线程池"]
+        IO["文件读取 IO"]
+        JSON["JSON 解析"]
+        IMG["图片解码 CPU"]
+        FONT["字体栅格化 CPU"]
+    end
+
+    subgraph 安全边界["线程安全保障"]
+        MQ["MainThreadCommandQueue<br/>命令模式"]
+        WQ["WorkQueue<br/>有界背压"]
+        GEN["Generation 防过期"]
+        SM["shared_mutex<br/>JSON 缓存"]
+    end
+
+    Worker -->|"std::move<br/>所有权转移"| MQ
+    MQ -->|"drain()"| 主线程
+    主线程 -->|"submit()"| WQ
+    WQ --> Worker
+
+    style 主线程 fill:#e3f2fd
+    style Worker fill:#e8f5e9
+    style 安全边界 fill:#fff3e0
+```
 
 1. **最小化共享**：数据通过所有权转移（move）跨线程传递，而不是共享访问。
 2. **严格的线程边界**：OpenGL、ECS registry、事件分发器只在主线程操作。
