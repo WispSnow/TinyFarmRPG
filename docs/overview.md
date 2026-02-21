@@ -29,14 +29,15 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 TinyFarmRPG/
 ├── src/
 │   ├── engine/                  # 可复用游戏引擎层
+│   │   ├── async/               #   多线程基础设施（WorkQueue/ThreadPool/MainThreadCommandQueue）
 │   │   ├── audio/               #   音频播放（MiniAudio）
 │   │   ├── component/           #   引擎层 ECS 组件（transform/sprite/collider/light 等）
-│   │   ├── core/                #   应用生命周期、全局上下文 Context、配置、游戏状态
+│   │   ├── core/                #   应用生命周期、全局上下文 Context、配置、游戏状态（含主线程命令提交点）
 │   │   ├── debug/               #   ImGui 调试面板框架与内置面板
 │   │   ├── input/               #   输入映射与动作事件
-│   │   ├── loader/              #   Tiled 地图/关卡加载器
+│   │   ├── loader/              #   Tiled 地图/关卡加载器（含 LevelPreprocessService 异步预处理）
 │   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/合成/UI）
-│   │   ├── resource/            #   纹理/音频/字体统一资源管理
+│   │   ├── resource/            #   纹理/音频/字体统一资源管理（含 ImageDecode/FontPreprocess）
 │   │   ├── scene/               #   场景基类 Scene 与场景管理器 SceneManager
 │   │   ├── spatial/             #   碰撞检测与空间分区（静态网格/动态网格）
 │   │   ├── system/              #   引擎层 ECS 系统（动画/移动/渲染/Y排序/光照）
@@ -56,7 +57,7 @@ TinyFarmRPG/
 │   │   ├── script/              #   Lua 脚本宿主层（可选，ScriptHost/bindings/句柄校验）
 │   │   ├── system/              #   游戏 ECS 系统（农场/交互/NPC/对话/地图切换/物品使用等）
 │   │   ├── ui/                  #   游戏 UI（物品栏/快捷栏/对话气泡/时钟/tooltip）
-│   │   └── world/               #   世界地图系统（MapManager/WorldState/快照序列化）
+│   │   └── world/               #   世界地图系统（MapManager 异步预加载状态机/WorldState/快照序列化）
 │   └── main.cpp                 # 可执行入口薄壳
 ├── assets/                      # 运行时资源
 │   ├── audio/                   #   音频文件 (.wav)
@@ -69,8 +70,8 @@ TinyFarmRPG/
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/ImGui集成等）
 ├── external/                    # 第三方库源码（Lua/Sol2 等）
-├── tests/                       # Google Test 单元测试
-├── plans/                       # 开发计划文档
-├── docs/                        # 项目文档
+├── tests/                       # Google Test 单元测试（含 async 队列预算测试、MapManager 异步预加载测试）
+├── plans/                       # 开发计划文档（Phase 1/2 多线程改造计划）
+├── docs/                        # 项目文档（含 tutorial/multi-thread 渐进式并发改造说明）
 └── for_agent/                   # AI Agent 编码规范
 ```
