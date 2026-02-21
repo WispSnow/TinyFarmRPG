@@ -4,7 +4,7 @@
 - 阶段：`Phase 2`
 - 主题：`主线程提交点标准化（Main-thread Commit Pipeline）`
 - 优先级：`P0`
-- 状态：`Planned`
+- 状态：`Completed（实现完成，关键测试与 TSAN 回归通过）`
 - 范围边界：不做 gameplay 并行，不改 `SystemScheduler` 并发模型；仅重构 worker -> main 的提交链路。
 
 ## 1. 实现思路
@@ -85,15 +85,15 @@
 
 ## 4. 待办清单（用于进度追踪）
 
-- [ ] T1 `MainThreadCommandQueue` 增加 `DrainPolicy` 与 `DrainResult`
-- [ ] T2 `GameApp::drainMainThreadCommands()` 切换为预算化执行
-- [ ] T3 `GameApp` 增加慢 drain 告警日志（量化阈值）
-- [ ] T4 `MapManager::waitForAsyncPreloadReady()` 移除内部 `drain()`
-- [ ] T5 为 `Running/Ready/Applied` 增加注释并统一使用点
-- [ ] T6 新增 `main_thread_command_queue_budget_test`
-- [ ] T7 扩展 `game_app_dispatcher_trace_test` 的提交顺序断言
-- [ ] T8 扩展 `map_manager_async_preload_test` 覆盖“仅外部 drain 驱动”路径
-- [ ] T9 在 `build` 与 `build-tsan` 跑通目标回归集
+- [x] T1 `MainThreadCommandQueue` 增加 `DrainPolicy` 与 `DrainResult`
+- [x] T2 `GameApp::drainMainThreadCommands()` 切换为预算化执行
+- [x] T3 `GameApp` 增加慢 drain 告警日志（量化阈值）
+- [x] T4 `MapManager::waitForAsyncPreloadReady()` 移除内部 `drain()`
+- [x] T5 为 `Running/Ready/Applied` 增加注释并统一使用点
+- [x] T6 新增 `main_thread_command_queue_budget_test`
+- [x] T7 扩展 `game_app_dispatcher_trace_test` 的提交顺序断言
+- [x] T8 扩展 `map_manager_async_preload_test` 覆盖“仅外部 drain 驱动”路径
+- [x] T9 在 `build` 与 `build-tsan` 跑通目标回归集
 
 ## 5. 验收标准（Phase 2 DoD）
 

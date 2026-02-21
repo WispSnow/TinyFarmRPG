@@ -8,6 +8,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <atomic>
 #include <memory>
 #include <string>
 #include <thread>
@@ -256,6 +257,38 @@ TEST_F(MapManagerAsyncPreloadTest, InitialStatesAreNotScheduled) {
         const auto state = map_manager_->mapPreloadTaskState(map_id);
         EXPECT_EQ(state, game::world::MapPreloadTaskState::NotScheduled);
     }
+}
+
+TEST_F(MapManagerAsyncPreloadTest, LoadMapDoesNotDrainMainThreadCommandQueueInternally) {
+    ASSERT_FALSE(world_state_.maps().empty());
+    const entt::id_type target_map_id = world_state_.maps().begin()->first;
+    ASSERT_NE(target_map_id, entt::id_type{0});
+
+    auto settings = map_manager_->loadingSettings();
+    settings.async_preload_enabled = true;
+    settings.async_wait_budget_ms = 2;
+    settings.async_submit_wait_ms = 1;
+    settings.async_command_wait_ms = 8;
+    settings.async_worker_count = 1;
+    settings.async_queue_capacity = 32;
+    map_manager_->setLoadingSettings(settings);
+
+    auto& main_thread_queue = context_->getMainThreadCommandQueue();
+    std::atomic<int> sentinel_executed{0};
+    ASSERT_TRUE(main_thread_queue.enqueue([&sentinel_executed]() {
+        sentinel_executed.fetch_add(1, std::memory_order_relaxed);
+    }));
+    ASSERT_EQ(main_thread_queue.size(), 1U);
+
+    EXPECT_TRUE(map_manager_->loadMap(target_map_id));
+
+    // 若 MapManager 内部仍然调用 drain，哨兵命令会在 loadMap() 返回前被执行。
+    EXPECT_EQ(sentinel_executed.load(std::memory_order_relaxed), 0);
+    EXPECT_GE(main_thread_queue.size(), 1U);
+
+    const auto drained = main_thread_queue.drain();
+    EXPECT_GE(drained, 1U);
+    EXPECT_EQ(sentinel_executed.load(std::memory_order_relaxed), 1);
 }
 
 TEST_F(MapManagerAsyncPreloadTest, PreloadAllMapsDrainsMainThreadCommandsAndReachesTerminalState) {

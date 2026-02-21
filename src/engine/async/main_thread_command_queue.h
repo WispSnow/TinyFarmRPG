@@ -17,6 +17,18 @@ public:
     // 约束：命令函数不得抛异常（符合项目“无异常”规则）。
     using Command = std::function<void()>;
 
+    struct DrainPolicy {
+        std::size_t max_commands{std::numeric_limits<std::size_t>::max()};
+        std::chrono::microseconds time_budget{std::chrono::microseconds::max()};
+    };
+
+    struct DrainResult {
+        std::size_t executed{0};
+        std::size_t remaining{0};
+        std::uint64_t elapsed_us{0};
+        bool budget_hit{false};
+    };
+
     explicit MainThreadCommandQueue(std::size_t capacity = 4096);
 
     MainThreadCommandQueue(const MainThreadCommandQueue&) = delete;
@@ -26,6 +38,7 @@ public:
 
     [[nodiscard]] bool enqueue(Command command);
     [[nodiscard]] bool enqueueWithWait(Command command, std::chrono::milliseconds timeout);
+    [[nodiscard]] DrainResult drain(const DrainPolicy& policy);
     [[nodiscard]] std::size_t drain(std::size_t max_commands = std::numeric_limits<std::size_t>::max());
 
     void clear();

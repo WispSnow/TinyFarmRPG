@@ -40,9 +40,12 @@ namespace game::world {
 
 enum class MapPreloadTaskState : std::uint8_t {
     NotScheduled = 0,
+    // Worker running, or worker result has been enqueued to main-thread queue but not committed yet.
     Running = 1,
+    // Main-thread commit command finished successfully (e.g. GPU texture uploads completed).
     Ready = 2,
     Failed = 3,
+    // Ready result has been consumed by loadMap() and marked as applied.
     Applied = 4,
 };
 

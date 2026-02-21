@@ -36,9 +36,15 @@
 #include <entt/signal/dispatcher.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <nlohmann/json.hpp>
+#include <chrono>
+#include <cstdint>
 #include <string_view>
 
 namespace {
+
+constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
+constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
+constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
 
 template <typename Loader>
 void loadPresetList(const nlohmann::json& root,
@@ -316,7 +322,21 @@ void GameApp::drainMainThreadCommands() {
     if (!main_thread_command_queue_) {
         return;
     }
-    (void)main_thread_command_queue_->drain();
+    const auto result = main_thread_command_queue_->drain(engine::async::MainThreadCommandQueue::DrainPolicy{
+        .max_commands = MAIN_THREAD_DRAIN_MAX_COMMANDS,
+        .time_budget = MAIN_THREAD_DRAIN_BUDGET_US,
+    });
+
+    if (result.elapsed_us > MAIN_THREAD_DRAIN_WARN_THRESHOLD_US) {
+        spdlog::warn(
+            "GameApp::drainMainThreadCommands slow drain: elapsed_us={}, executed={}, remaining={}, budget_hit={}, max_commands={}, budget_us={}",
+            result.elapsed_us,
+            result.executed,
+            result.remaining,
+            result.budget_hit,
+            MAIN_THREAD_DRAIN_MAX_COMMANDS,
+            MAIN_THREAD_DRAIN_BUDGET_US.count());
+    }
 }
 
 void GameApp::close() {

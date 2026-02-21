@@ -2,6 +2,7 @@
 
 set(TEST_SOURCES
     engine/async/thread_pool_test.cpp
+    engine/async/main_thread_command_queue_budget_test.cpp
     engine/core/time_test.cpp
     engine/core/config_factory_api_test.cpp
     engine/core/config_loop_timing_test.cpp
