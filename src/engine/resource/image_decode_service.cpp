@@ -1,4 +1,5 @@
 #include "engine/resource/image_decode_service.h"
+#include "engine/resource/stb_image_mutex.h"
 
 #include <stb_image.h>
 #include <string>
@@ -10,10 +11,15 @@ std::optional<DecodedImage> ImageDecodeService::decodeRGBA(std::string_view file
         return std::nullopt;
     }
 
+    const std::string path(file_path);
     int width = 0;
     int height = 0;
     int channels = 0;
-    unsigned char* data = stbi_load(std::string(file_path).c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    unsigned char* data = nullptr;
+    {
+        std::lock_guard lock(detail::stbImageMutex());
+        data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    }
     if (!data) {
         return std::nullopt;
     }

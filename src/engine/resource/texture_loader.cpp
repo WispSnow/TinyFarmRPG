@@ -1,6 +1,7 @@
 #include "texture_loader.h"
 
 #include "engine/render/opengl/gl_helper.h"
+#include "engine/resource/stb_image_mutex.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -22,12 +23,24 @@ namespace engine::resource {
 
 namespace {
 
+[[nodiscard]] bool hasTextureUploadFunctions() {
+    return glGenTextures != nullptr &&
+           glBindTexture != nullptr &&
+           glTexParameteri != nullptr &&
+           glTexImage2D != nullptr &&
+           glDeleteTextures != nullptr;
+}
+
 [[nodiscard]] TextureLoader::result_type createTextureFromRgba(std::string_view file_path,
                                                                int width,
                                                                int height,
                                                                const std::uint8_t* rgba_pixels) {
     if (width <= 0 || height <= 0 || !rgba_pixels) {
         spdlog::error("TextureLoader: invalid decoded image for '{}'", file_path);
+        return {};
+    }
+    if (!hasTextureUploadFunctions()) {
+        spdlog::error("TextureLoader: OpenGL context/functions unavailable for '{}'", file_path);
         return {};
     }
 
@@ -87,9 +100,21 @@ TextureLoader::result_type TextureLoader::operator()(std::string_view file_path)
     int width = 0;
     int height = 0;
     int channels = 0;
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    unsigned char* data = nullptr;
+    std::string failure_reason{};
+    {
+        std::lock_guard lock(detail::stbImageMutex());
+        data = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+        if (!data) {
+            if (const char* reason = stbi_failure_reason(); reason != nullptr) {
+                failure_reason = reason;
+            } else {
+                failure_reason = "unknown stb error";
+            }
+        }
+    }
     if (!data) {
-        spdlog::error("加载纹理失败: '{}': {}", file_path, stbi_failure_reason());
+        spdlog::error("加载纹理失败: '{}': {}", file_path, failure_reason);
         return {};
     }
 
