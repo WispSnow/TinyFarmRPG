@@ -27,6 +27,7 @@ Doxyfile
 doc/
 doxygen_*
 lecture_plan/.obsidian/
+.record/
 
 # prebuilt
 prebuilt/

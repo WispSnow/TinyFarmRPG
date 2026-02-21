@@ -1,9 +1,14 @@
 {
     "comment": "地图加载/预加载配置",
     "preload": {
-        "mode": "off",
-        "comment": "off | neighbors | all"
+        "mode": "on",
+        "comment": "off | neighbors | all",
+        "async_enabled": true,
+        "async_wait_budget_ms": 3,
+        "async_submit_wait_ms": 1,
+        "async_command_wait_ms": 8,
+        "async_worker_count": 1,
+        "async_queue_capacity": 32
     },
     "log_timings": true
 }
-

@@ -7,8 +7,12 @@
 #include "engine/loader/tiled_conventions.h"
 #include "engine/loader/tiled_json_cache.h"
 #include "engine/loader/tiled_json_helpers.h"
+#include "engine/async/thread_pool.h"
+#include "engine/async/main_thread_command_queue.h"
 #include "engine/render/camera.h"
 #include "engine/core/context.h"
+#include "engine/resource/resource_manager.h"
+#include "engine/resource/image_decode_service.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/tags.h"
@@ -32,6 +36,10 @@
 #include "game/defs/constants.h"
 #include "engine/utils/events.h"
 #include "engine/utils/scoped_timer.h"
+#include <algorithm>
+#include <chrono>
+#include <optional>
+#include <thread>
 #include <spdlog/spdlog.h>
 #include <iterator>
 #include <vector>
@@ -241,11 +249,22 @@ MapManager::MapManager(engine::scene::Scene& scene,
       world_state_(world_state),
       entity_factory_(entity_factory),
       blueprint_manager_(blueprint_manager) {
-        auto& dispatcher = context_.getDispatcher();
+    auto& dispatcher = context_.getDispatcher();
     dispatcher.sink<engine::utils::DayChangedEvent>().connect<&MapManager::onDayChanged>(this);
+    if (loading_settings_.async_preload_enabled) {
+        preload_thread_pool_ = std::make_unique<engine::async::ThreadPool>(engine::async::ThreadPool::Options{
+            .worker_count = std::max<std::size_t>(1, loading_settings_.async_worker_count),
+            .queue_capacity = std::max<std::size_t>(1, loading_settings_.async_queue_capacity),
+            .name = "MapPreloadThreadPool",
+        });
+    }
 }
 
 MapManager::~MapManager(){
+    // 顺序依赖：必须在 Scene/GameScene 析构阶段先 join 预加载 worker，
+    // 以保证 worker/command lambda 捕获的 Context 子系统仍然存活。
+    // GameApp::close() 当前顺序是 scene_manager_ -> main_thread_command_queue_ -> resource_manager_。
+    clearAsyncPreloadTasks();
     auto& dispatcher = context_.getDispatcher();
     dispatcher.disconnect(this);
 }
@@ -253,10 +272,281 @@ MapManager::~MapManager(){
 void MapManager::setLoadingSettings(game::world::MapLoadingSettings settings) {
     loading_settings_ = std::move(settings);
     preloaded_maps_.clear();
+    clearAsyncPreloadTasks();
+    if (loading_settings_.async_preload_enabled) {
+        preload_thread_pool_ = std::make_unique<engine::async::ThreadPool>(engine::async::ThreadPool::Options{
+            .worker_count = std::max<std::size_t>(1, loading_settings_.async_worker_count),
+            .queue_capacity = std::max<std::size_t>(1, loading_settings_.async_queue_capacity),
+            .name = "MapPreloadThreadPool",
+        });
+    }
+}
+
+std::size_t MapManager::preloadedMapCount() const {
+    std::size_t count = preloaded_maps_.size();
+    for (const auto& [map_id, _] : async_preload_tasks_) {
+        if (preloaded_maps_.contains(map_id)) {
+            continue;
+        }
+        if (isAsyncReadyState(mapPreloadTaskState(map_id))) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 bool MapManager::isMapPreloaded(entt::id_type map_id) const {
-    return preloaded_maps_.contains(map_id);
+    if (preloaded_maps_.contains(map_id)) {
+        return true;
+    }
+    return isAsyncReadyState(mapPreloadTaskState(map_id));
+}
+
+MapPreloadTaskState MapManager::mapPreloadTaskState(entt::id_type map_id) const {
+    const auto it = async_preload_tasks_.find(map_id);
+    if (it == async_preload_tasks_.end() || !it->second.shared) {
+        return MapPreloadTaskState::NotScheduled;
+    }
+    return it->second.shared->state.load(std::memory_order_acquire);
+}
+
+bool MapManager::isAsyncReadyState(MapPreloadTaskState state) {
+    return state == MapPreloadTaskState::Ready || state == MapPreloadTaskState::Applied;
+}
+
+void MapManager::clearAsyncPreloadTasks() {
+    // 先 bump generation，使晚到任务在提交前失效；再 stop+join 线程池，确保无悬挂 worker。
+    for (auto& [_, task] : async_preload_tasks_) {
+        if (!task.shared) {
+            continue;
+        }
+        task.shared->generation.fetch_add(1, std::memory_order_acq_rel);
+        task.shared->state.store(MapPreloadTaskState::NotScheduled, std::memory_order_release);
+    }
+    async_preload_tasks_.clear();
+
+    if (preload_thread_pool_) {
+        preload_thread_pool_->stop();
+        preload_thread_pool_.reset();
+    }
+}
+
+bool MapManager::preloadMapSync(entt::id_type map_id, std::string_view level_path) {
+    auto loader = std::make_unique<engine::loader::LevelLoader>(scene_);
+    loader->setUseSpatialIndex(false);
+    loader->setUseAutoTile(true);
+    loader->setTimingEnabled(loading_settings_.log_timings);
+    if (!loader->preloadLevelData(level_path)) {
+        spdlog::warn("MapManager::preloadMapSync: 预加载失败 map_id={}, path='{}'", map_id, level_path);
+        return false;
+    }
+
+    preloaded_maps_.insert(map_id);
+    if (auto it = async_preload_tasks_.find(map_id); it != async_preload_tasks_.end() && it->second.shared) {
+        it->second.shared->state.store(MapPreloadTaskState::Applied, std::memory_order_release);
+    }
+    return true;
+}
+
+bool MapManager::scheduleAsyncPreloadTask(entt::id_type map_id, std::string_view level_path) {
+    if (!loading_settings_.async_preload_enabled || level_path.empty()) {
+        return false;
+    }
+
+    if (!preload_thread_pool_) {
+        preload_thread_pool_ = std::make_unique<engine::async::ThreadPool>(engine::async::ThreadPool::Options{
+            .worker_count = std::max<std::size_t>(1, loading_settings_.async_worker_count),
+            .queue_capacity = std::max<std::size_t>(1, loading_settings_.async_queue_capacity),
+            .name = "MapPreloadThreadPool",
+        });
+    }
+
+    auto& task = async_preload_tasks_[map_id];
+    if (!task.shared) {
+        task.shared = std::make_shared<AsyncPreloadTaskState>();
+    }
+
+    task.level_path = std::string(level_path);
+    const std::uint64_t generation = ++preload_generation_counter_;
+    task.shared->generation.store(generation, std::memory_order_release);
+    task.shared->state.store(MapPreloadTaskState::Running, std::memory_order_release);
+
+    auto shared_state = task.shared;
+    auto* resource_manager = &context_.getResourceManager();
+    auto* main_thread_queue = &context_.getMainThreadCommandQueue();
+    const std::chrono::milliseconds submit_wait{static_cast<int>(loading_settings_.async_submit_wait_ms)};
+    const std::chrono::milliseconds command_wait{static_cast<int>(loading_settings_.async_command_wait_ms)};
+    const bool timing_enabled = loading_settings_.log_timings;
+    const auto task_scheduled_at = std::chrono::steady_clock::now();
+    const std::string path_copy = task.level_path;
+
+    if (timing_enabled) {
+        spdlog::info(
+            "MapManager::scheduleAsyncPreloadTask: submit map_id={}, worker_queue_depth={}, command_queue_depth={}",
+            map_id,
+            preload_thread_pool_->pendingTaskCount(),
+            main_thread_queue->size());
+    }
+
+    const bool submitted = preload_thread_pool_->submit(
+        [map_id,
+         generation,
+         shared_state,
+         path_copy,
+         resource_manager,
+         main_thread_queue,
+         command_wait,
+         timing_enabled,
+         task_scheduled_at]() mutable {
+            struct DecodedTextureEntry {
+                std::string texture_path{};
+                engine::resource::DecodedImage decoded{};
+            };
+
+            const auto worker_start_at = std::chrono::steady_clock::now();
+            auto preprocess = engine::loader::LevelLoader::preprocessLevelDataWorker(path_copy);
+            if (!shared_state || shared_state->generation.load(std::memory_order_acquire) != generation) {
+                return;
+            }
+            if (!preprocess.success) {
+                shared_state->state.store(MapPreloadTaskState::Failed, std::memory_order_release);
+                spdlog::warn(
+                    "MapManager::scheduleAsyncPreloadTask: 预处理失败 map_id={}, path='{}', error='{}'",
+                    map_id,
+                    path_copy,
+                    preprocess.error);
+                return;
+            }
+
+            auto preprocess_end_at = std::chrono::steady_clock::now();
+            std::vector<DecodedTextureEntry> decoded_textures{};
+            decoded_textures.reserve(preprocess.data.texture_paths.size());
+            for (const auto& texture_path : preprocess.data.texture_paths) {
+                auto decoded = engine::resource::ImageDecodeService::decodeRGBA(texture_path);
+                if (!decoded.has_value()) {
+                    shared_state->state.store(MapPreloadTaskState::Failed, std::memory_order_release);
+                    spdlog::warn(
+                        "MapManager::scheduleAsyncPreloadTask: worker 解码失败 map_id={}, texture='{}'",
+                        map_id,
+                        texture_path);
+                    return;
+                }
+                decoded_textures.push_back(DecodedTextureEntry{
+                    .texture_path = texture_path,
+                    .decoded = std::move(*decoded),
+                });
+            }
+            auto decode_end_at = std::chrono::steady_clock::now();
+
+            const bool enqueued = main_thread_queue->enqueueWithWait(
+                [map_id,
+                 generation,
+                 shared_state,
+                 resource_manager,
+                 decoded_textures = std::move(decoded_textures),
+                 timing_enabled]() mutable {
+                    if (!shared_state || shared_state->generation.load(std::memory_order_acquire) != generation) {
+                        return;
+                    }
+
+                    const auto commit_start_at = std::chrono::steady_clock::now();
+                    bool success = true;
+                    for (const auto& texture : decoded_textures) {
+                        if (!texture.decoded.valid() || texture.texture_path.empty()) {
+                            continue;
+                        }
+                        const entt::id_type texture_id = entt::hashed_string{
+                            texture.texture_path.c_str(),
+                            texture.texture_path.size()}.value();
+                        if (!resource_manager->loadTextureFromDecoded(texture_id, texture.texture_path, texture.decoded)) {
+                            success = false;
+                            spdlog::warn(
+                                "MapManager::scheduleAsyncPreloadTask: 主线程上传失败 map_id={}, texture='{}'",
+                                map_id,
+                                texture.texture_path);
+                        }
+                    }
+
+                    if (timing_enabled) {
+                        const auto commit_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - commit_start_at).count();
+                        spdlog::info(
+                            "MapManager::scheduleAsyncPreloadTask: commit done map_id={}, texture_count={}, commit_ms={}",
+                            map_id,
+                            decoded_textures.size(),
+                            commit_ms);
+                    }
+
+                    shared_state->state.store(
+                        success ? MapPreloadTaskState::Ready : MapPreloadTaskState::Failed,
+                        std::memory_order_release);
+                },
+                command_wait);
+
+            if (!enqueued) {
+                shared_state->state.store(MapPreloadTaskState::Failed, std::memory_order_release);
+                spdlog::warn(
+                    "MapManager::scheduleAsyncPreloadTask: 主线程命令排队失败 map_id={}, path='{}'",
+                    map_id,
+                    path_copy);
+                return;
+            }
+
+            if (timing_enabled) {
+                const auto queue_wait_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    worker_start_at - task_scheduled_at).count();
+                const auto preprocess_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    preprocess_end_at - worker_start_at).count();
+                const auto decode_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    decode_end_at - preprocess_end_at).count();
+                spdlog::info(
+                    "MapManager::scheduleAsyncPreloadTask: worker done map_id={}, tileset_count={}, texture_count={}, queued_ms={}, preprocess_ms={}, decode_ms={}, command_queue_depth={}",
+                    map_id,
+                    preprocess.data.tilesets.size(),
+                    preprocess.data.texture_paths.size(),
+                    queue_wait_ms,
+                    preprocess_ms,
+                    decode_ms,
+                    main_thread_queue->size());
+            }
+        },
+        submit_wait);
+
+    if (!submitted) {
+        task.shared->state.store(MapPreloadTaskState::Failed, std::memory_order_release);
+        spdlog::warn(
+            "MapManager::scheduleAsyncPreloadTask: worker 任务提交失败 map_id={}, path='{}'",
+            map_id,
+            task.level_path);
+    }
+
+    return submitted;
+}
+
+bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
+    if (loading_settings_.async_wait_budget_ms == 0) {
+        return false;
+    }
+
+    auto& command_queue = context_.getMainThreadCommandQueue();
+    const auto deadline = std::chrono::steady_clock::now()
+                        + std::chrono::milliseconds(loading_settings_.async_wait_budget_ms);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        const auto state = mapPreloadTaskState(map_id);
+        if (isAsyncReadyState(state)) {
+            return true;
+        }
+        if (state == MapPreloadTaskState::Failed || state == MapPreloadTaskState::NotScheduled) {
+            return false;
+        }
+
+        (void)command_queue.drain();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    (void)command_queue.drain();
+    return isAsyncReadyState(mapPreloadTaskState(map_id));
 }
 
 bool MapManager::preloadMap(entt::id_type map_id) {
@@ -273,18 +563,26 @@ bool MapManager::preloadMap(entt::id_type map_id) {
         return false;
     }
 
-    auto loader = std::make_unique<engine::loader::LevelLoader>(scene_);
-
-    loader->setUseSpatialIndex(false);
-    loader->setUseAutoTile(true);
-    loader->setTimingEnabled(loading_settings_.log_timings);
-    if (!loader->preloadLevelData(map_state->info.file_path)) {
-        spdlog::warn("MapManager::preloadMap: 预加载失败: {}", map_state->info.file_path);
-        return false;
+    const auto state = mapPreloadTaskState(map_id);
+    if (isAsyncReadyState(state)) {
+        preloaded_maps_.insert(map_id);
+        return true;
     }
 
-    preloaded_maps_.insert(map_id);
-    return true;
+    if (loading_settings_.async_preload_enabled) {
+        if (state == MapPreloadTaskState::Running) {
+            return true;
+        }
+        if (scheduleAsyncPreloadTask(map_id, map_state->info.file_path)) {
+            return true;
+        }
+        spdlog::warn(
+            "MapManager::preloadMap: 异步预加载提交失败，降级同步 map_id={}, path='{}'",
+            map_id,
+            map_state->info.file_path);
+    }
+
+    return preloadMapSync(map_id, map_state->info.file_path);
 }
 
 void MapManager::preloadAllMaps() {
@@ -343,6 +641,29 @@ bool MapManager::loadMap(entt::id_type map_id) {
         return false;
     }
 
+    if (loading_settings_.async_preload_enabled) {
+        if (mapPreloadTaskState(map_id) == MapPreloadTaskState::NotScheduled) {
+            (void)preloadMap(map_id);
+        }
+
+        auto task_state = mapPreloadTaskState(map_id);
+        if (task_state == MapPreloadTaskState::Running) {
+            if (!waitForAsyncPreloadReady(map_id)) {
+                spdlog::info(
+                    "MapManager::loadMap: 异步预加载未在预算内完成，降级同步加载 map_id={}, wait_budget={}ms",
+                    map_id,
+                    loading_settings_.async_wait_budget_ms);
+            }
+            task_state = mapPreloadTaskState(map_id);
+        }
+
+        if (isAsyncReadyState(task_state)) {
+            preloaded_maps_.insert(map_id);
+        } else if (task_state == MapPreloadTaskState::Failed) {
+            spdlog::warn("MapManager::loadMap: 异步预加载失败，使用同步加载 map_id={}", map_id);
+        }
+    }
+
     if (auto* mutable_state = world_state_.getMapStateMutable(map_id)) {
         mutable_state->triggers.clear();
         mutable_state->info.ambient_override.reset();
@@ -385,6 +706,11 @@ bool MapManager::loadMap(entt::id_type map_id) {
 
     // 当前地图视为已预热（至少 JSON/tileset/纹理会进入缓存）
     preloaded_maps_.insert(map_id);
+    if (auto it = async_preload_tasks_.find(map_id); it != async_preload_tasks_.end() && it->second.shared) {
+        if (it->second.shared->state.load(std::memory_order_acquire) == MapPreloadTaskState::Ready) {
+            it->second.shared->state.store(MapPreloadTaskState::Applied, std::memory_order_release);
+        }
+    }
 
     auto map_size = level_loader_->getMapSize();
     auto tile_size = level_loader_->getTileSize();

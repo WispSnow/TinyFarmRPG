@@ -16,6 +16,7 @@
 #include "engine/utils/scoped_timer.h"
 #include "tiled_conventions.h"
 #include "tiled_diagnostics.h"
+#include "level_preprocess_service.h"
 #include "tiled_json_cache.h"
 #include "tiled_json_helpers.h"
 #include <algorithm>
@@ -173,8 +174,21 @@ bool LevelLoader::loadLevel(std::string_view level_path) {
 }
 
 bool LevelLoader::preloadLevelData(std::string_view level_path) {
+    const auto preprocess = preprocessLevelDataWorker(level_path);
+    if (!preprocess.success) {
+        spdlog::error("LevelLoader::preloadLevelData: preprocess failed: '{}', error='{}'", level_path, preprocess.error);
+        return false;
+    }
+    return preloadLevelDataFromPreprocess(preprocess.data);
+}
+
+LevelPreprocessResult LevelLoader::preprocessLevelDataWorker(std::string_view level_path) {
+    return LevelPreprocessService::preprocessLevel(level_path);
+}
+
+bool LevelLoader::preloadLevelDataFromPreprocess(const LevelPreprocessData& data, bool preload_textures) {
     engine::utils::ScopedTimer timer(
-        std::string("LevelLoader::preloadLevelData: ") + std::string(level_path),
+        std::string("LevelLoader::preloadLevelDataFromPreprocess: ") + data.level_path,
         timing_enabled_,
         spdlog::level::info
     );
@@ -184,52 +198,26 @@ bool LevelLoader::preloadLevelData(std::string_view level_path) {
     tileset_tile_indices_.clear();
     tile_info_cache_.clear();
 
-    const auto json_ptr = tiled::getOrLoadLevelJson(level_path);
-    if (!json_ptr) {
+    if (data.level_path.empty()) {
+        spdlog::error("LevelLoader::preloadLevelDataFromPreprocess: level_path is empty");
         return false;
     }
-    const auto& json_data = *json_ptr;
 
-    map_path_ = level_path;
+    map_path_ = data.level_path;
 
-    // 预加载 tileset（会触发 tileset JSON 缓存 + wangsets 解析 + auto-tile 规则预热）
-    if (json_data.contains("tilesets") && json_data["tilesets"].is_array()) {
-        for (const auto& tileset_ref : json_data["tilesets"]) {
-            if (!isValidTilesetRef(tileset_ref)) {
-                spdlog::warn("preloadLevelData: tilesets 对象中缺少有效 'source' 或 'firstgid' 字段。");
-                continue;
-            }
-
-            const auto tileset_path = resolvePath(tileset_ref["source"].get<std::string>(), map_path_);
-            const int first_gid = jsonIntOr(tileset_ref, "firstgid", 0);
-            loadTileset(tileset_path, first_gid);
-
-            // 额外预热：tileset 单图纹理（部分 tileset 没有 wangsets 时也需要）
-            if (auto ts_json_ptr = tiled::getOrLoadTilesetJson(tileset_path); ts_json_ptr) {
-                const auto& ts_json = *ts_json_ptr;
-                if (ts_json.contains("image") && ts_json["image"].is_string()) {
-                    const auto texture_path = resolvePath(ts_json["image"].get<std::string>(), tileset_path);
-                    const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
-                    resource_manager_.loadTexture(texture_id, texture_path);
-                }
-            }
+    // 主线程提交 tileset（触发 tileset JSON 缓存 + wangsets 解析 + auto-tile 规则预热）
+    for (const auto& tileset : data.tilesets) {
+        if (tileset.path.empty() || tileset.first_gid <= 0) {
+            continue;
         }
+        loadTileset(tileset.path, tileset.first_gid);
     }
 
-    // 预热 imagelayer 使用的纹理（不创建实体）
-    if (json_data.contains("layers") && json_data["layers"].is_array()) {
-        for (const auto& layer_json : json_data["layers"]) {
-            if (!jsonBoolOr(layer_json, "visible", true)) {
+    if (preload_textures) {
+        for (const auto& texture_path : data.texture_paths) {
+            if (texture_path.empty()) {
                 continue;
             }
-            if (jsonStringOr(layer_json, "type", "") != "imagelayer") {
-                continue;
-            }
-            const std::string image_path = jsonStringOr(layer_json, "image", "");
-            if (image_path.empty()) {
-                continue;
-            }
-            const auto texture_path = resolvePath(image_path, map_path_);
             const entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
             resource_manager_.loadTexture(texture_id, texture_path);
         }
@@ -392,21 +380,21 @@ void LevelLoader::loadTileset(std::string_view tileset_path, int first_gid) {
     );
 
     // 获取/缓存 tileset JSON（避免切图时反复读盘与解析）
-    auto ts_json_ptr = tiled::getOrLoadTilesetJson(tileset_path);
-    if (!ts_json_ptr) {
+    auto cached_ts_json_ptr = tiled::getOrLoadTilesetJson(tileset_path);
+    if (!cached_ts_json_ptr) {
         return;
     }
 
+    // 注意：不要直接改写全局 cache 中的 JSON。
+    // worker 线程的预处理阶段会并发读取同一 tileset JSON，
+    // 这里若写入字段（如 file_path/_engine_auto_tile_processed）会产生 data race。
+    auto ts_json_ptr = std::make_shared<nlohmann::json>(*cached_ts_json_ptr);
     auto& ts_json = *ts_json_ptr;
     ts_json["file_path"] = std::string(tileset_path); // 将文件路径存储到json中，后续解析图片路径时需要
 
-    // 如果开启了自动图块，则加载WangSets（同一 tileset 只处理一次）
+    // 如果开启了自动图块，则加载WangSets（每次按局部拷贝处理，避免共享可变状态）
     if (use_auto_tile_) {
-        const bool processed = jsonBoolOr(ts_json, "_engine_auto_tile_processed", false);
-        if (!processed) {
-            loadWangSets(ts_json);
-            ts_json["_engine_auto_tile_processed"] = true;
-        }
+        loadWangSets(ts_json);
     }
 
     // 将 tileset 数据保存到 tileset_data_ 中（共享缓存，避免深拷贝）

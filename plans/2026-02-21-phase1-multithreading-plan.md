@@ -4,7 +4,7 @@
 - 阶段：`Phase 1`
 - 主题：`异步加载预处理（不改 gameplay 并行）`
 - 优先级：`P0`
-- 状态：`Planned`
+- 状态：`Completed（实现完成，已做针对性验证）`
 - 范围边界：仅实现“Worker 做 IO/解析/解码 + 主线程提交执行”，不并行 `SystemScheduler`。
 
 ## 目标
@@ -112,19 +112,19 @@
 
 ## 4. 待办清单（用于后续追踪）
 
-- [ ] T1 新增 `ThreadPool/WorkQueue/MainThreadCommandQueue` 并通过基础并发测试
-- [ ] T2 定义 `ParsedLevelData/DecodedImage` 中间产物结构并补充注释契约
-- [ ] T3 实现 `LevelPreprocessService`（JSON 读取 + 解析）并补测试
-- [ ] T4 实现 `ImageDecodeService`（图片解码）并补测试
-- [ ] T4b 实现 `FontPreprocessService`（字体栅格化 CPU 阶段）并补测试
-- [ ] T5 改造 `tiled_json_cache` 为线程安全实现
-- [ ] T6 `MapManager` 接入异步预加载入口（可查询任务状态）
-- [ ] T6a 定义 `MapPreloadTaskState` 与 `loadMap` 的等待/降级/过期结果丢弃策略
-- [ ] T7 `LevelLoader` 拆分预处理阶段与主线程提交阶段
-- [ ] T8 `GameApp::run()` 在 `updateFrame(...)` 后、`render(...)` 前增加 `drainMainThreadCommands()`
-- [ ] T9 接入失败回退与统计日志（队列长度/任务耗时/失败原因）
-- [ ] T10 新增 `map_manager_async_preload_test` 并完成关键回归
-- [ ] T11 在 `cmake/CompilerSettings.cmake` 增加 `-DENABLE_TSAN=ON` 配置并跑通 TSAN 构建/测试
+- [x] T1 新增 `ThreadPool/WorkQueue/MainThreadCommandQueue` 并通过基础并发测试
+- [x] T2 定义 `ParsedLevelData/DecodedImage` 中间产物结构并补充注释契约
+- [x] T3 实现 `LevelPreprocessService`（JSON 读取 + 解析）并补测试
+- [x] T4 实现 `ImageDecodeService`（图片解码）并补测试
+- [x] T4b 实现 `FontPreprocessService`（字体栅格化 CPU 阶段）并补测试
+- [x] T5 改造 `tiled_json_cache` 为线程安全实现
+- [x] T6 `MapManager` 接入异步预加载入口（可查询任务状态）
+- [x] T6a 定义 `MapPreloadTaskState` 与 `loadMap` 的等待/降级/过期结果丢弃策略
+- [x] T7 `LevelLoader` 拆分预处理阶段与主线程提交阶段
+- [x] T8 `GameApp::run()` 在 `updateFrame(...)` 后、`render(...)` 前增加 `drainMainThreadCommands()`
+- [x] T9 接入失败回退与统计日志（队列长度/任务耗时/失败原因）
+- [x] T10 新增 `map_manager_async_preload_test` 并完成关键回归
+- [x] T11 在 `cmake/CompilerSettings.cmake` 增加 `-DENABLE_TSAN=ON` 配置并跑通 TSAN 构建/测试
 
 ## 验收标准（Phase 1 DoD）
 - 地图预加载中的文件读取/JSON 解析/图片解码不再阻塞主线程。

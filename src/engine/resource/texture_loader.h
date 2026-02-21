@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/resource/decoded_image.h"
 #include "engine/utils/defs.h"
 
 #include <entt/resource/cache.hpp>
@@ -15,6 +16,7 @@ public:
     using result_type = std::shared_ptr<engine::utils::GL_Texture>;
 
     [[nodiscard]] result_type operator()(std::string_view file_path) const;
+    [[nodiscard]] result_type operator()(std::string_view file_path, const DecodedImage& decoded) const;
 };
 
 using TextureHandle = entt::resource<engine::utils::GL_Texture>;

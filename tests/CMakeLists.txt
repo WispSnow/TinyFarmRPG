@@ -1,6 +1,7 @@
 # Engine unit tests
 
 set(TEST_SOURCES
+    engine/async/thread_pool_test.cpp
     engine/core/time_test.cpp
     engine/core/config_factory_api_test.cpp
     engine/core/config_loop_timing_test.cpp
@@ -16,6 +17,8 @@ set(TEST_SOURCES
     engine/scene/render_interpolation_pipeline_test.cpp
     engine/factory_visibility_test.cpp
     engine/resource/font_manager_create_test.cpp
+    engine/resource/font_preprocess_service_test.cpp
+    engine/resource/image_decode_service_test.cpp
     engine/resource/resource_manager_no_exceptions_test.cpp
     engine/resource/resource_manager_texture_handle_api_test.cpp
     engine/resource/resource_manager_audio_handle_api_test.cpp
@@ -25,6 +28,8 @@ set(TEST_SOURCES
     engine/resource/resource_manager_clear_orchestration_test.cpp
     engine/ui/ui_button_factory_api_test.cpp
     engine/loader/level_loader_layer_name_test.cpp
+    engine/loader/level_preprocess_service_test.cpp
+    engine/loader/level_loader_async_stage_test.cpp
     engine/loader/level_loader_no_exceptions_test.cpp
     engine/loader/level_loader_no_json_value_test.cpp
     engine/loader/level_loader_tile_flag_warning_test.cpp
@@ -110,6 +115,7 @@ set(GAME_TEST_SOURCES
     game/time_of_day_light_system_test.cpp
     game/item_use_system_test.cpp
     game/map_loading_settings_test.cpp
+    game/map_manager_async_preload_test.cpp
     game/world_state_test.cpp
     game/ui_layout_integration_test.cpp
 )

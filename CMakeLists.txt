@@ -20,6 +20,7 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
 option(ENABLE_SCRIPTING "启用 Lua + Sol2 脚本宿主层" ON)
+option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
 add_compile_definitions(ENTT_ID_TYPE=std::uint64_t)

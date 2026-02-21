@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "engine/core/context.h"
+#include "engine/async/main_thread_command_queue.h"
 #include "engine/render/opengl/sprite_batch.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/ui_button.h"
@@ -37,6 +38,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                            engine::audio::AudioPlayer&,
                            engine::core::GameState&,
                            engine::core::Time&,
+                           engine::async::MainThreadCommandQueue&,
                            engine::debug::DebugUIManager&,
                            engine::spatial::SpatialIndexManager&>));
     EXPECT_FALSE((std::is_constructible_v<engine::core::Context,
@@ -52,6 +54,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                                          engine::audio::AudioPlayer&,
                                          engine::core::GameState&,
                                          engine::core::Time&,
+                                         engine::async::MainThreadCommandQueue&,
                                          engine::debug::DebugUIManager&,
                                          engine::spatial::SpatialIndexManager&>));
 #else
@@ -68,6 +71,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                            engine::audio::AudioPlayer&,
                            engine::core::GameState&,
                            engine::core::Time&,
+                           engine::async::MainThreadCommandQueue&,
                            engine::spatial::SpatialIndexManager&>));
     EXPECT_FALSE((std::is_constructible_v<engine::core::Context,
                                          entt::dispatcher&,
@@ -82,6 +86,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                                          engine::audio::AudioPlayer&,
                                          engine::core::GameState&,
                                          engine::core::Time&,
+                                         engine::async::MainThreadCommandQueue&,
                                          engine::spatial::SpatialIndexManager&>));
 #endif
 }

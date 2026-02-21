@@ -15,6 +15,18 @@ TextureHandle TextureManager::loadTexture(entt::id_type id, std::string_view fil
     return handle;
 }
 
+TextureHandle TextureManager::loadTextureFromDecoded(entt::id_type id,
+                                                     std::string_view file_path,
+                                                     const DecodedImage& decoded) {
+    auto [it, _] = texture_cache_.load(id, file_path, decoded);
+    TextureHandle handle = it->second;
+    if (!handle) {
+        texture_cache_.erase(id);
+        spdlog::error("TextureManager: 预解码纹理上传失败，已移除无效缓存条目: id={}, path='{}'", id, file_path);
+    }
+    return handle;
+}
+
 TextureHandle TextureManager::findTexture(entt::id_type id) {
     return texture_cache_[id];
 }

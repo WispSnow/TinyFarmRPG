@@ -8,6 +8,7 @@
 #include <nlohmann/json_fwd.hpp>
 #include "resource_debug_info.h"
 #include "audio_loader.h"
+#include "decoded_image.h"
 #include "texture_loader.h"
 #include "font_handle.h"
 
@@ -58,6 +59,7 @@ public:
     // --- 统一资源访问接口 ---
     // -- Texture --
     TextureHandle loadTexture(entt::id_type id, std::string_view file_path);         ///< @brief 载入纹理资源(通过id + 文件路径)
+    TextureHandle loadTextureFromDecoded(entt::id_type id, std::string_view file_path, const DecodedImage& decoded);
     TextureHandle getTexture(entt::id_type id);                                       ///< @brief 仅获取已加载纹理句柄(通过id)
     void unloadTexture(entt::id_type id);                                     ///< @brief 卸载指定的纹理资源
     glm::vec2 getTextureSize(entt::id_type id);                                 ///< @brief 获取指定纹理的尺寸(通过id)

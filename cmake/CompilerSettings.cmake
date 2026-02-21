@@ -25,5 +25,19 @@ function(setup_compiler_options TARGET_NAME)
         # Linux/macOS: 标准警告选项
         target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
-endfunction()
 
+    if(ENABLE_TSAN)
+        if(MSVC)
+            message(FATAL_ERROR "ENABLE_TSAN=ON is not supported on MSVC.")
+        endif()
+
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
+           CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
+           CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+            target_compile_options(${TARGET_NAME} PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
+            target_link_options(${TARGET_NAME} PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
+        else()
+            message(FATAL_ERROR "ENABLE_TSAN=ON requires GCC, Clang, or AppleClang.")
+        endif()
+    endif()
+endfunction()
