@@ -40,8 +40,10 @@
 #include <array>
 #include <cmath>
 #include <ctime>
+#include <exception>
 #include <fstream>
 #include <unordered_set>
+#include <utility>
 
 using namespace entt::literals;
 
@@ -182,15 +184,10 @@ std::filesystem::path SaveService::slotPath(int slot) {
     return std::filesystem::path("saves") / ("slot" + std::to_string(slot) + ".json");
 }
 
-bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string& out_error) {
+bool SaveService::writeSaveFile(const SaveData& data,
+                                const std::filesystem::path& file_path,
+                                std::string& out_error) {
     out_error.clear();
-    map_manager_.snapshotCurrentMap();
-
-    SaveData data = capture(out_error);
-    if (!out_error.empty()) {
-        return false;
-    }
-
     const nlohmann::json json = serialize(data);
 
     std::error_code ec;
@@ -234,8 +231,111 @@ bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string
     return true;
 }
 
+void SaveService::cleanupCompletedSaveThread() {
+    if (!async_save_thread_) {
+        return;
+    }
+    if (save_in_progress_.load(std::memory_order_acquire)) {
+        return;
+    }
+    if (async_save_thread_->joinable()) {
+        async_save_thread_->join();
+    }
+    async_save_thread_.reset();
+}
+
+bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string& out_error) {
+    out_error.clear();
+    cleanupCompletedSaveThread();
+    if (isSaving()) {
+        out_error = "保存进行中，请稍后再试。";
+        return false;
+    }
+
+    map_manager_.snapshotCurrentMap();
+
+    SaveData data = capture(out_error);
+    if (!out_error.empty()) {
+        return false;
+    }
+
+    return writeSaveFile(data, file_path, out_error);
+}
+
+bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::string& out_error) {
+    out_error.clear();
+    cleanupCompletedSaveThread();
+
+    bool expected = false;
+    if (!save_in_progress_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+        out_error = "保存进行中，请稍后再试。";
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(async_result_mutex_);
+        if (async_save_result_) {
+            spdlog::warn("SaveService: 检测到未消费的异步保存结果，启动新任务前自动清理。");
+            async_save_result_.reset();
+        }
+    }
+
+    map_manager_.snapshotCurrentMap();
+    SaveData data = capture(out_error);
+    if (!out_error.empty()) {
+        save_in_progress_.store(false, std::memory_order_release);
+        return false;
+    }
+
+    try {
+        async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
+            std::string write_error;
+            const bool success = writeSaveFile(data, file_path, write_error);
+            AsyncSaveResult result{};
+            result.file_path = file_path;
+            result.success = success;
+            result.error = std::move(write_error);
+            {
+                std::lock_guard<std::mutex> lock(async_result_mutex_);
+                async_save_result_ = std::move(result);
+            }
+            save_in_progress_.store(false, std::memory_order_release);
+        });
+    } catch (const std::exception& e) {
+        save_in_progress_.store(false, std::memory_order_release);
+        out_error = std::string("启动异步保存线程失败: ") + e.what();
+        return false;
+    }
+
+    return true;
+}
+
+std::optional<SaveService::AsyncSaveResult> SaveService::consumeAsyncSaveResult() {
+    if (save_in_progress_.load(std::memory_order_acquire)) {
+        return std::nullopt;
+    }
+
+    std::optional<AsyncSaveResult> result;
+    {
+        std::lock_guard<std::mutex> lock(async_result_mutex_);
+        if (!async_save_result_) {
+            return std::nullopt;
+        }
+        result = std::move(async_save_result_);
+        async_save_result_.reset();
+    }
+
+    cleanupCompletedSaveThread();
+    return result;
+}
+
 bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::string& out_error) {
     out_error.clear();
+    cleanupCompletedSaveThread();
+    if (isSaving()) {
+        out_error = "保存进行中，请稍后再试。";
+        return false;
+    }
 
     std::ifstream in(file_path);
     if (!in.is_open()) {

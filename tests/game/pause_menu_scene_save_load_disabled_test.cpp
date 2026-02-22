@@ -30,14 +30,14 @@ TEST(PauseMenuSceneSaveLoadDisabledTest, DisablesButtonsWhenSaveServiceMissing) 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("if (!save_service_)"), std::string::npos)
-        << "PauseMenuScene should check save_service_ before enabling Save/Load.";
-    EXPECT_NE(source.find("disableButton(save_button_)"), std::string::npos)
-        << "PauseMenuScene should disable the Save button when SaveService is missing.";
-    EXPECT_NE(source.find("disableButton(load_button_)"), std::string::npos)
-        << "PauseMenuScene should disable the Load button when SaveService is missing.";
-    EXPECT_NE(source.find("button->setEnabled(false);"), std::string::npos)
-        << "PauseMenuScene disableButton should use unified setEnabled(false).";
+    EXPECT_NE(source.find("const bool has_save_service = (save_service_ != nullptr);"), std::string::npos)
+        << "PauseMenuScene should derive enable state from save_service_ presence.";
+    EXPECT_NE(source.find("save_button_->setEnabled(has_save_service && !saving);"), std::string::npos)
+        << "PauseMenuScene should disable Save when SaveService is missing.";
+    EXPECT_NE(source.find("load_button_->setEnabled(has_save_service && !saving);"), std::string::npos)
+        << "PauseMenuScene should disable Load when SaveService is missing.";
+    EXPECT_NE(source.find("refreshSaveActionButtons();"), std::string::npos)
+        << "PauseMenuScene should refresh Save/Load enable state via unified helper.";
 }
 
 } // namespace

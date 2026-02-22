@@ -72,8 +72,9 @@ private:
     void buildLayout();
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();
+    void refreshSaveActionButtons();
+    void pollAsyncSaveResult();
     void setMessage(std::string message, bool is_error);
-    void disableButton(engine::ui::UIButton* button);
 
     bool onPausePressed();
 
