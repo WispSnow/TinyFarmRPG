@@ -1,3 +1,17 @@
+# GoogleTest registration policy
+#
+# ASAN + gtest_discover_tests 在 macOS/libc++ 上可能在“列举测试列表”阶段触发
+# gtest 内部容器检测误报并导致构建中断。ASAN 构建下改用源码扫描注册，避免在 build
+# 期运行测试可执行文件；非 ASAN 构建继续使用 discover。
+set(TF_ASAN_ENABLED OFF)
+foreach(_flag_var CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS)
+    if("${${_flag_var}}" MATCHES "(^|[ ;])-fsanitize=address($|[ ;])")
+        set(TF_ASAN_ENABLED ON)
+    endif()
+endforeach()
+
+include(GoogleTest)
+
 # Engine unit tests
 
 set(TEST_SOURCES
@@ -38,6 +52,7 @@ set(TEST_SOURCES
     engine/system/render_system_view_use_test.cpp
     engine/system/remove_entity_system_test.cpp
     engine/system/movement_system_dynamic_grid_sync_test.cpp
+    engine/system/parallel_wave_scheduler_test.cpp
     engine/render/nine_slice_test.cpp
     engine/render/text_renderer_no_exceptions_test.cpp
     engine/render/render_context_no_exceptions_test.cpp
@@ -82,8 +97,11 @@ target_compile_definitions(engine_tests
 
 setup_compiler_options(engine_tests)
 
-include(GoogleTest)
-gtest_discover_tests(engine_tests)
+if(TF_ASAN_ENABLED)
+    gtest_add_tests(TARGET engine_tests TEST_LIST ENGINE_TEST_LIST)
+else()
+    gtest_discover_tests(engine_tests)
+endif()
 
 # Game unit tests
 
@@ -155,4 +173,8 @@ target_compile_definitions(game_tests
 
 setup_compiler_options(game_tests)
 
-gtest_discover_tests(game_tests)
+if(TF_ASAN_ENABLED)
+    gtest_add_tests(TARGET game_tests TEST_LIST GAME_TEST_LIST)
+else()
+    gtest_discover_tests(game_tests)
+endif()

@@ -6,69 +6,76 @@
 
 #include <entt/entity/registry.hpp>
 
-#include <vector>
+#include <cstddef>
 
 namespace game::debug {
 namespace {
 
-TEST(SystemSchedulerProfilerTest, StageHooksCanCollectDurations) {
+[[nodiscard]] game::runtime::SystemScheduler::TickResult makeSingleStageTickResult(
+    const game::runtime::SchedulerStage stage,
+    const double elapsed_ms,
+    const bool gate1 = false,
+    const bool gate2 = false) {
+    game::runtime::SystemScheduler::TickResult result{};
+    result.gate1_triggered = gate1;
+    result.gate2_triggered = gate2;
+    result.trace.stages.push_back(game::runtime::SystemScheduler::StageTrace{
+        stage,
+        elapsed_ms
+    });
+    return result;
+}
+
+TEST(SystemSchedulerProfilerTest, CaptureFrameCollectsSchedulerTrace) {
     entt::registry registry;
     game::runtime::GameSystemBundle systems;
     game::runtime::SystemScheduler scheduler;
     SchedulerProfiler profiler;
     profiler.setEnabled(true);
 
-    std::vector<game::runtime::SchedulerStage> started;
-    std::vector<game::runtime::SchedulerStage> completed;
-
-    profiler.beginFrame(game::runtime::GameMode::Exploration);
-    const auto result = scheduler.tick({
-        game::runtime::GameMode::Exploration,
-        systems,
-        registry,
-        0.016f,
-        {},
-        []() { return false; },
-        [&](const game::runtime::SchedulerStage stage) {
-            started.push_back(stage);
-            profiler.onStageStarted(stage);
-        },
-        [&](const game::runtime::SchedulerStage stage) {
-            completed.push_back(stage);
-            profiler.onStageCompleted(stage);
-        }
+    const auto tick_result = scheduler.tick({
+        .mode = game::runtime::GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .delta_time = 0.016f,
+        .is_transition_active = []() { return false; }
     });
-    profiler.endFrame(result, false);
-
-    ASSERT_EQ(started, completed);
+    profiler.captureFrame(game::runtime::GameMode::Exploration, tick_result, false);
 
     const auto* frame = profiler.latestFrame();
     ASSERT_NE(frame, nullptr);
     EXPECT_EQ(frame->mode, game::runtime::GameMode::Exploration);
     EXPECT_FALSE(frame->gate1_triggered);
     EXPECT_FALSE(frame->gate2_triggered);
-    ASSERT_EQ(frame->stages.size(), started.size());
+    ASSERT_EQ(frame->stages.size(), tick_result.trace.stages.size());
 
-    for (const auto& stage : frame->stages) {
-        EXPECT_GE(stage.elapsed_ms, 0.0);
+    double total_elapsed = 0.0;
+    for (std::size_t i = 0; i < frame->stages.size(); ++i) {
+        EXPECT_EQ(frame->stages[i].stage, tick_result.trace.stages[i].stage);
+        EXPECT_EQ(frame->stages[i].elapsed_ms, tick_result.trace.stages[i].elapsed_ms);
+        EXPECT_GE(frame->stages[i].elapsed_ms, 0.0);
+        total_elapsed += frame->stages[i].elapsed_ms;
     }
+    EXPECT_DOUBLE_EQ(frame->total_ms, total_elapsed);
 }
 
-TEST(SystemSchedulerProfilerTest, CaptureOnRecordsStageOrderAndDurations) {
+TEST(SystemSchedulerProfilerTest, CaptureFrameRecordsProvidedTraceAndGateFlags) {
     SchedulerProfiler profiler;
     profiler.setEnabled(true);
 
-    const game::runtime::SystemScheduler::TickResult tick_result{
-        false,
-        true
-    };
+    game::runtime::SystemScheduler::TickResult tick_result{};
+    tick_result.gate1_triggered = false;
+    tick_result.gate2_triggered = true;
+    tick_result.trace.stages.push_back(game::runtime::SystemScheduler::StageTrace{
+        game::runtime::SchedulerStage::RemoveEntity,
+        0.125
+    });
+    tick_result.trace.stages.push_back(game::runtime::SystemScheduler::StageTrace{
+        game::runtime::SchedulerStage::TransitionUpdatePost,
+        0.250
+    });
 
-    profiler.beginFrame(game::runtime::GameMode::Cutscene);
-    profiler.onStageStarted(game::runtime::SchedulerStage::RemoveEntity);
-    profiler.onStageCompleted(game::runtime::SchedulerStage::RemoveEntity);
-    profiler.onStageStarted(game::runtime::SchedulerStage::TransitionUpdatePost);
-    profiler.onStageCompleted(game::runtime::SchedulerStage::TransitionUpdatePost);
-    profiler.endFrame(tick_result, false);
+    profiler.captureFrame(game::runtime::GameMode::Cutscene, tick_result, false);
 
     const auto* frame = profiler.latestFrame();
     ASSERT_NE(frame, nullptr);
@@ -78,18 +85,19 @@ TEST(SystemSchedulerProfilerTest, CaptureOnRecordsStageOrderAndDurations) {
     ASSERT_EQ(frame->stages.size(), 2U);
     EXPECT_EQ(frame->stages[0].stage, game::runtime::SchedulerStage::RemoveEntity);
     EXPECT_EQ(frame->stages[1].stage, game::runtime::SchedulerStage::TransitionUpdatePost);
-    EXPECT_GE(frame->stages[0].elapsed_ms, 0.0);
-    EXPECT_GE(frame->stages[1].elapsed_ms, 0.0);
+    EXPECT_DOUBLE_EQ(frame->stages[0].elapsed_ms, 0.125);
+    EXPECT_DOUBLE_EQ(frame->stages[1].elapsed_ms, 0.250);
+    EXPECT_DOUBLE_EQ(frame->total_ms, 0.375);
 }
 
 TEST(SystemSchedulerProfilerTest, CaptureOffKeepsHistoryEmpty) {
     SchedulerProfiler profiler;
     profiler.setEnabled(false);
 
-    profiler.beginFrame(game::runtime::GameMode::Exploration);
-    profiler.onStageStarted(game::runtime::SchedulerStage::RemoveEntity);
-    profiler.onStageCompleted(game::runtime::SchedulerStage::RemoveEntity);
-    profiler.endFrame(game::runtime::SystemScheduler::TickResult{}, false);
+    profiler.captureFrame(
+        game::runtime::GameMode::Exploration,
+        makeSingleStageTickResult(game::runtime::SchedulerStage::RemoveEntity, 0.1),
+        false);
 
     EXPECT_EQ(profiler.frameCount(), 0U);
     EXPECT_EQ(profiler.latestFrame(), nullptr);
@@ -100,16 +108,14 @@ TEST(SystemSchedulerProfilerTest, FixedCapacityKeepsRecentFrames) {
     profiler.setEnabled(true);
 
     const auto push_frame = [&](const game::runtime::GameMode mode,
-                                const game::runtime::SchedulerStage stage) {
-        profiler.beginFrame(mode);
-        profiler.onStageStarted(stage);
-        profiler.onStageCompleted(stage);
-        profiler.endFrame(game::runtime::SystemScheduler::TickResult{}, false);
+                                const game::runtime::SchedulerStage stage,
+                                const double elapsed_ms) {
+        profiler.captureFrame(mode, makeSingleStageTickResult(stage, elapsed_ms), false);
     };
 
-    push_frame(game::runtime::GameMode::Exploration, game::runtime::SchedulerStage::RemoveEntity);
-    push_frame(game::runtime::GameMode::Battle, game::runtime::SchedulerStage::RemoveEntity);
-    push_frame(game::runtime::GameMode::Cutscene, game::runtime::SchedulerStage::Time);
+    push_frame(game::runtime::GameMode::Exploration, game::runtime::SchedulerStage::RemoveEntity, 0.1);
+    push_frame(game::runtime::GameMode::Battle, game::runtime::SchedulerStage::RemoveEntity, 0.2);
+    push_frame(game::runtime::GameMode::Cutscene, game::runtime::SchedulerStage::Time, 0.3);
 
     EXPECT_EQ(profiler.frameCount(), 2U);
 
