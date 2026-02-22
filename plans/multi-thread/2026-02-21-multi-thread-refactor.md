@@ -27,8 +27,8 @@ Worker 线程                      主线程
 | Phase 1 | 异步加载预处理 | P0 | **Completed** | `./phase1-multithreading-plan.md` |
 | Phase 2 | 主线程提交点标准化 | P0 | **Completed** | `./phase2-main-thread-commit-plan.md` |
 | Phase 3 | AsyncPreloadPipeline 解耦 | P0 | **Completed** | `./phase3-refactor-keep-architecture-and-pipeline-plan.md` |
-| Phase 4 | 后台存档 I/O | P1 | Planned | `./phase4-background-save-io-plan.md` |
-| Phase 5 | ECS Task 并行 | Optional | Deferred | `./phase5-ecs-task-parallel-deferred-plan.md` |
+| Phase 4 | 后台存档 I/O | P1 | **Completed** | `./phase4-background-save-io-plan.md` |
+| Phase 5 | ECS 系统级并行调度 | P2（学习驱动） | **Planned** | `./phase5-ecs-task-parallel-deferred-plan.md` |
 | Phase 6 | 逻辑/渲染分离 | Optional/不推荐 | Deferred | `./phase6-logic-render-split-deferred-plan.md` |
 
 ## 观测与验证
