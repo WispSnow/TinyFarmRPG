@@ -57,9 +57,9 @@ private:
     /// @brief 从输入到关联的动作名称列表
     std::unordered_map<std::variant<SDL_Scancode, Uint32>, std::vector<entt::id_type>> input_to_actions_;
 
-    glm::vec2 mouse_position_;                                      ///< @brief 鼠标位置 (针对屏幕坐标)
-    glm::vec2 logical_mouse_position_;                              ///< @brief 鼠标位置 (针对逻辑坐标)
-    glm::vec2 mouse_wheel_delta_;                                   ///< @brief 鼠标滚轮 delta
+    glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
+    glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
+    glm::vec2 mouse_wheel_delta_{0.0f, 0.0f};                       ///< @brief 鼠标滚轮 delta
 #ifdef TF_ENABLE_DEBUG_UI
     std::function<void(const SDL_Event&)> imgui_event_callback_;
 #endif
