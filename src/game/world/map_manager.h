@@ -1,17 +1,16 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_set>
-#include <unordered_map>
 #include <glm/vec2.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include "game/world/world_state.h"
 #include "map_loading_settings.h"
+#include "async_preload_pipeline.h"
 #include "engine/utils/events.h"
 #include "game/component/map_component.h"
 
@@ -27,10 +26,6 @@ namespace engine::loader {
     class LevelLoader;
 }
 
-namespace engine::async {
-    class ThreadPool;
-}
-
 namespace game::factory {
     class EntityFactory;
     class BlueprintManager;
@@ -38,28 +33,7 @@ namespace game::factory {
 
 namespace game::world {
 
-enum class MapPreloadTaskState : std::uint8_t {
-    NotScheduled = 0,
-    // Worker running, or worker result has been enqueued to main-thread queue but not committed yet.
-    Running = 1,
-    // Main-thread commit command finished successfully (e.g. GPU texture uploads completed).
-    Ready = 2,
-    Failed = 3,
-    // Ready result has been consumed by loadMap() and marked as applied.
-    Applied = 4,
-};
-
 class MapManager {
-    struct AsyncPreloadTaskState {
-        std::atomic<MapPreloadTaskState> state{MapPreloadTaskState::NotScheduled};
-        std::atomic<std::uint64_t> generation{0};
-    };
-
-    struct AsyncPreloadTask {
-        std::shared_ptr<AsyncPreloadTaskState> shared{};
-        std::string level_path{};
-    };
-
     engine::scene::Scene& scene_;
     engine::core::Context& context_;
     entt::registry& registry_;
@@ -67,11 +41,9 @@ class MapManager {
     game::factory::EntityFactory& entity_factory_;
     game::factory::BlueprintManager& blueprint_manager_;
     std::unique_ptr<engine::loader::LevelLoader> level_loader_;
-    std::unique_ptr<engine::async::ThreadPool> preload_thread_pool_;
+    std::unique_ptr<game::world::AsyncPreloadPipeline> async_preload_pipeline_;
     game::world::MapLoadingSettings loading_settings_{};
     std::unordered_set<entt::id_type> preloaded_maps_{};
-    std::unordered_map<entt::id_type, AsyncPreloadTask> async_preload_tasks_{};
-    std::uint64_t preload_generation_counter_{0};
     entt::id_type current_map_id_{entt::null};
     glm::vec2 current_map_pixel_size_{0.0f};
 
