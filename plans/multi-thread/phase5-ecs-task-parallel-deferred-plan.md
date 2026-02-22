@@ -4,7 +4,7 @@
 - 阶段：`Phase 5`
 - 主题：`安全并行最小闭环（Parallel Island）+ 主线程统一提交`
 - 优先级：`P2（学习驱动）`
-- 状态：`Planned`
+- 状态：`Completed（含审阅意见回收与补强）`
 - 关键决策：
   - `NPCWander ∥ AnimalBehavior` **暂缓**（作为延迟项），待实体域重构后再并行。
   - `dispatcher` 采用**主线程唯一写入/分发**策略，worker 线程禁止直接访问。
@@ -161,7 +161,7 @@ wave 提取后必须校验：
 - `src/engine/system/deferred_commands.cpp`
 - `src/engine/system/parallel_wave_scheduler.h`
 - `src/engine/system/parallel_wave_scheduler.cpp`
-- `tests/engine/parallel_wave_scheduler_test.cpp`
+- `tests/engine/system/parallel_wave_scheduler_test.cpp`
 
 ### 5.2 预计修改文件
 - `src/game/runtime/system_scheduler.h`
@@ -213,6 +213,7 @@ wave 提取后必须校验：
   3. `submit` 失败回退不死锁
   4. 环检测生效
   5. `DeferredCommands` drain 正确
+  6. live `ThreadPool` 下 worker 并发执行可观测（非回退路径）
 - 回归测试：
   - Gate1/Gate2 行为不变
   - `Movement` 仍先于 `SpatialIndex`
@@ -253,14 +254,45 @@ wave 提取后必须校验：
 - D3：按 profiling 结果扩展第二并行岛（若收益成立）
 
 ## 10. 待办清单
-- [ ] T1 新增 `SystemTaskDecl` / `ExecutionPolicy`
-- [ ] T2 实现泛化 `DeferredCommands`
-- [ ] T3 实现 `ParallelWaveScheduler`（含回退与环检测）
-- [ ] T4 接入 `SystemScheduler`（Gate2 后并行岛）
-- [ ] T5 改造 `SpatialIndexSystem` 使用 deferred remove
-- [ ] T6 输出 DOT 并完成人工核验
-- [ ] T7 完成 `parallel_wave_scheduler_test.cpp`
-- [ ] T8 调整 profiler 为主线程聚合模型
-- [ ] T9 更新现有 `system_scheduler_*` 测试
-- [ ] T10 TSAN 回归通过
+- [x] T1 新增 `SystemTaskDecl` / `ExecutionPolicy`
+- [x] T2 实现泛化 `DeferredCommands`
+- [x] T3 实现 `ParallelWaveScheduler`（含回退与环检测）
+- [x] T4 接入 `SystemScheduler`（Gate2 后并行岛）
+- [x] T5 改造 `SpatialIndexSystem` 使用 deferred remove
+- [x] T6 输出 DOT 并完成人工核验
+- [x] T7 完成 `parallel_wave_scheduler_test.cpp`
+- [x] T8 调整 profiler 为主线程聚合模型
+- [x] T9 更新现有 `system_scheduler_*` 测试
+- [x] T10 TSAN 回归通过
+- [x] T11 增补 live `ThreadPool` 并发执行验证（确认真正走 worker 并行）
+- [x] T12 `SystemScheduler` 缓存并复用 post-gate 并行岛调度器（避免每帧重建 DAG）
+- [x] T13 `SpatialIndexManager` 内部 registry 引用改为 `const entt::registry*`（类型层只读约束）
 
+## 11. 已完成记录（2026-02-22）
+- 已落地并行岛：`SpatialIndex ∥ CameraFollow`（Gate2 后执行），其余阶段保持原有 Gate 语义。
+- 已完成 `MapLoadingSettings` 初始化顺序修复与 `InputManager` 鼠标滚轮状态初始化修复，解决 ASAN 下相关崩溃/不稳定问题。
+- 已完成并行调度稳定性加固：
+  - `ParallelWaveScheduler` 并行执行改为 `future` 聚合回收；
+  - 增加 wave/索引边界校验与异常图 fail-fast；
+  - 调度任务 capture 改为更安全的指针值捕获。
+- 已完成验证（`build-debug-asan`）：
+  - `cmake --preset debug-asan && cmake --build --preset debug-asan` 通过；
+  - `ctest --output-on-failure -j8` 全量通过（274/274）；
+  - `ParallelWaveSchedulerTest` 与 `system_scheduler_*` 相关测试通过；
+  - 新增并通过稳定性回归用例：`ExplorationParallelIslandRemainsStableAcrossManyTicks`。
+- 并发专项复验（`build-tsan`）：
+  - `cmake --build . --target engine_tests game_tests -j8` 通过；
+  - `ctest --output-on-failure -R "ParallelWaveSchedulerTest|SystemScheduler" -j8` 通过（18/18）。
+- 基于审阅意见的补强已完成：
+  - `ParallelWaveSchedulerTest` 新增 live worker 并发用例：`WorkerEligibleWaveRunsOnMultipleWorkers`；
+  - `SystemScheduler` 改为缓存 `post_gate_parallel_island_scheduler_`，tick 期间仅执行并刷新上下文；
+  - `SpatialIndexManager::registry_` 改为 `const entt::registry*`，收紧读路径类型边界；
+  - `CameraFollow` 并行路径补充注释，明确 `InputManager` 写入发生在主线程 `handleEvents()`，并行阶段只读。
+
+## 12. 审阅意见处理结论（2026-02-22）
+- `并行安全/Deferred/submit 回退/环检测/Gate 语义/storage 预热/profiler 重构`：结论合理，已采纳并验证通过。
+- `P2: SpatialIndexManager 非 const registry 读路径`：合理，已修复为 `const entt::registry*`。
+- `P3: CameraFollow 读 InputManager 的时序前提`：合理，已通过代码注释显式化约束。
+- `P2: 每帧重建 ParallelWaveScheduler`：合理，已改为调度器缓存复用。
+- `P3: CameraFollow 顺序位置变化`：评估为安全（无数据依赖冲突），且现有测试通过；保持当前顺序。
+- `P3: map_manager.h 声明顺序修复为顺手修复项`：合理但非阻塞，不影响 Phase 5 并行方案正确性。
