@@ -1,8 +1,12 @@
 #pragma once
 
+#include "engine/async/thread_pool.h"
+#include "engine/system/parallel_wave_scheduler.h"
 #include "game_mode.h"
 
 #include <functional>
+#include <memory>
+#include <string>
 #include <vector>
 
 #include <entt/entity/fwd.hpp>
@@ -38,27 +42,53 @@ enum class SchedulerStage {
 
 class SystemScheduler final {
 public:
+    ~SystemScheduler();
+
     struct TickParams {
         GameMode mode{GameMode::Exploration};
         GameSystemBundle& systems;
         entt::registry& registry;
         float delta_time{0.0f};
-        std::function<void(SchedulerStage)> on_stage_executed{};
         std::function<bool()> is_transition_active{};
-        std::function<void(SchedulerStage)> on_stage_started{};
-        std::function<void(SchedulerStage)> on_stage_completed{};
+    };
+
+    struct StageTrace {
+        SchedulerStage stage{SchedulerStage::RemoveEntity};
+        double elapsed_ms{0.0};
+    };
+
+    struct TickTrace {
+        std::vector<StageTrace> stages{};
     };
 
     struct TickResult {
         bool gate1_triggered{false};
         bool gate2_triggered{false};
+        TickTrace trace{};
     };
 
     [[nodiscard]] TickResult tick(const TickParams& params) const;
 
     [[nodiscard]] static const std::vector<SchedulerStage>& profileStages(GameMode mode);
+
+private:
+    struct ParallelIslandContext {
+        GameSystemBundle* systems{nullptr};
+        const entt::registry* registry{nullptr};
+        float delta_time{0.0f};
+    };
+
+    engine::async::ThreadPool& parallelThreadPool() const;
+    engine::system::ParallelWaveScheduler& postGateParallelIslandScheduler() const;
+    void setParallelIslandContext(const TickParams& params) const;
+    void clearParallelIslandContext() const;
+
+    mutable std::unique_ptr<engine::async::ThreadPool> parallel_thread_pool_{};
+    mutable std::unique_ptr<engine::system::ParallelWaveScheduler> post_gate_parallel_island_scheduler_{};
+    mutable ParallelIslandContext parallel_island_context_{};
 };
 
 [[nodiscard]] const char* toString(SchedulerStage stage);
+[[nodiscard]] std::string dumpPostGateParallelIslandDot();
 
 } // namespace game::runtime

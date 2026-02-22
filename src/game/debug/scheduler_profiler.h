@@ -3,7 +3,6 @@
 #include "game/runtime/game_mode.h"
 #include "game/runtime/system_scheduler.h"
 
-#include <chrono>
 #include <cstddef>
 #include <vector>
 
@@ -37,11 +36,7 @@ public:
     [[nodiscard]] bool isEnabled() const { return enabled_; }
 
     void clear();
-
-    void beginFrame(runtime::GameMode mode);
-    void onStageStarted(runtime::SchedulerStage stage);
-    void onStageCompleted(runtime::SchedulerStage stage);
-    void endFrame(const runtime::SystemScheduler::TickResult& result, bool emit_trace);
+    void captureFrame(runtime::GameMode mode, const runtime::SystemScheduler::TickResult& result, bool emit_trace);
 
     [[nodiscard]] const FrameSample* latestFrame() const;
     [[nodiscard]] std::vector<FrameSample> recentFrames(std::size_t max_count) const;
@@ -51,18 +46,9 @@ public:
     [[nodiscard]] std::size_t maxFrames() const { return frames_.size(); }
 
 private:
-    using Clock = std::chrono::steady_clock;
-
     void pushFrame(FrameSample frame);
 
     bool enabled_{false};
-    bool frame_active_{false};
-    bool stage_active_{false};
-
-    runtime::SchedulerStage current_stage_{runtime::SchedulerStage::RemoveEntity};
-    Clock::time_point frame_started_at_{};
-    Clock::time_point stage_started_at_{};
-    FrameSample working_frame_{};
 
     std::vector<FrameSample> frames_{};
     std::size_t frame_cursor_{0};

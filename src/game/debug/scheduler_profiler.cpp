@@ -9,11 +9,6 @@
 namespace game::debug {
 namespace {
 
-[[nodiscard]] double elapsedMs(const std::chrono::steady_clock::time_point& begin,
-                               const std::chrono::steady_clock::time_point& end) {
-    return std::chrono::duration<double, std::milli>(end - begin).count();
-}
-
 [[nodiscard]] std::string formatStageSummary(const SchedulerProfiler::FrameSample& frame) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(3);
@@ -41,78 +36,39 @@ void SchedulerProfiler::clear() {
     }
     frame_cursor_ = 0;
     frame_count_ = 0;
-    frame_active_ = false;
-    stage_active_ = false;
-    working_frame_ = FrameSample{};
 }
 
-void SchedulerProfiler::beginFrame(game::runtime::GameMode mode) {
+void SchedulerProfiler::captureFrame(const runtime::GameMode mode,
+                                     const runtime::SystemScheduler::TickResult& result,
+                                     const bool emit_trace) {
     if (!enabled_) {
         return;
     }
 
-    frame_active_ = true;
-    stage_active_ = false;
-    current_stage_ = game::runtime::SchedulerStage::RemoveEntity;
-    frame_started_at_ = Clock::now();
-    stage_started_at_ = {};
-    working_frame_ = FrameSample{};
-    working_frame_.mode = mode;
-}
+    FrameSample frame{};
+    frame.mode = mode;
+    frame.gate1_triggered = result.gate1_triggered;
+    frame.gate2_triggered = result.gate2_triggered;
+    frame.stages.reserve(result.trace.stages.size());
 
-void SchedulerProfiler::onStageStarted(game::runtime::SchedulerStage stage) {
-    if (!enabled_ || !frame_active_) {
-        return;
-    }
-
-    current_stage_ = stage;
-    stage_started_at_ = Clock::now();
-    stage_active_ = true;
-}
-
-void SchedulerProfiler::onStageCompleted(game::runtime::SchedulerStage stage) {
-    if (!enabled_ || !frame_active_ || !stage_active_) {
-        return;
-    }
-
-    const auto now = Clock::now();
-    working_frame_.stages.push_back(StageSample{
-        stage,
-        elapsedMs(stage_started_at_, now)
-    });
-    stage_active_ = false;
-}
-
-void SchedulerProfiler::endFrame(const runtime::SystemScheduler::TickResult& result, bool emit_trace) {
-    if (!enabled_ || !frame_active_) {
-        return;
-    }
-
-    const auto now = Clock::now();
-    if (stage_active_) {
-        working_frame_.stages.push_back(StageSample{
-            current_stage_,
-            elapsedMs(stage_started_at_, now)
+    for (const auto& stage_trace : result.trace.stages) {
+        frame.stages.push_back(StageSample{
+            stage_trace.stage,
+            stage_trace.elapsed_ms
         });
-        stage_active_ = false;
+        frame.total_ms += stage_trace.elapsed_ms;
     }
-
-    working_frame_.gate1_triggered = result.gate1_triggered;
-    working_frame_.gate2_triggered = result.gate2_triggered;
-    working_frame_.total_ms = elapsedMs(frame_started_at_, now);
 
     if (emit_trace && spdlog::should_log(spdlog::level::trace)) {
         spdlog::trace("SchedulerFrame mode={} gate1={} gate2={} total={:.3f}ms stages=[{}]",
-                      game::runtime::toString(working_frame_.mode),
-                      working_frame_.gate1_triggered,
-                      working_frame_.gate2_triggered,
-                      working_frame_.total_ms,
-                      formatStageSummary(working_frame_));
+                      game::runtime::toString(frame.mode),
+                      frame.gate1_triggered,
+                      frame.gate2_triggered,
+                      frame.total_ms,
+                      formatStageSummary(frame));
     }
 
-    pushFrame(std::move(working_frame_));
-    working_frame_ = FrameSample{};
-    frame_active_ = false;
+    pushFrame(std::move(frame));
 }
 
 const SchedulerProfiler::FrameSample* SchedulerProfiler::latestFrame() const {

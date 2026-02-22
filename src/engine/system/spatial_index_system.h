@@ -9,6 +9,8 @@ namespace engine::spatial {
 
 namespace engine::system {
 
+class DeferredCommands;
+
 /**
  * @brief 空间索引系统，负责维护动态实体网格
  * @note 使用缓存优化，只更新位置发生变化的实体
@@ -23,7 +25,7 @@ public:
      * @brief 更新所有动态实体的索引（延迟更新：只更新位置发生变化的实体）
      * @note 应该在MovementSystem之后调用
      */
-    void update(entt::registry& registry);
+    void update(const entt::registry& registry, DeferredCommands& deferred);
 };
 
 } // namespace engine::system
