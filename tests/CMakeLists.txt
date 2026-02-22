@@ -101,6 +101,7 @@ set(GAME_TEST_SOURCES
     game/state_system_dirty_tag_test.cpp
     game/save_data_v3_roundtrip_test.cpp
     game/save_migrator_test.cpp
+    game/save_service_async_test.cpp
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
@@ -110,6 +111,7 @@ set(GAME_TEST_SOURCES
     game/system_scheduler_invariant_test.cpp
     game/title_scene_menu_button_test.cpp
     game/pause_menu_scene_save_load_disabled_test.cpp
+    game/pause_menu_scene_async_save_ui_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
     game/time_advance_sleep_test.cpp
     game/rest_area_interaction_test.cpp

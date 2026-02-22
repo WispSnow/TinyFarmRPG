@@ -94,6 +94,9 @@ bool PauseMenuScene::init() {
 }
 
 void PauseMenuScene::update(float delta_time) {
+    pollAsyncSaveResult();
+    refreshSaveActionButtons();
+
     if (close_after_load_) {
         close_after_load_ = false;
         requestPopScene();
@@ -204,10 +207,6 @@ void PauseMenuScene::buildLayout() {
     } else {
         spdlog::error("PauseMenuScene: 创建 title_button 失败。");
     }
-    if (!save_service_) {
-        disableButton(save_button_);
-        disableButton(load_button_);
-    }
     panel->addChild(std::move(buttons));
 
     auto buildIconRow = [&](std::string_view label_prefix,
@@ -295,13 +294,7 @@ void PauseMenuScene::buildLayout() {
 
     panel_ = panel.get();
     ui_manager_->addElement(std::move(panel));
-}
-
-void PauseMenuScene::disableButton(engine::ui::UIButton* button) {
-    if (!button) {
-        return;
-    }
-    button->setEnabled(false);
+    refreshSaveActionButtons();
 }
 
 void PauseMenuScene::refreshVolumeLabels() {
@@ -336,6 +329,43 @@ void PauseMenuScene::refreshTimeScaleLabel() {
     time_scale_label_->setText(toMultiplierLabel("Speed", scale));
 }
 
+void PauseMenuScene::refreshSaveActionButtons() {
+    const bool has_save_service = (save_service_ != nullptr);
+    const bool saving = has_save_service && save_service_->isSaving();
+
+    if (save_button_) {
+        save_button_->setEnabled(has_save_service && !saving);
+    }
+    if (load_button_) {
+        load_button_->setEnabled(has_save_service && !saving);
+    }
+    if (back_to_title_button_) {
+        back_to_title_button_->setEnabled(!saving);
+    }
+}
+
+void PauseMenuScene::pollAsyncSaveResult() {
+    if (!save_service_) {
+        return;
+    }
+
+    auto result = save_service_->consumeAsyncSaveResult();
+    if (!result.has_value()) {
+        return;
+    }
+
+    if (result->success) {
+        setMessage("Saved", false);
+        return;
+    }
+
+    std::string message = "Save failed";
+    if (!result->error.empty()) {
+        message += ": " + result->error;
+    }
+    setMessage(std::move(message), true);
+}
+
 void PauseMenuScene::setMessage(std::string message, bool is_error) {
     if (!message_label_) {
         return;
@@ -366,11 +396,12 @@ void PauseMenuScene::onSaveClicked() {
 
     auto on_select = [this](int slot) {
         std::string error;
-        if (!save_service_->saveToFile(game::save::SaveService::slotPath(slot), error)) {
+        if (!save_service_->saveToFileAsync(game::save::SaveService::slotPath(slot), error)) {
             setMessage("Save failed: " + error, true);
         } else {
-            setMessage("Saved", false);
+            setMessage("Saving...", false);
         }
+        refreshSaveActionButtons();
         requestPopScene(); // close SaveSlotSelectScene
     };
 
@@ -384,6 +415,10 @@ void PauseMenuScene::onLoadClicked() {
 
     if (!save_service_) {
         setMessage("SaveService unavailable", true);
+        return;
+    }
+    if (save_service_->isSaving()) {
+        setMessage("Save in progress", true);
         return;
     }
 
@@ -406,6 +441,10 @@ void PauseMenuScene::onLoadClicked() {
 }
 
 void PauseMenuScene::onBackToTitleClicked() {
+    if (save_service_ && save_service_->isSaving()) {
+        setMessage("Save in progress", true);
+        return;
+    }
     requestReplaceScene(std::make_unique<game::scene::TitleScene>("TitleScene", context_));
 }
 
