@@ -65,6 +65,8 @@ target_sources(engine PRIVATE
     engine/system/audio_system.cpp
     engine/system/animation_system.cpp
     engine/system/auto_tile_system.cpp
+    engine/system/deferred_commands.cpp
+    engine/system/parallel_wave_scheduler.cpp
     engine/system/render_system.cpp
     engine/system/light_system.cpp
     engine/system/movement_system.cpp
