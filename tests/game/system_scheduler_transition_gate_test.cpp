@@ -12,7 +12,16 @@
 namespace game::runtime {
 namespace {
 
-[[nodiscard]] bool contains(const std::vector<SchedulerStage>& stages, SchedulerStage target) {
+[[nodiscard]] std::vector<SchedulerStage> traceStages(const SystemScheduler::TickResult& result) {
+    std::vector<SchedulerStage> stages;
+    stages.reserve(result.trace.stages.size());
+    for (const auto& sample : result.trace.stages) {
+        stages.push_back(sample.stage);
+    }
+    return stages;
+}
+
+[[nodiscard]] bool contains(const std::vector<SchedulerStage>& stages, const SchedulerStage target) {
     return std::find(stages.begin(), stages.end(), target) != stages.end();
 }
 
@@ -20,17 +29,16 @@ TEST(SystemSchedulerTransitionGateTest, Gate1RunsOnlyTransitionBranchWhenAlready
     entt::registry registry;
     GameSystemBundle systems;
     SystemScheduler scheduler;
-    std::vector<SchedulerStage> stages;
 
     const auto result = scheduler.tick({
-        GameMode::Exploration,
-        systems,
-        registry,
-        0.016f,
-        [&](SchedulerStage stage) { stages.push_back(stage); },
-        []() { return true; }
+        .mode = GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .delta_time = 0.016f,
+        .is_transition_active = []() { return true; }
     });
 
+    const auto stages = traceStages(result);
     ASSERT_EQ(stages.size(), 3U);
     EXPECT_EQ(stages[0], SchedulerStage::RemoveEntity);
     EXPECT_EQ(stages[1], SchedulerStage::TransitionUpdatePre);
@@ -45,21 +53,20 @@ TEST(SystemSchedulerTransitionGateTest, Gate2SkipsPostGameplayWhenTransitionActi
     entt::registry registry;
     GameSystemBundle systems;
     SystemScheduler scheduler;
-    std::vector<SchedulerStage> stages;
     int transition_active_calls = 0;
 
     const auto result = scheduler.tick({
-        GameMode::Exploration,
-        systems,
-        registry,
-        0.016f,
-        [&](SchedulerStage stage) { stages.push_back(stage); },
-        [&]() {
+        .mode = GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .delta_time = 0.016f,
+        .is_transition_active = [&]() {
             ++transition_active_calls;
             return transition_active_calls >= 2;
         }
     });
 
+    const auto stages = traceStages(result);
     EXPECT_TRUE(contains(stages, SchedulerStage::Movement));
     EXPECT_TRUE(contains(stages, SchedulerStage::TransitionUpdatePost));
     EXPECT_TRUE(contains(stages, SchedulerStage::LightTogglePost));
@@ -73,17 +80,16 @@ TEST(SystemSchedulerTransitionGateTest, NormalPathReachesPostGameplayStages) {
     entt::registry registry;
     GameSystemBundle systems;
     SystemScheduler scheduler;
-    std::vector<SchedulerStage> stages;
 
     const auto result = scheduler.tick({
-        GameMode::Exploration,
-        systems,
-        registry,
-        0.016f,
-        [&](SchedulerStage stage) { stages.push_back(stage); },
-        []() { return false; }
+        .mode = GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .delta_time = 0.016f,
+        .is_transition_active = []() { return false; }
     });
 
+    const auto stages = traceStages(result);
     EXPECT_FALSE(result.gate1_triggered);
     EXPECT_FALSE(result.gate2_triggered);
     EXPECT_TRUE(contains(stages, SchedulerStage::SpatialIndex));

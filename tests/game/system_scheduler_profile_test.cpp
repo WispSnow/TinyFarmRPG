@@ -13,13 +13,22 @@
 namespace game::runtime {
 namespace {
 
-[[nodiscard]] size_t indexOf(const std::vector<SchedulerStage>& stages, SchedulerStage target) {
+[[nodiscard]] size_t indexOf(const std::vector<SchedulerStage>& stages, const SchedulerStage target) {
     const auto it = std::find(stages.begin(), stages.end(), target);
     EXPECT_NE(it, stages.end()) << "missing stage: " << toString(target);
     if (it == stages.end()) {
         return stages.size();
     }
     return static_cast<size_t>(std::distance(stages.begin(), it));
+}
+
+[[nodiscard]] std::vector<SchedulerStage> traceStages(const SystemScheduler::TickResult& result) {
+    std::vector<SchedulerStage> stages;
+    stages.reserve(result.trace.stages.size());
+    for (const auto& sample : result.trace.stages) {
+        stages.push_back(sample.stage);
+    }
+    return stages;
 }
 
 TEST(SystemSchedulerProfileTest, ExplorationKeepsMovementBeforeSpatialIndex) {
@@ -44,16 +53,16 @@ TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransit
     entt::registry registry;
     GameSystemBundle systems;
     SystemScheduler scheduler;
-    std::vector<SchedulerStage> executed;
 
     const auto result = scheduler.tick({
-        GameMode::Exploration,
-        systems,
-        registry,
-        0.016f,
-        [&](SchedulerStage stage) { executed.push_back(stage); },
-        []() { return false; }
+        .mode = GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .delta_time = 0.016f,
+        .is_transition_active = []() { return false; }
     });
+
+    const auto executed = traceStages(result);
 
     const auto& profile = SystemScheduler::profileStages(GameMode::Exploration);
     std::vector<SchedulerStage> expected;
@@ -68,6 +77,27 @@ TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransit
     EXPECT_FALSE(result.gate1_triggered);
     EXPECT_FALSE(result.gate2_triggered);
     EXPECT_EQ(executed, expected);
+}
+
+TEST(SystemSchedulerProfileTest, ExplorationParallelIslandRemainsStableAcrossManyTicks) {
+    entt::registry registry;
+    GameSystemBundle systems;
+    SystemScheduler scheduler;
+
+    constexpr int kIterations = 2000;
+    for (int i = 0; i < kIterations; ++i) {
+        const auto result = scheduler.tick({
+            .mode = GameMode::Exploration,
+            .systems = systems,
+            .registry = registry,
+            .delta_time = 0.016f,
+            .is_transition_active = []() { return false; }
+        });
+
+        EXPECT_FALSE(result.gate1_triggered);
+        EXPECT_FALSE(result.gate2_triggered);
+        ASSERT_FALSE(result.trace.stages.empty());
+    }
 }
 
 } // namespace
