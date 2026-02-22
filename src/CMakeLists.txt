@@ -181,6 +181,7 @@ target_sources(game PRIVATE
     game/system/rest_system.cpp
     # World
     game/world/world_state.cpp
+    game/world/async_preload_pipeline.cpp
     game/world/map_manager.cpp
     game/world/map_loading_settings.cpp
     game/world/map_snapshot_serializer.cpp
