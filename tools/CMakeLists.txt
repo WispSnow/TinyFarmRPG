@@ -42,3 +42,20 @@ setup_compiler_options(ui_tester)
 setup_asset_copy(ui_tester)
 setup_config_copy(ui_tester)
 setup_windows_dll_copy(ui_tester)
+
+add_executable(scheduler_dot_dump
+    scheduler_dot_dump/main.cpp
+)
+
+target_link_libraries(scheduler_dot_dump
+    PRIVATE
+        game
+)
+
+target_include_directories(scheduler_dot_dump
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+setup_compiler_options(scheduler_dot_dump)
+setup_windows_dll_copy(scheduler_dot_dump)
