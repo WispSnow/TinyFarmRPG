@@ -41,8 +41,8 @@ class MapManager {
     game::factory::EntityFactory& entity_factory_;
     game::factory::BlueprintManager& blueprint_manager_;
     std::unique_ptr<engine::loader::LevelLoader> level_loader_;
-    std::unique_ptr<game::world::AsyncPreloadPipeline> async_preload_pipeline_;
     game::world::MapLoadingSettings loading_settings_{};
+    std::unique_ptr<game::world::AsyncPreloadPipeline> async_preload_pipeline_;
     std::unordered_set<entt::id_type> preloaded_maps_{};
     entt::id_type current_map_id_{entt::null};
     glm::vec2 current_map_pixel_size_{0.0f};
