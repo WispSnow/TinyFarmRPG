@@ -1,4 +1,5 @@
 #include "spatial_index_system.h"
+#include "engine/system/deferred_commands.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
@@ -12,7 +13,7 @@ SpatialIndexSystem::SpatialIndexSystem(engine::spatial::SpatialIndexManager& spa
     : spatial_index_(spatial_index) {
 }
 
-void SpatialIndexSystem::update(entt::registry& registry) {
+void SpatialIndexSystem::update(const entt::registry& registry, DeferredCommands& deferred) {
 
     // 延迟更新：只更新位置发生变化的实体
     auto view = registry.view<
@@ -32,7 +33,7 @@ void SpatialIndexSystem::update(entt::registry& registry) {
         }
 
         spatial_index_.updateColliderEntity(entity);
-        registry.remove<engine::component::TransformDirtyTag>(entity);
+        deferred.remove<engine::component::TransformDirtyTag>(entity);
     }
 }
 

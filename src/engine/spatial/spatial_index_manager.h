@@ -44,7 +44,7 @@ class SpatialIndexManager {
 private:
     StaticTileGrid static_grid_;
     DynamicEntityGrid dynamic_grid_;
-    entt::registry* registry_{nullptr};  ///< @brief 非拥有指针
+    const entt::registry* registry_{nullptr};  ///< @brief 非拥有指针（只读）
     
 public:
     SpatialIndexManager() = default;

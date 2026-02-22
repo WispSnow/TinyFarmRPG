@@ -9,6 +9,7 @@
 #include <glm/geometric.hpp>
 #include <spdlog/spdlog.h>
 #include <cmath>
+#include <utility>
 
 namespace game::system {
 
@@ -30,7 +31,8 @@ void CameraFollowSystem::update(float delta_time) {
     updateMouseWheel(delta_time);
     
     // 查找玩家实体（需要 TransformComponent 和 PlayerTag）
-    auto view = registry_.view<engine::component::TransformComponent, game::component::PlayerTag>();
+    const auto& registry = std::as_const(registry_);
+    auto view = registry.view<engine::component::TransformComponent, game::component::PlayerTag>();
     // 这里的view应该只有一个玩家实体，若非如此则不更新相机位置
     if (view.size_hint() != 1) {
         return;

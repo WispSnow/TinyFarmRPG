@@ -161,34 +161,21 @@ void GameScene::fixedUpdate(float delta_time) {
     snapshotInterpolationState();
 
     if (scheduler_) {
+        const auto tick_result = scheduler_->tick({
+            game_mode_,
+            *systems_,
+            registry_,
+            delta_time
+        });
+
 #ifdef TF_ENABLE_DEBUG_UI
         if (scheduler_profiler_ && scheduler_profiler_->isEnabled()) {
-            scheduler_profiler_->beginFrame(game_mode_);
-            const auto tick_result = scheduler_->tick({
+            scheduler_profiler_->captureFrame(
                 game_mode_,
-                *systems_,
-                registry_,
-                delta_time,
-                {},
-                {},
-                [this](const game::runtime::SchedulerStage stage) {
-                    scheduler_profiler_->onStageStarted(stage);
-                },
-                [this](const game::runtime::SchedulerStage stage) {
-                    scheduler_profiler_->onStageCompleted(stage);
-                }
-            });
-            scheduler_profiler_->endFrame(tick_result, spdlog::should_log(spdlog::level::trace));
-        } else
-#endif
-        {
-            (void)scheduler_->tick({
-                game_mode_,
-                *systems_,
-                registry_,
-                delta_time
-            });
+                tick_result,
+                spdlog::should_log(spdlog::level::trace));
         }
+#endif
     }
 }
 
