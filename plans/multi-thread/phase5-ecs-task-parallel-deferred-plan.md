@@ -245,11 +245,6 @@ wave 提取后必须校验：
   - 处理：完整性校验 + fail-fast
 
 ## 9. Deferred Backlog
-- D1：`NPCWander ∥ AnimalBehavior` 并行化
-  - 前置：
-    - 明确动物/NPC 组件域边界（实体集合不重叠）
-    - 系统过滤条件改为可证明互斥
-    - 补齐回归与 TSAN 用例
 - D2：dispatcher 领域事件分层（scheduler 内事件与 UI/场景事件解耦）
 - D3：按 profiling 结果扩展第二并行岛（若收益成立）
 
@@ -288,6 +283,13 @@ wave 提取后必须校验：
   - `SystemScheduler` 改为缓存 `post_gate_parallel_island_scheduler_`，tick 期间仅执行并刷新上下文；
   - `SpatialIndexManager::registry_` 改为 `const entt::registry*`，收紧读路径类型边界；
   - `CameraFollow` 并行路径补充注释，明确 `InputManager` 写入发生在主线程 `handleEvents()`，并行阶段只读。
+- D1 并行化补完（2026-02-23）：
+  - `NPCWander` 与 `AnimalBehavior` 完成实体域切分：`NPCWander` 排除 `AnimalTag`，`AnimalBehavior` 显式处理 `AnimalTag`；
+  - 引入共享漫步核心（`wander_runtime`），动物在 `Wander` 阶段继续使用随机漫步，不重复维护两套移动算法；
+  - `WanderComponent` / `AnimalBehaviorState` 布尔状态改为阶段枚举（phase），降低状态组合歧义；
+  - 在 `SystemScheduler` 接入中段并行岛：`NPCWander ∥ AnimalBehavior`；
+  - 新增域分离与行为回归测试：`NpcAnimalParallelDomainTest.*`；
+  - `build-debug-asan` 全量通过（277/277），`build-tsan` 定向并发用例通过（21/21）。
 
 ## 12. 审阅意见处理结论（2026-02-22）
 - `并行安全/Deferred/submit 回退/环检测/Gate 语义/storage 预热/profiler 重构`：结论合理，已采纳并验证通过。

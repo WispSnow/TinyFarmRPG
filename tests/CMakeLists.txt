@@ -135,6 +135,7 @@ set(GAME_TEST_SOURCES
     game/rest_area_interaction_test.cpp
     game/time_of_day_light_system_test.cpp
     game/item_use_system_test.cpp
+    game/npc_animal_parallel_domain_test.cpp
     game/map_loading_settings_test.cpp
     game/map_manager_async_preload_test.cpp
     game/world/async_preload_pipeline_test.cpp
