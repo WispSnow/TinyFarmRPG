@@ -205,6 +205,7 @@ entt::entity EntityFactory::createAnimal(const entt::id_type animal_name_id, con
     behavior.eat_duration_ = engine::utils::randomFloat(1.2f, 2.0f);
     behavior.eat_interval_min_ = 4.0f;
     behavior.eat_interval_max_ = 8.0f;
+    behavior.phase_ = game::component::AnimalBehaviorPhase::Wander;
     registry_.emplace<game::component::AnimalBehaviorState>(entity, behavior);
 
     if (blueprint.dialogue_id_ != entt::null) {

@@ -3,6 +3,7 @@
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
 #include <cstddef>
+#include <cstdint>
 
 namespace game::component {
 
@@ -11,13 +12,17 @@ struct NPCTag {};
 /// 动物 NPC 标签 —— 标记动物实体（具有进食/睡眠行为）
 struct AnimalTag {};
 
+enum class WanderPhase : std::uint8_t {
+    Waiting = 0,
+    Moving
+};
+
 struct WanderComponent {
     glm::vec2 home_position_{0.0f};   ///< @brief 漫游中心（出生点）
     float radius_{0.0f};              ///< @brief 漫游半径
     glm::vec2 target_{0.0f};          ///< @brief 当前目标点
-    bool has_target_{false};          ///< @brief 是否已有目标点
+    WanderPhase phase_{WanderPhase::Waiting}; ///< @brief 漫游阶段（等待/移动）
     float wait_timer_{0.0f};          ///< @brief 等待计时器（<=0 进入移动状态）
-    bool moving_{false};              ///< @brief 当前是否处于移动阶段
     static constexpr float DEFAULT_MIN_WAIT = 0.6f;
     static constexpr float DEFAULT_MAX_WAIT = 1.8f;
     static constexpr float DEFAULT_STUCK_RESET = 1.0f;
@@ -44,8 +49,13 @@ struct SleepRoutine {
     bool is_sleeping_{false};    ///< @brief 当前是否处于睡眠
 };
 
+enum class AnimalBehaviorPhase : std::uint8_t {
+    Wander = 0,
+    Eating
+};
+
 struct AnimalBehaviorState {
-    bool eating_{false};                ///< @brief 是否正在进食
+    AnimalBehaviorPhase phase_{AnimalBehaviorPhase::Wander}; ///< @brief 动物行为阶段
     float eat_cooldown_timer_{0.0f};    ///< @brief 距离下一次进食的时间
     float eat_duration_timer_{0.0f};    ///< @brief 当前进食剩余时间
     static constexpr float DEFAULT_EAT_INTERVAL_MIN = 4.0f;

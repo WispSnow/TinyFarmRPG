@@ -6,6 +6,7 @@
 #include "engine/component/collider_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
+#include "engine/component/velocity_component.h"
 #include "engine/system/animation_system.h"
 #include "engine/system/auto_tile_system.h"
 #include "engine/system/deferred_commands.h"
@@ -14,6 +15,9 @@
 #include "engine/system/remove_entity_system.h"
 #include "engine/system/spatial_index_system.h"
 #include "engine/system/system_task_decl.h"
+#include "game/component/actor_component.h"
+#include "game/component/npc_component.h"
+#include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
@@ -49,6 +53,8 @@ using namespace entt::literals;
 constexpr entt::id_type RESOURCE_SPATIAL_INDEX = "spatial_index"_hs;
 constexpr entt::id_type RESOURCE_CAMERA = "camera"_hs;
 constexpr entt::id_type RESOURCE_INPUT = "input"_hs;
+constexpr entt::id_type RESOURCE_NPC_WANDER_DOMAIN = "npc_wander_domain"_hs;
+constexpr entt::id_type RESOURCE_ANIMAL_BEHAVIOR_DOMAIN = "animal_behavior_domain"_hs;
 
 [[nodiscard]] double elapsedMs(const std::chrono::steady_clock::time_point& begin,
                                const std::chrono::steady_clock::time_point& end) {
@@ -156,12 +162,16 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
             break;
         case SchedulerStage::NPCWander:
             if (systems.npc_wander_system) {
-                systems.npc_wander_system->update(delta_time);
+                engine::system::DeferredCommands deferred;
+                systems.npc_wander_system->update(delta_time, deferred);
+                deferred.drain(registry);
             }
             break;
         case SchedulerStage::AnimalBehavior:
             if (systems.animal_behavior_system) {
-                systems.animal_behavior_system->update(delta_time);
+                engine::system::DeferredCommands deferred;
+                systems.animal_behavior_system->update(delta_time, deferred);
+                deferred.drain(registry);
             }
             break;
         case SchedulerStage::Chest:
@@ -239,7 +249,22 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
     return params.systems.map_transition_system && params.systems.map_transition_system->isTransitionActive();
 }
 
-void prepare_parallel_island_registry(entt::registry& registry) {
+void prepare_mid_stage_parallel_island_registry(entt::registry& registry) {
+    // EnTT registry 的 storage 是惰性初始化；并发前主线程预热，避免 worker 触发隐式创建。
+    (void)registry.storage<game::component::NPCTag>();
+    (void)registry.storage<game::component::AnimalTag>();
+    (void)registry.storage<game::component::WanderComponent>();
+    (void)registry.storage<game::component::SleepRoutine>();
+    (void)registry.storage<game::component::DialogueComponent>();
+    (void)registry.storage<game::component::AnimalBehaviorState>();
+    (void)registry.storage<game::component::ActorComponent>();
+    (void)registry.storage<game::component::StateComponent>();
+    (void)registry.storage<game::component::StateDirtyTag>();
+    (void)registry.storage<engine::component::TransformComponent>();
+    (void)registry.storage<engine::component::VelocityComponent>();
+}
+
+void prepare_post_gate_parallel_island_registry(entt::registry& registry) {
     // EnTT registry 的 storage 是惰性初始化；并发前主线程预热，避免 worker 触发隐式创建。
     (void)registry.storage<engine::component::SpatialIndexTag>();
     (void)registry.storage<engine::component::TransformDirtyTag>();
@@ -277,8 +302,26 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
     execute_stage_main_thread(params, SchedulerStage::Time, result);
     execute_stage_main_thread(params, SchedulerStage::DayNight, result);
     execute_stage_main_thread(params, SchedulerStage::PlayerControl, result);
-    execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
-    execute_stage_main_thread(params, SchedulerStage::AnimalBehavior, result);
+
+    prepare_mid_stage_parallel_island_registry(params.registry);
+    setParallelIslandContext(params);
+    auto& mid_stage_island_scheduler = midStageParallelIslandScheduler();
+    if (!mid_stage_island_scheduler.valid()) {
+        execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
+        execute_stage_main_thread(params, SchedulerStage::AnimalBehavior, result);
+        clearParallelIslandContext();
+    } else {
+        const auto elapsed = mid_stage_island_scheduler.execute(params.registry);
+        clearParallelIslandContext();
+        if (elapsed.size() < 2) {
+            execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
+            execute_stage_main_thread(params, SchedulerStage::AnimalBehavior, result);
+        } else {
+            trace_stage(result, SchedulerStage::NPCWander, elapsed[0]);
+            trace_stage(result, SchedulerStage::AnimalBehavior, elapsed[1]);
+        }
+    }
+
     execute_stage_main_thread(params, SchedulerStage::Chest, result);
     execute_stage_main_thread(params, SchedulerStage::ItemUse, result);
     execute_stage_main_thread(params, SchedulerStage::Dialogue, result);
@@ -295,7 +338,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
         return result;
     }
 
-    prepare_parallel_island_registry(params.registry);
+    prepare_post_gate_parallel_island_registry(params.registry);
     setParallelIslandContext(params);
     auto& island_scheduler = postGateParallelIslandScheduler();
     if (!island_scheduler.valid()) {
@@ -346,6 +389,44 @@ engine::async::ThreadPool& SystemScheduler::parallelThreadPool() const {
         });
     }
     return *parallel_thread_pool_;
+}
+
+engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandScheduler() const {
+    if (!mid_stage_parallel_island_scheduler_) {
+        std::vector<engine::system::SystemTaskDecl> decls;
+        decls.reserve(2);
+
+        decls.push_back(engine::system::SystemTaskDecl{
+            .name = "NPCWander",
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .run = [this](engine::system::DeferredCommands& deferred) {
+                const auto* systems = parallel_island_context_.systems;
+                if (!systems || !systems->npc_wander_system) {
+                    return;
+                }
+                systems->npc_wander_system->update(parallel_island_context_.delta_time, deferred);
+            },
+            .rw_resources = {RESOURCE_NPC_WANDER_DOMAIN}
+        });
+
+        decls.push_back(engine::system::SystemTaskDecl{
+            .name = "AnimalBehavior",
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .run = [this](engine::system::DeferredCommands& deferred) {
+                const auto* systems = parallel_island_context_.systems;
+                if (!systems || !systems->animal_behavior_system) {
+                    return;
+                }
+                systems->animal_behavior_system->update(parallel_island_context_.delta_time, deferred);
+            },
+            .rw_resources = {RESOURCE_ANIMAL_BEHAVIOR_DOMAIN}
+        });
+
+        mid_stage_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
+            std::move(decls),
+            &parallelThreadPool());
+    }
+    return *mid_stage_parallel_island_scheduler_;
 }
 
 engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandScheduler() const {

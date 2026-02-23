@@ -79,11 +79,13 @@ private:
     };
 
     engine::async::ThreadPool& parallelThreadPool() const;
+    engine::system::ParallelWaveScheduler& midStageParallelIslandScheduler() const;
     engine::system::ParallelWaveScheduler& postGateParallelIslandScheduler() const;
     void setParallelIslandContext(const TickParams& params) const;
     void clearParallelIslandContext() const;
 
     mutable std::unique_ptr<engine::async::ThreadPool> parallel_thread_pool_{};
+    mutable std::unique_ptr<engine::system::ParallelWaveScheduler> mid_stage_parallel_island_scheduler_{};
     mutable std::unique_ptr<engine::system::ParallelWaveScheduler> post_gate_parallel_island_scheduler_{};
     mutable ParallelIslandContext parallel_island_context_{};
 };

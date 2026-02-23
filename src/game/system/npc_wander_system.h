@@ -1,7 +1,8 @@
 #pragma once
 
+#include "engine/system/deferred_commands.h"
+
 #include <entt/entity/fwd.hpp>
-#include <random>
 
 namespace game::system {
 
@@ -10,7 +11,7 @@ class NPCWanderSystem {
 
 public:
     explicit NPCWanderSystem(entt::registry& registry);
-    void update(float delta_time);
+    void update(float delta_time, engine::system::DeferredCommands& deferred);
 };
 
 } // namespace game::system

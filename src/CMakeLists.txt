@@ -175,6 +175,7 @@ target_sources(game PRIVATE
     game/system/item_use_system.cpp
     game/system/npc_wander_system.cpp
     game/system/animal_behavior_system.cpp
+    game/system/wander_runtime.cpp
     game/system/dialogue_system.cpp
     game/system/chest_system.cpp
     game/system/interaction_system.cpp
