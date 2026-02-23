@@ -316,6 +316,10 @@ void MapManager::loadMap(const std::string& map_id) {
 
 ---
 
+## 下一篇
+
+[09 - 后台存档 I/O](09-background-save-io.md)：把写操作也搬到后台——使用 `std::jthread` 实现无卡顿的异步存档。
+
 ## 延伸阅读
 
 - [05 - 主线程命令队列](05-main-thread-command-queue.md)：`MainThreadCommandQueue` 的设计与实现
