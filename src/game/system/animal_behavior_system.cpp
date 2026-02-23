@@ -19,8 +19,9 @@ namespace game::system {
 AnimalBehaviorSystem::AnimalBehaviorSystem(entt::registry& registry)
     : registry_(registry) {}
 
-void AnimalBehaviorSystem::update(const float delta_time, engine::system::DeferredCommands& deferred) {
-    const auto* game_time = registry_.ctx().find<game::data::GameTime>();
+void AnimalBehaviorSystem::update(const float delta_time,
+                                  const game::data::GameTime* game_time,
+                                  engine::system::DeferredCommands& deferred) {
     if (!game_time) {
         spdlog::warn("AnimalBehaviorSystem: GameTime 未找到");
         return;
@@ -47,11 +48,15 @@ void AnimalBehaviorSystem::update(const float delta_time, engine::system::Deferr
 
         const bool should_sleep = sleep.sleep_at_night_ && is_night;
         if (should_sleep) {
-            sleep.is_sleeping_ = true;
-            behavior.phase_ = game::component::AnimalBehaviorPhase::Wander;
-            behavior.eat_duration_timer_ = 0.0f;
+            if (!sleep.is_sleeping_) {
+                sleep.is_sleeping_ = true;
+                if (behavior.phase_ != game::component::AnimalBehaviorPhase::Wander) {
+                    behavior.phase_ = game::component::AnimalBehaviorPhase::Wander;
+                }
+                behavior.eat_duration_timer_ = 0.0f;
+                wander.wait_timer_ = 0.0f;
+            }
             wander_runtime::stopMovement(wander, velocity);
-            wander.wait_timer_ = 0.0f;
 
             game::component::Direction direction = state.direction_;
             if (direction == game::component::Direction::Up) {
@@ -118,7 +123,9 @@ void AnimalBehaviorSystem::update(const float delta_time, engine::system::Deferr
             continue;
         }
 
-        behavior.phase_ = game::component::AnimalBehaviorPhase::Wander;
+        if (behavior.phase_ != game::component::AnimalBehaviorPhase::Wander) {
+            behavior.phase_ = game::component::AnimalBehaviorPhase::Wander;
+        }
         wander_runtime::tickMovement(wander,
                                      transform,
                                      velocity,

@@ -19,6 +19,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
+#include "game/data/game_time.h"
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
 #include "game/system/camera_follow_system.h"
@@ -118,6 +119,8 @@ void trace_stage(SystemScheduler::TickResult& result, const SchedulerStage stage
     result.trace.stages.push_back(SystemScheduler::StageTrace{stage, elapsed_ms});
 }
 
+[[nodiscard]] const game::data::GameTime* find_game_time(const entt::registry& registry);
+
 void execute_stage_main_thread(const SystemScheduler::TickParams& params,
                                const SchedulerStage stage,
                                SystemScheduler::TickResult& result) {
@@ -170,7 +173,7 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
         case SchedulerStage::AnimalBehavior:
             if (systems.animal_behavior_system) {
                 engine::system::DeferredCommands deferred;
-                systems.animal_behavior_system->update(delta_time, deferred);
+                systems.animal_behavior_system->update(delta_time, find_game_time(registry), deferred);
                 deferred.drain(registry);
             }
             break;
@@ -249,6 +252,10 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
     return params.systems.map_transition_system && params.systems.map_transition_system->isTransitionActive();
 }
 
+[[nodiscard]] const game::data::GameTime* find_game_time(const entt::registry& registry) {
+    return registry.ctx().find<game::data::GameTime>();
+}
+
 void prepare_mid_stage_parallel_island_registry(entt::registry& registry) {
     // EnTT registry 的 storage 是惰性初始化；并发前主线程预热，避免 worker 触发隐式创建。
     (void)registry.storage<game::component::NPCTag>();
@@ -304,7 +311,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
     execute_stage_main_thread(params, SchedulerStage::PlayerControl, result);
 
     prepare_mid_stage_parallel_island_registry(params.registry);
-    setParallelIslandContext(params);
+    setParallelIslandContext(params, find_game_time(params.registry));
     auto& mid_stage_island_scheduler = midStageParallelIslandScheduler();
     if (!mid_stage_island_scheduler.valid()) {
         execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
@@ -417,7 +424,9 @@ engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandSc
                 if (!systems || !systems->animal_behavior_system) {
                     return;
                 }
-                systems->animal_behavior_system->update(parallel_island_context_.delta_time, deferred);
+                systems->animal_behavior_system->update(parallel_island_context_.delta_time,
+                                                        parallel_island_context_.game_time,
+                                                        deferred);
             },
             .rw_resources = {RESOURCE_ANIMAL_BEHAVIOR_DOMAIN}
         });
@@ -480,9 +489,10 @@ engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandSc
     return *post_gate_parallel_island_scheduler_;
 }
 
-void SystemScheduler::setParallelIslandContext(const TickParams& params) const {
+void SystemScheduler::setParallelIslandContext(const TickParams& params, const game::data::GameTime* game_time) const {
     parallel_island_context_.systems = &params.systems;
     parallel_island_context_.registry = &params.registry;
+    parallel_island_context_.game_time = game_time;
     parallel_island_context_.delta_time = params.delta_time;
 }
 

@@ -10,6 +10,7 @@
 #include "engine/component/velocity_component.h"
 
 #include <entt/entity/registry.hpp>
+#include <utility>
 
 namespace game::system {
 
@@ -23,6 +24,7 @@ void NPCWanderSystem::update(const float delta_time, engine::system::DeferredCom
                                engine::component::VelocityComponent,
                                game::component::ActorComponent,
                                game::component::StateComponent>(entt::exclude<game::component::AnimalTag>);
+    const auto& readonly_registry = std::as_const(registry_);
 
     for (const auto entity : view) {
         auto& wander = view.get<game::component::WanderComponent>(entity);
@@ -31,9 +33,9 @@ void NPCWanderSystem::update(const float delta_time, engine::system::DeferredCom
         auto& actor = view.get<game::component::ActorComponent>(entity);
         auto& state = view.get<game::component::StateComponent>(entity);
 
-        const auto* sleep = registry_.try_get<game::component::SleepRoutine>(entity);
+        const auto* sleep = readonly_registry.try_get<game::component::SleepRoutine>(entity);
         const bool is_sleeping = sleep && sleep->is_sleeping_;
-        const auto* dialogue = registry_.try_get<game::component::DialogueComponent>(entity);
+        const auto* dialogue = readonly_registry.try_get<game::component::DialogueComponent>(entity);
         const bool in_dialogue = dialogue && dialogue->active_;
 
         if (is_sleeping || in_dialogue) {
