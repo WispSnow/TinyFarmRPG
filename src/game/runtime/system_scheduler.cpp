@@ -3,7 +3,10 @@
 #include "system_bundle.h"
 
 #include "engine/async/thread_pool.h"
+#include "engine/component/animation_component.h"
+#include "engine/component/audio_component.h"
 #include "engine/component/collider_component.h"
+#include "engine/component/sprite_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/velocity_component.h"
@@ -17,6 +20,7 @@
 #include "engine/system/spatial_index_system.h"
 #include "engine/system/system_task_decl.h"
 #include "engine/system/task_event_buffer.h"
+#include "game/component/action_sound_component.h"
 #include "game/component/actor_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/state_component.h"
@@ -81,17 +85,19 @@ const std::vector<SchedulerStage>& exploration_profile() {
         SchedulerStage::Chest,
         SchedulerStage::ItemUse,
         SchedulerStage::Dialogue,
-        SchedulerStage::ActionSound,
         SchedulerStage::AutoTile,
+        // ActionSound/State 在 tick 中以同一并行 wave 执行；
+        // 此处顺序仅用于 profile 展示和 fallback 串行回退，不代表 happens-before。
+        SchedulerStage::ActionSound,
         SchedulerStage::State,
         SchedulerStage::Movement,
         SchedulerStage::TransitionUpdatePost,
         SchedulerStage::LightTogglePost,
         SchedulerStage::SpatialIndex,
         SchedulerStage::CameraFollow,
+        SchedulerStage::Animation,
         SchedulerStage::Pickup,
-        SchedulerStage::Interaction,
-        SchedulerStage::Animation
+        SchedulerStage::Interaction
     };
     return kStages;
 }
@@ -286,6 +292,18 @@ void prepare_mid_stage_parallel_island_registry(entt::registry& registry) {
     ensure_global_lighting_state(registry);
 }
 
+void prepare_pre_movement_parallel_island_registry(entt::registry& registry) {
+    // EnTT registry 的 storage 是惰性初始化；并发前主线程预热，避免 worker 触发隐式创建。
+    (void)registry.storage<game::component::ActionSoundComponent>();
+    (void)registry.storage<game::component::StateComponent>();
+    (void)registry.storage<game::component::StateDirtyTag>();
+    (void)registry.storage<game::component::ActionLockedTag>();
+    (void)registry.storage<engine::component::AudioComponent>();
+    (void)registry.storage<engine::component::TransformComponent>();
+    (void)registry.storage<engine::component::AnimationComponent>();
+    (void)registry.storage<engine::component::NeedRemoveTag>();
+}
+
 void prepare_post_gate_parallel_island_registry(entt::registry& registry) {
     // EnTT registry 的 storage 是惰性初始化；并发前主线程预热，避免 worker 触发隐式创建。
     (void)registry.storage<engine::component::SpatialIndexTag>();
@@ -293,6 +311,8 @@ void prepare_post_gate_parallel_island_registry(entt::registry& registry) {
     (void)registry.storage<engine::component::TransformComponent>();
     (void)registry.storage<engine::component::AABBCollider>();
     (void)registry.storage<engine::component::CircleCollider>();
+    (void)registry.storage<engine::component::AnimationComponent>();
+    (void)registry.storage<engine::component::SpriteComponent>();
     (void)registry.storage<game::component::PlayerTag>();
 }
 
@@ -349,9 +369,28 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
     execute_stage_main_thread(params, SchedulerStage::Chest, result);
     execute_stage_main_thread(params, SchedulerStage::ItemUse, result);
     execute_stage_main_thread(params, SchedulerStage::Dialogue, result);
-    execute_stage_main_thread(params, SchedulerStage::ActionSound, result);
     execute_stage_main_thread(params, SchedulerStage::AutoTile, result);
-    execute_stage_main_thread(params, SchedulerStage::State, result);
+
+    prepare_pre_movement_parallel_island_registry(params.registry);
+    setParallelIslandContext(params);
+    auto& pre_movement_island_scheduler = preMovementParallelIslandScheduler();
+    if (!pre_movement_island_scheduler.valid()) {
+        execute_stage_main_thread(params, SchedulerStage::ActionSound, result);
+        execute_stage_main_thread(params, SchedulerStage::State, result);
+        clearParallelIslandContext();
+    } else {
+        const auto elapsed = pre_movement_island_scheduler.execute(params.registry, params.dispatcher);
+        clearParallelIslandContext();
+        if (elapsed.size() < 2) {
+            execute_stage_main_thread(params, SchedulerStage::ActionSound, result);
+            execute_stage_main_thread(params, SchedulerStage::State, result);
+        } else {
+            // 同一 wave 内的采样值按 task 索引回填，用于统计展示；不表达两者先后时序。
+            trace_stage(result, SchedulerStage::ActionSound, elapsed[0]);
+            trace_stage(result, SchedulerStage::State, elapsed[1]);
+        }
+    }
+
     execute_stage_main_thread(params, SchedulerStage::Movement, result);
 
     execute_stage_main_thread(params, SchedulerStage::TransitionUpdatePost, result);
@@ -368,26 +407,27 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
     if (!island_scheduler.valid()) {
         execute_stage_main_thread(params, SchedulerStage::SpatialIndex, result);
         execute_stage_main_thread(params, SchedulerStage::CameraFollow, result);
+        execute_stage_main_thread(params, SchedulerStage::Animation, result);
         clearParallelIslandContext();
         execute_stage_main_thread(params, SchedulerStage::Pickup, result);
         execute_stage_main_thread(params, SchedulerStage::Interaction, result);
-        execute_stage_main_thread(params, SchedulerStage::Animation, result);
         return result;
     }
 
     const auto elapsed = island_scheduler.execute(params.registry, params.dispatcher);
     clearParallelIslandContext();
-    if (elapsed.size() < 2) {
+    if (elapsed.size() < 3) {
         execute_stage_main_thread(params, SchedulerStage::SpatialIndex, result);
         execute_stage_main_thread(params, SchedulerStage::CameraFollow, result);
+        execute_stage_main_thread(params, SchedulerStage::Animation, result);
     } else {
         trace_stage(result, SchedulerStage::SpatialIndex, elapsed[0]);
         trace_stage(result, SchedulerStage::CameraFollow, elapsed[1]);
+        trace_stage(result, SchedulerStage::Animation, elapsed[2]);
     }
 
     execute_stage_main_thread(params, SchedulerStage::Pickup, result);
     execute_stage_main_thread(params, SchedulerStage::Interaction, result);
-    execute_stage_main_thread(params, SchedulerStage::Animation, result);
     return result;
 }
 
@@ -469,10 +509,61 @@ engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandSc
     return *mid_stage_parallel_island_scheduler_;
 }
 
+engine::system::ParallelWaveScheduler& SystemScheduler::preMovementParallelIslandScheduler() const {
+    if (!pre_movement_parallel_island_scheduler_) {
+        std::vector<engine::system::SystemTaskDecl> decls;
+        decls.reserve(2);
+
+        decls.push_back(engine::system::SystemTaskDecl{
+            .name = "ActionSound",
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer& task_events) {
+                const auto* systems = parallel_island_context_.systems;
+                if (!systems || !systems->action_sound_system) {
+                    return;
+                }
+                systems->action_sound_system->update(parallel_island_context_.delta_time, task_events);
+            },
+            .ro_resources = {
+                entt::type_hash<game::component::StateComponent>::value(),
+                entt::type_hash<engine::component::AudioComponent>::value(),
+                entt::type_hash<engine::component::TransformComponent>::value(),
+                entt::type_hash<engine::component::NeedRemoveTag>::value()
+            },
+            .rw_resources = {
+                entt::type_hash<game::component::ActionSoundComponent>::value()
+            }
+        });
+
+        decls.push_back(engine::system::SystemTaskDecl{
+            .name = "State",
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .run = [this](engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer& task_events) {
+                const auto* systems = parallel_island_context_.systems;
+                if (!systems || !systems->state_system) {
+                    return;
+                }
+                systems->state_system->update(deferred, task_events);
+            },
+            .ro_resources = {
+                entt::type_hash<game::component::StateComponent>::value(),
+                entt::type_hash<engine::component::AnimationComponent>::value(),
+                entt::type_hash<engine::component::NeedRemoveTag>::value()
+            },
+            .rw_resources = {entt::type_hash<game::component::StateDirtyTag>::value()}
+        });
+
+        pre_movement_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
+            std::move(decls),
+            &parallelThreadPool());
+    }
+    return *pre_movement_parallel_island_scheduler_;
+}
+
 engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandScheduler() const {
     if (!post_gate_parallel_island_scheduler_) {
         std::vector<engine::system::SystemTaskDecl> decls;
-        decls.reserve(2);
+        decls.reserve(3);
 
         decls.push_back(engine::system::SystemTaskDecl{
             .name = "SpatialIndex",
@@ -511,6 +602,22 @@ engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandSc
                 RESOURCE_INPUT
             },
             .rw_resources = {RESOURCE_CAMERA}
+        });
+
+        decls.push_back(engine::system::SystemTaskDecl{
+            .name = "Animation",
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer& task_events) {
+                const auto* systems = parallel_island_context_.systems;
+                if (!systems || !systems->animation_system) {
+                    return;
+                }
+                systems->animation_system->update(parallel_island_context_.delta_time, task_events);
+            },
+            .rw_resources = {
+                entt::type_hash<engine::component::AnimationComponent>::value(),
+                entt::type_hash<engine::component::SpriteComponent>::value()
+            }
         });
 
         post_gate_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
@@ -584,7 +691,7 @@ const char* toString(const SchedulerStage stage) {
 
 std::string dumpPostGateParallelIslandDot() {
     std::vector<engine::system::SystemTaskDecl> decls;
-    decls.reserve(2);
+    decls.reserve(3);
 
     decls.push_back(engine::system::SystemTaskDecl{
         .name = "SpatialIndex",
@@ -609,6 +716,16 @@ std::string dumpPostGateParallelIslandDot() {
             RESOURCE_INPUT
         },
         .rw_resources = {RESOURCE_CAMERA}
+    });
+
+    decls.push_back(engine::system::SystemTaskDecl{
+        .name = "Animation",
+        .policy = engine::system::ExecutionPolicy::WorkerEligible,
+        .run = [](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {},
+        .rw_resources = {
+            entt::type_hash<engine::component::AnimationComponent>::value(),
+            entt::type_hash<engine::component::SpriteComponent>::value()
+        }
     });
 
     engine::system::ParallelWaveScheduler scheduler(std::move(decls), nullptr);
