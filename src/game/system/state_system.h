@@ -1,5 +1,7 @@
 #pragma once
 
+#include "engine/system/deferred_commands.h"
+#include "engine/system/task_event_buffer.h"
 #include "game/component/state_component.h"
 #include "engine/utils/events.h"
 #include <array>
@@ -31,8 +33,12 @@ public:
     ~StateSystem();
 
     void update();
+    void update(engine::system::DeferredCommands& deferred,
+                engine::system::TaskEventBuffer& task_events);
 
 private:
+    void updateImpl(engine::system::DeferredCommands* deferred,
+                    engine::system::TaskEventBuffer* task_events);
     void buildAnimationLookup();
     [[nodiscard]] entt::id_type resolveAnimationId(game::component::Action action,
                                                    game::component::Direction direction,
@@ -42,4 +48,3 @@ private:
 };
 
 } // namespace game::system
-

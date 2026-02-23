@@ -16,6 +16,7 @@
 #include "engine/system/remove_entity_system.h"
 #include "engine/system/spatial_index_system.h"
 #include "engine/system/system_task_decl.h"
+#include "engine/system/task_event_buffer.h"
 #include "game/component/actor_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/state_component.h"

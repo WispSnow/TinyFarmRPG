@@ -118,6 +118,7 @@ set(GAME_TEST_SOURCES
     game/interaction_command_pipeline_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
+    game/state_animation_event_chain_test.cpp
     game/save_data_v3_roundtrip_test.cpp
     game/save_migrator_test.cpp
     game/save_service_async_test.cpp

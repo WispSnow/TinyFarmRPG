@@ -17,6 +17,14 @@ AnimationSystem::~AnimationSystem() {
 }
 
 void AnimationSystem::update(float dt) {
+    updateImpl(dt, nullptr);
+}
+
+void AnimationSystem::update(float dt, engine::system::TaskEventBuffer& task_events) {
+    updateImpl(dt, &task_events);
+}
+
+void AnimationSystem::updateImpl(float dt, engine::system::TaskEventBuffer* task_events) {
     auto view = registry_.view<engine::component::AnimationComponent, engine::component::SpriteComponent>();
     for (auto entity : view) {
         auto& anim_component = view.get<engine::component::AnimationComponent>(entity);
@@ -54,9 +62,16 @@ void AnimationSystem::update(float dt) {
             // 检查是否要发送动画事件
             if (current_animation.events_.find(anim_component.current_frame_index_) != current_animation.events_.end()) {
                 spdlog::info("发送动画事件: {}", current_animation.events_.at(anim_component.current_frame_index_));
-                dispatcher_.enqueue(engine::utils::AnimationEvent{entity, 
+                const engine::utils::AnimationEvent animation_event{
+                    entity,
                     current_animation.events_.at(anim_component.current_frame_index_),
-                    anim_component.current_animation_id_});
+                    anim_component.current_animation_id_
+                };
+                if (task_events) {
+                    task_events->enqueueEvent(animation_event);
+                } else {
+                    dispatcher_.enqueue(animation_event);
+                }
             }
 
             // 处理动画播放完成
@@ -67,7 +82,15 @@ void AnimationSystem::update(float dt) {
                     // 动画播放完毕且不循环，停在最后一帧
                     anim_component.current_frame_index_ = current_animation.frames_.size() - 1;
                     // 发送动画播放完成事件
-                    dispatcher_.enqueue(engine::utils::AnimationFinishedEvent{entity, anim_component.current_animation_id_});
+                    const engine::utils::AnimationFinishedEvent finished_event{
+                        entity,
+                        anim_component.current_animation_id_
+                    };
+                    if (task_events) {
+                        task_events->enqueueEvent(finished_event);
+                    } else {
+                        dispatcher_.enqueue(finished_event);
+                    }
                 }
             }
         }

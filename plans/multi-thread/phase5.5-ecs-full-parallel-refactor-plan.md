@@ -118,12 +118,18 @@
 - [x] T5.5-1 新增 `TaskEventBuffer`（类型擦除）并接入 `ParallelWaveScheduler`
 - [x] T5.5-2 明确并实现 flush 顺序：`deferred -> enqueue-buffer -> frame-end dispatcher.update`
 - [x] T5.5-3 中段并行岛接入 `DayNightSystem`（含 ctx 预热）
-- [ ] T5.5-4 `ActionSoundSystem` 改 TaskEventBuffer 输出
-- [ ] T5.5-5 `AnimationSystem` 改 TaskEventBuffer 输出
-- [ ] T5.5-6 `StateSystem` 改 `DeferredCommands + TaskEventBuffer`
-- [ ] T5.5-7 新增事件级联回归测试（State <-> Animation）
+- [x] T5.5-4 `ActionSoundSystem` 改 TaskEventBuffer 输出
+- [x] T5.5-5 `AnimationSystem` 改 TaskEventBuffer 输出
+- [x] T5.5-6 `StateSystem` 改 `DeferredCommands + TaskEventBuffer`
+- [x] T5.5-7 新增事件级联回归测试（State <-> Animation）
 - [ ] T5.5-8 完成 ASAN/TSAN 与 profiler 对比报告
-- [ ] T5.5-9 新增 live `ThreadPool` 并行执行验证测试
+- [x] T5.5-9 新增 live `ThreadPool` 并行执行验证测试
+- [ ] T5.5-10 将 `ActionSound/State/Animation` 接入并行岛任务图（当前仅完成 buffer/deferred 双路径改造）
+
+当前验证进度（2026-02-23）：
+- ASAN：`engine_tests`/`game_tests` 关键并行与事件链路用例通过。
+- TSAN：`engine_tests`/`game_tests` 同组用例通过，无新增 race 报告。
+- profiler 基准对比（P50/P95）待补。
 
 ## 8. Deferred Backlog（从 5.5 移出）
 - D5.5-1 `ParallelWaveScheduler` mixed-policy wave

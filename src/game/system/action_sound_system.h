@@ -13,7 +13,11 @@ class ActionSoundSystem {
 
 public:
     ActionSoundSystem(entt::registry& registry, entt::dispatcher& dispatcher);
-    void update(float delta_time, engine::system::TaskEventBuffer* task_events = nullptr);
+    void update(float delta_time);
+    void update(float delta_time, engine::system::TaskEventBuffer& task_events);
+
+private:
+    void updateImpl(float delta_time, engine::system::TaskEventBuffer* task_events);
 };
 
 } // namespace game::system

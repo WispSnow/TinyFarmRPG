@@ -18,7 +18,15 @@ namespace game::system {
 ActionSoundSystem::ActionSoundSystem(entt::registry& registry, entt::dispatcher& dispatcher)
     : registry_(registry), dispatcher_(dispatcher) {}
 
-void ActionSoundSystem::update(float delta_time, engine::system::TaskEventBuffer* task_events) {
+void ActionSoundSystem::update(float delta_time) {
+    updateImpl(delta_time, nullptr);
+}
+
+void ActionSoundSystem::update(float delta_time, engine::system::TaskEventBuffer& task_events) {
+    updateImpl(delta_time, &task_events);
+}
+
+void ActionSoundSystem::updateImpl(float delta_time, engine::system::TaskEventBuffer* task_events) {
     auto view = registry_.view<game::component::ActionSoundComponent,
                                game::component::StateComponent,
                                engine::component::AudioComponent,

@@ -49,6 +49,14 @@ StateSystem::~StateSystem() {
 }
 
 void StateSystem::update() {
+    updateImpl(nullptr, nullptr);
+}
+
+void StateSystem::update(engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer& task_events) {
+    updateImpl(&deferred, &task_events);
+}
+
+void StateSystem::updateImpl(engine::system::DeferredCommands* deferred, engine::system::TaskEventBuffer* task_events) {
     auto view = registry_.view<game::component::StateComponent, game::component::StateDirtyTag>(entt::exclude<::engine::component::NeedRemoveTag>);
     std::vector<entt::entity> dirty_entities;
     dirty_entities.reserve(view.size_hint());
@@ -59,9 +67,18 @@ void StateSystem::update() {
         const auto* anim_component = registry_.try_get<::engine::component::AnimationComponent>(entity);
         auto animation_id = resolveAnimationId(state.action_, state.direction_, anim_component);
         const bool loop = isLoopingAction(state.action_);
-        dispatcher_.enqueue(::engine::utils::PlayAnimationEvent{entity, animation_id, loop});
+        const ::engine::utils::PlayAnimationEvent play_event{entity, animation_id, loop};
+        if (task_events) {
+            task_events->enqueueEvent(play_event);
+        } else {
+            dispatcher_.enqueue(play_event);
+        }
         spdlog::trace("播放动画: {}, {}", entt::to_integral(animation_id), loop);
-        registry_.remove<game::component::StateDirtyTag>(entity);
+        if (deferred) {
+            deferred->remove<game::component::StateDirtyTag>(entity);
+        } else {
+            registry_.remove<game::component::StateDirtyTag>(entity);
+        }
     }
 }
 
@@ -98,6 +115,9 @@ entt::id_type StateSystem::resolveAnimationId(game::component::Action action,
 }
 
 void StateSystem::onAnimationFinishedEvent(const ::engine::utils::AnimationFinishedEvent& event) {
+    // 当前契约：dispatcher.update() 在 GameApp 帧末主线程执行，
+    // 因此回调中的 registry 写入是主线程串行语义。
+    // 若未来 dispatcher 触发时机迁移到并行阶段，需要改为 deferred 路径。
     registry_.remove<game::component::ActionLockedTag>(event.entity_);
     if (auto state = registry_.try_get<game::component::StateComponent>(event.entity_); state) {
         state->action_ = game::component::Action::Idle;
