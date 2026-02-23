@@ -78,7 +78,7 @@ TEST(NpcAnimalParallelDomainTest, AnimalBehaviorSystemKeepsWanderMovementWhenNot
     velocity.velocity_ = glm::vec2(0.0f, 0.0f);
 
     engine::system::DeferredCommands deferred;
-    animal_behavior_system.update(0.016f, deferred);
+    animal_behavior_system.update(0.016f, &game_time, deferred);
     deferred.drain(registry);
 
     EXPECT_EQ(behavior.phase_, game::component::AnimalBehaviorPhase::Wander);
@@ -110,7 +110,7 @@ TEST(NpcAnimalParallelDomainTest, AnimalBehaviorSystemCanEnterEatingPhaseAndStop
     velocity.velocity_ = glm::vec2(1.0f, 0.0f);
 
     engine::system::DeferredCommands deferred;
-    animal_behavior_system.update(0.016f, deferred);
+    animal_behavior_system.update(0.016f, &game_time, deferred);
     deferred.drain(registry);
 
     EXPECT_EQ(behavior.phase_, game::component::AnimalBehaviorPhase::Eating);
@@ -118,6 +118,81 @@ TEST(NpcAnimalParallelDomainTest, AnimalBehaviorSystemCanEnterEatingPhaseAndStop
     EXPECT_FLOAT_EQ(velocity.velocity_.x, 0.0f);
     EXPECT_FLOAT_EQ(velocity.velocity_.y, 0.0f);
     EXPECT_EQ(state.action_, game::component::Action::Eat);
+}
+
+TEST(NpcAnimalParallelDomainTest, AnimalBehaviorSystemTransitionsSleepToWakeAcrossDayNight) {
+    entt::registry registry;
+    auto& game_time = registry.ctx().emplace<game::data::GameTime>();
+    game_time.time_of_day_ = game::data::TimeOfDay::Night;
+
+    AnimalBehaviorSystem animal_behavior_system(registry);
+
+    const auto animal = registry.create();
+    registry.emplace<game::component::AnimalTag>(animal);
+    auto& sleep = registry.emplace<game::component::SleepRoutine>(animal, game::component::SleepRoutine{true, false});
+    auto& state = registry.emplace<game::component::StateComponent>(animal);
+    state.action_ = game::component::Action::Walk;
+    auto& behavior = registry.emplace<game::component::AnimalBehaviorState>(animal);
+    behavior.phase_ = game::component::AnimalBehaviorPhase::Eating;
+    behavior.eat_duration_timer_ = 0.8f;
+    behavior.eat_cooldown_timer_ = 6.0f;
+    auto& wander = registry.emplace<game::component::WanderComponent>(animal);
+    wander.phase_ = game::component::WanderPhase::Moving;
+    wander.radius_ = 0.0f;
+    registry.emplace<game::component::ActorComponent>(animal, game::component::ActorComponent{3.0f});
+    registry.emplace<engine::component::TransformComponent>(animal, glm::vec2(0.0f, 0.0f));
+    auto& velocity = registry.emplace<engine::component::VelocityComponent>(animal);
+    velocity.velocity_ = glm::vec2(1.0f, 0.0f);
+
+    engine::system::DeferredCommands deferred;
+    animal_behavior_system.update(0.016f, &game_time, deferred);
+    deferred.drain(registry);
+
+    EXPECT_TRUE(sleep.is_sleeping_);
+    EXPECT_EQ(state.action_, game::component::Action::Sleep);
+    EXPECT_EQ(behavior.phase_, game::component::AnimalBehaviorPhase::Wander);
+    EXPECT_FLOAT_EQ(behavior.eat_duration_timer_, 0.0f);
+    EXPECT_EQ(wander.phase_, game::component::WanderPhase::Waiting);
+    EXPECT_FLOAT_EQ(velocity.velocity_.x, 0.0f);
+    EXPECT_FLOAT_EQ(velocity.velocity_.y, 0.0f);
+
+    game_time.time_of_day_ = game::data::TimeOfDay::Day;
+    engine::system::DeferredCommands deferred_wake;
+    animal_behavior_system.update(0.016f, &game_time, deferred_wake);
+    deferred_wake.drain(registry);
+
+    EXPECT_FALSE(sleep.is_sleeping_);
+    EXPECT_EQ(state.action_, game::component::Action::Idle);
+    EXPECT_EQ(behavior.phase_, game::component::AnimalBehaviorPhase::Wander);
+}
+
+TEST(NpcAnimalParallelDomainTest, NpcWanderSystemStopsMovementWhenDialogueActive) {
+    entt::registry registry;
+    NPCWanderSystem npc_wander_system(registry);
+
+    const auto npc = registry.create();
+    registry.emplace<game::component::NPCTag>(npc);
+    auto& wander = registry.emplace<game::component::WanderComponent>(npc);
+    wander.phase_ = game::component::WanderPhase::Moving;
+    wander.target_ = glm::vec2(100.0f, 0.0f);
+    wander.radius_ = 8.0f;
+    registry.emplace<engine::component::TransformComponent>(npc, glm::vec2(0.0f, 0.0f));
+    auto& velocity = registry.emplace<engine::component::VelocityComponent>(npc);
+    velocity.velocity_ = glm::vec2(2.0f, 1.0f);
+    registry.emplace<game::component::ActorComponent>(npc, game::component::ActorComponent{2.0f});
+    auto& state = registry.emplace<game::component::StateComponent>(npc);
+    state.action_ = game::component::Action::Walk;
+    auto& dialogue = registry.emplace<game::component::DialogueComponent>(npc);
+    dialogue.active_ = true;
+
+    engine::system::DeferredCommands deferred;
+    npc_wander_system.update(0.016f, deferred);
+    deferred.drain(registry);
+
+    EXPECT_EQ(wander.phase_, game::component::WanderPhase::Waiting);
+    EXPECT_FLOAT_EQ(velocity.velocity_.x, 0.0f);
+    EXPECT_FLOAT_EQ(velocity.velocity_.y, 0.0f);
+    EXPECT_EQ(state.action_, game::component::Action::Idle);
 }
 
 } // namespace
