@@ -5,6 +5,7 @@
 #include "game/runtime/system_bundle.h"
 
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -27,6 +28,7 @@ namespace {
 
 TEST(SystemSchedulerTransitionGateTest, Gate1RunsOnlyTransitionBranchWhenAlreadyActive) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     GameSystemBundle systems;
     SystemScheduler scheduler;
 
@@ -34,6 +36,7 @@ TEST(SystemSchedulerTransitionGateTest, Gate1RunsOnlyTransitionBranchWhenAlready
         .mode = GameMode::Exploration,
         .systems = systems,
         .registry = registry,
+        .dispatcher = &dispatcher,
         .delta_time = 0.016f,
         .is_transition_active = []() { return true; }
     });
@@ -51,6 +54,7 @@ TEST(SystemSchedulerTransitionGateTest, Gate1RunsOnlyTransitionBranchWhenAlready
 
 TEST(SystemSchedulerTransitionGateTest, Gate2SkipsPostGameplayWhenTransitionActivatesLater) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     GameSystemBundle systems;
     SystemScheduler scheduler;
     int transition_active_calls = 0;
@@ -59,6 +63,7 @@ TEST(SystemSchedulerTransitionGateTest, Gate2SkipsPostGameplayWhenTransitionActi
         .mode = GameMode::Exploration,
         .systems = systems,
         .registry = registry,
+        .dispatcher = &dispatcher,
         .delta_time = 0.016f,
         .is_transition_active = [&]() {
             ++transition_active_calls;
@@ -78,6 +83,7 @@ TEST(SystemSchedulerTransitionGateTest, Gate2SkipsPostGameplayWhenTransitionActi
 
 TEST(SystemSchedulerTransitionGateTest, NormalPathReachesPostGameplayStages) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     GameSystemBundle systems;
     SystemScheduler scheduler;
 
@@ -85,6 +91,7 @@ TEST(SystemSchedulerTransitionGateTest, NormalPathReachesPostGameplayStages) {
         .mode = GameMode::Exploration,
         .systems = systems,
         .registry = registry,
+        .dispatcher = &dispatcher,
         .delta_time = 0.016f,
         .is_transition_active = []() { return false; }
     });

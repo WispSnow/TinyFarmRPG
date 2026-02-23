@@ -4,8 +4,12 @@
 #include "game/runtime/game_mode.h"
 #include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
+#include "game/system/day_night_system.h"
+#include "game/data/game_time.h"
+#include "engine/render/lighting_state.h"
 
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -51,6 +55,7 @@ TEST(SystemSchedulerProfileTest, ExplorationKeepsTimeBeforeDayNight) {
 
 TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransition) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     GameSystemBundle systems;
     SystemScheduler scheduler;
 
@@ -58,6 +63,7 @@ TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransit
         .mode = GameMode::Exploration,
         .systems = systems,
         .registry = registry,
+        .dispatcher = &dispatcher,
         .delta_time = 0.016f,
         .is_transition_active = []() { return false; }
     });
@@ -81,6 +87,7 @@ TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransit
 
 TEST(SystemSchedulerProfileTest, ExplorationParallelIslandRemainsStableAcrossManyTicks) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     GameSystemBundle systems;
     SystemScheduler scheduler;
 
@@ -90,6 +97,7 @@ TEST(SystemSchedulerProfileTest, ExplorationParallelIslandRemainsStableAcrossMan
             .mode = GameMode::Exploration,
             .systems = systems,
             .registry = registry,
+            .dispatcher = &dispatcher,
             .delta_time = 0.016f,
             .is_transition_active = []() { return false; }
         });
@@ -98,6 +106,32 @@ TEST(SystemSchedulerProfileTest, ExplorationParallelIslandRemainsStableAcrossMan
         EXPECT_FALSE(result.gate2_triggered);
         ASSERT_FALSE(result.trace.stages.empty());
     }
+}
+
+TEST(SystemSchedulerProfileTest, ExplorationParallelDayNightUpdatesGlobalLightingState) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    GameSystemBundle systems;
+    SystemScheduler scheduler;
+
+    registry.ctx().emplace<game::data::GameTime>();
+    systems.day_night_system = std::make_unique<game::system::DayNightSystem>(registry);
+
+    const auto result = scheduler.tick({
+        .mode = GameMode::Exploration,
+        .systems = systems,
+        .registry = registry,
+        .dispatcher = &dispatcher,
+        .delta_time = 0.016f,
+        .is_transition_active = []() { return false; }
+    });
+
+    const auto executed = traceStages(result);
+    EXPECT_NE(std::find(executed.begin(), executed.end(), SchedulerStage::DayNight), executed.end());
+
+    const auto* lighting = registry.ctx().find<engine::render::GlobalLightingState>();
+    ASSERT_NE(lighting, nullptr);
+    EXPECT_FALSE(lighting->directional_lights.empty());
 }
 
 } // namespace

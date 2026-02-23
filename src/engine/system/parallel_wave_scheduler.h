@@ -4,6 +4,7 @@
 
 #include <entt/entity/fwd.hpp>
 #include <entt/graph/adjacency_matrix.hpp>
+#include <entt/signal/fwd.hpp>
 
 #include <cstddef>
 #include <string>
@@ -26,7 +27,7 @@ public:
     [[nodiscard]] bool valid() const noexcept { return valid_; }
     [[nodiscard]] const std::vector<Wave>& waves() const noexcept { return waves_; }
 
-    [[nodiscard]] std::vector<double> execute(entt::registry& registry) const;
+    [[nodiscard]] std::vector<double> execute(entt::registry& registry, entt::dispatcher* dispatcher = nullptr) const;
     [[nodiscard]] std::string dumpDot() const;
 
 private:
@@ -45,4 +46,3 @@ private:
 };
 
 } // namespace engine::system
-

@@ -53,6 +53,7 @@ set(TEST_SOURCES
     engine/system/remove_entity_system_test.cpp
     engine/system/movement_system_dynamic_grid_sync_test.cpp
     engine/system/parallel_wave_scheduler_test.cpp
+    engine/system/task_event_buffer_test.cpp
     engine/render/nine_slice_test.cpp
     engine/render/text_renderer_no_exceptions_test.cpp
     engine/render/render_context_no_exceptions_test.cpp

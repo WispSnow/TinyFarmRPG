@@ -7,6 +7,10 @@
 #include <string_view>
 #include <vector>
 
+namespace game::data {
+struct GameTime;
+}
+
 namespace game::system {
 
 /**
@@ -101,8 +105,10 @@ public:
 
     /**
      * @brief 更新光照参数（根据当前游戏时间）
+     *
+     * @param game_time 当前帧的游戏时间快照（由调度器传入）
      */
-    void update();
+    void update(const game::data::GameTime* game_time);
 
 private:
     /**

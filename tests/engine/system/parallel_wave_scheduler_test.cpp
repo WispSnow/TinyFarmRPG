@@ -4,8 +4,10 @@
 #include "engine/system/deferred_commands.h"
 #include "engine/system/parallel_wave_scheduler.h"
 #include "engine/system/system_task_decl.h"
+#include "engine/system/task_event_buffer.h"
 
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -29,13 +31,13 @@ TEST(ParallelWaveSchedulerTest, NoDependenciesShareSingleWave) {
     tasks.push_back(SystemTaskDecl{
         .name = "TaskA",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .rw_resources = {RES_A}
     });
     tasks.push_back(SystemTaskDecl{
         .name = "TaskB",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .rw_resources = {RES_B}
     });
 
@@ -55,13 +57,13 @@ TEST(ParallelWaveSchedulerTest, WriteReadDependencySplitsWaves) {
     tasks.push_back(SystemTaskDecl{
         .name = "Producer",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .rw_resources = {RES_SYNC}
     });
     tasks.push_back(SystemTaskDecl{
         .name = "Consumer",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .ro_resources = {RES_SYNC}
     });
 
@@ -82,13 +84,13 @@ TEST(ParallelWaveSchedulerTest, SubmitFailureFallsBackToInlineExecution) {
     tasks.push_back(SystemTaskDecl{
         .name = "TaskA",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [&](DeferredCommands&) { counter_a.fetch_add(1, std::memory_order_relaxed); },
+        .run = [&](DeferredCommands&, TaskEventBuffer&) { counter_a.fetch_add(1, std::memory_order_relaxed); },
         .rw_resources = {RES_A}
     });
     tasks.push_back(SystemTaskDecl{
         .name = "TaskB",
         .policy = ExecutionPolicy::WorkerEligible,
-        .run = [&](DeferredCommands&) { counter_b.fetch_add(1, std::memory_order_relaxed); },
+        .run = [&](DeferredCommands&, TaskEventBuffer&) { counter_b.fetch_add(1, std::memory_order_relaxed); },
         .rw_resources = {RES_B}
     });
 
@@ -112,7 +114,7 @@ TEST(ParallelWaveSchedulerTest, WorkerEligibleWaveRunsOnMultipleWorkers) {
     std::atomic<int> running{0};
     std::atomic<int> max_running{0};
 
-    const auto task_body = [&](DeferredCommands&) {
+    const auto task_body = [&](DeferredCommands&, TaskEventBuffer&) {
         entered.fetch_add(1, std::memory_order_relaxed);
 
         const int current = running.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -165,7 +167,7 @@ TEST(ParallelWaveSchedulerTest, DeferredCommandsDrainBetweenWaves) {
     tasks.push_back(SystemTaskDecl{
         .name = "WriteMarker",
         .policy = ExecutionPolicy::MainThreadOnly,
-        .run = [entity](DeferredCommands& deferred) {
+        .run = [entity](DeferredCommands& deferred, TaskEventBuffer&) {
             deferred.emplaceOrReplace<Marker>(entity);
         },
         .rw_resources = {RES_SYNC}
@@ -173,7 +175,7 @@ TEST(ParallelWaveSchedulerTest, DeferredCommandsDrainBetweenWaves) {
     tasks.push_back(SystemTaskDecl{
         .name = "ReadMarker",
         .policy = ExecutionPolicy::MainThreadOnly,
-        .run = [&](DeferredCommands&) {
+        .run = [&](DeferredCommands&, TaskEventBuffer&) {
             saw_marker = registry.all_of<Marker>(entity);
         },
         .ro_resources = {RES_SYNC}
@@ -189,18 +191,45 @@ TEST(ParallelWaveSchedulerTest, DeferredCommandsDrainBetweenWaves) {
     EXPECT_TRUE(saw_marker);
 }
 
+TEST(ParallelWaveSchedulerTest, DeferredDrainHappensBeforeTaskEventFlush) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    const entt::entity entity = registry.create();
+    bool saw_marker_during_flush = false;
+
+    std::vector<SystemTaskDecl> tasks;
+    tasks.push_back(SystemTaskDecl{
+        .name = "WriteMarkerAndEvent",
+        .policy = ExecutionPolicy::MainThreadOnly,
+        .run = [&](DeferredCommands& deferred, TaskEventBuffer& task_events) {
+            deferred.emplaceOrReplace<Marker>(entity);
+            task_events.enqueueCommand([&](entt::dispatcher&) {
+                saw_marker_during_flush = registry.all_of<Marker>(entity);
+            });
+        },
+        .rw_resources = {RES_A}
+    });
+
+    ParallelWaveScheduler scheduler(std::move(tasks));
+    ASSERT_TRUE(scheduler.valid());
+
+    const auto elapsed = scheduler.execute(registry, &dispatcher);
+    ASSERT_EQ(elapsed.size(), 1U);
+    EXPECT_TRUE(saw_marker_during_flush);
+}
+
 TEST(ParallelWaveSchedulerTest, DotDumpContainsTaskNames) {
     std::vector<SystemTaskDecl> tasks;
     tasks.push_back(SystemTaskDecl{
         .name = "TaskX",
         .policy = ExecutionPolicy::MainThreadOnly,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .rw_resources = {RES_A}
     });
     tasks.push_back(SystemTaskDecl{
         .name = "TaskY",
         .policy = ExecutionPolicy::MainThreadOnly,
-        .run = [](DeferredCommands&) {},
+        .run = [](DeferredCommands&, TaskEventBuffer&) {},
         .rw_resources = {RES_B}
     });
 

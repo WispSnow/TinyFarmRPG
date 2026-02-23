@@ -66,6 +66,7 @@ target_sources(engine PRIVATE
     engine/system/animation_system.cpp
     engine/system/auto_tile_system.cpp
     engine/system/deferred_commands.cpp
+    engine/system/task_event_buffer.cpp
     engine/system/parallel_wave_scheduler.cpp
     engine/system/render_system.cpp
     engine/system/light_system.cpp

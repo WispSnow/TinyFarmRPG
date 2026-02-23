@@ -163,10 +163,9 @@ bool DayNightSystem::loadConfig(std::string_view config_path) {
     return config_.loadFromFile(config_path);
 }
 
-void DayNightSystem::update() {
-    auto* game_time_it = registry_.ctx().find<game::data::GameTime>();
-    if (!game_time_it) {
-        spdlog::warn("DayNightSystem::update: 注册表上下文中未找到 GameTime");
+void DayNightSystem::update(const game::data::GameTime* game_time) {
+    if (!game_time) {
+        spdlog::warn("DayNightSystem::update: GameTime 参数为空");
         return;
     }
 
@@ -188,12 +187,13 @@ void DayNightSystem::update() {
     }
 
     // 将分钟转换为小时的小数部分，提供更平滑的过渡
-    float hour_with_minutes = game_time_it->hour_ + game_time_it->minute_ / 60.0f;
+    float hour_with_minutes = game_time->hour_ + game_time->minute_ / 60.0f;
     updateLightingParams(hour_with_minutes);
 
     auto* state_ptr = registry_.ctx().find<engine::render::GlobalLightingState>();
     if (!state_ptr) {
-        state_ptr = &registry_.ctx().emplace<engine::render::GlobalLightingState>();
+        spdlog::warn("DayNightSystem::update: 注册表上下文中未找到 GlobalLightingState");
+        return;
     }
 
     auto& state = *state_ptr;
