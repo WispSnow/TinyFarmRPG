@@ -290,6 +290,12 @@ wave 提取后必须校验：
   - 在 `SystemScheduler` 接入中段并行岛：`NPCWander ∥ AnimalBehavior`；
   - 新增域分离与行为回归测试：`NpcAnimalParallelDomainTest.*`；
   - `build-debug-asan` 全量通过（277/277），`build-tsan` 定向并发用例通过（21/21）。
+- 审阅意见跟进补强（2026-02-23）：
+  - `AnimalBehaviorSystem` 不再在 worker 线程读取 `registry.ctx()`，改为主线程预取 `GameTime*` 并通过 scheduler 上下文只读传入；
+  - `NPCWanderSystem` 对 `SleepRoutine/DialogueComponent` 的读取路径改为 `const registry` 访问，减少误写入口；
+  - `AnimalBehaviorSystem` 睡眠分支改为仅在状态转换时重置计时器/phase，移除漫步分支冗余赋值；
+  - 补充回归测试：`AnimalBehaviorSystemTransitionsSleepToWakeAcrossDayNight`、`NpcWanderSystemStopsMovementWhenDialogueActive`；
+  - `build-debug-asan` 与 `build-debug-tsan` 的 `NpcAnimalParallelDomainTest|SystemScheduler|ParallelWaveSchedulerTest` 均通过（23/23）。
 
 ## 12. 审阅意见处理结论（2026-02-22）
 - `并行安全/Deferred/submit 回退/环检测/Gate 语义/storage 预热/profiler 重构`：结论合理，已采纳并验证通过。
