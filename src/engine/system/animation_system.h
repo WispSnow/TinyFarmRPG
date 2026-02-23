@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/system/task_event_buffer.h"
 #include "engine/utils/events.h"
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
@@ -19,9 +20,11 @@ public:
     AnimationSystem(entt::registry& registry, entt::dispatcher& dispatcher);
     ~AnimationSystem();
 
-    void update(float dt);  ///< @brief 现在更新函数只需要传入dt，注册表和dispatcher在构造函数中传入
+    void update(float dt);
+    void update(float dt, engine::system::TaskEventBuffer& task_events);
 
 private:
+    void updateImpl(float dt, engine::system::TaskEventBuffer* task_events);
     void onPlayAnimationEvent(const engine::utils::PlayAnimationEvent& event);  ///< @brief 播放动画事件处理函数
 };
 
