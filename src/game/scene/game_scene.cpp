@@ -162,10 +162,11 @@ void GameScene::fixedUpdate(float delta_time) {
 
     if (scheduler_) {
         const auto tick_result = scheduler_->tick({
-            game_mode_,
-            *systems_,
-            registry_,
-            delta_time
+            .mode = game_mode_,
+            .systems = *systems_,
+            .registry = registry_,
+            .dispatcher = &context_.getDispatcher(),
+            .delta_time = delta_time
         });
 
 #ifdef TF_ENABLE_DEBUG_UI

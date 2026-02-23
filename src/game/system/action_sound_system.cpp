@@ -18,7 +18,7 @@ namespace game::system {
 ActionSoundSystem::ActionSoundSystem(entt::registry& registry, entt::dispatcher& dispatcher)
     : registry_(registry), dispatcher_(dispatcher) {}
 
-void ActionSoundSystem::update(float delta_time) {
+void ActionSoundSystem::update(float delta_time, engine::system::TaskEventBuffer* task_events) {
     auto view = registry_.view<game::component::ActionSoundComponent,
                                game::component::StateComponent,
                                engine::component::AudioComponent,
@@ -66,7 +66,12 @@ void ActionSoundSystem::update(float delta_time) {
             }
         }
 
-        dispatcher_.enqueue(engine::utils::PlaySoundEvent{entity, trigger_id});
+        const engine::utils::PlaySoundEvent event{entity, trigger_id};
+        if (task_events) {
+            task_events->enqueueEvent(event);
+        } else {
+            dispatcher_.enqueue(event);
+        }
         if (cfg.cooldown_seconds_ > 0.0f) {
             action_sounds.cooldown_remaining_seconds_[trigger_id] = cfg.cooldown_seconds_;
         }
@@ -74,4 +79,3 @@ void ActionSoundSystem::update(float delta_time) {
 }
 
 } // namespace game::system
-

@@ -5,6 +5,7 @@
 #include "game/runtime/system_bundle.h"
 
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <cstddef>
 
@@ -28,6 +29,7 @@ namespace {
 
 TEST(SystemSchedulerProfilerTest, CaptureFrameCollectsSchedulerTrace) {
     entt::registry registry;
+    entt::dispatcher dispatcher;
     game::runtime::GameSystemBundle systems;
     game::runtime::SystemScheduler scheduler;
     SchedulerProfiler profiler;
@@ -37,6 +39,7 @@ TEST(SystemSchedulerProfilerTest, CaptureFrameCollectsSchedulerTrace) {
         .mode = game::runtime::GameMode::Exploration,
         .systems = systems,
         .registry = registry,
+        .dispatcher = &dispatcher,
         .delta_time = 0.016f,
         .is_transition_active = []() { return false; }
     });

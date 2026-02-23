@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <entt/entity/fwd.hpp>
+#include <entt/signal/fwd.hpp>
 
 namespace game::data {
 struct GameTime;
@@ -52,6 +53,7 @@ public:
         GameMode mode{GameMode::Exploration};
         GameSystemBundle& systems;
         entt::registry& registry;
+        entt::dispatcher* dispatcher{nullptr};
         float delta_time{0.0f};
         std::function<bool()> is_transition_active{};
     };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "engine/system/task_event_buffer.h"
+
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 
@@ -11,8 +13,7 @@ class ActionSoundSystem {
 
 public:
     ActionSoundSystem(entt::registry& registry, entt::dispatcher& dispatcher);
-    void update(float delta_time);
+    void update(float delta_time, engine::system::TaskEventBuffer* task_events = nullptr);
 };
 
 } // namespace game::system
-

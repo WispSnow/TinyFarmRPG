@@ -115,9 +115,9 @@
   - 提供改造前后固定场景 P50/P95 对比。
 
 ## 7. 待办清单
-- [ ] T5.5-1 新增 `TaskEventBuffer`（类型擦除）并接入 `ParallelWaveScheduler`
-- [ ] T5.5-2 明确并实现 flush 顺序：`deferred -> enqueue-buffer -> frame-end dispatcher.update`
-- [ ] T5.5-3 中段并行岛接入 `DayNightSystem`（含 ctx 预热）
+- [x] T5.5-1 新增 `TaskEventBuffer`（类型擦除）并接入 `ParallelWaveScheduler`
+- [x] T5.5-2 明确并实现 flush 顺序：`deferred -> enqueue-buffer -> frame-end dispatcher.update`
+- [x] T5.5-3 中段并行岛接入 `DayNightSystem`（含 ctx 预热）
 - [ ] T5.5-4 `ActionSoundSystem` 改 TaskEventBuffer 输出
 - [ ] T5.5-5 `AnimationSystem` 改 TaskEventBuffer 输出
 - [ ] T5.5-6 `StateSystem` 改 `DeferredCommands + TaskEventBuffer`

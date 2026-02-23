@@ -2,9 +2,11 @@
 
 #include "engine/async/thread_pool.h"
 #include "engine/system/deferred_commands.h"
+#include "engine/system/task_event_buffer.h"
 
 #include <entt/graph/dot.hpp>
 #include <entt/graph/flow.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <spdlog/spdlog.h>
 
@@ -34,7 +36,7 @@ ParallelWaveScheduler::ParallelWaveScheduler(std::vector<SystemTaskDecl> tasks, 
     rebuild();
 }
 
-std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) const {
+std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry, entt::dispatcher* dispatcher) const {
     if (!valid_) {
         spdlog::error("ParallelWaveScheduler::execute aborted: invalid task graph");
         return {};
@@ -48,6 +50,7 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) con
         }
 
         DeferredCommands deferred;
+        TaskEventBuffer task_events;
 
         const bool all_worker_eligible = std::all_of(wave.task_indices.begin(), wave.task_indices.end(), [this](const std::size_t index) {
             return tasks_[index].policy == ExecutionPolicy::WorkerEligible;
@@ -67,11 +70,17 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) con
                 }
 
                 const auto begin = std::chrono::steady_clock::now();
-                tasks_[index].run(deferred);
+                tasks_[index].run(deferred, task_events);
                 const auto end = std::chrono::steady_clock::now();
                 stage_elapsed_ms[index] = elapsedMs(begin, end);
             }
             deferred.drain(registry);
+            if (dispatcher != nullptr) {
+                task_events.flushTo(*dispatcher);
+            } else if (!task_events.empty()) {
+                spdlog::error("ParallelWaveScheduler::execute task event flush failed: dispatcher is null");
+                assert(dispatcher != nullptr && "ParallelWaveScheduler requires dispatcher when task events are produced");
+            }
             continue;
         }
 
@@ -96,9 +105,9 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) con
 
             // 复制函数对象，避免 worker 间接访问调度器生命周期对象。
             auto run_task = tasks_[index].run;
-            auto future = thread_pool_->submitFuture([run_task = std::move(run_task), &deferred]() mutable {
+            auto future = thread_pool_->submitFuture([run_task = std::move(run_task), &deferred, &task_events]() mutable {
                 const auto begin = std::chrono::steady_clock::now();
-                run_task(deferred);
+                run_task(deferred, task_events);
                 const auto end = std::chrono::steady_clock::now();
                 return elapsedMs(begin, end);
             });
@@ -112,7 +121,7 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) con
             }
 
             const auto begin = std::chrono::steady_clock::now();
-            tasks_[index].run(deferred);
+            tasks_[index].run(deferred, task_events);
             const auto end = std::chrono::steady_clock::now();
             stage_elapsed_ms[index] = elapsedMs(begin, end);
         }
@@ -125,6 +134,12 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry) con
         }
 
         deferred.drain(registry);
+        if (dispatcher != nullptr) {
+            task_events.flushTo(*dispatcher);
+        } else if (!task_events.empty()) {
+            spdlog::error("ParallelWaveScheduler::execute task event flush failed: dispatcher is null");
+            assert(dispatcher != nullptr && "ParallelWaveScheduler requires dispatcher when task events are produced");
+        }
     }
 
     return stage_elapsed_ms;
