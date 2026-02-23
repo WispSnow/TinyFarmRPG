@@ -29,7 +29,7 @@ Worker 线程                      主线程
 | Phase 3 | AsyncPreloadPipeline 解耦 | P0 | **Completed** | `./phase3-refactor-keep-architecture-and-pipeline-plan.md` |
 | Phase 4 | 后台存档 I/O | P1 | **Completed** | `./phase4-background-save-io-plan.md` |
 | Phase 5 | ECS 系统级并行调度（基础） | P1 | **Completed (2026-02-23)** | `./phase5-ecs-task-parallel-deferred-plan.md` |
-| Phase 5.5 | ECS 全面并行重构（扩展） | P1 | **Planned (2026-02-23)** | `./phase5.5-ecs-full-parallel-refactor-plan.md` |
+| Phase 5.5 | ECS 全面并行重构（扩展） | P1 | **Completed (2026-02-23)** | `./phase5.5-ecs-full-parallel-refactor-plan.md` |
 | Phase 6 | 逻辑/渲染分离 | Optional/不推荐 | Deferred | `./phase6-logic-render-split-deferred-plan.md` |
 
 ## 观测与验证

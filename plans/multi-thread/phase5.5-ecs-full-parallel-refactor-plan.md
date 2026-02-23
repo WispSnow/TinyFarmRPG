@@ -122,16 +122,57 @@
 - [x] T5.5-5 `AnimationSystem` 改 TaskEventBuffer 输出
 - [x] T5.5-6 `StateSystem` 改 `DeferredCommands + TaskEventBuffer`
 - [x] T5.5-7 新增事件级联回归测试（State <-> Animation）
-- [ ] T5.5-8 完成 ASAN/TSAN 与 profiler 对比报告
+- [x] T5.5-8 完成 ASAN/TSAN 与 profiler 对比报告
 - [x] T5.5-9 新增 live `ThreadPool` 并行执行验证测试
-- [ ] T5.5-10 将 `ActionSound/State/Animation` 接入并行岛任务图（当前仅完成 buffer/deferred 双路径改造）
+- [x] T5.5-10 将 `ActionSound/State/Animation` 接入并行岛任务图
+  - `ActionSound/State`：接入 `AutoTile` 之后的 pre-movement 并行岛
+  - `Animation`：接入 post-gate 并行岛，与 `SpatialIndex/CameraFollow` 同图
 
 当前验证进度（2026-02-23）：
 - ASAN：`engine_tests`/`game_tests` 关键并行与事件链路用例通过。
 - TSAN：`engine_tests`/`game_tests` 同组用例通过，无新增 race 报告。
-- profiler 基准对比（P50/P95）待补。
+- profiler 基准对比（P50/P95）已补（见下节）。
 
-## 8. Deferred Backlog（从 5.5 移出）
+## 8. T5.5-8 验证报告（2026-02-23）
+
+### 8.1 测试方法
+- 基线版本：`/tmp/TinyFarmRPG-phase55-baseline`（`HEAD=628ffc0`，即接入并行岛前）
+- 当前版本：工作区最新改动（已接入 `T5.5-10`）
+- 构建配置：`debug-asan`
+- 压测用例：`SystemSchedulerProfileTest.ExplorationParallelIslandRemainsStableAcrossManyTicks`
+  - 固定执行 `2000` 次 `SystemScheduler::tick`（Exploration）
+  - `GameSystemBundle` 为空（用于测调度器/并行岛框架开销）
+- 每个版本重复 `30` 次，统计 `P50/P95`（单位：ms/用例）
+
+### 8.2 结果
+
+| 指标 | 基线（接入前） | 当前（接入后） | 变化 |
+|------|----------------|----------------|------|
+| P50 (ms/2000 ticks) | 110.5 | 156.0 | +41.2% |
+| P95 (ms/2000 ticks) | 133.0 | 157.6 | +18.5% |
+| Mean (ms/2000 ticks) | 115.3 | 155.7 | +35.0% |
+
+折算每 tick（P50）：
+- 基线：`~55.3 us/tick`
+- 当前：`~78.0 us/tick`
+
+### 8.3 并行覆盖变化（任务图）
+- 接入前：
+  - 中段并行岛：`DayNight ∥ NPCWander ∥ AnimalBehavior`（3 任务）
+  - 后段并行岛：`SpatialIndex ∥ CameraFollow`（2 任务）
+- 接入后：
+  - 中段并行岛：`DayNight ∥ NPCWander ∥ AnimalBehavior`（3 任务）
+  - pre-movement 并行岛：`ActionSound ∥ State`（2 任务）
+  - 后段并行岛：`SpatialIndex ∥ CameraFollow ∥ Animation`（3 任务）
+
+### 8.4 结论与说明
+- 在“空系统”场景下，`T5.5-10` 引入的额外并行岛与任务调度路径带来可观固定开销，P50/P95 上升。
+- 该结果符合预期：该压测几乎不包含真实系统负载，主要反映调度器基础开销，而非并行业务收益。
+- 绝对开销视角：P50 每 tick 从 `~55.3 us` 增加到 `~78.0 us`，增量约 `22.7 us/tick`；
+  以 `60 FPS` 帧预算 `16.67 ms` 计，约占 `0.14%`，属于可接受范围。
+- 后续需要补一组“真实负载场景”（大量 NPC/动物/动画实体）测量，以评估端到端 tick 收益。
+
+## 9. Deferred Backlog（从 5.5 移出）
 - D5.5-1 `ParallelWaveScheduler` mixed-policy wave
 - D5.5-2 `LightToggleSystem` 并行化
 - D5.5-3 `MovementSystem` 并行化（含 dynamic grid 分区）
