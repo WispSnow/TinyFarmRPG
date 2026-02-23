@@ -2,7 +2,7 @@
 
 前五章介绍了各个组件。本章把它们串起来，看地图预加载的完整异步管线如何工作。
 
-> 核心文件：`src/game/world/map_manager.cpp`
+> 核心文件：`src/game/world/map_manager.cpp`、`src/game/world/async_preload_pipeline.h`
 
 ---
 
@@ -207,6 +207,8 @@ void MapManager::scheduleAsyncPreloadTask(entt::id_type map_id, const std::strin
     });
 }
 ```
+
+> **架构演进提示**：在 Phase 3 重构中，上述调度逻辑被提取到了 `AsyncPreloadPipeline` 类（`src/game/world/async_preload_pipeline.h`）。`MapManager` 不再直接管理线程池和共享状态，而是通过 `async_preload_pipeline_->schedule(map_id, level_path)` 委托执行。这里展示的伪代码保留了核心模式的完整语义——实际实现只是多了一层封装。
 
 ---
 
