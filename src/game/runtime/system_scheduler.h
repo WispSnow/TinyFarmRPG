@@ -11,6 +11,10 @@
 
 #include <entt/entity/fwd.hpp>
 
+namespace game::data {
+struct GameTime;
+}
+
 namespace game::runtime {
 
 struct GameSystemBundle;
@@ -75,13 +79,14 @@ private:
     struct ParallelIslandContext {
         GameSystemBundle* systems{nullptr};
         const entt::registry* registry{nullptr};
+        const game::data::GameTime* game_time{nullptr};
         float delta_time{0.0f};
     };
 
     engine::async::ThreadPool& parallelThreadPool() const;
     engine::system::ParallelWaveScheduler& midStageParallelIslandScheduler() const;
     engine::system::ParallelWaveScheduler& postGateParallelIslandScheduler() const;
-    void setParallelIslandContext(const TickParams& params) const;
+    void setParallelIslandContext(const TickParams& params, const game::data::GameTime* game_time = nullptr) const;
     void clearParallelIslandContext() const;
 
     mutable std::unique_ptr<engine::async::ThreadPool> parallel_thread_pool_{};
