@@ -184,9 +184,6 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
-    if (world_anchor_controller_) {
-        world_anchor_controller_->update();
-    }
     Scene::update(delta_time);
 }
 
@@ -204,6 +201,11 @@ void GameScene::render(float interpolation_alpha) {
         const glm::vec2 render_camera_position =
             glm::mix(previous_camera_position_, camera_position_before, clamped_alpha);
         camera.setPosition(render_camera_position);
+    }
+
+    // 使用与世界渲染一致的插值相机更新世界锚点 UI，避免相机跟随时抖动。
+    if (world_anchor_controller_) {
+        world_anchor_controller_->syncProjectedPositions();
     }
 
     systems_->ysort_system->render(registry_, clamped_alpha);

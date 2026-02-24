@@ -37,7 +37,7 @@ void WorldAnchorUIController::registerDialogueBubble(std::uint8_t channel,
     slot.view->setVisible(false);
 }
 
-void WorldAnchorUIController::update() {
+void WorldAnchorUIController::syncProjectedPositions() {
     auto& camera = context_.getCamera();
     for (auto& [_, slot] : dialogue_slots_) {
         if (!slot.active) {
@@ -131,4 +131,3 @@ std::string WorldAnchorUIController::formatDialogueText(std::string_view speaker
 }
 
 } // namespace game::ui
-

@@ -26,7 +26,7 @@ public:
     void registerDialogueBubble(std::uint8_t channel,
                                 DialogueBubbleView* view,
                                 glm::vec2 screen_offset = {0.0f, -4.0f});
-    void update();
+    void syncProjectedPositions();
 
 private:
     struct AnchorSlot {
@@ -49,4 +49,3 @@ private:
 };
 
 } // namespace game::ui
-
