@@ -2,7 +2,7 @@
 # 项目主配置文件
 # ============================================
 cmake_minimum_required(VERSION 3.13.0)
-project(TinyFarm VERSION 0.1.0 LANGUAGES C CXX)
+project(TinyFarmRPG VERSION 0.1.0 LANGUAGES C CXX)
 
 # ============================================
 # 基础配置

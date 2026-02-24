@@ -87,7 +87,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -128,7 +128,7 @@ int main() {
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -187,7 +187,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 std::mutex mtx;
 
 // 危险的做法：手动加锁解锁
@@ -212,6 +212,42 @@ mtx.unlock();
 ### 代码实战：安全的并发计数器
 
 我们结合上一节学过的 `std::jthread` ，来看看如何使用 `std::scoped_lock` 保护共享数据：
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <vector>
+
+int shared_counter = 0; // 共享数据
+std::mutex mtx;         // 保护 shared_counter 的专属锁
+
+void worker_task() {
+    for (int i = 0; i < 10000; ++i) {
+        // 创建一个局部作用域锁
+        // 线程执行到这里时，会自动请求锁定 mtx
+        std::scoped_lock lock(mtx); 
+        
+        // 此时只有当前线程能访问 shared_counter，绝对安全
+        shared_counter++; 
+        
+    } // <- 关键点：离开 for 循环的本次迭代作用域，lock 被销毁，自动解锁 mtx！
+}
+
+int main() {
+    std::cout << "主线程开始，预期结果是 20000..." << std::endl;
+
+    {
+        // 启动两个子线程，它们同时去累加同一个变量
+        std::jthread t1(worker_task);
+        std::jthread t2(worker_task);
+        
+    } // 主线程在这里等待 t1 和 t2 执行完毕 (jthread 的特性)
+
+    std::cout << "最终计数器的值: " << shared_counter << std::endl;
+    return 0;
+}
+```
 
 *如果你把 `std::scoped_lock lock(mtx);` 这一行注释掉，你会发现每次运行程序，最终打印的数字都会小于 20000，且每次都不一样，这就是发生了数据竞争。*
 
@@ -243,7 +279,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 std::mutex mtx;
 // 仅仅关联了 mtx，但此时并没有加锁！
 std::unique_lock<std::mutex> lock(mtx, std::defer_lock); 
@@ -258,6 +294,15 @@ lock.lock(); // 现在才真正加锁
 #### 2\. 中途随时解锁和再加锁 (Manual Control)
 
 这是它最常用的场景之一： **极力缩小临界区（锁住的代码范围）** 。 假设你在一个长函数里，只有中间一小块数据需要保护。你可以用 `unique_lock` 加锁，修改完数据后 **立刻手动 `unlock()`** ，然后再去做其他的耗时操作。这样可以大大减少阻塞其他线程的时间。
+
+```cpp
+std::unique_lock<std::mutex> lock(mtx);
+shared_data++; 
+lock.unlock(); // 数据修改完毕，提前手动释放锁！让其他线程可以进来了
+
+// ... 继续执行 1000 行不需要保护的耗时代码 ...
+// 如果不用 unique_lock，其他线程就得白白等你这 1000 行代码跑完。
+```
 
 #### 3\. 支持所有权转移 (Movable)
 
@@ -341,7 +386,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -360,7 +405,7 @@ void consumer_task() {
         std::unique_lock<std::mutex> lock(mtx);
         
         // 消费者开始等待！
-        // 1. 如果队列为空且没完工，自动解锁 mtx，线程陷入沉睡。
+        // 1. 如果队列为空且没完工，自动解锁 mtx，线程陷入沉睡。（while循环卡在这里，不消耗cpu）
         // 2. 被 notify 唤醒时，自动重新加锁 mtx，并检查 Lambda 里的条件。
         // 3. 完美防御“虚假唤醒”。
         cv.wait(lock, []() { 
@@ -526,7 +571,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <future>
 #include <chrono>
@@ -571,7 +616,7 @@ int main() {
 `std::async` 的第一个参数可以控制它的行为：
 
 - `std::launch::async` ： **必须** 开一个新线程去异步执行。
-- `std::launch::deferred` ： **懒加载模式** 。不开新线程，也不立刻执行。只有当你调用 `.get()` 的那一刻，它才在主线程里当场串行执行（常用于延迟计算）。
+- `std::launch::deferred` ： **懒加载模式** 。不开新线程，也不立刻执行。只有当你调用 `.get()`或`wate()` 的那一刻，它才在主线程里当场串行执行（常用于延迟计算）。
 - 如果什么都不传，标准库会自己看心情（看系统资源）决定用哪种。
 
 ---
@@ -607,7 +652,7 @@ You said
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <future>
@@ -662,7 +707,7 @@ int main() {
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <future>
@@ -739,7 +784,7 @@ C++20 终于把其他高级语言（如 Java, C#）里早就有的三大并发�
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <semaphore>
@@ -788,7 +833,7 @@ int main() {
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <thread>
 #include <latch>
@@ -876,6 +921,36 @@ You said
 
 **代码实战：无锁并发计数器**
 
+```cpp
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <vector>
+
+// 仅仅把普通 int 换成了 std::atomic<int>
+std::atomic<int> shared_counter{0}; 
+
+void worker_task() {
+    for (int i = 0; i < 10000; ++i) {
+        // 这里的 ++ 操作是“原子的”！
+        // 无论多少个线程同时执行这一行，都不会发生数据丢失，也不需要加锁。
+        shared_counter++; 
+    }
+}
+
+int main() {
+    std::cout << "主线程开始，预期结果是 20000..." << std::endl;
+
+    {
+        std::jthread t1(worker_task);
+        std::jthread t2(worker_task);
+    } 
+
+    std::cout << "最终计数器的值: " << shared_counter << std::endl; // 绝对是准确的 20000
+    return 0;
+}
+```
+
 我们用 `std::atomic` 重写第2步中的计数器， **注意，这里没有任何 `std::mutex` 锁！**
 
 这段代码不仅比加锁的版本更短，而且 **运行速度极快** ，因为线程完全不需要排队和睡眠。
@@ -942,13 +1017,23 @@ You said
 
 但在 **C++20** 的加持下，我们可以利用 `std::jthread` 和它自带的取消机制（ `std::stop_token` ），写出一个极其优雅、极度精简的线程池。
 
+> **💡 深入理解 `std::stop_token` (停止令牌)**
+> 
+> 在 C++20 之前，如果主线程想通知子线程“停下来，别干了”（比如用户点击了取消，或者程序准备退出），我们通常需要手动定义一个全局（或共享的） `std::atomic<bool> stop_flag`，并在子线程的循环或密集计算中不断检查 `if (stop_flag.load()) break;`。这种做法存在两个痛点：一是代码繁琐，二是如果线程正卡在 `cv.wait()` 里沉睡，它根本没机会醒来去检查这个标志（往往必须配合 `notify_all()` 强行叫醒所有人再检查）。
+> 
+> **`std::jthread` 引入的 `std::stop_token` 体系完美解决了这个痛点：**
+> 
+> 1. **自动生成与传递**：当你用 `jthread` 启动一个任务，如果这个任务函数主动接收一个 `std::stop_token` 参数，`jthread` 内部会自动生成一个绑定的停止状态（stop state），并把令牌（token）发给任务函数。
+> 2. **随时发出停止请求**：在主线程，可以通过调用 `jthread.request_stop()` 主动发出停止信号。更棒的是，当 `jthread` 对象被析构（销毁）时，它会自动帮你隐式调用 `request_stop()`。
+> 3. **完美的睡眠唤醒联动（王炸特性）**：C++20 专门新增了 `std::condition_variable_any`，它的 `wait()` 方法可以直接把 `stop_token` 作为参数传入。**如果线程正在 `wait` 中沉睡，一旦收到 `stop_token` 传来的停止请求，该线程会无视常规的唤醒条件，立刻结束等待并“惊醒”！** 这意味着你的子线程绝不会因为挂起而永远睡死在后台，真正实现了优雅退出。
+
 请看这段“集大成者”的代码。我会在注释中帮你复习我们走过的每一步：
 
 ### 现代 C++20 极简线程池 (Header-only)
 
 C++
 
-```markdown
+```cpp
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -959,6 +1044,7 @@ C++
 #include <functional>
 #include <type_traits>
 #include <chrono>
+#include <stdexcept>
 
 class ThreadPool {
 public:
@@ -968,48 +1054,57 @@ public:
             // 【第1步】使用 C++20 的 jthread 创建线程
             // jthread 会自动给运行的函数传入一个 std::stop_token (停止令牌)
             workers.emplace_back([this](std::stop_token stoken) {
-                
+
                 // 这是一个不断循环的消费者
                 while (true) {
                     std::function<void()> task;
-                    
+
                     { // 【第2步】使用互斥锁保护队列
                         std::unique_lock<std::mutex> lock(queue_mutex);
-                        
+
                         // 【第3步】使用条件变量等待任务
-                        // C++20 魔法：condition_variable_any 原生支持 stop_token！
+                        // C++20 魔法：condition_variable_any 内部自动为 stop_token 注册
+                        // stop_callback，当 request_stop() 被调用时自动唤醒此线程，
+                        // 无需外部再手动 notify_all()。
                         // 它会陷入沉睡，直到：1. 队列有任务了  或  2. 收到停止信号(析构时)
-                        bool wait_result = condition.wait(lock, stoken, [this] {
+                        bool has_task = condition.wait(lock, stoken, [this] {
                             return !tasks.empty();
                         });
 
-                        // 如果收到了停止信号 (wait_result 为 false)，并且队列里的任务都清空了
-                        if (!wait_result && tasks.empty()) {
-                            return; // 线程优雅退出，下班！
+                        // has_task 为 false 意味着被停止信号唤醒且队列已空，优雅退出
+                        if (!has_task) {
+                            return;
                         }
 
                         // 醒来且有任务，从队列中取出一个任务
                         task = std::move(tasks.front());
                         tasks.pop();
-                    } // 离开作用域，自动解锁 mtx。让其他工作线程可以继续取任务
-                    
+                    } // 离开作用域，自动解锁。让其他工作线程可以继续取任务
+
                     // 执行任务 (注意：必须在锁的范围之外执行，否则退化成串行！)
-                    task(); 
+                    task();
                 }
             });
         }
     }
 
     // 提交任务的接口：接受任意函数和任意参数
-    template<class F, class... Args>
-    auto enqueue(F&& f, Args&&... args) {
+    // [[nodiscard]]: future 是获取结果/异常的唯一途径，忽略返回值几乎都是 bug
+    // requires: 编译期约束 F 必须可以用 Args... 调用，提供清晰的编译错误信息
+    template<typename F, typename... Args>
+        requires std::invocable<F, Args...>
+    [[nodiscard]] auto enqueue(F&& f, Args&&... args) {
         // 推导函数的返回值类型
         using return_type = std::invoke_result_t<F, Args...>;
 
         // 【第4步】使用 packaged_task 打包函数，以便提取 future
         // 因为 std::function 必须是可拷贝的，而 packaged_task 只能移动，所以我们用 shared_ptr 包裹它
         auto task = std::make_shared<std::packaged_task<return_type()>>(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+            // C++20 lambda init-capture pack 替代 std::bind：
+            // 正确转发每个参数，支持引用语义，行为透明，可读性更强
+            [f = std::forward<F>(f), ...args = std::forward<Args>(args)]() mutable {
+                return std::invoke(std::move(f), std::move(args)...);
+            }
         );
 
         // 获取对应的 future，准备返回给调用者
@@ -1018,35 +1113,90 @@ public:
         {
             // 【第2步】加锁，把任务塞进队列 (生产者)
             std::scoped_lock lock(queue_mutex); // C++17 作用域锁
-            
+
+            // 防止线程池停止后继续投递任务（任务将永远不会被执行）
+            if (stopped) {
+                throw std::runtime_error("enqueue on stopped ThreadPool");
+            }
+
             // 将 packaged_task 擦除类型，封装成统一的 void() 形式塞入队列
             tasks.emplace([task]() { (*task)(); });
         }
 
-        // 【第3步】通知一个正在沉睡的工作线程：“起来干活了！”
-        condition.notify_one(); 
-        
+        // 【第3步】通知一个正在沉睡的工作线程："起来干活了！"
+        condition.notify_one();
+
         return res; // 返回取餐小票
     }
 
     // 析构函数：销毁线程池
     ~ThreadPool() {
-        // C++20 jthread 析构时会自动调用内部的 request_stop() 并 join()
-        // 但为了让正在 cv.wait() 沉睡的线程立刻醒来检查停止令牌，
-        // 我们主动发出 stop 请求，并用大喇叭叫醒所有人。
-        for (auto& worker : workers) {
-            worker.request_stop(); 
+        {
+            std::scoped_lock lock(queue_mutex);
+            stopped = true; // 先设停止标志，防止析构期间新任务入队
         }
-        condition.notify_all(); // 惊醒所有线程，让它们看到 stop_token 后安全退出
+        // request_stop() 会触发 condition_variable_any 内部注册的 stop_callback，
+        // 自动 notify_all() 唤醒所有正在 wait 的线程，无需再手动调用。
+        // jthread 析构时也会自动完成 request_stop() + join()，
+        // 此处提前调用是为了让多个线程能并行地进入退出流程，而非逐个串行 join。
+        for (auto& worker : workers) {
+            worker.request_stop();
+        }
     }
 
 private:
-    std::vector<std::jthread> workers;        // 线程数组
+    bool stopped = false;                     // 停止标志，受 queue_mutex 保护
     std::queue<std::function<void()>> tasks;  // 任务队列
     std::mutex queue_mutex;                   // 队列互斥锁
     std::condition_variable_any condition;    // C++20: 配合 stop_token 必须用 _any 版本
+    // 关键：workers 必须最后声明，这样析构时最先销毁并完成 join，
+    // 避免工作线程访问已被销毁的 mutex/condition。
+    std::vector<std::jthread> workers;        // 线程数组
 };
 ```
+
+#### 线程池生命周期图解
+
+一图胜千言。下图以时序视角呈现线程池的三个关键阶段——**构造**（工作线程进入沉睡）、**提交任务**（生产者-消费者协作）、**析构**（stop_token 触发优雅退出）：
+
+```mermaid
+sequenceDiagram
+    participant Main as 主线程
+    participant TQ as tasks 队列<br/>(queue_mutex 保护)
+    participant T1 as 工作线程 T1
+    participant T2 as 工作线程 T2
+
+    rect rgb(220, 245, 220)
+        Note over Main,T2: ① 构造阶段 · ThreadPool(2)
+        Main->>T1: jthread 启动，自动传入 stop_token
+        Main->>T2: jthread 启动，自动传入 stop_token
+        T1-->>T1: condition.wait(lock, stoken, [队列非空])<br/>→ 进入沉睡
+        T2-->>T2: condition.wait(lock, stoken, [队列非空])<br/>→ 进入沉睡
+    end
+
+    rect rgb(220, 220, 245)
+        Note over Main,T2: ② 提交阶段 · enqueue(f, args...)
+        Main->>TQ: scoped_lock + tasks.push(packaged_task)
+        Main->>T1: condition.notify_one() 唤醒一个线程
+        Main-->>Main: 立即返回 future<T>（取餐小票）
+        T1->>TQ: unique_lock + pop task from queue
+        Note over T1: 离开作用域自动解锁，T2 可并发取下一个任务
+        T1-->>T1: 在锁外执行 task()
+    end
+
+    rect rgb(245, 220, 220)
+        Note over Main,T2: ③ 析构阶段 · ~ThreadPool()
+        Main->>Main: stopped = true（加锁写入，阻止新任务入队）
+        Main->>T1: request_stop()
+        Main->>T2: request_stop()
+        Note over T1,T2: stop_callback 被触发<br/>condition_variable_any 自动唤醒所有沉睡线程
+        T1-->>T1: has_task = false → return（优雅退出）
+        T2-->>T2: has_task = false → return（优雅退出）
+        Note over Main: jthread 自动完成 join() ✅
+    end
+```
+
+> **关键细节**：`workers` 在类的私有成员中**最后声明**，意味着它**最先被析构**。这保证了所有工作线程 `join()` 完成后，`queue_mutex` 和 `condition` 才会被销毁，彻底消除悬空引用风险。
 
 ---
 
@@ -1056,7 +1206,7 @@ private:
 
 C++
 
-```markdown
+```cpp
 // 模拟一个极其耗时的任务
 int heavy_calculation(int a, int b) {
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -1067,11 +1217,11 @@ int main() {
     std::cout << "主线程: 启动线程池 (4个工作线程)\n";
     ThreadPool pool(4);
 
-    // 把任务丢进线程池，瞬间返回 3 张“取餐小票” (future)
+    // 把任务丢进线程池，瞬间返回 3 张"取餐小票" (future)
     std::cout << "主线程: 提交 3 个计算任务...\n";
     auto result1 = pool.enqueue(heavy_calculation, 10, 20);
     auto result2 = pool.enqueue(heavy_calculation, 30, 40);
-    auto result3 = pool.enqueue( { // 也支持 Lambda 表达式！
+    auto result3 = pool.enqueue([](int n) { // 也支持 Lambda 表达式！
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return n * n;
     }, 5);
@@ -1090,10 +1240,11 @@ int main() {
 
 ### 为什么这段代码堪称现代 C++ 的典范？
 
-1. **绝对的异常安全** ：没有手动 `lock/unlock` ，没有手动 `new/delete` ，没有手动 `join/detach` 。RAII 哲学贯穿始终。
-2. **极简的退出机制** ：以前写线程池，最难的就是写 `~ThreadPool()` 。你需要维护一个 `bool stop` 标志，加锁修改它，然后 `notify_all()` 。而在 C++20 中， `std::jthread` + `std::stop_token` + `std::condition_variable_any` 形成了一套完美的内部联动，几行代码就实现了优雅的终止。
-3. **泛型编程 (Templates)** ： `enqueue` 函数利用了可变参数模板、完美转发 (`std::forward`) 和尾置返回类型 (`std::invoke_result_t`)，可以接收 **任何签名** 的函数和参数，并准确返回对应的 `future` 。
+1. **绝对的异常安全** ：没有手动 `lock/unlock` ，没有手动 `new/delete` ，没有手动 `join/detach` 。RAII 哲学贯穿始终——资源生命周期与对象生命周期严格绑定，不会因异常而泄漏。
+2. **极简的退出机制** ：以前写线程池，最难的就是 `~ThreadPool()` 。你需要维护一个 `bool stop` 标志，加锁修改，再手动 `notify_all()` 。而在 C++20 中，`std::jthread` + `std::stop_token` + `std::condition_variable_any` 三者形成完美内部联动——`request_stop()` 自动唤醒所有沉睡线程，`jthread` 析构时自动 `join()`，整个退出路径仅需寥寥数行。
+3. **泛型编程 (Templates)** ：`enqueue` 利用可变参数模板、完美转发 (`std::forward`) 和 `std::invoke_result_t`，可接收**任何签名**的函数与参数，并精确返回对应类型的 `future`，无需调用方关心任何类型细节。
+4. **C++20 语言特性的恰当运用**：`requires std::invocable<F, Args...>` 在编译期拦截非法调用并给出清晰错误；`[[nodiscard]]` 强制调用者持有 `future`（丢弃即 bug）；lambda init-capture pack（`...args = std::forward<Args>(args)`）以透明语义替代晦涩的 `std::bind`。每一处特性都服务于实际需求，而非炫技。
 
 ---
 
-**恭喜你，至此你不仅走完了路线图，还成功阅读并理解了一份优秀的 C++ 工业级源码！** 多线程的理论学习到此告一段落，剩下的就是在实际项目中不断踩坑和积累经验了。 **你想把这段代码复制到本地编译器跑跑看，还是有什么具体的业务场景想让我帮你评估一下是否需要用到多线程？**
+**恭喜你，至此你不仅走完了路线图，还成功阅读并理解了一份优秀的 C++ 工业级源码！** 多线程的理论学习到此告一段落，剩下的就是在实际项目中不断踩坑和积累经验了。
