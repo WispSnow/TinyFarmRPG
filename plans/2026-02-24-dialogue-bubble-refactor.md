@@ -40,7 +40,7 @@
 参考 Unity Canvas 的 Screen/World Space 模式和自研引擎的常见做法：在 `UIElement` 内置定位模式区分，`UIManager` 统一处理投影。游戏层只需一个轻量 Controller 做事件路由。
 
 **优势**：
-- 未来任何 UIElement 设一个 mode + 世界坐标就能锚定，无需额外注册。
+- 未来根节点直接子元素中的世界 UI 设一个 mode + 世界坐标就能锚定，无需额外注册。
 - 投影逻辑在引擎层统一维护，游戏层零重复。
 - `UIElement::update()` 已接收 `Context&`，`Context` 已持有 `Camera&`，引擎层不引入新的外部依赖。
 
@@ -86,6 +86,13 @@
 **规则**：
 - 世界锚点的坐标和偏移应在 `fixedUpdate()` 或事件回调（`dispatcher.update()` 触发的同步回调）中修改，确保在同帧 `resolveWorldAnchors()` 中生效。
 - 如果在 UI 元素的 `update()` 中修改 `world_anchor_offset_`（例如飘字动画），改动将在**下一帧**的 `resolveWorldAnchors()` 中生效（1 帧延迟）。这对于平滑动画通常可接受；若需要零延迟，应在 `fixedUpdate` 或专用动画系统中驱动。
+
+### C4. WorldAnchor 与 onLayout 约束（本次范围）
+
+- 本次 `WorldAnchor` 仅用于**非布局容器**元素（如 `DialogueBubbleView`、`UILabel`、`UIImage`、简单 `UIPanel`）。
+- 不将 `UIStackLayout`、`UIGridLayout`、`UIProgressBar` 等依赖 `onLayout()` 驱动子布局的容器直接设为 `WorldAnchor`。
+- 这样可以避免 `applyWorldAnchorPosition()` 先写入布局缓存后导致容器 `onLayout()` 时机不明确的问题。
+- 若后续确实需要“WorldAnchor + 布局容器”组合，需在引擎层补充专门语义（例如显式触发一次 `onLayout()` 或拆分容器职责）后再放开约束。
 
 ### C3. clearWorldAnchor() 后的位置恢复
 
@@ -640,7 +647,7 @@ ui_manager->addElement(std::move(quest_icon));
 ## 后续扩展方向（不在本次范围内）
 - `FloatingText`（伤害飘字）：UILabel + `setWorldAnchor()` + fixedUpdate 中驱动 offset 动画。
 - `QuestMarker`（任务标记）：UIImage + `setWorldAnchor()`。
-- `HealthBar`（头顶血条）：UIPanel + UIProgressBar + `setWorldAnchor()`。
+- `HealthBar`（头顶血条）：外层 `UIPanel`（WorldAnchor）+ 内层 `UIProgressBar`（Screen 子节点）。
 - `BuffIcon`（状态图标）：UIImage 组 + `setWorldAnchor()`。
 - 以上全部只需 `setWorldAnchor()` 一行调用，无需新建 controller 或注册 slot。
 - 性能优化：当世界锚点元素超过 100 个时，在 UIManager 中维护 `world_anchor_elements_` 列表替代遍历。

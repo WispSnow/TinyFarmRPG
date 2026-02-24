@@ -11,6 +11,9 @@
 namespace engine::core {
     class Context;
 }
+namespace engine::render {
+    class Camera;
+}
 namespace engine::ui {
     class UIElement;
     class UIPanel; // UIPanel 将作为根元素
@@ -81,6 +84,7 @@ private:
 
     void registerMouseEvents();
     void unregisterMouseEvents();
+    void resolveWorldAnchors(const engine::render::Camera& camera);
 
 };
 

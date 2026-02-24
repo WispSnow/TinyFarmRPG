@@ -251,6 +251,35 @@ void UIElement::setLayoutOverrideSize(std::optional<glm::vec2> size) {
     invalidateLayout();
 }
 
+void UIElement::setWorldAnchor(glm::vec2 world_pos, glm::vec2 screen_offset) {
+    const bool mode_changed = positioning_mode_ != PositioningMode::WorldAnchor;
+    const bool anchor_changed = !sameVec2(world_anchor_, world_pos) ||
+                                !sameVec2(world_anchor_offset_, screen_offset);
+    if (!mode_changed && !anchor_changed) {
+        return;
+    }
+
+    positioning_mode_ = PositioningMode::WorldAnchor;
+    world_anchor_ = world_pos;
+    world_anchor_offset_ = screen_offset;
+    invalidateLayout();
+}
+
+void UIElement::clearWorldAnchor() {
+    const glm::vec2 zero{0.0F, 0.0F};
+    const bool mode_changed = positioning_mode_ != PositioningMode::Screen;
+    const bool anchor_changed = !sameVec2(world_anchor_, zero) ||
+                                !sameVec2(world_anchor_offset_, zero);
+    if (!mode_changed && !anchor_changed) {
+        return;
+    }
+
+    positioning_mode_ = PositioningMode::Screen;
+    world_anchor_ = zero;
+    world_anchor_offset_ = zero;
+    invalidateLayout();
+}
+
 const UIInteractive* UIElement::findInteractiveAt(const glm::vec2& point) const {
     if (!visible_) {
         return nullptr;
@@ -318,6 +347,20 @@ void UIElement::ensureLayout() const {
                 layout_position_.x, layout_position_.y);
         layout_dirty_ = false;
         return;
+    }
+
+    if (positioning_mode_ == PositioningMode::WorldAnchor) {
+        if (parent_->getParent() != nullptr) {
+            spdlog::warn(
+                    "UIElement::ensureLayout: WorldAnchor mode on non-root-child element (id={}), falling back to Screen mode.",
+                    id_);
+            // Fall through to Screen layout logic below (constraint C1).
+        } else {
+            layout_size_ = layout_override_size_.value_or(size_);
+            layout_dirty_ = false;
+            const_cast<UIElement*>(this)->onLayout();
+            return;
+        }
     }
 
     // 获取父元素的内容(可用)区域
@@ -405,6 +448,25 @@ void UIElement::setPosition(glm::vec2 position) {
     }
     position_ = std::move(position);
     invalidateLayout();
+}
+
+void UIElement::applyWorldAnchorPosition(glm::vec2 screen_pos) {
+    const glm::vec2 final_size = layout_override_size_.value_or(size_);
+    const glm::vec2 new_position = screen_pos - final_size * pivot_;
+    if (!layout_dirty_ && sameVec2(layout_position_, new_position) &&
+        sameVec2(layout_size_, final_size)) {
+        return;
+    }
+
+    layout_position_ = new_position;
+    layout_size_ = final_size;
+    layout_dirty_ = false;
+
+    for (auto& child : children_) {
+        if (child) {
+            child->invalidateLayout(true);
+        }
+    }
 }
 
 void UIElement::resetLayoutRecomputeCounter() {

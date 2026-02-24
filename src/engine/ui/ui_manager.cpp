@@ -5,6 +5,7 @@
 #include "ui_preset_manager.h"
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
+#include "engine/render/camera.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/render/renderer.h"
 #include "ui_drag_preview.h"
@@ -67,6 +68,8 @@ void UIManager::clearElements() {
 void UIManager::update(float delta_time, engine::core::Context& context) {
     UIElement::resetLayoutRecomputeCounter();
 
+    resolveWorldAnchors(context.getCamera());
+
     // 只处理鼠标悬停（轮询鼠标位置）
     processMouseHover();
 
@@ -77,6 +80,25 @@ void UIManager::update(float delta_time, engine::core::Context& context) {
 
     spdlog::trace("UIManager::update layout_recompute_count={}",
                   UIElement::consumeLayoutRecomputeCounter());
+}
+
+void UIManager::resolveWorldAnchors(const engine::render::Camera& camera) {
+    if (!root_element_) {
+        return;
+    }
+
+    for (const auto& child : root_element_->getChildren()) {
+        if (!child || !child->isVisible()) {
+            continue;
+        }
+        if (child->getPositioningMode() != PositioningMode::WorldAnchor) {
+            continue;
+        }
+
+        const glm::vec2 screen_pos =
+                camera.worldToScreen(child->getWorldAnchor()) + child->getWorldAnchorOffset();
+        child->applyWorldAnchorPosition(screen_pos);
+    }
 }
 
 void UIManager::render(engine::core::Context& context) {

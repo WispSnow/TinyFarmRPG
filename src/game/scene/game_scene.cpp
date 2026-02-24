@@ -31,7 +31,8 @@
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/render_target_system.h"
-#include "game/ui/dialogue_bubble.h"
+#include "game/ui/dialogue_bubble_controller.h"
+#include "game/ui/dialogue_bubble_view.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
@@ -236,11 +237,13 @@ void GameScene::clean() {
         services_->script_host->shutdown();
         services_->script_host.reset();
     }
+#endif
 
+    dialogue_controller_.reset();
     auto& dispatcher = context_.getDispatcher();
     dispatcher.clear<game::defs::DialogueShowEvent>();
+    dispatcher.clear<game::defs::DialogueMoveEvent>();
     dispatcher.clear<game::defs::DialogueHideEvent>();
-#endif
 #ifdef TF_ENABLE_DEBUG_UI
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
@@ -340,33 +343,23 @@ bool GameScene::initUI() {
     ui_manager_->addElement(std::move(item_tooltip_ui));
 
     auto& dispatcher_ref = context_.getDispatcher();
-    auto dialogue_bubble = std::make_unique<game::ui::DialogueBubble>(
-        context_,
-        dispatcher_ref,
-        text_renderer,
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        0);
-    dialogue_bubble_ = dialogue_bubble.get();
+    dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref);
+
+    auto dialogue_bubble = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto* dialogue_bubble_ptr = dialogue_bubble.get();
     ui_manager_->addElement(std::move(dialogue_bubble));
 
-    ui_manager_->addElement(std::make_unique<game::ui::DialogueBubble>(
-        context_,
-        dispatcher_ref,
-        text_renderer,
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        1));
+    auto notification_bubble = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto* notification_bubble_ptr = notification_bubble.get();
+    ui_manager_->addElement(std::move(notification_bubble));
 
-    auto item_use_bubble = std::make_unique<game::ui::DialogueBubble>(
-        context_,
-        dispatcher_ref,
-        text_renderer,
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        2);
-    item_use_bubble->setOffset(glm::vec2{0.0f, -56.0f});
+    auto item_use_bubble = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto* item_use_bubble_ptr = item_use_bubble.get();
     ui_manager_->addElement(std::move(item_use_bubble));
+
+    dialogue_controller_->registerBubble(0, dialogue_bubble_ptr);
+    dialogue_controller_->registerBubble(1, notification_bubble_ptr);
+    dialogue_controller_->registerBubble(2, item_use_bubble_ptr, glm::vec2{0.0f, -56.0f});
 
     if (inventory_ui_) {
         inventory_ui_->setUIManager(ui_manager_.get());

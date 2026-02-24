@@ -36,6 +36,7 @@
 ### 3.1 脏标记与布局时机
 - 以下操作会触发布局脏化（`layout_dirty_ = true`）：
   - `setSize`、`setPosition`、`setAnchor`、`setPadding`、`setMargin`
+  - `setWorldAnchor`、`clearWorldAnchor`
   - `addChild/removeChild/removeAllChildren`
   - `setParent`
   - `setLayoutOverrideSize/clearLayoutOverrideSize`（仅当 override 值实际变化时）
@@ -78,6 +79,28 @@
 - `ensureLayout()` 会输出 trace，记录 `requested/layout/override` 三元组、最终位置与 stretch 判定。
 - `UIManager::update()` 会输出本轮 `layout_recompute_count`（调试计数器）。
 - 以上日志默认为 trace 级别，不改变运行时行为，仅用于排查布局链路。
+
+### 3.6 世界锚点定位模式（WorldAnchor）
+- `UIElement` 新增 `PositioningMode`：
+  - `Screen`（默认）：沿用现有 `anchor/pivot/margin/position` 屏幕布局语义。
+  - `WorldAnchor`：元素位置由 `world_anchor` 经相机投影写入，不走常规屏幕定位计算。
+- 新增接口：
+  - `setWorldAnchor(world_pos, screen_offset)`：切到 `WorldAnchor`，并传播布局脏标记。
+  - `clearWorldAnchor()`：切回 `Screen`，清零锚点数据，并传播布局脏标记。
+- 约束 C1（本期）：
+  - 仅支持 `UIManager` 根节点的直接子元素使用 `WorldAnchor`。
+  - 非直接子元素即使设置了 `WorldAnchor`，`ensureLayout()` 也按 `Screen` 语义 fallback，并输出 warn。
+- 投影时机（约束 C2）：
+  - `UIManager::update()` 先执行 `resolveWorldAnchors()`，再执行 hover/update。
+  - 若在 UI `update()` 阶段修改 world offset，则会在下一帧投影生效（1 帧延迟）。
+- 位置恢复（约束 C3）：
+  - `clearWorldAnchor()` 后继续使用既有 `position_` 参与 `Screen` 布局，不重写 `position_`。
+- 子树脏标记传播：
+  - `applyWorldAnchorPosition()` 写入父节点布局位置后，必须向子节点传播 `invalidateLayout(true)`。
+  - 原因：子节点布局依赖 `parent->getContentBounds()`；父位置变化必须触发子树重算。
+- 约束 C4（本期）：
+  - `WorldAnchor` 仅用于非布局容器元素（如 `UILabel`/`UIImage`/简单 `UIPanel`）。
+  - `UIStackLayout`/`UIGridLayout`/`UIProgressBar` 等依赖 `onLayout()` 的容器暂不直接使用 `WorldAnchor`。
 
 ## 4. padding / margin / anchor / pivot 优先级
 - 父节点 `padding` 先定义子节点可用布局区域（`content bounds`）。

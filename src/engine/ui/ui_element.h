@@ -14,6 +14,11 @@ namespace engine::ui {
 
 class UIInteractive;
 
+enum class PositioningMode : std::uint8_t {
+    Screen,
+    WorldAnchor
+};
+
 struct Thickness {
     float left{0.0f};
     float top{0.0f};
@@ -101,6 +106,9 @@ public:
     glm::vec2 getAnchorMin() const { return anchor_min_; }          ///< @brief 获取锚点最小值
     glm::vec2 getAnchorMax() const { return anchor_max_; }          ///< @brief 获取锚点最大值
     glm::vec2 getPivot() const { return pivot_; }                   ///< @brief 获取枢轴
+    [[nodiscard]] PositioningMode getPositioningMode() const { return positioning_mode_; }
+    [[nodiscard]] const glm::vec2& getWorldAnchor() const { return world_anchor_; }
+    [[nodiscard]] const glm::vec2& getWorldAnchorOffset() const { return world_anchor_offset_; }
 
     void setSize(glm::vec2 size);                                    ///< @brief 设置元素大小
     void setVisible(bool visible) { visible_ = visible; }               ///< @brief 设置元素的可见性
@@ -114,6 +122,8 @@ public:
     void setPadding(const Thickness& padding);                      ///< @brief 设置内边距
     void setMargin(const Thickness& margin);                        ///< @brief 设置外边距
     void setLayoutOverrideSize(std::optional<glm::vec2> size);      ///< @brief 设置布局覆盖尺寸
+    void setWorldAnchor(glm::vec2 world_pos, glm::vec2 screen_offset = {0.0f, 0.0f});
+    void clearWorldAnchor();
     void clearLayoutOverrideSize() { setLayoutOverrideSize(std::nullopt); } ///< @brief 清除布局覆盖尺寸
 
     // --- 辅助方法 ---
@@ -134,6 +144,10 @@ public:
     UIElement& operator=(UIElement&&) = delete;
 
 protected:
+    PositioningMode positioning_mode_{PositioningMode::Screen};
+    glm::vec2 world_anchor_{0.0f, 0.0f};
+    glm::vec2 world_anchor_offset_{0.0f, 0.0f};
+
     virtual void renderSelf(engine::core::Context& context);
     virtual void onLayout() {} // 新增：布局回调，供子类实现自定义布局逻辑
 
@@ -141,6 +155,9 @@ protected:
     void ensureLayout() const;
     void setParentInternal(UIElement* parent);
     void setSizeInternal(glm::vec2 size);
+
+    friend class UIManager;
+    void applyWorldAnchorPosition(glm::vec2 screen_pos);
 };
 
 } // namespace engine::ui
