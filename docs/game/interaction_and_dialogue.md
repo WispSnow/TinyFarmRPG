@@ -13,9 +13,12 @@ flowchart TD
     IR --> CS["ChestSystem<br/>需要 ChestComponent"]
     IR --> RS["RestSystem<br/>需要 RestArea"]
 
-    DS -->|DialogueShow/Move/Hide<br/>channel=0| DB0["DialogueBubble #0"]
-    CS -->|DialogueShow/Move/Hide<br/>channel=1| DB1["DialogueBubble #1"]
-    IU["ItemUseSystem<br/>UseItemRequest"] -->|DialogueShow/Move/Hide<br/>channel=2| DB2["DialogueBubble #2"]
+    DS -->|DialogueShow/Move/Hide<br/>channel=0| WAC["WorldAnchorUIController"]
+    CS -->|DialogueShow/Move/Hide<br/>channel=1| WAC
+    IU["ItemUseSystem<br/>UseItemRequest"] -->|DialogueShow/Move/Hide<br/>channel=2| WAC
+    WAC --> DB0["DialogueBubbleView #0"]
+    WAC --> DB1["DialogueBubbleView #1"]
+    WAC --> DB2["DialogueBubbleView #2"]
 
     RS -->|PushSceneEvent| Scene["Scene Stack<br/>(RestDialogScene)"]
 ```
@@ -23,7 +26,7 @@ flowchart TD
 核心思想：
 - `InteractionSystem` **只做两件事**：根据玩家朝向做一次空间 probe，挑出“目标实体”；然后发出 `InteractRequest`。
 - 具体玩法不写在 `InteractionSystem`：对话/开箱/休息分别由各自系统订阅 `InteractRequest` 并处理。
-- UI 是事件驱动：气泡只监听 `DialogueShow/Move/HideEvent`，并按 `channel` 区分不同用途，避免互相覆盖。
+- UI 是事件驱动：`WorldAnchorUIController` 统一监听 `DialogueShow/Move/HideEvent`，并按 `channel` 路由到对应 `DialogueBubbleView`。
 
 ## 2) InteractRequest：事件总线式扩展点
 
@@ -36,12 +39,11 @@ flowchart TD
 - `InteractionSystem` 保持稳定，不会随着玩法增加而“越改越大”
 - 新交互=新增订阅者，代码耦合更低
 
-## 3) DialogueBubble 的 channel 约定
+## 3) DialogueBubbleView 的 channel 约定
 
-项目里约定使用 3 个频道（见 `GameScene::initUI`）：
+项目里当前注册了 3 个频道（见 `GameScene::initUI`）：
 - `0`：对话（NPC 说话）
 - `1`：通知（例如拾取/开箱等短提示）
 - `2`：物品提示（例如物品栏右键使用后的提示）
 
-因此，系统在发 `DialogueShow/Move/HideEvent` 时必须带上对应 `channel`，才能路由到正确的气泡实例。
-
+系统在发 `DialogueShow/Move/HideEvent` 时需要带上对应 `channel`，才能路由到正确的气泡实例。未注册的 `channel` 会被安全忽略（便于后续扩展）。

@@ -16,8 +16,9 @@ namespace game::data {
 namespace game::ui {
     class InventoryUI;
     class HotbarUI;
-    class DialogueBubble;
+    class DialogueBubbleView;
     class ItemTooltipUI;
+    class WorldAnchorUIController;
 }
 
 namespace engine::ui {
@@ -51,8 +52,8 @@ class GameScene : public engine::scene::Scene {
 
     game::ui::InventoryUI* inventory_ui_{nullptr};
     game::ui::HotbarUI* hotbar_ui_{nullptr};
-    game::ui::DialogueBubble* dialogue_bubble_{nullptr};
     game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
+    std::unique_ptr<game::ui::WorldAnchorUIController> world_anchor_controller_;
     engine::ui::UIScreenFade* screen_fade_{nullptr};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};

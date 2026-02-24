@@ -31,11 +31,12 @@
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/render_target_system.h"
-#include "game/ui/dialogue_bubble.h"
+#include "game/ui/dialogue_bubble_view.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/time_clock_ui.h"
+#include "game/ui/world_anchor_ui_controller.h"
 #include "game/world/map_manager.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -183,6 +184,9 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
+    if (world_anchor_controller_) {
+        world_anchor_controller_->update();
+    }
     Scene::update(delta_time);
 }
 
@@ -236,11 +240,13 @@ void GameScene::clean() {
         services_->script_host->shutdown();
         services_->script_host.reset();
     }
+#endif
 
     auto& dispatcher = context_.getDispatcher();
     dispatcher.clear<game::defs::DialogueShowEvent>();
+    dispatcher.clear<game::defs::DialogueMoveEvent>();
     dispatcher.clear<game::defs::DialogueHideEvent>();
-#endif
+    world_anchor_controller_.reset();
 #ifdef TF_ENABLE_DEBUG_UI
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
@@ -340,33 +346,35 @@ bool GameScene::initUI() {
     ui_manager_->addElement(std::move(item_tooltip_ui));
 
     auto& dispatcher_ref = context_.getDispatcher();
-    auto dialogue_bubble = std::make_unique<game::ui::DialogueBubble>(
+    world_anchor_controller_ = std::make_unique<game::ui::WorldAnchorUIController>(dispatcher_ref, context_);
+
+    auto dialogue_bubble = std::make_unique<game::ui::DialogueBubbleView>(
         context_,
-        dispatcher_ref,
         text_renderer,
         entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        0);
-    dialogue_bubble_ = dialogue_bubble.get();
+        engine::ui::DEFAULT_UI_FONT_SIZE_PX);
+    auto* dialogue_bubble_ptr = dialogue_bubble.get();
     ui_manager_->addElement(std::move(dialogue_bubble));
 
-    ui_manager_->addElement(std::make_unique<game::ui::DialogueBubble>(
+    auto notification_bubble = std::make_unique<game::ui::DialogueBubbleView>(
         context_,
-        dispatcher_ref,
         text_renderer,
         entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        1));
+        engine::ui::DEFAULT_UI_FONT_SIZE_PX);
+    auto* notification_bubble_ptr = notification_bubble.get();
+    ui_manager_->addElement(std::move(notification_bubble));
 
-    auto item_use_bubble = std::make_unique<game::ui::DialogueBubble>(
+    auto item_use_bubble = std::make_unique<game::ui::DialogueBubbleView>(
         context_,
-        dispatcher_ref,
         text_renderer,
         entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        2);
-    item_use_bubble->setOffset(glm::vec2{0.0f, -56.0f});
+        engine::ui::DEFAULT_UI_FONT_SIZE_PX);
+    auto* item_use_bubble_ptr = item_use_bubble.get();
     ui_manager_->addElement(std::move(item_use_bubble));
+
+    world_anchor_controller_->registerDialogueBubble(0, dialogue_bubble_ptr);
+    world_anchor_controller_->registerDialogueBubble(1, notification_bubble_ptr);
+    world_anchor_controller_->registerDialogueBubble(2, item_use_bubble_ptr, glm::vec2{0.0f, -56.0f});
 
     if (inventory_ui_) {
         inventory_ui_->setUIManager(ui_manager_.get());
