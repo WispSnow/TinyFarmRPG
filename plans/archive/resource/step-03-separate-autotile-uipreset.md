@@ -1,6 +1,6 @@
 # 步骤 3: 分离 AutoTileLibrary 与 UIPresetManager
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 

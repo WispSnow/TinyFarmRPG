@@ -1,6 +1,6 @@
 # 步骤 6: 切换到严格预加载，统一资源 ID 策略
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 

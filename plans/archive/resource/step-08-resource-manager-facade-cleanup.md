@@ -1,6 +1,6 @@
 # 步骤 8: 精简 `ResourceManager` Facade，完成收口
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 

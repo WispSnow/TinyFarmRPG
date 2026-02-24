@@ -1,6 +1,6 @@
 # 步骤 7: Font 接口统一（保留现有缓存实现）
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 

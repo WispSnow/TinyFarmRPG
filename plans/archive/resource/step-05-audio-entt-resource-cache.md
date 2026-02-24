@@ -1,6 +1,6 @@
 # 步骤 5: Audio 迁移到 `entt::resource_cache`
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 
