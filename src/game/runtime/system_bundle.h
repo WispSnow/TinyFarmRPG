@@ -32,7 +32,7 @@ class MapManager;
 }
 
 #ifdef TF_ENABLE_SCRIPTING
-namespace game::script {
+namespace engine::script {
 class ScriptHost;
 }
 #endif
@@ -50,7 +50,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
     std::unique_ptr<game::save::SaveService> save_service;
 #ifdef TF_ENABLE_SCRIPTING
-    std::unique_ptr<game::script::ScriptHost> script_host;
+    std::unique_ptr<engine::script::ScriptHost> script_host;
 #endif
 
     GameRuntimeServices();

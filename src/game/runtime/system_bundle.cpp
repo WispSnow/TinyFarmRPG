@@ -42,7 +42,7 @@
 #include "game/world/world_state.h"
 #include "game/world/map_manager.h"
 #ifdef TF_ENABLE_SCRIPTING
-#include "game/script/script_host.h"
+#include "engine/script/script_host.h"
 #endif
 
 namespace game::runtime {

@@ -82,6 +82,13 @@ if(ENABLE_DEBUG_UI)
     )
 endif()
 
+if(ENABLE_SCRIPTING)
+    list(APPEND TEST_SOURCES
+        engine/script/script_host_security_test.cpp
+        engine/script/script_host_lifecycle_test.cpp
+    )
+endif()
+
 add_executable(engine_tests ${TEST_SOURCES})
 
 target_link_libraries(engine_tests
@@ -149,8 +156,6 @@ if(ENABLE_SCRIPTING)
     list(APPEND GAME_TEST_SOURCES
         game/script_host_smoke_test.cpp
         game/script_host_command_bridge_test.cpp
-        game/script_host_security_boundary_test.cpp
-        game/script_host_handle_lifecycle_test.cpp
     )
 endif()
 

@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace game::script {
+namespace engine::script {
 
 /// Lua 脚本侧传递的实体句柄。
 ///
@@ -19,5 +19,4 @@ struct ScriptEntityHandle {
 [[nodiscard]] bool isNullHandle(const ScriptEntityHandle& handle) noexcept;
 [[nodiscard]] std::uint32_t toRawEntity(const ScriptEntityHandle& handle) noexcept;
 
-} // namespace game::script
-
+} // namespace engine::script

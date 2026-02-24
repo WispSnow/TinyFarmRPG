@@ -25,7 +25,7 @@
 #include "game/defs/commands.h"
 #include "game/save/save_service.h"
 #ifdef TF_ENABLE_SCRIPTING
-#include "game/script/script_host.h"
+#include "engine/script/script_host.h"
 #endif
 #include "game/system/camera_follow_system.h"
 #include "game/system/interaction_system.h"
