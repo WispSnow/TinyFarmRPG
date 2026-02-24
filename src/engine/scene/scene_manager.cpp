@@ -53,9 +53,23 @@ void SceneManager::fixedUpdate(float delta_time) {
 
 void SceneManager::render(float interpolation_alpha) {
     // 渲染时需要叠加渲染所有场景，而不只是栈顶（用于 PauseMenu/模态 UI 覆盖在游戏画面之上）。
-    for (const auto& scene : scene_stack_) {
-        if (scene) {
+    if (scene_stack_.empty()) {
+        return;
+    }
+
+    const size_t top_index = scene_stack_.size() - 1;
+    for (size_t i = 0; i < scene_stack_.size(); ++i) {
+        const auto& scene = scene_stack_[i];
+        if (!scene) {
+            continue;
+        }
+
+        // 仅栈顶场景参与实时插值；被覆盖场景在冻结期间应呈现静态快照，
+        // 否则会在没有 fixedUpdate 的情况下重复插值导致画面抖动。
+        if (i == top_index) {
             scene->render(interpolation_alpha);
+        } else {
+            scene->render(1.0f);
         }
     }
 }
