@@ -121,6 +121,14 @@ if(ENABLE_DEBUG_UI)
     )
 endif()
 
+if(ENABLE_SCRIPTING)
+    target_sources(engine PRIVATE
+        engine/script/script_entity_handle.cpp
+        engine/script/script_host.cpp
+        engine/script/script_binding_utils.cpp
+    )
+endif()
+
 # ============================================
 # Game 源文件
 # ============================================
@@ -199,9 +207,7 @@ target_sources(game PRIVATE
 
 if(ENABLE_SCRIPTING)
     target_sources(game PRIVATE
-        game/script/script_entity_handle.cpp
-        game/script/script_host.cpp
-        game/script/script_bindings.cpp
+        game/script/tinyfarm_script_module.cpp
     )
 endif()
 

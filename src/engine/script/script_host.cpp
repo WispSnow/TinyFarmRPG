@@ -1,11 +1,10 @@
 #include "script_host.h"
 
-#include "script_bindings.h"
-
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
+#include <exception>
 #include <string>
 
 extern "C" {
@@ -13,7 +12,7 @@ extern "C" {
 #include <lua.h>
 }
 
-namespace game::script {
+namespace engine::script {
 
 namespace {
 
@@ -30,11 +29,11 @@ void onInstructionLimitReached(lua_State* lua_state, lua_Debug*) {
 
 } // namespace
 
-ScriptHost::ScriptHost(entt::registry& registry, entt::dispatcher& dispatcher)
-    : registry_(registry), dispatcher_(dispatcher), scene_token_(allocateSceneToken()) {
+ScriptHost::ScriptHost(entt::registry& registry)
+    : registry_(registry), scene_token_(allocateSceneToken()) {
 }
 
-bool ScriptHost::init() {
+bool ScriptHost::init(entt::dispatcher& dispatcher, const std::vector<ScriptModuleInstaller>& installers) {
     if (ready_) {
         return true;
     }
@@ -49,8 +48,12 @@ bool ScriptHost::init() {
         hardenLuaGlobals();
         configureInstructionLimit();
 
-        // 注册 tf.* 命名空间下的全部 C++ → Lua 绑定
-        bindScriptAPI(lua_, *this, registry_, dispatcher_);
+        for (const auto& installer : installers) {
+            if (!installer) {
+                continue;
+            }
+            installer(lua_, *this, registry_, dispatcher);
+        }
         ready_ = true;
         return true;
     } catch (const std::exception& e) {
@@ -210,4 +213,4 @@ void ScriptHost::configureInstructionLimit() {
     lua_sethook(lua_.lua_state(), &onInstructionLimitReached, LUA_MASKCOUNT, SCRIPT_INSTRUCTION_LIMIT);
 }
 
-} // namespace game::script
+} // namespace engine::script

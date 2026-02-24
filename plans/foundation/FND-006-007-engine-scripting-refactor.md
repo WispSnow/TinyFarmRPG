@@ -4,8 +4,9 @@
 - 任务ID：`FND-006R`
 - 任务标题：`Lua/Sol2 脚本支持下沉到 engine 层，game 层仅保留扩展绑定`
 - 优先级：`P0`
-- 状态：`Todo`
+- 状态：`Done`
 - 负责人：`TBD`
+- 完成时间：`2026-02-24`
 - 依赖任务：`FND-006`（已完成）、`FND-007`（已完成）
 - 对应上层计划：`plans/2026-02-16-foundation-backlog.md`
 
@@ -13,6 +14,16 @@
 - 将“脚本运行时内核能力”（Lua VM 生命周期、安全收敛、句柄校验、执行保护）从 `src/game` 下沉到 `src/engine`。
 - 保持 game 层只负责 TinyFarm 业务扩展（`tf.time/tf.player/tf.command/tf.dialogue` 等绑定），不再承载通用脚本宿主实现。
 - 在不考虑向后兼容的前提下，明确脚本系统分层边界，降低未来新玩法/新场景接入脚本时的重复成本。
+
+## 完成情况（2026-02-24）
+- 已完成 `Engine Script Core + Game Script Module` 分层：`ScriptHost/ScriptEntityHandle` 下沉到 `src/engine/script`，`game` 仅保留 `tinyfarm_script_module` 扩展绑定。
+- 已完成接口与依赖收敛：`ScriptModuleInstaller` 固定签名落地，`ScriptHost` 构造仅持有 `registry`，`dispatcher` 改为 `init(...)` 入参。
+- 已完成构建分层：Lua/Sol2 改为 `engine` 目标 `PUBLIC` 链接，`engine` 与 `game` 同步定义 `TF_ENABLE_SCRIPTING`。
+- 已完成测试分层：宿主安全/生命周期测试迁至 `tests/engine/script/*`，game 层保留桥接与 smoke 测试。
+- 已完成审阅修正：`createReadOnlyProxy` 声明/定义签名统一；脚本测试 installer helper 抽到 `tests/game/script_test_utils.h`。
+- 已完成脚本定向回归：`ctest --test-dir build/debug --output-on-failure -R "ScriptHost|script_host"`（`10/10` 通过）
+- 已完成 debug 全量回归：`ctest --test-dir build/debug --output-on-failure`（`288/288` 通过）
+- 已完成 noscript 全量回归：`ctest --test-dir build/noscript --output-on-failure`（`278/278` 通过）
 
 ## 当前实现分析
 ### 1) 运行时核心能力位于 game 层
@@ -165,20 +176,20 @@ using ScriptModuleInstaller = std::function<
 说明：修订 `docs/overview.md` 的目录职责与脚本分层描述，可在主代码稳定后、合入前完成。
 
 ## 待办清单（用于追踪）
-- [ ] T1 下沉 `ScriptHost` 到 `src/engine/script` 并迁移 `g_next_scene_token`
-- [ ] T2 下沉 `ScriptEntityHandle` 到 `src/engine/script`
-- [ ] T3 新增 `script_module.h` 并固定 `ScriptModuleInstaller` 签名
-- [ ] T4 `ScriptHost` 构造改为仅持有 `registry`，`dispatcher` 改为 `init(...)` 输入
-- [ ] T5 抽取 `createReadOnlyProxy(...)` 到 `engine/script_binding_utils`
-- [ ] T6 新增 `game/script/tinyfarm_script_module.*` 并完成 `tf.*` 绑定迁移（迁移+适配）
-- [ ] T7 `GameRuntimeServices` 改为持有 `engine::script::ScriptHost`
-- [ ] T8 `GameRuntimeAssembler` 改为“创建 Host -> 注册 TinyFarm 模块 -> init -> bootstrap”
-- [ ] T9 `GameScene::clean()` 更新为新类型并保留脚本事件清理
-- [ ] T10 `CMakeLists.txt`/`src/CMakeLists.txt` 调整脚本源码归属与链接层级到 `engine`
-- [ ] T10.1 确认 `cmake/ScriptingDependencies.cmake` 是否无需改动
-- [ ] T11 拆分并更新测试：`tests/engine/script/*` + `tests/game/*`，并在 `tests/CMakeLists.txt` 注册
-- [ ] T12 执行 `ctest --test-dir build --output-on-failure -j4`（脚本开关 ON）
-- [ ] T13 更新 `docs/overview.md` 分层文档（低优先级，合入前完成）
+- [x] T1 下沉 `ScriptHost` 到 `src/engine/script` 并迁移 `g_next_scene_token`
+- [x] T2 下沉 `ScriptEntityHandle` 到 `src/engine/script`
+- [x] T3 新增 `script_module.h` 并固定 `ScriptModuleInstaller` 签名
+- [x] T4 `ScriptHost` 构造改为仅持有 `registry`，`dispatcher` 改为 `init(...)` 输入
+- [x] T5 抽取 `createReadOnlyProxy(...)` 到 `engine/script_binding_utils`
+- [x] T6 新增 `game/script/tinyfarm_script_module.*` 并完成 `tf.*` 绑定迁移（迁移+适配）
+- [x] T7 `GameRuntimeServices` 改为持有 `engine::script::ScriptHost`
+- [x] T8 `GameRuntimeAssembler` 改为“创建 Host -> 注册 TinyFarm 模块 -> init -> bootstrap”
+- [x] T9 `GameScene::clean()` 更新为新类型并保留脚本事件清理
+- [x] T10 `CMakeLists.txt`/`src/CMakeLists.txt` 调整脚本源码归属与链接层级到 `engine`
+- [x] T10.1 确认 `cmake/ScriptingDependencies.cmake` 是否无需改动
+- [x] T11 拆分并更新测试：`tests/engine/script/*` + `tests/game/*`，并在 `tests/CMakeLists.txt` 注册
+- [x] T12 执行 `ctest --test-dir build --output-on-failure -j4`（脚本开关 ON）
+- [x] T13 更新 `docs/overview.md` 分层文档（低优先级，合入前完成）
 
 ## 验收标准（DoD）
 - `src/engine` 内存在可独立复用的脚本宿主核心实现，且不依赖 `game/*`。
@@ -198,4 +209,4 @@ using ScriptModuleInstaller = std::function<
 缓解：先确保 `engine` 对 Lua/Sol2 使用 `PUBLIC` 链接，再逐个修复 `game_tests` 编译。
 
 ## 结论
-- 该方案已明确采用：`Scene 级 ScriptHost + Engine Core / Game Module` 分层；本计划无阻塞性待澄清项，可直接进入实施。
+- 该方案已实施完成：`Scene 级 ScriptHost + Engine Core / Game Module` 分层落地，测试回归通过，无阻塞项。

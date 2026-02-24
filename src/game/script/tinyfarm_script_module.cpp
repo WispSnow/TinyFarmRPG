@@ -1,8 +1,9 @@
-#include "script_bindings.h"
+#include "tinyfarm_script_module.h"
 
-#include "script_entity_handle.h"
-#include "script_host.h"
 #include "engine/component/transform_component.h"
+#include "engine/script/script_binding_utils.h"
+#include "engine/script/script_entity_handle.h"
+#include "engine/script/script_host.h"
 #include "game/data/game_time.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
@@ -19,35 +20,11 @@
 #include <string_view>
 #include <tuple>
 
-extern "C" {
-#include <lauxlib.h>
-#include <lua.h>
-}
-
 namespace {
 
-[[nodiscard]] sol::table createReadOnlyProxy(sol::state& lua, sol::table source, std::string_view name) {
-    sol::table proxy = lua.create_table();
-    sol::table metatable = lua.create_table();
-    const std::string table_name(name);
-
-    metatable[sol::meta_function::index] = source;
-    metatable[sol::meta_function::new_index] = [table_name](lua_State* lua_state) -> int {
-        const char* raw_key = lua_tostring(lua_state, 2);
-        if (raw_key) {
-            return luaL_error(lua_state, "%s is read-only (key='%s')", table_name.c_str(), raw_key);
-        }
-        return luaL_error(lua_state, "%s is read-only", table_name.c_str());
-    };
-    metatable[sol::meta_function::metatable] = "locked";
-
-    proxy[sol::metatable_key] = metatable;
-    return proxy;
-}
-
-[[nodiscard]] bool resolveTargetEntity(game::script::ScriptHost& host,
+[[nodiscard]] bool resolveTargetEntity(engine::script::ScriptHost& host,
                                        entt::registry& registry,
-                                       const sol::optional<game::script::ScriptEntityHandle>& raw_target,
+                                       const sol::optional<engine::script::ScriptEntityHandle>& raw_target,
                                        std::string_view api_name,
                                        entt::entity& out_target,
                                        bool require_default_player) {
@@ -72,14 +49,20 @@ namespace {
 
 namespace game::script {
 
-void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, entt::dispatcher& dispatcher) {
-    lua.new_usertype<ScriptEntityHandle>(
+void installTinyFarmScriptModule(sol::state& lua,
+                                 engine::script::ScriptHost& host,
+                                 entt::registry& registry,
+                                 entt::dispatcher& dispatcher) {
+    using engine::script::ScriptEntityHandle;
+
+    lua.new_usertype<engine::script::ScriptEntityHandle>(
         "ScriptEntityHandle",
         sol::no_constructor,
         "entity_id",
-        sol::readonly_property([](const ScriptEntityHandle& handle) { return toRawEntity(handle); }),
+        sol::readonly_property(
+            [](const ScriptEntityHandle& handle) { return engine::script::toRawEntity(handle); }),
         "is_valid",
-        [](const ScriptEntityHandle& handle) { return !isNullHandle(handle); });
+        [](const ScriptEntityHandle& handle) { return !engine::script::isNullHandle(handle); });
 
     sol::table tf_impl = lua.create_table();
 
@@ -104,7 +87,7 @@ void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, 
         }
         return game_time->getFormattedTime();
     });
-    tf_impl["time"] = createReadOnlyProxy(lua, time_impl, "tf.time");
+    tf_impl["time"] = engine::script::createReadOnlyProxy(lua, time_impl, "tf.time");
 
     // ── tf.player ──
     sol::table player_impl = lua.create_table();
@@ -129,7 +112,7 @@ void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, 
         }
         return {transform->position_.x, transform->position_.y};
     });
-    tf_impl["player"] = createReadOnlyProxy(lua, player_impl, "tf.player");
+    tf_impl["player"] = engine::script::createReadOnlyProxy(lua, player_impl, "tf.player");
 
     // ── tf.command ──
     sol::table command_impl = lua.create_table();
@@ -225,7 +208,7 @@ void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, 
             dispatcher.trigger(game::defs::InteractCommand{player, target});
             return true;
         });
-    tf_impl["command"] = createReadOnlyProxy(lua, command_impl, "tf.command");
+    tf_impl["command"] = engine::script::createReadOnlyProxy(lua, command_impl, "tf.command");
 
     // ── tf.dialogue ──
     sol::table dialogue_impl = lua.create_table();
@@ -273,9 +256,9 @@ void bindScriptAPI(sol::state& lua, ScriptHost& host, entt::registry& registry, 
             dispatcher.enqueue(evt);
             return true;
         });
-    tf_impl["dialogue"] = createReadOnlyProxy(lua, dialogue_impl, "tf.dialogue");
+    tf_impl["dialogue"] = engine::script::createReadOnlyProxy(lua, dialogue_impl, "tf.dialogue");
 
-    lua["tf"] = createReadOnlyProxy(lua, tf_impl, "tf");
+    lua["tf"] = engine::script::createReadOnlyProxy(lua, tf_impl, "tf");
 }
 
 } // namespace game::script

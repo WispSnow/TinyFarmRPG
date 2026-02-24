@@ -7,7 +7,7 @@
   - 角色分层换装（衣服/头发/武器等）
   - 粒子特效系统（Effekseer）
 - 执行窗口：`2026-02-16` ～ `2026-03-08`（3 周）
-- 当前质量基线：`ctest --test-dir build` 通过 `126/126`（3 个音频测试为 skip）
+- 当前质量基线（更新于 `2026-02-24`）：`ctest --test-dir build/debug --output-on-failure` 通过 `288/288`；`ctest --test-dir build/noscript --output-on-failure` 通过 `278/278`
 
 ## 非目标（本阶段不做）
 - 不做完整战斗玩法内容实现（只做战斗框架与接入点）
@@ -112,6 +112,19 @@
   - 场景切换后脚本调用失效对象会被安全拦截
   - 无裸指针跨场景悬挂
 
+### FND-006R（P0）脚本宿主下沉到引擎层（已完成）
+- 目标：把脚本宿主通用能力从 `src/game` 下沉到 `src/engine`，game 层仅保留 TinyFarm 扩展绑定。
+- 主要改动：
+  - 新增 `engine::script` 核心：`ScriptHost`、`ScriptEntityHandle`、`ScriptModuleInstaller`、`script_binding_utils`
+  - 新增 `game::script::tinyfarm_script_module`，通过 installer 注入 `tf.*` API
+  - CMake 分层调整：Lua/Sol2 由 `engine` 目标 `PUBLIC` 链接，脚本核心源码编译归属 `engine`
+  - 测试分层重排：宿主契约测试迁至 `tests/engine/script/*`，game 侧保留桥接/烟雾测试
+- 验收标准：
+  - `engine` 层脚本核心不依赖 `game/*`
+  - `ENABLE_SCRIPTING=ON` 功能不回退（加载、安全边界、指令上限、句柄校验）
+  - 双配置回归通过（`debug` 与 `noscript`）
+- 对应计划：`plans/foundation/FND-006-007-engine-scripting-refactor.md`
+
 ---
 
 ## Sprint 3（第3周）：扩展能力接入点（非完整玩法）
@@ -160,6 +173,7 @@
 | FND-003 | Command/DomainEvent 边界 | P0 | 2d | FND-001 |
 | FND-005 | Save v3 + 迁移器 | P0 | 2d | FND-001 |
 | FND-006 | Lua + Sol2 宿主层 | P0 | 3d | FND-002, FND-003 |
+| FND-006R | Lua/Sol2 宿主下沉到 engine 层 | P0 | 2d | FND-006, FND-007 |
 | FND-008 | 分层外观模型 | P0 | 3d | FND-002 |
 | FND-004 | 调试可视化补强 | P1 | 1d | FND-002 |
 | FND-007 | 脚本安全边界 | P1 | 1.5d | FND-006 |
@@ -213,10 +227,7 @@
 
 ---
 
-## 建议执行顺序（本周起）
-1. 先做 `FND-001` + `FND-002`（调度与架构接缝）
-2. 再做 `FND-003` + `FND-005`（命令边界与存档安全）
-3. 然后 `FND-006`（脚本宿主）
-4. 第3周并行推进 `FND-008` 与 `FND-009`
-5. 最后接 `FND-010`
-
+## 建议执行顺序（后续）
+1. 先做 `FND-008`（分层外观模型，影响渲染与角色数据骨架）
+2. 再做 `FND-009`（战斗骨架，复用 `FND-002/FND-003` 的调度与命令边界）
+3. 最后做 `FND-010`（VFX 扩展点，依赖外观层与渲染接缝稳定）

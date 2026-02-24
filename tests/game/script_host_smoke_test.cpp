@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "engine/component/transform_component.h"
+#include "engine/script/script_host.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
-#include "game/script/script_host.h"
+#include "script_test_utils.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -38,8 +39,8 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScriptWithoutCrash) {
     registry.emplace<game::component::PlayerTag>(player);
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2{32.0f, 48.0f});
 
-    ScriptHost host(registry, dispatcher);
-    ASSERT_TRUE(host.init());
+    engine::script::ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
 
     EXPECT_TRUE(host.exec(R"(
         assert(tf.player.exists() == true)
@@ -61,8 +62,8 @@ TEST(ScriptHostSmokeTest, LoadAndRunFileWithoutCrash) {
     registry.emplace<game::component::PlayerTag>(player);
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0f, 0.0f});
 
-    ScriptHost host(registry, dispatcher);
-    ASSERT_TRUE(host.init());
+    engine::script::ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
     ASSERT_TRUE(host.loadFile(testCommandScriptPath()));
     EXPECT_TRUE(host.exec("assert(type(issue_add_item) == 'function')"));
 }

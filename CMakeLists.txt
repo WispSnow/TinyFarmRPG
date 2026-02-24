@@ -109,12 +109,14 @@ target_link_libraries(game
 )
 
 if(ENABLE_SCRIPTING)
-    target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)
-    target_link_libraries(game
+    target_compile_definitions(engine PUBLIC TF_ENABLE_SCRIPTING)
+    target_link_libraries(engine
         PUBLIC
             Lua::Lua
             sol2::sol2
     )
+
+    target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)
 endif()
 
 # 创建可执行文件

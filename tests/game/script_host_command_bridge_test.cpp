@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
 
 #include "engine/component/transform_component.h"
+#include "engine/script/script_host.h"
 #include "game/component/inventory_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/domain/inventory_domain_service.h"
-#include "game/script/script_host.h"
 #include "game/system/inventory_system.h"
+#include "script_test_utils.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -47,8 +48,8 @@ TEST(ScriptHostCommandBridgeTest, ScriptCanEmitCommandAndProduceDomainEffect) {
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0f, 0.0f});
     registry.emplace<game::component::InventoryComponent>(player);
 
-    ScriptHost host(registry, dispatcher);
-    ASSERT_TRUE(host.init());
+    engine::script::ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
     ASSERT_TRUE(host.loadFile(commandScriptPath()));
     ASSERT_TRUE(host.exec("assert(issue_add_item('strawberry_seed', 2))"));
 

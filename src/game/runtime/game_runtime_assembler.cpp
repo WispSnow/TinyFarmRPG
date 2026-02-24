@@ -30,7 +30,8 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
 #ifdef TF_ENABLE_SCRIPTING
-#include "game/script/script_host.h"
+#include "engine/script/script_host.h"
+#include "game/script/tinyfarm_script_module.h"
 #endif
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
@@ -65,6 +66,7 @@
 // Use filesystem only to distinguish "bootstrap script missing" from execution errors in logs.
 #include <filesystem>
 #include <unordered_set>
+#include <vector>
 
 using namespace entt::literals;
 
@@ -450,8 +452,11 @@ void configureCamera(engine::core::Context& context) {
 void tryInitScriptHost(entt::registry& registry,
                        engine::core::Context& context,
                        game::runtime::GameRuntimeServices& services) {
-    services.script_host = std::make_unique<game::script::ScriptHost>(registry, context.getDispatcher());
-    if (!services.script_host->init()) {
+    services.script_host = std::make_unique<engine::script::ScriptHost>(registry);
+    const std::vector<engine::script::ScriptModuleInstaller> installers{
+        game::script::installTinyFarmScriptModule,
+    };
+    if (!services.script_host->init(context.getDispatcher(), installers)) {
         spdlog::warn("ScriptHost 初始化失败，脚本功能将禁用。");
         services.script_host.reset();
         return;

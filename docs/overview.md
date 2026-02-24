@@ -39,6 +39,7 @@ TinyFarmRPG/
 │   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/合成/UI）
 │   │   ├── resource/            #   纹理/音频/字体统一资源管理（含 ImageDecode/FontPreprocess）
 │   │   ├── scene/               #   场景基类 Scene 与场景管理器 SceneManager
+│   │   ├── script/              #   脚本宿主内核（可选，Lua VM/安全边界/句柄校验/模块安装）
 │   │   ├── spatial/             #   碰撞检测与空间分区（静态网格/动态网格）
 │   │   ├── system/              #   引擎层 ECS 系统（动画/移动/渲染/Y排序/光照）
 │   │   ├── ui/                  #   UI 框架（布局/状态机/行为/通用组件）
@@ -54,7 +55,7 @@ TinyFarmRPG/
 │   │   ├── runtime/             #   运行时装配 GameRuntimeAssembler 与系统调度 SystemScheduler
 │   │   ├── save/                #   存档系统（序列化/schema 迁移/槽位管理）
 │   │   ├── scene/               #   游戏场景（Title/GameScene/PauseMenu/SaveSlotSelect/RestDialog）
-│   │   ├── script/              #   Lua 脚本宿主层（可选，ScriptHost/bindings/句柄校验）
+│   │   ├── script/              #   TinyFarm 脚本扩展模块（tf.time/player/command/dialogue 绑定）
 │   │   ├── system/              #   游戏 ECS 系统（农场/交互/NPC/对话/地图切换/物品使用等）
 │   │   ├── ui/                  #   游戏 UI（物品栏/快捷栏/对话气泡/时钟/tooltip）
 │   │   └── world/               #   世界地图系统（MapManager 异步预加载状态机/WorldState/快照序列化）
