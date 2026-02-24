@@ -1,6 +1,6 @@
 # 步骤 2: 构建完整资产索引
 
-- 对应上层计划：`plans/resource-refactor.md`
+- 对应上层计划：`./resource-refactor.md`
 
 ## 思路
 

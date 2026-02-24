@@ -8,7 +8,7 @@
 - 负责人：`TBD`
 - 完成时间：`2026-02-24`
 - 依赖任务：`FND-006`（已完成）、`FND-007`（已完成）
-- 对应上层计划：`plans/2026-02-16-foundation-backlog.md`
+- 对应上层计划：`./2026-02-16-foundation-backlog.md`
 
 ## 目标
 - 将“脚本运行时内核能力”（Lua VM 生命周期、安全收敛、句柄校验、执行保护）从 `src/game` 下沉到 `src/engine`。

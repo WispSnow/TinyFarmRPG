@@ -8,7 +8,7 @@
 - 负责人：`TBD`
 - 计划时间：`2026-02-18` ～ `2026-02-19`（1d）
 - 依赖任务：`FND-003B`（已完成）
-- 对应上层计划：`plans/2026-02-16-foundation-backlog.md`
+- 对应上层计划：`./2026-02-16-foundation-backlog.md`
 
 ## 目标
 - 消除 `InventoryMoveCommand` 路径下 `InventorySystem` 对 `HotbarComponent` 的直接写入。
