@@ -5,9 +5,12 @@
 #include "ui_preset_manager.h"
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
+#include "engine/render/camera.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/render/renderer.h"
 #include "ui_drag_preview.h"
+#include <algorithm>
+#include <glm/common.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
 #include <SDL3/SDL.h>
@@ -79,12 +82,36 @@ void UIManager::update(float delta_time, engine::core::Context& context) {
                   UIElement::consumeLayoutRecomputeCounter());
 }
 
-void UIManager::render(engine::core::Context& context) {
+void UIManager::render(engine::core::Context& context, float interpolation_alpha) {
     if (root_element_ && root_element_->isVisible()) {
-        // 从根元素开始向下渲染
+        resolveWorldAnchors(context.getCamera(), interpolation_alpha);
         root_element_->render(context);
     }
     renderCursor(context);
+}
+
+void UIManager::resolveWorldAnchors(const engine::render::Camera& camera, float interpolation_alpha) {
+    if (!root_element_) {
+        return;
+    }
+
+    const float clamped_alpha = std::clamp(interpolation_alpha, 0.0F, 1.0F);
+
+    for (const auto& child : root_element_->getChildren()) {
+        if (!child || !child->isVisible()) {
+            continue;
+        }
+        if (child->getPositioningMode() != PositioningMode::WorldAnchor) {
+            continue;
+        }
+
+        const glm::vec2 interpolated_anchor = glm::mix(
+            child->getPreviousWorldAnchor(),
+            child->getWorldAnchor(),
+            clamped_alpha);
+        const glm::vec2 screen_pos = camera.worldToScreen(interpolated_anchor) + child->getWorldAnchorOffset();
+        child->applyWorldAnchorPosition(screen_pos);
+    }
 }
 
 void UIManager::beginDragPreview(const engine::render::Image& image,
