@@ -20,80 +20,48 @@
 
 namespace engine::core {
 
-std::unique_ptr<Context> Context::create(entt::dispatcher& dispatcher,
-                                        engine::input::InputManager& input_manager,
-                                        engine::render::opengl::GLRenderer& gl_renderer,
-                                        engine::render::Renderer& renderer,
-                                        engine::render::Camera& camera,
-                                        engine::render::TextRenderer& text_renderer,
-                                        engine::resource::ResourceManager& resource_manager,
-                                        engine::resource::AutoTileLibrary& auto_tile_library,
-                                        engine::ui::UIPresetManager& ui_preset_manager,
-                                        engine::audio::AudioPlayer& audio_player,
-                                        engine::core::GameState& game_state,
-                                        engine::core::Time& time,
-                                        engine::async::MainThreadCommandQueue& main_thread_command_queue,
+std::unique_ptr<Context> Context::create(
+        CoreServices core,
+        RenderServices render,
+        ResourceServices resource,
+        engine::audio::AudioPlayer& audio_player,
+        engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
-                                        engine::debug::DebugUIManager& debug_ui_manager,
+        , engine::debug::DebugUIManager& debug_ui_manager
 #endif
-                                        engine::spatial::SpatialIndexManager& spatial_index_manager) {
+        ) {
     return std::unique_ptr<Context>(
-        new Context(dispatcher,
-                    input_manager,
-                    gl_renderer,
-                    renderer,
-                    camera,
-                    text_renderer,
-                    resource_manager,
-                    auto_tile_library,
-                    ui_preset_manager,
+        new Context(core,
+                    render,
+                    resource,
                     audio_player,
-                    game_state,
-                    time,
-                    main_thread_command_queue,
+                    spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
-                    debug_ui_manager,
+                    , debug_ui_manager
 #endif
-                    spatial_index_manager)
+                    )
     );
 }
 
-Context::Context(entt::dispatcher& dispatcher,
-	             engine::input::InputManager& input_manager, 
-	             engine::render::opengl::GLRenderer& gl_renderer,
-	             engine::render::Renderer& renderer,
-                 engine::render::Camera& camera,
-                 engine::render::TextRenderer& text_renderer,
-                 engine::resource::ResourceManager& resource_manager,
-                 engine::resource::AutoTileLibrary& auto_tile_library,
-                 engine::ui::UIPresetManager& ui_preset_manager,
+Context::Context(CoreServices core,
+                 RenderServices render,
+                 ResourceServices resource,
                  engine::audio::AudioPlayer& audio_player,
-                 engine::core::GameState& game_state,
-                 engine::core::Time& time,
-                 engine::async::MainThreadCommandQueue& main_thread_command_queue,
+                 engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
-                 engine::debug::DebugUIManager& debug_ui_manager,
+                 , engine::debug::DebugUIManager& debug_ui_manager
 #endif
-                 engine::spatial::SpatialIndexManager& spatial_index_manager)
-    : dispatcher_(dispatcher),
-      input_manager_(input_manager),
-      gl_renderer_(gl_renderer),
-      renderer_(renderer),
-      camera_(camera),
-      text_renderer_(text_renderer),
-      resource_manager_(resource_manager),
-      auto_tile_library_(auto_tile_library),
-      ui_preset_manager_(ui_preset_manager),
+                 )
+    : core_(core),
+      render_(render),
+      resource_(resource),
       audio_player_(audio_player),
-      game_state_(game_state),
-      time_(time),
-      main_thread_command_queue_(main_thread_command_queue),
-#ifdef TF_ENABLE_DEBUG_UI
-      debug_ui_manager_(debug_ui_manager),
-#endif
       spatial_index_manager_(spatial_index_manager)
+#ifdef TF_ENABLE_DEBUG_UI
+      , debug_ui_manager_(debug_ui_manager)
+#endif
 {
     spdlog::trace("上下文已创建并初始化。");
 }
 
-} // namespace engine::core 
+} // namespace engine::core
