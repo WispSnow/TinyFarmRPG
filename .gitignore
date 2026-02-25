@@ -109,3 +109,6 @@ saves/*.json
 .openai
 .windsurf
 .opencode
+
+# ImGui runtime layout
+imgui.ini
