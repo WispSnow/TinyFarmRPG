@@ -57,7 +57,7 @@ std::size_t resolveWorkerCount(std::size_t requested) {
 
 ## 任务提交
 
-### 方式 1：`submit()` — fire and forget
+### 方式 1：`submit()` — 有界提交
 
 ```cpp
 bool submit(Task task, std::chrono::milliseconds wait_timeout = 0ms);
@@ -75,7 +75,9 @@ preload_thread_pool_->submit([this, path, shared_state, gen] {
 
 返回值：
 - `true`：任务已入队，将被某个 worker 执行。
-- `false`：队列已满（超时后仍满）或线程池正在关闭。
+- `false`：队列已满（超时后仍满）或线程池正在关闭。**返回 `false` 时任务被丢弃，调用方必须处理失败情况。**
+
+> **与 "fire and forget" 的区别**：真正的 fire and forget 是"扔出去不管结果"。`submit()` 有明确的失败语义：本项目中 `AsyncPreloadPipeline` 在提交失败时将预加载状态置为 `Failed`，由状态机降级为同步加载——是「提交成功则异步执行，失败则通知调用方降级」。若任务失败会使游戏进入不一致状态（如传送动画已开始），必须在失败路径中提供回滚机制，不能仅依赖状态标记。
 
 ### 方式 2：`submitFuture()` — 获取返回值
 
@@ -300,7 +302,7 @@ auto f = std::async(std::launch::async, task);
 | 概念 | 说明 |
 |------|------|
 | 线程池 | 固定数量 worker + 共享队列，避免频繁创建/销毁线程 |
-| `submit()` | 提交无返回值任务，支持超时 |
+| `submit()` | 有界提交：成功入队返回 `true`，队满/关闭返回 `false`，调用方须处理失败 |
 | `submitFuture()` | 提交有返回值任务，通过 `future` 获取结果 |
 | `waitForIdle()` | 同步点：等待队列空且所有 worker 空闲 |
 | `stop()` | 优雅停机：幂等、不中断当前任务、jthread RAII join |

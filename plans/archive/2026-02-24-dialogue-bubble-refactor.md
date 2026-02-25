@@ -746,7 +746,7 @@ ui_manager->addElement(std::move(quest_icon));
 - [x] T8 更新 `game_scene.h/.cpp` 接入（initUI / clean）
 - [x] T9 更新 `src/CMakeLists.txt` 和 `tests/CMakeLists.txt`
 - [x] T10 全量编译 + `ctest` 通过
-- [ ] T11 手动回归验证三类 channel 气泡行为（含插值平滑性验证与零 tick 跟随）
+- [x] T11 手动回归验证三类 channel 气泡行为（含插值平滑性验证与零 tick 跟随）
 
 ## 测试计划
 

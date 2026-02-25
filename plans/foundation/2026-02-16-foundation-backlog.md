@@ -123,7 +123,7 @@
   - `engine` 层脚本核心不依赖 `game/*`
   - `ENABLE_SCRIPTING=ON` 功能不回退（加载、安全边界、指令上限、句柄校验）
   - 双配置回归通过（`debug` 与 `noscript`）
-- 对应计划：`plans/foundation/FND-006-007-engine-scripting-refactor.md`
+- 对应计划：`plans/foundation/FND-006R-engine-scripting-refactor.md`
 
 ---
 
