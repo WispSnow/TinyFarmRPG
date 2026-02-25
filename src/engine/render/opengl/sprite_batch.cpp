@@ -14,6 +14,18 @@
 #include <limits>
 
 namespace engine::render::opengl {
+namespace {
+
+[[nodiscard]] uint32_t packRGBA8(const glm::vec4& color) {
+    const glm::vec4 clamped = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
+    const uint32_t r = static_cast<uint32_t>(std::round(clamped.r * 255.0f));
+    const uint32_t g = static_cast<uint32_t>(std::round(clamped.g * 255.0f));
+    const uint32_t b = static_cast<uint32_t>(std::round(clamped.b * 255.0f));
+    const uint32_t a = static_cast<uint32_t>(std::round(clamped.a * 255.0f));
+    return (r & 0xFFu) | ((g & 0xFFu) << 8u) | ((b & 0xFFu) << 16u) | ((a & 0xFFu) << 24u);
+}
+
+} // namespace
 
 std::unique_ptr<SpriteBatch> SpriteBatch::create(size_t initial_capacity) {
     auto sprite_batch = std::unique_ptr<SpriteBatch>(new SpriteBatch());
@@ -48,7 +60,8 @@ bool SpriteBatch::init(size_t initial_capacity) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, uv_)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, color_)));
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex),
+                          reinterpret_cast<void*>(offsetof(Vertex, color_rgba8_)));
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
@@ -171,13 +184,15 @@ bool SpriteBatch::queueSprite(GLuint texture, bool use_texture, const glm::vec4&
     }
 
     for (int i = 0; i < 4; ++i) {
+        glm::vec4 vertex_color;
         if (has_gradient) {
             const float projection = glm::dot(verts[i].pos_, direction);
             const float t = glm::clamp((projection - range_start) / (range_end - range_start), 0.0f, 1.0f);
-            verts[i].color_ = glm::mix(start_color_vec, end_color_vec, t);
+            vertex_color = glm::mix(start_color_vec, end_color_vec, t);
         } else {
-            verts[i].color_ = start_color_vec;
+            vertex_color = start_color_vec;
         }
+        verts[i].color_rgba8_ = packRGBA8(vertex_color);
         vertices_.push_back(verts[i]);
     }
 

@@ -30,7 +30,7 @@ class SpriteBatch final {
     struct Vertex {
         glm::vec2 pos_{0.0f};
         glm::vec2 uv_{0.0f};
-        glm::vec4 color_{0.0f};
+        uint32_t color_rgba8_{0xFFFFFFFFu};
     };
     /* @brief 绘制命令，按纹理分组 */
     struct Command {

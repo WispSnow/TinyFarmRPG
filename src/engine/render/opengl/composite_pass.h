@@ -5,6 +5,7 @@
  * @brief 负责将场景、光照、自发光及泛光等缓冲区混合输出至最终的颜色缓冲。
  */
 #include "engine/utils/math.h"
+#include "render_pass.h"
 #include <memory>
 #include <glad/glad.h>
 #include <glm/vec3.hpp>
@@ -14,7 +15,7 @@ namespace engine::render::opengl {
 class ShaderLibrary;
 class ShaderProgram;
 
-class CompositePass {
+class CompositePass : public RenderPass {
     ShaderProgram* program_ = nullptr;
     bool bloom_enabled_{true};
     // 缓存的 uniform 位置
@@ -63,7 +64,7 @@ public:
     [[nodiscard]] const glm::vec3& getAmbient() const { return ambient_; }
     [[nodiscard]] float getBloomStrength() const { return bloom_strength_; }
     bool render(const utils::Rect& viewport);
-    void clean();
+    void clean() override;
 
 private:
     CompositePass() = default;
