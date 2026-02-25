@@ -4,7 +4,7 @@
 - 任务ID：`FND-008ex`
 - 任务标题：`分层外观多方向修复与调试换装扩展`
 - 优先级：`P0`
-- 状态：`Todo`
+- 状态：`Done`
 - 负责人：`TBD`
 - 计划时间：`2026-02-25` ～ `2026-02-27`（2~3d）
 - 依赖任务：`FND-008`（已完成主链路）
@@ -139,24 +139,25 @@ Render 仅使用缓存做 `src_rect` 计算，不依赖 game 层目录/配置；
 补齐 catalog/layout/render 测试；执行回归并做实机四方向动作验证。
 
 ## 待办清单（可打勾追踪）
-- [ ] T0 完成 `idle/walk/watering/hoe` 方向块顺序样本验证并记录结论
-- [ ] T1 `appearance_catalog.json` 新增 `action_layouts`（保留 `action_dirs`，含 `frames_per_direction`）
-- [ ] T1.1 `runtime_switchable_slots` 扩展为 `hair/skin/eyes/clothes/acc`
-- [ ] T1.2 补齐 `skin/eyes/clothes/acc` 的 `slot_variants`
-- [ ] T2 `AppearanceCatalog` 解析布局字段并暴露查询接口
-- [ ] T2.1 运行时仅做轻量校验（结构/字段完整性），纹理宽度一致性转测试期校验
-- [ ] T3 `LayeredSpriteComponent` 扩展 `layout_by_animation_id + source_frame_index_by_runtime_frame`
-- [ ] T4 `AppearanceSystem` 预计算每动画布局（方向块/帧数/flip/帧索引映射）
-- [ ] T5 RenderSystem 按布局计算分层 `src_rect`（使用 source_frame_index，修复非 down 空白）
-- [ ] T5.1 缺层时仅跳过该层（保留既有语义并补回归断言）
-- [ ] T6 `collectAppearanceAssets` 收敛为“默认 profile + 首屏候选”，其余按需加载
-- [ ] T7 Player Debug 面板支持 `skin/eyes/clothes/hair/acc` 切换
-- [ ] T7.1 增加 `Reset To Profile Default` 与 `Refresh Appearance`
-- [ ] T8 新增 `appearance_catalog_layout_test.cpp`
-- [ ] T9 新增 `appearance_layered_direction_mapping_test.cpp`（覆盖非连续帧映射）
-- [ ] T10 新增 `render_system_layered_layout_test.cpp`
-- [ ] T11 运行 `ctest --test-dir build/debug --output-on-failure -R \"appearance|render_system\" -j4`
-- [ ] T12 实机验收：`idle/walk/hoe/pickaxe/axe/sickle/watering/planting` 四方向全部可见
+- [x] T0 完成 `idle/walk/watering/hoe` 方向块顺序样本验证并记录结论
+- [x] T1 `appearance_catalog.json` 新增 `action_layouts`（保留 `action_dirs`，含 `frames_per_direction`）
+- [x] T1.1 `runtime_switchable_slots` 扩展为 `hair/skin/eyes/clothes/acc`
+- [x] T1.2 补齐 `skin/eyes/clothes/acc` 的 `slot_variants`
+- [x] T2 `AppearanceCatalog` 解析布局字段并暴露查询接口
+- [x] T2.1 运行时仅做轻量校验（结构/字段完整性），纹理宽度一致性转测试期校验
+- [x] T3 `LayeredSpriteComponent` 扩展 `layout_by_animation_id + source_frame_index_by_runtime_frame`
+- [x] T4 `AppearanceSystem` 预计算每动画布局（方向块/帧数/flip/帧索引映射）
+- [x] T5 RenderSystem 按布局计算分层 `src_rect`（使用 source_frame_index，修复非 down 空白）
+- [x] T5.1 缺层时仅跳过该层（保留既有语义并补回归断言）
+- [x] T6 `collectAppearanceAssets` 收敛为“默认 profile + 首屏候选”，其余按需加载
+- [x] T7 Player Debug 面板支持 `skin/eyes/clothes/hair/acc` 切换
+- [x] T7.1 增加 `Reset To Profile Default` 与 `Refresh Appearance`
+- [x] T8 新增 `appearance_catalog_layout_test.cpp`
+- [x] T9 新增 `appearance_layered_direction_mapping_test.cpp`（覆盖非连续帧映射）
+- [x] T10 新增 `render_system_layered_layout_test.cpp`
+- [x] T11 运行 `ctest --test-dir build/debug/tests --output-on-failure -R \"Appearance|RenderSystem\" -j4`
+- [x] T11.1 运行 `ctest --test-dir build/debug/tests --output-on-failure -j4`（当前通过 `315/315`）
+- [x] T12 实机验收：`idle/walk/hoe/pickaxe/axe/sickle/watering/planting` 四方向全部可见
 
 ## 验收标准（DoD）
 - 分层玩家在 `down/up/right/left` 四方向均可见，不再出现“非 down 为空”。
