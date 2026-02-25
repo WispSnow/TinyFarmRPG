@@ -164,7 +164,8 @@ target_sources(game PRIVATE
     game/ui/time_clock_ui.cpp
     game/ui/inventory_ui.cpp
     game/ui/hotbar_ui.cpp
-    game/ui/dialogue_bubble.cpp
+    game/ui/dialogue_bubble_view.cpp
+    game/ui/dialogue_bubble_controller.cpp
     game/ui/item_tooltip_ui.cpp
     # System
     game/system/state_system.cpp

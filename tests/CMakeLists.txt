@@ -140,6 +140,7 @@ set(GAME_TEST_SOURCES
     game/title_scene_menu_button_test.cpp
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/pause_menu_scene_async_save_ui_test.cpp
+    game/dialogue_bubble_controller_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
     game/time_advance_sleep_test.cpp
     game/rest_area_interaction_test.cpp
