@@ -156,7 +156,7 @@
   - 调试换装可在运行时即时生效
 - 对应计划：`plans/foundation/FND-008ex.md`
 
-### FND-009（P1）战斗子系统骨架（BattleScene + TurnCore）
+### FND-009（P1）战斗子系统骨架（BattleScene + TurnCore）（已完成）
 - 目标：先把战斗“容器”建立起来，不做完整数值和内容。
 - 主要改动：
   - 新建 `BattleScene`（可 push/pop）

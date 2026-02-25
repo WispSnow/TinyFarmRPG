@@ -1,5 +1,6 @@
 #include "game_scene.h"
 
+#include "battle_scene.h"
 #include "game/runtime/game_runtime_assembler.h"
 #include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
@@ -55,6 +56,7 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
+#include <vector>
 
 using namespace entt::literals;
 
@@ -86,6 +88,8 @@ GameScene::~GameScene() noexcept {
     context_.getDispatcher().sink<game::defs::HotbarChanged>().disconnect<&GameScene::onHotbarChanged>(this);
     context_.getDispatcher().sink<game::defs::InventoryChanged>().disconnect<&GameScene::onInventoryChanged>(this);
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
+    context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
+    context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
 }
 
 bool GameScene::init() {
@@ -122,6 +126,8 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::InventoryChanged>().connect<&GameScene::onInventoryChanged>(this);
     dispatcher.sink<game::defs::HotbarChanged>().connect<&GameScene::onHotbarChanged>(this);
     dispatcher.sink<game::defs::HotbarSlotChanged>().connect<&GameScene::onHotbarSlotChanged>(this);
+    dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
+    dispatcher.sink<game::defs::BattleEndedEvent>().connect<&GameScene::onBattleEnded>(this);
 
     if (load_slot_) {
         std::string load_error;
@@ -538,6 +544,21 @@ void GameScene::onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt) {
     if (hotbar_ui_) {
         hotbar_ui_->setActiveSlot(evt.slot_index);
     }
+}
+
+void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) {
+    std::vector<game::battle::BattleUnit> units{};
+    units.reserve(cmd.player_units.size() + cmd.enemy_units.size());
+    units.insert(units.end(), cmd.player_units.begin(), cmd.player_units.end());
+    units.insert(units.end(), cmd.enemy_units.begin(), cmd.enemy_units.end());
+
+    requestPushScene(std::make_unique<game::scene::BattleScene>("BattleScene", context_, std::move(units)));
+}
+
+void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
+    spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
+                 game::battle::toString(evt.outcome),
+                 evt.final_units.size());
 }
 
 } // namespace game::scene
