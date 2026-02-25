@@ -69,7 +69,7 @@ inline void emitDialogueBubbleShow(entt::dispatcher& dispatcher,
     evt.text = std::move(text);
     evt.world_position = world_position;
     evt.channel = channel;
-    dispatcher.enqueue(evt);
+    dispatcher.trigger(evt);
 }
 
 inline void emitDialogueBubbleMove(entt::dispatcher& dispatcher,
@@ -80,7 +80,7 @@ inline void emitDialogueBubbleMove(entt::dispatcher& dispatcher,
     evt.target = target;
     evt.world_position = world_position;
     evt.channel = channel;
-    dispatcher.enqueue(evt);
+    dispatcher.trigger(evt);
 }
 
 inline void emitDialogueBubbleHide(entt::dispatcher& dispatcher, std::uint8_t channel, entt::entity target) {
@@ -91,4 +91,3 @@ inline void emitDialogueBubbleHide(entt::dispatcher& dispatcher, std::uint8_t ch
 }
 
 } // namespace game::system::helpers
-

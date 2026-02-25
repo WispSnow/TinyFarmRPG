@@ -238,7 +238,7 @@ void installTinyFarmScriptModule(sol::state& lua,
             evt.text = text;
             evt.world_position = world_position;
             evt.channel = resolved_channel;
-            dispatcher.enqueue(evt);
+            dispatcher.trigger(evt);
             return true;
         });
     dialogue_impl.set_function(
