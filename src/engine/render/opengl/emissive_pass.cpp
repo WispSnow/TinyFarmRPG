@@ -79,6 +79,7 @@ void EmissivePass::clear() {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void EmissivePass::clean() {
@@ -96,27 +97,17 @@ bool EmissivePass::createFBO(int width, int height) {
     destroyFBO();
 
     // 发光缓冲在进行泛光(Bloom)处理前用于存储辉光遮罩及透明度遮罩，使用高精度 RGBA16F 以避免叠加时的色彩丢失。
-    const ScopedGLUnpackAlignment scoped_unpack_alignment(4);
     GLuint fbo = 0;
     GLuint color = 0;
-    glGenFramebuffers(1, &fbo);
-    glGenTextures(1, &color);
-    glBindTexture(GL_TEXTURE_2D, color);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        glDeleteTextures(1, &color);
-        glDeleteFramebuffers(1, &fbo);
-        spdlog::error("Emissive FBO incomplete");
+    GLColorAttachmentDesc desc{};
+    desc.internal_format = GL_RGBA16F;
+    desc.format = GL_RGBA;
+    desc.type = GL_FLOAT;
+    desc.min_filter = GL_LINEAR;
+    desc.mag_filter = GL_LINEAR;
+    desc.unpack_alignment = 4;
+    if (!createFBOWithColorAttachment(width, height, desc, fbo, color)) {
+        spdlog::error("Emissive FBO 创建失败");
         return false;
     }
     fbo_ = fbo;
@@ -148,8 +139,7 @@ bool EmissivePass::flush(const utils::Rect& viewport) {
     glViewport(0, 0, static_cast<int>(std::round(viewport.size.x)), static_cast<int>(std::round(viewport.size.y)));
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    const ScopedGLBlendFunc scoped_blend(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     // flush batched emissive sprites
     bool ok = true;
     if (sprite_batch_ && flush_params_.program_ != 0) {
@@ -159,7 +149,6 @@ bool EmissivePass::flush(const utils::Rect& viewport) {
     glBindVertexArray(0);
     glUseProgram(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     return ok && logGlErrors("EmissivePass::flush");
 }
 

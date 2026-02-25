@@ -53,27 +53,17 @@ bool ScenePass::init(ShaderLibrary& library) {
 bool ScenePass::createFBO(int width, int height) {
     destroyFBO();
 
-    const ScopedGLUnpackAlignment scoped_unpack_alignment(4);
     GLuint fbo = 0;
     GLuint color = 0;
-    glGenFramebuffers(1, &fbo);
-    glGenTextures(1, &color);
-    glBindTexture(GL_TEXTURE_2D, color);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        glDeleteTextures(1, &color);
-        glDeleteFramebuffers(1, &fbo);
-        spdlog::error("场景 FBO 不完整");
+    GLColorAttachmentDesc desc{};
+    desc.internal_format = GL_RGBA8;
+    desc.format = GL_RGBA;
+    desc.type = GL_UNSIGNED_BYTE;
+    desc.min_filter = GL_NEAREST;
+    desc.mag_filter = GL_NEAREST;
+    desc.unpack_alignment = 4;
+    if (!createFBOWithColorAttachment(width, height, desc, fbo, color)) {
+        spdlog::error("场景 FBO 创建失败");
         return false;
     }
 
@@ -112,6 +102,7 @@ void ScenePass::clear(const glm::vec4& color) {
     glViewport(0, 0, viewport_width_, viewport_height_);
     glClearColor(color.r, color.g, color.b, color.a);
     glClear(GL_COLOR_BUFFER_BIT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 bool ScenePass::flush(const utils::Rect& viewport) {

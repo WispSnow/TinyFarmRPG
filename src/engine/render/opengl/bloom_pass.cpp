@@ -94,7 +94,7 @@ bool BloomPass::createTargets(int width, int height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
         glBindFramebuffer(GL_FRAMEBUFFER, ping_fbo_[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ping_tex_[i], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -111,7 +111,7 @@ bool BloomPass::createTargets(int width, int height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
         glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pong_tex_[i], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -194,26 +194,25 @@ bool BloomPass::process(GLuint emissive_tex) {
     }
 
     // 上采样 + 添加
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE);
-
-    for (int i = BLOOM_LEVELS - 1; i > 0; --i) {
-        const int w = level_width_[i - 1];
-        const int h = level_height_[i - 1];
-        glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i - 1]);
-        glViewport(0, 0, w, h);
-        if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / level_width_[i], 1.0f / level_height_[i]);
-        if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, pong_tex_[i]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        ++draw_calls;
+    {
+        const ScopedGLBlendFunc scoped_blend(GL_ONE, GL_ONE);
+        for (int i = BLOOM_LEVELS - 1; i > 0; --i) {
+            const int w = level_width_[i - 1];
+            const int h = level_height_[i - 1];
+            glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i - 1]);
+            glViewport(0, 0, w, h);
+            if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / level_width_[i], 1.0f / level_height_[i]);
+            if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, pong_tex_[i]);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+            ++draw_calls;
+        }
     }
 
     glBindVertexArray(0);
     glUseProgram(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     bloom_tex_ = pong_tex_[0];
     last_draw_calls_ = draw_calls;
     last_levels_ = static_cast<uint32_t>(BLOOM_LEVELS);
