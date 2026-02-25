@@ -20,6 +20,10 @@ namespace engine::debug {
     class DebugUIManager;
 }
 
+namespace engine::vfx {
+    class VfxBackend;
+}
+
 namespace engine::render::opengl {
     class RenderContext;
     class ViewportManager;
@@ -40,6 +44,7 @@ public:
         Lighting,
         Emissive,
         Bloom,
+        Vfx,
         UI,
         Count
     };
@@ -93,6 +98,7 @@ private:
 
     // 保存各个通道绘制的统计信息(DebugPanel需要)
     std::array<PassStats, static_cast<size_t>(PassType::Count)> pass_stats_{};
+    engine::vfx::VfxBackend* vfx_backend_{nullptr};
 
 public:
     [[nodiscard]] static std::unique_ptr<GLRenderer> create(SDL_Window* window,
@@ -223,6 +229,7 @@ public:
     [[nodiscard]] float getBloomSigma() const;
     [[nodiscard]] uint32_t getBloomLevelCount() const;
     [[nodiscard]] const PassStats& getPassStats(PassType pass) const;
+    void setVfxBackend(engine::vfx::VfxBackend* backend) { vfx_backend_ = backend; }
 
     // 调试：渲染中间纹理预览（DebugPanel 使用）
     [[nodiscard]] GLuint getSceneColorTex() const { return scene_color_tex_; }
