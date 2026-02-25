@@ -74,6 +74,7 @@ std::size_t ThreadPool::pendingTaskCount() const {
 }
 
 void ThreadPool::workerLoop(std::stop_token stop_token) {
+    spdlog::info("worker started on thread {}", std::hash<std::thread::id>{}(std::this_thread::get_id()));
     while (!stop_token.stop_requested()) {
         auto task_opt = queue_.pop(stop_token);
         if (!task_opt.has_value()) {
