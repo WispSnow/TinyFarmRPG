@@ -145,6 +145,9 @@ target_sources(game PRIVATE
     game/data/game_time.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
+    # Battle
+    game/battle/turn_core.cpp
+    game/battle/battle_session.cpp
     # Domain
     game/domain/inventory_domain_service.cpp
     # Save
@@ -206,6 +209,7 @@ target_sources(game PRIVATE
     game/scene/save_slot_select_scene.cpp
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
+    game/scene/battle_scene.cpp
 )
 
 if(ENABLE_SCRIPTING)

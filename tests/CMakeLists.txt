@@ -118,6 +118,9 @@ endif()
 
 set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
+    game/battle/turn_core_test.cpp
+    game/battle/battle_session_test.cpp
+    game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp
     game/farm_system_hoe_blocking_test.cpp
     game/farm_system_harvest_inventory_full_test.cpp
@@ -140,6 +143,7 @@ set(GAME_TEST_SOURCES
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
+    game/game_scene_battle_entry_test.cpp
     game/game_scene_runtime_assembly_test.cpp
     game/system_scheduler_profile_test.cpp
     game/system_scheduler_transition_gate_test.cpp

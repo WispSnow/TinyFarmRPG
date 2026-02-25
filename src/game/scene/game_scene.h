@@ -13,6 +13,11 @@ namespace game::data {
     struct GameTime;
 }
 
+namespace game::defs {
+    struct EnterBattleCommand;
+    struct BattleEndedEvent;
+}
+
 namespace game::ui {
     class InventoryUI;
     class HotbarUI;
@@ -87,6 +92,8 @@ private:
     void onInventoryChanged(const game::defs::InventoryChanged& evt);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
+    void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
+    void onBattleEnded(const game::defs::BattleEndedEvent& evt);
 };
 
 } // namespace game::scene
