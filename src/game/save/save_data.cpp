@@ -64,6 +64,7 @@ constexpr std::string_view KEY_DROP_ITEM_ID = "drop_item_id";
 
 constexpr std::string_view KEY_X = "x";
 constexpr std::string_view KEY_Y = "y";
+constexpr std::string_view KEY_GENDER = "gender";
 
 nlohmann::json vec2ToJson(Vec2f value) {
     return nlohmann::json{{KEY_X, value.x}, {KEY_Y, value.y}};
@@ -196,7 +197,10 @@ nlohmann::json serialize(const SaveData& data) {
 
     root[KEY_QUEST_STATE] = nlohmann::json::object();
     root[KEY_SKILL_STATE] = nlohmann::json::object();
-    root[KEY_APPEARANCE_STATE] = nlohmann::json::object();
+    root[KEY_APPEARANCE_STATE] = nlohmann::json{
+        {KEY_GENDER, data.appearance_state.gender},
+        {KEY_SLOTS, data.appearance_state.slots},
+    };
     root[KEY_COMBAT_STATE] = nlohmann::json::object();
 
     return root;
@@ -373,6 +377,22 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     if (!readPlaceholderObject(json, KEY_APPEARANCE_STATE, out_error)) {
         return false;
+    }
+    if (json.contains(KEY_APPEARANCE_STATE)) {
+        const auto& appearance = json[KEY_APPEARANCE_STATE];
+        out.appearance_state.gender = appearance.value<std::string>(KEY_GENDER.data(), "male");
+        out.appearance_state.slots.clear();
+        if (appearance.contains(KEY_SLOTS)) {
+            if (!appearance[KEY_SLOTS].is_object()) {
+                out_error = "SaveData: appearance_state.slots 不是 object";
+                return false;
+            }
+            for (const auto& [slot, variant] : appearance[KEY_SLOTS].items()) {
+                if (variant.is_string()) {
+                    out.appearance_state.slots.emplace(slot, variant.get<std::string>());
+                }
+            }
+        }
     }
     if (!readPlaceholderObject(json, KEY_COMBAT_STATE, out_error)) {
         return false;

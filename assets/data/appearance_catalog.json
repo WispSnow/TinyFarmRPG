@@ -1,0 +1,63 @@
+{
+    "texture_root": "assets/farm-rpg/Character and Portrait/Character/PNG",
+    "default_profile": "player_default",
+    "layer_order": [
+        "skin",
+        "eyes",
+        "clothes",
+        "hair",
+        "acc",
+        "weapon"
+    ],
+    "runtime_switchable_slots": [
+        "hair"
+    ],
+    "slot_dirs": {
+        "skin": "Skins",
+        "eyes": "Eyes",
+        "clothes": "Clothers",
+        "hair": "Hair's",
+        "acc": "Acc",
+        "weapon": "Weapons"
+    },
+    "action_dirs": {
+        "idle": "1. Idle",
+        "walk": "2. Walk",
+        "hoe": "4. Pickaxe, Hoe and Catching insects",
+        "pickaxe": "4. Pickaxe, Hoe and Catching insects",
+        "axe": "5. Axe and Sickle",
+        "sickle": "5. Axe and Sickle",
+        "watering": "7. Watering",
+        "planting": "13.4 Carrying - Throwing items"
+    },
+    "weapon_action_variants": {
+        "hoe": "Hoe/1",
+        "pickaxe": "Pickaxe/1",
+        "axe": "Axe/1",
+        "sickle": "Sickle/1",
+        "watering": "Watering/1"
+    },
+    "profiles": {
+        "player_default": {
+            "gender": "male",
+            "slots": {
+                "skin": "1",
+                "eyes": "Blue",
+                "clothes": "Farm/Blue",
+                "hair": "Standard/Brown",
+                "acc": "none",
+                "weapon": "auto"
+            }
+        }
+    },
+    "slot_variants": {
+        "hair": [
+            "Standard/Brown",
+            "Standard/Black",
+            "Standard/Blonde",
+            "Lyria/Brown",
+            "Sebastian/Brown",
+            "Josh/Brown"
+        ]
+    }
+}

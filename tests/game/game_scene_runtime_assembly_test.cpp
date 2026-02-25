@@ -46,6 +46,8 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     ASSERT_FALSE(assembler_source.empty());
     EXPECT_NE(assembler_source.find("bool GameRuntimeAssembler::assembleServices"), std::string::npos);
     EXPECT_NE(assembler_source.find("bool GameRuntimeAssembler::assembleSystems"), std::string::npos);
+    EXPECT_NE(assembler_source.find("ensureAppearanceCatalog"), std::string::npos);
+    EXPECT_NE(assembler_source.find("AppearanceSystem"), std::string::npos);
 }
 
 TEST(GameSceneRuntimeAssemblyTest, CleanResetsCameraInterpolationState) {

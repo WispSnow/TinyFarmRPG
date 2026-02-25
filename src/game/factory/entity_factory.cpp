@@ -10,6 +10,9 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/pickup_component.h"
+#include "game/component/appearance_component.h"
+#include "game/data/appearance_catalog.h"
+#include "game/defs/commands.h"
 #include "game/world/world_state.h"
 #include "engine/utils/math.h"
 #include "game/defs/constants.h"
@@ -17,6 +20,7 @@
 #include "game/defs/spatial_layers.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/sprite_component.h"
+#include "engine/component/layered_sprite_component.h"
 #include "engine/component/animation_component.h"
 #include "engine/component/collider_component.h"
 #include "engine/component/audio_component.h"
@@ -28,6 +32,7 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
 using namespace entt::literals;
@@ -121,6 +126,40 @@ entt::entity EntityFactory::createActor(const entt::id_type actor_name_id, const
         // 为玩家添加物品栏和快捷栏组件
         auto& inventory = registry_.emplace<game::component::InventoryComponent>(entity);
         auto& hotbar = registry_.emplace<game::component::HotbarComponent>(entity);
+
+        if (appearance_catalog_) {
+            game::component::AppearanceComponent appearance{};
+            const game::data::AppearanceProfile* profile = nullptr;
+            if (blueprint.appearance_.enabled_ && !blueprint.appearance_.profile_id_.empty()) {
+                profile = appearance_catalog_->findProfile(blueprint.appearance_.profile_id_);
+            }
+            if (!profile) {
+                profile = appearance_catalog_->defaultProfile();
+            }
+            if (profile) {
+                appearance.profile_id_ = profile->id_;
+                appearance.gender_ = profile->gender_;
+                appearance.slot_variants_ = profile->slots_;
+            }
+            if (blueprint.appearance_.enabled_) {
+                if (!blueprint.appearance_.profile_id_.empty()) {
+                    appearance.profile_id_ = blueprint.appearance_.profile_id_;
+                }
+                if (!blueprint.appearance_.gender_.empty()) {
+                    appearance.gender_ = blueprint.appearance_.gender_;
+                }
+                for (const auto& [slot, variant] : blueprint.appearance_.slot_variants_) {
+                    appearance.slot_variants_[slot] = variant;
+                }
+            }
+            appearance.dirty_ = true;
+            registry_.emplace<game::component::AppearanceComponent>(entity, std::move(appearance));
+            registry_.emplace<engine::component::LayeredSpriteComponent>(entity);
+
+            if (dispatcher_) {
+                dispatcher_->trigger(game::defs::RefreshAppearanceCommand{entity});
+            }
+        }
 
         // 初始化起始工具
         const std::vector<entt::id_type> start_tools = {

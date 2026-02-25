@@ -16,6 +16,7 @@ class EntityFactory;
 
 namespace game::data {
 class ItemCatalog;
+class AppearanceCatalog;
 }
 
 namespace game::domain {
@@ -42,6 +43,7 @@ namespace game::runtime {
 struct GameRuntimeServices {
     std::shared_ptr<game::factory::BlueprintManager> blueprint_manager;
     std::shared_ptr<game::data::ItemCatalog> item_catalog;
+    std::shared_ptr<game::data::AppearanceCatalog> appearance_catalog;
 
     std::unique_ptr<engine::spatial::CollisionResolver> collision_resolver;
     std::unique_ptr<game::world::WorldState> world_state;
@@ -99,6 +101,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::InteractionSystem> interaction_system;
     std::unique_ptr<game::system::RestSystem> rest_system;
     std::unique_ptr<game::system::MapTransitionSystem> map_transition_system;
+    std::unique_ptr<game::system::AppearanceSystem> appearance_system;
 
     GameSystemBundle();
     ~GameSystemBundle() noexcept;

@@ -1,6 +1,9 @@
 #include "player_debug_panel.h"
 #include "game/component/actor_component.h"
+#include "game/component/appearance_component.h"
 #include "game/component/tags.h"
+#include "game/data/appearance_catalog.h"
+#include "game/defs/commands.h"
 #include "game/defs/constants.h"
 #include "game/defs/crop_defs.h"
 #include "game/defs/events.h"
@@ -38,8 +41,12 @@ namespace {
 
 namespace game::debug {
 
-PlayerDebugPanel::PlayerDebugPanel(entt::registry& registry, entt::dispatcher& dispatcher)
-    : registry_(registry), dispatcher_(dispatcher) {
+PlayerDebugPanel::PlayerDebugPanel(entt::registry& registry,
+                                   entt::dispatcher& dispatcher,
+                                   const game::data::AppearanceCatalog* appearance_catalog)
+    : registry_(registry),
+      dispatcher_(dispatcher),
+      appearance_catalog_(appearance_catalog) {
 }
 
 std::string_view PlayerDebugPanel::name() const {
@@ -131,8 +138,40 @@ void PlayerDebugPanel::draw(bool& is_open) {
         ImGui::Text("速度大小: %.2f", velocity_magnitude);
     }
 
+    if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {
+        auto& appearance = registry_.get<game::component::AppearanceComponent>(player_entity);
+        const auto& hair_variants = appearance_catalog_->variantsForSlot("hair");
+        if (!hair_variants.empty()) {
+            ImGui::Separator();
+            ImGui::Text("Hair Variant");
+
+            std::string current_hair = "none";
+            if (const auto it = appearance.slot_variants_.find("hair"); it != appearance.slot_variants_.end()) {
+                current_hair = it->second;
+            }
+
+            std::size_t index = 0;
+            for (std::size_t i = 0; i < hair_variants.size(); ++i) {
+                if (hair_variants[i] == current_hair) {
+                    index = i;
+                    break;
+                }
+            }
+
+            ImGui::Text("%s", hair_variants[index].c_str());
+            if (ImGui::Button("Hair Prev")) {
+                const std::size_t next = (index == 0) ? (hair_variants.size() - 1) : (index - 1);
+                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{player_entity, "hair", hair_variants[next]});
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Hair Next")) {
+                const std::size_t next = (index + 1) % hair_variants.size();
+                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{player_entity, "hair", hair_variants[next]});
+            }
+        }
+    }
+
     ImGui::End();
 }
 
 } // namespace game::debug
-

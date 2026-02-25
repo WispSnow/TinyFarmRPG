@@ -143,6 +143,7 @@ target_sources(game PRIVATE
     game/component/pickup_component.h
     # Data
     game/data/game_time.cpp
+    game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
     # Domain
     game/domain/inventory_domain_service.cpp
@@ -170,6 +171,7 @@ target_sources(game PRIVATE
     # System
     game/system/state_system.cpp
     game/system/action_sound_system.cpp
+    game/system/appearance_system.cpp
     game/system/player_control_system.cpp
     game/system/camera_follow_system.cpp
     game/system/farm_system.cpp

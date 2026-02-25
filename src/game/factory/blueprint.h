@@ -44,6 +44,13 @@ struct AnimationBlueprint {
     bool flip_horizontal_{false};
 };
 
+struct AppearanceBlueprint {
+    bool enabled_{false};
+    std::string profile_id_{};
+    std::string gender_{"male"};
+    std::unordered_map<std::string, std::string> slot_variants_{};
+};
+
 struct ActorBlueprint {
     std::string name_;
     std::string description_;
@@ -54,6 +61,7 @@ struct ActorBlueprint {
     float wander_radius_{0.0f};                  ///< @brief 随机游走半径（0表示不游走）
     entt::id_type dialogue_id_{entt::null};      ///< @brief 对话ID
     float interact_distance_{80.0f};             ///< @brief 触发对话距离
+    AppearanceBlueprint appearance_{};
 };
 
 struct AnimalBlueprint {

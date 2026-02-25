@@ -25,5 +25,6 @@ class MapTransitionSystem;
 class TimeOfDayLightSystem;
 class PickupSystem;
 class RestSystem;
+class AppearanceSystem;
 
 } // namespace game::system

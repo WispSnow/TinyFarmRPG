@@ -6,6 +6,7 @@
 #include "game/world/world_state.h"
 
 #include "game/component/actor_component.h"
+#include "game/component/appearance_component.h"
 #include "game/component/crop_component.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
@@ -442,6 +443,11 @@ SaveData SaveService::capture(std::string& out_error) const {
         return out;
     }
 
+    if (const auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
+        out.appearance_state.gender = appearance->gender_;
+        out.appearance_state.slots = appearance->slot_variants_;
+    }
+
     out.maps.clear();
     out.maps.reserve(world_state_.maps().size());
 
@@ -735,7 +741,20 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         hotbar->slots_[i].inventory_slot_index_ = data.player.hotbar.inventory_slot_indices[i];
     }
 
+    if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
+        if (!data.appearance_state.gender.empty()) {
+            appearance->gender_ = data.appearance_state.gender;
+        }
+        for (const auto& [slot, variant] : data.appearance_state.slots) {
+            appearance->slot_variants_[slot] = variant;
+        }
+        appearance->dirty_ = true;
+    }
+
     auto& dispatcher = context_.getDispatcher();
+    if (registry_.all_of<game::component::AppearanceComponent>(player)) {
+        dispatcher.trigger(game::defs::RefreshAppearanceCommand{player});
+    }
     dispatcher.trigger(game::defs::InventorySyncCommand{player});
     dispatcher.trigger(game::defs::HotbarSyncCommand{player, true});
     dispatcher.trigger(game::defs::HotbarActivateCommand{player, hotbar->active_slot_index_});

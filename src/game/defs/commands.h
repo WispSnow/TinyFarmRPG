@@ -2,6 +2,7 @@
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
+#include <string>
 
 namespace game::defs {
 
@@ -69,6 +70,16 @@ struct HotbarSyncCommand {
 // - 想加新交互对象时：优先新增订阅者，而不是改 InteractionSystem
 struct InteractCommand {
     entt::entity player{entt::null};
+    entt::entity target{entt::null};
+};
+
+struct SetAppearanceSlotCommand {
+    entt::entity target{entt::null};
+    std::string slot{};
+    std::string variant{};
+};
+
+struct RefreshAppearanceCommand {
     entt::entity target{entt::null};
 };
 
