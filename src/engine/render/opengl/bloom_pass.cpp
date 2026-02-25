@@ -3,6 +3,7 @@
 #include "shader_library.h"
 #include "shader_program.h"
 #include "gl_helper.h"
+#include "fullscreen_quad.h"
 #include <entt/core/hashed_string.hpp>
 
 using namespace entt::literals;
@@ -53,26 +54,14 @@ bool BloomPass::init(ShaderLibrary& library) {
 }
 
 bool BloomPass::createBuffers() {
-    if (vao_ != 0 && vbo_ != 0) return true;
-    glGenVertexArrays(1, &vao_);
-    glGenBuffers(1, &vbo_);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    const float quad[] = {
-        -1.f, -1.f, 0.f, 0.f,
-         1.f, -1.f, 1.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f, -1.f, 0.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f,  1.f, 0.f, 1.f,
-    };
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-    return logGlErrors("BloomPass::createBuffers");
+    if (vao_ != 0 && vertex_count_ > 0) {
+        return true;
+    }
+    if (!FullscreenQuad::acquire(vao_, vertex_count_)) {
+        spdlog::error("BloomPass::createBuffers: acquire shared fullscreen quad failed");
+        return false;
+    }
+    return true;
 }
 
 bool BloomPass::createTargets(int width, int height) {
@@ -143,15 +132,18 @@ void BloomPass::destroyTargets() {
 
 void BloomPass::clean() {
     destroyTargets();
-    if (vbo_ != 0) { glDeleteBuffers(1, &vbo_); vbo_ = 0; }
-    if (vao_ != 0) { glDeleteVertexArrays(1, &vao_); vao_ = 0; }
+    if (vao_ != 0) {
+        FullscreenQuad::release();
+        vao_ = 0;
+        vertex_count_ = 0;
+    }
     blur_program_ = nullptr;
     last_draw_calls_ = 0;
     last_levels_ = 0;
 }
 
 bool BloomPass::process(GLuint emissive_tex) {
-    if (!blur_program_ || vao_ == 0 || emissive_tex == 0) {
+    if (!blur_program_ || vao_ == 0 || vertex_count_ <= 0 || emissive_tex == 0) {
         spdlog::error("BloomPass::process: 没有有效的 blur_program 或 vao 或 emissive_tex");
         last_draw_calls_ = 0;
         last_levels_ = 0;
@@ -181,7 +173,7 @@ bool BloomPass::process(GLuint emissive_tex) {
         }
         if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
         if (u_blur_sigma_ >= 0) glUniform1f(u_blur_sigma_, sigma_);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
         ++draw_calls;
 
         glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i]);
@@ -189,7 +181,7 @@ bool BloomPass::process(GLuint emissive_tex) {
         if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / float(w), 1.0f / float(h));
         if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 0.0f, 1.0f);
         glBindTexture(GL_TEXTURE_2D, ping_tex_[i]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
         ++draw_calls;
     }
 
@@ -205,7 +197,7 @@ bool BloomPass::process(GLuint emissive_tex) {
             if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, pong_tex_[i]);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
             ++draw_calls;
         }
     }

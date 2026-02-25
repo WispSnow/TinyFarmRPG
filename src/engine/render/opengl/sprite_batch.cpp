@@ -4,6 +4,7 @@
 // 实现了 GLRenderer 使用的 CPU 端批处理层。将精灵队列到 CPU 向量中，批量刷新以最小化绘制调用次数与状态切换。
 // -----------------------------------------------------------------------------
 #include "sprite_batch.h"
+#include "default_textures.h"
 #include "gl_helper.h"
 #include <spdlog/spdlog.h>
 #include <glm/gtc/epsilon.hpp>
@@ -343,28 +344,24 @@ bool SpriteBatch::ensureDefaultTexture() {
     if (default_texture_ != 0) {
         return true;
     }
-    glGenTextures(1, &default_texture_);
-    if (default_texture_ == 0) {
-        spdlog::error("SpriteBatch::ensureDefaultTexture: glGenTextures failed");
+    GLuint white_tex = 0;
+    GLuint black_tex = 0;
+    if (!DefaultTextures::acquire(white_tex, black_tex)) {
+        spdlog::error("SpriteBatch::ensureDefaultTexture: acquire shared default textures failed");
         return false;
     }
-    glBindTexture(GL_TEXTURE_2D, default_texture_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    const uint32_t white_pixel = 0xFFFFFFFFu;
-    const ScopedGLUnpackAlignment scoped_unpack_alignment(4);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &white_pixel);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return logGlErrors("SpriteBatch::ensureDefaultTexture");
+    (void)black_tex;
+    default_texture_ = white_tex;
+    default_texture_acquired_ = true;
+    return true;
 }
 
 void SpriteBatch::destroyDefaultTexture() {
-    if (default_texture_ != 0) {
-        glDeleteTextures(1, &default_texture_);
-        default_texture_ = 0;
+    if (default_texture_acquired_) {
+        DefaultTextures::release();
+        default_texture_acquired_ = false;
     }
+    default_texture_ = 0;
 }
 
 } // namespace engine::render::opengl

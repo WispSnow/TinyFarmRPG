@@ -29,11 +29,11 @@ class CompositePass {
     GLuint light_tex_{0};
     GLuint emissive_tex_{0};
     GLuint bloom_tex_{0};
+    bool default_textures_acquired_{false};
     glm::vec3 ambient_{glm::vec3(0.5f)};
     float bloom_strength_{1.0f};
     
     GLuint vao_{0};
-    GLuint vbo_{0};
     GLsizei vertex_count_{0};
 
     // 默认纹理：white_tex_ 用于光照，black_tex_ 用于自发光和泛光

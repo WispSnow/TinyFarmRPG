@@ -27,7 +27,7 @@ class BloomPass {
 
     // 全屏四边形几何体
     GLuint vao_{0};
-    GLuint vbo_{0};
+    GLsizei vertex_count_{0};
 
     // Ping-pong FBO 和纹理，每个级别一个
     GLuint ping_fbo_[BLOOM_LEVELS]{0};
