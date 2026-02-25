@@ -41,6 +41,8 @@ target_sources(engine PRIVATE
     engine/render/nine_slice.cpp
     # Render - OpenGL
     engine/render/opengl/gl_helper.cpp
+    engine/render/opengl/fullscreen_quad.cpp
+    engine/render/opengl/default_textures.cpp
     engine/render/opengl/render_context.cpp
     engine/render/opengl/viewport_manager.cpp
     engine/render/opengl/gl_renderer.cpp

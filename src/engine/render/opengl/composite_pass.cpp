@@ -5,6 +5,8 @@
 // -----------------------------------------------------------------------------
 #include "composite_pass.h"
 #include "gl_helper.h"
+#include "fullscreen_quad.h"
+#include "default_textures.h"
 #include "shader_asset_paths.h"
 #include "shader_library.h"
 #include "shader_program.h"
@@ -53,33 +55,16 @@ bool CompositePass::init(ShaderLibrary& library) {
         if (u_emissive_tex_ >= 0) glUniform1i(u_emissive_tex_, 2);
         if (u_bloom_tex_ >= 0) glUniform1i(u_bloom_tex_, 3);
         glUseProgram(0);
-        
-        const ScopedGLUnpackAlignment scoped_unpack_alignment(4);
+    }
 
-        // 创建默认的 1x1 白色纹理（用于光照）
-        glGenTextures(1, &white_tex_);
-        glBindTexture(GL_TEXTURE_2D, white_tex_);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        const uint32_t white_pixel = 0xFFFFFFFFu;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &white_pixel);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        // 默认使用白色纹理作为光照纹理
+    if (!default_textures_acquired_) {
+        if (!DefaultTextures::acquire(white_tex_, black_tex_)) {
+            spdlog::error("CompositePass::init: acquire default textures failed");
+            return false;
+        }
+        default_textures_acquired_ = true;
+        // 默认使用白色纹理作为光照纹理，黑色纹理作为场景/自发光/泛光纹理
         light_tex_ = white_tex_;
-
-        // 创建默认的 1x1 黑色纹理（用于自发光和泛光）
-        glGenTextures(1, &black_tex_);
-        glBindTexture(GL_TEXTURE_2D, black_tex_);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        const uint32_t black_pixel = 0x00000000u;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &black_pixel);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        // 默认使用黑色纹理作为场景纹理、自发光和泛光纹理
         scene_tex_ = black_tex_;
         emissive_tex_ = black_tex_;
         bloom_tex_ = black_tex_;
@@ -88,30 +73,14 @@ bool CompositePass::init(ShaderLibrary& library) {
 }
 
 bool CompositePass::createBuffers() {
-    if (vao_ != 0) {
+    if (vao_ != 0 && vertex_count_ > 0) {
         return true;
     }
-    const float quad[] = {
-        // pos      // uv
-        -1.f, -1.f, 0.f, 0.f,
-         1.f, -1.f, 1.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f, -1.f, 0.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f,  1.f, 0.f, 1.f,
-    };
-    glGenVertexArrays(1, &vao_);
-    glGenBuffers(1, &vbo_);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-    vertex_count_ = 6;
-    return logGlErrors("CompositePass::createBuffers");
+    if (!FullscreenQuad::acquire(vao_, vertex_count_)) {
+        spdlog::error("CompositePass::createBuffers: acquire shared fullscreen quad failed");
+        return false;
+    }
+    return true;
 }
 
 bool CompositePass::render(const utils::Rect& viewport) {
@@ -163,25 +132,18 @@ bool CompositePass::render(const utils::Rect& viewport) {
 }
 
 void CompositePass::clean() {
-    if (vbo_ != 0) {
-        glDeleteBuffers(1, &vbo_);
-        vbo_ = 0;
-    }
     if (vao_ != 0) {
-        glDeleteVertexArrays(1, &vao_);
+        FullscreenQuad::release();
         vao_ = 0;
     }
     vertex_count_ = 0;
 
-    // 释放默认纹理
-    if (white_tex_ != 0) {
-        glDeleteTextures(1, &white_tex_);
-        white_tex_ = 0;
+    if (default_textures_acquired_) {
+        DefaultTextures::release();
+        default_textures_acquired_ = false;
     }
-    if (black_tex_ != 0) {
-        glDeleteTextures(1, &black_tex_);
-        black_tex_ = 0;
-    }
+    white_tex_ = 0;
+    black_tex_ = 0;
     
     program_ = nullptr;
     scene_tex_ = 0;

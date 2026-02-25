@@ -97,6 +97,7 @@ private:
     void destroyDefaultTexture();
 
     GLuint default_texture_{0};
+    bool default_texture_acquired_{false};
     uint32_t last_draw_calls_{0};
     uint32_t last_vertex_count_{0};
     uint32_t last_index_count_{0};
