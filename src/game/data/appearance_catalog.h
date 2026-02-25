@@ -3,6 +3,8 @@
 #include <entt/core/fwd.hpp>
 
 #include <optional>
+#include <cstddef>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,9 +21,17 @@ struct AppearanceProfile {
 
 class AppearanceCatalog final {
 public:
+    static constexpr std::size_t kPreloadAllRuntimeVariants = std::numeric_limits<std::size_t>::max();
+
     struct LayerTexture {
         std::string path_{};
         entt::id_type texture_id_{};
+    };
+
+    struct LayerLayout {
+        std::size_t direction_block_index_{0};
+        std::size_t frames_per_direction_{0};
+        bool use_animation_flip_{false};
     };
 
     AppearanceCatalog() = default;
@@ -40,15 +50,26 @@ public:
     [[nodiscard]] bool isRuntimeSwitchableSlot(std::string_view slot) const;
     [[nodiscard]] bool isSlotAvailableForAction(std::string_view action_key, std::string_view slot) const;
     [[nodiscard]] std::optional<std::string> actionKeyFromAnimationName(std::string_view animation_name) const;
+    [[nodiscard]] std::optional<std::string> directionKeyFromAnimationName(std::string_view animation_name) const;
+    [[nodiscard]] std::optional<LayerLayout> resolveLayerLayout(std::string_view action_key,
+                                                                 std::string_view direction_key) const;
 
     [[nodiscard]] std::optional<LayerTexture> resolveLayerTexture(std::string_view action_key,
                                                                   std::string_view slot,
                                                                   std::string_view variant,
                                                                   std::string_view gender) const;
 
-    [[nodiscard]] std::vector<std::string> collectPreloadTexturePaths(const AppearanceProfile& profile) const;
+    [[nodiscard]] std::vector<std::string> collectPreloadTexturePaths(
+        const AppearanceProfile& profile,
+        std::size_t runtime_variant_limit_per_slot = kPreloadAllRuntimeVariants) const;
 
 private:
+    struct ActionLayoutConfig {
+        std::size_t frames_per_direction_{0};
+        std::vector<std::string> direction_block_order_{};
+        std::string left_fallback_{"mirror_right"};
+    };
+
     [[nodiscard]] bool buildActionSlotAvailability();
 
     [[nodiscard]] std::optional<std::string> normalizeVariantForResolution(std::string_view action_key,
@@ -65,6 +86,7 @@ private:
     std::vector<std::string> layer_order_{};
     std::unordered_map<std::string, std::string> slot_dirs_{};
     std::unordered_map<std::string, std::string> action_dirs_{};
+    std::unordered_map<std::string, ActionLayoutConfig> action_layouts_{};
     std::unordered_map<std::string, std::unordered_set<std::string>> action_available_slots_{};
     std::unordered_map<std::string, AppearanceProfile> profiles_{};
     std::unordered_map<std::string, std::vector<std::string>> slot_variants_{};

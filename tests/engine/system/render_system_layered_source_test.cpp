@@ -32,10 +32,14 @@ TEST(RenderSystemLayeredSourceTest, LayeredModeSkipsBaseSpriteAndDrawsSlotsInOrd
         << "RenderSystem 应接入 LayeredSpriteComponent。";
     EXPECT_NE(content.find("has_layered_draw"), std::string::npos)
         << "RenderSystem 应在分层成功绘制时跳过主纹理绘制。";
-    EXPECT_NE(content.find("layer.resolveTexture"), std::string::npos)
-        << "RenderSystem 应基于 current_animation_id 查 layer 贴图。";
-    EXPECT_NE(content.find("LayeredSpriteLayer::INVALID_TEXTURE_ID"), std::string::npos)
-        << "RenderSystem 应使用分层组件约定的无效纹理ID判断，避免误绘制。";
+    EXPECT_NE(content.find("layer.resolveLayout"), std::string::npos)
+        << "RenderSystem 应基于 current_animation_id 查 layer 布局缓存。";
+    EXPECT_NE(content.find("source_frame_index_by_runtime_frame_"), std::string::npos)
+        << "RenderSystem 应按运行时帧索引映射分层源帧，避免非连续帧错采样。";
+    EXPECT_NE(content.find("direction_block_index_"), std::string::npos)
+        << "RenderSystem 应按方向块索引计算分层图集采样列。";
+    EXPECT_NE(content.find("use_animation_flip_"), std::string::npos)
+        << "RenderSystem 应支持按布局决定是否沿用动画翻转。";
     EXPECT_NE(content.find("render.depth_ + layer.depth_offset_"), std::string::npos)
         << "RenderSystem 应使用微小 depth 偏移保证层序。";
     EXPECT_NE(content.find("std::sort(draw_requests_.begin(), draw_requests_.end()"), std::string::npos)
