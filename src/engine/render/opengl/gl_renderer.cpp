@@ -12,6 +12,7 @@
 #include "engine/render/opengl/bloom_pass.h"
 #include "engine/render/opengl/scene_pass.h"
 #include "engine/render/opengl/ui_pass.h"
+#include "engine/vfx/vfx_backend.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -470,6 +471,7 @@ void GLRenderer::present() {
     //
     // - Scene/Lighting/Emissive：渲染到各自离屏 FBO（@Logical）
     // - Composite：把离屏结果合成到默认帧缓冲的 letterbox viewport（@Window Pixels）
+    // - VFX：在默认帧缓冲的 viewport 上绘制（Phase 1: post-composite）
     // - UI：绘制到默认帧缓冲的 letterbox viewport（@Window Pixels；UI 坐标按 logical 设计映射到 viewport）
     // - ImGui：最后覆盖绘制到默认帧缓冲的整窗区域（@Window Pixels）
 
@@ -535,7 +537,23 @@ void GLRenderer::present() {
             GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
-    // 6) 合成之后，绘制 UI（@Window Pixels / viewport）
+    // 6) 合成之后，绘制 VFX（@Window Pixels / viewport）
+    if (vfx_backend_) {
+        engine::vfx::VfxRenderContext vfx_context{};
+        vfx_context.view_projection = current_view_proj_;
+        vfx_context.logical_size = logical_size_;
+        vfx_context.viewport_pixels = viewport;
+        vfx_backend_->render(vfx_context);
+
+        pass_stats_[static_cast<size_t>(PassType::Vfx)] = {
+            vfx_backend_->getLastDrawCallCount(),
+            vfx_backend_->getLastInstanceCount(),
+            0u,
+            0u
+        };
+    }
+
+    // 7) VFX 之后，绘制 UI（@Window Pixels / viewport）
     ui_pass_->flush(viewport);
     pass_stats_[static_cast<size_t>(PassType::UI)] = {
         ui_pass_->getLastDrawCallCount(),
@@ -545,7 +563,7 @@ void GLRenderer::present() {
     };
 
 #ifdef TF_ENABLE_DEBUG_UI
-    // 7) 如果启用 Debug UI，则在最后渲染 ImGui 界面（@Window Pixels / full window）
+    // 8) 如果启用 Debug UI，则在最后渲染 ImGui 界面（@Window Pixels / full window）
     if (debug_ui_enabled_) {
         auto window_size = viewport_manager_->getWindowSize();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -601,6 +619,7 @@ void GLRenderer::clean() {
     light_color_tex_ = 0;
     emissive_color_tex_ = 0;
     bloom_tex_ = 0;
+    vfx_backend_ = nullptr;
 #ifdef TF_ENABLE_DEBUG_UI
     if (imgui_layer_) {
         imgui_layer_->clean();

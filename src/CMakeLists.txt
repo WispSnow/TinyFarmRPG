@@ -39,6 +39,9 @@ target_sources(engine PRIVATE
     engine/render/camera.cpp
     engine/render/text_renderer.cpp
     engine/render/nine_slice.cpp
+    # VFX
+    engine/vfx/null_vfx_backend.cpp
+    engine/vfx/vfx_service.cpp
     # Render - OpenGL
     engine/render/opengl/gl_helper.cpp
     engine/render/opengl/fullscreen_quad.cpp
@@ -132,6 +135,13 @@ if(ENABLE_SCRIPTING)
     )
 endif()
 
+if(ENABLE_EFFEKSEER)
+    target_sources(engine PRIVATE
+        engine/vfx/effekseer_backend.cpp
+        engine/vfx/effekseer_backend_factory.cpp
+    )
+endif()
+
 # ============================================
 # Game 源文件
 # ============================================
@@ -148,6 +158,7 @@ target_sources(game PRIVATE
     game/data/game_time.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
+    game/data/vfx_catalog.cpp
     # Battle
     game/battle/turn_core.cpp
     game/battle/battle_session.cpp
@@ -200,6 +211,7 @@ target_sources(game PRIVATE
     game/system/map_transition_system.cpp
     game/system/pickup_system.cpp
     game/system/rest_system.cpp
+    game/system/vfx_bridge_system.cpp
     # World
     game/world/world_state.cpp
     game/world/async_preload_pipeline.cpp

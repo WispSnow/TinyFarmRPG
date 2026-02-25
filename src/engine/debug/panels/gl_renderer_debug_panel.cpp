@@ -121,6 +121,7 @@ void GLRendererDebugPanel::draw(bool& is_open) {
             {"LightingPass", GLRenderer::PassType::Lighting},
             {"EmissivePass", GLRenderer::PassType::Emissive},
             {"BloomPass", GLRenderer::PassType::Bloom},
+            {"VfxPass", GLRenderer::PassType::Vfx},
             {"UIPass", GLRenderer::PassType::UI}
         };
 

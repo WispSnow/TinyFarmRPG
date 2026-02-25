@@ -12,12 +12,14 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
+#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_defaults.h"
 #include "engine/ui/ui_manager.h"
 #include "engine/ui/ui_screen_fade.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
+#include "engine/vfx/vfx_service.h"
 #include "engine/system/ysort_system.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
@@ -191,6 +193,9 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
+    if (!abort_to_title_ && services_ && services_->vfx_service) {
+        services_->vfx_service->update(delta_time);
+    }
     Scene::update(delta_time);
 }
 
@@ -238,6 +243,8 @@ void GameScene::snapshotInterpolationState() {
 }
 
 void GameScene::clean() {
+    context_.getGLRenderer().setVfxBackend(nullptr);
+
 #ifdef TF_ENABLE_SCRIPTING
     if (services_ && services_->script_host) {
         services_->script_host->shutdown();
