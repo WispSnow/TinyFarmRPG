@@ -50,6 +50,7 @@ set(TEST_SOURCES
     engine/loader/level_loader_tile_flag_warning_test.cpp
     engine/loader/basic_entity_builder_no_json_value_test.cpp
     engine/system/render_system_view_use_test.cpp
+    engine/system/render_system_layered_layout_test.cpp
     engine/system/render_system_layered_source_test.cpp
     engine/system/remove_entity_system_test.cpp
     engine/system/movement_system_dynamic_grid_sync_test.cpp
@@ -130,6 +131,8 @@ set(GAME_TEST_SOURCES
     game/state_animation_event_chain_test.cpp
     game/save_data_v3_roundtrip_test.cpp
     game/appearance_catalog_test.cpp
+    game/appearance_catalog_layout_test.cpp
+    game/appearance_layered_direction_mapping_test.cpp
     game/appearance_system_test.cpp
     game/save_migrator_test.cpp
     game/save_service_async_test.cpp

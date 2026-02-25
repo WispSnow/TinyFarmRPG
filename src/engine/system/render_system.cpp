@@ -81,13 +81,33 @@ void RenderSystem::render(entt::registry& registry, render::Renderer& renderer, 
             const auto* animation = registry.try_get<component::AnimationComponent>(entity);
             if (animation) {
                 for (const auto& layer : layered->layers_) {
-                    const entt::id_type layer_texture_id = layer.resolveTexture(animation->current_animation_id_);
-                    if (layer_texture_id == component::LayeredSpriteLayer::INVALID_TEXTURE_ID) {
+                    const auto* layer_layout = layer.resolveLayout(animation->current_animation_id_);
+                    if (!layer_layout ||
+                        layer_layout->texture_id_ == component::LayeredSpriteLayer::INVALID_TEXTURE_ID) {
+                        continue;
+                    }
+                    if (layer_layout->frame_width_ <= 0.0f || layer_layout->frame_height_ <= 0.0f ||
+                        layer_layout->frames_per_direction_ == 0) {
                         continue;
                     }
 
+                    std::size_t source_frame_index = 0;
+                    if (!layer_layout->source_frame_index_by_runtime_frame_.empty()) {
+                        const std::size_t runtime_index = std::min(animation->current_frame_index_,
+                                                                    layer_layout->source_frame_index_by_runtime_frame_.size() - 1);
+                        source_frame_index = layer_layout->source_frame_index_by_runtime_frame_[runtime_index];
+                    }
+                    source_frame_index = std::min(source_frame_index, layer_layout->frames_per_direction_ - 1);
+                    const std::size_t atlas_column = layer_layout->direction_block_index_ * layer_layout->frames_per_direction_ +
+                                                     source_frame_index;
+
                     component::Sprite layer_sprite = sprite.sprite_;
-                    layer_sprite.texture_id_ = layer_texture_id;
+                    layer_sprite.texture_id_ = layer_layout->texture_id_;
+                    layer_sprite.src_rect_.pos.x = static_cast<float>(atlas_column) * layer_layout->frame_width_;
+                    layer_sprite.src_rect_.pos.y = 0.0f;
+                    layer_sprite.src_rect_.size.x = layer_layout->frame_width_;
+                    layer_sprite.src_rect_.size.y = layer_layout->frame_height_;
+                    layer_sprite.is_flipped_ = layer_layout->use_animation_flip_ ? sprite.sprite_.is_flipped_ : false;
                     draw_requests_.push_back(DrawRequest{
                         render.layer_,
                         render.depth_ + layer.depth_offset_,

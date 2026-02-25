@@ -12,6 +12,8 @@
 #include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
 #include <glm/geometric.hpp>
+#include <array>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -36,6 +38,19 @@ namespace {
         default: return "Unknown";
     }
 }
+
+struct AppearanceSlotDebugEntry {
+    std::string_view slot{};
+    std::string_view label{};
+};
+
+constexpr std::array<AppearanceSlotDebugEntry, 5> kDebugSwitchSlots{{
+    {"skin", "Skin"},
+    {"eyes", "Eyes"},
+    {"clothes", "Clothes"},
+    {"hair", "Hair"},
+    {"acc", "Accessory"},
+}};
 
 } // namespace
 
@@ -140,34 +155,83 @@ void PlayerDebugPanel::draw(bool& is_open) {
 
     if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {
         auto& appearance = registry_.get<game::component::AppearanceComponent>(player_entity);
-        const auto& hair_variants = appearance_catalog_->variantsForSlot("hair");
-        if (!hair_variants.empty()) {
-            ImGui::Separator();
-            ImGui::Text("Hair Variant");
+        ImGui::Separator();
+        ImGui::Text("Appearance");
 
-            std::string current_hair = "none";
-            if (const auto it = appearance.slot_variants_.find("hair"); it != appearance.slot_variants_.end()) {
-                current_hair = it->second;
+        bool has_switchable_slot = false;
+        for (const auto& entry : kDebugSwitchSlots) {
+            const auto& variants = appearance_catalog_->variantsForSlot(entry.slot);
+            if (variants.empty()) {
+                continue;
+            }
+
+            has_switchable_slot = true;
+            std::string current_variant = "none";
+            if (const auto it = appearance.slot_variants_.find(std::string(entry.slot));
+                it != appearance.slot_variants_.end()) {
+                current_variant = it->second;
             }
 
             std::size_t index = 0;
-            for (std::size_t i = 0; i < hair_variants.size(); ++i) {
-                if (hair_variants[i] == current_hair) {
+            for (std::size_t i = 0; i < variants.size(); ++i) {
+                if (variants[i] == current_variant) {
                     index = i;
                     break;
                 }
             }
 
-            ImGui::Text("%s", hair_variants[index].c_str());
-            if (ImGui::Button("Hair Prev")) {
-                const std::size_t next = (index == 0) ? (hair_variants.size() - 1) : (index - 1);
-                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{player_entity, "hair", hair_variants[next]});
+            ImGui::Text("%s: %s", entry.label.data(), variants[index].c_str());
+            const std::string prev_label =
+                std::string(entry.label) + " Prev##" + std::string(entry.slot);
+            if (ImGui::Button(prev_label.c_str())) {
+                const std::size_t next = (index == 0) ? (variants.size() - 1) : (index - 1);
+                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{
+                    player_entity, std::string(entry.slot), variants[next]});
             }
             ImGui::SameLine();
-            if (ImGui::Button("Hair Next")) {
-                const std::size_t next = (index + 1) % hair_variants.size();
-                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{player_entity, "hair", hair_variants[next]});
+            const std::string next_label =
+                std::string(entry.label) + " Next##" + std::string(entry.slot);
+            if (ImGui::Button(next_label.c_str())) {
+                const std::size_t next = (index + 1) % variants.size();
+                dispatcher_.trigger(game::defs::SetAppearanceSlotCommand{
+                    player_entity, std::string(entry.slot), variants[next]});
             }
+        }
+
+        if (!has_switchable_slot) {
+            ImGui::Text("No appearance variants configured");
+        }
+
+        if (ImGui::Button("Reset To Profile Default")) {
+            const game::data::AppearanceProfile* profile = nullptr;
+            if (!appearance.profile_id_.empty()) {
+                profile = appearance_catalog_->findProfile(appearance.profile_id_);
+            }
+            if (!profile) {
+                profile = appearance_catalog_->defaultProfile();
+            }
+            if (profile) {
+                bool has_change = false;
+                for (const auto& [slot, variant] : profile->slots_) {
+                    if (!appearance_catalog_->isRuntimeSwitchableSlot(slot)) {
+                        continue;
+                    }
+                    auto it = appearance.slot_variants_.find(slot);
+                    if (it != appearance.slot_variants_.end() && it->second == variant) {
+                        continue;
+                    }
+                    appearance.slot_variants_[slot] = variant;
+                    has_change = true;
+                }
+                if (has_change) {
+                    appearance.dirty_ = true;
+                }
+                dispatcher_.trigger(game::defs::RefreshAppearanceCommand{player_entity});
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh Appearance")) {
+            dispatcher_.trigger(game::defs::RefreshAppearanceCommand{player_entity});
         }
     }
 

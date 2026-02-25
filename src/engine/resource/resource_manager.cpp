@@ -268,6 +268,10 @@ TextureHandle ResourceManager::loadTextureFromDecoded(entt::id_type id,
     return texture_manager_->loadTextureFromDecoded(id, file_path, decoded);
 }
 
+TextureHandle ResourceManager::findLoadedTexture(entt::id_type id) {
+    return texture_manager_->findTexture(id);
+}
+
 TextureHandle ResourceManager::getTexture(entt::id_type id) {
     if (auto cached = texture_manager_->findTexture(id)) {
         return cached;
