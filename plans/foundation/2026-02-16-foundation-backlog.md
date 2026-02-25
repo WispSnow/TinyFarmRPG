@@ -7,7 +7,7 @@
   - 角色分层换装（衣服/头发/武器等）
   - 粒子特效系统（Effekseer）
 - 执行窗口：`2026-02-16` ～ `2026-03-08`（3 周）
-- 当前质量基线（更新于 `2026-02-24`）：`ctest --test-dir build/debug --output-on-failure` 通过 `288/288`；`ctest --test-dir build/noscript --output-on-failure` 通过 `278/278`
+- 当前质量基线（更新于 `2026-02-25`）：`ctest --test-dir build/debug/tests --output-on-failure -j4` 通过 `315/315`
 
 ## 非目标（本阶段不做）
 - 不做完整战斗玩法内容实现（只做战斗框架与接入点）
@@ -129,7 +129,7 @@
 
 ## Sprint 3（第3周）：扩展能力接入点（非完整玩法）
 
-### FND-008（P0）角色分层外观模型（先框架）
+### FND-008（P0）角色分层外观模型（先框架） （已完成）
 - 目标：从单 Sprite 模型过渡到可组合层模型，为换装铺路。
 - 主要改动：
   - 新增 `AppearanceComponent`（slots + layer order + asset ids）
@@ -139,6 +139,22 @@
   - 玩家可在运行时切换至少 1 个部件层（例如头发）
   - 不破坏现有角色动画与碰撞
   - 有至少 1 个渲染回归测试或截图基准
+
+### FND-008ex（P0）分层外观扩展（多方向显示 + 调试换装面板） （已完成）
+- 目标：修复分层角色仅 `down` 可见的问题，补齐 `up/right/left`；扩展调试面板为多槽位换装。
+- 主要步骤（T0~T12）：
+  - T0：离线样本校验方向块顺序（`idle/walk/watering/hoe`），结论固化为 `down/up/right/left`
+  - T1~T2：`appearance_catalog.json` 新增 `action_layouts`，并补齐 `runtime_switchable_slots` + `slot_variants`
+  - T3~T5：`LayeredSpriteComponent` / `AppearanceSystem` / `RenderSystem` 改为布局驱动采样，使用 `source_frame_index_by_runtime_frame`
+  - T6：外观预加载收敛为“默认 profile + 首屏候选”，其余按需加载
+  - T7：玩家调试面板支持 `skin/eyes/clothes/hair/acc` 切换，新增 `Reset To Profile Default` 与 `Refresh Appearance`
+  - T8~T11：补齐 catalog/layout/render 相关测试并跑通全量回归
+  - T12：实机验收 `idle/walk/hoe/pickaxe/axe/sickle/watering/planting` 四方向可见
+- 验收结果：
+  - `Title -> GameScene` 正常进入，不再因 `action_layouts` 缺失导致初始化失败
+  - 分层采样覆盖非连续帧映射，左右方向显示正确
+  - 调试换装可在运行时即时生效
+- 对应计划：`plans/foundation/FND-008ex.md`
 
 ### FND-009（P1）战斗子系统骨架（BattleScene + TurnCore）
 - 目标：先把战斗“容器”建立起来，不做完整数值和内容。
@@ -175,6 +191,7 @@
 | FND-006 | Lua + Sol2 宿主层 | P0 | 3d | FND-002, FND-003 |
 | FND-006R | Lua/Sol2 宿主下沉到 engine 层 | P0 | 2d | FND-006, FND-007 |
 | FND-008 | 分层外观模型 | P0 | 3d | FND-002 |
+| FND-008ex | 分层外观扩展（多方向 + 调试换装） | P0 | 2d | FND-008 |
 | FND-004 | 调试可视化补强 | P1 | 1d | FND-002 |
 | FND-007 | 脚本安全边界 | P1 | 1.5d | FND-006 |
 | FND-009 | 战斗骨架 | P1 | 2.5d | FND-002, FND-003 |
@@ -228,6 +245,6 @@
 ---
 
 ## 建议执行顺序（后续）
-1. 先做 `FND-008`（分层外观模型，影响渲染与角色数据骨架）
-2. 再做 `FND-009`（战斗骨架，复用 `FND-002/FND-003` 的调度与命令边界）
+1. `FND-008` 与 `FND-008ex` 已完成（分层外观框架 + 多方向显示 + 调试换装）
+2. 接续 `FND-009`（战斗骨架，复用 `FND-002/FND-003` 的调度与命令边界）
 3. 最后做 `FND-010`（VFX 扩展点，依赖外观层与渲染接缝稳定）
