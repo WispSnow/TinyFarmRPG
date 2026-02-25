@@ -41,7 +41,7 @@
 ### 阶段 2：P1 基础设施收敛包
 - 新增 `ScopedBlendFunc`（可扩展为 `ScopedGLState`），替换手工 set/restore。
 - 提取 `createFBOWithColorAttachment(...)` 公共工具，统一 Scene/Lighting/Emissive。
-- 提取共享 `FullscreenQuad`，替换 Bloom/Composite/Lighting 各自 VAO/VBO。
+- 提取共享 `FullscreenQuad`，替换 Bloom/Composite 的静态全屏 VAO/VBO（LightingPass 因每帧动态更新 world/screen 空间顶点，保留独立 `GL_DYNAMIC_DRAW` VBO）。
 - 提取共享 `DefaultTextures`（white/black），供 SpriteBatch/CompositePass 复用。
 - `ShaderProgram::uniformLocation` 二选一：
   - 方案A（推荐）：加 `unordered_map` 缓存；
@@ -61,9 +61,9 @@
 - `src/engine/render/opengl/default_textures.h`
 - `src/engine/render/opengl/default_textures.cpp`
 - `src/engine/render/opengl/render_pass.h`（阶段3）
-- `tests/engine/render/opengl/gl_renderer_lifecycle_test.cpp`
-- `tests/engine/render/opengl/opengl_pass_state_test.cpp`
-- `tests/engine/render/opengl/bloom_precision_regression_test.cpp`
+- `tests/engine/render/gl_renderer_lifecycle_test.cpp`
+- `tests/engine/render/opengl_pass_state_test.cpp`
+- `tests/engine/render/bloom_precision_regression_test.cpp`
 
 ## 预计修改文件
 - `src/engine/render/opengl/gl_renderer.h`
@@ -109,13 +109,13 @@
 - [x] T6 CompositePass 移除每帧固定 sampler 赋值
 - [x] T7 引入 `ScopedBlendFunc` 并替换 3 个 pass 的手工恢复
 - [x] T8 提取并接入 FBO 通用创建 helper
-- [ ] T9 提取并接入共享 FullscreenQuad
-- [ ] T10 提取并接入共享 DefaultTextures
+- [x] T9 提取并接入共享 FullscreenQuad（Bloom/Composite；LightingPass 保留动态 VBO）
+- [x] T10 提取并接入共享 DefaultTextures
 - [x] T11 `ShaderProgram::uniformLocation` 缓存策略落地（或注释修订）
 - [x] T15 Claude 审阅收尾（helper 下沉 .cpp / blend guard 合并 / ScenePass::clear 解绑 / uniform warn / SpriteBatch 简化）
 - [ ] T12 （可选）统一 RenderPass 接口
 - [ ] T13 （可选）顶点格式压缩评估与落地
-- [ ] T14 新增生命周期/状态/Bloom 精度回归测试
+- [x] T14 新增生命周期/状态/Bloom 精度回归测试
 
 ## 验收标准
 - Bloom 高亮区域不再因 `RGB8` 截断而变暗，视觉效果与 emissive 强度一致。
@@ -130,5 +130,7 @@
 
 ## 本轮验证记录
 - `cmake --build build/debug -j8`（通过）
+- `ctest --test-dir build/debug --output-on-failure -R "SpriteBatchSourceTest|RenderContextNoExceptionsTest|FactoryVisibilityTest"`（7/7 通过）
 - `ctest --test-dir build/debug --output-on-failure -R "SpriteBatchSourceTest|RenderContextNoExceptionsTest"`（3/3 通过）
 - `ctest --test-dir build/debug --output-on-failure -R "UIWorldAnchorTest|ScriptHostLifecycleTest|ParallelWaveSchedulerTest"`（17/17 通过）
+- `ctest --test-dir build/debug --output-on-failure -R "GLRendererLifecycleTest|OpenGLPassStateTest|BloomPrecisionRegressionTest"`（5/5 通过）
