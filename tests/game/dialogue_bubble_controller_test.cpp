@@ -167,23 +167,22 @@ protected:
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_ = std::make_unique<engine::debug::DebugUIManager>();
 #endif
-        context_ = engine::core::Context::create(dispatcher_,
-                                                 *input_manager_,
-                                                 *gl_renderer_,
-                                                 *renderer_,
-                                                 *camera_,
-                                                 *text_renderer_,
-                                                 *resource_manager_,
-                                                 auto_tile_library_,
-                                                 *ui_preset_manager_,
-                                                 *audio_player_,
-                                                 *game_state_,
-                                                 *time_,
-                                                 *main_thread_command_queue_,
+        engine::core::CoreServices core_services{
+            dispatcher_, *game_state_, *time_, *input_manager_, *main_thread_command_queue_
+        };
+        engine::core::RenderServices render_services{
+            *gl_renderer_, *renderer_, *camera_, *text_renderer_
+        };
+        engine::core::ResourceServices resource_services{
+            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+        };
+        context_ = engine::core::Context::create(
+            core_services, render_services, resource_services,
+            *audio_player_, spatial_index_manager_
 #ifdef TF_ENABLE_DEBUG_UI
-                                                 *debug_ui_manager_,
+            , *debug_ui_manager_
 #endif
-                                                 spatial_index_manager_);
+        );
         if (!context_) {
             GTEST_SKIP() << "Failed to create Context.";
         }
