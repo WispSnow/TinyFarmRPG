@@ -11,6 +11,9 @@
 namespace engine::core {
     class Context;
 }
+namespace engine::render {
+    class Camera;
+}
 namespace engine::ui {
     class UIElement;
     class UIPanel; // UIPanel 将作为根元素
@@ -49,7 +52,7 @@ public:
 
     // --- 核心循环方法 ---            
     void update(float delta_time, engine::core::Context&);  ///< @brief 更新UI元素。
-    void render(engine::core::Context&);
+    void render(engine::core::Context&, float interpolation_alpha);
 
     // --- 拖拽预览 ---
     void beginDragPreview(const engine::render::Image& image,
@@ -74,6 +77,7 @@ private:
     void updateHovered(UIInteractive* target);
     void clearMouseState();
     void initCursor();
+    void resolveWorldAnchors(const engine::render::Camera& camera, float interpolation_alpha);
     void renderCursor(engine::core::Context& context);
 
     bool onMousePressed();                       ///< @brief 鼠标按下事件回调

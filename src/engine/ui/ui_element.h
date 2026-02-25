@@ -13,6 +13,12 @@ namespace engine::core {
 namespace engine::ui {
 
 class UIInteractive;
+class UIManager;
+
+enum class PositioningMode : std::uint8_t {
+    Screen,
+    WorldAnchor
+};
 
 struct Thickness {
     float left{0.0f};
@@ -50,6 +56,10 @@ protected:
     glm::vec2 pivot_{0.0f, 0.0f};                           ///< @brief 枢轴（相对自身 [0,1]）
     Thickness padding_{};                                   ///< @brief 内边距，影响子内容布局
     Thickness margin_{};                                    ///< @brief 外边距，影响自身定位
+    PositioningMode positioning_mode_{PositioningMode::Screen}; ///< @brief 元素定位模式（屏幕/世界锚点）
+    glm::vec2 world_anchor_{0.0f, 0.0f};                    ///< @brief 世界坐标锚点（当前）
+    glm::vec2 previous_world_anchor_{0.0f, 0.0f};           ///< @brief 世界坐标锚点（上一次，用于插值）
+    glm::vec2 world_anchor_offset_{0.0f, 0.0f};             ///< @brief 锚点投影后的屏幕偏移
 
     mutable bool layout_dirty_{true};                       ///< @brief 布局是否需要重新计算
     mutable glm::vec2 layout_position_{0.0f, 0.0f};         ///< @brief 计算后的屏幕坐标
@@ -101,6 +111,10 @@ public:
     glm::vec2 getAnchorMin() const { return anchor_min_; }          ///< @brief 获取锚点最小值
     glm::vec2 getAnchorMax() const { return anchor_max_; }          ///< @brief 获取锚点最大值
     glm::vec2 getPivot() const { return pivot_; }                   ///< @brief 获取枢轴
+    PositioningMode getPositioningMode() const { return positioning_mode_; } ///< @brief 获取定位模式
+    const glm::vec2& getWorldAnchor() const { return world_anchor_; } ///< @brief 获取世界锚点
+    const glm::vec2& getPreviousWorldAnchor() const { return previous_world_anchor_; } ///< @brief 获取上一次世界锚点
+    const glm::vec2& getWorldAnchorOffset() const { return world_anchor_offset_; } ///< @brief 获取世界锚点屏幕偏移
 
     void setSize(glm::vec2 size);                                    ///< @brief 设置元素大小
     void setVisible(bool visible) { visible_ = visible; }               ///< @brief 设置元素的可见性
@@ -115,6 +129,8 @@ public:
     void setMargin(const Thickness& margin);                        ///< @brief 设置外边距
     void setLayoutOverrideSize(std::optional<glm::vec2> size);      ///< @brief 设置布局覆盖尺寸
     void clearLayoutOverrideSize() { setLayoutOverrideSize(std::nullopt); } ///< @brief 清除布局覆盖尺寸
+    void setWorldAnchor(glm::vec2 world_pos, glm::vec2 screen_offset = {0.0f, 0.0f}); ///< @brief 设置世界锚点
+    void clearWorldAnchor();                                         ///< @brief 清除世界锚点并恢复屏幕定位
 
     // --- 辅助方法 ---
     void sortChildrenByOrderIndex();                                ///< @brief 根据order_index_排序子元素
@@ -134,11 +150,14 @@ public:
     UIElement& operator=(UIElement&&) = delete;
 
 protected:
+    friend class UIManager;
+
     virtual void renderSelf(engine::core::Context& context);
     virtual void onLayout() {} // 新增：布局回调，供子类实现自定义布局逻辑
 
     void invalidateLayout(bool propagate = true);
     void ensureLayout() const;
+    void applyWorldAnchorPosition(glm::vec2 screen_pos);
     void setParentInternal(UIElement* parent);
     void setSizeInternal(glm::vec2 size);
 };

@@ -36,12 +36,12 @@ void Scene::update(float delta_time) {
 
 }
 
-void Scene::render(float /* interpolation_alpha */) {
+void Scene::render(float interpolation_alpha) {
     if (!is_initialized_) return;
 
     // 渲染UI管理器（部分场景可能不需要 UI）
     if (ui_manager_) {
-        ui_manager_->render(context_);
+        ui_manager_->render(context_, interpolation_alpha);
     }
 }
 

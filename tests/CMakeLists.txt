@@ -66,6 +66,7 @@ set(TEST_SOURCES
     engine/ui/ui_layout_source_test.cpp
     engine/ui/ui_interaction_runtime_test.cpp
     engine/ui/ui_layout_invalidation_test.cpp
+    engine/ui/ui_world_anchor_test.cpp
     engine/ui/ui_stack_layout_test.cpp
     engine/ui/ui_grid_layout_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp

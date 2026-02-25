@@ -79,6 +79,30 @@
 - `UIManager::update()` 会输出本轮 `layout_recompute_count`（调试计数器）。
 - 以上日志默认为 trace 级别，不改变运行时行为，仅用于排查布局链路。
 
+### 3.6 世界锚点定位模式（WorldAnchor）
+- `UIElement::PositioningMode`：
+  - `Screen`：默认模式，按父节点 content bounds 参与常规布局计算。
+  - `WorldAnchor`：元素的屏幕位置由 `UIManager::resolveWorldAnchors()` 投影写入，不走常规 anchor 位置解算。
+- `setWorldAnchor(world_pos, screen_offset)` 语义：
+  - 进入 `WorldAnchor` 模式。
+  - 自动维护插值快照：首次进入时 `previous_world_anchor = world_pos`，后续调用时 `previous_world_anchor = old world_anchor`。
+  - 写入 `world_anchor` 与 `world_anchor_offset`，并触发布局脏化。
+- `clearWorldAnchor()` 语义：
+  - 模式恢复为 `Screen`。
+  - 清零 `world_anchor / previous_world_anchor / world_anchor_offset`。
+  - 元素恢复使用自身 `position_` 参与屏幕布局。
+- `UIManager::resolveWorldAnchors(camera, alpha)` 语义：
+  - 在 `render` 阶段执行（不是 `update`）。
+  - 只遍历根节点直接子元素。
+  - 仅处理 `WorldAnchor` 元素：`mix(previous, current, alpha)` 后投影为屏幕坐标，再调用 `applyWorldAnchorPosition`。
+- `applyWorldAnchorPosition(screen_pos)` 语义：
+  - 写入 `layout_position_` / `layout_size_`（含 pivot 偏移）。
+  - 若位置/尺寸未变化，允许 diff guard 提前返回。
+  - 若有变化，必须向子树传播 `invalidateLayout(true)`，保证子节点基于新父位置重算。
+- 约束：
+  - 仅保证根节点直接子元素的 WorldAnchor 语义（非直接子元素会 fallback 到 Screen 路径并告警）。
+  - `processMouseHover()` 运行在 `update` 阶段，若未来出现可交互 world-anchor UI，hover 命中可能基于上一帧投影结果。
+
 ## 4. padding / margin / anchor / pivot 优先级
 - 父节点 `padding` 先定义子节点可用布局区域（`content bounds`）。
 - 子节点 `anchor` 决定参考区域与是否 stretch。
@@ -130,6 +154,9 @@
 - `tests/engine/ui/ui_layout_invalidation_test.cpp`
   - 同值 `setPosition/setSize/setAnchor` 不触发重复 relayout。
   - 布局重算计数器仅统计 dirty 重算。
+- `tests/engine/ui/ui_world_anchor_test.cpp`
+  - WorldAnchor 模式切换、previous 快照、pivot 投影与子树脏化传播。
+  - 渲染阶段插值投影、Screen 元素无副作用、非根直接子元素 fallback。
 
 ## 9. 变更纪律
 - 任何影响上述语义的改动，必须同时更新：

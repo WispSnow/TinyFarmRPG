@@ -251,6 +251,27 @@ void UIElement::setLayoutOverrideSize(std::optional<glm::vec2> size) {
     invalidateLayout();
 }
 
+void UIElement::setWorldAnchor(glm::vec2 world_pos, glm::vec2 screen_offset) {
+    if (positioning_mode_ != PositioningMode::WorldAnchor) {
+        previous_world_anchor_ = world_pos;
+    } else {
+        previous_world_anchor_ = world_anchor_;
+    }
+
+    positioning_mode_ = PositioningMode::WorldAnchor;
+    world_anchor_ = world_pos;
+    world_anchor_offset_ = screen_offset;
+    invalidateLayout();
+}
+
+void UIElement::clearWorldAnchor() {
+    positioning_mode_ = PositioningMode::Screen;
+    world_anchor_ = {0.0F, 0.0F};
+    previous_world_anchor_ = {0.0F, 0.0F};
+    world_anchor_offset_ = {0.0F, 0.0F};
+    invalidateLayout();
+}
+
 const UIInteractive* UIElement::findInteractiveAt(const glm::vec2& point) const {
     if (!visible_) {
         return nullptr;
@@ -320,6 +341,19 @@ void UIElement::ensureLayout() const {
         return;
     }
 
+    if (positioning_mode_ == PositioningMode::WorldAnchor) {
+        if (parent_->getParent() != nullptr) {
+            spdlog::warn(
+                "UIElement::ensureLayout: WorldAnchor mode on non-root-child element (id={}), falling back to Screen mode.",
+                id_);
+        } else {
+            layout_size_ = layout_override_size_.value_or(size_);
+            layout_dirty_ = false;
+            const_cast<UIElement*>(this)->onLayout();
+            return;
+        }
+    }
+
     // 获取父元素的内容(可用)区域
     auto parent_content = parent_->getContentBounds();
     glm::vec2 parent_origin = parent_content.pos;
@@ -373,6 +407,25 @@ void UIElement::ensureLayout() const {
             id_, static_cast<const void*>(this), size_.x, size_.y, layout_size_.x,
             layout_size_.y, has_override, override_size.x, override_size.y,
             layout_position_.x, layout_position_.y, stretched);
+}
+
+void UIElement::applyWorldAnchorPosition(glm::vec2 screen_pos) {
+    const glm::vec2 final_size = layout_override_size_.value_or(size_);
+    const glm::vec2 new_position = screen_pos - final_size * pivot_;
+
+    if (!layout_dirty_ && sameVec2(layout_position_, new_position) && sameVec2(layout_size_, final_size)) {
+        return;
+    }
+
+    layout_position_ = new_position;
+    layout_size_ = final_size;
+    layout_dirty_ = false;
+
+    for (auto& child : children_) {
+        if (child) {
+            child->invalidateLayout(true);
+        }
+    }
 }
 
 void UIElement::setParentInternal(UIElement* parent) {
