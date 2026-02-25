@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/battle/battle_types.h"
 #include "constants.h"
 #include "crop_defs.h"
 #include <glm/vec2.hpp>
@@ -113,6 +114,11 @@ struct AsyncSaveCompletedEvent {
     std::string file_path{};
     bool success{false};
     std::string error{};
+};
+
+struct BattleEndedEvent {
+    game::battle::BattleOutcome outcome{game::battle::BattleOutcome::Ongoing};
+    std::vector<game::battle::BattleUnit> final_units{};
 };
 
 } // namespace game::defs

@@ -1,8 +1,11 @@
 #pragma once
 
+#include "game/battle/battle_types.h"
+
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
 #include <string>
+#include <vector>
 
 namespace game::defs {
 
@@ -71,6 +74,16 @@ struct HotbarSyncCommand {
 struct InteractCommand {
     entt::entity player{entt::null};
     entt::entity target{entt::null};
+};
+
+struct EnterBattleCommand {
+    // TODO(FND-010): 若战斗命令继续膨胀，拆分到 commands_battle.h 以收敛全局头文件依赖。
+    std::vector<game::battle::BattleUnit> player_units{};
+    std::vector<game::battle::BattleUnit> enemy_units{};
+};
+
+struct SubmitBattleActionCommand {
+    game::battle::BattleAction action{};
 };
 
 struct SetAppearanceSlotCommand {
