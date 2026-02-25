@@ -61,6 +61,7 @@
 - `src/engine/render/opengl/default_textures.h`
 - `src/engine/render/opengl/default_textures.cpp`
 - `src/engine/render/opengl/render_pass.h`（阶段3）
+- `tests/engine/render/render_pass_interface_test.cpp`
 - `tests/engine/render/gl_renderer_lifecycle_test.cpp`
 - `tests/engine/render/opengl_pass_state_test.cpp`
 - `tests/engine/render/bloom_precision_regression_test.cpp`
@@ -113,8 +114,8 @@
 - [x] T10 提取并接入共享 DefaultTextures
 - [x] T11 `ShaderProgram::uniformLocation` 缓存策略落地（或注释修订）
 - [x] T15 Claude 审阅收尾（helper 下沉 .cpp / blend guard 合并 / ScenePass::clear 解绑 / uniform warn / SpriteBatch 简化）
-- [ ] T12 （可选）统一 RenderPass 接口
-- [ ] T13 （可选）顶点格式压缩评估与落地
+- [x] T12 （可选）统一 RenderPass 接口（`RenderPass`/`ReloadableRenderPass` 已接入 6 个 pass）
+- [x] T13 （可选）顶点格式压缩评估与落地（`SpriteBatch::Vertex` 颜色改为 `RGBA8` 归一化，单顶点 32B -> 20B）
 - [x] T14 新增生命周期/状态/Bloom 精度回归测试
 
 ## 验收标准
@@ -134,3 +135,4 @@
 - `ctest --test-dir build/debug --output-on-failure -R "SpriteBatchSourceTest|RenderContextNoExceptionsTest"`（3/3 通过）
 - `ctest --test-dir build/debug --output-on-failure -R "UIWorldAnchorTest|ScriptHostLifecycleTest|ParallelWaveSchedulerTest"`（17/17 通过）
 - `ctest --test-dir build/debug --output-on-failure -R "GLRendererLifecycleTest|OpenGLPassStateTest|BloomPrecisionRegressionTest"`（5/5 通过）
+- `ctest --test-dir build/debug --output-on-failure -R "RenderPassInterfaceTest|SpriteBatchSourceTest|GLRendererLifecycleTest|OpenGLPassStateTest|BloomPrecisionRegressionTest|RenderContextNoExceptionsTest|TextRendererNoExceptionsTest"`（11/11 通过）
