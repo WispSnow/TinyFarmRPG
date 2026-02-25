@@ -213,11 +213,11 @@ void GameScene::render(float interpolation_alpha) {
     }
 #endif
 
+    Scene::render(interpolation_alpha);
+
     if (has_previous_camera_position_) {
         camera.setPosition(camera_position_before);
     }
-
-    Scene::render(interpolation_alpha);
 }
 
 void GameScene::snapshotInterpolationState() {

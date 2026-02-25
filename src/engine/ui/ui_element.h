@@ -145,8 +145,10 @@ public:
 
 protected:
     PositioningMode positioning_mode_{PositioningMode::Screen};
+    glm::vec2 world_anchor_previous_{0.0f, 0.0f};
     glm::vec2 world_anchor_{0.0f, 0.0f};
     glm::vec2 world_anchor_offset_{0.0f, 0.0f};
+    bool world_anchor_has_previous_{false};
 
     virtual void renderSelf(engine::core::Context& context);
     virtual void onLayout() {} // 新增：布局回调，供子类实现自定义布局逻辑
@@ -155,6 +157,7 @@ protected:
     void ensureLayout() const;
     void setParentInternal(UIElement* parent);
     void setSizeInternal(glm::vec2 size);
+    [[nodiscard]] glm::vec2 sampleWorldAnchor(float interpolation_alpha) const;
 
     friend class UIManager;
     void applyWorldAnchorPosition(glm::vec2 screen_pos);

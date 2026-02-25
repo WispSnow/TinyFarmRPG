@@ -84,7 +84,7 @@ private:
 
     void registerMouseEvents();
     void unregisterMouseEvents();
-    void resolveWorldAnchors(const engine::render::Camera& camera);
+    void resolveWorldAnchors(const engine::render::Camera& camera, float interpolation_alpha);
 
 };
 

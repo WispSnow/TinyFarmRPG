@@ -253,10 +253,19 @@ void UIElement::setLayoutOverrideSize(std::optional<glm::vec2> size) {
 
 void UIElement::setWorldAnchor(glm::vec2 world_pos, glm::vec2 screen_offset) {
     const bool mode_changed = positioning_mode_ != PositioningMode::WorldAnchor;
-    const bool anchor_changed = !sameVec2(world_anchor_, world_pos) ||
-                                !sameVec2(world_anchor_offset_, screen_offset);
+    const bool world_pos_changed = !sameVec2(world_anchor_, world_pos);
+    const bool offset_changed = !sameVec2(world_anchor_offset_, screen_offset);
+    const bool anchor_changed = world_pos_changed || offset_changed;
     if (!mode_changed && !anchor_changed) {
         return;
+    }
+
+    if (mode_changed) {
+        world_anchor_previous_ = world_pos;
+        world_anchor_has_previous_ = true;
+    } else if (world_pos_changed) {
+        world_anchor_previous_ = world_anchor_;
+        world_anchor_has_previous_ = true;
     }
 
     positioning_mode_ = PositioningMode::WorldAnchor;
@@ -275,8 +284,10 @@ void UIElement::clearWorldAnchor() {
     }
 
     positioning_mode_ = PositioningMode::Screen;
+    world_anchor_previous_ = zero;
     world_anchor_ = zero;
     world_anchor_offset_ = zero;
+    world_anchor_has_previous_ = false;
     invalidateLayout();
 }
 
@@ -448,6 +459,14 @@ void UIElement::setPosition(glm::vec2 position) {
     }
     position_ = std::move(position);
     invalidateLayout();
+}
+
+glm::vec2 UIElement::sampleWorldAnchor(float interpolation_alpha) const {
+    if (!world_anchor_has_previous_) {
+        return world_anchor_;
+    }
+    const float alpha = std::clamp(interpolation_alpha, 0.0F, 1.0F);
+    return world_anchor_previous_ + (world_anchor_ - world_anchor_previous_) * alpha;
 }
 
 void UIElement::applyWorldAnchorPosition(glm::vec2 screen_pos) {

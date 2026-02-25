@@ -4,6 +4,7 @@
 #include "ui_interactive.h"
 #include "ui_preset_manager.h"
 #include "engine/core/context.h"
+#include "engine/core/time.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/resource/resource_manager.h"
@@ -68,7 +69,7 @@ void UIManager::clearElements() {
 void UIManager::update(float delta_time, engine::core::Context& context) {
     UIElement::resetLayoutRecomputeCounter();
 
-    resolveWorldAnchors(context.getCamera());
+    resolveWorldAnchors(context.getCamera(), 1.0F);
 
     // 只处理鼠标悬停（轮询鼠标位置）
     processMouseHover();
@@ -82,7 +83,8 @@ void UIManager::update(float delta_time, engine::core::Context& context) {
                   UIElement::consumeLayoutRecomputeCounter());
 }
 
-void UIManager::resolveWorldAnchors(const engine::render::Camera& camera) {
+void UIManager::resolveWorldAnchors(const engine::render::Camera& camera,
+                                    float interpolation_alpha) {
     if (!root_element_) {
         return;
     }
@@ -95,13 +97,18 @@ void UIManager::resolveWorldAnchors(const engine::render::Camera& camera) {
             continue;
         }
 
+        const glm::vec2 world_pos = child->sampleWorldAnchor(interpolation_alpha);
         const glm::vec2 screen_pos =
-                camera.worldToScreen(child->getWorldAnchor()) + child->getWorldAnchorOffset();
+                camera.worldToScreen(world_pos) + child->getWorldAnchorOffset();
         child->applyWorldAnchorPosition(screen_pos);
     }
 }
 
 void UIManager::render(engine::core::Context& context) {
+    // Re-resolve world anchors at render time so projection uses the camera pose
+    // of this render pass (e.g. interpolated camera in GameScene::render).
+    resolveWorldAnchors(context.getCamera(), context.getTime().getInterpolationAlpha());
+
     if (root_element_ && root_element_->isVisible()) {
         // 从根元素开始向下渲染
         root_element_->render(context);

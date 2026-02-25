@@ -13,6 +13,7 @@ public:
 
     void applyWorldAnchorForTest(glm::vec2 screen_pos) { applyWorldAnchorPosition(screen_pos); }
     bool isLayoutDirtyForTest() const { return layout_dirty_; }
+    glm::vec2 sampleWorldAnchorForTest(float alpha) const { return sampleWorldAnchor(alpha); }
 };
 
 TEST(UIWorldAnchorTest, SetWorldAnchorSetsPositioningModeAndData) {
@@ -125,6 +126,28 @@ TEST(UIWorldAnchorTest, ClearWorldAnchorUsesExistingPosition) {
     const glm::vec2 restored = child_ptr->getScreenPosition();
     EXPECT_NEAR(restored.x, 7.0F, 0.001F);
     EXPECT_NEAR(restored.y, 11.0F, 0.001F);
+}
+
+TEST(UIWorldAnchorTest, SampleWorldAnchorInterpolatesBetweenPreviousAndCurrent) {
+    UIElement root({0.0F, 0.0F}, {400.0F, 300.0F});
+    auto child = std::make_unique<WorldAnchorTestElement>(glm::vec2{0.0F, 0.0F}, glm::vec2{20.0F, 10.0F});
+    auto* child_ptr = child.get();
+    root.addChild(std::move(child));
+
+    child_ptr->setWorldAnchor({10.0F, 20.0F});
+    child_ptr->setWorldAnchor({30.0F, 40.0F});
+
+    const glm::vec2 a0 = child_ptr->sampleWorldAnchorForTest(0.0F);
+    EXPECT_NEAR(a0.x, 10.0F, 0.001F);
+    EXPECT_NEAR(a0.y, 20.0F, 0.001F);
+
+    const glm::vec2 a05 = child_ptr->sampleWorldAnchorForTest(0.5F);
+    EXPECT_NEAR(a05.x, 20.0F, 0.001F);
+    EXPECT_NEAR(a05.y, 30.0F, 0.001F);
+
+    const glm::vec2 a1 = child_ptr->sampleWorldAnchorForTest(1.0F);
+    EXPECT_NEAR(a1.x, 30.0F, 0.001F);
+    EXPECT_NEAR(a1.y, 40.0F, 0.001F);
 }
 
 } // namespace
