@@ -21,13 +21,14 @@
 #include "engine/utils/math.h"
 #include "engine/utils/defs.h"
 #include <memory>
+#include "render_pass.h"
 
 namespace engine::render::opengl {
 
 class ShaderLibrary;
 class ShaderProgram;
 
-class LightingPass {
+class LightingPass : public RenderPass {
     int viewport_width_{0};
     int viewport_height_{0};
     ShaderProgram* program_{nullptr};
@@ -93,7 +94,7 @@ public:
     void addDirectionalLight(const glm::vec2& dir,
                              const engine::utils::DirectionalLightOptions& options);
     void clear();
-    void clean();
+    void clean() override;
 
     ShaderProgram* program() const { return program_; }
     bool isActive() const { return active_; }

@@ -14,6 +14,7 @@
 #include <functional>
 #include <memory>
 #include "engine/utils/math.h"
+#include "render_pass.h"
 #include "sprite_batch.h"
 
 namespace engine::render::opengl {
@@ -21,7 +22,7 @@ namespace engine::render::opengl {
 class ShaderLibrary;
 class ShaderProgram;
 
-class EmissivePass {
+class EmissivePass : public ReloadableRenderPass {
     int viewport_width_{0};
     int viewport_height_{0};
     entt::id_type program_id_{0};
@@ -43,9 +44,9 @@ public:
     EmissivePass(EmissivePass&&) = delete;
     EmissivePass& operator=(EmissivePass&&) = delete;
 
-    bool reload(ShaderLibrary& library);
+    bool reload(ShaderLibrary& library) override;
     void clear();
-    void clean();
+    void clean() override;
     bool flush(const utils::Rect& viewport);
     void setApplyViewProjection(std::function<void(GLint)> applier);
     uint32_t getLastDrawCallCount() const { return sprite_batch_ ? sprite_batch_->getLastDrawCallCount() : 0; }
