@@ -1,0 +1,54 @@
+[submodule "Downloads/libgd"]
+	path = Downloads/libgd
+	url = https://github.com/libgd/libgd.git
+[submodule "Downloads/OpenSoundMixer"]
+	path = Downloads/OpenSoundMixer
+	url = https://github.com/altseed/OpenSoundMixer
+[submodule "Downloads/glfw"]
+	path = Downloads/glfw
+	url = https://github.com/glfw/glfw
+[submodule "Downloads/zlib"]
+	path = Downloads/zlib
+	url = https://github.com/madler/zlib
+[submodule "Dev/Cpp/3rdParty/LLGI"]
+	path = Dev/Cpp/3rdParty/LLGI
+	url = https://github.com/altseed/LLGI
+[submodule "Dev/Cpp/3rdParty/stb"]
+	path = Dev/Cpp/3rdParty/stb
+	url = https://github.com/nothings/stb.git
+[submodule "Dev/Cpp/3rdParty/AltseedRHI"]
+	path = Dev/Cpp/3rdParty/AltseedRHI
+	url = https://github.com/altseed/AltseedRHI.git
+[submodule "TestData"]
+	path = TestData
+	url = https://github.com/effekseer/TestData.git
+[submodule "ResourceData"]
+	path = ResourceData
+	url = https://github.com/effekseer/ResourceData.git
+[submodule "Dev/Cpp/3rdParty/spdlog"]
+	path = Dev/Cpp/3rdParty/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "Dev/Cpp/3rdParty/glslang"]
+	path = Dev/Cpp/3rdParty/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "Dev/Cpp/3rdParty/easy_profiler"]
+	path = Dev/Cpp/3rdParty/easy_profiler
+	url = https://github.com/yse/easy_profiler.git
+[submodule "Dev/Cpp/3rdParty/nativefiledialog"]
+	path = Dev/Cpp/3rdParty/nativefiledialog
+	url = https://github.com/effekseer/nativefiledialog.git
+[submodule "Dev/Cpp/3rdParty/imgui"]
+	path = Dev/Cpp/3rdParty/imgui
+	url = https://github.com/effekseer/imgui.git
+[submodule "Dev/Cpp/3rdParty/imgui-node-editor"]
+	path = Dev/Cpp/3rdParty/imgui-node-editor
+	url = https://github.com/effekseer/imgui-node-editor.git
+[submodule "Downloads/glew"]
+	path = Downloads/glew
+	url = https://github.com/effekseer/glew.git
+[submodule "Dev/Cpp/3rdParty/ImGradientHDR"]
+	path = Dev/Cpp/3rdParty/ImGradientHDR
+	url = https://github.com/effekseer/ImGradientHDR.git
+[submodule "Dev/Cpp/3rdParty/libpng"]
+	path = Dev/Cpp/3rdParty/libpng
+	url = https://github.com/effekseer/libpng
