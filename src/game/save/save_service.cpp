@@ -25,6 +25,7 @@
 #include "engine/component/sprite_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
+#include "engine/async/main_thread_command_queue.h"
 #include "engine/core/context.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
@@ -305,14 +306,6 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         return false;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(async_result_mutex_);
-        if (async_save_result_) {
-            spdlog::warn("SaveService: 检测到未消费的异步保存结果，启动新任务前自动清理。");
-            async_save_result_.reset();
-        }
-    }
-
     map_manager_.snapshotCurrentMap();
     SaveData data = capture(out_error);
     if (!out_error.empty()) {
@@ -320,40 +313,28 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         return false;
     }
 
-    async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
+    auto* main_thread_queue = &context_.getMainThreadCommandQueue();
+    auto* dispatcher = &context_.getDispatcher();
+
+    async_save_thread_.emplace([this, data = std::move(data), file_path, main_thread_queue, dispatcher]() mutable {
         std::string write_error;
         const bool success = writeSaveFile(data, file_path, write_error);
-        AsyncSaveResult result{};
-        result.file_path = file_path;
-        result.success = success;
-        result.error = std::move(write_error);
-        {
-            std::lock_guard<std::mutex> lock(async_result_mutex_);
-            async_save_result_ = std::move(result);
+
+        game::defs::AsyncSaveCompletedEvent event{};
+        event.file_path = file_path.string();
+        event.success = success;
+        event.error = std::move(write_error);
+
+        if (!main_thread_queue->enqueue([dispatcher, event = std::move(event)]() mutable {
+                dispatcher->enqueue<game::defs::AsyncSaveCompletedEvent>(std::move(event));
+            })) {
+            spdlog::warn("SaveService: 异步保存完成事件投递失败（主线程命令队列已满）。");
         }
+
         save_in_progress_.store(false, std::memory_order_release);
     });
 
     return true;
-}
-
-std::optional<SaveService::AsyncSaveResult> SaveService::consumeAsyncSaveResult() {
-    if (save_in_progress_.load(std::memory_order_acquire)) {
-        return std::nullopt;
-    }
-
-    std::optional<AsyncSaveResult> result;
-    {
-        std::lock_guard<std::mutex> lock(async_result_mutex_);
-        if (!async_save_result_) {
-            return std::nullopt;
-        }
-        result = std::move(async_save_result_);
-        async_save_result_.reset();
-    }
-
-    cleanupCompletedSaveThread();
-    return result;
 }
 
 bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::string& out_error) {

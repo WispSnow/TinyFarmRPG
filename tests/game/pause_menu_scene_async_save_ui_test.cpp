@@ -22,7 +22,7 @@ namespace {
 namespace game::scene {
 namespace {
 
-TEST(PauseMenuSceneAsyncSaveUiTest, UsesAsyncSaveAndPollsResultInUpdate) {
+TEST(PauseMenuSceneAsyncSaveUiTest, UsesAsyncSaveAndEventDrivenCompletionHandling) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -32,10 +32,10 @@ TEST(PauseMenuSceneAsyncSaveUiTest, UsesAsyncSaveAndPollsResultInUpdate) {
 
     EXPECT_NE(source.find("save_service_->saveToFileAsync"), std::string::npos)
         << "PauseMenuScene should trigger async save instead of synchronous saveToFile.";
-    EXPECT_NE(source.find("pollAsyncSaveResult();"), std::string::npos)
-        << "PauseMenuScene::update should poll async save result each frame.";
-    EXPECT_NE(source.find("consumeAsyncSaveResult"), std::string::npos)
-        << "PauseMenuScene should consume async save terminal state in update loop.";
+    EXPECT_NE(source.find("sink<game::defs::AsyncSaveCompletedEvent>()"), std::string::npos)
+        << "PauseMenuScene should subscribe async save completion event on dispatcher.";
+    EXPECT_NE(source.find("onAsyncSaveCompleted"), std::string::npos)
+        << "PauseMenuScene should handle async save terminal state in event callback.";
     EXPECT_NE(source.find("setMessage(\"Saving...\", false);"), std::string::npos)
         << "PauseMenuScene should show an in-progress saving message after async save starts.";
 }

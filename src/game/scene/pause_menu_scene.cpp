@@ -4,6 +4,7 @@
 #include "title_scene.h"
 
 #include "game/data/game_time.h"
+#include "game/defs/events.h"
 #include "game/save/save_service.h"
 
 #include "engine/audio/audio_player.h"
@@ -18,6 +19,7 @@
 #include "engine/ui/ui_panel.h"
 
 #include <entt/core/hashed_string.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -80,6 +82,8 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
 
 PauseMenuScene::~PauseMenuScene() {
     context_.getInputManager().onAction("pause"_hs).disconnect<&PauseMenuScene::onPausePressed>(this);
+    context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
+        .disconnect<&PauseMenuScene::onAsyncSaveCompleted>(this);
 }
 
 bool PauseMenuScene::init() {
@@ -88,13 +92,14 @@ bool PauseMenuScene::init() {
 
     if (!initUI()) return false;
     context_.getInputManager().onAction("pause"_hs).connect<&PauseMenuScene::onPausePressed>(this);
+    context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
+        .connect<&PauseMenuScene::onAsyncSaveCompleted>(this);
 
     if (!Scene::init()) return false;
     return true;
 }
 
 void PauseMenuScene::update(float delta_time) {
-    pollAsyncSaveResult();
     refreshSaveActionButtons();
 
     if (close_after_load_) {
@@ -344,26 +349,19 @@ void PauseMenuScene::refreshSaveActionButtons() {
     }
 }
 
-void PauseMenuScene::pollAsyncSaveResult() {
-    if (!save_service_) {
-        return;
-    }
-
-    auto result = save_service_->consumeAsyncSaveResult();
-    if (!result.has_value()) {
-        return;
-    }
-
-    if (result->success) {
+void PauseMenuScene::onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event) {
+    if (event.success) {
         setMessage("Saved", false);
+        refreshSaveActionButtons();
         return;
     }
 
     std::string message = "Save failed";
-    if (!result->error.empty()) {
-        message += ": " + result->error;
+    if (!event.error.empty()) {
+        message += ": " + event.error;
     }
     setMessage(std::move(message), true);
+    refreshSaveActionButtons();
 }
 
 void PauseMenuScene::setMessage(std::string message, bool is_error) {

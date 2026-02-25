@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 #include "engine/audio/audio_player.h"
 #include "engine/async/main_thread_command_queue.h"
@@ -38,6 +39,7 @@
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/defs/events.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/save/save_service.h"
@@ -113,17 +115,59 @@ protected:
         }
     }
 
-    static std::optional<SaveService::AsyncSaveResult> waitForAsyncSaveResult(
-        SaveService& save_service,
+    struct AsyncSaveEventCollector final {
+        std::vector<game::defs::AsyncSaveCompletedEvent> events{};
+
+        void onEvent(const game::defs::AsyncSaveCompletedEvent& event) {
+            events.push_back(event);
+        }
+    };
+
+    void pumpMainThreadAndDispatcherOnce() {
+        if (main_thread_command_queue_) {
+            (void)main_thread_command_queue_->drain();
+        }
+        dispatcher_.update();
+    }
+
+    [[nodiscard]] std::optional<game::defs::AsyncSaveCompletedEvent> waitForAsyncSaveEvent(
         std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) {
+        AsyncSaveEventCollector collector;
+        auto sink = dispatcher_.sink<game::defs::AsyncSaveCompletedEvent>();
+        sink.connect<&AsyncSaveEventCollector::onEvent>(collector);
+
         const auto deadline = std::chrono::steady_clock::now() + timeout;
         while (std::chrono::steady_clock::now() < deadline) {
-            if (auto result = save_service.consumeAsyncSaveResult(); result.has_value()) {
-                return result;
+            pumpMainThreadAndDispatcherOnce();
+            if (!collector.events.empty()) {
+                sink.disconnect<&AsyncSaveEventCollector::onEvent>(collector);
+                return collector.events.back();
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
+        sink.disconnect<&AsyncSaveEventCollector::onEvent>(collector);
         return std::nullopt;
+    }
+
+    [[nodiscard]] std::vector<game::defs::AsyncSaveCompletedEvent> collectAsyncSaveEvents(
+        std::size_t expected_count,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) {
+        AsyncSaveEventCollector collector;
+        auto sink = dispatcher_.sink<game::defs::AsyncSaveCompletedEvent>();
+        sink.connect<&AsyncSaveEventCollector::onEvent>(collector);
+
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (std::chrono::steady_clock::now() < deadline && collector.events.size() < expected_count) {
+            pumpMainThreadAndDispatcherOnce();
+            if (collector.events.size() >= expected_count) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        sink.disconnect<&AsyncSaveEventCollector::onEvent>(collector);
+        return collector.events;
     }
 
     void enlargeOpenedChestState(std::size_t count = 20000) {
@@ -323,18 +367,16 @@ protected:
     }
 };
 
-TEST(SaveServiceAsyncTest, ExposesAsyncApiAndResultType) {
+TEST(SaveServiceAsyncTest, ExposesAsyncApi) {
     using AsyncStartSignature = bool (SaveService::*)(const std::filesystem::path&, std::string&);
     using SyncSaveSignature = bool (SaveService::*)(const std::filesystem::path&, std::string&);
     using LoadSignature = bool (SaveService::*)(const std::filesystem::path&, std::string&);
     using IsSavingSignature = bool (SaveService::*)() const;
-    using ConsumeSignature = std::optional<SaveService::AsyncSaveResult> (SaveService::*)();
 
     static_assert(std::is_same_v<decltype(&SaveService::saveToFileAsync), AsyncStartSignature>);
     static_assert(std::is_same_v<decltype(&SaveService::saveToFile), SyncSaveSignature>);
     static_assert(std::is_same_v<decltype(&SaveService::loadFromFile), LoadSignature>);
     static_assert(std::is_same_v<decltype(&SaveService::isSaving), IsSavingSignature>);
-    static_assert(std::is_same_v<decltype(&SaveService::consumeAsyncSaveResult), ConsumeSignature>);
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveSucceedsAndWritesJsonFile) {
@@ -342,10 +384,10 @@ TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveSucceedsAndWritesJsonFile) {
     std::string start_error;
     ASSERT_TRUE(save_service_->saveToFileAsync(file_path, start_error)) << start_error;
 
-    const auto result = waitForAsyncSaveResult(*save_service_);
+    const auto result = waitForAsyncSaveEvent();
     ASSERT_TRUE(result.has_value()) << "Timed out waiting for async save result.";
     EXPECT_TRUE(result->success) << result->error;
-    EXPECT_EQ(result->file_path.lexically_normal(), file_path.lexically_normal());
+    EXPECT_EQ(std::filesystem::path(result->file_path).lexically_normal(), file_path.lexically_normal());
     EXPECT_TRUE(result->error.empty());
 
     ASSERT_TRUE(std::filesystem::exists(file_path));
@@ -365,11 +407,11 @@ TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveReportsWriteFailureForInvalidPath)
     std::string start_error;
     ASSERT_TRUE(save_service_->saveToFileAsync(invalid_path, start_error)) << start_error;
 
-    const auto result = waitForAsyncSaveResult(*save_service_);
+    const auto result = waitForAsyncSaveEvent();
     ASSERT_TRUE(result.has_value()) << "Timed out waiting for async failure result.";
     EXPECT_FALSE(result->success);
     EXPECT_FALSE(result->error.empty());
-    EXPECT_EQ(result->file_path.lexically_normal(), invalid_path.lexically_normal());
+    EXPECT_EQ(std::filesystem::path(result->file_path).lexically_normal(), invalid_path.lexically_normal());
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, RejectsReentrantAsyncSaveRequestsWhileSaving) {
@@ -385,10 +427,10 @@ TEST_F(SaveServiceAsyncBehaviorTest, RejectsReentrantAsyncSaveRequestsWhileSavin
     EXPECT_FALSE(save_service_->saveToFileAsync(second_path, second_error));
     EXPECT_FALSE(second_error.empty());
 
-    const auto result = waitForAsyncSaveResult(*save_service_, std::chrono::milliseconds(10000));
+    const auto result = waitForAsyncSaveEvent(std::chrono::milliseconds(10000));
     ASSERT_TRUE(result.has_value()) << "Timed out waiting for first async save result.";
     EXPECT_TRUE(result->success) << result->error;
-    EXPECT_EQ(result->file_path.lexically_normal(), first_path.lexically_normal());
+    EXPECT_EQ(std::filesystem::path(result->file_path).lexically_normal(), first_path.lexically_normal());
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, DestructorWaitsForInFlightAsyncSave) {
@@ -410,7 +452,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, DestructorWaitsForInFlightAsyncSave) {
     ASSERT_GT(std::filesystem::file_size(file_path), 0U);
 }
 
-TEST_F(SaveServiceAsyncBehaviorTest, NewAsyncSaveClearsStaleUnconsumedTerminalResult) {
+TEST_F(SaveServiceAsyncBehaviorTest, AsyncSavePublishesCompletionEventForEachRequest) {
     const auto first_path = tempFilePath("async_save_stale_result_1.json");
     const auto second_path = tempFilePath("async_save_stale_result_2.json");
 
@@ -426,14 +468,24 @@ TEST_F(SaveServiceAsyncBehaviorTest, NewAsyncSaveClearsStaleUnconsumedTerminalRe
     std::string second_error;
     ASSERT_TRUE(save_service_->saveToFileAsync(second_path, second_error)) << second_error;
 
-    const auto result = waitForAsyncSaveResult(*save_service_);
-    ASSERT_TRUE(result.has_value()) << "Timed out waiting for second async save result.";
-    EXPECT_TRUE(result->success) << result->error;
-    EXPECT_EQ(result->file_path.lexically_normal(), second_path.lexically_normal())
-        << "Stale first result should be cleared before launching second async save.";
+    const auto events = collectAsyncSaveEvents(2, std::chrono::milliseconds(10000));
+    ASSERT_GE(events.size(), 2U) << "Timed out waiting for async save completion events.";
 
-    EXPECT_FALSE(save_service_->consumeAsyncSaveResult().has_value())
-        << "No leftover async result should remain after consuming terminal state.";
+    bool found_first = false;
+    bool found_second = false;
+    for (const auto& event : events) {
+        if (std::filesystem::path(event.file_path).lexically_normal() == first_path.lexically_normal()) {
+            found_first = true;
+            EXPECT_TRUE(event.success) << event.error;
+        }
+        if (std::filesystem::path(event.file_path).lexically_normal() == second_path.lexically_normal()) {
+            found_second = true;
+            EXPECT_TRUE(event.success) << event.error;
+        }
+    }
+
+    EXPECT_TRUE(found_first) << "First async save completion event should be delivered.";
+    EXPECT_TRUE(found_second) << "Second async save completion event should be delivered.";
 }
 
 TEST(SaveServiceAsyncTest, SaveToFileReusesExtractedWriteHelper) {
