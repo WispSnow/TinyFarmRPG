@@ -130,10 +130,6 @@ bool CompositePass::render(const utils::Rect& viewport) {
         static_cast<GLsizei>(std::round(viewport.size.x)), 
         static_cast<GLsizei>(std::round(viewport.size.y)));
     program_->use();
-    if (u_scene_tex_ >= 0) glUniform1i(u_scene_tex_, 0);
-    if (u_light_tex_ >= 0) glUniform1i(u_light_tex_, 1);
-    if (u_emissive_tex_ >= 0) glUniform1i(u_emissive_tex_, 2);
-    if (u_bloom_tex_ >= 0) glUniform1i(u_bloom_tex_, 3);
     if (u_ambient_ >= 0) glUniform3fv(u_ambient_, 1, glm::value_ptr(ambient_));
     if (u_bloom_strength_ >= 0) glUniform1f(u_bloom_strength_, bloom_strength_);
 

@@ -71,7 +71,9 @@ ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept {
     program_ = other.program_;
     vertex_path_ = std::move(other.vertex_path_);
     fragment_path_ = std::move(other.fragment_path_);
+    uniform_location_cache_ = std::move(other.uniform_location_cache_);
     other.program_ = 0;
+    other.uniform_location_cache_.clear();
     return *this;
 }
 
@@ -146,6 +148,7 @@ void ShaderProgram::clean() {
     }
     vertex_path_.clear();
     fragment_path_.clear();
+    uniform_location_cache_.clear();
 }
 
 GLint ShaderProgram::uniformLocation(std::string_view name) const {
@@ -153,10 +156,17 @@ GLint ShaderProgram::uniformLocation(std::string_view name) const {
         spdlog::error("ShaderProgram::uniformLocation: 没有有效的着色器程序");
         return -1;
     }
-    GLint location = glGetUniformLocation(program_, name.data());
-    if (location == -1) {
-        spdlog::error("无法获取 uniform 位置: {}", name.data());
+    const std::string key{name};
+    const auto cached = uniform_location_cache_.find(key);
+    if (cached != uniform_location_cache_.end()) {
+        return cached->second;
     }
+
+    GLint location = glGetUniformLocation(program_, key.c_str());
+    if (location == -1) {
+        spdlog::warn("无法获取 uniform 位置: {}", key);
+    }
+    uniform_location_cache_.emplace(key, location);
     return location;
 }
 
@@ -189,6 +199,7 @@ bool ShaderProgram::linkProgram(GLuint vertex_shader, GLuint fragment_shader) {
     // 销毁当前程序，并使用新创建的程序
     clean();
     program_ = program;
+    uniform_location_cache_.clear();
     return true;
 }
 

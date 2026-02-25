@@ -232,42 +232,24 @@ bool SpriteBatch::flush(const FlushParams& params) {
         return false;
     }
 
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-
-    // 确保 GPU 缓冲区足够大。如果超出当前容量，则分配更大的缓冲区（ensureCapacity 将大小翻倍），
-    // 然后重新绑定并上传新的顶点数据。
-    size_t vertex_bytes = vertices_.size() * sizeof(Vertex);
-    if (vertex_bytes > vertex_buffer_capacity_bytes_) {
-        size_t required_sprites = vertices_.size() / 4 + 1;
+    const size_t vertex_bytes = vertices_.size() * sizeof(Vertex);
+    const size_t index_bytes = indices_.size() * sizeof(uint32_t);
+    const bool needs_vertex_resize = vertex_bytes > vertex_buffer_capacity_bytes_;
+    const bool needs_index_resize = index_bytes > index_buffer_capacity_bytes_;
+    if (needs_vertex_resize || needs_index_resize) {
+        const size_t required_sprites = vertices_.size() / 4;
         if (!ensureCapacity(required_sprites)) {
-            glBindVertexArray(0);
             reset();
             spdlog::error("SpriteBatch::flush: ensureCapacity failed");
             return false;
         }
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     }
+
+    glBindVertexArray(vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_bytes, vertices_.data());
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    size_t index_bytes = indices_.size() * sizeof(uint32_t);
-    // 索引缓冲区同样遵循相同的增长逻辑：如果当前绘制批次不再适合，则重新分配更大的缓冲区（ensureCapacity 将大小翻倍），
-    // 然后重新绑定并上传新的索引数据。
-    if (index_bytes > index_buffer_capacity_bytes_) {
-        size_t required_sprites = vertices_.size() / 4 + 1;
-        if (!ensureCapacity(required_sprites)) {
-            glBindVertexArray(0);
-            reset();
-            spdlog::error("SpriteBatch::flush: ensureCapacity failed");
-            return false;
-        }
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_bytes, vertices_.data());
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    }
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, index_bytes, indices_.data());
 
     // 使用传入的着色器程序，设置视图投影矩阵和取样器等

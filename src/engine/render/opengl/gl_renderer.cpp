@@ -230,7 +230,7 @@ void GLRenderer::drawTextureGradient(GLuint texture, const glm::vec4& dst_rect, 
 
 void GLRenderer::addPointLight(const glm::vec2& pos, float radius,
                                const engine::utils::PointLightOptions* options) {
-    if (!point_lights_enabled_) return;
+    if (!point_lights_enabled_ || !lighting_pass_) return;
     engine::utils::PointLightOptions defaults{};
     const auto* resolved = options ? options : &defaults;
     lighting_pass_->addPointLight(pos, radius, *resolved);
@@ -239,7 +239,7 @@ void GLRenderer::addPointLight(const glm::vec2& pos, float radius,
 void GLRenderer::addSpotLight(const glm::vec2& pos, float radius,
                       const glm::vec2& dir,
                       const engine::utils::SpotLightOptions* options) {
-    if (!spot_lights_enabled_) return;
+    if (!spot_lights_enabled_ || !lighting_pass_) return;
     engine::utils::SpotLightOptions defaults{};
     const auto* resolved = options ? options : &defaults;
     lighting_pass_->addSpotLight(pos, radius, dir, *resolved);
@@ -247,7 +247,7 @@ void GLRenderer::addSpotLight(const glm::vec2& pos, float radius,
 
 void GLRenderer::addDirectionalLight(const glm::vec2& dir,
                              const engine::utils::DirectionalLightOptions* options) {
-    if (!directional_lights_enabled_) return;
+    if (!directional_lights_enabled_ || !lighting_pass_) return;
     engine::utils::DirectionalLightOptions defaults{};
     const auto* resolved = options ? options : &defaults;
     lighting_pass_->addDirectionalLight(dir, *resolved);
@@ -572,16 +572,50 @@ void GLRenderer::resize(int width, int height) {
 }
 
 void GLRenderer::clean() {
-    if (scene_pass_) scene_pass_->clean();
-    if (lighting_pass_) lighting_pass_->clean();
-    if (emissive_pass_) emissive_pass_->clean();
-    if (bloom_pass_) bloom_pass_->clean();
-    if (composite_pass_) composite_pass_->clean();
-    if (ui_pass_) ui_pass_->clean();
+    if (scene_pass_) {
+        scene_pass_->clean();
+        scene_pass_.reset();
+    }
+    if (lighting_pass_) {
+        lighting_pass_->clean();
+        lighting_pass_.reset();
+    }
+    if (emissive_pass_) {
+        emissive_pass_->clean();
+        emissive_pass_.reset();
+    }
+    if (bloom_pass_) {
+        bloom_pass_->clean();
+        bloom_pass_.reset();
+    }
+    if (composite_pass_) {
+        composite_pass_->clean();
+        composite_pass_.reset();
+    }
+    if (ui_pass_) {
+        ui_pass_->clean();
+        ui_pass_.reset();
+    }
+    pass_stats_ = {};
+    scene_color_tex_ = 0;
+    light_color_tex_ = 0;
+    emissive_color_tex_ = 0;
+    bloom_tex_ = 0;
 #ifdef TF_ENABLE_DEBUG_UI
-    if (imgui_layer_) imgui_layer_->clean();
+    if (imgui_layer_) {
+        imgui_layer_->clean();
+        imgui_layer_.reset();
+    }
 #endif
-    if (render_context_) render_context_->clean();
+    if (shader_library_) {
+        shader_library_->clear();
+        shader_library_.reset();
+    }
+    viewport_manager_.reset();
+    if (render_context_) {
+        render_context_->clean();
+        render_context_.reset();
+    }
 }
 
 void GLRenderer::setBloomEnabled(bool enabled) {
