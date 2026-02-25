@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "engine/utils/math.h"
+#include "render_pass.h"
 #include "sprite_batch.h"
 
 namespace engine::render::opengl {
@@ -15,7 +16,7 @@ namespace engine::render::opengl {
 class ShaderLibrary;
 class ShaderProgram;
 
-class UIPass {
+class UIPass : public ReloadableRenderPass {
     int viewport_width_{0};
     int viewport_height_{0};
 
@@ -34,8 +35,8 @@ public:
     UIPass(const UIPass&) = delete;
     UIPass& operator=(const UIPass&) = delete;
 
-    bool reload(ShaderLibrary& library);
-    void clean();
+    bool reload(ShaderLibrary& library) override;
+    void clean() override;
 
     bool flush(const utils::Rect& viewport);
 

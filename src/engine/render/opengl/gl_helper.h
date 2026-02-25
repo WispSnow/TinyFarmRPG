@@ -48,4 +48,43 @@ public:
     ScopedGLUnpackAlignment& operator=(const ScopedGLUnpackAlignment&) = delete;
 };
 
+struct GLColorAttachmentDesc final {
+    GLenum internal_format{GL_RGBA8};
+    GLenum format{GL_RGBA};
+    GLenum type{GL_UNSIGNED_BYTE};
+    GLint min_filter{GL_NEAREST};
+    GLint mag_filter{GL_NEAREST};
+    GLint wrap_s{GL_CLAMP_TO_EDGE};
+    GLint wrap_t{GL_CLAMP_TO_EDGE};
+    GLint unpack_alignment{4};
+};
+
+[[nodiscard]] bool createFBOWithColorAttachment(int width,
+                                                int height,
+                                                const GLColorAttachmentDesc& desc,
+                                                GLuint& out_fbo,
+                                                GLuint& out_tex);
+
+class ScopedGLBlendFunc final {
+    GLboolean previous_enabled_{GL_FALSE};
+    GLint previous_src_rgb_{GL_ONE};
+    GLint previous_dst_rgb_{GL_ZERO};
+    GLint previous_src_alpha_{GL_ONE};
+    GLint previous_dst_alpha_{GL_ZERO};
+    void capturePreviousState();
+    void restorePreviousState() const;
+
+public:
+    ScopedGLBlendFunc(GLenum src_factor, GLenum dst_factor, bool ensure_enabled = true);
+    ScopedGLBlendFunc(GLenum src_rgb,
+                      GLenum dst_rgb,
+                      GLenum src_alpha,
+                      GLenum dst_alpha,
+                      bool ensure_enabled = true);
+    ~ScopedGLBlendFunc();
+
+    ScopedGLBlendFunc(const ScopedGLBlendFunc&) = delete;
+    ScopedGLBlendFunc& operator=(const ScopedGLBlendFunc&) = delete;
+};
+
 } // namespace engine::render::opengl

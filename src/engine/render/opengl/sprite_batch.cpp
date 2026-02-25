@@ -4,6 +4,7 @@
 // 实现了 GLRenderer 使用的 CPU 端批处理层。将精灵队列到 CPU 向量中，批量刷新以最小化绘制调用次数与状态切换。
 // -----------------------------------------------------------------------------
 #include "sprite_batch.h"
+#include "default_textures.h"
 #include "gl_helper.h"
 #include <spdlog/spdlog.h>
 #include <glm/gtc/epsilon.hpp>
@@ -13,6 +14,18 @@
 #include <limits>
 
 namespace engine::render::opengl {
+namespace {
+
+[[nodiscard]] uint32_t packRGBA8(const glm::vec4& color) {
+    const glm::vec4 clamped = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
+    const uint32_t r = static_cast<uint32_t>(std::round(clamped.r * 255.0f));
+    const uint32_t g = static_cast<uint32_t>(std::round(clamped.g * 255.0f));
+    const uint32_t b = static_cast<uint32_t>(std::round(clamped.b * 255.0f));
+    const uint32_t a = static_cast<uint32_t>(std::round(clamped.a * 255.0f));
+    return (r & 0xFFu) | ((g & 0xFFu) << 8u) | ((b & 0xFFu) << 16u) | ((a & 0xFFu) << 24u);
+}
+
+} // namespace
 
 std::unique_ptr<SpriteBatch> SpriteBatch::create(size_t initial_capacity) {
     auto sprite_batch = std::unique_ptr<SpriteBatch>(new SpriteBatch());
@@ -47,7 +60,8 @@ bool SpriteBatch::init(size_t initial_capacity) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, uv_)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, color_)));
+    glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex),
+                          reinterpret_cast<void*>(offsetof(Vertex, color_rgba8_)));
     glEnableVertexAttribArray(2);
     glBindVertexArray(0);
 
@@ -170,13 +184,15 @@ bool SpriteBatch::queueSprite(GLuint texture, bool use_texture, const glm::vec4&
     }
 
     for (int i = 0; i < 4; ++i) {
+        glm::vec4 vertex_color;
         if (has_gradient) {
             const float projection = glm::dot(verts[i].pos_, direction);
             const float t = glm::clamp((projection - range_start) / (range_end - range_start), 0.0f, 1.0f);
-            verts[i].color_ = glm::mix(start_color_vec, end_color_vec, t);
+            vertex_color = glm::mix(start_color_vec, end_color_vec, t);
         } else {
-            verts[i].color_ = start_color_vec;
+            vertex_color = start_color_vec;
         }
+        verts[i].color_rgba8_ = packRGBA8(vertex_color);
         vertices_.push_back(verts[i]);
     }
 
@@ -232,42 +248,24 @@ bool SpriteBatch::flush(const FlushParams& params) {
         return false;
     }
 
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-
-    // 确保 GPU 缓冲区足够大。如果超出当前容量，则分配更大的缓冲区（ensureCapacity 将大小翻倍），
-    // 然后重新绑定并上传新的顶点数据。
-    size_t vertex_bytes = vertices_.size() * sizeof(Vertex);
-    if (vertex_bytes > vertex_buffer_capacity_bytes_) {
-        size_t required_sprites = vertices_.size() / 4 + 1;
+    const size_t vertex_bytes = vertices_.size() * sizeof(Vertex);
+    const size_t index_bytes = indices_.size() * sizeof(uint32_t);
+    const bool needs_vertex_resize = vertex_bytes > vertex_buffer_capacity_bytes_;
+    const bool needs_index_resize = index_bytes > index_buffer_capacity_bytes_;
+    if (needs_vertex_resize || needs_index_resize) {
+        const size_t required_sprites = vertices_.size() / 4;
         if (!ensureCapacity(required_sprites)) {
-            glBindVertexArray(0);
             reset();
             spdlog::error("SpriteBatch::flush: ensureCapacity failed");
             return false;
         }
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     }
+
+    glBindVertexArray(vao_);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_bytes, vertices_.data());
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    size_t index_bytes = indices_.size() * sizeof(uint32_t);
-    // 索引缓冲区同样遵循相同的增长逻辑：如果当前绘制批次不再适合，则重新分配更大的缓冲区（ensureCapacity 将大小翻倍），
-    // 然后重新绑定并上传新的索引数据。
-    if (index_bytes > index_buffer_capacity_bytes_) {
-        size_t required_sprites = vertices_.size() / 4 + 1;
-        if (!ensureCapacity(required_sprites)) {
-            glBindVertexArray(0);
-            reset();
-            spdlog::error("SpriteBatch::flush: ensureCapacity failed");
-            return false;
-        }
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_bytes, vertices_.data());
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    }
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, index_bytes, indices_.data());
 
     // 使用传入的着色器程序，设置视图投影矩阵和取样器等
@@ -361,28 +359,24 @@ bool SpriteBatch::ensureDefaultTexture() {
     if (default_texture_ != 0) {
         return true;
     }
-    glGenTextures(1, &default_texture_);
-    if (default_texture_ == 0) {
-        spdlog::error("SpriteBatch::ensureDefaultTexture: glGenTextures failed");
+    GLuint white_tex = 0;
+    GLuint black_tex = 0;
+    if (!DefaultTextures::acquire(white_tex, black_tex)) {
+        spdlog::error("SpriteBatch::ensureDefaultTexture: acquire shared default textures failed");
         return false;
     }
-    glBindTexture(GL_TEXTURE_2D, default_texture_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    const uint32_t white_pixel = 0xFFFFFFFFu;
-    const ScopedGLUnpackAlignment scoped_unpack_alignment(4);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &white_pixel);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return logGlErrors("SpriteBatch::ensureDefaultTexture");
+    (void)black_tex;
+    default_texture_ = white_tex;
+    default_texture_acquired_ = true;
+    return true;
 }
 
 void SpriteBatch::destroyDefaultTexture() {
-    if (default_texture_ != 0) {
-        glDeleteTextures(1, &default_texture_);
-        default_texture_ = 0;
+    if (default_texture_acquired_) {
+        DefaultTextures::release();
+        default_texture_acquired_ = false;
     }
+    default_texture_ = 0;
 }
 
 } // namespace engine::render::opengl

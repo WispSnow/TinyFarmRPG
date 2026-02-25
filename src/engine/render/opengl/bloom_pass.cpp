@@ -3,6 +3,7 @@
 #include "shader_library.h"
 #include "shader_program.h"
 #include "gl_helper.h"
+#include "fullscreen_quad.h"
 #include <entt/core/hashed_string.hpp>
 
 using namespace entt::literals;
@@ -53,26 +54,14 @@ bool BloomPass::init(ShaderLibrary& library) {
 }
 
 bool BloomPass::createBuffers() {
-    if (vao_ != 0 && vbo_ != 0) return true;
-    glGenVertexArrays(1, &vao_);
-    glGenBuffers(1, &vbo_);
-    glBindVertexArray(vao_);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    const float quad[] = {
-        -1.f, -1.f, 0.f, 0.f,
-         1.f, -1.f, 1.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f, -1.f, 0.f, 0.f,
-         1.f,  1.f, 1.f, 1.f,
-        -1.f,  1.f, 0.f, 1.f,
-    };
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
-    return logGlErrors("BloomPass::createBuffers");
+    if (vao_ != 0 && vertex_count_ > 0) {
+        return true;
+    }
+    if (!FullscreenQuad::acquire(vao_, vertex_count_)) {
+        spdlog::error("BloomPass::createBuffers: acquire shared fullscreen quad failed");
+        return false;
+    }
+    return true;
 }
 
 bool BloomPass::createTargets(int width, int height) {
@@ -94,7 +83,7 @@ bool BloomPass::createTargets(int width, int height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
         glBindFramebuffer(GL_FRAMEBUFFER, ping_fbo_[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ping_tex_[i], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -111,7 +100,7 @@ bool BloomPass::createTargets(int width, int height) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
         glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pong_tex_[i], 0);
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -143,15 +132,18 @@ void BloomPass::destroyTargets() {
 
 void BloomPass::clean() {
     destroyTargets();
-    if (vbo_ != 0) { glDeleteBuffers(1, &vbo_); vbo_ = 0; }
-    if (vao_ != 0) { glDeleteVertexArrays(1, &vao_); vao_ = 0; }
+    if (vao_ != 0) {
+        FullscreenQuad::release();
+        vao_ = 0;
+        vertex_count_ = 0;
+    }
     blur_program_ = nullptr;
     last_draw_calls_ = 0;
     last_levels_ = 0;
 }
 
 bool BloomPass::process(GLuint emissive_tex) {
-    if (!blur_program_ || vao_ == 0 || emissive_tex == 0) {
+    if (!blur_program_ || vao_ == 0 || vertex_count_ <= 0 || emissive_tex == 0) {
         spdlog::error("BloomPass::process: 没有有效的 blur_program 或 vao 或 emissive_tex");
         last_draw_calls_ = 0;
         last_levels_ = 0;
@@ -181,7 +173,7 @@ bool BloomPass::process(GLuint emissive_tex) {
         }
         if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
         if (u_blur_sigma_ >= 0) glUniform1f(u_blur_sigma_, sigma_);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
         ++draw_calls;
 
         glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i]);
@@ -189,31 +181,30 @@ bool BloomPass::process(GLuint emissive_tex) {
         if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / float(w), 1.0f / float(h));
         if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 0.0f, 1.0f);
         glBindTexture(GL_TEXTURE_2D, ping_tex_[i]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
         ++draw_calls;
     }
 
     // 上采样 + 添加
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE);
-
-    for (int i = BLOOM_LEVELS - 1; i > 0; --i) {
-        const int w = level_width_[i - 1];
-        const int h = level_height_[i - 1];
-        glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i - 1]);
-        glViewport(0, 0, w, h);
-        if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / level_width_[i], 1.0f / level_height_[i]);
-        if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, pong_tex_[i]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        ++draw_calls;
+    {
+        const ScopedGLBlendFunc scoped_blend(GL_ONE, GL_ONE);
+        for (int i = BLOOM_LEVELS - 1; i > 0; --i) {
+            const int w = level_width_[i - 1];
+            const int h = level_height_[i - 1];
+            glBindFramebuffer(GL_FRAMEBUFFER, pong_fbo_[i - 1]);
+            glViewport(0, 0, w, h);
+            if (u_blur_texel_size_ >= 0) glUniform2f(u_blur_texel_size_, 1.0f / level_width_[i], 1.0f / level_height_[i]);
+            if (u_blur_direction_ >= 0) glUniform2f(u_blur_direction_, 1.0f, 0.0f);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, pong_tex_[i]);
+            glDrawArrays(GL_TRIANGLES, 0, vertex_count_);
+            ++draw_calls;
+        }
     }
 
     glBindVertexArray(0);
     glUseProgram(0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     bloom_tex_ = pong_tex_[0];
     last_draw_calls_ = draw_calls;
     last_levels_ = static_cast<uint32_t>(BLOOM_LEVELS);

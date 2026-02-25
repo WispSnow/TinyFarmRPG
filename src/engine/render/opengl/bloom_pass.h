@@ -7,13 +7,14 @@
 #include <glad/glad.h>
 #include <glm/vec2.hpp>
 #include <memory>
+#include "render_pass.h"
 
 namespace engine::render::opengl {
 
 class ShaderLibrary;
 class ShaderProgram;
 
-class BloomPass {
+class BloomPass : public RenderPass {
     static constexpr size_t BLOOM_LEVELS{4};
 
     int viewport_width_{0};
@@ -27,7 +28,7 @@ class BloomPass {
 
     // 全屏四边形几何体
     GLuint vao_{0};
-    GLuint vbo_{0};
+    GLsizei vertex_count_{0};
 
     // Ping-pong FBO 和纹理，每个级别一个
     GLuint ping_fbo_[BLOOM_LEVELS]{0};
@@ -54,7 +55,7 @@ public:
     BloomPass(const BloomPass&) = delete;
     BloomPass& operator=(const BloomPass&) = delete;
 
-    void clean();
+    void clean() override;
 
     // 执行泛光，使用给定的自发光纹理作为输入
     bool process(GLuint emissive_tex);

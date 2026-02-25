@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <memory>
+#include <unordered_map>
 
 namespace engine::render::opengl {
 
@@ -18,6 +19,7 @@ class ShaderProgram final{
     GLuint program_{0};
     std::string vertex_path_;
     std::string fragment_path_;
+    mutable std::unordered_map<std::string, GLint> uniform_location_cache_{};
 
 public:
     [[nodiscard]] static std::unique_ptr<ShaderProgram> create(std::string_view vertex_path,
