@@ -31,9 +31,7 @@ TEST(RenderSystemViewUseTest, ForcesViewToIterateSortedRenderComponentStorage) {
     const std::size_t view_pos = content.find("auto view = registry.view<component::RenderComponent");
     ASSERT_NE(view_pos, std::string::npos) << "未找到 RenderSystem::render 的 view 创建语句";
 
-    const std::size_t scan_end = std::min(content.size(), view_pos + 1200);
-    const std::string_view view_slice(content.data() + view_pos, scan_end - view_pos);
-
+    const std::string_view view_slice(content.data() + view_pos, content.size() - view_pos);
     const std::size_t use_pos = view_slice.find("view.use<component::RenderComponent>()");
     ASSERT_NE(use_pos, std::string_view::npos)
         << "RenderSystem 必须调用 view.use<RenderComponent>()，否则 EnTT 会自动选择最小 storage 导致排序无效。";

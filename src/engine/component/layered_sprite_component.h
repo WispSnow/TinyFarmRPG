@@ -10,6 +10,8 @@
 namespace engine::component {
 
 struct LayeredSpriteLayer {
+    static constexpr entt::id_type INVALID_TEXTURE_ID{};
+
     std::string slot_{};
     float depth_offset_{0.0f};
     std::unordered_map<entt::id_type, entt::id_type> texture_by_animation_id_{};
@@ -18,7 +20,7 @@ struct LayeredSpriteLayer {
         if (const auto it = texture_by_animation_id_.find(animation_id); it != texture_by_animation_id_.end()) {
             return it->second;
         }
-        return entt::id_type{};
+        return INVALID_TEXTURE_ID;
     }
 };
 
