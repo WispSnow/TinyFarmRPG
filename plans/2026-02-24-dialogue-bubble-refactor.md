@@ -16,13 +16,13 @@
 - `UIManager` 在 render 阶段统一处理所有世界锚点元素的插值投影（使用插值相机 + 插值锚点坐标），屏幕固定元素不受影响。
 - 对话气泡的**位置相关事件**（`DialogueShowEvent` / `DialogueMoveEvent`）改为 `dispatcher.trigger()` 同步分发，消除 1 tick 跟随延迟。
 - `DialogueBubble` 退化为纯视图组件（View），不直接持有 `dispatcher`、`channel`、`world_position_`。
-- 新增游戏层 `DialogueBubbleController` 处理事件订阅与业务逻辑路由（精简的 controller，不含投影逻辑），并以 `view_id` 解析目标视图，支持动态移除/重建。
-- 业务系统（DialogueSystem、ChestSystem、ItemUseSystem 等）调用点无需任何改动。
+- 新增游戏层 `DialogueBubbleController` 处理事件订阅与业务逻辑路由（精简的 controller，不含投影逻辑），通过 `DialogueBubbleView*` 直接路由目标视图。
+- 业务系统（DialogueSystem、ChestSystem、ItemUseSystem 等）源码调用点保持不变；事件派发语义通过 shared helper / script bridge 统一调整（Show/Move: enqueue → trigger）。
 - 为后续世界锚点 UI（`FloatingText`、`DamageNumber`、`QuestMarker`、`BuffIcon`、`HealthBar`）打好引擎级地基。
 
 ## 非目标
 - 不修改 `DialogueShowEvent` / `DialogueMoveEvent` / `DialogueHideEvent` 事件结构。
-- 不修改任何业务系统（DialogueSystem、ChestSystem、ItemUseSystem）的业务判断与调用点（仍通过 `emitDialogueBubble*` helper 发事件）。
+- 不直接修改任何业务系统（DialogueSystem、ChestSystem、ItemUseSystem）的业务判断与调用点（仍通过 `emitDialogueBubble*` helper 发事件）；允许修改 helper / script bridge 的派发语义以满足零 tick 跟随。
 - 不在本次重构中解决文本自动换行的像素级测量问题（可后续独立推进）。
 - 不引入新的渲染通道（仅调整 `GameScene::render()` 中相机恢复时机，确保 UI 使用插值相机）。
 
@@ -387,19 +387,20 @@ void UIManager::resolveWorldAnchors(const engine::render::Camera& camera,
 │                                                                  │
 │  DialogueBubbleController (事件路由)                               │
 │    订阅 DialogueShow/Move/HideEvent                               │
-│    按 channel 查找 slot（channel -> view_id + offset）并解析 View： │
+│    按 channel 查找 slot（channel -> view* + offset）并直接调用 View： │
 │      view->setWorldAnchor(world_pos, offset)                      │
 │      view->setText(formatted_text)                                │
 │      view->setVisible(true/false)                                 │
-│    若 view_id 已失效（动态移除）则自动跳过并清理 slot               │
+│    约定：View 生命周期变更前需显式 unregisterBubble(channel)         │
 │    不做坐标投影（由引擎层 UIManager 统一处理）                       │
 └──────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────┐
-│ 业务系统 (零改动)                                                 │
-│  DialogueSystem ──── trigger(DialogueShow/MoveEvent)             │
-│  ChestSystem ─────── trigger(DialogueShow/MoveEvent, channel=1)  │
-│  ItemUseSystem ───── trigger(DialogueShow/MoveEvent, channel=2)  │
+│ 业务系统调用层（源码零改动）                                       │
+│  DialogueSystem ──── emitDialogueBubbleShow/Move(...)            │
+│  ChestSystem ─────── emitDialogueBubbleShow/Move(..., channel=1) │
+│  ItemUseSystem ───── emitDialogueBubbleShow/Move(..., channel=2) │
+│  Show/Move 的 trigger 语义由 helper / script bridge 统一承载       │
 │  Hide 事件保持 enqueue（兼容现有脚本/调用路径）                     │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -435,19 +436,18 @@ DialogueBubbleView(engine::core::Context& context,
 ```cpp
 class DialogueBubbleController {
 public:
-    DialogueBubbleController(entt::dispatcher& dispatcher, engine::ui::UIManager& ui_manager);
+    explicit DialogueBubbleController(entt::dispatcher& dispatcher);
     ~DialogueBubbleController(); // RAII disconnect
 
     void registerBubble(std::uint8_t channel,
-                        entt::id_type view_id,
+                        DialogueBubbleView* view,
                         glm::vec2 screen_offset = {0.0f, -4.0f});
     void unregisterBubble(std::uint8_t channel);
 
 private:
     entt::dispatcher& dispatcher_;
-    engine::ui::UIManager& ui_manager_;
     struct BubbleSlot {
-        entt::id_type view_id{entt::null};
+        DialogueBubbleView* view{nullptr};
         glm::vec2 screen_offset{0.0f, -4.0f};
     };
     std::unordered_map<std::uint8_t, BubbleSlot> slots_;
@@ -456,16 +456,15 @@ private:
     void onMove(const game::defs::DialogueMoveEvent& evt);
     void onHide(const game::defs::DialogueHideEvent& evt);
 
-    DialogueBubbleView* resolveView(std::uint8_t channel);
     static std::string formatDialogueText(std::string_view speaker, std::string_view text);
 };
 ```
 
 **核心逻辑**：
-- `onShow`：按 channel 查找 slot，`resolveView()` 成功后调用 `view->setWorldAnchor(world_pos, offset)` + `view->setText(formatted)` + `view->setVisible(true)`；未注册或 view 已失效时安全忽略。
+- `onShow`：按 channel 查找 slot，调用 `view->setWorldAnchor(world_pos, offset)` + `view->setText(formatted)` + `view->setVisible(true)`；未注册或 view 为空时安全忽略。
 - `onMove`：按 channel 查找 slot，调用 `view->setWorldAnchor(new_pos, offset)` 更新世界坐标（无队列延迟）。
 - `onHide`：按 channel 查找 slot，调用 `view->clearWorldAnchor()` + `view->setVisible(false)`。
-- `resolveView()`：通过 `ui_manager_.getRootElement()->getChildById(view_id)` 动态解析 `DialogueBubbleView`；解析失败时自动 `erase(channel)` 防止后续野指针问题。
+- 生命周期约束：当 View 被移除/重建时，调用方需先 `unregisterBubble(channel)`，再 `registerBubble(channel, new_view)`。
 - **不需要 `update()` 方法** — 投影由 UIManager 统一处理。
 
 ### 8. GameScene 接入
@@ -487,26 +486,29 @@ constexpr entt::id_type BUBBLE_CH0_ID = "dialogue_bubble_ch0"_hs;
 constexpr entt::id_type BUBBLE_CH1_ID = "dialogue_bubble_ch1"_hs;
 constexpr entt::id_type BUBBLE_CH2_ID = "dialogue_bubble_ch2"_hs;
 
-// 1. 创建 controller（dispatcher + ui_manager，用于按 id 解析 view）
-dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref, *ui_manager_);
+// 1. 创建 controller（仅依赖 dispatcher）
+dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref);
 
 // 2. 创建 DialogueBubbleView（不传 dispatcher/channel）
 auto bubble_0 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+auto* bubble_0_ptr = bubble_0.get();
 bubble_0->setId(BUBBLE_CH0_ID);
 ui_manager_->addElement(std::move(bubble_0));
 
 auto bubble_1 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+auto* bubble_1_ptr = bubble_1.get();
 bubble_1->setId(BUBBLE_CH1_ID);
 ui_manager_->addElement(std::move(bubble_1));
 
 auto bubble_2 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+auto* bubble_2_ptr = bubble_2.get();
 bubble_2->setId(BUBBLE_CH2_ID);
 ui_manager_->addElement(std::move(bubble_2));
 
-// 3. 注册到 controller（channel -> view_id；支持动态移除后安全失效）
-dialogue_controller_->registerBubble(0, BUBBLE_CH0_ID);
-dialogue_controller_->registerBubble(1, BUBBLE_CH1_ID);
-dialogue_controller_->registerBubble(2, BUBBLE_CH2_ID, {0.0f, -56.0f});
+// 3. 注册到 controller（channel -> view*）
+dialogue_controller_->registerBubble(0, bubble_0_ptr);
+dialogue_controller_->registerBubble(1, bubble_1_ptr);
+dialogue_controller_->registerBubble(2, bubble_2_ptr, {0.0f, -56.0f});
 ```
 
 **`game_scene.cpp::render()` 变更 — 延迟相机恢复**：
@@ -590,7 +592,7 @@ DialogueSystem              DialogueBubbleController         DialogueBubbleView 
     │            ── fixedUpdate() 阶段（同步 trigger） ──           │                       │
     ├─ trigger(ShowEvent) ────────→ onShow()                       │                       │
     │                              ├─ formatDialogueText()        │                       │
-    │                              ├─ resolveView(channel,id)     │                       │
+    │                              ├─ slot 查找(channel)          │                       │
     │                              ├─ view->setWorldAnchor() ────→ prev = current         │
     │                              │                              │ current = new_pos      │
     │                              │                              │ invalidateLayout()     │
@@ -699,7 +701,7 @@ ui_manager->addElement(std::move(quest_icon));
 - 创建 `dialogue_bubble_controller.h/.cpp`。
 - 实现事件订阅/断开（RAII）。
 - 实现 `registerBubble()/unregisterBubble()` 与事件处理（调用 view 的 `setWorldAnchor` / `setText` / `setVisible`）。
-- slot 使用 `view_id` 而非 raw pointer，事件触发时动态解析 view；解析失败自动清理 slot。
+- slot 直接存 `DialogueBubbleView*`；由调用方遵守 `register/unregister` 生命周期契约。
 - 迁移文本格式化逻辑为 `formatDialogueText()` 静态方法。
 
 ### Step 7：事件发送时序优化（零 tick 跟随延迟）
@@ -723,27 +725,27 @@ ui_manager->addElement(std::move(quest_icon));
 - 验证场景切换/暂停菜单无崩溃。
 
 ## 待办清单（用于追踪）
-- [ ] T1 `ui_element.h` 新增 PositioningMode 枚举与 world_anchor/previous_world_anchor 成员/接口/友元
-- [ ] T1.1 `ui_element.cpp` 实现 `setWorldAnchor()`（含 previous 快照、首次 prev=current）/ `clearWorldAnchor()`
-- [ ] T1.2 `ui_element.cpp` 实现 `applyWorldAnchorPosition()`（含子树脏标记传播 + diff guard）
-- [ ] T1.3 `ui_element.cpp` 适配 `ensureLayout()` WorldAnchor 分支（含非直接子元素 fallback warn）
-- [ ] T2 `ui_manager.h/.cpp` `render()` 签名新增 alpha；新增 `resolveWorldAnchors(camera, alpha)` 含 `glm::mix` 插值
-- [ ] T2.1 `scene.cpp` `Scene::render()` 传 `interpolation_alpha` 给 `ui_manager_->render()`
-- [ ] T2.2 `game_scene.cpp::render()` 延迟相机恢复到 `Scene::render()` 之后
-- [ ] T3 新增 `tests/engine/ui/ui_world_anchor_test.cpp`（必做）
-- [ ] T3.1 测试：模式切换、previous 快照、首次进入 prev=current、pivot 计算、子树脏化传播、diff guard、插值投影、Screen 元素无副作用、非直接子元素 fallback
-- [ ] T4 更新 `docs/engine/layout-contract.md` 新增世界锚点章节（含插值说明）（必做）
-- [ ] T5 重命名 `DialogueBubble` → `DialogueBubbleView` 并瘦身
-- [ ] T5.1 移除 dispatcher/channel/world_position 相关成员和方法
-- [ ] T5.2 简化构造函数
-- [ ] T6 新增 `DialogueBubbleController` 实现事件路由
-- [ ] T6.1 迁移文本格式化逻辑为 `formatDialogueText()` 静态方法
-- [ ] T6.2 `DialogueBubbleController` 改为 `view_id` 注册（新增 `unregisterBubble`，动态解析失效自动清理）
-- [ ] T7 `system_helpers.h`：`emitDialogueBubbleShow/Move` 改 `trigger`
-- [ ] T7.1 `tinyfarm_script_module.cpp`：`tf.dialogue.show` 改 `trigger`
-- [ ] T8 更新 `game_scene.h/.cpp` 接入（initUI / clean）
-- [ ] T9 更新 `src/CMakeLists.txt` 和 `tests/CMakeLists.txt`
-- [ ] T10 全量编译 + `ctest` 通过
+- [x] T1 `ui_element.h` 新增 PositioningMode 枚举与 world_anchor/previous_world_anchor 成员/接口/友元
+- [x] T1.1 `ui_element.cpp` 实现 `setWorldAnchor()`（含 previous 快照、首次 prev=current）/ `clearWorldAnchor()`
+- [x] T1.2 `ui_element.cpp` 实现 `applyWorldAnchorPosition()`（含子树脏标记传播 + diff guard）
+- [x] T1.3 `ui_element.cpp` 适配 `ensureLayout()` WorldAnchor 分支（含非直接子元素 fallback warn）
+- [x] T2 `ui_manager.h/.cpp` `render()` 签名新增 alpha；新增 `resolveWorldAnchors(camera, alpha)` 含 `glm::mix` 插值
+- [x] T2.1 `scene.cpp` `Scene::render()` 传 `interpolation_alpha` 给 `ui_manager_->render()`
+- [x] T2.2 `game_scene.cpp::render()` 延迟相机恢复到 `Scene::render()` 之后
+- [x] T3 新增 `tests/engine/ui/ui_world_anchor_test.cpp`（必做）
+- [x] T3.1 测试：模式切换、previous 快照、首次进入 prev=current、pivot 计算、子树脏化传播、diff guard、插值投影、Screen 元素无副作用、非直接子元素 fallback
+- [x] T4 更新 `docs/engine/layout-contract.md` 新增世界锚点章节（含插值说明）（必做）
+- [x] T5 重命名 `DialogueBubble` → `DialogueBubbleView` 并瘦身
+- [x] T5.1 移除 dispatcher/channel/world_position 相关成员和方法
+- [x] T5.2 简化构造函数
+- [x] T6 新增 `DialogueBubbleController` 实现事件路由
+- [x] T6.1 迁移文本格式化逻辑为 `formatDialogueText()` 静态方法
+- [x] T6.2 `DialogueBubbleController` 使用 `DialogueBubbleView*` 注册（新增 `unregisterBubble` 生命周期契约）
+- [x] T7 `system_helpers.h`：`emitDialogueBubbleShow/Move` 改 `trigger`
+- [x] T7.1 `tinyfarm_script_module.cpp`：`tf.dialogue.show` 改 `trigger`
+- [x] T8 更新 `game_scene.h/.cpp` 接入（initUI / clean）
+- [x] T9 更新 `src/CMakeLists.txt` 和 `tests/CMakeLists.txt`
+- [x] T10 全量编译 + `ctest` 通过
 - [ ] T11 手动回归验证三类 channel 气泡行为（含插值平滑性验证与零 tick 跟随）
 
 ## 测试计划
@@ -766,6 +768,11 @@ ui_manager->addElement(std::move(quest_icon));
 - `tests/engine/ui/ui_layout_invalidation_test.cpp` — 确认新增代码不破坏现有脏标记语义。
 - `tests/engine/ui/ui_stack_layout_test.cpp` / `ui_grid_layout_test.cpp` — 确认布局容器行为不变。
 
+### 已补充：DialogueBubbleController 行为测试
+- `tests/game/dialogue_bubble_controller_test.cpp`：
+  - Show / Move / Hide 事件驱动 view 状态切换（world anchor + text + visible）。
+  - 显式生命周期契约：先 `unregisterBubble(channel)` 再移除 View，重建后 `registerBubble(channel, new_view)`，事件路由可恢复。
+
 ### 必做：手动回归
 - NPC 对话（channel 0）：靠近 NPC 交互，气泡出现在头顶，跟随 NPC 移动，离开后消失。
 - **零 tick 跟随**：NPC 移动时，气泡应与实体在同一渲染帧内同步更新，不出现“落后一个 fixed tick”的视觉延迟。
@@ -774,16 +781,15 @@ ui_manager->addElement(std::move(quest_icon));
 - 物品使用提示（channel 2）：使用物品，提示气泡出现在正确偏移位置（-56px）。
 - **首次显示无飞入**：气泡首次出现时不应从屏幕原点/角落飞入（`previous == current` 保障）。
 - 未注册 channel（例如脚本发送 channel=255）：无崩溃、事件被安全忽略。
-- 动态移除 BubbleView（运行时 removeChild）后，再收到该 channel 事件：无崩溃，controller 自动清理失效 slot。
+  - 动态移除 BubbleView（运行时 removeChild）前先 `unregisterBubble(channel)`，重建后 `registerBubble(channel, new_view)`；事件路由恢复且无崩溃。
 - 场景切换：切换地图后无崩溃，旧气泡不残留。
 - 暂停菜单：暂停/恢复后气泡行为正常。
 - 屏幕固定 UI 不受影响：InventoryUI、HotbarUI、TimeClock 等位置和交互正常。
 
-### 可选：DialogueBubbleController 单元测试
-- 事件路由测试：不同 channel 事件仅影响对应 View。
-- 未注册 channel 安全忽略。
-- 已注册但 view_id 失效（视图已移除）时自动清理 slot，不发生野指针访问。
-- `formatDialogueText()` 文本格式化测试。
+### 可选：DialogueBubbleController 扩展测试
+- 未注册 channel 安全忽略（当前未单独拆分断言）。
+- `formatDialogueText()` 文本格式化边界测试（超长单词、多行混合、空 speaker）。
+- 生命周期契约测试：先 `unregister` 再移除 View，确保无悬空访问。
 
 ## 验收标准（DoD）
 - `UIElement` 支持 `PositioningMode::WorldAnchor`，根节点直接子元素可通过 `setWorldAnchor()` 锚定世界坐标，内置 `previous_world_anchor_` 自动快照。
@@ -792,8 +798,8 @@ ui_manager->addElement(std::move(quest_icon));
 - `DialogueShowEvent` / `DialogueMoveEvent` 使用 `trigger` 同步分发，气泡锚点更新不再落后一个 fixed tick。
 - `applyWorldAnchorPosition()` 正确传播子树脏标记，子节点渲染/命中位置与父节点一致。
 - `DialogueBubbleView` 不直接订阅业务事件，不持有 `channel` / `world_position` / `dispatcher`。
-- `DialogueBubbleController` 仅做事件路由和文本格式化，不含投影逻辑；并通过 `view_id` 解析视图，支持动态移除安全退化。
-- 业务系统（DialogueSystem、ChestSystem、ItemUseSystem）零改动。
+- `DialogueBubbleController` 仅做事件路由和文本格式化，不含投影逻辑；按 `DialogueBubbleView*` 直接分发，生命周期通过 `register/unregister` 契约管理。
+- 业务系统（DialogueSystem、ChestSystem、ItemUseSystem）源码调用点零改动；Show/Move 的 `trigger` 语义由 helper / script bridge 统一承载。
 - 现有三类 channel（0/1/2）气泡行为与重构前一致（预期差异仅为修复“落后 1 tick”跟随延迟）。
 - 新增引擎层单元测试全部通过，既有布局测试回归通过。
 - `docs/engine/layout-contract.md` 同步更新。
@@ -810,8 +816,8 @@ ui_manager->addElement(std::move(quest_icon));
   - **缓解**：`GameScene::clean()` 统一 `clear<DialogueShow/Move/HideEvent>()`。
 - **风险**：未注册 channel 事件导致异常。
   - **缓解**：controller 使用 `unordered_map` + 查找守卫，未命中安全忽略。
-- **风险**：运行时动态移除 BubbleView 后，controller 若持有 raw pointer 会触发野指针。
-  - **缓解**：slot 存 `view_id`，事件触发时动态解析 view；解析失败自动清理 slot，并提供 `unregisterBubble()` 主动解绑。
+- **风险**：运行时动态移除 BubbleView 后，controller 持有 raw pointer 可能悬空。
+  - **缓解**：建立显式生命周期契约：移除前必须 `unregisterBubble(channel)`，重建后重新 `registerBubble(channel, new_view)`；`GameScene::clean()` 保持先销毁 controller。
 - **风险**：`trigger` 同步分发可能引入系统间时序耦合（回调在 fixedUpdate 内立即执行）。
   - **缓解**：仅将位置相关事件（Show/Move）切为 `trigger`，回调逻辑保持纯 UI 状态写入（`setWorldAnchor/setText/setVisible`），不反向触发 gameplay 逻辑。
 - **风险**：`GameScene::render()` 延迟相机恢复后，其他依赖 `Scene::render()` 后相机位置的逻辑受影响。
