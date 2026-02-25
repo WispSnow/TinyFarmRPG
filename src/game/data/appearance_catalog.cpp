@@ -15,15 +15,28 @@ namespace game::data {
 
 namespace {
 
-[[nodiscard]] std::string normalizeGender(std::string_view gender) {
-    std::string value(gender);
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+[[nodiscard]] std::string toLower(std::string_view value) {
+    std::string result(value);
+    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
+    return result;
+}
+
+[[nodiscard]] std::string normalizeGender(std::string_view gender) {
+    const std::string value = toLower(gender);
     if (value == "female") {
         return "female";
     }
     return "male";
+}
+
+[[nodiscard]] std::string normalizeDirection(std::string_view direction) {
+    const std::string lowered = toLower(direction);
+    if (lowered == "down" || lowered == "up" || lowered == "left" || lowered == "right") {
+        return lowered;
+    }
+    return "down";
 }
 
 [[nodiscard]] bool isPngFile(const std::filesystem::path& path) {
@@ -77,6 +90,7 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
     layer_order_.clear();
     slot_dirs_.clear();
     action_dirs_.clear();
+    action_layouts_.clear();
     action_available_slots_.clear();
     profiles_.clear();
     slot_variants_.clear();
@@ -127,6 +141,53 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
     if (action_dirs_.empty()) {
         spdlog::error("AppearanceCatalog: 缺少 action_dirs");
         return false;
+    }
+
+    if (const auto it = root.find("action_layouts"); it != root.end()) {
+        if (!it->is_object()) {
+            spdlog::error("AppearanceCatalog: action_layouts 必须是 object");
+            return false;
+        }
+        for (const auto& [action_key, layout_json] : it->items()) {
+            if (!layout_json.is_object()) {
+                spdlog::error("AppearanceCatalog: action_layouts.{} 必须是 object", action_key);
+                return false;
+            }
+
+            ActionLayoutConfig layout{};
+            const auto frames = layout_json.value("frames_per_direction", 0);
+            if (frames <= 0) {
+                spdlog::error("AppearanceCatalog: action_layouts.{}.frames_per_direction 必须 > 0", action_key);
+                return false;
+            }
+            layout.frames_per_direction_ = static_cast<std::size_t>(frames);
+
+            if (const auto order_it = layout_json.find("direction_block_order");
+                order_it != layout_json.end() && order_it->is_array()) {
+                for (const auto& value : *order_it) {
+                    if (!value.is_string()) {
+                        continue;
+                    }
+                    layout.direction_block_order_.push_back(normalizeDirection(value.get<std::string>()));
+                }
+            }
+            if (layout.direction_block_order_.empty()) {
+                layout.direction_block_order_ = {"down", "up", "right", "left"};
+            }
+
+            layout.left_fallback_ = toLower(layout_json.value("left_fallback", std::string{"mirror_right"}));
+            if (layout.left_fallback_.empty()) {
+                layout.left_fallback_ = "none";
+            }
+            action_layouts_.insert_or_assign(action_key, std::move(layout));
+        }
+    }
+
+    for (const auto& [action_key, _] : action_dirs_) {
+        if (!action_layouts_.contains(action_key)) {
+            spdlog::error("AppearanceCatalog: action_layouts 缺少 action_key: {}", action_key);
+            return false;
+        }
     }
 
     if (const auto it = root.find("runtime_switchable_slots"); it != root.end() && it->is_array()) {
@@ -244,6 +305,60 @@ std::optional<std::string> AppearanceCatalog::actionKeyFromAnimationName(std::st
     return std::nullopt;
 }
 
+std::optional<std::string> AppearanceCatalog::directionKeyFromAnimationName(std::string_view animation_name) const {
+    if (animation_name.empty()) {
+        return std::nullopt;
+    }
+
+    std::string name(animation_name);
+    const auto separator = name.rfind('_');
+    if (separator == std::string::npos || separator + 1 >= name.size()) {
+        return std::nullopt;
+    }
+
+    const std::string direction = normalizeDirection(name.substr(separator + 1));
+    return direction;
+}
+
+std::optional<AppearanceCatalog::LayerLayout> AppearanceCatalog::resolveLayerLayout(std::string_view action_key,
+                                                                                     std::string_view direction_key) const {
+    const auto action_it = action_layouts_.find(std::string(action_key));
+    if (action_it == action_layouts_.end()) {
+        return std::nullopt;
+    }
+
+    const auto direction = normalizeDirection(direction_key);
+    const auto& layout = action_it->second;
+    auto find_direction_index = [&layout](std::string_view direction_name) -> std::optional<std::size_t> {
+        const auto it = std::find(layout.direction_block_order_.begin(),
+                                  layout.direction_block_order_.end(),
+                                  direction_name);
+        if (it == layout.direction_block_order_.end()) {
+            return std::nullopt;
+        }
+        return static_cast<std::size_t>(std::distance(layout.direction_block_order_.begin(), it));
+    };
+
+    if (const auto index = find_direction_index(direction); index.has_value()) {
+        return LayerLayout{*index, layout.frames_per_direction_, false};
+    }
+
+    if (direction == "left" && layout.left_fallback_ == "mirror_right") {
+        if (const auto right_index = find_direction_index("right"); right_index.has_value()) {
+            return LayerLayout{*right_index, layout.frames_per_direction_, true};
+        }
+    }
+
+    if (const auto down_index = find_direction_index("down"); down_index.has_value()) {
+        return LayerLayout{*down_index, layout.frames_per_direction_, false};
+    }
+
+    if (!layout.direction_block_order_.empty()) {
+        return LayerLayout{0u, layout.frames_per_direction_, false};
+    }
+    return std::nullopt;
+}
+
 std::optional<AppearanceCatalog::LayerTexture> AppearanceCatalog::resolveLayerTexture(std::string_view action_key,
                                                                                        std::string_view slot,
                                                                                        std::string_view variant,
@@ -276,7 +391,8 @@ std::optional<AppearanceCatalog::LayerTexture> AppearanceCatalog::resolveLayerTe
     return LayerTexture{*texture_path, texture_id};
 }
 
-std::vector<std::string> AppearanceCatalog::collectPreloadTexturePaths(const AppearanceProfile& profile) const {
+std::vector<std::string> AppearanceCatalog::collectPreloadTexturePaths(const AppearanceProfile& profile,
+                                                                       std::size_t runtime_variant_limit_per_slot) const {
     std::unordered_set<std::string> unique_paths{};
 
     for (const auto& [action_key, _] : action_dirs_) {
@@ -295,7 +411,14 @@ std::vector<std::string> AppearanceCatalog::collectPreloadTexturePaths(const App
             }
 
             if (isRuntimeSwitchableSlot(slot)) {
-                for (const auto& variant : variantsForSlot(slot)) {
+                const auto& candidates = variantsForSlot(slot);
+                std::size_t preload_count = candidates.size();
+                if (runtime_variant_limit_per_slot != kPreloadAllRuntimeVariants) {
+                    preload_count = std::min(preload_count, runtime_variant_limit_per_slot);
+                }
+
+                for (std::size_t i = 0; i < preload_count; ++i) {
+                    const auto& variant = candidates[i];
                     if (const auto resolved = resolveLayerTexture(action_key, slot, variant, profile.gender_); resolved) {
                         unique_paths.insert(resolved->path_);
                     }

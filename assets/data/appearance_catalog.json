@@ -10,7 +10,11 @@
         "weapon"
     ],
     "runtime_switchable_slots": [
-        "hair"
+        "skin",
+        "eyes",
+        "clothes",
+        "hair",
+        "acc"
     ],
     "slot_dirs": {
         "skin": "Skins",
@@ -29,6 +33,88 @@
         "sickle": "5. Axe and Sickle",
         "watering": "7. Watering",
         "planting": "13.4 Carrying - Throwing items"
+    },
+    "action_layouts": {
+        "idle": {
+            "frames_per_direction": 4,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "walk": {
+            "frames_per_direction": 6,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "hoe": {
+            "frames_per_direction": 6,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "pickaxe": {
+            "frames_per_direction": 6,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "axe": {
+            "frames_per_direction": 6,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "sickle": {
+            "frames_per_direction": 6,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "watering": {
+            "frames_per_direction": 8,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        },
+        "planting": {
+            "frames_per_direction": 5,
+            "direction_block_order": [
+                "down",
+                "up",
+                "right",
+                "left"
+            ],
+            "left_fallback": "none"
+        }
     },
     "weapon_action_variants": {
         "hoe": "Hoe/1",
@@ -51,13 +137,79 @@
         }
     },
     "slot_variants": {
+        "skin": [
+            "1",
+            "2",
+            "3",
+            "4"
+        ],
+        "eyes": [
+            "Blue",
+            "Brown",
+            "Green",
+            "Black"
+        ],
+        "clothes": [
+            "Farm/Blue",
+            "Farm/Green",
+            "Farm/Pink",
+            "Farm/Purple",
+            "Farm/Red"
+        ],
         "hair": [
             "Standard/Brown",
             "Standard/Black",
             "Standard/Blonde",
+            "Standard/Ginger",
+            "Fawn/Black",
+            "Fawn/Blonde",
+            "Fawn/Brown",
+            "Fawn/Ginger",
+            "Iridessa/Black",
+            "Iridessa/Blonde",
+            "Iridessa/Brown",
+            "Iridessa/Ginger",
+            "Josh/Black",
+            "Josh/Blonde",
+            "Josh/Brown",
+            "Josh/Ginger",
+            "Lyria/Black",
+            "Lyria/Blonde",
             "Lyria/Brown",
+            "Lyria/Ginger",
+            "Sebastian/Black",
+            "Sebastian/Blonde",
             "Sebastian/Brown",
-            "Josh/Brown"
+            "Sebastian/Ginger",
+            "Silvermist/Black",
+            "Silvermist/Blonde",
+            "Silvermist/Brown",
+            "Silvermist/Ginger"
+        ],
+        "acc": [
+            "none",
+            "Farm",
+            "Pirate",
+            "Wizard",
+            "Leprechaun",
+            "Frog",
+            "Chicken",
+            "Cook",
+            "Cow",
+            "Deer",
+            "Beard/Black",
+            "Beard/Blonde",
+            "Beard/Brown",
+            "Beard/Ginger",
+            "Butterfly/Blue",
+            "Butterfly/Green",
+            "Butterfly/Pink",
+            "Butterfly/Purple",
+            "Butterfly/Red",
+            "Elf/1",
+            "Elf/2",
+            "Elf/3",
+            "Elf/4"
         ]
     }
 }

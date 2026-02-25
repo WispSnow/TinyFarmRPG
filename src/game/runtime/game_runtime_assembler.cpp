@@ -130,12 +130,14 @@ void collectItemCatalogAssets(const game::data::ItemCatalog& catalog, engine::re
 }
 
 void collectAppearanceAssets(const game::data::AppearanceCatalog& catalog, engine::resource::AssetRegistry& registry) {
+    constexpr std::size_t kRuntimeVariantPreloadLimitPerSlot = 3;
+
     const auto* profile = catalog.defaultProfile();
     if (!profile) {
         return;
     }
 
-    const auto preload_paths = catalog.collectPreloadTexturePaths(*profile);
+    const auto preload_paths = catalog.collectPreloadTexturePaths(*profile, kRuntimeVariantPreloadLimitPerSlot);
     for (const auto& path : preload_paths) {
         registerTexturePath(registry, hashPath(path), path);
     }
@@ -513,6 +515,13 @@ namespace game::runtime {
 bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     auto& resource_manager = params.context.getResourceManager();
     auto& asset_registry = resource_manager.getAssetRegistry();
+    // AppearanceSystem 在调试换装时会按需请求纹理加载（可能不在首批预加载集合中），
+    // 通过 registry.ctx() 注入 ResourceManager*，避免 engine 层反向依赖 game 配置对象。
+    if (auto* resource_ptr = params.registry.ctx().find<engine::resource::ResourceManager*>()) {
+        *resource_ptr = &resource_manager;
+    } else {
+        params.registry.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
+    }
 
     collectUIPresetAssets(params.context.getUIPresetManager(), asset_registry);
 
