@@ -24,6 +24,10 @@ namespace game::data {
 struct GameTime;
 }
 
+namespace game::defs {
+struct AsyncSaveCompletedEvent;
+}
+
 namespace game::scene {
 
 class PauseMenuScene final : public engine::scene::Scene {
@@ -73,7 +77,7 @@ private:
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();
     void refreshSaveActionButtons();
-    void pollAsyncSaveResult();
+    void onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event);
     void setMessage(std::string message, bool is_error);
 
     bool onPausePressed();

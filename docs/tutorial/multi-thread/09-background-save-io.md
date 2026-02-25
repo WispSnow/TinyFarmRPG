@@ -159,7 +159,7 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
 
 ```mermaid
 flowchart TD
-    A["save_in_progress_ 当前值"] --> B{== expected (false)?}
+    A["save_in_progress_ 当前值"] --> B{"== expected (false)?"}
     B -->|是| C["原子设为 true ✅<br/>获得保存权"]
     B -->|否| D["保持不变 ❌<br/>说明已有保存在进行"]
 ```
@@ -179,6 +179,21 @@ if (save_in_progress_ == false) {
 为什么用 CAS 而不是 `if (!flag) flag = true`？因为后者是「读+判断+写」三步操作，两个线程可能同时读到 false，都认为自己抢到了。CAS 是原子的，保证只有一个赢家。
 
 > 在本项目中，保存只在主线程发起，所以并发实际不会发生。但 CAS 是防御性编程，保证即使未来架构变化也不会出 bug。
+
+**步骤 2：清理未消费的旧结果**
+
+```cpp
+{
+    std::lock_guard<std::mutex> lock(async_result_mutex_);
+    if (async_save_result_) {
+        async_save_result_.reset();
+    }
+}
+```
+
+正常情况下，调用方每帧都会调用 `consumeAsyncSaveResult()` 取走上次的结果，此处不应有残留。但为了防御性考虑——例如调用方逻辑缺失、或者两次保存间隔极短——这里主动检查并清理，避免旧结果占据 `async_save_result_` 导致新结果写入后逻辑混乱。
+
+注意此操作在 CAS 成功之后执行，所以此时 `save_in_progress_` 已经是 `true`，后台线程不可能正在写入 `async_save_result_`，加锁仅是为了与主线程的 `consumeAsyncSaveResult()` 保持互斥访问的一致性约定。
 
 **步骤 3：主线程快照**
 
