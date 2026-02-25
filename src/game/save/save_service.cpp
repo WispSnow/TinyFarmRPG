@@ -41,8 +41,8 @@
 #include <array>
 #include <cmath>
 #include <ctime>
-#include <exception>
 #include <fstream>
+#include <iterator>
 #include <unordered_set>
 #include <utility>
 
@@ -164,6 +164,38 @@ std::optional<std::vector<ResourceNodeSaveData>> convertPendingResourceNodes(
         });
     }
     return nodes;
+}
+
+bool parseJsonFileNoExceptions(const std::filesystem::path& file_path,
+                               nlohmann::json& out_json,
+                               std::string& out_error) {
+    std::ifstream in(file_path, std::ios::binary);
+    if (!in.is_open()) {
+        out_error = "无法打开存档文件: " + file_path.string();
+        return false;
+    }
+
+    const std::string content{
+        std::istreambuf_iterator<char>(in),
+        std::istreambuf_iterator<char>()
+    };
+    if (in.bad()) {
+        out_error = "读取存档文件失败: " + file_path.string();
+        return false;
+    }
+
+    out_json = nlohmann::json::parse(content, nullptr, false);
+    if (out_json.is_discarded()) {
+        out_error = "解析存档 JSON 失败: " + file_path.string();
+        return false;
+    }
+
+    if (!out_json.is_object()) {
+        out_error = "存档 JSON 根节点不是对象: " + file_path.string();
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace
@@ -288,25 +320,19 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         return false;
     }
 
-    try {
-        async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
-            std::string write_error;
-            const bool success = writeSaveFile(data, file_path, write_error);
-            AsyncSaveResult result{};
-            result.file_path = file_path;
-            result.success = success;
-            result.error = std::move(write_error);
-            {
-                std::lock_guard<std::mutex> lock(async_result_mutex_);
-                async_save_result_ = std::move(result);
-            }
-            save_in_progress_.store(false, std::memory_order_release);
-        });
-    } catch (const std::exception& e) {
+    async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
+        std::string write_error;
+        const bool success = writeSaveFile(data, file_path, write_error);
+        AsyncSaveResult result{};
+        result.file_path = file_path;
+        result.success = success;
+        result.error = std::move(write_error);
+        {
+            std::lock_guard<std::mutex> lock(async_result_mutex_);
+            async_save_result_ = std::move(result);
+        }
         save_in_progress_.store(false, std::memory_order_release);
-        out_error = std::string("启动异步保存线程失败: ") + e.what();
-        return false;
-    }
+    });
 
     return true;
 }
@@ -338,17 +364,8 @@ bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::stri
         return false;
     }
 
-    std::ifstream in(file_path);
-    if (!in.is_open()) {
-        out_error = "无法打开存档文件: " + file_path.string();
-        return false;
-    }
-
     nlohmann::json json;
-    try {
-        in >> json;
-    } catch (const std::exception& e) {
-        out_error = std::string("解析存档 JSON 失败: ") + e.what();
+    if (!parseJsonFileNoExceptions(file_path, json, out_error)) {
         return false;
     }
 
