@@ -269,7 +269,7 @@ bool GameScene::registerDebugPanels() {
     auto& dispatcher = context_.getDispatcher();
 
     debug_ui_manager.registerPanel(
-        std::make_unique<game::debug::PlayerDebugPanel>(registry_, dispatcher),
+        std::make_unique<game::debug::PlayerDebugPanel>(registry_, dispatcher, services_->appearance_catalog.get()),
         false,
         engine::debug::PanelCategory::Game);
 

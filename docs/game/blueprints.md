@@ -35,10 +35,22 @@
 - `sprite`（必需）：静态精灵（站立显示）
 - `animations`（必需）：动画表（idle/walk/hoe/...）
 - `speed`（可选，默认 100）
+- `appearance`（可选）：玩家分层外观默认配置（见下）
 - `sounds`（可选）：动作音效触发配置（见 3.4）
 - `wander_radius`（可选，默认 0；>0 表示 NPC 会游走）
 - `dialogue_id`（可选）：对话脚本 id
 - `interact_distance`（可选，默认 80）
+
+`appearance` 结构（`FND-008`）：
+- `profile`：外观 profile id（对应 `assets/data/appearance_catalog.json` 的 `profiles`）
+- `gender`：`male` / `female`（影响 eyes 子目录）
+- `slots`：slot -> variant，例如：
+  - `skin: "1"`
+  - `eyes: "Blue"`
+  - `clothes: "Farm/Blue"`
+  - `hair: "Standard/Brown"`
+  - `acc: "none"`
+  - `weapon: "auto"`
 
 ### 3.2 `animal_blueprint.json`（顶层 object map）
 与 actor 基本一致，额外字段：

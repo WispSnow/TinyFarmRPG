@@ -35,6 +35,12 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     input.player.hotbar.active_slot = 2;
     input.player.hotbar.inventory_slot_indices = {0, 1, -1, -1, -1};
 
+    input.appearance_state.gender = "female";
+    input.appearance_state.slots = {
+        {"hair", "Lyria/Brown"},
+        {"skin", "2"},
+    };
+
     MapSaveData map{};
     map.map_name = "farm";
     map.last_updated_day = 6;
@@ -90,6 +96,9 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
 
     EXPECT_EQ(output.player.hotbar.active_slot, input.player.hotbar.active_slot);
     EXPECT_EQ(output.player.hotbar.inventory_slot_indices, input.player.hotbar.inventory_slot_indices);
+
+    EXPECT_EQ(output.appearance_state.gender, input.appearance_state.gender);
+    EXPECT_EQ(output.appearance_state.slots, input.appearance_state.slots);
 
     ASSERT_EQ(output.maps.size(), 1u);
     EXPECT_EQ(output.maps[0].map_name, map.map_name);

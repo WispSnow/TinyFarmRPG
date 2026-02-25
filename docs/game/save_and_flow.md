@@ -46,7 +46,10 @@ flowchart LR
 - `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v3`）。
 - `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节。
 - `MapManager::snapshotCurrentMap()`：把“当前地图的动态实体”写回持久层（否则存档可能漏掉当前地图状态）。
-- `schema v3` 预留字段：`quest_state`、`skill_state`、`appearance_state`、`combat_state`，当前默认写入 `{}` 作为后续系统扩展位。
+- `schema v3` 预留字段：`quest_state`、`skill_state`、`combat_state` 仍为扩展位。
+- `appearance_state` 在 `FND-008` 后已落地：
+  - `gender`
+  - `slots`（slot -> variant，如 `hair: "Lyria/Brown"`）
 
 ## 3) 关键不变量：保存前必须 snapshot 当前地图
 
@@ -72,3 +75,4 @@ flowchart LR
 - `schema_version` 不支持：新版本存档拒绝加载（避免误读导致更坏状态）。
 - 地图加载失败：`player.map_name` 不存在或 world 文件不包含对应地图。
 - UI 不同步：确认 `SaveService::apply` 是否触发了必要的 `InventorySyncCommand/HotbarSyncCommand/HotbarActivateCommand`。
+- 外观未恢复：确认玩家实体存在 `AppearanceComponent + LayeredSpriteComponent`，并在 `apply` 后触发 `RefreshAppearanceCommand`。

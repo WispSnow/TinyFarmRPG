@@ -3,6 +3,7 @@
 #include "game/defs/crop_defs.h"
 #include <glm/vec2.hpp>
 #include <entt/entity/fwd.hpp>
+#include <entt/signal/fwd.hpp>
 #include <cstdint>
 
 namespace engine::spatial {
@@ -10,6 +11,9 @@ namespace engine::spatial {
 }
 namespace engine::resource {
     class AutoTileLibrary;
+}
+namespace game::data {
+    class AppearanceCatalog;
 }
 namespace engine::component {
     struct Sprite;
@@ -25,16 +29,22 @@ class EntityFactory {
 
     engine::spatial::SpatialIndexManager* spatial_index_manager_ = nullptr;  ///< @brief 空间索引管理器（非拥有指针）
     engine::resource::AutoTileLibrary* auto_tile_library_ = nullptr;         ///< @brief 自动图块库（非拥有指针）
+    entt::dispatcher* dispatcher_ = nullptr;                                  ///< @brief 命令总线（非拥有指针）
+    const game::data::AppearanceCatalog* appearance_catalog_ = nullptr;       ///< @brief 外观配置目录（非拥有指针）
     
 public:
     EntityFactory(entt::registry& registry,
                   BlueprintManager& blueprint_manager,
                   engine::spatial::SpatialIndexManager* spatial_index_manager = nullptr,
-                  engine::resource::AutoTileLibrary* auto_tile_library = nullptr)
+                  engine::resource::AutoTileLibrary* auto_tile_library = nullptr,
+                  entt::dispatcher* dispatcher = nullptr,
+                  const game::data::AppearanceCatalog* appearance_catalog = nullptr)
         : registry_(registry),
           blueprint_manager_(blueprint_manager),
           spatial_index_manager_(spatial_index_manager),
-          auto_tile_library_(auto_tile_library) {}
+          auto_tile_library_(auto_tile_library),
+          dispatcher_(dispatcher),
+          appearance_catalog_(appearance_catalog) {}
     ~EntityFactory() = default;
 
     [[nodiscard]] entt::entity createActor(const entt::id_type actor_name_id, const glm::vec2& position);

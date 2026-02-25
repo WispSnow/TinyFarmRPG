@@ -96,7 +96,19 @@
                 "direction": ["down", "up", "right"]
             }
         },
-        "speed": 100.0
+        "speed": 100.0,
+        "appearance": {
+            "profile": "player_default",
+            "gender": "male",
+            "slots": {
+                "skin": "1",
+                "eyes": "Blue",
+                "clothes": "Farm/Blue",
+                "hair": "Standard/Brown",
+                "acc": "none",
+                "weapon": "auto"
+            }
+        }
     },
     "friend": {
         "name": "Lyria",

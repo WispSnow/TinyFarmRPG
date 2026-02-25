@@ -208,6 +208,28 @@ MobBlueprintCommon parseMobBlueprintCommon(const nlohmann::json& json, float def
     return common;
 }
 
+AppearanceBlueprint parseAppearanceBlueprint(const nlohmann::json& json) {
+    AppearanceBlueprint appearance{};
+    if (!json.is_object()) {
+        return appearance;
+    }
+
+    appearance.enabled_ = true;
+    appearance.profile_id_ = json.value("profile", std::string{});
+    appearance.gender_ = json.value("gender", std::string{"male"});
+
+    if (const auto slots_it = json.find("slots"); slots_it != json.end() && slots_it->is_object()) {
+        for (const auto& [slot, variant] : slots_it->items()) {
+            if (!variant.is_string()) {
+                continue;
+            }
+            appearance.slot_variants_.emplace(slot, variant.get<std::string>());
+        }
+    }
+
+    return appearance;
+}
+
 [[nodiscard]] bool loadBlueprintJsonObjectFile(std::string_view file_path, nlohmann::json& out_json, std::string_view label) {
     const std::string prefix = std::string(label) + "配置";
     return engine::utils::loadJsonObjectFile(file_path, out_json, prefix, spdlog::level::err);
@@ -238,7 +260,8 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
                                                 common.animations,
                                                 common.wander_radius,
                                                 common.dialogue_id,
-                                                common.interact_distance});
+                                                common.interact_distance,
+                                                parseAppearanceBlueprint(actor_obj.value("appearance", nlohmann::json{}))});
     }
     return true;
 }

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <nlohmann/json_fwd.hpp>
@@ -105,6 +106,8 @@ struct SkillStateSaveData {
 };
 
 struct AppearanceStateSaveData {
+    std::string gender{"male"};
+    std::unordered_map<std::string, std::string> slots{};
 };
 
 struct CombatStateSaveData {

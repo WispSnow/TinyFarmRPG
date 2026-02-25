@@ -25,8 +25,11 @@
 #include "engine/ui/ui_preset_manager.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
+#include "game/component/appearance_component.h"
 #include "game/data/game_time.h"
+#include "game/data/appearance_catalog.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
 #ifdef TF_ENABLE_SCRIPTING
@@ -35,6 +38,7 @@
 #endif
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
+#include "game/system/appearance_system.h"
 #include "game/system/animation_event_system.h"
 #include "game/system/camera_follow_system.h"
 #include "game/system/chest_system.h"
@@ -57,6 +61,7 @@
 #include "game/system/time_of_day_light_system.h"
 #include "game/system/time_system.h"
 #include "game/world/map_manager.h"
+#include "engine/component/layered_sprite_component.h"
 #include "game/world/map_loading_settings.h"
 #include "game/world/world_state.h"
 
@@ -121,6 +126,18 @@ void collectBlueprintAssets(const game::factory::BlueprintManager& manager, engi
 void collectItemCatalogAssets(const game::data::ItemCatalog& catalog, engine::resource::AssetRegistry& registry) {
     for (const auto& [_, icon] : catalog.icons()) {
         registerImageTexture(registry, icon);
+    }
+}
+
+void collectAppearanceAssets(const game::data::AppearanceCatalog& catalog, engine::resource::AssetRegistry& registry) {
+    const auto* profile = catalog.defaultProfile();
+    if (!profile) {
+        return;
+    }
+
+    const auto preload_paths = catalog.collectPreloadTexturePaths(*profile);
+    for (const auto& path : preload_paths) {
+        registerTexturePath(registry, hashPath(path), path);
     }
 }
 
@@ -304,6 +321,17 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     return true;
 }
 
+[[nodiscard]] bool ensureAppearanceCatalog(game::runtime::GameRuntimeServices& services) {
+    if (!services.appearance_catalog) {
+        services.appearance_catalog = std::make_shared<game::data::AppearanceCatalog>();
+        if (!services.appearance_catalog->loadFromFile("assets/data/appearance_catalog.json")) {
+            spdlog::error("加载外观目录配置失败");
+            return false;
+        }
+    }
+    return true;
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
@@ -360,7 +388,9 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
         registry,
         *services.blueprint_manager,
         &spatial_index_manager,
-        &auto_tile_library);
+        &auto_tile_library,
+        &context.getDispatcher(),
+        services.appearance_catalog.get());
 
     return true;
 }
@@ -499,6 +529,12 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     if (params.services.item_catalog) {
         collectItemCatalogAssets(*params.services.item_catalog, asset_registry);
     }
+    if (!ensureAppearanceCatalog(params.services)) {
+        return false;
+    }
+    if (params.services.appearance_catalog) {
+        collectAppearanceAssets(*params.services.appearance_catalog, asset_registry);
+    }
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(
         params.registry,
@@ -540,7 +576,7 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
 bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     auto& services = params.services;
     if (!services.collision_resolver || !services.entity_factory || !services.blueprint_manager ||
-        !services.item_catalog || !services.world_state || !services.map_manager) {
+        !services.item_catalog || !services.appearance_catalog || !services.world_state || !services.map_manager) {
         spdlog::error("Runtime services 未完成装配，无法创建 systems");
         return false;
     }
@@ -575,6 +611,17 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     systems.movement_system = std::make_unique<engine::system::MovementSystem>(services.collision_resolver.get());
     systems.spatial_index_system = std::make_unique<engine::system::SpatialIndexSystem>(spatial_index_manager);
     systems.animation_system = std::make_unique<engine::system::AnimationSystem>(params.registry, dispatcher);
+    systems.appearance_system = std::make_unique<game::system::AppearanceSystem>(
+        params.registry,
+        dispatcher,
+        *services.appearance_catalog);
+    {
+        auto layered_view =
+            params.registry.view<game::component::AppearanceComponent, engine::component::LayeredSpriteComponent>();
+        for (const auto entity : layered_view) {
+            dispatcher.trigger(game::defs::RefreshAppearanceCommand{entity});
+        }
+    }
 
     systems.state_system = std::make_unique<game::system::StateSystem>(params.registry, dispatcher);
     systems.action_sound_system = std::make_unique<game::system::ActionSoundSystem>(params.registry, dispatcher);
