@@ -30,7 +30,7 @@ class SpriteBatch final {
     struct Vertex {
         glm::vec2 pos_{0.0f};
         glm::vec2 uv_{0.0f};
-        glm::vec4 color_{0.0f};
+        uint32_t color_rgba8_{0xFFFFFFFFu};
     };
     /* @brief 绘制命令，按纹理分组 */
     struct Command {
@@ -97,6 +97,7 @@ private:
     void destroyDefaultTexture();
 
     GLuint default_texture_{0};
+    bool default_texture_acquired_{false};
     uint32_t last_draw_calls_{0};
     uint32_t last_vertex_count_{0};
     uint32_t last_index_count_{0};

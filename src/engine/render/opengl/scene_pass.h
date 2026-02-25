@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "engine/utils/math.h"
+#include "render_pass.h"
 #include "sprite_batch.h"
 
 namespace engine::render::opengl {
@@ -22,7 +23,7 @@ namespace engine::render::opengl {
 class ShaderLibrary;
 class ShaderProgram;
 
-class ScenePass {
+class ScenePass : public ReloadableRenderPass {
     int viewport_width_{0};
     int viewport_height_{0};
     GLuint fbo_{0};
@@ -44,8 +45,8 @@ public:
     ScenePass(ScenePass&& other) noexcept = delete;
     ScenePass& operator=(ScenePass&& other) noexcept = delete;
 
-    void clean();
-    bool reload(ShaderLibrary& library);
+    void clean() override;
+    bool reload(ShaderLibrary& library) override;
 
     void clear(const glm::vec4& color);
     bool flush(const utils::Rect& viewport);

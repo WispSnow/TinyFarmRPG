@@ -59,7 +59,11 @@ set(TEST_SOURCES
     engine/render/nine_slice_test.cpp
     engine/render/text_renderer_no_exceptions_test.cpp
     engine/render/render_context_no_exceptions_test.cpp
+    engine/render/render_pass_interface_test.cpp
     engine/render/sprite_batch_source_test.cpp
+    engine/render/gl_renderer_lifecycle_test.cpp
+    engine/render/opengl_pass_state_test.cpp
+    engine/render/bloom_precision_regression_test.cpp
     engine/ui/ui_preset_manager_sound_test.cpp
     engine/ui/ui_preset_manager_no_exceptions_test.cpp
     engine/ui/ui_preset_manager_invalid_input_test.cpp
