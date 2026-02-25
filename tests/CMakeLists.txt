@@ -133,6 +133,7 @@ set(GAME_TEST_SOURCES
     game/appearance_system_test.cpp
     game/save_migrator_test.cpp
     game/save_service_async_test.cpp
+    game/save_service_no_exceptions_test.cpp
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp

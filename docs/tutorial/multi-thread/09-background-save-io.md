@@ -131,29 +131,23 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
     }
 
     // 4. 启动后台线程（data 通过移动语义转移所有权）
-    try {
-        async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
-            // ═══ 后台线程 ═══
-            std::string write_error;
-            const bool success = writeSaveFile(data, file_path, write_error);
+    async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
+        // ═══ 后台线程 ═══
+        std::string write_error;
+        const bool success = writeSaveFile(data, file_path, write_error);
 
-            AsyncSaveResult result{};
-            result.file_path = file_path;
-            result.success = success;
-            result.error = std::move(write_error);
+        AsyncSaveResult result{};
+        result.file_path = file_path;
+        result.success = success;
+        result.error = std::move(write_error);
 
-            {
-                std::lock_guard<std::mutex> lock(async_result_mutex_);
-                async_save_result_ = std::move(result);
-            }
+        {
+            std::lock_guard<std::mutex> lock(async_result_mutex_);
+            async_save_result_ = std::move(result);
+        }
 
-            save_in_progress_.store(false, std::memory_order_release);
-        });
-    } catch (const std::exception& e) {
         save_in_progress_.store(false, std::memory_order_release);
-        out_error = std::string("启动异步保存线程失败: ") + e.what();
-        return false;
-    }
+    });
 
     return true;
 }
@@ -199,6 +193,29 @@ async_save_thread_.emplace([this, data = std::move(data), file_path]() mutable {
 `std::move(data)` 把数据从主线程转移到后台线程的 lambda 中。转移后主线程不再持有数据，后台线程独占所有权——不需要锁。
 
 这是 05 章提到的**所有权转移模式**在存档场景的应用。
+
+### 无异常约束：读档 JSON 解析
+
+本项目采用无异常风格，`loadFromFile()` 不使用 `try/catch`，改为 `nlohmann::json::parse(..., false)`：
+
+```cpp
+nlohmann::json json;
+if (!parseJsonFileNoExceptions(file_path, json, out_error)) {
+    return false;
+}
+```
+
+`parseJsonFileNoExceptions()` 的核心检查：
+
+```cpp
+out_json = nlohmann::json::parse(content, nullptr, false);
+if (out_json.is_discarded()) {
+    out_error = "解析存档 JSON 失败: " + file_path.string();
+    return false;
+}
+```
+
+这样解析失败直接走返回值和错误字符串，不依赖异常控制流。
 
 ---
 
