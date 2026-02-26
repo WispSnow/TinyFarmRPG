@@ -3,6 +3,7 @@
 #include "engine/vfx/vfx_types.h"
 
 #include <cstdint>
+#include <span>
 
 namespace engine::vfx {
 
@@ -10,7 +11,7 @@ class VfxBackend {
 public:
     virtual ~VfxBackend() = default;
 
-    virtual void enqueue(const VfxPlayRequest& request) = 0;
+    virtual void enqueueBatch(std::span<const VfxPlayRequest> requests) = 0;
     virtual void update(float delta_time_seconds) = 0;
     virtual void render(const VfxRenderContext& context) = 0;
 

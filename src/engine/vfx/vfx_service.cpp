@@ -16,10 +16,10 @@ void VfxService::submit(const VfxPlayRequest& request) {
 }
 
 void VfxService::update(float delta_time_seconds) {
-    for (const auto& request : pending_requests_) {
-        backend_->enqueue(request);
+    if (!pending_requests_.empty()) {
+        backend_->enqueueBatch(pending_requests_);
+        pending_requests_.clear();
     }
-    pending_requests_.clear();
 
     backend_->update(delta_time_seconds);
 }

@@ -30,6 +30,8 @@ TEST(VfxServiceTest, UpdateFlushesQueuedRequestsToBackend) {
     service.update(0.125f);
 
     ASSERT_EQ(backend_ptr->requests.size(), 2u);
+    EXPECT_EQ(backend_ptr->enqueue_batch_call_count, 1u);
+    EXPECT_EQ(backend_ptr->last_enqueued_batch_size, 2u);
     EXPECT_FLOAT_EQ(backend_ptr->requests[0].world_position.x, 10.0f);
     EXPECT_FLOAT_EQ(backend_ptr->requests[1].world_position.y, 40.0f);
     EXPECT_EQ(backend_ptr->update_call_count, 1u);
@@ -52,6 +54,7 @@ TEST(VfxServiceTest, ClearPendingRequestsDropsQueueBeforeUpdate) {
 
     service.update(0.016f);
     EXPECT_TRUE(backend_ptr->requests.empty());
+    EXPECT_EQ(backend_ptr->enqueue_batch_call_count, 0u);
     EXPECT_EQ(backend_ptr->update_call_count, 1u);
 }
 

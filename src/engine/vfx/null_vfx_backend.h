@@ -6,7 +6,7 @@ namespace engine::vfx {
 
 class NullVfxBackend final : public VfxBackend {
 public:
-    void enqueue(const VfxPlayRequest&) override;
+    void enqueueBatch(std::span<const VfxPlayRequest>) override;
     void update(float) override;
     void render(const VfxRenderContext&) override;
 

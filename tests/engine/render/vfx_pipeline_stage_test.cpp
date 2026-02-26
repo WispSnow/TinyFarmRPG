@@ -44,7 +44,7 @@ TEST(VfxPipelineStageTest, PresentRunsVfxAfterCompositeBeforeUi) {
     ASSERT_FALSE(present_block.empty());
 
     const std::size_t pos_composite = present_block.find("composite_pass_->render(viewport)");
-    const std::size_t pos_vfx = present_block.find("vfx_backend_->render(vfx_context)");
+    const std::size_t pos_vfx = present_block.find("vfx_pass_->flush(vfx_context)");
     const std::size_t pos_ui = present_block.find("ui_pass_->flush(viewport)");
 
     ASSERT_NE(pos_composite, std::string::npos);
@@ -54,7 +54,7 @@ TEST(VfxPipelineStageTest, PresentRunsVfxAfterCompositeBeforeUi) {
     EXPECT_LT(pos_vfx, pos_ui);
 }
 
-TEST(VfxPipelineStageTest, CleanResetsBackendPointer) {
+TEST(VfxPipelineStageTest, CleanReleasesVfxPass) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -64,7 +64,8 @@ TEST(VfxPipelineStageTest, CleanResetsBackendPointer) {
 
     const std::string clean_block = test_source_utils::extractFunctionBlock(content, "void GLRenderer::clean()");
     ASSERT_FALSE(clean_block.empty());
-    EXPECT_NE(clean_block.find("vfx_backend_ = nullptr;"), std::string::npos);
+    EXPECT_NE(clean_block.find("vfx_pass_->clean();"), std::string::npos);
+    EXPECT_NE(clean_block.find("vfx_pass_.reset();"), std::string::npos);
 }
 
 } // namespace
