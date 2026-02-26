@@ -56,7 +56,7 @@ void VisualTestSuiteScene::clean() {
 
 void VisualTestSuiteScene::buildTestCases() {
     test_cases_.clear();
-    test_cases_.reserve(9);
+    test_cases_.reserve(10);
     test_cases_.push_back(std::make_unique<TileAutoTileYSortVisualTest>());
     test_cases_.push_back(std::make_unique<RenderPassCoverageVisualTest>());
     test_cases_.push_back(std::make_unique<CameraViewportClippingVisualTest>());
@@ -66,6 +66,9 @@ void VisualTestSuiteScene::buildTestCases() {
     test_cases_.push_back(std::make_unique<UiVisualTest>());
     test_cases_.push_back(std::make_unique<TextRenderingVisualTest>());
     test_cases_.push_back(std::make_unique<AudioVisualTest>());
+#ifdef TF_ENABLE_EFFEKSEER
+    test_cases_.push_back(std::make_unique<EffekseerVfxVisualTest>());
+#endif
 }
 
 void VisualTestSuiteScene::setActiveTest(int index) {

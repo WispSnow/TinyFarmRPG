@@ -22,6 +22,11 @@
 #include "engine/utils/events.h"
 #include "engine/utils/defs.h"
 #include "engine/utils/math.h"
+#include "engine/vfx/vfx_service.h"
+#include "engine/vfx/vfx_types.h"
+#ifdef TF_ENABLE_EFFEKSEER
+#include "engine/vfx/effekseer_backend_factory.h"
+#endif
 #include <entt/signal/dispatcher.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/common.hpp>
@@ -31,6 +36,7 @@
 #include <spdlog/spdlog.h>
 #include <cmath>
 #include <algorithm>
+#include <filesystem>
 
 using namespace entt::literals;
 
@@ -1440,3 +1446,200 @@ void AudioVisualTest::onImGui(engine::core::Context& context) {
 }
 
 } // namespace tools::visual
+
+// ============================================
+// Effekseer VFX Visual Test
+// ============================================
+#ifdef TF_ENABLE_EFFEKSEER
+
+namespace {
+
+[[nodiscard]] std::vector<std::string> scanEffectFiles(const std::filesystem::path& root_dir) {
+    std::vector<std::string> paths;
+    if (!std::filesystem::exists(root_dir) || !std::filesystem::is_directory(root_dir)) {
+        return paths;
+    }
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root_dir)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        const auto ext = entry.path().extension().string();
+        if (ext == ".efkefc" || ext == ".efk") {
+            paths.push_back(entry.path().string());
+        }
+    }
+    std::sort(paths.begin(), paths.end());
+    return paths;
+}
+
+} // namespace
+
+namespace tools::visual {
+
+EffekseerVfxVisualTest::EffekseerVfxVisualTest()
+    : VisualTestCase(
+          "Effekseer VFX",
+          "VFX",
+          "验证 Effekseer 粒子特效在引擎渲染管线中的集成。",
+          "1) 进入该用例后，Effekseer 后端自动初始化。\n"
+          "2) 从列表选择特效文件，点击 Spawn 或启用 Auto Spawn。\n"
+          "3) 调整 Position / Scale / Z 参数；移动相机观察特效是否跟随世界坐标。\n"
+          "4) 观察 GL Renderer Debug Panel 中 VfxPass 的 draw call / instance 计数。",
+          "- 特效在指定世界坐标正确播放。\n"
+          "- 相机移动/缩放时特效跟随世界位置。\n"
+          "- VfxPass stats 正确反映 draw call 数。\n"
+          "- 特效结束后 instance 计数回归 0。",
+          "- 看不到特效：检查 SetProjectionMatrix / SetCameraMatrix 是否调用。\n"
+          "- 特效位置偏移：检查正交投影矩阵 Y 轴方向。\n"
+          "- 闪烁/GL 状态污染：检查 SetRestorationOfStatesFlag(true)。") {}
+
+EffekseerVfxVisualTest::~EffekseerVfxVisualTest() = default;
+
+void EffekseerVfxVisualTest::onEnter(engine::core::Context& context) {
+    if (!vfx_service_) {
+        auto backend = engine::vfx::createEffekseerBackend();
+        if (!backend) {
+            spdlog::error("[EffekseerVfxVisualTest] EffekseerBackend 创建失败");
+            return;
+        }
+        backend_raw_ = backend.get();
+        vfx_service_ = std::make_unique<engine::vfx::VfxService>(std::move(backend));
+    }
+    context.getGLRenderer().setVfxBackend(backend_raw_);
+
+    if (effect_paths_.empty()) {
+        effect_paths_ = scanEffectFiles("assets/vfx");
+        if (effect_paths_.empty()) {
+            spdlog::warn("[EffekseerVfxVisualTest] assets/vfx 下未发现 .efkefc/.efk 文件");
+        }
+    }
+}
+
+void EffekseerVfxVisualTest::onExit(engine::core::Context& context) {
+    context.getGLRenderer().setVfxBackend(nullptr);
+}
+
+void EffekseerVfxVisualTest::onUpdate(float delta_time, engine::core::Context& /*context*/) {
+    if (!vfx_service_) {
+        return;
+    }
+
+    if (auto_spawn_ && !effect_paths_.empty()) {
+        auto_spawn_timer_ += delta_time;
+        if (auto_spawn_timer_ >= auto_spawn_interval_) {
+            auto_spawn_timer_ -= auto_spawn_interval_;
+            spawnEffect(effect_paths_[selected_effect_]);
+        }
+    }
+
+    vfx_service_->update(delta_time);
+}
+
+void EffekseerVfxVisualTest::onRender(engine::core::Context& context) {
+    auto& renderer = context.getRenderer();
+
+    // 绘制十字准星标记 spawn position
+    {
+        auto color = renderer.getDefaultWorldColorOptions();
+        color.use_gradient = false;
+        color.start_color = engine::utils::FColor{1.0f, 0.3f, 0.3f, 0.9f};
+        color.end_color = color.start_color;
+        constexpr float kCrossSize = 12.0f;
+        renderer.drawLine(spawn_position_ + glm::vec2{-kCrossSize, 0.0f},
+                          spawn_position_ + glm::vec2{kCrossSize, 0.0f}, 2.0f, &color);
+        renderer.drawLine(spawn_position_ + glm::vec2{0.0f, -kCrossSize},
+                          spawn_position_ + glm::vec2{0.0f, kCrossSize}, 2.0f, &color);
+    }
+
+    // 绘制坐标轴参考线
+    {
+        auto axis = renderer.getDefaultWorldColorOptions();
+        axis.use_gradient = false;
+        axis.start_color = engine::utils::FColor{0.2f, 0.2f, 0.25f, 0.5f};
+        axis.end_color = axis.start_color;
+        renderer.drawLine(glm::vec2{-2000.0f, 0.0f}, glm::vec2{2000.0f, 0.0f}, 1.0f, &axis);
+        renderer.drawLine(glm::vec2{0.0f, -2000.0f}, glm::vec2{0.0f, 2000.0f}, 1.0f, &axis);
+    }
+}
+
+void EffekseerVfxVisualTest::onImGui(engine::core::Context& context) {
+    ImGui::Separator();
+
+    if (!vfx_service_) {
+        ImGui::TextColored(ImVec4{1.0f, 0.3f, 0.3f, 1.0f}, "EffekseerBackend 未初始化");
+        return;
+    }
+
+    if (effect_paths_.empty()) {
+        ImGui::TextColored(ImVec4{1.0f, 0.6f, 0.2f, 1.0f}, "assets/vfx 下未发现特效文件");
+        return;
+    }
+
+    // 特效选择
+    if (ImGui::BeginCombo("Effect", effect_paths_[selected_effect_].c_str())) {
+        for (int i = 0; i < static_cast<int>(effect_paths_.size()); ++i) {
+            const bool selected = (i == selected_effect_);
+            if (ImGui::Selectable(effect_paths_[i].c_str(), selected)) {
+                selected_effect_ = i;
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    // Spawn 参数
+    ImGui::DragFloat2("Spawn Position", &spawn_position_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
+    ImGui::DragFloat("Spawn Z", &spawn_z_, 0.1f, -100.0f, 100.0f, "%.1f");
+    ImGui::DragFloat("Spawn Scale", &spawn_scale_, 0.01f, 0.01f, 10.0f, "%.2f");
+
+    if (ImGui::Button("Spawn")) {
+        spawnEffect(effect_paths_[selected_effect_]);
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Auto Spawn", &auto_spawn_);
+    if (auto_spawn_) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100.0f);
+        ImGui::DragFloat("Interval (s)", &auto_spawn_interval_, 0.1f, 0.1f, 10.0f, "%.1f");
+    }
+
+    // Stats
+    ImGui::Separator();
+    if (backend_raw_) {
+        ImGui::Text("VFX Draw Calls: %u", backend_raw_->getLastDrawCallCount());
+        ImGui::Text("VFX Instances: %u", backend_raw_->getLastInstanceCount());
+    }
+
+    const auto& gl = context.getGLRenderer();
+    const auto& vfx_stats = gl.getPassStats(engine::render::opengl::GLRenderer::PassType::Vfx);
+    ImGui::Text("VfxPass Stats: draw=%u sprites=%u",
+                vfx_stats.draw_calls, vfx_stats.sprite_count);
+
+    if (ImGui::Button("Reset Defaults")) {
+        selected_effect_ = 0;
+        spawn_position_ = {0.0f, 0.0f};
+        spawn_z_ = 0.0f;
+        spawn_scale_ = 1.0f;
+        auto_spawn_ = false;
+        auto_spawn_interval_ = 2.0f;
+        auto_spawn_timer_ = 0.0f;
+    }
+}
+
+void EffekseerVfxVisualTest::spawnEffect(std::string_view effect_path) {
+    if (!vfx_service_ || effect_path.empty()) {
+        return;
+    }
+    engine::vfx::VfxPlayRequest request{};
+    request.effect_path = std::string(effect_path);
+    request.world_position = spawn_position_;
+    request.z = spawn_z_;
+    request.scale = spawn_scale_;
+    vfx_service_->submit(request);
+}
+
+} // namespace tools::visual
+
+#endif // TF_ENABLE_EFFEKSEER
