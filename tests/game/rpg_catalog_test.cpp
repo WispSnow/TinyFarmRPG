@@ -396,5 +396,71 @@ TEST(RpgCatalogTest, ValidateFailsOnMissingClassReference) {
     EXPECT_NE(error.find("class.missing"), std::string::npos);
 }
 
+TEST(RpgCatalogTest, ListActorsReturnsSortedIds) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.actors,
+        R"json({
+  "actors": [
+    {
+      "id": "actor.zeta",
+      "display_name": "Zeta",
+      "class_id": "class.adventurer",
+      "initial_level": 1,
+      "max_level": 99
+    },
+    {
+      "id": "actor.alpha",
+      "display_name": "Alpha",
+      "class_id": "class.adventurer",
+      "initial_level": 1,
+      "max_level": 99
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+
+    const auto actors = catalog.listActors();
+    ASSERT_EQ(actors.size(), 2U);
+    EXPECT_EQ(actors[0]->id_, "actor.alpha");
+    EXPECT_EQ(actors[1]->id_, "actor.zeta");
+}
+
+TEST(RpgCatalogTest, ListTroopsReturnsSortedIds) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.troops,
+        R"json({
+  "troops": [
+    {
+      "id": "troop.zeta",
+      "display_name": "Zeta",
+      "members": [
+        { "enemy_id": "enemy.slime", "x": 100.0, "y": 100.0 }
+      ]
+    },
+    {
+      "id": "troop.alpha",
+      "display_name": "Alpha",
+      "members": [
+        { "enemy_id": "enemy.slime", "x": 120.0, "y": 120.0 }
+      ]
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    const auto troops = catalog.listTroops();
+    ASSERT_EQ(troops.size(), 2U);
+    EXPECT_EQ(troops[0]->id_, "troop.alpha");
+    EXPECT_EQ(troops[1]->id_, "troop.zeta");
+}
+
 } // namespace
 } // namespace game::data

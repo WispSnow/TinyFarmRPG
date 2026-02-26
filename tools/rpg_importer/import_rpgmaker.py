@@ -18,6 +18,7 @@ from typing import Any
 
 
 PLACEHOLDER_PREFIX = "-----"
+PARAM_KEYS = ["mhp", "mmp", "atk", "def", "mat", "mdf", "agi", "luk"]
 
 
 @dataclass
@@ -153,6 +154,24 @@ def clamp(value: int, minimum: int, maximum: int) -> int:
 
 def clampf(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
+
+
+def class_base_params_from_curve(raw_params: Any, class_id: int, warnings: list[str]) -> dict[str, int]:
+    values = [0] * len(PARAM_KEYS)
+    if not (isinstance(raw_params, list) and len(raw_params) >= len(PARAM_KEYS)):
+        warnings.append(f"classes: source class #{class_id} has invalid params curve, fallback to zeros")
+        return {key: values[idx] for idx, key in enumerate(PARAM_KEYS)}
+
+    for param_index in range(len(PARAM_KEYS)):
+        curve = raw_params[param_index]
+        if isinstance(curve, list) and curve:
+            # RPGMaker 的 class params 通常按等级存储，索引 1 对应 Lv1。
+            level_index = 1 if len(curve) > 1 else 0
+            values[param_index] = max(0, to_int(curve[level_index], 0))
+            continue
+        values[param_index] = max(0, to_int(curve, 0))
+
+    return {key: values[idx] for idx, key in enumerate(PARAM_KEYS)}
 
 
 def convert_inventory_table(
@@ -516,6 +535,7 @@ def convert_classes(
 
         semantic_id = make_semantic_id("class", name, numeric_id, used)
         id_map[numeric_id] = semantic_id
+        base_params = class_base_params_from_curve(raw.get("params"), numeric_id, warnings)
 
         learnings: list[dict[str, Any]] = []
         for learning in raw.get("learnings", []):
@@ -536,6 +556,7 @@ def convert_classes(
             {
                 "id": semantic_id,
                 "display_name": name,
+                "base_params": base_params,
                 "learnings": learnings,
             }
         )
@@ -593,10 +614,13 @@ def build_validation_report(
     states: list[dict[str, Any]],
     enemies: list[dict[str, Any]],
     troops: list[dict[str, Any]],
+    classes: list[dict[str, Any]],
+    actors: list[dict[str, Any]],
 ) -> dict[str, Any]:
     state_ids = {row["id"] for row in states}
     skill_ids = {row["id"] for row in skills}
     enemy_ids = {row["id"] for row in enemies}
+    class_ids = {row["id"] for row in classes}
 
     issues: list[str] = []
 
@@ -618,6 +642,11 @@ def build_validation_report(
             target = member.get("enemy_id", "")
             if target not in enemy_ids:
                 issues.append(f"troop '{troop['id']}' references missing enemy '{target}'")
+
+    for actor in actors:
+        target = actor.get("class_id", "")
+        if target not in class_ids:
+            issues.append(f"actor '{actor['id']}' references missing class '{target}'")
 
     return {
         "ok": len(issues) == 0,
@@ -744,7 +773,7 @@ def main() -> int:
         },
     }
 
-    validation_report = build_validation_report(skills, states, enemies, troops)
+    validation_report = build_validation_report(skills, states, enemies, troops, classes, actors)
     import_report = {
         "source_dir": str(input_dir),
         "output_dir": str(output_dir),

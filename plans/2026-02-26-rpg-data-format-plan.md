@@ -2,7 +2,7 @@
 
 ## 元信息
 - 日期：`2026-02-26`
-- 状态：`Planned`
+- 状态：`Phase 0-3 Completed`
 - 范围：`仅数据格式与加载链路，不改战斗结算规则`
 - 输入参考：
 1. `for_agent/ref/data/*`（RPGMaker 参考数据）
@@ -109,7 +109,7 @@
 
 ## 6. 分阶段实施计划
 
-### Phase 0：Schema 冻结与契约落盘
+### Phase 0：Schema 冻结与契约落盘（已完成）
 
 任务：
 
@@ -122,7 +122,7 @@
 1. 本计划文档（当前）
 2. `assets/data/rpg/` 文件模板（空内容可）
 
-### Phase 1：Runtime Catalog 基础能力
+### Phase 1：Runtime Catalog 基础能力（已完成）
 
 任务：
 
@@ -139,7 +139,7 @@
 
 1. 本阶段不改战斗行为，不改 ItemCatalog 业务语义。
 
-### Phase 2：独立导入工具
+### Phase 2：独立导入工具（已完成）
 
 任务：
 
@@ -152,7 +152,7 @@
 1. 可重复执行的导入命令
 2. 可审计导入报告
 
-### Phase 3：战斗数据接线（仅“读数据”，不改算法）
+### Phase 3：战斗数据接线（仅“读数据”，不改算法）（已完成）
 
 任务：
 
@@ -197,6 +197,6 @@
 
 ## 9. 下一步执行建议
 
-1. 先落 Phase 1：`rpg_types/rpg_data/rpg_catalog` 与测试。
-2. 再做 Phase 2：独立导入工具与报告。
-3. 最后接 Phase 3：战斗入口改为读 catalog。
+1. 推进 Phase 4：在不破坏现有数据层的前提下，扩展战斗动作类型（Skill/Item/Guard/Escape）。
+2. 推进 Phase 4：把 8 参数与公式执行逐步接入战斗结算。
+3. 推进 Phase 4：补齐任务与商店动态状态落盘结构（`quest_state/combat_state`）。
