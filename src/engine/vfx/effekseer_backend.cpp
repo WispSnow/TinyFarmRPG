@@ -125,13 +125,21 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     renderer_->ResetDrawCallCount();
     renderer_->ResetDrawVertexCount();
 
+    // Effekseer 需要分别设置投影矩阵和相机矩阵才能正确渲染。
+    // DrawParameter.ViewProjectionMatrix 仅用于剔除，不参与实际顶点变换。
+    const auto proj = toEffekseerMatrix(context.view_projection);
+    Effekseer::Matrix44 camera_mat;
+    camera_mat.Indentity();
+    renderer_->SetProjectionMatrix(proj);
+    renderer_->SetCameraMatrix(camera_mat);
+
     if (!renderer_->BeginRendering()) {
         last_draw_call_count_ = 0u;
         return;
     }
 
     Effekseer::Manager::DrawParameter draw_parameter{};
-    draw_parameter.ViewProjectionMatrix = toEffekseerMatrix(context.view_projection);
+    draw_parameter.ViewProjectionMatrix = proj;
     draw_parameter.ZNear = 0.0f;
     draw_parameter.ZFar = 1.0f;
     draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
