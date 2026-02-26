@@ -6,6 +6,7 @@ uniform sampler2D uLightTex;
 uniform vec3 uAmbient;
 uniform sampler2D uEmissiveTex;
 uniform sampler2D uBloomTex;
+uniform sampler2D uWorldVfxTex;
 uniform float uBloomStrength;
 void main(){
     vec3 scene = texture(uSceneTex, vUV).rgb;
@@ -13,7 +14,10 @@ void main(){
     light = clamp(light, 0.0, 1.0);
     vec3 emissive = texture(uEmissiveTex, vUV).rgb;
     vec3 bloom = texture(uBloomTex, vUV).rgb * uBloomStrength;
-    FragColor = vec4(scene * light + emissive + bloom, 1.0);
+    vec4 worldVfx = texture(uWorldVfxTex, vUV);
+    vec3 base = scene * light + emissive + bloom;
+    // Effekseer 输出到 world-vfx FBO 的 alpha 语义会随资源混合模式变化；
+    // 先采用纯加色叠加，避免透明区出现黑底/黑框。
+    vec3 composed = base + worldVfx.rgb;
+    FragColor = vec4(composed, 1.0);
 }
-
-

@@ -1,5 +1,6 @@
 #pragma once
 #include "visual_test_case.h"
+#include "engine/vfx/vfx_types.h"
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
@@ -286,6 +287,7 @@ private:
     glm::vec2 spawn_position_{0.0f, 0.0f};
     float spawn_z_{0.0f};
     float spawn_scale_{1.0f};
+    engine::vfx::VfxChannel spawn_channel_{engine::vfx::VfxChannel::Overlay};
     bool auto_spawn_{false};
     float auto_spawn_interval_{2.0f};
     float auto_spawn_timer_{0.0f};

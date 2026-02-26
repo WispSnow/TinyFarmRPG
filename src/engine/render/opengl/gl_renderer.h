@@ -34,6 +34,7 @@ namespace engine::render::opengl {
     class EmissivePass;
     class BloomPass;
     class ScenePass;
+    class WorldVfxPass;
     class VfxPass;
     class UIPass;
     class ImGuiLayer;
@@ -45,7 +46,8 @@ public:
         Lighting,
         Emissive,
         Bloom,
-        Vfx,
+        WorldVfx,
+        OverlayVfx,
         UI,
         Count
     };
@@ -66,6 +68,7 @@ private:
     std::unique_ptr<LightingPass> lighting_pass_;
     std::unique_ptr<EmissivePass> emissive_pass_;
     std::unique_ptr<BloomPass> bloom_pass_;
+    std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
     std::unique_ptr<UIPass> ui_pass_;
 #ifdef TF_ENABLE_DEBUG_UI
@@ -97,6 +100,7 @@ private:
     GLuint light_color_tex_{0};
     GLuint emissive_color_tex_{0};
     GLuint bloom_tex_{0};
+    GLuint world_vfx_tex_{0};
 
     // 保存各个通道绘制的统计信息(DebugPanel需要)
     std::array<PassStats, static_cast<size_t>(PassType::Count)> pass_stats_{};
@@ -237,6 +241,7 @@ public:
     [[nodiscard]] GLuint getLightColorTex() const { return light_color_tex_; }
     [[nodiscard]] GLuint getEmissiveColorTex() const { return emissive_color_tex_; }
     [[nodiscard]] GLuint getBloomTex() const { return bloom_tex_; }
+    [[nodiscard]] GLuint getWorldVfxTex() const { return world_vfx_tex_; }
 
     void setViewportClippingEnabled(bool enabled);
     [[nodiscard]] bool isViewportClippingEnabled() const { return viewport_clipping_enabled_; }
@@ -270,6 +275,7 @@ private:
     [[nodiscard]] bool initEmissivePass();
     [[nodiscard]] bool initBloomPass();
     [[nodiscard]] bool initScenePass();
+    [[nodiscard]] bool initWorldVfxPass();
     [[nodiscard]] bool initUIPass();
     [[nodiscard]] bool initCompositePass();
 

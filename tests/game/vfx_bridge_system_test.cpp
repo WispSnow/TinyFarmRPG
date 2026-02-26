@@ -66,6 +66,7 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     EXPECT_FLOAT_EQ(request.z, 3.0f);
     EXPECT_FLOAT_EQ(request.scale, 1.5f);
     EXPECT_TRUE(request.loop);
+    EXPECT_EQ(request.channel, engine::vfx::VfxChannel::Overlay);
 }
 
 TEST(VfxBridgeSystemTest, MissingEffectMappingIsIgnored) {

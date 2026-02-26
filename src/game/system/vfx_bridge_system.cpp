@@ -47,6 +47,7 @@ void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command
     request.z = command.z;
     request.scale = command.scale;
     request.loop = command.loop;
+    request.channel = engine::vfx::VfxChannel::Overlay;
     vfx_service_.submit(request);
 }
 

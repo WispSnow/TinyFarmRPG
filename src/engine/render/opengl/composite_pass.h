@@ -24,12 +24,14 @@ class CompositePass : public RenderPass {
     GLint u_ambient_{-1};
     GLint u_emissive_tex_{-1};
     GLint u_bloom_tex_{-1};
+    GLint u_world_vfx_tex_{-1};
     GLint u_bloom_strength_{-1};
 
     GLuint scene_tex_{0};
     GLuint light_tex_{0};
     GLuint emissive_tex_{0};
     GLuint bloom_tex_{0};
+    GLuint world_vfx_tex_{0};
     bool default_textures_acquired_{false};
     glm::vec3 ambient_{glm::vec3(0.5f)};
     float bloom_strength_{1.0f};
@@ -58,6 +60,7 @@ public:
     void setLightTexture(GLuint tex) { light_tex_ = tex; }
     void setEmissiveTexture(GLuint tex) { emissive_tex_ = tex; }
     void setBloomTexture(GLuint tex) { bloom_tex_ = tex; }
+    void setWorldVfxTexture(GLuint tex) { world_vfx_tex_ = tex; }
 
     void setBloomEnabled(bool enabled) { bloom_enabled_ = enabled; }
 

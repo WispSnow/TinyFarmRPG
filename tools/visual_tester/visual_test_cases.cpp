@@ -646,6 +646,8 @@ void RenderPassCoverageVisualTest::onImGui(engine::core::Context& context) {
         show(engine::render::opengl::GLRenderer::PassType::Lighting, "Lighting");
         show(engine::render::opengl::GLRenderer::PassType::Emissive, "Emissive");
         show(engine::render::opengl::GLRenderer::PassType::Bloom, "Bloom");
+        show(engine::render::opengl::GLRenderer::PassType::WorldVfx, "WorldVfx");
+        show(engine::render::opengl::GLRenderer::PassType::OverlayVfx, "OverlayVfx");
         show(engine::render::opengl::GLRenderer::PassType::UI, "UI");
     }
 }
@@ -1590,7 +1592,15 @@ void EffekseerVfxVisualTest::onImGui(engine::core::Context& context) {
     }
 
     // Spawn 参数
-    ImGui::DragFloat2("Spawn Position", &spawn_position_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
+    int spawn_channel_index = spawn_channel_ == engine::vfx::VfxChannel::World ? 0 : 1;
+    if (ImGui::Combo("Spawn Channel", &spawn_channel_index, "World\0Overlay\0")) {
+        spawn_channel_ = spawn_channel_index == 0 ? engine::vfx::VfxChannel::World : engine::vfx::VfxChannel::Overlay;
+    }
+
+    const char* spawn_position_label = spawn_channel_ == engine::vfx::VfxChannel::World
+        ? "Spawn Position (World)"
+        : "Spawn Position (Overlay Logical)";
+    ImGui::DragFloat2(spawn_position_label, &spawn_position_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
     ImGui::DragFloat("Spawn Z", &spawn_z_, 0.1f, -100.0f, 100.0f, "%.1f");
     ImGui::DragFloat("Spawn Scale", &spawn_scale_, 0.01f, 0.01f, 10.0f, "%.2f");
 
@@ -1613,15 +1623,17 @@ void EffekseerVfxVisualTest::onImGui(engine::core::Context& context) {
     }
 
     const auto& gl = context.getGLRenderer();
-    const auto& vfx_stats = gl.getPassStats(engine::render::opengl::GLRenderer::PassType::Vfx);
-    ImGui::Text("VfxPass Stats: draw=%u sprites=%u",
-                vfx_stats.draw_calls, vfx_stats.sprite_count);
+    const auto& world_stats = gl.getPassStats(engine::render::opengl::GLRenderer::PassType::WorldVfx);
+    const auto& overlay_stats = gl.getPassStats(engine::render::opengl::GLRenderer::PassType::OverlayVfx);
+    ImGui::Text("WorldVfxPass Stats: draw=%u sprites=%u", world_stats.draw_calls, world_stats.sprite_count);
+    ImGui::Text("OverlayVfxPass Stats: draw=%u sprites=%u", overlay_stats.draw_calls, overlay_stats.sprite_count);
 
     if (ImGui::Button("Reset Defaults")) {
         selected_effect_ = 0;
         spawn_position_ = {0.0f, 0.0f};
         spawn_z_ = 0.0f;
         spawn_scale_ = 1.0f;
+        spawn_channel_ = engine::vfx::VfxChannel::Overlay;
         auto_spawn_ = false;
         auto_spawn_interval_ = 2.0f;
         auto_spawn_timer_ = 0.0f;
@@ -1637,6 +1649,7 @@ void EffekseerVfxVisualTest::spawnEffect(std::string_view effect_path) {
     request.world_position = spawn_position_;
     request.z = spawn_z_;
     request.scale = spawn_scale_;
+    request.channel = spawn_channel_;
     vfx_service_->submit(request);
 }
 

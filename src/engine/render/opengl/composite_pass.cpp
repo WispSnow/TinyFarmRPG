@@ -49,11 +49,13 @@ bool CompositePass::init(ShaderLibrary& library) {
         u_ambient_ = program_->uniformLocation("uAmbient");
         u_emissive_tex_ = program_->uniformLocation("uEmissiveTex");
         u_bloom_tex_ = program_->uniformLocation("uBloomTex");
+        u_world_vfx_tex_ = program_->uniformLocation("uWorldVfxTex");
         u_bloom_strength_ = program_->uniformLocation("uBloomStrength");
         if (u_scene_tex_ >= 0) glUniform1i(u_scene_tex_, 0);
         if (u_light_tex_ >= 0) glUniform1i(u_light_tex_, 1);
         if (u_emissive_tex_ >= 0) glUniform1i(u_emissive_tex_, 2);
         if (u_bloom_tex_ >= 0) glUniform1i(u_bloom_tex_, 3);
+        if (u_world_vfx_tex_ >= 0) glUniform1i(u_world_vfx_tex_, 4);
         glUseProgram(0);
     }
 
@@ -68,6 +70,7 @@ bool CompositePass::init(ShaderLibrary& library) {
         scene_tex_ = black_tex_;
         emissive_tex_ = black_tex_;
         bloom_tex_ = black_tex_;
+        world_vfx_tex_ = black_tex_;
     }
     return logGlErrors("CompositePass::init");
 }
@@ -111,6 +114,8 @@ bool CompositePass::render(const utils::Rect& viewport) {
     glBindTexture(GL_TEXTURE_2D, emissive_tex_);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, bloom_enabled_ ? bloom_tex_ : black_tex_);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, world_vfx_tex_);
 
     // 绘制
     glBindVertexArray(vao_);
@@ -118,6 +123,8 @@ bool CompositePass::render(const utils::Rect& viewport) {
     glBindVertexArray(0);
 
     // 解除绑定所有使用的纹理单元
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE2);
@@ -150,6 +157,7 @@ void CompositePass::clean() {
     light_tex_ = 0;
     emissive_tex_ = 0;
     bloom_tex_ = 0;
+    world_vfx_tex_ = 0;
 }
 
 } // namespace engine::render::opengl

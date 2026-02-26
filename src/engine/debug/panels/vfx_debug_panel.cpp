@@ -106,13 +106,26 @@ void VfxDebugPanel::draw(bool& is_open) {
 
     ImGui::Separator();
 
-    if (ImGui::DragFloat2("Spawn Position (World)", &spawn_position_.x, 1.0f, -50000.0f, 50000.0f, "%.1f")) {
+    int spawn_channel_index = spawn_channel_ == engine::vfx::VfxChannel::World ? 0 : 1;
+    if (ImGui::Combo("Spawn Channel", &spawn_channel_index, "World\0Overlay\0")) {
+        spawn_channel_ = spawn_channel_index == 0 ? engine::vfx::VfxChannel::World : engine::vfx::VfxChannel::Overlay;
+        if (spawn_channel_ == engine::vfx::VfxChannel::World) {
+            (void)syncSpawnPositionToPlayer();
+        }
+    }
+
+    const char* spawn_position_label = spawn_channel_ == engine::vfx::VfxChannel::World
+        ? "Spawn Position (World)"
+        : "Spawn Position (Overlay Logical)";
+    if (ImGui::DragFloat2(spawn_position_label, &spawn_position_.x, 1.0f, -50000.0f, 50000.0f, "%.1f")) {
         spawn_position_initialized_ = true;
     }
     ImGui::SameLine();
+    ImGui::BeginDisabled(spawn_channel_ != engine::vfx::VfxChannel::World);
     if (ImGui::Button("Player Position")) {
         (void)syncSpawnPositionToPlayer();
     }
+    ImGui::EndDisabled();
 
     ImGui::DragFloat("Spawn Z", &spawn_z_, 0.1f, -1000.0f, 1000.0f, "%.1f");
     ImGui::DragFloat("Spawn Scale", &spawn_scale_, 0.01f, 0.01f, 20.0f, "%.2f");
@@ -150,8 +163,13 @@ void VfxDebugPanel::draw(bool& is_open) {
         ImGui::Text("Backend Instances: %u", backend_->getLastInstanceCount());
     }
 
-    const auto& vfx_stats = gl_renderer_.getPassStats(engine::render::opengl::GLRenderer::PassType::Vfx);
-    ImGui::Text("VfxPass Stats: draw=%u sprites=%u", vfx_stats.draw_calls, vfx_stats.sprite_count);
+    const auto& world_vfx_stats =
+        gl_renderer_.getPassStats(engine::render::opengl::GLRenderer::PassType::WorldVfx);
+    const auto& overlay_vfx_stats =
+        gl_renderer_.getPassStats(engine::render::opengl::GLRenderer::PassType::OverlayVfx);
+    ImGui::Text("WorldVfxPass Stats: draw=%u sprites=%u", world_vfx_stats.draw_calls, world_vfx_stats.sprite_count);
+    ImGui::Text(
+        "OverlayVfxPass Stats: draw=%u sprites=%u", overlay_vfx_stats.draw_calls, overlay_vfx_stats.sprite_count);
 
     if (ImGui::Button("Reset Defaults")) {
         resetDefaults();
@@ -240,6 +258,7 @@ void VfxDebugPanel::resetDefaults() {
     spawn_z_ = 0.0f;
     spawn_scale_ = 1.0f;
     spawn_loop_ = false;
+    spawn_channel_ = engine::vfx::VfxChannel::Overlay;
     burst_count_ = 8;
     burst_radius_ = 120.0f;
     auto_spawn_ = false;
@@ -303,6 +322,7 @@ void VfxDebugPanel::spawnEffectAt(const glm::vec2& world_position) {
     request.z = spawn_z_;
     request.scale = spawn_scale_;
     request.loop = spawn_loop_;
+    request.channel = spawn_channel_;
     vfx_service_->submit(request);
 }
 

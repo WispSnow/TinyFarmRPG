@@ -6,11 +6,17 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 
+#include <cstdint>
 #include <string>
 
 namespace engine::vfx {
 
 inline constexpr entt::id_type kInvalidVfxEffectId{0};
+
+enum class VfxChannel : std::uint8_t {
+    World = 0,
+    Overlay = 1
+};
 
 struct VfxPlayRequest {
     entt::id_type effect_id{kInvalidVfxEffectId};
@@ -19,12 +25,14 @@ struct VfxPlayRequest {
     float z{0.0f};
     float scale{1.0f};
     bool loop{false};
+    VfxChannel channel{VfxChannel::Overlay};
 };
 
 struct VfxRenderContext {
     glm::mat4 view_projection{1.0f};
     glm::vec2 logical_size{0.0f, 0.0f};
     engine::utils::Rect viewport_pixels{};
+    VfxChannel channel{VfxChannel::Overlay};
 };
 
 } // namespace engine::vfx

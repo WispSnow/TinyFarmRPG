@@ -63,6 +63,7 @@ set(TEST_SOURCES
     engine/render/sprite_batch_source_test.cpp
     engine/render/gl_renderer_lifecycle_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
+    engine/render/vfx_dual_channel_pipeline_test.cpp
     engine/render/opengl_pass_state_test.cpp
     engine/render/bloom_precision_regression_test.cpp
     engine/vfx/vfx_service_test.cpp

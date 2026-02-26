@@ -16,6 +16,8 @@ namespace {
 
 constexpr int32_t kMaxSpriteCount = 4096;
 constexpr float kFramesPerSecond = 60.0f;
+constexpr int32_t kWorldLayer = 0;
+constexpr int32_t kOverlayLayer = 1;
 
 [[nodiscard]] std::u16string toUtf16Path(std::string_view path) {
     return std::filesystem::path(std::string(path)).u16string();
@@ -40,6 +42,21 @@ constexpr float kFramesPerSecond = 60.0f;
 [[nodiscard]] glm::mat4 toEffekseerViewProjection(const glm::mat4& game_view_projection) {
     const glm::mat4 y_flip = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
     return game_view_projection * y_flip;
+}
+
+[[nodiscard]] int32_t toEffekseerLayer(const engine::vfx::VfxChannel channel) {
+    switch (channel) {
+        case engine::vfx::VfxChannel::World:
+            return kWorldLayer;
+        case engine::vfx::VfxChannel::Overlay:
+            return kOverlayLayer;
+        default:
+            return kOverlayLayer;
+    }
+}
+
+[[nodiscard]] int32_t toCameraCullingMask(const engine::vfx::VfxChannel channel) {
+    return 1 << toEffekseerLayer(channel);
 }
 
 } // namespace
@@ -115,13 +132,15 @@ void EffekseerBackend::enqueueOne(const VfxPlayRequest& request) {
         return;
     }
 
+    manager_->SetLayer(handle, toEffekseerLayer(request.channel));
+
     if (request.scale != 1.0f) {
         manager_->SetScale(handle, request.scale, request.scale, request.scale);
     }
 
     // 当前阶段 loop 参数仅作为数据保留，不覆写特效资源内的生命周期配置。
     (void)request.loop;
-    active_handles_.push_back(handle);
+    active_handles_.push_back({handle, request.channel});
 }
 
 void EffekseerBackend::update(const float delta_time_seconds) {
@@ -133,8 +152,8 @@ void EffekseerBackend::update(const float delta_time_seconds) {
     update_parameter.DeltaFrame = std::max(0.0f, delta_time_seconds * kFramesPerSecond);
     manager_->Update(update_parameter);
 
-    std::erase_if(active_handles_, [this](const Effekseer::Handle handle) {
-        return !manager_->Exists(handle);
+    std::erase_if(active_handles_, [this](const ActiveHandleEntry& entry) {
+        return !manager_->Exists(entry.handle);
     });
 
     last_instance_count_ = static_cast<std::uint32_t>(active_handles_.size());
@@ -167,12 +186,13 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     draw_parameter.ZFar = 1.0f;
     draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
     draw_parameter.CameraFrontDirection = Effekseer::Vector3D(0.0f, 0.0f, -1.0f);
+    draw_parameter.CameraCullingMask = toCameraCullingMask(context.channel);
     manager_->Draw(draw_parameter);
 
     renderer_->EndRendering();
 
     last_draw_call_count_ = static_cast<std::uint32_t>(std::max(renderer_->GetDrawCallCount(), 0));
-    last_instance_count_ = static_cast<std::uint32_t>(active_handles_.size());
+    last_instance_count_ = countActiveInstances(context.channel);
 }
 
 std::uint32_t EffekseerBackend::getLastDrawCallCount() const {
@@ -198,6 +218,13 @@ Effekseer::EffectRef EffekseerBackend::loadEffect(const entt::id_type effect_id,
 
     cached_effects_[effect_id] = effect;
     return effect;
+}
+
+std::uint32_t EffekseerBackend::countActiveInstances(const VfxChannel channel) const {
+    return static_cast<std::uint32_t>(std::count_if(
+        active_handles_.begin(),
+        active_handles_.end(),
+        [channel](const ActiveHandleEntry& entry) { return entry.channel == channel; }));
 }
 
 } // namespace engine::vfx

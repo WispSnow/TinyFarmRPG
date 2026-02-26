@@ -57,6 +57,7 @@ target_sources(engine PRIVATE
     engine/render/opengl/emissive_pass.cpp
     engine/render/opengl/bloom_pass.cpp
     engine/render/opengl/scene_pass.cpp
+    engine/render/opengl/world_vfx_pass.cpp
     engine/render/opengl/vfx_pass.cpp
     engine/render/opengl/ui_pass.cpp
     # Input
