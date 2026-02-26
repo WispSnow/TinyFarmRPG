@@ -41,7 +41,7 @@ int defaultStackLimit(ItemCategory category) {
 }
 
 entt::id_type makeId(std::string_view value) {
-    return entt::hashed_string(value.data());
+    return entt::hashed_string{value.data(), value.size()}.value();
 }
 
 engine::render::Image parseImage(const nlohmann::json& json) {

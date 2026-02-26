@@ -1,0 +1,19 @@
+{
+    "schema_version": 1,
+    "content_versions": {
+        "skills": 1,
+        "states": 1,
+        "enemies": 1,
+        "troops": 1
+    },
+    "features": {
+        "quest": false,
+        "shop": false
+    },
+    "files": {
+        "skills": "skills.json",
+        "states": "states.json",
+        "enemies": "enemies.json",
+        "troops": "troops.json"
+    }
+}

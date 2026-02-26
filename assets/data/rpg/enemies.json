@@ -1,0 +1,32 @@
+{
+    "enemies": [
+        {
+            "id": "enemy.slime",
+            "display_name": "Slime",
+            "params": {
+                "mhp": 50,
+                "mmp": 0,
+                "atk": 10,
+                "def": 8,
+                "mat": 1,
+                "mdf": 2,
+                "agi": 6,
+                "luk": 5
+            },
+            "exp": 10,
+            "gold": 5,
+            "drops": [
+                {
+                    "item_id": "item.slime_gel",
+                    "chance": 0.5
+                }
+            ],
+            "actions": [
+                {
+                    "skill_id": "skill.attack",
+                    "rating": 5
+                }
+            ]
+        }
+    ]
+}
