@@ -12,12 +12,14 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
+#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_defaults.h"
 #include "engine/ui/ui_manager.h"
 #include "engine/ui/ui_screen_fade.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
+#include "engine/vfx/vfx_service.h"
 #include "engine/system/ysort_system.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
@@ -41,6 +43,7 @@
 #include "game/world/map_manager.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
+#include "engine/debug/panels/vfx_debug_panel.h"
 #include "engine/system/debug_render_system.h"
 #include "game/debug/blueprint_inspector_debug_panel.h"
 #include "game/debug/game_time_debug_panel.h"
@@ -191,6 +194,9 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
+    if (!abort_to_title_ && services_ && services_->vfx_service) {
+        services_->vfx_service->update(delta_time);
+    }
     Scene::update(delta_time);
 }
 
@@ -238,6 +244,8 @@ void GameScene::snapshotInterpolationState() {
 }
 
 void GameScene::clean() {
+    context_.getGLRenderer().setVfxBackend(nullptr);
+
 #ifdef TF_ENABLE_SCRIPTING
     if (services_ && services_->script_host) {
         services_->script_host->shutdown();
@@ -245,6 +253,11 @@ void GameScene::clean() {
     }
 #endif
 #ifdef TF_ENABLE_DEBUG_UI
+    if (auto* vfx_panel = context_.getDebugUIManager().getPanel<engine::debug::VfxDebugPanel>(
+            engine::debug::PanelCategory::Engine)) {
+        vfx_panel->clearVfxService();
+        vfx_panel->clearPlayerPositionProvider();
+    }
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
     auto& dispatcher = context_.getDispatcher();
@@ -319,6 +332,19 @@ bool GameScene::registerDebugPanels() {
             std::make_unique<game::debug::SchedulerDebugPanel>(*scheduler_profiler_, &game_mode_),
             false,
             engine::debug::PanelCategory::Game);
+    }
+
+    if (auto* vfx_panel = debug_ui_manager.getPanel<engine::debug::VfxDebugPanel>(
+            engine::debug::PanelCategory::Engine)) {
+        vfx_panel->setVfxService(services_ ? services_->vfx_service.get() : nullptr);
+        vfx_panel->setPlayerPositionProvider([this]() -> std::optional<glm::vec2> {
+            auto view = registry_.view<game::component::PlayerTag, engine::component::TransformComponent>();
+            if (view.begin() == view.end()) {
+                return std::nullopt;
+            }
+            const auto player = *view.begin();
+            return view.get<engine::component::TransformComponent>(player).position_;
+        });
     }
 
     spdlog::trace("游戏层调试面板注册完成。");

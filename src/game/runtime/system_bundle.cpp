@@ -35,14 +35,17 @@
 #include "game/system/rest_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/appearance_system.h"
+#include "game/system/vfx_bridge_system.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/factory/entity_factory.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/data/item_catalog.h"
 #include "game/data/appearance_catalog.h"
+#include "game/data/vfx_catalog.h"
 #include "game/save/save_service.h"
 #include "game/world/world_state.h"
 #include "game/world/map_manager.h"
+#include "engine/vfx/vfx_service.h"
 #ifdef TF_ENABLE_SCRIPTING
 #include "engine/script/script_host.h"
 #endif

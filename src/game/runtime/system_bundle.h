@@ -17,6 +17,7 @@ class EntityFactory;
 namespace game::data {
 class ItemCatalog;
 class AppearanceCatalog;
+class VfxCatalog;
 }
 
 namespace game::domain {
@@ -38,12 +39,17 @@ class ScriptHost;
 }
 #endif
 
+namespace engine::vfx {
+class VfxService;
+}
+
 namespace game::runtime {
 
 struct GameRuntimeServices {
     std::shared_ptr<game::factory::BlueprintManager> blueprint_manager;
     std::shared_ptr<game::data::ItemCatalog> item_catalog;
     std::shared_ptr<game::data::AppearanceCatalog> appearance_catalog;
+    std::shared_ptr<game::data::VfxCatalog> vfx_catalog;
 
     std::unique_ptr<engine::spatial::CollisionResolver> collision_resolver;
     std::unique_ptr<game::world::WorldState> world_state;
@@ -51,6 +57,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::world::MapManager> map_manager;
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
     std::unique_ptr<game::save::SaveService> save_service;
+    std::unique_ptr<engine::vfx::VfxService> vfx_service;
 #ifdef TF_ENABLE_SCRIPTING
     std::unique_ptr<engine::script::ScriptHost> script_host;
 #endif
@@ -102,6 +109,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::RestSystem> rest_system;
     std::unique_ptr<game::system::MapTransitionSystem> map_transition_system;
     std::unique_ptr<game::system::AppearanceSystem> appearance_system;
+    std::unique_ptr<game::system::VfxBridgeSystem> vfx_bridge_system;
 
     GameSystemBundle();
     ~GameSystemBundle() noexcept;

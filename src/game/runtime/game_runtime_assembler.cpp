@@ -4,6 +4,7 @@
 #include "engine/debug/panels/spatial_index_debug_panel.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
+#include "engine/render/opengl/gl_renderer.h"
 #include "engine/resource/asset_registry.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/collision_resolver.h"
@@ -18,6 +19,11 @@
 #include "engine/system/spatial_index_system.h"
 #include "engine/system/ysort_system.h"
 #include "engine/utils/json_file_loader.h"
+#include "engine/vfx/null_vfx_backend.h"
+#include "engine/vfx/vfx_service.h"
+#ifdef TF_ENABLE_EFFEKSEER
+#include "engine/vfx/effekseer_backend_factory.h"
+#endif
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -29,6 +35,7 @@
 #include "game/data/game_time.h"
 #include "game/data/appearance_catalog.h"
 #include "game/data/item_catalog.h"
+#include "game/data/vfx_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
@@ -60,6 +67,7 @@
 #include "game/system/state_system.h"
 #include "game/system/time_of_day_light_system.h"
 #include "game/system/time_system.h"
+#include "game/system/vfx_bridge_system.h"
 #include "game/world/map_manager.h"
 #include "engine/component/layered_sprite_component.h"
 #include "game/world/map_loading_settings.h"
@@ -334,6 +342,16 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     return true;
 }
 
+[[nodiscard]] bool ensureVfxCatalog(game::runtime::GameRuntimeServices& services) {
+    if (!services.vfx_catalog) {
+        services.vfx_catalog = std::make_shared<game::data::VfxCatalog>();
+        if (!services.vfx_catalog->loadFromFile("assets/data/vfx_catalog.json")) {
+            spdlog::warn("加载 VFX 目录配置失败，将继续运行但禁用 catalog 驱动播放。");
+        }
+    }
+    return true;
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
@@ -480,6 +498,24 @@ void configureCamera(engine::core::Context& context) {
     camera.setZoom(2.0f);
 }
 
+void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeServices& services) {
+    if (!services.vfx_service) {
+        std::unique_ptr<engine::vfx::VfxBackend> backend{};
+#ifdef TF_ENABLE_EFFEKSEER
+        backend = engine::vfx::createEffekseerBackend();
+        if (!backend) {
+            spdlog::warn("EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
+        }
+#endif
+        if (!backend) {
+            backend = std::make_unique<engine::vfx::NullVfxBackend>();
+        }
+        services.vfx_service = std::make_unique<engine::vfx::VfxService>(std::move(backend));
+    }
+
+    context.getGLRenderer().setVfxBackend(services.vfx_service ? services.vfx_service->backend() : nullptr);
+}
+
 #ifdef TF_ENABLE_SCRIPTING
 void tryInitScriptHost(entt::registry& registry,
                        engine::core::Context& context,
@@ -544,6 +580,9 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     if (params.services.appearance_catalog) {
         collectAppearanceAssets(*params.services.appearance_catalog, asset_registry);
     }
+    if (!ensureVfxCatalog(params.services)) {
+        return false;
+    }
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(
         params.registry,
@@ -576,6 +615,7 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     }
 
     configureCamera(params.context);
+    initVfxService(params.context, params.services);
 #ifdef TF_ENABLE_SCRIPTING
     tryInitScriptHost(params.registry, params.context, params.services);
 #endif
@@ -585,7 +625,8 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
 bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     auto& services = params.services;
     if (!services.collision_resolver || !services.entity_factory || !services.blueprint_manager ||
-        !services.item_catalog || !services.appearance_catalog || !services.world_state || !services.map_manager) {
+        !services.item_catalog || !services.appearance_catalog || !services.world_state || !services.map_manager ||
+        !services.vfx_service) {
         spdlog::error("Runtime services 未完成装配，无法创建 systems");
         return false;
     }
@@ -624,6 +665,10 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         params.registry,
         dispatcher,
         *services.appearance_catalog);
+    systems.vfx_bridge_system = std::make_unique<game::system::VfxBridgeSystem>(
+        dispatcher,
+        *services.vfx_service,
+        services.vfx_catalog.get());
     {
         auto layered_view =
             params.registry.view<game::component::AppearanceComponent, engine::component::LayeredSpriteComponent>();

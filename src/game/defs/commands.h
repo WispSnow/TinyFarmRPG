@@ -1,13 +1,17 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "engine/vfx/vfx_types.h"
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
+#include <glm/vec2.hpp>
 #include <string>
 #include <vector>
 
 namespace game::defs {
+
+inline constexpr entt::id_type kInvalidVfxEffectId{0};
 
 struct AddItemCommand {
     entt::entity target{entt::null};
@@ -94,6 +98,15 @@ struct SetAppearanceSlotCommand {
 
 struct RefreshAppearanceCommand {
     entt::entity target{entt::null};
+};
+
+struct PlayVfxCommand {
+    entt::id_type effect_id{kInvalidVfxEffectId};
+    glm::vec2 world_position{0.0f, 0.0f};
+    float z{0.0f};
+    float scale{1.0f};
+    bool loop{false};
+    engine::vfx::VfxChannel channel{engine::vfx::VfxChannel::Overlay};
 };
 
 } // namespace game::defs

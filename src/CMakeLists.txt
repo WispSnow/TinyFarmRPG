@@ -39,6 +39,9 @@ target_sources(engine PRIVATE
     engine/render/camera.cpp
     engine/render/text_renderer.cpp
     engine/render/nine_slice.cpp
+    # VFX
+    engine/vfx/null_vfx_backend.cpp
+    engine/vfx/vfx_service.cpp
     # Render - OpenGL
     engine/render/opengl/gl_helper.cpp
     engine/render/opengl/fullscreen_quad.cpp
@@ -54,6 +57,8 @@ target_sources(engine PRIVATE
     engine/render/opengl/emissive_pass.cpp
     engine/render/opengl/bloom_pass.cpp
     engine/render/opengl/scene_pass.cpp
+    engine/render/opengl/world_vfx_pass.cpp
+    engine/render/opengl/vfx_pass.cpp
     engine/render/opengl/ui_pass.cpp
     # Input
     engine/input/input_manager.cpp
@@ -119,6 +124,7 @@ if(ENABLE_DEBUG_UI)
         engine/debug/panels/scene_debug_panel.cpp
         engine/debug/panels/spatial_index_debug_panel.cpp
         engine/debug/panels/gl_renderer_debug_panel.cpp
+        engine/debug/panels/vfx_debug_panel.cpp
         engine/render/opengl/imgui_layer.cpp
         engine/system/debug_render_system.cpp
     )
@@ -129,6 +135,13 @@ if(ENABLE_SCRIPTING)
         engine/script/script_entity_handle.cpp
         engine/script/script_host.cpp
         engine/script/script_binding_utils.cpp
+    )
+endif()
+
+if(ENABLE_EFFEKSEER)
+    target_sources(engine PRIVATE
+        engine/vfx/effekseer_backend.cpp
+        engine/vfx/effekseer_backend_factory.cpp
     )
 endif()
 
@@ -148,6 +161,7 @@ target_sources(game PRIVATE
     game/data/game_time.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
+    game/data/vfx_catalog.cpp
     # Battle
     game/battle/turn_core.cpp
     game/battle/battle_session.cpp
@@ -200,6 +214,7 @@ target_sources(game PRIVATE
     game/system/map_transition_system.cpp
     game/system/pickup_system.cpp
     game/system/rest_system.cpp
+    game/system/vfx_bridge_system.cpp
     # World
     game/world/world_state.cpp
     game/world/async_preload_pipeline.cpp
