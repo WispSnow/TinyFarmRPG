@@ -26,5 +26,6 @@ class TimeOfDayLightSystem;
 class PickupSystem;
 class RestSystem;
 class AppearanceSystem;
+class VfxBridgeSystem;
 
 } // namespace game::system

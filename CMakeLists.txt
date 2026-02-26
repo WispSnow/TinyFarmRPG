@@ -20,6 +20,7 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
 option(ENABLE_SCRIPTING "启用 Lua + Sol2 脚本宿主层" ON)
+option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
@@ -40,6 +41,9 @@ include(cmake/Dependencies.cmake)
 
 # 脚本依赖管理（Lua / Sol2）
 include(cmake/ScriptingDependencies.cmake)
+
+# Effekseer 依赖管理（可选）
+include(cmake/EffekseerDependencies.cmake)
 
 # ImGui配置
 include(cmake/ImGui.cmake)
@@ -65,6 +69,10 @@ setup_project_dependencies()
 
 if(ENABLE_SCRIPTING)
     setup_scripting_dependencies()
+endif()
+
+if(ENABLE_EFFEKSEER)
+    setup_effekseer_dependencies()
 endif()
 
 # ============================================
@@ -117,6 +125,20 @@ if(ENABLE_SCRIPTING)
     )
 
     target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)
+endif()
+
+if(ENABLE_EFFEKSEER)
+    target_compile_definitions(engine PUBLIC TF_ENABLE_EFFEKSEER)
+    target_compile_definitions(game PUBLIC TF_ENABLE_EFFEKSEER)
+    target_link_libraries(engine
+        PUBLIC
+            Effekseer
+            EffekseerRendererGL
+    )
+    target_include_directories(engine
+        PUBLIC
+            ${EFFEKSEER_RUNTIME_INCLUDE_DIRS}
+    )
 endif()
 
 # 创建可执行文件

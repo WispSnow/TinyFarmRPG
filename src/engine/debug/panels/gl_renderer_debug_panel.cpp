@@ -121,6 +121,8 @@ void GLRendererDebugPanel::draw(bool& is_open) {
             {"LightingPass", GLRenderer::PassType::Lighting},
             {"EmissivePass", GLRenderer::PassType::Emissive},
             {"BloomPass", GLRenderer::PassType::Bloom},
+            {"WorldVfxPass", GLRenderer::PassType::WorldVfx},
+            {"OverlayVfxPass", GLRenderer::PassType::OverlayVfx},
             {"UIPass", GLRenderer::PassType::UI}
         };
 
@@ -203,6 +205,12 @@ void GLRendererDebugPanel::draw(bool& is_open) {
             drawTexturePreview("Emissive", renderer_.getEmissiveColorTex());
             ImGui::TableNextColumn();
             drawTexturePreview("Bloom", renderer_.getBloomTex());
+
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            drawTexturePreview("World VFX", renderer_.getWorldVfxTex());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted("<reserved>");
 
             ImGui::EndTable();
         }

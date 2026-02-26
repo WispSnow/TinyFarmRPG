@@ -1,5 +1,6 @@
 #pragma once
 #include "visual_test_case.h"
+#include "engine/vfx/vfx_types.h"
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
@@ -254,5 +255,46 @@ public:
     void onRender(engine::core::Context& context) override;
     void onImGui(engine::core::Context& context) override;
 };
+
+#ifdef TF_ENABLE_EFFEKSEER
+
+} // namespace tools::visual
+
+namespace engine::vfx {
+class VfxService;
+class VfxBackend;
+}
+
+namespace tools::visual {
+
+class EffekseerVfxVisualTest final : public VisualTestCase {
+public:
+    EffekseerVfxVisualTest();
+    ~EffekseerVfxVisualTest() override;
+    void onEnter(engine::core::Context& context) override;
+    void onExit(engine::core::Context& context) override;
+    void onUpdate(float delta_time, engine::core::Context& context) override;
+    void onRender(engine::core::Context& context) override;
+    void onImGui(engine::core::Context& context) override;
+
+private:
+    void spawnEffect(std::string_view effect_path);
+
+    std::unique_ptr<engine::vfx::VfxService> vfx_service_{};
+    engine::vfx::VfxBackend* backend_raw_{nullptr};
+
+    int selected_effect_{0};
+    glm::vec2 spawn_position_{0.0f, 0.0f};
+    float spawn_z_{0.0f};
+    float spawn_scale_{1.0f};
+    engine::vfx::VfxChannel spawn_channel_{engine::vfx::VfxChannel::Overlay};
+    bool auto_spawn_{false};
+    float auto_spawn_interval_{2.0f};
+    float auto_spawn_timer_{0.0f};
+
+    std::vector<std::string> effect_paths_{};
+};
+
+#endif // TF_ENABLE_EFFEKSEER
 
 } // namespace tools::visual
