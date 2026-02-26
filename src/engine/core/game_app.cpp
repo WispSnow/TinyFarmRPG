@@ -29,6 +29,7 @@
 #include "engine/debug/panels/ui_preset_debug_panel.h"
 #include "engine/debug/panels/scene_debug_panel.h"
 #include "engine/debug/panels/spatial_index_debug_panel.h"
+#include "engine/debug/panels/vfx_debug_panel.h"
 #endif
 #include "engine/spatial/spatial_index_manager.h"
 #include <SDL3/SDL.h>
@@ -467,6 +468,7 @@ bool GameApp::registerDebugPanels() {
     }
 
     debug_ui_manager_->registerPanel(std::make_unique<engine::render::opengl::GLRendererDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::VfxDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(
         std::make_unique<engine::debug::TimeDebugPanel>(*time_, config_->render_interpolation_enabled_),
         false,

@@ -43,6 +43,7 @@
 #include "game/world/map_manager.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
+#include "engine/debug/panels/vfx_debug_panel.h"
 #include "engine/system/debug_render_system.h"
 #include "game/debug/blueprint_inspector_debug_panel.h"
 #include "game/debug/game_time_debug_panel.h"
@@ -252,6 +253,11 @@ void GameScene::clean() {
     }
 #endif
 #ifdef TF_ENABLE_DEBUG_UI
+    if (auto* vfx_panel = context_.getDebugUIManager().getPanel<engine::debug::VfxDebugPanel>(
+            engine::debug::PanelCategory::Engine)) {
+        vfx_panel->clearVfxService();
+        vfx_panel->clearPlayerPositionProvider();
+    }
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
     auto& dispatcher = context_.getDispatcher();
@@ -326,6 +332,19 @@ bool GameScene::registerDebugPanels() {
             std::make_unique<game::debug::SchedulerDebugPanel>(*scheduler_profiler_, &game_mode_),
             false,
             engine::debug::PanelCategory::Game);
+    }
+
+    if (auto* vfx_panel = debug_ui_manager.getPanel<engine::debug::VfxDebugPanel>(
+            engine::debug::PanelCategory::Engine)) {
+        vfx_panel->setVfxService(services_ ? services_->vfx_service.get() : nullptr);
+        vfx_panel->setPlayerPositionProvider([this]() -> std::optional<glm::vec2> {
+            auto view = registry_.view<game::component::PlayerTag, engine::component::TransformComponent>();
+            if (view.begin() == view.end()) {
+                return std::nullopt;
+            }
+            const auto player = *view.begin();
+            return view.get<engine::component::TransformComponent>(player).position_;
+        });
     }
 
     spdlog::trace("游戏层调试面板注册完成。");

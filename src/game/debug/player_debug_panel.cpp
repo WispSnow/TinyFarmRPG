@@ -8,9 +8,7 @@
 #include "game/defs/constants.h"
 #include "game/defs/crop_defs.h"
 #include "game/defs/events.h"
-#include "engine/component/transform_component.h"
 #include "engine/component/velocity_component.h"
-#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
@@ -172,18 +170,6 @@ void PlayerDebugPanel::draw(bool& is_open) {
     ImGui::Separator();
     if (ImGui::Button("Start Test Battle (2v2)")) {
         dispatcher_.trigger(buildDebugBattleCommand());
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Play VFX Laser01")) {
-        glm::vec2 world_position{0.0f, 0.0f};
-        if (registry_.all_of<engine::component::TransformComponent>(player_entity)) {
-            world_position = registry_.get<engine::component::TransformComponent>(player_entity).position_;
-        }
-
-        game::defs::PlayVfxCommand command{};
-        command.effect_id = entt::hashed_string{"laser01"}.value();
-        command.world_position = world_position;
-        dispatcher_.trigger(command);
     }
 
     if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {
