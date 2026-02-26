@@ -7,8 +7,6 @@
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
-static_assert(engine::vfx::kInvalidVfxEffectId == game::defs::kInvalidVfxEffectId);
-
 namespace game::system {
 
 VfxBridgeSystem::VfxBridgeSystem(entt::dispatcher& dispatcher,
@@ -30,7 +28,7 @@ void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command
         return;
     }
 
-    if (command.effect_id == game::defs::kInvalidVfxEffectId) {
+    if (command.effect_id == engine::vfx::kInvalidVfxEffectId) {
         return;
     }
 
@@ -43,7 +41,8 @@ void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command
     engine::vfx::VfxPlayRequest request{};
     request.effect_id = command.effect_id;
     request.effect_path = *effect_path;
-    request.world_position = command.world_position;
+    request.position = command.position;
+    request.coordinate_space = command.coordinate_space;
     request.z = command.z;
     request.scale = command.scale;
     request.loop = command.loop;

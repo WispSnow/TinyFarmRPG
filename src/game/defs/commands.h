@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_types.h"
 
 #include <entt/core/fwd.hpp>
@@ -9,8 +10,6 @@
 #include <vector>
 
 namespace game::defs {
-
-inline constexpr entt::id_type kInvalidVfxEffectId{0};
 
 struct AddItemCommand {
     entt::entity target{entt::null};
@@ -100,8 +99,9 @@ struct RefreshAppearanceCommand {
 };
 
 struct PlayVfxCommand {
-    entt::id_type effect_id{kInvalidVfxEffectId};
-    glm::vec2 world_position{0.0f, 0.0f};
+    entt::id_type effect_id{engine::vfx::kInvalidVfxEffectId};
+    glm::vec2 position{0.0f, 0.0f};
+    engine::vfx::VfxCoordinateSpace coordinate_space{engine::vfx::VfxCoordinateSpace::World};
     float z{0.0f};
     float scale{1.0f};
     bool loop{false};

@@ -16,13 +16,13 @@ TEST(VfxServiceTest, UpdateFlushesQueuedRequestsToBackend) {
 
     VfxPlayRequest first{};
     first.effect_path = "assets/vfx/00_Basic/Laser01.efkefc";
-    first.world_position = {10.0f, 20.0f};
+    first.position = {10.0f, 20.0f};
     first.scale = 1.25f;
     service.submit(first);
 
     VfxPlayRequest second{};
     second.effect_path = "assets/vfx/00_Basic/Laser01.efkefc";
-    second.world_position = {30.0f, 40.0f};
+    second.position = {30.0f, 40.0f};
     second.z = 2.0f;
     service.submit(second);
 
@@ -32,8 +32,8 @@ TEST(VfxServiceTest, UpdateFlushesQueuedRequestsToBackend) {
     ASSERT_EQ(backend_ptr->requests.size(), 2u);
     EXPECT_EQ(backend_ptr->enqueue_batch_call_count, 1u);
     EXPECT_EQ(backend_ptr->last_enqueued_batch_size, 2u);
-    EXPECT_FLOAT_EQ(backend_ptr->requests[0].world_position.x, 10.0f);
-    EXPECT_FLOAT_EQ(backend_ptr->requests[1].world_position.y, 40.0f);
+    EXPECT_FLOAT_EQ(backend_ptr->requests[0].position.x, 10.0f);
+    EXPECT_FLOAT_EQ(backend_ptr->requests[1].position.y, 40.0f);
     EXPECT_EQ(backend_ptr->update_call_count, 1u);
     EXPECT_FLOAT_EQ(backend_ptr->last_delta_time, 0.125f);
     EXPECT_EQ(service.pendingRequestCount(), 0u);

@@ -1,5 +1,6 @@
 #pragma once
 #include "visual_test_case.h"
+#include "engine/vfx/vfx_types.h"
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
 #include <glm/vec2.hpp>
@@ -284,6 +285,7 @@ private:
 
     int selected_effect_{0};
     glm::vec2 spawn_position_{0.0f, 0.0f};
+    engine::vfx::VfxCoordinateSpace spawn_coordinate_space_{engine::vfx::VfxCoordinateSpace::World};
     float spawn_z_{0.0f};
     float spawn_scale_{1.0f};
     bool auto_spawn_{false};

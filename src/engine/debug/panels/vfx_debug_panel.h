@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/debug/debug_panel.h"
+#include "engine/vfx/vfx_types.h"
 
 #include <functional>
 #include <optional>
@@ -39,6 +40,12 @@ public:
     void clearPlayerPositionProvider();
 
 private:
+    enum class SpawnMode {
+        World = 0,
+        Screen = 1,
+        WorldAndScreen = 2,
+    };
+
     [[nodiscard]] bool canSpawn() const;
     [[nodiscard]] const char* selectedEffectLabel() const;
     [[nodiscard]] bool syncSpawnPositionToPlayer();
@@ -49,7 +56,7 @@ private:
     void updateAutoSpawn(float delta_seconds);
     void spawnSelectedEffect();
     void spawnBurst();
-    void spawnEffectAt(const glm::vec2& world_position);
+    void spawnEffectAt(const glm::vec2& position);
 
     engine::render::opengl::GLRenderer& gl_renderer_;
     engine::vfx::VfxService* vfx_service_{nullptr};
@@ -61,6 +68,7 @@ private:
 
     int selected_effect_{0};
     glm::vec2 spawn_position_{0.0f, 0.0f};
+    SpawnMode spawn_mode_{SpawnMode::World};
     float spawn_z_{0.0f};
     float spawn_scale_{1.0f};
     bool spawn_loop_{false};

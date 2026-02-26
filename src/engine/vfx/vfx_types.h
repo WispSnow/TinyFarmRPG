@@ -12,10 +12,16 @@ namespace engine::vfx {
 
 inline constexpr entt::id_type kInvalidVfxEffectId{0};
 
+enum class VfxCoordinateSpace {
+    World = 0,
+    Screen = 1,
+};
+
 struct VfxPlayRequest {
     entt::id_type effect_id{kInvalidVfxEffectId};
     std::string effect_path{};
-    glm::vec2 world_position{0.0f, 0.0f};
+    glm::vec2 position{0.0f, 0.0f};
+    VfxCoordinateSpace coordinate_space{VfxCoordinateSpace::World};
     float z{0.0f};
     float scale{1.0f};
     bool loop{false};

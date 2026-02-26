@@ -30,16 +30,22 @@ public:
     [[nodiscard]] std::uint32_t getLastInstanceCount() const override;
 
 private:
+    struct ActiveHandleEntry {
+        Effekseer::Handle handle{-1};
+        VfxCoordinateSpace coordinate_space{VfxCoordinateSpace::World};
+    };
+
     EffekseerBackend() = default;
 
     [[nodiscard]] bool init();
     void enqueueOne(const VfxPlayRequest& request);
     [[nodiscard]] Effekseer::EffectRef loadEffect(entt::id_type effect_id, std::string_view effect_path);
+    [[nodiscard]] std::uint32_t countActiveInstances(VfxCoordinateSpace space) const;
 
     EffekseerRendererGL::RendererRef renderer_{};
     Effekseer::ManagerRef manager_{};
     std::unordered_map<entt::id_type, Effekseer::EffectRef> cached_effects_{};
-    std::vector<Effekseer::Handle> active_handles_{};
+    std::vector<ActiveHandleEntry> active_handles_{};
 
     std::uint32_t last_draw_call_count_{0u};
     std::uint32_t last_instance_count_{0u};

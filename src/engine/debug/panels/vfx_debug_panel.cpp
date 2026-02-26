@@ -106,12 +106,32 @@ void VfxDebugPanel::draw(bool& is_open) {
 
     ImGui::Separator();
 
-    if (ImGui::DragFloat2("Spawn Position (World)", &spawn_position_.x, 1.0f, -50000.0f, 50000.0f, "%.1f")) {
+    int spawn_mode = static_cast<int>(spawn_mode_);
+    if (ImGui::Combo("Coordinate Space", &spawn_mode, "World\0Screen\0World+Screen\0")) {
+        spawn_mode = std::clamp(spawn_mode, 0, 2);
+        spawn_mode_ = static_cast<SpawnMode>(spawn_mode);
+    }
+
+    const char* spawn_position_label = "Spawn Position (World)";
+    if (spawn_mode_ == SpawnMode::Screen) {
+        spawn_position_label = "Spawn Position (Screen)";
+    } else if (spawn_mode_ == SpawnMode::WorldAndScreen) {
+        spawn_position_label = "Spawn Position (Shared)";
+    }
+    if (ImGui::DragFloat2(spawn_position_label, &spawn_position_.x, 1.0f, -50000.0f, 50000.0f, "%.1f")) {
         spawn_position_initialized_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Player Position")) {
-        (void)syncSpawnPositionToPlayer();
+    if (spawn_mode_ != SpawnMode::Screen) {
+        ImGui::SameLine();
+        if (ImGui::Button("Player Position")) {
+            (void)syncSpawnPositionToPlayer();
+        }
+    }
+
+    if (spawn_mode_ == SpawnMode::Screen) {
+        ImGui::Text("Screen mode: position is in logical screen coordinates.");
+    } else if (spawn_mode_ == SpawnMode::WorldAndScreen) {
+        ImGui::Text("World+Screen mode: spawn one instance in each coordinate space.");
     }
 
     ImGui::DragFloat("Spawn Z", &spawn_z_, 0.1f, -1000.0f, 1000.0f, "%.1f");
@@ -237,6 +257,7 @@ void VfxDebugPanel::ensureSelectedEffectInRange() {
 
 void VfxDebugPanel::resetDefaults() {
     selected_effect_ = 0;
+    spawn_mode_ = SpawnMode::World;
     spawn_z_ = 0.0f;
     spawn_scale_ = 1.0f;
     spawn_loop_ = false;
@@ -290,20 +311,36 @@ void VfxDebugPanel::spawnBurst() {
     }
 }
 
-void VfxDebugPanel::spawnEffectAt(const glm::vec2& world_position) {
+void VfxDebugPanel::spawnEffectAt(const glm::vec2& position) {
     if (!vfx_service_ || effect_paths_.empty()) {
         return;
     }
 
     const int index = std::clamp(selected_effect_, 0, static_cast<int>(effect_paths_.size()) - 1);
 
-    engine::vfx::VfxPlayRequest request{};
-    request.effect_path = effect_paths_[index];
-    request.world_position = world_position;
-    request.z = spawn_z_;
-    request.scale = spawn_scale_;
-    request.loop = spawn_loop_;
-    vfx_service_->submit(request);
+    auto submit_request = [this, index, &position](const engine::vfx::VfxCoordinateSpace space) {
+        engine::vfx::VfxPlayRequest request{};
+        request.effect_path = effect_paths_[index];
+        request.position = position;
+        request.coordinate_space = space;
+        request.z = spawn_z_;
+        request.scale = spawn_scale_;
+        request.loop = spawn_loop_;
+        vfx_service_->submit(request);
+    };
+
+    if (spawn_mode_ == SpawnMode::World) {
+        submit_request(engine::vfx::VfxCoordinateSpace::World);
+        return;
+    }
+    if (spawn_mode_ == SpawnMode::Screen) {
+        submit_request(engine::vfx::VfxCoordinateSpace::Screen);
+        return;
+    }
+    if (spawn_mode_ == SpawnMode::WorldAndScreen) {
+        submit_request(engine::vfx::VfxCoordinateSpace::World);
+        submit_request(engine::vfx::VfxCoordinateSpace::Screen);
+    }
 }
 
 } // namespace engine::debug

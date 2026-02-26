@@ -16,6 +16,8 @@ namespace {
 
 constexpr int32_t kMaxSpriteCount = 4096;
 constexpr float kFramesPerSecond = 60.0f;
+constexpr int32_t kWorldSpaceLayer = 0;
+constexpr int32_t kScreenSpaceLayer = 1;
 
 [[nodiscard]] std::u16string toUtf16Path(std::string_view path) {
     return std::filesystem::path(std::string(path)).u16string();
@@ -40,6 +42,26 @@ constexpr float kFramesPerSecond = 60.0f;
 [[nodiscard]] glm::mat4 toEffekseerViewProjection(const glm::mat4& game_view_projection) {
     const glm::mat4 y_flip = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
     return game_view_projection * y_flip;
+}
+
+[[nodiscard]] int32_t toEffekseerLayer(const engine::vfx::VfxCoordinateSpace space) {
+    switch (space) {
+        case engine::vfx::VfxCoordinateSpace::World:
+            return kWorldSpaceLayer;
+        case engine::vfx::VfxCoordinateSpace::Screen:
+            return kScreenSpaceLayer;
+    }
+    return kWorldSpaceLayer;
+}
+
+[[nodiscard]] int32_t toCameraCullingMask(const engine::vfx::VfxCoordinateSpace space) {
+    return 1 << toEffekseerLayer(space);
+}
+
+[[nodiscard]] glm::mat4 makeScreenViewProjection(const glm::vec2 logical_size) {
+    const float width = std::max(1.0f, logical_size.x);
+    const float height = std::max(1.0f, logical_size.y);
+    return glm::ortho(0.0f, width, height, 0.0f, -1.0f, 1.0f);
 }
 
 } // namespace
@@ -109,11 +131,13 @@ void EffekseerBackend::enqueueOne(const VfxPlayRequest& request) {
         return;
     }
 
-    const auto handle = manager_->Play(effect, request.world_position.x, -request.world_position.y, request.z);
+    const auto handle = manager_->Play(effect, request.position.x, -request.position.y, request.z);
     if (handle < 0) {
         spdlog::warn("EffekseerBackend: 播放特效失败 effect='{}'", request.effect_path);
         return;
     }
+
+    manager_->SetLayer(handle, toEffekseerLayer(request.coordinate_space));
 
     if (request.scale != 1.0f) {
         manager_->SetScale(handle, request.scale, request.scale, request.scale);
@@ -121,7 +145,7 @@ void EffekseerBackend::enqueueOne(const VfxPlayRequest& request) {
 
     // 当前阶段 loop 参数仅作为数据保留，不覆写特效资源内的生命周期配置。
     (void)request.loop;
-    active_handles_.push_back(handle);
+    active_handles_.push_back({handle, request.coordinate_space});
 }
 
 void EffekseerBackend::update(const float delta_time_seconds) {
@@ -133,8 +157,8 @@ void EffekseerBackend::update(const float delta_time_seconds) {
     update_parameter.DeltaFrame = std::max(0.0f, delta_time_seconds * kFramesPerSecond);
     manager_->Update(update_parameter);
 
-    std::erase_if(active_handles_, [this](const Effekseer::Handle handle) {
-        return !manager_->Exists(handle);
+    std::erase_if(active_handles_, [this](const ActiveHandleEntry& entry) {
+        return !manager_->Exists(entry.handle);
     });
 
     last_instance_count_ = static_cast<std::uint32_t>(active_handles_.size());
@@ -148,12 +172,8 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     renderer_->ResetDrawCallCount();
     renderer_->ResetDrawVertexCount();
 
-    // Effekseer 需要分别设置投影矩阵和相机矩阵才能正确渲染。
-    // DrawParameter.ViewProjectionMatrix 仅用于剔除，不参与实际顶点变换。
-    const auto proj = toEffekseerMatrix(toEffekseerViewProjection(context.view_projection));
     Effekseer::Matrix44 camera_mat;
     camera_mat.Indentity();
-    renderer_->SetProjectionMatrix(proj);
     renderer_->SetCameraMatrix(camera_mat);
 
     if (!renderer_->BeginRendering()) {
@@ -161,13 +181,33 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
         return;
     }
 
-    Effekseer::Manager::DrawParameter draw_parameter{};
-    draw_parameter.ViewProjectionMatrix = proj;
-    draw_parameter.ZNear = 0.0f;
-    draw_parameter.ZFar = 1.0f;
-    draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
-    draw_parameter.CameraFrontDirection = Effekseer::Vector3D(0.0f, 0.0f, -1.0f);
-    manager_->Draw(draw_parameter);
+    auto draw_for_space = [this](const glm::mat4& game_view_projection, const VfxCoordinateSpace space) {
+        if (countActiveInstances(space) == 0u) {
+            return;
+        }
+
+        // Effekseer 需要分别设置投影矩阵和相机矩阵才能正确渲染。
+        // DrawParameter.ViewProjectionMatrix 仅用于剔除，不参与实际顶点变换。
+        const auto proj = toEffekseerMatrix(toEffekseerViewProjection(game_view_projection));
+        renderer_->SetProjectionMatrix(proj);
+
+        Effekseer::Manager::DrawParameter draw_parameter{};
+        draw_parameter.ViewProjectionMatrix = proj;
+        draw_parameter.ZNear = 0.0f;
+        draw_parameter.ZFar = 1.0f;
+        draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
+        draw_parameter.CameraFrontDirection = Effekseer::Vector3D(0.0f, 0.0f, -1.0f);
+        draw_parameter.CameraCullingMask = toCameraCullingMask(space);
+        for (const auto& entry : active_handles_) {
+            if (entry.coordinate_space != space) {
+                continue;
+            }
+            manager_->DrawHandle(entry.handle, draw_parameter);
+        }
+    };
+
+    draw_for_space(context.view_projection, VfxCoordinateSpace::World);
+    draw_for_space(makeScreenViewProjection(context.logical_size), VfxCoordinateSpace::Screen);
 
     renderer_->EndRendering();
 
@@ -181,6 +221,13 @@ std::uint32_t EffekseerBackend::getLastDrawCallCount() const {
 
 std::uint32_t EffekseerBackend::getLastInstanceCount() const {
     return last_instance_count_;
+}
+
+std::uint32_t EffekseerBackend::countActiveInstances(const VfxCoordinateSpace space) const {
+    return static_cast<std::uint32_t>(std::count_if(
+        active_handles_.begin(),
+        active_handles_.end(),
+        [space](const ActiveHandleEntry& entry) { return entry.coordinate_space == space; }));
 }
 
 Effekseer::EffectRef EffekseerBackend::loadEffect(const entt::id_type effect_id,

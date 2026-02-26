@@ -48,7 +48,8 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
 
     game::defs::PlayVfxCommand command{};
     command.effect_id = entt::hashed_string{"laser01"}.value();
-    command.world_position = {128.0f, 64.0f};
+    command.position = {128.0f, 64.0f};
+    command.coordinate_space = engine::vfx::VfxCoordinateSpace::Screen;
     command.z = 3.0f;
     command.scale = 1.5f;
     command.loop = true;
@@ -61,8 +62,9 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     const auto& request = backend_ptr->requests.front();
     EXPECT_EQ(request.effect_id, command.effect_id);
     EXPECT_EQ(request.effect_path, "assets/vfx/00_Basic/Laser01.efkefc");
-    EXPECT_FLOAT_EQ(request.world_position.x, 128.0f);
-    EXPECT_FLOAT_EQ(request.world_position.y, 64.0f);
+    EXPECT_FLOAT_EQ(request.position.x, 128.0f);
+    EXPECT_FLOAT_EQ(request.position.y, 64.0f);
+    EXPECT_EQ(request.coordinate_space, engine::vfx::VfxCoordinateSpace::Screen);
     EXPECT_FLOAT_EQ(request.z, 3.0f);
     EXPECT_FLOAT_EQ(request.scale, 1.5f);
     EXPECT_TRUE(request.loop);

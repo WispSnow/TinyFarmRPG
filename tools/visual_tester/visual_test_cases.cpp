@@ -1590,7 +1590,16 @@ void EffekseerVfxVisualTest::onImGui(engine::core::Context& context) {
     }
 
     // Spawn 参数
-    ImGui::DragFloat2("Spawn Position", &spawn_position_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
+    int coordinate_space = spawn_coordinate_space_ == engine::vfx::VfxCoordinateSpace::Screen ? 1 : 0;
+    if (ImGui::Combo("Coordinate Space", &coordinate_space, "World\0Screen\0")) {
+        spawn_coordinate_space_ = coordinate_space == 1
+            ? engine::vfx::VfxCoordinateSpace::Screen
+            : engine::vfx::VfxCoordinateSpace::World;
+    }
+    const char* spawn_label = spawn_coordinate_space_ == engine::vfx::VfxCoordinateSpace::Screen
+        ? "Spawn Position (Screen)"
+        : "Spawn Position (World)";
+    ImGui::DragFloat2(spawn_label, &spawn_position_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
     ImGui::DragFloat("Spawn Z", &spawn_z_, 0.1f, -100.0f, 100.0f, "%.1f");
     ImGui::DragFloat("Spawn Scale", &spawn_scale_, 0.01f, 0.01f, 10.0f, "%.2f");
 
@@ -1620,6 +1629,7 @@ void EffekseerVfxVisualTest::onImGui(engine::core::Context& context) {
     if (ImGui::Button("Reset Defaults")) {
         selected_effect_ = 0;
         spawn_position_ = {0.0f, 0.0f};
+        spawn_coordinate_space_ = engine::vfx::VfxCoordinateSpace::World;
         spawn_z_ = 0.0f;
         spawn_scale_ = 1.0f;
         auto_spawn_ = false;
@@ -1634,7 +1644,8 @@ void EffekseerVfxVisualTest::spawnEffect(std::string_view effect_path) {
     }
     engine::vfx::VfxPlayRequest request{};
     request.effect_path = std::string(effect_path);
-    request.world_position = spawn_position_;
+    request.position = spawn_position_;
+    request.coordinate_space = spawn_coordinate_space_;
     request.z = spawn_z_;
     request.scale = spawn_scale_;
     vfx_service_->submit(request);
