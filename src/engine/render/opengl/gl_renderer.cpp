@@ -52,6 +52,7 @@ std::unique_ptr<GLRenderer> GLRenderer::createHeadless(const glm::vec2& logical_
     renderer->logical_size_ = logical_size;
     renderer->window_size_pixels_ = logical_size;
     renderer->viewport_clipping_enabled_ = false;
+    renderer->world_vfx_pass_ = WorldVfxPass::createHeadless();
     renderer->vfx_pass_ = std::make_unique<VfxPass>();
     return renderer;
 }
@@ -725,12 +726,8 @@ const GLRenderer::PassStats& GLRenderer::getPassStats(PassType pass) const {
 }
 
 void GLRenderer::setVfxBackend(engine::vfx::VfxBackend* backend) {
-    if (world_vfx_pass_) {
-        world_vfx_pass_->setBackend(backend);
-    }
-    if (vfx_pass_) {
-        vfx_pass_->setBackend(backend);
-    }
+    world_vfx_pass_->setBackend(backend);
+    vfx_pass_->setBackend(backend);
 }
 
 glm::vec2 GLRenderer::getWindowSizePixels() const {

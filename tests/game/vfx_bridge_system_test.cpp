@@ -52,6 +52,7 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     command.z = 3.0f;
     command.scale = 1.5f;
     command.loop = true;
+    command.channel = engine::vfx::VfxChannel::World;
     dispatcher.trigger(command);
 
     ASSERT_EQ(service.pendingRequestCount(), 1u);
@@ -66,7 +67,7 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     EXPECT_FLOAT_EQ(request.z, 3.0f);
     EXPECT_FLOAT_EQ(request.scale, 1.5f);
     EXPECT_TRUE(request.loop);
-    EXPECT_EQ(request.channel, engine::vfx::VfxChannel::Overlay);
+    EXPECT_EQ(request.channel, engine::vfx::VfxChannel::World);
 }
 
 TEST(VfxBridgeSystemTest, MissingEffectMappingIsIgnored) {

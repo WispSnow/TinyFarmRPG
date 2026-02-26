@@ -20,6 +20,10 @@ std::unique_ptr<WorldVfxPass> WorldVfxPass::create(const glm::vec2& viewport_siz
     return pass;
 }
 
+std::unique_ptr<WorldVfxPass> WorldVfxPass::createHeadless() {
+    return std::unique_ptr<WorldVfxPass>(new WorldVfxPass(0, 0, true));
+}
+
 WorldVfxPass::~WorldVfxPass() {
     clean();
 }
@@ -70,7 +74,7 @@ void WorldVfxPass::setBackend(engine::vfx::VfxBackend* backend) {
 }
 
 void WorldVfxPass::clear() {
-    if (fbo_ == 0) {
+    if (is_headless_ || fbo_ == 0) {
         return;
     }
 
@@ -82,12 +86,16 @@ void WorldVfxPass::clear() {
 }
 
 WorldVfxPass::Stats WorldVfxPass::flush(const engine::vfx::VfxRenderContext& context) {
-    if (fbo_ == 0 || backend_ == nullptr) {
+    if (is_headless_ || fbo_ == 0 || backend_ == nullptr) {
         return {};
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
     glViewport(0, 0, viewport_width_, viewport_height_);
+    const ScopedGLBlendFunc scoped_blend(GL_SRC_ALPHA,
+                                         GL_ONE_MINUS_SRC_ALPHA,
+                                         GL_ONE,
+                                         GL_ONE_MINUS_SRC_ALPHA);
 
     backend_->render(context);
 

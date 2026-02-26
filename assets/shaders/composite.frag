@@ -16,8 +16,8 @@ void main(){
     vec3 bloom = texture(uBloomTex, vUV).rgb * uBloomStrength;
     vec4 worldVfx = texture(uWorldVfxTex, vUV);
     vec3 base = scene * light + emissive + bloom;
-    // Effekseer 输出到 world-vfx FBO 的 alpha 语义会随资源混合模式变化；
-    // 先采用纯加色叠加，避免透明区出现黑底/黑框。
-    vec3 composed = base + worldVfx.rgb;
+    // 当前 world 通道先按加色增量合成，避免对 Effekseer 混合语义做错误假设。
+    // 该策略更适合 additive 类资源；alpha-blend 类资源应优先走 overlay 通道。
+    vec3 composed = clamp(base + worldVfx.rgb, vec3(0.0), vec3(1.0));
     FragColor = vec4(composed, 1.0);
 }
