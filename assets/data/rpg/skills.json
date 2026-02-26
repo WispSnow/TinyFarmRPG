@@ -1,0 +1,42 @@
+{
+    "skills": [
+        {
+            "id": "skill.attack",
+            "display_name": "Attack",
+            "description": "Basic attack",
+            "scope": "one_enemy",
+            "hit_type": "physical",
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.atk * 4 - b.def * 2",
+                "variance": 20,
+                "critical": true
+            },
+            "effects": []
+        },
+        {
+            "id": "skill.venom_sting",
+            "display_name": "Venom Sting",
+            "description": "Attack and try to poison target",
+            "scope": "one_enemy",
+            "hit_type": "physical",
+            "success_rate": 95,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.atk * 3 - b.def",
+                "variance": 15,
+                "critical": false
+            },
+            "effects": [
+                {
+                    "type": "add_state",
+                    "target_id": "state.poison",
+                    "value1": 0.3
+                }
+            ]
+        }
+    ]
+}

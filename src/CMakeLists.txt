@@ -159,6 +159,8 @@ target_sources(game PRIVATE
     game/component/pickup_component.h
     # Data
     game/data/game_time.cpp
+    game/data/rpg_types.cpp
+    game/data/rpg_catalog.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
     game/data/vfx_catalog.cpp

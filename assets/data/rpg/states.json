@@ -1,0 +1,18 @@
+{
+    "states": [
+        {
+            "id": "state.poison",
+            "display_name": "Poison",
+            "priority": 40,
+            "min_turns": 2,
+            "max_turns": 4,
+            "traits": [
+                {
+                    "type": "param_rate",
+                    "target": "atk",
+                    "value": 0.9
+                }
+            ]
+        }
+    ]
+}
