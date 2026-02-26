@@ -88,6 +88,8 @@ private:
     glm::vec2 logical_size_{0.0f, 0.0f};
     glm::vec2 window_size_pixels_{0.0f, 0.0f};  // Renderer关注窗口实际像素尺寸
     glm::mat4 current_view_proj_{1.0f};
+    glm::mat4 current_projection_{1.0f};
+    glm::mat4 current_view_{1.0f};
     std::optional<engine::utils::Rect> current_view_rect_;
 
     // 保存各个通道绘制的纹理句柄
@@ -99,6 +101,7 @@ private:
     // 保存各个通道绘制的统计信息(DebugPanel需要)
     std::array<PassStats, static_cast<size_t>(PassType::Count)> pass_stats_{};
     engine::vfx::VfxBackend* vfx_backend_{nullptr};
+    float vfx_camera_elevation_deg_{0.0f};
 
 public:
     [[nodiscard]] static std::unique_ptr<GLRenderer> create(SDL_Window* window,
@@ -230,6 +233,8 @@ public:
     [[nodiscard]] uint32_t getBloomLevelCount() const;
     [[nodiscard]] const PassStats& getPassStats(PassType pass) const;
     void setVfxBackend(engine::vfx::VfxBackend* backend) { vfx_backend_ = backend; }
+    void setVfxCameraElevation(float degrees) { vfx_camera_elevation_deg_ = degrees; }
+    [[nodiscard]] float getVfxCameraElevation() const { return vfx_camera_elevation_deg_; }
 
     // 调试：渲染中间纹理预览（DebugPanel 使用）
     [[nodiscard]] GLuint getSceneColorTex() const { return scene_color_tex_; }

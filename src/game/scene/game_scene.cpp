@@ -52,6 +52,7 @@
 #include "game/debug/scheduler_debug_panel.h"
 #include "game/debug/scheduler_profiler.h"
 #include "game/debug/save_load_debug_panel.h"
+#include "engine/debug/panels/vfx_debug_panel.h"
 #endif
 
 #include <entt/core/hashed_string.hpp>
@@ -252,7 +253,11 @@ void GameScene::clean() {
     }
 #endif
 #ifdef TF_ENABLE_DEBUG_UI
-    context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
+    auto& debug_ui = context_.getDebugUIManager();
+    if (auto* vfx_panel = debug_ui.getPanel<engine::debug::VfxDebugPanel>(engine::debug::PanelCategory::Engine)) {
+        debug_ui.unregisterPanel(vfx_panel, engine::debug::PanelCategory::Engine);
+    }
+    debug_ui.unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
     auto& dispatcher = context_.getDispatcher();
     dispatcher.clear<game::defs::DialogueShowEvent>();
@@ -326,6 +331,14 @@ bool GameScene::registerDebugPanels() {
             std::make_unique<game::debug::SchedulerDebugPanel>(*scheduler_profiler_, &game_mode_),
             false,
             engine::debug::PanelCategory::Game);
+    }
+
+    if (services_->vfx_service) {
+        debug_ui_manager.registerPanel(
+            std::make_unique<engine::debug::VfxDebugPanel>(
+                *services_->vfx_service, context_.getGLRenderer()),
+            false,
+            engine::debug::PanelCategory::Engine);
     }
 
     spdlog::trace("游戏层调试面板注册完成。");

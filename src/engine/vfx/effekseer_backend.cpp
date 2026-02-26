@@ -4,6 +4,7 @@
 
 #include <entt/core/hashed_string.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -125,11 +126,31 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     renderer_->ResetDrawCallCount();
     renderer_->ResetDrawVertexCount();
 
-    // Effekseer 需要分别设置投影矩阵和相机矩阵才能正确渲染。
-    // DrawParameter.ViewProjectionMatrix 仅用于剔除，不参与实际顶点变换。
-    const auto proj = toEffekseerMatrix(context.view_projection);
-    Effekseer::Matrix44 camera_mat;
-    camera_mat.Indentity();
+    // Effekseer 需要分别设置投影矩阵和相机矩阵。
+    // SetProjectionMatrix: 正交投影（含宽高比）
+    // SetCameraMatrix:     视图变换（zoom + translate + 可选俯仰角）
+    // 分离投影与视图可以避免宽高比差异导致 billboard 粒子变形。
+    const auto proj = toEffekseerMatrix(context.projection);
+    auto camera_mat = toEffekseerMatrix(context.view);
+
+    Effekseer::Vector3D camera_position{0.0f, 0.0f, 1.0f};
+    Effekseer::Vector3D camera_front{0.0f, 0.0f, -1.0f};
+
+    const float elevation = context.camera_elevation_deg;
+    if (elevation != 0.0f) {
+        const float rad = glm::radians(elevation);
+        const float cos_e = std::cos(rad);
+        const float sin_e = std::sin(rad);
+        camera_position = Effekseer::Vector3D(0.0f, sin_e, cos_e);
+        camera_front = Effekseer::Vector3D(0.0f, -sin_e, -cos_e);
+
+        // 将俯仰角合并进视图矩阵
+        const glm::vec3 eye{0.0f, sin_e, cos_e};
+        const glm::vec3 center{0.0f, 0.0f, 0.0f};
+        const glm::vec3 up{0.0f, 1.0f, 0.0f};
+        camera_mat = toEffekseerMatrix(glm::lookAt(eye, center, up) * context.view);
+    }
+
     renderer_->SetProjectionMatrix(proj);
     renderer_->SetCameraMatrix(camera_mat);
 
@@ -139,11 +160,11 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     }
 
     Effekseer::Manager::DrawParameter draw_parameter{};
-    draw_parameter.ViewProjectionMatrix = proj;
+    draw_parameter.ViewProjectionMatrix = toEffekseerMatrix(context.projection * context.view);
     draw_parameter.ZNear = 0.0f;
     draw_parameter.ZFar = 1.0f;
-    draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
-    draw_parameter.CameraFrontDirection = Effekseer::Vector3D(0.0f, 0.0f, -1.0f);
+    draw_parameter.CameraPosition = camera_position;
+    draw_parameter.CameraFrontDirection = camera_front;
     manager_->Draw(draw_parameter);
 
     renderer_->EndRendering();

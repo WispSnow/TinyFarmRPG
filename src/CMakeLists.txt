@@ -122,6 +122,7 @@ if(ENABLE_DEBUG_UI)
         engine/debug/panels/scene_debug_panel.cpp
         engine/debug/panels/spatial_index_debug_panel.cpp
         engine/debug/panels/gl_renderer_debug_panel.cpp
+        engine/debug/panels/vfx_debug_panel.cpp
         engine/render/opengl/imgui_layer.cpp
         engine/system/debug_render_system.cpp
     )

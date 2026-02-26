@@ -540,9 +540,11 @@ void GLRenderer::present() {
     // 6) 合成之后，绘制 VFX（@Window Pixels / viewport）
     if (vfx_backend_) {
         engine::vfx::VfxRenderContext vfx_context{};
-        vfx_context.view_projection = current_view_proj_;
+        vfx_context.projection = current_projection_;
+        vfx_context.view = current_view_;
         vfx_context.logical_size = logical_size_;
         vfx_context.viewport_pixels = viewport;
+        vfx_context.camera_elevation_deg = vfx_camera_elevation_deg_;
         vfx_backend_->render(vfx_context);
 
         pass_stats_[static_cast<size_t>(PassType::Vfx)] = {
@@ -959,6 +961,8 @@ glm::mat4 GLRenderer::computeViewProjection(const Camera& camera) {
     view = glm::translate(view, glm::vec3(-position, 0.0f));
     /* 由于是后乘，实际作用在物体顶点上的顺序是反过来的：先平移（步骤3）→ 再旋转（步骤2）→ 最后缩放（步骤1）。 */
 
+    current_projection_ = proj;
+    current_view_ = view;
     return proj * view;
 }
 
