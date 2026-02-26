@@ -697,6 +697,9 @@ std::vector<const ActorData*> RpgCatalog::listActors() const {
         (void)id;
         result.push_back(&actor);
     }
+    std::sort(result.begin(), result.end(), [](const ActorData* lhs, const ActorData* rhs) {
+        return lhs->id_ < rhs->id_;
+    });
     return result;
 }
 
@@ -707,6 +710,9 @@ std::vector<const TroopData*> RpgCatalog::listTroops() const {
         (void)id;
         result.push_back(&troop);
     }
+    std::sort(result.begin(), result.end(), [](const TroopData* lhs, const TroopData* rhs) {
+        return lhs->id_ < rhs->id_;
+    });
     return result;
 }
 

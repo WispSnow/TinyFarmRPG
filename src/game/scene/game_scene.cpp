@@ -94,9 +94,6 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
                                                std::vector<game::battle::BattleUnit>& out_units,
                                                std::string& out_error) {
     auto actors = catalog.listActors();
-    std::sort(actors.begin(), actors.end(), [](const game::data::ActorData* lhs, const game::data::ActorData* rhs) {
-        return lhs->id_ < rhs->id_;
-    });
 
     std::vector<game::battle::BattleUnit> player_units{};
     player_units.reserve(actors.size());
@@ -126,9 +123,6 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
     }
 
     auto troops = catalog.listTroops();
-    std::sort(troops.begin(), troops.end(), [](const game::data::TroopData* lhs, const game::data::TroopData* rhs) {
-        return lhs->id_ < rhs->id_;
-    });
 
     const game::data::TroopData* selected_troop = nullptr;
     for (const auto* troop : troops) {
