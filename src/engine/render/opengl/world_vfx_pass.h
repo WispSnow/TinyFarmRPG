@@ -23,6 +23,7 @@ public:
     };
 
     [[nodiscard]] static std::unique_ptr<WorldVfxPass> create(const glm::vec2& viewport_size);
+    [[nodiscard]] static std::unique_ptr<WorldVfxPass> createHeadless();
     ~WorldVfxPass() override;
 
     WorldVfxPass(const WorldVfxPass&) = delete;
@@ -37,8 +38,8 @@ public:
     void clean() override;
 
 private:
-    explicit WorldVfxPass(int viewport_width, int viewport_height)
-        : viewport_width_(viewport_width), viewport_height_(viewport_height) {
+    explicit WorldVfxPass(int viewport_width, int viewport_height, bool headless = false)
+        : viewport_width_(viewport_width), viewport_height_(viewport_height), is_headless_(headless) {
     }
 
     [[nodiscard]] bool init();
@@ -47,6 +48,7 @@ private:
 
     int viewport_width_{0};
     int viewport_height_{0};
+    bool is_headless_{false};
     GLuint fbo_{0};
     GLuint color_tex_{0};
     engine::vfx::VfxBackend* backend_{nullptr};

@@ -76,6 +76,22 @@ TEST(VfxPipelineStageTest, CleanReleasesWorldAndOverlayVfxPasses) {
     EXPECT_NE(clean_block.find("vfx_pass_.reset();"), std::string::npos);
 }
 
+TEST(VfxPipelineStageTest, SetVfxBackendDelegatesToWorldAndOverlayPasses) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string content = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
+
+    const std::string function_block =
+        test_source_utils::extractFunctionBlock(content, "void GLRenderer::setVfxBackend(");
+    ASSERT_FALSE(function_block.empty());
+
+    EXPECT_NE(function_block.find("world_vfx_pass_->setBackend(backend);"), std::string::npos);
+    EXPECT_NE(function_block.find("vfx_pass_->setBackend(backend);"), std::string::npos);
+}
+
 } // namespace
 } // namespace engine::render::opengl
 // NOLINTEND

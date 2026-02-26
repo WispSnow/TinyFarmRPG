@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "engine/vfx/vfx_types.h"
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
@@ -105,6 +106,7 @@ struct PlayVfxCommand {
     float z{0.0f};
     float scale{1.0f};
     bool loop{false};
+    engine::vfx::VfxChannel channel{engine::vfx::VfxChannel::Overlay};
 };
 
 } // namespace game::defs
