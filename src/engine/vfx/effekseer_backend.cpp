@@ -24,7 +24,11 @@ constexpr float kFramesPerSecond = 60.0f;
     Effekseer::Matrix44 result;
     for (int row = 0; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
-            result.Values[row][col] = matrix[col][row];
+            // GLM 是列主序 + 列向量约定；Effekseer 这套 API 使用行向量约定。
+            // 因此这里需要做“数学意义上的转置”：
+            //   E[row][col] = G[col][row]
+            // 而在 GLM 下 G[col][row] 的访问写法正是 matrix[row][col]。
+            result.Values[row][col] = matrix[row][col];
         }
     }
     return result;
