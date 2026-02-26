@@ -22,7 +22,7 @@ public:
     [[nodiscard]] static std::unique_ptr<EffekseerBackend> create();
     ~EffekseerBackend() override = default;
 
-    void enqueue(const VfxPlayRequest& request) override;
+    void enqueueBatch(std::span<const VfxPlayRequest> requests) override;
     void update(float delta_time_seconds) override;
     void render(const VfxRenderContext& context) override;
 
@@ -33,6 +33,7 @@ private:
     EffekseerBackend() = default;
 
     [[nodiscard]] bool init();
+    void enqueueOne(const VfxPlayRequest& request);
     [[nodiscard]] Effekseer::EffectRef loadEffect(entt::id_type effect_id, std::string_view effect_path);
 
     EffekseerRendererGL::RendererRef renderer_{};

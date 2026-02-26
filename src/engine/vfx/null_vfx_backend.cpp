@@ -2,7 +2,7 @@
 
 namespace engine::vfx {
 
-void NullVfxBackend::enqueue(const VfxPlayRequest&) {}
+void NullVfxBackend::enqueueBatch(std::span<const VfxPlayRequest>) {}
 
 void NullVfxBackend::update(float) {}
 

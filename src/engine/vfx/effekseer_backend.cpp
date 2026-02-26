@@ -76,7 +76,18 @@ bool EffekseerBackend::init() {
     return true;
 }
 
-void EffekseerBackend::enqueue(const VfxPlayRequest& request) {
+void EffekseerBackend::enqueueBatch(std::span<const VfxPlayRequest> requests) {
+    if (requests.empty()) {
+        return;
+    }
+
+    active_handles_.reserve(active_handles_.size() + requests.size());
+    for (const auto& request : requests) {
+        enqueueOne(request);
+    }
+}
+
+void EffekseerBackend::enqueueOne(const VfxPlayRequest& request) {
     if (manager_.Get() == nullptr || request.effect_path.empty()) {
         return;
     }

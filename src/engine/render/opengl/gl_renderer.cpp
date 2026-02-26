@@ -11,6 +11,7 @@
 #include "engine/render/opengl/emissive_pass.h"
 #include "engine/render/opengl/bloom_pass.h"
 #include "engine/render/opengl/scene_pass.h"
+#include "engine/render/opengl/vfx_pass.h"
 #include "engine/render/opengl/ui_pass.h"
 #include "engine/vfx/vfx_backend.h"
 #ifdef TF_ENABLE_DEBUG_UI
@@ -50,6 +51,7 @@ std::unique_ptr<GLRenderer> GLRenderer::createHeadless(const glm::vec2& logical_
     renderer->logical_size_ = logical_size;
     renderer->window_size_pixels_ = logical_size;
     renderer->viewport_clipping_enabled_ = false;
+    renderer->vfx_pass_ = std::make_unique<VfxPass>();
     return renderer;
 }
 
@@ -98,6 +100,7 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("创建 CompositePass 失败。");
         return false;
     }
+    vfx_pass_ = std::make_unique<VfxPass>();
     if (!initUIPass()) {
         spdlog::error("创建 UIPass 失败。");
         return false;
@@ -450,7 +453,7 @@ void GLRenderer::clear() {
 
 void GLRenderer::present() {
     if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !bloom_pass_ || !composite_pass_ ||
-        !ui_pass_ || !render_context_) {
+        !vfx_pass_ || !ui_pass_ || !render_context_) {
         return;
     }
     if (viewport_manager_->dirty()) [[unlikely]] {
@@ -538,20 +541,17 @@ void GLRenderer::present() {
     }
 
     // 6) 合成之后，绘制 VFX（@Window Pixels / viewport）
-    if (vfx_backend_) {
-        engine::vfx::VfxRenderContext vfx_context{};
-        vfx_context.view_projection = current_view_proj_;
-        vfx_context.logical_size = logical_size_;
-        vfx_context.viewport_pixels = viewport;
-        vfx_backend_->render(vfx_context);
-
-        pass_stats_[static_cast<size_t>(PassType::Vfx)] = {
-            vfx_backend_->getLastDrawCallCount(),
-            vfx_backend_->getLastInstanceCount(),
-            0u,
-            0u
-        };
-    }
+    engine::vfx::VfxRenderContext vfx_context{};
+    vfx_context.view_projection = current_view_proj_;
+    vfx_context.logical_size = logical_size_;
+    vfx_context.viewport_pixels = viewport;
+    const auto vfx_stats = vfx_pass_->flush(vfx_context);
+    pass_stats_[static_cast<size_t>(PassType::Vfx)] = {
+        vfx_stats.draw_calls,
+        vfx_stats.instance_count,
+        0u,
+        0u
+    };
 
     // 7) VFX 之后，绘制 UI（@Window Pixels / viewport）
     ui_pass_->flush(viewport);
@@ -610,6 +610,10 @@ void GLRenderer::clean() {
         composite_pass_->clean();
         composite_pass_.reset();
     }
+    if (vfx_pass_) {
+        vfx_pass_->clean();
+        vfx_pass_.reset();
+    }
     if (ui_pass_) {
         ui_pass_->clean();
         ui_pass_.reset();
@@ -619,7 +623,6 @@ void GLRenderer::clean() {
     light_color_tex_ = 0;
     emissive_color_tex_ = 0;
     bloom_tex_ = 0;
-    vfx_backend_ = nullptr;
 #ifdef TF_ENABLE_DEBUG_UI
     if (imgui_layer_) {
         imgui_layer_->clean();
@@ -684,6 +687,10 @@ uint32_t GLRenderer::getBloomLevelCount() const {
 
 const GLRenderer::PassStats& GLRenderer::getPassStats(PassType pass) const {
     return pass_stats_[static_cast<size_t>(pass)];
+}
+
+void GLRenderer::setVfxBackend(engine::vfx::VfxBackend* backend) {
+    vfx_pass_->setBackend(backend);
 }
 
 glm::vec2 GLRenderer::getWindowSizePixels() const {

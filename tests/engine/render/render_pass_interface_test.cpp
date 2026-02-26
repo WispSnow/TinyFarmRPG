@@ -10,6 +10,7 @@
 #include "engine/render/opengl/render_pass.h"
 #include "engine/render/opengl/scene_pass.h"
 #include "engine/render/opengl/ui_pass.h"
+#include "engine/render/opengl/vfx_pass.h"
 
 namespace engine::render::opengl {
 namespace {
@@ -20,6 +21,7 @@ TEST(RenderPassInterfaceTest, PassTypesFollowUnifiedContracts) {
     EXPECT_TRUE((std::is_base_of_v<RenderPass, EmissivePass>));
     EXPECT_TRUE((std::is_base_of_v<RenderPass, BloomPass>));
     EXPECT_TRUE((std::is_base_of_v<RenderPass, CompositePass>));
+    EXPECT_TRUE((std::is_base_of_v<RenderPass, VfxPass>));
     EXPECT_TRUE((std::is_base_of_v<RenderPass, UIPass>));
 
     EXPECT_TRUE((std::is_base_of_v<ReloadableRenderPass, ScenePass>));
