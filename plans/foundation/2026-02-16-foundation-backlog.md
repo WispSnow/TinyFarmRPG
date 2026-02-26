@@ -167,7 +167,7 @@
   - 2v2 最小回合流可以跑完（攻击/结束回合）
   - 不影响存档/读档稳定性
 
-### FND-010（P1）特效扩展点 + Effekseer 接口层
+### FND-010（P1）特效扩展点 + Effekseer 接口层（已完成）
 - 目标：先打渲染接缝，再接第三方特效库。
 - 主要改动：
   - 在渲染管线加入 VFX 提交阶段（Scene 后、UI 前）
@@ -177,6 +177,32 @@
   - 无 Effekseer 时可正常构建运行
   - 开启 Effekseer 后可播放一个测试特效
   - 不破坏现有光照/UI pass
+
+### FND-011（P1）VFX 独立通道重构（Pass 化 + 批处理友好）（已完成）
+- 目标：将 VFX 从 `GLRenderer::present()` 直接调用重构为独立 pass，并统一到现有 pass 架构风格。
+- 主要改动：
+  - 新增 `VfxPass`（post-composite）
+  - `VfxBackend` 接口切换为 `enqueueBatch(std::span<...>)`
+  - `VfxService` 改为单帧批量提交
+  - `Null/Effekseer/Recording` 后端与测试同步改造
+- 验收结果：
+  - `Composite -> VFX -> UI` 顺序稳定
+  - `Vfx|Renderer|GameScene` 回归通过
+  - 对应计划：`plans/foundation/FND-011.md`
+
+### FND-012（P1）VFX 双通道重构（World-VFX FBO + Overlay-VFX）（已完成）
+- 目标：在 FND-011 基础上落地方案 C，拆分 world 与 overlay 两类特效通道。
+- 主要改动：
+  - 新增 `WorldVfxPass`（逻辑分辨率 FBO）
+  - 渲染顺序升级为：`Scene -> Lighting -> Emissive -> Bloom -> WorldVfx -> Composite -> OverlayVfx -> UI`
+  - `CompositePass` 接入 `uWorldVfxTex`
+  - Effekseer 改为单 manager + layer/culling mask 双通道路由
+  - 调试面板、visual_tester、测试与 headless 路径同步
+- 验收结果：
+  - Overlay 链路显示与重构前保持一致
+  - World 链路透明与线性过滤验证通过
+  - `Vfx|Renderer|GameScene` 回归 `24/24` 通过
+  - 对应计划：`plans/foundation/FND-012.md`
 
 ---
 
@@ -196,6 +222,8 @@
 | FND-007 | 脚本安全边界 | P1 | 1.5d | FND-006 |
 | FND-009 | 战斗骨架 | P1 | 2.5d | FND-002, FND-003 |
 | FND-010 | VFX 扩展点/Effekseer 接口 | P1 | 2d | FND-008 |
+| FND-011 | VFX 独立通道重构（Pass 化 + 批处理友好） | P1 | 2~3d | FND-010 |
+| FND-012 | VFX 双通道重构（World-VFX FBO + Overlay-VFX） | P1 | 2~4d | FND-011 |
 
 ---
 
@@ -245,6 +273,6 @@
 ---
 
 ## 建议执行顺序（后续）
-1. `FND-008` 与 `FND-008ex` 已完成（分层外观框架 + 多方向显示 + 调试换装）
-2. 接续 `FND-009`（战斗骨架，复用 `FND-002/FND-003` 的调度与命令边界）
-3. 最后做 `FND-010`（VFX 扩展点，依赖外观层与渲染接缝稳定）
+1. `FND-010/FND-011/FND-012` 已完成，VFX 架构已具备 world/overlay 双通道能力。
+2. 如需进一步提升 world 通道视觉一致性，可新增后续任务：固化 world-vfx alpha 合成契约与资源规范。
+3. 如需世界特效参与泛光，可新增后续任务：让 bloom 链路可采样 world-vfx 纹理。
