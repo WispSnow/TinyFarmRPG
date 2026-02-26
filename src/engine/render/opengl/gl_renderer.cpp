@@ -11,6 +11,7 @@
 #include "engine/render/opengl/emissive_pass.h"
 #include "engine/render/opengl/bloom_pass.h"
 #include "engine/render/opengl/scene_pass.h"
+#include "engine/render/opengl/world_vfx_pass.h"
 #include "engine/render/opengl/vfx_pass.h"
 #include "engine/render/opengl/ui_pass.h"
 #include "engine/vfx/vfx_backend.h"
@@ -94,6 +95,10 @@ bool GLRenderer::init(SDL_Window* window,
     }
     if (!initBloomPass()) {
         spdlog::error("创建 BloomPass 失败。");
+        return false;
+    }
+    if (!initWorldVfxPass()) {
+        spdlog::error("创建 WorldVfxPass 失败。");
         return false;
     }
     if (!initCompositePass()) {
@@ -429,7 +434,7 @@ int GLRenderer::getSwapInterval() const {
 }
 
 void GLRenderer::clear() {
-    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_) {
+    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !world_vfx_pass_) {
         return;
     }
     // 清空物理窗口（包括信箱区域）以及用于延迟管线的离屏渲染目标。
@@ -448,12 +453,13 @@ void GLRenderer::clear() {
     // 同时清空光照/发光缓冲
     lighting_pass_->clear();
     emissive_pass_->clear();
+    world_vfx_pass_->clear();
     logGlErrors("GLRenderer::clear");
 }
 
 void GLRenderer::present() {
     if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !bloom_pass_ || !composite_pass_ ||
-        !vfx_pass_ || !ui_pass_ || !render_context_) {
+        !world_vfx_pass_ || !vfx_pass_ || !ui_pass_ || !render_context_) {
         return;
     }
     if (viewport_manager_->dirty()) [[unlikely]] {
@@ -473,8 +479,9 @@ void GLRenderer::present() {
     // - Logical：固定逻辑分辨率（离屏渲染目标尺寸，也是 UI 的设计坐标空间）。
     //
     // - Scene/Lighting/Emissive：渲染到各自离屏 FBO（@Logical）
+    // - WorldVfx：渲染到 world-vfx FBO（@Logical）
     // - Composite：把离屏结果合成到默认帧缓冲的 letterbox viewport（@Window Pixels）
-    // - VFX：在默认帧缓冲的 viewport 上绘制（Phase 1: post-composite）
+    // - OverlayVfx：在默认帧缓冲的 viewport 上绘制（@Window Pixels）
     // - UI：绘制到默认帧缓冲的 letterbox viewport（@Window Pixels；UI 坐标按 logical 设计映射到 viewport）
     // - ImGui：最后覆盖绘制到默认帧缓冲的整窗区域（@Window Pixels）
 
@@ -523,7 +530,21 @@ void GLRenderer::present() {
             0u
         };
     }
-    // 5) 合成各个通道到默认帧缓冲（@Window Pixels / viewport）
+    // 5) 绘制 world-vfx 到离屏 FBO（@Logical）
+    engine::vfx::VfxRenderContext world_vfx_context{};
+    world_vfx_context.view_projection = current_view_proj_;
+    world_vfx_context.logical_size = logical_size_;
+    world_vfx_context.viewport_pixels = logical_vp;
+    world_vfx_context.channel = engine::vfx::VfxChannel::World;
+    const auto world_vfx_stats = world_vfx_pass_->flush(world_vfx_context);
+    pass_stats_[static_cast<size_t>(PassType::WorldVfx)] = {
+        world_vfx_stats.draw_calls,
+        world_vfx_stats.instance_count,
+        0u,
+        0u
+    };
+
+    // 6) 合成各个通道到默认帧缓冲（@Window Pixels / viewport）
     if (!composite_pass_->render(viewport)) {
         // 如果合成失败，则直接 blit 场景内容
         glBindFramebuffer(GL_READ_FRAMEBUFFER, scene_pass_->getFBO());  // 将 Scene 绑定为“读取”帧缓冲。
@@ -540,20 +561,29 @@ void GLRenderer::present() {
             GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
-    // 6) 合成之后，绘制 VFX（@Window Pixels / viewport）
-    engine::vfx::VfxRenderContext vfx_context{};
-    vfx_context.view_projection = current_view_proj_;
-    vfx_context.logical_size = logical_size_;
-    vfx_context.viewport_pixels = viewport;
-    const auto vfx_stats = vfx_pass_->flush(vfx_context);
-    pass_stats_[static_cast<size_t>(PassType::Vfx)] = {
-        vfx_stats.draw_calls,
-        vfx_stats.instance_count,
+    // 7) 合成之后，绘制 overlay-vfx（@Window Pixels / viewport）
+    const glm::mat4 overlay_view_projection = glm::ortho(
+        0.0f,
+        logical_size_.x,
+        logical_size_.y,
+        0.0f,
+        -1.0f,
+        1.0f);
+
+    engine::vfx::VfxRenderContext overlay_vfx_context{};
+    overlay_vfx_context.view_projection = overlay_view_projection;
+    overlay_vfx_context.logical_size = logical_size_;
+    overlay_vfx_context.viewport_pixels = viewport;
+    overlay_vfx_context.channel = engine::vfx::VfxChannel::Overlay;
+    const auto overlay_vfx_stats = vfx_pass_->flush(overlay_vfx_context);
+    pass_stats_[static_cast<size_t>(PassType::OverlayVfx)] = {
+        overlay_vfx_stats.draw_calls,
+        overlay_vfx_stats.instance_count,
         0u,
         0u
     };
 
-    // 7) VFX 之后，绘制 UI（@Window Pixels / viewport）
+    // 8) OverlayVfx 之后，绘制 UI（@Window Pixels / viewport）
     ui_pass_->flush(viewport);
     pass_stats_[static_cast<size_t>(PassType::UI)] = {
         ui_pass_->getLastDrawCallCount(),
@@ -563,7 +593,7 @@ void GLRenderer::present() {
     };
 
 #ifdef TF_ENABLE_DEBUG_UI
-    // 8) 如果启用 Debug UI，则在最后渲染 ImGui 界面（@Window Pixels / full window）
+    // 9) 如果启用 Debug UI，则在最后渲染 ImGui 界面（@Window Pixels / full window）
     if (debug_ui_enabled_) {
         auto window_size = viewport_manager_->getWindowSize();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -610,6 +640,10 @@ void GLRenderer::clean() {
         composite_pass_->clean();
         composite_pass_.reset();
     }
+    if (world_vfx_pass_) {
+        world_vfx_pass_->clean();
+        world_vfx_pass_.reset();
+    }
     if (vfx_pass_) {
         vfx_pass_->clean();
         vfx_pass_.reset();
@@ -623,6 +657,7 @@ void GLRenderer::clean() {
     light_color_tex_ = 0;
     emissive_color_tex_ = 0;
     bloom_tex_ = 0;
+    world_vfx_tex_ = 0;
 #ifdef TF_ENABLE_DEBUG_UI
     if (imgui_layer_) {
         imgui_layer_->clean();
@@ -690,7 +725,12 @@ const GLRenderer::PassStats& GLRenderer::getPassStats(PassType pass) const {
 }
 
 void GLRenderer::setVfxBackend(engine::vfx::VfxBackend* backend) {
-    vfx_pass_->setBackend(backend);
+    if (world_vfx_pass_) {
+        world_vfx_pass_->setBackend(backend);
+    }
+    if (vfx_pass_) {
+        vfx_pass_->setBackend(backend);
+    }
 }
 
 glm::vec2 GLRenderer::getWindowSizePixels() const {
@@ -891,6 +931,20 @@ bool GLRenderer::initUIPass() {
     return true;
 }
 
+bool GLRenderer::initWorldVfxPass() {
+    world_vfx_pass_ = WorldVfxPass::create(logical_size_);
+    if (!world_vfx_pass_) {
+        spdlog::error("创建 WorldVfxPass 失败。");
+        return false;
+    }
+    world_vfx_tex_ = world_vfx_pass_->getColorTex();
+    if (world_vfx_tex_ == 0) {
+        spdlog::error("获取 world-vfx 纹理失败。");
+        return false;
+    }
+    return true;
+}
+
 bool GLRenderer::initCompositePass() {
     composite_pass_ = CompositePass::create(*shader_library_);
     if (!composite_pass_) {
@@ -902,6 +956,7 @@ bool GLRenderer::initCompositePass() {
     composite_pass_->setLightTexture(light_color_tex_);
     composite_pass_->setEmissiveTexture(emissive_color_tex_);
     composite_pass_->setBloomTexture(bloom_tex_);
+    composite_pass_->setWorldVfxTexture(world_vfx_tex_);
     return true;
 }
 

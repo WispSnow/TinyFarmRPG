@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/debug/debug_panel.h"
+#include "engine/vfx/vfx_types.h"
 
 #include <functional>
 #include <optional>
@@ -64,6 +65,7 @@ private:
     float spawn_z_{0.0f};
     float spawn_scale_{1.0f};
     bool spawn_loop_{false};
+    engine::vfx::VfxChannel spawn_channel_{engine::vfx::VfxChannel::Overlay};
 
     int burst_count_{8};
     float burst_radius_{120.0f};
