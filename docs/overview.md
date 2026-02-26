@@ -7,6 +7,7 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 ## 技术栈
 
 - **构建系统**: CMake 3.13+
+- **语言标准**: C++20
 - **窗口与输入**: SDL3
 - **ECS 框架**: EnTT
 - **图形渲染**: OpenGL + GLAD
@@ -18,6 +19,7 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 - **日志**: spdlog
 - **JSON 解析**: nlohmann-json
 - **脚本宿主（可选）**: Lua 5.4.8 + Sol2 v3.5.0（project version 4.0.0）
+- **粒子特效（可选）**: Effekseer 1.7.3.0 + EffekseerRendererGL（通过 `engine::vfx::VfxBackend` 接口接入）
 - **测试框架**: Google Test
 - **地图编辑**: Tiled (生成 .tmj 格式地图)
 
@@ -36,14 +38,15 @@ TinyFarmRPG/
 │   │   ├── debug/               #   ImGui 调试面板框架与内置面板
 │   │   ├── input/               #   输入映射与动作事件
 │   │   ├── loader/              #   Tiled 地图/关卡加载器（含 LevelPreprocessService 异步预处理）
-│   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/合成/UI）
+│   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/world-vfx/合成/overlay-vfx/UI）
 │   │   ├── resource/            #   纹理/音频/字体统一资源管理（含 ImageDecode/FontPreprocess）
 │   │   ├── scene/               #   场景基类 Scene 与场景管理器 SceneManager
 │   │   ├── script/              #   脚本宿主内核（可选，Lua VM/安全边界/句柄校验/模块安装）
 │   │   ├── spatial/             #   碰撞检测与空间分区（静态网格/动态网格）
 │   │   ├── system/              #   引擎层 ECS 系统（动画/移动/渲染/Y排序/光照）
 │   │   ├── ui/                  #   UI 框架（布局/状态机/行为/通用组件）
-│   │   └── utils/               #   工具函数（数学/对齐/事件定义）
+│   │   ├── utils/               #   工具函数（数学/对齐/事件定义）
+│   │   └── vfx/                 #   特效服务与后端抽象（VfxService/VfxBackend/EffekseerBackend）
 │   ├── game/                    # 游戏特定逻辑层
 │   │   ├── component/           #   游戏组件（作物/库存/快捷栏/NPC/地图/宝箱/拾取等）
 │   │   ├── data/                #   游戏数据（GameTime / ItemCatalog）
@@ -61,18 +64,20 @@ TinyFarmRPG/
 │   │   └── world/               #   世界地图系统（MapManager 异步预加载状态机/WorldState/快照序列化）
 │   └── main.cpp                 # 可执行入口薄壳
 ├── assets/                      # 运行时资源
-│   ├── audio/                   #   音频文件 (.wav)
+│   ├── audio/                   #   音频文件 (.wav/.ogg)
 │   ├── data/                    #   JSON 配置（蓝图/作物/物品/对话/光照/地图加载策略等）
 │   ├── fonts/                   #   字体文件 (.ttf)
 │   ├── maps/                    #   Tiled 地图 (.tmj/.tsj)
 │   ├── shaders/                 #   GLSL 着色器 (.vert/.frag)
-│   └── textures/                #   纹理资源 (.png/.gif/.json)
+│   ├── textures/                #   纹理资源 (.png/.gif/.json)
+│   └── vfx/                     #   Effekseer 特效资源 (.efkefc/.efk)
 ├── scripts/                     # Lua 脚本（可选，ENABLE_SCRIPTING=ON 时部署）
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/ImGui集成等）
-├── external/                    # 第三方库源码（Lua/Sol2 等）
-├── tests/                       # Google Test 单元测试（含 async 队列预算测试、MapManager 异步预加载测试）
-├── plans/                       # 开发计划文档（Phase 1/2 多线程改造计划）
-├── docs/                        # 项目文档（含 tutorial/multi-thread 渐进式并发改造说明）
+├── external/                    # 第三方库源码（SDL/EnTT/ImGui/Lua/Sol2/Effekseer 等）
+├── tests/                       # Google Test（engine/game/shared 分层测试）
+├── tools/                       # 调试与验证工具（visual_tester/ui_tester 等）
+├── plans/                       # 开发计划文档（含 foundation backlog 与专项方案）
+├── docs/                        # 项目文档（引擎/玩法/测试/教程）
 └── for_agent/                   # AI Agent 编码规范
 ```
