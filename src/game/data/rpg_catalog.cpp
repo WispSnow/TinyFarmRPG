@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
@@ -193,6 +194,96 @@ bool RpgCatalog::loadManifest(const std::string_view file_path) {
 
     manifest_ = std::move(parsed);
     has_manifest_ = true;
+    return true;
+}
+
+bool RpgCatalog::loadClasses(const std::string_view file_path) {
+    Json root{};
+    if (!engine::utils::loadJsonObjectFile(file_path, root, "RpgCatalogClasses", spdlog::level::err)) {
+        return false;
+    }
+
+    const auto classes_it = root.find("classes");
+    if (classes_it == root.end() || !classes_it->is_array()) {
+        spdlog::error("RpgCatalog: classes 文件 '{}' 缺少 classes 数组", file_path);
+        return false;
+    }
+
+    classes_.clear();
+    for (const auto& class_node : *classes_it) {
+        if (!class_node.is_object()) {
+            spdlog::error("RpgCatalog: classes 文件 '{}' 存在非 object 条目", file_path);
+            return false;
+        }
+
+        ClassData klass{};
+        klass.id_ = class_node.value("id", std::string{});
+        if (klass.id_.empty()) {
+            spdlog::error("RpgCatalog: classes 文件 '{}' 存在空 id 条目", file_path);
+            return false;
+        }
+        klass.id_hash_ = RpgCatalog::hashId(klass.id_);
+        klass.display_name_ = class_node.value("display_name", klass.id_);
+
+        const auto params_it = class_node.find("base_params");
+        if (params_it == class_node.end() || !parseParamArray(*params_it, klass.base_params_)) {
+            spdlog::error("RpgCatalog: class '{}' base_params 配置非法", klass.id_);
+            return false;
+        }
+
+        if (classes_.contains(klass.id_hash_)) {
+            spdlog::error("RpgCatalog: classes 文件 '{}' 存在重复 id '{}'", file_path, klass.id_);
+            return false;
+        }
+        classes_.insert_or_assign(klass.id_hash_, std::move(klass));
+    }
+
+    return true;
+}
+
+bool RpgCatalog::loadActors(const std::string_view file_path) {
+    Json root{};
+    if (!engine::utils::loadJsonObjectFile(file_path, root, "RpgCatalogActors", spdlog::level::err)) {
+        return false;
+    }
+
+    const auto actors_it = root.find("actors");
+    if (actors_it == root.end() || !actors_it->is_array()) {
+        spdlog::error("RpgCatalog: actors 文件 '{}' 缺少 actors 数组", file_path);
+        return false;
+    }
+
+    actors_.clear();
+    for (const auto& actor_node : *actors_it) {
+        if (!actor_node.is_object()) {
+            spdlog::error("RpgCatalog: actors 文件 '{}' 存在非 object 条目", file_path);
+            return false;
+        }
+
+        ActorData actor{};
+        actor.id_ = actor_node.value("id", std::string{});
+        if (actor.id_.empty()) {
+            spdlog::error("RpgCatalog: actors 文件 '{}' 存在空 id 条目", file_path);
+            return false;
+        }
+        actor.id_hash_ = RpgCatalog::hashId(actor.id_);
+        actor.display_name_ = actor_node.value("display_name", actor.id_);
+        actor.class_id_ = actor_node.value("class_id", std::string{});
+        actor.initial_level_ = std::max(1, actor_node.value("initial_level", 1));
+        actor.max_level_ = std::max(actor.initial_level_, actor_node.value("max_level", actor.initial_level_));
+
+        if (actor.class_id_.empty()) {
+            spdlog::error("RpgCatalog: actor '{}' 缺少 class_id", actor.id_);
+            return false;
+        }
+
+        if (actors_.contains(actor.id_hash_)) {
+            spdlog::error("RpgCatalog: actors 文件 '{}' 存在重复 id '{}'", file_path, actor.id_);
+            return false;
+        }
+        actors_.insert_or_assign(actor.id_hash_, std::move(actor));
+    }
+
     return true;
 }
 
@@ -499,6 +590,15 @@ bool RpgCatalog::validateReferences(std::string& out_error) const {
         }
     }
 
+    for (const auto& [actor_id, actor] : actors_) {
+        (void)actor_id;
+        const entt::id_type class_id_hash = RpgCatalog::hashId(actor.class_id_);
+        if (!classes_.contains(class_id_hash)) {
+            out_error = "Actor '" + actor.id_ + "' references missing class '" + actor.class_id_ + "'";
+            return false;
+        }
+    }
+
     for (const auto& [skill_id, skill] : skills_) {
         (void)skill_id;
         for (const auto& effect : skill.effects_) {
@@ -522,6 +622,28 @@ bool RpgCatalog::validateReferences(std::string& out_error) const {
 
     out_error.clear();
     return true;
+}
+
+const ClassData* RpgCatalog::findClass(const entt::id_type id_hash) const {
+    if (const auto it = classes_.find(id_hash); it != classes_.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+const ClassData* RpgCatalog::findClass(const std::string_view id) const {
+    return findClass(RpgCatalog::hashId(id));
+}
+
+const ActorData* RpgCatalog::findActor(const entt::id_type id_hash) const {
+    if (const auto it = actors_.find(id_hash); it != actors_.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+const ActorData* RpgCatalog::findActor(const std::string_view id) const {
+    return findActor(RpgCatalog::hashId(id));
 }
 
 const SkillData* RpgCatalog::findSkill(const entt::id_type id_hash) const {
@@ -566,6 +688,26 @@ const TroopData* RpgCatalog::findTroop(const entt::id_type id_hash) const {
 
 const TroopData* RpgCatalog::findTroop(const std::string_view id) const {
     return findTroop(RpgCatalog::hashId(id));
+}
+
+std::vector<const ActorData*> RpgCatalog::listActors() const {
+    std::vector<const ActorData*> result{};
+    result.reserve(actors_.size());
+    for (const auto& [id, actor] : actors_) {
+        (void)id;
+        result.push_back(&actor);
+    }
+    return result;
+}
+
+std::vector<const TroopData*> RpgCatalog::listTroops() const {
+    std::vector<const TroopData*> result{};
+    result.reserve(troops_.size());
+    for (const auto& [id, troop] : troops_) {
+        (void)id;
+        result.push_back(&troop);
+    }
+    return result;
 }
 
 } // namespace game::data

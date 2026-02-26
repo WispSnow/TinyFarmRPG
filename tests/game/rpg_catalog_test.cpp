@@ -11,6 +11,8 @@ namespace {
 
 struct FixturePaths {
     std::filesystem::path manifest{};
+    std::filesystem::path classes{};
+    std::filesystem::path actors{};
     std::filesystem::path skills{};
     std::filesystem::path states{};
     std::filesystem::path enemies{};
@@ -27,6 +29,8 @@ FixturePaths createValidRpgFixture() {
         R"json({
   "schema_version": 1,
   "content_versions": {
+    "classes": 1,
+    "actors": 1,
     "skills": 1,
     "states": 1,
     "enemies": 1,
@@ -37,11 +41,39 @@ FixturePaths createValidRpgFixture() {
     "shop": false
   },
   "files": {
+    "classes": "classes.json",
+    "actors": "actors.json",
     "skills": "skills.json",
     "states": "states.json",
     "enemies": "enemies.json",
     "troops": "troops.json"
   }
+})json");
+
+    game::test::writeTextFile(
+        data_root / "classes.json",
+        R"json({
+  "classes": [
+    {
+      "id": "class.adventurer",
+      "display_name": "Adventurer",
+      "base_params": [120, 30, 24, 18, 14, 16, 18, 10]
+    }
+  ]
+})json");
+
+    game::test::writeTextFile(
+        data_root / "actors.json",
+        R"json({
+  "actors": [
+    {
+      "id": "actor.hero",
+      "display_name": "Hero",
+      "class_id": "class.adventurer",
+      "initial_level": 1,
+      "max_level": 99
+    }
+  ]
 })json");
 
     game::test::writeTextFile(
@@ -130,6 +162,8 @@ FixturePaths createValidRpgFixture() {
 
     return FixturePaths{
         .manifest = data_root / "manifest.json",
+        .classes = data_root / "classes.json",
+        .actors = data_root / "actors.json",
         .skills = data_root / "skills.json",
         .states = data_root / "states.json",
         .enemies = data_root / "enemies.json",
@@ -141,6 +175,8 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     RpgCatalog catalog;
 
     ASSERT_TRUE(catalog.loadManifest(paths.manifest.string()));
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
     ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
     ASSERT_TRUE(catalog.loadStates(paths.states.string()));
     ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
@@ -148,6 +184,14 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
 
     std::string error{};
     ASSERT_TRUE(catalog.validateReferences(error)) << error;
+
+    const auto* klass = catalog.findClass("class.adventurer");
+    ASSERT_NE(klass, nullptr);
+    EXPECT_EQ(klass->display_name_, "Adventurer");
+
+    const auto* actor = catalog.findActor("actor.hero");
+    ASSERT_NE(actor, nullptr);
+    EXPECT_EQ(actor->class_id_, "class.adventurer");
 
     const auto* skill = catalog.findSkill("skill.attack");
     ASSERT_NE(skill, nullptr);
@@ -325,6 +369,31 @@ TEST(RpgCatalogTest, LoadEnemiesAcceptsParamArraySyntax) {
     const auto* enemy = catalog.findEnemy("enemy.array_params");
     ASSERT_NE(enemy, nullptr);
     EXPECT_EQ(enemy->params_[static_cast<std::size_t>(ParamIndex::Def)], 8);
+}
+
+TEST(RpgCatalogTest, ValidateFailsOnMissingClassReference) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.actors,
+        R"json({
+  "actors": [
+    {
+      "id": "actor.hero",
+      "display_name": "Hero",
+      "class_id": "class.missing",
+      "initial_level": 1,
+      "max_level": 99
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+
+    std::string error{};
+    EXPECT_FALSE(catalog.validateReferences(error));
+    EXPECT_NE(error.find("class.missing"), std::string::npos);
 }
 
 } // namespace

@@ -1,0 +1,32 @@
+{
+    "classes": [
+        {
+            "id": "class.adventurer",
+            "display_name": "Adventurer",
+            "base_params": {
+                "mhp": 120,
+                "mmp": 30,
+                "atk": 24,
+                "def": 18,
+                "mat": 14,
+                "mdf": 16,
+                "agi": 18,
+                "luk": 10
+            }
+        },
+        {
+            "id": "class.acolyte",
+            "display_name": "Acolyte",
+            "base_params": {
+                "mhp": 90,
+                "mmp": 55,
+                "atk": 16,
+                "def": 14,
+                "mat": 22,
+                "mdf": 20,
+                "agi": 14,
+                "luk": 12
+            }
+        }
+    ]
+}
