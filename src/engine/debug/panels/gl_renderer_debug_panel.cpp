@@ -205,6 +205,12 @@ void GLRendererDebugPanel::draw(bool& is_open) {
             ImGui::TableNextColumn();
             drawTexturePreview("Bloom", renderer_.getBloomTex());
 
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            drawTexturePreview("VFX (Pre-UI)", renderer_.getVfxPreviewTex());
+            ImGui::TableNextColumn();
+            ImGui::Dummy(preview_size);
+
             ImGui::EndTable();
         }
     }

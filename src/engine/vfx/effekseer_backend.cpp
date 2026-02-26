@@ -3,10 +3,12 @@
 #ifdef TF_ENABLE_EFFEKSEER
 
 #include <entt/core/hashed_string.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -15,6 +17,8 @@ namespace {
 
 constexpr int32_t kMaxSpriteCount = 4096;
 constexpr float kFramesPerSecond = 60.0f;
+constexpr float kVfxDepthExtent = 2048.0f;
+constexpr float kVfxCameraDistance = 512.0f;
 
 [[nodiscard]] std::u16string toUtf16Path(std::string_view path) {
     return std::filesystem::path(std::string(path)).u16string();
@@ -122,6 +126,28 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
         return;
     }
 
+    const float safe_zoom = context.camera_zoom > 0.0001f ? context.camera_zoom : 1.0f;
+    const float half_width = (context.logical_size.x * 0.5f) / safe_zoom;
+    const float half_height = (context.logical_size.y * 0.5f) / safe_zoom;
+
+    glm::mat4 projection = glm::ortho(
+        -half_width,
+        half_width,
+        half_height,
+        -half_height,
+        -kVfxDepthExtent,
+        kVfxDepthExtent);
+
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -kVfxCameraDistance));
+    if (std::abs(context.camera_rotation) > 0.0001f) {
+        view = glm::rotate(view, -context.camera_rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+    }
+    view = glm::translate(view, glm::vec3(-context.camera_position, 0.0f));
+
+    renderer_->SetCameraMatrix(toEffekseerMatrix(view));
+    renderer_->SetProjectionMatrix(toEffekseerMatrix(projection));
+
     renderer_->ResetDrawCallCount();
     renderer_->ResetDrawVertexCount();
 
@@ -131,11 +157,18 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
     }
 
     Effekseer::Manager::DrawParameter draw_parameter{};
-    draw_parameter.ViewProjectionMatrix = toEffekseerMatrix(context.view_projection);
+    draw_parameter.ViewProjectionMatrix = renderer_->GetCameraProjectionMatrix();
+    // 使用固定可见深度区间，避免在某些驱动上 ZNear=ZFar 导致裁剪异常。
     draw_parameter.ZNear = 0.0f;
     draw_parameter.ZFar = 1.0f;
-    draw_parameter.CameraPosition = Effekseer::Vector3D(0.0f, 0.0f, 1.0f);
-    draw_parameter.CameraFrontDirection = Effekseer::Vector3D(0.0f, 0.0f, -1.0f);
+    draw_parameter.CameraPosition = renderer_->GetCameraPosition();
+    draw_parameter.CameraFrontDirection = renderer_->GetCameraFrontDirection();
+    draw_parameter.CameraCullingMask = manager_->GetCameraCullingMaskToShowAllEffects();
+
+    Effekseer::Manager::LayerParameter layer_parameter{};
+    layer_parameter.ViewerPosition = draw_parameter.CameraPosition;
+    manager_->SetLayerParameter(0, layer_parameter);
+
     manager_->Draw(draw_parameter);
 
     renderer_->EndRendering();

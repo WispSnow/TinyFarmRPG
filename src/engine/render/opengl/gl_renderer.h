@@ -95,10 +95,15 @@ private:
     GLuint light_color_tex_{0};
     GLuint emissive_color_tex_{0};
     GLuint bloom_tex_{0};
+    GLuint vfx_preview_tex_{0};
+    GLuint vfx_preview_fbo_{0};
 
     // 保存各个通道绘制的统计信息(DebugPanel需要)
     std::array<PassStats, static_cast<size_t>(PassType::Count)> pass_stats_{};
     engine::vfx::VfxBackend* vfx_backend_{nullptr};
+    glm::vec2 current_camera_position_{0.0f, 0.0f};
+    float current_camera_zoom_{1.0f};
+    float current_camera_rotation_{0.0f};
 
 public:
     [[nodiscard]] static std::unique_ptr<GLRenderer> create(SDL_Window* window,
@@ -236,6 +241,7 @@ public:
     [[nodiscard]] GLuint getLightColorTex() const { return light_color_tex_; }
     [[nodiscard]] GLuint getEmissiveColorTex() const { return emissive_color_tex_; }
     [[nodiscard]] GLuint getBloomTex() const { return bloom_tex_; }
+    [[nodiscard]] GLuint getVfxPreviewTex() const { return vfx_preview_tex_; }
 
     void setViewportClippingEnabled(bool enabled);
     [[nodiscard]] bool isViewportClippingEnabled() const { return viewport_clipping_enabled_; }
@@ -271,6 +277,9 @@ private:
     [[nodiscard]] bool initScenePass();
     [[nodiscard]] bool initUIPass();
     [[nodiscard]] bool initCompositePass();
+    [[nodiscard]] bool initVfxPreviewResources();
+    void captureVfxPreview(const engine::utils::Rect& viewport);
+    void cleanVfxPreviewResources();
 
     glm::mat4 computeViewProjection(const Camera& camera);      ///< @brief 计算视图投影矩阵
     void applyViewProjection(GLint location);                    ///< @brief 应用视图投影矩阵

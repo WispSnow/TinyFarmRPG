@@ -24,6 +24,9 @@ struct VfxPlayRequest {
 struct VfxRenderContext {
     glm::mat4 view_projection{1.0f};
     glm::vec2 logical_size{0.0f, 0.0f};
+    glm::vec2 camera_position{0.0f, 0.0f};
+    float camera_zoom{1.0f};
+    float camera_rotation{0.0f};
     engine::utils::Rect viewport_pixels{};
 };
 

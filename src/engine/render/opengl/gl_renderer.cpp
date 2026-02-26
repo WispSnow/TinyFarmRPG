@@ -102,6 +102,9 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("创建 UIPass 失败。");
         return false;
     }
+    if (!initVfxPreviewResources()) {
+        spdlog::warn("初始化 VfxPreview 资源失败，将禁用 VfxPass 预览");
+    }
 
     // 启用 sRGB 默认帧缓冲输出
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -339,6 +342,9 @@ void GLRenderer::drawUITextureGradient(GLuint texture, const glm::vec4& dst_rect
 
 void GLRenderer::beginFrame(const Camera& camera) {
     current_view_proj_ = computeViewProjection(camera);
+    current_camera_position_ = camera.getPosition();
+    current_camera_zoom_ = camera.getZoom();
+    current_camera_rotation_ = camera.getRotation();
     if (viewport_clipping_enabled_) {
         current_view_rect_ = computeCameraViewRect(camera);
     } else {
@@ -542,6 +548,9 @@ void GLRenderer::present() {
         engine::vfx::VfxRenderContext vfx_context{};
         vfx_context.view_projection = current_view_proj_;
         vfx_context.logical_size = logical_size_;
+        vfx_context.camera_position = current_camera_position_;
+        vfx_context.camera_zoom = current_camera_zoom_;
+        vfx_context.camera_rotation = current_camera_rotation_;
         vfx_context.viewport_pixels = viewport;
         vfx_backend_->render(vfx_context);
 
@@ -552,6 +561,8 @@ void GLRenderer::present() {
             0u
         };
     }
+
+    captureVfxPreview(viewport);
 
     // 7) VFX 之后，绘制 UI（@Window Pixels / viewport）
     ui_pass_->flush(viewport);
@@ -614,11 +625,14 @@ void GLRenderer::clean() {
         ui_pass_->clean();
         ui_pass_.reset();
     }
+    cleanVfxPreviewResources();
     pass_stats_ = {};
     scene_color_tex_ = 0;
     light_color_tex_ = 0;
     emissive_color_tex_ = 0;
     bloom_tex_ = 0;
+    vfx_preview_tex_ = 0;
+    vfx_preview_fbo_ = 0;
     vfx_backend_ = nullptr;
 #ifdef TF_ENABLE_DEBUG_UI
     if (imgui_layer_) {
@@ -896,6 +910,77 @@ bool GLRenderer::initCompositePass() {
     composite_pass_->setEmissiveTexture(emissive_color_tex_);
     composite_pass_->setBloomTexture(bloom_tex_);
     return true;
+}
+
+bool GLRenderer::initVfxPreviewResources() {
+    cleanVfxPreviewResources();
+
+    const int texture_width = std::max(1, static_cast<int>(std::round(logical_size_.x)));
+    const int texture_height = std::max(1, static_cast<int>(std::round(logical_size_.y)));
+
+    glGenTextures(1, &vfx_preview_tex_);
+    if (vfx_preview_tex_ == 0) {
+        return false;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, vfx_preview_tex_);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texture_width, texture_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &vfx_preview_fbo_);
+    if (vfx_preview_fbo_ == 0) {
+        cleanVfxPreviewResources();
+        return false;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, vfx_preview_fbo_);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, vfx_preview_tex_, 0);
+
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        spdlog::error("VfxPreview FBO 不完整，status=0x{:x}", static_cast<unsigned int>(status));
+        cleanVfxPreviewResources();
+        return false;
+    }
+
+    return true;
+}
+
+void GLRenderer::captureVfxPreview(const engine::utils::Rect& viewport) {
+    if (vfx_preview_tex_ == 0 || vfx_preview_fbo_ == 0) {
+        return;
+    }
+
+    const GLint src_x0 = static_cast<GLint>(std::round(viewport.pos.x));
+    const GLint src_y0 = static_cast<GLint>(std::round(viewport.pos.y));
+    const GLint src_x1 = static_cast<GLint>(std::round(viewport.pos.x + viewport.size.x));
+    const GLint src_y1 = static_cast<GLint>(std::round(viewport.pos.y + viewport.size.y));
+    const GLint dst_w = static_cast<GLint>(std::max(1, static_cast<int>(std::round(logical_size_.x))));
+    const GLint dst_h = static_cast<GLint>(std::max(1, static_cast<int>(std::round(logical_size_.y))));
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, vfx_preview_fbo_);
+    glBlitFramebuffer(
+        src_x0, src_y0, src_x1, src_y1,
+        0, 0, dst_w, dst_h,
+        GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void GLRenderer::cleanVfxPreviewResources() {
+    if (vfx_preview_fbo_ != 0) {
+        glDeleteFramebuffers(1, &vfx_preview_fbo_);
+        vfx_preview_fbo_ = 0;
+    }
+    if (vfx_preview_tex_ != 0) {
+        glDeleteTextures(1, &vfx_preview_tex_);
+        vfx_preview_tex_ = 0;
+    }
 }
 
 std::optional<engine::utils::Rect> GLRenderer::computeCameraViewRect(const Camera& camera) const {
