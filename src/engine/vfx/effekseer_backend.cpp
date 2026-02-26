@@ -4,6 +4,7 @@
 
 #include <entt/core/hashed_string.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -32,6 +33,13 @@ constexpr float kFramesPerSecond = 60.0f;
         }
     }
     return result;
+}
+
+// 游戏世界使用 Y-down 约定；Effekseer 资源在编辑器中以 Y-up 语义制作。
+// 这里通过对输入坐标与 VP 同时做一次 Y 翻转，保持“屏幕位置不变、特效朝向与编辑器一致”。
+[[nodiscard]] glm::mat4 toEffekseerViewProjection(const glm::mat4& game_view_projection) {
+    const glm::mat4 y_flip = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
+    return game_view_projection * y_flip;
 }
 
 } // namespace
@@ -101,7 +109,7 @@ void EffekseerBackend::enqueueOne(const VfxPlayRequest& request) {
         return;
     }
 
-    const auto handle = manager_->Play(effect, request.world_position.x, request.world_position.y, request.z);
+    const auto handle = manager_->Play(effect, request.world_position.x, -request.world_position.y, request.z);
     if (handle < 0) {
         spdlog::warn("EffekseerBackend: 播放特效失败 effect='{}'", request.effect_path);
         return;
@@ -142,7 +150,7 @@ void EffekseerBackend::render(const VfxRenderContext& context) {
 
     // Effekseer 需要分别设置投影矩阵和相机矩阵才能正确渲染。
     // DrawParameter.ViewProjectionMatrix 仅用于剔除，不参与实际顶点变换。
-    const auto proj = toEffekseerMatrix(context.view_projection);
+    const auto proj = toEffekseerMatrix(toEffekseerViewProjection(context.view_projection));
     Effekseer::Matrix44 camera_mat;
     camera_mat.Indentity();
     renderer_->SetProjectionMatrix(proj);
