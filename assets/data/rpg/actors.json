@@ -1,0 +1,18 @@
+{
+    "actors": [
+        {
+            "id": "actor.hero",
+            "display_name": "Hero",
+            "class_id": "class.adventurer",
+            "initial_level": 1,
+            "max_level": 99
+        },
+        {
+            "id": "actor.partner",
+            "display_name": "Partner",
+            "class_id": "class.acolyte",
+            "initial_level": 1,
+            "max_level": 99
+        }
+    ]
+}

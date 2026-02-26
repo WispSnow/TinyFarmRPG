@@ -45,6 +45,22 @@ struct SkillData {
     std::vector<EffectData> effects_{};
 };
 
+struct ClassData {
+    std::string id_{};
+    entt::id_type id_hash_{};
+    std::string display_name_{};
+    ParamArray base_params_{};
+};
+
+struct ActorData {
+    std::string id_{};
+    entt::id_type id_hash_{};
+    std::string display_name_{};
+    std::string class_id_{};
+    int initial_level_{1};
+    int max_level_{99};
+};
+
 struct StateData {
     std::string id_{};
     entt::id_type id_hash_{};

@@ -24,6 +24,7 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/audio_ids.h"
 #include "game/defs/commands.h"
 #include "game/save/save_service.h"
@@ -58,13 +59,123 @@
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
 #include <algorithm>
+#include <cstdint>
 #include <glm/common.hpp>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 using namespace entt::literals;
 
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
+constexpr std::uint32_t kPlayerBattleUnitIdStart = 1U;
+constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
+
+[[nodiscard]] int clampPositiveStat(const int value) {
+    return std::max(1, value);
+}
+
+[[nodiscard]] int paramValue(const game::data::ParamArray& params, const game::data::ParamIndex index) {
+    return params[static_cast<std::size_t>(index)];
+}
+
+[[nodiscard]] std::string buildEnemyDisplayName(const game::data::EnemyData& enemy,
+                                                std::unordered_map<std::string, int>& name_counts) {
+    const std::string base_name = enemy.display_name_.empty() ? enemy.id_ : enemy.display_name_;
+    const int ordinal = ++name_counts[base_name];
+    if (ordinal <= 1) {
+        return base_name;
+    }
+    return base_name + " " + std::to_string(ordinal);
+}
+
+[[nodiscard]] bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
+                                               std::vector<game::battle::BattleUnit>& out_units,
+                                               std::string& out_error) {
+    auto actors = catalog.listActors();
+    std::sort(actors.begin(), actors.end(), [](const game::data::ActorData* lhs, const game::data::ActorData* rhs) {
+        return lhs->id_ < rhs->id_;
+    });
+
+    std::vector<game::battle::BattleUnit> player_units{};
+    player_units.reserve(actors.size());
+    std::uint32_t next_player_id = kPlayerBattleUnitIdStart;
+    for (const auto* actor : actors) {
+        const auto* klass = catalog.findClass(actor->class_id_);
+        if (!klass) {
+            continue;
+        }
+
+        const int max_hp = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Mhp));
+        const std::string actor_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+        player_units.push_back(game::battle::BattleUnit{
+            next_player_id++,
+            actor_name,
+            game::battle::BattleSide::Player,
+            max_hp,
+            max_hp,
+            clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Atk)),
+            clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Agi)),
+        });
+    }
+
+    if (player_units.empty()) {
+        out_error = "RPG catalog does not contain any player actor/class pair.";
+        return false;
+    }
+
+    auto troops = catalog.listTroops();
+    std::sort(troops.begin(), troops.end(), [](const game::data::TroopData* lhs, const game::data::TroopData* rhs) {
+        return lhs->id_ < rhs->id_;
+    });
+
+    const game::data::TroopData* selected_troop = nullptr;
+    for (const auto* troop : troops) {
+        if (!troop->members_.empty()) {
+            selected_troop = troop;
+            break;
+        }
+    }
+    if (!selected_troop) {
+        out_error = "RPG catalog does not contain a troop with members.";
+        return false;
+    }
+
+    std::vector<game::battle::BattleUnit> enemy_units{};
+    enemy_units.reserve(selected_troop->members_.size());
+    std::unordered_map<std::string, int> enemy_name_counts{};
+    std::uint32_t next_enemy_id = kEnemyBattleUnitIdStart;
+    for (const auto& member : selected_troop->members_) {
+        const auto* enemy = catalog.findEnemy(member.enemy_id_);
+        if (!enemy) {
+            continue;
+        }
+
+        const int max_hp = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mhp));
+        enemy_units.push_back(game::battle::BattleUnit{
+            next_enemy_id++,
+            buildEnemyDisplayName(*enemy, enemy_name_counts),
+            game::battle::BattleSide::Enemy,
+            max_hp,
+            max_hp,
+            clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Atk)),
+            clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Agi)),
+        });
+    }
+    if (enemy_units.empty()) {
+        out_error = "RPG catalog troop '" + selected_troop->id_ + "' does not produce enemy units.";
+        return false;
+    }
+
+    out_units.clear();
+    out_units.reserve(player_units.size() + enemy_units.size());
+    out_units.insert(out_units.end(), player_units.begin(), player_units.end());
+    out_units.insert(out_units.end(), enemy_units.begin(), enemy_units.end());
+
+    out_error.clear();
+    return true;
+}
 }
 
 namespace game::scene {
@@ -577,6 +688,19 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     units.reserve(cmd.player_units.size() + cmd.enemy_units.size());
     units.insert(units.end(), cmd.player_units.begin(), cmd.player_units.end());
     units.insert(units.end(), cmd.enemy_units.begin(), cmd.enemy_units.end());
+
+    if (units.empty()) {
+        if (!services_ || !services_->rpg_catalog) {
+            spdlog::warn("GameScene: EnterBattleCommand 未提供单位，且 RPG catalog 不可用。");
+            return;
+        }
+
+        std::string build_error{};
+        if (!buildBattleUnitsFromCatalog(*services_->rpg_catalog, units, build_error)) {
+            spdlog::warn("GameScene: 无法从 RPG catalog 构造战斗单位: {}", build_error);
+            return;
+        }
+    }
 
     requestPushScene(std::make_unique<game::scene::BattleScene>("BattleScene", context_, std::move(units)));
 }
