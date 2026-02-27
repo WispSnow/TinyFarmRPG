@@ -45,7 +45,8 @@ class BattleScene final : public engine::scene::Scene {
 public:
     BattleScene(std::string_view name,
                 engine::core::Context& context,
-                std::vector<game::battle::BattleUnit> units);
+                std::vector<game::battle::BattleUnit> units,
+                game::battle::BattleSessionOptions session_options = {});
     ~BattleScene() override = default;
 
     bool init() override;

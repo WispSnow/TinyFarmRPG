@@ -2,6 +2,8 @@
 
 #include "battle_types.h"
 
+#include <entt/core/fwd.hpp>
+
 #include <string>
 #include <unordered_map>
 
@@ -16,6 +18,7 @@ struct BattleRuntimeState {
     };
 
     std::uint32_t escape_attempt_count{0};
+    std::unordered_map<entt::id_type, int> item_stocks{};
     std::unordered_map<BattleUnitId, UnitRuntimeState> units{};
 };
 

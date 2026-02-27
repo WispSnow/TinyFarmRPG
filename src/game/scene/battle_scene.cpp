@@ -50,9 +50,10 @@ namespace game::scene {
 
 BattleScene::BattleScene(std::string_view name,
                          engine::core::Context& context,
-                         std::vector<game::battle::BattleUnit> units)
+                         std::vector<game::battle::BattleUnit> units,
+                         game::battle::BattleSessionOptions session_options)
     : engine::scene::Scene(name, context),
-      session_(std::move(units)) {
+      session_(std::move(units), std::move(session_options)) {
 }
 
 bool BattleScene::init() {
