@@ -5,6 +5,8 @@
 #include "ui_preset_manager.h"
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
+#include "engine/utils/events.h"
+#include <entt/signal/dispatcher.hpp>
 #include "engine/render/camera.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/render/renderer.h"
@@ -303,10 +305,15 @@ void UIManager::renderCursor(engine::core::Context& context) {
     context.getRenderer().drawUIImage(*cursor_image_, draw_pos, cursor_size_);
 }
 
+void UIManager::onFocusLost() {
+    clearMouseState();
+}
+
 void UIManager::registerMouseEvents() {
     auto& input_manager = context_.getInputManager();
     input_manager.onAction("mouse_left"_hs, engine::input::ActionState::PRESSED).connect<&UIManager::onMousePressed>(this);
     input_manager.onAction("mouse_left"_hs, engine::input::ActionState::RELEASED).connect<&UIManager::onMouseReleased>(this);
+    context_.getDispatcher().sink<engine::utils::FocusLostEvent>().connect<&UIManager::onFocusLost>(this);
 }
 
 void UIManager::unregisterMouseEvents() {
@@ -315,6 +322,7 @@ void UIManager::unregisterMouseEvents() {
         .disconnect<&UIManager::onMousePressed>(this);
     input_manager.onAction("mouse_left"_hs, engine::input::ActionState::RELEASED)
         .disconnect<&UIManager::onMouseReleased>(this);
+    context_.getDispatcher().sink<engine::utils::FocusLostEvent>().disconnect<&UIManager::onFocusLost>(this);
 }
 
 } // namespace engine::ui 

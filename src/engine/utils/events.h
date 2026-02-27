@@ -40,6 +40,12 @@ struct FontUnloadedEvent {
 struct FontsClearedEvent {};
 
 // --- 窗口/渲染相关事件（推荐 trigger<T>() 立即分发） ---
+
+/// @brief 窗口失焦事件（推荐 trigger<FocusLostEvent>()）
+/// InputManager 在收到 SDL_EVENT_WINDOW_FOCUS_LOST / MINIMIZED 时触发，
+/// UI 等模块监听此事件清理按压状态。
+struct FocusLostEvent {};
+
 struct WindowResizedEvent {
     int width{0};
     int height{0};

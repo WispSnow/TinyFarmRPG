@@ -4,7 +4,7 @@
 - 创建日期：`2026-02-27`
 - 涉及文件：`src/engine/input/input_manager.{h,cpp}`、`tests/engine/input/input_manager_test.cpp`、`config/input.json`
 - 来源：Claude + Codex 联合审查 + Codex 二次审阅修正
-- 状态：`Pending`
+- 状态：`Done`（P0~P2 全部完成，P3 待 RPG 拓展时按需实施）
 
 ---
 
