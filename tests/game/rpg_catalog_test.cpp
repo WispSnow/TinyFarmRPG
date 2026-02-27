@@ -350,6 +350,28 @@ TEST(RpgCatalogTest, LoadSkillsFailsWhenDamageMissing) {
     EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
 }
 
+TEST(RpgCatalogTest, LoadSkillsFailsOnNegativeMpCost) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.skills,
+        R"json({
+  "skills": [
+    {
+      "id": "skill.invalid_mp_cost",
+      "scope": "one_enemy",
+      "hit_type": "physical",
+      "mp_cost": -1,
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "1", "variance": 0, "critical": false }
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
+}
+
 TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidJsonContent) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(paths.skills, "this is not json");

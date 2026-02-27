@@ -39,6 +39,7 @@ struct SkillData {
     std::string description_{};
     Scope scope_{Scope::None};
     HitType hit_type_{HitType::Certain};
+    int mp_cost_{0};
     int success_rate_{100};
     int repeats_{1};
     DamageFormulaData damage_{};

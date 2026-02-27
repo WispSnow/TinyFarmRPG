@@ -201,7 +201,6 @@ bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
 }
 
 void BattleActionResolver::applySkillEffects(const game::data::SkillData& skill,
-                                             BattleUnit& actor,
                                              BattleUnit& target,
                                              BattleRuntimeState::UnitRuntimeState& target_state,
                                              BattleActionResult& result) {
@@ -264,8 +263,6 @@ void BattleActionResolver::applySkillEffects(const game::data::SkillData& skill,
                 break;
         }
     }
-
-    (void)actor;
 }
 
 BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
@@ -335,8 +332,14 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             if (!collectSkillTargets(action, *actor, *skill, turn_core, targets, result.failure_reason)) {
                 return result;
             }
+            if (actor->mp < skill->mp_cost_) {
+                result.failure_reason = "insufficient mp";
+                return result;
+            }
 
             result.status = BattleActionStatus::Applied;
+            result.mp_spent = skill->mp_cost_;
+            actor->mp = std::max(0, actor->mp - skill->mp_cost_);
             if (nextPercentRoll() > clampPercent(skill->success_rate_)) {
                 result.missed = true;
                 (void)turn_core.advanceTurn();
@@ -415,7 +418,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                             break;
                     }
 
-                    applySkillEffects(*skill, *actor, *target, target_state, result);
+                    applySkillEffects(*skill, *target, target_state, result);
                     result.target_defeated = result.target_defeated || !target->isAlive();
                 }
             }
@@ -461,6 +464,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
 
             for (const auto& effect : item->on_use_->effects) {
                 if (effect.type != game::data::ItemUseEffectType::AddItem) {
+                    // TODO(FND-010): support non-AddItem battle effects (RecoverHp/RecoverMp/State).
                     continue;
                 }
                 if (effect.item_id == entt::null || effect.count <= 0) {

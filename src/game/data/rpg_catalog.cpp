@@ -331,6 +331,12 @@ bool RpgCatalog::loadSkills(const std::string_view file_path) {
         }
         skill.hit_type_ = *hit_type;
 
+        skill.mp_cost_ = skill_node.value("mp_cost", 0);
+        if (skill.mp_cost_ < 0) {
+            spdlog::error("RpgCatalog: skill '{}' mp_cost 必须 >= 0", skill.id_);
+            return false;
+        }
+
         skill.success_rate_ = skill_node.value("success_rate", 100);
         if (!isValidRate(skill.success_rate_)) {
             spdlog::error("RpgCatalog: skill '{}' success_rate 必须在 [0, 100]", skill.id_);

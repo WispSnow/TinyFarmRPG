@@ -24,6 +24,7 @@ constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr engine::ui::Thickness PANEL_PADDING{20.0f, 20.0f, 20.0f, 20.0f};
 constexpr glm::vec2 PANEL_SIZE{560.0f, 320.0f};
 constexpr glm::vec2 ACTION_BUTTON_SIZE{160.0f, 36.0f};
+// TODO(FND-010): replace hardcoded action IDs with player-selectable skill/item UI.
 constexpr std::string_view kDefaultSkillId = "skill.attack";
 constexpr std::string_view kDefaultItemId = "strawberry_item";
 
@@ -376,16 +377,8 @@ void BattleScene::refreshView() {
 }
 
 void BattleScene::queueAttackAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
-        return;
-    }
-
-    const auto* actor = session_.findUnit(*actor_id);
+    game::battle::BattleUnitId actor_id = 0;
+    const auto* actor = prepareActionActor(actor_id);
     if (!actor) {
         return;
     }
@@ -397,23 +390,15 @@ void BattleScene::queueAttackAction() {
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::Attack,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = target_id
     };
     state_ = FlowState::ExecutingAction;
 }
 
 void BattleScene::queueSkillAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
-        return;
-    }
-
-    const auto* actor = session_.findUnit(*actor_id);
+    game::battle::BattleUnitId actor_id = 0;
+    const auto* actor = prepareActionActor(actor_id);
     if (!actor) {
         return;
     }
@@ -425,84 +410,89 @@ void BattleScene::queueSkillAction() {
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::Skill,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = target_id,
+        // TODO(FND-010): use selected skill from battle command UI.
         .skill_id = std::string(kDefaultSkillId)
     };
     state_ = FlowState::ExecutingAction;
 }
 
 void BattleScene::queueItemAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
+    game::battle::BattleUnitId actor_id = 0;
+    if (!prepareActionActor(actor_id)) {
         return;
     }
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::Item,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = std::nullopt,
+        // TODO(FND-010): use selected item from battle inventory UI.
         .item_id = std::string(kDefaultItemId)
     };
     state_ = FlowState::ExecutingAction;
 }
 
 void BattleScene::queueGuardAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
+    game::battle::BattleUnitId actor_id = 0;
+    if (!prepareActionActor(actor_id)) {
         return;
     }
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::Guard,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = std::nullopt
     };
     state_ = FlowState::ExecutingAction;
 }
 
 void BattleScene::queueEscapeAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
+    game::battle::BattleUnitId actor_id = 0;
+    if (!prepareActionActor(actor_id)) {
         return;
     }
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::Escape,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = std::nullopt
     };
     state_ = FlowState::ExecutingAction;
 }
 
 void BattleScene::queueEndTurnAction() {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        return;
-    }
-
-    const auto actor_id = session_.currentActorId();
-    if (!actor_id) {
+    game::battle::BattleUnitId actor_id = 0;
+    if (!prepareActionActor(actor_id)) {
         return;
     }
 
     pending_action_ = game::battle::BattleAction{
         .type = game::battle::BattleActionType::EndTurn,
-        .actor_id = *actor_id,
+        .actor_id = actor_id,
         .target_id = std::nullopt
     };
     state_ = FlowState::ExecutingAction;
+}
+
+const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::BattleUnitId& out_actor_id) const {
+    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return nullptr;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return nullptr;
+    }
+
+    const auto* actor = session_.findUnit(*actor_id);
+    if (!actor) {
+        return nullptr;
+    }
+
+    out_actor_id = *actor_id;
+    return actor;
 }
 
 std::optional<game::battle::BattleUnitId> BattleScene::selectDefaultTarget(const game::battle::BattleSide actor_side) const {

@@ -68,6 +68,7 @@ private:
     void queueGuardAction();
     void queueEscapeAction();
     void queueEndTurnAction();
+    [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
     [[nodiscard]] std::optional<game::battle::BattleUnitId> selectDefaultTarget(game::battle::BattleSide actor_side) const;
 
     void requestBattleEnd();
