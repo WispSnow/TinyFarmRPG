@@ -112,6 +112,7 @@ private:
     TextDirection default_direction_{TextDirection::LeftToRight};
     std::string default_language_tag_{"zh-Hans"};           ///< @brief 默认语言标签（BCP-47，例如 "en"、"zh-Hans"）
     std::vector<hb_feature_t> active_features_;             ///< @brief 激活的 HarfBuzz 特性
+    hb_buffer_t* hb_buffer_{nullptr};                        ///< @brief 可复用的 HarfBuzz 整形缓冲区
 
     mutable uint64_t layout_frame_counter_{0};    ///< @brief 文本布局帧计数器
     mutable std::unordered_map<LayoutKey, TextLayout, LayoutKeyHash> layout_cache_;    ///< @brief 文本布局缓存

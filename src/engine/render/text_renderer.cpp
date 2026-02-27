@@ -285,23 +285,23 @@ float TextRenderer::shapeLine(std::string_view line_text,
                               const engine::utils::LayoutOptions& options,
                               float pen_y_origin,
                               std::vector<GlyphPlacement>& out_glyphs) const {
-    hb_buffer_t* buffer = hb_buffer_create();
-    hb_buffer_set_direction(buffer, toHbDirection(default_direction_));
-    hb_buffer_set_language(buffer, hb_language_from_string(default_language_tag_.c_str(), -1));
-    hb_buffer_add_utf8(buffer,
+    hb_buffer_reset(hb_buffer_);
+    hb_buffer_set_direction(hb_buffer_, toHbDirection(default_direction_));
+    hb_buffer_set_language(hb_buffer_, hb_language_from_string(default_language_tag_.c_str(), -1));
+    hb_buffer_add_utf8(hb_buffer_,
                        line_text.data(),
                        static_cast<int>(line_text.size()),
                        0,
                        static_cast<int>(line_text.size()));
-    hb_buffer_guess_segment_properties(buffer);
+    hb_buffer_guess_segment_properties(hb_buffer_);
 
     const hb_feature_t* feature_data = active_features_.empty() ? nullptr : active_features_.data();
     unsigned int feature_count = static_cast<unsigned int>(active_features_.size());
-    hb_shape(font->getHBFont(), buffer, feature_data, feature_count);
+    hb_shape(font->getHBFont(), hb_buffer_, feature_data, feature_count);
 
     unsigned int glyph_count = 0;
-    hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(buffer, &glyph_count);
-    hb_glyph_position_t* positions = hb_buffer_get_glyph_positions(buffer, &glyph_count);
+    hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(hb_buffer_, &glyph_count);
+    hb_glyph_position_t* positions = hb_buffer_get_glyph_positions(hb_buffer_, &glyph_count);
 
     float pen_x = 0.0f;
     float pen_y = pen_y_origin;
@@ -352,8 +352,6 @@ float TextRenderer::shapeLine(std::string_view line_text,
             pen_x += options.letter_spacing;
         }
     }
-
-    hb_buffer_destroy(buffer);
 
     const float effective_min = (line_min_x == std::numeric_limits<float>::max())
                                     ? 0.0f
@@ -466,6 +464,7 @@ TextRenderer::TextRenderer(engine::render::opengl::GLRenderer* gl_renderer,
       dispatcher_(dispatcher) {
     dispatcher_->sink<engine::utils::FontUnloadedEvent>().connect<&TextRenderer::onFontUnloaded>(this);
     dispatcher_->sink<engine::utils::FontsClearedEvent>().connect<&TextRenderer::onFontsCleared>(this);
+    hb_buffer_ = hb_buffer_create();
     ensureBuiltinStyles();
     [[maybe_unused]] const bool config_loaded = loadConfig(DEFAULT_CONFIG_PATH);
     spdlog::trace("TextRenderer 初始化成功.");
@@ -475,6 +474,10 @@ TextRenderer::~TextRenderer() {
     if (dispatcher_) {
         dispatcher_->disconnect(this);
         dispatcher_ = nullptr;
+    }
+    if (hb_buffer_) {
+        hb_buffer_destroy(hb_buffer_);
+        hb_buffer_ = nullptr;
     }
 }
 
