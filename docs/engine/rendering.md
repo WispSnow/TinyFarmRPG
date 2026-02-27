@@ -160,9 +160,13 @@ Sprite 的纹理裁剪通常以“像素矩形”表达（更直观），最终�
 2. `LightingPass`：点光/聚光/方向光 → `light_color_tex`（FBO@Logical，additive accumulate）
 3. `EmissivePass`：发光遮罩 → `emissive_color_tex`（FBO@Logical）
 4. `BloomPass`：对 emissive 做降采样 + 高斯模糊 + 上采样叠加 → `bloom_tex`（FBO@half/quarter …）
-5. `CompositePass`：合成到默认帧缓冲的 letterbox viewport（@Window Pixels）
-6. `UIPass`：UI 精灵绘制到默认帧缓冲的 viewport（@Window Pixels）
-7. `ImGui`：Debug UI 覆盖绘制到整窗（@Window Pixels）
+5. `WorldVfxPass`：世界通道特效 → `world_vfx_tex`（FBO@Logical，Effekseer Layer 0）
+6. `CompositePass`：合成到默认帧缓冲的 letterbox viewport（@Window Pixels），包含 `uWorldVfxTex` 加色合成
+7. `VfxPass`：Overlay 通道特效 → 默认帧缓冲（@Window Pixels，Effekseer Layer 1）
+8. `UIPass`：UI 精灵绘制到默认帧缓冲的 viewport（@Window Pixels）
+9. `ImGui`：Debug UI 覆盖绘制到整窗（@Window Pixels）
+
+> VFX 双通道架构的详细说明见 `docs/engine/vfx_and_effekseer.md`。
 
 ### 8.2 坐标空间：为什么要“离屏@Logical → 合成@Viewport”
 这套管线同时存在 2 个关键空间：
@@ -194,6 +198,8 @@ Sprite 的纹理裁剪通常以“像素矩形”表达（更直观），最终�
 - `Lighting/Bloom/Ambient`：通过开关与滑杆验证效果变化（先验证再深入代码）
 
 ### 8.5 常见坑
-1) **方向光不是“跟随相机的世界物体”**：本项目的方向光是 screen-space 渐变遮罩（类似“昼夜滤镜”），实现上需要临时切换到屏幕正交投影。  
-2) **Bloom 不是免费效果**：它会引入多次全屏采样与模糊；建议用 DebugPanel 看 Bloom 的 draw calls，并避免“无 emissive 也跑 Bloom”。  
-3) **合成阶段的颜色空间/混合**：项目目标是“足够好且可演示”，但一旦你开始追求更真实的光照/后处理，就会遇到线性空间、tone mapping、HDR 缓冲等话题（可作为进阶练习与扩展方向）。  
+1) **方向光不是”跟随相机的世界物体”**：本项目的方向光是 screen-space 渐变遮罩（类似”昼夜滤镜”），实现上需要临时切换到屏幕正交投影。
+2) **Bloom 不是免费效果**：它会引入多次全屏采样与模糊；建议用 DebugPanel 看 Bloom 的 draw calls，并避免”无 emissive 也跑 Bloom”。
+3) **合成阶段的颜色空间/混合**：项目目标是”足够好且可演示”，但一旦你开始追求更真实的光照/后处理，就会遇到线性空间、tone mapping、HDR 缓冲等话题（可作为进阶练习与扩展方向）。
+4) **World VFX 不参与 Bloom**：WorldVfxPass 在 BloomPass 之后渲染，世界通道的特效内容不会被泛光处理。需要泛光效果的特效应考虑在 Effekseer 资源中自带发光。
+5) **World VFX 使用加色合成**：`composite.frag` 中 `base + worldVfx.rgb`，适合 additive 类资源（火焰/光芒）；alpha-blend 类特效应走 Overlay 通道。
