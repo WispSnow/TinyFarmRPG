@@ -64,15 +64,28 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
         }
 
         const int max_hp = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Mhp));
+        const int max_mp = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Mmp));
+        const int atk = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Atk));
+        const int def = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Def));
+        const int mat = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Mat));
+        const int mdf = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Mdf));
+        const int agi = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Agi));
+        const int luk = clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Luk));
         const std::string actor_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
         player_units.push_back(BattleUnit{
-            next_player_id++,
-            actor_name,
-            BattleSide::Player,
-            max_hp,
-            max_hp,
-            clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Atk)),
-            clampPositiveStat(paramValue(klass->base_params_, game::data::ParamIndex::Agi)),
+            .id = next_player_id++,
+            .name = actor_name,
+            .side = BattleSide::Player,
+            .hp = max_hp,
+            .max_hp = max_hp,
+            .mp = max_mp,
+            .max_mp = max_mp,
+            .attack = atk,
+            .defense = def,
+            .magic_attack = mat,
+            .magic_defense = mdf,
+            .speed = agi,
+            .luck = luk
         });
     }
 
@@ -114,14 +127,27 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
         }
 
         const int max_hp = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mhp));
+        const int max_mp = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mmp));
+        const int atk = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Atk));
+        const int def = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Def));
+        const int mat = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mat));
+        const int mdf = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mdf));
+        const int agi = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Agi));
+        const int luk = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Luk));
         enemy_units.push_back(BattleUnit{
-            next_enemy_id++,
-            buildEnemyDisplayName(*enemy, enemy_name_counts),
-            BattleSide::Enemy,
-            max_hp,
-            max_hp,
-            clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Atk)),
-            clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Agi)),
+            .id = next_enemy_id++,
+            .name = buildEnemyDisplayName(*enemy, enemy_name_counts),
+            .side = BattleSide::Enemy,
+            .hp = max_hp,
+            .max_hp = max_hp,
+            .mp = max_mp,
+            .max_mp = max_mp,
+            .attack = atk,
+            .defense = def,
+            .magic_attack = mat,
+            .magic_defense = mdf,
+            .speed = agi,
+            .luck = luk
         });
     }
 

@@ -2,7 +2,7 @@
 
 ## 元信息
 - 日期：`2026-02-27`
-- 状态：`Planned`
+- 状态：`In Progress`
 - 范围：`战斗动作扩展 + 8参数/公式接入 + 任务/商店状态落盘`
 - 约束：`采用最优方案，可重构，不考虑向后兼容`
 
@@ -101,12 +101,12 @@
 
 - [x] T1 扩展 `BattleActionType` 与 `BattleAction`（新增 `skill_id/item_id` 等字段）
 - [x] T2 新增 `battle_unit_factory` 并接入 `RpgCatalog -> BattleUnit` 构建链路
-- [ ] T3 扩展 `BattleUnit`（8 参数 + hp/mp）与 `battle_runtime_types`
-- [ ] T4 升级 `TurnCore`：回合计数与回合钩子
-- [ ] T5 新增 `battle_formula_evaluator`（Lua 公式执行）并完成单测
-- [ ] T6 新增 `battle_action_resolver` 并完成动作分发单测
+- [x] T3 扩展 `BattleUnit`（8 参数 + hp/mp）与 `battle_runtime_types`
+- [x] T4 升级 `TurnCore`：回合计数与回合钩子
+- [x] T5 新增 `battle_formula_evaluator`（Lua 公式执行）并完成单测
+- [x] T6 新增 `battle_action_resolver` 并完成动作分发单测
 - [ ] T7 扩展 `BattleActionResult`（状态变化/消耗/命中信息/逃跑结果）
-- [ ] T8 `BattleSession` 完成 resolver 化改造，移除硬编码结算
+- [x] T8 `BattleSession` 完成 resolver 化改造，移除硬编码结算
 - [ ] T9 Skill/Item/Guard/Escape 四类动作语义落地
 - [ ] T10 BattleScene 增加对应输入入口（保留自动目标兜底）
 - [ ] T11 扩展 `quest_state/skill_state/combat_state` 结构与读写

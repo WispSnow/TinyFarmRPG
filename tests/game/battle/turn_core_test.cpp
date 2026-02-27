@@ -4,6 +4,7 @@
 #include "game/battle/turn_core.h"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace game::battle {
@@ -11,10 +12,62 @@ namespace {
 
 std::vector<BattleUnit> makeUnits() {
     return {
-        BattleUnit{1, "Hero", BattleSide::Player, 120, 120, 20, 12},
-        BattleUnit{2, "Mage", BattleSide::Player, 80, 80, 16, 12},
-        BattleUnit{101, "Slime", BattleSide::Enemy, 60, 60, 10, 18},
-        BattleUnit{102, "Bat", BattleSide::Enemy, 55, 55, 12, 8}
+        BattleUnit{
+            .id = 1,
+            .name = "Hero",
+            .side = BattleSide::Player,
+            .hp = 120,
+            .max_hp = 120,
+            .mp = 0,
+            .max_mp = 0,
+            .attack = 20,
+            .defense = 10,
+            .magic_attack = 10,
+            .magic_defense = 10,
+            .speed = 12,
+            .luck = 10},
+        BattleUnit{
+            .id = 2,
+            .name = "Mage",
+            .side = BattleSide::Player,
+            .hp = 80,
+            .max_hp = 80,
+            .mp = 0,
+            .max_mp = 0,
+            .attack = 16,
+            .defense = 10,
+            .magic_attack = 10,
+            .magic_defense = 10,
+            .speed = 12,
+            .luck = 10},
+        BattleUnit{
+            .id = 101,
+            .name = "Slime",
+            .side = BattleSide::Enemy,
+            .hp = 60,
+            .max_hp = 60,
+            .mp = 0,
+            .max_mp = 0,
+            .attack = 10,
+            .defense = 10,
+            .magic_attack = 10,
+            .magic_defense = 10,
+            .speed = 18,
+            .luck = 10},
+        BattleUnit{
+            .id = 102,
+            .name = "Bat",
+            .side = BattleSide::Enemy,
+            .hp = 55,
+            .max_hp = 55,
+            .mp = 0,
+            .max_mp = 0,
+            .attack = 12,
+            .defense = 10,
+            .magic_attack = 10,
+            .magic_defense = 10,
+            .speed = 8,
+            .luck = 10}
     };
 }
 
@@ -65,6 +118,49 @@ TEST(TurnCoreTest, EvaluatesOutcomeFromAliveSides) {
 
     EXPECT_EQ(turn_core.outcome(), BattleOutcome::Victory);
     EXPECT_FALSE(turn_core.currentActorId().has_value());
+}
+
+TEST(TurnCoreTest, TracksRoundIndexWhenTurnOrderWraps) {
+    TurnCore turn_core(makeUnits());
+    ASSERT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{101});
+    EXPECT_EQ(turn_core.roundIndex(), 1U);
+
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{1});
+    EXPECT_EQ(turn_core.roundIndex(), 1U);
+
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{2});
+    EXPECT_EQ(turn_core.roundIndex(), 1U);
+
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{102});
+    EXPECT_EQ(turn_core.roundIndex(), 1U);
+
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{101});
+    EXPECT_EQ(turn_core.roundIndex(), 2U);
+}
+
+TEST(TurnCoreTest, EmitsRoundHooksOnWrap) {
+    TurnCore turn_core(makeUnits());
+
+    std::vector<std::string> events{};
+    turn_core.setRoundHooks(
+        [&events](const std::uint32_t round_index) {
+            events.push_back("B" + std::to_string(round_index));
+        },
+        [&events](const std::uint32_t round_index) {
+            events.push_back("E" + std::to_string(round_index));
+        });
+
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_TRUE(turn_core.advanceTurn());
+    EXPECT_TRUE(turn_core.advanceTurn());
+
+    const std::vector<std::string> expected{"E1", "B2"};
+    EXPECT_EQ(events, expected);
 }
 
 } // namespace

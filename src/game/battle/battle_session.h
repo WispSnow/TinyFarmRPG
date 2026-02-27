@@ -1,5 +1,7 @@
 #pragma once
 
+#include "battle_action_resolver.h"
+#include "battle_runtime_types.h"
 #include "battle_types.h"
 #include "turn_core.h"
 
@@ -10,6 +12,8 @@ namespace game::battle {
 
 class BattleSession final {
     TurnCore turn_core_;
+    BattleActionResolver resolver_{};
+    BattleRuntimeState runtime_state_{};
 
 public:
     explicit BattleSession(std::vector<BattleUnit> units);
@@ -23,7 +27,6 @@ public:
     [[nodiscard]] BattleActionResult submitAction(const BattleAction& action);
 
 private:
-    [[nodiscard]] BattleActionResult makeRejectedResult(const BattleAction& action) const;
     void fillSnapshot(BattleActionResult& result) const;
 };
 

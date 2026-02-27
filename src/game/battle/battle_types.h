@@ -64,8 +64,14 @@ struct BattleUnit {
     BattleSide side{BattleSide::Player};
     int hp{100};
     int max_hp{100};
+    int mp{0};
+    int max_mp{0};
     int attack{10};
+    int defense{10};
+    int magic_attack{10};
+    int magic_defense{10};
     int speed{10};
+    int luck{10};
 
     [[nodiscard]] bool isAlive() const { return hp > 0; }
 };
@@ -81,6 +87,7 @@ struct BattleAction {
 struct BattleSnapshot {
     std::vector<BattleUnit> units{};
     std::optional<BattleUnitId> current_actor_id{};
+    std::uint32_t round_index{0};
     BattleOutcome outcome{BattleOutcome::Ongoing};
 };
 
