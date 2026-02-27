@@ -251,13 +251,19 @@ void BattleScene::refreshView() {
         } else if (last_action_result_) {
             const auto& result = *last_action_result_;
             if (result.status == game::battle::BattleActionStatus::Rejected) {
-                result_label_->setText("Result: Action rejected");
+                if (!result.failure_reason.empty()) {
+                    result_label_->setText("Result: " + result.failure_reason);
+                } else {
+                    result_label_->setText("Result: Action rejected");
+                }
             } else if (result.action_type == game::battle::BattleActionType::Attack) {
                 std::string text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
                 if (result.target_defeated) {
                     text += " (KO)";
                 }
                 result_label_->setText(std::move(text));
+            } else if (result.action_type == game::battle::BattleActionType::Escape) {
+                result_label_->setText(result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed");
             } else {
                 result_label_->setText("Result: Turn ended");
             }

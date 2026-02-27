@@ -105,9 +105,9 @@
 - [x] T4 升级 `TurnCore`：回合计数与回合钩子
 - [x] T5 新增 `battle_formula_evaluator`（Lua 公式执行）并完成单测
 - [x] T6 新增 `battle_action_resolver` 并完成动作分发单测
-- [ ] T7 扩展 `BattleActionResult`（状态变化/消耗/命中信息/逃跑结果）
+- [x] T7 扩展 `BattleActionResult`（状态变化/消耗/命中信息/逃跑结果）
 - [x] T8 `BattleSession` 完成 resolver 化改造，移除硬编码结算
-- [ ] T9 Skill/Item/Guard/Escape 四类动作语义落地
+- [ ] T9 Skill/Item/Guard/Escape 四类动作语义落地（已完成 Guard/Escape，Skill/Item 待接入目录数据与消耗语义）
 - [ ] T10 BattleScene 增加对应输入入口（保留自动目标兜底）
 - [ ] T11 扩展 `quest_state/skill_state/combat_state` 结构与读写
 - [ ] T12 完成单测+集成+存档验收

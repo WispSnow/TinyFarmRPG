@@ -26,7 +26,8 @@ enum class BattleActionType {
 enum class BattleOutcome {
     Ongoing,
     Victory,
-    Defeat
+    Defeat,
+    Escaped
 };
 
 [[nodiscard]] constexpr const char* toString(BattleSide side) {
@@ -48,6 +49,8 @@ enum class BattleOutcome {
             return "Victory";
         case BattleOutcome::Defeat:
             return "Defeat";
+        case BattleOutcome::Escaped:
+            return "Escaped";
     }
 
     return "Unknown";
@@ -97,7 +100,17 @@ struct BattleActionResult {
     BattleUnitId actor_id{0};
     std::optional<BattleUnitId> target_id{};
     int damage{0};
+    int hp_recovered{0};
+    int mp_recovered{0};
+    int mp_spent{0};
+    bool missed{false};
+    bool critical{false};
+    bool target_guarded{false};
     bool target_defeated{false};
+    bool escape_succeeded{false};
+    std::vector<std::string> states_added{};
+    std::vector<std::string> states_removed{};
+    std::string failure_reason{};
     BattleOutcome outcome_after{BattleOutcome::Ongoing};
     // TODO(FND-010): snapshot 当前是全量拷贝；后续可优化为差分结果以降低动作提交开销。
     BattleSnapshot snapshot{};
