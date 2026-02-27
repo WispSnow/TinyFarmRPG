@@ -1,31 +1,31 @@
 {
     "classes": [
         {
-            "id": "class.adventurer",
-            "display_name": "Adventurer",
+            "id": "class.swordsman",
+            "display_name": "剑客",
             "base_params": {
-                "mhp": 120,
-                "mmp": 30,
-                "atk": 24,
-                "def": 18,
-                "mat": 14,
-                "mdf": 16,
-                "agi": 18,
-                "luk": 10
+                "mhp": 544,
+                "mmp": 41,
+                "atk": 19,
+                "def": 17,
+                "mat": 15,
+                "mdf": 17,
+                "agi": 29,
+                "luk": 27
             }
         },
         {
-            "id": "class.acolyte",
-            "display_name": "Acolyte",
+            "id": "class.monk",
+            "display_name": "武术家",
             "base_params": {
-                "mhp": 90,
-                "mmp": 55,
-                "atk": 16,
-                "def": 14,
-                "mat": 22,
-                "mdf": 20,
-                "agi": 14,
-                "luk": 12
+                "mhp": 639,
+                "mmp": 44,
+                "atk": 18,
+                "def": 20,
+                "mat": 12,
+                "mdf": 11,
+                "agi": 34,
+                "luk": 26
             }
         }
     ]

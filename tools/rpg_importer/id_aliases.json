@@ -1,0 +1,28 @@
+{
+    "actors": {
+        "1": "actor.reed",
+        "2": "actor.priscilla",
+        "3": "actor.gale"
+    },
+    "classes": {
+        "1": "class.swordsman",
+        "5": "class.monk"
+    },
+    "skills": {
+        "1": "skill.attack",
+        "20": "skill.bash",
+        "23": "skill.poison_spit"
+    },
+    "states": {
+        "4": "state.poison",
+        "13": "state.stun"
+    },
+    "enemies": {
+        "1": "enemy.goblin",
+        "2": "enemy.gnome"
+    },
+    "troops": {
+        "1": "troop.goblin_pair",
+        "2": "troop.gnome_pair"
+    }
+}

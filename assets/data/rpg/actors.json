@@ -1,16 +1,23 @@
 {
     "actors": [
         {
-            "id": "actor.hero",
-            "display_name": "Hero",
-            "class_id": "class.adventurer",
+            "id": "actor.reed",
+            "display_name": "里德",
+            "class_id": "class.swordsman",
             "initial_level": 1,
             "max_level": 99
         },
         {
-            "id": "actor.partner",
-            "display_name": "Partner",
-            "class_id": "class.acolyte",
+            "id": "actor.priscilla",
+            "display_name": "普丽西拉",
+            "class_id": "class.swordsman",
+            "initial_level": 1,
+            "max_level": 99
+        },
+        {
+            "id": "actor.gale",
+            "display_name": "盖尔",
+            "class_id": "class.monk",
             "initial_level": 1,
             "max_level": 99
         }

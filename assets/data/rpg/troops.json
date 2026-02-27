@@ -1,18 +1,34 @@
 {
     "troops": [
         {
-            "id": "troop.slime_pair",
-            "display_name": "Slime Pair",
+            "id": "troop.goblin_pair",
+            "display_name": "哥布林*2",
             "members": [
                 {
-                    "enemy_id": "enemy.slime",
-                    "x": 320.0,
-                    "y": 280.0
+                    "enemy_id": "enemy.goblin",
+                    "x": 336.0,
+                    "y": 436.0
                 },
                 {
-                    "enemy_id": "enemy.slime",
-                    "x": 420.0,
-                    "y": 300.0
+                    "enemy_id": "enemy.goblin",
+                    "x": 480.0,
+                    "y": 436.0
+                }
+            ]
+        },
+        {
+            "id": "troop.gnome_pair",
+            "display_name": "侏儒*2",
+            "members": [
+                {
+                    "enemy_id": "enemy.gnome",
+                    "x": 337.0,
+                    "y": 436.0
+                },
+                {
+                    "enemy_id": "enemy.gnome",
+                    "x": 480.0,
+                    "y": 436.0
                 }
             ]
         }
