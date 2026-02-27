@@ -262,11 +262,14 @@ bool SpriteBatch::flush(const FlushParams& params) {
     }
 
     glBindVertexArray(vao_);
+    // Buffer orphaning: 用稳定容量分配新 buffer，避免等待 GPU 消费完上一帧数据
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_bytes, vertices_.data());
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertex_buffer_capacity_bytes_), nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(vertex_bytes), vertices_.data());
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, index_bytes, indices_.data());
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(index_buffer_capacity_bytes_), nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(index_bytes), indices_.data());
 
     // 使用传入的着色器程序，设置视图投影矩阵和取样器等
     glUseProgram(params.program_);

@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 
-#include "appearance_test_fixture_utils.h"
+#include "../../shared/test_file_utils.h"
 #include "engine/vfx/vfx_backend.h"
+#include "engine/vfx/vfx_bridge_system.h"
+#include "engine/vfx/vfx_catalog.h"
 #include "engine/vfx/vfx_service.h"
-#include "game/data/vfx_catalog.h"
-#include "game/defs/commands.h"
-#include "game/system/vfx_bridge_system.h"
-#include "../shared/recording_vfx_backend.h"
+#include "engine/vfx/vfx_types.h"
+#include "../../shared/recording_vfx_backend.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -17,9 +17,9 @@
 namespace {
 
 std::string createVfxCatalogFixture() {
-    const auto temp_root = game::test::createUniqueTempDir("vfx_catalog_fixture");
+    const auto temp_root = test::utils::createUniqueTempDir("vfx_catalog_fixture");
     const auto catalog_path = temp_root / "vfx_catalog.json";
-    game::test::writeTextFile(
+    test::utils::writeTextFile(
         catalog_path,
         R"json({
   "effects": {
@@ -31,28 +31,28 @@ std::string createVfxCatalogFixture() {
 
 } // namespace
 
-namespace game::system {
+namespace engine::vfx {
 namespace {
 
 TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     entt::dispatcher dispatcher;
 
-    game::data::VfxCatalog catalog;
+    VfxCatalog catalog;
     ASSERT_TRUE(catalog.loadFromFile(createVfxCatalogFixture()));
 
     auto backend = std::make_unique<::test::vfx::RecordingVfxBackend>();
     auto* backend_ptr = backend.get();
-    engine::vfx::VfxService service(std::move(backend));
+    VfxService service(std::move(backend));
 
     VfxBridgeSystem bridge_system(dispatcher, service, &catalog);
 
-    game::defs::PlayVfxCommand command{};
+    PlayVfxCommand command{};
     command.effect_id = entt::hashed_string{"laser01"}.value();
     command.world_position = {128.0f, 64.0f};
     command.z = 3.0f;
     command.scale = 1.5f;
     command.loop = true;
-    command.channel = engine::vfx::VfxChannel::World;
+    command.channel = VfxChannel::World;
     dispatcher.trigger(command);
 
     ASSERT_EQ(service.pendingRequestCount(), 1u);
@@ -67,22 +67,22 @@ TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     EXPECT_FLOAT_EQ(request.z, 3.0f);
     EXPECT_FLOAT_EQ(request.scale, 1.5f);
     EXPECT_TRUE(request.loop);
-    EXPECT_EQ(request.channel, engine::vfx::VfxChannel::World);
+    EXPECT_EQ(request.channel, VfxChannel::World);
 }
 
 TEST(VfxBridgeSystemTest, MissingEffectMappingIsIgnored) {
     entt::dispatcher dispatcher;
 
-    game::data::VfxCatalog catalog;
+    VfxCatalog catalog;
     ASSERT_TRUE(catalog.loadFromFile(createVfxCatalogFixture()));
 
     auto backend = std::make_unique<::test::vfx::RecordingVfxBackend>();
     auto* backend_ptr = backend.get();
-    engine::vfx::VfxService service(std::move(backend));
+    VfxService service(std::move(backend));
 
     VfxBridgeSystem bridge_system(dispatcher, service, &catalog);
 
-    game::defs::PlayVfxCommand command{};
+    PlayVfxCommand command{};
     command.effect_id = entt::hashed_string{"missing_effect"}.value();
     dispatcher.trigger(command);
 
@@ -96,11 +96,11 @@ TEST(VfxBridgeSystemTest, NullCatalogDisablesCatalogDrivenPlayback) {
 
     auto backend = std::make_unique<::test::vfx::RecordingVfxBackend>();
     auto* backend_ptr = backend.get();
-    engine::vfx::VfxService service(std::move(backend));
+    VfxService service(std::move(backend));
 
     VfxBridgeSystem bridge_system(dispatcher, service, nullptr);
 
-    game::defs::PlayVfxCommand command{};
+    PlayVfxCommand command{};
     command.effect_id = entt::hashed_string{"laser01"}.value();
     dispatcher.trigger(command);
 
@@ -110,4 +110,4 @@ TEST(VfxBridgeSystemTest, NullCatalogDisablesCatalogDrivenPlayback) {
 }
 
 } // namespace
-} // namespace game::system
+} // namespace engine::vfx

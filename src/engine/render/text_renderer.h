@@ -10,6 +10,7 @@
 #include <glm/vec4.hpp>
 #include "engine/utils/defs.h"
 #include <hb.h>
+#include <list>
 #include <unordered_map>
 #include <functional>
 #include <entt/signal/fwd.hpp>
@@ -57,7 +58,6 @@ public:
         glm::vec2 size{0.0f, 0.0f};
         std::vector<GlyphPlacement> glyphs;
         int line_count{0};
-        uint64_t usage_frame{0};
     };
 
     /**
@@ -112,9 +112,16 @@ private:
     TextDirection default_direction_{TextDirection::LeftToRight};
     std::string default_language_tag_{"zh-Hans"};           ///< @brief 默认语言标签（BCP-47，例如 "en"、"zh-Hans"）
     std::vector<hb_feature_t> active_features_;             ///< @brief 激活的 HarfBuzz 特性
+    hb_buffer_t* hb_buffer_{nullptr};                        ///< @brief 可复用的 HarfBuzz 整形缓冲区
 
-    mutable uint64_t layout_frame_counter_{0};    ///< @brief 文本布局帧计数器
-    mutable std::unordered_map<LayoutKey, TextLayout, LayoutKeyHash> layout_cache_;    ///< @brief 文本布局缓存
+    using LruList = std::list<LayoutKey>;
+    struct CachedLayout {
+        TextLayout layout;
+        LruList::iterator lru_it;
+    };
+
+    mutable LruList lru_order_;                                                          ///< @brief LRU 顺序链表（头=最近使用）
+    mutable std::unordered_map<LayoutKey, CachedLayout, LayoutKeyHash> layout_cache_;    ///< @brief 文本布局缓存
     std::size_t layout_cache_capacity_{100};    ///< @brief 文本布局缓存容量
 
     std::unordered_map<entt::id_type, TextStyleEntry> text_styles_{};
@@ -256,7 +263,6 @@ private:
                                   const engine::utils::LayoutOptions& options,
                                   float pen_y_origin,
                                   std::vector<GlyphPlacement>& out_glyphs) const;
-    void trimLayoutCache() const;
     void onFontUnloaded(const engine::utils::FontUnloadedEvent& event);
     void onFontsCleared(const engine::utils::FontsClearedEvent& event);
 

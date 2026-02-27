@@ -6,7 +6,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace game::data {
+namespace engine::vfx {
 
 class VfxCatalog final {
 public:
@@ -17,4 +17,4 @@ private:
     std::unordered_map<entt::id_type, std::string> effect_paths_{};
 };
 
-} // namespace game::data
+} // namespace engine::vfx
