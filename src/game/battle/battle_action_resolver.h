@@ -53,7 +53,6 @@ private:
                                            std::vector<BattleUnit*>& out_targets,
                                            std::string& out_error);
     void applySkillEffects(const game::data::SkillData& skill,
-                           BattleUnit& actor,
                            BattleUnit& target,
                            BattleRuntimeState::UnitRuntimeState& target_state,
                            BattleActionResult& result);

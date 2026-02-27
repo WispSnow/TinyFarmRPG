@@ -1,93 +1,19 @@
 // NOLINTBEGIN
 #include <gtest/gtest.h>
 
-#include "appearance_test_fixture_utils.h"
+#include "battle_catalog_fixture.h"
 #include "game/battle/battle_action_resolver.h"
 #include "game/battle/turn_core.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 
-#include <filesystem>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace game::battle {
 namespace {
-
-struct CatalogFixturePaths {
-    std::filesystem::path skills{};
-    std::filesystem::path states{};
-    std::filesystem::path items{};
-};
-
-[[nodiscard]] CatalogFixturePaths createCatalogFixture() {
-    const auto temp_root = game::test::createUniqueTempDir("battle_action_resolver_fixture");
-    const auto data_root = temp_root / "data";
-    std::filesystem::create_directories(data_root);
-
-    game::test::writeTextFile(
-        data_root / "skills.json",
-        R"json({
-  "skills": [
-    {
-      "id": "skill.fire",
-      "display_name": "Fire",
-      "scope": "one_enemy",
-      "hit_type": "certain",
-      "success_rate": 100,
-      "repeats": 1,
-      "damage": {
-        "type": "hp_damage",
-        "formula": "a.mat * 3 - b.mdf",
-        "variance": 0,
-        "critical": false
-      },
-      "effects": [
-        { "type": "add_state", "target_id": "state.burn", "value1": 1.0 }
-      ]
-    }
-  ]
-})json");
-
-    game::test::writeTextFile(
-        data_root / "states.json",
-        R"json({
-  "states": [
-    { "id": "state.burn", "display_name": "Burn", "priority": 50, "min_turns": 2, "max_turns": 2, "traits": [] }
-  ]
-})json");
-
-    game::test::writeTextFile(
-        data_root / "items.json",
-        R"json({
-  "items": [
-    {
-      "id": "item.potion",
-      "display_name": "Potion",
-      "category": "consumable",
-      "icon_id": "consumable/potion",
-      "on_use": {
-        "consume": 1,
-        "effects": [
-          { "type": "add_item", "id": "item.empty_bottle", "count": 2 }
-        ]
-      }
-    },
-    {
-      "id": "item.empty_bottle",
-      "display_name": "Empty Bottle",
-      "category": "material",
-      "icon_id": "material/empty_bottle"
-    }
-  ]
-})json");
-
-    return CatalogFixturePaths{
-        .skills = data_root / "skills.json",
-        .states = data_root / "states.json",
-        .items = data_root / "items.json"};
-}
 
 std::vector<BattleUnit> makeUnits() {
     return {
@@ -134,6 +60,25 @@ std::vector<BattleUnit> makeUnits() {
             .speed = 10,
             .luck = 10}
     };
+}
+
+std::vector<BattleUnit> makeUnitsWithTwoEnemies() {
+    auto units = makeUnits();
+    units.push_back(BattleUnit{
+        .id = 102,
+        .name = "Bat",
+        .side = BattleSide::Enemy,
+        .hp = 35,
+        .max_hp = 35,
+        .mp = 0,
+        .max_mp = 0,
+        .attack = 11,
+        .defense = 9,
+        .magic_attack = 8,
+        .magic_defense = 8,
+        .speed = 7,
+        .luck = 9});
+    return units;
 }
 
 BattleRuntimeState makeRuntimeState(const TurnCore& turn_core) {
@@ -224,7 +169,7 @@ TEST(BattleActionResolverTest, RejectsSkillAndItemWhenCatalogUnavailable) {
 }
 
 TEST(BattleActionResolverTest, SkillAppliesDamageAndAddsStateFromCatalog) {
-    const CatalogFixturePaths fixture = createCatalogFixture();
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_fixture");
 
     game::data::RpgCatalog rpg_catalog;
     ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
@@ -257,8 +202,193 @@ TEST(BattleActionResolverTest, SkillAppliesDamageAndAddsStateFromCatalog) {
     EXPECT_EQ(result.states_added[0], "state.burn");
 }
 
+TEST(BattleActionResolverTest, SkillAllEnemiesScopeTargetsAllAliveEnemies) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_scope_all_enemies_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    TurnCore turn_core(makeUnitsWithTwoEnemies());
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .skill_id = "skill.cleave"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.damage, 24);
+    const auto* slime = turn_core.findUnit(101);
+    const auto* bat = turn_core.findUnit(102);
+    ASSERT_NE(slime, nullptr);
+    ASSERT_NE(bat, nullptr);
+    EXPECT_EQ(slime->hp, 28);
+    EXPECT_EQ(bat->hp, 23);
+}
+
+TEST(BattleActionResolverTest, SkillSelfScopeUsesActorAsTarget) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_scope_self_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    auto units = makeUnits();
+    units[0].hp = 80;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .skill_id = "skill.self_mend"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.hp_recovered, 15);
+    const auto* hero = turn_core.findUnit(1);
+    ASSERT_NE(hero, nullptr);
+    EXPECT_EQ(hero->hp, 95);
+}
+
+TEST(BattleActionResolverTest, SkillOneAllyScopeAcceptsExplicitAllyTarget) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_scope_one_ally_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    auto units = makeUnits();
+    units[1].hp = 50;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .target_id = 2,
+        .skill_id = "skill.ally_heal"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.hp_recovered, 18);
+    const auto* partner = turn_core.findUnit(2);
+    ASSERT_NE(partner, nullptr);
+    EXPECT_EQ(partner->hp, 68);
+}
+
+TEST(BattleActionResolverTest, SkillAllAlliesScopeTargetsEntireParty) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_scope_all_allies_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    auto units = makeUnits();
+    units[0].hp = 100;
+    units[1].hp = 70;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .skill_id = "skill.team_heal"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.hp_recovered, 20);
+    const auto* hero = turn_core.findUnit(1);
+    const auto* partner = turn_core.findUnit(2);
+    ASSERT_NE(hero, nullptr);
+    ASSERT_NE(partner, nullptr);
+    EXPECT_EQ(hero->hp, 110);
+    EXPECT_EQ(partner->hp, 80);
+}
+
+TEST(BattleActionResolverTest, SkillScopeNoneIsRejected) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_scope_none_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    TurnCore turn_core(makeUnits());
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .skill_id = "skill.none_scope"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Rejected);
+    EXPECT_NE(result.failure_reason.find("scope"), std::string::npos);
+}
+
+TEST(BattleActionResolverTest, SkillConsumesMpAndRejectsWhenInsufficient) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_mp_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    auto units = makeUnits();
+    units[0].mp = 10;
+    units[0].max_mp = 10;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult first_cast = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .target_id = 101,
+        .skill_id = "skill.costly"
+    }, turn_core, runtime_state);
+    EXPECT_EQ(first_cast.status, BattleActionStatus::Applied);
+    EXPECT_EQ(first_cast.mp_spent, 6);
+    ASSERT_NE(turn_core.findUnit(1), nullptr);
+    EXPECT_EQ(turn_core.findUnit(1)->mp, 4);
+
+    EXPECT_EQ(resolver.resolve(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 2
+              }, turn_core, runtime_state)
+                  .status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(resolver.resolve(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 101
+              }, turn_core, runtime_state)
+                  .status,
+              BattleActionStatus::Applied);
+
+    const BattleActionResult second_cast = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .target_id = 101,
+        .skill_id = "skill.costly"
+    }, turn_core, runtime_state);
+    EXPECT_EQ(second_cast.status, BattleActionStatus::Rejected);
+    EXPECT_NE(second_cast.failure_reason.find("mp"), std::string::npos);
+}
+
 TEST(BattleActionResolverTest, ItemConsumesStockAndTriggersOnUseEffects) {
-    const CatalogFixturePaths fixture = createCatalogFixture();
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_fixture");
 
     game::data::ItemCatalog item_catalog;
     ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));

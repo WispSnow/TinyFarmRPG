@@ -1,83 +1,18 @@
 // NOLINTBEGIN
 #include <gtest/gtest.h>
 
-#include "appearance_test_fixture_utils.h"
+#include "battle_catalog_fixture.h"
 #include "game/battle/battle_session.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 
 #include <array>
-#include <filesystem>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace game::battle {
 namespace {
-
-struct CatalogFixturePaths {
-    std::filesystem::path skills{};
-    std::filesystem::path states{};
-    std::filesystem::path items{};
-};
-
-[[nodiscard]] CatalogFixturePaths createCatalogFixture() {
-    const auto temp_root = game::test::createUniqueTempDir("battle_session_fixture");
-    const auto data_root = temp_root / "data";
-    std::filesystem::create_directories(data_root);
-
-    game::test::writeTextFile(
-        data_root / "skills.json",
-        R"json({
-  "skills": [
-    {
-      "id": "skill.fire",
-      "display_name": "Fire",
-      "scope": "one_enemy",
-      "hit_type": "certain",
-      "success_rate": 100,
-      "repeats": 1,
-      "damage": { "type": "hp_damage", "formula": "a.mat * 3 - b.mdf", "variance": 0, "critical": false },
-      "effects": [ { "type": "add_state", "target_id": "state.burn", "value1": 1.0 } ]
-    }
-  ]
-})json");
-
-    game::test::writeTextFile(
-        data_root / "states.json",
-        R"json({
-  "states": [
-    { "id": "state.burn", "display_name": "Burn", "priority": 50, "min_turns": 2, "max_turns": 2, "traits": [] }
-  ]
-})json");
-
-    game::test::writeTextFile(
-        data_root / "items.json",
-        R"json({
-  "items": [
-    {
-      "id": "item.potion",
-      "display_name": "Potion",
-      "category": "consumable",
-      "icon_id": "consumable/potion",
-      "on_use": {
-        "consume": 1,
-        "effects": [ { "type": "add_item", "id": "item.empty_bottle", "count": 1 } ]
-      }
-    },
-    {
-      "id": "item.empty_bottle",
-      "display_name": "Empty Bottle",
-      "category": "material",
-      "icon_id": "material/empty_bottle"
-    }
-  ]
-})json");
-
-    return CatalogFixturePaths{
-        .skills = data_root / "skills.json",
-        .states = data_root / "states.json",
-        .items = data_root / "items.json"};
-}
 
 std::vector<BattleUnit> makeSessionUnits() {
     return {
@@ -238,7 +173,7 @@ TEST(BattleSessionTest, RejectsSkillAndItemWithoutCatalogsAndDoesNotAdvanceTurn)
 }
 
 TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
-    const CatalogFixturePaths fixture = createCatalogFixture();
+    const auto fixture = testdata::createCatalogFixture("battle_session_fixture");
 
     game::data::RpgCatalog rpg_catalog;
     ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
