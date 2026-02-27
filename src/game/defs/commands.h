@@ -82,6 +82,8 @@ struct InteractCommand {
 
 struct EnterBattleCommand {
     // TODO(FND-010): 若战斗命令继续膨胀，拆分到 commands_battle.h 以收敛全局头文件依赖。
+    std::vector<std::string> actor_ids{};
+    std::string troop_id{};
     std::vector<game::battle::BattleUnit> player_units{};
     std::vector<game::battle::BattleUnit> enemy_units{};
 };

@@ -418,7 +418,7 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     }
 
     std::string reference_error{};
-    if (!services.rpg_catalog->validateReferences(reference_error)) {
+    if (!services.rpg_catalog->validateReferences(reference_error, services.item_catalog.get())) {
         spdlog::error("RPG 引用校验失败: {}", reference_error);
         return false;
     }

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "appearance_test_fixture_utils.h"
+#include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 
 #include <filesystem>
@@ -11,6 +12,7 @@ namespace {
 
 struct FixturePaths {
     std::filesystem::path manifest{};
+    std::filesystem::path items{};
     std::filesystem::path classes{};
     std::filesystem::path actors{};
     std::filesystem::path skills{};
@@ -48,6 +50,18 @@ FixturePaths createValidRpgFixture() {
     "enemies": "enemies.json",
     "troops": "troops.json"
   }
+})json");
+
+    game::test::writeTextFile(
+        data_root / "items.json",
+        R"json({
+  "items": [
+    {
+      "id": "item.slime_gel",
+      "display_name": "Slime Gel",
+      "category": "material"
+    }
+  ]
 })json");
 
     game::test::writeTextFile(
@@ -162,6 +176,7 @@ FixturePaths createValidRpgFixture() {
 
     return FixturePaths{
         .manifest = data_root / "manifest.json",
+        .items = data_root / "items.json",
         .classes = data_root / "classes.json",
         .actors = data_root / "actors.json",
         .skills = data_root / "skills.json",
@@ -394,6 +409,48 @@ TEST(RpgCatalogTest, ValidateFailsOnMissingClassReference) {
     std::string error{};
     EXPECT_FALSE(catalog.validateReferences(error));
     EXPECT_NE(error.find("class.missing"), std::string::npos);
+}
+
+TEST(RpgCatalogTest, ValidateReferencesChecksEnemyDropItemsWhenItemCatalogProvided) {
+    const FixturePaths paths = createValidRpgFixture();
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(paths.items.string()));
+
+    std::string error{};
+    EXPECT_TRUE(catalog.validateReferences(error, &item_catalog)) << error;
+}
+
+TEST(RpgCatalogTest, ValidateReferencesFailsOnMissingEnemyDropItemWhenItemCatalogProvided) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.items,
+        R"json({
+  "items": [
+    {
+      "id": "item.other",
+      "display_name": "Other Item",
+      "category": "material"
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(paths.items.string()));
+
+    std::string error{};
+    EXPECT_FALSE(catalog.validateReferences(error, &item_catalog));
+    EXPECT_NE(error.find("item.slime_gel"), std::string::npos);
 }
 
 TEST(RpgCatalogTest, ListActorsReturnsSortedIds) {

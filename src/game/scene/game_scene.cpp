@@ -91,9 +91,23 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
 }
 
 [[nodiscard]] bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
+                                               const game::defs::EnterBattleCommand& cmd,
                                                std::vector<game::battle::BattleUnit>& out_units,
                                                std::string& out_error) {
-    auto actors = catalog.listActors();
+    std::vector<const game::data::ActorData*> actors{};
+    if (cmd.actor_ids.empty()) {
+        actors = catalog.listActors();
+    } else {
+        actors.reserve(cmd.actor_ids.size());
+        for (const auto& actor_id : cmd.actor_ids) {
+            const auto* actor = catalog.findActor(actor_id);
+            if (!actor) {
+                out_error = "RPG catalog does not contain actor '" + actor_id + "'";
+                return false;
+            }
+            actors.push_back(actor);
+        }
+    }
 
     std::vector<game::battle::BattleUnit> player_units{};
     player_units.reserve(actors.size());
@@ -122,13 +136,20 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
         return false;
     }
 
-    auto troops = catalog.listTroops();
-
     const game::data::TroopData* selected_troop = nullptr;
-    for (const auto* troop : troops) {
-        if (!troop->members_.empty()) {
-            selected_troop = troop;
-            break;
+    if (!cmd.troop_id.empty()) {
+        selected_troop = catalog.findTroop(cmd.troop_id);
+        if (!selected_troop) {
+            out_error = "RPG catalog does not contain troop '" + cmd.troop_id + "'";
+            return false;
+        }
+    } else {
+        const auto troops = catalog.listTroops();
+        for (const auto* troop : troops) {
+            if (!troop->members_.empty()) {
+                selected_troop = troop;
+                break;
+            }
         }
     }
     if (!selected_troop) {
@@ -690,7 +711,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         }
 
         std::string build_error{};
-        if (!buildBattleUnitsFromCatalog(*services_->rpg_catalog, units, build_error)) {
+        if (!buildBattleUnitsFromCatalog(*services_->rpg_catalog, cmd, units, build_error)) {
             spdlog::warn("GameScene: 无法从 RPG catalog 构造战斗单位: {}", build_error);
             return;
         }
