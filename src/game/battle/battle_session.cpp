@@ -7,6 +7,14 @@ BattleSession::BattleSession(std::vector<BattleUnit> units)
     for (const auto& unit : turn_core_.units()) {
         runtime_state_.units.try_emplace(unit.id);
     }
+    turn_core_.setRoundHooks(
+        [this](std::uint32_t) {
+            for (auto& [unit_id, state] : runtime_state_.units) {
+                (void)unit_id;
+                state.guarding = false;
+            }
+        },
+        {});
 }
 
 BattleSnapshot BattleSession::snapshot() const {
@@ -19,7 +27,7 @@ BattleSnapshot BattleSession::snapshot() const {
 }
 
 BattleActionResult BattleSession::submitAction(const BattleAction& action) {
-    BattleActionResult result = resolver_.resolve(action, turn_core_);
+    BattleActionResult result = resolver_.resolve(action, turn_core_, runtime_state_);
 
     fillSnapshot(result);
     return result;

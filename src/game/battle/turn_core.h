@@ -42,6 +42,7 @@ public:
 
     [[nodiscard]] bool advanceTurn();
     void refresh();
+    void forceOutcome(BattleOutcome outcome);
 
 private:
     void buildIndex();

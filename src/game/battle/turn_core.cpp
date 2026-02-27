@@ -85,6 +85,10 @@ void TurnCore::refresh() {
     alignCurrentActor();
 }
 
+void TurnCore::forceOutcome(const BattleOutcome outcome) {
+    outcome_ = outcome;
+}
+
 void TurnCore::buildIndex() {
     unit_index_by_id_.clear();
     unit_index_by_id_.reserve(units_.size());

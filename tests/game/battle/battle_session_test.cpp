@@ -137,15 +137,13 @@ TEST(BattleSessionTest, RejectsFriendlyTargetAttack) {
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
 }
 
-TEST(BattleSessionTest, RejectsUnimplementedActionTypesWithoutAdvancingTurn) {
+TEST(BattleSessionTest, RejectsUnimplementedSkillAndItemWithoutAdvancingTurn) {
     BattleSession session(makeSessionUnits());
     ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
 
-    constexpr std::array<BattleActionType, 4> kUnimplementedTypes{
+    constexpr std::array<BattleActionType, 2> kUnimplementedTypes{
         BattleActionType::Skill,
-        BattleActionType::Item,
-        BattleActionType::Guard,
-        BattleActionType::Escape};
+        BattleActionType::Item};
 
     for (const auto action_type : kUnimplementedTypes) {
         const BattleSnapshot before = session.snapshot();
@@ -167,6 +165,85 @@ TEST(BattleSessionTest, RejectsUnimplementedActionTypesWithoutAdvancingTurn) {
     const BattleUnit* target = session.findUnit(101);
     ASSERT_NE(target, nullptr);
     EXPECT_EQ(target->hp, 40);
+}
+
+TEST(BattleSessionTest, GuardActionCanReduceIncomingDamage) {
+    BattleSession session(makeSessionUnits());
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+
+    const BattleActionResult guard_result = session.submitAction(BattleAction{
+        .type = BattleActionType::Guard,
+        .actor_id = 1
+    });
+    EXPECT_EQ(guard_result.status, BattleActionStatus::Applied);
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
+
+    const BattleActionResult partner_end_turn = session.submitAction(BattleAction{
+        .type = BattleActionType::EndTurn,
+        .actor_id = 2
+    });
+    EXPECT_EQ(partner_end_turn.status, BattleActionStatus::Applied);
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{101});
+
+    const BattleActionResult enemy_attack = session.submitAction(BattleAction{
+        .type = BattleActionType::Attack,
+        .actor_id = 101,
+        .target_id = 1
+    });
+    EXPECT_EQ(enemy_attack.status, BattleActionStatus::Applied);
+    EXPECT_EQ(enemy_attack.damage, 5);
+    EXPECT_TRUE(enemy_attack.target_guarded);
+}
+
+TEST(BattleSessionTest, GuardStateClearsAtNextRoundBegin) {
+    BattleSession session(makeSessionUnits());
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+
+    const BattleActionResult guard_result = session.submitAction(BattleAction{
+        .type = BattleActionType::Guard,
+        .actor_id = 1
+    });
+    EXPECT_EQ(guard_result.status, BattleActionStatus::Applied);
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
+
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 2
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 101
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 102
+              }).status,
+              BattleActionStatus::Applied);
+
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 1
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 2
+              }).status,
+              BattleActionStatus::Applied);
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{101});
+
+    const BattleActionResult enemy_attack = session.submitAction(BattleAction{
+        .type = BattleActionType::Attack,
+        .actor_id = 101,
+        .target_id = 1
+    });
+    EXPECT_EQ(enemy_attack.status, BattleActionStatus::Applied);
+    EXPECT_EQ(enemy_attack.damage, 10);
+    EXPECT_FALSE(enemy_attack.target_guarded);
 }
 
 } // namespace
