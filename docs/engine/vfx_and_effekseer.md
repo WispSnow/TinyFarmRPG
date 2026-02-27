@@ -1,6 +1,6 @@
 # VFX 系统与 Effekseer 集成
 
-> 用途：说明引擎层 VFX 抽象架构、Effekseer 后端接入原理、双通道渲染管线集成方式，以及游戏侧桥接链路。
+> 用途：说明引擎层 VFX 抽象架构、Effekseer 后端接入原理、双通道渲染管线集成方式，以及事件驱动播放链路。
 
 ---
 
@@ -457,10 +457,10 @@ sequenceDiagram
 sequenceDiagram
     box Game Logic
         participant GL as 游戏逻辑
-        participant BS as VfxBridgeSystem
-        participant VC as VfxCatalog
     end
     box Engine VFX
+        participant BS as VfxBridgeSystem
+        participant VC as VfxCatalog
         participant VS as VfxService
         participant BE as EffekseerBackend
     end
