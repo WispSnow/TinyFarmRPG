@@ -1,36 +1,34 @@
-#include "game/system/vfx_bridge_system.h"
+#include "engine/vfx/vfx_bridge_system.h"
 
+#include "engine/vfx/vfx_catalog.h"
 #include "engine/vfx/vfx_service.h"
 #include "engine/vfx/vfx_types.h"
-#include "game/data/vfx_catalog.h"
 
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
-static_assert(engine::vfx::kInvalidVfxEffectId == game::defs::kInvalidVfxEffectId);
-
-namespace game::system {
+namespace engine::vfx {
 
 VfxBridgeSystem::VfxBridgeSystem(entt::dispatcher& dispatcher,
-                                 engine::vfx::VfxService& vfx_service,
-                                 const game::data::VfxCatalog* vfx_catalog)
+                                 VfxService& vfx_service,
+                                 const VfxCatalog* vfx_catalog)
     : dispatcher_(dispatcher),
       vfx_service_(vfx_service),
       vfx_catalog_(vfx_catalog) {
-    dispatcher_.sink<game::defs::PlayVfxCommand>().connect<&VfxBridgeSystem::onPlayVfxCommand>(this);
+    dispatcher_.sink<PlayVfxCommand>().connect<&VfxBridgeSystem::onPlayVfxCommand>(this);
 }
 
 VfxBridgeSystem::~VfxBridgeSystem() {
-    dispatcher_.sink<game::defs::PlayVfxCommand>().disconnect<&VfxBridgeSystem::onPlayVfxCommand>(this);
+    dispatcher_.sink<PlayVfxCommand>().disconnect<&VfxBridgeSystem::onPlayVfxCommand>(this);
 }
 
-void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command) {
+void VfxBridgeSystem::onPlayVfxCommand(const PlayVfxCommand& command) {
     if (!vfx_catalog_) {
         spdlog::warn("VfxBridgeSystem: VfxCatalog 不可用，忽略播放请求");
         return;
     }
 
-    if (command.effect_id == game::defs::kInvalidVfxEffectId) {
+    if (command.effect_id == kInvalidVfxEffectId) {
         return;
     }
 
@@ -40,7 +38,7 @@ void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command
         return;
     }
 
-    engine::vfx::VfxPlayRequest request{};
+    VfxPlayRequest request{};
     request.effect_id = command.effect_id;
     request.effect_path = *effect_path;
     request.world_position = command.world_position;
@@ -51,4 +49,4 @@ void VfxBridgeSystem::onPlayVfxCommand(const game::defs::PlayVfxCommand& command
     vfx_service_.submit(request);
 }
 
-} // namespace game::system
+} // namespace engine::vfx

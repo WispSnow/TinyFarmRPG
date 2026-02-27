@@ -35,4 +35,13 @@ struct VfxRenderContext {
     VfxChannel channel{VfxChannel::Overlay};
 };
 
+struct PlayVfxCommand {
+    entt::id_type effect_id{kInvalidVfxEffectId};
+    glm::vec2 world_position{0.0f, 0.0f};
+    float z{0.0f};
+    float scale{1.0f};
+    bool loop{false};
+    VfxChannel channel{VfxChannel::Overlay};
+};
+
 } // namespace engine::vfx
