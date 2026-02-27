@@ -5,10 +5,24 @@
 #include "battle_types.h"
 #include "turn_core.h"
 
+#include <entt/core/fwd.hpp>
+
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
+namespace game::data {
+class RpgCatalog;
+class ItemCatalog;
+} // namespace game::data
+
 namespace game::battle {
+
+struct BattleSessionOptions {
+    const game::data::RpgCatalog* rpg_catalog{nullptr};
+    const game::data::ItemCatalog* item_catalog{nullptr};
+    std::unordered_map<entt::id_type, int> item_stocks{};
+};
 
 class BattleSession final {
     TurnCore turn_core_;
@@ -16,7 +30,7 @@ class BattleSession final {
     BattleRuntimeState runtime_state_{};
 
 public:
-    explicit BattleSession(std::vector<BattleUnit> units);
+    explicit BattleSession(std::vector<BattleUnit> units, BattleSessionOptions options = {});
 
     [[nodiscard]] const std::vector<BattleUnit>& units() const { return turn_core_.units(); }
     [[nodiscard]] const BattleUnit* findUnit(BattleUnitId id) const { return turn_core_.findUnit(id); }

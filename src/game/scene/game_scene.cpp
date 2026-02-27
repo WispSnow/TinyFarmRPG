@@ -23,6 +23,7 @@
 #include "engine/vfx/vfx_service.h"
 #include "engine/system/ysort_system.h"
 #include "game/component/hotbar_component.h"
+#include "game/component/inventory_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/data/rpg_catalog.h"
@@ -61,12 +62,33 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
+#include <unordered_map>
 #include <vector>
 
 using namespace entt::literals;
 
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
+
+[[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
+    std::unordered_map<entt::id_type, int> stocks{};
+
+    auto players = registry.view<game::component::PlayerTag, game::component::InventoryComponent>();
+    if (players.begin() == players.end()) {
+        return stocks;
+    }
+
+    const entt::entity player = *players.begin();
+    const auto& inventory = players.get<game::component::InventoryComponent>(player);
+    for (const auto& slot : inventory.slots_) {
+        if (slot.empty() || slot.item_id_ == entt::null || slot.count_ <= 0) {
+            continue;
+        }
+        stocks[slot.item_id_] += slot.count_;
+    }
+
+    return stocks;
+}
 }
 
 namespace game::scene {
@@ -580,6 +602,13 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     units.insert(units.end(), cmd.player_units.begin(), cmd.player_units.end());
     units.insert(units.end(), cmd.enemy_units.begin(), cmd.enemy_units.end());
 
+    game::battle::BattleSessionOptions session_options{};
+    if (services_) {
+        session_options.rpg_catalog = services_->rpg_catalog.get();
+        session_options.item_catalog = services_->item_catalog.get();
+    }
+    session_options.item_stocks = collectPlayerItemStocks(registry_);
+
     if (units.empty()) {
         if (!services_ || !services_->rpg_catalog) {
             spdlog::warn("GameScene: EnterBattleCommand 未提供单位，且 RPG catalog 不可用。");
@@ -598,7 +627,11 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         }
     }
 
-    requestPushScene(std::make_unique<game::scene::BattleScene>("BattleScene", context_, std::move(units)));
+    requestPushScene(std::make_unique<game::scene::BattleScene>(
+        "BattleScene",
+        context_,
+        std::move(units),
+        std::move(session_options)));
 }
 
 void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {

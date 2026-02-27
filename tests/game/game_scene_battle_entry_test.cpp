@@ -48,7 +48,7 @@ TEST(GameSceneBattleEntryTest, PushesBattleSceneOnEnterBattleCommand) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("requestPushScene(std::make_unique<game::scene::BattleScene>(\"BattleScene\""),
+    EXPECT_NE(source.find("requestPushScene(std::make_unique<game::scene::BattleScene>("),
               std::string::npos);
 }
 

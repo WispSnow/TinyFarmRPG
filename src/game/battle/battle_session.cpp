@@ -1,9 +1,20 @@
 #include "battle_session.h"
 
+#include <entt/entity/entity.hpp>
+
 namespace game::battle {
 
-BattleSession::BattleSession(std::vector<BattleUnit> units)
-    : turn_core_(std::move(units)) {
+BattleSession::BattleSession(std::vector<BattleUnit> units, BattleSessionOptions options)
+    : turn_core_(std::move(units)),
+      resolver_(BattleActionResolver::Dependencies{
+          .rpg_catalog = options.rpg_catalog,
+          .item_catalog = options.item_catalog}) {
+    for (const auto& [item_id, count] : options.item_stocks) {
+        if (item_id != entt::null && count > 0) {
+            runtime_state_.item_stocks.insert_or_assign(item_id, count);
+        }
+    }
+
     for (const auto& unit : turn_core_.units()) {
         runtime_state_.units.try_emplace(unit.id);
     }
@@ -12,6 +23,14 @@ BattleSession::BattleSession(std::vector<BattleUnit> units)
             for (auto& [unit_id, state] : runtime_state_.units) {
                 (void)unit_id;
                 state.guarding = false;
+                for (auto it = state.state_turns_left.begin(); it != state.state_turns_left.end();) {
+                    --it->second;
+                    if (it->second <= 0) {
+                        it = state.state_turns_left.erase(it);
+                        continue;
+                    }
+                    ++it;
+                }
             }
         },
         {});
