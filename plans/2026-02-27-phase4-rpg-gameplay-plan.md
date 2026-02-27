@@ -99,8 +99,8 @@
 
 ## 5. 可追踪待办（Checklist）
 
-- [ ] T1 扩展 `BattleActionType` 与 `BattleAction`（新增 `skill_id/item_id` 等字段）
-- [ ] T2 新增 `battle_unit_factory` 并接入 `RpgCatalog -> BattleUnit` 构建链路
+- [x] T1 扩展 `BattleActionType` 与 `BattleAction`（新增 `skill_id/item_id` 等字段）
+- [x] T2 新增 `battle_unit_factory` 并接入 `RpgCatalog -> BattleUnit` 构建链路
 - [ ] T3 扩展 `BattleUnit`（8 参数 + hp/mp）与 `battle_runtime_types`
 - [ ] T4 升级 `TurnCore`：回合计数与回合钩子
 - [ ] T5 新增 `battle_formula_evaluator`（Lua 公式执行）并完成单测

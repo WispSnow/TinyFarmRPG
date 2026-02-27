@@ -1,0 +1,192 @@
+// NOLINTBEGIN
+#include <gtest/gtest.h>
+
+#include "appearance_test_fixture_utils.h"
+#include "game/battle/battle_unit_factory.h"
+#include "game/data/rpg_catalog.h"
+
+#include <filesystem>
+#include <string>
+
+namespace game::battle {
+namespace {
+
+struct FixturePaths {
+    std::filesystem::path classes{};
+    std::filesystem::path actors{};
+    std::filesystem::path enemies{};
+    std::filesystem::path troops{};
+};
+
+[[nodiscard]] FixturePaths createFixture() {
+    const auto temp_root = game::test::createUniqueTempDir("battle_unit_factory_fixture");
+    const auto data_root = temp_root / "rpg";
+    std::filesystem::create_directories(data_root);
+
+    game::test::writeTextFile(
+        data_root / "classes.json",
+        R"json({
+  "classes": [
+    {
+      "id": "class.mage",
+      "display_name": "Mage",
+      "base_params": [80, 120, 11, 9, 25, 18, 14, 10]
+    },
+    {
+      "id": "class.swordsman",
+      "display_name": "Swordsman",
+      "base_params": [140, 30, 28, 20, 12, 16, 18, 8]
+    }
+  ]
+})json");
+
+    game::test::writeTextFile(
+        data_root / "actors.json",
+        R"json({
+  "actors": [
+    { "id": "actor.hero", "display_name": "Hero", "class_id": "class.swordsman", "initial_level": 1, "max_level": 99 },
+    { "id": "actor.mage", "display_name": "Mage", "class_id": "class.mage", "initial_level": 1, "max_level": 99 }
+  ]
+})json");
+
+    game::test::writeTextFile(
+        data_root / "enemies.json",
+        R"json({
+  "enemies": [
+    {
+      "id": "enemy.goblin",
+      "display_name": "Goblin",
+      "params": [60, 0, 12, 8, 5, 5, 10, 5],
+      "exp": 5,
+      "gold": 2,
+      "actions": []
+    },
+    {
+      "id": "enemy.wolf",
+      "display_name": "Wolf",
+      "params": [70, 0, 15, 7, 4, 4, 16, 6],
+      "exp": 8,
+      "gold": 3,
+      "actions": []
+    }
+  ]
+})json");
+
+    game::test::writeTextFile(
+        data_root / "troops.json",
+        R"json({
+  "troops": [
+    {
+      "id": "troop.goblin_pair",
+      "display_name": "Goblin Pair",
+      "members": [
+        { "enemy_id": "enemy.goblin", "x": 120.0, "y": 160.0 },
+        { "enemy_id": "enemy.goblin", "x": 220.0, "y": 160.0 }
+      ]
+    },
+    {
+      "id": "troop.wolf_single",
+      "display_name": "Wolf Single",
+      "members": [
+        { "enemy_id": "enemy.wolf", "x": 320.0, "y": 160.0 }
+      ]
+    }
+  ]
+})json");
+
+    return FixturePaths{
+        .classes = data_root / "classes.json",
+        .actors = data_root / "actors.json",
+        .enemies = data_root / "enemies.json",
+        .troops = data_root / "troops.json"};
+}
+
+TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    ASSERT_TRUE(buildBattleUnitsFromCatalog(catalog, options, units, error)) << error;
+
+    ASSERT_EQ(units.size(), 4U);
+    EXPECT_EQ(units[0].name, "Hero");
+    EXPECT_EQ(units[0].max_hp, 140);
+    EXPECT_EQ(units[0].attack, 28);
+    EXPECT_EQ(units[0].speed, 18);
+
+    EXPECT_EQ(units[1].name, "Mage");
+    EXPECT_EQ(units[1].max_hp, 80);
+    EXPECT_EQ(units[1].attack, 11);
+    EXPECT_EQ(units[1].speed, 14);
+
+    EXPECT_EQ(units[2].side, BattleSide::Enemy);
+    EXPECT_EQ(units[2].name, "Goblin");
+    EXPECT_EQ(units[3].name, "Goblin 2");
+}
+
+TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    options.actor_ids = {"actor.mage"};
+    options.troop_id = "troop.wolf_single";
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    ASSERT_TRUE(buildBattleUnitsFromCatalog(catalog, options, units, error)) << error;
+
+    ASSERT_EQ(units.size(), 2U);
+    EXPECT_EQ(units[0].name, "Mage");
+    EXPECT_EQ(units[0].side, BattleSide::Player);
+    EXPECT_EQ(units[1].name, "Wolf");
+    EXPECT_EQ(units[1].side, BattleSide::Enemy);
+}
+
+TEST(BattleUnitFactoryTest, FailsWhenRequestedActorIsMissing) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    options.actor_ids = {"actor.missing"};
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    EXPECT_FALSE(buildBattleUnitsFromCatalog(catalog, options, units, error));
+    EXPECT_NE(error.find("actor.missing"), std::string::npos);
+}
+
+TEST(BattleUnitFactoryTest, FailsWhenRequestedTroopIsMissing) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    options.troop_id = "troop.missing";
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    EXPECT_FALSE(buildBattleUnitsFromCatalog(catalog, options, units, error));
+    EXPECT_NE(error.find("troop.missing"), std::string::npos);
+}
+
+} // namespace
+} // namespace game::battle
+// NOLINTEND
