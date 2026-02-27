@@ -1,0 +1,20 @@
+{
+    "states": [
+        {
+            "id": "state.stun",
+            "display_name": "眩晕",
+            "priority": 90,
+            "min_turns": 1,
+            "max_turns": 2,
+            "traits": []
+        },
+        {
+            "id": "state.poison",
+            "display_name": "中毒",
+            "priority": 50,
+            "min_turns": 1,
+            "max_turns": 1,
+            "traits": []
+        }
+    ]
+}

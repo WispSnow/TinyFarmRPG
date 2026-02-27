@@ -1,0 +1,36 @@
+{
+    "troops": [
+        {
+            "id": "troop.goblin_pair",
+            "display_name": "哥布林*2",
+            "members": [
+                {
+                    "enemy_id": "enemy.goblin",
+                    "x": 336.0,
+                    "y": 436.0
+                },
+                {
+                    "enemy_id": "enemy.goblin",
+                    "x": 480.0,
+                    "y": 436.0
+                }
+            ]
+        },
+        {
+            "id": "troop.gnome_pair",
+            "display_name": "侏儒*2",
+            "members": [
+                {
+                    "enemy_id": "enemy.gnome",
+                    "x": 337.0,
+                    "y": 436.0
+                },
+                {
+                    "enemy_id": "enemy.gnome",
+                    "x": 480.0,
+                    "y": 436.0
+                }
+            ]
+        }
+    ]
+}

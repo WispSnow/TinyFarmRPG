@@ -125,6 +125,7 @@ endif()
 
 set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
+    game/rpg_catalog_test.cpp
     game/battle/turn_core_test.cpp
     game/battle/battle_session_test.cpp
     game/battle/battle_scene_smoke_test.cpp

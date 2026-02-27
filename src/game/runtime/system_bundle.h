@@ -18,6 +18,7 @@ namespace game::data {
 class ItemCatalog;
 class AppearanceCatalog;
 class VfxCatalog;
+class RpgCatalog;
 }
 
 namespace game::domain {
@@ -50,6 +51,7 @@ struct GameRuntimeServices {
     std::shared_ptr<game::data::ItemCatalog> item_catalog;
     std::shared_ptr<game::data::AppearanceCatalog> appearance_catalog;
     std::shared_ptr<game::data::VfxCatalog> vfx_catalog;
+    std::shared_ptr<game::data::RpgCatalog> rpg_catalog;
 
     std::unique_ptr<engine::spatial::CollisionResolver> collision_resolver;
     std::unique_ptr<game::world::WorldState> world_state;

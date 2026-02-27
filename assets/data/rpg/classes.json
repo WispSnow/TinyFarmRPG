@@ -1,0 +1,32 @@
+{
+    "classes": [
+        {
+            "id": "class.swordsman",
+            "display_name": "剑客",
+            "base_params": {
+                "mhp": 544,
+                "mmp": 41,
+                "atk": 19,
+                "def": 17,
+                "mat": 15,
+                "mdf": 17,
+                "agi": 29,
+                "luk": 27
+            }
+        },
+        {
+            "id": "class.monk",
+            "display_name": "武术家",
+            "base_params": {
+                "mhp": 639,
+                "mmp": 44,
+                "atk": 18,
+                "def": 20,
+                "mat": 12,
+                "mdf": 11,
+                "agi": 34,
+                "luk": 26
+            }
+        }
+    ]
+}
