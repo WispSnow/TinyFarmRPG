@@ -3,6 +3,7 @@
 
 #include "game/battle/battle_session.h"
 
+#include <array>
 #include <optional>
 #include <vector>
 
@@ -82,6 +83,38 @@ TEST(BattleSessionTest, RejectsFriendlyTargetAttack) {
 
     EXPECT_EQ(result.status, BattleActionStatus::Rejected);
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+}
+
+TEST(BattleSessionTest, RejectsUnimplementedActionTypesWithoutAdvancingTurn) {
+    BattleSession session(makeSessionUnits());
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+
+    constexpr std::array<BattleActionType, 4> kUnimplementedTypes{
+        BattleActionType::Skill,
+        BattleActionType::Item,
+        BattleActionType::Guard,
+        BattleActionType::Escape};
+
+    for (const auto action_type : kUnimplementedTypes) {
+        const BattleSnapshot before = session.snapshot();
+        const BattleActionResult result = session.submitAction(BattleAction{
+            .type = action_type,
+            .actor_id = 1,
+            .target_id = 101,
+            .skill_id = "skill.stub",
+            .item_id = "item.stub"
+        });
+
+        EXPECT_EQ(result.status, BattleActionStatus::Rejected);
+        EXPECT_EQ(result.action_type, action_type);
+        EXPECT_EQ(result.outcome_after, BattleOutcome::Ongoing);
+        EXPECT_EQ(result.snapshot.current_actor_id, before.current_actor_id);
+        EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+    }
+
+    const BattleUnit* target = session.findUnit(101);
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->hp, 40);
 }
 
 } // namespace

@@ -16,6 +16,10 @@ enum class BattleSide {
 
 enum class BattleActionType {
     Attack,
+    Skill,
+    Item,
+    Guard,
+    Escape,
     EndTurn
 };
 
@@ -70,6 +74,8 @@ struct BattleAction {
     BattleActionType type{BattleActionType::EndTurn};
     BattleUnitId actor_id{0};
     std::optional<BattleUnitId> target_id{};
+    std::string skill_id{};
+    std::string item_id{};
 };
 
 struct BattleSnapshot {

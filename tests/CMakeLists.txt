@@ -127,6 +127,7 @@ set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
     game/rpg_catalog_test.cpp
     game/battle/turn_core_test.cpp
+    game/battle/battle_unit_factory_test.cpp
     game/battle/battle_session_test.cpp
     game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp
@@ -188,6 +189,11 @@ if(ENABLE_DEBUG_UI)
 endif()
 
 add_executable(game_tests ${GAME_TEST_SOURCES})
+
+target_include_directories(game_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/game"
+)
 
 target_link_libraries(game_tests
     PRIVATE

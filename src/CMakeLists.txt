@@ -165,6 +165,7 @@ target_sources(game PRIVATE
     game/data/item_catalog.cpp
     game/data/vfx_catalog.cpp
     # Battle
+    game/battle/battle_unit_factory.cpp
     game/battle/turn_core.cpp
     game/battle/battle_session.cpp
     # Domain

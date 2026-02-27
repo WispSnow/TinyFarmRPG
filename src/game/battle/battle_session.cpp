@@ -42,6 +42,16 @@ BattleActionResult BattleSession::submitAction(const BattleAction& action) {
             (void)turn_core_.advanceTurn();
             break;
         }
+        case BattleActionType::Skill:
+        case BattleActionType::Item:
+        case BattleActionType::Guard:
+        case BattleActionType::Escape: {
+            // Phase 4: 动作语义将在 battle_action_resolver 中实现。
+            // 当前显式返回 Rejected，避免误判为已应用动作。
+            result.status = BattleActionStatus::Rejected;
+            fillSnapshot(result);
+            return result;
+        }
         case BattleActionType::Attack: {
             if (!action.target_id) {
                 fillSnapshot(result);
