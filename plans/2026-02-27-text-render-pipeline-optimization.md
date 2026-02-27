@@ -62,23 +62,22 @@
 
 ## 低优先级
 
-### 4. Layout Cache LRU 淘汰改为 O(1)
+### 4. Layout Cache LRU 淘汰改为 O(1) -- DONE
 
 - **现状**: `trimLayoutCache()` 使用 `std::min_element` 遍历整个 map 查找最旧条目，复杂度 O(n)。
 - **涉及文件**:
-  - `src/engine/render/text_renderer.h` — 新增 `std::list` LRU 链表
-  - `src/engine/render/text_renderer.cpp` — `buildLayout()` / `trimLayoutCache()`
+  - `src/engine/render/text_renderer.h` — 新增 `LruList`（`std::list<LayoutKey>`）、`CachedLayout` 结构
+  - `src/engine/render/text_renderer.cpp` — `buildLayout()` / `setLayoutCacheCapacity()` / `clearLayoutCache()` / `onFontUnloaded()`
 - **预期收益**: 缓存满时淘汰从 O(n) 降为 O(1)
-- **备注**: 当前默认容量 256，实际影响有限
-- [ ] 用 `std::list<LayoutKey>` 维护访问顺序
-- [ ] map value 中存储 list iterator，命中时 splice 到头部
-- [ ] 淘汰时取 list 尾部，O(1)
+- [x] 用 `std::list<LayoutKey>` 维护访问顺序
+- [x] map value 中存储 list iterator，命中时 splice 到头部
+- [x] 淘汰时取 list 尾部，O(1)
+- **备注**: 移除了旧的 `trimLayoutCache()` 方法和 `usage_frame` / `layout_frame_counter_` 字段
 
-### 5. SpriteBatch Buffer Orphaning
+### 5. SpriteBatch Buffer Orphaning -- DONE
 
 - **现状**: `SpriteBatch::flush()` 使用 `glBufferSubData` 上传数据，若 GPU 仍在消费上一帧的 buffer，会产生隐式同步等待。
 - **涉及文件**:
   - `src/engine/render/opengl/sprite_batch.cpp` — `flush()`
 - **预期收益**: 减少 CPU/GPU 同步等待
-- [ ] 方案 A: flush 前调用 `glBufferData(target, size, nullptr, GL_DYNAMIC_DRAW)` 做 buffer orphaning
-- [ ] 方案 B (可选): 使用 persistent mapped buffer（需 OpenGL 4.4+）
+- [x] flush 前调用 `glBufferData(target, size, nullptr, GL_DYNAMIC_DRAW)` 做 buffer orphaning
