@@ -1,6 +1,7 @@
 #include "game/data/rpg_catalog.h"
 
 #include "engine/utils/json_file_loader.h"
+#include "game/data/item_catalog.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <nlohmann/json.hpp>
@@ -567,7 +568,7 @@ bool RpgCatalog::loadTroops(const std::string_view file_path) {
     return true;
 }
 
-bool RpgCatalog::validateReferences(std::string& out_error) const {
+bool RpgCatalog::validateReferences(std::string& out_error, const ItemCatalog* item_catalog) const {
     for (const auto& [enemy_id, enemy] : enemies_) {
         (void)enemy_id;
         for (const auto& action : enemy.actions_) {
@@ -575,6 +576,16 @@ bool RpgCatalog::validateReferences(std::string& out_error) const {
             if (!skills_.contains(skill_id_hash)) {
                 out_error = "Enemy '" + enemy.id_ + "' references missing skill '" + action.skill_id_ + "'";
                 return false;
+            }
+        }
+
+        if (item_catalog) {
+            for (const auto& drop : enemy.drops_) {
+                const entt::id_type item_id_hash = RpgCatalog::hashId(drop.item_id_);
+                if (!item_catalog->hasItem(item_id_hash)) {
+                    out_error = "Enemy '" + enemy.id_ + "' references missing item '" + drop.item_id_ + "'";
+                    return false;
+                }
             }
         }
     }
@@ -617,7 +628,6 @@ bool RpgCatalog::validateReferences(std::string& out_error) const {
         }
     }
 
-    // TODO: 当 ItemCatalog 接入统一引用校验后，补充 EnemyDropData::item_id_ 的跨 catalog 校验。
     // TODO: 当 trait target 收敛为强类型 ID 后，补充 TraitData::target 的语义校验。
 
     out_error.clear();

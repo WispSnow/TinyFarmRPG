@@ -11,6 +11,8 @@
 
 namespace game::data {
 
+class ItemCatalog;
+
 class RpgCatalog final {
 public:
     [[nodiscard]] static entt::id_type hashId(std::string_view id);
@@ -23,7 +25,7 @@ public:
     [[nodiscard]] bool loadEnemies(std::string_view file_path);
     [[nodiscard]] bool loadTroops(std::string_view file_path);
 
-    [[nodiscard]] bool validateReferences(std::string& out_error) const;
+    [[nodiscard]] bool validateReferences(std::string& out_error, const ItemCatalog* item_catalog = nullptr) const;
 
     [[nodiscard]] const RpgManifest* manifest() const { return has_manifest_ ? &manifest_ : nullptr; }
     [[nodiscard]] const ClassData* findClass(entt::id_type id_hash) const;

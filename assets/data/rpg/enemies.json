@@ -17,7 +17,7 @@
             "gold": 5,
             "drops": [
                 {
-                    "item_id": "item.slime_gel",
+                    "item_id": "material_stone",
                     "chance": 0.5
                 }
             ],
