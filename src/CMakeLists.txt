@@ -42,6 +42,8 @@ target_sources(engine PRIVATE
     # VFX
     engine/vfx/null_vfx_backend.cpp
     engine/vfx/vfx_service.cpp
+    engine/vfx/vfx_catalog.cpp
+    engine/vfx/vfx_bridge_system.cpp
     # Render - OpenGL
     engine/render/opengl/gl_helper.cpp
     engine/render/opengl/fullscreen_quad.cpp
@@ -163,7 +165,6 @@ target_sources(game PRIVATE
     game/data/rpg_catalog.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
-    game/data/vfx_catalog.cpp
     # Battle
     game/battle/battle_action_resolver.cpp
     game/battle/battle_unit_factory.cpp
@@ -219,7 +220,6 @@ target_sources(game PRIVATE
     game/system/map_transition_system.cpp
     game/system/pickup_system.cpp
     game/system/rest_system.cpp
-    game/system/vfx_bridge_system.cpp
     # World
     game/world/world_state.cpp
     game/world/async_preload_pipeline.cpp

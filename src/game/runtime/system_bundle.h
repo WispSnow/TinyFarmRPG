@@ -17,7 +17,6 @@ class EntityFactory;
 namespace game::data {
 class ItemCatalog;
 class AppearanceCatalog;
-class VfxCatalog;
 class RpgCatalog;
 }
 
@@ -42,6 +41,8 @@ class ScriptHost;
 
 namespace engine::vfx {
 class VfxService;
+class VfxCatalog;
+class VfxBridgeSystem;
 }
 
 namespace game::runtime {
@@ -50,7 +51,7 @@ struct GameRuntimeServices {
     std::shared_ptr<game::factory::BlueprintManager> blueprint_manager;
     std::shared_ptr<game::data::ItemCatalog> item_catalog;
     std::shared_ptr<game::data::AppearanceCatalog> appearance_catalog;
-    std::shared_ptr<game::data::VfxCatalog> vfx_catalog;
+    std::shared_ptr<engine::vfx::VfxCatalog> vfx_catalog;
     std::shared_ptr<game::data::RpgCatalog> rpg_catalog;
 
     std::unique_ptr<engine::spatial::CollisionResolver> collision_resolver;
@@ -111,7 +112,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::RestSystem> rest_system;
     std::unique_ptr<game::system::MapTransitionSystem> map_transition_system;
     std::unique_ptr<game::system::AppearanceSystem> appearance_system;
-    std::unique_ptr<game::system::VfxBridgeSystem> vfx_bridge_system;
+    std::unique_ptr<engine::vfx::VfxBridgeSystem> vfx_bridge_system;
 
     GameSystemBundle();
     ~GameSystemBundle() noexcept;

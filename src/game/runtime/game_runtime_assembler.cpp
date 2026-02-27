@@ -36,7 +36,7 @@
 #include "game/data/appearance_catalog.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
-#include "game/data/vfx_catalog.h"
+#include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
@@ -68,7 +68,7 @@
 #include "game/system/state_system.h"
 #include "game/system/time_of_day_light_system.h"
 #include "game/system/time_system.h"
-#include "game/system/vfx_bridge_system.h"
+#include "engine/vfx/vfx_bridge_system.h"
 #include "game/world/map_manager.h"
 #include "engine/component/layered_sprite_component.h"
 #include "game/world/map_loading_settings.h"
@@ -346,7 +346,7 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
 
 [[nodiscard]] bool ensureVfxCatalog(game::runtime::GameRuntimeServices& services) {
     if (!services.vfx_catalog) {
-        services.vfx_catalog = std::make_shared<game::data::VfxCatalog>();
+        services.vfx_catalog = std::make_shared<engine::vfx::VfxCatalog>();
         if (!services.vfx_catalog->loadFromFile("assets/data/vfx_catalog.json")) {
             spdlog::warn("加载 VFX 目录配置失败，将继续运行但禁用 catalog 驱动播放。");
         }
@@ -742,7 +742,7 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         params.registry,
         dispatcher,
         *services.appearance_catalog);
-    systems.vfx_bridge_system = std::make_unique<game::system::VfxBridgeSystem>(
+    systems.vfx_bridge_system = std::make_unique<engine::vfx::VfxBridgeSystem>(
         dispatcher,
         *services.vfx_service,
         services.vfx_catalog.get());

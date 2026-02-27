@@ -1,6 +1,6 @@
 # VFX 系统与 Effekseer 集成
 
-> 用途：说明引擎层 VFX 抽象架构、Effekseer 后端接入原理、双通道渲染管线集成方式，以及游戏侧桥接链路。
+> 用途：说明引擎层 VFX 抽象架构、Effekseer 后端接入原理、双通道渲染管线集成方式，以及事件驱动播放链路。
 
 ---
 
@@ -10,16 +10,13 @@ VFX 系统采用三层分离设计：
 
 ```mermaid
 flowchart TD
-    subgraph GAME["Game 层"]
-        direction LR
+    subgraph ENGINE["Engine 层（VFX）"]
+        direction TB
         PC["PlayVfxCommand"] --> VBS["VfxBridgeSystem"]
         VBS --> VC["VfxCatalog"]
         VC --> VSS["VfxService::submit()"]
-    end
-
-    subgraph ENGINE["Engine 层（VFX 抽象）"]
-        direction TB
-        VS["VfxService"] --> VB["VfxBackend<br/>(interface)"]
+        VSS --> VS["VfxService"]
+        VS --> VB["VfxBackend<br/>(interface)"]
         VB --> NVB["NullVfxBackend<br/>(无 Effekseer 时回退)"]
         VB --> EVB["EffekseerBackend<br/>(Effekseer 实现)"]
     end
@@ -30,7 +27,6 @@ flowchart TD
         CP --> VP["VfxPass<br/>(Overlay)"]
     end
 
-    VSS --> VS
     EVB -. "backend::render()" .-> WVP
 ```
 
@@ -400,11 +396,11 @@ flowchart LR
 
 ---
 
-## 7) 游戏侧桥接
+## 7) 事件驱动播放链路
 
 ### 7.1 PlayVfxCommand
 
-线索：`src/game/defs/commands.h`
+线索：`src/engine/vfx/vfx_types.h`
 
 ```cpp
 struct PlayVfxCommand {
@@ -421,7 +417,7 @@ struct PlayVfxCommand {
 
 ### 7.2 VfxCatalog
 
-线索：`src/game/data/vfx_catalog.h/.cpp`、`assets/data/vfx_catalog.json`
+线索：`src/engine/vfx/vfx_catalog.h/.cpp`、`assets/data/vfx_catalog.json`
 
 从 JSON 加载特效 ID → 文件路径的映射：
 ```json
@@ -432,7 +428,7 @@ struct PlayVfxCommand {
 
 ### 7.3 VfxBridgeSystem
 
-线索：`src/game/system/vfx_bridge_system.h/.cpp`
+线索：`src/engine/vfx/vfx_bridge_system.h/.cpp`
 
 连接 ECS 事件系统与 VFX 播放：
 
@@ -461,10 +457,10 @@ sequenceDiagram
 sequenceDiagram
     box Game Logic
         participant GL as 游戏逻辑
-        participant BS as VfxBridgeSystem
-        participant VC as VfxCatalog
     end
     box Engine VFX
+        participant BS as VfxBridgeSystem
+        participant VC as VfxCatalog
         participant VS as VfxService
         participant BE as EffekseerBackend
     end
@@ -564,7 +560,7 @@ flowchart TD
 | `tests/engine/vfx/vfx_service_test.cpp` | VfxService 队列/flush/null 回退 |
 | `tests/engine/render/vfx_pipeline_stage_test.cpp` | pass 顺序、present 执行序、clean/setBackend 委派 |
 | `tests/engine/render/vfx_dual_channel_pipeline_test.cpp` | 双通道 FBO 清除、CompositePass 纹理绑定 |
-| `tests/game/vfx_bridge_system_test.cpp` | 命令→catalog→service 端到端、缺失 effect_id、null catalog |
+| `tests/engine/vfx/vfx_bridge_system_test.cpp` | 命令→catalog→service 端到端、缺失 effect_id、null catalog |
 | `tests/shared/recording_vfx_backend.h` | 测试替身，记录所有后端调用供断言 |
 
 ### Visual Tester

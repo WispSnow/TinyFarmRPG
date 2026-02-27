@@ -285,23 +285,23 @@ float TextRenderer::shapeLine(std::string_view line_text,
                               const engine::utils::LayoutOptions& options,
                               float pen_y_origin,
                               std::vector<GlyphPlacement>& out_glyphs) const {
-    hb_buffer_t* buffer = hb_buffer_create();
-    hb_buffer_set_direction(buffer, toHbDirection(default_direction_));
-    hb_buffer_set_language(buffer, hb_language_from_string(default_language_tag_.c_str(), -1));
-    hb_buffer_add_utf8(buffer,
+    hb_buffer_reset(hb_buffer_);
+    hb_buffer_set_direction(hb_buffer_, toHbDirection(default_direction_));
+    hb_buffer_set_language(hb_buffer_, hb_language_from_string(default_language_tag_.c_str(), -1));
+    hb_buffer_add_utf8(hb_buffer_,
                        line_text.data(),
                        static_cast<int>(line_text.size()),
                        0,
                        static_cast<int>(line_text.size()));
-    hb_buffer_guess_segment_properties(buffer);
+    hb_buffer_guess_segment_properties(hb_buffer_);
 
     const hb_feature_t* feature_data = active_features_.empty() ? nullptr : active_features_.data();
     unsigned int feature_count = static_cast<unsigned int>(active_features_.size());
-    hb_shape(font->getHBFont(), buffer, feature_data, feature_count);
+    hb_shape(font->getHBFont(), hb_buffer_, feature_data, feature_count);
 
     unsigned int glyph_count = 0;
-    hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(buffer, &glyph_count);
-    hb_glyph_position_t* positions = hb_buffer_get_glyph_positions(buffer, &glyph_count);
+    hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(hb_buffer_, &glyph_count);
+    hb_glyph_position_t* positions = hb_buffer_get_glyph_positions(hb_buffer_, &glyph_count);
 
     float pen_x = 0.0f;
     float pen_y = pen_y_origin;
@@ -353,8 +353,6 @@ float TextRenderer::shapeLine(std::string_view line_text,
         }
     }
 
-    hb_buffer_destroy(buffer);
-
     const float effective_min = (line_min_x == std::numeric_limits<float>::max())
                                     ? 0.0f
                                     : std::min(0.0f, line_min_x);
@@ -372,14 +370,13 @@ const TextRenderer::TextLayout* TextRenderer::buildLayout(std::string_view text,
         return nullptr;
     }
 
-    ++layout_frame_counter_;
-
     const engine::utils::LayoutOptions sanitized_options = sanitizeLayoutOptions(layout_options);
 
     LayoutKey key{font_id, font_size, std::string(text), sanitized_options};
     if (auto it = layout_cache_.find(key); it != layout_cache_.end()) {
-        it->second.usage_frame = layout_frame_counter_;
-        return &it->second;
+        // 命中：splice 到 LRU 头部
+        lru_order_.splice(lru_order_.begin(), lru_order_, it->second.lru_it);
+        return &it->second.layout;
     }
 
     engine::resource::Font* font = resource_manager_->getFont(font_id, font_size);
@@ -432,12 +429,17 @@ const TextRenderer::TextLayout* TextRenderer::buildLayout(std::string_view text,
     }
     layout.size = {max_line_width, total_height};
 
-    layout.usage_frame = layout_frame_counter_;
+    // 淘汰：超容量时移除 LRU 尾部
+    while (layout_cache_.size() >= layout_cache_capacity_) {
+        layout_cache_.erase(lru_order_.back());
+        lru_order_.pop_back();
+    }
 
-    auto [it, inserted] = layout_cache_.emplace(std::move(key), std::move(layout));
+    // 插入新条目到 LRU 头部
+    lru_order_.push_front(key);
+    auto [it, inserted] = layout_cache_.emplace(std::move(key), CachedLayout{std::move(layout), lru_order_.begin()});
     (void)inserted;
-    trimLayoutCache();
-    return &(it->second);
+    return &(it->second.layout);
 }
 
 std::unique_ptr<TextRenderer> TextRenderer::create(engine::render::opengl::GLRenderer* gl_renderer,
@@ -466,6 +468,7 @@ TextRenderer::TextRenderer(engine::render::opengl::GLRenderer* gl_renderer,
       dispatcher_(dispatcher) {
     dispatcher_->sink<engine::utils::FontUnloadedEvent>().connect<&TextRenderer::onFontUnloaded>(this);
     dispatcher_->sink<engine::utils::FontsClearedEvent>().connect<&TextRenderer::onFontsCleared>(this);
+    hb_buffer_ = hb_buffer_create();
     ensureBuiltinStyles();
     [[maybe_unused]] const bool config_loaded = loadConfig(DEFAULT_CONFIG_PATH);
     spdlog::trace("TextRenderer 初始化成功.");
@@ -475,6 +478,10 @@ TextRenderer::~TextRenderer() {
     if (dispatcher_) {
         dispatcher_->disconnect(this);
         dispatcher_ = nullptr;
+    }
+    if (hb_buffer_) {
+        hb_buffer_destroy(hb_buffer_);
+        hb_buffer_ = nullptr;
     }
 }
 
@@ -859,11 +866,15 @@ void TextRenderer::onFontUnloaded(const engine::utils::FontUnloadedEvent& event)
     if (layout_cache_.empty()) {
         return;
     }
-    const auto removed_count = std::erase_if(layout_cache_, [&](const auto& entry) {
-        return entry.first.font_id == event.font_id && entry.first.font_size == event.font_size;
-    });
-    if (layout_cache_.empty()) {
-        layout_frame_counter_ = 0;
+    std::size_t removed_count = 0;
+    for (auto it = layout_cache_.begin(); it != layout_cache_.end(); ) {
+        if (it->first.font_id == event.font_id && it->first.font_size == event.font_size) {
+            lru_order_.erase(it->second.lru_it);
+            it = layout_cache_.erase(it);
+            ++removed_count;
+        } else {
+            ++it;
+        }
     }
     if (removed_count > 0) {
         ++layout_revision_;
@@ -877,12 +888,15 @@ void TextRenderer::onFontsCleared(const engine::utils::FontsClearedEvent&) {
 
 void TextRenderer::clearLayoutCache() {
     layout_cache_.clear();
-    layout_frame_counter_ = 0;
+    lru_order_.clear();
 }
 
 void TextRenderer::setLayoutCacheCapacity(std::size_t capacity) {
     layout_cache_capacity_ = std::max<std::size_t>(1, capacity);
-    trimLayoutCache();
+    while (layout_cache_.size() > layout_cache_capacity_) {
+        layout_cache_.erase(lru_order_.back());
+        lru_order_.pop_back();
+    }
 }
 
 entt::id_type TextRenderer::toTextStyleId(std::string_view key) {
@@ -1069,24 +1083,6 @@ engine::utils::TextRenderParams TextRenderer::resolveTextParams(entt::id_type st
     }
 
     return resolved;
-}
-
-void TextRenderer::trimLayoutCache() const {
-    if (layout_cache_.empty()) {
-        return;
-    }
-    while (layout_cache_.size() > layout_cache_capacity_) {
-        const auto oldest = std::min_element(
-            layout_cache_.begin(),
-            layout_cache_.end(),
-            [](const auto& lhs, const auto& rhs) {
-                return lhs.second.usage_frame < rhs.second.usage_frame;
-            });
-        if (oldest == layout_cache_.end()) {
-            break;
-        }
-        layout_cache_.erase(oldest);
-    }
 }
 
 } // namespace engine::render

@@ -1,4 +1,4 @@
-#include "game/data/vfx_catalog.h"
+#include "engine/vfx/vfx_catalog.h"
 
 #include "engine/utils/json_file_loader.h"
 
@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
-namespace game::data {
+namespace engine::vfx {
 
 bool VfxCatalog::loadFromFile(std::string_view file_path) {
     nlohmann::json root{};
@@ -50,4 +50,4 @@ const std::string* VfxCatalog::findEffectPath(const entt::id_type effect_id) con
     return nullptr;
 }
 
-} // namespace game::data
+} // namespace engine::vfx

@@ -3,6 +3,7 @@
 #include <entt/core/hashed_string.hpp>
 #include <glad/glad.h>
 #include <cmath>
+#include <cstring>
 #include <string>
 #include <cstdint>
 #include <cstddef>
@@ -192,10 +193,10 @@ const FontGlyph* Font::getGlyphForCodepoint(char32_t codepoint) {
  *    - bearing: 字形的偏移量（bitmap_left, bitmap_top），用于定位字形
  *    - advance: 字形的基础步进距离（26.6定点数格式）
  * 
- * 3. 位图到纹理转换：
+ * 3. 位图上传到图集：
  *    - FreeType 生成的位图是灰度图（单通道 alpha）
- *    - 需要转换为 RGBA 格式供 OpenGL 使用
- *    - 处理可能的负 pitch（位图从上到下存储）
+ *    - 图集使用 GL_R8 格式 + texture swizzle（采样返回 vec4(1,1,1,r)）
+ *    - 处理可能的负 pitch（位图行序反转）；pitch != width 时紧凑拷贝后上传
  * 
  * 4. 创建 OpenGL 纹理：
  *    - 生成纹理对象
@@ -257,29 +258,27 @@ bool Font::loadGlyph(uint32_t glyph_index) {
             pitch = -pitch;
         }
 
-        std::vector<uint8_t> rgba(static_cast<size_t>(width * height) * 4u, 255u);
-        for (int y = 0; y < height; ++y) {
-            const uint8_t* src = buffer + static_cast<std::ptrdiff_t>(y) * static_cast<std::ptrdiff_t>(pitch);
-            for (int x = 0; x < width; ++x) {
-                const uint8_t alpha = src[x];
-                const size_t idx = static_cast<size_t>(y * width + x) * 4u;
-                rgba[idx + 3] = alpha;
+        // pitch 与 width 不一致时需要紧凑拷贝，否则直接上传
+        const uint8_t* upload_data = buffer;
+        std::vector<uint8_t> compact_buffer;
+        if (pitch != width) {
+            compact_buffer.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+            for (int y = 0; y < height; ++y) {
+                const uint8_t* src = buffer + static_cast<std::ptrdiff_t>(y) * static_cast<std::ptrdiff_t>(pitch);
+                uint8_t* dst = compact_buffer.data() + static_cast<std::ptrdiff_t>(y) * static_cast<std::ptrdiff_t>(width);
+                std::memcpy(dst, src, static_cast<size_t>(width));
             }
+            upload_data = compact_buffer.data();
         }
 
-        GLint previous_texture = 0;
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
-        GLint previous_unpack = 0;
-        glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack);
-
-        glBindTexture(GL_TEXTURE_2D, target_page->texture.texture);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glBindTexture(GL_TEXTURE_2D, target_page->texture.texture);
         glTexSubImage2D(GL_TEXTURE_2D, 0,
                         upload_pos.x, upload_pos.y,
                         width, height,
-                        GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
-        glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack);
-        glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous_texture));
+                        GL_RED, GL_UNSIGNED_BYTE, upload_data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
         glyph.texture = target_page->texture.texture;
         const float tex_w = static_cast<float>(target_page->texture.width);
@@ -317,7 +316,7 @@ void Font::fillDebugInfo(FontDebugInfo& info) const {
         page_info.cursor_y = page.cursor_y;
         page_info.current_row_height = page.current_row_height;
         info.atlas_pages.push_back(page_info);
-        atlas_memory += static_cast<std::size_t>(page.texture.width) * static_cast<std::size_t>(page.texture.height) * 4u;
+        atlas_memory += static_cast<std::size_t>(page.texture.width) * static_cast<std::size_t>(page.texture.height); // R8: 1 byte/pixel
     }
     const std::size_t glyph_cache_memory = glyph_cache_.size() * sizeof(FontGlyph);
     info.memory_bytes = atlas_memory + glyph_cache_memory;
@@ -379,20 +378,20 @@ bool Font::createAtlasPage(int min_width, int min_height) {
         return false;
     }
 
-    GLint previous_texture = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
-    GLint previous_unpack = 0;
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack);
-
-    glBindTexture(GL_TEXTURE_2D, texture);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack);
-    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous_texture));
+    // Swizzle: 采样返回 vec4(1,1,1,r)，使 R8 alpha 图集对着色器透明兼容
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
     GlyphAtlasPage page{};
     page.texture = engine::utils::GL_Texture(texture, width, height);
