@@ -40,6 +40,28 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
         {"hair", "Lyria/Brown"},
         {"skin", "2"},
     };
+    input.quest_state.active_quests = {"quest.main_story", "quest.village_help"};
+    input.quest_state.completed_quests = {"quest.tutorial"};
+    input.quest_state.objective_progress = {
+        {"quest.main_story.step_1", 2},
+        {"quest.village_help.collect_wood", 5},
+    };
+    input.skill_state.learned_skills = {"skill.attack", "skill.fire"};
+    input.skill_state.skill_levels = {
+        {"skill.attack", 1},
+        {"skill.fire", 3},
+    };
+    input.skill_state.skill_cooldowns = {
+        {"skill.fire", 2},
+    };
+    input.combat_state.pending_battle = true;
+    input.combat_state.troop_id = "troop.goblin_pair";
+    input.combat_state.actor_ids = {"actor.reed", "actor.priscilla"};
+    input.combat_state.item_stocks = {
+        {"strawberry_item", 4},
+        {"material_stone", 8},
+    };
+    input.combat_state.escape_attempt_count = 1;
 
     MapSaveData map{};
     map.map_name = "farm";
@@ -56,12 +78,15 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_EQ(json[json_keys::SCHEMA_VERSION.data()], SAVE_SCHEMA_VERSION);
     EXPECT_TRUE(json.contains(json_keys::QUEST_STATE.data()));
     EXPECT_TRUE(json[json_keys::QUEST_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::QUEST_STATE.data()].contains(json_keys::ACTIVE_QUESTS.data()));
     EXPECT_TRUE(json.contains(json_keys::SKILL_STATE.data()));
     EXPECT_TRUE(json[json_keys::SKILL_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::SKILL_STATE.data()].contains(json_keys::LEARNED_SKILLS.data()));
     EXPECT_TRUE(json.contains(json_keys::APPEARANCE_STATE.data()));
     EXPECT_TRUE(json[json_keys::APPEARANCE_STATE.data()].is_object());
     EXPECT_TRUE(json.contains(json_keys::COMBAT_STATE.data()));
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].contains(json_keys::PENDING_BATTLE.data()));
 
     SaveData output{};
     std::string error;
@@ -99,6 +124,17 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
 
     EXPECT_EQ(output.appearance_state.gender, input.appearance_state.gender);
     EXPECT_EQ(output.appearance_state.slots, input.appearance_state.slots);
+    EXPECT_EQ(output.quest_state.active_quests, input.quest_state.active_quests);
+    EXPECT_EQ(output.quest_state.completed_quests, input.quest_state.completed_quests);
+    EXPECT_EQ(output.quest_state.objective_progress, input.quest_state.objective_progress);
+    EXPECT_EQ(output.skill_state.learned_skills, input.skill_state.learned_skills);
+    EXPECT_EQ(output.skill_state.skill_levels, input.skill_state.skill_levels);
+    EXPECT_EQ(output.skill_state.skill_cooldowns, input.skill_state.skill_cooldowns);
+    EXPECT_EQ(output.combat_state.pending_battle, input.combat_state.pending_battle);
+    EXPECT_EQ(output.combat_state.troop_id, input.combat_state.troop_id);
+    EXPECT_EQ(output.combat_state.actor_ids, input.combat_state.actor_ids);
+    EXPECT_EQ(output.combat_state.item_stocks, input.combat_state.item_stocks);
+    EXPECT_EQ(output.combat_state.escape_attempt_count, input.combat_state.escape_attempt_count);
 
     ASSERT_EQ(output.maps.size(), 1u);
     EXPECT_EQ(output.maps[0].map_name, map.map_name);

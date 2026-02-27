@@ -145,6 +145,7 @@ set(GAME_TEST_SOURCES
     game/state_system_dirty_tag_test.cpp
     game/state_animation_event_chain_test.cpp
     game/save_data_v3_roundtrip_test.cpp
+    game/save_data_phase4_test.cpp
     game/appearance_catalog_test.cpp
     game/appearance_catalog_layout_test.cpp
     game/appearance_layered_direction_mapping_test.cpp

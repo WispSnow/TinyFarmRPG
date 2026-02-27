@@ -401,6 +401,51 @@ TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveSucceedsAndWritesJsonFile) {
     EXPECT_TRUE(json.contains("maps"));
 }
 
+TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContainers) {
+    const auto file_path = tempFilePath("save_phase4_extended_state.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    std::ifstream in(file_path);
+    ASSERT_TRUE(in.is_open());
+    nlohmann::json json;
+    in >> json;
+
+    ASSERT_TRUE(json.contains("quest_state"));
+    ASSERT_TRUE(json.at("quest_state").is_object());
+    const auto& quest_state = json.at("quest_state");
+    EXPECT_TRUE(quest_state.contains("active_quests"));
+    EXPECT_TRUE(quest_state.at("active_quests").is_array());
+    EXPECT_TRUE(quest_state.contains("completed_quests"));
+    EXPECT_TRUE(quest_state.at("completed_quests").is_array());
+    EXPECT_TRUE(quest_state.contains("objective_progress"));
+    EXPECT_TRUE(quest_state.at("objective_progress").is_object());
+
+    ASSERT_TRUE(json.contains("skill_state"));
+    ASSERT_TRUE(json.at("skill_state").is_object());
+    const auto& skill_state = json.at("skill_state");
+    EXPECT_TRUE(skill_state.contains("learned_skills"));
+    EXPECT_TRUE(skill_state.at("learned_skills").is_array());
+    EXPECT_TRUE(skill_state.contains("skill_levels"));
+    EXPECT_TRUE(skill_state.at("skill_levels").is_object());
+    EXPECT_TRUE(skill_state.contains("skill_cooldowns"));
+    EXPECT_TRUE(skill_state.at("skill_cooldowns").is_object());
+
+    ASSERT_TRUE(json.contains("combat_state"));
+    ASSERT_TRUE(json.at("combat_state").is_object());
+    const auto& combat_state = json.at("combat_state");
+    EXPECT_TRUE(combat_state.contains("pending_battle"));
+    EXPECT_TRUE(combat_state.at("pending_battle").is_boolean());
+    EXPECT_TRUE(combat_state.contains("troop_id"));
+    EXPECT_TRUE(combat_state.at("troop_id").is_string());
+    EXPECT_TRUE(combat_state.contains("actor_ids"));
+    EXPECT_TRUE(combat_state.at("actor_ids").is_array());
+    EXPECT_TRUE(combat_state.contains("item_stocks"));
+    EXPECT_TRUE(combat_state.at("item_stocks").is_object());
+    EXPECT_TRUE(combat_state.contains("escape_attempt_count"));
+    EXPECT_TRUE(combat_state.at("escape_attempt_count").is_number_unsigned());
+}
+
 TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveReportsWriteFailureForInvalidPath) {
     const std::filesystem::path invalid_path = "/dev/null/tinyfarm_save_async_fail.json";
     std::string start_error;
