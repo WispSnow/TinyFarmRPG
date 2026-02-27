@@ -95,11 +95,26 @@ void InputManager::sampleInputEvents() {
     // 处理所有待处理的 SDL 事件（这将更新 action_states_ 与鼠标数据）
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        bool should_propagate = true;
+        if (rmlui_event_callback_) {
+            // RmlUi 6.x: true=继续传播，false=已消费（5.x 语义相反）。
+            should_propagate = rmlui_event_callback_(event);
+        }
+
+        // 即使被 UI 消费，也要放行释放事件，避免动作状态卡在 HELD。
+        const bool is_release_event =
+            (event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_MOUSE_BUTTON_UP);
+
 #ifdef TF_ENABLE_DEBUG_UI
-        if (imgui_event_callback_) {
+        if (imgui_event_callback_ && should_propagate) {
             imgui_event_callback_(event);
         }
 #endif
+
+        if (!should_propagate && !is_release_event) {
+            continue;
+        }
+
         processEvent(event);
     }
 
@@ -296,6 +311,10 @@ glm::vec2 InputManager::getLogicalMousePosition() const
 glm::vec2 InputManager::getMouseWheelDelta() const
 {
     return mouse_wheel_delta_;
+}
+
+void InputManager::setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback) {
+    rmlui_event_callback_ = std::move(callback);
 }
 
 void InputManager::setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback) {
