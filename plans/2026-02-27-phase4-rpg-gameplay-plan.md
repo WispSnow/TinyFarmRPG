@@ -108,7 +108,7 @@
 - [x] T7 扩展 `BattleActionResult`（状态变化/消耗/命中信息/逃跑结果）
 - [x] T8 `BattleSession` 完成 resolver 化改造，移除硬编码结算
 - [x] T9 Skill/Item/Guard/Escape 四类动作语义落地（Skill 接入 RpgCatalog 伤害/状态；Item 接入 ItemCatalog 的 consume+on_use.effects）
-- [ ] T10 BattleScene 增加对应输入入口（保留自动目标兜底）
+- [x] T10 BattleScene 增加对应输入入口（新增 Skill/Item/Guard/Escape 按钮，保留自动目标兜底）
 - [ ] T11 扩展 `quest_state/skill_state/combat_state` 结构与读写
 - [ ] T12 完成单测+集成+存档验收
 

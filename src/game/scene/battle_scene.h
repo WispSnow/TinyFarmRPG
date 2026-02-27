@@ -40,6 +40,10 @@ class BattleScene final : public engine::scene::Scene {
     engine::ui::UILabel* units_label_{nullptr};
     engine::ui::UILabel* result_label_{nullptr};
     engine::ui::UIButton* attack_button_{nullptr};
+    engine::ui::UIButton* skill_button_{nullptr};
+    engine::ui::UIButton* item_button_{nullptr};
+    engine::ui::UIButton* guard_button_{nullptr};
+    engine::ui::UIButton* escape_button_{nullptr};
     engine::ui::UIButton* end_turn_button_{nullptr};
 
 public:
@@ -59,6 +63,10 @@ private:
     void refreshView();
 
     void queueAttackAction();
+    void queueSkillAction();
+    void queueItemAction();
+    void queueGuardAction();
+    void queueEscapeAction();
     void queueEndTurnAction();
     [[nodiscard]] std::optional<game::battle::BattleUnitId> selectDefaultTarget(game::battle::BattleSide actor_side) const;
 

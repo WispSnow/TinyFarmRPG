@@ -22,8 +22,10 @@ namespace {
 
 constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr engine::ui::Thickness PANEL_PADDING{20.0f, 20.0f, 20.0f, 20.0f};
-constexpr glm::vec2 PANEL_SIZE{480.0f, 260.0f};
+constexpr glm::vec2 PANEL_SIZE{560.0f, 320.0f};
 constexpr glm::vec2 ACTION_BUTTON_SIZE{160.0f, 36.0f};
+constexpr std::string_view kDefaultSkillId = "skill.attack";
+constexpr std::string_view kDefaultItemId = "strawberry_item";
 
 [[nodiscard]] std::string formatUnitsLine(const std::vector<game::battle::BattleUnit>& units) {
     std::ostringstream stream;
@@ -167,10 +169,58 @@ void BattleScene::buildLayout() {
         panel_->addChild(std::move(attack_button));
     }
 
-    auto end_turn_button = engine::ui::UIButton::create(
+    auto skill_button = engine::ui::UIButton::create(
         context_,
         "secondary",
         glm::vec2{ACTION_BUTTON_SIZE.x + 12.0f, 180.0f},
+        ACTION_BUTTON_SIZE,
+        [this]() { queueSkillAction(); });
+    if (skill_button) {
+        skill_button->setLabelText("Skill");
+        skill_button_ = skill_button.get();
+        panel_->addChild(std::move(skill_button));
+    }
+
+    auto item_button = engine::ui::UIButton::create(
+        context_,
+        "secondary",
+        glm::vec2{(ACTION_BUTTON_SIZE.x + 12.0f) * 2.0f, 180.0f},
+        ACTION_BUTTON_SIZE,
+        [this]() { queueItemAction(); });
+    if (item_button) {
+        item_button->setLabelText("Item");
+        item_button_ = item_button.get();
+        panel_->addChild(std::move(item_button));
+    }
+
+    auto guard_button = engine::ui::UIButton::create(
+        context_,
+        "secondary",
+        glm::vec2{0.0f, 224.0f},
+        ACTION_BUTTON_SIZE,
+        [this]() { queueGuardAction(); });
+    if (guard_button) {
+        guard_button->setLabelText("Guard");
+        guard_button_ = guard_button.get();
+        panel_->addChild(std::move(guard_button));
+    }
+
+    auto escape_button = engine::ui::UIButton::create(
+        context_,
+        "secondary",
+        glm::vec2{ACTION_BUTTON_SIZE.x + 12.0f, 224.0f},
+        ACTION_BUTTON_SIZE,
+        [this]() { queueEscapeAction(); });
+    if (escape_button) {
+        escape_button->setLabelText("Escape");
+        escape_button_ = escape_button.get();
+        panel_->addChild(std::move(escape_button));
+    }
+
+    auto end_turn_button = engine::ui::UIButton::create(
+        context_,
+        "secondary",
+        glm::vec2{(ACTION_BUTTON_SIZE.x + 12.0f) * 2.0f, 224.0f},
         ACTION_BUTTON_SIZE,
         [this]() { queueEndTurnAction(); });
     if (end_turn_button) {
@@ -257,16 +307,42 @@ void BattleScene::refreshView() {
                 } else {
                     result_label_->setText("Result: Action rejected");
                 }
-            } else if (result.action_type == game::battle::BattleActionType::Attack) {
-                std::string text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
-                if (result.target_defeated) {
-                    text += " (KO)";
-                }
-                result_label_->setText(std::move(text));
-            } else if (result.action_type == game::battle::BattleActionType::Escape) {
-                result_label_->setText(result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed");
             } else {
-                result_label_->setText("Result: Turn ended");
+                switch (result.action_type) {
+                    case game::battle::BattleActionType::Attack: {
+                        std::string text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
+                        if (result.target_defeated) {
+                            text += " (KO)";
+                        }
+                        result_label_->setText(std::move(text));
+                        break;
+                    }
+                    case game::battle::BattleActionType::Skill: {
+                        std::string text = "Result: Skill";
+                        if (result.missed) {
+                            text += " missed";
+                        } else {
+                            text += " dealt " + std::to_string(result.damage) + " dmg";
+                            if (!result.states_added.empty()) {
+                                text += " +" + result.states_added.front();
+                            }
+                        }
+                        result_label_->setText(std::move(text));
+                        break;
+                    }
+                    case game::battle::BattleActionType::Item:
+                        result_label_->setText("Result: Item used");
+                        break;
+                    case game::battle::BattleActionType::Guard:
+                        result_label_->setText("Result: Guarding");
+                        break;
+                    case game::battle::BattleActionType::Escape:
+                        result_label_->setText(result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed");
+                        break;
+                    case game::battle::BattleActionType::EndTurn:
+                        result_label_->setText("Result: Turn ended");
+                        break;
+                }
             }
         } else {
             result_label_->setText("Result: Choose action");
@@ -281,6 +357,18 @@ void BattleScene::refreshView() {
 
     if (attack_button_) {
         attack_button_->setEnabled(can_submit_action);
+    }
+    if (skill_button_) {
+        skill_button_->setEnabled(can_submit_action);
+    }
+    if (item_button_) {
+        item_button_->setEnabled(can_submit_action);
+    }
+    if (guard_button_) {
+        guard_button_->setEnabled(can_submit_action);
+    }
+    if (escape_button_) {
+        escape_button_->setEnabled(can_submit_action);
     }
     if (end_turn_button_) {
         end_turn_button_->setEnabled(can_submit_action);
@@ -311,6 +399,90 @@ void BattleScene::queueAttackAction() {
         .type = game::battle::BattleActionType::Attack,
         .actor_id = *actor_id,
         .target_id = target_id
+    };
+    state_ = FlowState::ExecutingAction;
+}
+
+void BattleScene::queueSkillAction() {
+    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return;
+    }
+
+    const auto* actor = session_.findUnit(*actor_id);
+    if (!actor) {
+        return;
+    }
+
+    const auto target_id = selectDefaultTarget(actor->side);
+    if (!target_id) {
+        return;
+    }
+
+    pending_action_ = game::battle::BattleAction{
+        .type = game::battle::BattleActionType::Skill,
+        .actor_id = *actor_id,
+        .target_id = target_id,
+        .skill_id = std::string(kDefaultSkillId)
+    };
+    state_ = FlowState::ExecutingAction;
+}
+
+void BattleScene::queueItemAction() {
+    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return;
+    }
+
+    pending_action_ = game::battle::BattleAction{
+        .type = game::battle::BattleActionType::Item,
+        .actor_id = *actor_id,
+        .target_id = std::nullopt,
+        .item_id = std::string(kDefaultItemId)
+    };
+    state_ = FlowState::ExecutingAction;
+}
+
+void BattleScene::queueGuardAction() {
+    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return;
+    }
+
+    pending_action_ = game::battle::BattleAction{
+        .type = game::battle::BattleActionType::Guard,
+        .actor_id = *actor_id,
+        .target_id = std::nullopt
+    };
+    state_ = FlowState::ExecutingAction;
+}
+
+void BattleScene::queueEscapeAction() {
+    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return;
+    }
+
+    pending_action_ = game::battle::BattleAction{
+        .type = game::battle::BattleActionType::Escape,
+        .actor_id = *actor_id,
+        .target_id = std::nullopt
     };
     state_ = FlowState::ExecutingAction;
 }
