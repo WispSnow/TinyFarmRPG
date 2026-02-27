@@ -26,6 +26,7 @@ set(TEST_SOURCES
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp
+    engine/input/input_manager_rmlui_routing_test.cpp
     engine/input/input_manager_no_exceptions_test.cpp
     engine/scene/entry_to_first_frame_safety_test.cpp
     engine/scene/scene_manager_safety_test.cpp
@@ -62,6 +63,7 @@ set(TEST_SOURCES
     engine/render/render_pass_interface_test.cpp
     engine/render/sprite_batch_source_test.cpp
     engine/render/gl_renderer_lifecycle_test.cpp
+    engine/render/rmlui_pipeline_stage_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
     engine/render/vfx_dual_channel_pipeline_test.cpp
     engine/render/opengl_pass_state_test.cpp
