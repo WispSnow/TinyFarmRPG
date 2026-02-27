@@ -16,6 +16,17 @@ constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
 constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
 constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
+constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
+constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
+constexpr std::string_view KEY_OBJECTIVE_PROGRESS = json_keys::OBJECTIVE_PROGRESS;
+constexpr std::string_view KEY_LEARNED_SKILLS = json_keys::LEARNED_SKILLS;
+constexpr std::string_view KEY_SKILL_LEVELS = json_keys::SKILL_LEVELS;
+constexpr std::string_view KEY_SKILL_COOLDOWNS = json_keys::SKILL_COOLDOWNS;
+constexpr std::string_view KEY_PENDING_BATTLE = json_keys::PENDING_BATTLE;
+constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
+constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
+constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
+constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 constexpr std::string_view KEY_PLAYER = "player";
 constexpr std::string_view KEY_MAPS = "maps";
 
@@ -99,6 +110,60 @@ bool readPlaceholderObject(const nlohmann::json& json, std::string_view key, std
     if (!json[key].is_object()) {
         out_error = "SaveData: " + std::string(key) + " 不是 object";
         return false;
+    }
+    return true;
+}
+
+nlohmann::json stringIntMapToJson(const std::unordered_map<std::string, int>& values) {
+    nlohmann::json result = nlohmann::json::object();
+    for (const auto& [key, value] : values) {
+        result[key] = value;
+    }
+    return result;
+}
+
+bool readStringArrayField(const nlohmann::json& json,
+                          std::string_view key,
+                          std::vector<std::string>& out_values,
+                          std::string& out_error) {
+    out_values.clear();
+    if (!json.contains(key)) {
+        return true;
+    }
+    if (!json[key].is_array()) {
+        out_error = "SaveData: " + std::string(key) + " 不是 array";
+        return false;
+    }
+
+    for (const auto& value : json[key]) {
+        if (!value.is_string()) {
+            out_error = "SaveData: " + std::string(key) + " 存在非 string 条目";
+            return false;
+        }
+        out_values.push_back(value.get<std::string>());
+    }
+    return true;
+}
+
+bool readStringIntMapField(const nlohmann::json& json,
+                           std::string_view key,
+                           std::unordered_map<std::string, int>& out_values,
+                           std::string& out_error) {
+    out_values.clear();
+    if (!json.contains(key)) {
+        return true;
+    }
+    if (!json[key].is_object()) {
+        out_error = "SaveData: " + std::string(key) + " 不是 object";
+        return false;
+    }
+
+    for (const auto& [name, value] : json[key].items()) {
+        if (!value.is_number_integer()) {
+            out_error = "SaveData: " + std::string(key) + "." + name + " 不是 int";
+            return false;
+        }
+        out_values.insert_or_assign(name, value.get<int>());
     }
     return true;
 }
@@ -195,13 +260,27 @@ nlohmann::json serialize(const SaveData& data) {
         root[KEY_MAPS].push_back(std::move(map_json));
     }
 
-    root[KEY_QUEST_STATE] = nlohmann::json::object();
-    root[KEY_SKILL_STATE] = nlohmann::json::object();
+    root[KEY_QUEST_STATE] = nlohmann::json{
+        {KEY_ACTIVE_QUESTS, data.quest_state.active_quests},
+        {KEY_COMPLETED_QUESTS, data.quest_state.completed_quests},
+        {KEY_OBJECTIVE_PROGRESS, stringIntMapToJson(data.quest_state.objective_progress)},
+    };
+    root[KEY_SKILL_STATE] = nlohmann::json{
+        {KEY_LEARNED_SKILLS, data.skill_state.learned_skills},
+        {KEY_SKILL_LEVELS, stringIntMapToJson(data.skill_state.skill_levels)},
+        {KEY_SKILL_COOLDOWNS, stringIntMapToJson(data.skill_state.skill_cooldowns)},
+    };
     root[KEY_APPEARANCE_STATE] = nlohmann::json{
         {KEY_GENDER, data.appearance_state.gender},
         {KEY_SLOTS, data.appearance_state.slots},
     };
-    root[KEY_COMBAT_STATE] = nlohmann::json::object();
+    root[KEY_COMBAT_STATE] = nlohmann::json{
+        {KEY_PENDING_BATTLE, data.combat_state.pending_battle},
+        {KEY_TROOP_ID, data.combat_state.troop_id},
+        {KEY_ACTOR_IDS, data.combat_state.actor_ids},
+        {KEY_ITEM_STOCKS, stringIntMapToJson(data.combat_state.item_stocks)},
+        {KEY_ESCAPE_ATTEMPT_COUNT, data.combat_state.escape_attempt_count},
+    };
 
     return root;
 }
@@ -372,9 +451,35 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     if (!readPlaceholderObject(json, KEY_QUEST_STATE, out_error)) {
         return false;
     }
+    if (json.contains(KEY_QUEST_STATE)) {
+        const auto& quest_state = json[KEY_QUEST_STATE];
+        if (!readStringArrayField(quest_state, KEY_ACTIVE_QUESTS, out.quest_state.active_quests, out_error)) {
+            return false;
+        }
+        if (!readStringArrayField(quest_state, KEY_COMPLETED_QUESTS, out.quest_state.completed_quests, out_error)) {
+            return false;
+        }
+        if (!readStringIntMapField(quest_state, KEY_OBJECTIVE_PROGRESS, out.quest_state.objective_progress, out_error)) {
+            return false;
+        }
+    }
+
     if (!readPlaceholderObject(json, KEY_SKILL_STATE, out_error)) {
         return false;
     }
+    if (json.contains(KEY_SKILL_STATE)) {
+        const auto& skill_state = json[KEY_SKILL_STATE];
+        if (!readStringArrayField(skill_state, KEY_LEARNED_SKILLS, out.skill_state.learned_skills, out_error)) {
+            return false;
+        }
+        if (!readStringIntMapField(skill_state, KEY_SKILL_LEVELS, out.skill_state.skill_levels, out_error)) {
+            return false;
+        }
+        if (!readStringIntMapField(skill_state, KEY_SKILL_COOLDOWNS, out.skill_state.skill_cooldowns, out_error)) {
+            return false;
+        }
+    }
+
     if (!readPlaceholderObject(json, KEY_APPEARANCE_STATE, out_error)) {
         return false;
     }
@@ -396,6 +501,19 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     if (!readPlaceholderObject(json, KEY_COMBAT_STATE, out_error)) {
         return false;
+    }
+    if (json.contains(KEY_COMBAT_STATE)) {
+        const auto& combat_state = json[KEY_COMBAT_STATE];
+        out.combat_state.pending_battle = combat_state.value<bool>(KEY_PENDING_BATTLE.data(), false);
+        out.combat_state.troop_id = combat_state.value<std::string>(KEY_TROOP_ID.data(), std::string{});
+        out.combat_state.escape_attempt_count =
+            combat_state.value<std::uint32_t>(KEY_ESCAPE_ATTEMPT_COUNT.data(), 0u);
+        if (!readStringArrayField(combat_state, KEY_ACTOR_IDS, out.combat_state.actor_ids, out_error)) {
+            return false;
+        }
+        if (!readStringIntMapField(combat_state, KEY_ITEM_STOCKS, out.combat_state.item_stocks, out_error)) {
+            return false;
+        }
     }
 
     return true;

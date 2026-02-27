@@ -23,6 +23,17 @@ inline constexpr std::string_view QUEST_STATE = "quest_state";
 inline constexpr std::string_view SKILL_STATE = "skill_state";
 inline constexpr std::string_view APPEARANCE_STATE = "appearance_state";
 inline constexpr std::string_view COMBAT_STATE = "combat_state";
+inline constexpr std::string_view ACTIVE_QUESTS = "active_quests";
+inline constexpr std::string_view COMPLETED_QUESTS = "completed_quests";
+inline constexpr std::string_view OBJECTIVE_PROGRESS = "objective_progress";
+inline constexpr std::string_view LEARNED_SKILLS = "learned_skills";
+inline constexpr std::string_view SKILL_LEVELS = "skill_levels";
+inline constexpr std::string_view SKILL_COOLDOWNS = "skill_cooldowns";
+inline constexpr std::string_view PENDING_BATTLE = "pending_battle";
+inline constexpr std::string_view TROOP_ID = "troop_id";
+inline constexpr std::string_view ACTOR_IDS = "actor_ids";
+inline constexpr std::string_view ITEM_STOCKS = "item_stocks";
+inline constexpr std::string_view ESCAPE_ATTEMPT_COUNT = "escape_attempt_count";
 } // namespace json_keys
 
 struct Vec2f {
@@ -100,9 +111,15 @@ struct MapSaveData {
 };
 
 struct QuestStateSaveData {
+    std::vector<std::string> active_quests{};
+    std::vector<std::string> completed_quests{};
+    std::unordered_map<std::string, int> objective_progress{};
 };
 
 struct SkillStateSaveData {
+    std::vector<std::string> learned_skills{};
+    std::unordered_map<std::string, int> skill_levels{};
+    std::unordered_map<std::string, int> skill_cooldowns{};
 };
 
 struct AppearanceStateSaveData {
@@ -111,6 +128,11 @@ struct AppearanceStateSaveData {
 };
 
 struct CombatStateSaveData {
+    bool pending_battle{false};
+    std::string troop_id{};
+    std::vector<std::string> actor_ids{};
+    std::unordered_map<std::string, int> item_stocks{};
+    std::uint32_t escape_attempt_count{0};
 };
 
 struct SaveData {
