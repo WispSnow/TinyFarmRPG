@@ -70,6 +70,73 @@ def make_semantic_id(prefix: str, name: str, numeric_id: int, used: set[str]) ->
     return candidate
 
 
+def load_id_aliases(path: Path, warnings: list[str]) -> dict[str, dict[str, str]]:
+    if not path.is_file():
+        return {}
+
+    try:
+        root = load_json(path)
+    except Exception as exc:  # pylint: disable=broad-except
+        warnings.append(f"id_aliases: failed to parse '{path}': {exc}")
+        return {}
+
+    if not isinstance(root, dict):
+        warnings.append(f"id_aliases: root must be object in '{path}'")
+        return {}
+
+    aliases: dict[str, dict[str, str]] = {}
+    for table_name, table_aliases in root.items():
+        if not isinstance(table_aliases, dict):
+            continue
+        normalized: dict[str, str] = {}
+        for source_id, target_id in table_aliases.items():
+            if not isinstance(source_id, str):
+                continue
+            target = normalize_name(target_id)
+            if not target:
+                continue
+            normalized[source_id] = target
+        if normalized:
+            aliases[table_name] = normalized
+    return aliases
+
+
+def pick_semantic_id(
+    *,
+    prefix: str,
+    name: str,
+    numeric_id: int,
+    used: set[str],
+    aliases: dict[str, str],
+    table_name: str,
+    warnings: list[str],
+) -> str:
+    alias = normalize_name(aliases.get(str(numeric_id), ""))
+    if not alias:
+        return make_semantic_id(prefix, name, numeric_id, used)
+
+    candidate = alias
+    if "." not in candidate:
+        candidate = f"{prefix}.{candidate}"
+    elif not candidate.startswith(f"{prefix}."):
+        suffix = candidate.split(".", 1)[1]
+        if not suffix:
+            suffix = f"id_{numeric_id}"
+        warnings.append(
+            f"{table_name}: alias '{alias}' for source #{numeric_id} should start with '{prefix}.'; auto-fixed"
+        )
+        candidate = f"{prefix}.{suffix}"
+
+    candidate = re.sub(r"\s+", "_", candidate)
+    deduped = candidate
+    index = 2
+    while deduped in used:
+        deduped = f"{candidate}_{index}"
+        index += 1
+    used.add(deduped)
+    return deduped
+
+
 def map_scope(scope: int) -> str:
     if scope in (1, 3, 4, 5, 6):
         return "one_enemy"
@@ -175,7 +242,7 @@ def class_base_params_from_curve(raw_params: Any, class_id: int, warnings: list[
 
 
 def convert_inventory_table(
-    entries: list[Any], prefix: str, warnings: list[str]
+    entries: list[Any], prefix: str, warnings: list[str], aliases: dict[str, str], table_name: str
 ) -> tuple[list[dict[str, Any]], dict[int, str], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -192,7 +259,15 @@ def convert_inventory_table(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id(prefix, name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix=prefix,
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name=table_name,
+            warnings=warnings,
+        )
         id_map[numeric_id] = semantic_id
 
         payload: dict[str, Any] = {
@@ -214,7 +289,7 @@ def convert_inventory_table(
 
 
 def convert_states(
-    entries: list[Any], warnings: list[str]
+    entries: list[Any], warnings: list[str], aliases: dict[str, str]
 ) -> tuple[list[dict[str, Any]], dict[int, str], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -242,7 +317,15 @@ def convert_states(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id("state", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="state",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="states",
+            warnings=warnings,
+        )
         id_map[numeric_id] = semantic_id
 
         min_turns = max(1, to_int(raw.get("minTurns"), 1))
@@ -297,6 +380,7 @@ def convert_skills(
     entries: list[Any],
     state_id_map: dict[int, str],
     warnings: list[str],
+    aliases: dict[str, str],
 ) -> tuple[list[dict[str, Any]], dict[int, str], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -313,7 +397,15 @@ def convert_skills(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id("skill", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="skill",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="skills",
+            warnings=warnings,
+        )
         id_map[numeric_id] = semantic_id
 
         damage = raw.get("damage", {})
@@ -379,6 +471,7 @@ def convert_enemies(
     weapon_id_map: dict[int, str],
     armor_id_map: dict[int, str],
     warnings: list[str],
+    aliases: dict[str, str],
 ) -> tuple[list[dict[str, Any]], dict[int, str], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -395,7 +488,15 @@ def convert_enemies(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id("enemy", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="enemy",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="enemies",
+            warnings=warnings,
+        )
         id_map[numeric_id] = semantic_id
 
         params_raw = raw.get("params", [])
@@ -464,7 +565,7 @@ def convert_enemies(
 
 
 def convert_troops(
-    entries: list[Any], enemy_id_map: dict[int, str], warnings: list[str]
+    entries: list[Any], enemy_id_map: dict[int, str], warnings: list[str], aliases: dict[str, str]
 ) -> tuple[list[dict[str, Any]], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -477,7 +578,15 @@ def convert_troops(
         numeric_id = to_int(raw.get("id"), idx)
         name = normalize_name(raw.get("name", "")) or f"Troop {numeric_id}"
 
-        semantic_id = make_semantic_id("troop", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="troop",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="troops",
+            warnings=warnings,
+        )
         members: list[dict[str, Any]] = []
         for member in raw.get("members", []):
             if not isinstance(member, dict):
@@ -516,7 +625,7 @@ def convert_troops(
 
 
 def convert_classes(
-    entries: list[Any], skill_id_map: dict[int, str], warnings: list[str]
+    entries: list[Any], skill_id_map: dict[int, str], warnings: list[str], aliases: dict[str, str]
 ) -> tuple[list[dict[str, Any]], dict[int, str], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -533,7 +642,15 @@ def convert_classes(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id("class", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="class",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="classes",
+            warnings=warnings,
+        )
         id_map[numeric_id] = semantic_id
         base_params = class_base_params_from_curve(raw.get("params"), numeric_id, warnings)
 
@@ -568,7 +685,7 @@ def convert_classes(
 
 
 def convert_actors(
-    entries: list[Any], class_id_map: dict[int, str], warnings: list[str]
+    entries: list[Any], class_id_map: dict[int, str], warnings: list[str], aliases: dict[str, str]
 ) -> tuple[list[dict[str, Any]], TableReport]:
     used: set[str] = set()
     mapped: list[dict[str, Any]] = []
@@ -584,7 +701,15 @@ def convert_actors(
             report.skipped += 1
             continue
 
-        semantic_id = make_semantic_id("actor", name, numeric_id, used)
+        semantic_id = pick_semantic_id(
+            prefix="actor",
+            name=name,
+            numeric_id=numeric_id,
+            used=used,
+            aliases=aliases,
+            table_name="actors",
+            warnings=warnings,
+        )
         class_id = class_id_map.get(to_int(raw.get("classId"), 0), "")
         if not class_id:
             warnings.append(
@@ -674,6 +799,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not write output files, only print report summary",
     )
+    parser.add_argument(
+        "--id-alias-file",
+        type=Path,
+        default=Path("tools/rpg_importer/id_aliases.json"),
+        help="Optional JSON file for source-id to semantic-id aliases",
+    )
     return parser
 
 
@@ -700,16 +831,40 @@ def main() -> int:
 
     warnings: list[str] = []
     table_reports: dict[str, dict[str, int]] = {}
+    id_aliases = load_id_aliases(args.id_alias_file, warnings)
 
-    items, item_id_map, item_report = convert_inventory_table(load_json(input_dir / "Items.json"), "item", warnings)
+    items, item_id_map, item_report = convert_inventory_table(
+        load_json(input_dir / "Items.json"),
+        "item",
+        warnings,
+        id_aliases.get("items", {}),
+        "items",
+    )
     weapons, weapon_id_map, weapon_report = convert_inventory_table(
-        load_json(input_dir / "Weapons.json"), "weapon", warnings
+        load_json(input_dir / "Weapons.json"),
+        "weapon",
+        warnings,
+        id_aliases.get("weapons", {}),
+        "weapons",
     )
     armors, armor_id_map, armor_report = convert_inventory_table(
-        load_json(input_dir / "Armors.json"), "armor", warnings
+        load_json(input_dir / "Armors.json"),
+        "armor",
+        warnings,
+        id_aliases.get("armors", {}),
+        "armors",
     )
-    states, state_id_map, state_report = convert_states(load_json(input_dir / "States.json"), warnings)
-    skills, skill_id_map, skill_report = convert_skills(load_json(input_dir / "Skills.json"), state_id_map, warnings)
+    states, state_id_map, state_report = convert_states(
+        load_json(input_dir / "States.json"),
+        warnings,
+        id_aliases.get("states", {}),
+    )
+    skills, skill_id_map, skill_report = convert_skills(
+        load_json(input_dir / "Skills.json"),
+        state_id_map,
+        warnings,
+        id_aliases.get("skills", {}),
+    )
     enemies, enemy_id_map, enemy_report = convert_enemies(
         load_json(input_dir / "Enemies.json"),
         skill_id_map,
@@ -717,10 +872,26 @@ def main() -> int:
         weapon_id_map,
         armor_id_map,
         warnings,
+        id_aliases.get("enemies", {}),
     )
-    troops, troop_report = convert_troops(load_json(input_dir / "Troops.json"), enemy_id_map, warnings)
-    classes, class_id_map, class_report = convert_classes(load_json(input_dir / "Classes.json"), skill_id_map, warnings)
-    actors, actor_report = convert_actors(load_json(input_dir / "Actors.json"), class_id_map, warnings)
+    troops, troop_report = convert_troops(
+        load_json(input_dir / "Troops.json"),
+        enemy_id_map,
+        warnings,
+        id_aliases.get("troops", {}),
+    )
+    classes, class_id_map, class_report = convert_classes(
+        load_json(input_dir / "Classes.json"),
+        skill_id_map,
+        warnings,
+        id_aliases.get("classes", {}),
+    )
+    actors, actor_report = convert_actors(
+        load_json(input_dir / "Actors.json"),
+        class_id_map,
+        warnings,
+        id_aliases.get("actors", {}),
+    )
 
     for name, report in [
         ("items", item_report),
