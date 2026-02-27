@@ -3,6 +3,8 @@
 #include "battle_types.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -10,11 +12,18 @@
 namespace game::battle {
 
 class TurnCore final {
+public:
+    using RoundHook = std::function<void(std::uint32_t round_index)>;
+
+private:
     std::vector<BattleUnit> units_{};
     std::unordered_map<BattleUnitId, std::size_t> unit_index_by_id_{};
     std::vector<BattleUnitId> turn_order_{};
     std::size_t current_turn_index_{0};
+    std::uint32_t round_index_{0};
     BattleOutcome outcome_{BattleOutcome::Ongoing};
+    RoundHook on_round_begin_{};
+    RoundHook on_round_end_{};
 
 public:
     explicit TurnCore(std::vector<BattleUnit> units);
@@ -28,6 +37,8 @@ public:
     [[nodiscard]] std::optional<BattleUnitId> currentActorId() const;
     [[nodiscard]] BattleOutcome outcome() const { return outcome_; }
     [[nodiscard]] bool isBattleEnded() const { return outcome_ != BattleOutcome::Ongoing; }
+    [[nodiscard]] std::uint32_t roundIndex() const { return round_index_; }
+    void setRoundHooks(RoundHook on_round_begin, RoundHook on_round_end);
 
     [[nodiscard]] bool advanceTurn();
     void refresh();

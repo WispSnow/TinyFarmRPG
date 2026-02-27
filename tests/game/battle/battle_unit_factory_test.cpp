@@ -117,16 +117,31 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     ASSERT_EQ(units.size(), 4U);
     EXPECT_EQ(units[0].name, "Hero");
     EXPECT_EQ(units[0].max_hp, 140);
+    EXPECT_EQ(units[0].max_mp, 30);
     EXPECT_EQ(units[0].attack, 28);
+    EXPECT_EQ(units[0].defense, 20);
+    EXPECT_EQ(units[0].magic_attack, 12);
+    EXPECT_EQ(units[0].magic_defense, 16);
     EXPECT_EQ(units[0].speed, 18);
+    EXPECT_EQ(units[0].luck, 8);
 
     EXPECT_EQ(units[1].name, "Mage");
     EXPECT_EQ(units[1].max_hp, 80);
+    EXPECT_EQ(units[1].max_mp, 120);
     EXPECT_EQ(units[1].attack, 11);
+    EXPECT_EQ(units[1].defense, 9);
+    EXPECT_EQ(units[1].magic_attack, 25);
+    EXPECT_EQ(units[1].magic_defense, 18);
     EXPECT_EQ(units[1].speed, 14);
+    EXPECT_EQ(units[1].luck, 10);
 
     EXPECT_EQ(units[2].side, BattleSide::Enemy);
     EXPECT_EQ(units[2].name, "Goblin");
+    EXPECT_EQ(units[2].max_mp, 1);
+    EXPECT_EQ(units[2].defense, 8);
+    EXPECT_EQ(units[2].magic_attack, 5);
+    EXPECT_EQ(units[2].magic_defense, 5);
+    EXPECT_EQ(units[2].luck, 5);
     EXPECT_EQ(units[3].name, "Goblin 2");
 }
 

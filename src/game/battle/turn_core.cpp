@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
 
 namespace game::battle {
 
@@ -10,6 +11,7 @@ TurnCore::TurnCore(std::vector<BattleUnit> units)
     buildIndex();
     buildTurnOrder();
     refresh();
+    round_index_ = currentActorId().has_value() ? 1U : 0U;
 }
 
 const BattleUnit* TurnCore::findUnit(BattleUnitId id) const {
@@ -51,15 +53,31 @@ bool TurnCore::advanceTurn() {
     }
 
     const std::size_t order_size = turn_order_.size();
+    const std::size_t previous_index = current_turn_index_;
     for (std::size_t offset = 0; offset < order_size; ++offset) {
         current_turn_index_ = (current_turn_index_ + 1) % order_size;
         if (isAlive(turn_order_[current_turn_index_])) {
+            if (current_turn_index_ <= previous_index) {
+                const std::uint32_t finished_round = round_index_ == 0U ? 1U : round_index_;
+                if (on_round_end_) {
+                    on_round_end_(finished_round);
+                }
+                round_index_ = finished_round + 1U;
+                if (on_round_begin_) {
+                    on_round_begin_(round_index_);
+                }
+            }
             return true;
         }
     }
 
     refresh();
     return false;
+}
+
+void TurnCore::setRoundHooks(RoundHook on_round_begin, RoundHook on_round_end) {
+    on_round_begin_ = std::move(on_round_begin);
+    on_round_end_ = std::move(on_round_end);
 }
 
 void TurnCore::refresh() {
