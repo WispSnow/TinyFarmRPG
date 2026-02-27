@@ -52,6 +52,31 @@ TEST(GameSceneBattleEntryTest, PushesBattleSceneOnEnterBattleCommand) {
               std::string::npos);
 }
 
+TEST(GameSceneBattleEntryTest, SupportsCatalogFallbackWhenCommandUnitsAreEmpty) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("if (units.empty())"), std::string::npos);
+    EXPECT_NE(source.find("buildBattleUnitsFromCatalog"), std::string::npos);
+    EXPECT_NE(source.find("services_->rpg_catalog"), std::string::npos);
+}
+
+TEST(GameSceneBattleEntryTest, SupportsTroopAndActorSelectionInBattleCommand) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("cmd.troop_id"), std::string::npos);
+    EXPECT_NE(source.find("cmd.actor_ids"), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

@@ -1,0 +1,66 @@
+{
+    "skills": [
+        {
+            "id": "skill.attack",
+            "display_name": "攻击",
+            "description": "",
+            "scope": "one_enemy",
+            "hit_type": "physical",
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.atk * 4 - b.def * 2",
+                "variance": 20,
+                "critical": true
+            },
+            "effects": []
+        },
+        {
+            "id": "skill.bash",
+            "display_name": "撞击",
+            "description": "对敌方单体造成伤害并使其失去平衡。",
+            "scope": "one_enemy",
+            "hit_type": "physical",
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.atk * 4 - b.def * 2",
+                "variance": 20,
+                "critical": false
+            },
+            "effects": [
+                {
+                    "type": "add_state",
+                    "value1": 0.5,
+                    "value2": 0.0,
+                    "target_id": "state.stun"
+                }
+            ]
+        },
+        {
+            "id": "skill.poison_spit",
+            "display_name": "毒液",
+            "description": "对敌方单体喷洒毒液，并使其陷入中毒状态。",
+            "scope": "one_enemy",
+            "hit_type": "certain",
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "none",
+                "formula": "0",
+                "variance": 20,
+                "critical": false
+            },
+            "effects": [
+                {
+                    "type": "add_state",
+                    "value1": 0.5,
+                    "value2": 0.0,
+                    "target_id": "state.poison"
+                }
+            ]
+        }
+    ]
+}

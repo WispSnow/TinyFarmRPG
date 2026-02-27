@@ -1,0 +1,63 @@
+{
+    "enemies": [
+        {
+            "id": "enemy.goblin",
+            "display_name": "哥布林",
+            "params": [
+                200,
+                0,
+                25,
+                20,
+                20,
+                20,
+                20,
+                20
+            ],
+            "exp": 10,
+            "gold": 5,
+            "drops": [
+                {
+                    "item_id": "material_stone",
+                    "chance": 0.3
+                }
+            ],
+            "actions": [
+                {
+                    "skill_id": "skill.attack",
+                    "rating": 5
+                },
+                {
+                    "skill_id": "skill.bash",
+                    "rating": 5
+                }
+            ]
+        },
+        {
+            "id": "enemy.gnome",
+            "display_name": "侏儒",
+            "params": [
+                250,
+                0,
+                20,
+                25,
+                20,
+                20,
+                20,
+                20
+            ],
+            "exp": 10,
+            "gold": 8,
+            "drops": [],
+            "actions": [
+                {
+                    "skill_id": "skill.attack",
+                    "rating": 5
+                },
+                {
+                    "skill_id": "skill.poison_spit",
+                    "rating": 3
+                }
+            ]
+        }
+    ]
+}

@@ -1,5 +1,4 @@
 #include "player_debug_panel.h"
-#include "game/battle/battle_types.h"
 #include "game/component/actor_component.h"
 #include "game/component/appearance_component.h"
 #include "game/component/tags.h"
@@ -52,19 +51,6 @@ constexpr std::array<AppearanceSlotDebugEntry, 5> kDebugSwitchSlots{{
     {"hair", "Hair"},
     {"acc", "Accessory"},
 }};
-
-[[nodiscard]] game::defs::EnterBattleCommand buildDebugBattleCommand() {
-    game::defs::EnterBattleCommand command{};
-    command.player_units = {
-        game::battle::BattleUnit{1, "Hero", game::battle::BattleSide::Player, 120, 120, 24, 18},
-        game::battle::BattleUnit{2, "Partner", game::battle::BattleSide::Player, 100, 100, 18, 13}
-    };
-    command.enemy_units = {
-        game::battle::BattleUnit{101, "Slime A", game::battle::BattleSide::Enemy, 88, 88, 12, 11},
-        game::battle::BattleUnit{102, "Slime B", game::battle::BattleSide::Enemy, 76, 76, 14, 9}
-    };
-    return command;
-}
 
 } // namespace
 
@@ -168,8 +154,8 @@ void PlayerDebugPanel::draw(bool& is_open) {
     }
 
     ImGui::Separator();
-    if (ImGui::Button("Start Test Battle (2v2)")) {
-        dispatcher_.trigger(buildDebugBattleCommand());
+    if (ImGui::Button("Start Test Battle (Catalog)")) {
+        dispatcher_.trigger(game::defs::EnterBattleCommand{});
     }
 
     if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {
