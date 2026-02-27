@@ -7,19 +7,25 @@
   },
   "configurePresets": [
     {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
       "name": "debug",
+      "inherits": "base",
       "displayName": "Debug",
       "description": "标准 Debug 构建，保留符号信息，无优化",
-      "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "debug-asan",
+      "inherits": "base",
       "displayName": "Debug + ASan",
       "description": "Debug 构建 + AddressSanitizer，检测内存越界/use-after-free/double-free",
-      "binaryDir": "${sourceDir}/build/debug-asan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -g",
@@ -35,9 +41,9 @@
     },
     {
       "name": "debug-tsan",
+      "inherits": "base",
       "displayName": "Debug + TSan",
       "description": "Debug 构建 + ThreadSanitizer，检测多线程数据竞争",
-      "binaryDir": "${sourceDir}/build/debug-tsan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_TSAN": "ON"
@@ -50,18 +56,18 @@
     },
     {
       "name": "release",
+      "inherits": "base",
       "displayName": "Release",
       "description": "优化构建，用于性能测试和发布",
-      "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
       "name": "relwithdebinfo",
+      "inherits": "base",
       "displayName": "Release + 调试信息",
       "description": "优化构建但保留调试符号，用于生产环境崩溃定位",
-      "binaryDir": "${sourceDir}/build/relwithdebinfo",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
