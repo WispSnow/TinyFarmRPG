@@ -145,7 +145,7 @@ TEST_F(InputManagerRmlUiRoutingTest, ConsumedReleaseStillClearsHeldAction) {
 }
 
 #ifdef TF_ENABLE_DEBUG_UI
-TEST_F(InputManagerRmlUiRoutingTest, ImGuiForwarderRunsOnlyWhenEventPropagates) {
+TEST_F(InputManagerRmlUiRoutingTest, ImGuiForwarderRunsBeforeRmlUiAndAlwaysReceivesEvent) {
     auto manager = InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
     ASSERT_NE(manager, nullptr);
 
@@ -163,7 +163,7 @@ TEST_F(InputManagerRmlUiRoutingTest, ImGuiForwarderRunsOnlyWhenEventPropagates) 
     ASSERT_EQ(SDL_PushEvent(&motion), true);
 
     manager->sampleInputEvents();
-    EXPECT_EQ(imgui_forward_count, 0);
+    EXPECT_GE(imgui_forward_count, 1);
 
     manager->setRmlUiEventForwarder([](SDL_Event&) { return true; });
 
@@ -174,7 +174,7 @@ TEST_F(InputManagerRmlUiRoutingTest, ImGuiForwarderRunsOnlyWhenEventPropagates) 
     ASSERT_EQ(SDL_PushEvent(&motion2), true);
 
     manager->sampleInputEvents();
-    EXPECT_GE(imgui_forward_count, 1);
+    EXPECT_GE(imgui_forward_count, 2);
 }
 #endif
 
