@@ -83,6 +83,7 @@ private:
     bool onMousePressed();                       ///< @brief 鼠标按下事件回调
     bool onMouseReleased();                      ///< @brief 鼠标释放事件回调
 
+    void onFocusLost();                          ///< @brief 窗口失焦回调：清理按压状态
     void registerMouseEvents();
     void unregisterMouseEvents();
 
