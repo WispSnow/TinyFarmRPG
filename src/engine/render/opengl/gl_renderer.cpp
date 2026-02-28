@@ -396,6 +396,40 @@ bool GLRenderer::handleRmlUiEvent(SDL_Event& event) {
 #endif
 }
 
+bool GLRenderer::loadRmlUiDocument(std::string_view path) {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return false;
+    }
+    return rmlui_layer_->loadDocument(path);
+#else
+    (void)path;
+    return false;
+#endif
+}
+
+bool GLRenderer::reloadRmlUiDocument() {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return false;
+    }
+    return rmlui_layer_->reloadDocument();
+#else
+    return false;
+#endif
+}
+
+std::string GLRenderer::getCurrentRmlUiDocumentPath() const {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return {};
+    }
+    return std::string(rmlui_layer_->getCurrentDocumentPath());
+#else
+    return {};
+#endif
+}
+
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
 #ifdef TF_ENABLE_DEBUG_UI
     if (!imgui_layer_) {

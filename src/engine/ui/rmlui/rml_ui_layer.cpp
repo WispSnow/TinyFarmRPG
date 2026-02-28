@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace engine::ui::rmlui {
 
@@ -91,9 +92,7 @@ bool RmlUILayer::init(SDL_Window* window,
         spdlog::warn("RmlUILayer: failed to load default font {}.", kDefaultFontPath);
     }
 
-    if (Rml::ElementDocument* demo_document = context_->LoadDocument(kDemoDocumentPath)) {
-        demo_document->Show();
-    } else {
+    if (!loadDocument(kDemoDocumentPath)) {
         spdlog::debug("RmlUILayer: demo document not loaded: {}.", kDemoDocumentPath);
     }
 
@@ -102,6 +101,12 @@ bool RmlUILayer::init(SDL_Window* window,
 }
 
 void RmlUILayer::clean() {
+    if (current_document_) {
+        current_document_->Close();
+        current_document_ = nullptr;
+        current_document_path_.clear();
+    }
+
     if (context_) {
         const Rml::String context_name = context_->GetName();
         (void)Rml::RemoveContext(context_name);
@@ -166,6 +171,42 @@ void RmlUILayer::setViewport(int width, int height, int offset_x, int offset_y) 
             }
         }
     }
+}
+
+bool RmlUILayer::loadDocument(std::string_view document_path) {
+    if (!context_) {
+        return false;
+    }
+    if (document_path.empty()) {
+        spdlog::warn("RmlUILayer::loadDocument ignored empty path.");
+        return false;
+    }
+
+    if (current_document_) {
+        current_document_->Close();
+        current_document_ = nullptr;
+    }
+
+    const Rml::String path_string{document_path.data(), document_path.size()};
+    current_document_ = context_->LoadDocument(path_string);
+    if (!current_document_) {
+        current_document_path_.clear();
+        spdlog::error("RmlUILayer::loadDocument failed: {}", path_string);
+        return false;
+    }
+
+    current_document_->Show();
+    current_document_path_ = std::string(document_path);
+    spdlog::info("RmlUILayer loaded document: {}", current_document_path_);
+    return true;
+}
+
+bool RmlUILayer::reloadDocument() {
+    if (current_document_path_.empty()) {
+        spdlog::warn("RmlUILayer::reloadDocument ignored: no active document.");
+        return false;
+    }
+    return loadDocument(current_document_path_);
 }
 
 void RmlUILayer::adjustEventForViewport(SDL_Event& event) const {

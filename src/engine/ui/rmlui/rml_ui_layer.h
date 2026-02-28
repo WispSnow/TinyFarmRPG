@@ -3,9 +3,12 @@
 #include <SDL3/SDL.h>
 
 #include <memory>
+#include <string>
+#include <string_view>
 
 namespace Rml {
 class Context;
+class ElementDocument;
 }
 
 class SystemInterface_SDL;
@@ -34,6 +37,9 @@ public:
     void update();
     void render();
     void setViewport(int width, int height, int offset_x = 0, int offset_y = 0);
+    [[nodiscard]] bool loadDocument(std::string_view document_path);
+    [[nodiscard]] bool reloadDocument();
+    [[nodiscard]] std::string_view getCurrentDocumentPath() const { return current_document_path_; }
 
     [[nodiscard]] Rml::Context* getContext() const { return context_; }
 
@@ -52,6 +58,8 @@ private:
     std::unique_ptr<RenderInterface_GL3_STB> render_interface_;
     std::unique_ptr<SystemInterface_SDL> system_interface_;
     Rml::Context* context_{nullptr};
+    Rml::ElementDocument* current_document_{nullptr};
+    std::string current_document_path_{};
 
     int viewport_width_{1};
     int viewport_height_{1};
