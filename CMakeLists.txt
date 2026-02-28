@@ -21,6 +21,7 @@ option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
 option(ENABLE_SCRIPTING "启用 Lua + Sol2 脚本宿主层" ON)
 option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
+option(ENABLE_RMLUI "启用 RmlUI" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
@@ -44,6 +45,9 @@ include(cmake/ScriptingDependencies.cmake)
 
 # Effekseer 依赖管理（可选）
 include(cmake/EffekseerDependencies.cmake)
+
+# RmlUi 依赖管理（可选）
+include(cmake/RmlUiDependencies.cmake)
 
 # ImGui配置
 include(cmake/ImGui.cmake)
@@ -73,6 +77,10 @@ endif()
 
 if(ENABLE_EFFEKSEER)
     setup_effekseer_dependencies()
+endif()
+
+if(ENABLE_RMLUI)
+    setup_rmlui_dependencies()
 endif()
 
 # ============================================
@@ -141,6 +149,15 @@ if(ENABLE_EFFEKSEER)
     )
 endif()
 
+if(ENABLE_RMLUI)
+    target_compile_definitions(engine PUBLIC TF_ENABLE_RMLUI)
+    target_link_libraries(engine
+        PUBLIC
+            rmlui_core
+            rmlui_debugger
+    )
+endif()
+
 # 创建可执行文件
 add_executable(${TARGET})
 
@@ -185,6 +202,7 @@ setup_windows_dll_copy(${TARGET})
 # ============================================
 
 option(BUILD_TOOLS "是否构建工具" ON)
+option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具（依赖 ENABLE_RMLUI）" ON)
 
 if(BUILD_TOOLS AND ENABLE_DEBUG_UI)
     add_subdirectory(tools)

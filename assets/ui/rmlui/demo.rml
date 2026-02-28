@@ -1,0 +1,12 @@
+<rml>
+<head>
+    <link type="text/rcss" href="demo.rcss"/>
+</head>
+<body>
+    <div id="demo-panel">
+        <div class="demo-title">RmlUi Integration Demo</div>
+        <p>RmlUi is active.</p>
+        <button>Hover &amp; Click</button>
+    </div>
+</body>
+</rml>
