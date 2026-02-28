@@ -1,12 +1,13 @@
 #pragma once
 #include <string_view>
 #include <string>
+#include <map>
 #include <unordered_map>
 #include <vector>
 #include <array>
-#include <variant>
 #include <functional>
 #include <memory>
+#include <cstdint>
 #include <SDL3/SDL.h>
 #include <glm/vec2.hpp>
 #include <entt/signal/sigh.hpp>
@@ -28,34 +29,42 @@ enum class ActionState {
     INACTIVE    // 动作未激活 (放在最后，不占用数组索引)
 };
 
+/// @brief 动作数据聚合：状态 + 回调信号 + 引用计数 + 调试名称
+struct ActionEntry {
+    static constexpr std::size_t CALLBACK_STATE_COUNT = static_cast<std::size_t>(ActionState::INACTIVE);
+
+    ActionState state = ActionState::INACTIVE;
+    uint8_t     active_count = 0;              ///< 当前有几个物理输入按住此动作
+    std::string name;                           ///< 调试用动作名称
+    std::array<entt::sigh<bool()>, CALLBACK_STATE_COUNT> signals;
+};
+
 /**
  * @brief 输入管理器类，负责处理输入事件和动作状态。
- * 
+ *
  * 该类管理输入事件，将按键转换为动作状态，并提供查询动作状态的功能。
  * 它还处理鼠标位置的逻辑坐标转换。
  */
 class InputManager final {
 private:
-    static constexpr std::size_t CALLBACK_STATE_COUNT = static_cast<std::size_t>(ActionState::INACTIVE);
-
     entt::dispatcher* dispatcher_;                                          ///< @brief 事件分发器
     engine::core::GameState* game_state_{nullptr};                           ///< @brief 游戏状态指针，用于查询窗口/逻辑尺寸
 
-    /** @brief 核心数据结构: 存储动作名称函数列表的映射
-     * 
-     * @note 每个动作有3个状态: PRESSED, HELD, RELEASED，每个状态对应一个回调函数
-     * @note 绑定动作时再插入元素（懒加载），初始化时为空
-     */
-    std::unordered_map<entt::id_type, std::array<entt::sigh<bool()>, CALLBACK_STATE_COUNT>> actions_to_func_;
- 
-    /// @brief 存储每个动作的当前状态
-    std::unordered_map<entt::id_type, ActionState> action_states_;
+    /// @brief 动作 ID → 动作数据（状态 + 回调 + 引用计数 + 调试信息）
+    std::unordered_map<entt::id_type, ActionEntry> actions_;
 
-    /// @brief 存储动作 ID 对应的动作名称，用于调试显示
-    std::unordered_map<entt::id_type, std::string> action_id_to_name_;
+    /// @brief 动作 ID 的稳定顺序列表（按配置加载顺序），用于 dispatchActionCallbacks
+    std::vector<entt::id_type> action_dispatch_order_;
 
-    /// @brief 从输入到关联的动作名称列表
-    std::unordered_map<std::variant<SDL_Scancode, Uint32>, std::vector<entt::id_type>> input_to_actions_;
+    /// @brief 键盘 scancode → 关联的动作 ID 列表
+    std::unordered_map<SDL_Scancode, std::vector<entt::id_type>> key_to_actions_;
+    /// @brief 鼠标按钮 → 关联的动作 ID 列表
+    std::unordered_map<Uint32, std::vector<entt::id_type>> mouse_to_actions_;
+
+    /// @brief 键盘按键当前是否按下（边沿检测）
+    std::unordered_map<SDL_Scancode, bool> key_down_states_;
+    /// @brief 鼠标按钮当前是否按下（边沿检测）
+    std::unordered_map<Uint32, bool> mouse_down_states_;
 
     glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
     glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
@@ -87,7 +96,7 @@ public:
 
 
     /**
-     * @brief 兼容入口：执行一次“消费上一 tick 的边沿状态 -> 采样事件 -> 分发回调”。
+     * @brief 兼容入口：执行一次"消费上一 tick 的边沿状态 -> 采样事件 -> 分发回调"。
      *
      * 该接口保留给旧调用路径和测试；fixed-step 主循环应改用 sampleInputEvents /
      * dispatchActionCallbacks / consumeTick 三段式接口。
@@ -127,8 +136,7 @@ public:
     glm::vec2 getMouseWheelDelta() const;                            ///< @brief 获取鼠标滚轮 delta
     void setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback);
 
-    const std::unordered_map<entt::id_type, ActionState>& getActionStatesDebug() const { return action_states_; }
-    const std::unordered_map<entt::id_type, std::string>& getActionNamesDebug() const { return action_id_to_name_; }
+    const std::unordered_map<entt::id_type, ActionEntry>& getActionsDebug() const { return actions_; }
 
     /**
      * @brief 调试方法：手动设置动作状态
@@ -145,12 +153,11 @@ private:
 
     void processEvent(const SDL_Event& event);                      ///< @brief 处理 SDL 事件（将按键转换为动作状态）
     [[nodiscard]] bool loadConfig(std::string_view config_path);
-    void initializeMappings(const std::unordered_map<std::string, std::vector<std::string>>& actions_to_keyname);
+    void initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname);
 
-    void updateActionState(entt::id_type action_name_id, bool is_input_active, bool is_repeat_event); ///< @brief 辅助更新动作状态
     SDL_Scancode scancodeFromString(std::string_view key_name);     ///< @brief 将字符串键名转换为 SDL_Scancode
     Uint32 mouseButtonFromString(std::string_view button_name);     ///< @brief 将字符串按钮名转换为 SDL_Button
     void recalculateLogicalMousePosition();                         ///< @brief 根据当前窗口/逻辑尺寸更新逻辑坐标
 };
 
-} // namespace engine::input 
+} // namespace engine::input

@@ -55,37 +55,35 @@ void InputDebugPanel::draw(bool& is_open) {
     ImGui::Separator();
     ImGui::Text("Action States:");
     ImGui::Indent();
-    const auto& states = input_manager_.getActionStatesDebug();
-    const auto& names = input_manager_.getActionNamesDebug();
-    if (states.empty()) {
+    const auto& actions = input_manager_.getActionsDebug();
+    if (actions.empty()) {
         ImGui::TextDisabled("<no actions>");
     } else {
-        if (ImGui::BeginTable("InputActionsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
+        if (ImGui::BeginTable("InputActionsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableSetupColumn("Action");
             ImGui::TableSetupColumn("ID");
             ImGui::TableSetupColumn("State");
+            ImGui::TableSetupColumn("Keys");
             ImGui::TableSetupColumn("Press");
             ImGui::TableSetupColumn("Release");
             ImGui::TableHeadersRow();
 
-            for (const auto& [id, state] : states) {
-                const char* action_name = "<unnamed>";
-                if (auto it = names.find(id); it != names.end()) {
-                    action_name = it->second.c_str();
-                }
-
+            for (const auto& [id, entry] : actions) {
                 ImGui::TableNextRow();
 
                 ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(action_name);
+                ImGui::TextUnformatted(entry.name.c_str());
 
                 ImGui::TableSetColumnIndex(1);
                 ImGui::Text("0x%016llX", toUnsignedLongLong(id));
 
                 ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(actionStateToString(state));
+                ImGui::TextUnformatted(actionStateToString(entry.state));
 
                 ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%u", static_cast<unsigned>(entry.active_count));
+
+                ImGui::TableSetColumnIndex(4);
                 ImGui::PushID(makeImGuiId(id, 0u));
                 if (ImGui::Button("Press")) {
                     input_manager_.setActionStateDebug(id, engine::input::ActionState::PRESSED);
@@ -96,7 +94,7 @@ void InputDebugPanel::draw(bool& is_open) {
                 }
                 ImGui::PopID();
 
-                ImGui::TableSetColumnIndex(4);
+                ImGui::TableSetColumnIndex(5);
                 ImGui::PushID(makeImGuiId(id, 1u));
                 if (ImGui::Button("Release")) {
                     input_manager_.setActionStateDebug(id, engine::input::ActionState::RELEASED);
