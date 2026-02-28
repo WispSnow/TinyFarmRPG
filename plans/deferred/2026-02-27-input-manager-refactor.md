@@ -63,7 +63,7 @@
 
 ---
 
-## P1 — 结构性改进
+## P1 — 结构性改进 （已完成）
 
 ### INPUT-004 合并三个 per-action map 为单一结构
 - **现状**：`actions_to_func_`、`action_states_`、`action_id_to_name_` 三个 map 以相同的 `entt::id_type` 为 key（`input_manager.h:49-55`），查找和遍历需要分别访问，缓存不友好且容易不一致。
@@ -89,7 +89,7 @@
 
 ---
 
-## P2 — 健壮性与可维护性
+## P2 — 健壮性与可维护性 （已完成）
 
 ### INPUT-003 拆分 `std::variant<SDL_Scancode, Uint32>` map key（结构优化）
 - **现状**：`input_to_actions_` 使用 `std::variant<SDL_Scancode, Uint32>` 作为 key（`input_manager.h:58`）。

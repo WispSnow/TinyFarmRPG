@@ -30,9 +30,7 @@
 #include "game/defs/audio_ids.h"
 #include "game/defs/commands.h"
 #include "game/save/save_service.h"
-#ifdef TF_ENABLE_SCRIPTING
 #include "engine/script/script_host.h"
-#endif
 #include "game/system/camera_follow_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
@@ -270,12 +268,10 @@ void GameScene::snapshotInterpolationState() {
 void GameScene::clean() {
     context_.getGLRenderer().setVfxBackend(nullptr);
 
-#ifdef TF_ENABLE_SCRIPTING
     if (services_ && services_->script_host) {
         services_->script_host->shutdown();
         services_->script_host.reset();
     }
-#endif
 #ifdef TF_ENABLE_DEBUG_UI
     if (auto* vfx_panel = context_.getDebugUIManager().getPanel<engine::debug::VfxDebugPanel>(
             engine::debug::PanelCategory::Engine)) {

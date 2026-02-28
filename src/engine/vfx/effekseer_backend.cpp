@@ -1,7 +1,5 @@
 #include "engine/vfx/effekseer_backend.h"
 
-#ifdef TF_ENABLE_EFFEKSEER
-
 #include <entt/core/hashed_string.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -228,5 +226,3 @@ std::uint32_t EffekseerBackend::countActiveInstances(const VfxChannel channel) c
 }
 
 } // namespace engine::vfx
-
-#endif // TF_ENABLE_EFFEKSEER

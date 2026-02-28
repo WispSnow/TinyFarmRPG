@@ -617,14 +617,12 @@ bool GameApp::initInputManager()
         spdlog::error("初始化输入管理器失败。");
         return false;
     }
-#ifdef TF_ENABLE_RMLUI
     input_manager_->setRmlUiEventForwarder([this](SDL_Event& event) {
         if (gl_renderer_) {
             return gl_renderer_->handleRmlUiEvent(event);
         }
         return true;
     });
-#endif
 #ifdef TF_ENABLE_DEBUG_UI
     input_manager_->setImGuiEventForwarder([this](const SDL_Event& event) {
         if (gl_renderer_) {

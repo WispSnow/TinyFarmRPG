@@ -3,9 +3,7 @@
 #include "game/battle/battle_types.h"
 #include "game/data/rpg_data.h"
 
-#ifdef TF_ENABLE_SCRIPTING
 #include <sol/sol.hpp>
-#endif
 
 #include <string>
 #include <string_view>
@@ -28,10 +26,8 @@ public:
                                 int& out_value,
                                 std::string& out_error);
 
-#ifdef TF_ENABLE_SCRIPTING
 private:
     sol::state lua_{};
-#endif
 };
 
 } // namespace game::battle

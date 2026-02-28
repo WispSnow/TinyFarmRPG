@@ -24,9 +24,7 @@
 #include "engine/utils/math.h"
 #include "engine/vfx/vfx_service.h"
 #include "engine/vfx/vfx_types.h"
-#ifdef TF_ENABLE_EFFEKSEER
 #include "engine/vfx/effekseer_backend_factory.h"
-#endif
 #include <entt/signal/dispatcher.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/common.hpp>
@@ -1452,7 +1450,6 @@ void AudioVisualTest::onImGui(engine::core::Context& context) {
 // ============================================
 // Effekseer VFX Visual Test
 // ============================================
-#ifdef TF_ENABLE_EFFEKSEER
 
 namespace {
 
@@ -1654,5 +1651,3 @@ void EffekseerVfxVisualTest::spawnEffect(std::string_view effect_path) {
 }
 
 } // namespace tools::visual
-
-#endif // TF_ENABLE_EFFEKSEER
