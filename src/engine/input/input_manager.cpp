@@ -33,6 +33,30 @@ namespace {
     };
 }
 
+#ifdef TF_ENABLE_DEBUG_UI
+[[nodiscard]] bool isImGuiBlockingRmlUi(const SDL_Event& event) {
+    if (!ImGui::GetCurrentContext()) {
+        return false;
+    }
+
+    const ImGuiIO& io = ImGui::GetIO();
+    switch (event.type) {
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+        case SDL_EVENT_TEXT_INPUT:
+        case SDL_EVENT_TEXT_EDITING:
+            return io.WantCaptureKeyboard;
+        case SDL_EVENT_MOUSE_MOTION:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+        case SDL_EVENT_MOUSE_WHEEL:
+            return io.WantCaptureMouse;
+        default:
+            return false;
+    }
+}
+#endif
+
 } // namespace
 
 std::unique_ptr<InputManager> InputManager::create(entt::dispatcher* dispatcher,
@@ -95,8 +119,16 @@ void InputManager::sampleInputEvents() {
     // 处理所有待处理的 SDL 事件（这将更新 action_states_ 与鼠标数据）
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        bool imgui_blocks_rmlui = false;
+#ifdef TF_ENABLE_DEBUG_UI
+        if (imgui_event_callback_) {
+            imgui_event_callback_(event);
+        }
+        imgui_blocks_rmlui = isImGuiBlockingRmlUi(event);
+#endif
+
         bool should_propagate = true;
-        if (rmlui_event_callback_) {
+        if (!imgui_blocks_rmlui && rmlui_event_callback_) {
             // RmlUi 6.x: true=继续传播，false=已消费（5.x 语义相反）。
             should_propagate = rmlui_event_callback_(event);
         }
@@ -104,12 +136,6 @@ void InputManager::sampleInputEvents() {
         // 即使被 UI 消费，也要放行释放事件，避免动作状态卡在 HELD。
         const bool is_release_event =
             (event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_MOUSE_BUTTON_UP);
-
-#ifdef TF_ENABLE_DEBUG_UI
-        if (imgui_event_callback_ && should_propagate) {
-            imgui_event_callback_(event);
-        }
-#endif
 
         if (!should_propagate && !is_release_event) {
             continue;
