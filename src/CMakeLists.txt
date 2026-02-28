@@ -132,46 +132,40 @@ if(ENABLE_DEBUG_UI)
     )
 endif()
 
-if(ENABLE_SCRIPTING)
-    target_sources(engine PRIVATE
-        engine/script/script_entity_handle.cpp
-        engine/script/script_host.cpp
-        engine/script/script_binding_utils.cpp
-    )
+target_sources(engine PRIVATE
+    engine/script/script_entity_handle.cpp
+    engine/script/script_host.cpp
+    engine/script/script_binding_utils.cpp
+)
+
+target_sources(engine PRIVATE
+    engine/vfx/effekseer_backend.cpp
+    engine/vfx/effekseer_backend_factory.cpp
+)
+
+set(_rmlui_source_root "${CMAKE_SOURCE_DIR}/external/RmlUi-6.2")
+if(DEFINED RMLUI_SOURCE_DIR_RESOLVED AND EXISTS "${RMLUI_SOURCE_DIR_RESOLVED}")
+    set(_rmlui_source_root "${RMLUI_SOURCE_DIR_RESOLVED}")
 endif()
 
-if(ENABLE_EFFEKSEER)
-    target_sources(engine PRIVATE
-        engine/vfx/effekseer_backend.cpp
-        engine/vfx/effekseer_backend_factory.cpp
-    )
-endif()
+set(_rmlui_platform_sdl_src "${_rmlui_source_root}/Backends/RmlUi_Platform_SDL.cpp")
+set(_rmlui_renderer_gl3_src "${_rmlui_source_root}/Backends/RmlUi_Renderer_GL3.cpp")
 
-if(ENABLE_RMLUI)
-    set(_rmlui_source_root "${CMAKE_SOURCE_DIR}/external/RmlUi-6.2")
-    if(DEFINED RMLUI_SOURCE_DIR_RESOLVED AND EXISTS "${RMLUI_SOURCE_DIR_RESOLVED}")
-        set(_rmlui_source_root "${RMLUI_SOURCE_DIR_RESOLVED}")
-    endif()
+target_sources(engine PRIVATE
+    ${_rmlui_platform_sdl_src}
+    ${_rmlui_renderer_gl3_src}
+    engine/ui/rmlui/rml_ui_layer.cpp
+    engine/ui/rmlui/render_interface_gl3_stb.cpp
+)
 
-    set(_rmlui_platform_sdl_src "${_rmlui_source_root}/Backends/RmlUi_Platform_SDL.cpp")
-    set(_rmlui_renderer_gl3_src "${_rmlui_source_root}/Backends/RmlUi_Renderer_GL3.cpp")
+target_include_directories(engine PRIVATE
+    "${_rmlui_source_root}/Backends"
+)
 
-    target_sources(engine PRIVATE
-        ${_rmlui_platform_sdl_src}
-        ${_rmlui_renderer_gl3_src}
-        engine/ui/rmlui/rml_ui_layer.cpp
-        engine/ui/rmlui/render_interface_gl3_stb.cpp
-    )
-
-    target_include_directories(engine PRIVATE
-        "${_rmlui_source_root}/Backends"
-    )
-
-    target_compile_definitions(engine PRIVATE
-        RMLUI_SDL_VERSION_MAJOR=3
-        RMLUI_GL3_CUSTOM_LOADER=<glad/glad.h>
-    )
-endif()
+target_compile_definitions(engine PRIVATE
+    RMLUI_SDL_VERSION_MAJOR=3
+    RMLUI_GL3_CUSTOM_LOADER=<glad/glad.h>
+)
 
 # ============================================
 # Game 源文件
@@ -261,11 +255,9 @@ target_sources(game PRIVATE
     game/scene/battle_scene.cpp
 )
 
-if(ENABLE_SCRIPTING)
-    target_sources(game PRIVATE
-        game/script/tinyfarm_script_module.cpp
-    )
-endif()
+target_sources(game PRIVATE
+    game/script/tinyfarm_script_module.cpp
+)
 
 # Game Debug 面板（仅在启用 Debug UI 时编译）
 if(ENABLE_DEBUG_UI)

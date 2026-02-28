@@ -95,12 +95,10 @@ if(ENABLE_DEBUG_UI)
     )
 endif()
 
-if(ENABLE_SCRIPTING)
-    list(APPEND TEST_SOURCES
-        engine/script/script_host_security_test.cpp
-        engine/script/script_host_lifecycle_test.cpp
-    )
-endif()
+list(APPEND TEST_SOURCES
+    engine/script/script_host_security_test.cpp
+    engine/script/script_host_lifecycle_test.cpp
+)
 
 add_executable(engine_tests ${TEST_SOURCES})
 
@@ -180,12 +178,10 @@ set(GAME_TEST_SOURCES
     game/ui_layout_integration_test.cpp
 )
 
-if(ENABLE_SCRIPTING)
-    list(APPEND GAME_TEST_SOURCES
-        game/script_host_smoke_test.cpp
-        game/script_host_command_bridge_test.cpp
-    )
-endif()
+list(APPEND GAME_TEST_SOURCES
+    game/script_host_smoke_test.cpp
+    game/script_host_command_bridge_test.cpp
+)
 
 if(ENABLE_DEBUG_UI)
     list(APPEND GAME_TEST_SOURCES

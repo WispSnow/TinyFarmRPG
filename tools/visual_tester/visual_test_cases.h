@@ -256,8 +256,6 @@ public:
     void onImGui(engine::core::Context& context) override;
 };
 
-#ifdef TF_ENABLE_EFFEKSEER
-
 } // namespace tools::visual
 
 namespace engine::vfx {
@@ -294,7 +292,5 @@ private:
 
     std::vector<std::string> effect_paths_{};
 };
-
-#endif // TF_ENABLE_EFFEKSEER
 
 } // namespace tools::visual

@@ -19,9 +19,6 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 # 注意：可以在Dependencies.cmake中为每个库单独指定
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
-option(ENABLE_SCRIPTING "启用 Lua + Sol2 脚本宿主层" ON)
-option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
-option(ENABLE_RMLUI "启用 RmlUI" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
@@ -70,18 +67,9 @@ include(CTest)
 
 # 调用依赖配置函数（定义在Dependencies.cmake中）
 setup_project_dependencies()
-
-if(ENABLE_SCRIPTING)
-    setup_scripting_dependencies()
-endif()
-
-if(ENABLE_EFFEKSEER)
-    setup_effekseer_dependencies()
-endif()
-
-if(ENABLE_RMLUI)
-    setup_rmlui_dependencies()
-endif()
+setup_scripting_dependencies()
+setup_effekseer_dependencies()
+setup_rmlui_dependencies()
 
 # ============================================
 # 构建目标
@@ -124,39 +112,27 @@ target_link_libraries(game
         engine
 )
 
-if(ENABLE_SCRIPTING)
-    target_compile_definitions(engine PUBLIC TF_ENABLE_SCRIPTING)
-    target_link_libraries(engine
-        PUBLIC
-            Lua::Lua
-            sol2::sol2
-    )
+target_link_libraries(engine
+    PUBLIC
+        Lua::Lua
+        sol2::sol2
+)
 
-    target_compile_definitions(game PUBLIC TF_ENABLE_SCRIPTING)
-endif()
+target_link_libraries(engine
+    PUBLIC
+        Effekseer
+        EffekseerRendererGL
+)
+target_include_directories(engine
+    PUBLIC
+        ${EFFEKSEER_RUNTIME_INCLUDE_DIRS}
+)
 
-if(ENABLE_EFFEKSEER)
-    target_compile_definitions(engine PUBLIC TF_ENABLE_EFFEKSEER)
-    target_compile_definitions(game PUBLIC TF_ENABLE_EFFEKSEER)
-    target_link_libraries(engine
-        PUBLIC
-            Effekseer
-            EffekseerRendererGL
-    )
-    target_include_directories(engine
-        PUBLIC
-            ${EFFEKSEER_RUNTIME_INCLUDE_DIRS}
-    )
-endif()
-
-if(ENABLE_RMLUI)
-    target_compile_definitions(engine PUBLIC TF_ENABLE_RMLUI)
-    target_link_libraries(engine
-        PUBLIC
-            rmlui_core
-            rmlui_debugger
-    )
-endif()
+target_link_libraries(engine
+    PUBLIC
+        rmlui_core
+        rmlui_debugger
+)
 
 # 创建可执行文件
 add_executable(${TARGET})
@@ -186,10 +162,8 @@ setup_compiler_options(${TARGET})
 # 配置资源文件复制（定义在BuildHelpers.cmake中）
 setup_asset_copy(${TARGET})
 
-# 配置脚本文件复制（定义在BuildHelpers.cmake中，仅脚本开启时）
-if(ENABLE_SCRIPTING)
-    setup_script_copy(${TARGET})
-endif()
+# 配置脚本文件复制（定义在BuildHelpers.cmake中）
+setup_script_copy(${TARGET})
 
 # 配置配置文件复制（定义在BuildHelpers.cmake中）
 setup_config_copy(${TARGET})
@@ -202,7 +176,7 @@ setup_windows_dll_copy(${TARGET})
 # ============================================
 
 option(BUILD_TOOLS "是否构建工具" ON)
-option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具（依赖 ENABLE_RMLUI）" ON)
+option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
 
 if(BUILD_TOOLS AND ENABLE_DEBUG_UI)
     add_subdirectory(tools)

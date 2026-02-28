@@ -1,8 +1,6 @@
 #include "game/battle/battle_formula_evaluator.h"
 
-#ifdef TF_ENABLE_SCRIPTING
 #include <sol/sol.hpp>
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +8,6 @@
 
 namespace game::battle {
 
-#ifdef TF_ENABLE_SCRIPTING
 namespace {
 
 const std::string kChunkName = "battle_formula_evaluator";
@@ -53,12 +50,9 @@ bool readNumericResult(const sol::object& value, int& out_value) {
 }
 
 } // namespace
-#endif
 
 BattleFormulaEvaluator::BattleFormulaEvaluator() {
-#ifdef TF_ENABLE_SCRIPTING
     lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string, sol::lib::table);
-#endif
 }
 
 bool BattleFormulaEvaluator::evaluate(const std::string_view formula,
@@ -73,12 +67,6 @@ bool BattleFormulaEvaluator::evaluate(const std::string_view formula,
         return false;
     }
 
-#ifndef TF_ENABLE_SCRIPTING
-    (void)source;
-    (void)target;
-    out_error = "Lua scripting is disabled";
-    return false;
-#else
     installUnitTable(lua_, "a", source);
     installUnitTable(lua_, "b", target);
 
@@ -111,7 +99,6 @@ bool BattleFormulaEvaluator::evaluate(const std::string_view formula,
 
     out_error.clear();
     return true;
-#endif
 }
 
 bool BattleFormulaEvaluator::evaluate(const game::data::DamageFormulaData& damage_formula,

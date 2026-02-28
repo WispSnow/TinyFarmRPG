@@ -51,13 +51,8 @@ TEST(BattleFormulaEvaluatorTest, EvaluatesFormulaWithBattleParams) {
     std::string error{};
     const bool ok = evaluator.evaluate("a.atk * 4 - b.def * 2", source, target, value, error);
 
-#ifdef TF_ENABLE_SCRIPTING
     ASSERT_TRUE(ok) << error;
     EXPECT_EQ(value, 96);
-#else
-    EXPECT_FALSE(ok);
-    EXPECT_NE(error.find("disabled"), std::string::npos);
-#endif
 }
 
 TEST(BattleFormulaEvaluatorTest, SupportsMathHelpersAndMhpMmpFields) {
@@ -69,12 +64,8 @@ TEST(BattleFormulaEvaluatorTest, SupportsMathHelpersAndMhpMmpFields) {
     std::string error{};
     const bool ok = evaluator.evaluate("math.max(0, a.mhp - b.mhp) + (a.mmp - b.mmp)", source, target, value, error);
 
-#ifdef TF_ENABLE_SCRIPTING
     ASSERT_TRUE(ok) << error;
     EXPECT_EQ(value, 110);
-#else
-    EXPECT_FALSE(ok);
-#endif
 }
 
 TEST(BattleFormulaEvaluatorTest, RejectsInvalidFormulaSyntax) {
@@ -115,12 +106,8 @@ TEST(BattleFormulaEvaluatorTest, SupportsDamageFormulaDataOverload) {
     std::string error{};
     const bool ok = evaluator.evaluate(damage, source, target, value, error);
 
-#ifdef TF_ENABLE_SCRIPTING
     ASSERT_TRUE(ok) << error;
     EXPECT_EQ(value, 31);
-#else
-    EXPECT_FALSE(ok);
-#endif
 }
 
 } // namespace

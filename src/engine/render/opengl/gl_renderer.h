@@ -76,9 +76,7 @@ private:
     std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
     std::unique_ptr<UIPass> ui_pass_;
-#ifdef TF_ENABLE_RMLUI
     std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_layer_;
-#endif
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<ImGuiLayer> imgui_layer_;
     engine::debug::DebugUIManager* debug_ui_manager_{nullptr};

@@ -2,8 +2,6 @@
 
 #include "engine/vfx/vfx_backend.h"
 
-#ifdef TF_ENABLE_EFFEKSEER
-
 #include <Effekseer.h>
 #include <EffekseerRendererGL.h>
 
@@ -52,5 +50,3 @@ private:
 };
 
 } // namespace engine::vfx
-
-#endif // TF_ENABLE_EFFEKSEER

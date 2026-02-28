@@ -46,9 +46,7 @@
 #include "game/world/world_state.h"
 #include "game/world/map_manager.h"
 #include "engine/vfx/vfx_service.h"
-#ifdef TF_ENABLE_SCRIPTING
 #include "engine/script/script_host.h"
-#endif
 
 namespace game::runtime {
 

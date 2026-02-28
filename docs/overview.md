@@ -18,8 +18,8 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 - **数学库**: GLM
 - **日志**: spdlog
 - **JSON 解析**: nlohmann-json
-- **脚本宿主（可选）**: Lua 5.4.8 + Sol2 v3.5.0（project version 4.0.0）
-- **粒子特效（可选）**: Effekseer 1.7.3.0 + EffekseerRendererGL（通过 `engine::vfx::VfxBackend` 接口接入）
+- **脚本宿主**: Lua 5.4.8 + Sol2 v3.5.0（project version 4.0.0）
+- **粒子特效**: Effekseer 1.7.3.0 + EffekseerRendererGL（通过 `engine::vfx::VfxBackend` 接口接入）
 - **测试框架**: Google Test
 - **地图编辑**: Tiled (生成 .tmj 格式地图)
 
@@ -71,7 +71,7 @@ TinyFarmRPG/
 │   ├── shaders/                 #   GLSL 着色器 (.vert/.frag)
 │   ├── textures/                #   纹理资源 (.png/.gif/.json)
 │   └── vfx/                     #   Effekseer 特效资源 (.efkefc/.efk)
-├── scripts/                     # Lua 脚本（可选，ENABLE_SCRIPTING=ON 时部署）
+├── scripts/                     # Lua 脚本
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/ImGui集成等）
 ├── external/                    # 第三方库源码（SDL/EnTT/ImGui/Lua/Sol2/Effekseer 等）

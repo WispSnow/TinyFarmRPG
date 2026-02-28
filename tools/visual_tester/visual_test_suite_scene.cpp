@@ -66,9 +66,7 @@ void VisualTestSuiteScene::buildTestCases() {
     test_cases_.push_back(std::make_unique<UiVisualTest>());
     test_cases_.push_back(std::make_unique<TextRenderingVisualTest>());
     test_cases_.push_back(std::make_unique<AudioVisualTest>());
-#ifdef TF_ENABLE_EFFEKSEER
     test_cases_.push_back(std::make_unique<EffekseerVfxVisualTest>());
-#endif
 }
 
 void VisualTestSuiteScene::setActiveTest(int index) {

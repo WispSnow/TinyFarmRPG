@@ -21,9 +21,7 @@
 #include "engine/utils/json_file_loader.h"
 #include "engine/vfx/null_vfx_backend.h"
 #include "engine/vfx/vfx_service.h"
-#ifdef TF_ENABLE_EFFEKSEER
 #include "engine/vfx/effekseer_backend_factory.h"
-#endif
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #endif
@@ -40,10 +38,8 @@
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
-#ifdef TF_ENABLE_SCRIPTING
 #include "engine/script/script_host.h"
 #include "game/script/tinyfarm_script_module.h"
-#endif
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
 #include "game/system/appearance_system.h"
@@ -575,12 +571,10 @@ void configureCamera(engine::core::Context& context) {
 void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeServices& services) {
     if (!services.vfx_service) {
         std::unique_ptr<engine::vfx::VfxBackend> backend{};
-#ifdef TF_ENABLE_EFFEKSEER
         backend = engine::vfx::createEffekseerBackend();
         if (!backend) {
             spdlog::warn("EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
         }
-#endif
         if (!backend) {
             backend = std::make_unique<engine::vfx::NullVfxBackend>();
         }
@@ -590,7 +584,6 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
     context.getGLRenderer().setVfxBackend(services.vfx_service ? services.vfx_service->backend() : nullptr);
 }
 
-#ifdef TF_ENABLE_SCRIPTING
 void tryInitScriptHost(entt::registry& registry,
                        engine::core::Context& context,
                        game::runtime::GameRuntimeServices& services) {
@@ -616,7 +609,6 @@ void tryInitScriptHost(entt::registry& registry,
         spdlog::info("ScriptHost: 启动脚本执行成功 {}", bootstrap_script.string());
     }
 }
-#endif
 
 } // namespace
 
@@ -693,9 +685,7 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
 
     configureCamera(params.context);
     initVfxService(params.context, params.services);
-#ifdef TF_ENABLE_SCRIPTING
     tryInitScriptHost(params.registry, params.context, params.services);
-#endif
     return true;
 }
 

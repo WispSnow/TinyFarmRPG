@@ -69,7 +69,7 @@ private:
     glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
     glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
     glm::vec2 mouse_wheel_delta_{0.0f, 0.0f};                       ///< @brief 鼠标滚轮 delta
-    std::function<bool(SDL_Event&)> rmlui_event_callback_;  // 不随 TF_ENABLE_RMLUI 守卫：API 始终可用，回调为空时自动跳过
+    std::function<bool(SDL_Event&)> rmlui_event_callback_;  ///< RmlUI 事件转发回调，回调为空时自动跳过
 #ifdef TF_ENABLE_DEBUG_UI
     std::function<void(const SDL_Event&)> imgui_event_callback_;
 #endif
