@@ -43,7 +43,7 @@ setup_asset_copy(ui_tester)
 setup_config_copy(ui_tester)
 setup_windows_dll_copy(ui_tester)
 
-if(ENABLE_RMLUI)
+if(ENABLE_RMLUI AND BUILD_RMLUI_TESTER)
     add_executable(rmlui_tester
         rmlui_tester/main.cpp
         rmlui_tester/rmlui_test_scene.cpp
