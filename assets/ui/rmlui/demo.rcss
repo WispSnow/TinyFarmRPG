@@ -1,0 +1,41 @@
+body {
+    margin: 0;
+    font-size: 16dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #ffffff;
+}
+
+#demo-panel {
+    position: absolute;
+    left: 16dp;
+    top: 16dp;
+    width: 220dp;
+    padding: 12dp;
+    background-color: #20283ad8;
+    border: 1dp solid #7aa2f7ff;
+    border-radius: 8dp;
+}
+
+.demo-title {
+    margin-bottom: 8dp;
+    font-size: 18dp;
+    font-weight: bold;
+    color: #9ece6aff;
+}
+
+button {
+    width: 100%;
+    margin-top: 6dp;
+    padding: 8dp 10dp;
+    background-color: #3b4261ff;
+    border: 1dp solid #7aa2f7ff;
+    color: #ffffff;
+}
+
+button:hover {
+    background-color: #44537bff;
+}
+
+button:active {
+    background-color: #2f3650ff;
+}

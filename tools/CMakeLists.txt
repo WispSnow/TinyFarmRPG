@@ -43,6 +43,29 @@ setup_asset_copy(ui_tester)
 setup_config_copy(ui_tester)
 setup_windows_dll_copy(ui_tester)
 
+if(ENABLE_RMLUI AND BUILD_RMLUI_TESTER)
+    add_executable(rmlui_tester
+        rmlui_tester/main.cpp
+        rmlui_tester/rmlui_test_scene.cpp
+    )
+
+    target_link_libraries(rmlui_tester
+        PRIVATE
+            engine
+    )
+
+    target_include_directories(rmlui_tester
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/rmlui_tester
+    )
+
+    setup_compiler_options(rmlui_tester)
+    setup_asset_copy(rmlui_tester)
+    setup_config_copy(rmlui_tester)
+    setup_windows_dll_copy(rmlui_tester)
+endif()
+
 add_executable(scheduler_dot_dump
     scheduler_dot_dump/main.cpp
 )

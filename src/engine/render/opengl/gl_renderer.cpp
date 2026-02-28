@@ -1,6 +1,9 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/render/opengl/render_context.h"
+#ifdef TF_ENABLE_RMLUI
+#include "engine/ui/rmlui/rml_ui_layer.h"
+#endif
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/render/opengl/imgui_layer.h"
 #endif
@@ -79,6 +82,12 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("初始化 ViewportManager 失败。");
         return false;
     }
+#ifdef TF_ENABLE_RMLUI
+    if (!initRmlUiLayer()) {
+        spdlog::error("创建 RmlUILayer 失败。");
+        return false;
+    }
+#endif
     shader_library_ = std::make_unique<ShaderLibrary>();
 
     // 初始化各个通道：场景、光照、自发光、泛光、合成、UI
@@ -375,6 +384,52 @@ void GLRenderer::endDebugUI() {
 #endif
 }
 
+bool GLRenderer::handleRmlUiEvent(SDL_Event& event) {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return true;
+    }
+    return rmlui_layer_->processEvent(event);
+#else
+    (void)event;
+    return true;
+#endif
+}
+
+bool GLRenderer::loadRmlUiDocument(std::string_view path) {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return false;
+    }
+    return rmlui_layer_->loadDocument(path);
+#else
+    (void)path;
+    return false;
+#endif
+}
+
+bool GLRenderer::reloadRmlUiDocument() {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return false;
+    }
+    return rmlui_layer_->reloadDocument();
+#else
+    return false;
+#endif
+}
+
+std::string GLRenderer::getCurrentRmlUiDocumentPath() const {
+#ifdef TF_ENABLE_RMLUI
+    if (!rmlui_layer_) {
+        return {};
+    }
+    return std::string(rmlui_layer_->getCurrentDocumentPath());
+#else
+    return {};
+#endif
+}
+
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
 #ifdef TF_ENABLE_DEBUG_UI
     if (!imgui_layer_) {
@@ -593,6 +648,20 @@ void GLRenderer::present() {
         ui_pass_->getLastIndexCount()
     };
 
+#ifdef TF_ENABLE_RMLUI
+    if (rmlui_layer_) {
+        const int viewport_x = static_cast<int>(std::round(viewport.pos.x));
+        const int viewport_y = static_cast<int>(std::round(viewport.pos.y));
+        const int viewport_w = static_cast<int>(std::round(viewport.size.x));
+        const int viewport_h = static_cast<int>(std::round(viewport.size.y));
+        rmlui_layer_->setViewport(viewport_w, viewport_h, viewport_x, viewport_y);
+        rmlui_layer_->update();
+        rmlui_layer_->render();
+        // RmlUi 的 GL3 backend 会关闭 GL_FRAMEBUFFER_SRGB，需在本管线中显式恢复。
+        glEnable(GL_FRAMEBUFFER_SRGB);
+    }
+#endif
+
 #ifdef TF_ENABLE_DEBUG_UI
     // 9) 如果启用 Debug UI，则在最后渲染 ImGui 界面（@Window Pixels / full window）
     if (debug_ui_enabled_) {
@@ -618,6 +687,17 @@ void GLRenderer::resize(int width, int height) {
     // 仅更新视口管理器（letterbox），离屏缓冲保持逻辑分辨率
     viewport_manager_->setWindowSize(glm::vec2(width, height));
     viewport_manager_->update();
+#ifdef TF_ENABLE_RMLUI
+    if (rmlui_layer_) {
+        const auto viewport = viewport_manager_->getViewport();
+        rmlui_layer_->setViewport(
+            static_cast<int>(std::round(viewport.size.x)),
+            static_cast<int>(std::round(viewport.size.y)),
+            static_cast<int>(std::round(viewport.pos.x)),
+            static_cast<int>(std::round(viewport.pos.y))
+        );
+    }
+#endif
 }
 
 void GLRenderer::clean() {
@@ -653,6 +733,12 @@ void GLRenderer::clean() {
         ui_pass_->clean();
         ui_pass_.reset();
     }
+#ifdef TF_ENABLE_RMLUI
+    if (rmlui_layer_) {
+        rmlui_layer_->clean();
+        rmlui_layer_.reset();
+    }
+#endif
     pass_stats_ = {};
     scene_color_tex_ = 0;
     light_color_tex_ = 0;
@@ -854,6 +940,30 @@ bool GLRenderer::initImGuiLayer() {
     imgui_layer_ = ImGuiLayer::create(render_context_->window(), render_context_->context());
     if (!imgui_layer_) {
         spdlog::error("创建 ImGuiLayer 失败。");
+        return false;
+    }
+    return true;
+#else
+    return true;
+#endif
+}
+
+bool GLRenderer::initRmlUiLayer() {
+#ifdef TF_ENABLE_RMLUI
+    if (!render_context_ || !viewport_manager_) {
+        return false;
+    }
+
+    const auto viewport = viewport_manager_->getViewport();
+    rmlui_layer_ = engine::ui::rmlui::RmlUILayer::create(
+        render_context_->window(),
+        static_cast<int>(std::round(viewport.size.x)),
+        static_cast<int>(std::round(viewport.size.y)),
+        static_cast<int>(std::round(viewport.pos.x)),
+        static_cast<int>(std::round(viewport.pos.y))
+    );
+    if (!rmlui_layer_) {
+        spdlog::error("创建 RmlUILayer 失败。");
         return false;
     }
     return true;
