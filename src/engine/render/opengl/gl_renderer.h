@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <glad/glad.h>
 #include <SDL3/SDL.h>
 #include <glm/vec2.hpp>
@@ -199,6 +200,9 @@ public:
     void endDebugUI();
 
     [[nodiscard]] bool handleRmlUiEvent(SDL_Event& event);
+    [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
+    [[nodiscard]] bool reloadRmlUiDocument();
+    [[nodiscard]] std::string getCurrentRmlUiDocumentPath() const;
     void handleSDLEvent(const SDL_Event& event);
     void setDebugUIManager(engine::debug::DebugUIManager* manager);
 
