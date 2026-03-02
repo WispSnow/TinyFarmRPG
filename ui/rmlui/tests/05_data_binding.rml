@@ -1,0 +1,50 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <style>
+        body {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        body * {
+            pointer-events: auto;
+        }
+        #binding-panel {
+            position: absolute;
+            left: 10dp;
+            bottom: 10dp;
+            width: 260dp;
+            padding: 12dp;
+            background-color: #1a1b26e0;
+            border-width: 1dp;
+            border-color: #7aa2f7ff;
+            border-radius: 8dp;
+        }
+        .row {
+            display: flex;
+            flex-direction: row;
+            gap: 8dp;
+            margin-bottom: 6dp;
+        }
+        .value {
+            color: #9ece6a;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body data-model="debug_binding">
+    <div id="binding-panel">
+        <div class="label-large" style="margin-bottom: 8dp;">Data Binding Test</div>
+        <div class="divider"></div>
+        <div class="row">
+            <span class="label">Counter:</span>
+            <span class="value">{{ counter }}</span>
+        </div>
+        <div class="row">
+            <span class="label">Message:</span>
+            <span class="value">{{ message }}</span>
+        </div>
+    </div>
+</body>
+</rml>

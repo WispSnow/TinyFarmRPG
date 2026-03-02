@@ -32,7 +32,8 @@ body {
     margin-bottom: 6dp;
     padding: 6dp;
     background-color: #1a1b26d8;
-    border: 1dp solid #3b4261;
+    border-width: 1dp;
+    border-color: #3b4261;
     border-radius: 4dp;
 }
 

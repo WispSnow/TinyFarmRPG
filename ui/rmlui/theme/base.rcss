@@ -23,14 +23,16 @@ body {
 .panel {
     padding: 12dp;
     background-color: #20283ad8;
-    border: 1dp solid #7aa2f7ff;
+    border-width: 1dp;
+    border-color: #7aa2f7ff;
     border-radius: 8dp;
 }
 
 .panel-dark {
     padding: 12dp;
     background-color: #1a1b26e0;
-    border: 1dp solid #3b4261ff;
+    border-width: 1dp;
+    border-color: #3b4261ff;
     border-radius: 6dp;
 }
 
@@ -39,7 +41,8 @@ body {
 .button {
     padding: 8dp 12dp;
     background-color: #3b4261ff;
-    border: 1dp solid #7aa2f7ff;
+    border-width: 1dp;
+    border-color: #7aa2f7ff;
     color: #ffffff;
     text-align: center;
     cursor: pointer;
@@ -90,7 +93,8 @@ body {
     width: 32dp;
     height: 32dp;
     background-color: #2f3650cc;
-    border: 1dp solid #565f89ff;
+    border-width: 1dp;
+    border-color: #565f89ff;
     border-radius: 4dp;
 }
 
