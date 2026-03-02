@@ -8,7 +8,7 @@
 #include "engine/component/tags.h"
 #include "engine/component/collider_component.h"
 #include "engine/spatial/collision_resolver.h"
-#include "engine/ui/ui_screen_fade.h"
+#include "engine/ui/screen_fade_interface.h"
 #include <entt/entity/registry.hpp>
 #include <spdlog/spdlog.h>
 #include <algorithm>
@@ -80,7 +80,7 @@ void MapTransitionSystem::updateTransition() {
     }
 
     if (transition_phase_ == TransitionPhase::FadingOut) {
-        if (fade_->phase() != engine::ui::UIScreenFade::Phase::Holding) {
+        if (fade_->phase() != engine::ui::IScreenFade::Phase::Holding) {
             return;
         }
 
@@ -91,7 +91,7 @@ void MapTransitionSystem::updateTransition() {
     }
 
     if (transition_phase_ == TransitionPhase::FadingIn) {
-        if (fade_->phase() != engine::ui::UIScreenFade::Phase::Idle) {
+        if (fade_->phase() != engine::ui::IScreenFade::Phase::Idle) {
             return;
         }
 

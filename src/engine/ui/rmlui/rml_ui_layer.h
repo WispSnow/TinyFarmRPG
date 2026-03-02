@@ -2,9 +2,11 @@
 
 #include <SDL3/SDL.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace Rml {
 class Context;
@@ -37,9 +39,35 @@ public:
     void update();
     void render();
     void setViewport(int width, int height, int offset_x = 0, int offset_y = 0);
-    [[nodiscard]] bool loadDocument(std::string_view document_path);
-    [[nodiscard]] bool reloadDocument();
-    [[nodiscard]] std::string_view getCurrentDocumentPath() const { return current_document_path_; }
+
+    // --- 多文档管理 ---
+
+    /// 加载文档并关联到 owner 场景实例。返回文档指针，失败返回 nullptr。
+    /// @param owner_scene_id  场景实例 ID（0 表示全局文档，任何场景下均可交互）。
+    [[nodiscard]] Rml::ElementDocument* loadDocument(std::string_view document_path,
+                                                      uint64_t owner_scene_id = 0);
+
+    /// 卸载单个文档。
+    void unloadDocument(Rml::ElementDocument* doc);
+
+    /// 卸载指定 owner 实例 ID 名下的所有文档。
+    void unloadDocumentsByOwner(uint64_t owner_scene_id);
+
+    /// 显示/隐藏文档。
+    void showDocument(Rml::ElementDocument* doc);
+    void hideDocument(Rml::ElementDocument* doc);
+
+    // --- 场景归属 ---
+
+    /// 设置活跃场景实例 ID。非活跃场景的文档将禁止交互并失去焦点。
+    void setActiveScene(uint64_t scene_id);
+
+    [[nodiscard]] uint64_t getActiveSceneId() const { return active_scene_id_; }
+
+    // --- 向后兼容 (过渡期) ---
+
+    /// 重新加载最近加载的文档（调试用）。
+    [[nodiscard]] bool reloadLastDocument();
 
     [[nodiscard]] Rml::Context* getContext() const { return context_; }
 
@@ -53,13 +81,21 @@ private:
                             int viewport_offset_y);
 
     void adjustEventForViewport(SDL_Event& event) const;
+    void applyInteractionPolicy();
+
+    struct DocumentEntry {
+        Rml::ElementDocument* doc{nullptr};
+        uint64_t owner{0};   ///< 场景实例 ID，0 = 全局（无归属）
+        std::string path;
+    };
 
     SDL_Window* window_{nullptr};
     std::unique_ptr<RenderInterface_GL3_STB> render_interface_;
     std::unique_ptr<SystemInterface_SDL> system_interface_;
     Rml::Context* context_{nullptr};
-    Rml::ElementDocument* current_document_{nullptr};
-    std::string current_document_path_{};
+
+    std::vector<DocumentEntry> documents_;
+    uint64_t active_scene_id_{0};
 
     int viewport_width_{1};
     int viewport_height_{1};

@@ -1,17 +1,26 @@
 #include "engine/scene/scene.h"
 #include "engine/core/context.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "engine/ui/ui_manager.h"
 #include "engine/utils/events.h"
+#include <atomic>
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
 
 namespace engine::scene {
 
+uint64_t Scene::nextInstanceId() {
+    static std::atomic<uint64_t> counter{1};
+    return counter.fetch_add(1, std::memory_order_relaxed);
+}
+
 Scene::Scene(std::string_view name, engine::core::Context& context)
     : scene_name_(name),
+      instance_id_(nextInstanceId()),
       context_(context) {
-    spdlog::trace("场景 '{}' 构造完成。", scene_name_);
+    spdlog::trace("场景 '{}' (id={}) 构造完成。", scene_name_, instance_id_);
 }
 
 Scene::~Scene() = default;
@@ -46,6 +55,7 @@ void Scene::render(float interpolation_alpha) {
 }
 
 void Scene::clean() {
+    unloadAllRmlDocuments();
     if (!is_initialized_) return;
 
     context_.getSpatialIndexManager().resetIfUsingRegistry(&registry_);
@@ -74,4 +84,18 @@ void Scene::quit()
     context_.getDispatcher().trigger<engine::utils::QuitEvent>();
 }
 
-} // namespace engine::scene 
+Rml::ElementDocument* Scene::loadRmlDocument(std::string_view path) {
+    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+        return layer->loadDocument(path, instance_id_);
+    }
+    spdlog::warn("Scene '{}': RmlUILayer 不可用，无法加载文档 '{}'。", scene_name_, path);
+    return nullptr;
+}
+
+void Scene::unloadAllRmlDocuments() {
+    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+        layer->unloadDocumentsByOwner(instance_id_);
+    }
+}
+
+} // namespace engine::scene

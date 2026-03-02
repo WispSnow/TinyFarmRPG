@@ -1,0 +1,28 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/animation.rcss"/>
+    <link type="text/rcss" href="04_overlay_states.rcss"/>
+</head>
+<body>
+    <div id="world-layer"></div>
+
+    <div id="hud" class="panel">
+        <div class="label-large">Overlay States</div>
+        <div class="label-small">Visual test for HUD + modal stacking.</div>
+        <div class="divider"></div>
+        <button class="button transition-color" data-command="open_menu">Open Menu</button>
+    </div>
+
+    <div id="modal-mask"></div>
+    <div id="modal" class="panel-dark anim-slide-in-bottom">
+        <div class="label-large">Pause Overlay</div>
+        <div class="label">Only modal controls should be used here.</div>
+        <div class="divider"></div>
+        <div class="flex-row gap-8 button-row">
+            <button class="button button-primary transition-color" data-command="resume">Resume</button>
+            <button class="button transition-color" data-command="quit">Quit</button>
+        </div>
+    </div>
+</body>
+</rml>

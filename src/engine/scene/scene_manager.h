@@ -55,6 +55,7 @@ private:
     void onReplaceScene(engine::utils::ReplaceSceneEvent& event);
 
     void processPendingActions();                           ///< @brief 处理挂起的场景操作（每轮更新最后调用）。
+    void syncRmlActiveScene();                              ///< @brief 通知 RmlUILayer 当前栈顶场景，用于交互隔离。
     // 直接切换场景
     void pushScene(std::unique_ptr<Scene>&& scene);         ///< @brief 将一个新场景压入栈顶，使其成为活动场景。
     void popScene();                                        ///< @brief 移除栈顶场景。

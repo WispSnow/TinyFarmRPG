@@ -1,0 +1,32 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/animation.rcss"/>
+    <link type="text/rcss" href="02_form_inputs.rcss"/>
+</head>
+<body>
+    <div id="screen">
+        <div class="panel form-panel anim-fade-in">
+            <div class="label-large">Form Inputs</div>
+            <div class="label-small">Focus and keyboard behavior test.</div>
+            <div class="divider"></div>
+
+            <label class="field-label" for="player-name">Player Name</label>
+            <input id="player-name" type="text" value="Farmer"/>
+
+            <label class="field-label" for="map-seed">Map Seed</label>
+            <input id="map-seed" type="text" value="seed_001"/>
+
+            <div class="flex-row gap-8 check-row">
+                <input id="hardcore" type="checkbox"/>
+                <label class="field-label" for="hardcore">Hardcore Mode</label>
+            </div>
+
+            <div class="flex-row gap-8 button-row">
+                <button class="button button-primary transition-color" data-command="apply">Apply</button>
+                <button class="button transition-color" data-command="reset">Reset</button>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>
