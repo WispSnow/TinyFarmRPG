@@ -46,6 +46,9 @@ public:
     /// 标记所有变量为脏。
     void markAllDirty();
 
+    /// 从 RmlUi Context 移除此 data model，释放名称以便重建。
+    void destroy();
+
     /// data model 是否有效。
     [[nodiscard]] bool isValid() const { return valid_; }
 
@@ -54,6 +57,8 @@ public:
 
 private:
     Rml::DataModelHandle handle_;
+    Rml::Context* context_{nullptr};
+    std::string model_name_;
     bool valid_{false};
 };
 

@@ -14,7 +14,8 @@ body {
     width: 280dp;
     padding: 16dp;
     background-color: #1a1b26e0;
-    border: 1dp solid #565f89;
+    border-width: 1dp;
+    border-color: #565f89;
     border-radius: 8dp;
 }
 
@@ -44,7 +45,8 @@ p {
     flex: 1;
     padding: 10dp;
     background-color: #24283b;
-    border: 1dp solid #414868;
+    border-width: 1dp;
+    border-color: #414868;
     border-radius: 4dp;
     text-align: center;
 }
@@ -54,7 +56,8 @@ button {
     width: 100%;
     padding: 8dp 12dp;
     background-color: #3b4261;
-    border: 1dp solid #7aa2f7;
+    border-width: 1dp;
+    border-color: #7aa2f7;
     border-radius: 4dp;
     color: #ffffff;
 }

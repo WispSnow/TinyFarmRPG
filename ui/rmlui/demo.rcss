@@ -12,7 +12,8 @@ body {
     width: 220dp;
     padding: 12dp;
     background-color: #20283ad8;
-    border: 1dp solid #7aa2f7ff;
+    border-width: 1dp;
+    border-color: #7aa2f7ff;
     border-radius: 8dp;
 }
 
@@ -28,7 +29,8 @@ button {
     margin-top: 6dp;
     padding: 8dp 10dp;
     background-color: #3b4261ff;
-    border: 1dp solid #7aa2f7ff;
+    border-width: 1dp;
+    border-color: #7aa2f7ff;
     color: #ffffff;
 }
 
