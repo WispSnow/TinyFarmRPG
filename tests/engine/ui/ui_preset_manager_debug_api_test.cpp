@@ -34,7 +34,7 @@ TEST(UIPresetManagerDebugApiTest, ListButtonPresetIdsSortedAndMutableAccessWorks
     const entt::id_type beta_id = entt::hashed_string{"beta"}.value();
 
     UIButtonSkin alpha{};
-    alpha.normal_image = makeTestImage("assets/ui/alpha.png");
+    alpha.normal_image = makeTestImage("ui/alpha.png");
     UIButtonLabelStyle alpha_label{};
     alpha_label.text = "Alpha";
     alpha_label.font_id = entt::hashed_string{"assets/fonts/VonwaonBitmap-16px.ttf"}.value();
@@ -44,7 +44,7 @@ TEST(UIPresetManagerDebugApiTest, ListButtonPresetIdsSortedAndMutableAccessWorks
     alpha.normal_label = alpha_label;
 
     UIButtonSkin beta{};
-    beta.normal_image = makeTestImage("assets/ui/beta.png");
+    beta.normal_image = makeTestImage("ui/beta.png");
     UIButtonLabelStyle beta_label{};
     beta_label.text = "Beta";
     beta_label.font_id = entt::hashed_string{"assets/fonts/VonwaonBitmap-16px.ttf"}.value();
@@ -78,10 +78,10 @@ TEST(UIPresetManagerDebugApiTest, RegisterButtonPresetPropagatesNineSliceMargins
     UIPresetManager manager;
 
     UIButtonSkin skin{};
-    skin.normal_image = makeTestImage("assets/ui/normal.png");
-    skin.hover_image = makeTestImage("assets/ui/hover.png");
-    skin.pressed_image = makeTestImage("assets/ui/pressed.png");
-    skin.disabled_image = makeTestImage("assets/ui/disabled.png");
+    skin.normal_image = makeTestImage("ui/normal.png");
+    skin.hover_image = makeTestImage("ui/hover.png");
+    skin.pressed_image = makeTestImage("ui/pressed.png");
+    skin.disabled_image = makeTestImage("ui/disabled.png");
 
     engine::render::NineSliceMargins margins{};
     margins.left = 1.0f;
@@ -137,8 +137,8 @@ TEST(UIPresetManagerDebugApiTest, ListImagePresetIdsSortedAndMutableAccessWorks)
     const entt::id_type first_id = entt::hashed_string{"img_first"}.value();
     const entt::id_type second_id = entt::hashed_string{"img_second"}.value();
 
-    ASSERT_TRUE(manager.registerImagePreset(second_id, makeTestImage("assets/ui/second.png")));
-    ASSERT_TRUE(manager.registerImagePreset(first_id, makeTestImage("assets/ui/first.png")));
+    ASSERT_TRUE(manager.registerImagePreset(second_id, makeTestImage("ui/second.png")));
+    ASSERT_TRUE(manager.registerImagePreset(first_id, makeTestImage("ui/first.png")));
 
     const auto ids = manager.listImagePresetIds();
     ASSERT_EQ(ids.size(), 2u);
@@ -166,7 +166,7 @@ TEST(UIPresetManagerDebugApiTest, LoadButtonPresetsStoresKeyMappingForDebug) {
         "alpha": {
             "images": {
                 "normal": {
-                    "path": "assets/ui/alpha.png",
+                    "path": "ui/alpha.png",
                     "source": [0, 0, 16, 16]
                 }
             }
@@ -174,7 +174,7 @@ TEST(UIPresetManagerDebugApiTest, LoadButtonPresetsStoresKeyMappingForDebug) {
         "beta": {
             "images": {
                 "normal": {
-                    "path": "assets/ui/beta.png",
+                    "path": "ui/beta.png",
                     "source": [0, 0, 16, 16]
                 }
             }
@@ -208,11 +208,11 @@ TEST(UIPresetManagerDebugApiTest, LoadImagePresetsStoresKeyMappingForDebug) {
     ASSERT_TRUE(config_file.is_open());
     config_file << R"({
         "icon_a": {
-            "path": "assets/ui/icon_a.png",
+            "path": "ui/icon_a.png",
             "source": [0, 0, 16, 16]
         },
         "icon_b": {
-            "path": "assets/ui/icon_b.png",
+            "path": "ui/icon_b.png",
             "source": [0, 0, 16, 16]
         }
     })";

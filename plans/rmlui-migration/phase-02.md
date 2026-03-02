@@ -4,7 +4,7 @@
 
 #### Step 2.1: RML ScreenFade 实现
 
-**新建** `assets/ui/rmlui/overlay/screen_fade.rml` + `screen_fade.rcss`
+**新建** `ui/rmlui/overlay/screen_fade.rml` + `screen_fade.rcss`
 
 - 一个全屏 `<div>`，CSS `background-color: black` + `opacity` 属性
 - 通过 C++ 侧定时器每帧更新 `opacity`（RmlUi CSS transition 不支持精确的回调时机，需要 C++ 侧驱动以保证状态机可靠性）
@@ -28,7 +28,7 @@
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/overlay/screen_fade.rml/rcss` |
+| 新建 | `ui/rmlui/overlay/screen_fade.rml/rcss` |
 | 新建 | `src/engine/ui/rmlui/rml_screen_fade.h/cpp` |
 | 修改 | `src/game/scene/game_scene.h/cpp`（替换 ScreenFade 创建） |
 

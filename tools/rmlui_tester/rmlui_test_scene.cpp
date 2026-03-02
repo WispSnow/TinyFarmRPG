@@ -40,8 +40,8 @@ private:
 
 namespace {
 
-constexpr std::string_view kDefaultDocumentPath{"assets/ui/rmlui/demo.rml"};
-constexpr std::string_view kDocumentRoot{"assets/ui/rmlui"};
+constexpr std::string_view kDefaultDocumentPath{"ui/rmlui/demo.rml"};
+constexpr std::string_view kDocumentRoot{"ui/rmlui"};
 
 void copyPathToBuffer(std::array<char, 512>& buffer, std::string_view path) {
     buffer.fill('\0');
@@ -167,7 +167,7 @@ void RmlUiTestScene::refreshAvailableDocuments() {
     std::error_code error_code;
     const std::filesystem::path root_path{kDocumentRoot};
     if (!std::filesystem::exists(root_path, error_code)) {
-        setStatus("assets/ui/rmlui not found.", true);
+        setStatus("ui/rmlui not found.", true);
         selected_document_index_ = -1;
         return;
     }

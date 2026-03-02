@@ -62,6 +62,7 @@ if(BUILD_RMLUI_TESTER)
 
     setup_compiler_options(rmlui_tester)
     setup_asset_copy(rmlui_tester)
+    setup_ui_copy(rmlui_tester)
     setup_config_copy(rmlui_tester)
     setup_windows_dll_copy(rmlui_tester)
 endif()

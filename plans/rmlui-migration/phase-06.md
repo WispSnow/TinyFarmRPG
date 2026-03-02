@@ -2,7 +2,7 @@
 
 **目标**：迁移带拖拽交互的快捷栏。
 
-**新建** `assets/ui/rmlui/hud/hotbar.rml` + `hotbar.rcss`
+**新建** `ui/rmlui/hud/hotbar.rml` + `hotbar.rcss`
 
 - 水平 10 槽布局（CSS flexbox）
 - 每槽：图标 + 数量标签 + 选中高亮
@@ -15,7 +15,7 @@
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/hud/hotbar.rml/rcss` |
+| 新建 | `ui/rmlui/hud/hotbar.rml/rcss` |
 | 修改 | `src/game/scene/game_scene.cpp` |
 | 删除 | `src/game/ui/hotbar_ui.h/cpp` |
 

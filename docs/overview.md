@@ -71,6 +71,7 @@ TinyFarmRPG/
 │   ├── shaders/                 #   GLSL 着色器 (.vert/.frag)
 │   ├── textures/                #   纹理资源 (.png/.gif/.json)
 │   └── vfx/                     #   Effekseer 特效资源 (.efkefc/.efk)
+├── ui/                          # UI 资源（RmlUi 文档/样式/主题）
 ├── scripts/                     # Lua 脚本
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/ImGui集成等）

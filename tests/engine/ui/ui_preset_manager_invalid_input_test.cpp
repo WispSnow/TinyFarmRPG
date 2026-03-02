@@ -26,7 +26,7 @@ TEST(UIPresetManagerInvalidInputTest, LoadButtonPresetsDoesNotThrowOnInvalidNumb
         "test_button": {
             "images": {
                 "normal": {
-                    "path": "assets/ui/nonexistent.png",
+                    "path": "ui/nonexistent.png",
                     "source": ["x", "y", "w", "h"]
                 }
             }
@@ -49,7 +49,7 @@ TEST(UIPresetManagerInvalidInputTest, LoadImagePresetsRejectsAtlasAlias) {
     ASSERT_TRUE(config_file.is_open());
     config_file << R"({
         "test_image": {
-            "atlas": "assets/ui/nonexistent.png",
+            "atlas": "ui/nonexistent.png",
             "source": [0, 0, 16, 16]
         }
     })";
@@ -69,7 +69,7 @@ TEST(UIPresetManagerInvalidInputTest, LoadImagePresetsRejectsTextureAlias) {
     ASSERT_TRUE(config_file.is_open());
     config_file << R"({
         "test_image": {
-            "texture": "assets/ui/nonexistent.png",
+            "texture": "ui/nonexistent.png",
             "source": [0, 0, 16, 16]
         }
     })";
@@ -91,7 +91,7 @@ TEST(UIPresetManagerInvalidInputTest, LoadButtonPresetsRejectsAtlasAlias) {
         "test_button": {
             "images": {
                 "normal": {
-                    "atlas": "assets/ui/nonexistent.png",
+                    "atlas": "ui/nonexistent.png",
                     "source": [0, 0, 16, 16]
                 }
             }
@@ -115,7 +115,7 @@ TEST(UIPresetManagerInvalidInputTest, LoadButtonPresetsRejectsTextureAlias) {
         "test_button": {
             "images": {
                 "normal": {
-                    "texture": "assets/ui/nonexistent.png",
+                    "texture": "ui/nonexistent.png",
                     "source": [0, 0, 16, 16]
                 }
             }

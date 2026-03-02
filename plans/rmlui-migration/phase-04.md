@@ -4,7 +4,7 @@
 
 #### Step 4.1: DialogueBubbleView
 
-**新建** `assets/ui/rmlui/hud/dialogue_bubble.rml` + `dialogue_bubble.rcss`
+**新建** `ui/rmlui/hud/dialogue_bubble.rml` + `dialogue_bubble.rcss`
 
 - 绝对定位面板，通过 C++ 每帧设置 `left` / `top`（世界→屏幕坐标转换）
 - 支持 3 通道：加载 3 份文档实例（RmlUi 支持同文档多实例）
@@ -15,7 +15,7 @@
 
 #### Step 4.2: ItemTooltipUI
 
-**新建** `assets/ui/rmlui/hud/item_tooltip.rml` + `item_tooltip.rcss`
+**新建** `ui/rmlui/hud/item_tooltip.rml` + `item_tooltip.rcss`
 
 - 绝对定位，每帧跟随鼠标
 - data binding：`{{item_name}}` / `{{item_category}}` / `{{item_description}}`
@@ -24,8 +24,8 @@
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/hud/dialogue_bubble.rml/rcss` |
-| 新建 | `assets/ui/rmlui/hud/item_tooltip.rml/rcss` |
+| 新建 | `ui/rmlui/hud/dialogue_bubble.rml/rcss` |
+| 新建 | `ui/rmlui/hud/item_tooltip.rml/rcss` |
 | 修改 | `src/game/ui/dialogue_bubble_controller.h/cpp` |
 | 删除 | `src/game/ui/dialogue_bubble_view.h/cpp` |
 | 删除 | `src/game/ui/item_tooltip_ui.h/cpp` |

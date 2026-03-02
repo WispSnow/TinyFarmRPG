@@ -2,7 +2,7 @@
 
 **目标**：迁移最复杂的 UI 组件。
 
-**新建** `assets/ui/rmlui/hud/inventory.rml` + `inventory.rcss`
+**新建** `ui/rmlui/hud/inventory.rml` + `inventory.rcss`
 
 - 可拖动面板（RmlUi `drag="drag"` 在标题栏 + `move_target` 属性）
 - 5×4 网格：RmlUi 6.2 不支持 CSS Grid，采用 **flexbox wrap** 布局——外层容器 `display: flex; flex-wrap: wrap; width: 5*slot_width`，每个 slot 固定宽度，`data-for` 循环渲染 20 个 slot
@@ -20,7 +20,7 @@
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/hud/inventory.rml/rcss` |
+| 新建 | `ui/rmlui/hud/inventory.rml/rcss` |
 | 修改 | `src/game/scene/game_scene.cpp` |
 | 删除 | `src/game/ui/inventory_ui.h/cpp` |
 | 删除 | `src/game/ui/ui_drag_drop_helpers.h` |
