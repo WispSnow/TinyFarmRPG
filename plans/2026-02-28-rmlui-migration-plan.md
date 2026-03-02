@@ -146,6 +146,15 @@ public:
 
 **目标**：为后续迁移建立可复用的基础设施。
 
+**完成状态（2026-03-02）**：
+
+- [x] Step 0.1: 多文档管理 + 场景归属
+- [~] Step 0.2: Data Model 辅助层（已提供 `create/markDirty/markAllDirty` 基础能力；`bindScalar/bindArray/bindStruct` 模板工具待补齐）
+- [x] Step 0.3: Event Bridge（`data-command` 事件桥接基础能力已落地）
+- [x] Step 0.4: RCSS 基础主题
+- [x] Step 0.5: Scene 集成接口（Scene 便捷方法与 clean 自动卸载已完成；当前通过 `Context -> GLRenderer -> RmlUILayer` 访问，未单独在 Context 增加 `RmlUILayer*` 字段）
+- [x] Step 0.6: ScreenFade 抽象接口
+
 #### Step 0.1: 多文档管理 + 场景归属
 
 **修改** `src/engine/ui/rmlui/rml_ui_layer.h/cpp`
