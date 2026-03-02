@@ -127,10 +127,19 @@ RmlUi 内置了一组类似 HTML 的元素。在本课中只关注最基础的�
 
 ## 4. RCSS 基础
 
-RCSS 的语法几乎与 CSS 相同：
+RCSS 的语法几乎与 CSS 相同，但有几个关键差异需要注意：
+
+> **重要**：RmlUi 中所有元素的默认 `display` 是 `inline`（不是 `block`）。
+> 因此每个 RCSS 文件开头通常需要加一条重置规则。
+> `border` 简写不支持 `solid` 关键字，语法为 `border: <width> <color>;`。
 
 ```css
 /* 选择器 { 属性: 值; } */
+
+/* 重置块级元素（RmlUi 默认是 inline） */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
 
 body {
     margin: 0;
@@ -142,7 +151,7 @@ body {
 #panel {
     padding: 16dp;
     background-color: #1a1b26e0;
-    border: 1dp solid #565f89;
+    border: 1dp #565f89;              /* 注意：没有 solid */
     border-radius: 8dp;
 }
 
@@ -384,6 +393,11 @@ void RmlUiBasicsScene::clean() {
 ### learn_hello.rcss — RCSS 样式表
 
 ```css
+/* === 重置：RmlUi 默认 display 是 inline，需要手动设置块级元素 === */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
 /* === 全局 === */
 body {
     margin: 0;
@@ -400,7 +414,7 @@ body {
     width: 280dp;
     padding: 16dp;
     background-color: #1a1b26e0;            /* 半透明深色背景（e0 = alpha） */
-    border: 1dp solid #565f89;
+    border: 1dp #565f89;
     border-radius: 8dp;
 }
 
@@ -430,7 +444,7 @@ p {
     flex: 1;                               /* 等分剩余空间 */
     padding: 10dp;
     background-color: #24283b;
-    border: 1dp solid #414868;
+    border: 1dp #414868;
     border-radius: 4dp;
     text-align: center;
 }
@@ -440,7 +454,7 @@ button {
     width: 100%;
     padding: 8dp 12dp;
     background-color: #3b4261;
-    border: 1dp solid #7aa2f7;
+    border: 1dp #7aa2f7;
     border-radius: 4dp;
     color: #ffffff;
 }
