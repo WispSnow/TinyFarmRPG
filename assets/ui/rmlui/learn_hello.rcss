@@ -1,0 +1,68 @@
+/* === 全局 === */
+body {
+    margin: 0;
+    font-size: 16dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #e0e0e0;
+}
+
+/* === 面板容器 === */
+#panel {
+    position: absolute;
+    left: 24dp;
+    top: 24dp;
+    width: 280dp;
+    padding: 16dp;
+    background-color: #1a1b26e0;
+    border: 1dp solid #565f89;
+    border-radius: 8dp;
+}
+
+/* === 标题 === */
+h1 {
+    margin: 0 0 12dp 0;
+    font-size: 20dp;
+    color: #9ece6a;
+}
+
+/* === 段落 === */
+p {
+    margin: 0 0 12dp 0;
+    color: #a9b1d6;
+}
+
+/* === 水平行布局 === */
+.row {
+    display: flex;
+    flex-direction: row;
+    gap: 8dp;
+    margin-bottom: 12dp;
+}
+
+/* === 卡片 === */
+.card {
+    flex: 1;
+    padding: 10dp;
+    background-color: #24283b;
+    border: 1dp solid #414868;
+    border-radius: 4dp;
+    text-align: center;
+}
+
+/* === 按钮 === */
+button {
+    width: 100%;
+    padding: 8dp 12dp;
+    background-color: #3b4261;
+    border: 1dp solid #7aa2f7;
+    border-radius: 4dp;
+    color: #ffffff;
+}
+
+button:hover {
+    background-color: #44537b;
+}
+
+button:active {
+    background-color: #2f3650;
+}
