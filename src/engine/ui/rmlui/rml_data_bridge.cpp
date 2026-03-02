@@ -9,6 +9,8 @@ namespace engine::ui::rmlui {
 Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context, std::string_view model_name) {
     valid_ = false;
     handle_ = {};
+    context_ = nullptr;
+    model_name_.clear();
 
     if (!context) {
         spdlog::error("RmlDataBridge::create failed: context is null.");
@@ -24,8 +26,22 @@ Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context, std::stri
 
     handle_ = constructor.GetModelHandle();
     valid_ = static_cast<bool>(handle_);
+    context_ = context;
+    model_name_ = std::string(model_name);
     spdlog::trace("RmlDataBridge created model '{}'.", model_name);
     return constructor;
+}
+
+void RmlDataBridge::destroy() {
+    if (valid_ && context_ && !model_name_.empty()) {
+        const Rml::String name{model_name_.data(), model_name_.size()};
+        context_->RemoveDataModel(name);
+        spdlog::trace("RmlDataBridge destroyed model '{}'.", model_name_);
+    }
+    handle_ = {};
+    context_ = nullptr;
+    model_name_.clear();
+    valid_ = false;
 }
 
 void RmlDataBridge::markDirty(std::string_view variable_name) {
