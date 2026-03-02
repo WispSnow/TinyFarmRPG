@@ -1,3 +1,8 @@
+/* === 重置：RmlUi 默认 display 是 inline，需要手动设置块级元素 === */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
 /* === 全局 === */
 body {
     margin: 0;
@@ -14,8 +19,7 @@ body {
     width: 280dp;
     padding: 16dp;
     background-color: #1a1b26e0;
-    border-width: 1dp;
-    border-color: #565f89;
+    border: 1dp #565f89;
     border-radius: 8dp;
 }
 
@@ -45,8 +49,7 @@ p {
     flex: 1;
     padding: 10dp;
     background-color: #24283b;
-    border-width: 1dp;
-    border-color: #414868;
+    border: 1dp #414868;
     border-radius: 4dp;
     text-align: center;
 }
@@ -56,8 +59,7 @@ button {
     width: 100%;
     padding: 8dp 12dp;
     background-color: #3b4261;
-    border-width: 1dp;
-    border-color: #7aa2f7;
+    border: 1dp #7aa2f7;
     border-radius: 4dp;
     color: #ffffff;
 }
