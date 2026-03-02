@@ -173,8 +173,8 @@
 ### Step 7 [x]: 最小可视化验证资源
 
 **已新增**
-- `assets/ui/rmlui/demo.rml`
-- `assets/ui/rmlui/demo.rcss`
+- `ui/rmlui/demo.rml`
+- `ui/rmlui/demo.rcss`
 
 并在 `RmlUILayer::init()` 中加载 demo 文档（用于首轮可视化联调）。已修复样式相对路径与字体声明问题。
 
@@ -221,7 +221,7 @@
 | 修改 | `src/engine/input/input_manager.h` |
 | 修改 | `src/engine/input/input_manager.cpp` |
 | 修改 | `src/engine/core/game_app.cpp` |
-| 新建 | `assets/ui/rmlui/demo.rml` |
-| 新建 | `assets/ui/rmlui/demo.rcss` |
+| 新建 | `ui/rmlui/demo.rml` |
+| 新建 | `ui/rmlui/demo.rcss` |
 | 新建 | `tests/engine/render/rmlui_pipeline_stage_test.cpp` |
 | 新建 | `tests/engine/input/input_manager_rmlui_routing_test.cpp` |

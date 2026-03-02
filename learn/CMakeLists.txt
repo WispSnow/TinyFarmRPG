@@ -35,6 +35,7 @@ macro(add_learn_target NAME)
 
     setup_compiler_options(${_target})
     setup_asset_copy(${_target})
+    setup_ui_copy(${_target})
     setup_config_copy(${_target})
     setup_windows_dll_copy(${_target})
 endmacro()

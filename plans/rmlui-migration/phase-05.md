@@ -2,7 +2,7 @@
 
 **目标**：迁移 BattleScene 的 UI。
 
-**新建** `assets/ui/rmlui/scenes/battle.rml` + `battle.rcss`
+**新建** `ui/rmlui/scenes/battle.rml` + `battle.rcss`
 
 - 战斗面板：回合信息、单位状态、行动结果
 - 操作按钮（Attack / Skill / Item / Guard / Escape / EndTurn）
@@ -12,7 +12,7 @@
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/scenes/battle.rml/rcss` |
+| 新建 | `ui/rmlui/scenes/battle.rml/rcss` |
 | 修改 | `src/game/scene/battle_scene.h/cpp` |
 
 **验证**：战斗流程全通、按钮状态正确切换、结果显示正常。

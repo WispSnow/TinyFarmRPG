@@ -162,6 +162,9 @@ setup_compiler_options(${TARGET})
 # 配置资源文件复制（定义在BuildHelpers.cmake中）
 setup_asset_copy(${TARGET})
 
+# 配置 UI 资源复制（定义在BuildHelpers.cmake中）
+setup_ui_copy(${TARGET})
+
 # 配置脚本文件复制（定义在BuildHelpers.cmake中）
 setup_script_copy(${TARGET})
 

@@ -4,7 +4,7 @@
 
 #### Step 1.1: RML 文档
 
-**新建** `assets/ui/rmlui/hud/time_clock.rml` + `time_clock.rcss`
+**新建** `ui/rmlui/hud/time_clock.rml` + `time_clock.rcss`
 
 - 布局：左侧时钟 sprite + 右侧 Day / Time 文本
 - 时钟指针通过 data binding 选择 sprite frame（`data-attr-class` 切换 CSS class 控制背景 sprite）
@@ -33,8 +33,8 @@ struct TimeClockModel {
 **涉及文件**：
 | 操作 | 文件 |
 |------|------|
-| 新建 | `assets/ui/rmlui/hud/time_clock.rml` |
-| 新建 | `assets/ui/rmlui/hud/time_clock.rcss` |
+| 新建 | `ui/rmlui/hud/time_clock.rml` |
+| 新建 | `ui/rmlui/hud/time_clock.rcss` |
 | 修改 | `src/game/scene/game_scene.cpp`（替换 TimeClockUI） |
 | 删除 | `src/game/ui/time_clock_ui.h/cpp` |
 

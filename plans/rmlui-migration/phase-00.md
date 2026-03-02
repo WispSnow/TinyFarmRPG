@@ -49,7 +49,7 @@
 
 #### Step 0.4: RCSS 基础主题
 
-**新建** `assets/ui/rmlui/theme/`
+**新建** `ui/rmlui/theme/`
 
 - `base.rcss`：全局字体、颜色变量、通用 class（`.panel`、`.button`、`.label`、`.slot`）
 - `spritesheet.rcss`：统一的 sprite sheet 定义（引用现有 UI 图集）
@@ -76,9 +76,9 @@
 | 新建 | `src/engine/ui/rmlui/rml_data_bridge.h/cpp` |
 | 新建 | `src/engine/ui/rmlui/rml_event_bridge.h/cpp` |
 | 新建 | `src/engine/ui/screen_fade_interface.h` |
-| 新建 | `assets/ui/rmlui/theme/base.rcss` |
-| 新建 | `assets/ui/rmlui/theme/spritesheet.rcss` |
-| 新建 | `assets/ui/rmlui/theme/animation.rcss` |
+| 新建 | `ui/rmlui/theme/base.rcss` |
+| 新建 | `ui/rmlui/theme/spritesheet.rcss` |
+| 新建 | `ui/rmlui/theme/animation.rcss` |
 | 修改 | `src/engine/core/context.h/cpp`（注册 RmlUILayer） |
 | 修改 | `src/engine/scene/scene.h/cpp`（RML 便捷方法 + clean 自动卸载） |
 | 修改 | `src/engine/scene/scene_manager.cpp`（场景切换时通知 setActiveScene） |
