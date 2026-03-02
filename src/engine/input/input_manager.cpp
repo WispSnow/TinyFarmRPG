@@ -180,11 +180,14 @@ void InputManager::sampleInputEvents() {
             should_propagate = rmlui_event_callback_(event);
         }
 
-        // 即使被 UI 消费，也要放行释放事件，避免动作状态卡在 HELD。
-        const bool is_release_event =
-            (event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_MOUSE_BUTTON_UP);
+        // 即使被 UI 消费，也要放行释放事件和鼠标移动事件，
+        // 避免动作状态卡在 HELD 或自定义光标位置不更新。
+        const bool always_propagate =
+            (event.type == SDL_EVENT_KEY_UP
+             || event.type == SDL_EVENT_MOUSE_BUTTON_UP
+             || event.type == SDL_EVENT_MOUSE_MOTION);
 
-        if (!should_propagate && !is_release_event) {
+        if (!should_propagate && !always_propagate) {
             continue;
         }
 

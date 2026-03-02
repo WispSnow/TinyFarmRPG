@@ -30,6 +30,7 @@
 #include "engine/debug/panels/scene_debug_panel.h"
 #include "engine/debug/panels/spatial_index_debug_panel.h"
 #include "engine/debug/panels/vfx_debug_panel.h"
+#include "engine/debug/panels/rmlui_debug_panel.h"
 #endif
 #include "engine/spatial/spatial_index_manager.h"
 #include <SDL3/SDL.h>
@@ -487,6 +488,7 @@ bool GameApp::registerDebugPanels() {
         engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SceneDebugPanel>(*scene_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SpatialIndexDebugPanel>(*scene_manager_, *spatial_index_manager_), false, engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::RmlUiDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
     return true;
 }
 #endif

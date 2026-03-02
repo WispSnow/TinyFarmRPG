@@ -30,7 +30,8 @@ input {
     margin-bottom: 8dp;
     padding: 6dp 8dp;
     background-color: #0d1322;
-    border: 1dp solid #565f89;
+    border-width: 1dp;
+    border-color: #565f89;
     color: #ffffff;
 }
 

@@ -71,6 +71,18 @@ public:
 
     [[nodiscard]] Rml::Context* getContext() const { return context_; }
 
+    // --- 调试信息 ---
+
+    [[nodiscard]] size_t getDocumentCount() const { return documents_.size(); }
+
+    /// 遍历所有已加载文档，回调签名: void(const std::string& path, uint64_t owner)
+    template<typename Fn>
+    void forEachDocument(Fn&& fn) const {
+        for (const auto& entry : documents_) {
+            fn(entry.path, entry.owner);
+        }
+    }
+
 private:
     RmlUILayer() = default;
 
