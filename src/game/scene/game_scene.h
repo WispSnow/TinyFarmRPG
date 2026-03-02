@@ -27,7 +27,7 @@ namespace game::ui {
 }
 
 namespace engine::ui {
-    class UIScreenFade;
+    class IScreenFade;
 }
 
 namespace game::runtime {
@@ -59,7 +59,7 @@ class GameScene : public engine::scene::Scene {
     game::ui::HotbarUI* hotbar_ui_{nullptr};
     std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
     game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
-    engine::ui::UIScreenFade* screen_fade_{nullptr};
+    engine::ui::IScreenFade* screen_fade_{nullptr};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
 

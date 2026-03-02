@@ -1,17 +1,15 @@
 #pragma once
 
 #include "ui_interactive.h"
+#include "engine/ui/screen_fade_interface.h"
 
 namespace engine::ui {
 
-class UIScreenFade final : public UIInteractive {
+class UIScreenFade final : public UIInteractive, public IScreenFade {
 public:
-    enum class Phase {
-        Idle,
-        FadingOut,
-        Holding,
-        FadingIn
-    };
+    // Phase 定义继承自 IScreenFade::Phase
+    using IScreenFade::Phase;
+
 private:
     Phase phase_{Phase::Idle};
     float alpha_{0.0f};
@@ -23,15 +21,15 @@ private:
 public:
     explicit UIScreenFade(engine::core::Context& context);
 
-    void fadeOut(float seconds);
-    void fadeIn(float seconds);
+    void fadeOut(float seconds) override;
+    void fadeIn(float seconds) override;
 
-    [[nodiscard]] bool isBusy() const { return phase_ != Phase::Idle; }
+    [[nodiscard]] bool isBusy() const override { return phase_ != Phase::Idle; }
     [[nodiscard]] bool isFullyOpaque() const;
     [[nodiscard]] bool isFullyTransparent() const;
 
     [[nodiscard]] float alpha() const { return alpha_; }
-    [[nodiscard]] Phase phase() const { return phase_; }
+    [[nodiscard]] Phase phase() const override { return phase_; }
 
     void update(float delta_time, engine::core::Context& context) override;
 

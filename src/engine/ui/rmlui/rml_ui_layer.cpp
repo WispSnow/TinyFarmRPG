@@ -6,6 +6,7 @@
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Core.h>
+#include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Log.h>
 
@@ -21,7 +22,6 @@ namespace engine::ui::rmlui {
 namespace {
 
 constexpr char kDefaultFontPath[] = "assets/fonts/VonwaonBitmap-16px.ttf";
-constexpr char kDemoDocumentPath[] = "assets/ui/rmlui/demo.rml";
 
 } // namespace
 
@@ -92,20 +92,19 @@ bool RmlUILayer::init(SDL_Window* window,
         spdlog::warn("RmlUILayer: failed to load default font {}.", kDefaultFontPath);
     }
 
-    if (!loadDocument(kDemoDocumentPath)) {
-        spdlog::debug("RmlUILayer: demo document not loaded: {}.", kDemoDocumentPath);
-    }
-
     spdlog::trace("RmlUILayer initialized.");
     return true;
 }
 
 void RmlUILayer::clean() {
-    if (current_document_) {
-        current_document_->Close();
-        current_document_ = nullptr;
-        current_document_path_.clear();
+    // 关闭所有已跟踪的文档
+    for (auto& entry : documents_) {
+        if (entry.doc) {
+            entry.doc->Close();
+        }
     }
+    documents_.clear();
+    active_scene_id_ = 0;
 
     if (context_) {
         const Rml::String context_name = context_->GetName();
@@ -173,40 +172,132 @@ void RmlUILayer::setViewport(int width, int height, int offset_x, int offset_y) 
     }
 }
 
-bool RmlUILayer::loadDocument(std::string_view document_path) {
+// --- 多文档管理 ---
+
+Rml::ElementDocument* RmlUILayer::loadDocument(std::string_view document_path,
+                                                uint64_t owner_scene_id) {
     if (!context_) {
-        return false;
+        return nullptr;
     }
     if (document_path.empty()) {
         spdlog::warn("RmlUILayer::loadDocument ignored empty path.");
-        return false;
-    }
-
-    if (current_document_) {
-        current_document_->Close();
-        current_document_ = nullptr;
+        return nullptr;
     }
 
     const Rml::String path_string{document_path.data(), document_path.size()};
-    current_document_ = context_->LoadDocument(path_string);
-    if (!current_document_) {
-        current_document_path_.clear();
+    auto* doc = context_->LoadDocument(path_string);
+    if (!doc) {
         spdlog::error("RmlUILayer::loadDocument failed: {}", path_string);
-        return false;
+        return nullptr;
     }
 
-    current_document_->Show();
-    current_document_path_ = std::string(document_path);
-    spdlog::info("RmlUILayer loaded document: {}", current_document_path_);
-    return true;
+    doc->Show();
+    documents_.push_back({doc, owner_scene_id, std::string(document_path)});
+    spdlog::info("RmlUILayer loaded document: {} (owner: {})",
+                 document_path, owner_scene_id == 0 ? "global" : std::to_string(owner_scene_id));
+
+    // 如果当前有活跃场景，对新文档应用交互策略
+    if (active_scene_id_ != 0) {
+        applyInteractionPolicy();
+    }
+
+    return doc;
 }
 
-bool RmlUILayer::reloadDocument() {
-    if (current_document_path_.empty()) {
-        spdlog::warn("RmlUILayer::reloadDocument ignored: no active document.");
+void RmlUILayer::unloadDocument(Rml::ElementDocument* doc) {
+    if (!doc) {
+        return;
+    }
+
+    auto it = std::find_if(documents_.begin(), documents_.end(),
+                           [doc](const DocumentEntry& e) { return e.doc == doc; });
+    if (it != documents_.end()) {
+        spdlog::info("RmlUILayer unloading document: {}", it->path);
+        documents_.erase(it);
+    }
+
+    doc->Close();
+}
+
+void RmlUILayer::unloadDocumentsByOwner(uint64_t owner_scene_id) {
+    // 收集需要关闭的文档（避免在迭代中修改容器）
+    std::vector<Rml::ElementDocument*> to_close;
+    for (const auto& entry : documents_) {
+        if (entry.owner == owner_scene_id) {
+            to_close.push_back(entry.doc);
+        }
+    }
+
+    // 从跟踪列表中移除
+    std::erase_if(documents_, [owner_scene_id](const DocumentEntry& e) {
+        return e.owner == owner_scene_id;
+    });
+
+    // 关闭文档
+    for (auto* doc : to_close) {
+        if (doc) {
+            spdlog::info("RmlUILayer unloading document owned by scene {}.", owner_scene_id);
+            doc->Close();
+        }
+    }
+}
+
+void RmlUILayer::showDocument(Rml::ElementDocument* doc) {
+    if (doc) {
+        doc->Show();
+    }
+}
+
+void RmlUILayer::hideDocument(Rml::ElementDocument* doc) {
+    if (doc) {
+        doc->Hide();
+    }
+}
+
+// --- 场景归属 ---
+
+void RmlUILayer::setActiveScene(uint64_t scene_id) {
+    if (active_scene_id_ == scene_id) {
+        return;
+    }
+    active_scene_id_ = scene_id;
+    applyInteractionPolicy();
+    spdlog::debug("RmlUILayer active scene set to {}.", active_scene_id_);
+}
+
+void RmlUILayer::applyInteractionPolicy() {
+    for (auto& entry : documents_) {
+        if (!entry.doc) {
+            continue;
+        }
+
+        // 全局文档（owner == 0）或活跃场景的文档可交互
+        const bool interactive = (entry.owner == 0) || (entry.owner == active_scene_id_);
+
+        if (interactive) {
+            entry.doc->SetProperty("pointer-events", "auto");
+        } else {
+            entry.doc->SetProperty("pointer-events", "none");
+            // 移除非活跃文档上的键盘焦点，防止按键事件泄漏
+            entry.doc->Blur();
+        }
+    }
+}
+
+// --- 向后兼容 ---
+
+bool RmlUILayer::reloadLastDocument() {
+    if (documents_.empty()) {
+        spdlog::warn("RmlUILayer::reloadLastDocument: no documents loaded.");
         return false;
     }
-    return loadDocument(current_document_path_);
+
+    auto& last = documents_.back();
+    const std::string path = last.path;
+    const uint64_t owner = last.owner;
+
+    unloadDocument(last.doc);
+    return loadDocument(path, owner) != nullptr;
 }
 
 void RmlUILayer::adjustEventForViewport(SDL_Event& event) const {

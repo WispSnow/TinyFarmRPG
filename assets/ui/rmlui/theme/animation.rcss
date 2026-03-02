@@ -1,0 +1,60 @@
+/* ===========================================
+ * TinyFarm RmlUi Animation / Transition Definitions
+ * 通用动画和过渡效果
+ * =========================================== */
+
+/* --- 淡入淡出 --- */
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+/* --- 滑入动画 --- */
+
+@keyframes slide-in-top {
+    from { top: -100dp; opacity: 0; }
+    to   { top: 0dp;    opacity: 1; }
+}
+
+@keyframes slide-in-bottom {
+    from { bottom: -100dp; opacity: 0; }
+    to   { bottom: 0dp;    opacity: 1; }
+}
+
+/* --- 通用过渡 class --- */
+
+.anim-fade-in {
+    animation: fade-in 0.3s;
+}
+
+.anim-fade-out {
+    animation: fade-out 0.3s;
+}
+
+.anim-slide-in-top {
+    animation: slide-in-top 0.3s cubic-out;
+}
+
+.anim-slide-in-bottom {
+    animation: slide-in-bottom 0.3s cubic-out;
+}
+
+/* --- 属性过渡 --- */
+
+.transition-opacity {
+    transition: opacity 0.2s;
+}
+
+.transition-color {
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.transition-transform {
+    transition: top 0.2s, left 0.2s;
+}
