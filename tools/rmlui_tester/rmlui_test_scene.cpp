@@ -148,7 +148,7 @@ void RmlUiTestScene::drawControlPanel() {
         (void)loadDocument(document_path_buffer_.data());
     }
 
-    const std::string active_path = context_.getGLRenderer().getCurrentRmlUiDocumentPath();
+    const std::string active_path{document_path_buffer_.data()};
     ImGui::Separator();
     ImGui::Text("Current: %s", active_path.empty() ? "(none)" : active_path.c_str());
     ImGui::Text("Discovered .rml files: %d", static_cast<int>(available_documents_.size()));
@@ -236,12 +236,11 @@ bool RmlUiTestScene::loadDocument(std::string_view path) {
         return false;
     }
 
-    const std::string active_path = gl_renderer.getCurrentRmlUiDocumentPath();
-    copyPathToBuffer(document_path_buffer_, active_path);
+    copyPathToBuffer(document_path_buffer_, std::string(path));
     updateSelectedDocumentIndex();
 
     std::string message = "Loaded: ";
-    message += active_path;
+    message += path;
     setStatus(message, false);
     return true;
 }
@@ -253,7 +252,7 @@ bool RmlUiTestScene::reloadDocument() {
         return false;
     }
 
-    const std::string active_path = gl_renderer.getCurrentRmlUiDocumentPath();
+    const std::string active_path{document_path_buffer_.data()};
     copyPathToBuffer(document_path_buffer_, active_path);
     updateSelectedDocumentIndex();
 

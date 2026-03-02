@@ -16,7 +16,7 @@ namespace engine::spatial {
 }
 
 namespace engine::ui {
-    class UIScreenFade;
+    class IScreenFade;
 }
 
 namespace game::system {
@@ -48,7 +48,7 @@ class MapTransitionSystem {
     game::world::MapManager& map_manager_;
     engine::spatial::CollisionResolver* collision_resolver_{nullptr};
     float edge_offset_{8.0f};
-    engine::ui::UIScreenFade* fade_{nullptr};
+    engine::ui::IScreenFade* fade_{nullptr};
     TransitionPhase transition_phase_{TransitionPhase::Idle};
     PendingTransition pending_{};
     float fade_seconds_{0.12f};
@@ -61,7 +61,7 @@ public:
                         float edge_offset = 8.0f);
 
     void update();
-    void setFadeOverlay(engine::ui::UIScreenFade* fade) { fade_ = fade; }
+    void setFadeOverlay(engine::ui::IScreenFade* fade) { fade_ = fade; }
     [[nodiscard]] bool isTransitionActive() const { return transition_phase_ != TransitionPhase::Idle; }
 
 private:

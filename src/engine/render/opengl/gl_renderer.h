@@ -200,7 +200,7 @@ public:
     [[nodiscard]] bool handleRmlUiEvent(SDL_Event& event);
     [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
     [[nodiscard]] bool reloadRmlUiDocument();
-    [[nodiscard]] std::string getCurrentRmlUiDocumentPath() const;
+    [[nodiscard]] engine::ui::rmlui::RmlUILayer* getRmlUILayer() const;
     void handleSDLEvent(const SDL_Event& event);
     void setDebugUIManager(engine::debug::DebugUIManager* manager);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -10,6 +11,14 @@ namespace engine::core {
 
 namespace engine::ui {
     class UIManager;
+}
+
+namespace engine::ui::rmlui {
+    class RmlUILayer;
+}
+
+namespace Rml {
+class ElementDocument;
 }
 
 namespace engine::scene {
@@ -24,11 +33,14 @@ namespace engine::scene {
 class Scene {
 protected:
     std::string scene_name_;                            ///< @brief 场景名称
+    uint64_t instance_id_;                              ///< @brief 场景实例唯一 ID（用于 RML 文档归属等隔离）
     engine::core::Context& context_;                    ///< @brief 上下文引用（隐式，构造时传入）
     std::unique_ptr<engine::ui::UIManager> ui_manager_; ///< @brief UI管理器（可选；派生类按需创建）
     entt::registry registry_;                           ///< @brief ECS注册表
-    
+
     bool is_initialized_ = false;                       ///< @brief 场景是否已初始化(非当前场景很可能未被删除，因此需要初始化标志避免重复初始化)
+
+    static uint64_t nextInstanceId();                   ///< @brief 生成全局唯一的场景实例 ID
 
 public:
     /**
@@ -66,9 +78,18 @@ public:
     /// @brief 退出游戏。
     void quit();
 
+    // --- RmlUi 便捷方法 ---
+
+    /// 以当前场景实例 ID 为 owner 加载 RML 文档。
+    [[nodiscard]] Rml::ElementDocument* loadRmlDocument(std::string_view path);
+
+    /// 卸载当前场景实例名下所有 RML 文档。
+    void unloadAllRmlDocuments();
+
     // getters and setters
     void setName(std::string_view name) { scene_name_ = name; }               ///< @brief 设置场景名称
     [[nodiscard]] std::string_view getName() const { return scene_name_; }     ///< @brief 获取场景名称
+    [[nodiscard]] uint64_t instanceId() const { return instance_id_; }         ///< @brief 获取场景实例唯一 ID
     void setInitialized(bool initialized) { is_initialized_ = initialized; }    ///< @brief 设置场景是否已初始化
     [[nodiscard]] bool isInitialized() const { return is_initialized_; }        ///< @brief 获取场景是否已初始化
     [[nodiscard]] entt::registry& getRegistry() { return registry_; }        ///< @brief 获取注册表引用

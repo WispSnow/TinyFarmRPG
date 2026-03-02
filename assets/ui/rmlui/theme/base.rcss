@@ -1,0 +1,143 @@
+/* ===========================================
+ * TinyFarm RmlUi Base Theme
+ * 全局字体、颜色变量、通用 class
+ * =========================================== */
+
+body {
+    margin: 0;
+    font-size: 16dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #ffffffee;
+}
+
+/* --- 颜色变量 (通过 class 语义化引用) --- */
+
+.color-primary   { color: #7aa2f7; }
+.color-secondary { color: #9ece6a; }
+.color-warning   { color: #e0af68; }
+.color-danger    { color: #f7768e; }
+.color-muted     { color: #565f89; }
+
+/* --- 通用面板 --- */
+
+.panel {
+    padding: 12dp;
+    background-color: #20283ad8;
+    border: 1dp solid #7aa2f7ff;
+    border-radius: 8dp;
+}
+
+.panel-dark {
+    padding: 12dp;
+    background-color: #1a1b26e0;
+    border: 1dp solid #3b4261ff;
+    border-radius: 6dp;
+}
+
+/* --- 按钮 --- */
+
+.button {
+    padding: 8dp 12dp;
+    background-color: #3b4261ff;
+    border: 1dp solid #7aa2f7ff;
+    color: #ffffff;
+    text-align: center;
+    cursor: pointer;
+}
+
+.button:hover {
+    background-color: #44537bff;
+}
+
+.button:active {
+    background-color: #2f3650ff;
+}
+
+.button-primary {
+    background-color: #7aa2f7cc;
+    border-color: #7aa2f7ff;
+}
+
+.button-primary:hover {
+    background-color: #7aa2f7ee;
+}
+
+.button-primary:active {
+    background-color: #5d7bc2cc;
+}
+
+/* --- 标签 --- */
+
+.label {
+    font-size: 16dp;
+    color: #ffffffee;
+}
+
+.label-small {
+    font-size: 12dp;
+    color: #a9b1d6cc;
+}
+
+.label-large {
+    font-size: 24dp;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* --- 物品槽 --- */
+
+.slot {
+    width: 32dp;
+    height: 32dp;
+    background-color: #2f3650cc;
+    border: 1dp solid #565f89ff;
+    border-radius: 4dp;
+}
+
+.slot:hover {
+    border-color: #7aa2f7ff;
+}
+
+.slot-active {
+    border-color: #9ece6aff;
+    border-width: 2dp;
+}
+
+/* --- 布局辅助 --- */
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-center {
+    align-items: center;
+    justify-content: center;
+}
+
+.gap-4  { gap: 4dp; }
+.gap-8  { gap: 8dp; }
+.gap-12 { gap: 12dp; }
+
+/* --- 全屏覆盖 --- */
+
+.overlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* --- 分隔线 --- */
+
+.divider {
+    height: 1dp;
+    margin: 8dp 0;
+    background-color: #3b4261aa;
+}
