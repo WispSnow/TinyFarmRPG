@@ -21,9 +21,9 @@ namespace engine::ui::rmlui {
  * 作为 Rml::EventListener 注册到 RML 元素上，解析事件参数后调用预注册的 C++ 回调。
  *
  * 用法：
- *   bridge.on("start_game", [&](const Rml::Event&) { ... });
+ *   bridge.on("start_game", [&](Rml::Event&) { ... });
  *   element->AddEventListener("click", &bridge);
- *   // RML 侧: <button data-event-click="start_game">
+ *   // RML 侧: <button data-command="start_game">
  *
  * 或直接通过 registerTo() 便捷注册。
  */
@@ -37,7 +37,7 @@ public:
     RmlEventBridge(const RmlEventBridge&) = delete;
     RmlEventBridge& operator=(const RmlEventBridge&) = delete;
 
-    /// 注册一个命名回调。名称对应 RML 中 data-event-click 等属性的值。
+    /// 注册一个命名回调。名称对应 RML 中 data-command 属性的值。
     void on(std::string_view name, Callback callback);
 
     /// 将此 bridge 作为 EventListener 注册到元素的指定事件上。

@@ -1,0 +1,47 @@
+body {
+    margin: 0;
+    background-color: #0f1420;
+}
+
+#screen {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inv-panel {
+    width: 620dp;
+    height: 420dp;
+}
+
+#list {
+    height: 320dp;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4dp;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6dp;
+    padding: 6dp;
+    background-color: #1a1b26d8;
+    border: 1dp solid #3b4261;
+    border-radius: 4dp;
+}
+
+.item-name {
+    margin-left: 8dp;
+    flex: 1;
+}
+
+.row-btn {
+    width: 72dp;
+    padding: 4dp 8dp;
+}

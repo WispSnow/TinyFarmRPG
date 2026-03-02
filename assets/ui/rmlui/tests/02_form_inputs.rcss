@@ -1,0 +1,49 @@
+body {
+    margin: 0;
+    background-color: #111827;
+}
+
+#screen {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-panel {
+    width: 440dp;
+}
+
+.field-label {
+    display: block;
+    margin-top: 4dp;
+    margin-bottom: 4dp;
+    color: #a9b1d6;
+}
+
+input {
+    width: 100%;
+    margin-bottom: 8dp;
+    padding: 6dp 8dp;
+    background-color: #0d1322;
+    border: 1dp solid #565f89;
+    color: #ffffff;
+}
+
+input:focus {
+    border-color: #7aa2f7;
+}
+
+.check-row {
+    margin-top: 2dp;
+    margin-bottom: 10dp;
+    align-items: center;
+}
+
+.button-row > .button {
+    flex: 1;
+}
