@@ -1,0 +1,28 @@
+body {
+    margin: 0;
+    background-color: #101522;
+}
+
+#screen {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card {
+    width: 520dp;
+}
+
+.card .label {
+    margin-top: 4dp;
+    margin-bottom: 8dp;
+}
+
+.button-row > .button {
+    flex: 1;
+}

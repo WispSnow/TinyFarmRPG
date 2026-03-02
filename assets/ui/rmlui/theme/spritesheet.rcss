@@ -1,0 +1,39 @@
+/* ===========================================
+ * TinyFarm RmlUi Sprite Sheet Definitions
+ * 统一引用现有 UI 图集
+ * =========================================== */
+
+/* --- 按钮图集 (button.png: 48x48, 3 states x 16px) --- */
+@spritesheet ui-buttons {
+    src: assets/farm-rpg/UI/button.png;
+    btn-normal:  0px 0px  48px 16px;
+    btn-hover:   0px 16px 48px 16px;
+    btn-pressed: 0px 32px 48px 16px;
+}
+
+/* --- 物品栏槽位图集 (Slots.png) --- */
+@spritesheet ui-slots {
+    src: assets/farm-rpg/UI/Inventory/Slots.png;
+    slot-normal:   0px 0px  16px 16px;
+    slot-selected: 16px 0px 16px 16px;
+    slot-locked:   32px 0px 16px 16px;
+}
+
+/* --- HUD 图集 (HUD.png) --- */
+@spritesheet ui-hud {
+    src: assets/farm-rpg/UI/HUD.png;
+    hud-frame: 0px 0px 64px 32px;
+}
+
+/* --- 时钟 (Clock.png) --- */
+@spritesheet ui-clock {
+    src: assets/farm-rpg/UI/Clock/Clock.png;
+    clock-face: 0px 0px 32px 32px;
+}
+
+/* --- 进度条 (Bars.png) --- */
+@spritesheet ui-bars {
+    src: assets/farm-rpg/UI/Bars.png;
+    bar-bg:   0px 0px 48px 8px;
+    bar-fill: 0px 8px 48px 8px;
+}

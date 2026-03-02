@@ -1,0 +1,39 @@
+body {
+    margin: 0;
+}
+
+#world-layer {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #27324a;
+}
+
+#hud {
+    position: fixed;
+    left: 20dp;
+    top: 20dp;
+    width: 300dp;
+}
+
+#modal-mask {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #000000aa;
+}
+
+#modal {
+    position: fixed;
+    left: 260dp;
+    top: 150dp;
+    width: 380dp;
+}
+
+.button-row > .button {
+    flex: 1;
+}

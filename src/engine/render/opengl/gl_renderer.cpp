@@ -391,21 +391,18 @@ bool GLRenderer::loadRmlUiDocument(std::string_view path) {
     if (!rmlui_layer_) {
         return false;
     }
-    return rmlui_layer_->loadDocument(path);
+    return rmlui_layer_->loadDocument(path) != nullptr;
 }
 
 bool GLRenderer::reloadRmlUiDocument() {
     if (!rmlui_layer_) {
         return false;
     }
-    return rmlui_layer_->reloadDocument();
+    return rmlui_layer_->reloadLastDocument();
 }
 
-std::string GLRenderer::getCurrentRmlUiDocumentPath() const {
-    if (!rmlui_layer_) {
-        return {};
-    }
-    return std::string(rmlui_layer_->getCurrentDocumentPath());
+engine::ui::rmlui::RmlUILayer* GLRenderer::getRmlUILayer() const {
+    return rmlui_layer_.get();
 }
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {

@@ -1,6 +1,8 @@
 #include "engine/scene/scene_manager.h"
 #include "engine/scene/scene.h"
 #include "engine/core/context.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
 #include <string_view>
@@ -117,6 +119,13 @@ void SceneManager::onReplaceScene(engine::utils::ReplaceSceneEvent& event) {
 
 // --- Private Methods ---
 
+void SceneManager::syncRmlActiveScene() {
+    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+        const auto* top = getCurrentScene();
+        layer->setActiveScene(top ? top->instanceId() : 0);
+    }
+}
+
 void SceneManager::processPendingActions()
 {
     if (pending_action_ == PendingAction::None) {
@@ -162,6 +171,7 @@ void SceneManager::pushScene(std::unique_ptr<Scene>&& scene) {
 
     // 将新场景移入栈顶
     scene_stack_.push_back(std::move(scene));
+    syncRmlActiveScene();
     spdlog::debug("SceneManager: push '{}' (from '{}'), stack {} -> {}", to_scene, from_scene, stack_size_before, scene_stack_.size());
 }
 
@@ -178,6 +188,7 @@ void SceneManager::popScene() {
         scene_stack_.back()->clean();       // 显式调用清理
     }
     scene_stack_.pop_back();
+    syncRmlActiveScene();
     const std::string_view to_scene = getCurrentScene() ? getCurrentScene()->getName() : "<none>";
     spdlog::debug("SceneManager: pop '{}' (to '{}'), stack {} -> {}", from_scene, to_scene, stack_size_before, scene_stack_.size());
     if (scene_stack_.empty()) {
@@ -215,6 +226,7 @@ void SceneManager::replaceScene(std::unique_ptr<Scene>&& scene) {
 
     // 将新场景压入栈顶
     scene_stack_.push_back(std::move(scene));
+    syncRmlActiveScene();
     spdlog::debug("SceneManager: replace '{}' -> '{}', stack {} -> {}", from_scene, to_scene, stack_size_before, scene_stack_.size());
 }
 
