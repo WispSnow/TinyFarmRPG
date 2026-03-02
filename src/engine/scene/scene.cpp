@@ -55,9 +55,9 @@ void Scene::render(float interpolation_alpha) {
 }
 
 void Scene::clean() {
+    unloadAllRmlDocuments();
     if (!is_initialized_) return;
 
-    unloadAllRmlDocuments();
     context_.getSpatialIndexManager().resetIfUsingRegistry(&registry_);
     registry_ = entt::registry{};  // 重建 registry，确保实体/组件与 ctx 一并重置
     is_initialized_ = false;        // 清理完成后，设置场景为未初始化

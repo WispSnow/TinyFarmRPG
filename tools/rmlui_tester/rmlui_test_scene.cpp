@@ -4,6 +4,7 @@
 #include "engine/debug/debug_panel.h"
 #include "engine/debug/debug_ui_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -109,6 +110,7 @@ void RmlUiTestScene::clean() {
         context_.getDebugUIManager().unregisterPanel(control_panel_handle_);
         control_panel_handle_ = nullptr;
     }
+    current_document_ = nullptr;
     Scene::clean();
 }
 
@@ -228,13 +230,20 @@ bool RmlUiTestScene::loadDocument(std::string_view path) {
         return false;
     }
 
-    auto& gl_renderer = context_.getGLRenderer();
-    if (!gl_renderer.loadRmlUiDocument(path)) {
+    auto* next_document = loadRmlDocument(path);
+    if (!next_document) {
         std::string message = "Load failed: ";
         message += path;
         setStatus(message, true);
         return false;
     }
+
+    if (current_document_ && current_document_ != next_document) {
+        if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+            layer->unloadDocument(current_document_);
+        }
+    }
+    current_document_ = next_document;
 
     copyPathToBuffer(document_path_buffer_, std::string(path));
     updateSelectedDocumentIndex();
@@ -246,15 +255,15 @@ bool RmlUiTestScene::loadDocument(std::string_view path) {
 }
 
 bool RmlUiTestScene::reloadDocument() {
-    auto& gl_renderer = context_.getGLRenderer();
-    if (!gl_renderer.reloadRmlUiDocument()) {
-        setStatus("Reload failed.", true);
+    const std::string active_path{document_path_buffer_.data()};
+    if (active_path.empty()) {
+        setStatus("Reload failed: empty path.", true);
         return false;
     }
 
-    const std::string active_path{document_path_buffer_.data()};
-    copyPathToBuffer(document_path_buffer_, active_path);
-    updateSelectedDocumentIndex();
+    if (!loadDocument(active_path)) {
+        return false;
+    }
 
     std::string message = "Reloaded: ";
     message += active_path;

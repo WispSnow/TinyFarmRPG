@@ -7,6 +7,10 @@
 #include <string_view>
 #include <vector>
 
+namespace Rml {
+class ElementDocument;
+}
+
 namespace engine::debug {
 class DebugPanel;
 }
@@ -42,6 +46,7 @@ private:
     std::string status_message_{"Ready"};
     bool status_is_error_{false};
     int selected_document_index_{-1};
+    Rml::ElementDocument* current_document_{nullptr};
 
     bool previous_f5_pressed_{false};
     bool previous_primary_reload_pressed_{false};
