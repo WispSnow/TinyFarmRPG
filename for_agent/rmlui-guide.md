@@ -22,6 +22,17 @@ RmlUi 没有 `border-style` 属性，`border` 简写语法为 `<width> <color>`�
 - 正确：`border: 1dp #7aa2f7;`
 - 错误：`border: 1dp solid #7aa2f7;`（`solid` 会导致解析失败）
 
+## 位图字体无 italic 变体
+
+项目使用的 "VonwaonBitmap 16px" 是位图字体，没有 italic 字形文件。
+在 RCSS 中对该字体使用 `font-style: italic` 会导致 "No font face defined" 警告且文字不显示。
+不要在演示代码中对位图字体使用 italic。
+
+## 逻辑分辨率
+
+窗口逻辑分辨率为 640×360dp（`window.json` 中 1280×720 * logical_scale 0.5）。
+编写 learn 演示页面时注意内容不要超出此范围，合理使用多列布局。
+
 ## UI 资源路径
 
 - RML/RCSS 文件放在 `ui/`（项目根目录），不是 `assets/ui/`
