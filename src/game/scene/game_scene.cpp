@@ -14,6 +14,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_defaults.h"
 #include "engine/ui/ui_manager.h"
@@ -40,7 +41,7 @@
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
-#include "game/ui/time_clock_ui.h"
+#include "game/ui/time_clock_hud.h"
 #include "game/world/map_manager.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -219,6 +220,9 @@ void GameScene::update(float delta_time) {
     if (!abort_to_title_ && services_ && services_->vfx_service) {
         services_->vfx_service->update(delta_time);
     }
+    if (!abort_to_title_ && time_clock_hud_) {
+        time_clock_hud_->update(registry_.ctx().find<game::data::GameTime>());
+    }
     Scene::update(delta_time);
 }
 
@@ -266,6 +270,7 @@ void GameScene::snapshotInterpolationState() {
 }
 
 void GameScene::clean() {
+    time_clock_hud_.reset();
     context_.getGLRenderer().setVfxBackend(nullptr);
 
     if (services_ && services_->script_host) {
@@ -381,8 +386,10 @@ bool GameScene::initUI() {
     ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
     auto& text_renderer = context_.getTextRenderer();
 
-    auto time_clock_ui = std::make_unique<game::ui::TimeClockUI>(context_, registry_, text_renderer);
-    ui_manager_->addElement(std::move(time_clock_ui));
+    // 时钟 HUD（RmlUi 驱动）
+    if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
+        time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
+    }
 
     auto inventory_ui = std::make_unique<game::ui::InventoryUI>(context_, services_->item_catalog.get());
     inventory_ui_ = inventory_ui.get();
