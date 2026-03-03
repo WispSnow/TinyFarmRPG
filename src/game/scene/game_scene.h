@@ -31,6 +31,10 @@ namespace engine::ui {
     class IScreenFade;
 }
 
+namespace engine::ui::rmlui {
+    class RmlScreenFade;
+}
+
 namespace game::runtime {
     struct GameRuntimeServices;
     struct GameSystemBundle;
@@ -61,6 +65,7 @@ class GameScene : public engine::scene::Scene {
     std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
     game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
     std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_;
+    std::unique_ptr<engine::ui::rmlui::RmlScreenFade> rml_screen_fade_;
     engine::ui::IScreenFade* screen_fade_{nullptr};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};

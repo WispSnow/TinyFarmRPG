@@ -1,0 +1,8 @@
+<rml>
+<head>
+    <link type="text/rcss" href="screen_fade.rcss"/>
+</head>
+<body>
+    <div id="fade-overlay"></div>
+</body>
+</rml>
