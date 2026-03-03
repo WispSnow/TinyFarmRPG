@@ -48,6 +48,13 @@ void MyScene::clean() {
 }
 ```
 
+## position: absolute 不支持 left+right / top+bottom 隐式拉伸
+
+标准 CSS 中 `position: absolute; left: 0; right: 0` 会隐式撑满宽度，但 RmlUi 中 `left` 和 `right` 是互斥的（`else if`），`top` 和 `bottom` 同理。要让绝对定位元素填满父容器，必须显式设置 `width` 和 `height`：
+
+- 正确：`position: absolute; left: 0; top: 0; width: 100%; height: 100%;`
+- 错误：`position: absolute; left: 0; top: 0; right: 0; bottom: 0;`（`right`/`bottom` 被忽略，元素尺寸退化为内容大小）
+
 ## UI 资源路径
 
 - RML/RCSS 文件放在 `ui/`（项目根目录），不是 `assets/ui/`
