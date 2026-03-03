@@ -275,7 +275,8 @@ void RmlUILayer::applyInteractionPolicy() {
         const bool interactive = (entry.owner == 0) || (entry.owner == active_scene_id_);
 
         if (interactive) {
-            entry.doc->SetProperty("pointer-events", "auto");
+            // 移除内联覆盖，让 RCSS 声明的 pointer-events 生效
+            entry.doc->RemoveProperty("pointer-events");
         } else {
             entry.doc->SetProperty("pointer-events", "none");
             // 移除非活跃文档上的键盘焦点，防止按键事件泄漏
