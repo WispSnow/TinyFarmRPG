@@ -86,8 +86,8 @@ bool RmlUILayer::init(SDL_Window* window,
     // dp_ratio 初始值；后续 setViewport 会在 logical_size 设置后重新计算
     if (logical_width_ > 0 && logical_height_ > 0) {
         context_->SetDimensions(Rml::Vector2i{logical_width_, logical_height_});
-        const float dp_ratio = static_cast<float>(viewport_width_) / static_cast<float>(logical_width_);
-        context_->SetDensityIndependentPixelRatio(dp_ratio);
+        context_->SetDensityIndependentPixelRatio(1.0f);
+        render_interface_->SetViewport(logical_width_, logical_height_, 0, 0);
     } else {
         const float display_scale = SDL_GetWindowDisplayScale(window_);
         if (display_scale > 0.0f) {
@@ -155,7 +155,21 @@ void RmlUILayer::render() {
 
     render_interface_->BeginFrame();
     context_->Render();
-    render_interface_->EndFrame();
+
+    if (logical_width_ > 0 && logical_height_ > 0) {
+        // GL3 renderer 的 EndFrame 先将 FBO resolve 到 postprocess buffer，
+        // 再 blit 到 backbuffer。此时需将 glViewport 设为物理 viewport，
+        // 让逻辑尺寸的 FBO 拉伸填满物理显示区域。
+        // EndFrame 内部的 glViewport 使用 SetViewport 设置的值（逻辑尺寸），
+        // 所以需要在 EndFrame 之前临时切回物理 viewport。
+        render_interface_->SetViewport(viewport_width_, viewport_height_,
+                                       viewport_offset_x_, viewport_offset_y_);
+        render_interface_->EndFrame();
+        // 还原为逻辑尺寸，以便下一帧 BeginFrame 使用正确的投影
+        render_interface_->SetViewport(logical_width_, logical_height_, 0, 0);
+    } else {
+        render_interface_->EndFrame();
+    }
 }
 
 void RmlUILayer::setViewport(int width, int height, int offset_x, int offset_y) {
@@ -170,10 +184,12 @@ void RmlUILayer::setViewport(int width, int height, int offset_x, int offset_y) 
 
     if (context_) {
         if (logical_width_ > 0 && logical_height_ > 0) {
-            // 以逻辑分辨率为布局空间，dp_ratio = 物理像素 / 逻辑像素
+            // 锁定逻辑分辨率：Context 和渲染投影都使用逻辑尺寸，
+            // dp_ratio 保持 1.0，让 1dp = 1逻辑像素。
+            // GL viewport（在 render() 中设置）将逻辑空间拉伸到物理 viewport。
             context_->SetDimensions(Rml::Vector2i{logical_width_, logical_height_});
-            const float dp_ratio = static_cast<float>(viewport_width_) / static_cast<float>(logical_width_);
-            context_->SetDensityIndependentPixelRatio(dp_ratio);
+            context_->SetDensityIndependentPixelRatio(1.0f);
+            render_interface_->SetViewport(logical_width_, logical_height_, 0, 0);
         } else {
             // 未设置逻辑分辨率时，回退到物理像素 + 显示缩放
             context_->SetDimensions(Rml::Vector2i{viewport_width_, viewport_height_});
