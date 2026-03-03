@@ -1,0 +1,55 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_events.rcss"/>
+</head>
+<body>
+    <!-- ① Click Counter: 直接 EventListener -->
+    <div class="section">
+        <h2>Click Counter (EventListener)</h2>
+        <div class="counter-row">
+            <div id="click-btn" class="click-btn">Click Me!</div>
+            <p class="label">count:</p>
+            <div id="click-count" class="counter-display">0</div>
+        </div>
+        <p class="label">C++ ClickCounter::ProcessEvent increments and updates via SetInnerRML</p>
+    </div>
+
+    <!-- ② Command Menu: RmlEventBridge + data-command -->
+    <div class="section">
+        <h2>Command Menu (RmlEventBridge)</h2>
+        <div class="cmd-row">
+            <div id="cmd-menu" class="cmd-list">
+                <div class="cmd-btn" data-command="cmd_attack">Attack</div>
+                <div class="cmd-btn" data-command="cmd_magic">Magic</div>
+                <div class="cmd-btn" data-command="cmd_items">Items</div>
+                <div class="cmd-btn" data-command="cmd_defend">Defend</div>
+                <div class="cmd-btn" data-command="cmd_flee">Flee</div>
+            </div>
+            <div class="cmd-log-box">
+                <p class="label">Command Log:</p>
+                <div id="cmd-log" class="cmd-log-text">Select a command...</div>
+            </div>
+        </div>
+        <p class="label">Single listener on #cmd-menu, dispatched by data-command attribute (event bubbling)</p>
+    </div>
+
+    <!-- ③ Hover Info: mouseover + 动态内容 -->
+    <div class="section">
+        <h2>Hover Info (mouseover)</h2>
+        <div class="hover-row">
+            <div class="hover-items">
+                <div class="info-item" data-info="Restore 50 HP to one ally.">Potion</div>
+                <div class="info-item" data-info="Restore 30 MP to one ally.">Ether</div>
+                <div class="info-item" data-info="Revive a fallen ally with 25% HP.">Phoenix Down</div>
+                <div class="info-item" data-info="Remove all status ailments.">Remedy</div>
+                <div class="info-item" data-info="Escape from battle instantly.">Smoke Bomb</div>
+            </div>
+            <div class="hover-display-box">
+                <p class="label">Item Description:</p>
+                <div id="hover-display" class="hover-display-text">Hover over an item...</div>
+            </div>
+        </div>
+        <p class="label">Each .info-item has data-info attribute, read by C++ HoverInfoListener</p>
+    </div>
+</body>
+</rml>
