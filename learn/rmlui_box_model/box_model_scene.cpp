@@ -14,7 +14,7 @@ bool BoxModelScene::init() {
 
     context_.getGLRenderer().setDebugUIEnabled(true);
 
-    if (!loadRmlDocument("ui/rmlui/learn_box_model.rml")) {
+    if (!loadRmlDocument("ui/rmlui/learn/learn_box_model.rml")) {
         spdlog::error("Failed to load learn_box_model.rml");
         return false;
     }

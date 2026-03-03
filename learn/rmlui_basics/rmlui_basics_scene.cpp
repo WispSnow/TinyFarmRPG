@@ -15,7 +15,7 @@ bool RmlUiBasicsScene::init() {
     auto& gl_renderer = context_.getGLRenderer();
     gl_renderer.setDebugUIEnabled(true);
 
-    if (!gl_renderer.loadRmlUiDocument("ui/rmlui/learn_hello.rml")) {
+    if (!gl_renderer.loadRmlUiDocument("ui/rmlui/learn/learn_hello.rml")) {
         spdlog::error("Failed to load learn_hello.rml");
         return false;
     }

@@ -284,9 +284,9 @@ add_learn_target(rmlui_box_model)
 
 `learn/rmlui_box_model/main.cpp` — 与 L01 相同的启动模式，只是场景类不同。
 
-`learn/rmlui_box_model/box_model_scene.h` / `.cpp` — 加载 `ui/rmlui/learn_box_model.rml`。
+`learn/rmlui_box_model/box_model_scene.h` / `.cpp` — 加载 `ui/rmlui/learn/learn_box_model.rml`。
 
-### RML 文档：`ui/rmlui/learn_box_model.rml`
+### RML 文档：`ui/rmlui/learn/learn_box_model.rml`
 
 ```xml
 <rml>
@@ -344,7 +344,7 @@ add_learn_target(rmlui_box_model)
 </rml>
 ```
 
-### RCSS 样式：`ui/rmlui/learn_box_model.rcss`
+### RCSS 样式：`ui/rmlui/learn/learn_box_model.rcss`
 
 ```css
 body {
@@ -528,7 +528,7 @@ content = 120 - 10×2 - 2×2 = 96dp，总宽度 = 8 + 120 + 8 = **136dp**
 
 ### 练习 2：角色信息卡
 
-创建 `ui/rmlui/learn_char_card.rml` + `.rcss`，实现如下布局：
+创建 `ui/rmlui/learn/learn_char_card.rml` + `.rcss`，实现如下布局：
 
 ```
 ┌──────────────────────────────┐
