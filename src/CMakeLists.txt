@@ -211,7 +211,7 @@ target_sources(game PRIVATE
     game/runtime/game_runtime_assembler.cpp
     game/runtime/system_scheduler.cpp
     # UI
-    game/ui/time_clock_ui.cpp
+    game/ui/time_clock_hud.cpp
     game/ui/inventory_ui.cpp
     game/ui/hotbar_ui.cpp
     game/ui/dialogue_bubble_view.cpp

@@ -10,6 +10,6 @@
 
 ## Note 
 - 此项目是一个开发中的程序，并未上线。尽量采用最优方案，不必考虑向后兼容。
-- 进行代码编写时，遵照此规范： @for_agent/code-guide.md
+- 进行代码编写、review时，遵照此规范： @for_agent/code-guide.md
 - 进行UI(rmlui)文件编写时，先读备忘： @for_agent/rmlui-guide.md
 - 构建时使用 ninja 工具加快速度
