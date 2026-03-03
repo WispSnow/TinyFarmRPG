@@ -1,0 +1,92 @@
+/* ===========================================
+ * Time Clock HUD Styles
+ * 左侧表盘+指针，右侧背景面板+Day/Time文本
+ *
+ * 尺寸 = 基础像素 × 2（UI_SCALE）
+ * 基础表盘 32px → 64dp
+ * =========================================== */
+
+body {
+    /* 占满视口用于定位，不拦截鼠标 */
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* --- 根容器 --- */
+
+#time-clock {
+    position: absolute;
+    left: 10dp;
+    top: 10dp;
+    width: 158dp;   /* 64 (clock) - 24 (overlap) + 118 (panel) */
+    height: 64dp;
+    pointer-events: none;
+}
+
+/* --- 表盘 --- */
+
+.clock-face {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 64dp;
+    height: 64dp;
+    decorator: image(clock-face);
+    pointer-events: none;
+}
+
+/* --- 指针（叠加在表盘之上，decorator 由 data binding 设置） --- */
+
+.clock-hand {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 64dp;
+    height: 64dp;
+    pointer-events: none;
+}
+
+/* --- 右侧背景面板（九宫格） --- */
+
+.info-panel {
+    position: absolute;
+    left: 40dp;     /* 64 - 24 overlap */
+    top: 4dp;       /* 垂直居中于64dp高度内: (64-56)/2 = 4 */
+    width: 118dp;
+    height: 56dp;
+    decorator: ninepatch(clock-panel-bg, clock-panel-bg-inner, 1.0);
+    pointer-events: none;
+}
+
+/* --- 标签区域（垂直布局） --- */
+
+.label-stack {
+    position: absolute;
+    left: 28dp;
+    top: 6dp;
+    width: 66dp;
+    display: flex;
+    flex-direction: column;
+    gap: 4dp;
+    pointer-events: none;
+}
+
+/* --- 标签背景（九宫格）+ 文本居中 --- */
+
+.label-bg {
+    width: 66dp;
+    height: 20dp;
+    decorator: ninepatch(clock-label-bg, clock-label-bg-inner, 1.0);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.label-bg span {
+    color: white;
+    font-effect: shadow(1dp 1dp #00000088);
+    pointer-events: none;
+}
