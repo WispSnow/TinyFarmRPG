@@ -18,7 +18,7 @@
 #include "engine/ui/ui_button.h"
 #include "engine/ui/ui_defaults.h"
 #include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_screen_fade.h"
+#include "engine/ui/rmlui/rml_screen_fade.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
 #include "engine/vfx/vfx_service.h"
@@ -223,6 +223,9 @@ void GameScene::update(float delta_time) {
     if (!abort_to_title_ && time_clock_hud_) {
         time_clock_hud_->update(registry_.ctx().find<game::data::GameTime>());
     }
+    if (!abort_to_title_ && rml_screen_fade_) {
+        rml_screen_fade_->update(delta_time);
+    }
     Scene::update(delta_time);
 }
 
@@ -291,6 +294,10 @@ void GameScene::clean() {
     dispatcher.clear<game::defs::DialogueHideEvent>();
 
     dialogue_controller_.reset();
+    if (systems_ && systems_->map_transition_system) {
+        systems_->map_transition_system->setFadeOverlay(nullptr);
+    }
+    rml_screen_fade_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
     Scene::clean();
@@ -473,10 +480,10 @@ bool GameScene::initUI() {
         spdlog::error("GameScene: 创建菜单按钮失败，UI初始化将继续。");
     }
 
-    auto screen_fade = std::make_unique<engine::ui::UIScreenFade>(context_);
-    screen_fade->setOrderIndex(10000);
-    screen_fade_ = screen_fade.get();
-    ui_manager_->addElement(std::move(screen_fade));
+    if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
+        rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_layer, instance_id_);
+        screen_fade_ = rml_screen_fade_.get();
+    }
 
     if (systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(screen_fade_);

@@ -158,6 +158,7 @@ target_sources(engine PRIVATE
     engine/ui/rmlui/rml_ui_layer.cpp
     engine/ui/rmlui/rml_data_bridge.cpp
     engine/ui/rmlui/rml_event_bridge.cpp
+    engine/ui/rmlui/rml_screen_fade.cpp
     engine/ui/rmlui/render_interface_gl3_stb.cpp
 )
 
