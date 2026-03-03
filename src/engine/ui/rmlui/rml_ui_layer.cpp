@@ -83,9 +83,16 @@ bool RmlUILayer::init(SDL_Window* window,
         return false;
     }
 
-    const float display_scale = SDL_GetWindowDisplayScale(window_);
-    if (display_scale > 0.0f) {
-        context_->SetDensityIndependentPixelRatio(display_scale);
+    // dp_ratio 初始值；后续 setViewport 会在 logical_size 设置后重新计算
+    if (logical_width_ > 0 && logical_height_ > 0) {
+        context_->SetDimensions(Rml::Vector2i{logical_width_, logical_height_});
+        const float dp_ratio = static_cast<float>(viewport_width_) / static_cast<float>(logical_width_);
+        context_->SetDensityIndependentPixelRatio(dp_ratio);
+    } else {
+        const float display_scale = SDL_GetWindowDisplayScale(window_);
+        if (display_scale > 0.0f) {
+            context_->SetDensityIndependentPixelRatio(display_scale);
+        }
     }
 
     if (!Rml::LoadFontFace(kDefaultFontPath)) {
@@ -162,14 +169,27 @@ void RmlUILayer::setViewport(int width, int height, int offset_x, int offset_y) 
     }
 
     if (context_) {
-        context_->SetDimensions(Rml::Vector2i{viewport_width_, viewport_height_});
-        if (window_) {
-            const float display_scale = SDL_GetWindowDisplayScale(window_);
-            if (display_scale > 0.0f) {
-                context_->SetDensityIndependentPixelRatio(display_scale);
+        if (logical_width_ > 0 && logical_height_ > 0) {
+            // 以逻辑分辨率为布局空间，dp_ratio = 物理像素 / 逻辑像素
+            context_->SetDimensions(Rml::Vector2i{logical_width_, logical_height_});
+            const float dp_ratio = static_cast<float>(viewport_width_) / static_cast<float>(logical_width_);
+            context_->SetDensityIndependentPixelRatio(dp_ratio);
+        } else {
+            // 未设置逻辑分辨率时，回退到物理像素 + 显示缩放
+            context_->SetDimensions(Rml::Vector2i{viewport_width_, viewport_height_});
+            if (window_) {
+                const float display_scale = SDL_GetWindowDisplayScale(window_);
+                if (display_scale > 0.0f) {
+                    context_->SetDensityIndependentPixelRatio(display_scale);
+                }
             }
         }
     }
+}
+
+void RmlUILayer::setLogicalSize(int width, int height) {
+    logical_width_ = std::max(width, 0);
+    logical_height_ = std::max(height, 0);
 }
 
 // --- 多文档管理 ---
@@ -306,23 +326,42 @@ void RmlUILayer::adjustEventForViewport(SDL_Event& event) const {
         return;
     }
 
+    // SDL 鼠标坐标是 window coordinates。
+    // 需要：1) 减去 letterbox 偏移  2) 如果锁定了逻辑分辨率，缩放到逻辑空间。
+    //
+    // viewport_offset_ 是物理像素，SDL 鼠标坐标是窗口坐标，
+    // 两者的比值就是 pixel density。
     const float pixel_density = std::max(SDL_GetWindowPixelDensity(window_), 1.0f);
     const float offset_x = static_cast<float>(viewport_offset_x_) / pixel_density;
     const float offset_y = static_cast<float>(viewport_offset_y_) / pixel_density;
 
+    // 窗口坐标中的视口尺寸
+    const float vp_w_win = static_cast<float>(viewport_width_) / pixel_density;
+    const float vp_h_win = static_cast<float>(viewport_height_) / pixel_density;
+
+    // 从窗口坐标映射到逻辑坐标的缩放因子
+    const bool use_logical = (logical_width_ > 0 && logical_height_ > 0 && vp_w_win > 0.0f && vp_h_win > 0.0f);
+    const float scale_x = use_logical ? (static_cast<float>(logical_width_) / vp_w_win) : 1.0f;
+    const float scale_y = use_logical ? (static_cast<float>(logical_height_) / vp_h_win) : 1.0f;
+
     switch (event.type) {
         case SDL_EVENT_MOUSE_MOTION:
-            event.motion.x -= offset_x;
-            event.motion.y -= offset_y;
+            event.motion.x = (event.motion.x - offset_x) * scale_x;
+            event.motion.y = (event.motion.y - offset_y) * scale_y;
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
-            event.button.x -= offset_x;
-            event.button.y -= offset_y;
+            event.button.x = (event.button.x - offset_x) * scale_x;
+            event.button.y = (event.button.y - offset_y) * scale_y;
             break;
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-            event.window.data1 = viewport_width_;
-            event.window.data2 = viewport_height_;
+            if (use_logical) {
+                event.window.data1 = logical_width_;
+                event.window.data2 = logical_height_;
+            } else {
+                event.window.data1 = viewport_width_;
+                event.window.data2 = viewport_height_;
+            }
             break;
         default:
             break;
