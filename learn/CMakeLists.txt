@@ -46,3 +46,4 @@ endmacro()
 
 add_learn_target(rmlui_basics)
 add_learn_target(rmlui_box_model)
+add_learn_target(rmlui_flexbox)
