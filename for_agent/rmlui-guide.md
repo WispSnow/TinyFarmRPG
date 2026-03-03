@@ -33,6 +33,21 @@ RmlUi 没有 `border-style` 属性，`border` 简写语法为 `<width> <color>`�
 窗口逻辑分辨率为 640×360dp（`window.json` 中 1280×720 * logical_scale 0.5）。
 编写 learn 演示页面时注意内容不要超出此范围，合理使用多列布局。
 
+## 事件监听器必须在卸载文档前移除
+
+通过 `AddEventListener` 注册的监听器，必须在 `unloadAllRmlDocuments()` **之前**调用
+`RemoveEventListener` 逐一移除。否则文档卸载过程中 RmlUi 会派发 `blur` 等事件，
+回调可能访问正在销毁的元素导致 segfault。
+
+正确顺序：
+```cpp
+void MyScene::clean() {
+    removeAllListeners();      // 先移除监听器
+    unloadAllRmlDocuments();   // 再卸载文档
+    Scene::clean();
+}
+```
+
 ## UI 资源路径
 
 - RML/RCSS 文件放在 `ui/`（项目根目录），不是 `assets/ui/`
