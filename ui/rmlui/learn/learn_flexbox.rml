@@ -1,0 +1,136 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_flexbox.rcss"/>
+</head>
+<body>
+    <!-- ① flex-direction 对比 -->
+    <div class="section">
+        <h2>flex-direction</h2>
+        <div class="demo-row">
+            <div class="demo-col">
+                <p class="label">row</p>
+                <div class="dir-row">
+                    <div class="item a">A</div>
+                    <div class="item b">B</div>
+                    <div class="item c">C</div>
+                </div>
+            </div>
+            <div class="demo-col">
+                <p class="label">column</p>
+                <div class="dir-col">
+                    <div class="item a">A</div>
+                    <div class="item b">B</div>
+                    <div class="item c">C</div>
+                </div>
+            </div>
+            <div class="demo-col">
+                <p class="label">row-reverse</p>
+                <div class="dir-row-rev">
+                    <div class="item a">A</div>
+                    <div class="item b">B</div>
+                    <div class="item c">C</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② justify-content -->
+    <div class="section">
+        <h2>justify-content</h2>
+        <div class="jc-demos">
+            <div class="jc-entry">
+                <p class="label">flex-start</p>
+                <div class="jc-box jc-start">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+            </div>
+            <div class="jc-entry">
+                <p class="label">center</p>
+                <div class="jc-box jc-center">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+            </div>
+            <div class="jc-entry">
+                <p class="label">space-between</p>
+                <div class="jc-box jc-between">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+            </div>
+            <div class="jc-entry">
+                <p class="label">space-evenly</p>
+                <div class="jc-box jc-evenly">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ align-items -->
+    <div class="section">
+        <h2>align-items</h2>
+        <div class="demo-row">
+            <div class="demo-col">
+                <p class="label">stretch</p>
+                <div class="ai-box ai-stretch">
+                    <div class="ai-item ai-short">S</div>
+                    <div class="ai-item ai-tall">T</div>
+                    <div class="ai-item ai-short">S</div>
+                </div>
+            </div>
+            <div class="demo-col">
+                <p class="label">center</p>
+                <div class="ai-box ai-center">
+                    <div class="ai-item ai-short">S</div>
+                    <div class="ai-item ai-tall">T</div>
+                    <div class="ai-item ai-short">S</div>
+                </div>
+            </div>
+            <div class="demo-col">
+                <p class="label">flex-end</p>
+                <div class="ai-box ai-end">
+                    <div class="ai-item ai-short">S</div>
+                    <div class="ai-item ai-tall">T</div>
+                    <div class="ai-item ai-short">S</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ④ flex-grow -->
+    <div class="section">
+        <h2>flex-grow</h2>
+        <div class="grow-box">
+            <div class="grow-item g1">1</div>
+            <div class="grow-item g2">2</div>
+            <div class="grow-item g1">1</div>
+        </div>
+        <p class="label">grow: 1 | 2 | 1 (space ratio 1:2:1)</p>
+    </div>
+
+    <!-- ⑤ Grid (flex-wrap) -->
+    <div class="section">
+        <h2>Grid (flex-wrap)</h2>
+        <div class="grid-box">
+            <div class="grid-cell">1</div>
+            <div class="grid-cell">2</div>
+            <div class="grid-cell">3</div>
+            <div class="grid-cell">4</div>
+            <div class="grid-cell">5</div>
+            <div class="grid-cell">6</div>
+            <div class="grid-cell">7</div>
+            <div class="grid-cell">8</div>
+            <div class="grid-cell">9</div>
+            <div class="grid-cell">10</div>
+            <div class="grid-cell">11</div>
+            <div class="grid-cell">12</div>
+            <div class="grid-cell">13</div>
+            <div class="grid-cell">14</div>
+            <div class="grid-cell">15</div>
+            <div class="grid-cell">16</div>
+            <div class="grid-cell">17</div>
+            <div class="grid-cell">18</div>
+        </div>
+        <p class="label">6 columns, flex-wrap: wrap, gap: 3dp</p>
+    </div>
+</body>
+</rml>
