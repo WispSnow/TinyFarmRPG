@@ -934,6 +934,12 @@ bool GLRenderer::initRmlUiLayer() {
         spdlog::error("创建 RmlUILayer 失败。");
         return false;
     }
+
+    // 锁定逻辑分辨率：1dp = 1逻辑像素，随窗口缩放自动适配
+    rmlui_layer_->setLogicalSize(
+        static_cast<int>(std::round(logical_size_.x)),
+        static_cast<int>(std::round(logical_size_.y)));
+
     return true;
 }
 

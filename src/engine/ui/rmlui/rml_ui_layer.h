@@ -40,6 +40,10 @@ public:
     void render();
     void setViewport(int width, int height, int offset_x = 0, int offset_y = 0);
 
+    /// 设置逻辑分辨率。Context 以此为布局空间，dp_ratio 自动计算为 viewport/logical。
+    /// 未设置时 Context 直接使用物理 viewport 尺寸。
+    void setLogicalSize(int width, int height);
+
     // --- 多文档管理 ---
 
     /// 加载文档并关联到 owner 场景实例。返回文档指针，失败返回 nullptr。
@@ -113,6 +117,9 @@ private:
     int viewport_height_{1};
     int viewport_offset_x_{0};
     int viewport_offset_y_{0};
+
+    int logical_width_{0};   ///< 逻辑分辨率宽（0 = 未设置，使用 viewport）
+    int logical_height_{0};  ///< 逻辑分辨率高
 
     bool initialized_{false};
 };
