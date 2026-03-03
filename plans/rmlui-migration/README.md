@@ -17,7 +17,7 @@
 |------|------|------|
 | Phase 0: 应用层基础设施 | `[x]` | [`phase-00.md`](./phase-00.md) |
 | Phase 1: 静态 HUD（TimeClockUI） | `[x]` | [`phase-01.md`](./phase-01.md) |
-| Phase 2: 全屏 Overlay（ScreenFade） | `[ ]` | [`phase-02.md`](./phase-02.md) |
+| Phase 2: 全屏 Overlay（ScreenFade） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: 菜单场景 | `[ ]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: 对话气泡 + Tooltip | `[ ]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 战斗 UI | `[ ]` | [`phase-05.md`](./phase-05.md) |
