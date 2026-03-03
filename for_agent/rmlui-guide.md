@@ -25,4 +25,5 @@ RmlUi 没有 `border-style` 属性，`border` 简写语法为 `<width> <color>`�
 ## UI 资源路径
 
 - RML/RCSS 文件放在 `ui/`（项目根目录），不是 `assets/ui/`
-- 代码中加载路径示例：`loadRmlDocument("ui/rmlui/xxx.rml")`
+- 教程用 UI 文件放在 `ui/rmlui/learn/` 子目录，与游戏 UI 文件隔离
+- 代码中加载路径示例：`loadRmlDocument("ui/rmlui/learn/xxx.rml")`

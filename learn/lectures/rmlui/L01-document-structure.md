@@ -200,7 +200,7 @@ RmlUi 中最常用的尺寸单位是 `dp`（density-independent pixel，密度�
 
 ```cpp
 auto& gl_renderer = context_.getGLRenderer();
-gl_renderer.loadRmlUiDocument("ui/rmlui/learn_hello.rml");
+gl_renderer.loadRmlUiDocument("ui/rmlui/learn/learn_hello.rml");
 ```
 
 ### 引擎内部的完整流程
@@ -250,7 +250,7 @@ learn/rmlui_basics/
 ├── rmlui_basics_scene.h        # 场景声明
 └── rmlui_basics_scene.cpp      # 场景实现：加载 RML 文档
 
-ui/rmlui/
+ui/rmlui/learn/
 ├── learn_hello.rml             # RML 文档
 └── learn_hello.rcss            # RCSS 样式表
 ```
@@ -335,7 +335,7 @@ bool RmlUiBasicsScene::init() {
     gl_renderer.setDebugUIEnabled(true);   // 启用 ImGui 调试面板
 
     // 加载 RML 文档 —— 核心调用
-    if (!gl_renderer.loadRmlUiDocument("ui/rmlui/learn_hello.rml")) {
+    if (!gl_renderer.loadRmlUiDocument("ui/rmlui/learn/learn_hello.rml")) {
         spdlog::error("Failed to load learn_hello.rml");
         return false;
     }
@@ -496,7 +496,7 @@ ninja -C build learn_rmlui_basics
 
 ### 练习 1：修改文档内容
 
-打开 `ui/rmlui/learn_hello.rml`，尝试：
+打开 `ui/rmlui/learn/learn_hello.rml`，尝试：
 
 1. 把标题改为你的名字
 2. 在两张卡片下方再添加第三张卡片 Card C
@@ -507,7 +507,7 @@ ninja -C build learn_rmlui_basics
 
 ### 练习 2：修改样式
 
-打开 `ui/rmlui/learn_hello.rcss`，尝试：
+打开 `ui/rmlui/learn/learn_hello.rcss`，尝试：
 
 1. 把 `#panel` 的 `background-color` 改为其他颜色（提示：`#RRGGBBAA` 格式，最后两位是透明度）
 2. 把 `border-radius` 改为 `0dp`，观察直角 vs 圆角的差异
@@ -516,7 +516,7 @@ ninja -C build learn_rmlui_basics
 
 ### 练习 3：创建新页面
 
-创建一个新文件 `ui/rmlui/learn_profile.rml` 和 `learn_profile.rcss`：
+创建一个新文件 `ui/rmlui/learn/learn_profile.rml` 和 `learn_profile.rcss`：
 
 1. 做一个"角色简介卡"：角色名（h1）、职业（h3）、简介描述（p）
 2. 用 `<img>` 加载一张角色图片（可使用 `assets/textures/` 中已有的图片）
