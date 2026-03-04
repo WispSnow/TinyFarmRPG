@@ -1,0 +1,288 @@
+/* === 重置 === */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+body {
+    margin: 0;
+    padding: 8dp;
+    font-size: 12dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #c0caf5;
+}
+
+/* =====================
+   页面布局
+   ===================== */
+
+.page-header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8dp;
+    margin-bottom: 4dp;
+}
+.page-title {
+    font-size: 14dp;
+    color: #7aa2f7;
+    font-weight: bold;
+}
+.page-hint {
+    font-size: 10dp;
+    color: #565f89;
+}
+
+.content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10dp;
+    margin-bottom: 4dp;
+}
+
+/* =====================
+   通用面板
+   ===================== */
+
+.panel {
+    flex: 1;
+    padding: 8dp;
+    background-color: #1a2035cc;
+    border: 1dp #2d4a7a;
+    border-radius: 4dp;
+}
+
+h2 {
+    margin: 0 0 6dp 0;
+    font-size: 13dp;
+    color: #7aa2f7;
+}
+
+/* =====================
+   角色面板 (左)
+   ===================== */
+
+.char-name-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2dp;
+}
+.char-name {
+    font-size: 16dp;
+    color: #e0af68;
+    font-weight: bold;
+    font-effect: glow(1dp #e0af6840);
+}
+.char-level {
+    font-size: 12dp;
+    color: #9ece6a;
+}
+.char-job {
+    margin: 0 0 8dp 0;
+    font-size: 11dp;
+    color: #565f89;
+}
+
+/* HP / MP Bar */
+.stat-block {
+    margin-bottom: 6dp;
+}
+.stat-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2dp;
+}
+.stat-label {
+    font-size: 11dp;
+    font-weight: bold;
+}
+.hp-label {
+    color: #9ece6a;
+}
+.mp-label {
+    color: #7aa2f7;
+}
+.stat-value {
+    font-size: 11dp;
+    color: #a9b1d6;
+}
+
+.bar-track {
+    width: 100%;
+    height: 10dp;
+    background-color: #1e2540;
+    border: 1dp #2d4060;
+    border-radius: 2dp;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    border-radius: 2dp;
+}
+.hp-fill {
+    background-color: #2ea043;
+}
+.mp-fill {
+    background-color: #1f6feb;
+}
+
+/* Gold */
+.gold-row {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4dp;
+    margin-bottom: 6dp;
+    padding: 4dp 6dp;
+    background-color: #1a1b2640;
+    border: 1dp #3a3000;
+    border-radius: 3dp;
+}
+.gold-icon {
+    font-size: 13dp;
+    color: #ffd700;
+    font-weight: bold;
+}
+.gold-value {
+    font-size: 13dp;
+    color: #ffd700;
+    font-effect: glow(1dp #ffd70030);
+}
+
+/* Status badges */
+.status-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4dp;
+    margin-bottom: 6dp;
+}
+.status-label {
+    font-size: 11dp;
+    color: #565f89;
+}
+.status-badge {
+    padding: 1dp 6dp;
+    border-radius: 3dp;
+    font-size: 11dp;
+    font-weight: bold;
+}
+.poison-badge {
+    background-color: #1a3020;
+    color: #73daca;
+    border: 1dp #2a5030;
+}
+.stun-badge {
+    background-color: #2a1535;
+    color: #bb9af7;
+    border: 1dp #4a2555;
+}
+.status-normal {
+    font-size: 11dp;
+    color: #414868;
+}
+
+/* Toggle button */
+.demo-btn {
+    padding: 4dp 10dp;
+    background-color: #414868;
+    border-radius: 3dp;
+    color: #c0caf5;
+    font-size: 11dp;
+    text-align: center;
+}
+.demo-btn:hover {
+    background-color: #565f89;
+    color: #ffffff;
+}
+.demo-btn:active {
+    background-color: #7aa2f7;
+    color: #1a1b26;
+}
+
+/* =====================
+   技能面板 (右)
+   ===================== */
+
+.skill-list {
+    margin-bottom: 6dp;
+}
+
+.skill-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6dp;
+    padding: 5dp 8dp;
+    margin-bottom: 3dp;
+    background-color: #24283b;
+    border: 1dp #414868;
+    border-radius: 3dp;
+}
+.skill-row:hover {
+    background-color: #2d3354;
+    border: 1dp #7aa2f7;
+}
+.skill-row:active {
+    background-color: #1e3255;
+}
+
+/* data-class-mp-low — MP 不足时变灰 */
+.skill-row.mp-low {
+    background-color: #1a1b26;
+    border: 1dp #2a2a40;
+}
+.skill-row.mp-low .skill-name {
+    color: #414868;
+}
+.skill-row.mp-low .skill-cost {
+    color: #3a3a55;
+}
+
+.skill-name {
+    flex: 1;
+    font-size: 12dp;
+    color: #c0caf5;
+}
+.skill-cost {
+    font-size: 11dp;
+    color: #7aa2f7;
+    font-weight: bold;
+}
+.skill-free {
+    font-size: 11dp;
+    color: #9ece6a;
+}
+
+/* Last used */
+.last-skill-row {
+    padding: 4dp 6dp;
+    background-color: #1a1b2660;
+    border: 1dp #2d3354;
+    border-radius: 3dp;
+    font-size: 11dp;
+    color: #565f89;
+}
+.skill-hl {
+    color: #bb9af7;
+    font-weight: bold;
+}
+
+/* =====================
+   底部信息栏
+   ===================== */
+
+.info-bar {
+    padding: 3dp 6dp;
+    background-color: #1a1b2680;
+    border: 1dp #2d3354;
+    border-radius: 3dp;
+    font-size: 12dp;
+    color: #565f89;
+}
+.code {
+    color: #9ece6a;
+}
