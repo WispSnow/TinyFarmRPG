@@ -1,0 +1,42 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="pause_menu.rcss"/>
+</head>
+<body data-model="pause_menu">
+    <div id="pause-mask"></div>
+
+    <div id="pause-panel">
+        <h2 id="pause-title">Pause</h2>
+
+        <div id="pause-message" data-if="has_message" data-style-color="message_color">{{ message_text }}</div>
+
+        <div class="menu-column">
+            <button class="menu-btn" data-command="resume">Resume</button>
+            <button class="menu-btn" data-command="save" data-class-disabled="!save_enabled">Save</button>
+            <button class="menu-btn" data-command="load" data-class-disabled="!load_enabled">Load</button>
+            <button class="menu-btn" data-command="back_to_title" data-class-disabled="!title_enabled">Title</button>
+        </div>
+
+        <hr class="section-divider"/>
+
+        <div class="setting-row">
+            <button class="icon-btn" data-command="time_down" data-class-disabled="!time_scale_enabled">-</button>
+            <div class="setting-label">{{ time_scale_text }}</div>
+            <button class="icon-btn" data-command="time_up" data-class-disabled="!time_scale_enabled">+</button>
+        </div>
+
+        <div class="setting-row">
+            <button class="icon-btn" data-command="music_down">-</button>
+            <div class="setting-label">{{ music_text }}</div>
+            <button class="icon-btn" data-command="music_up">+</button>
+        </div>
+
+        <div class="setting-row">
+            <button class="icon-btn" data-command="sound_down">-</button>
+            <div class="setting-label">{{ sound_text }}</div>
+            <button class="icon-btn" data-command="sound_up">+</button>
+        </div>
+    </div>
+</body>
+</rml>

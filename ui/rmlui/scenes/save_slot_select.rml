@@ -1,0 +1,33 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="save_slot_select.rcss"/>
+</head>
+<body data-model="save_slot_select">
+    <div id="slot-mask"></div>
+
+    <div id="slot-panel">
+        <h2 id="slot-title">{{ panel_title }}</h2>
+
+        <div id="slot-grid">
+            <button class="slot-button"
+                    data-for="slot : slots"
+                    data-command="slot"
+                    data-attr-data-slot-index="slot.slot_index"
+                    data-class-disabled="!slot.enabled">{{ slot.label }}</button>
+        </div>
+
+        <button id="slot-back" data-command="back">{{ back_text }}</button>
+    </div>
+
+    <div id="overwrite-layer" data-class-visible="confirm_visible">
+        <div id="overwrite-dialog">
+            <p id="overwrite-text">{{ confirm_text }}</p>
+            <div id="overwrite-actions">
+                <button class="confirm-button" data-command="confirm_yes">OK</button>
+                <button class="confirm-button secondary" data-command="confirm_no">Cancel</button>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

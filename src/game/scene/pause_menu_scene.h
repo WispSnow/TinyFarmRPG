@@ -1,6 +1,10 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_event_bridge.h"
+
+#include <RmlUi/Core/Types.h>
 
 #include <string>
 #include <string_view>
@@ -9,12 +13,9 @@ namespace engine::core {
 enum class State;
 }
 
-namespace engine::ui {
-class UIButton;
-class UILabel;
-class UIPanel;
-class UIInputBlocker;
-} // namespace engine::ui
+namespace Rml {
+class ElementDocument;
+}
 
 namespace game::save {
 class SaveService;
@@ -37,28 +38,23 @@ private:
     engine::core::State previous_state_{};
     bool close_after_load_{false};
 
-    engine::ui::UIPanel* dim_{nullptr};
-    engine::ui::UIInputBlocker* input_blocker_{nullptr};
-    engine::ui::UIPanel* panel_{nullptr};
+    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    Rml::ElementDocument* document_{nullptr};
+    bool click_listener_registered_{false};
 
-    engine::ui::UILabel* message_label_{nullptr};
+    Rml::String message_text_{};
+    Rml::String message_color_{"#ff6e6e"};
+    bool has_message_{false};
 
-    engine::ui::UIButton* resume_button_{nullptr};
-    engine::ui::UIButton* save_button_{nullptr};
-    engine::ui::UIButton* load_button_{nullptr};
-    engine::ui::UIButton* back_to_title_button_{nullptr};
+    Rml::String music_text_{"Music 100%"};
+    Rml::String sound_text_{"SFX 100%"};
+    Rml::String time_scale_text_{"Speed 1.00x"};
 
-    engine::ui::UIButton* music_down_button_{nullptr};
-    engine::ui::UIButton* music_up_button_{nullptr};
-    engine::ui::UILabel* music_label_{nullptr};
-
-    engine::ui::UIButton* sound_down_button_{nullptr};
-    engine::ui::UIButton* sound_up_button_{nullptr};
-    engine::ui::UILabel* sound_label_{nullptr};
-
-    engine::ui::UIButton* time_scale_down_button_{nullptr};
-    engine::ui::UIButton* time_scale_up_button_{nullptr};
-    engine::ui::UILabel* time_scale_label_{nullptr};
+    bool save_enabled_{false};
+    bool load_enabled_{false};
+    bool title_enabled_{true};
+    bool time_scale_enabled_{false};
 
 public:
     PauseMenuScene(std::string_view name,
@@ -73,7 +69,9 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void buildLayout();
+    void bindEvents();
+    void removeEventListeners();
+
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();
     void refreshSaveActionButtons();
@@ -90,7 +88,6 @@ private:
     void adjustMusicVolume(int step);
     void adjustSoundVolume(int step);
     void adjustTimeScale(int step);
-
 };
 
 } // namespace game::scene

@@ -1,0 +1,80 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#title-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#title-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+@keyframes logo-float {
+    from { top: 52dp; }
+    50%  { top: 47dp; }
+    to   { top: 52dp; }
+}
+
+#title-logo {
+    position: absolute;
+    left: 174dp;
+    top: 52dp;
+    width: 293dp;
+    height: 125dp;
+    animation: logo-float 2.2s infinite;
+}
+
+#menu-list {
+    position: absolute;
+    left: 272dp;
+    top: 198dp;
+    width: 96dp;
+    display: flex;
+    flex-direction: column;
+    gap: 16dp;
+}
+
+.title-button {
+    width: 96dp;
+    height: 32dp;
+    line-height: 32dp;
+    padding: 0;
+    background-color: #0000008a;
+    border: 1dp #f8f4d0;
+    color: #f8f4d0;
+    text-align: center;
+    cursor: pointer;
+}
+
+.title-button:hover {
+    background-color: #f8f4d022;
+}
+
+.title-button:active {
+    background-color: #f8f4d044;
+}
+
+#error-text {
+    position: absolute;
+    left: 80dp;
+    right: 80dp;
+    top: 182dp;
+    color: #ff6e6e;
+    text-align: center;
+}

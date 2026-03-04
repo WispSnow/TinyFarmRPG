@@ -48,8 +48,10 @@ TEST(PauseMenuSceneAsyncSaveUiTest, DisablesBackToTitleWhileSaving) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("back_to_title_button_->setEnabled(!saving);"), std::string::npos)
-        << "PauseMenuScene should disable Back to Title button while async save is running.";
+    EXPECT_NE(source.find("const bool next_title_enabled = !saving;"), std::string::npos)
+        << "PauseMenuScene should derive Title button enable state from async-saving flag.";
+    EXPECT_NE(source.find("assignIfChanged(title_enabled_, next_title_enabled)"), std::string::npos)
+        << "PauseMenuScene should push Title button enable state into Rml data model.";
     EXPECT_NE(source.find("if (save_service_ && save_service_->isSaving())"), std::string::npos)
         << "BackToTitle click handler should defensively reject scene replacement during save.";
     EXPECT_NE(source.find("setMessage(\"Save in progress\", true);"), std::string::npos)

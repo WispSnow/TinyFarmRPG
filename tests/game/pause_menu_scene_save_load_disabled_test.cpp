@@ -32,10 +32,14 @@ TEST(PauseMenuSceneSaveLoadDisabledTest, DisablesButtonsWhenSaveServiceMissing) 
 
     EXPECT_NE(source.find("const bool has_save_service = (save_service_ != nullptr);"), std::string::npos)
         << "PauseMenuScene should derive enable state from save_service_ presence.";
-    EXPECT_NE(source.find("save_button_->setEnabled(has_save_service && !saving);"), std::string::npos)
-        << "PauseMenuScene should disable Save when SaveService is missing.";
-    EXPECT_NE(source.find("load_button_->setEnabled(has_save_service && !saving);"), std::string::npos)
-        << "PauseMenuScene should disable Load when SaveService is missing.";
+    EXPECT_NE(source.find("const bool next_save_enabled = has_save_service && !saving;"), std::string::npos)
+        << "PauseMenuScene should compute Save enable state from save_service_ and saving status.";
+    EXPECT_NE(source.find("const bool next_load_enabled = has_save_service && !saving;"), std::string::npos)
+        << "PauseMenuScene should compute Load enable state from save_service_ and saving status.";
+    EXPECT_NE(source.find("assignIfChanged(save_enabled_, next_save_enabled)"), std::string::npos)
+        << "PauseMenuScene should push Save enabled state into Rml data model.";
+    EXPECT_NE(source.find("assignIfChanged(load_enabled_, next_load_enabled)"), std::string::npos)
+        << "PauseMenuScene should push Load enabled state into Rml data model.";
     EXPECT_NE(source.find("refreshSaveActionButtons();"), std::string::npos)
         << "PauseMenuScene should refresh Save/Load enable state via unified helper.";
 }

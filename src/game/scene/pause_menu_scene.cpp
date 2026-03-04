@@ -11,44 +11,35 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/layout/ui_stack_layout.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_input_blocker.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_panel.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 using namespace entt::literals;
 
 namespace {
 
-constexpr glm::vec2 BUTTON_SIZE{160.0f, 32.0f};
-constexpr float BUTTON_SPACING = 6.0f;
-
-constexpr glm::vec2 ICON_BUTTON_SIZE{32.0f, 32.0f};
-constexpr float SECTION_SPACING = 20.0f;
-constexpr float VOLUME_ROW_SPACING = 6.0f;
-
-constexpr engine::ui::Thickness PANEL_PADDING{24.0f, 24.0f, 24.0f, 24.0f};
-
-constexpr float MESSAGE_TOP_MARGIN = 4.0f;
-constexpr float MESSAGE_AREA_HEIGHT = 22.0f;
-
 constexpr float VOLUME_STEP = 0.10f;
 constexpr float TIME_SCALE_MIN = 0.01f;
 constexpr float TIME_SCALE_MAX = 100.0f;
 constexpr float TIME_SCALE_STEP_RATIO_EXP = 0.2f;
+
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/pause_menu.rml";
+constexpr std::string_view MODEL_NAME = "pause_menu";
 
 float clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
@@ -64,6 +55,15 @@ std::string toMultiplierLabel(std::string_view prefix, float value) {
     char buffer[64]{};
     std::snprintf(buffer, sizeof(buffer), "%.2fx", clamped);
     return std::string(prefix) + " " + buffer;
+}
+
+template <typename T>
+bool assignIfChanged(T& target, const T& value) {
+    if (target == value) {
+        return false;
+    }
+    target = value;
+    return true;
 }
 
 } // namespace
@@ -90,12 +90,17 @@ bool PauseMenuScene::init() {
     previous_state_ = context_.getGameState().getCurrentState();
     context_.getGameState().setState(engine::core::State::Paused);
 
-    if (!initUI()) return false;
+    if (!initUI()) {
+        return false;
+    }
+
     context_.getInputManager().onAction("pause"_hs).connect<&PauseMenuScene::onPausePressed>(this);
     context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
         .connect<&PauseMenuScene::onAsyncSaveCompleted>(this);
 
-    if (!Scene::init()) return false;
+    if (!Scene::init()) {
+        return false;
+    }
     return true;
 }
 
@@ -106,221 +111,109 @@ void PauseMenuScene::update(float delta_time) {
         close_after_load_ = false;
         requestPopScene();
     }
+
     Scene::update(delta_time);
 }
 
 void PauseMenuScene::clean() {
+    removeEventListeners();
+    data_bridge_.destroy();
+    document_ = nullptr;
+
     context_.getGameState().setState(previous_state_);
     Scene::clean();
 }
 
 bool PauseMenuScene::initUI() {
-    const auto logical_size = context_.getGameState().getLogicalSize();
-    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
+    auto* rml_layer = context_.getGLRenderer().getRmlUILayer();
+    if (!rml_layer || !rml_layer->getContext()) {
+        spdlog::error("PauseMenuScene: RmlUILayer 或 Context 不可用。");
+        return false;
+    }
 
-    buildLayout();
+    auto constructor = data_bridge_.create(rml_layer->getContext(), MODEL_NAME);
+    if (!constructor) {
+        spdlog::error("PauseMenuScene: 创建 data model '{}' 失败。", MODEL_NAME);
+        return false;
+    }
+
+    constructor.Bind("has_message", &has_message_);
+    constructor.Bind("message_text", &message_text_);
+    constructor.Bind("message_color", &message_color_);
+    constructor.Bind("music_text", &music_text_);
+    constructor.Bind("sound_text", &sound_text_);
+    constructor.Bind("time_scale_text", &time_scale_text_);
+    constructor.Bind("save_enabled", &save_enabled_);
+    constructor.Bind("load_enabled", &load_enabled_);
+    constructor.Bind("title_enabled", &title_enabled_);
+    constructor.Bind("time_scale_enabled", &time_scale_enabled_);
+
+    document_ = loadRmlDocument(DOCUMENT_PATH);
+    if (!document_) {
+        spdlog::error("PauseMenuScene: 加载文档 '{}' 失败。", DOCUMENT_PATH);
+        data_bridge_.destroy();
+        return false;
+    }
+
+    bindEvents();
     refreshVolumeLabels();
     refreshTimeScaleLabel();
+    refreshSaveActionButtons();
+    setMessage("", false);
+    data_bridge_.markAllDirty();
     return true;
 }
 
-void PauseMenuScene::buildLayout() {
-    auto dim = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f}, engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.6f});
-    dim->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    dim->setPivot({0.0f, 0.0f});
-    dim->setOrderIndex(0);
-    dim_ = dim.get();
-    ui_manager_->addElement(std::move(dim));
+void PauseMenuScene::bindEvents() {
+    event_bridge_.on("resume", [this](Rml::Event&) { onResumeClicked(); });
+    event_bridge_.on("save", [this](Rml::Event&) { onSaveClicked(); });
+    event_bridge_.on("load", [this](Rml::Event&) { onLoadClicked(); });
+    event_bridge_.on("back_to_title", [this](Rml::Event&) { onBackToTitleClicked(); });
 
-    auto blocker = std::make_unique<engine::ui::UIInputBlocker>(context_, glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f});
-    blocker->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    blocker->setPivot({0.0f, 0.0f});
-    blocker->setOrderIndex(1);
-    input_blocker_ = blocker.get();
-    ui_manager_->addElement(std::move(blocker));
+    event_bridge_.on("time_down", [this](Rml::Event&) { adjustTimeScale(-1); });
+    event_bridge_.on("time_up", [this](Rml::Event&) { adjustTimeScale(1); });
+    event_bridge_.on("music_down", [this](Rml::Event&) { adjustMusicVolume(-1); });
+    event_bridge_.on("music_up", [this](Rml::Event&) { adjustMusicVolume(1); });
+    event_bridge_.on("sound_down", [this](Rml::Event&) { adjustSoundVolume(-1); });
+    event_bridge_.on("sound_up", [this](Rml::Event&) { adjustSoundVolume(1); });
 
-    const float buttons_height = BUTTON_SIZE.y * 4.0f + BUTTON_SPACING * 3.0f;
-    const float volume_height = ICON_BUTTON_SIZE.y * 3.0f + VOLUME_ROW_SPACING * 2.0f;
-    const float content_height = MESSAGE_AREA_HEIGHT + buttons_height + SECTION_SPACING + volume_height;
-    const glm::vec2 panel_size{BUTTON_SIZE.x + PANEL_PADDING.width(), content_height + PANEL_PADDING.height()};
+    if (document_) {
+        event_bridge_.registerTo(document_, "click");
+        click_listener_registered_ = true;
+    }
+}
 
-    auto panel =
-        std::make_unique<engine::ui::UIPanel>(glm::vec2{0.0f, 0.0f}, panel_size, engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.75f});
-    panel->setAnchor({0.5f, 0.5f}, {0.5f, 0.5f});
-    panel->setPivot({0.5f, 0.5f});
-    panel->setPadding(PANEL_PADDING);
-    panel->setOrderIndex(2);
-
-    auto& text_renderer = context_.getTextRenderer();
-    auto message = std::make_unique<engine::ui::UILabel>(text_renderer,
-                                                         "",
-                                                         entt::null,
-                                                         engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-                                                         glm::vec2{0.0f, MESSAGE_TOP_MARGIN},
-                                                         engine::utils::FColor{1.0f, 0.25f, 0.25f, 1.0f});
-    message->setAnchor({0.5f, 0.0f}, {0.5f, 0.0f});
-    message->setPivot({0.5f, 0.0f});
-    message->setVisible(false);
-    message_label_ = message.get();
-    panel->addChild(std::move(message));
-
-    auto buttons = std::make_unique<engine::ui::UIStackLayout>(
-        glm::vec2{0.0f, MESSAGE_AREA_HEIGHT},
-        glm::vec2{BUTTON_SIZE.x, buttons_height});
-    buttons->setOrientation(engine::ui::Orientation::Vertical);
-    buttons->setSpacing(BUTTON_SPACING);
-    buttons->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    buttons->setPivot({0.0f, 0.0f});
-
-    auto resume_button = engine::ui::UIButton::create(
-        context_, "primary", glm::vec2{0.0f, 0.0f}, BUTTON_SIZE, [this]() { onResumeClicked(); });
-    if (resume_button) {
-        resume_button->setLabelText("Resume");
-        resume_button_ = resume_button.get();
-        buttons->addChild(std::move(resume_button));
-    } else {
-        spdlog::error("PauseMenuScene: 创建 resume_button 失败。");
+void PauseMenuScene::removeEventListeners() {
+    if (!click_listener_registered_ || !document_) {
+        return;
     }
 
-    auto save_button = engine::ui::UIButton::create(
-        context_, "primary", glm::vec2{0.0f, 0.0f}, BUTTON_SIZE, [this]() { onSaveClicked(); });
-    if (save_button) {
-        save_button->setLabelText("Save");
-        save_button_ = save_button.get();
-        buttons->addChild(std::move(save_button));
-    } else {
-        spdlog::error("PauseMenuScene: 创建 save_button 失败。");
-    }
-
-    auto load_button = engine::ui::UIButton::create(
-        context_, "primary", glm::vec2{0.0f, 0.0f}, BUTTON_SIZE, [this]() { onLoadClicked(); });
-    if (load_button) {
-        load_button->setLabelText("Load");
-        load_button_ = load_button.get();
-        buttons->addChild(std::move(load_button));
-    } else {
-        spdlog::error("PauseMenuScene: 创建 load_button 失败。");
-    }
-
-    auto title_button = engine::ui::UIButton::create(
-        context_, "primary", glm::vec2{0.0f, 0.0f}, BUTTON_SIZE, [this]() { onBackToTitleClicked(); });
-    if (title_button) {
-        title_button->setLabelText("Title");
-        back_to_title_button_ = title_button.get();
-        buttons->addChild(std::move(title_button));
-    } else {
-        spdlog::error("PauseMenuScene: 创建 title_button 失败。");
-    }
-    panel->addChild(std::move(buttons));
-
-    auto buildIconRow = [&](std::string_view label_prefix,
-                            std::string_view left_preset,
-                            std::string_view right_preset,
-                              engine::ui::UIButton** out_down,
-                              engine::ui::UIButton** out_up,
-                              engine::ui::UILabel** out_label,
-                              std::function<void()> on_down,
-                              std::function<void()> on_up) {
-        auto row = std::make_unique<engine::ui::UIPanel>(glm::vec2{0.0f, 0.0f}, glm::vec2{BUTTON_SIZE.x, ICON_BUTTON_SIZE.y});
-
-        auto down = engine::ui::UIButton::create(
-            context_, left_preset, glm::vec2{0.0f, 0.0f}, ICON_BUTTON_SIZE, std::move(on_down));
-        auto up = engine::ui::UIButton::create(
-            context_,
-            right_preset,
-            glm::vec2{BUTTON_SIZE.x - ICON_BUTTON_SIZE.x, 0.0f},
-            ICON_BUTTON_SIZE,
-            std::move(on_up));
-
-        auto label = std::make_unique<engine::ui::UILabel>(text_renderer, std::string(label_prefix));
-        label->setAnchor({0.5f, 0.5f}, {0.5f, 0.5f});
-        label->setPivot({0.5f, 0.5f});
-
-        if (down) {
-            if (out_down) *out_down = down.get();
-            row->addChild(std::move(down));
-        } else {
-            spdlog::error("PauseMenuScene: 创建 icon row down button 失败 (preset='{}')。", left_preset);
-        }
-        if (up) {
-            if (out_up) *out_up = up.get();
-            row->addChild(std::move(up));
-        } else {
-            spdlog::error("PauseMenuScene: 创建 icon row up button 失败 (preset='{}')。", right_preset);
-        }
-        if (out_label) *out_label = label.get();
-
-        row->addChild(std::move(label));
-        return row;
-    };
-
-    const glm::vec2 volume_pos{0.0f, MESSAGE_AREA_HEIGHT + buttons_height + SECTION_SPACING};
-    auto volume_stack = std::make_unique<engine::ui::UIStackLayout>(volume_pos, glm::vec2{BUTTON_SIZE.x, volume_height});
-    volume_stack->setOrientation(engine::ui::Orientation::Vertical);
-    volume_stack->setSpacing(VOLUME_ROW_SPACING);
-    volume_stack->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    volume_stack->setPivot({0.0f, 0.0f});
-
-    auto speed_row = buildIconRow(
-        "Speed",
-        "arrow_left",
-        "arrow_right",
-        &time_scale_down_button_,
-        &time_scale_up_button_,
-        &time_scale_label_,
-        [this]() { adjustTimeScale(-1); },
-        [this]() { adjustTimeScale(1); });
-
-    auto music_row = buildIconRow(
-        "Music",
-        "volume_down",
-        "volume_up",
-        &music_down_button_,
-        &music_up_button_,
-        &music_label_,
-        [this]() { adjustMusicVolume(-1); },
-        [this]() { adjustMusicVolume(1); });
-
-    auto sound_row = buildIconRow(
-        "SFX",
-        "volume_down",
-        "volume_up",
-        &sound_down_button_,
-        &sound_up_button_,
-        &sound_label_,
-        [this]() { adjustSoundVolume(-1); },
-        [this]() { adjustSoundVolume(1); });
-
-    volume_stack->addChild(std::move(speed_row));
-    volume_stack->addChild(std::move(music_row));
-    volume_stack->addChild(std::move(sound_row));
-    panel->addChild(std::move(volume_stack));
-
-    panel_ = panel.get();
-    ui_manager_->addElement(std::move(panel));
-    refreshSaveActionButtons();
+    document_->RemoveEventListener("click", &event_bridge_);
+    click_listener_registered_ = false;
 }
 
 void PauseMenuScene::refreshVolumeLabels() {
     auto& audio = context_.getAudioPlayer();
-    if (music_label_) {
-        music_label_->setText(toPercentLabel("Music", audio.getMusicVolume()));
+
+    const Rml::String music_label = toPercentLabel("Music", audio.getMusicVolume());
+    if (assignIfChanged(music_text_, music_label)) {
+        data_bridge_.markDirty("music_text");
     }
-    if (sound_label_) {
-        sound_label_->setText(toPercentLabel("SFX", audio.getSoundVolume()));
+
+    const Rml::String sound_label = toPercentLabel("SFX", audio.getSoundVolume());
+    if (assignIfChanged(sound_text_, sound_label)) {
+        data_bridge_.markDirty("sound_text");
     }
 }
 
 void PauseMenuScene::refreshTimeScaleLabel() {
-    if (!time_scale_label_) {
-        return;
-    }
-
     if (!game_time_) {
-        time_scale_label_->setText("Speed N/A");
-        if (time_scale_down_button_) time_scale_down_button_->setEnabled(false);
-        if (time_scale_up_button_) time_scale_up_button_->setEnabled(false);
+        if (assignIfChanged(time_scale_text_, Rml::String{"Speed N/A"})) {
+            data_bridge_.markDirty("time_scale_text");
+        }
+        if (assignIfChanged(time_scale_enabled_, false)) {
+            data_bridge_.markDirty("time_scale_enabled");
+        }
         return;
     }
 
@@ -331,21 +224,31 @@ void PauseMenuScene::refreshTimeScaleLabel() {
     scale = std::clamp(scale, TIME_SCALE_MIN, TIME_SCALE_MAX);
     game_time_->time_scale_ = scale;
 
-    time_scale_label_->setText(toMultiplierLabel("Speed", scale));
+    const Rml::String next_label = toMultiplierLabel("Speed", scale);
+    if (assignIfChanged(time_scale_text_, next_label)) {
+        data_bridge_.markDirty("time_scale_text");
+    }
+    if (assignIfChanged(time_scale_enabled_, true)) {
+        data_bridge_.markDirty("time_scale_enabled");
+    }
 }
 
 void PauseMenuScene::refreshSaveActionButtons() {
     const bool has_save_service = (save_service_ != nullptr);
     const bool saving = has_save_service && save_service_->isSaving();
 
-    if (save_button_) {
-        save_button_->setEnabled(has_save_service && !saving);
+    const bool next_save_enabled = has_save_service && !saving;
+    const bool next_load_enabled = has_save_service && !saving;
+    const bool next_title_enabled = !saving;
+
+    if (assignIfChanged(save_enabled_, next_save_enabled)) {
+        data_bridge_.markDirty("save_enabled");
     }
-    if (load_button_) {
-        load_button_->setEnabled(has_save_service && !saving);
+    if (assignIfChanged(load_enabled_, next_load_enabled)) {
+        data_bridge_.markDirty("load_enabled");
     }
-    if (back_to_title_button_) {
-        back_to_title_button_->setEnabled(!saving);
+    if (assignIfChanged(title_enabled_, next_title_enabled)) {
+        data_bridge_.markDirty("title_enabled");
     }
 }
 
@@ -365,14 +268,20 @@ void PauseMenuScene::onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEv
 }
 
 void PauseMenuScene::setMessage(std::string message, bool is_error) {
-    if (!message_label_) {
-        return;
+    const bool next_has_message = !message.empty();
+    if (assignIfChanged(has_message_, next_has_message)) {
+        data_bridge_.markDirty("has_message");
     }
 
-    message_label_->setText(message);
-    message_label_->setVisible(!message.empty());
-    message_label_->setTextColor(is_error ? engine::utils::FColor{1.0f, 0.25f, 0.25f, 1.0f}
-                                          : engine::utils::FColor{0.25f, 1.0f, 0.25f, 1.0f});
+    const Rml::String next_text = message;
+    if (assignIfChanged(message_text_, next_text)) {
+        data_bridge_.markDirty("message_text");
+    }
+
+    const Rml::String next_color = is_error ? Rml::String{"#ff6e6e"} : Rml::String{"#6ee7a1"};
+    if (assignIfChanged(message_color_, next_color)) {
+        data_bridge_.markDirty("message_color");
+    }
 }
 
 bool PauseMenuScene::onPausePressed() {
@@ -429,7 +338,7 @@ void PauseMenuScene::onLoadClicked() {
         }
 
         setMessage("Loaded", false);
-        requestPopScene(); // close SaveSlotSelectScene
+        requestPopScene();   // close SaveSlotSelectScene
         close_after_load_ = true; // close menu on next frame
     };
 
@@ -472,12 +381,12 @@ void PauseMenuScene::adjustTimeScale(int step) {
     scale = std::clamp(scale, TIME_SCALE_MIN, TIME_SCALE_MAX);
 
     if (step > 0) {
-        auto exp_before = std::log10(scale);
-        auto exp_after  = exp_before + TIME_SCALE_STEP_RATIO_EXP;
+        const auto exp_before = std::log10(scale);
+        const auto exp_after = exp_before + TIME_SCALE_STEP_RATIO_EXP;
         scale = std::pow(10.0f, exp_after);
     } else if (step < 0) {
-        auto exp_before = std::log10(scale);
-        auto exp_after  = exp_before - TIME_SCALE_STEP_RATIO_EXP;
+        const auto exp_before = std::log10(scale);
+        const auto exp_after = exp_before - TIME_SCALE_STEP_RATIO_EXP;
         scale = std::pow(10.0f, exp_after);
     }
     scale = std::clamp(scale, TIME_SCALE_MIN, TIME_SCALE_MAX);

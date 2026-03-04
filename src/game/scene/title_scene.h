@@ -1,19 +1,18 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_event_bridge.h"
 
-#include <glm/vec2.hpp>
+#include <RmlUi/Core/Types.h>
 
 #include <memory>
 #include <string>
 #include <string_view>
 
-namespace engine::ui {
-class UIButton;
-class UIImage;
-class UILabel;
-class UIStackLayout;
-} // namespace engine::ui
+namespace Rml {
+class ElementDocument;
+}
 
 namespace game::data {
 struct GameTime;
@@ -22,16 +21,16 @@ struct GameTime;
 namespace game::scene {
 
 class TitleScene final : public engine::scene::Scene {
-    engine::ui::UIImage* background_{nullptr};
-    engine::ui::UIImage* logo_{nullptr};
-    engine::ui::UIStackLayout* button_stack_{nullptr};
-    engine::ui::UILabel* error_label_{nullptr};
     std::shared_ptr<game::data::GameTime> title_game_time_{};
-
-    glm::vec2 logo_base_pos_{0.0f, 0.0f};
-    float logo_elapsed_{0.0f};
-
     std::string error_message_{};
+
+    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    Rml::ElementDocument* document_{nullptr};
+    bool click_listener_registered_{false};
+
+    Rml::String error_text_{};
+    bool has_error_{false};
 
 public:
     TitleScene(std::string_view name, engine::core::Context& context, std::string error_message = {});
@@ -39,15 +38,12 @@ public:
 
     bool init() override;
     void update(float delta_time) override;
+    void clean() override;
 
 private:
     [[nodiscard]] bool initUI();
-    void buildLayout();
-    void buildBackground();
-    void buildLogo();
-    void buildButtons();
-    void buildMenuButton();
-    void buildErrorLabel();
+    void bindEvents();
+    void removeEventListeners();
 
     void onStartClicked();
     void onLoadClicked();

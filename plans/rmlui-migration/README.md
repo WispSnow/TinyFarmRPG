@@ -11,14 +11,14 @@
 - `[~]` 部分完成
 - `[ ]` 未开始
 
-## 当前进度（2026-03-03）
+## 当前进度（2026-03-04）
 
 | Phase | 状态 | 文档 |
 |------|------|------|
 | Phase 0: 应用层基础设施 | `[x]` | [`phase-00.md`](./phase-00.md) |
 | Phase 1: 静态 HUD（TimeClockUI） | `[x]` | [`phase-01.md`](./phase-01.md) |
 | Phase 2: 全屏 Overlay（ScreenFade） | `[x]` | [`phase-02.md`](./phase-02.md) |
-| Phase 3: 菜单场景 | `[ ]` | [`phase-03.md`](./phase-03.md) |
+| Phase 3: 菜单场景 | `[x]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: 对话气泡 + Tooltip | `[ ]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 战斗 UI | `[ ]` | [`phase-05.md`](./phase-05.md) |
 | Phase 6: 快捷栏（HotbarUI） | `[ ]` | [`phase-06.md`](./phase-06.md) |

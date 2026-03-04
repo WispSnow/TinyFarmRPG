@@ -30,8 +30,10 @@ TEST(TitleSceneMenuButtonTest, AddsMenuButtonPreset) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("context_, \"menu\""), std::string::npos)
-        << "TitleScene should create a menu button using the 'menu' preset.";
+    EXPECT_NE(source.find("loadRmlDocument(DOCUMENT_PATH)"), std::string::npos)
+        << "TitleScene should load title.rml through Scene::loadRmlDocument.";
+    EXPECT_NE(source.find("event_bridge_.on(\"menu\""), std::string::npos)
+        << "TitleScene should route menu button click through RmlEventBridge.";
     EXPECT_NE(source.find("PauseMenuScene"), std::string::npos)
         << "TitleScene should open PauseMenuScene from the menu button.";
 }

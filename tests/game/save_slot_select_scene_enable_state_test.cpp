@@ -30,8 +30,10 @@ TEST(SaveSlotSelectSceneEnableStateTest, RefreshSlotButtonsUsesSetEnabled) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("button->setEnabled(enabled);"), std::string::npos)
-        << "SaveSlotSelectScene should use unified setEnabled(enabled) in refreshSlotButtons.";
+    EXPECT_NE(source.find("slot.enabled = (mode_ == Mode::Save);"), std::string::npos)
+        << "SaveSlotSelectScene should derive Empty slot enable state from current mode.";
+    EXPECT_NE(source.find("data_bridge_.markDirty(\"slots\");"), std::string::npos)
+        << "SaveSlotSelectScene should propagate slot enable state through data binding.";
 }
 
 } // namespace

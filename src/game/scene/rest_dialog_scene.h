@@ -1,6 +1,10 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_event_bridge.h"
+
+#include <RmlUi/Core/Types.h>
 
 #include <string_view>
 
@@ -8,12 +12,9 @@ namespace engine::core {
 enum class State;
 }
 
-namespace engine::ui {
-class UIButton;
-class UILabel;
-class UIPanel;
-class UIInputBlocker;
-} // namespace engine::ui
+namespace Rml {
+class ElementDocument;
+}
 
 namespace game::scene {
 
@@ -22,14 +23,12 @@ private:
     engine::core::State previous_state_{};
     int selected_hours_{8};
 
-    engine::ui::UIPanel* dim_{nullptr};
-    engine::ui::UIInputBlocker* input_blocker_{nullptr};
-    engine::ui::UIPanel* panel_{nullptr};
-    engine::ui::UILabel* hours_label_{nullptr};
-    engine::ui::UIButton* minus_button_{nullptr};
-    engine::ui::UIButton* plus_button_{nullptr};
-    engine::ui::UIButton* confirm_button_{nullptr};
-    engine::ui::UIButton* cancel_button_{nullptr};
+    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    Rml::ElementDocument* document_{nullptr};
+    bool click_listener_registered_{false};
+
+    Rml::String hours_text_{"8h"};
 
 public:
     RestDialogScene(std::string_view name, engine::core::Context& context);
@@ -40,13 +39,14 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void buildLayout();
+    void bindEvents();
+    void removeEventListeners();
+
     void updateHoursLabel();
     void adjustHours(int delta);
 
     void onConfirm();
     void onCancel();
-
 };
 
 } // namespace game::scene

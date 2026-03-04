@@ -1,0 +1,24 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="rest_dialog.rcss"/>
+</head>
+<body data-model="rest_dialog">
+    <div id="rest-mask"></div>
+
+    <div id="rest-panel">
+        <h2 id="rest-title">Rest</h2>
+
+        <div id="hours-row">
+            <button class="icon-btn" data-command="hours_down">-</button>
+            <div id="hours-value">{{ hours_text }}</div>
+            <button class="icon-btn" data-command="hours_up">+</button>
+        </div>
+
+        <div id="action-row">
+            <button class="action-btn" data-command="confirm">Confirm</button>
+            <button class="action-btn secondary" data-command="cancel">Cancel</button>
+        </div>
+    </div>
+</body>
+</rml>
