@@ -48,9 +48,22 @@
 要求：
 
 - 保持旧版“居中面板 + 两行按钮”的视觉结构
+- `Attack` 保持主按钮风格，其余 5 个按钮保持次按钮风格
 - 按钮 **始终占位显示**，不要使用 `data-if` 在禁用时隐藏按钮
 - 禁用态通过 class / attr 绑定控制，避免布局抖动
-- 面板、间距、按钮尺寸尽量向旧版原型靠拢
+- `#battle-units` 需要显式处理长文本换行或裁剪，避免单位汇总文本溢出面板
+- 面板、间距、按钮尺寸尽量向旧版原型靠拢，参考旧实现中的精确数值：
+  - panel: `560 x 320dp`
+  - panel padding: `20dp`
+  - panel background: `rgba(0,0,0,0.78)`
+  - dim overlay: `rgba(0,0,0,0.60)`
+  - button: `160 x 36dp`
+  - button gap-x: `12dp`
+  - turn y: `42dp`
+  - units y: `78dp`
+  - result y: `118dp`
+  - button row 1 y: `180dp`
+  - button row 2 y: `224dp`
 
 #### Step 5.2: BattleScene 内部改为 RmlUi 场景文档驱动
 
@@ -59,10 +72,13 @@
 实现策略：
 
 - 删除旧 `UIPanel` / `UILabel` / `UIButton` / `UIInputBlocker` 布局构建逻辑
+- 删除 `initUI()` 中旧 UI 容器创建：
+  - `ui_manager_ = std::make_unique<engine::ui::UIManager>(...)`
+  - `buildLayout()`
 - 改为：
   - `loadRmlDocument("ui/rmlui/scenes/battle.rml")`
   - 通过 data model 驱动文本与按钮状态
-  - 通过 event callback 桥接按钮点击到现有 `queueXXXAction()`
+  - 通过 Rml 事件桥接按钮点击到现有 `queueXXXAction()`
 - `BattleScene` 继续保留当前状态机：
   - `WaitingForInput`
   - `ExecutingAction`
@@ -74,10 +90,10 @@
 
 建议 data model 字段至少包含：
 
-- `turn_text`
-- `units_text`
-- `result_text`
-- `actions_enabled`
+- `turn_text`（`Rml::String`）
+- `units_text`（`Rml::String`）
+- `result_text`（`Rml::String`）
+- `actions_enabled`（`bool`）
 
 如果实现时发现单个总开关不足以支撑按钮表现，也可以拆为：
 
@@ -91,6 +107,14 @@
 但前提仍是：**只表达现有 enable/disable 行为，不引入新的命令可用性规则。**
 
 #### Step 5.3: 事件桥接与交互约束
+
+事件桥接方式明确采用 **`RmlEventBridge + data-command`**，与已完成的 Phase 3 菜单场景保持一致。
+
+示例：
+
+- RML：`<button class="tf-button-primary" data-command="attack">Attack</button>`
+- C++：`event_bridge_.on("attack", [this](Rml::Event&) { queueAttackAction(); });`
+- 注册：`event_bridge_.registerTo(document_, "click");`
 
 按钮点击事件映射回现有方法：
 
@@ -113,16 +137,18 @@ BattleScene 迁移后需要补齐 RmlUi 场景资源生命周期：
 
 - 注册 data model
 - 绑定按钮事件
-- `clean()` 中按顺序：
+- 新增 `clean()`，并与现有 Scene 基类行为协同：
   1. 移除事件监听 / 解绑回调
-  2. 卸载 RML 文档
-  3. 销毁 data bridge
-  4. 调用 `Scene::clean()`
+  2. 调用 `Scene::clean()`（基类内部已执行 `unloadAllRmlDocuments()`）
+  3. 将 `document_` 置空
+  4. 销毁 `data_bridge_`
+- 新增析构函数，用于处理未走 `clean()` 路径时的防御性清理
 
 要求：
 
 - 反复进入/退出战斗场景不残留旧文档
 - 不因文档卸载过程中的 blur / click 派发产生悬空访问
+- 不重复创建旧 `UIManager` 容器
 
 #### Step 5.5: 本阶段不做的旧代码清理
 

@@ -61,12 +61,9 @@ bool RestDialogScene::init() {
 void RestDialogScene::clean() {
     removeEventListeners();
     context_.getGameState().setState(previous_state_);
-    if (document_) {
-        unloadAllRmlDocuments();
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
     Scene::clean();
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 bool RestDialogScene::initUI() {
