@@ -33,7 +33,10 @@ class DialogueBubbleView final : public engine::ui::UIElement {
     Rml::Element* panel_{nullptr};
     Rml::Element* text_element_{nullptr};
     std::string text_{};
-    float padding_{8.0F};
+    engine::ui::Thickness padding_{8.0F, 8.0F, 8.0F, 8.0F};
+    float min_content_width_{144.0F};
+    float min_content_height_{32.0F};
+    float line_height_{16.0F};
     entt::id_type font_id_{engine::ui::DEFAULT_UI_FONT_ID};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
 
@@ -50,7 +53,9 @@ public:
 
 private:
     void initDocument(uint64_t owner_scene_id);
+    void syncStyleMetricsFromDocument();
     void refreshLayoutFromText();
+    [[nodiscard]] glm::vec2 measureText(std::string_view text) const;
     void renderSelf(engine::core::Context& context) override;
 };
 
