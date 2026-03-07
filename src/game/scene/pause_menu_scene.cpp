@@ -119,12 +119,9 @@ void PauseMenuScene::clean() {
     disconnectRuntimeListeners();
     removeEventListeners();
     context_.getGameState().setState(previous_state_);
-    if (document_) {
-        unloadAllRmlDocuments();
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
     Scene::clean();
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 bool PauseMenuScene::initUI() {

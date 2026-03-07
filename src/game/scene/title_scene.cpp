@@ -69,12 +69,9 @@ bool TitleScene::init() {
 
 void TitleScene::clean() {
     removeEventListeners();
-    if (document_) {
-        unloadAllRmlDocuments();
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
     Scene::clean();
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 bool TitleScene::initUI() {
