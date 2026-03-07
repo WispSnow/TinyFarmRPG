@@ -1,0 +1,42 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="pause_menu.rcss"/>
+</head>
+<body data-model="pause_menu">
+    <div id="pause-overlay"></div>
+
+    <div id="pause-panel">
+        <div id="pause-message" data-visible="has_message" data-class-is-error="message_is_error" data-class-is-success="!message_is_error">{{ message_text }}</div>
+
+        <div id="pause-actions">
+            <button class="tf-button-primary pause-action-button" data-command="resume">Resume</button>
+            <button class="tf-button-primary pause-action-button" data-command="save" data-class-disabled="!can_save" data-attrif-disabled="!can_save">Save</button>
+            <button class="tf-button-primary pause-action-button" data-command="load" data-class-disabled="!can_load" data-attrif-disabled="!can_load">Load</button>
+            <button class="tf-button-primary pause-action-button" data-command="back_to_title" data-class-disabled="!can_back_title" data-attrif-disabled="!can_back_title">Title</button>
+        </div>
+
+        <div id="pause-values">
+            <div class="pause-value-row">
+                <button class="tf-icon-button icon-arrow-left" data-command="speed_down"></button>
+                <div class="tf-value-label">{{ speed_text }}</div>
+                <button class="tf-icon-button icon-arrow-right" data-command="speed_up"></button>
+            </div>
+
+            <div class="pause-value-row">
+                <button class="tf-icon-button icon-volume-down" data-command="music_down"></button>
+                <div class="tf-value-label">{{ music_text }}</div>
+                <button class="tf-icon-button icon-volume-up" data-command="music_up"></button>
+            </div>
+
+            <div class="pause-value-row">
+                <button class="tf-icon-button icon-volume-down" data-command="sound_down"></button>
+                <div class="tf-value-label">{{ sound_text }}</div>
+                <button class="tf-icon-button icon-volume-up" data-command="sound_up"></button>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

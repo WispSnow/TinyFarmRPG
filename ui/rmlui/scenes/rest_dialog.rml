@@ -1,0 +1,26 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="rest_dialog.rcss"/>
+</head>
+<body data-model="rest_dialog">
+    <div id="rest-overlay"></div>
+
+    <div id="rest-panel">
+        <div id="rest-title">Rest</div>
+
+        <div id="rest-selector">
+            <button class="tf-icon-button icon-page-left" data-command="hours_down"></button>
+            <div id="rest-hours" class="tf-value-label">{{ hours_text }}</div>
+            <button class="tf-icon-button icon-page-right" data-command="hours_up"></button>
+        </div>
+
+        <div id="rest-actions">
+            <button class="tf-button-primary rest-action-button" data-command="confirm">Confirm</button>
+            <button class="tf-button-secondary rest-action-button" data-command="cancel">Cancel</button>
+        </div>
+    </div>
+</body>
+</rml>

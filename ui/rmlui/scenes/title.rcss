@@ -1,0 +1,65 @@
+body, div, h1, h2, h3, h4, p, hr, button, img {
+    display: block;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#title-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+@keyframes title-logo-float {
+    from { top: 53dp; }
+    to   { top: 48dp; }
+}
+
+#title-logo {
+    position: absolute;
+    left: 174dp;
+    top: 53dp;
+    width: 293dp;
+    height: 125dp;
+    animation: title-logo-float 1.5s cubic-in-out infinite alternate;
+    pointer-events: none;
+}
+
+#title-error {
+    position: absolute;
+    left: 0;
+    top: 172dp;
+    width: 100%;
+    height: 16dp;
+    text-align: center;
+    color: #ff4040ff;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#title-buttons {
+    position: absolute;
+    left: 272dp;
+    top: 198dp;
+    width: 96dp;
+    display: flex;
+    flex-direction: column;
+    gap: 16dp;
+}
+
+.title-button {
+    width: 96dp;
+}
+
+#title-menu-button {
+    position: absolute;
+    left: 598dp;
+    top: 10dp;
+}

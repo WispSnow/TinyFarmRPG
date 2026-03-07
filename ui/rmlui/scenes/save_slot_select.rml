@@ -1,0 +1,34 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="save_slot_select.rcss"/>
+</head>
+<body data-model="save_slot_select">
+    <div id="save-slot-overlay"></div>
+
+    <div id="save-slot-panel">
+        <div id="save-slot-grid">
+            <div class="save-slot-cell" data-for="slot : slots">
+                <button class="tf-button-primary save-slot-button"
+                        data-class-disabled="!slot.enabled"
+                        data-attrif-disabled="!slot.enabled"
+                        data-event-click="slot_select(slot.slot_index)">{{ slot.label }}</button>
+            </div>
+        </div>
+
+        <button id="save-slot-back" class="tf-button-secondary save-slot-back-button" data-event-click="back">Back</button>
+    </div>
+
+    <div id="save-slot-confirm-layer" data-if="confirm_visible">
+        <div id="save-slot-confirm-panel">
+            <div id="save-slot-confirm-text">{{ confirm_text }}</div>
+            <div id="save-slot-confirm-actions">
+                <button class="tf-button-primary save-slot-confirm-button" data-event-click="confirm_yes">OK</button>
+                <button class="tf-button-secondary save-slot-confirm-button" data-event-click="confirm_no">Cancel</button>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

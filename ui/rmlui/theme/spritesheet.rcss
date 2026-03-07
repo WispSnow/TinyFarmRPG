@@ -9,6 +9,29 @@
     btn-normal:  0px 0px  48px 16px;
     btn-hover:   0px 16px 48px 16px;
     btn-pressed: 0px 32px 48px 16px;
+
+    primary-button:         0px 16px 48px 16px;
+    primary-button-inner:   3px 21px 42px 6px;
+    primary-button-pressed: 0px 32px 48px 16px;
+    primary-button-pressed-inner: 3px 37px 42px 6px;
+
+    secondary-button:         0px 64px 48px 16px;
+    secondary-button-inner:   3px 69px 42px 6px;
+    secondary-button-pressed: 0px 80px 48px 16px;
+    secondary-button-pressed-inner: 3px 85px 42px 6px;
+
+    menu-icon:         432px 208px 16px 16px;
+    menu-icon-pressed: 432px 224px 16px 16px;
+
+    volume-up-icon:         240px 16px 16px 16px;
+    volume-up-icon-pressed: 240px 32px 16px 16px;
+    volume-down-icon:         256px 16px 16px 16px;
+    volume-down-icon-pressed: 256px 32px 16px 16px;
+
+    arrow-left-icon:         384px 16px 16px 16px;
+    arrow-left-icon-pressed: 384px 32px 16px 16px;
+    arrow-right-icon:         368px 16px 16px 16px;
+    arrow-right-icon-pressed: 368px 32px 16px 16px;
 }
 
 /* --- 物品栏槽位图集 (Slots.png) --- */
@@ -23,6 +46,11 @@
 @spritesheet ui-hud {
     src: ../../../assets/farm-rpg/UI/HUD.png;
     hud-frame: 0px 0px 64px 32px;
+
+    page-left-icon:         384px 0px 16px 16px;
+    page-left-icon-pressed: 384px 16px 16px 16px;
+    page-right-icon:         400px 0px 16px 16px;
+    page-right-icon-pressed: 400px 16px 16px 16px;
 }
 
 /* --- 时钟 (Clock.png) --- */
