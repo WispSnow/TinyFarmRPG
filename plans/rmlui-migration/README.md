@@ -19,7 +19,7 @@
 | Phase 1: 静态 HUD（TimeClockUI） | `[x]` | [`phase-01.md`](./phase-01.md) |
 | Phase 2: 全屏 Overlay（ScreenFade） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: 菜单场景 | `[x]` | [`phase-03.md`](./phase-03.md) |
-| Phase 4: 对话气泡 + Tooltip | `[ ]` | [`phase-04.md`](./phase-04.md) |
+| Phase 4: 对话气泡 + Tooltip | `[x]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 战斗 UI | `[ ]` | [`phase-05.md`](./phase-05.md) |
 | Phase 6: 快捷栏（HotbarUI） | `[ ]` | [`phase-06.md`](./phase-06.md) |
 | Phase 7: 物品栏（InventoryUI） | `[ ]` | [`phase-07.md`](./phase-07.md) |
@@ -27,6 +27,7 @@
 
 
 - 2026-03-06: Phase 3 已完成 TitleScene / PauseMenuScene / RestDialogScene / SaveSlotSelectScene 的 RmlUi 迁移。
+- 2026-03-07: Phase 4 已完成 DialogueBubbleView / ItemTooltipUI 的 RmlUi 迁移，保留旧 API，内部改为 RmlUi wrapper。
 
 ## 全局约束
 

@@ -294,9 +294,14 @@ void GameScene::clean() {
     dispatcher.clear<game::defs::DialogueHideEvent>();
 
     dialogue_controller_.reset();
+    inventory_ui_ = nullptr;
+    hotbar_ui_ = nullptr;
+    item_tooltip_ui_ = nullptr;
+    ui_manager_.reset();
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(nullptr);
     }
+    screen_fade_ = nullptr;
     rml_screen_fade_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
@@ -406,7 +411,7 @@ bool GameScene::initUI() {
     hotbar_ui_ = hotbar_ui.get();
     ui_manager_->addElement(std::move(hotbar_ui));
 
-    auto item_tooltip_ui = std::make_unique<game::ui::ItemTooltipUI>(context_);
+    auto item_tooltip_ui = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
     item_tooltip_ui->setOrderIndex(1000);
     item_tooltip_ui_ = item_tooltip_ui.get();
     ui_manager_->addElement(std::move(item_tooltip_ui));
@@ -414,17 +419,17 @@ bool GameScene::initUI() {
     auto& dispatcher_ref = context_.getDispatcher();
     dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref);
 
-    auto dialogue_bubble_ch0 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto dialogue_bubble_ch0 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
     auto* dialogue_bubble_ch0_ptr = dialogue_bubble_ch0.get();
     dialogue_bubble_ch0->setId(DIALOGUE_BUBBLE_CH0_ID);
     ui_manager_->addElement(std::move(dialogue_bubble_ch0));
 
-    auto dialogue_bubble_ch1 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto dialogue_bubble_ch1 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
     auto* dialogue_bubble_ch1_ptr = dialogue_bubble_ch1.get();
     dialogue_bubble_ch1->setId(DIALOGUE_BUBBLE_CH1_ID);
     ui_manager_->addElement(std::move(dialogue_bubble_ch1));
 
-    auto dialogue_bubble_ch2 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
+    auto dialogue_bubble_ch2 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
     auto* dialogue_bubble_ch2_ptr = dialogue_bubble_ch2.get();
     dialogue_bubble_ch2->setId(DIALOGUE_BUBBLE_CH2_ID);
     ui_manager_->addElement(std::move(dialogue_bubble_ch2));
