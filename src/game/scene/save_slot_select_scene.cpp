@@ -109,9 +109,12 @@ bool SaveSlotSelectScene::init() {
 
 void SaveSlotSelectScene::clean() {
     disconnectRuntimeListeners();
-    Scene::clean();
-    document_ = nullptr;
+    if (document_) {
+        unloadAllRmlDocuments();
+        document_ = nullptr;
+    }
     data_bridge_.destroy();
+    Scene::clean();
 }
 
 void SaveSlotSelectScene::disconnectRuntimeListeners() {

@@ -27,8 +27,6 @@ using engine::ui::rmlui::setPixelProperty;
 using engine::ui::rmlui::snapToPixel;
 using engine::ui::rmlui::textToInnerRml;
 
-constexpr float DEFAULT_OUTER_WIDTH = 160.0F;
-constexpr float DEFAULT_OUTER_HEIGHT = 48.0F;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/dialogue_bubble.rml";
 
 } // namespace
@@ -40,7 +38,7 @@ DialogueBubbleView::DialogueBubbleView(engine::core::Context& context,
                                        uint64_t owner_scene_id,
                                        entt::id_type font_id,
                                        int font_size)
-    : UIElement(glm::vec2{0.0F}, glm::vec2{DEFAULT_OUTER_WIDTH, DEFAULT_OUTER_HEIGHT}),
+    : UIElement(glm::vec2{0.0F}, glm::vec2{0.0F, 0.0F}),
       context_(context),
       text_renderer_(text_renderer),
       font_id_(engine::ui::resolveUIFontId(font_id)),

@@ -33,10 +33,10 @@ class DialogueBubbleView final : public engine::ui::UIElement {
     Rml::Element* panel_{nullptr};
     Rml::Element* text_element_{nullptr};
     std::string text_{};
-    engine::ui::Thickness padding_{8.0F, 8.0F, 8.0F, 8.0F};
-    float min_content_width_{144.0F};
-    float min_content_height_{32.0F};
-    float line_height_{16.0F};
+    engine::ui::Thickness padding_{};
+    float min_content_width_{0.0F};
+    float min_content_height_{0.0F};
+    float line_height_{0.0F};
     entt::id_type font_id_{engine::ui::DEFAULT_UI_FONT_ID};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
 

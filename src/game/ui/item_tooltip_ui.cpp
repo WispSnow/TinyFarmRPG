@@ -33,8 +33,6 @@ using engine::ui::rmlui::setPixelProperty;
 using engine::ui::rmlui::snapToPixel;
 using engine::ui::rmlui::textToInnerRml;
 
-constexpr float DEFAULT_OUTER_WIDTH = 120.0f;
-constexpr float DEFAULT_OUTER_HEIGHT = 24.0f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/item_tooltip.rml";
 
 [[nodiscard]] std::size_t utf8Next(std::string_view text, std::size_t index) {
@@ -77,13 +75,12 @@ ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
                              uint64_t owner_scene_id,
                              entt::id_type font_id,
                              int font_size)
-    : UIElement(glm::vec2{0.0f, 0.0f}),
+    : UIElement(glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f}),
       context_(context),
       font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
     setPivot({0.0f, 0.0f});
-    setSize(glm::vec2{DEFAULT_OUTER_WIDTH, DEFAULT_OUTER_HEIGHT});
     initDocument(owner_scene_id);
     hideTooltip();
 }
@@ -186,6 +183,9 @@ std::string ItemTooltipUI::wrapText(std::string_view text, int font_size) const 
     std::size_t last_break_pos = std::string::npos;
 
     const auto fits = [&](const std::string& s) {
+        if (max_text_width_ <= 0.0f) {
+            return true;
+        }
         return text_renderer.getTextSize(s, font_id_, font_size).x <= max_text_width_;
     };
 

@@ -31,21 +31,21 @@ class ItemTooltipUI final : public engine::ui::UIElement {
     Rml::Element* category_element_{nullptr};
     Rml::Element* description_element_{nullptr};
 
-    engine::ui::Thickness padding_{8.0f, 8.0f, 8.0f, 8.0f};
-    float name_spacing_{3.0f};
-    float category_spacing_{3.0f};
+    engine::ui::Thickness padding_{};
+    float name_spacing_{0.0f};
+    float category_spacing_{0.0f};
     glm::vec2 offset_{12.0f, 16.0f};
-    float max_text_width_{240.0f};
-    float min_content_width_{104.0f};
-    float min_content_height_{8.0f};
+    float max_text_width_{0.0f};
+    float min_content_width_{0.0f};
+    float min_content_height_{0.0f};
 
     entt::id_type font_id_{engine::ui::DEFAULT_UI_FONT_ID};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
-    int category_font_size_{14};
-    int description_font_size_{16};
-    float name_line_height_{16.0f};
-    float category_line_height_{14.0f};
-    float description_line_height_{16.0f};
+    int category_font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
+    int description_font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
+    float name_line_height_{0.0f};
+    float category_line_height_{0.0f};
+    float description_line_height_{0.0f};
     std::string display_name_{};
     std::string category_{};
     std::string description_{};
