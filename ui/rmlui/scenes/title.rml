@@ -1,0 +1,22 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="title.rcss"/>
+</head>
+<body data-model="title_scene">
+    <img id="title-bg" src="../../../assets/textures/UI/farm-rpg-bg.png"/>
+    <img id="title-logo" src="../../../assets/textures/UI/farm-rpg-logo.png"/>
+
+    <div id="title-error" data-visible="show_error">{{ error_text }}</div>
+
+    <div id="title-buttons">
+        <button class="tf-button-secondary title-button" data-command="start">Start</button>
+        <button class="tf-button-secondary title-button" data-command="load">Load</button>
+        <button class="tf-button-secondary title-button" data-command="exit">Exit</button>
+    </div>
+
+    <button id="title-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+</body>
+</rml>
