@@ -1,0 +1,25 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_custom_elements.rcss"/>
+</head>
+<body data-model="demo">
+
+    <!-- 全屏半透明遮罩 + 居中菜单面板 -->
+    <div class="overlay">
+        <div class="menu-panel">
+            <div class="menu-title">MENU</div>
+
+            <div class="menu-item">Items</div>
+            <div class="menu-item">Equipment</div>
+            <div class="menu-item">Status</div>
+            <div class="menu-item">Save</div>
+
+            <div class="menu-sep"/>
+
+            <!-- Close 按钮调用 close_menu 回调，执行 menu_doc_->Hide() -->
+            <div class="menu-item menu-close" data-event-click="close_menu">Close</div>
+        </div>
+    </div>
+
+</body>
+</rml>

@@ -491,4 +491,4 @@ cd build/debug/learn && ./learn_rmlui_forms
 ---
 
 **上一课 <-** [L06: 数据绑定](L06-data-binding.md)
-**下一课 ->** L08: 自定义元素与文档管理（待完成）
+**下一课 ->** [L08: 自定义元素与文档管理](L08-custom-elements.md)
