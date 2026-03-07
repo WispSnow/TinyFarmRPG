@@ -89,3 +89,18 @@
     bar-bg:   0px 0px 48px 8px;
     bar-fill: 0px 8px 48px 8px;
 }
+
+
+/* --- 对话气泡 (dialogue box.png) --- */
+@spritesheet ui-dialogue {
+    src: ../../../assets/farm-rpg/UI/dialogue box.png;
+    dialogue-bubble-bg:       0px 48px 48px 48px;
+    dialogue-bubble-bg-inner: 3px 52px 42px 41px;
+}
+
+/* --- Tooltip 面板 (Inventory/Banner.png) --- */
+@spritesheet ui-tooltip {
+    src: ../../../assets/farm-rpg/UI/Inventory/Banner.png;
+    tooltip-panel-bg:       3px 3px 42px 42px;
+    tooltip-panel-bg-inner: 12px 12px 24px 24px;
+}
