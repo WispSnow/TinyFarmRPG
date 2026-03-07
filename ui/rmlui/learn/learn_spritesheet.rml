@@ -1,0 +1,70 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_spritesheet.rcss"/>
+    <title>L09 Spritesheet</title>
+</head>
+<body>
+
+<!-- 页面标题 -->
+<div class="page-header">
+    <div class="page-title">L09 Spritesheet &amp; Decorators</div>
+    <div class="page-hint">@spritesheet / ninepatch / tiled-box / image / gradient</div>
+</div>
+
+<!-- 主体两列布局 -->
+<div class="content-row">
+
+    <!-- 左列：九宫格面板演示 -->
+    <div class="left-col">
+        <h2>Nine-patch Panels</h2>
+
+        <div class="section-label">ninepatch() decorator</div>
+        <div class="np-panel">
+            ninepatch(outer, inner) — auto-stretch corners &amp; edges
+        </div>
+
+        <div class="section-label">tiled-box() decorator</div>
+        <div class="tb-panel">
+            tiled-box(9 sprites) — manual 9-slice with separate tiles
+        </div>
+
+        <div class="section-label">linear-gradient() panel</div>
+        <div class="grad-panel">
+            linear-gradient(to bottom, ...) + border
+        </div>
+    </div>
+
+    <!-- 右列：按钮与装饰器 -->
+    <div class="right-col">
+        <h2>Buttons &amp; Decorators</h2>
+
+        <div class="section-label">image() sprite button</div>
+        <div class="sprite-btn">image(btn)</div>
+
+        <div class="section-label">tiled-horizontal() stretch</div>
+        <div class="tiled-btn">tiled-horizontal(l,c,r)</div>
+
+        <div class="section-label">image-color tinting</div>
+        <div class="tinted-btn tint-red">Red Tint</div>
+        <div class="tinted-btn tint-green">Green Tint</div>
+        <div class="tinted-btn tint-gold">Gold Tint</div>
+
+        <div class="section-label">linear-gradient() button</div>
+        <div class="gradient-btn">Gradient Button</div>
+
+        <div class="section-label">radial-gradient() badge</div>
+        <div class="radial-badge">VFX</div>
+    </div>
+
+</div>
+
+<!-- 底部信息栏 -->
+<div class="info-bar">
+    <span class="code">@spritesheet</span> declares sprite regions |
+    <span class="code">ninepatch()</span> auto-slices |
+    <span class="code">tiled-box()</span> manual 9-slice |
+    <span class="code">image-color</span> tints sprites
+</div>
+
+</body>
+</rml>
