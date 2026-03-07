@@ -460,4 +460,4 @@ cd build/debug/learn && ./learn_rmlui_custom_elements
 ---
 
 **上一课 <-** [L07: 表单控件](L07-forms.md)
-**下一课 ->** L09: 精灵表与九宫格装饰器（待完成）
+**下一课 ->** [L09: 精灵表与九宫格装饰器](L09-spritesheet.md)
