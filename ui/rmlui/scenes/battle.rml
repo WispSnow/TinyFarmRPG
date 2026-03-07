@@ -1,0 +1,29 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="battle.rcss"/>
+</head>
+<body data-model="battle_scene">
+    <div id="battle-overlay"></div>
+
+    <div id="battle-panel">
+        <div id="battle-content">
+            <div id="battle-title">Battle Prototype</div>
+            <div id="battle-turn">{{ turn_text }}</div>
+            <div id="battle-units">{{ units_text }}</div>
+            <div id="battle-result">{{ result_text }}</div>
+
+            <div id="battle-actions">
+                <button id="battle-action-attack" class="tf-button-primary battle-action-button" data-command="attack" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Attack</button>
+                <button id="battle-action-skill" class="tf-button-secondary battle-action-button" data-command="skill" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Skill</button>
+                <button id="battle-action-item" class="tf-button-secondary battle-action-button" data-command="item" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Item</button>
+                <button id="battle-action-guard" class="tf-button-secondary battle-action-button" data-command="guard" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Guard</button>
+                <button id="battle-action-escape" class="tf-button-secondary battle-action-button" data-command="escape" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Escape</button>
+                <button id="battle-action-end-turn" class="tf-button-secondary battle-action-button" data-command="end_turn" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">End Turn</button>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>
