@@ -5,28 +5,36 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/text_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/resource/font_manager.h"
+#include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 namespace {
 
-using engine::ui::rmlui::setFontSizeProperty;
+using engine::ui::rmlui::computeLineSpacingScale;
+using engine::ui::rmlui::getComputedFontSize;
+using engine::ui::rmlui::getComputedHeight;
+using engine::ui::rmlui::getComputedLineHeight;
+using engine::ui::rmlui::getComputedMarginBottom;
+using engine::ui::rmlui::getComputedMaxWidth;
+using engine::ui::rmlui::getComputedPadding;
+using engine::ui::rmlui::getComputedWidth;
 using engine::ui::rmlui::setPaddingProperties;
 using engine::ui::rmlui::setPixelProperty;
 using engine::ui::rmlui::snapToPixel;
 using engine::ui::rmlui::textToInnerRml;
 
-constexpr float MIN_TOOLTIP_WIDTH = 120.0f;
-constexpr float MIN_TOOLTIP_HEIGHT = 24.0f;
-constexpr int CATEGORY_FONT_SIZE = 14;
-constexpr int DESCRIPTION_FONT_SIZE = 16;
+constexpr float DEFAULT_OUTER_WIDTH = 120.0f;
+constexpr float DEFAULT_OUTER_HEIGHT = 24.0f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/item_tooltip.rml";
 
 [[nodiscard]] std::size_t utf8Next(std::string_view text, std::size_t index) {
@@ -75,7 +83,7 @@ ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
       font_size_(font_size) {
     setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
     setPivot({0.0f, 0.0f});
-    setSize(glm::vec2{MIN_TOOLTIP_WIDTH, MIN_TOOLTIP_HEIGHT});
+    setSize(glm::vec2{DEFAULT_OUTER_WIDTH, DEFAULT_OUTER_HEIGHT});
     initDocument(owner_scene_id);
     hideTooltip();
 }
@@ -121,11 +129,38 @@ void ItemTooltipUI::initDocument(uint64_t owner_scene_id) {
         return;
     }
 
-    setPaddingProperties(panel_, padding_);
-    setFontSizeProperty(name_element_, static_cast<float>(font_size_));
-    setFontSizeProperty(category_element_, static_cast<float>(CATEGORY_FONT_SIZE));
-    setFontSizeProperty(description_element_, static_cast<float>(DESCRIPTION_FONT_SIZE));
+    syncStyleMetricsFromDocument();
     layer_->hideDocument(document_);
+}
+
+void ItemTooltipUI::syncStyleMetricsFromDocument() {
+    if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
+        return;
+    }
+
+    padding_ = getComputedPadding(panel_, padding_);
+    min_content_width_ = getComputedWidth(panel_, min_content_width_);
+    min_content_height_ = getComputedHeight(panel_, min_content_height_);
+    max_text_width_ = getComputedMaxWidth(description_element_, max_text_width_);
+
+    font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(name_element_, static_cast<float>(font_size_)))));
+    category_font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(category_element_, static_cast<float>(category_font_size_)))));
+    description_font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(description_element_, static_cast<float>(description_font_size_)))));
+
+    name_line_height_ = getComputedLineHeight(name_element_, static_cast<float>(font_size_));
+    category_line_height_ = getComputedLineHeight(category_element_, static_cast<float>(category_font_size_));
+    description_line_height_ = getComputedLineHeight(description_element_, static_cast<float>(description_font_size_));
+
+    name_spacing_ = getComputedMarginBottom(name_element_, name_spacing_);
+    category_spacing_ = getComputedMarginBottom(category_element_, category_spacing_);
+}
+
+void ItemTooltipUI::setMaxTextWidth(float width) {
+    max_text_width_ = std::max(0.0f, width);
+    setPixelProperty(name_element_, "max-width", max_text_width_);
+    setPixelProperty(category_element_, "max-width", max_text_width_);
+    setPixelProperty(description_element_, "max-width", max_text_width_);
+    refreshLayout();
 }
 
 void ItemTooltipUI::setPadding(const engine::ui::Thickness& padding) {
@@ -211,30 +246,44 @@ std::string ItemTooltipUI::wrapText(std::string_view text, int font_size) const 
     return out;
 }
 
+glm::vec2 ItemTooltipUI::measureText(std::string_view text, int font_size, float line_height) const {
+    if (text.empty()) {
+        return glm::vec2{0.0f, 0.0f};
+    }
+
+    engine::utils::LayoutOptions layout_options{};
+    if (auto* font = context_.getResourceManager().getFont(font_id_, font_size)) {
+        layout_options.line_spacing_scale = computeLineSpacingScale(line_height, font->getLineHeight());
+    }
+
+    return context_.getTextRenderer().getTextSize(text, font_id_, font_size, &layout_options);
+}
+
 void ItemTooltipUI::refreshLayout() {
     if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
         return;
     }
 
     const std::string wrapped_name = wrapText(display_name_, font_size_);
-    const std::string wrapped_category = wrapText(category_, CATEGORY_FONT_SIZE);
-    const std::string wrapped_description = wrapText(description_, DESCRIPTION_FONT_SIZE);
+    const std::string wrapped_category = wrapText(category_, category_font_size_);
+    const std::string wrapped_description = wrapText(description_, description_font_size_);
 
     name_element_->SetInnerRML(textToInnerRml(wrapped_name));
     category_element_->SetInnerRML(textToInnerRml(wrapped_category));
     description_element_->SetInnerRML(textToInnerRml(wrapped_description));
 
-    auto& text_renderer = context_.getTextRenderer();
-    const glm::vec2 name_size = text_renderer.getTextSize(wrapped_name, font_id_, font_size_);
-    const glm::vec2 category_size = text_renderer.getTextSize(wrapped_category, font_id_, CATEGORY_FONT_SIZE);
-    const glm::vec2 description_size = text_renderer.getTextSize(wrapped_description, font_id_, DESCRIPTION_FONT_SIZE);
+    const glm::vec2 name_size = measureText(wrapped_name, font_size_, name_line_height_);
+    const glm::vec2 category_size = measureText(wrapped_category, category_font_size_, category_line_height_);
+    const glm::vec2 description_size = measureText(wrapped_description, description_font_size_, description_line_height_);
 
     const float content_width = std::max({name_size.x, category_size.x, description_size.x});
-    const float content_height = name_size.y + spacing_ + category_size.y + spacing_ + description_size.y;
+    const float content_height = name_size.y + name_spacing_ + category_size.y + category_spacing_ + description_size.y;
+    const float min_outer_width = min_content_width_ + padding_.width();
+    const float min_outer_height = min_content_height_ + padding_.height();
 
     const glm::vec2 outer_size{
-        snapToPixel(std::max(MIN_TOOLTIP_WIDTH, content_width + padding_.width())),
-        snapToPixel(std::max(MIN_TOOLTIP_HEIGHT, content_height + padding_.height()))
+        snapToPixel(std::max(min_outer_width, content_width + padding_.width())),
+        snapToPixel(std::max(min_outer_height, content_height + padding_.height()))
     };
     const glm::vec2 content_box_size{
         snapToPixel(std::max(0.0f, outer_size.x - padding_.width())),

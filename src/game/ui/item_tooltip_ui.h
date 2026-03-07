@@ -32,12 +32,20 @@ class ItemTooltipUI final : public engine::ui::UIElement {
     Rml::Element* description_element_{nullptr};
 
     engine::ui::Thickness padding_{8.0f, 8.0f, 8.0f, 8.0f};
-    float spacing_{3.0f};
+    float name_spacing_{3.0f};
+    float category_spacing_{3.0f};
     glm::vec2 offset_{12.0f, 16.0f};
     float max_text_width_{240.0f};
+    float min_content_width_{104.0f};
+    float min_content_height_{8.0f};
 
     entt::id_type font_id_{engine::ui::DEFAULT_UI_FONT_ID};
     int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
+    int category_font_size_{14};
+    int description_font_size_{16};
+    float name_line_height_{16.0f};
+    float category_line_height_{14.0f};
+    float description_line_height_{16.0f};
     std::string display_name_{};
     std::string category_{};
     std::string description_{};
@@ -56,14 +64,16 @@ public:
 
     void update(float delta_time, engine::core::Context& context) override;
 
-    void setMaxTextWidth(float width) { max_text_width_ = width; }
+    void setMaxTextWidth(float width);
     void setOffset(glm::vec2 offset) { offset_ = offset; }
     void setPadding(const engine::ui::Thickness& padding);
 
 private:
     void initDocument(uint64_t owner_scene_id);
+    void syncStyleMetricsFromDocument();
     void refreshLayout();
     [[nodiscard]] std::string wrapText(std::string_view text, int font_size) const;
+    [[nodiscard]] glm::vec2 measureText(std::string_view text, int font_size, float line_height) const;
 };
 
 } // namespace game::ui

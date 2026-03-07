@@ -14,11 +14,14 @@ body {
     top: 0;
     width: 144dp;
     height: 32dp;
+    padding: 8dp;
     decorator: ninepatch(dialogue-bubble-bg, dialogue-bubble-bg-inner, 1.0);
     pointer-events: none;
 }
 
 #dialogue-bubble-text {
     color: #000000ff;
+    font-size: 16dp;
+    line-height: 16dp;
     pointer-events: none;
 }
