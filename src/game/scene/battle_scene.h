@@ -1,18 +1,19 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_event_bridge.h"
 #include "game/battle/battle_session.h"
+
+#include <RmlUi/Core/Types.h>
 
 #include <optional>
 #include <string_view>
 #include <vector>
 
-namespace engine::ui {
-class UIButton;
-class UILabel;
-class UIPanel;
-class UIInputBlocker;
-} // namespace engine::ui
+namespace Rml {
+class ElementDocument;
+}
 
 namespace game::scene {
 
@@ -33,32 +34,30 @@ class BattleScene final : public engine::scene::Scene {
     float animation_timer_{0.0f};
     bool end_requested_{false};
 
-    engine::ui::UIPanel* dim_{nullptr};
-    engine::ui::UIInputBlocker* input_blocker_{nullptr};
-    engine::ui::UIPanel* panel_{nullptr};
-    engine::ui::UILabel* turn_label_{nullptr};
-    engine::ui::UILabel* units_label_{nullptr};
-    engine::ui::UILabel* result_label_{nullptr};
-    engine::ui::UIButton* attack_button_{nullptr};
-    engine::ui::UIButton* skill_button_{nullptr};
-    engine::ui::UIButton* item_button_{nullptr};
-    engine::ui::UIButton* guard_button_{nullptr};
-    engine::ui::UIButton* escape_button_{nullptr};
-    engine::ui::UIButton* end_turn_button_{nullptr};
+    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    Rml::ElementDocument* document_{nullptr};
+
+    Rml::String turn_text_{"Turn: -"};
+    Rml::String units_text_{"Units: -"};
+    Rml::String result_text_{"Result: Choose action"};
+    bool actions_enabled_{false};
+    bool click_listener_registered_{false};
 
 public:
     BattleScene(std::string_view name,
                 engine::core::Context& context,
                 std::vector<game::battle::BattleUnit> units,
                 game::battle::BattleSessionOptions session_options = {});
-    ~BattleScene() override = default;
+    ~BattleScene() override;
 
     bool init() override;
     void update(float delta_time) override;
+    void clean() override;
 
 private:
     [[nodiscard]] bool initUI();
-    void buildLayout();
+    void removeEventListeners();
     void runStateMachine(float delta_time);
     void refreshView();
 

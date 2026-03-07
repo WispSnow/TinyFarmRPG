@@ -20,7 +20,7 @@
 | Phase 2: 全屏 Overlay（ScreenFade） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: 菜单场景 | `[x]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: 对话气泡 + Tooltip | `[x]` | [`phase-04.md`](./phase-04.md) |
-| Phase 5: 战斗 UI | `[ ]` | [`phase-05.md`](./phase-05.md) |
+| Phase 5: 战斗 UI | `[x]` | [`phase-05.md`](./phase-05.md) |
 | Phase 6: 快捷栏（HotbarUI） | `[ ]` | [`phase-06.md`](./phase-06.md) |
 | Phase 7: 物品栏（InventoryUI） | `[ ]` | [`phase-07.md`](./phase-07.md) |
 | Phase 8: 清理旧 UI 框架 | `[ ]` | [`phase-08.md`](./phase-08.md) |
@@ -28,6 +28,7 @@
 
 - 2026-03-06: Phase 3 已完成 TitleScene / PauseMenuScene / RestDialogScene / SaveSlotSelectScene 的 RmlUi 迁移。
 - 2026-03-07: Phase 4 已完成 DialogueBubbleView / ItemTooltipUI 的 RmlUi 迁移，保留旧 API，内部改为 RmlUi wrapper。
+- 2026-03-07: Phase 5 已完成 BattleScene 的 RmlUi 迁移，保留现有战斗状态机与 6 个动作按钮行为。
 
 ## 全局约束
 
