@@ -61,7 +61,7 @@ class GameScene : public engine::scene::Scene {
     bool abort_to_title_{false};
 
     game::ui::InventoryUI* inventory_ui_{nullptr};
-    game::ui::HotbarUI* hotbar_ui_{nullptr};
+    std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};
     std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
     game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
     std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_;

@@ -294,8 +294,8 @@ void GameScene::clean() {
     dispatcher.clear<game::defs::DialogueHideEvent>();
 
     dialogue_controller_.reset();
+    hotbar_ui_.reset();
     inventory_ui_ = nullptr;
-    hotbar_ui_ = nullptr;
     item_tooltip_ui_ = nullptr;
     ui_manager_.reset();
     if (systems_ && systems_->map_transition_system) {
@@ -398,18 +398,24 @@ bool GameScene::initUI() {
     ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
     auto& text_renderer = context_.getTextRenderer();
 
-    // 时钟 HUD（RmlUi 驱动）
-    if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
-        time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
+    auto* rml_layer = context_.getGLRenderer().getRmlUILayer();
+    if (!rml_layer) {
+        spdlog::error("GameScene: RmlUILayer 不可用，无法初始化 RmlUi HUD。");
+        return false;
     }
+
+    // 时钟 HUD（RmlUi 驱动）
+    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
 
     auto inventory_ui = std::make_unique<game::ui::InventoryUI>(context_, services_->item_catalog.get());
     inventory_ui_ = inventory_ui.get();
     ui_manager_->addElement(std::move(inventory_ui));
 
-    auto hotbar_ui = std::make_unique<game::ui::HotbarUI>(context_, services_->item_catalog.get());
-    hotbar_ui_ = hotbar_ui.get();
-    ui_manager_->addElement(std::move(hotbar_ui));
+    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
+    if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
+        spdlog::error("GameScene: 创建 HotbarUI 失败。");
+        return false;
+    }
 
     auto item_tooltip_ui = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
     item_tooltip_ui->setOrderIndex(1000);
@@ -442,10 +448,6 @@ bool GameScene::initUI() {
         inventory_ui_->setUIManager(ui_manager_.get());
     }
 
-    if (hotbar_ui_) {
-        hotbar_ui_->setUIManager(ui_manager_.get());
-    }
-
     if (item_tooltip_ui_) {
         if (inventory_ui_) {
             inventory_ui_->setTooltipUI(item_tooltip_ui_);
@@ -467,7 +469,7 @@ bool GameScene::initUI() {
     }
 
     if (inventory_ui_ && hotbar_ui_) {
-        inventory_ui_->setHotbarUI(hotbar_ui_);
+        inventory_ui_->setHotbarUI(hotbar_ui_.get());
         hotbar_ui_->setInventoryUI(inventory_ui_);
     }
 

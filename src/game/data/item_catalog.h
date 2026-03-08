@@ -55,6 +55,7 @@ struct ItemData {
 class ItemCatalog final {
     
     std::unordered_map<entt::id_type, engine::render::Image> icons_{};
+    std::unordered_map<entt::id_type, std::string> icon_keys_{};
     std::unordered_map<entt::id_type, ItemData> items_{};
     engine::render::Image fallback_icon_{};
 
@@ -67,6 +68,7 @@ public:
 
     [[nodiscard]] const ItemData* findItem(entt::id_type item_id) const;
     [[nodiscard]] const engine::render::Image* findIcon(entt::id_type icon_id) const;
+    [[nodiscard]] const std::string* findIconKey(entt::id_type icon_id) const;
     [[nodiscard]] const engine::render::Image& getIconOrFallback(entt::id_type icon_id) const;
     /// @brief 根据 item_id 直接获取其图标（内部查 ItemData → icon_id → Image），找不到则返回 fallback
     [[nodiscard]] engine::render::Image getItemIcon(entt::id_type item_id) const;

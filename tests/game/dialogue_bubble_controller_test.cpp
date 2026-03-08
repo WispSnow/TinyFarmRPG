@@ -216,11 +216,15 @@ protected:
 };
 
 TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
+    if (!context_->getGLRenderer().getRmlUILayer()) {
+        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    }
+
     engine::ui::UIManager ui_manager(*context_, game_state_->getLogicalSize());
     game::ui::DialogueBubbleController controller(dispatcher_);
 
     constexpr entt::id_type bubble_id = "dialogue_bubble_test_ch1"_hs;
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 0);
     auto* bubble_ptr = bubble.get();
     bubble->setId(bubble_id);
     ui_manager.addElement(std::move(bubble));
@@ -262,11 +266,15 @@ TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
 }
 
 TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers) {
+    if (!context_->getGLRenderer().getRmlUILayer()) {
+        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    }
+
     engine::ui::UIManager ui_manager(*context_, game_state_->getLogicalSize());
     game::ui::DialogueBubbleController controller(dispatcher_);
 
     constexpr entt::id_type bubble_id = "dialogue_bubble_test_ch1"_hs;
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 0);
     auto* bubble_ptr = bubble.get();
     bubble->setId(bubble_id);
     ui_manager.addElement(std::move(bubble));
@@ -284,7 +292,7 @@ TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers
     dispatcher_.trigger(show_evt);
     EXPECT_FALSE(bubble_ptr->isVisible());
 
-    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 0);
     auto* recreated_ptr = recreated.get();
     recreated->setId(bubble_id);
     ui_manager.addElement(std::move(recreated));

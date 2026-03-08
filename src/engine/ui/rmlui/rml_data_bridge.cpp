@@ -6,7 +6,9 @@
 
 namespace engine::ui::rmlui {
 
-Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context, std::string_view model_name) {
+Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context,
+                                                 std::string_view model_name,
+                                                 Rml::DataTypeRegister* data_type_register) {
     valid_ = false;
     handle_ = {};
     context_ = nullptr;
@@ -18,7 +20,7 @@ Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context, std::stri
     }
 
     const Rml::String name{model_name.data(), model_name.size()};
-    auto constructor = context->CreateDataModel(name);
+    auto constructor = context->CreateDataModel(name, data_type_register);
     if (!constructor) {
         spdlog::error("RmlDataBridge::create failed for model '{}'.", model_name);
         return {};
