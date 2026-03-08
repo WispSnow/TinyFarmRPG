@@ -3,6 +3,9 @@
 #include <SDL3/SDL.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementDocument.h>
 
 #include <algorithm>
 #include <chrono>
@@ -28,6 +31,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/render/renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/auto_tile_library.h"
@@ -76,6 +80,17 @@ float centerX(const engine::utils::Rect& bounds) {
 
 float centerY(const engine::utils::Rect& bounds) {
     return bounds.pos.y + bounds.size.y * 0.5F;
+}
+
+Rml::ElementDocument* findDocumentByElementId(Rml::Context& context, std::string_view element_id) {
+    const Rml::String id{element_id.data(), element_id.size()};
+    for (int index = 0; index < context.GetNumDocuments(); ++index) {
+        auto* document = context.GetDocument(index);
+        if (document && document->GetElementById(id)) {
+            return document;
+        }
+    }
+    return nullptr;
 }
 
 void forceLayoutTree(engine::ui::UIElement& node) {
@@ -405,48 +420,67 @@ TEST_F(UILayoutIntegrationTest, InventoryGridAndPaginationAreaKeepExpectedLayout
     EXPECT_GT(label_bounds.pos.y, max_bottom);
 }
 
-TEST_F(UILayoutIntegrationTest, HotbarSlotsKeepHorizontalSpacingAndPanelAnchor) {
-    auto root = std::make_unique<engine::ui::UIElement>(glm::vec2{0.0F, 0.0F}, game_state_->getLogicalSize());
-    auto hotbar = std::make_unique<game::ui::HotbarUI>(*context_, nullptr);
-    auto* hotbar_ptr = hotbar.get();
-    root->addChild(std::move(hotbar));
+TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelAnchor) {
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    }
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
 
-    forceLayoutTree(*root);
+    constexpr uint64_t kOwnerSceneId = 4242;
+    const int initial_document_count = rml_context->GetNumDocuments();
 
-    std::vector<engine::ui::UIItemSlot*> slots{};
-    collectDescendants(*hotbar_ptr, slots);
-    ASSERT_EQ(slots.size(), static_cast<std::size_t>(game::component::HotbarComponent::SLOT_COUNT));
+    {
+        game::ui::HotbarUI hotbar(*layer, *context_, kOwnerSceneId, nullptr);
+        ASSERT_TRUE(hotbar.isReady());
 
-    std::sort(slots.begin(), slots.end(), [](engine::ui::UIItemSlot* lhs, engine::ui::UIItemSlot* rhs) {
-        return lhs->getBounds().pos.x < rhs->getBounds().pos.x;
-    });
+        layer->update();
 
-    const auto first_bounds = slots.front()->getBounds();
-    for (std::size_t i = 0; i < slots.size(); ++i) {
-        const auto bounds = slots[i]->getBounds();
-        EXPECT_NEAR(bounds.size.x, 32.0F, kEpsilon);
-        EXPECT_NEAR(bounds.size.y, 32.0F, kEpsilon);
-        EXPECT_NEAR(bounds.pos.y, first_bounds.pos.y, 0.05F);
-        if (i > 0) {
-            const auto prev = slots[i - 1]->getBounds();
-            EXPECT_NEAR(bounds.pos.x - prev.pos.x, 36.0F, 0.05F); // slot 32 + spacing 4
+        EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
+
+        auto* document = findDocumentByElementId(*rml_context, "hotbar-panel");
+        ASSERT_NE(document, nullptr);
+
+        auto* panel = document->GetElementById("hotbar-panel");
+        auto* slots_container = document->GetElementById("hotbar-slots");
+        ASSERT_NE(panel, nullptr);
+        ASSERT_NE(slots_container, nullptr);
+
+        constexpr float expected_panel_width = 372.0F;
+        constexpr float expected_panel_height = 48.0F;
+        constexpr float expected_panel_x = 134.0F;
+        constexpr float expected_panel_y = 307.0F;
+
+        EXPECT_NEAR(panel->GetOffsetWidth(), expected_panel_width, 0.1F);
+        EXPECT_NEAR(panel->GetOffsetHeight(), expected_panel_height, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteLeft(), expected_panel_x, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteTop(), expected_panel_y, 0.1F);
+
+        ASSERT_EQ(slots_container->GetNumChildren(), game::component::HotbarComponent::SLOT_COUNT);
+
+        float previous_left = 0.0F;
+        float first_top = 0.0F;
+        for (int index = 0; index < slots_container->GetNumChildren(); ++index) {
+            auto* slot = slots_container->GetChild(index);
+            ASSERT_NE(slot, nullptr);
+            EXPECT_NEAR(slot->GetOffsetWidth(), 32.0F, 0.1F);
+            EXPECT_NEAR(slot->GetOffsetHeight(), 32.0F, 0.1F);
+
+            if (index == 0) {
+                first_top = slot->GetAbsoluteTop();
+            } else {
+                EXPECT_NEAR(slot->GetAbsoluteLeft() - previous_left, 36.0F, 0.1F);
+                EXPECT_NEAR(slot->GetAbsoluteTop(), first_top, 0.1F);
+            }
+            previous_left = slot->GetAbsoluteLeft();
         }
     }
 
-    const auto& top_children = hotbar_ptr->getChildren();
-    ASSERT_FALSE(top_children.empty());
-    const auto panel_bounds = top_children.front()->getBounds();
-
-    constexpr float expected_panel_width = 372.0F;  // 10*32 + 9*4 + (8+8)
-    constexpr float expected_panel_height = 48.0F;  // 32 + (8+8)
-    constexpr float expected_bottom_margin = 5.0F;
-    const float expected_x = (game_state_->getLogicalSize().x - expected_panel_width) * 0.5F;
-    const float expected_y = game_state_->getLogicalSize().y - expected_panel_height - expected_bottom_margin;
-
-    EXPECT_NEAR(panel_bounds.size.x, expected_panel_width, 0.05F);
-    EXPECT_NEAR(panel_bounds.size.y, expected_panel_height, 0.05F);
-    EXPECT_NEAR(panel_bounds.pos.x, expected_x, 0.05F);
-    EXPECT_NEAR(panel_bounds.pos.y, expected_y, 0.05F);
+    layer->update();
+    EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
 }
 
 } // namespace

@@ -10,6 +10,7 @@
 namespace Rml {
 class Context;
 class DataModelConstructor;
+class DataTypeRegister;
 }
 
 namespace engine::ui::rmlui {
@@ -38,7 +39,9 @@ public:
     /// 创建一个命名 data model。返回 DataModelConstructor 供进一步绑定。
     /// @param context  RmlUi 上下文
     /// @param model_name 数据模型名称（对应 RML 中的 data-model="xxx"）
-    [[nodiscard]] Rml::DataModelConstructor create(Rml::Context* context, std::string_view model_name);
+    [[nodiscard]] Rml::DataModelConstructor create(Rml::Context* context,
+                                                std::string_view model_name,
+                                                Rml::DataTypeRegister* data_type_register = nullptr);
 
     /// 标记某个变量为脏，触发 RmlUi 下一帧重新绑定该变量对应的 DOM。
     void markDirty(std::string_view variable_name);
