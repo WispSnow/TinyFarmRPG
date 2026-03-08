@@ -40,9 +40,10 @@
    - `hotbar -> inventory` 的 drop 事件落在 inventory 文档上。
    - 因此 Phase 7 必须包含对 `HotbarUI` 的**最小增强**，使其能识别来自 inventory 的拖拽源。
 
-4. **不能继续沿用 `UIItemSlot*` 命中测试桥接**
+4. **不能继续沿用 `UIItemSlot*` 命中测试桥接，也不应把 DOM 属性当作唯一事实源**
    - 旧 `findSlotIndex(const UIItemSlot*)` / `resolveInventoryIndex(...)` 基于旧 UI 树。
-   - 迁移后跨文档拖放应改为**RmlUi DOM 元素属性 + drag metadata**，不再依赖旧 `UIItemSlot*`。
+   - 迁移后跨文档拖放应以 **InventoryUI / HotbarUI 共享拖拽状态** 为主路径。
+   - `drag_element` / DOM 属性仅作为调试或一致性校验手段，不再依赖旧 `UIItemSlot*`。
 
 5. **面板尺寸应按 RmlUi content-box 重算**
    - 旧代码的 `panel_size` 是总视觉尺寸。
@@ -112,10 +113,11 @@
 - `src/game/scene/game_scene.cpp`
 - `tests/game/ui_layout_integration_test.cpp`
 
-**可选共享提取**（推荐本 Phase 一并完成）：
+**本 Phase 必做共享提取**：
 
 - 新增共享 helper，例如 `src/game/ui/rml_item_icon_helpers.h`
   - 提取 `icon_id -> sprite decorator` 生成逻辑
+  - 统一复用 `ItemCatalog::findIconKey()`
   - 避免在 `InventoryUI` 中复制 `HotbarUI::buildIconDecorator()` / `spriteNameFromIconKey()`
 
 ## 旧视觉参数（需保持一致）
@@ -173,8 +175,8 @@
 
 - `page-left-icon` / `page-left-icon-pressed`（已存在，可复用）
 - `page-right-icon` / `page-right-icon-pressed`（已存在，可复用）
-- `close-icon`
-- `close-icon-pressed`
+- `close-icon: 272px 64px 16px 16px`
+- `close-icon-pressed: 272px 80px 16px 16px`
 
 ### 3. 物品图标 decorator
 
@@ -195,7 +197,7 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
             <handle move_target="#inventory-panel"></handle>
         </div>
 
-        <button id="inventory-close" data-command="close"></button>
+        <button id="inventory-close" data-event-click="on_close()"></button>
 
         <div id="inventory-grid">
             <div class="inventory-slot"
@@ -217,9 +219,9 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
         </div>
 
         <div id="inventory-pagination">
-            <button id="inventory-page-left" data-command="page_left"></button>
+            <button id="inventory-page-left" data-event-click="on_page_left()"></button>
             <div id="inventory-page-label">{{ page_text }}</div>
-            <button id="inventory-page-right" data-command="page_right"></button>
+            <button id="inventory-page-right" data-event-click="on_page_right()"></button>
         </div>
     </div>
 </body>
@@ -264,6 +266,20 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 | `inventory_slots` | `std::vector<InventorySlotViewModel>` | 当前页 20 个可见槽位 |
 | `page_text` | `Rml::String` | 例如 `1/2` |
 
+### 前置验证（实现前必须先确认）
+
+在正式迁移前，先做一个最小验证：
+
+- 同一 `Rml::Context` 下加载两个文档
+- 源文档元素使用 `drag: clone`
+- 目标文档元素监听 `dragdrop`
+- 确认跨文档 `dragdrop` 能稳定触发
+
+若该验证失败，本 Phase 必须切换到备选方案：
+
+- 不依赖 RmlUi 原生跨文档拖放作为主路径
+- 改用自定义拖拽 overlay + 显式源/目标状态管理
+
 说明：
 
 - 不需要把全部 40 槽直接 `data-for` 到 DOM，保持与旧版一样只渲染当前页 20 槽即可。
@@ -274,16 +290,27 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 
 ### 1. 静态按钮
 
-建议使用 `RmlEventBridge + data-command`：
+建议统一使用 `BindEventCallback(...) + data-event-click`：
 
-- `close`
-- `page_left`
-- `page_right`
+- `on_close()`
+- `on_page_left()`
+- `on_page_right()`
+
+示例：
+
+```rml
+<button id="inventory-close" data-event-click="on_close()"></button>
+<button id="inventory-page-left" data-event-click="on_page_left()"></button>
+<button id="inventory-page-right" data-event-click="on_page_right()"></button>
+```
+
+其中 `on_close()` 需要保留旧行为：隐藏 tooltip、终止拖拽状态、再隐藏面板。
 
 理由：
 
-- 三个按钮是静态控件，无需 `BindEventCallback` 传索引
-- 与 Phase 3/5 的静态按钮桥接模式一致
+- `BindEventCallback` 随 data model 生命周期销毁，无需手动 `RemoveEventListener`
+- `InventoryUI` 是独立 wrapper，不必额外引入 `RmlEventBridge` 管理静态按钮
+- 与 `HotbarUI` 的 data-model 驱动模式更一致
 
 ### 2. 槽位事件
 
@@ -341,31 +368,57 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 ### B. Inventory -> Hotbar
 
 - drop 事件落在 **HotbarUI** 的目标槽位上
-- 因此 Phase 7 必须扩展 `HotbarUI::onSlotDragDrop(...)`：
-  - 识别 `drag_element` 来自 `inventory`
-  - 读取源 `inventory_index`
+- `HotbarUI::onSlotDragDrop(...)` 的跨 UI 分支应：
+  - 检查 `inventory_ui_ && inventory_ui_->isDragging()`
+  - 读取 `inventory_ui_->getDragInventoryIndex()`
   - 派发 `HotbarBindCommand{target, hotbar_index, inventory_index}`
+  - 成功后调用 `inventory_ui_->notifyExternalDropHandled()`
 
 ### C. Hotbar -> Inventory
 
 - drop 事件落在 **InventoryUI** 的目标槽位上
-- `InventoryUI::onSlotDragDrop(...)` 需要识别 `drag_element` 来自 `hotbar`
-- 读取源 `inventory_index`（不是 hotbar index）
-- 派发 `InventoryMoveCommand{target, src_inventory_slot, dst_inventory_slot, true}`
+- `InventoryUI::onSlotDragDrop(...)` 的跨 UI 分支应：
+  - 检查 `hotbar_ui_ && hotbar_ui_->isDragging()`
+  - 读取 `hotbar_ui_->getDragInventoryIndex()`（不是 hotbar index）
+  - 派发 `InventoryMoveCommand{target, src_inventory_slot, dst_inventory_slot, true}`
+  - 成功后调用 `hotbar_ui_->notifyExternalDropHandled()`
 
-### D. 数据来源标记
+### D. 跨 UI 拖拽状态共享
 
-建议在 drag proxy 元素上显式设置 metadata：
+跨 UI 拖拽的主识别机制应改为 **wrapper 间共享拖拽状态**，而不是把 DOM 属性当作唯一事实源。
 
-- `data-drag-source="inventory"` / `"hotbar"`
-- `data-inventory-index="..."`
-- hotbar 可额外保留 `data-hotbar-index="..."`
+原因：
 
-在 `dragdrop` 回调中：
+- `drag: clone` 期间克隆元素可能脱离原文档层级，单纯依赖 `drag_element` 的属性回溯不够稳妥
+- `HotbarUI` 当前内部控制流以 `dragging_` 为主，若不引入共享状态，来自 inventory 的 drop 会被直接忽略
 
-- 通过 `event.GetParameter<void*>("drag_element", nullptr)` 拿到源元素
-- 再从源元素属性中读取 source / inventory index
-- 不再依赖旧 `UIItemSlot*` 命中测试
+建议为 `InventoryUI` 与 `HotbarUI` 都补充最小公共接口：
+
+- `[[nodiscard]] bool isDragging() const`
+- `[[nodiscard]] int getDragInventoryIndex() const`
+- `void notifyExternalDropHandled()`
+
+其中 `notifyExternalDropHandled()` 的职责应明确为：
+
+- 将源 wrapper 的 `drop_handled_` 标记置为成功
+- 让后续 `dragend` 只做收尾清理，不再进入“未落点”分支
+- 避免跨 UI 成功 drop 后又被源端回滚或误触发解绑逻辑
+
+推荐控制流：
+
+- `HotbarUI::onSlotDragDrop(...)` 先处理 hotbar 内部拖拽
+- 若自身未拖拽，则检查 `inventory_ui_ && inventory_ui_->isDragging()`
+- 命中后直接读取 `inventory_ui_->getDragInventoryIndex()` 并派发 `HotbarBindCommand`
+- 成功后调用 `inventory_ui_->notifyExternalDropHandled()`
+
+`InventoryUI::onSlotDragDrop(...)` 同理：
+
+- 先处理 inventory 内部拖拽
+- 若自身未拖拽，则检查 `hotbar_ui_ && hotbar_ui_->isDragging()`
+- 读取 `hotbar_ui_->getDragInventoryIndex()` 并派发 `InventoryMoveCommand`
+- 成功后调用 `hotbar_ui_->notifyExternalDropHandled()`
+
+`event.GetParameter<void*>("drag_element", nullptr)` 仍可保留为调试/一致性校验手段，但不应作为唯一判定来源。
 
 ## C++ 实现要求
 
@@ -379,7 +432,10 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
   - `setTarget()`
   - `setTooltipUI()`
   - `show()` / `hide()` / `toggle()`
-- `setHotbarUI()` 可暂保留为兼容壳，但 Phase 7 内部逻辑不再依赖它做命中测试
+  - `isVisible()`
+  - `isReady()`
+  - `isDragging()` / `getDragInventoryIndex()` / `notifyExternalDropHandled()`
+- `setHotbarUI()` 保留，并作为跨 UI 拖拽协调的正式依赖接口，不再只是兼容壳
 - `setUIManager()` 删除
 - `findSlotIndex(const UIItemSlot*)` / `resolveInventoryIndex(...)` 不再作为主路径；如需编译兼容，可保留为 no-op / 兼容壳，最终在 Phase 8 删除
 
@@ -397,8 +453,10 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 
 本 Phase 允许做**最小增强**，以支持跨文档拖放：
 
-- `onSlotDragDrop(...)` 支持识别来自 inventory 的拖拽源
-- 必要时在 Hotbar slot DOM 上增加 source metadata 读取辅助
+- 新增 `isDragging()` / `getDragInventoryIndex()` / `notifyExternalDropHandled()` 公共接口
+- `setInventoryUI()` 明确保留，并作为跨 UI 拖拽协调的正式依赖接口
+- `onSlotDragDrop(...)` 支持处理来自 inventory 的跨 UI drop
+- `event.GetParameter<void*>("drag_element", nullptr)` 可用于调试校验，但主控制流基于共享拖拽状态
 - 不对 hotbar 布局与现有语义做额外改造
 
 ### `src/game/scene/game_scene.h/cpp`
@@ -428,6 +486,7 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 
 至少覆盖以下验证：
 
+0. 先完成“同一 `Rml::Context` 下跨文档 `drag: clone + dragdrop`”最小验证，并记录结论
 1. 打开 / 关闭物品栏正常
 2. 关闭后再次打开不崩溃
 3. 面板初始位置与旧版一致（右侧居中）
@@ -464,6 +523,6 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 | 修改 | `src/game/scene/game_scene.h` |
 | 修改 | `src/game/scene/game_scene.cpp` |
 | 修改 | `tests/game/ui_layout_integration_test.cpp` |
-| 可选新增 | `src/game/ui/rml_item_icon_helpers.h` |
+| 新增 | `src/game/ui/rml_item_icon_helpers.h` |
 | 删除 | `src/game/ui/ui_drag_drop_helpers.h` |
 
