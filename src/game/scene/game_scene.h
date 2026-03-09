@@ -96,7 +96,6 @@ private:
     bool onInventoryToggle();
     bool onHotbarToggle();
     bool onPauseToggle();
-    void onInventoryChanged(const game::defs::InventoryChanged& evt);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
