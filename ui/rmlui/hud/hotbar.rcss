@@ -67,6 +67,10 @@ body {
     cursor: move;
 }
 
+.hotbar-slot-drag-proxy:drag {
+    opacity: 0.75;
+}
+
 .hotbar-slot-icon {
     position: absolute;
     left: 0;
@@ -92,10 +96,12 @@ body {
     visibility: hidden;
 }
 
-.hotbar-slot.has-item .hotbar-slot-icon {
+.hotbar-slot.has-item .hotbar-slot-icon,
+.hotbar-slot-drag-proxy.has-item .hotbar-slot-icon {
     visibility: visible;
 }
 
-.hotbar-slot.has-count .hotbar-slot-count {
+.hotbar-slot.has-count .hotbar-slot-count,
+.hotbar-slot-drag-proxy.has-count .hotbar-slot-count {
     visibility: visible;
 }

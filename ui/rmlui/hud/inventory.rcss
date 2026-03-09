@@ -67,6 +67,10 @@ body {
     cursor: move;
 }
 
+.inventory-slot-drag-proxy:drag {
+    opacity: 0.5;
+}
+
 .inventory-slot-icon {
     position: absolute;
     left: 0;
@@ -92,11 +96,13 @@ body {
     visibility: hidden;
 }
 
-.inventory-slot.has-item .inventory-slot-icon {
+.inventory-slot.has-item .inventory-slot-icon,
+.inventory-slot-drag-proxy.has-item .inventory-slot-icon {
     visibility: visible;
 }
 
-.inventory-slot.has-count .inventory-slot-count {
+.inventory-slot.has-count .inventory-slot-count,
+.inventory-slot-drag-proxy.has-count .inventory-slot-count {
     visibility: visible;
 }
 
