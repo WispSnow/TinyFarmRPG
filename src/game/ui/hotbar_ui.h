@@ -129,7 +129,6 @@ private:
     void clearTooltip();
     void clearDragState();
 
-    void onSlotMouseDown(int slot_index, Rml::Event& event);
     void onSlotMouseUp(int slot_index, Rml::Event& event);
     void onSlotHoverEnter(int slot_index, Rml::Event& event);
     void onSlotHoverExit(int slot_index, Rml::Event& event);

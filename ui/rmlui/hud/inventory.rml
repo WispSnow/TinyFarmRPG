@@ -26,11 +26,12 @@
                  data-for="slot : inventory_slots"
                  data-class-has-item="slot.has_item"
                  data-class-has-count="slot.has_count"
-                 data-event-mousedown="slot_mouse_down(slot.inventory_index)"
                  data-event-mouseup="slot_mouse_up(slot.inventory_index)"
                  data-event-dragdrop="slot_drag_drop(slot.inventory_index)">
                 <div class="inventory-slot-drag-proxy"
                      data-class-draggable="slot.can_drag"
+                     data-class-has-item="slot.has_item"
+                     data-class-has-count="slot.has_count"
                      data-event-mouseover="slot_hover_enter(slot.inventory_index)"
                      data-event-mouseout="slot_hover_exit(slot.inventory_index)"
                      data-event-dragstart="slot_drag_start(slot.inventory_index)"

@@ -132,7 +132,6 @@ private:
     void onClose(Rml::Event& event);
     void onPageLeft(Rml::Event& event);
     void onPageRight(Rml::Event& event);
-    void onSlotMouseDown(int inventory_index, Rml::Event& event);
     void onSlotMouseUp(int inventory_index, Rml::Event& event);
     void onSlotHoverEnter(int inventory_index, Rml::Event& event);
     void onSlotHoverExit(int inventory_index, Rml::Event& event);

@@ -89,8 +89,7 @@ bool HotbarUI::initDocument() {
             });
     };
 
-    if (!bind_slot_event("slot_mouse_down", &HotbarUI::onSlotMouseDown) ||
-        !bind_slot_event("slot_mouse_up", &HotbarUI::onSlotMouseUp) ||
+    if (!bind_slot_event("slot_mouse_up", &HotbarUI::onSlotMouseUp) ||
         !bind_slot_event("slot_hover_enter", &HotbarUI::onSlotHoverEnter) ||
         !bind_slot_event("slot_hover_exit", &HotbarUI::onSlotHoverExit) ||
         !bind_slot_event("slot_drag_start", &HotbarUI::onSlotDragStart) ||
@@ -326,13 +325,6 @@ void HotbarUI::toggle() {
     } else {
         show();
     }
-}
-
-void HotbarUI::onSlotMouseDown(int slot_index, Rml::Event& event) {
-    if (!isValidSlotIndex(slot_index)) {
-        return;
-    }
-    event.StopPropagation();
 }
 
 void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {

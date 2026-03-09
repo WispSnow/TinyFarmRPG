@@ -107,8 +107,7 @@ bool InventoryUI::initDocument() {
                 });
         };
 
-    if (!bind_slot_event("slot_mouse_down", &InventoryUI::onSlotMouseDown) ||
-        !bind_slot_event("slot_mouse_up", &InventoryUI::onSlotMouseUp) ||
+    if (!bind_slot_event("slot_mouse_up", &InventoryUI::onSlotMouseUp) ||
         !bind_slot_event("slot_hover_enter", &InventoryUI::onSlotHoverEnter) ||
         !bind_slot_event("slot_hover_exit", &InventoryUI::onSlotHoverExit) ||
         !bind_slot_event("slot_drag_start", &InventoryUI::onSlotDragStart) ||
@@ -406,13 +405,6 @@ void InventoryUI::onPageLeft(Rml::Event& event) {
 void InventoryUI::onPageRight(Rml::Event& event) {
     event.StopPropagation();
     changePage(1);
-}
-
-void InventoryUI::onSlotMouseDown(int inventory_index, Rml::Event& event) {
-    if (!isValidInventoryIndex(inventory_index)) {
-        return;
-    }
-    event.StopPropagation();
 }
 
 void InventoryUI::onSlotMouseUp(int inventory_index, Rml::Event& event) {
