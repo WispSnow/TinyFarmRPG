@@ -86,6 +86,9 @@ public:
 
     [[nodiscard]] bool isReady() const { return document_ != nullptr && data_bridge_.isValid(); }
     [[nodiscard]] bool isVisible() const { return visible_; }
+    [[nodiscard]] bool isDragging() const { return dragging_; }
+    [[nodiscard]] int getDragInventoryIndex() const { return dragging_inventory_slot_; }
+    void notifyExternalDropHandled() { drop_handled_ = true; }
 
     void setSlotItem(int slot_index, const engine::ui::SlotItem& item);
     void clearSlot(int slot_index);
@@ -120,14 +123,13 @@ private:
     void markSlotsDirty();
 
     [[nodiscard]] std::optional<engine::ui::SlotItem> getSlotItemData(int slot_index) const;
-    [[nodiscard]] std::string buildIconDecorator(entt::id_type item_id) const;
-    [[nodiscard]] static std::string spriteNameFromIconKey(std::string_view icon_key);
 
     void showTooltipForSlot(int slot_index);
     void refreshTooltipForHoveredSlot();
     void clearTooltip();
     void clearDragState();
 
+    void onSlotMouseDown(int slot_index, Rml::Event& event);
     void onSlotMouseUp(int slot_index, Rml::Event& event);
     void onSlotHoverEnter(int slot_index, Rml::Event& event);
     void onSlotHoverExit(int slot_index, Rml::Event& event);
