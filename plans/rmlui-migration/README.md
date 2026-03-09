@@ -11,7 +11,7 @@
 - `[~]` 部分完成
 - `[ ]` 未开始
 
-## 当前进度（2026-03-08）
+## 当前进度（2026-03-09）
 
 | Phase | 状态 | 文档 |
 |------|------|------|
@@ -22,7 +22,7 @@
 | Phase 4: 对话气泡 + Tooltip | `[x]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 战斗 UI | `[x]` | [`phase-05.md`](./phase-05.md) |
 | Phase 6: 快捷栏（HotbarUI） | `[x]` | [`phase-06.md`](./phase-06.md) |
-| Phase 7: 物品栏（InventoryUI） | `[ ]` | [`phase-07.md`](./phase-07.md) |
+| Phase 7: 物品栏（InventoryUI） | `[x]` | [`phase-07.md`](./phase-07.md) |
 | Phase 8: 清理旧 UI 框架 | `[ ]` | [`phase-08.md`](./phase-08.md) |
 
 
@@ -31,6 +31,8 @@
 - 2026-03-07: Phase 5 已完成 BattleScene 的 RmlUi 迁移，保留现有战斗状态机与 6 个动作按钮行为。
 - 2026-03-08: Phase 6 已完成 HotbarUI 的 RmlUi 迁移，保留左键激活 / 右键使用 / Tooltip / 内部拖拽换位 / 拖出解绑；`inventory ↔ hotbar` 跨 UI 拖拽继续延期到 Phase 7。
 - 2026-03-08: Phase 6 收尾已完成：`HotbarUI` 改用独立 `DataTypeRegister`，数量文本仅在 `count > 1` 时显示，相关旧版 UIElement 布局测试已改为 RmlUi 文档级测试（当前 headless 测试环境下自动跳过）。
+- 2026-03-09: Phase 7 已完成 InventoryUI 的 RmlUi wrapper 迁移，保留分页 / 右键使用 / Tooltip / inventory 内部拖拽，并补齐 `inventory ↔ hotbar` 跨 UI 拖拽协调。
+- 2026-03-09: Phase 7 新增跨文档 `drag: clone + dragdrop` 探针和 Inventory 文档级布局测试；当前 headless 测试环境下若 `RmlUILayer` 不可用则自动跳过。
 
 ## 全局约束
 

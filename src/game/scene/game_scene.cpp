@@ -294,8 +294,8 @@ void GameScene::clean() {
     dispatcher.clear<game::defs::DialogueHideEvent>();
 
     dialogue_controller_.reset();
+    inventory_ui_.reset();
     hotbar_ui_.reset();
-    inventory_ui_ = nullptr;
     item_tooltip_ui_ = nullptr;
     ui_manager_.reset();
     if (systems_ && systems_->map_transition_system) {
@@ -407,9 +407,11 @@ bool GameScene::initUI() {
     // 时钟 HUD（RmlUi 驱动）
     time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
 
-    auto inventory_ui = std::make_unique<game::ui::InventoryUI>(context_, services_->item_catalog.get());
-    inventory_ui_ = inventory_ui.get();
-    ui_manager_->addElement(std::move(inventory_ui));
+    inventory_ui_ = std::make_unique<game::ui::InventoryUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
+    if (!inventory_ui_ || !inventory_ui_->isReady()) {
+        spdlog::error("GameScene: 创建 InventoryUI 失败。");
+        return false;
+    }
 
     hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
     if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
@@ -444,10 +446,6 @@ bool GameScene::initUI() {
     dialogue_controller_->registerBubble(1, dialogue_bubble_ch1_ptr);
     dialogue_controller_->registerBubble(2, dialogue_bubble_ch2_ptr, {0.0F, -56.0F});
 
-    if (inventory_ui_) {
-        inventory_ui_->setUIManager(ui_manager_.get());
-    }
-
     if (item_tooltip_ui_) {
         if (inventory_ui_) {
             inventory_ui_->setTooltipUI(item_tooltip_ui_);
@@ -470,7 +468,7 @@ bool GameScene::initUI() {
 
     if (inventory_ui_ && hotbar_ui_) {
         inventory_ui_->setHotbarUI(hotbar_ui_.get());
-        hotbar_ui_->setInventoryUI(inventory_ui_);
+        hotbar_ui_->setInventoryUI(inventory_ui_.get());
     }
 
     auto menu_button = engine::ui::UIButton::create(

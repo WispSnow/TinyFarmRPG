@@ -12,6 +12,7 @@
                  data-class-has-item="slot.has_item"
                  data-class-has-count="slot.has_count"
                  data-class-is-active="slot.is_active"
+                 data-event-mousedown="slot_mouse_down(slot.slot_index)"
                  data-event-mouseup="slot_mouse_up(slot.slot_index)"
                  data-event-dragdrop="slot_drag_drop(slot.slot_index)">
                 <div class="hotbar-slot-selected"></div>

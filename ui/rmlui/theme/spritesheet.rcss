@@ -54,6 +54,15 @@
     hotbar-selected-bg-inner:123px 10px 10px 10px;
 }
 
+/* --- 物品栏九宫格 (Inventory/inventory.png) --- */
+@spritesheet ui-inventory {
+    src: ../../../assets/farm-rpg/UI/Inventory/inventory.png;
+    inventory-panel-bg:        0px 64px 48px 48px;
+    inventory-panel-bg-inner: 10px 74px 28px 28px;
+    inventory-slot-bg:        39px 9px 18px 18px;
+    inventory-slot-bg-inner:  41px 11px 14px 14px;
+}
+
 /* --- 物品图标 (Weapons/RPG/5.png) --- */
 @spritesheet ui-items-tools {
     src: ../../../assets/farm-rpg/Icons/Weapons/RPG/5.png;
@@ -89,6 +98,8 @@
     page-left-icon-pressed: 384px 16px 16px 16px;
     page-right-icon:         400px 0px 16px 16px;
     page-right-icon-pressed: 400px 16px 16px 16px;
+    close-icon:            272px 64px 16px 16px;
+    close-icon-pressed:    272px 80px 16px 16px;
 }
 
 /* --- 时钟 (Clock.png) --- */

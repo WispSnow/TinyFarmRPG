@@ -1,525 +1,529 @@
 #include "inventory_ui.h"
+
 #include "engine/core/context.h"
-#include "engine/core/game_state.h"
-#include "engine/resource/resource_manager.h"
-#include "engine/ui/ui_draggable_panel.h"
-#include "engine/ui/layout/ui_grid_layout.h"
-#include "engine/ui/ui_panel.h"
-#include "engine/ui/ui_preset_manager.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/behavior/drag_behavior.h"
-#include "engine/ui/behavior/hover_behavior.h"
-#include "engine/ui/ui_manager.h"
-#include "engine/input/input_manager.h"
-#include "game/ui/hotbar_ui.h"
-#include "game/ui/item_tooltip_ui.h"
-#include "game/ui/ui_drag_drop_helpers.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "game/component/inventory_component.h"
 #include "game/defs/commands.h"
-#include <entt/core/hashed_string.hpp>
+#include "game/defs/events.h"
+#include "game/ui/hotbar_ui.h"
+#include "game/ui/item_tooltip_ui.h"
+#include "game/ui/rml_item_icon_helpers.h"
+
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/DataModelHandle.h>
+#include <RmlUi/Core/DataTypeRegister.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
+
 #include <algorithm>
-#include <string>
 #include <string_view>
 
 namespace {
-constexpr entt::hashed_string INVENTORY_PANEL_PRESET{"inventory_panel"};
-constexpr entt::hashed_string INVENTORY_SLOT_PRESET{"inventory_slot"};
-constexpr float RIGHT_MARGIN = 20.0f;
-constexpr float BUTTON_AREA_HEIGHT = 16.0f;
 
-engine::render::Image makeFallbackPanelImage() {
-    engine::render::Image image(
-        "assets/farm-rpg/UI/Inventory/inventory.png",
-        engine::utils::Rect{glm::vec2{0.0f, 64.0f}, glm::vec2{48.0f, 48.0f}}
-    );
-    image.setNineSliceMargins(engine::render::NineSliceMargins{10, 10, 10, 10});
-    return image;
+constexpr int VISIBLE_SLOT_COUNT = game::component::InventoryComponent::SLOTS_PER_PAGE;
+constexpr int TOTAL_SLOT_COUNT = game::component::InventoryComponent::TOTAL_SLOTS;
+constexpr int TOTAL_PAGE_COUNT = game::component::InventoryComponent::PAGE_COUNT;
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/inventory.rml";
+constexpr std::string_view MODEL_NAME = "inventory_ui";
+
+[[nodiscard]] int getSlotArgument(const Rml::VariantList& arguments) {
+    return (arguments.size() == 1 ? arguments[0].Get<int>(-1) : -1);
 }
 
-engine::render::Image makeFallbackSlotImage() {
-    engine::render::Image image(
-        "assets/farm-rpg/UI/Inventory/inventory.png",
-        engine::utils::Rect{glm::vec2{39.0f, 9.0f}, glm::vec2{18.0f, 18.0f}}
-    );
-    image.setNineSliceMargins(engine::render::NineSliceMargins{2, 2, 2, 2});
-    return image;
-}
 } // namespace
 
 namespace game::ui {
 
-InventoryUI::InventoryUI(engine::core::Context& context,
-                         game::data::ItemCatalog* catalog,
-                         int columns,
-                         int rows,
-                         glm::vec2 slot_size,
-                         glm::vec2 slot_spacing)
-    : UIElement(glm::vec2{0.0f, 0.0f}),
+InventoryUI::InventoryUI(engine::ui::rmlui::RmlUILayer& layer,
+                         engine::core::Context& context,
+                         uint64_t owner_scene_id,
+                         game::data::ItemCatalog* catalog)
+    : layer_(layer),
       context_(context),
       item_catalog_(catalog),
-      columns_(columns),
-      rows_(rows),
-      slot_size_(slot_size),
-      slot_spacing_(slot_spacing) {
-    setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    setPivot({0.0f, 0.0f});
-    slot_items_.resize(static_cast<std::size_t>(columns_ * rows_ * game::component::InventoryComponent::PAGE_COUNT)); // 多页缓存（与 InventoryComponent 对齐）
-    buildLayout();
-    subscribeEvents();
-    context_.getInputManager()
-        .onAction(entt::hashed_string{"mouse_right"}.value(), engine::input::ActionState::PRESSED)
-        .connect<&InventoryUI::onMouseRightPressed>(this);
-    hide(); // 默认隐藏，按 inventory 动作显示
+      owner_scene_id_(owner_scene_id) {
+    inventory_slots_.resize(VISIBLE_SLOT_COUNT);
+    slot_items_.resize(TOTAL_SLOT_COUNT);
+    updatePageText();
+    refreshAllSlotViewModels();
+
+    context_.getDispatcher().sink<game::defs::InventoryChanged>().connect<&InventoryUI::onInventoryChanged>(this);
+    if (!initDocument()) {
+        spdlog::error("InventoryUI: 初始化失败。");
+    }
 }
 
 InventoryUI::~InventoryUI() {
-    auto& dispatcher = context_.getDispatcher();
-    dispatcher.sink<game::defs::InventoryChanged>().disconnect<&InventoryUI::onInventoryChanged>(this);
-    context_.getInputManager()
-        .onAction(entt::hashed_string{"mouse_right"}.value(), engine::input::ActionState::PRESSED)
-        .disconnect<&InventoryUI::onMouseRightPressed>(this);
+    context_.getDispatcher().sink<game::defs::InventoryChanged>().disconnect<&InventoryUI::onInventoryChanged>(this);
+    clearTooltip();
+    destroyDocument();
+    data_bridge_.destroy();
 }
 
-void InventoryUI::buildLayout() {
-    createPanel();
-    createCloseButton();
-    createGridAndSlots();
-    createPageButtons();
-}
-
-void InventoryUI::createCloseButton() {
-    if (!panel_) return;
-
-    constexpr float BUTTON_SIZE = 16.0f;
-    auto close_button = engine::ui::UIButton::create(
-        context_, "close", glm::vec2{0.0f, 0.0f}, glm::vec2{BUTTON_SIZE, BUTTON_SIZE}, [this]() {
-            if (tooltip_ui_) {
-                tooltip_ui_->hideTooltip();
-            }
-            if (ui_manager_) {
-                ui_manager_->endDragPreview();
-            }
-            dragging_ = false;
-            dragging_inventory_index_ = -1;
-            dragging_item_.reset();
-            hide();
-        });
-    if (!close_button) {
-        spdlog::error("InventoryUI: 创建 close button 失败。");
-        return;
-    }
-    close_button->setAnchor({1.0f, 0.0f}, {1.0f, 0.0f});
-    close_button->setPivot({0.8f, 0.2f});
-    panel_->addChild(std::move(close_button), 100);
-}
-
-int InventoryUI::getTotalPages() const {
-    const int page_size = columns_ * rows_;
-    if (page_size <= 0) return 1;
-    const int total = static_cast<int>((slot_items_.size() + static_cast<std::size_t>(page_size) - 1u) /
-                                       static_cast<std::size_t>(page_size));
-    return std::max(1, total);
-}
-
-void InventoryUI::updatePageLabel() {
-    if (!page_label_) return;
-    const int total_pages = getTotalPages();
-    const int clamped_page = std::clamp(current_page_, 0, std::max(0, total_pages - 1));
-    page_label_->setText(std::to_string(clamped_page + 1) + "/" + std::to_string(total_pages));
-}
-
-glm::vec2 InventoryUI::calculateGridSize() const {
-    glm::vec2 grid_size{
-        columns_ * slot_size_.x + static_cast<float>(columns_ - 1) * slot_spacing_.x,
-        rows_ * slot_size_.y + static_cast<float>(rows_ - 1) * slot_spacing_.y
-    };
-    return grid_size;
-}
-
-void InventoryUI::createPanel() {
-    auto& preset_manager = context_.getUIPresetManager();
-    const auto* panel_preset = preset_manager.getImagePreset(INVENTORY_PANEL_PRESET.value());
-    engine::render::Image panel_skin = panel_preset ? *panel_preset : makeFallbackPanelImage();
-    auto panel_margins = panel_skin.getNineSliceMargins();
-
-    const glm::vec2 grid_size = calculateGridSize();
-    const glm::vec2 panel_size{
-        grid_size.x + panel_padding_.width(),
-        grid_size.y + panel_padding_.height() + BUTTON_AREA_HEIGHT
-    };
-
-    const auto logical_size = context_.getGameState().getLogicalSize();
-    const glm::vec2 initial_pos{
-        logical_size.x - panel_size.x - RIGHT_MARGIN,
-        (logical_size.y - panel_size.y) * 0.5f
-    };
-
-    auto panel = std::make_unique<engine::ui::UIDraggablePanel>(
-        context_, initial_pos, panel_size, std::nullopt, panel_skin, panel_margins);
-    panel->setPadding(panel_padding_);
-    panel->setOrderIndex(10);
-
-    panel_ = panel.get();
-    addChild(std::move(panel));
-}
-
-void InventoryUI::createGridAndSlots() {
-    if (!panel_) {
-        spdlog::error("InventoryUI: 面板未创建，无法生成网格。");
-        return;
+bool InventoryUI::initDocument() {
+    auto* rml_context = layer_.getContext();
+    if (!rml_context) {
+        spdlog::error("InventoryUI: RmlUi context 不可用。");
+        return false;
     }
 
-    auto content_panel = panel_->getContentPanel();
-    if (!content_panel) {
-        spdlog::error("InventoryUI: 内容面板不存在。");
-        return;
+    auto constructor = data_bridge_.create(rml_context, MODEL_NAME, &type_register_);
+    if (!constructor) {
+        spdlog::error("InventoryUI: 创建 data model 失败。");
+        return false;
     }
 
-    const glm::vec2 grid_size = calculateGridSize();
-
-    auto grid = std::make_unique<engine::ui::UIGridLayout>(glm::vec2{0.0f, 0.0f}, grid_size);
-    grid->setColumnCount(columns_);
-    grid->setSpacing(slot_spacing_);
-    grid->setCellSize(slot_size_);
-    grid->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-
-    auto& preset_manager = context_.getUIPresetManager();
-    const auto* slot_preset = preset_manager.getImagePreset(INVENTORY_SLOT_PRESET.value());
-    engine::render::Image slot_bg = slot_preset ? *slot_preset : makeFallbackSlotImage();
-
-    const int total_slots = columns_ * rows_;
-    slots_.reserve(static_cast<size_t>(total_slots));
-
-    for (int i = 0; i < total_slots; ++i) {
-        auto slot = std::make_unique<engine::ui::UIItemSlot>(context_, glm::vec2{0.0f, 0.0f}, slot_size_);
-        slot->setBackgroundImage(slot_bg);
-        slot->setSize(slot_size_);
-        slot->setId(entt::hashed_string{"inventory_slot"}.value());
-        auto drag = std::make_unique<engine::ui::DragBehavior>();
-        drag->setOnBegin([this, i](engine::ui::UIInteractive& owner, const glm::vec2&) { handleDragBegin(i, owner); });
-        drag->setOnUpdate([this](engine::ui::UIInteractive& owner, const glm::vec2& pos, const glm::vec2&) {
-            handleDragUpdate(owner, pos);
-        });
-        drag->setOnEnd([this, i](engine::ui::UIInteractive& owner, const glm::vec2& pos, bool) {
-            handleDragEnd(i, owner, pos);
-        });
-        slot->addBehavior(std::move(drag));
-
-        auto hover = std::make_unique<engine::ui::HoverBehavior>();
-        hover->setOnEnter([this, i](engine::ui::UIInteractive&) { handleHoverEnter(i); });
-        hover->setOnExit([this](engine::ui::UIInteractive&) { handleHoverExit(); });
-        slot->addBehavior(std::move(hover));
-
-        slots_.push_back(slot.get());
-        grid->addChild(std::move(slot));
+    if (!ensureDataTypesRegistered(constructor)) {
+        spdlog::error("InventoryUI: 注册 inventory data types 失败。");
+        data_bridge_.destroy();
+        return false;
     }
 
-    grid_ = grid.get();
-    content_panel->addChild(std::move(grid));
+    if (!constructor.Bind("inventory_slots", &inventory_slots_) ||
+        !constructor.Bind("page_text", &page_text_)) {
+        spdlog::error("InventoryUI: 绑定 data model 字段失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    if (!constructor.BindEventCallback("on_close",
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) { onClose(event); }) ||
+        !constructor.BindEventCallback("on_page_left",
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) { onPageLeft(event); }) ||
+        !constructor.BindEventCallback("on_page_right",
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) { onPageRight(event); })) {
+        spdlog::error("InventoryUI: 绑定静态 data event 回调失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    const auto bind_slot_event =
+        [this, &constructor](const char* name, void (InventoryUI::*handler)(int, Rml::Event&)) {
+            return constructor.BindEventCallback(name,
+                [this, handler](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList& arguments) {
+                    (this->*handler)(getSlotArgument(arguments), event);
+                });
+        };
+
+    if (!bind_slot_event("slot_mouse_down", &InventoryUI::onSlotMouseDown) ||
+        !bind_slot_event("slot_mouse_up", &InventoryUI::onSlotMouseUp) ||
+        !bind_slot_event("slot_hover_enter", &InventoryUI::onSlotHoverEnter) ||
+        !bind_slot_event("slot_hover_exit", &InventoryUI::onSlotHoverExit) ||
+        !bind_slot_event("slot_drag_start", &InventoryUI::onSlotDragStart) ||
+        !bind_slot_event("slot_drag_drop", &InventoryUI::onSlotDragDrop) ||
+        !bind_slot_event("slot_drag_end", &InventoryUI::onSlotDragEnd)) {
+        spdlog::error("InventoryUI: 绑定槽位 data event 回调失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    document_ = layer_.loadDocument(DOCUMENT_PATH, owner_scene_id_);
+    if (!document_) {
+        spdlog::error("InventoryUI: 加载 RML 文档失败: {}", DOCUMENT_PATH);
+        data_bridge_.destroy();
+        return false;
+    }
+
+    data_bridge_.markAllDirty();
+    if (!visible_) {
+        layer_.hideDocument(document_);
+    }
+    return true;
 }
 
-void InventoryUI::createPageButtons() {
-    if (!panel_) return;
-    auto content_panel = panel_->getContentPanel();
-    if (!content_panel) return;
+bool InventoryUI::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {
+    if (data_types_registered_) {
+        return true;
+    }
 
-    const glm::vec2 grid_size = calculateGridSize();
-    constexpr float BUTTON_SIZE = 20.0f;
-    constexpr float LABEL_BUTTON_GAP = 8.0f;
-
-    const float extra_height = panel_padding_.bottom + BUTTON_AREA_HEIGHT - BUTTON_SIZE;
-    const float half_gap_y = std::max(0.0f, extra_height * 0.5f);
-    const float y = grid_size.y + half_gap_y;
-    const float center_x = grid_size.x * 0.5f;
-
-    const int total_pages = getTotalPages();
-    const std::string label_text_max = std::to_string(total_pages) + "/" + std::to_string(total_pages);
-    const std::string label_text = std::to_string(current_page_ + 1) + "/" + std::to_string(total_pages);
-
-    auto page_label = std::make_unique<engine::ui::UILabel>(context_.getTextRenderer(),
-                                                            label_text_max,
-                                                            entt::null,
-                                                            engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-                                                            glm::vec2{center_x, y + BUTTON_SIZE * 0.5f},
-                                                            engine::utils::FColor::black());
-    const float label_width = page_label->getRequestedSize().x;
-    page_label_ = page_label.get();
-    page_label_->setPivot({0.5f, 0.5f});
-    page_label_->setText(label_text);
-
-    const float half_gap_x = label_width * 0.5f + LABEL_BUTTON_GAP;
-
-    auto page_left = engine::ui::UIButton::create(
-        context_, "page_left",
-        glm::vec2{center_x - half_gap_x - BUTTON_SIZE, y},
-        glm::vec2{BUTTON_SIZE, BUTTON_SIZE},
-        [this]() { changePage(-1); });
-
-    auto page_right = engine::ui::UIButton::create(
-        context_, "page_right",
-        glm::vec2{center_x + half_gap_x, y},
-        glm::vec2{BUTTON_SIZE, BUTTON_SIZE},
-        [this]() { changePage(1); });
-
-    if (page_left) {
-        content_panel->addChild(std::move(page_left));
+    if (auto slot_handle = constructor.RegisterStruct<InventorySlotViewModel>()) {
+        slot_handle.RegisterMember("local_slot_index", &InventorySlotViewModel::local_slot_index);
+        slot_handle.RegisterMember("inventory_index", &InventorySlotViewModel::inventory_index);
+        slot_handle.RegisterMember("icon_decorator", &InventorySlotViewModel::icon_decorator);
+        slot_handle.RegisterMember("count_text", &InventorySlotViewModel::count_text);
+        slot_handle.RegisterMember("has_item", &InventorySlotViewModel::has_item);
+        slot_handle.RegisterMember("has_count", &InventorySlotViewModel::has_count);
+        slot_handle.RegisterMember("can_drag", &InventorySlotViewModel::can_drag);
     } else {
-        spdlog::error("InventoryUI: 创建 page_left button 失败。");
+        return false;
     }
-    if (page_right) {
-        content_panel->addChild(std::move(page_right));
-    } else {
-        spdlog::error("InventoryUI: 创建 page_right button 失败。");
+
+    if (!constructor.RegisterArray<decltype(inventory_slots_)>()) {
+        return false;
     }
-    content_panel->addChild(std::move(page_label));
+
+    data_types_registered_ = true;
+    return true;
+}
+
+void InventoryUI::destroyDocument() {
+    clearDragState();
+    if (document_) {
+        layer_.unloadDocument(document_);
+        document_ = nullptr;
+    }
+}
+
+bool InventoryUI::isValidInventoryIndex(int inventory_index) {
+    return inventory_index >= 0 && inventory_index < TOTAL_SLOT_COUNT;
+}
+
+bool InventoryUI::isValidVisibleSlotIndex(int local_slot_index) {
+    return local_slot_index >= 0 && local_slot_index < VISIBLE_SLOT_COUNT;
+}
+
+void InventoryUI::updatePageText() {
+    const int clamped_page = std::clamp(current_page_, 0, TOTAL_PAGE_COUNT - 1);
+    page_text_ = std::to_string(clamped_page + 1) + "/" + std::to_string(TOTAL_PAGE_COUNT);
+}
+
+void InventoryUI::refreshAllSlotViewModels() {
+    for (int local_slot_index = 0; local_slot_index < VISIBLE_SLOT_COUNT; ++local_slot_index) {
+        refreshSlotViewModel(local_slot_index);
+    }
+}
+
+void InventoryUI::refreshSlotViewModel(int local_slot_index) {
+    if (!isValidVisibleSlotIndex(local_slot_index)) {
+        return;
+    }
+
+    auto& slot = inventory_slots_[static_cast<std::size_t>(local_slot_index)];
+    const int inventory_index = current_page_ * VISIBLE_SLOT_COUNT + local_slot_index;
+    slot.local_slot_index = local_slot_index;
+    slot.inventory_index = inventory_index;
+    slot.icon_decorator.clear();
+    slot.count_text.clear();
+    slot.has_item = false;
+    slot.has_count = false;
+    slot.can_drag = false;
+
+    if (!isValidInventoryIndex(inventory_index)) {
+        return;
+    }
+
+    const auto& item = slot_items_[static_cast<std::size_t>(inventory_index)];
+    if (!item || item->item_id == entt::null || item->count <= 0) {
+        return;
+    }
+
+    slot.icon_decorator = buildItemIconDecorator(item_catalog_, item->item_id);
+    slot.has_item = !slot.icon_decorator.empty();
+    slot.can_drag = slot.has_item;
+    if (item->count > 1 && slot.has_item) {
+        slot.count_text = std::to_string(item->count);
+        slot.has_count = true;
+    }
+}
+
+void InventoryUI::markSlotsDirty() {
+    if (data_bridge_.isValid()) {
+        data_bridge_.markDirty("inventory_slots");
+    }
+    refreshTooltipForHoveredSlot();
+}
+
+void InventoryUI::markPageDirty() {
+    if (data_bridge_.isValid()) {
+        data_bridge_.markDirty("page_text");
+    }
+}
+
+std::optional<engine::ui::SlotItem> InventoryUI::getSlotItemData(int inventory_index) const {
+    if (!isValidInventoryIndex(inventory_index)) {
+        return std::nullopt;
+    }
+    return slot_items_[static_cast<std::size_t>(inventory_index)];
+}
+
+void InventoryUI::showTooltipForSlot(int inventory_index) {
+    if (!tooltip_ui_ || !item_catalog_ || !visible_ || dragging_ || (hotbar_ui_ && hotbar_ui_->isDragging())) {
+        return;
+    }
+
+    const auto slot_item = getSlotItemData(inventory_index);
+    if (!slot_item || slot_item->item_id == entt::null || slot_item->count <= 0) {
+        clearTooltip();
+        return;
+    }
+
+    const auto* item = item_catalog_->findItem(slot_item->item_id);
+    if (!item) {
+        clearTooltip();
+        return;
+    }
+
+    tooltip_ui_->showItem(item->display_name_, item->category_str_, item->description_);
+}
+
+void InventoryUI::refreshTooltipForHoveredSlot() {
+    if (hovered_inventory_index_ < 0) {
+        return;
+    }
+    showTooltipForSlot(hovered_inventory_index_);
+}
+
+void InventoryUI::clearTooltip() {
+    hovered_inventory_index_ = -1;
+    if (tooltip_ui_) {
+        tooltip_ui_->hideTooltip();
+    }
+}
+
+void InventoryUI::clearDragState() {
+    dragging_ = false;
+    drop_handled_ = false;
+    dragging_inventory_index_ = -1;
 }
 
 void InventoryUI::setSlotItem(int index, const engine::ui::SlotItem& item) {
-    if (index < 0 || index >= static_cast<int>(slots_.size())) return;
-    slots_[index]->setSlotItem(item);
+    if (!isValidInventoryIndex(index)) {
+        return;
+    }
+
+    slot_items_[static_cast<std::size_t>(index)] = item;
+    if (index / VISIBLE_SLOT_COUNT == current_page_) {
+        refreshSlotViewModel(index % VISIBLE_SLOT_COUNT);
+    }
+    markSlotsDirty();
 }
 
 void InventoryUI::clearSlot(int index) {
-    if (index < 0 || index >= static_cast<int>(slots_.size())) return;
-    slots_[index]->clearSlotItem();
+    if (!isValidInventoryIndex(index)) {
+        return;
+    }
+
+    slot_items_[static_cast<std::size_t>(index)].reset();
+    if (index / VISIBLE_SLOT_COUNT == current_page_) {
+        refreshSlotViewModel(index % VISIBLE_SLOT_COUNT);
+    }
+    markSlotsDirty();
 }
 
 void InventoryUI::clearAllSlots() {
-    for (auto* slot : slots_) {
-        if (slot) slot->clearSlotItem();
+    for (auto& item : slot_items_) {
+        item.reset();
     }
+    refreshAllSlotViewModels();
+    markSlotsDirty();
 }
 
 void InventoryUI::show() {
-    setVisible(true);
+    visible_ = true;
+    if (document_) {
+        layer_.showDocument(document_);
+    }
 }
 
 void InventoryUI::hide() {
-    setVisible(false);
+    visible_ = false;
+    clearTooltip();
+    clearDragState();
+    if (document_) {
+        layer_.hideDocument(document_);
+    }
 }
 
 void InventoryUI::toggle() {
-    setVisible(!isVisible());
+    if (visible_) {
+        hide();
+    } else {
+        show();
+    }
 }
 
-bool InventoryUI::onMouseRightPressed() {
-    if (!isVisible()) return false;
-
-    const auto mouse_pos = context_.getInputManager().getLogicalMousePosition();
-    auto* interactive = findInteractiveAt(mouse_pos);
-    auto* item_slot = dynamic_cast<engine::ui::UIItemSlot*>(interactive);
-    if (!item_slot) return false;
-
-    // 右键点在槽位区域：一律吞掉，避免触发世界里的“取消选择”
-    const int inventory_index = resolveInventoryIndex(item_slot);
-    if (inventory_index < 0 || target_ == entt::null) {
-        return true;
+void InventoryUI::changePage(int delta) {
+    const int new_page = std::clamp(current_page_ + delta, 0, TOTAL_PAGE_COUNT - 1);
+    if (new_page == current_page_) {
+        return;
     }
 
-    const auto slot_item = item_slot->getSlotItem();
+    clearTooltip();
+    clearDragState();
+    current_page_ = new_page;
+    updatePageText();
+    refreshAllSlotViewModels();
+    markPageDirty();
+    markSlotsDirty();
+
+    if (target_ != entt::null) {
+        context_.getDispatcher().trigger(game::defs::InventorySetActivePageCommand{target_, current_page_});
+    }
+}
+
+void InventoryUI::onInventoryChanged(const game::defs::InventoryChanged& evt) {
+    if (target_ == entt::null || evt.target != target_) {
+        return;
+    }
+
+    if (evt.full_sync) {
+        for (auto& item : slot_items_) {
+            item.reset();
+        }
+    }
+
+    for (const auto& slot : evt.slots) {
+        if (!isValidInventoryIndex(slot.slot_index)) {
+            continue;
+        }
+
+        auto& cached = slot_items_[static_cast<std::size_t>(slot.slot_index)];
+        if (slot.item_id != entt::null && slot.count > 0) {
+            cached = engine::ui::SlotItem{
+                slot.item_id,
+                slot.count,
+                item_catalog_ ? item_catalog_->getItemIcon(slot.item_id) : engine::render::Image{}};
+        } else {
+            cached.reset();
+        }
+    }
+
+    const int new_page = std::clamp(evt.active_page, 0, TOTAL_PAGE_COUNT - 1);
+    if (new_page != current_page_) {
+        clearTooltip();
+        clearDragState();
+        current_page_ = new_page;
+    }
+
+    updatePageText();
+    refreshAllSlotViewModels();
+    markPageDirty();
+    markSlotsDirty();
+}
+
+void InventoryUI::onClose(Rml::Event& event) {
+    event.StopPropagation();
+    hide();
+}
+
+void InventoryUI::onPageLeft(Rml::Event& event) {
+    event.StopPropagation();
+    changePage(-1);
+}
+
+void InventoryUI::onPageRight(Rml::Event& event) {
+    event.StopPropagation();
+    changePage(1);
+}
+
+void InventoryUI::onSlotMouseDown(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index)) {
+        return;
+    }
+    event.StopPropagation();
+}
+
+void InventoryUI::onSlotMouseUp(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index)) {
+        return;
+    }
+
+    const int button = event.GetParameter("button", -1);
+    if (button < 0) {
+        return;
+    }
+
+    event.StopPropagation();
+    if (button != 2 || target_ == entt::null) {
+        return;
+    }
+
+    const auto slot_item = getSlotItemData(inventory_index);
     if (!slot_item || slot_item->item_id == entt::null || slot_item->count <= 0) {
-        return true;
+        return;
     }
 
     bool can_use = false;
     if (item_catalog_) {
-        if (const auto* data = item_catalog_->findItem(slot_item->item_id)) {
-            can_use = data->on_use_.has_value();
+        if (const auto* item = item_catalog_->findItem(slot_item->item_id)) {
+            can_use = item->on_use_.has_value();
         }
     }
 
     if (can_use) {
         context_.getDispatcher().trigger(game::defs::UseItemCommand{target_, inventory_index, 1, true});
     }
-
-    return true;
 }
 
-void InventoryUI::subscribeEvents() {
-    auto& dispatcher = context_.getDispatcher();
-    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryUI::onInventoryChanged>(this);
+void InventoryUI::onSlotHoverEnter(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index)) {
+        return;
+    }
+    event.StopPropagation();
+    hovered_inventory_index_ = inventory_index;
+    showTooltipForSlot(inventory_index);
 }
 
-void InventoryUI::onInventoryChanged(const game::defs::InventoryChanged& evt) {
-    if (evt.slots.empty()) return;
+void InventoryUI::onSlotHoverExit(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index)) {
+        return;
+    }
+    event.StopPropagation();
+    if (hovered_inventory_index_ == inventory_index) {
+        clearTooltip();
+    }
+}
 
-    for (const auto& slot : evt.slots) {
-        if (slot.slot_index < 0 || slot.slot_index >= static_cast<int>(slot_items_.size())) continue;
-        auto& cached = slot_items_[static_cast<std::size_t>(slot.slot_index)];
-        cached.item_id = slot.item_id;
-        cached.count = slot.count;
+void InventoryUI::onSlotDragStart(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index) || target_ == entt::null) {
+        return;
     }
 
-    current_page_ = std::clamp(evt.active_page, 0, std::max(0, getTotalPages() - 1));
-    updatePageLabel();
-    renderPage(current_page_);
+    const auto slot_item = getSlotItemData(inventory_index);
+    if (!slot_item || slot_item->item_id == entt::null || slot_item->count <= 0) {
+        return;
+    }
+
+    event.StopPropagation();
+    clearTooltip();
+    dragging_ = true;
+    drop_handled_ = false;
+    dragging_inventory_index_ = inventory_index;
 }
 
-void InventoryUI::renderPage(int active_page) {
-    const int page_size = columns_ * rows_;
-    const int offset = active_page * page_size;
-    if (offset < 0 || offset + page_size > static_cast<int>(slot_items_.size())) return;
+void InventoryUI::onSlotDragDrop(int inventory_index, Rml::Event& event) {
+    if (!isValidInventoryIndex(inventory_index) || target_ == entt::null) {
+        return;
+    }
 
-    for (int i = 0; i < page_size; ++i) {
-        const auto& cached = slot_items_[static_cast<std::size_t>(offset + i)];
-        if (cached.item_id != entt::null && cached.count > 0) {
-            if (item_catalog_) {
-                setSlotItem(i, engine::ui::SlotItem{cached.item_id, cached.count, item_catalog_->getItemIcon(cached.item_id)});
-            } else {
-                setSlotItem(i, engine::ui::SlotItem{cached.item_id, cached.count, cached.icon});
-            }
-        } else {
-            clearSlot(i);
+    if (dragging_) {
+        event.StopPropagation();
+        clearTooltip();
+        drop_handled_ = true;
+        if (inventory_index != dragging_inventory_index_) {
+            context_.getDispatcher().trigger(
+                game::defs::InventoryMoveCommand{target_, dragging_inventory_index_, inventory_index, true});
         }
-    }
-}
-
-void InventoryUI::changePage(int delta) {
-    const int new_page = std::clamp(current_page_ + delta, 0, std::max(0, getTotalPages() - 1));
-    if (new_page == current_page_) return;
-    current_page_ = new_page;
-    updatePageLabel();
-    renderPage(current_page_);
-    if (target_ != entt::null) {
-        context_.getDispatcher().trigger(game::defs::InventorySetActivePageCommand{target_, current_page_});
-    }
-}
-
-int InventoryUI::findSlotIndex(const engine::ui::UIItemSlot* slot) const {
-    auto it = std::ranges::find(slots_, slot);
-    return it != slots_.end() ? static_cast<int>(std::distance(slots_.begin(), it)) : -1;
-}
-
-int InventoryUI::resolveInventoryIndex(const engine::ui::UIItemSlot* slot) const {
-    const int local_index = findSlotIndex(slot);
-    if (local_index < 0) return -1;
-    const int page_size = columns_ * rows_;
-    return current_page_ * page_size + local_index;
-}
-
-std::optional<engine::ui::SlotItem> InventoryUI::getSlotItemData(int inventory_index) const {
-    if (inventory_index < 0 || inventory_index >= static_cast<int>(slot_items_.size())) return std::nullopt;
-    const auto& cached = slot_items_[static_cast<std::size_t>(inventory_index)];
-    if (cached.item_id == entt::null || cached.count <= 0) return std::nullopt;
-    if (item_catalog_) {
-        return engine::ui::SlotItem{cached.item_id, cached.count, item_catalog_->getItemIcon(cached.item_id)};
-    }
-    return engine::ui::SlotItem{cached.item_id, cached.count, cached.icon};
-}
-
-void InventoryUI::handleDragBegin(int local_index, engine::ui::UIInteractive& owner) {
-    dragging_item_.reset();
-    if (tooltip_ui_) {
-        tooltip_ui_->hideTooltip();
-    }
-    const int page_size = columns_ * rows_;
-    const int inventory_index = current_page_ * page_size + local_index;
-    if (inventory_index < 0 || inventory_index >= static_cast<int>(slot_items_.size()) || target_ == entt::null) {
-        dragging_ = false;
-        game::ui::helpers::endDragPreview(ui_manager_);
         return;
     }
 
-    auto item = getSlotItemData(inventory_index);
-    dragging_ = item.has_value();
-    dragging_inventory_index_ = dragging_ ? inventory_index : -1;
-    if (dragging_ && item) {
-        dragging_item_ = item;
-        const auto* slot = (local_index >= 0 && local_index < static_cast<int>(slots_.size())) ? slots_[local_index] : nullptr;
-        const glm::vec2 preview_size = game::ui::helpers::resolveDragPreviewSize(slot, slot_size_);
-        const auto start_pos = owner.getContext().getInputManager().getLogicalMousePosition();
-        game::ui::helpers::beginDragPreview(ui_manager_, item->icon, item->count, preview_size, start_pos);
-        if (local_index >= 0 && local_index < static_cast<int>(slots_.size()) && slots_[local_index]) {
-            slots_[local_index]->clearSlotItem();
-        }
-    } else {
-        game::ui::helpers::endDragPreview(ui_manager_);
-    }
-}
-
-void InventoryUI::handleDragEnd(int local_index, engine::ui::UIInteractive& owner, const glm::vec2& pos) {
-    if (!dragging_ || target_ == entt::null) {
-        dragging_ = false;
-        dragging_inventory_index_ = -1;
-        dragging_item_.reset();
-        game::ui::helpers::endDragPreview(ui_manager_);
+    if (!hotbar_ui_ || !hotbar_ui_->isDragging()) {
         return;
     }
 
-    const int page_size = columns_ * rows_;
-    const int from_index = dragging_inventory_index_;
-    auto* target = findTarget(owner, pos);
-    bool restore_source = true;
-
-    // 拖拽成功的情况，目标可能是物品栏槽位或快捷栏槽位
-    if (auto* item_slot = dynamic_cast<engine::ui::UIItemSlot*>(target)) {
-        const int local_target = findSlotIndex(item_slot);
-        if (local_target >= 0) {
-            const int to_index = current_page_ * page_size + local_target;
-            if (to_index != from_index) {
-                restore_source = false;
-                context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{target_, from_index, to_index, true});
-            }
-        } else if (hotbar_ui_) {
-            const int hotbar_index = hotbar_ui_->findSlotIndex(item_slot);
-            if (hotbar_index >= 0) {
-                context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, hotbar_index, from_index});
-            }
-        }
-    }
-
-    // 拖拽失败的情况
-    if (restore_source && dragging_item_ && local_index >= 0 &&
-        local_index < static_cast<int>(slots_.size()) && slots_[local_index]) {
-        slots_[local_index]->setSlotItem(*dragging_item_);
-    }
-
-    game::ui::helpers::endDragPreview(ui_manager_);
-    dragging_ = false;
-    dragging_inventory_index_ = -1;
-    dragging_item_.reset();
-}
-
-engine::ui::UIInteractive* InventoryUI::findTarget(engine::ui::UIInteractive& owner, const glm::vec2& pos) const {
-    return game::ui::helpers::findTarget(ui_manager_, owner, pos);
-}
-
-void InventoryUI::handleDragUpdate(engine::ui::UIInteractive& owner, const glm::vec2& pos) {
-    (void)owner;
-    if (!dragging_) return;
-    if (ui_manager_) {
-        ui_manager_->updateDragPreview(pos);
-    }
-}
-
-void InventoryUI::handleHoverEnter(int local_index) {
-    if (!tooltip_ui_ || !item_catalog_ || dragging_) {
-        return;
-    }
-    const int page_size = columns_ * rows_;
-    const int inventory_index = current_page_ * page_size + local_index;
-    const auto item = getSlotItemData(inventory_index);
-    if (!item) {
-        tooltip_ui_->hideTooltip();
+    const int source_inventory_index = hotbar_ui_->getDragInventoryIndex();
+    if (!isValidInventoryIndex(source_inventory_index)) {
         return;
     }
 
-    const auto* data = item_catalog_->findItem(item->item_id);
-    if (!data) {
-        tooltip_ui_->hideTooltip();
+    event.StopPropagation();
+    clearTooltip();
+    if (source_inventory_index != inventory_index) {
+        context_.getDispatcher().trigger(
+            game::defs::InventoryMoveCommand{target_, source_inventory_index, inventory_index, true});
+    }
+    hotbar_ui_->notifyExternalDropHandled();
+}
+
+void InventoryUI::onSlotDragEnd(int inventory_index, Rml::Event& event) {
+    if (!dragging_ || inventory_index != dragging_inventory_index_) {
         return;
     }
 
-    tooltip_ui_->showItem(data->display_name_, data->category_str_, data->description_);
-}
-
-void InventoryUI::handleHoverExit() {
-    if (tooltip_ui_) {
-        tooltip_ui_->hideTooltip();
-    }
+    event.StopPropagation();
+    clearDragState();
 }
 
 } // namespace game::ui
