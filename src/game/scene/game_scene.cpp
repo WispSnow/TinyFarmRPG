@@ -112,7 +112,6 @@ GameScene::~GameScene() noexcept {
     context_.getInputManager().onAction("hotbar"_hs).disconnect<&GameScene::onHotbarToggle>(this);
     context_.getInputManager().onAction("pause"_hs).disconnect<&GameScene::onPauseToggle>(this);
     context_.getDispatcher().sink<game::defs::HotbarChanged>().disconnect<&GameScene::onHotbarChanged>(this);
-    context_.getDispatcher().sink<game::defs::InventoryChanged>().disconnect<&GameScene::onInventoryChanged>(this);
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
@@ -149,7 +148,6 @@ bool GameScene::init() {
 #endif
 
     auto& dispatcher = context_.getDispatcher();
-    dispatcher.sink<game::defs::InventoryChanged>().connect<&GameScene::onInventoryChanged>(this);
     dispatcher.sink<game::defs::HotbarChanged>().connect<&GameScene::onHotbarChanged>(this);
     dispatcher.sink<game::defs::HotbarSlotChanged>().connect<&GameScene::onHotbarSlotChanged>(this);
     dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
@@ -564,10 +562,6 @@ bool GameScene::onPauseToggle() {
         game_time);
     requestPushScene(std::move(menu));
     return true;
-}
-
-void GameScene::onInventoryChanged(const game::defs::InventoryChanged& evt) {
-    (void)evt;
 }
 
 void GameScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {
