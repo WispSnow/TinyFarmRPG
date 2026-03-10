@@ -327,7 +327,7 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 
 ### 3. 右键使用
 
-迁移后删除旧的 `InputManager::onAction("mouse_right")` 监听。
+迁移后删除旧的 `InputManager::onAction("secondary_action")` 监听。
 
 改为在槽位 `mouseup` 回调中读取：
 
@@ -525,4 +525,3 @@ Inventory 不应重新拼贴图路径和 source rect，而应与 Hotbar 使用�
 | 修改 | `tests/game/ui_layout_integration_test.cpp` |
 | 新增 | `src/game/ui/rml_item_icon_helpers.h` |
 | 删除 | `src/game/ui/ui_drag_drop_helpers.h` |
-

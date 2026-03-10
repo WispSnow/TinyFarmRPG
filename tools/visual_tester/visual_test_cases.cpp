@@ -348,7 +348,7 @@ void TileAutoTileYSortVisualTest::onUpdate(float /*delta_time*/, engine::core::C
     }
 
     // Toggle tiles via mouse click, but respect ImGui capture.
-    if (allow_tile_toggle_ && hovered_in_bounds && input.isActionPressed("mouse_left"_hs) && !ImGui::GetIO().WantCaptureMouse) {
+    if (allow_tile_toggle_ && hovered_in_bounds && input.isActionPressed("primary_action"_hs) && !ImGui::GetIO().WantCaptureMouse) {
         constexpr entt::id_type kRuleSoilTilled = entt::hashed_string{"soil_tilled"}.value();
 
         const std::size_t idx = static_cast<std::size_t>(hovered_tile_.y * map_size_.x + hovered_tile_.x);

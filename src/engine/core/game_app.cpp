@@ -302,7 +302,7 @@ bool GameApp::initConfig()
 bool GameApp::initSDL()
 {
     SDL_SetHint("SDL_HINT_IME_SHOW_UI", "0");
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
         spdlog::error("SDL 初始化失败! SDL错误: {}", SDL_GetError());
         return false;
     }

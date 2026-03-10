@@ -33,7 +33,7 @@ TinyFarm 的输入系统可以用一句话概括：
   - `InputManager` 会把 SDL 事件先转发给 ImGui（通过 `setImGuiEventForwarder`），再决定是否映射成游戏动作
 
 ### 1.3 UI（占用/转发的落地点）
-- `src/engine/ui/ui_manager.cpp`：监听 `mouse_left` 的 `PRESSED/RELEASED` 回调并返回 `bool`，用于“吃掉输入”
+- `src/engine/ui/ui_manager.cpp`：监听 `primary_action` 的 `PRESSED/RELEASED` 回调并返回 `bool`，用于“吃掉输入”
 - `src/engine/ui/ui_input_blocker.cpp/h`：全屏透明 `UIInteractive`，用来阻断 world 点击
 
 ### 1.4 游戏系统示例（polling + callback 混用）
@@ -120,7 +120,7 @@ InputManager 的回调分发遵循一个工程化目标：
   - `MouseX2`
 
 注意：
-- `mouse_left` / `mouse_right` 若未在配置里声明，InputManager 会自动补默认映射（主要服务 UI 交互）。
+- `primary_action` / `secondary_action` 是显式语义动作，需要在配置中声明；InputManager 不再自动补默认鼠标动作。
 
 ---
 

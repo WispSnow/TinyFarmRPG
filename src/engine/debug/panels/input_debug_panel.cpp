@@ -24,6 +24,14 @@ const char* actionStateToString(engine::input::ActionState state) {
     const auto raw = static_cast<std::uintptr_t>(id) ^ salt;
     return reinterpret_cast<const void*>(raw);
 }
+
+const char* inputDeviceToString(engine::input::InputDevice device) {
+    switch (device) {
+        case engine::input::InputDevice::KeyboardMouse: return "KeyboardMouse";
+        case engine::input::InputDevice::Gamepad: return "Gamepad";
+        default: return "Unknown";
+    }
+}
 }
 
 InputDebugPanel::InputDebugPanel(engine::input::InputManager& input_manager)
@@ -47,10 +55,71 @@ void InputDebugPanel::draw(bool& is_open) {
     const auto mouse_pos = input_manager_.getMousePosition();
     const auto logical_pos = input_manager_.getLogicalMousePosition();
     const auto wheel = input_manager_.getMouseWheelDelta();
+    const auto gamepad = input_manager_.getGamepadDebugState();
 
     ImGui::Text("Mouse Position: (%.1f, %.1f)", mouse_pos.x, mouse_pos.y);
     ImGui::Text("Logical Position: (%.1f, %.1f)", logical_pos.x, logical_pos.y);
     ImGui::Text("Wheel Delta: (%.1f, %.1f)", wheel.x, wheel.y);
+    ImGui::Text("Last Input Device: %s", inputDeviceToString(gamepad.last_input_device));
+
+    ImGui::Separator();
+    ImGui::Text("Gamepad:");
+    ImGui::Indent();
+    ImGui::Text("Connected Count: %zu", gamepad.connected_gamepad_count);
+    if (gamepad.has_active_gamepad) {
+        ImGui::Text("Active Gamepad: %s", gamepad.active_gamepad_name.c_str());
+        ImGui::Text("Instance ID: %d", static_cast<int>(gamepad.active_gamepad_id));
+    } else {
+        ImGui::TextDisabled("Active Gamepad: <none>");
+    }
+
+    if (ImGui::BeginTable("GamepadButtonsTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Button");
+        ImGui::TableSetupColumn("Down");
+        ImGui::TableHeadersRow();
+
+        for (std::size_t i = 0; i < engine::input::GAMEPAD_BUTTON_COUNT; ++i) {
+            const auto button = static_cast<SDL_GamepadButton>(i);
+            const char* name = SDL_GetGamepadStringForButton(button);
+            if (name == nullptr || name[0] == '\0') {
+                continue;
+            }
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(name);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(gamepad.button_states[i] ? "Yes" : "No");
+        }
+
+        ImGui::EndTable();
+    }
+
+    if (ImGui::BeginTable("GamepadAxesTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Axis");
+        ImGui::TableSetupColumn("Raw");
+        ImGui::TableSetupColumn("Normalized");
+        ImGui::TableHeadersRow();
+
+        for (std::size_t i = 0; i < engine::input::GAMEPAD_AXIS_COUNT; ++i) {
+            const auto axis = static_cast<SDL_GamepadAxis>(i);
+            const char* name = SDL_GetGamepadStringForAxis(axis);
+            if (name == nullptr || name[0] == '\0') {
+                continue;
+            }
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(name);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%d", static_cast<int>(gamepad.axis_raw_values[i]));
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%.3f", gamepad.axis_normalized_values[i]);
+        }
+
+        ImGui::EndTable();
+    }
+    ImGui::Unindent();
 
     ImGui::Separator();
     ImGui::Text("Action States:");
