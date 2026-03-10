@@ -1,5 +1,9 @@
 ### Phase 10: RmlUi 采样策略切换（Pixel UI）
 
+> **未完成项**：
+> 1. 在可视运行环境中手动验证 `nearest` / `linear` 切换对图片与字体的实际观感
+> 2. 确认 blur / box-shadow / backdrop-filter 等效果链路在运行时仍保持 linear 且无异常块状锯齿
+
 **目标**：为 RmlUi 增加可切换的纹理采样策略，让像素风 UI 可以在 `nearest` / `linear` 之间切换；支持：
 
 - 启动时从配置文件声明默认值

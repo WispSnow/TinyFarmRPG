@@ -1,5 +1,7 @@
 #pragma once
 
+#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
+
 #include <SDL3/SDL.h>
 
 #include <cstdint>
@@ -43,6 +45,9 @@ public:
     /// 设置逻辑分辨率。Context 以此为布局空间，dp_ratio 自动计算为 viewport/logical。
     /// 未设置时 Context 直接使用物理 viewport 尺寸。
     void setLogicalSize(int width, int height);
+
+    void setTextureFilterMode(RmlUiTextureFilterMode mode);
+    [[nodiscard]] RmlUiTextureFilterMode getTextureFilterMode() const;
 
     // --- 多文档管理 ---
 

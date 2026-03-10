@@ -348,6 +348,13 @@ engine::ui::rmlui::RmlUILayer* GLRenderer::getRmlUILayer() const {
     return rmlui_layer_.get();
 }
 
+void GLRenderer::setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode) {
+    rmlui_texture_filter_mode_ = mode;
+    if (rmlui_layer_) {
+        rmlui_layer_->setTextureFilterMode(mode);
+    }
+}
+
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
 #ifdef TF_ENABLE_DEBUG_UI
     if (!imgui_layer_) {
@@ -849,6 +856,7 @@ bool GLRenderer::initRmlUiLayer() {
     rmlui_layer_->setLogicalSize(
         static_cast<int>(std::round(logical_size_.x)),
         static_cast<int>(std::round(logical_size_.y)));
+    rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);
 
     return true;
 }

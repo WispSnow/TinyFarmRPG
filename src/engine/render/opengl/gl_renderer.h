@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "engine/utils/defs.h"
 #include <memory>
 #include <string_view>
@@ -74,6 +75,8 @@ private:
     std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
     std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_layer_;
+    engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
+        engine::ui::rmlui::RmlUiTextureFilterMode::Nearest};
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<ImGuiLayer> imgui_layer_;
     engine::debug::DebugUIManager* debug_ui_manager_{nullptr};
@@ -175,6 +178,10 @@ public:
     [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
     [[nodiscard]] bool reloadRmlUiDocument();
     [[nodiscard]] engine::ui::rmlui::RmlUILayer* getRmlUILayer() const;
+    void setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode);
+    [[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode getRmlUiTextureFilterMode() const {
+        return rmlui_texture_filter_mode_;
+    }
     void handleSDLEvent(const SDL_Event& event);
     void setDebugUIManager(engine::debug::DebugUIManager* manager);
 

@@ -334,6 +334,7 @@ bool GameApp::initGLRenderer() {
     }
     gl_renderer_->setVSyncEnabled(config_->vsync_enabled_);
     gl_renderer_->setDebugUIEnabled(config_->debug_ui_enabled_);
+    gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);
     spdlog::trace("OpenGL 渲染器初始化成功。");
     return true;
 }

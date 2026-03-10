@@ -10,7 +10,8 @@
     },
     "graphics": {
         "vsync": true,
-        "debug_ui": true
+        "debug_ui": true,
+        "rmlui_texture_filter": "nearest"
     },
     "performance": {
         "target_fps": 0,

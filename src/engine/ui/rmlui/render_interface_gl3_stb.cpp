@@ -2,6 +2,7 @@
 
 #include "engine/resource/stb_image_mutex.h"
 
+#include <glad/glad.h>
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/Log.h>
@@ -17,6 +18,20 @@
 namespace engine::ui::rmlui {
 
 namespace {
+
+[[nodiscard]] GLuint toTextureId(Rml::TextureHandle texture_handle) {
+    return static_cast<GLuint>(texture_handle);
+}
+
+[[nodiscard]] GLint toGlTextureFilter(RmlUiTextureFilterMode mode) {
+    switch (mode) {
+    case RmlUiTextureFilterMode::Nearest:
+        return GL_NEAREST;
+    case RmlUiTextureFilterMode::Linear:
+        return GL_LINEAR;
+    }
+    return GL_NEAREST;
+}
 
 [[nodiscard]] bool readFileToBuffer(const Rml::String& source, std::vector<std::uint8_t>& out_buffer) {
     Rml::FileInterface* file_interface = Rml::GetFileInterface();
@@ -70,6 +85,48 @@ void premultiplyAlpha(unsigned char* pixels, int width, int height) {
 
 } // namespace
 
+void RenderInterface_GL3_STB::setTextureFilterMode(RmlUiTextureFilterMode mode) {
+    if (texture_filter_mode_ == mode) {
+        return;
+    }
+
+    texture_filter_mode_ = mode;
+    for (const Rml::TextureHandle texture_handle : tracked_texture_handles_) {
+        applyTextureFilter(texture_handle);
+    }
+}
+
+Rml::TextureHandle RenderInterface_GL3_STB::GenerateTexture(Rml::Span<const Rml::byte> source_data,
+                                                            Rml::Vector2i source_dimensions) {
+    const Rml::TextureHandle texture_handle = RenderInterface_GL3::GenerateTexture(source_data, source_dimensions);
+    if (texture_handle) {
+        tracked_texture_handles_.insert(texture_handle);
+        applyTextureFilter(texture_handle);
+    }
+    return texture_handle;
+}
+
+void RenderInterface_GL3_STB::ReleaseTexture(Rml::TextureHandle texture_handle) {
+    tracked_texture_handles_.erase(texture_handle);
+    RenderInterface_GL3::ReleaseTexture(texture_handle);
+}
+
+void RenderInterface_GL3_STB::applyTextureFilter(Rml::TextureHandle texture_handle) const {
+    const GLuint texture_id = toTextureId(texture_handle);
+    if (texture_id == 0) {
+        return;
+    }
+
+    GLint previous_texture = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
+
+    const GLint gl_filter = toGlTextureFilter(texture_filter_mode_);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous_texture));
+}
+
 Rml::TextureHandle RenderInterface_GL3_STB::LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) {
     std::vector<std::uint8_t> file_buffer;
     if (!readFileToBuffer(source, file_buffer)) {
@@ -110,7 +167,7 @@ Rml::TextureHandle RenderInterface_GL3_STB::LoadTexture(Rml::Vector2i& texture_d
 
     texture_dimensions = {width, height};
     const size_t pixels_byte_size = static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
-    Rml::TextureHandle texture_handle = RenderInterface_GL3::GenerateTexture({pixels, pixels_byte_size}, texture_dimensions);
+    Rml::TextureHandle texture_handle = this->GenerateTexture({pixels, pixels_byte_size}, texture_dimensions);
 
     stbi_image_free(pixels);
     return texture_handle;
