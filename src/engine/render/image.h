@@ -11,11 +11,11 @@
 namespace engine::render {
 
 /**
- * @brief 表示要绘制的UI图片的数据。（只针对UI，与游戏中Sprite隔离）
+ * @brief 表示要绘制的图像数据。（与场景 Sprite 隔离）
  *
  * 包含纹理标识符、要绘制的纹理部分（源矩形，必须显式给出尺寸，否则不渲染）以及翻转状态。
- * 位置、缩放和旋转由外部（例如 UIImage）标识。
- * 渲染工作由 Renderer 类完成。（传入Image作为参数）
+ * 位置、缩放和旋转由外部调用方决定。
+ * 渲染工作由 Renderer 类完成。（传入 Image 作为参数）
  */
 class Image final{
 private:
@@ -29,12 +29,12 @@ private:
 
 public:
     /**
-     * @brief 默认构造函数（创建一个空的/无效的精灵）
+     * @brief 默认构造函数（创建一个空的/无效的图像）
      */
     Image() = default;
     
     /**
-     * @brief 构造一个精灵 （通过纹理路径构造）
+     * @brief 构造一个图像（通过纹理路径构造）
      *
      * @param texture_path 纹理资源的文件路径。不应为空。
      * @param source_rect 要绘制的纹理部分。若尺寸为 0，则不渲染。
@@ -45,7 +45,7 @@ public:
     Image(std::string_view texture_path, entt::id_type texture_id, engine::utils::Rect source_rect, bool is_flipped = false);
 
     /**
-     * @brief 构造一个精灵 （通过纹理ID构造）
+     * @brief 构造一个图像（通过纹理 ID 构造）
      *
      * @param texture_id 纹理资源的标识符。不应为空。
      * @param source_rect 要绘制的纹理部分。若尺寸为 0，则不渲染。

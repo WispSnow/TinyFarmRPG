@@ -3,7 +3,6 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/ui_manager.h"
 #include "engine/utils/events.h"
 #include <atomic>
 #include <spdlog/spdlog.h>
@@ -35,23 +34,12 @@ void Scene::fixedUpdate(float /* delta_time */) {
     // 默认场景不参与固定步长逻辑更新。
 }
 
-void Scene::update(float delta_time) {
+void Scene::update(float /*delta_time*/) {
     if (!is_initialized_) return;
-
-    // 更新UI管理器（部分场景可能不需要 UI）
-    if (ui_manager_) {
-        ui_manager_->update(delta_time, context_);
-    }
-
 }
 
-void Scene::render(float interpolation_alpha) {
+void Scene::render(float /*interpolation_alpha*/) {
     if (!is_initialized_) return;
-
-    // 渲染UI管理器（部分场景可能不需要 UI）
-    if (ui_manager_) {
-        ui_manager_->render(context_, interpolation_alpha);
-    }
 }
 
 void Scene::clean() {

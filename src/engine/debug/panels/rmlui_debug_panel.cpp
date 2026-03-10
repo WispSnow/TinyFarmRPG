@@ -66,6 +66,8 @@ void RmlUiDebugPanel::draw(bool& is_open) {
     ImGui::Separator();
     drawLoadedDocuments();
     ImGui::Separator();
+    drawTextureFilter();
+    ImGui::Separator();
     drawDataBindingTest();
 
     ImGui::End();
@@ -185,6 +187,29 @@ void RmlUiDebugPanel::drawLoadedDocuments() {
 
         ImGui::EndTable();
     }
+}
+
+void RmlUiDebugPanel::drawTextureFilter() {
+    ImGui::TextUnformatted("Texture Filter");
+
+    int filter_index = 0;
+    switch (renderer_.getRmlUiTextureFilterMode()) {
+    case engine::ui::rmlui::RmlUiTextureFilterMode::Nearest:
+        filter_index = 0;
+        break;
+    case engine::ui::rmlui::RmlUiTextureFilterMode::Linear:
+        filter_index = 1;
+        break;
+    }
+
+    if (ImGui::RadioButton("Nearest (Pixel Art)", filter_index == 0)) {
+        renderer_.setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
+    }
+    if (ImGui::RadioButton("Linear (Smooth)", filter_index == 1)) {
+        renderer_.setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
+    }
+
+    ImGui::TextDisabled("Affects RmlUi images and font atlases. Filters and off-screen effects remain linear.");
 }
 
 // ---- Data Binding 测试 ----

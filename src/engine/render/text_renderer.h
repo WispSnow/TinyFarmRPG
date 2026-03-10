@@ -125,6 +125,7 @@ private:
     std::size_t layout_cache_capacity_{100};    ///< @brief 文本布局缓存容量
 
     std::unordered_map<entt::id_type, TextStyleEntry> text_styles_{};
+    // 保留 ui/ 默认样式，供配置装载与调试面板查询使用；不依赖已删除的旧 UI 运行时。
     entt::id_type default_ui_style_id_{entt::null};
     entt::id_type default_world_style_id_{entt::null};
     std::uint64_t layout_revision_{0};
@@ -145,29 +146,6 @@ public:
     ~TextRenderer();
 
     [[nodiscard]] bool loadConfig(std::string_view config_path);
-
-    /**
-     * @brief 绘制UI上的字符串。
-     *        
-     * @param text UTF-8 字符串内容。
-     * @param font_id 字体 ID。
-     * @param font_size 字体大小。
-     * @param position 左上角屏幕位置。
-     * @param color 文本颜色。(默认为白色)
-     */
-    void drawUIText(std::string_view text,
-                    entt::id_type font_id,
-                    int font_size,
-                    const glm::vec2& position,
-                    entt::id_type style_id,
-                    const engine::utils::TextRenderOverrides* overrides = nullptr) const;
-
-    void drawUIText(std::string_view text,
-                    entt::id_type font_id,
-                    int font_size,
-                    const glm::vec2& position,
-                    std::string_view style_key = {},
-                    const engine::utils::TextRenderOverrides* overrides = nullptr) const;
 
     /**
      * @brief 绘制场景中的字符串（受相机投影影响）。
@@ -270,8 +248,7 @@ private:
                           entt::id_type font_id,
                           int font_size,
                           const glm::vec2& position,
-                          const engine::utils::TextRenderParams& params,
-                          bool use_ui_pass) const;
+                          const engine::utils::TextRenderParams& params) const;
 
     [[nodiscard]] static entt::id_type toTextStyleId(std::string_view key);
 

@@ -15,9 +15,7 @@
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_defaults.h"
-#include "engine/ui/ui_manager.h"
+#include "engine/ui/rmlui/rml_event_bridge.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
@@ -58,6 +56,8 @@
 #endif
 
 #include <entt/core/hashed_string.hpp>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
@@ -68,6 +68,7 @@ using namespace entt::literals;
 
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
+constexpr std::string_view GAME_OVERLAY_DOCUMENT_PATH = "ui/rmlui/hud/game_overlay.rml";
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -112,7 +113,6 @@ GameScene::~GameScene() noexcept {
     context_.getInputManager().onAction("hotbar"_hs).disconnect<&GameScene::onHotbarToggle>(this);
     context_.getInputManager().onAction("pause"_hs).disconnect<&GameScene::onPauseToggle>(this);
     context_.getDispatcher().sink<game::defs::HotbarChanged>().disconnect<&GameScene::onHotbarChanged>(this);
-    context_.getDispatcher().sink<game::defs::InventoryChanged>().disconnect<&GameScene::onInventoryChanged>(this);
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
@@ -149,7 +149,6 @@ bool GameScene::init() {
 #endif
 
     auto& dispatcher = context_.getDispatcher();
-    dispatcher.sink<game::defs::InventoryChanged>().connect<&GameScene::onInventoryChanged>(this);
     dispatcher.sink<game::defs::HotbarChanged>().connect<&GameScene::onHotbarChanged>(this);
     dispatcher.sink<game::defs::HotbarSlotChanged>().connect<&GameScene::onHotbarSlotChanged>(this);
     dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
@@ -226,6 +225,9 @@ void GameScene::update(float delta_time) {
     if (!abort_to_title_ && rml_screen_fade_) {
         rml_screen_fade_->update(delta_time);
     }
+    if (!abort_to_title_ && item_tooltip_ui_) {
+        item_tooltip_ui_->update(delta_time);
+    }
     Scene::update(delta_time);
 }
 
@@ -254,6 +256,13 @@ void GameScene::render(float interpolation_alpha) {
         systems_->debug_render_system->render(registry_, renderer);
     }
 #endif
+
+    for (auto& bubble : dialogue_bubbles_) {
+        if (bubble) {
+            bubble->refreshAnchoredPosition(camera, clamped_alpha);
+        }
+    }
+
     Scene::render(interpolation_alpha);
 
     if (has_previous_camera_position_) {
@@ -273,6 +282,7 @@ void GameScene::snapshotInterpolationState() {
 }
 
 void GameScene::clean() {
+    removeOverlayEventListeners();
     time_clock_hud_.reset();
     context_.getGLRenderer().setVfxBackend(nullptr);
 
@@ -294,9 +304,17 @@ void GameScene::clean() {
     dispatcher.clear<game::defs::DialogueHideEvent>();
 
     dialogue_controller_.reset();
+    for (auto& bubble : dialogue_bubbles_) {
+        bubble.reset();
+    }
+    inventory_ui_.reset();
+    hotbar_ui_.reset();
+    item_tooltip_ui_.reset();
+    overlay_document_ = nullptr;
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(nullptr);
     }
+    screen_fade_ = nullptr;
     rml_screen_fade_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
@@ -312,6 +330,13 @@ void GameScene::bindSceneInputActions() {
     input_manager.onAction("inventory"_hs).connect<&GameScene::onInventoryToggle>(this);
     input_manager.onAction("hotbar"_hs).connect<&GameScene::onHotbarToggle>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::onPauseToggle>(this);
+}
+
+void GameScene::removeOverlayEventListeners() {
+    if (overlay_document_ && overlay_click_listener_registered_) {
+        overlay_document_->RemoveEventListener("click", &overlay_event_bridge_);
+        overlay_click_listener_registered_ = false;
+    }
 }
 
 #ifdef TF_ENABLE_DEBUG_UI
@@ -385,68 +410,48 @@ bool GameScene::registerDebugPanels() {
 #endif
 
 bool GameScene::initUI() {
-    const auto logical_size = context_.getGameState().getLogicalSize();
-    constexpr entt::id_type DIALOGUE_BUBBLE_CH0_ID = "dialogue_bubble_ch0"_hs;
-    constexpr entt::id_type DIALOGUE_BUBBLE_CH1_ID = "dialogue_bubble_ch1"_hs;
-    constexpr entt::id_type DIALOGUE_BUBBLE_CH2_ID = "dialogue_bubble_ch2"_hs;
-
-    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
     auto& text_renderer = context_.getTextRenderer();
 
-    // 时钟 HUD（RmlUi 驱动）
-    if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
-        time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
+    auto* rml_layer = context_.getGLRenderer().getRmlUILayer();
+    if (!rml_layer) {
+        spdlog::error("GameScene: RmlUILayer 不可用，无法初始化 RmlUi HUD。");
+        return false;
     }
 
-    auto inventory_ui = std::make_unique<game::ui::InventoryUI>(context_, services_->item_catalog.get());
-    inventory_ui_ = inventory_ui.get();
-    ui_manager_->addElement(std::move(inventory_ui));
+    // 时钟 HUD（RmlUi 驱动）
+    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
 
-    auto hotbar_ui = std::make_unique<game::ui::HotbarUI>(context_, services_->item_catalog.get());
-    hotbar_ui_ = hotbar_ui.get();
-    ui_manager_->addElement(std::move(hotbar_ui));
+    inventory_ui_ = std::make_unique<game::ui::InventoryUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
+    if (!inventory_ui_ || !inventory_ui_->isReady()) {
+        spdlog::error("GameScene: 创建 InventoryUI 失败。");
+        return false;
+    }
 
-    auto item_tooltip_ui = std::make_unique<game::ui::ItemTooltipUI>(context_);
-    item_tooltip_ui->setOrderIndex(1000);
-    item_tooltip_ui_ = item_tooltip_ui.get();
-    ui_manager_->addElement(std::move(item_tooltip_ui));
+    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
+    if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
+        spdlog::error("GameScene: 创建 HotbarUI 失败。");
+        return false;
+    }
+
+    item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
 
     auto& dispatcher_ref = context_.getDispatcher();
     dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref);
 
-    auto dialogue_bubble_ch0 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
-    auto* dialogue_bubble_ch0_ptr = dialogue_bubble_ch0.get();
-    dialogue_bubble_ch0->setId(DIALOGUE_BUBBLE_CH0_ID);
-    ui_manager_->addElement(std::move(dialogue_bubble_ch0));
+    dialogue_bubbles_[0] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
+    dialogue_bubbles_[1] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
+    dialogue_bubbles_[2] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
 
-    auto dialogue_bubble_ch1 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
-    auto* dialogue_bubble_ch1_ptr = dialogue_bubble_ch1.get();
-    dialogue_bubble_ch1->setId(DIALOGUE_BUBBLE_CH1_ID);
-    ui_manager_->addElement(std::move(dialogue_bubble_ch1));
-
-    auto dialogue_bubble_ch2 = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer);
-    auto* dialogue_bubble_ch2_ptr = dialogue_bubble_ch2.get();
-    dialogue_bubble_ch2->setId(DIALOGUE_BUBBLE_CH2_ID);
-    ui_manager_->addElement(std::move(dialogue_bubble_ch2));
-
-    dialogue_controller_->registerBubble(0, dialogue_bubble_ch0_ptr);
-    dialogue_controller_->registerBubble(1, dialogue_bubble_ch1_ptr);
-    dialogue_controller_->registerBubble(2, dialogue_bubble_ch2_ptr, {0.0F, -56.0F});
-
-    if (inventory_ui_) {
-        inventory_ui_->setUIManager(ui_manager_.get());
-    }
-
-    if (hotbar_ui_) {
-        hotbar_ui_->setUIManager(ui_manager_.get());
-    }
+    dialogue_controller_->registerBubble(0, dialogue_bubbles_[0].get());
+    dialogue_controller_->registerBubble(1, dialogue_bubbles_[1].get());
+    dialogue_controller_->registerBubble(2, dialogue_bubbles_[2].get(), {0.0F, -56.0F});
 
     if (item_tooltip_ui_) {
         if (inventory_ui_) {
-            inventory_ui_->setTooltipUI(item_tooltip_ui_);
+            inventory_ui_->setTooltipUI(item_tooltip_ui_.get());
         }
         if (hotbar_ui_) {
-            hotbar_ui_->setTooltipUI(item_tooltip_ui_);
+            hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
         }
     }
 
@@ -462,22 +467,17 @@ bool GameScene::initUI() {
     }
 
     if (inventory_ui_ && hotbar_ui_) {
-        inventory_ui_->setHotbarUI(hotbar_ui_);
-        hotbar_ui_->setInventoryUI(inventory_ui_);
+        inventory_ui_->setHotbarUI(hotbar_ui_.get());
+        hotbar_ui_->setInventoryUI(inventory_ui_.get());
     }
 
-    auto menu_button = engine::ui::UIButton::create(
-        context_,
-        "menu",
-        glm::vec2{-10.0f, 10.0f},
-        glm::vec2{32.0f, 32.0f},
-        [this]() { (void)onPauseToggle(); });
-    if (menu_button) {
-        menu_button->setAnchor({1.0f, 0.0f}, {1.0f, 0.0f});
-        menu_button->setPivot({1.0f, 0.0f});
-        ui_manager_->addElement(std::move(menu_button));
+    overlay_document_ = loadRmlDocument(GAME_OVERLAY_DOCUMENT_PATH);
+    if (overlay_document_) {
+        overlay_event_bridge_.on("menu", [this](Rml::Event&) { (void)onPauseToggle(); });
+        overlay_event_bridge_.registerTo(overlay_document_, "click");
+        overlay_click_listener_registered_ = true;
     } else {
-        spdlog::error("GameScene: 创建菜单按钮失败，UI初始化将继续。");
+        spdlog::error("GameScene: 加载游戏内菜单按钮文档失败，UI初始化将继续。");
     }
 
     if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
@@ -559,10 +559,6 @@ bool GameScene::onPauseToggle() {
         game_time);
     requestPushScene(std::move(menu));
     return true;
-}
-
-void GameScene::onInventoryChanged(const game::defs::InventoryChanged& evt) {
-    (void)evt;
 }
 
 void GameScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {

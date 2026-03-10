@@ -9,6 +9,29 @@
     btn-normal:  0px 0px  48px 16px;
     btn-hover:   0px 16px 48px 16px;
     btn-pressed: 0px 32px 48px 16px;
+
+    primary-button:         0px 16px 48px 16px;
+    primary-button-inner:   3px 21px 42px 6px;
+    primary-button-pressed: 0px 32px 48px 16px;
+    primary-button-pressed-inner: 3px 37px 42px 6px;
+
+    secondary-button:         0px 64px 48px 16px;
+    secondary-button-inner:   3px 69px 42px 6px;
+    secondary-button-pressed: 0px 80px 48px 16px;
+    secondary-button-pressed-inner: 3px 85px 42px 6px;
+
+    menu-icon:         432px 208px 16px 16px;
+    menu-icon-pressed: 432px 224px 16px 16px;
+
+    volume-up-icon:         240px 16px 16px 16px;
+    volume-up-icon-pressed: 240px 32px 16px 16px;
+    volume-down-icon:         256px 16px 16px 16px;
+    volume-down-icon-pressed: 256px 32px 16px 16px;
+
+    arrow-left-icon:         384px 16px 16px 16px;
+    arrow-left-icon-pressed: 384px 32px 16px 16px;
+    arrow-right-icon:         368px 16px 16px 16px;
+    arrow-right-icon-pressed: 368px 32px 16px 16px;
 }
 
 /* --- 物品栏槽位图集 (Slots.png) --- */
@@ -19,10 +42,64 @@
     slot-locked:   32px 0px 16px 16px;
 }
 
+
+/* --- 快捷栏九宫格 (Inventory/Slots.png) --- */
+@spritesheet ui-hotbar {
+    src: ../../../assets/farm-rpg/UI/Inventory/Slots.png;
+    hotbar-panel-bg:          6px 105px 164px 28px;
+    hotbar-panel-bg-inner:   13px 112px 150px 15px;
+    hotbar-slot-bg:          151px 38px 18px 18px;
+    hotbar-slot-bg-inner:    153px 40px 14px 13px;
+    hotbar-selected-bg:      119px 6px 18px 18px;
+    hotbar-selected-bg-inner:123px 10px 10px 10px;
+}
+
+/* --- 物品栏九宫格 (Inventory/inventory.png) --- */
+@spritesheet ui-inventory {
+    src: ../../../assets/farm-rpg/UI/Inventory/inventory.png;
+    inventory-panel-bg:        0px 64px 48px 48px;
+    inventory-panel-bg-inner: 10px 74px 28px 28px;
+    inventory-slot-bg:        39px 9px 18px 18px;
+    inventory-slot-bg-inner:  41px 11px 14px 14px;
+}
+
+/* --- 物品图标 (Weapons/RPG/5.png) --- */
+@spritesheet ui-items-tools {
+    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/5.png;
+    item-tools-watering-can: 0px 0px 16px 16px;
+    item-tools-pickaxe:      16px 0px 16px 16px;
+    item-tools-axe:          48px 0px 16px 16px;
+    item-tools-hoe:          96px 0px 16px 16px;
+    item-tools-sickle:      128px 0px 16px 16px;
+}
+
+/* --- 物品图标 (Icons/Crops.png) --- */
+@spritesheet ui-items-crops {
+    src: ../../../assets/farm-rpg/Icons/Crops.png;
+    item-crops-strawberry:      32px 32px 16px 16px;
+    item-crops-potato:          32px 64px 16px 16px;
+    item-seeds-strawberry-seed: 0px 32px 16px 16px;
+    item-seeds-potato-seed:     0px 64px 16px 16px;
+}
+
+/* --- 物品图标 (Icons/Weapons/14.png) --- */
+@spritesheet ui-items-materials {
+    src: ../../../assets/farm-rpg/Icons/Weapons/14.png;
+    item-materials-timber: 0px 0px 16px 16px;
+    item-materials-stone:  0px 16px 16px 16px;
+}
+
 /* --- HUD 图集 (HUD.png) --- */
 @spritesheet ui-hud {
     src: ../../../assets/farm-rpg/UI/HUD.png;
     hud-frame: 0px 0px 64px 32px;
+
+    page-left-icon:         384px 0px 16px 16px;
+    page-left-icon-pressed: 384px 16px 16px 16px;
+    page-right-icon:         400px 0px 16px 16px;
+    page-right-icon-pressed: 400px 16px 16px 16px;
+    close-icon:            272px 64px 16px 16px;
+    close-icon-pressed:    272px 80px 16px 16px;
 }
 
 /* --- 时钟 (Clock.png) --- */
@@ -60,4 +137,19 @@
     src: ../../../assets/farm-rpg/UI/Bars.png;
     bar-bg:   0px 0px 48px 8px;
     bar-fill: 0px 8px 48px 8px;
+}
+
+
+/* --- 对话气泡 (dialogue box.png) --- */
+@spritesheet ui-dialogue {
+    src: ../../../assets/farm-rpg/UI/dialogue box.png;
+    dialogue-bubble-bg:       0px 48px 48px 48px;
+    dialogue-bubble-bg-inner: 3px 52px 42px 41px;
+}
+
+/* --- Tooltip 面板 (Inventory/Banner.png) --- */
+@spritesheet ui-tooltip {
+    src: ../../../assets/farm-rpg/UI/Inventory/Banner.png;
+    tooltip-panel-bg:       3px 3px 42px 42px;
+    tooltip-panel-bg-inner: 12px 12px 24px 24px;
 }

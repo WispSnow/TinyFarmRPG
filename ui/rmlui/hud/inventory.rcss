@@ -1,0 +1,214 @@
+body, div, h1, h2, h3, h4, p, hr, button, img, span, handle {
+    display: block;
+}
+
+button {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-color: transparent;
+    color: #ffffffff;
+    cursor: pointer;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#inventory-panel {
+    position: absolute;
+    left: 412dp;
+    top: 87dp;
+    width: 184dp;
+    height: 162dp;
+    padding: 12dp;
+    decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
+    pointer-events: none;
+}
+
+#inventory-grid {
+    position: absolute;
+    left: 12dp;
+    top: 12dp;
+    width: 184dp;
+    height: 146dp;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6dp;
+    pointer-events: none;
+}
+
+.inventory-slot {
+    position: relative;
+    width: 32dp;
+    height: 32dp;
+    decorator: ninepatch(inventory-slot-bg, inventory-slot-bg-inner, 1.0);
+    pointer-events: auto;
+}
+
+.inventory-slot-drag-proxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32dp;
+    height: 32dp;
+    drag: none;
+    cursor: default;
+    pointer-events: auto;
+}
+
+.inventory-slot-drag-proxy.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.inventory-slot-drag-proxy:drag {
+    opacity: 0.5;
+}
+
+.inventory-slot-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32dp;
+    height: 32dp;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.inventory-slot-count {
+    position: absolute;
+    right: 2dp;
+    bottom: -1dp;
+    width: 24dp;
+    height: 14dp;
+    text-align: right;
+    color: #ffffffff;
+    font-size: 16dp;
+    line-height: 14dp;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.inventory-slot.has-item .inventory-slot-icon,
+.inventory-slot-drag-proxy.has-item .inventory-slot-icon {
+    visibility: visible;
+}
+
+.inventory-slot.has-count .inventory-slot-count,
+.inventory-slot-drag-proxy.has-count .inventory-slot-count {
+    visibility: visible;
+}
+
+#inventory-pagination {
+    position: absolute;
+    left: 0;
+    top: 162dp;
+    width: 208dp;
+    height: 20dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8dp;
+    pointer-events: none;
+}
+
+#inventory-page-left,
+#inventory-page-right {
+    width: 20dp;
+    height: 20dp;
+    pointer-events: auto;
+}
+
+#inventory-page-left {
+    decorator: image(page-left-icon);
+}
+
+#inventory-page-left:active {
+    decorator: image(page-left-icon-pressed);
+}
+
+#inventory-page-right {
+    decorator: image(page-right-icon);
+}
+
+#inventory-page-right:active {
+    decorator: image(page-right-icon-pressed);
+}
+
+#inventory-page-label {
+    min-width: 32dp;
+    height: 20dp;
+    line-height: 20dp;
+    text-align: center;
+    color: #ffffffff;
+    font-size: 16dp;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#inventory-close {
+    position: absolute;
+    right: -3dp;
+    top: -3dp;
+    width: 16dp;
+    height: 16dp;
+    decorator: image(close-icon);
+    pointer-events: auto;
+}
+
+#inventory-close:active {
+    decorator: image(close-icon-pressed);
+}
+
+#inventory-drag-handle-top,
+#inventory-drag-handle-left,
+#inventory-drag-handle-right,
+#inventory-drag-handle-bottom {
+    position: absolute;
+    pointer-events: auto;
+}
+
+#inventory-drag-handle-top {
+    left: 0;
+    top: 0;
+    width: 188dp;
+    height: 12dp;
+}
+
+#inventory-drag-handle-left {
+    left: 0;
+    top: 12dp;
+    width: 12dp;
+    height: 158dp;
+}
+
+#inventory-drag-handle-right {
+    left: 196dp;
+    top: 20dp;
+    width: 12dp;
+    height: 150dp;
+}
+
+#inventory-drag-handle-bottom {
+    left: 0;
+    top: 170dp;
+    width: 208dp;
+    height: 16dp;
+}
+
+#inventory-drag-handle-top handle,
+#inventory-drag-handle-left handle,
+#inventory-drag-handle-right handle,
+#inventory-drag-handle-bottom handle {
+    width: 100%;
+    height: 100%;
+    cursor: move;
+}

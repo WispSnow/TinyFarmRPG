@@ -3,21 +3,42 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/render/text_renderer.h"
+#include "engine/resource/font_manager.h"
 #include "engine/resource/resource_manager.h"
-#include "engine/ui/ui_preset_manager.h"
-#include <algorithm>
-#include <entt/core/hashed_string.hpp>
+#include "engine/ui/rmlui/rml_element_helpers.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 
-using namespace entt::literals;
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <cmath>
+#include <string>
 
 namespace {
 
-constexpr entt::id_type HOVER_PANEL_PRESET_ID = "hover_panel"_hs;
-constexpr float MIN_TOOLTIP_WIDTH = 120.0f;
-constexpr float MIN_TOOLTIP_HEIGHT = 24.0f;
+using engine::ui::rmlui::computeLineSpacingScale;
+using engine::ui::rmlui::getComputedFontSize;
+using engine::ui::rmlui::getComputedHeight;
+using engine::ui::rmlui::getComputedLineHeight;
+using engine::ui::rmlui::getComputedMarginBottom;
+using engine::ui::rmlui::getComputedMaxWidth;
+using engine::ui::rmlui::getComputedPadding;
+using engine::ui::rmlui::getComputedWidth;
+using engine::ui::rmlui::setPaddingProperties;
+using engine::ui::rmlui::setPixelProperty;
+using engine::ui::rmlui::snapToPixel;
+using engine::ui::rmlui::textToInnerRml;
+
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/item_tooltip.rml";
 
 [[nodiscard]] std::size_t utf8Next(std::string_view text, std::size_t index) {
-    if (index >= text.size()) return text.size();
+    if (index >= text.size()) {
+        return text.size();
+    }
     const unsigned char c = static_cast<unsigned char>(text[index]);
     if ((c & 0x80u) == 0u) return index + 1;
     if ((c & 0xE0u) == 0xC0u) return std::min(text.size(), index + 2);
@@ -51,74 +72,103 @@ void trimRightSpaces(std::string& s) {
 namespace game::ui {
 
 ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
+                             uint64_t owner_scene_id,
                              entt::id_type font_id,
                              int font_size)
-    : UIElement(glm::vec2{0.0f, 0.0f}),
-      context_(context),
+    : context_(context),
       font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
-    setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    setPivot({0.0f, 0.0f});
-
-    buildSkin();
-    buildLayout();
+    initDocument(owner_scene_id);
     hideTooltip();
+}
+
+ItemTooltipUI::~ItemTooltipUI() {
+    if (document_ && layer_) {
+        layer_->unloadDocument(document_);
+    }
+    document_ = nullptr;
+    panel_ = nullptr;
+    name_element_ = nullptr;
+    category_element_ = nullptr;
+    description_element_ = nullptr;
+}
+
+void ItemTooltipUI::initDocument(uint64_t owner_scene_id) {
+    layer_ = context_.getGLRenderer().getRmlUILayer();
+    if (!layer_) {
+        spdlog::error("ItemTooltipUI: RmlUILayer 不可用。");
+        return;
+    }
+
+    document_ = layer_->loadDocument(DOCUMENT_PATH, owner_scene_id);
+    if (!document_) {
+        spdlog::error("ItemTooltipUI: 加载 RML 文档失败: {}", DOCUMENT_PATH);
+        return;
+    }
+
+    panel_ = document_->GetElementById("item-tooltip-panel");
+    name_element_ = document_->GetElementById("item-tooltip-name");
+    category_element_ = document_->GetElementById("item-tooltip-category");
+    description_element_ = document_->GetElementById("item-tooltip-description");
+    if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
+        spdlog::error("ItemTooltipUI: RML 元素缺失。");
+        if (layer_) {
+            layer_->unloadDocument(document_);
+        }
+        document_ = nullptr;
+        panel_ = nullptr;
+        name_element_ = nullptr;
+        category_element_ = nullptr;
+        description_element_ = nullptr;
+        return;
+    }
+
+    syncStyleMetricsFromDocument();
+    layer_->hideDocument(document_);
+}
+
+void ItemTooltipUI::syncStyleMetricsFromDocument() {
+    if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
+        return;
+    }
+
+    padding_ = getComputedPadding(panel_, padding_);
+    min_content_width_ = getComputedWidth(panel_, min_content_width_);
+    min_content_height_ = getComputedHeight(panel_, min_content_height_);
+    max_text_width_ = getComputedMaxWidth(description_element_, max_text_width_);
+
+    font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(name_element_, static_cast<float>(font_size_)))));
+    category_font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(category_element_, static_cast<float>(category_font_size_)))));
+    description_font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(description_element_, static_cast<float>(description_font_size_)))));
+
+    name_line_height_ = getComputedLineHeight(name_element_, static_cast<float>(font_size_));
+    category_line_height_ = getComputedLineHeight(category_element_, static_cast<float>(category_font_size_));
+    description_line_height_ = getComputedLineHeight(description_element_, static_cast<float>(description_font_size_));
+
+    name_spacing_ = getComputedMarginBottom(name_element_, name_spacing_);
+    category_spacing_ = getComputedMarginBottom(category_element_, category_spacing_);
+}
+
+void ItemTooltipUI::setMaxTextWidth(float width) {
+    max_text_width_ = std::max(0.0f, width);
+    setPixelProperty(name_element_, "max-width", max_text_width_);
+    setPixelProperty(category_element_, "max-width", max_text_width_);
+    setPixelProperty(description_element_, "max-width", max_text_width_);
+    refreshLayout();
 }
 
 void ItemTooltipUI::setPadding(const engine::ui::Thickness& padding) {
     padding_ = padding;
     if (panel_) {
-        panel_->setPadding(padding_);
+        setPaddingProperties(panel_, padding_);
     }
     refreshLayout();
 }
 
-void ItemTooltipUI::buildSkin() {
-    // 皮肤由 buildLayout() 创建 UIPanel 时读取
-}
-
-void ItemTooltipUI::buildLayout() {
-    auto& preset_mgr = context_.getUIPresetManager();
-    auto& text_renderer = context_.getTextRenderer();
-    engine::render::Image panel_image{};
-    if (const auto* preset = preset_mgr.getImagePreset(HOVER_PANEL_PRESET_ID)) {
-        panel_image = *preset;
+std::string ItemTooltipUI::wrapText(std::string_view text, int font_size) const {
+    if (text.empty()) {
+        return {};
     }
-
-    auto panel = std::make_unique<engine::ui::UIPanel>(glm::vec2{0.0f, 0.0f},
-                                                       glm::vec2{MIN_TOOLTIP_WIDTH, MIN_TOOLTIP_HEIGHT},
-                                                       std::nullopt,
-                                                       panel_image);
-    panel->setPivot({0.0f, 0.0f});
-    panel->setPadding(padding_);
-    panel_ = panel.get();
-
-    auto name_label =
-        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_id_, font_size_, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
-    name_label_ = name_label.get();
-    name_label_->setPivot({0.0f, 0.0f});
-    name_label_->setShadowColor(engine::utils::FColor::white());
-
-    auto category_label = std::make_unique<engine::ui::UILabel>(
-        text_renderer, "", font_id_, 14, glm::vec2{0.0f, 0.0f}, engine::utils::FColor{0.2, 0.2, 0.2, 1.0f});
-    category_label_ = category_label.get();
-    category_label_->setPivot({0.0f, 0.0f});
-    category_label_->setShadowEnabled(false);
-
-    auto description_label =
-        std::make_unique<engine::ui::UILabel>(text_renderer, "", font_id_, 16, glm::vec2{0.0f, 0.0f}, engine::utils::FColor::black());
-    description_label_ = description_label.get();
-    description_label_->setPivot({0.0f, 0.0f});
-    description_label_->setShadowEnabled(false);
-
-    panel_->addChild(std::move(name_label));
-    panel_->addChild(std::move(category_label));
-    panel_->addChild(std::move(description_label));
-    addChild(std::move(panel));
-}
-
-std::string ItemTooltipUI::wrapText(std::string_view text) const {
-    if (text.empty()) return {};
 
     auto& text_renderer = context_.getTextRenderer();
 
@@ -127,10 +177,13 @@ std::string ItemTooltipUI::wrapText(std::string_view text) const {
 
     std::string line;
     line.reserve(text.size());
-    std::size_t last_break_pos = std::string::npos; // 在 line 中可断行的位置（通常是空格后）
+    std::size_t last_break_pos = std::string::npos;
 
     const auto fits = [&](const std::string& s) {
-        return text_renderer.getTextSize(s, font_id_, font_size_).x <= max_text_width_;
+        if (max_text_width_ <= 0.0f) {
+            return true;
+        }
+        return text_renderer.getTextSize(s, font_id_, font_size).x <= max_text_width_;
     };
 
     std::size_t i = 0;
@@ -190,66 +243,90 @@ std::string ItemTooltipUI::wrapText(std::string_view text) const {
     return out;
 }
 
-void ItemTooltipUI::showItem(std::string_view display_name,
-                             std::string_view category,
-                             std::string_view description) {
-    if (!panel_ || !name_label_ || !category_label_ || !description_label_) {
-        return;
+glm::vec2 ItemTooltipUI::measureText(std::string_view text, int font_size, float line_height) const {
+    if (text.empty()) {
+        return glm::vec2{0.0f, 0.0f};
     }
 
-    name_label_->setText(wrapText(display_name));
-    category_label_->setText(wrapText(category));
-    description_label_->setText(wrapText(description));
+    engine::utils::LayoutOptions layout_options{};
+    if (auto* font = context_.getResourceManager().getFont(font_id_, font_size)) {
+        layout_options.line_spacing_scale = computeLineSpacingScale(line_height, font->getLineHeight());
+    }
 
-    refreshLayout();
-    setVisible(true);
-}
-
-void ItemTooltipUI::hideTooltip() {
-    setVisible(false);
+    return context_.getTextRenderer().getTextSize(text, font_id_, font_size, &layout_options);
 }
 
 void ItemTooltipUI::refreshLayout() {
-    if (!panel_ || !name_label_ || !category_label_ || !description_label_) {
+    if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
         return;
     }
 
-    const glm::vec2 name_size = name_label_->getRequestedSize();
-    const glm::vec2 category_size = category_label_->getRequestedSize();
-    const glm::vec2 desc_size = description_label_->getRequestedSize();
+    const std::string wrapped_name = wrapText(display_name_, font_size_);
+    const std::string wrapped_category = wrapText(category_, category_font_size_);
+    const std::string wrapped_description = wrapText(description_, description_font_size_);
 
-    const float content_width = std::max({name_size.x, category_size.x, desc_size.x});
-    const float content_height = name_size.y + spacing_ + category_size.y + spacing_ + desc_size.y;
+    name_element_->SetInnerRML(textToInnerRml(wrapped_name));
+    category_element_->SetInnerRML(textToInnerRml(wrapped_category));
+    description_element_->SetInnerRML(textToInnerRml(wrapped_description));
 
-    glm::vec2 panel_size{
-        std::max(MIN_TOOLTIP_WIDTH, content_width + padding_.width()),
-        std::max(MIN_TOOLTIP_HEIGHT, content_height + padding_.height())
+    const glm::vec2 name_size = measureText(wrapped_name, font_size_, name_line_height_);
+    const glm::vec2 category_size = measureText(wrapped_category, category_font_size_, category_line_height_);
+    const glm::vec2 description_size = measureText(wrapped_description, description_font_size_, description_line_height_);
+
+    const float content_width = std::max({name_size.x, category_size.x, description_size.x});
+    const float content_height = name_size.y + name_spacing_ + category_size.y + category_spacing_ + description_size.y;
+    const float min_outer_width = min_content_width_ + padding_.width();
+    const float min_outer_height = min_content_height_ + padding_.height();
+
+    const glm::vec2 outer_size{
+        snapToPixel(std::max(min_outer_width, content_width + padding_.width())),
+        snapToPixel(std::max(min_outer_height, content_height + padding_.height()))
+    };
+    const glm::vec2 content_box_size{
+        snapToPixel(std::max(0.0f, outer_size.x - padding_.width())),
+        snapToPixel(std::max(0.0f, outer_size.y - padding_.height()))
     };
 
-    setSize(panel_size);
-    panel_->setSize(panel_size);
-
-    float y = 0.0f;
-    name_label_->setPosition(glm::vec2{0.0f, y});
-    y += name_size.y + spacing_;
-    category_label_->setPosition(glm::vec2{0.0f, y});
-    y += category_size.y + spacing_;
-    description_label_->setPosition(glm::vec2{0.0f, y});
+    size_ = outer_size;
+    setPixelProperty(panel_, "width", content_box_size.x);
+    setPixelProperty(panel_, "height", content_box_size.y);
 }
 
-void ItemTooltipUI::update(float delta_time, engine::core::Context& context) {
-    UIElement::update(delta_time, context);
+void ItemTooltipUI::showItem(std::string_view display_name,
+                             std::string_view category,
+                             std::string_view description) {
+    if (!document_) {
+        return;
+    }
 
-    if (!isVisible()) {
+    display_name_ = std::string(display_name);
+    category_ = std::string(category);
+    description_ = std::string(description);
+    refreshLayout();
+    visible_ = true;
+    if (layer_) {
+        layer_->showDocument(document_);
+    }
+}
+
+void ItemTooltipUI::hideTooltip() {
+    visible_ = false;
+    if (document_ && layer_) {
+        layer_->hideDocument(document_);
+    }
+}
+
+void ItemTooltipUI::update(float delta_time) {
+    (void)delta_time;
+    if (!visible_ || !panel_) {
         return;
     }
 
     const glm::vec2 mouse_pos = context_.getInputManager().getLogicalMousePosition();
     const glm::vec2 logical_size = context_.getGameState().getLogicalSize();
-    const glm::vec2 tooltip_size = getRequestedSize();
+    const glm::vec2 tooltip_size = size_;
 
     glm::vec2 pos = mouse_pos + offset_;
-
     if (pos.x + tooltip_size.x > logical_size.x) {
         pos.x = mouse_pos.x - offset_.x - tooltip_size.x;
     }
@@ -259,8 +336,11 @@ void ItemTooltipUI::update(float delta_time, engine::core::Context& context) {
 
     pos.x = std::clamp(pos.x, 0.0f, std::max(0.0f, logical_size.x - tooltip_size.x));
     pos.y = std::clamp(pos.y, 0.0f, std::max(0.0f, logical_size.y - tooltip_size.y));
+    pos.x = snapToPixel(pos.x);
+    pos.y = snapToPixel(pos.y);
 
-    setPosition(pos);
+    setPixelProperty(panel_, "left", pos.x);
+    setPixelProperty(panel_, "top", pos.y);
 }
 
 } // namespace game::ui

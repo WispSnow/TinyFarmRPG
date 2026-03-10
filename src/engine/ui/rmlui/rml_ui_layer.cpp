@@ -208,6 +208,19 @@ void RmlUILayer::setLogicalSize(int width, int height) {
     logical_height_ = std::max(height, 0);
 }
 
+void RmlUILayer::setTextureFilterMode(RmlUiTextureFilterMode mode) {
+    if (render_interface_) {
+        render_interface_->setTextureFilterMode(mode);
+    }
+}
+
+RmlUiTextureFilterMode RmlUILayer::getTextureFilterMode() const {
+    if (!render_interface_) {
+        return RmlUiTextureFilterMode::Nearest;
+    }
+    return render_interface_->getTextureFilterMode();
+}
+
 // --- 多文档管理 ---
 
 Rml::ElementDocument* RmlUILayer::loadDocument(std::string_view document_path,

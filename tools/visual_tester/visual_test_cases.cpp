@@ -479,15 +479,15 @@ RenderPassCoverageVisualTest::RenderPassCoverageVisualTest()
     : VisualTestCase(
           "Render Pass Coverage",
           "Render",
-          "以单一画面覆盖 scene/lighting/emissive/bloom/ui 五个通道的组合与叠加顺序。",
-          "1) 观察：背景 sprite/primitive、光照范围、自发光与 bloom、UI 叠加。\n"
+          "以单一画面覆盖 scene/lighting/emissive/bloom/world-vfx/overlay-vfx 与 RmlUi 的组合顺序。",
+          "1) 观察：背景 sprite/primitive、光照范围、自发光与 bloom。\n"
           "2) 在下方参数区切换各 pass 相关开关，确认只影响对应通道。",
           "- scene：sprite/primitive 正常。\n"
-          "- lighting：光照叠加正常且不会污染 UI。\n"
+          "- lighting：光照叠加正常。\n"
           "- emissive+bloom：自发光产生可见 bloom（开启时）。\n"
-          "- ui：UI 永远最上层且不被 lighting/bloom 影响。",
+          "- overlay-vfx / RmlUi / ImGui 叠加顺序稳定。",
           "- bloom 关闭：自发光仍存在但无泛光。\n"
-          "- UI 被光照/泛光影响：pass 叠加顺序或采样输入错误。") {}
+          "- RmlUi/ImGui 被世界通道污染：pass 叠加顺序或状态恢复错误。") {}
 
 void RenderPassCoverageVisualTest::applyDefaults(engine::core::Context& context) {
     auto& gl = context.getGLRenderer();
@@ -579,18 +579,6 @@ void RenderPassCoverageVisualTest::onRender(engine::core::Context& context) {
                                                              engine::utils::Rect{0, 0, 960, 960}},
                                    glm::vec2{260.0f, 80.0f}, glm::vec2{96.0f, 96.0f}, &params);
     }
-
-    // UI pass (should not be affected by lighting/bloom)
-    {
-        auto ui_color = renderer.getDefaultUIColorOptions();
-        ui_color.use_gradient = false;
-        ui_color.start_color = engine::utils::FColor{0.08f, 0.08f, 0.1f, 0.85f};
-        ui_color.end_color = ui_color.start_color;
-        renderer.drawUIFilledRect(engine::utils::Rect{-360.0f, -260.0f, 260.0f, 110.0f}, &ui_color);
-
-        renderer.drawUIImage(engine::render::Image{"assets/textures/UI/bluebar_00.png", engine::utils::Rect{0, 0, 15, 7}},
-                             glm::vec2{-350.0f, -250.0f}, glm::vec2{240.0f, 90.0f});
-    }
 }
 
 void RenderPassCoverageVisualTest::onImGui(engine::core::Context& context) {
@@ -646,7 +634,6 @@ void RenderPassCoverageVisualTest::onImGui(engine::core::Context& context) {
         show(engine::render::opengl::GLRenderer::PassType::Bloom, "Bloom");
         show(engine::render::opengl::GLRenderer::PassType::WorldVfx, "WorldVfx");
         show(engine::render::opengl::GLRenderer::PassType::OverlayVfx, "OverlayVfx");
-        show(engine::render::opengl::GLRenderer::PassType::UI, "UI");
     }
 }
 
@@ -1116,74 +1103,14 @@ void EmissiveVisualTest::onImGui(engine::core::Context& context) {
     ImGui::SliderFloat("Cursor Intensity", &cursor_intensity_, 0.0f, 3.0f, "%.2f");
 }
 
-UiVisualTest::UiVisualTest()
-    : VisualTestCase(
-          "UI",
-          "UI",
-          "验证 UI 绘制路径（屏幕坐标、裁剪、颜色/透明度）。",
-          "1) 观察 UI 图片与灰色矩形。\n"
-          "2) 移动相机，确认 UI 不应随相机移动（若 UI 采用屏幕坐标）。",
-          "- UI 元素固定在屏幕坐标。\n"
-          "- 颜色/透明度正常。",
-          "- UI 被相机影响：说明 UI/world 坐标混用。\n"
-          "- 贴图/Rect 错误：UI 图像裁剪不对。") {
-    applyDefaults();
-}
-
-void UiVisualTest::applyDefaults() {
-    show_ui_image_ = true;
-    show_ui_rect_ = true;
-    ui_image_pos_ = glm::vec2{-200.0f, -300.0f};
-    ui_image_size_ = glm::vec2{100.0f, 100.0f};
-    ui_rect_pos_ = glm::vec2{-100.0f, -100.0f};
-    ui_rect_size_ = glm::vec2{100.0f, 100.0f};
-    ui_rect_color_ = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
-}
-
-void UiVisualTest::onRender(engine::core::Context& context) {
-    auto& renderer = context.getRenderer();
-    if (show_ui_image_) {
-        renderer.drawUIImage(engine::render::Image{"assets/textures/UI/bluebar_00.png", engine::utils::Rect{0, 0, 15, 7}},
-                             ui_image_pos_, glm::max(ui_image_size_, glm::vec2{1.0f, 1.0f}));
-    }
-
-    if (show_ui_rect_) {
-        auto ui_rect_color = renderer.getDefaultUIColorOptions();
-        ui_rect_color.use_gradient = false;
-        ui_rect_color.start_color = engine::utils::FColor{ui_rect_color_.x, ui_rect_color_.y, ui_rect_color_.z, ui_rect_color_.w};
-        ui_rect_color.end_color = ui_rect_color.start_color;
-        renderer.drawUIFilledRect(engine::utils::Rect{ui_rect_pos_, glm::max(ui_rect_size_, glm::vec2{1.0f, 1.0f})}, &ui_rect_color);
-    }
-}
-
-void UiVisualTest::onImGui(engine::core::Context& context) {
-    (void)context;
-
-    ImGui::Separator();
-    if (ImGui::Button("Reset Defaults")) {
-        applyDefaults();
-    }
-
-    ImGui::Checkbox("Show UIImage", &show_ui_image_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Show UI Rect", &show_ui_rect_);
-
-    ImGui::DragFloat2("Image Pos", &ui_image_pos_.x, 1.0f, -2000.0f, 2000.0f, "%.1f");
-    ImGui::DragFloat2("Image Size", &ui_image_size_.x, 1.0f, 1.0f, 2000.0f, "%.1f");
-
-    ImGui::DragFloat2("Rect Pos", &ui_rect_pos_.x, 1.0f, -2000.0f, 2000.0f, "%.1f");
-    ImGui::DragFloat2("Rect Size", &ui_rect_size_.x, 1.0f, 1.0f, 2000.0f, "%.1f");
-    ImGui::ColorEdit4("Rect Color", &ui_rect_color_.x);
-}
-
 TextRenderingVisualTest::TextRenderingVisualTest()
     : VisualTestCase(
           "Text Rendering",
           "Text",
-          "验证中文/多行/对齐/渐变/缩放(glyph_scale) 等边界用例；并验证字体可重复加载/卸载。",
-          "1) 观察世界文本与 UI 文本：中文/多行/混排/符号。\n"
+          "验证世界文本路径的中文/多行/对齐/渐变/缩放(glyph_scale) 等边界用例；并验证字体可重复加载/卸载。",
+          "1) 观察世界文本：中文/多行/混排/符号。\n"
           "2) 在面板中切换对齐、字号、glyph_scale、letter/line spacing、渐变。\n"
-          "3) 旋转/缩放相机：世界文本随相机变化，UI 文本不随相机变化。\n"
+          "3) 旋转/缩放相机：世界文本随相机变化。\n"
           "4) 切换到其他用例再切回：确认字体可重复加载/卸载。",
           "- 中文可显示，多行换行正确。\n"
           "- 对齐与 bounds 框一致；渐变方向可控；glyph_scale 生效。\n"
@@ -1228,11 +1155,6 @@ void TextRenderingVisualTest::onRender(engine::core::Context& context) {
         "多行/换行：第二行 - ABC abc 123 !@#$%()\n"
         "对齐/渐变/缩放：glyph_scale + spacing";
 
-    constexpr std::string_view kUIText =
-        "UI Text Block:\n"
-        "Alignment / gradient / glyph_scale\n"
-        "The quick brown fox jumps over the lazy dog. 0123456789";
-
     if (draw_world_) {
         auto world_params = text_renderer.getTextStyle(text_renderer.getDefaultWorldStyleKey());
         world_params.layout = layout;
@@ -1261,45 +1183,14 @@ void TextRenderingVisualTest::onRender(engine::core::Context& context) {
 
         text_renderer.drawText(kWorldText, font_id_, font_size_, pos, "world/visual_test_edge");
     }
-
-    if (draw_ui_) {
-        auto ui_params = text_renderer.getTextStyle(text_renderer.getDefaultUIStyleKey());
-        ui_params.layout = layout;
-        ui_params.color.use_gradient = use_gradient_;
-        ui_params.color.start_color = use_gradient_ ? engine::utils::FColor::white() : engine::utils::FColor::white();
-        ui_params.color.end_color = use_gradient_ ? end : ui_params.color.start_color;
-        ui_params.color.angle_radians = glm::radians(gradient_angle_deg_);
-
-        text_renderer.setTextStyle("ui/visual_test_edge", ui_params);
-
-        const glm::vec2 size = text_renderer.getTextSize(kUIText, font_id_, font_size_, &layout);
-        glm::vec2 pos = ui_anchor_;
-        if (alignment_ == 1) {
-            pos.x -= size.x * 0.5f;
-        } else if (alignment_ == 2) {
-            pos.x -= size.x;
-        }
-
-        if (show_bounds_) {
-            auto bounds_color = renderer.getDefaultUIColorOptions();
-            bounds_color.use_gradient = false;
-            bounds_color.start_color = engine::utils::FColor{0.05f, 0.05f, 0.05f, 0.45f};
-            bounds_color.end_color = bounds_color.start_color;
-            renderer.drawUIFilledRect(engine::utils::Rect{pos, size}, &bounds_color);
-        }
-
-        text_renderer.drawUIText(kUIText, font_id_, font_size_, pos, "ui/visual_test_edge");
-    }
 }
 
 void TextRenderingVisualTest::applyDefaults() {
     font_size_ = 16;
     draw_world_ = true;
-    draw_ui_ = true;
     show_bounds_ = true;
     alignment_ = 0;
     world_anchor_ = glm::vec2{-220.0f, -160.0f};
-    ui_anchor_ = glm::vec2{-220.0f, 20.0f};
     use_gradient_ = true;
     gradient_angle_deg_ = 45.0f;
     gradient_start_ = glm::vec4{1.0f, 1.0f, 0.0f, 1.0f};
@@ -1335,15 +1226,12 @@ void TextRenderingVisualTest::onImGui(engine::core::Context& context) {
 
     ImGui::Checkbox("Draw World Text", &draw_world_);
     ImGui::SameLine();
-    ImGui::Checkbox("Draw UI Text", &draw_ui_);
-    ImGui::SameLine();
     ImGui::Checkbox("Show Bounds", &show_bounds_);
 
     const char* align_items[] = {"Left", "Center", "Right"};
     ImGui::Combo("Align", &alignment_, align_items, 3);
 
     ImGui::DragFloat2("World Anchor", &world_anchor_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
-    ImGui::DragFloat2("UI Anchor", &ui_anchor_.x, 1.0f, -5000.0f, 5000.0f, "%.1f");
 
     int new_size = font_size_;
     if (ImGui::SliderInt("Font Size", &new_size, 8, 64)) {

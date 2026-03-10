@@ -28,6 +28,7 @@ private:
     void drawFileBrowser();
     void drawDebugDocuments();
     void drawLoadedDocuments();
+    void drawTextureFilter();
     void drawDataBindingTest();
 
     void refreshAvailableDocuments();

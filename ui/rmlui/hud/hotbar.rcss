@@ -1,0 +1,107 @@
+body, div, h1, h2, h3, h4, p, hr, button, img, span {
+    display: block;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#hotbar-panel {
+    position: absolute;
+    left: 134dp;
+    bottom: 5dp;
+    width: 356dp;
+    height: 32dp;
+    padding: 8dp;
+    decorator: ninepatch(hotbar-panel-bg, hotbar-panel-bg-inner, 1.0);
+    pointer-events: none;
+}
+
+#hotbar-slots {
+    width: 356dp;
+    height: 32dp;
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+    pointer-events: none;
+}
+
+.hotbar-slot {
+    position: relative;
+    width: 32dp;
+    height: 32dp;
+    decorator: ninepatch(hotbar-slot-bg, hotbar-slot-bg-inner, 1.0);
+    pointer-events: auto;
+}
+
+.hotbar-slot-selected {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32dp;
+    height: 32dp;
+    decorator: ninepatch(hotbar-selected-bg, hotbar-selected-bg-inner, 1.0);
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.hotbar-slot.is-active .hotbar-slot-selected {
+    visibility: visible;
+}
+
+.hotbar-slot-drag-proxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32dp;
+    height: 32dp;
+    drag: none;
+    cursor: default;
+    pointer-events: auto;
+}
+
+.hotbar-slot-drag-proxy.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.hotbar-slot-drag-proxy:drag {
+    opacity: 0.75;
+}
+
+.hotbar-slot-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32dp;
+    height: 32dp;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.hotbar-slot-count {
+    position: absolute;
+    right: 2dp;
+    bottom: -1dp;
+    width: 24dp;
+    height: 14dp;
+    text-align: right;
+    color: #ffffffff;
+    font-size: 16dp;
+    line-height: 14dp;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.hotbar-slot.has-item .hotbar-slot-icon,
+.hotbar-slot-drag-proxy.has-item .hotbar-slot-icon {
+    visibility: visible;
+}
+
+.hotbar-slot.has-count .hotbar-slot-count,
+.hotbar-slot-drag-proxy.has-count .hotbar-slot-count {
+    visibility: visible;
+}

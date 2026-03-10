@@ -61,7 +61,6 @@ target_sources(engine PRIVATE
     engine/render/opengl/scene_pass.cpp
     engine/render/opengl/world_vfx_pass.cpp
     engine/render/opengl/vfx_pass.cpp
-    engine/render/opengl/ui_pass.cpp
     # Input
     engine/input/input_manager.cpp
     # Loader
@@ -89,25 +88,6 @@ target_sources(engine PRIVATE
     engine/spatial/dynamic_entity_grid.cpp
     engine/spatial/spatial_index_manager.cpp
     engine/spatial/collision_resolver.cpp
-    # UI
-    engine/ui/ui_manager.cpp
-    engine/ui/ui_element.cpp
-    engine/ui/ui_interactive.cpp
-    engine/ui/ui_input_blocker.cpp
-    engine/ui/ui_panel.cpp
-    engine/ui/ui_image.cpp
-    engine/ui/ui_label.cpp
-    engine/ui/ui_button.cpp
-    engine/ui/ui_draggable_panel.cpp
-    engine/ui/ui_preset_manager.cpp
-    engine/ui/ui_drag_preview.cpp
-    engine/ui/ui_screen_fade.cpp
-    # UI - Layout
-    engine/ui/layout/ui_layout.cpp
-    engine/ui/layout/ui_stack_layout.cpp
-    engine/ui/layout/ui_grid_layout.cpp
-    engine/ui/ui_progress_bar.cpp
-    engine/ui/ui_item_slot.cpp
 )
 
 # Engine Debug UI 源文件（仅在启用 Debug UI 时编译）
@@ -122,7 +102,6 @@ if(ENABLE_DEBUG_UI)
         engine/debug/panels/audio_debug_panel.cpp
         engine/debug/panels/text_renderer_debug_panel.cpp
         engine/debug/panels/res_mgr_debug_panel.cpp
-        engine/debug/panels/ui_preset_debug_panel.cpp
         engine/debug/panels/scene_debug_panel.cpp
         engine/debug/panels/spatial_index_debug_panel.cpp
         engine/debug/panels/gl_renderer_debug_panel.cpp

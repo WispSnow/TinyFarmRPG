@@ -1,0 +1,33 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="hotbar.rcss"/>
+</head>
+<body data-model="hotbar_ui">
+    <div id="hotbar-panel">
+        <div id="hotbar-slots">
+            <div class="hotbar-slot"
+                 data-for="slot : hotbar_slots"
+                 data-class-has-item="slot.has_item"
+                 data-class-has-count="slot.has_count"
+                 data-class-is-active="slot.is_active"
+                 data-event-mouseup="slot_mouse_up(slot.slot_index)"
+                 data-event-dragdrop="slot_drag_drop(slot.slot_index)">
+                <div class="hotbar-slot-selected"></div>
+                <div class="hotbar-slot-drag-proxy"
+                     data-class-draggable="slot.can_drag"
+                     data-class-has-item="slot.has_item"
+                     data-class-has-count="slot.has_count"
+                     data-event-mouseover="slot_hover_enter(slot.slot_index)"
+                     data-event-mouseout="slot_hover_exit(slot.slot_index)"
+                     data-event-dragstart="slot_drag_start(slot.slot_index)"
+                     data-event-dragend="slot_drag_end(slot.slot_index)">
+                    <div class="hotbar-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                    <div class="hotbar-slot-count">{{ slot.count_text }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

@@ -1,0 +1,67 @@
+body, div, h1, h2, h3, h4, p, hr, button, img {
+    display: block;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+}
+
+#rest-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #00000099;
+    pointer-events: auto;
+}
+
+#rest-panel {
+    position: absolute;
+    left: 160dp;
+    top: 98dp;
+    width: 272dp;
+    height: 116dp;
+    padding: 24dp;
+    background-color: #000000bf;
+    pointer-events: auto;
+}
+
+#rest-title {
+    width: 100%;
+    height: 20dp;
+    text-align: center;
+    line-height: 20dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#rest-selector {
+    margin-top: 16dp;
+    width: 240dp;
+    height: 32dp;
+    margin-left: 16dp;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#rest-hours {
+    width: 176dp;
+}
+
+#rest-actions {
+    margin-top: 16dp;
+    width: 240dp;
+    margin-left: 16dp;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12dp;
+}
+
+.rest-action-button {
+    width: 128dp;
+}

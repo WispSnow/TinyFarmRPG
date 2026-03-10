@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include <memory>
 #include <string>
 #include <string_view>
@@ -26,6 +27,8 @@ public:
     // 图形设置
     bool vsync_enabled_ = true;             ///< @brief 是否启用垂直同步
     bool debug_ui_enabled_ = true;          ///< @brief 是否启用 ImGui 调试界面
+    engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
+        engine::ui::rmlui::RmlUiTextureFilterMode::Nearest}; ///< @brief RmlUi 图片和字体 atlas 的采样模式
 
     // 性能设置
     int target_fps_ = 144;                  ///< @brief 渲染目标 FPS 设置，0 表示不限制

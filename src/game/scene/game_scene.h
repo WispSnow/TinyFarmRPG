@@ -1,11 +1,13 @@
 #pragma once
 
+#include "engine/ui/rmlui/rml_event_bridge.h"
 #include "engine/scene/scene.h"
 #include "game/runtime/game_mode.h"
 #include "game/defs/events.h"
 
 #include <glm/vec2.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
 
@@ -35,6 +37,10 @@ namespace engine::ui::rmlui {
     class RmlScreenFade;
 }
 
+namespace Rml {
+    class ElementDocument;
+}
+
 namespace game::runtime {
     struct GameRuntimeServices;
     struct GameSystemBundle;
@@ -60,12 +66,16 @@ class GameScene : public engine::scene::Scene {
     std::optional<int> load_slot_{};
     bool abort_to_title_{false};
 
-    game::ui::InventoryUI* inventory_ui_{nullptr};
-    game::ui::HotbarUI* hotbar_ui_{nullptr};
+    std::unique_ptr<game::ui::InventoryUI> inventory_ui_{};
+    std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};
     std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
-    game::ui::ItemTooltipUI* item_tooltip_ui_{nullptr};
+    std::array<std::unique_ptr<game::ui::DialogueBubbleView>, 3> dialogue_bubbles_{};
+    std::unique_ptr<game::ui::ItemTooltipUI> item_tooltip_ui_{};
     std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_;
     std::unique_ptr<engine::ui::rmlui::RmlScreenFade> rml_screen_fade_;
+    engine::ui::rmlui::RmlEventBridge overlay_event_bridge_{};
+    Rml::ElementDocument* overlay_document_{nullptr};
+    bool overlay_click_listener_registered_{false};
     engine::ui::IScreenFade* screen_fade_{nullptr};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
@@ -88,7 +98,8 @@ public:
 private:
     void snapshotInterpolationState();
     void bindSceneInputActions();
-    [[nodiscard]] bool initUI();  // 在具体场景中初始化UI管理器，且位置要靠后，确保按键注册顺序正确
+    [[nodiscard]] bool initUI();
+    void removeOverlayEventListeners();
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool registerDebugPanels();
 #endif
@@ -96,7 +107,6 @@ private:
     bool onInventoryToggle();
     bool onHotbarToggle();
     bool onPauseToggle();
-    void onInventoryChanged(const game::defs::InventoryChanged& evt);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);

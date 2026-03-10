@@ -1,0 +1,14 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="item_tooltip.rcss"/>
+</head>
+<body>
+    <div id="item-tooltip-panel">
+        <div id="item-tooltip-name"></div>
+        <div id="item-tooltip-category"></div>
+        <div id="item-tooltip-description"></div>
+    </div>
+</body>
+</rml>

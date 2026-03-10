@@ -1,0 +1,127 @@
+body, div, h1, h2, h3, h4, p, hr, button, img {
+    display: block;
+}
+
+button {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-color: transparent;
+    color: #ffffffff;
+    font-family: "VonwaonBitmap 16px";
+    font-size: 16dp;
+    text-align: center;
+    cursor: pointer;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.tf-button-primary,
+.tf-button-secondary {
+    height: 32dp;
+    line-height: 32dp;
+}
+
+.tf-button-primary {
+    decorator: ninepatch(primary-button, primary-button-inner, 1.0);
+}
+
+.tf-button-primary:hover {
+    color: #fce97fff;
+}
+
+.tf-button-primary:active {
+    decorator: ninepatch(primary-button-pressed, primary-button-pressed-inner, 1.0);
+    color: #999999ff;
+}
+
+.tf-button-secondary {
+    decorator: ninepatch(secondary-button, secondary-button-inner, 1.0);
+}
+
+.tf-button-secondary:hover {
+    color: #fce97fff;
+}
+
+.tf-button-secondary:active {
+    decorator: ninepatch(secondary-button-pressed, secondary-button-pressed-inner, 1.0);
+    color: #999999ff;
+}
+
+.tf-button-primary.disabled,
+.tf-button-primary:disabled,
+.tf-button-secondary.disabled,
+.tf-button-secondary:disabled {
+    color: #666666ff;
+    opacity: 0.75;
+}
+
+.tf-icon-button {
+    width: 32dp;
+    height: 32dp;
+}
+
+.tf-icon-button.icon-menu {
+    decorator: image(menu-icon);
+}
+
+.tf-icon-button.icon-menu:active {
+    decorator: image(menu-icon-pressed);
+}
+
+.tf-icon-button.icon-volume-up {
+    decorator: image(volume-up-icon);
+}
+
+.tf-icon-button.icon-volume-up:active {
+    decorator: image(volume-up-icon-pressed);
+}
+
+.tf-icon-button.icon-volume-down {
+    decorator: image(volume-down-icon);
+}
+
+.tf-icon-button.icon-volume-down:active {
+    decorator: image(volume-down-icon-pressed);
+}
+
+.tf-icon-button.icon-arrow-left {
+    decorator: image(arrow-left-icon);
+}
+
+.tf-icon-button.icon-arrow-left:active {
+    decorator: image(arrow-left-icon-pressed);
+}
+
+.tf-icon-button.icon-arrow-right {
+    decorator: image(arrow-right-icon);
+}
+
+.tf-icon-button.icon-arrow-right:active {
+    decorator: image(arrow-right-icon-pressed);
+}
+
+.tf-icon-button.icon-page-left {
+    decorator: image(page-left-icon);
+}
+
+.tf-icon-button.icon-page-left:active {
+    decorator: image(page-left-icon-pressed);
+}
+
+.tf-icon-button.icon-page-right {
+    decorator: image(page-right-icon);
+}
+
+.tf-icon-button.icon-page-right:active {
+    decorator: image(page-right-icon-pressed);
+}
+
+.tf-value-label {
+    width: 96dp;
+    height: 32dp;
+    line-height: 32dp;
+    text-align: center;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}

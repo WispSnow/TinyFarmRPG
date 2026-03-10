@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
-#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 #include <chrono>
@@ -26,17 +25,12 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "game/defs/events.h"
 #include "game/ui/dialogue_bubble_controller.h"
 #include "game/ui/dialogue_bubble_view.h"
 
 namespace game::ui {
 namespace {
-
-using namespace entt::literals;
 
 constexpr float kEpsilon = 0.001F;
 
@@ -51,21 +45,6 @@ void expectVec2Near(const glm::vec2& actual, const glm::vec2& expected) {
     EXPECT_NEAR(actual.y, expected.y, kEpsilon);
 }
 
-engine::ui::UILabel* findFirstLabel(engine::ui::UIElement& node) {
-    if (auto* label = dynamic_cast<engine::ui::UILabel*>(&node)) {
-        return label;
-    }
-    for (const auto& child : node.getChildren()) {
-        if (!child) {
-            continue;
-        }
-        if (auto* found = findFirstLabel(*child)) {
-            return found;
-        }
-    }
-    return nullptr;
-}
-
 class DialogueBubbleControllerTest : public ::testing::Test {
 protected:
     static inline bool sdl_ready_{false};
@@ -78,7 +57,6 @@ protected:
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
     engine::resource::AutoTileLibrary auto_tile_library_{};
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -136,7 +114,6 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
 
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
@@ -174,7 +151,7 @@ protected:
             *gl_renderer_, *renderer_, *camera_, *text_renderer_
         };
         engine::core::ResourceServices resource_services{
-            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+            *resource_manager_, auto_tile_library_
         };
         context_ = engine::core::Context::create(
             core_services, render_services, resource_services,
@@ -200,7 +177,6 @@ protected:
         renderer_.reset();
         gl_renderer_.reset();
         audio_player_.reset();
-        ui_preset_manager_.reset();
         resource_manager_.reset();
         input_manager_.reset();
         game_state_.reset();
@@ -216,14 +192,14 @@ protected:
 };
 
 TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
-    engine::ui::UIManager ui_manager(*context_, game_state_->getLogicalSize());
+    if (!context_->getGLRenderer().getRmlUILayer()) {
+        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    }
+
     game::ui::DialogueBubbleController controller(dispatcher_);
 
-    constexpr entt::id_type bubble_id = "dialogue_bubble_test_ch1"_hs;
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
     auto* bubble_ptr = bubble.get();
-    bubble->setId(bubble_id);
-    ui_manager.addElement(std::move(bubble));
     controller.registerBubble(1, bubble_ptr, {3.0F, -7.0F});
 
     game::defs::DialogueShowEvent show_evt{};
@@ -234,14 +210,11 @@ TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
     dispatcher_.trigger(show_evt);
 
     ASSERT_TRUE(bubble_ptr->isVisible());
-    EXPECT_EQ(bubble_ptr->getPositioningMode(), engine::ui::PositioningMode::WorldAnchor);
+    EXPECT_TRUE(bubble_ptr->hasWorldAnchor());
     expectVec2Near(bubble_ptr->getWorldAnchor(), {10.0F, 20.0F});
     expectVec2Near(bubble_ptr->getPreviousWorldAnchor(), {10.0F, 20.0F});
     expectVec2Near(bubble_ptr->getWorldAnchorOffset(), {3.0F, -7.0F});
-
-    auto* label = findFirstLabel(*bubble_ptr);
-    ASSERT_NE(label, nullptr);
-    EXPECT_EQ(label->getText(), "NPC: \nHello");
+    EXPECT_EQ(bubble_ptr->getText(), "NPC: \nHello");
 
     game::defs::DialogueMoveEvent move_evt{};
     move_evt.channel = 1;
@@ -257,19 +230,19 @@ TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
     dispatcher_.update();
 
     EXPECT_FALSE(bubble_ptr->isVisible());
-    EXPECT_EQ(bubble_ptr->getPositioningMode(), engine::ui::PositioningMode::Screen);
+    EXPECT_FALSE(bubble_ptr->hasWorldAnchor());
     expectVec2Near(bubble_ptr->getWorldAnchor(), {0.0F, 0.0F});
 }
 
 TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers) {
-    engine::ui::UIManager ui_manager(*context_, game_state_->getLogicalSize());
+    if (!context_->getGLRenderer().getRmlUILayer()) {
+        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    }
+
     game::ui::DialogueBubbleController controller(dispatcher_);
 
-    constexpr entt::id_type bubble_id = "dialogue_bubble_test_ch1"_hs;
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
     auto* bubble_ptr = bubble.get();
-    bubble->setId(bubble_id);
-    ui_manager.addElement(std::move(bubble));
     controller.registerBubble(1, bubble_ptr);
 
     game::defs::DialogueShowEvent show_evt{};
@@ -284,15 +257,13 @@ TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers
     dispatcher_.trigger(show_evt);
     EXPECT_FALSE(bubble_ptr->isVisible());
 
-    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_);
+    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
     auto* recreated_ptr = recreated.get();
-    recreated->setId(bubble_id);
-    ui_manager.addElement(std::move(recreated));
 
     controller.registerBubble(1, recreated_ptr);
     dispatcher_.trigger(show_evt);
     EXPECT_TRUE(recreated_ptr->isVisible());
-    EXPECT_EQ(recreated_ptr->getPositioningMode(), engine::ui::PositioningMode::WorldAnchor);
+    EXPECT_TRUE(recreated_ptr->hasWorldAnchor());
 }
 
 } // namespace
