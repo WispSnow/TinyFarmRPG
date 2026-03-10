@@ -24,7 +24,8 @@
 - 默认目标 = 角色朝向前方 1 格（与 `InteractionSystem::chooseFacingTarget` 的“面前一格”语义保持一致）
 - 为避免“本 tick 正在推方向 + 同 tick 按下主操作”时朝向滞后一帧，手柄模式下优先取**当前 move intent 推导方向**；若当前无 move intent，再退回 `StateComponent::direction_`
 - 仍统一走现有目标范围校验，不另开一套距离规则
-- 目标位置语义保持与现有 `TargetComponent` / `RenderTargetSystem` / 动画事件一致：使用**目标 tile 的 world pos（tile rect.pos）**，不是 tile 中心
+- **目标解析 helper 返回值统一为目标 tile 中心点**，与当前 `resolveTargetPosition()` 的职责保持一致，便于主操作回调用“中心点 - 玩家位置”稳定推导朝向
+- `syncTargetComponent()` 继续负责把中心点反查为 `tile_rect.pos`，从而保持 `TargetComponent` / `RenderTargetSystem` / 动画事件 / 农务系统看到的仍是现有 tile 原点语义
 - 目标光标 sprite 在手柄模式下锁定到该目标格，不跟随鼠标
 
 本阶段**不做**右摇杆微调目标偏移；若后续确有需要，再放到后续阶段单独扩展。
@@ -48,15 +49,20 @@
 - `src/game/system/player_control_system.h` — 新增控制器目标逻辑
 - `src/game/system/player_control_system.cpp` — 重构输入读取路径
 - `src/engine/input/input_manager.cpp` — 删除 `mouse_left` / `mouse_right` 的隐式默认注入
+- `tools/visual_tester/visual_test_cases.cpp` — `mouse_left` 迁移到 `primary_action`
 - `config/input.json` — 替换旧动作名、添加新动作
 - `tests/game/player_control_system_targeting_test.cpp` — 扩展手柄路径与目标解析测试
-- `tests/engine/input/input_manager_test.cpp` — 默认鼠标动作测试改为显式语义动作
+- `tests/engine/input/input_manager_test.cpp` — 默认鼠标动作测试改为显式语义动作，删除对自动注入 `mouse_left` 的依赖
 - 受影响的最小输入配置测试 fixture（动作名迁移）：
   - `tests/game/dialogue_bubble_controller_test.cpp`
   - `tests/game/map_manager_async_preload_test.cpp`
   - `tests/game/save_service_async_test.cpp`
   - `tests/game/ui_layout_integration_test.cpp`
   - `tests/game/world/async_preload_pipeline_test.cpp`
+- 同步更新核心文档中的动作名引用：
+  - `docs/engine/input_system.md`
+  - `docs/engine/ui_framework.md`
+  - `docs/game/player_control.md`
 
 注意：控制器目标逻辑直接作为 `PlayerControlSystem` 的私有方法实现，不单独建文件。测试优先扩展现有 `tests/game/player_control_system_targeting_test.cpp`；若后续用例膨胀再拆分。
 
@@ -71,14 +77,16 @@
   - 新增 `hotbar_next`，绑定 `["GamepadRightShoulder"]`
   - `rotate_left/right` 当前实际仅保留键盘绑定，无需额外为 LB/RB 让位
 - 更新 `defaultMappings()` 同步。
-- 全局搜索 `"mouse_left"` / `"mouse_right"` 的 `entt::hashed_string` 引用和测试配置，全部迁移到新名称。
+- 全局搜索 `"mouse_left"` / `"mouse_right"` 的运行时代码、测试配置、工具脚本与文档引用，全部迁移到新名称。
 - `InputManager::initializeMappings` 中 `mouse_left` / `mouse_right` 的自动注入逻辑删除（不再需要隐式默认鼠标动作）。
+- `tests/engine/input/input_manager_test.cpp` 中原本验证默认注入 `mouse_left` 的用例改写为“显式配置 `primary_action` 仍能接收鼠标左键事件”。
 
 #### Step 2.2: 重构 PlayerControlSystem 输入读取路径
 
 - 主操作回调从 `onAction("mouse_left"_hs)` 迁移到 `onAction("primary_action"_hs)`，并将回调命名同步整理为 `onPrimaryAction()`。
 - 取消/清除选择从 `onAction("mouse_right"_hs)` 迁移到 `onAction("secondary_action"_hs)`，并将回调命名同步整理为 `onSecondaryAction()`。
-- 新增 `hotbar_prev` / `hotbar_next` 回调，基于当前 `active_slot_index_` 做环形切换：
+- `PlayerControlSystem` 新增两个显式回调：`onHotbarPrev()` / `onHotbarNext()`；二者内部计算环形索引后再调用现有 `switchToHotbarSlot(int slot_index)`。
+- `hotbar_prev` / `hotbar_next` 的环形切换规则：
   - `prev = (active - 1 + SLOT_COUNT) % SLOT_COUNT`
   - `next = (active + 1) % SLOT_COUNT`
 - `hotbar_1..10` 的键盘直达逻辑保留，不和 `hotbar_prev/next` 合并。
@@ -86,30 +94,34 @@
 
 #### Step 2.3: 实现控制器目标逻辑
 
-建议将当前“鼠标 world → tile 目标”逻辑重构为设备无关的两层 helper，而不是把所有判断塞进一个函数里：
+建议将当前“鼠标 world → tile 目标”逻辑重构为设备无关的三层 helper，并把 `updateTargetAndSelection()` 改成**无参**，内部自行根据输入设备决定目标来源：
 
 ```cpp
 [[nodiscard]] glm::vec2 computeMouseWorldPosition() const;
-[[nodiscard]] std::optional<glm::vec2> resolveTargetTilePositionFromWorld(glm::vec2 world_pos) const;
-[[nodiscard]] std::optional<glm::vec2> resolveEffectiveTargetTilePosition() const;
+[[nodiscard]] std::optional<glm::vec2> resolveTargetTileCenterFromWorld(glm::vec2 world_pos) const;
+[[nodiscard]] std::optional<glm::vec2> resolveEffectiveTargetCenter() const;
+void updateTargetAndSelection();
 ```
 
 逻辑：
-- `KeyboardMouse` 模式：沿用 `computeMouseWorldPosition()`，再交给 `resolveTargetTilePositionFromWorld()`
+- `KeyboardMouse` 模式：沿用 `computeMouseWorldPosition()`，再交给 `resolveTargetTileCenterFromWorld()`
 - `Gamepad` 模式：
-  1. 读取当前 move intent
-  2. 若 move intent 非零，则按 move intent 推导本次玩法朝向
+  1. 在 `onPrimaryAction()` / `resolveEffectiveTargetCenter()` 内直接调用 `getMoveDirection()` 读取**最新 move intent**（这些状态在 `sampleInputEvents()` 后、`dispatchActionCallbacks()` 前已更新）
+  2. 若 move intent 非零，则复用现有 `resolveDirection(glm::vec2)` helper 推导本次玩法朝向
   3. 否则退回 `StateComponent::direction_`
   4. 取玩家前方 1 格
-  5. 返回该 tile 的 world pos（`tile_rect.pos`）
-- 两种模式最终都返回同一种“tile 原点”语义，供 `TargetComponent`、动画事件和农务系统复用
+  5. 返回该 tile 的**中心点**
+- 两种模式最终都返回同一种“tile 中心”语义，随后统一交给 `syncTargetComponent()` 转回 `tile_rect.pos`
 
-调用方（`onPrimaryAction()` / `updateTargetAndSelection()`）统一使用 `resolveEffectiveTargetTilePosition()`，不要再在点击路径里直接拼鼠标专用逻辑。
+调用方要求：
+- `onPrimaryAction()` 内部必须改为调用 `resolveEffectiveTargetCenter()`，不能继续单独调用 `computeMouseWorldPosition()` / `resolveTargetPosition()`
+- `updateTargetAndSelection()` 也统一改为调用 `resolveEffectiveTargetCenter()`，不再由外部传入 `mouse_world_position`
+- `syncTargetComponent(glm::vec2 target_world_center)` 继续保留“中心点 -> tile 原点”的收口职责
 
 #### Step 2.4: 目标光标显示
 
 - `KeyboardMouse` 模式：光标跟随鼠标解析出来的目标 tile
-- `Gamepad` 模式：光标锁定到 `resolveEffectiveTargetTilePosition()` 返回的目标 tile
+- `Gamepad` 模式：光标锁定到 `resolveEffectiveTargetCenter()` 解析出的目标 tile
 - 无活动工具/种子时，两种模式下都隐藏光标（现有行为）
 - 若目标超出范围或无有效 tile，两种模式下都隐藏光标
 - 输入设备切换后的下一次 `PlayerControlSystem::update()` 立即刷新光标位置
@@ -141,11 +153,12 @@
 - [ ] 替换 `mouse_left` → `primary_action`，`mouse_right` → `secondary_action`
 - [ ] 新增 `hotbar_prev` / `hotbar_next` 动作和回调
 - [ ] 删除 `initializeMappings` 中 `mouse_left/right` 自动注入逻辑
-- [ ] 实现设备无关的目标解析 helper（鼠标 world → tile / gamepad facing → tile）
+- [ ] 实现设备无关的目标解析 helper（统一返回 tile 中心）
 - [ ] 统一 `PlayerControlSystem` 中所有目标读取路径
 - [ ] 更新目标光标显示逻辑
-- [ ] 更新依赖旧动作名的测试配置与断言
+- [ ] 更新依赖旧动作名的测试配置、visual tester 与断言
 - [ ] 编写/扩展 `PlayerControlSystem` 手柄路径测试
+- [ ] 同步更新核心文档中的动作名引用
 - [ ] 在文档中保留“手柄 UI capture 留到 Phase 3/4”的已知限制说明
 
 #### 完成标准
@@ -153,4 +166,4 @@
 - 手柄可自然完成移动、操作、取消和快捷栏切换。
 - 世界操作逻辑不再把鼠标动作当成唯一入口。
 - 键鼠和手柄共享同一套核心行为分发路径。
-- 运行时代码和输入配置中不再存在 `mouse_left` / `mouse_right` 动作名引用。
+- 运行时代码、测试配置、visual tester、输入配置和核心文档中不再存在 `mouse_left` / `mouse_right` 动作名引用。
