@@ -35,7 +35,7 @@ class ItemTooltipUI;
 class HotbarUI final {
     struct HotbarSlotViewModel {
         int slot_index{0};
-        Rml::String icon_decorator{};
+        Rml::String icon_decorator{"none"};
         Rml::String count_text{};
         bool has_item{false};
         bool has_count{false};

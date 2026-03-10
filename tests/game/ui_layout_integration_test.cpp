@@ -6,6 +6,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/Property.h>
 
 #include <algorithm>
 #include <chrono>
@@ -499,6 +500,65 @@ TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelA
 
     layer->update();
     EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
+}
+
+TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyInlineStyle) {
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    }
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
+
+    constexpr uint64_t kOwnerSceneId = 5151;
+
+    game::ui::InventoryUI inventory(*layer, *context_, kOwnerSceneId, nullptr);
+    game::ui::HotbarUI hotbar(*layer, *context_, kOwnerSceneId, nullptr);
+    ASSERT_TRUE(inventory.isReady());
+    ASSERT_TRUE(hotbar.isReady());
+
+    inventory.show();
+    layer->update();
+
+    auto* inventory_document = findDocumentByElementId(*rml_context, "inventory-panel");
+    auto* hotbar_document = findDocumentByElementId(*rml_context, "hotbar-panel");
+    ASSERT_NE(inventory_document, nullptr);
+    ASSERT_NE(hotbar_document, nullptr);
+
+    auto* inventory_grid = inventory_document->GetElementById("inventory-grid");
+    auto* hotbar_slots = hotbar_document->GetElementById("hotbar-slots");
+    ASSERT_NE(inventory_grid, nullptr);
+    ASSERT_NE(hotbar_slots, nullptr);
+    ASSERT_GT(inventory_grid->GetNumChildren(), 0);
+    ASSERT_GT(hotbar_slots->GetNumChildren(), 0);
+
+    auto* inventory_slot = inventory_grid->GetChild(0);
+    ASSERT_NE(inventory_slot, nullptr);
+    ASSERT_GT(inventory_slot->GetNumChildren(), 0);
+    auto* inventory_drag_proxy = inventory_slot->GetChild(0);
+    ASSERT_NE(inventory_drag_proxy, nullptr);
+    ASSERT_GT(inventory_drag_proxy->GetNumChildren(), 0);
+    auto* inventory_icon = inventory_drag_proxy->GetChild(0);
+    ASSERT_NE(inventory_icon, nullptr);
+
+    auto* hotbar_slot = hotbar_slots->GetChild(0);
+    ASSERT_NE(hotbar_slot, nullptr);
+    ASSERT_GT(hotbar_slot->GetNumChildren(), 1);
+    auto* hotbar_drag_proxy = hotbar_slot->GetChild(1);
+    ASSERT_NE(hotbar_drag_proxy, nullptr);
+    ASSERT_GT(hotbar_drag_proxy->GetNumChildren(), 0);
+    auto* hotbar_icon = hotbar_drag_proxy->GetChild(0);
+    ASSERT_NE(hotbar_icon, nullptr);
+
+    const Rml::Property* inventory_decorator = inventory_icon->GetLocalProperty("decorator");
+    const Rml::Property* hotbar_decorator = hotbar_icon->GetLocalProperty("decorator");
+    ASSERT_NE(inventory_decorator, nullptr);
+    ASSERT_NE(hotbar_decorator, nullptr);
+
+    EXPECT_EQ(inventory_decorator->ToString(), "none");
+    EXPECT_EQ(hotbar_decorator->ToString(), "none");
 }
 
 } // namespace

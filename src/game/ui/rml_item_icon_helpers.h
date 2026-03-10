@@ -8,6 +8,8 @@
 
 namespace game::ui {
 
+constexpr std::string_view kNoDecorator = "none";
+
 [[nodiscard]] inline std::string spriteNameFromIconKey(std::string_view icon_key) {
     std::string sprite_name{"item-"};
     sprite_name.reserve(icon_key.size() + 5);
@@ -21,20 +23,24 @@ namespace game::ui {
     return sprite_name;
 }
 
+[[nodiscard]] inline bool hasDecorator(std::string_view decorator) {
+    return !decorator.empty() && decorator != kNoDecorator;
+}
+
 [[nodiscard]] inline std::string buildItemIconDecorator(const game::data::ItemCatalog* item_catalog,
                                                         entt::id_type item_id) {
     if (!item_catalog) {
-        return {};
+        return std::string{kNoDecorator};
     }
 
     const auto* item = item_catalog->findItem(item_id);
     if (!item || item->icon_id_ == entt::null) {
-        return {};
+        return std::string{kNoDecorator};
     }
 
     const auto* icon_key = item_catalog->findIconKey(item->icon_id_);
     if (!icon_key || icon_key->empty()) {
-        return {};
+        return std::string{kNoDecorator};
     }
 
     std::string decorator{"image("};

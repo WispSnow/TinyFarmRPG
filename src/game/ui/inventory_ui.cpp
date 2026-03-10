@@ -18,6 +18,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -193,7 +194,7 @@ void InventoryUI::refreshSlotViewModel(int local_slot_index) {
     const int inventory_index = current_page_ * VISIBLE_SLOT_COUNT + local_slot_index;
     slot.local_slot_index = local_slot_index;
     slot.inventory_index = inventory_index;
-    slot.icon_decorator.clear();
+    slot.icon_decorator = std::string{game::ui::kNoDecorator};
     slot.count_text.clear();
     slot.has_item = false;
     slot.has_count = false;
@@ -209,7 +210,7 @@ void InventoryUI::refreshSlotViewModel(int local_slot_index) {
     }
 
     slot.icon_decorator = buildItemIconDecorator(item_catalog_, item->item_id);
-    slot.has_item = !slot.icon_decorator.empty();
+    slot.has_item = hasDecorator(slot.icon_decorator);
     slot.can_drag = slot.has_item;
     if (item->count > 1 && slot.has_item) {
         slot.count_text = std::to_string(item->count);
