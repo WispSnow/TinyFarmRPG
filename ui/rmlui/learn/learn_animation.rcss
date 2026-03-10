@@ -1,0 +1,349 @@
+/* =====================
+   @keyframes 定义
+   ===================== */
+
+/* 伤害数字弹出：上移 + 淡出 */
+@keyframes damage-popup {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-40dp);
+        opacity: 0;
+    }
+}
+
+/* 窗口打开：缩放 + 淡入 */
+@keyframes window-open {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1.0);
+        opacity: 1;
+    }
+}
+
+/* 窗口关闭：缩放 + 淡出 */
+@keyframes window-close {
+    from {
+        transform: scale(1.0);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* 持续旋转 */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* 脉冲缩放 */
+@keyframes pulse {
+    from { transform: scale(1.0); }
+    50%  { transform: scale(1.15); }
+    to   { transform: scale(1.0); }
+}
+
+/* 弹跳 */
+@keyframes bounce {
+    from { transform: translateY(0); }
+    25%  { transform: translateY(-8dp); }
+    50%  { transform: translateY(0); }
+    75%  { transform: translateY(-4dp); }
+    to   { transform: translateY(0); }
+}
+
+/* 闪烁 */
+@keyframes blink {
+    from { opacity: 1; }
+    50%  { opacity: 0.3; }
+    to   { opacity: 1; }
+}
+
+/* === 重置 === */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+body {
+    margin: 0;
+    padding: 8dp;
+    font-size: 12dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #c0caf5;
+}
+
+/* =====================
+   页面布局
+   ===================== */
+
+.page-header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8dp;
+    margin-bottom: 6dp;
+}
+.page-title {
+    font-size: 14dp;
+    color: #7aa2f7;
+    font-weight: bold;
+}
+.page-hint {
+    font-size: 10dp;
+    color: #565f89;
+}
+
+.content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 6dp;
+    margin-bottom: 6dp;
+    width: 624dp;
+}
+
+.col {
+    flex: 1;
+}
+
+h2 {
+    margin: 0 0 4dp 0;
+    font-size: 12dp;
+    color: #e0af68;
+}
+
+.section-label {
+    font-size: 10dp;
+    color: #565f89;
+    margin-bottom: 2dp;
+}
+
+/* =====================
+   通用面板
+   ===================== */
+
+.panel {
+    background-color: #1a1b2680;
+    border: 1dp #2d3354;
+    border-radius: 4dp;
+    padding: 6dp;
+    margin-bottom: 4dp;
+}
+
+/* =====================
+   左列：Transition 过渡
+   ===================== */
+
+.menu-item {
+    padding: 4dp 8dp;
+    margin-bottom: 2dp;
+    background-color: #1a1b2600;
+    color: #c0caf5;
+    border-radius: 3dp;
+    font-size: 11dp;
+
+    /* 核心演示：transition 过渡 */
+    transition: background-color padding-left color 0.3s cubic-out;
+}
+.menu-item:hover {
+    background-color: #2d335480;
+    padding-left: 16dp;
+    color: #7aa2f7;
+}
+
+/* 颜色过渡按钮 */
+.color-btn {
+    padding: 4dp 10dp;
+    margin-bottom: 2dp;
+    border: 1dp #565f89;
+    border-radius: 3dp;
+    text-align: center;
+    font-size: 11dp;
+    color: #c0caf5;
+    background-color: #1a1b26;
+
+    transition: background-color border-color color 0.4s cubic-out;
+}
+.color-btn:hover {
+    background-color: #3d6aaa;
+    border-color: #7aa2f7;
+    color: #ffffff;
+}
+.color-btn:active {
+    background-color: #7aa2f7;
+    color: #1a1b26;
+}
+
+/* 尺寸过渡演示 */
+.size-box {
+    width: 40dp;
+    height: 20dp;
+    background-color: #9ece6a;
+    border-radius: 3dp;
+    margin-bottom: 4dp;
+    text-align: center;
+    font-size: 10dp;
+    color: #1a1b26;
+    padding-top: 4dp;
+
+    transition: width height background-color 0.5s elastic-out;
+}
+.size-box:hover {
+    width: 120dp;
+    height: 28dp;
+    background-color: #e0af68;
+}
+
+/* =====================
+   中列：Animation 关键帧动画
+   ===================== */
+
+.anim-row {
+    display: flex;
+    flex-direction: row;
+    gap: 6dp;
+    align-items: center;
+    margin-bottom: 4dp;
+}
+
+.anim-box {
+    width: 24dp;
+    height: 24dp;
+    border-radius: 3dp;
+    text-align: center;
+    padding-top: 6dp;
+    font-size: 10dp;
+    color: #ffffff;
+}
+
+.spin-box {
+    background-color: #7aa2f7;
+    animation: 2s linear infinite spin;
+}
+
+.pulse-box {
+    background-color: #bb9af7;
+    animation: 1s cubic-in-out infinite pulse;
+}
+
+.bounce-box {
+    background-color: #9ece6a;
+    animation: 0.8s quadratic-out infinite bounce;
+}
+
+.blink-box {
+    background-color: #f7768e;
+    animation: 1.2s linear infinite blink;
+}
+
+.anim-label {
+    font-size: 10dp;
+    color: #565f89;
+}
+
+/* =====================
+   右列：Transform 变换 + 交互
+   ===================== */
+
+/* 伤害数字 */
+.dmg-area {
+    height: 50dp;
+    position: relative;
+}
+
+.dmg-text {
+    position: absolute;
+    left: 40dp;
+    top: 20dp;
+    font-size: 16dp;
+    font-weight: bold;
+    color: #f7768e;
+    opacity: 0;
+}
+
+.dmg-animate {
+    animation: 0.8s cubic-out damage-popup;
+}
+
+/* 触发按钮 */
+.action-btn {
+    padding: 4dp 10dp;
+    margin-bottom: 4dp;
+    background-color: #2d3354;
+    border: 1dp #565f89;
+    border-radius: 3dp;
+    text-align: center;
+    font-size: 11dp;
+    color: #c0caf5;
+
+    transition: background-color transform 0.2s cubic-out;
+    transform: scale(1.0);
+}
+.action-btn:hover {
+    background-color: #3d6aaa;
+    transform: scale(1.05);
+}
+.action-btn:active {
+    background-color: #7aa2f7;
+    transform: scale(0.95);
+}
+
+/* 弹窗面板 */
+.popup-panel {
+    display: none;
+    opacity: 0;
+    background-color: #1a1b26e0;
+    border: 1dp #7aa2f7;
+    border-radius: 6dp;
+    padding: 10dp;
+    margin-top: 4dp;
+    transform-origin: 50% 0%;
+}
+
+.popup-open {
+    animation: 0.3s cubic-out window-open;
+    opacity: 1;
+    transform: scale(1.0);
+}
+
+.popup-close {
+    animation: 0.3s cubic-in window-close;
+    opacity: 0;
+}
+
+.popup-title {
+    font-size: 12dp;
+    color: #e0af68;
+    margin-bottom: 4dp;
+    font-weight: bold;
+}
+.popup-body {
+    font-size: 10dp;
+    color: #a9b1d6;
+}
+
+/* =====================
+   底部信息栏
+   ===================== */
+
+.info-bar {
+    padding: 3dp 6dp;
+    background-color: #1a1b2680;
+    border: 1dp #2d3354;
+    border-radius: 3dp;
+    font-size: 10dp;
+    color: #565f89;
+}
+.code {
+    color: #9ece6a;
+}
+.status {
+    color: #bb9af7;
+}
