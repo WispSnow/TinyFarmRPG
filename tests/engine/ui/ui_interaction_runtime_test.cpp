@@ -30,7 +30,6 @@
 #include "engine/ui/behavior/click_behavior.h"
 #include "engine/ui/ui_interactive.h"
 #include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_preset_manager.h"
 
 namespace engine::ui {
 namespace {
@@ -142,7 +141,6 @@ protected:
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
     engine::resource::AutoTileLibrary auto_tile_library_{};
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -200,7 +198,6 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
 
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
@@ -239,7 +236,7 @@ protected:
             *gl_renderer_, *renderer_, *camera_, *text_renderer_
         };
         engine::core::ResourceServices resource_services{
-            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+            *resource_manager_, auto_tile_library_
         };
         context_ = engine::core::Context::create(
             core_services, render_services, resource_services,
@@ -260,7 +257,6 @@ protected:
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_.reset();
 #endif
-        ui_preset_manager_.reset();
         time_.reset();
         main_thread_command_queue_.reset();
         text_renderer_.reset();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/ui_item_slot.h"
+#include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -93,16 +93,6 @@ public:
     void setTarget(entt::entity target) { target_ = target; }
     void setHotbarUI(game::ui::HotbarUI* hotbar_ui) { hotbar_ui_ = hotbar_ui; }
     void setTooltipUI(game::ui::ItemTooltipUI* tooltip_ui) { tooltip_ui_ = tooltip_ui; }
-
-    [[nodiscard]] int findSlotIndex(const engine::ui::UIItemSlot* slot) const {
-        (void)slot;
-        return -1;
-    }
-
-    [[nodiscard]] int resolveInventoryIndex(const engine::ui::UIItemSlot* slot) const {
-        (void)slot;
-        return -1;
-    }
 
     void show();
     void hide();

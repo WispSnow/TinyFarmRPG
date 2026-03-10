@@ -1,4 +1,5 @@
 #pragma once
+#include "ui_types.h"
 #include "ui_interactive.h"
 #include "ui_image.h"
 #include "ui_label.h"
@@ -6,12 +7,6 @@
 #include <optional>
 
 namespace engine::ui {
-
-struct SlotItem {
-    entt::id_type item_id{entt::null};
-    int count{0};
-    engine::render::Image icon{};
-};
 
 /**
  * @brief 物品/技能槽位控件

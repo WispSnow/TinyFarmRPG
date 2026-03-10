@@ -43,7 +43,11 @@ UIManager::~UIManager()
     drag_preview_ = nullptr;
 }
 
-UIManager::UIManager(engine::core::Context& context, const glm::vec2& window_size) : context_(context)
+UIManager::UIManager(engine::core::Context& context,
+                     const glm::vec2& window_size,
+                     UIPresetManager* preset_manager)
+    : context_(context),
+      preset_manager_(preset_manager)
 {
     // 创建一个屏幕大小的根面板，它的子元素将基于它定位。
     root_element_ = std::make_unique<UIPanel>(glm::vec2{0.0f, 0.0f}, window_size);
@@ -261,7 +265,7 @@ void UIManager::initCursor() {
     hid_system_cursor_ = false;
 
     auto& resource_manager = context_.getResourceManager();
-    const auto* preset = context_.getUIPresetManager().getImagePreset(CURSOR_PRESET_ID);
+    const auto* preset = preset_manager_ ? preset_manager_->getImagePreset(CURSOR_PRESET_ID) : nullptr;
     if (!preset) {
         spdlog::warn("UIManager: 未找到图片预设 '{}'，将继续使用系统鼠标。", CURSOR_PRESET_ID.data());
         cursor_image_.reset();

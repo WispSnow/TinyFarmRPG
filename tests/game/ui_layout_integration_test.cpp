@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
-#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
@@ -14,7 +13,6 @@
 #include <fstream>
 #include <limits>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -37,7 +35,6 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/ui/hotbar_ui.h"
@@ -54,19 +51,6 @@ namespace {
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
     SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
     return SDL_Init(flags);
-}
-
-engine::render::Image makeTestPresetImage(std::string_view key,
-                                          const glm::vec2& size,
-                                          std::optional<engine::render::NineSliceMargins> margins = std::nullopt) {
-    engine::render::Image image(
-        std::string{"test://"} + std::string(key),
-        engine::utils::Rect{glm::vec2{0.0F, 0.0F}, size}
-    );
-    if (margins.has_value()) {
-        image.setNineSliceMargins(*margins);
-    }
-    return image;
 }
 
 float centerX(Rml::Element* element) {
@@ -111,7 +95,6 @@ protected:
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
     engine::resource::AutoTileLibrary auto_tile_library_{};
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -185,50 +168,6 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
-        auto& preset_manager = *ui_preset_manager_;
-
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"inventory_panel"}.value(),
-            makeTestPresetImage("inventory_panel",
-                                {48.0F, 48.0F},
-                                engine::render::NineSliceMargins{10.0F, 10.0F, 10.0F, 10.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"inventory_slot"}.value(),
-            makeTestPresetImage("inventory_slot",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 2.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_panel"}.value(),
-            makeTestPresetImage("quick_bar_panel",
-                                {164.0F, 28.0F},
-                                engine::render::NineSliceMargins{7.0F, 7.0F, 7.0F, 6.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_slot"}.value(),
-            makeTestPresetImage("quick_bar_slot",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 3.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_selected"}.value(),
-            makeTestPresetImage("quick_bar_selected",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{4.0F, 4.0F, 4.0F, 4.0F})));
-
-        auto make_button_skin = [](std::string_view key, const glm::vec2& size) {
-            engine::ui::UIButtonSkin skin{};
-            const auto image = makeTestPresetImage(key, size);
-            skin.normal_image = image;
-            skin.hover_image = image;
-            skin.pressed_image = image;
-            skin.disabled_image = image;
-            return skin;
-        };
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"close"}.value(), make_button_skin("close", {16.0F, 16.0F})));
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"page_left"}.value(), make_button_skin("page_left", {20.0F, 20.0F})));
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"page_right"}.value(), make_button_skin("page_right", {20.0F, 20.0F})));
 
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
@@ -267,7 +206,7 @@ protected:
             *gl_renderer_, *renderer_, *camera_, *text_renderer_
         };
         engine::core::ResourceServices resource_services{
-            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+            *resource_manager_, auto_tile_library_
         };
         context_ = engine::core::Context::create(
             core_services, render_services, resource_services,
@@ -288,7 +227,6 @@ protected:
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_.reset();
 #endif
-        ui_preset_manager_.reset();
         time_.reset();
         main_thread_command_queue_.reset();
         text_renderer_.reset();

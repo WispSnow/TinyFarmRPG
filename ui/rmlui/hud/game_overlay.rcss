@@ -1,0 +1,18 @@
+body, div, h1, h2, h3, h4, p, hr, button, img {
+    display: block;
+}
+
+body {
+    position: absolute;
+    right: 10dp;
+    top: 10dp;
+    width: 32dp;
+    height: 32dp;
+    pointer-events: none;
+}
+
+#game-menu-button {
+    width: 32dp;
+    height: 32dp;
+    pointer-events: auto;
+}

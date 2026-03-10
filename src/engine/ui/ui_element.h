@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/ui/ui_types.h"
 #include "engine/utils/math.h"
 #include <cstdint>
 #include <memory>
@@ -18,18 +19,6 @@ class UIManager;
 enum class PositioningMode : std::uint8_t {
     Screen,
     WorldAnchor
-};
-
-struct Thickness {
-    float left{0.0f};
-    float top{0.0f};
-    float right{0.0f};
-    float bottom{0.0f};
-
-    [[nodiscard]] glm::vec2 horizontal() const { return {left, right}; }
-    [[nodiscard]] glm::vec2 vertical() const { return {top, bottom}; }
-    [[nodiscard]] float width() const { return left + right; }
-    [[nodiscard]] float height() const { return top + bottom; }
 };
 
 /**

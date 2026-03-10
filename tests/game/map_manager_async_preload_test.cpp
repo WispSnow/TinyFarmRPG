@@ -30,7 +30,6 @@
 #include "engine/resource/resource_manager.h"
 #include "engine/scene/scene.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/world/map_loading_settings.h"
@@ -66,7 +65,6 @@ protected:
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
     engine::resource::AutoTileLibrary auto_tile_library_{};
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -145,7 +143,6 @@ protected:
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
 
-        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
             GTEST_SKIP() << "Failed to create AudioPlayer.";
@@ -179,7 +176,7 @@ protected:
             *gl_renderer_, *renderer_, *camera_, *text_renderer_
         };
         engine::core::ResourceServices resource_services{
-            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+            *resource_manager_, auto_tile_library_
         };
         context_ = engine::core::Context::create(
             core_services, render_services, resource_services,
@@ -229,7 +226,6 @@ protected:
         renderer_.reset();
         gl_renderer_.reset();
         audio_player_.reset();
-        ui_preset_manager_.reset();
         resource_manager_.reset();
         input_manager_.reset();
         game_state_.reset();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/ui_item_slot.h"
+#include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -102,11 +102,6 @@ public:
 
     void setSlotInventoryIndex(int slot_index, int inventory_index);
     void resetInventoryMappings();
-
-    [[nodiscard]] int findSlotIndex(const engine::ui::UIItemSlot* slot) const {
-        (void)slot;
-        return -1;
-    }
 
     void show();
     void hide();

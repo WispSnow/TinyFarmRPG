@@ -16,6 +16,8 @@ namespace engine::ui {
 class UIPanel;
 class UIButton;
 class UIImage;
+class UIManager;
+class UIPresetManager;
 class UIProgressBar; // Forward declaration
 class UIStackLayout;
 class UIGridLayout;
@@ -29,6 +31,8 @@ class UITestControlPanel;
 
 class UITestScene final : public engine::scene::Scene {
     friend class UITestControlPanel;
+    std::unique_ptr<engine::ui::UIManager> ui_manager_{};
+    std::unique_ptr<engine::ui::UIPresetManager> preset_manager_{};
     engine::ui::UIPanel* demo_panel_{nullptr};
     engine::ui::UIButton* start_button_{nullptr};
     engine::ui::UIImage* preview_image_{nullptr};

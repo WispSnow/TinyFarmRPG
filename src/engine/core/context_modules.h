@@ -20,10 +20,6 @@ namespace engine::resource {
     class AutoTileLibrary;
 }
 
-namespace engine::ui {
-    class UIPresetManager;
-}
-
 namespace engine::async {
     class MainThreadCommandQueue;
 }
@@ -49,11 +45,10 @@ struct RenderServices {
     engine::render::TextRenderer& text_renderer;
 };
 
-/// @brief 资源/资产服务（资源管理器、自动图块、UI预设）
+/// @brief 资源/资产服务（资源管理器、自动图块）
 struct ResourceServices {
     engine::resource::ResourceManager& resource_manager;
     engine::resource::AutoTileLibrary& auto_tile_library;
-    engine::ui::UIPresetManager& ui_preset_manager;
 };
 
 } // namespace engine::core

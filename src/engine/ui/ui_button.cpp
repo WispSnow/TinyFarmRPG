@@ -164,13 +164,15 @@ std::unique_ptr<UIButton> UIButton::create(engine::core::Context& context,
                                           glm::vec2 size,
                                           std::function<void()> click_callback,
                                           std::function<void()> hover_enter_callback,
-                                          std::function<void()> hover_leave_callback) {
+                                          std::function<void()> hover_leave_callback,
+                                          const UIPresetManager* preset_manager) {
     auto button = std::unique_ptr<UIButton>(new UIButton(context,
                                                          position,
                                                          size,
                                                          std::move(click_callback),
                                                          std::move(hover_enter_callback),
-                                                         std::move(hover_leave_callback)));
+                                                         std::move(hover_leave_callback),
+                                                         preset_manager));
     if (!button->initFromPreset(preset_id)) {
         return nullptr;
     }
@@ -183,7 +185,8 @@ std::unique_ptr<UIButton> UIButton::create(engine::core::Context& context,
                                           glm::vec2 size,
                                           std::function<void()> click_callback,
                                           std::function<void()> hover_enter_callback,
-                                          std::function<void()> hover_leave_callback) {
+                                          std::function<void()> hover_leave_callback,
+                                          const UIPresetManager* preset_manager) {
     if (preset_key.empty()) {
         spdlog::error("创建 UIButton 失败：preset_key 不能为空。");
         return nullptr;
@@ -196,7 +199,8 @@ std::unique_ptr<UIButton> UIButton::create(engine::core::Context& context,
                   size,
                   std::move(click_callback),
                   std::move(hover_enter_callback),
-                  std::move(hover_leave_callback));
+                  std::move(hover_leave_callback),
+                  preset_manager);
 }
 
 UIButton::UIButton(engine::core::Context& context,
@@ -204,20 +208,27 @@ UIButton::UIButton(engine::core::Context& context,
                    glm::vec2 size,
                    std::function<void()> click_callback,
                    std::function<void()> hover_enter_callback,
-                   std::function<void()> hover_leave_callback)
+                   std::function<void()> hover_leave_callback,
+                   const UIPresetManager* preset_manager)
     : UIInteractive(context, position, size),
       click_callback_(std::move(click_callback)),
       hover_enter_callback_(std::move(hover_enter_callback)),
-      hover_leave_callback_(std::move(hover_leave_callback)) {
+      hover_leave_callback_(std::move(hover_leave_callback)),
+      preset_manager_(preset_manager) {
     bindCallbacksToBehaviors();
 }
 
 const UIButtonSkin* UIButton::getPreset() const {
-    return context_.getUIPresetManager().getButtonPreset(preset_id_);
+    return preset_manager_ ? preset_manager_->getButtonPreset(preset_id_) : nullptr;
 }
 
 bool UIButton::initFromPreset(entt::id_type preset_id) {
     preset_id_ = preset_id;
+
+    if (!preset_manager_) {
+        spdlog::error("创建 UIButton 失败：未提供 UIPresetManager (preset id={})。", preset_id_);
+        return false;
+    }
 
     const auto* preset = getPreset();
     if (!preset) {

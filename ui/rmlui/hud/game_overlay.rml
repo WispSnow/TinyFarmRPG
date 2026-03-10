@@ -1,0 +1,11 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="game_overlay.rcss"/>
+</head>
+<body>
+    <button id="game-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+</body>
+</rml>
