@@ -25,6 +25,7 @@
 | Phase 7: 物品栏（InventoryUI） | `[x]` | [`phase-07.md`](./phase-07.md) |
 | Phase 8: 补齐残留迁移 | `[x]` | [`phase-08.md`](./phase-08.md) |
 | Phase 9: 清理旧 UI 框架 | `[x]` | [`phase-09.md`](./phase-09.md) |
+| Phase 10: RmlUi 采样策略切换 | `[ ]` | [`phase-10.md`](./phase-10.md) |
 
 
 - 2026-03-06: Phase 3 已完成 TitleScene / PauseMenuScene / RestDialogScene / SaveSlotSelectScene 的 RmlUi 迁移。
@@ -37,13 +38,14 @@
 - 2026-03-10: 原 Phase 8 拆分为两阶段：Phase 8 先补齐 `GameScene` / `UIPresetManager` / 共享类型等残留迁移，Phase 9 再做最终删除与工具链清扫。
 - 2026-03-10: Phase 8 已完成 `GameScene` 运行时残留迁移；`Context` / 启动链 / 测试 fixture 已摆脱 `UIPresetManager`，运行时场景不再依赖旧 `UIManager`。
 - 2026-03-10: Phase 9 已完成旧 `engine::ui` 框架、`UIPass`、`drawUI*` / `drawUIText` API、`ui_tester`、旧 preset 资产与对应测试清理；渲染管线收敛为 `OverlayVfx -> RmlUi -> ImGui`。
+- 2026-03-10: Phase 10 已规划 RmlUi `nearest` / `linear` 采样切换；范围限定为图片与字体 atlas，滤镜与离屏效果保持 linear。
 
 ## 全局约束
 
 - 采用最优方案，不考虑向后兼容。
 - `ImGui` 调试面板不迁移，保持现状。
 - 旧 UI 框架最终在 Phase 9 完整移除。
-- Phase 执行顺序默认为 `0 -> 9`，不要跨过前置阶段直接删除旧系统。
+- Phase 执行顺序默认为 `0 -> 10`，不要跨过前置阶段直接删除旧系统。
 
 ## 架构共识（跨 Phase）
 
