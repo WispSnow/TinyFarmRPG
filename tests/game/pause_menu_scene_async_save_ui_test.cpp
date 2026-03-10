@@ -41,18 +41,29 @@ TEST(PauseMenuSceneAsyncSaveUiTest, UsesAsyncSaveAndEventDrivenCompletionHandlin
 }
 
 TEST(PauseMenuSceneAsyncSaveUiTest, DisablesBackToTitleWhileSaving) {
-    const std::filesystem::path source_path =
+    const std::filesystem::path scene_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/pause_menu.rml").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
 
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
+    const std::string scene_source = readTextFile(scene_source_path);
+    const std::string rml_source = readTextFile(rml_path);
+    ASSERT_FALSE(scene_source.empty());
+    ASSERT_FALSE(rml_source.empty());
 
-    EXPECT_NE(source.find("back_to_title_button_->setEnabled(!saving);"), std::string::npos)
-        << "PauseMenuScene should disable Back to Title button while async save is running.";
-    EXPECT_NE(source.find("if (save_service_ && save_service_->isSaving())"), std::string::npos)
+    EXPECT_NE(scene_source.find("updateBoundBool(can_back_title_, !saving)"), std::string::npos)
+        << "PauseMenuScene should publish Back to Title enable state through the RmlUi data model.";
+    EXPECT_NE(scene_source.find("data_bridge_.markDirty(\"can_back_title\")"), std::string::npos)
+        << "PauseMenuScene should mark can_back_title dirty after save state changes.";
+    EXPECT_NE(rml_source.find("data-command=\"back_to_title\""), std::string::npos)
+        << "Pause menu RML should expose a Back to Title action button.";
+    EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_back_title\""), std::string::npos)
+        << "Pause menu Title button should bind disabled attr to can_back_title.";
+    EXPECT_NE(scene_source.find("if (save_service_ && save_service_->isSaving())"), std::string::npos)
         << "BackToTitle click handler should defensively reject scene replacement during save.";
-    EXPECT_NE(source.find("setMessage(\"Save in progress\", true);"), std::string::npos)
+    EXPECT_NE(scene_source.find("setMessage(\"Save in progress\", true);"), std::string::npos)
         << "PauseMenuScene should give user feedback when save is still running.";
 }
 

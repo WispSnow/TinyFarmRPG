@@ -7,6 +7,13 @@
 
 namespace engine::core {
 
+namespace {
+
+constexpr engine::ui::rmlui::RmlUiTextureFilterMode kDefaultRmlUiTextureFilterMode =
+    engine::ui::rmlui::RmlUiTextureFilterMode::Nearest;
+
+} // namespace
+
 std::unique_ptr<Config> Config::create(std::string_view filepath) {
     std::unique_ptr<Config> config(new Config(filepath));
     if (!config) {
@@ -151,6 +158,14 @@ void Config::fromJson(const nlohmann::json& j) {
         const auto& graphics_config = *it;
         assignBool(graphics_config, "vsync", vsync_enabled_);
         assignBool(graphics_config, "debug_ui", debug_ui_enabled_);
+        if (const auto it_filter = graphics_config.find("rmlui_texture_filter");
+            it_filter != graphics_config.end() && it_filter->is_string()) {
+            const std::string filter_value = it_filter->get<std::string>();
+            if (!engine::ui::rmlui::parseRmlUiTextureFilterMode(filter_value, rmlui_texture_filter_mode_)) {
+                spdlog::warn("未知的 RmlUi 纹理采样模式 '{}'，回退为 nearest。", filter_value);
+                rmlui_texture_filter_mode_ = kDefaultRmlUiTextureFilterMode;
+            }
+        }
     }
 
     if (const auto it = j.find("performance"); it != j.end() && it->is_object()) {
@@ -187,7 +202,8 @@ nlohmann::ordered_json Config::toJson() const {
         }},
         {"graphics", {
             {"vsync", vsync_enabled_},
-            {"debug_ui", debug_ui_enabled_}
+            {"debug_ui", debug_ui_enabled_},
+            {"rmlui_texture_filter", engine::ui::rmlui::rmlUiTextureFilterModeToString(rmlui_texture_filter_mode_)}
         }},
         {"performance", {
             {"target_fps", target_fps_},

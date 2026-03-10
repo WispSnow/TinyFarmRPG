@@ -237,150 +237,6 @@ void Renderer::drawRect(const glm::vec2& position,
     }
 }
 
-void Renderer::drawUIImage(const Image& image,
-                           const glm::vec2& position,
-                           const glm::vec2& size,
-                           const engine::utils::ColorOptions* color_options,
-                           const engine::utils::TransformOptions* transform_options) {
-    const auto& source_rect = image.getSourceRect();
-    if (source_rect.size.x <= 0.0f || source_rect.size.y <= 0.0f) {
-        spdlog::warn("Renderer::drawUIImage: 源矩形无效，跳过绘制。");
-        return;
-    }
-
-    if (const auto* nine_slice = image.ensureNineSlice()) {
-        drawUINineSliceInternal(image, *nine_slice, position, size, color_options, transform_options);
-        return;
-    }
-
-    auto texture_handle = resource_manager_->getTexture(image.getTextureId());
-    if (!texture_handle) {
-        spdlog::error("无法为 ID {} 获取纹理。", image.getTextureId());
-        return;
-    }
-
-    glm::vec4 dest_rect = {
-        position.x,
-        position.y,
-        size.x,
-        size.y,
-    };
-
-    glm::vec4 src_rect_uv = getSrcRectUV(*texture_handle, source_rect);
-
-    engine::utils::TransformOptions resolved_transform = transform_options
-        ? *transform_options
-        : gl_renderer_->getUIDefaultTransformOptions();
-    resolved_transform.flip_horizontal = image.isFlipped() ^ resolved_transform.flip_horizontal;
-
-    gl_renderer_->drawUITexture(texture_handle->texture,
-                                dest_rect,
-                                src_rect_uv,
-                                color_options,
-                                &resolved_transform);
-}
-
-void Renderer::drawUINineSliceInternal(const Image& image,
-                                       const NineSlice& nine_slice,
-                                       const glm::vec2& position,
-                                       const glm::vec2& size,
-                                       const engine::utils::ColorOptions* color_options,
-                                       const engine::utils::TransformOptions* transform_options) {
-    if (!nine_slice.isValid()) {
-        spdlog::warn("Renderer::drawUINineSlice: NineSlice 无效，跳过绘制。");
-        return;
-    }
-
-    glm::vec2 final_size = size;
-    const glm::vec2 min_size = nine_slice.getMinimumSize();
-    final_size.x = std::max(final_size.x, min_size.x);
-    final_size.y = std::max(final_size.y, min_size.y);
-
-    if (final_size.x <= 0.0f || final_size.y <= 0.0f) {
-        spdlog::warn("Renderer::drawUINineSlice: 目标尺寸无效 ({}, {})。", final_size.x, final_size.y);
-        return;
-    }
-
-    auto texture_handle = resource_manager_->getTexture(image.getTextureId());
-    if (!texture_handle) {
-        spdlog::error("Renderer::drawUINineSlice: 无法加载纹理 (id: {}, path: {}).",
-                      image.getTextureId(), image.getTexturePath());
-        return;
-    }
-
-    const auto& margins = nine_slice.getMargins();
-    const float left = margins.left;
-    const float right = margins.right;
-    const float top = margins.top;
-    const float bottom = margins.bottom;
-
-    const float center_width = std::max(0.0f, final_size.x - left - right);
-    const float center_height = std::max(0.0f, final_size.y - top - bottom);
-
-    const glm::vec2 top_left_pos = position;
-
-    const glm::vec2 positions[3] = {
-        top_left_pos,
-        top_left_pos + glm::vec2{left, 0.0f},
-        top_left_pos + glm::vec2{left + center_width, 0.0f}
-    };
-
-    const glm::vec2 vertical_positions[3] = {
-        top_left_pos,
-        top_left_pos + glm::vec2{0.0f, top},
-        top_left_pos + glm::vec2{0.0f, top + center_height}
-    };
-
-    engine::utils::TransformOptions resolved_transform = transform_options
-        ? *transform_options
-        : gl_renderer_->getUIDefaultTransformOptions();
-
-    resolved_transform.flip_horizontal = false;
-
-    for (int row = 0; row < 3; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            const float width = (col == 1) ? center_width : (col == 0 ? left : right);
-            const float height = (row == 1) ? center_height : (row == 0 ? top : bottom);
-            if (width <= 0.0f || height <= 0.0f) {
-                continue;
-            }
-
-            glm::vec2 dest_pos = {
-                positions[col].x,
-                vertical_positions[row].y
-            };
-
-            glm::vec2 dest_size{width, height};
-
-            glm::vec4 dest_rect = {
-                dest_pos.x,
-                dest_pos.y,
-                dest_size.x,
-                dest_size.y
-            };
-
-            auto section = static_cast<NineSliceSection>(row * 3 + col);
-            const auto src_rect = nine_slice.getSliceRect(section);
-            glm::vec4 uv_rect = getSrcRectUV(*texture_handle, src_rect);
-
-            gl_renderer_->drawUITexture(texture_handle->texture,
-                                        dest_rect,
-                                        uv_rect,
-                                        color_options,
-                                        &resolved_transform);
-        }
-    }
-}
-
-void Renderer::drawUIFilledRect(const engine::utils::Rect& rect,
-                                const engine::utils::ColorOptions* color_options,
-                                const engine::utils::TransformOptions* transform_options) {
-    const glm::vec4 rect_vec{rect.pos.x, rect.pos.y, rect.size.x, rect.size.y};
-    gl_renderer_->drawUIRect(rect_vec,
-                             color_options,
-                             transform_options);
-}
-
 void Renderer::setClearColorFloat(const engine::utils::FColor& color)
 {
     gl_renderer_->setClearColor({color.r, color.g, color.b, color.a});
@@ -484,28 +340,12 @@ void Renderer::setDefaultWorldTransformOptions(const engine::utils::TransformOpt
     gl_renderer_->setSceneDefaultTransformOptions(options);
 }
 
-void Renderer::setDefaultUIColorOptions(const engine::utils::ColorOptions& options) {
-    gl_renderer_->setUIDefaultColorOptions(options);
-}
-
-void Renderer::setDefaultUITransformOptions(const engine::utils::TransformOptions& options) {
-    gl_renderer_->setUIDefaultTransformOptions(options);
-}
-
 engine::utils::ColorOptions Renderer::getDefaultWorldColorOptions() const {
     return gl_renderer_->getSceneDefaultColorOptions();
 }
 
 engine::utils::TransformOptions Renderer::getDefaultWorldTransformOptions() const {
     return gl_renderer_->getSceneDefaultTransformOptions();
-}
-
-engine::utils::ColorOptions Renderer::getDefaultUIColorOptions() const {
-    return gl_renderer_->getUIDefaultColorOptions();
-}
-
-engine::utils::TransformOptions Renderer::getDefaultUITransformOptions() const {
-    return gl_renderer_->getUIDefaultTransformOptions();
 }
 
 bool Renderer::shouldCullRect(const engine::utils::Rect& rect) const {

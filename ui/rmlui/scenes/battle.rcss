@@ -1,0 +1,120 @@
+body, div, h1, h2, h3, h4, p, hr, button, img, span {
+    display: block;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+}
+
+#battle-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #00000099;
+    pointer-events: auto;
+}
+
+#battle-panel {
+    position: absolute;
+    left: 40dp;
+    top: 20dp;
+    width: 560dp;
+    height: 320dp;
+    background-color: #000000c7;
+    pointer-events: auto;
+}
+
+#battle-content {
+    position: absolute;
+    left: 20dp;
+    top: 20dp;
+    width: 520dp;
+    height: 280dp;
+}
+
+#battle-title,
+#battle-turn,
+#battle-units,
+#battle-result {
+    position: absolute;
+    left: 0;
+    width: 520dp;
+    line-height: 16dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#battle-title {
+    top: 0;
+    height: 16dp;
+    text-align: center;
+}
+
+#battle-turn {
+    top: 42dp;
+}
+
+#battle-units {
+    top: 78dp;
+    height: 32dp;
+    white-space: normal;
+    word-break: break-word;
+    overflow: hidden;
+}
+
+#battle-result {
+    top: 118dp;
+    height: 48dp;
+    white-space: normal;
+    word-break: break-word;
+    overflow: hidden;
+}
+
+#battle-actions {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 520dp;
+    height: 280dp;
+}
+
+.battle-action-button {
+    position: absolute;
+    width: 160dp;
+    height: 36dp;
+    line-height: 36dp;
+}
+
+#battle-action-attack {
+    left: 0;
+    top: 180dp;
+}
+
+#battle-action-skill {
+    left: 172dp;
+    top: 180dp;
+}
+
+#battle-action-item {
+    left: 344dp;
+    top: 180dp;
+}
+
+#battle-action-guard {
+    left: 0;
+    top: 224dp;
+}
+
+#battle-action-escape {
+    left: 172dp;
+    top: 224dp;
+}
+
+#battle-action-end-turn {
+    left: 344dp;
+    top: 224dp;
+}

@@ -13,7 +13,7 @@
 namespace engine::render::opengl {
 namespace {
 
-TEST(RmlUiPipelineStageTest, PresentRendersRmlUiBetweenUiPassAndImGui) {
+TEST(RmlUiPipelineStageTest, PresentRendersRmlUiBetweenOverlayVfxAndImGui) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -24,19 +24,19 @@ TEST(RmlUiPipelineStageTest, PresentRendersRmlUiBetweenUiPassAndImGui) {
     const std::string present_block = test_source_utils::extractFunctionBlock(content, "void GLRenderer::present()");
     ASSERT_FALSE(present_block.empty());
 
-    const std::size_t pos_ui_pass = present_block.find("ui_pass_->flush(viewport)");
+    const std::size_t pos_overlay_vfx = present_block.find("vfx_pass_->flush(overlay_vfx_context)");
     const std::size_t pos_rml_update = present_block.find("rmlui_layer_->update();");
     const std::size_t pos_rml_render = present_block.find("rmlui_layer_->render();");
     const std::size_t pos_srgb_restore = present_block.find("glEnable(GL_FRAMEBUFFER_SRGB);");
     const std::size_t pos_imgui = present_block.find("imgui_layer_->endFrame();");
 
-    ASSERT_NE(pos_ui_pass, std::string::npos);
+    ASSERT_NE(pos_overlay_vfx, std::string::npos);
     ASSERT_NE(pos_rml_update, std::string::npos);
     ASSERT_NE(pos_rml_render, std::string::npos);
     ASSERT_NE(pos_srgb_restore, std::string::npos);
     ASSERT_NE(pos_imgui, std::string::npos);
 
-    EXPECT_LT(pos_ui_pass, pos_rml_update);
+    EXPECT_LT(pos_overlay_vfx, pos_rml_update);
     EXPECT_LT(pos_rml_update, pos_rml_render);
     EXPECT_LT(pos_rml_render, pos_srgb_restore);
     EXPECT_LT(pos_srgb_restore, pos_imgui);

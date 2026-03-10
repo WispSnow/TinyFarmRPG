@@ -14,7 +14,6 @@
 #include "engine/render/opengl/scene_pass.h"
 #include "engine/render/opengl/world_vfx_pass.h"
 #include "engine/render/opengl/vfx_pass.h"
-#include "engine/render/opengl/ui_pass.h"
 #include "engine/vfx/vfx_backend.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -86,7 +85,7 @@ bool GLRenderer::init(SDL_Window* window,
     }
     shader_library_ = std::make_unique<ShaderLibrary>();
 
-    // 初始化各个通道：场景、光照、自发光、泛光、合成、UI
+    // 初始化各个通道：场景、光照、自发光、泛光、世界/叠加特效、合成
     if (!initScenePass()) {
         spdlog::error("创建 ScenePass 失败。");
         return false;
@@ -112,10 +111,6 @@ bool GLRenderer::init(SDL_Window* window,
         return false;
     }
     vfx_pass_ = std::make_unique<VfxPass>();
-    if (!initUIPass()) {
-        spdlog::error("创建 UIPass 失败。");
-        return false;
-    }
 
     // 启用 sRGB 默认帧缓冲输出
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -299,58 +294,6 @@ void GLRenderer::addEmissiveTexture(GLuint texture, const glm::vec4& dst_rect, c
                                &transform);
 }
 
-void GLRenderer::drawUIRect(const glm::vec4& rect,
-                            const ColorOptions* color,
-                            const engine::utils::TransformOptions* transform) {
-    if (ui_pass_) {
-        ui_pass_->queueSprite(0, false, rect, {0,0,1,1}, color, transform);
-    }
-}
-
-void GLRenderer::drawUIRectGradient(const glm::vec4& rect,
-                                    const glm::vec4& start_color,
-                                    const glm::vec4& end_color,
-                                    float gradient_angle_radians,
-                                    const engine::utils::TransformOptions* transform) {
-    ColorOptions color{};
-    color.use_gradient = true;
-    color.start_color = toFColor(start_color);
-    color.end_color = toFColor(end_color);
-    color.angle_radians = gradient_angle_radians;
-    drawUIRect(rect, &color, transform);
-}
-
-void GLRenderer::drawUITexture(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
-                               const ColorOptions* color,
-                               const engine::utils::TransformOptions* transform) {
-    if (ui_pass_) {
-        ui_pass_->queueSprite(texture, true, dst_rect, uv_rect,
-                              color, transform);
-    }
-}
-
-void GLRenderer::drawUITexture(GLuint texture, const glm::vec4& dst_rect,
-                               const glm::vec2& texture_size_pixels,
-                               const engine::utils::Rect& src_rect_pixels,
-                               const ColorOptions* color,
-                               const engine::utils::TransformOptions* transform) {
-    const glm::vec4 uv_rect = computeUVFromPixels(texture_size_pixels, src_rect_pixels);
-    drawUITexture(texture, dst_rect, uv_rect, color, transform);
-}
-
-void GLRenderer::drawUITextureGradient(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
-                                       const glm::vec4& start_color,
-                                       const glm::vec4& end_color,
-                                       float gradient_angle_radians,
-                                       const engine::utils::TransformOptions* transform) {
-    ColorOptions color{};
-    color.use_gradient = true;
-    color.start_color = toFColor(start_color);
-    color.end_color = toFColor(end_color);
-    color.angle_radians = gradient_angle_radians;
-    drawUITexture(texture, dst_rect, uv_rect, &color, transform);
-}
-
 void GLRenderer::beginFrame(const Camera& camera) {
     current_view_proj_ = computeViewProjection(camera);
     if (viewport_clipping_enabled_) {
@@ -403,6 +346,13 @@ bool GLRenderer::reloadRmlUiDocument() {
 
 engine::ui::rmlui::RmlUILayer* GLRenderer::getRmlUILayer() const {
     return rmlui_layer_.get();
+}
+
+void GLRenderer::setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode) {
+    rmlui_texture_filter_mode_ = mode;
+    if (rmlui_layer_) {
+        rmlui_layer_->setTextureFilterMode(mode);
+    }
 }
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
@@ -490,7 +440,7 @@ void GLRenderer::clear() {
 
 void GLRenderer::present() {
     if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !bloom_pass_ || !composite_pass_ ||
-        !world_vfx_pass_ || !vfx_pass_ || !ui_pass_ || !render_context_) {
+        !world_vfx_pass_ || !vfx_pass_ || !render_context_) {
         return;
     }
     if (viewport_manager_->dirty()) [[unlikely]] {
@@ -507,13 +457,13 @@ void GLRenderer::present() {
 
     // 渲染管线（坐标空间与帧缓冲）：
     // - Window Pixels：实际 drawable 像素尺寸（glViewport 单位），letterbox viewport 定义在此空间。
-    // - Logical：固定逻辑分辨率（离屏渲染目标尺寸，也是 UI 的设计坐标空间）。
+    // - Logical：固定逻辑分辨率（离屏渲染目标尺寸，也是 RmlUi 的设计坐标空间）。
     //
     // - Scene/Lighting/Emissive：渲染到各自离屏 FBO（@Logical）
     // - WorldVfx：渲染到 world-vfx FBO（@Logical）
     // - Composite：把离屏结果合成到默认帧缓冲的 letterbox viewport（@Window Pixels）
     // - OverlayVfx：在默认帧缓冲的 viewport 上绘制（@Window Pixels）
-    // - UI：绘制到默认帧缓冲的 letterbox viewport（@Window Pixels；UI 坐标按 logical 设计映射到 viewport）
+    // - RmlUi：绘制到默认帧缓冲的 letterbox viewport（@Window Pixels；文档坐标按 logical 设计映射到 viewport）
     // - ImGui：最后覆盖绘制到默认帧缓冲的整窗区域（@Window Pixels）
 
     // 1) 刷新场景/光照/发光到各自的离屏 FBO（@Logical）
@@ -614,15 +564,6 @@ void GLRenderer::present() {
         0u
     };
 
-    // 8) OverlayVfx 之后，绘制 UI（@Window Pixels / viewport）
-    ui_pass_->flush(viewport);
-    pass_stats_[static_cast<size_t>(PassType::UI)] = {
-        ui_pass_->getLastDrawCallCount(),
-        ui_pass_->getLastSpriteCount(),
-        ui_pass_->getLastVertexCount(),
-        ui_pass_->getLastIndexCount()
-    };
-
     if (rmlui_layer_) {
         const int viewport_x = static_cast<int>(std::round(viewport.pos.x));
         const int viewport_y = static_cast<int>(std::round(viewport.pos.y));
@@ -699,10 +640,6 @@ void GLRenderer::clean() {
     if (vfx_pass_) {
         vfx_pass_->clean();
         vfx_pass_.reset();
-    }
-    if (ui_pass_) {
-        ui_pass_->clean();
-        ui_pass_.reset();
     }
     if (rmlui_layer_) {
         rmlui_layer_->clean();
@@ -871,26 +808,6 @@ engine::utils::TransformOptions GLRenderer::getSceneDefaultTransformOptions() co
     return scene_pass_ ? scene_pass_->getDefaultTransformOptions() : engine::utils::TransformOptions{};
 }
 
-void GLRenderer::setUIDefaultColorOptions(const engine::utils::ColorOptions& options) {
-    if (ui_pass_) {
-        ui_pass_->setDefaultColorOptions(options);
-    }
-}
-
-void GLRenderer::setUIDefaultTransformOptions(const engine::utils::TransformOptions& options) {
-    if (ui_pass_) {
-        ui_pass_->setDefaultTransformOptions(options);
-    }
-}
-
-engine::utils::ColorOptions GLRenderer::getUIDefaultColorOptions() const {
-    return ui_pass_ ? ui_pass_->getDefaultColorOptions() : engine::utils::ColorOptions{};
-}
-
-engine::utils::TransformOptions GLRenderer::getUIDefaultTransformOptions() const {
-    return ui_pass_ ? ui_pass_->getDefaultTransformOptions() : engine::utils::TransformOptions{};
-}
-
 // private methods
 bool GLRenderer::initViewportManager() {
     
@@ -939,6 +856,7 @@ bool GLRenderer::initRmlUiLayer() {
     rmlui_layer_->setLogicalSize(
         static_cast<int>(std::round(logical_size_.x)),
         static_cast<int>(std::round(logical_size_.y)));
+    rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);
 
     return true;
 }
@@ -997,15 +915,6 @@ bool GLRenderer::initScenePass() {
         return false;
     }
     scene_pass_->setApplyViewProjection([this](GLint location) { applyViewProjection(location); });
-    return true;
-}
-
-bool GLRenderer::initUIPass() {
-    ui_pass_ = UIPass::create(*shader_library_, logical_size_);
-    if (!ui_pass_) {
-        spdlog::error("创建 UIPass 失败。");
-        return false;
-    }
     return true;
 }
 

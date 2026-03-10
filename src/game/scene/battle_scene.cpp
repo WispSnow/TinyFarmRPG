@@ -3,15 +3,16 @@
 #include "game/defs/events.h"
 
 #include "engine/core/context.h"
-#include "engine/core/game_state.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_input_blocker.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_panel.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <entt/entity/entity.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <spdlog/spdlog.h>
 
 #include <sstream>
 #include <string>
@@ -21,9 +22,8 @@
 namespace {
 
 constexpr float RESULT_HOLD_SECONDS = 0.20f;
-constexpr engine::ui::Thickness PANEL_PADDING{20.0f, 20.0f, 20.0f, 20.0f};
-constexpr glm::vec2 PANEL_SIZE{560.0f, 320.0f};
-constexpr glm::vec2 ACTION_BUTTON_SIZE{160.0f, 36.0f};
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
+constexpr std::string_view MODEL_NAME = "battle_scene";
 // TODO(FND-010): replace hardcoded action IDs with player-selectable skill/item UI.
 constexpr std::string_view kDefaultSkillId = "skill.attack";
 constexpr std::string_view kDefaultItemId = "strawberry_item";
@@ -47,6 +47,9 @@ constexpr std::string_view kDefaultItemId = "strawberry_item";
     return stream.str();
 }
 
+using engine::ui::rmlui::updateBoundBool;
+using engine::ui::rmlui::updateBoundString;
+
 } // namespace
 
 namespace game::scene {
@@ -57,6 +60,15 @@ BattleScene::BattleScene(std::string_view name,
                          game::battle::BattleSessionOptions session_options)
     : engine::scene::Scene(name, context),
       session_(std::move(units), std::move(session_options)) {
+}
+
+BattleScene::~BattleScene() {
+    removeEventListeners();
+    if (document_) {
+        unloadAllRmlDocuments();
+        document_ = nullptr;
+    }
+    data_bridge_.destroy();
 }
 
 bool BattleScene::init() {
@@ -81,156 +93,66 @@ void BattleScene::update(float delta_time) {
     refreshView();
 }
 
-bool BattleScene::initUI() {
-    const auto logical_size = context_.getGameState().getLogicalSize();
-    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
+void BattleScene::clean() {
+    removeEventListeners();
+    Scene::clean();
+    document_ = nullptr;
+    data_bridge_.destroy();
+}
 
-    buildLayout();
+bool BattleScene::initUI() {
+    auto* layer = context_.getGLRenderer().getRmlUILayer();
+    if (!layer) {
+        spdlog::error("BattleScene: RmlUILayer 不可用。");
+        return false;
+    }
+
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        spdlog::error("BattleScene: RmlUi context 不可用。");
+        return false;
+    }
+
+    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    if (!constructor) {
+        spdlog::error("BattleScene: 创建 data model 失败。");
+        return false;
+    }
+
+    if (!constructor.Bind("turn_text", &turn_text_) ||
+        !constructor.Bind("units_text", &units_text_) ||
+        !constructor.Bind("result_text", &result_text_) ||
+        !constructor.Bind("actions_enabled", &actions_enabled_)) {
+        spdlog::error("BattleScene: 绑定 data model 变量失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    document_ = loadRmlDocument(DOCUMENT_PATH);
+    if (!document_) {
+        spdlog::error("BattleScene: 加载 RML 文档失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    event_bridge_.on("attack", [this](Rml::Event&) { queueAttackAction(); });
+    event_bridge_.on("skill", [this](Rml::Event&) { queueSkillAction(); });
+    event_bridge_.on("item", [this](Rml::Event&) { queueItemAction(); });
+    event_bridge_.on("guard", [this](Rml::Event&) { queueGuardAction(); });
+    event_bridge_.on("escape", [this](Rml::Event&) { queueEscapeAction(); });
+    event_bridge_.on("end_turn", [this](Rml::Event&) { queueEndTurnAction(); });
+    event_bridge_.registerTo(document_, "click");
+    click_listener_registered_ = true;
+
+    data_bridge_.markAllDirty();
     return true;
 }
 
-void BattleScene::buildLayout() {
-    auto dim = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f},
-        glm::vec2{0.0f, 0.0f},
-        engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.60f});
-    dim->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    dim->setPivot({0.0f, 0.0f});
-    dim->setOrderIndex(0);
-    dim_ = dim.get();
-    ui_manager_->addElement(std::move(dim));
-
-    auto blocker = std::make_unique<engine::ui::UIInputBlocker>(
-        context_, glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f});
-    blocker->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    blocker->setPivot({0.0f, 0.0f});
-    blocker->setOrderIndex(1);
-    input_blocker_ = blocker.get();
-    ui_manager_->addElement(std::move(blocker));
-
-    auto panel = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f},
-        PANEL_SIZE,
-        engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.78f});
-    panel->setAnchor({0.5f, 0.5f}, {0.5f, 0.5f});
-    panel->setPivot({0.5f, 0.5f});
-    panel->setPadding(PANEL_PADDING);
-    panel->setOrderIndex(2);
-    panel_ = panel.get();
-
-    auto& text_renderer = context_.getTextRenderer();
-
-    auto title_label = std::make_unique<engine::ui::UILabel>(text_renderer, "Battle Prototype");
-    title_label->setAnchor({0.5f, 0.0f}, {0.5f, 0.0f});
-    title_label->setPivot({0.5f, 0.0f});
-    panel_->addChild(std::move(title_label));
-
-    auto turn_label = std::make_unique<engine::ui::UILabel>(
-        text_renderer,
-        "Turn: -",
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        glm::vec2{0.0f, 42.0f});
-    turn_label->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    turn_label->setPivot({0.0f, 0.0f});
-    turn_label_ = turn_label.get();
-    panel_->addChild(std::move(turn_label));
-
-    auto units_label = std::make_unique<engine::ui::UILabel>(
-        text_renderer,
-        "Units: -",
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        glm::vec2{0.0f, 78.0f});
-    units_label->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    units_label->setPivot({0.0f, 0.0f});
-    units_label_ = units_label.get();
-    panel_->addChild(std::move(units_label));
-
-    auto result_label = std::make_unique<engine::ui::UILabel>(
-        text_renderer,
-        "Result: -",
-        entt::null,
-        engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-        glm::vec2{0.0f, 118.0f});
-    result_label->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    result_label->setPivot({0.0f, 0.0f});
-    result_label_ = result_label.get();
-    panel_->addChild(std::move(result_label));
-
-    auto attack_button = engine::ui::UIButton::create(
-        context_,
-        "primary",
-        glm::vec2{0.0f, 180.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueAttackAction(); });
-    if (attack_button) {
-        attack_button->setLabelText("Attack");
-        attack_button_ = attack_button.get();
-        panel_->addChild(std::move(attack_button));
+void BattleScene::removeEventListeners() {
+    if (document_ && click_listener_registered_) {
+        document_->RemoveEventListener("click", &event_bridge_);
+        click_listener_registered_ = false;
     }
-
-    auto skill_button = engine::ui::UIButton::create(
-        context_,
-        "secondary",
-        glm::vec2{ACTION_BUTTON_SIZE.x + 12.0f, 180.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueSkillAction(); });
-    if (skill_button) {
-        skill_button->setLabelText("Skill");
-        skill_button_ = skill_button.get();
-        panel_->addChild(std::move(skill_button));
-    }
-
-    auto item_button = engine::ui::UIButton::create(
-        context_,
-        "secondary",
-        glm::vec2{(ACTION_BUTTON_SIZE.x + 12.0f) * 2.0f, 180.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueItemAction(); });
-    if (item_button) {
-        item_button->setLabelText("Item");
-        item_button_ = item_button.get();
-        panel_->addChild(std::move(item_button));
-    }
-
-    auto guard_button = engine::ui::UIButton::create(
-        context_,
-        "secondary",
-        glm::vec2{0.0f, 224.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueGuardAction(); });
-    if (guard_button) {
-        guard_button->setLabelText("Guard");
-        guard_button_ = guard_button.get();
-        panel_->addChild(std::move(guard_button));
-    }
-
-    auto escape_button = engine::ui::UIButton::create(
-        context_,
-        "secondary",
-        glm::vec2{ACTION_BUTTON_SIZE.x + 12.0f, 224.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueEscapeAction(); });
-    if (escape_button) {
-        escape_button->setLabelText("Escape");
-        escape_button_ = escape_button.get();
-        panel_->addChild(std::move(escape_button));
-    }
-
-    auto end_turn_button = engine::ui::UIButton::create(
-        context_,
-        "secondary",
-        glm::vec2{(ACTION_BUTTON_SIZE.x + 12.0f) * 2.0f, 224.0f},
-        ACTION_BUTTON_SIZE,
-        [this]() { queueEndTurnAction(); });
-    if (end_turn_button) {
-        end_turn_button->setLabelText("End Turn");
-        end_turn_button_ = end_turn_button.get();
-        panel_->addChild(std::move(end_turn_button));
-    }
-
-    ui_manager_->addElement(std::move(panel));
 }
 
 void BattleScene::runStateMachine(float delta_time) {
@@ -282,72 +204,70 @@ void BattleScene::refreshView() {
     const auto current_actor_id = session_.currentActorId();
     const auto& units = session_.units();
 
-    if (turn_label_) {
-        if (current_actor_id) {
-            const auto* actor = session_.findUnit(*current_actor_id);
-            if (actor) {
-                turn_label_->setText("Turn: " + actor->name + " (" + std::string(game::battle::toString(actor->side)) + ")");
-            }
-        } else {
-            turn_label_->setText("Turn: -");
+    std::string turn_text = "Turn: -";
+    if (current_actor_id) {
+        if (const auto* actor = session_.findUnit(*current_actor_id)) {
+            turn_text = "Turn: " + actor->name + " (" + std::string(game::battle::toString(actor->side)) + ")";
         }
     }
-
-    if (units_label_) {
-        units_label_->setText(formatUnitsLine(units));
+    if (updateBoundString(turn_text_, turn_text)) {
+        data_bridge_.markDirty("turn_text");
     }
 
-    if (result_label_) {
-        if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-            result_label_->setText("Result: " + std::string(game::battle::toString(session_.outcome())));
-        } else if (last_action_result_) {
-            const auto& result = *last_action_result_;
-            if (result.status == game::battle::BattleActionStatus::Rejected) {
-                if (!result.failure_reason.empty()) {
-                    result_label_->setText("Result: " + result.failure_reason);
-                } else {
-                    result_label_->setText("Result: Action rejected");
-                }
+    const std::string units_text = formatUnitsLine(units);
+    if (updateBoundString(units_text_, units_text)) {
+        data_bridge_.markDirty("units_text");
+    }
+
+    std::string result_text = "Result: Choose action";
+    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
+    } else if (last_action_result_) {
+        const auto& result = *last_action_result_;
+        if (result.status == game::battle::BattleActionStatus::Rejected) {
+            if (!result.failure_reason.empty()) {
+                result_text = "Result: " + result.failure_reason;
             } else {
-                switch (result.action_type) {
-                    case game::battle::BattleActionType::Attack: {
-                        std::string text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
-                        if (result.target_defeated) {
-                            text += " (KO)";
-                        }
-                        result_label_->setText(std::move(text));
-                        break;
-                    }
-                    case game::battle::BattleActionType::Skill: {
-                        std::string text = "Result: Skill";
-                        if (result.missed) {
-                            text += " missed";
-                        } else {
-                            text += " dealt " + std::to_string(result.damage) + " dmg";
-                            if (!result.states_added.empty()) {
-                                text += " +" + result.states_added.front();
-                            }
-                        }
-                        result_label_->setText(std::move(text));
-                        break;
-                    }
-                    case game::battle::BattleActionType::Item:
-                        result_label_->setText("Result: Item used");
-                        break;
-                    case game::battle::BattleActionType::Guard:
-                        result_label_->setText("Result: Guarding");
-                        break;
-                    case game::battle::BattleActionType::Escape:
-                        result_label_->setText(result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed");
-                        break;
-                    case game::battle::BattleActionType::EndTurn:
-                        result_label_->setText("Result: Turn ended");
-                        break;
-                }
+                result_text = "Result: Action rejected";
             }
         } else {
-            result_label_->setText("Result: Choose action");
+            switch (result.action_type) {
+                case game::battle::BattleActionType::Attack: {
+                    result_text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
+                    if (result.target_defeated) {
+                        result_text += " (KO)";
+                    }
+                    break;
+                }
+                case game::battle::BattleActionType::Skill: {
+                    result_text = "Result: Skill";
+                    if (result.missed) {
+                        result_text += " missed";
+                    } else {
+                        result_text += " dealt " + std::to_string(result.damage) + " dmg";
+                        if (!result.states_added.empty()) {
+                            result_text += " +" + result.states_added.front();
+                        }
+                    }
+                    break;
+                }
+                case game::battle::BattleActionType::Item:
+                    result_text = "Result: Item used";
+                    break;
+                case game::battle::BattleActionType::Guard:
+                    result_text = "Result: Guarding";
+                    break;
+                case game::battle::BattleActionType::Escape:
+                    result_text = result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed";
+                    break;
+                case game::battle::BattleActionType::EndTurn:
+                    result_text = "Result: Turn ended";
+                    break;
+            }
         }
+    }
+    if (updateBoundString(result_text_, result_text)) {
+        data_bridge_.markDirty("result_text");
     }
 
     const bool can_submit_action =
@@ -356,23 +276,8 @@ void BattleScene::refreshView() {
         session_.outcome() == game::battle::BattleOutcome::Ongoing &&
         current_actor_id.has_value();
 
-    if (attack_button_) {
-        attack_button_->setEnabled(can_submit_action);
-    }
-    if (skill_button_) {
-        skill_button_->setEnabled(can_submit_action);
-    }
-    if (item_button_) {
-        item_button_->setEnabled(can_submit_action);
-    }
-    if (guard_button_) {
-        guard_button_->setEnabled(can_submit_action);
-    }
-    if (escape_button_) {
-        escape_button_->setEnabled(can_submit_action);
-    }
-    if (end_turn_button_) {
-        end_turn_button_->setEnabled(can_submit_action);
+    if (updateBoundBool(actions_enabled_, can_submit_action)) {
+        data_bridge_.markDirty("actions_enabled");
     }
 }
 
@@ -412,7 +317,6 @@ void BattleScene::queueSkillAction() {
         .type = game::battle::BattleActionType::Skill,
         .actor_id = actor_id,
         .target_id = target_id,
-        // TODO(FND-010): use selected skill from battle command UI.
         .skill_id = std::string(kDefaultSkillId)
     };
     state_ = FlowState::ExecutingAction;
@@ -428,7 +332,6 @@ void BattleScene::queueItemAction() {
         .type = game::battle::BattleActionType::Item,
         .actor_id = actor_id,
         .target_id = std::nullopt,
-        // TODO(FND-010): use selected item from battle inventory UI.
         .item_id = std::string(kDefaultItemId)
     };
     state_ = FlowState::ExecutingAction;

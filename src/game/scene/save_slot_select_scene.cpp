@@ -4,17 +4,19 @@
 #include "game/save/save_slot_summary.h"
 
 #include "engine/core/context.h"
-#include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/layout/ui_grid_layout.h"
-#include "engine/ui/layout/ui_stack_layout.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_input_blocker.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/ui_manager.h"
-#include "engine/ui/ui_panel.h"
+#include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_bind_helpers.h"
 
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/DataModelHandle.h>
+#include <RmlUi/Core/DataTypeRegister.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
+#include <spdlog/fmt/chrono.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <charconv>
@@ -24,30 +26,18 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <unordered_set>
 #include <utility>
-#include <spdlog/fmt/chrono.h>
-#include <spdlog/fmt/fmt.h>
 
 using namespace entt::literals;
 
 namespace {
 
 constexpr int SLOT_COUNT = 10;
-constexpr int GRID_COLUMNS = 2;
-constexpr glm::vec2 GRID_SPACING{8.0f, 8.0f};
-constexpr glm::vec2 SLOT_BUTTON_SIZE{160.0f, 32.0f};
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/save_slot_select.rml";
+constexpr std::string_view MODEL_NAME = "save_slot_select";
 
-constexpr glm::vec2 BACK_BUTTON_SIZE{160.0f, 32.0f};
-
-constexpr engine::ui::Thickness PANEL_PADDING{24.0f, 24.0f, 24.0f, 24.0f};
-constexpr float PANEL_INTERNAL_SPACING = 24.0f;
-
-constexpr glm::vec2 CONFIRM_PANEL_SIZE{280.0f, 140.0f};
-constexpr engine::ui::Thickness CONFIRM_PADDING{24.0f, 24.0f, 24.0f, 24.0f};
-constexpr glm::vec2 CONFIRM_BUTTON_SIZE{100.0f, 32.0f};
-constexpr float CONFIRM_BUTTON_SPACING = 12.0f;
-
-bool tryToLocalTm(std::time_t value, std::tm& out) {
+[[nodiscard]] bool tryToLocalTm(std::time_t value, std::tm& out) {
 #if defined(_WIN32)
     return localtime_s(&out, &value) == 0;
 #else
@@ -55,7 +45,7 @@ bool tryToLocalTm(std::time_t value, std::tm& out) {
 #endif
 }
 
-std::string formatTimestampForDisplay(std::string_view timestamp) {
+[[nodiscard]] std::string formatTimestampForDisplay(std::string_view timestamp) {
     if (timestamp.empty()) {
         return {};
     }
@@ -78,177 +68,142 @@ std::string formatTimestampForDisplay(std::string_view timestamp) {
     return fmt::format("{:%y-%m-%d %H:%M}", tm);
 }
 
+using engine::ui::rmlui::updateBoundBool;
+using engine::ui::rmlui::updateBoundString;
+
 } // namespace
 
 namespace game::scene {
 
-SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name, engine::core::Context& context, SlotSelectCallback on_select, Mode mode)
+SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name,
+                                         engine::core::Context& context,
+                                         SlotSelectCallback on_select,
+                                         Mode mode)
     : engine::scene::Scene(name, context),
       on_select_(std::move(on_select)),
       mode_(mode) {
 }
 
 SaveSlotSelectScene::~SaveSlotSelectScene() {
-    context_.getInputManager().onAction("pause"_hs).disconnect<&SaveSlotSelectScene::onPausePressed>(this);
+    disconnectRuntimeListeners();
+    if (document_ || data_bridge_.isValid()) {
+        if (document_) {
+            unloadAllRmlDocuments();
+            document_ = nullptr;
+        }
+        data_bridge_.destroy();
+    }
 }
 
 bool SaveSlotSelectScene::init() {
-    if (!initUI()) return false;
+    if (!initUI()) {
+        return false;
+    }
+
     context_.getInputManager().onAction("pause"_hs).connect<&SaveSlotSelectScene::onPausePressed>(this);
-    if (!Scene::init()) return false;
+    if (!Scene::init()) {
+        return false;
+    }
+    return true;
+}
+
+void SaveSlotSelectScene::clean() {
+    disconnectRuntimeListeners();
+    Scene::clean();
+    document_ = nullptr;
+    data_bridge_.destroy();
+}
+
+void SaveSlotSelectScene::disconnectRuntimeListeners() {
+    context_.getInputManager().onAction("pause"_hs).disconnect<&SaveSlotSelectScene::onPausePressed>(this);
+}
+
+bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {
+    static std::unordered_set<Rml::DataTypeRegister*> registered_type_registers;
+
+    auto* type_register = constructor.GetDataTypeRegister();
+    if (!type_register) {
+        return false;
+    }
+    if (registered_type_registers.contains(type_register)) {
+        return true;
+    }
+
+    if (auto slot_handle = constructor.RegisterStruct<SlotViewModel>()) {
+        slot_handle.RegisterMember("slot_index", &SlotViewModel::slot_index);
+        slot_handle.RegisterMember("label", &SlotViewModel::label);
+        slot_handle.RegisterMember("enabled", &SlotViewModel::enabled);
+    } else {
+        return false;
+    }
+
+    if (!constructor.RegisterArray<decltype(slots_)>()) {
+        return false;
+    }
+
+    registered_type_registers.insert(type_register);
     return true;
 }
 
 bool SaveSlotSelectScene::initUI() {
-    const auto logical_size = context_.getGameState().getLogicalSize();
-    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
+    auto* layer = context_.getGLRenderer().getRmlUILayer();
+    if (!layer) {
+        spdlog::error("SaveSlotSelectScene: RmlUILayer 不可用。");
+        return false;
+    }
 
-    buildLayout();
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        spdlog::error("SaveSlotSelectScene: RmlUi context 不可用。");
+        return false;
+    }
+
+    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    if (!constructor) {
+        spdlog::error("SaveSlotSelectScene: 创建 data model 失败。");
+        return false;
+    }
+
+    if (!ensureDataTypesRegistered(constructor)) {
+        spdlog::error("SaveSlotSelectScene: 注册 slot data types 失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    if (!constructor.Bind("slots", &slots_) ||
+        !constructor.Bind("confirm_visible", &confirm_visible_) ||
+        !constructor.Bind("confirm_text", &confirm_text_)) {
+        spdlog::error("SaveSlotSelectScene: 绑定 data model 变量失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    if (!constructor.BindEventCallback("slot_select", &SaveSlotSelectScene::onSlotSelectEvent, this) ||
+        !constructor.BindEventCallback("back", [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) { onBackClicked(); }) ||
+        !constructor.BindEventCallback("confirm_yes", [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) { onOverwriteConfirmYes(); }) ||
+        !constructor.BindEventCallback("confirm_no", [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) { onOverwriteConfirmNo(); })) {
+        spdlog::error("SaveSlotSelectScene: 绑定 data event 回调失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+
+    document_ = loadRmlDocument(DOCUMENT_PATH);
+    if (!document_) {
+        data_bridge_.destroy();
+        spdlog::error("SaveSlotSelectScene: 加载 RML 文档失败。");
+        return false;
+    }
+
     refreshSlotButtons();
+    data_bridge_.markAllDirty();
     return true;
 }
 
-void SaveSlotSelectScene::buildLayout() {
-    auto dim = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f}, engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.6f});
-    dim->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    dim->setPivot({0.0f, 0.0f});
-    dim->setOrderIndex(0);
-    dim_ = dim.get();
-    ui_manager_->addElement(std::move(dim));
-
-    auto blocker = std::make_unique<engine::ui::UIInputBlocker>(context_, glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f});
-    blocker->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    blocker->setPivot({0.0f, 0.0f});
-    blocker->setOrderIndex(1);
-    input_blocker_ = blocker.get();
-    ui_manager_->addElement(std::move(blocker));
-
-    const int rows = (SLOT_COUNT + GRID_COLUMNS - 1) / GRID_COLUMNS;
-    const float grid_width = GRID_COLUMNS * SLOT_BUTTON_SIZE.x + (GRID_COLUMNS - 1) * GRID_SPACING.x;
-    const float grid_height = rows * SLOT_BUTTON_SIZE.y + (rows - 1) * GRID_SPACING.y;
-    const glm::vec2 panel_size{
-        grid_width + PANEL_PADDING.width(),
-        grid_height + BACK_BUTTON_SIZE.y + PANEL_INTERNAL_SPACING + PANEL_PADDING.height(),
-    };
-
-    auto panel = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f}, panel_size, engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.75f});
-    panel->setAnchor({0.5f, 0.5f}, {0.5f, 0.5f});
-    panel->setPivot({0.5f, 0.5f});
-    panel->setPadding(PANEL_PADDING);
-    panel->setOrderIndex(2);
-
-    auto grid = std::make_unique<engine::ui::UIGridLayout>(glm::vec2{0.0f, 0.0f}, glm::vec2{grid_width, grid_height});
-    grid->setColumnCount(GRID_COLUMNS);
-    grid->setCellSize(SLOT_BUTTON_SIZE);
-    grid->setSpacing(GRID_SPACING);
-    grid->setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-
-    slot_buttons_.clear();
-    slot_buttons_.reserve(SLOT_COUNT);
-    for (int i = 0; i < SLOT_COUNT; ++i) {
-        auto button = engine::ui::UIButton::create(
-            context_, "primary", glm::vec2{0.0f, 0.0f}, SLOT_BUTTON_SIZE, [this, i]() { onSlotClicked(i); });
-        if (!button) {
-            spdlog::error("SaveSlotSelectScene: 创建 slot_button {} 失败。", i);
-            slot_buttons_.push_back(nullptr);
-            continue;
-        }
-        button->setTextLayoutScaleToFit(engine::ui::Thickness{10.0f, 6.0f, 10.0f, 6.0f});
-        slot_buttons_.push_back(button.get());
-        grid->addChild(std::move(button));
-    }
-
-    grid_ = grid.get();
-    panel->addChild(std::move(grid));
-
-    const float back_x = std::max(0.0f, (grid_width - BACK_BUTTON_SIZE.x) * 0.5f);
-    const float back_y = grid_height + PANEL_INTERNAL_SPACING;
-    auto back = engine::ui::UIButton::create(
-        context_, "secondary", glm::vec2{back_x, back_y}, BACK_BUTTON_SIZE, [this]() { onBackClicked(); });
-    if (back) {
-        back->setLabelText("Back");
-        back_button_ = back.get();
-        panel->addChild(std::move(back));
-    } else {
-        spdlog::error("SaveSlotSelectScene: 创建 back_button 失败。");
-    }
-
-    panel_ = panel.get();
-    ui_manager_->addElement(std::move(panel));
-
-    auto confirm_blocker =
-        std::make_unique<engine::ui::UIInputBlocker>(context_, glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f});
-    confirm_blocker->setAnchor({0.0f, 0.0f}, {1.0f, 1.0f});
-    confirm_blocker->setPivot({0.0f, 0.0f});
-    confirm_blocker->setOrderIndex(3);
-    confirm_blocker->setVisible(false);
-    confirm_blocker_ = confirm_blocker.get();
-    ui_manager_->addElement(std::move(confirm_blocker));
-
-    auto confirm_panel = std::make_unique<engine::ui::UIPanel>(
-        glm::vec2{0.0f, 0.0f}, CONFIRM_PANEL_SIZE, engine::utils::FColor{0.0f, 0.0f, 0.0f, 0.85f});
-    confirm_panel->setAnchor({0.5f, 0.5f}, {0.5f, 0.5f});
-    confirm_panel->setPivot({0.5f, 0.5f});
-    confirm_panel->setPadding(CONFIRM_PADDING);
-    confirm_panel->setOrderIndex(4);
-    confirm_panel->setVisible(false);
-
-    auto& text_renderer = context_.getTextRenderer();
-    auto label = std::make_unique<engine::ui::UILabel>(text_renderer,
-                                                       "Overwrite?",
-                                                       entt::null,
-                                                       engine::ui::DEFAULT_UI_FONT_SIZE_PX,
-                                                       glm::vec2{0.0f, 0.0f});
-    label->setAnchor({0.5f, 0.0f}, {0.5f, 0.0f});
-    label->setPivot({0.5f, 0.0f});
-    confirm_label_ = label.get();
-    confirm_panel->addChild(std::move(label));
-
-    const float row_width = CONFIRM_BUTTON_SIZE.x * 2.0f + CONFIRM_BUTTON_SPACING;
-    auto button_row =
-        std::make_unique<engine::ui::UIStackLayout>(glm::vec2{0.0f, 0.0f}, glm::vec2{row_width, CONFIRM_BUTTON_SIZE.y});
-    button_row->setOrientation(engine::ui::Orientation::Horizontal);
-    button_row->setSpacing(CONFIRM_BUTTON_SPACING);
-    button_row->setAnchor({0.5f, 1.0f}, {0.5f, 1.0f});
-    button_row->setPivot({0.5f, 1.0f});
-
-    auto yes = engine::ui::UIButton::create(
-        context_, "primary", glm::vec2{0.0f, 0.0f}, CONFIRM_BUTTON_SIZE, [this]() { onOverwriteConfirmYes(); });
-    if (yes) {
-        yes->setLabelText("OK");
-        confirm_yes_button_ = yes.get();
-        button_row->addChild(std::move(yes));
-    } else {
-        spdlog::error("SaveSlotSelectScene: 创建 confirm_yes_button 失败。");
-    }
-
-    auto no = engine::ui::UIButton::create(
-        context_, "secondary", glm::vec2{0.0f, 0.0f}, CONFIRM_BUTTON_SIZE, [this]() { onOverwriteConfirmNo(); });
-    if (no) {
-        no->setLabelText("Cancel");
-        confirm_no_button_ = no.get();
-        button_row->addChild(std::move(no));
-    } else {
-        spdlog::error("SaveSlotSelectScene: 创建 confirm_no_button 失败。");
-    }
-    confirm_button_row_ = button_row.get();
-    confirm_panel->addChild(std::move(button_row));
-
-    confirm_panel_ = confirm_panel.get();
-    ui_manager_->addElement(std::move(confirm_panel));
-}
-
 void SaveSlotSelectScene::refreshSlotButtons() {
-    if (slot_buttons_.size() != static_cast<std::size_t>(SLOT_COUNT)) {
-        return;
-    }
+    slots_.clear();
+    slots_.reserve(SLOT_COUNT);
 
     for (int i = 0; i < SLOT_COUNT; ++i) {
-        auto* button = slot_buttons_[static_cast<std::size_t>(i)];
-        if (!button) continue;
-
         const auto path = game::save::SaveService::slotPath(i);
         std::error_code ec;
         const bool exists = std::filesystem::exists(path, ec);
@@ -275,13 +230,29 @@ void SaveSlotSelectScene::refreshSlotButtons() {
             }
         }
 
-        button->setLabelText(label_text);
-
-        button->setEnabled(enabled);
+        SlotViewModel slot{};
+        slot.slot_index = i;
+        slot.label = Rml::String{label_text.data(), label_text.size()};
+        slot.enabled = enabled;
+        slots_.push_back(std::move(slot));
     }
+
+    data_bridge_.markDirty("slots");
 }
 
 void SaveSlotSelectScene::onSlotClicked(int slot) {
+    if (slot < 0 || slot >= SLOT_COUNT) {
+        spdlog::warn("SaveSlotSelectScene: 非法 slot {}", slot);
+        return;
+    }
+
+    if (!slots_.empty()) {
+        const std::size_t index = static_cast<std::size_t>(slot);
+        if (index < slots_.size() && !slots_[index].enabled) {
+            return;
+        }
+    }
+
     if (mode_ == Mode::Save) {
         const auto path = game::save::SaveService::slotPath(slot);
         std::error_code ec;
@@ -304,7 +275,7 @@ void SaveSlotSelectScene::onSlotClicked(int slot) {
 }
 
 void SaveSlotSelectScene::onBackClicked() {
-    if (confirm_panel_ && confirm_panel_->isVisible()) {
+    if (confirm_visible_) {
         hideOverwriteConfirm();
         return;
     }
@@ -312,7 +283,7 @@ void SaveSlotSelectScene::onBackClicked() {
 }
 
 bool SaveSlotSelectScene::onPausePressed() {
-    if (confirm_panel_ && confirm_panel_->isVisible()) {
+    if (confirm_visible_) {
         hideOverwriteConfirm();
         return true;
     }
@@ -323,25 +294,19 @@ bool SaveSlotSelectScene::onPausePressed() {
 void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     pending_overwrite_slot_ = slot;
 
-    if (confirm_label_) {
-        confirm_label_->setText("Overwrite slot " + std::to_string(slot + 1) + "?");
-        confirm_label_->setVisible(true);
+    const auto text = "Overwrite slot " + std::to_string(slot + 1) + "?";
+    if (updateBoundString(confirm_text_, text)) {
+        data_bridge_.markDirty("confirm_text");
     }
-    if (confirm_blocker_) {
-        confirm_blocker_->setVisible(true);
-    }
-    if (confirm_panel_) {
-        confirm_panel_->setVisible(true);
+    if (updateBoundBool(confirm_visible_, true)) {
+        data_bridge_.markDirty("confirm_visible");
     }
 }
 
 void SaveSlotSelectScene::hideOverwriteConfirm() {
     pending_overwrite_slot_.reset();
-    if (confirm_blocker_) {
-        confirm_blocker_->setVisible(false);
-    }
-    if (confirm_panel_) {
-        confirm_panel_->setVisible(false);
+    if (updateBoundBool(confirm_visible_, false)) {
+        data_bridge_.markDirty("confirm_visible");
     }
 }
 
@@ -363,6 +328,13 @@ void SaveSlotSelectScene::onOverwriteConfirmYes() {
 
 void SaveSlotSelectScene::onOverwriteConfirmNo() {
     hideOverwriteConfirm();
+}
+
+void SaveSlotSelectScene::onSlotSelectEvent(Rml::DataModelHandle,
+                                            Rml::Event&,
+                                            const Rml::VariantList& arguments) {
+    const int slot = (arguments.size() == 1 ? arguments[0].Get<int>(-1) : -1);
+    onSlotClicked(slot);
 }
 
 } // namespace game::scene

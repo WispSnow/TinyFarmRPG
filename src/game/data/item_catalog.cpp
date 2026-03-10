@@ -71,6 +71,7 @@ bool ItemCatalog::loadIconConfig(std::string_view file_path) {
     file >> json;
 
     icons_.clear();
+    icon_keys_.clear();
 
     for (const auto& [category, icon_group] : json.items()) {
         if (!icon_group.is_object()) continue;
@@ -82,6 +83,7 @@ bool ItemCatalog::loadIconConfig(std::string_view file_path) {
             const std::string full_key = category + "/" + icon_name;
             auto icon_id = makeId(full_key);
             icons_.insert_or_assign(icon_id, image);
+            icon_keys_.insert_or_assign(icon_id, full_key);
             if (full_key == "indicator/cursor" || fallback_icon_.getTexturePath().empty()) {
                 fallback_icon_ = image;  // 设置默认占位图标
             }
@@ -190,6 +192,13 @@ const ItemData* ItemCatalog::findItem(entt::id_type item_id) const {
 
 const engine::render::Image* ItemCatalog::findIcon(entt::id_type icon_id) const {
     if (auto it = icons_.find(icon_id); it != icons_.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+const std::string* ItemCatalog::findIconKey(entt::id_type icon_id) const {
+    if (auto it = icon_keys_.find(icon_id); it != icon_keys_.end()) {
         return &it->second;
     }
     return nullptr;

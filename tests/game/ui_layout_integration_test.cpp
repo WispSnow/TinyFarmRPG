@@ -1,17 +1,18 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
-#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/EventListener.h>
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <limits>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -28,17 +29,14 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/render/renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/ui/ui_button.h"
-#include "engine/ui/ui_element.h"
-#include "engine/ui/ui_item_slot.h"
-#include "engine/ui/ui_label.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "game/component/hotbar_component.h"
+#include "game/component/inventory_component.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/inventory_ui.h"
 
@@ -55,49 +53,33 @@ namespace {
     return SDL_Init(flags);
 }
 
-engine::render::Image makeTestPresetImage(std::string_view key,
-                                          const glm::vec2& size,
-                                          std::optional<engine::render::NineSliceMargins> margins = std::nullopt) {
-    engine::render::Image image(
-        std::string{"test://"} + std::string(key),
-        engine::utils::Rect{glm::vec2{0.0F, 0.0F}, size}
-    );
-    if (margins.has_value()) {
-        image.setNineSliceMargins(*margins);
-    }
-    return image;
+float centerX(Rml::Element* element) {
+    return element->GetAbsoluteLeft() + element->GetOffsetWidth() * 0.5F;
 }
 
-constexpr float kEpsilon = 0.001F;
-
-float centerX(const engine::utils::Rect& bounds) {
-    return bounds.pos.x + bounds.size.x * 0.5F;
+float centerY(Rml::Element* element) {
+    return element->GetAbsoluteTop() + element->GetOffsetHeight() * 0.5F;
 }
 
-float centerY(const engine::utils::Rect& bounds) {
-    return bounds.pos.y + bounds.size.y * 0.5F;
-}
-
-void forceLayoutTree(engine::ui::UIElement& node) {
-    (void)node.getLayoutSize();
-    for (const auto& child : node.getChildren()) {
-        if (child) {
-            forceLayoutTree(*child);
+Rml::ElementDocument* findDocumentByElementId(Rml::Context& context, std::string_view element_id) {
+    const Rml::String id{element_id.data(), element_id.size()};
+    for (int index = 0; index < context.GetNumDocuments(); ++index) {
+        auto* document = context.GetDocument(index);
+        if (document && document->GetElementById(id)) {
+            return document;
         }
     }
+    return nullptr;
 }
 
-template <typename T>
-void collectDescendants(engine::ui::UIElement& node, std::vector<T*>& out) {
-    if (auto* typed = dynamic_cast<T*>(&node)) {
-        out.push_back(typed);
+class CountingEventListener final : public Rml::EventListener {
+public:
+    void ProcessEvent(Rml::Event&) override {
+        ++count;
     }
-    for (const auto& child : node.getChildren()) {
-        if (child) {
-            collectDescendants<T>(*child, out);
-        }
-    }
-}
+
+    int count{0};
+};
 
 class UILayoutIntegrationTest : public ::testing::Test {
 protected:
@@ -113,7 +95,6 @@ protected:
     std::unique_ptr<engine::input::InputManager> input_manager_{};
     std::unique_ptr<engine::resource::ResourceManager> resource_manager_{};
     engine::resource::AutoTileLibrary auto_tile_library_{};
-    std::unique_ptr<engine::ui::UIPresetManager> ui_preset_manager_{};
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_{};
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_{};
     std::unique_ptr<engine::render::Renderer> renderer_{};
@@ -187,50 +168,6 @@ protected:
         if (!resource_manager_) {
             GTEST_SKIP() << "Failed to create ResourceManager.";
         }
-        ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
-        auto& preset_manager = *ui_preset_manager_;
-
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"inventory_panel"}.value(),
-            makeTestPresetImage("inventory_panel",
-                                {48.0F, 48.0F},
-                                engine::render::NineSliceMargins{10.0F, 10.0F, 10.0F, 10.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"inventory_slot"}.value(),
-            makeTestPresetImage("inventory_slot",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 2.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_panel"}.value(),
-            makeTestPresetImage("quick_bar_panel",
-                                {164.0F, 28.0F},
-                                engine::render::NineSliceMargins{7.0F, 7.0F, 7.0F, 6.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_slot"}.value(),
-            makeTestPresetImage("quick_bar_slot",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{2.0F, 2.0F, 2.0F, 3.0F})));
-        ASSERT_TRUE(preset_manager.registerImagePreset(
-            entt::hashed_string{"quick_bar_selected"}.value(),
-            makeTestPresetImage("quick_bar_selected",
-                                {18.0F, 18.0F},
-                                engine::render::NineSliceMargins{4.0F, 4.0F, 4.0F, 4.0F})));
-
-        auto make_button_skin = [](std::string_view key, const glm::vec2& size) {
-            engine::ui::UIButtonSkin skin{};
-            const auto image = makeTestPresetImage(key, size);
-            skin.normal_image = image;
-            skin.hover_image = image;
-            skin.pressed_image = image;
-            skin.disabled_image = image;
-            return skin;
-        };
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"close"}.value(), make_button_skin("close", {16.0F, 16.0F})));
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"page_left"}.value(), make_button_skin("page_left", {20.0F, 20.0F})));
-        ASSERT_TRUE(preset_manager.registerButtonPreset(
-            entt::hashed_string{"page_right"}.value(), make_button_skin("page_right", {20.0F, 20.0F})));
 
         audio_player_ = engine::audio::AudioPlayer::create(resource_manager_.get());
         if (!audio_player_) {
@@ -269,7 +206,7 @@ protected:
             *gl_renderer_, *renderer_, *camera_, *text_renderer_
         };
         engine::core::ResourceServices resource_services{
-            *resource_manager_, auto_tile_library_, *ui_preset_manager_
+            *resource_manager_, auto_tile_library_
         };
         context_ = engine::core::Context::create(
             core_services, render_services, resource_services,
@@ -290,7 +227,6 @@ protected:
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_.reset();
 #endif
-        ui_preset_manager_.reset();
         time_.reset();
         main_thread_command_queue_.reset();
         text_renderer_.reset();
@@ -322,131 +258,247 @@ protected:
     }
 };
 
-TEST_F(UILayoutIntegrationTest, InventoryGridAndPaginationAreaKeepExpectedLayoutRelation) {
-    auto root = std::make_unique<engine::ui::UIElement>(glm::vec2{0.0F, 0.0F}, game_state_->getLogicalSize());
-    auto inventory = std::make_unique<game::ui::InventoryUI>(*context_, nullptr);
-    auto* inventory_ptr = inventory.get();
-    inventory_ptr->show();
-    root->addChild(std::move(inventory));
-
-    forceLayoutTree(*root);
-
-    std::vector<engine::ui::UIItemSlot*> slots{};
-    collectDescendants(*inventory_ptr, slots);
-    ASSERT_EQ(slots.size(), 20u);
-
-    float min_x = std::numeric_limits<float>::max();
-    float min_y = std::numeric_limits<float>::max();
-    float max_bottom = std::numeric_limits<float>::lowest();
-    for (auto* slot : slots) {
-        const auto bounds = slot->getBounds();
-        EXPECT_NEAR(bounds.size.x, 32.0F, kEpsilon);
-        EXPECT_NEAR(bounds.size.y, 32.0F, kEpsilon);
-        min_x = std::min(min_x, bounds.pos.x);
-        min_y = std::min(min_y, bounds.pos.y);
-        max_bottom = std::max(max_bottom, bounds.pos.y + bounds.size.y);
+TEST_F(UILayoutIntegrationTest, RmlContextSupportsCrossDocumentDragCloneDrop) {
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    }
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
 
-    float nearest_right_x = std::numeric_limits<float>::max();
-    float nearest_down_y = std::numeric_limits<float>::max();
-    for (auto* slot : slots) {
-        const auto bounds = slot->getBounds();
-        if (std::fabs(bounds.pos.y - min_y) <= kEpsilon && bounds.pos.x > min_x + kEpsilon) {
-            nearest_right_x = std::min(nearest_right_x, bounds.pos.x);
+    static constexpr std::string_view kSourceDocument = R"(
+<rml>
+<head>
+    <style>
+        body, div { display: block; }
+        body {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 32px;
+            height: 32px;
+            margin: 0;
         }
-        if (std::fabs(bounds.pos.x - min_x) <= kEpsilon && bounds.pos.y > min_y + kEpsilon) {
-            nearest_down_y = std::min(nearest_down_y, bounds.pos.y);
+        #probe-source {
+            width: 32px;
+            height: 32px;
+            background-color: #ffffffff;
+            drag: clone;
         }
-    }
+    </style>
+</head>
+<body>
+    <div id="probe-source"></div>
+</body>
+</rml>
+)";
 
-    ASSERT_LT(nearest_right_x, std::numeric_limits<float>::max());
-    ASSERT_LT(nearest_down_y, std::numeric_limits<float>::max());
-    EXPECT_NEAR(nearest_right_x - min_x, 38.0F, 0.05F); // slot 32 + spacing 6
-    EXPECT_NEAR(nearest_down_y - min_y, 38.0F, 0.05F);  // slot 32 + spacing 6
-
-    std::vector<engine::ui::UIButton*> page_buttons{};
-    collectDescendants(*inventory_ptr, page_buttons);
-    page_buttons.erase(std::remove_if(page_buttons.begin(),
-                                      page_buttons.end(),
-                                      [](engine::ui::UIButton* btn) {
-                                          const auto bounds = btn->getBounds();
-                                          return std::fabs(bounds.size.x - 20.0F) > 0.1F ||
-                                                 std::fabs(bounds.size.y - 20.0F) > 0.1F;
-                                      }),
-                       page_buttons.end());
-    ASSERT_EQ(page_buttons.size(), 2u);
-
-    std::vector<engine::ui::UILabel*> labels{};
-    collectDescendants(*inventory_ptr, labels);
-    std::vector<engine::ui::UILabel*> page_labels{};
-    for (auto* label : labels) {
-        const std::string_view text = label->getText();
-        if (text.find('/') != std::string_view::npos) {
-            page_labels.push_back(label);
+    static constexpr std::string_view kTargetDocument = R"(
+<rml>
+<head>
+    <style>
+        body, div { display: block; }
+        body {
+            position: absolute;
+            left: 160px;
+            top: 0px;
+            width: 32px;
+            height: 32px;
+            margin: 0;
         }
-    }
-    ASSERT_EQ(page_labels.size(), 1u);
+        #probe-target {
+            width: 32px;
+            height: 32px;
+            background-color: #00ff00ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="probe-target"></div>
+</body>
+</rml>
+)";
 
-    auto left_right = page_buttons;
-    std::sort(left_right.begin(), left_right.end(), [](engine::ui::UIButton* lhs, engine::ui::UIButton* rhs) {
-        return centerX(lhs->getBounds()) < centerX(rhs->getBounds());
-    });
+    auto* source_document = rml_context->LoadDocumentFromMemory(kSourceDocument.data(), ".");
+    auto* target_document = rml_context->LoadDocumentFromMemory(kTargetDocument.data(), ".");
+    ASSERT_NE(source_document, nullptr);
+    ASSERT_NE(target_document, nullptr);
 
-    const auto left_bounds = left_right[0]->getBounds();
-    const auto right_bounds = left_right[1]->getBounds();
-    const auto label_bounds = page_labels[0]->getBounds();
+    source_document->Show();
+    target_document->Show();
+    layer->update();
 
-    const float expected_label_center_x = (centerX(left_bounds) + centerX(right_bounds)) * 0.5F;
-    EXPECT_NEAR(centerX(label_bounds), expected_label_center_x, 1.5F);
-    EXPECT_NEAR(centerY(label_bounds), centerY(left_bounds), 1.5F);
+    auto* target = target_document->GetElementById("probe-target");
+    ASSERT_NE(target, nullptr);
 
-    EXPECT_GT(left_bounds.pos.y, max_bottom);
-    EXPECT_GT(right_bounds.pos.y, max_bottom);
-    EXPECT_GT(label_bounds.pos.y, max_bottom);
+    CountingEventListener dragdrop_listener{};
+    target->AddEventListener(Rml::EventId::Dragdrop, &dragdrop_listener);
+
+    EXPECT_TRUE(rml_context->ProcessMouseMove(16, 16, 0));
+    layer->update();
+    EXPECT_TRUE(rml_context->ProcessMouseButtonDown(0, 0));
+    layer->update();
+    EXPECT_TRUE(rml_context->ProcessMouseMove(176, 16, 0));
+    layer->update();
+    EXPECT_TRUE(rml_context->ProcessMouseButtonUp(0, 0));
+    layer->update();
+
+    EXPECT_EQ(dragdrop_listener.count, 1);
+
+    target->RemoveEventListener(Rml::EventId::Dragdrop, &dragdrop_listener);
+    source_document->Close();
+    target_document->Close();
+    layer->update();
 }
 
-TEST_F(UILayoutIntegrationTest, HotbarSlotsKeepHorizontalSpacingAndPanelAnchor) {
-    auto root = std::make_unique<engine::ui::UIElement>(glm::vec2{0.0F, 0.0F}, game_state_->getLogicalSize());
-    auto hotbar = std::make_unique<game::ui::HotbarUI>(*context_, nullptr);
-    auto* hotbar_ptr = hotbar.get();
-    root->addChild(std::move(hotbar));
+TEST_F(UILayoutIntegrationTest, InventoryRmlDocumentKeepsGridAndPaginationLayout) {
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    }
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
 
-    forceLayoutTree(*root);
+    constexpr uint64_t kOwnerSceneId = 4343;
+    const int initial_document_count = rml_context->GetNumDocuments();
 
-    std::vector<engine::ui::UIItemSlot*> slots{};
-    collectDescendants(*hotbar_ptr, slots);
-    ASSERT_EQ(slots.size(), static_cast<std::size_t>(game::component::HotbarComponent::SLOT_COUNT));
+    {
+        game::ui::InventoryUI inventory(*layer, *context_, kOwnerSceneId, nullptr);
+        ASSERT_TRUE(inventory.isReady());
+        inventory.show();
 
-    std::sort(slots.begin(), slots.end(), [](engine::ui::UIItemSlot* lhs, engine::ui::UIItemSlot* rhs) {
-        return lhs->getBounds().pos.x < rhs->getBounds().pos.x;
-    });
+        layer->update();
 
-    const auto first_bounds = slots.front()->getBounds();
-    for (std::size_t i = 0; i < slots.size(); ++i) {
-        const auto bounds = slots[i]->getBounds();
-        EXPECT_NEAR(bounds.size.x, 32.0F, kEpsilon);
-        EXPECT_NEAR(bounds.size.y, 32.0F, kEpsilon);
-        EXPECT_NEAR(bounds.pos.y, first_bounds.pos.y, 0.05F);
-        if (i > 0) {
-            const auto prev = slots[i - 1]->getBounds();
-            EXPECT_NEAR(bounds.pos.x - prev.pos.x, 36.0F, 0.05F); // slot 32 + spacing 4
+        EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
+
+        auto* document = findDocumentByElementId(*rml_context, "inventory-panel");
+        ASSERT_NE(document, nullptr);
+
+        auto* panel = document->GetElementById("inventory-panel");
+        auto* grid = document->GetElementById("inventory-grid");
+        auto* pagination = document->GetElementById("inventory-pagination");
+        auto* page_left = document->GetElementById("inventory-page-left");
+        auto* page_right = document->GetElementById("inventory-page-right");
+        auto* page_label = document->GetElementById("inventory-page-label");
+        ASSERT_NE(panel, nullptr);
+        ASSERT_NE(grid, nullptr);
+        ASSERT_NE(pagination, nullptr);
+        ASSERT_NE(page_left, nullptr);
+        ASSERT_NE(page_right, nullptr);
+        ASSERT_NE(page_label, nullptr);
+
+        EXPECT_NEAR(panel->GetOffsetWidth(), 208.0F, 0.1F);
+        EXPECT_NEAR(panel->GetOffsetHeight(), 186.0F, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteLeft(), 412.0F, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteTop(), 87.0F, 0.1F);
+
+        ASSERT_EQ(grid->GetNumChildren(), game::component::InventoryComponent::SLOTS_PER_PAGE);
+
+        float max_slot_bottom = std::numeric_limits<float>::lowest();
+        for (int index = 0; index < grid->GetNumChildren(); ++index) {
+            auto* slot = grid->GetChild(index);
+            ASSERT_NE(slot, nullptr);
+            EXPECT_NEAR(slot->GetOffsetWidth(), 32.0F, 0.1F);
+            EXPECT_NEAR(slot->GetOffsetHeight(), 32.0F, 0.1F);
+            max_slot_bottom = std::max(max_slot_bottom, slot->GetAbsoluteTop() + slot->GetOffsetHeight());
+        }
+
+        auto* slot0 = grid->GetChild(0);
+        auto* slot1 = grid->GetChild(1);
+        auto* slot5 = grid->GetChild(5);
+        ASSERT_NE(slot0, nullptr);
+        ASSERT_NE(slot1, nullptr);
+        ASSERT_NE(slot5, nullptr);
+
+        EXPECT_NEAR(slot1->GetAbsoluteLeft() - slot0->GetAbsoluteLeft(), 38.0F, 0.1F);
+        EXPECT_NEAR(slot1->GetAbsoluteTop(), slot0->GetAbsoluteTop(), 0.1F);
+        EXPECT_NEAR(slot5->GetAbsoluteLeft(), slot0->GetAbsoluteLeft(), 0.1F);
+        EXPECT_NEAR(slot5->GetAbsoluteTop() - slot0->GetAbsoluteTop(), 38.0F, 0.1F);
+
+        EXPECT_NEAR(page_left->GetOffsetWidth(), 20.0F, 0.1F);
+        EXPECT_NEAR(page_left->GetOffsetHeight(), 20.0F, 0.1F);
+        EXPECT_NEAR(page_right->GetOffsetWidth(), 20.0F, 0.1F);
+        EXPECT_NEAR(page_right->GetOffsetHeight(), 20.0F, 0.1F);
+
+        const float expected_label_center_x = (centerX(page_left) + centerX(page_right)) * 0.5F;
+        EXPECT_NEAR(centerX(page_label), expected_label_center_x, 0.2F);
+        EXPECT_NEAR(centerY(page_label), centerY(page_left), 0.2F);
+
+        EXPECT_GT(page_left->GetAbsoluteTop(), max_slot_bottom);
+        EXPECT_GT(page_right->GetAbsoluteTop(), max_slot_bottom);
+        EXPECT_GT(page_label->GetAbsoluteTop(), max_slot_bottom);
+        EXPECT_NEAR(pagination->GetAbsoluteTop() - panel->GetAbsoluteTop(), 162.0F, 0.1F);
+    }
+
+    layer->update();
+    EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
+}
+
+TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelAnchor) {
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    }
+    auto* rml_context = layer->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
+
+    constexpr uint64_t kOwnerSceneId = 4242;
+    const int initial_document_count = rml_context->GetNumDocuments();
+
+    {
+        game::ui::HotbarUI hotbar(*layer, *context_, kOwnerSceneId, nullptr);
+        ASSERT_TRUE(hotbar.isReady());
+
+        layer->update();
+
+        EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
+
+        auto* document = findDocumentByElementId(*rml_context, "hotbar-panel");
+        ASSERT_NE(document, nullptr);
+
+        auto* panel = document->GetElementById("hotbar-panel");
+        auto* slots_container = document->GetElementById("hotbar-slots");
+        ASSERT_NE(panel, nullptr);
+        ASSERT_NE(slots_container, nullptr);
+
+        constexpr float expected_panel_width = 372.0F;
+        constexpr float expected_panel_height = 48.0F;
+        constexpr float expected_panel_x = 134.0F;
+        constexpr float expected_panel_y = 307.0F;
+
+        EXPECT_NEAR(panel->GetOffsetWidth(), expected_panel_width, 0.1F);
+        EXPECT_NEAR(panel->GetOffsetHeight(), expected_panel_height, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteLeft(), expected_panel_x, 0.1F);
+        EXPECT_NEAR(panel->GetAbsoluteTop(), expected_panel_y, 0.1F);
+
+        ASSERT_EQ(slots_container->GetNumChildren(), game::component::HotbarComponent::SLOT_COUNT);
+
+        float previous_left = 0.0F;
+        float first_top = 0.0F;
+        for (int index = 0; index < slots_container->GetNumChildren(); ++index) {
+            auto* slot = slots_container->GetChild(index);
+            ASSERT_NE(slot, nullptr);
+            EXPECT_NEAR(slot->GetOffsetWidth(), 32.0F, 0.1F);
+            EXPECT_NEAR(slot->GetOffsetHeight(), 32.0F, 0.1F);
+
+            if (index == 0) {
+                first_top = slot->GetAbsoluteTop();
+            } else {
+                EXPECT_NEAR(slot->GetAbsoluteLeft() - previous_left, 36.0F, 0.1F);
+                EXPECT_NEAR(slot->GetAbsoluteTop(), first_top, 0.1F);
+            }
+            previous_left = slot->GetAbsoluteLeft();
         }
     }
 
-    const auto& top_children = hotbar_ptr->getChildren();
-    ASSERT_FALSE(top_children.empty());
-    const auto panel_bounds = top_children.front()->getBounds();
-
-    constexpr float expected_panel_width = 372.0F;  // 10*32 + 9*4 + (8+8)
-    constexpr float expected_panel_height = 48.0F;  // 32 + (8+8)
-    constexpr float expected_bottom_margin = 5.0F;
-    const float expected_x = (game_state_->getLogicalSize().x - expected_panel_width) * 0.5F;
-    const float expected_y = game_state_->getLogicalSize().y - expected_panel_height - expected_bottom_margin;
-
-    EXPECT_NEAR(panel_bounds.size.x, expected_panel_width, 0.05F);
-    EXPECT_NEAR(panel_bounds.size.y, expected_panel_height, 0.05F);
-    EXPECT_NEAR(panel_bounds.pos.x, expected_x, 0.05F);
-    EXPECT_NEAR(panel_bounds.pos.y, expected_y, 0.05F);
+    layer->update();
+    EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
 }
 
 } // namespace

@@ -14,7 +14,6 @@
 #include "engine/async/main_thread_command_queue.h"
 #include "engine/render/opengl/sprite_batch.h"
 #include "engine/resource/resource_manager.h"
-#include "engine/ui/ui_button.h"
 
 namespace {
 template <typename T, typename... Args>
@@ -63,16 +62,5 @@ TEST(FactoryVisibilityTest, EngineResourceManagerUsesFactoryPattern) {
 TEST(FactoryVisibilityTest, EngineSpriteBatchUsesFactoryPattern) {
     EXPECT_TRUE((HasCreate<engine::render::opengl::SpriteBatch, std::size_t>));
     EXPECT_FALSE((std::is_constructible_v<engine::render::opengl::SpriteBatch>));
-}
-
-TEST(FactoryVisibilityTest, EngineUiFactoryRequiredTypesFollowFactoryPattern) {
-    EXPECT_TRUE((HasCreate<engine::ui::UIButton, engine::core::Context&, std::string_view>));
-    EXPECT_FALSE((std::is_constructible_v<engine::ui::UIButton,
-                                         engine::core::Context&,
-                                         glm::vec2,
-                                         glm::vec2,
-                                         std::function<void()>,
-                                         std::function<void()>,
-                                         std::function<void()>>));
 }
 // NOLINTEND

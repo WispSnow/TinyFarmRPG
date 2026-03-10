@@ -26,7 +26,6 @@
 #include "engine/debug/debug_ui_manager.h"
 #endif
 #include "engine/scene/scene.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/component/appearance_component.h"
@@ -146,57 +145,6 @@ void collectAppearanceAssets(const game::data::AppearanceCatalog& catalog, engin
     const auto preload_paths = catalog.collectPreloadTexturePaths(*profile, kRuntimeVariantPreloadLimitPerSlot);
     for (const auto& path : preload_paths) {
         registerTexturePath(registry, hashPath(path), path);
-    }
-}
-
-void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, engine::resource::AssetRegistry& registry) {
-    const auto register_skin_images = [&registry](const engine::ui::UIButtonSkin& skin) {
-        if (skin.normal_image) {
-            registerImageTexture(registry, *skin.normal_image);
-        }
-        if (skin.hover_image) {
-            registerImageTexture(registry, *skin.hover_image);
-        }
-        if (skin.pressed_image) {
-            registerImageTexture(registry, *skin.pressed_image);
-        }
-        if (skin.disabled_image) {
-            registerImageTexture(registry, *skin.disabled_image);
-        }
-    };
-
-    for (const entt::id_type preset_id : preset_manager.listButtonPresetIds()) {
-        const auto* skin = preset_manager.getButtonPreset(preset_id);
-        if (!skin) {
-            continue;
-        }
-        register_skin_images(*skin);
-
-        if (skin->normal_label && skin->normal_label->font_id != entt::null && skin->normal_label->font_size > 0) {
-            const entt::id_type font_id = skin->normal_label->font_id;
-            const std::string_view font_path = preset_manager.findFontPath(font_id);
-            if (!font_path.empty()) {
-                registry.registerFont(font_id, skin->normal_label->font_size, font_path);
-            }
-        }
-
-        for (const auto& [_, sound_id] : skin->sound_events) {
-            if (sound_id == entt::null) {
-                continue;
-            }
-            const std::string_view sound_path = preset_manager.findSoundPath(sound_id);
-            if (!sound_path.empty()) {
-                registry.registerSound(sound_id, sound_path);
-            }
-        }
-    }
-
-    for (const entt::id_type preset_id : preset_manager.listImagePresetIds()) {
-        const auto* image = preset_manager.getImagePreset(preset_id);
-        if (!image) {
-            continue;
-        }
-        registerImageTexture(registry, *image);
     }
 }
 
@@ -624,8 +572,6 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     } else {
         params.registry.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
     }
-
-    collectUIPresetAssets(params.context.getUIPresetManager(), asset_registry);
 
     if (!ensureBlueprintManager(params.services)) {
         return false;
