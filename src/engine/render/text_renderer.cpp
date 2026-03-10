@@ -677,25 +677,6 @@ bool TextRenderer::loadConfigStyles(const nlohmann::json& config) {
     return layout_changed;
 }
 
-void TextRenderer::drawUIText(std::string_view text,
-                              entt::id_type font_id,
-                              int font_size,
-                              const glm::vec2& position,
-                              entt::id_type style_id,
-                              const engine::utils::TextRenderOverrides* overrides) const {
-    const engine::utils::TextRenderParams resolved = resolveTextParams(style_id, default_ui_style_id_, overrides);
-    drawTextInternal(text, font_id, font_size, position, resolved, true);
-}
-
-void TextRenderer::drawUIText(std::string_view text,
-                              entt::id_type font_id,
-                              int font_size,
-                              const glm::vec2& position,
-                              std::string_view style_key,
-                              const engine::utils::TextRenderOverrides* overrides) const {
-    drawUIText(text, font_id, font_size, position, toTextStyleId(style_key), overrides);
-}
-
 void TextRenderer::drawText(std::string_view text,
                             entt::id_type font_id,
                             int font_size,
@@ -703,7 +684,7 @@ void TextRenderer::drawText(std::string_view text,
                             entt::id_type style_id,
                             const engine::utils::TextRenderOverrides* overrides) const {
     const engine::utils::TextRenderParams resolved = resolveTextParams(style_id, default_world_style_id_, overrides);
-    drawTextInternal(text, font_id, font_size, position, resolved, false);
+    drawTextInternal(text, font_id, font_size, position, resolved);
 }
 
 void TextRenderer::drawText(std::string_view text,
@@ -758,8 +739,7 @@ void TextRenderer::drawTextInternal(std::string_view text,
                                     entt::id_type font_id,
                                     int font_size,
                                     const glm::vec2& position,
-                                    const engine::utils::TextRenderParams& params,
-                                    bool use_ui_pass) const {
+                                    const engine::utils::TextRenderParams& params) const {
     if (!gl_renderer_ || !resource_manager_) {
         return;
     }
@@ -787,12 +767,10 @@ void TextRenderer::drawTextInternal(std::string_view text,
             continue;
         }
 
-        const bool culled = !use_ui_pass && gl_renderer_->shouldCullRect(
-            engine::utils::Rect(dest_rect.x,
-                                dest_rect.y,
-                                dest_rect.z,
-                                dest_rect.w));
-        if (culled) {
+        if (gl_renderer_->shouldCullRect(engine::utils::Rect(dest_rect.x,
+                                                             dest_rect.y,
+                                                             dest_rect.z,
+                                                             dest_rect.w))) {
             continue;
         }
 
@@ -802,22 +780,12 @@ void TextRenderer::drawTextInternal(std::string_view text,
             glm::vec4 shadow_rect = dest_rect;
             shadow_rect.x += params.shadow.offset.x;
             shadow_rect.y += params.shadow.offset.y;
-            if (use_ui_pass) {
-                gl_renderer_->drawUITexture(glyph->texture, shadow_rect, uv_rect,
-                                            &shadow_color_options);
-            } else {
-                gl_renderer_->drawTexture(glyph->texture, shadow_rect, uv_rect,
-                                          &shadow_color_options);
-            }
+            gl_renderer_->drawTexture(glyph->texture, shadow_rect, uv_rect,
+                                      &shadow_color_options);
         }
 
-        if (use_ui_pass) {
-            gl_renderer_->drawUITexture(glyph->texture, dest_rect, uv_rect,
-                                        &params.color);
-        } else {
-            gl_renderer_->drawTexture(glyph->texture, dest_rect, uv_rect,
-                                      &params.color);
-        }
+        gl_renderer_->drawTexture(glyph->texture, dest_rect, uv_rect,
+                                  &params.color);
     }
 }
 

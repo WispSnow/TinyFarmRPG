@@ -41,7 +41,6 @@ namespace engine::render::opengl {
     class ScenePass;
     class WorldVfxPass;
     class VfxPass;
-    class UIPass;
     class ImGuiLayer;
 
 class GLRenderer final {
@@ -53,7 +52,6 @@ public:
         Bloom,
         WorldVfx,
         OverlayVfx,
-        UI,
         Count
     };
 
@@ -75,7 +73,6 @@ private:
     std::unique_ptr<BloomPass> bloom_pass_;
     std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
-    std::unique_ptr<UIPass> ui_pass_;
     std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_layer_;
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<ImGuiLayer> imgui_layer_;
@@ -168,29 +165,6 @@ public:
                             bool flip_horizontal = false,
                             const engine::utils::EmissiveParams* params = nullptr);
 
-    // 绘制UI中精灵(矩形/纹理)
-    void drawUIRect(const glm::vec4& rect,
-                    const engine::utils::ColorOptions* color = nullptr,
-                    const engine::utils::TransformOptions* transform = nullptr);
-    void drawUIRectGradient(const glm::vec4& rect,
-                            const glm::vec4& start_color,
-                            const glm::vec4& end_color,
-                            float gradient_angle_radians,
-                            const engine::utils::TransformOptions* transform = nullptr);
-    void drawUITexture(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
-                       const engine::utils::ColorOptions* color = nullptr,
-                       const engine::utils::TransformOptions* transform = nullptr);
-    void drawUITexture(GLuint texture, const glm::vec4& dst_rect,
-                       const glm::vec2& texture_size_pixels,
-                       const engine::utils::Rect& src_rect_pixels,
-                       const engine::utils::ColorOptions* color = nullptr,
-                       const engine::utils::TransformOptions* transform = nullptr);
-    void drawUITextureGradient(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
-                               const glm::vec4& start_color,
-                               const glm::vec4& end_color,
-                               float gradient_angle_radians,
-                               const engine::utils::TransformOptions* transform = nullptr);
-
     void beginFrame(const Camera& camera);  // 开始渲染帧, 计算本帧需要的视图投影矩阵
 
     // 调试UI
@@ -269,11 +243,6 @@ public:
     [[nodiscard]] engine::utils::ColorOptions getSceneDefaultColorOptions() const;
     [[nodiscard]] engine::utils::TransformOptions getSceneDefaultTransformOptions() const;
 
-    void setUIDefaultColorOptions(const engine::utils::ColorOptions& options);
-    void setUIDefaultTransformOptions(const engine::utils::TransformOptions& options);
-    [[nodiscard]] engine::utils::ColorOptions getUIDefaultColorOptions() const;
-    [[nodiscard]] engine::utils::TransformOptions getUIDefaultTransformOptions() const;
-
 private:
     GLRenderer() = default;
 
@@ -287,7 +256,6 @@ private:
     [[nodiscard]] bool initBloomPass();
     [[nodiscard]] bool initScenePass();
     [[nodiscard]] bool initWorldVfxPass();
-    [[nodiscard]] bool initUIPass();
     [[nodiscard]] bool initCompositePass();
 
     glm::mat4 computeViewProjection(const Camera& camera);      ///< @brief 计算视图投影矩阵

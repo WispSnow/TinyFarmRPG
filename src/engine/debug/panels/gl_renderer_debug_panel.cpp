@@ -122,8 +122,7 @@ void GLRendererDebugPanel::draw(bool& is_open) {
             {"EmissivePass", GLRenderer::PassType::Emissive},
             {"BloomPass", GLRenderer::PassType::Bloom},
             {"WorldVfxPass", GLRenderer::PassType::WorldVfx},
-            {"OverlayVfxPass", GLRenderer::PassType::OverlayVfx},
-            {"UIPass", GLRenderer::PassType::UI}
+            {"OverlayVfxPass", GLRenderer::PassType::OverlayVfx}
         };
 
         uint32_t total_draws = 0;

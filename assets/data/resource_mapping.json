@@ -1,6 +1,4 @@
 {
-  "ui_button_presets": "assets/data/ui_button_presets.json",
-  "ui_image_presets": "assets/data/ui_image_presets.json",
   "sound": {
     "watering": "assets/audio/water_splash.wav",
     "hoe": "assets/audio/shovel-stab.wav",

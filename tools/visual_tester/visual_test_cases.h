@@ -186,24 +186,6 @@ private:
     float cursor_intensity_{1.0f};
 };
 
-class UiVisualTest final : public VisualTestCase {
-public:
-    UiVisualTest();
-    void onRender(engine::core::Context& context) override;
-    void onImGui(engine::core::Context& context) override;
-
-private:
-    void applyDefaults();
-
-    bool show_ui_image_{true};
-    bool show_ui_rect_{true};
-    glm::vec2 ui_image_pos_{-200.0f, -300.0f};
-    glm::vec2 ui_image_size_{100.0f, 100.0f};
-    glm::vec2 ui_rect_pos_{-100.0f, -100.0f};
-    glm::vec2 ui_rect_size_{100.0f, 100.0f};
-    glm::vec4 ui_rect_color_{0.5f, 0.5f, 0.5f, 1.0f};
-};
-
 class TextRenderingVisualTest final : public VisualTestCase {
 private:
     bool font_loaded_{false};
@@ -212,12 +194,10 @@ private:
     const char* font_path_{"assets/fonts/VonwaonBitmap-16px.ttf"};
 
     bool draw_world_{true};
-    bool draw_ui_{true};
     bool show_bounds_{true};
 
     int alignment_{0}; // 0=left,1=center,2=right
     glm::vec2 world_anchor_{-220.0f, -160.0f};
-    glm::vec2 ui_anchor_{-220.0f, 20.0f};
 
     bool use_gradient_{true};
     float gradient_angle_deg_{45.0f};
