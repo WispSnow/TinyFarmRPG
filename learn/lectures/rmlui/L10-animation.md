@@ -400,4 +400,4 @@ element->AddAnimationKey("transform", midTransform, 0.5f);
 ---
 
 **上一课 <-** [L09: 精灵表与九宫格装饰器](L09-spritesheet.md)
-**下一课 ->** L11: 滤镜、阴影与视觉特效（待完成）
+**下一课 ->** [L11: 滤镜、阴影与视觉特效](L11-filters.md)
