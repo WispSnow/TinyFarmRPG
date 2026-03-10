@@ -1,0 +1,140 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_filters.rcss"/>
+    <title>L11 Filters</title>
+</head>
+<body data-model="filters">
+
+<!-- 页面标题 -->
+<div class="page-header">
+    <div class="page-title">L11 Filters, Shadows &amp; VFX</div>
+    <div class="page-hint">filter / backdrop-filter / box-shadow / mask-image</div>
+</div>
+
+<!-- 主体三列布局 -->
+<div class="content-row">
+
+    <!-- 左列：Filter 函数一览 -->
+    <div class="col">
+        <h2>filter (hover)</h2>
+        <div class="panel">
+            <div class="filter-row">
+                <div class="swatch swatch-blur"></div>
+                <div class="filter-label">blur(2dp)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-bright"></div>
+                <div class="filter-label">brightness(0.3)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-contrast"></div>
+                <div class="filter-label">contrast(0.3)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-gray"></div>
+                <div class="filter-label">grayscale(1)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-sepia"></div>
+                <div class="filter-label">sepia(1)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-hue"></div>
+                <div class="filter-label">hue-rotate(180deg)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-invert"></div>
+                <div class="filter-label">invert(1)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-saturate"></div>
+                <div class="filter-label">saturate(3)</div>
+            </div>
+            <div class="filter-row">
+                <div class="swatch swatch-shadow"></div>
+                <div class="filter-label">drop-shadow()</div>
+            </div>
+        </div>
+        <div class="section-label">9 filter functions + opacity()</div>
+    </div>
+
+    <!-- 中列：交互演示 -->
+    <div class="col">
+        <h2>Interactive</h2>
+
+        <!-- 毛玻璃 -->
+        <div class="section-label">backdrop-filter: blur()</div>
+        <div class="glass-container">
+            <div class="glass-bg">
+                <div class="bg-block bg-red"></div>
+                <div class="bg-block bg-blue"></div>
+                <div class="bg-block bg-green"></div>
+                <div class="bg-block bg-purple"></div>
+            </div>
+            <div class="glass-panel">
+                <div class="glass-title">Frosted Glass</div>
+                <div class="glass-text">backdrop-filter: blur</div>
+            </div>
+        </div>
+
+        <!-- 中毒效果 -->
+        <div class="section-label">filter: hue-rotate + saturate</div>
+        <div class="avatar-row">
+            <div id="avatar" class="avatar">A</div>
+            <div>
+                <div class="avatar-name">Hero</div>
+                <div class="avatar-hp">HP: 85/100</div>
+                <div data-if="poisoned" class="poison-tag">POISONED</div>
+            </div>
+        </div>
+        <div class="action-btn" data-event-click="toggle_poison">Toggle Poison</div>
+
+        <!-- 滤镜动画 -->
+        <div class="section-label">animated: hue-rotate cycle</div>
+        <div class="hue-cycle-box">Rainbow</div>
+    </div>
+
+    <!-- 右列：阴影 & 遮罩 -->
+    <div class="col">
+        <h2>box-shadow</h2>
+        <div class="panel">
+            <div class="shadow-row">
+                <div class="shadow-box shadow-outer"></div>
+                <div class="shadow-label">outer shadow</div>
+            </div>
+            <div class="shadow-row">
+                <div class="shadow-box shadow-inset"></div>
+                <div class="shadow-label">inset shadow</div>
+            </div>
+            <div class="shadow-row">
+                <div class="shadow-box shadow-multi"></div>
+                <div class="shadow-label">multi-shadow</div>
+            </div>
+            <div class="shadow-row">
+                <div class="shadow-box shadow-colored"></div>
+                <div class="shadow-label">colored glow</div>
+            </div>
+        </div>
+
+        <div class="section-label">drop-shadow glow (hover)</div>
+        <div class="glow-box">Hover me</div>
+
+        <div class="section-label">mask-image: gradient</div>
+        <div class="mask-demo">
+            <div class="mask-line">This text fades out</div>
+            <div class="mask-line">via a gradient mask</div>
+            <div class="mask-line">from opaque to clear</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 底部信息栏 -->
+<div class="info-bar">
+    <span class="code">filter:</span> blur | brightness | hue-rotate ... |
+    <span class="code">box-shadow</span> (not animatable) |
+    Status: <span class="status">{{status_text}}</span>
+</div>
+
+</body>
+</rml>
