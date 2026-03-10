@@ -11,7 +11,7 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 - **窗口与输入**: SDL3
 - **ECS 框架**: EnTT
 - **图形渲染**: OpenGL + GLAD
-- **UI 框架**: ImGui
+- **UI 框架**: RmlUi + ImGui
 - **资源加载**: stb_image.h
 - **字体渲染**: FreeType + HarfBuzz
 - **音频**: MiniAudio
@@ -38,13 +38,13 @@ TinyFarmRPG/
 │   │   ├── debug/               #   ImGui 调试面板框架与内置面板
 │   │   ├── input/               #   输入映射与动作事件
 │   │   ├── loader/              #   Tiled 地图/关卡加载器（含 LevelPreprocessService 异步预处理）
-│   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/world-vfx/合成/overlay-vfx/UI）
+│   │   ├── render/              #   OpenGL 多通道渲染管线（场景/光照/泛光/world-vfx/合成/overlay-vfx/RmlUi/ImGui）
 │   │   ├── resource/            #   纹理/音频/字体统一资源管理（含 ImageDecode/FontPreprocess）
 │   │   ├── scene/               #   场景基类 Scene 与场景管理器 SceneManager
 │   │   ├── script/              #   脚本宿主内核（可选，Lua VM/安全边界/句柄校验/模块安装）
 │   │   ├── spatial/             #   碰撞检测与空间分区（静态网格/动态网格）
 │   │   ├── system/              #   引擎层 ECS 系统（动画/移动/渲染/Y排序/光照）
-│   │   ├── ui/                  #   UI 框架（布局/状态机/行为/通用组件）
+│   │   ├── ui/                  #   RmlUi 集成层与共享 UI 类型/接口（文档桥接/纹理过滤/屏幕淡入淡出）
 │   │   ├── utils/               #   工具函数（数学/对齐/事件定义）
 │   │   └── vfx/                 #   特效服务与后端抽象（VfxService/VfxBackend/EffekseerBackend）
 │   ├── game/                    # 游戏特定逻辑层
@@ -60,7 +60,7 @@ TinyFarmRPG/
 │   │   ├── scene/               #   游戏场景（Title/GameScene/PauseMenu/SaveSlotSelect/RestDialog）
 │   │   ├── script/              #   TinyFarm 脚本扩展模块（tf.time/player/command/dialogue 绑定）
 │   │   ├── system/              #   游戏 ECS 系统（农场/交互/NPC/对话/地图切换/物品使用等）
-│   │   ├── ui/                  #   游戏 UI（物品栏/快捷栏/对话气泡/时钟/tooltip）
+│   │   ├── ui/                  #   游戏 UI 封装（物品栏/快捷栏/对话气泡/时钟 HUD/tooltip/world anchor）
 │   │   └── world/               #   世界地图系统（MapManager 异步预加载状态机/WorldState/快照序列化）
 │   └── main.cpp                 # 可执行入口薄壳
 ├── assets/                      # 运行时资源
@@ -74,10 +74,10 @@ TinyFarmRPG/
 ├── ui/                          # UI 资源（RmlUi 文档/样式/主题）
 ├── scripts/                     # Lua 脚本
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
-├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/ImGui集成等）
-├── external/                    # 第三方库源码（SDL/EnTT/ImGui/Lua/Sol2/Effekseer 等）
-├── tests/                       # Google Test（engine/game/shared 分层测试）
-├── tools/                       # 调试与验证工具（visual_tester/ui_tester 等）
+├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/RmlUi 与 ImGui 集成等）
+├── external/                    # 第三方库源码（SDL/EnTT/RmlUi/ImGui/Lua/Sol2/Effekseer 等）
+├── tests/                       # Google Test（engine/game/shared/data/scripts 分层测试）
+├── tools/                       # 调试与验证工具（visual_tester/rmlui_tester/scheduler_dot_dump/rpg_importer）
 ├── plans/                       # 开发计划文档（含 foundation backlog 与专项方案）
 ├── docs/                        # 项目文档（引擎/玩法/测试/教程）
 └── for_agent/                   # AI Agent 编码规范
