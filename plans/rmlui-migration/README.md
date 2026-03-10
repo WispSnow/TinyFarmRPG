@@ -25,7 +25,7 @@
 | Phase 7: 物品栏（InventoryUI） | `[x]` | [`phase-07.md`](./phase-07.md) |
 | Phase 8: 补齐残留迁移 | `[x]` | [`phase-08.md`](./phase-08.md) |
 | Phase 9: 清理旧 UI 框架 | `[x]` | [`phase-09.md`](./phase-09.md) |
-| Phase 10: RmlUi 采样策略切换 | `[ ]` | [`phase-10.md`](./phase-10.md) |
+| Phase 10: RmlUi 采样策略切换 | `[~]` | [`phase-10.md`](./phase-10.md) |
 
 
 - 2026-03-06: Phase 3 已完成 TitleScene / PauseMenuScene / RestDialogScene / SaveSlotSelectScene 的 RmlUi 迁移。
@@ -39,6 +39,7 @@
 - 2026-03-10: Phase 8 已完成 `GameScene` 运行时残留迁移；`Context` / 启动链 / 测试 fixture 已摆脱 `UIPresetManager`，运行时场景不再依赖旧 `UIManager`。
 - 2026-03-10: Phase 9 已完成旧 `engine::ui` 框架、`UIPass`、`drawUI*` / `drawUIText` API、`ui_tester`、旧 preset 资产与对应测试清理；渲染管线收敛为 `OverlayVfx -> RmlUi -> ImGui`。
 - 2026-03-10: Phase 10 已规划 RmlUi `nearest` / `linear` 采样切换；范围限定为图片与字体 atlas，滤镜与离屏效果保持 linear。
+- 2026-03-10: Phase 10 代码实现已落地：配置文件、`GLRenderer -> RmlUILayer -> RenderInterface_GL3_STB` 转发链、调试面板切换与自动化测试已完成；仍待可视环境下的手动观感验证。
 
 ## 全局约束
 
