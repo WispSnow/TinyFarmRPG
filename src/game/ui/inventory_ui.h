@@ -37,7 +37,7 @@ class InventoryUI final {
     struct InventorySlotViewModel {
         int local_slot_index{0};
         int inventory_index{0};
-        Rml::String icon_decorator{};
+        Rml::String icon_decorator{"none"};
         Rml::String count_text{};
         bool has_item{false};
         bool has_count{false};

@@ -166,6 +166,7 @@ set(GAME_TEST_SOURCES
     game/map_manager_async_preload_test.cpp
     game/world/async_preload_pipeline_test.cpp
     game/world_state_test.cpp
+    game/rml_item_icon_helpers_test.cpp
     game/ui_layout_integration_test.cpp
 )
 
