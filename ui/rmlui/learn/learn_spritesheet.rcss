@@ -1,0 +1,247 @@
+/* =====================
+   @spritesheet 声明
+   ===================== */
+
+@spritesheet learn-ui {
+    src: ../../../assets/textures/UI/learn_spritesheet.png;
+    resolution: 1x;
+
+    /* ---- Window 九宫格（32x32 面板，4px 边框）---- */
+
+    /* ninepatch 用：外轮廓 + 内容区 */
+    window-outer:  0px  0px 32px 32px;
+    window-inner:  4px  4px 24px 24px;
+
+    /* tiled-box 用：9 个子矩形 */
+    win-tl:  0px  0px  4px  4px;
+    win-tc:  4px  0px 24px  4px;
+    win-tr: 28px  0px  4px  4px;
+    win-ml:  0px  4px  4px 24px;
+    win-mc:  4px  4px 24px 24px;
+    win-mr: 28px  4px  4px 24px;
+    win-bl:  0px 28px  4px  4px;
+    win-bc:  4px 28px 24px  4px;
+    win-br: 28px 28px  4px  4px;
+
+    /* ---- Button 三态（64x16 × 3）---- */
+    btn-n: 48px  0px 64px 16px;
+    btn-h: 48px 16px 64px 16px;
+    btn-a: 48px 32px 64px 16px;
+
+    /* tiled-horizontal 用：左端 / 中段 / 右端 */
+    btn-n-l: 48px 0px  2px 16px;
+    btn-n-c: 50px 0px 60px 16px;
+    btn-n-r:110px 0px  2px 16px;
+    btn-h-l: 48px 16px 2px 16px;
+    btn-h-c: 50px 16px 60px 16px;
+    btn-h-r:110px 16px 2px 16px;
+    btn-a-l: 48px 32px 2px 16px;
+    btn-a-c: 50px 32px 60px 16px;
+    btn-a-r:110px 32px 2px 16px;
+}
+
+/* === 重置 === */
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+body {
+    margin: 0;
+    padding: 8dp;
+    font-size: 12dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #c0caf5;
+}
+
+/* =====================
+   页面布局
+   ===================== */
+
+.page-header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8dp;
+    margin-bottom: 6dp;
+}
+.page-title {
+    font-size: 14dp;
+    color: #7aa2f7;
+    font-weight: bold;
+}
+.page-hint {
+    font-size: 10dp;
+    color: #565f89;
+}
+
+.content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8dp;
+    margin-bottom: 6dp;
+}
+
+h2 {
+    margin: 0 0 4dp 0;
+    font-size: 12dp;
+    color: #e0af68;
+}
+
+.section-label {
+    font-size: 10dp;
+    color: #565f89;
+    margin-bottom: 2dp;
+}
+
+/* =====================
+   左列：九宫格面板演示
+   ===================== */
+
+.left-col {
+    flex: 3;
+}
+
+/* ninepatch 窗口皮肤 */
+.np-panel {
+    decorator: ninepatch(window-outer, window-inner, 1.0);
+    padding: 6dp;
+    margin-bottom: 6dp;
+    color: #c0caf5;
+}
+
+/* tiled-box 窗口皮肤 */
+.tb-panel {
+    decorator: tiled-box(
+        win-tl, win-tc, win-tr,
+        win-ml, win-mc, win-mr,
+        win-bl, win-bc, win-br
+    );
+    padding: 6dp;
+    margin-bottom: 6dp;
+    color: #c0caf5;
+}
+
+/* 渐变面板 */
+.grad-panel {
+    decorator: linear-gradient(to bottom, #1a203580, #2d4a7a80);
+    border: 1dp #7aa2f7;
+    border-radius: 4dp;
+    padding: 6dp;
+    margin-bottom: 6dp;
+}
+
+/* =====================
+   右列：按钮与装饰器
+   ===================== */
+
+.right-col {
+    flex: 2;
+}
+
+/* image() 整图按钮 */
+.sprite-btn {
+    decorator: image(btn-n);
+    height: 16dp;
+    padding: 2dp 8dp;
+    margin-bottom: 4dp;
+    color: #c0caf5;
+    font-size: 11dp;
+    text-align: center;
+}
+.sprite-btn:hover {
+    decorator: image(btn-h);
+    color: #ffffff;
+}
+.sprite-btn:active {
+    decorator: image(btn-a);
+    color: #1a1b26;
+}
+
+/* tiled-horizontal 可拉伸按钮 */
+.tiled-btn {
+    decorator: tiled-horizontal(btn-n-l, btn-n-c, btn-n-r);
+    height: 16dp;
+    padding: 2dp 8dp;
+    margin-bottom: 4dp;
+    color: #c0caf5;
+    font-size: 11dp;
+    text-align: center;
+}
+.tiled-btn:hover {
+    decorator: tiled-horizontal(btn-h-l, btn-h-c, btn-h-r);
+    color: #ffffff;
+}
+.tiled-btn:active {
+    decorator: tiled-horizontal(btn-a-l, btn-a-c, btn-a-r);
+    color: #1a1b26;
+}
+
+/* image-color 染色演示 */
+.tinted-btn {
+    decorator: image(btn-n);
+    height: 16dp;
+    padding: 2dp 8dp;
+    margin-bottom: 4dp;
+    font-size: 11dp;
+    text-align: center;
+}
+.tint-red {
+    image-color: #ff6b6b;
+    color: #ffffff;
+}
+.tint-green {
+    image-color: #9ece6a;
+    color: #ffffff;
+}
+.tint-gold {
+    image-color: #e0af68;
+    color: #1a1b26;
+}
+
+/* 渐变按钮 */
+.gradient-btn {
+    decorator: linear-gradient(to bottom, #3d6aaa, #2d4a7a);
+    border: 1dp #7aa2f7;
+    border-radius: 3dp;
+    padding: 4dp 10dp;
+    margin-bottom: 4dp;
+    font-size: 11dp;
+    text-align: center;
+    color: #c0caf5;
+}
+.gradient-btn:hover {
+    decorator: linear-gradient(to bottom, #4d8acc, #3d6aaa);
+    border: 1dp #89b4fa;
+    color: #ffffff;
+}
+.gradient-btn:active {
+    decorator: linear-gradient(to bottom, #2d4a7a, #3d6aaa);
+}
+
+/* 径向渐变 */
+.radial-badge {
+    decorator: radial-gradient(circle, #7aa2f7, #1a2035);
+    width: 48dp;
+    height: 48dp;
+    border-radius: 24dp;
+    text-align: center;
+    padding-top: 16dp;
+    font-size: 11dp;
+    color: #ffffff;
+}
+
+/* =====================
+   底部信息栏
+   ===================== */
+
+.info-bar {
+    padding: 3dp 6dp;
+    background-color: #1a1b2680;
+    border: 1dp #2d3354;
+    border-radius: 3dp;
+    font-size: 10dp;
+    color: #565f89;
+}
+.code {
+    color: #9ece6a;
+}
