@@ -24,28 +24,33 @@
 | `tests/engine/ui/ui_world_anchor_test.cpp` | 当前直接验证 `UIElement + UIManager` 的世界锚点插值 | 改为新的世界锚点 helper / wrapper 级测试 |
 | `tests/game/dialogue_bubble_controller_test.cpp` | 当前仍创建 `UIManager`，并查找 `UILabel` 子节点 | 改为直接验证 `DialogueBubbleView` 的 RML 文档状态与锚点数据 |
 | `tests/engine/scene/entry_to_first_frame_safety_test.cpp` | 当前 grep `if (ui_manager_)` | 改为验证 `Scene` 不再依赖 `ui_manager_` |
-| `tests/game/ui_layout_integration_test.cpp` | 若仍使用 preset fixture，需要跟随启动链改造同步收敛 | 改为直接验证 Rml 文档与真实 spritesheet / 共享 helper |
+| `tests/game/ui_layout_integration_test.cpp` | 当前已是 RmlUi 文档级测试，但 fixture 仍受 `ResourceServices` / `UIPresetManager` 变更影响 | 保持文档级测试定位，仅收敛 fixture 与共享 helper 依赖 |
 
 **原则**：
 
 - 先补新测，再移除对旧类型的断言
 - 本 Phase 不删除整批旧框架测试；Phase 9 再删除真正失去对象的测试
 
-#### Step 8.2: 迁移 GameScene 残留 HUD 宿主
+#### Step 8.2: 提炼仍需保留的共享类型
 
-**修改** `src/game/scene/game_scene.h/cpp`
+在删除旧框架前，先把仍被 Rml wrapper 使用的中性数据结构迁出。
 
-- 删除 `GameScene` 对 `UIManager` 的创建和持有
-- 为游戏内固定 HUD 控件提供纯 RmlUi 宿主方案，推荐新增独立文档：
-  - `ui/rmlui/hud/game_overlay.rml`
-  - `ui/rmlui/hud/game_overlay.rcss`
-- 将当前旧 `menu` 按钮改为 RmlUi 按钮 + 事件桥接，不再使用 `UIButton`
-- `GameScene::update()` / `clean()` 改为直接驱动和析构各个 wrapper，而不是依赖旧 UI 树
+**本 Step 明确包括**：
 
-**边界**：
+- 将 `SlotItem` 从 `src/engine/ui/ui_item_slot.h` 提炼到独立共享头文件
+- 将 `Thickness` 从 `src/engine/ui/ui_element.h` 提炼到独立共享头文件
+- 审查 `DEFAULT_UI_FONT_ID` / `DEFAULT_UI_FONT_SIZE_PX` 等默认 UI 字体常量
+  - 若 wrapper 仍依赖，则迁到中性头文件
+  - 若只是局部实现细节，则就地私有化，不再依附旧 UI 框架
 
-- `TimeClockHud` / `InventoryUI` / `HotbarUI` 继续保留类名与现有公共接口
-- 本阶段不删除旧按钮实现文件；只是不再让运行时代码依赖它
+**建议形态**：
+
+- `src/engine/ui/ui_types.h` 或等价的中性共享头
+- 不允许新共享头反向 include 将在 Phase 9 删除的旧框架头文件
+
+**结果要求**：
+
+- `HotbarUI` / `InventoryUI` / `DialogueBubbleView` / `ItemTooltipUI` 不再 include 将在 Phase 9 删除的旧头文件
 
 #### Step 8.3: DialogueBubbleView 脱离 UIElement / UIManager
 
@@ -61,6 +66,13 @@
 - `GameScene::render()` 或专用 helper 负责在渲染前刷新对话气泡文档位置
 
 > 目标是保留“世界锚定插值”行为，但不再借助 `UIManager::render()` 和 `UIElement` 布局树。
+
+**时机要求**：
+
+- 世界锚点屏幕位置必须在 `GameScene::render()` 中刷新
+- 刷新时机应位于“相机插值位置已应用”之后
+- 并且发生在本帧 `GLRenderer::present()` 调用 `RmlUILayer::update()/render()` 之前
+- 不允许把文档位置更新延后到 `RmlUi` 已开始渲染之后
 
 #### Step 8.4: ItemTooltipUI 脱离 UIElement / UIManager
 
@@ -81,18 +93,34 @@
 - Tooltip 行为保持与 Phase 4 一致
 - 不再依赖旧布局树的 `setPosition()` / `getRequestedSize()` / `update()`
 
-#### Step 8.5: 提炼仍需保留的共享类型
+#### Step 8.5: 迁移 GameScene 残留 HUD 宿主
 
-在删除旧框架前，先把仍被 Rml wrapper 使用的中性数据结构迁出：
+> **前置**：Step 8.2-8.4 已完成；即 `DialogueBubbleView` / `ItemTooltipUI` 已能脱离旧 UI 树独立存活。
 
-- 将 `SlotItem` 从 `src/engine/ui/ui_item_slot.h` 提炼到独立共享头文件
-- 审查 `Thickness`、默认 UI 字体常量等依赖
-  - 若仍被 wrapper 使用，则迁到中性头文件
-  - 若仅剩局部逻辑需要，则改为局部私有结构，不再依附 `engine/ui` 旧框架
+**修改** `src/game/scene/game_scene.h/cpp`
 
-**结果要求**：
+- 删除 `GameScene` 对 `UIManager` 的创建和持有
+- 为游戏内固定 HUD 控件提供纯 RmlUi 宿主方案，推荐新增独立文档：
+  - `ui/rmlui/hud/game_overlay.rml`
+  - `ui/rmlui/hud/game_overlay.rcss`
+- 将当前旧 `menu` 按钮改为 RmlUi 按钮 + 事件桥接，不再使用 `UIButton`
+- `GameScene::update()` / `render()` / `clean()` 改为直接驱动和析构各个 wrapper，而不是依赖旧 UI 树
 
-- `HotbarUI` / `InventoryUI` / `DialogueBubbleView` / `ItemTooltipUI` 不再 include 将在 Phase 9 删除的旧头文件
+**析构顺序要求**：
+
+- 所有持有 `Rml::ElementDocument*` 的 wrapper 必须在 `Scene::clean()` 调用 `unloadAllRmlDocuments()` 之前释放
+- 重点包括：
+  - `DialogueBubbleView`
+  - `ItemTooltipUI`
+  - `InventoryUI`
+  - `HotbarUI`
+  - 其他未来新增的文档持有者
+- 若仍保留 `owner_scene_id` 批量卸载机制，也必须避免 wrapper 析构阶段再次对已卸载文档做重复 `unload`
+
+**边界**：
+
+- `TimeClockHud` / `InventoryUI` / `HotbarUI` 继续保留类名与现有公共接口
+- 本阶段不删除旧按钮实现文件；只是不再让运行时代码依赖它
 
 #### Step 8.6: 清除运行时对 UIPresetManager 的依赖
 
@@ -114,6 +142,10 @@
   - 或 `resource_mapping.json` / `AssetRegistry` 的直接注册
 - `Context::ResourceServices` 中移除 `UIPresetManager`
 - 删除 UI preset debug panel
+- 同步修改所有构造 `ResourceServices` / `Context` 的测试 fixture，去除 `UIPresetManager` 字段与构造参数
+  - 包括当前游戏测试 fixture
+  - 也包括 Phase 9 才会删除的 legacy `engine/ui` 测试，只要它们在本 Phase 仍参与编译，就必须先适配新签名
+  - 执行时用 grep 校验所有 `ResourceServices resource_services{...}` 调用点都已收敛
 
 > `UIPresetManager` 的物理文件删除放到 Phase 9；本阶段先保证它不再是运行时依赖。
 
@@ -128,7 +160,7 @@
 **同步修改**：
 
 - 更新受影响的场景测试
-- 检查是否还有任何场景派生类持有或假设 `UIManager`
+- 当前预期 `GameScene` 是唯一仍在持有 `UIManager` 的运行时场景；执行时仍需用 grep 复核，防止遗漏其他派生类或测试专用场景
 
 #### Step 8.8: 本阶段不做的事
 
