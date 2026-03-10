@@ -10,33 +10,37 @@
 
 | Phase | 状态 | 文档 |
 |------|------|------|
-| Phase 1: 输入核心（Binding + SDL3 手柄接入） | `[ ]` | [`phase-01.md`](./phase-01.md) |
-| Phase 2: 玩法语义重构（语义动作 + Controller 目标） | `[ ]` | [`phase-02.md`](./phase-02.md) |
-| Phase 3: UI 导航与上下文（Menu 动作 + InputContext） | `[ ]` | [`phase-03.md`](./phase-03.md) |
-| Phase 4: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-04.md`](./phase-04.md) |
+| Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[ ]` | [`phase-01.md`](./phase-01.md) |
+| Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[ ]` | [`phase-02.md`](./phase-02.md) |
+| Phase 3: InputContext 上下文分层 | `[ ]` | [`phase-03.md`](./phase-03.md) |
+| Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[ ]` | [`phase-04.md`](./phase-04.md) |
+| Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-05.md`](./phase-05.md) |
 
 ## 目标
 
 - 为 `InputManager` 补齐 SDL3 手柄支持。
-- 将输入层从“键鼠特化”整理为“设备无关动作层”。
+- 将输入层从"键鼠特化"整理为"设备无关动作层"。
 - 让键盘、鼠标、手柄共用同一套语义动作。
 - 为后续 JRPG 菜单、对话、战斗和技能系统预留统一输入基础。
 
 ## 全局约束
 
-- 采用最优方案，不考虑向后兼容。
+- 采用最优方案，不考虑向后兼容（CLAUDE.md 明确要求）。
 - `InputManager` 仍然是 SDL 事件唯一入口，不新增第二个 poll 点。
 - 保留现有动作查询主接口：`onAction()`、`isActionDown()`、`isActionPressed()`、`isActionReleased()`。
-- Phase 默认按 `1 -> 4` 顺序执行，不要跳过前置阶段直接做后置特性。
+- Phase 默认按 `1 -> 5` 顺序执行，不要跳过前置阶段直接做后置特性。
 - 每次实施只读取本索引 + 当前 Phase 文档，避免无关上下文占用。
+- 只支持单个活动手柄（单人 RPG 场景），多手柄插入时取最近连接的。
 
 ## 架构共识（跨 Phase）
 
-- Binding 模型从字符串猜测逻辑中独立出来，显式区分键盘、鼠标、手柄按钮、手柄轴方向。
-- 上层玩法逐步从 `mouse_left` / `mouse_right` / `hotbar_1..10` 迁移到 `primary_action` / `secondary_action` / `hotbar_prev` / `hotbar_next` 等语义动作。
-- 手柄目标选择不走“强模拟鼠标”，而走控制器友好的目标模型。
-- 菜单导航通过 `menu_*`、`menu_confirm`、`menu_cancel` 等语义动作驱动，不直接绑定某个 UI 框架的 SDL 事件。
-- `InputContext` 和输入缓冲是后续 JRPG 扩展的基础设施，但不提前把所有复杂度塞进 Phase 1。
+- **不过度抽象 binding 层**：运行时保持分离的 per-device map（`key_to_actions_`、`mouse_to_actions_`、`gamepad_button_to_actions_`、`gamepad_axis_to_actions_`），只在解析侧新增 `gamepadButtonFromString` / `gamepadAxisDirectionFromString` 等函数。不引入统一的 `InputBinding` 包装类型。
+- **InputDevice 枚举**：Phase 1 引入 `enum class InputDevice : uint8_t { KeyboardMouse, Gamepad }`，`InputManager` 维护 `last_input_device_`，每次处理输入事件时更新。
+- 上层玩法从 `mouse_left` / `mouse_right` / `hotbar_1..10` **直接迁移**到 `primary_action` / `secondary_action` / `hotbar_prev` / `hotbar_next` 等语义动作，旧名称直接删除。
+- 手柄目标选择不走"强模拟鼠标"，而走控制器友好的目标模型（基于角色朝向 + 范围约束）。
+- 菜单导航通过 `menu_*`、`menu_confirm`、`menu_cancel` 等语义动作驱动。
+- `InputContext` 和输入缓冲是后续扩展的基础设施，不提前塞进 Phase 1。
+- **测试基础设施**：手柄测试使用 SDL3 `SDL_AttachVirtualJoystick` API 模拟手柄设备，确保 CI 环境无物理手柄时也能运行。
 
 ## 使用方式
 
@@ -47,7 +51,8 @@
 
 ## 阶段划分说明
 
-- Phase 1：只解决输入核心问题，让 SDL3 手柄事件、binding 解析、动作状态流转真正跑通。
-- Phase 2：只解决玩法层“鼠标中心”问题，让手柄能自然参与世界操作。
-- Phase 3：只解决菜单导航和上下文切换问题，让 UI 和场景切换有统一输入边界。
-- Phase 4：补增强项，不阻塞前 3 个阶段交付。
+- Phase 1：让 SDL3 手柄事件、按钮/轴映射、动作状态流转跑通，配合调试面板验证。
+- Phase 2：让手柄自然参与世界操作（移动、工具、交互、快捷栏）。
+- Phase 3：引入 InputContext 上下文栈，区分 Gameplay / Menu / Dialogue / Battle 输入域。
+- Phase 4：为菜单和 UI 建立手柄导航能力，接入 RmlUI。
+- Phase 5：补增强项（输入缓冲、Glyph、震动、重绑定），不阻塞前 4 阶段交付。
