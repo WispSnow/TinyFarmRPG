@@ -13,7 +13,7 @@
 namespace engine::render::opengl {
 namespace {
 
-TEST(VfxPipelineStageTest, PassTypeInsertsWorldAndOverlayVfxBetweenBloomAndUi) {
+TEST(VfxPipelineStageTest, PassTypeInsertsWorldAndOverlayVfxAfterBloom) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.h").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
@@ -24,18 +24,18 @@ TEST(VfxPipelineStageTest, PassTypeInsertsWorldAndOverlayVfxBetweenBloomAndUi) {
     const std::size_t pos_bloom = content.find("Bloom,");
     const std::size_t pos_world_vfx = content.find("WorldVfx,");
     const std::size_t pos_overlay_vfx = content.find("OverlayVfx,");
-    const std::size_t pos_ui = content.find("UI,");
+    const std::size_t pos_count = content.find("Count");
 
     ASSERT_NE(pos_bloom, std::string::npos);
     ASSERT_NE(pos_world_vfx, std::string::npos);
     ASSERT_NE(pos_overlay_vfx, std::string::npos);
-    ASSERT_NE(pos_ui, std::string::npos);
+    ASSERT_NE(pos_count, std::string::npos);
     EXPECT_LT(pos_bloom, pos_world_vfx);
     EXPECT_LT(pos_world_vfx, pos_overlay_vfx);
-    EXPECT_LT(pos_overlay_vfx, pos_ui);
+    EXPECT_LT(pos_overlay_vfx, pos_count);
 }
 
-TEST(VfxPipelineStageTest, PresentRunsWorldVfxBeforeCompositeAndOverlayBeforeUi) {
+TEST(VfxPipelineStageTest, PresentRunsWorldVfxBeforeCompositeAndOverlayBeforeRmlUi) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -49,15 +49,15 @@ TEST(VfxPipelineStageTest, PresentRunsWorldVfxBeforeCompositeAndOverlayBeforeUi)
     const std::size_t pos_world_vfx = present_block.find("world_vfx_pass_->flush(world_vfx_context)");
     const std::size_t pos_composite = present_block.find("composite_pass_->render(viewport)");
     const std::size_t pos_overlay_vfx = present_block.find("vfx_pass_->flush(overlay_vfx_context)");
-    const std::size_t pos_ui = present_block.find("ui_pass_->flush(viewport)");
+    const std::size_t pos_rml_update = present_block.find("rmlui_layer_->update();");
 
     ASSERT_NE(pos_world_vfx, std::string::npos);
     ASSERT_NE(pos_composite, std::string::npos);
     ASSERT_NE(pos_overlay_vfx, std::string::npos);
-    ASSERT_NE(pos_ui, std::string::npos);
+    ASSERT_NE(pos_rml_update, std::string::npos);
     EXPECT_LT(pos_world_vfx, pos_composite);
     EXPECT_LT(pos_composite, pos_overlay_vfx);
-    EXPECT_LT(pos_overlay_vfx, pos_ui);
+    EXPECT_LT(pos_overlay_vfx, pos_rml_update);
 }
 
 TEST(VfxPipelineStageTest, CleanReleasesWorldAndOverlayVfxPasses) {

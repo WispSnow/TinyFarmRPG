@@ -139,29 +139,6 @@ public:
                   const engine::utils::ColorOptions* color_options = nullptr);
     
     /**
-     * @brief 在屏幕坐标中直接渲染一个用于UI的Image对象。
-     *
-     * @param image 包含纹理ID、源矩形和翻转状态的Image对象。
-     * @param position 屏幕坐标中的左上角位置。
-     * @param size 目标矩形的大小。
-     */
-    void drawUIImage(const Image& image,
-                     const glm::vec2& position,
-                     const glm::vec2& size,
-                     const engine::utils::ColorOptions* color_options = nullptr,
-                     const engine::utils::TransformOptions* transform_options = nullptr);
-
-    /**
-     * @brief 绘制UI填充矩形
-     * 
-     * @param rect 矩形区域
-     * @param params 纹理绘制参数（颜色、渐变、旋转等）
-     */
-    void drawUIFilledRect(const engine::utils::Rect& rect,
-                          const engine::utils::ColorOptions* color_options = nullptr,
-                          const engine::utils::TransformOptions* transform_options = nullptr);
-
-    /**
      * @brief 添加点光源到当前帧
      */
     void addPointLight(const glm::vec2& position, float radius,
@@ -206,13 +183,8 @@ public:
 
     void setDefaultWorldColorOptions(const engine::utils::ColorOptions& options);
     void setDefaultWorldTransformOptions(const engine::utils::TransformOptions& options);
-    void setDefaultUIColorOptions(const engine::utils::ColorOptions& options);
-    void setDefaultUITransformOptions(const engine::utils::TransformOptions& options);
-
     [[nodiscard]] engine::utils::ColorOptions getDefaultWorldColorOptions() const;
     [[nodiscard]] engine::utils::TransformOptions getDefaultWorldTransformOptions() const;
-    [[nodiscard]] engine::utils::ColorOptions getDefaultUIColorOptions() const;
-    [[nodiscard]] engine::utils::TransformOptions getDefaultUITransformOptions() const;
 
     // 禁用拷贝和移动语义
     Renderer(const Renderer&) = delete;
@@ -235,11 +207,5 @@ private:
     [[nodiscard]] bool shouldCullRect(const engine::utils::Rect& rect) const;
     [[nodiscard]] bool shouldCullCircle(const glm::vec2& center, float radius) const;
 
-    void drawUINineSliceInternal(const Image& image,
-                                 const NineSlice& nine_slice,
-                                 const glm::vec2& position,
-                                 const glm::vec2& size,
-                                 const engine::utils::ColorOptions* color_options,
-                                 const engine::utils::TransformOptions* transform_options);
 };
 } // namespace engine::render

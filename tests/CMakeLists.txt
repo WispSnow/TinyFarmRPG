@@ -42,7 +42,6 @@ set(TEST_SOURCES
     engine/resource/resource_manager_font_event_dispatch_test.cpp
     engine/resource/resource_manager_submanager_visibility_test.cpp
     engine/resource/resource_manager_clear_orchestration_test.cpp
-    engine/ui/ui_button_factory_api_test.cpp
     engine/loader/level_loader_layer_name_test.cpp
     engine/loader/level_preprocess_service_test.cpp
     engine/loader/level_loader_async_stage_test.cpp
@@ -70,17 +69,7 @@ set(TEST_SOURCES
     engine/render/bloom_precision_regression_test.cpp
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
-    engine/ui/ui_preset_manager_sound_test.cpp
-    engine/ui/ui_preset_manager_no_exceptions_test.cpp
-    engine/ui/ui_preset_manager_invalid_input_test.cpp
-    engine/ui/ui_preset_manager_debug_api_test.cpp
-    engine/ui/ui_interaction_state_source_test.cpp
-    engine/ui/ui_layout_source_test.cpp
-    engine/ui/ui_interaction_runtime_test.cpp
-    engine/ui/ui_layout_invalidation_test.cpp
     engine/ui/ui_world_anchor_test.cpp
-    engine/ui/ui_stack_layout_test.cpp
-    engine/ui/ui_grid_layout_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
     engine/spatial/static_tile_grid_rect_query_test.cpp
     engine/spatial/dynamic_entity_grid_test.cpp

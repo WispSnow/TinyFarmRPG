@@ -23,8 +23,8 @@
 | Phase 5: 战斗 UI | `[x]` | [`phase-05.md`](./phase-05.md) |
 | Phase 6: 快捷栏（HotbarUI） | `[x]` | [`phase-06.md`](./phase-06.md) |
 | Phase 7: 物品栏（InventoryUI） | `[x]` | [`phase-07.md`](./phase-07.md) |
-| Phase 8: 补齐残留迁移 | `[ ]` | [`phase-08.md`](./phase-08.md) |
-| Phase 9: 清理旧 UI 框架 | `[ ]` | [`phase-09.md`](./phase-09.md) |
+| Phase 8: 补齐残留迁移 | `[x]` | [`phase-08.md`](./phase-08.md) |
+| Phase 9: 清理旧 UI 框架 | `[x]` | [`phase-09.md`](./phase-09.md) |
 
 
 - 2026-03-06: Phase 3 已完成 TitleScene / PauseMenuScene / RestDialogScene / SaveSlotSelectScene 的 RmlUi 迁移。
@@ -35,6 +35,8 @@
 - 2026-03-09: Phase 7 已完成 InventoryUI 的 RmlUi wrapper 迁移，保留分页 / 右键使用 / Tooltip / inventory 内部拖拽，并补齐 `inventory ↔ hotbar` 跨 UI 拖拽协调。
 - 2026-03-09: Phase 7 新增跨文档 `drag: clone + dragdrop` 探针和 Inventory 文档级布局测试；当前 headless 测试环境下若 `RmlUILayer` 不可用则自动跳过。
 - 2026-03-10: 原 Phase 8 拆分为两阶段：Phase 8 先补齐 `GameScene` / `UIPresetManager` / 共享类型等残留迁移，Phase 9 再做最终删除与工具链清扫。
+- 2026-03-10: Phase 8 已完成 `GameScene` 运行时残留迁移；`Context` / 启动链 / 测试 fixture 已摆脱 `UIPresetManager`，运行时场景不再依赖旧 `UIManager`。
+- 2026-03-10: Phase 9 已完成旧 `engine::ui` 框架、`UIPass`、`drawUI*` / `drawUIText` API、`ui_tester`、旧 preset 资产与对应测试清理；渲染管线收敛为 `OverlayVfx -> RmlUi -> ImGui`。
 
 ## 全局约束
 
