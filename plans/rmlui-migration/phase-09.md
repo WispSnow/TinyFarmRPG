@@ -22,25 +22,30 @@ Phase 9 只删除已经没有运行时价值的旧框架测试。
 | `engine/ui/ui_layout_invalidation_test.cpp` | 删除 |
 | `engine/ui/ui_stack_layout_test.cpp` | 删除 |
 | `engine/ui/ui_grid_layout_test.cpp` | 删除 |
-| `engine/factory_visibility_test.cpp` | 更新或删除其中 `UIButton` 工厂可见性断言 |
-| `engine/render/rmlui_pipeline_stage_test.cpp` | 保留，但改为校验 `OverlayVfx -> RmlUi -> ImGui` |
-| `engine/render/gl_renderer_lifecycle_test.cpp` | 保留，但移除对 `ui_pass_` 的生命周期断言 |
+| `engine/factory_visibility_test.cpp` | 保留文件；仅删除 `UIButton` 的 include 与工厂可见性断言，其他工厂测试继续保留 |
+| `engine/render/render_pass_interface_test.cpp` | 保留文件；删除 `UIPass` include 与 `UIPass` 继承 `RenderPass` / `ReloadableRenderPass` 的断言，其他 pass 契约继续保留 |
+| `engine/render/rmlui_pipeline_stage_test.cpp` | 保留，但改为校验 `OverlayVfx -> RmlUi -> ImGui`；不得再断言 `ui_pass_->flush(...)` |
+| `engine/render/vfx_pipeline_stage_test.cpp` | 保留，但将顺序断言改为 `WorldVfx -> Composite -> OverlayVfx -> RmlUi`，移除 `ui_pass_` 相关断言 |
+| `engine/render/gl_renderer_lifecycle_test.cpp` | 保留，但移除对 `ui_pass_` reset 顺序的断言；继续验证 `scene_pass_` / `shader_library_` / `render_context_` 的析构顺序 |
 
 #### Step 9.2: 清理工具链依赖
 
 - 删除 `tools/ui_tester/` 整个目录
 - 从 `tools/CMakeLists.txt` 中移除 `ui_tester` 目标
+- 先用 `rg -n "drawUI|drawUIText|PassType::UI" tools/visual_tester/visual_test_cases.cpp` 扫描全部遗留调用点，并逐个确认所属 test case；不要只按类名猜测
 - 修改 `tools/visual_tester/visual_test_cases.cpp`
   - 删除旧 UI pass 覆盖代码和对应说明
-  - 删除或重写 `UiVisualTest`
-  - `TextRenderingVisualTest` 若仍保留，仅验证世界文本路径；不再调用 `drawUIText()` / `drawUIFilledRect()`
+  - `RenderPassCoverageVisualTest`：删除 `drawUIFilledRect()` / `drawUIImage()` 覆盖层，以及 `PassType::UI` 统计展示；保留其余 pass 覆盖验证
+  - `UiVisualTest`：删除整个 test case，或彻底改写为 RmlUi 文档级可视化验证；不得继续调用 `drawUI*`
+  - `TextRenderingVisualTest`：若仍保留，仅验证世界文本路径；不再调用 `drawUIText()` / `drawUIFilledRect()`
 - 修改 `engine/debug/panels/gl_renderer_debug_panel.cpp`
-  - 去掉 `UIPass` 统计行
+  - 去掉 `UIPass` / `PassType::UI` 统计行，确保映射表与 `PassType` 枚举保持一致
 
 #### Step 9.3: 移除 TextRenderer 的 UI 渲染分支
 
 **修改** `src/engine/render/text_renderer.h/cpp`
 
+- **执行顺序约束**：此步必须先于 Step 9.4；`TextRenderer::drawUIText()` 当前内部仍调用 `gl_renderer_->drawUITexture()`，若先删 `drawUITexture()` 会导致中间状态编译失败
 - 删除 `drawUIText()` 重载
 - 删除 `drawTextInternal(..., bool use_ui_pass)` 的 UI 分支，统一保留世界文字路径
 - 删除内部对 `drawUITexture()` 的调用
@@ -54,12 +59,15 @@ Phase 9 只删除已经没有运行时价值的旧框架测试。
   - `ui_pass_`
   - `PassType::UI`
   - `drawUIRect` / `drawUITexture` / `drawUIRectGradient` / `drawUITextureGradient`
+  - `initUIPass()`
+  - `present()` 入口 null guard 中的 `!ui_pass_`
 - 从 `Renderer` 中移除：
   - `drawUIImage`
   - `drawUIFilledRect`
   - `drawUINineSliceInternal`
   - `getDefaultUIColorOptions()` / `getDefaultUITransformOptions()` 及其 set 接口
 - 调整 `present()` 顺序为：`... -> OverlayVfx -> RmlUi -> ImGui -> SwapWindow`
+- 删除 `PassType::UI` 后，确认 `PassType::Count` 缩减不会留下硬编码序数依赖；用 grep 检查 `PassType` 的映射表、统计展示与测试断言是否全部同步更新
 
 > **执行前检查**：确认 `tools/visual_tester`、`TextRenderer`、debug panel、测试代码已全部移除 `drawUI*` 依赖。
 
@@ -96,9 +104,9 @@ Phase 9 只删除已经没有运行时价值的旧框架测试。
 - 删除：
   - `assets/data/ui_button_presets.json`
   - `assets/data/ui_image_presets.json`
-- 审查 `assets/data/icon_config.json`
-  - 仅当 `indicator/cursor` 与 `hand_*` 已无任何运行时用途时才删除
-  - 若 `ItemCatalog` 仍使用 `indicator/cursor` 作为 fallback icon，则必须保留或先替换 fallback 规则
+- **保留** `assets/data/icon_config.json`
+  - 当前运行时 `GameRuntimeAssembler -> ItemCatalog::loadIconConfig("assets/data/icon_config.json")` 仍依赖它
+  - Phase 9 只清理旧 UI preset 资产，不触碰 `ItemCatalog` 的图标配置
 
 #### Step 9.7: CMake 与构建注册清理
 
