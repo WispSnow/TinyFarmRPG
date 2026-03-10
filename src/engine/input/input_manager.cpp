@@ -31,10 +31,14 @@ constexpr float AXIS_RELEASE_THRESHOLD = 0.4f;
         {"move_right", {"D", "Right", "GamepadDpadRight", "LeftStickRight"}},
         {"move_up", {"W", "Up", "GamepadDpadUp", "LeftStickUp"}},
         {"move_down", {"S", "Down", "GamepadDpadDown", "LeftStickDown"}},
+        {"primary_action", {"MouseLeft", "GamepadSouth"}},
+        {"secondary_action", {"MouseRight", "GamepadEast"}},
         {"pause", {"P", "Escape", "GamepadStart"}},
         {"interact", {"F", "GamepadWest"}},
         {"inventory", {"I", "GamepadBack"}},
         {"hotbar", {"Tab", "GamepadNorth"}},
+        {"hotbar_prev", {"GamepadLeftShoulder"}},
+        {"hotbar_next", {"GamepadRightShoulder"}},
         {"rotate_left", {"Q"}},
         {"rotate_right", {"E"}},
         {"player_light", {"L"}},
@@ -619,7 +623,6 @@ bool InputManager::loadConfig(std::string_view config_path) {
 
 void InputManager::initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname) {
     spdlog::trace("初始化输入映射...");
-    auto resolved_mappings = actions_to_keyname;
     key_to_actions_.clear();
     mouse_to_actions_.clear();
     gamepad_button_to_actions_.clear();
@@ -631,16 +634,7 @@ void InputManager::initializeMappings(const std::map<std::string, std::vector<st
     actions_.clear();
     action_dispatch_order_.clear();
 
-    if (resolved_mappings.find("mouse_left") == resolved_mappings.end()) {
-        spdlog::debug("配置中没有定义 'mouse_left' 动作, 添加默认映射到 'MouseLeft'.");
-        resolved_mappings["mouse_left"] = {"MouseLeft"};
-    }
-    if (resolved_mappings.find("mouse_right") == resolved_mappings.end()) {
-        spdlog::debug("配置中没有定义 'mouse_right' 动作, 添加默认映射到 'MouseRight'.");
-        resolved_mappings["mouse_right"] = {"MouseRight"};
-    }
-
-    for (const auto& [action_name, key_names] : resolved_mappings) {
+    for (const auto& [action_name, key_names] : actions_to_keyname) {
         const auto action_name_id = entt::hashed_string(action_name.c_str());
         auto& entry = actions_[action_name_id];
         entry.name = action_name;

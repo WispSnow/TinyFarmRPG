@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <entt/entity/registry.hpp>
 #include <entt/core/hashed_string.hpp>
@@ -36,14 +37,19 @@ namespace {
 
 class PlayerControlSystemTest : public ::testing::Test {
 protected:
+    struct VirtualGamepadHandle {
+        SDL_JoystickID instance_id{0};
+    };
+
     SDL_Window* window_{nullptr};
     std::unique_ptr<engine::core::GameState> game_state_;
     std::unique_ptr<entt::dispatcher> dispatcher_;
     std::filesystem::path config_path_;
+    std::vector<VirtualGamepadHandle> attached_gamepads_;
     static inline bool sdl_ready_{false};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
     }
 
     static void TearDownTestSuite() {
@@ -60,23 +66,38 @@ protected:
 	        window_ = SDL_CreateWindow("PlayerControlSystemTest", 64, 64, SDL_WINDOW_HIDDEN);
 	        ASSERT_NE(window_, nullptr);
 
-	        game_state_ = engine::core::GameState::create(window_);
+        game_state_ = engine::core::GameState::create(window_);
 	        ASSERT_NE(game_state_, nullptr);
 
         const auto timestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-        config_path_ = std::filesystem::current_path() / ("player_control_system_test_config_" + std::to_string(timestamp) + ".json");
+        config_path_ = std::filesystem::temp_directory_path() / ("player_control_system_test_config_" + std::to_string(timestamp) + ".json");
 
         std::ofstream config_file(config_path_);
         ASSERT_TRUE(config_file.is_open());
-        config_file << R"({"input_mappings":{"player_light":["L"]}})";
+        config_file << R"({
+  "input_mappings": {
+    "move_up": ["W", "GamepadDpadUp"],
+    "move_down": ["S", "GamepadDpadDown"],
+    "move_left": ["A", "GamepadDpadLeft"],
+    "move_right": ["D", "GamepadDpadRight"],
+    "primary_action": ["MouseLeft", "GamepadSouth"],
+    "secondary_action": ["MouseRight", "GamepadEast"],
+    "hotbar_prev": ["GamepadLeftShoulder"],
+    "hotbar_next": ["GamepadRightShoulder"],
+    "player_light": ["L"]
+  }
+})";
         config_file.close();
 
-        SDL_Event event{};
-        while (SDL_PollEvent(&event)) {
-        }
+        drainEvents();
     }
 
     void TearDown() override {
+        for (auto& gamepad : attached_gamepads_) {
+            detachVirtualGamepad(gamepad);
+        }
+        attached_gamepads_.clear();
+
         game_state_.reset();
         dispatcher_.reset();
 
@@ -88,8 +109,41 @@ protected:
         std::error_code error_code;
         std::filesystem::remove(config_path_, error_code);
 
+        drainEvents();
+    }
+
+    static void drainEvents() {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
+        }
+    }
+
+    [[nodiscard]] VirtualGamepadHandle attachVirtualGamepad(const char* name) {
+        SDL_VirtualJoystickDesc desc{};
+        SDL_INIT_INTERFACE(&desc);
+        desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+        desc.naxes = SDL_GAMEPAD_AXIS_COUNT;
+        desc.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+        desc.name = name;
+        for (int i = 0; i < SDL_GAMEPAD_BUTTON_COUNT; ++i) {
+            desc.button_mask |= (1u << i);
+        }
+        for (int i = 0; i < SDL_GAMEPAD_AXIS_COUNT; ++i) {
+            desc.axis_mask |= (1u << i);
+        }
+
+        VirtualGamepadHandle handle;
+        handle.instance_id = SDL_AttachVirtualJoystick(&desc);
+        EXPECT_NE(handle.instance_id, 0);
+        EXPECT_TRUE(SDL_IsGamepad(handle.instance_id));
+        attached_gamepads_.push_back(handle);
+        return handle;
+    }
+
+    void detachVirtualGamepad(VirtualGamepadHandle& handle) {
+        if (handle.instance_id != 0) {
+            EXPECT_TRUE(SDL_DetachVirtualJoystick(handle.instance_id));
+            handle.instance_id = 0;
         }
     }
 };
@@ -115,6 +169,15 @@ void pushMouseLeftDown(int x, int y) {
     button_down.button.x = static_cast<float>(x);
     button_down.button.y = static_cast<float>(y);
     ASSERT_EQ(SDL_PushEvent(&button_down), true);
+}
+
+void pushGamepadButtonEvent(SDL_JoystickID instance_id, SDL_GamepadButton button, bool down) {
+    SDL_Event event{};
+    event.type = down ? SDL_EVENT_GAMEPAD_BUTTON_DOWN : SDL_EVENT_GAMEPAD_BUTTON_UP;
+    event.gbutton.which = instance_id;
+    event.gbutton.button = static_cast<Uint8>(button);
+    event.gbutton.down = down;
+    ASSERT_EQ(SDL_PushEvent(&event), true);
 }
 
 } // namespace
@@ -313,6 +376,225 @@ struct ToggleLightSpy {
 
     EXPECT_FALSE(registry.all_of<game::component::ActionLockedTag>(player));
     EXPECT_EQ(registry.get<game::component::StateComponent>(player).action_, game::component::Action::Idle);
+}
+
+	TEST_F(PlayerControlSystemTest, ToolSelected_GamepadMode_ShowsFacingTileTarget) {
+	    entt::registry registry;
+		    engine::spatial::SpatialIndexManager spatial;
+		    spatial.initialize(registry, MAP_SIZE, TILE_SIZE, WORLD_MIN, WORLD_MAX, glm::vec2(16.0f, 16.0f));
+		    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+		    ASSERT_NE(input, nullptr);
+		    engine::render::Camera camera(game_state_->getLogicalSize());
+		    camera.setPosition(game_state_->getLogicalSize() * 0.5f);
+		    camera.setZoom(1.0f);
+
+    const entt::entity target = registry.create();
+    registry.emplace<game::component::TargetComponent>(target);
+    registry.emplace<engine::component::InvisibleTag>(target);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(24.0f, 24.0f));
+    registry.emplace<engine::component::VelocityComponent>(player);
+    auto& actor = registry.emplace<game::component::ActorComponent>(player);
+    actor.speed_ = 100.0f;
+    actor.tool_ = game::defs::Tool::Hoe;
+    registry.emplace<game::component::StateComponent>(player);
+
+		    PlayerControlSystem system(registry, *dispatcher_, *input, camera, spatial, nullptr);
+		    system.update(0.0f);
+
+    auto gamepad = attachVirtualGamepad("FacingPad");
+    input->sampleInputEvents();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_DPAD_UP, true);
+    input->update();
+    system.update(0.0f);
+
+    EXPECT_EQ(input->getLastInputDevice(), engine::input::InputDevice::Gamepad);
+    EXPECT_FALSE(registry.all_of<engine::component::InvisibleTag>(target));
+
+    const auto& cursor = registry.get<game::component::TargetComponent>(target);
+    EXPECT_FLOAT_EQ(cursor.position_.x, 16.0f);
+    EXPECT_FLOAT_EQ(cursor.position_.y, 0.0f);
+}
+
+	TEST_F(PlayerControlSystemTest, PrimaryAction_GamepadMode_PrefersCurrentMoveIntentDirection) {
+	    entt::registry registry;
+		    engine::spatial::SpatialIndexManager spatial;
+		    spatial.initialize(registry, MAP_SIZE, TILE_SIZE, WORLD_MIN, WORLD_MAX, glm::vec2(16.0f, 16.0f));
+		    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+		    ASSERT_NE(input, nullptr);
+		    engine::render::Camera camera(game_state_->getLogicalSize());
+		    camera.setPosition(game_state_->getLogicalSize() * 0.5f);
+		    camera.setZoom(1.0f);
+
+    const entt::entity target = registry.create();
+    registry.emplace<game::component::TargetComponent>(target);
+    registry.emplace<engine::component::InvisibleTag>(target);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(24.0f, 24.0f));
+    registry.emplace<engine::component::VelocityComponent>(player);
+    auto& actor = registry.emplace<game::component::ActorComponent>(player);
+    actor.speed_ = 100.0f;
+    actor.tool_ = game::defs::Tool::Hoe;
+    auto& state = registry.emplace<game::component::StateComponent>(player);
+    state.direction_ = game::component::Direction::Down;
+
+		    PlayerControlSystem system(registry, *dispatcher_, *input, camera, spatial, nullptr);
+		    system.update(0.0f);
+
+    auto gamepad = attachVirtualGamepad("PrimaryPad");
+    input->sampleInputEvents();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_DPAD_RIGHT, true);
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_SOUTH, true);
+    input->update();
+
+    EXPECT_TRUE(registry.all_of<game::component::ActionLockedTag>(player));
+    EXPECT_EQ(registry.get<game::component::StateComponent>(player).action_, game::component::Action::Hoe);
+    EXPECT_EQ(registry.get<game::component::StateComponent>(player).direction_, game::component::Direction::Right);
+
+    const auto& cursor = registry.get<game::component::TargetComponent>(target);
+    EXPECT_FLOAT_EQ(cursor.position_.x, 32.0f);
+    EXPECT_FLOAT_EQ(cursor.position_.y, 16.0f);
+}
+
+	TEST_F(PlayerControlSystemTest, HotbarPrevNextWrapAround) {
+	    entt::registry registry;
+		    engine::spatial::SpatialIndexManager spatial;
+		    spatial.initialize(registry, MAP_SIZE, TILE_SIZE, WORLD_MIN, WORLD_MAX, glm::vec2(16.0f, 16.0f));
+		    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+		    ASSERT_NE(input, nullptr);
+		    engine::render::Camera camera(game_state_->getLogicalSize());
+		    camera.setPosition(game_state_->getLogicalSize() * 0.5f);
+		    camera.setZoom(1.0f);
+
+    const entt::entity target = registry.create();
+    registry.emplace<game::component::TargetComponent>(target);
+    registry.emplace<engine::component::InvisibleTag>(target);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(24.0f, 24.0f));
+    registry.emplace<engine::component::VelocityComponent>(player);
+    registry.emplace<game::component::ActorComponent>(player).speed_ = 100.0f;
+    registry.emplace<game::component::StateComponent>(player);
+    auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
+    hotbar.active_slot_index_ = 0;
+
+		    PlayerControlSystem system(registry, *dispatcher_, *input, camera, spatial, nullptr);
+		    system.update(0.0f);
+
+    auto gamepad = attachVirtualGamepad("HotbarPad");
+    input->sampleInputEvents();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, true);
+    input->update();
+    EXPECT_EQ(hotbar.active_slot_index_, 9);
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, false);
+    input->update();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, true);
+    input->update();
+    EXPECT_EQ(hotbar.active_slot_index_, 0);
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, false);
+    input->update();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, true);
+    input->update();
+    EXPECT_EQ(hotbar.active_slot_index_, 1);
+}
+
+	TEST_F(PlayerControlSystemTest, SecondaryAction_ClearsSelection) {
+	    entt::registry registry;
+		    engine::spatial::SpatialIndexManager spatial;
+		    spatial.initialize(registry, MAP_SIZE, TILE_SIZE, WORLD_MIN, WORLD_MAX, glm::vec2(16.0f, 16.0f));
+		    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+		    ASSERT_NE(input, nullptr);
+		    engine::render::Camera camera(game_state_->getLogicalSize());
+		    camera.setPosition(game_state_->getLogicalSize() * 0.5f);
+		    camera.setZoom(1.0f);
+
+    const entt::entity target = registry.create();
+    registry.emplace<game::component::TargetComponent>(target);
+    registry.emplace<engine::component::InvisibleTag>(target);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(24.0f, 24.0f));
+    registry.emplace<engine::component::VelocityComponent>(player);
+    auto& actor = registry.emplace<game::component::ActorComponent>(player);
+    actor.speed_ = 100.0f;
+    actor.tool_ = game::defs::Tool::Hoe;
+    actor.hold_seed_ = game::defs::CropType::Strawberry;
+    actor.hold_seed_inventory_slot_ = 3;
+    registry.emplace<game::component::StateComponent>(player);
+
+		    PlayerControlSystem system(registry, *dispatcher_, *input, camera, spatial, nullptr);
+		    system.update(0.0f);
+
+    auto gamepad = attachVirtualGamepad("SecondaryPad");
+    input->sampleInputEvents();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_EAST, true);
+    input->update();
+
+    EXPECT_EQ(actor.tool_, game::defs::Tool::None);
+    EXPECT_EQ(actor.hold_seed_, game::defs::CropType::Unknown);
+    EXPECT_EQ(actor.hold_seed_inventory_slot_, -1);
+}
+
+	TEST_F(PlayerControlSystemTest, MouseAndGamepadSwitch_UpdatesTargetModel) {
+	    entt::registry registry;
+		    engine::spatial::SpatialIndexManager spatial;
+		    spatial.initialize(registry, MAP_SIZE, TILE_SIZE, WORLD_MIN, WORLD_MAX, glm::vec2(16.0f, 16.0f));
+		    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+		    ASSERT_NE(input, nullptr);
+		    engine::render::Camera camera(game_state_->getLogicalSize());
+		    camera.setPosition(game_state_->getLogicalSize() * 0.5f);
+		    camera.setZoom(1.0f);
+
+    const entt::entity target = registry.create();
+    registry.emplace<game::component::TargetComponent>(target);
+    registry.emplace<engine::component::InvisibleTag>(target);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(24.0f, 24.0f));
+    registry.emplace<engine::component::VelocityComponent>(player);
+    auto& actor = registry.emplace<game::component::ActorComponent>(player);
+    actor.speed_ = 100.0f;
+    actor.tool_ = game::defs::Tool::Hoe;
+    registry.emplace<game::component::StateComponent>(player);
+
+		    PlayerControlSystem system(registry, *dispatcher_, *input, camera, spatial, nullptr);
+		    system.update(0.0f);
+
+    pushMouseMotion(40, 24);
+    input->update();
+    system.update(0.0f);
+
+    EXPECT_EQ(input->getLastInputDevice(), engine::input::InputDevice::KeyboardMouse);
+    const auto& mouse_cursor = registry.get<game::component::TargetComponent>(target);
+    EXPECT_FLOAT_EQ(mouse_cursor.position_.x, 32.0f);
+    EXPECT_FLOAT_EQ(mouse_cursor.position_.y, 16.0f);
+
+    auto gamepad = attachVirtualGamepad("SwitchPad");
+    input->sampleInputEvents();
+
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_DPAD_UP, true);
+    input->update();
+    system.update(0.0f);
+
+    EXPECT_EQ(input->getLastInputDevice(), engine::input::InputDevice::Gamepad);
+    const auto& gamepad_cursor = registry.get<game::component::TargetComponent>(target);
+    EXPECT_FLOAT_EQ(gamepad_cursor.position_.x, 16.0f);
+    EXPECT_FLOAT_EQ(gamepad_cursor.position_.y, 0.0f);
 }
 
 } // namespace game::system

@@ -70,13 +70,25 @@ inline game::component::Action resolveAction(game::defs::Tool tool) {
     }
 }
 
+inline glm::ivec2 toOffset(game::component::Direction direction) {
+    switch (direction) {
+        case game::component::Direction::Up: return glm::ivec2(0, -1);
+        case game::component::Direction::Down: return glm::ivec2(0, 1);
+        case game::component::Direction::Left: return glm::ivec2(-1, 0);
+        case game::component::Direction::Right: return glm::ivec2(1, 0);
+        default: return glm::ivec2(0, 1);
+    }
+}
+
 } // namespace
 
 namespace game::system {
 
 PlayerControlSystem::~PlayerControlSystem() {
-    input_manager_.onAction("mouse_left"_hs).disconnect<&PlayerControlSystem::onMouseLeftClick>(this);
-    input_manager_.onAction("mouse_right"_hs).disconnect<&PlayerControlSystem::onMouseRightClick>(this);
+    input_manager_.onAction("primary_action"_hs).disconnect<&PlayerControlSystem::onPrimaryAction>(this);
+    input_manager_.onAction("secondary_action"_hs).disconnect<&PlayerControlSystem::onSecondaryAction>(this);
+    input_manager_.onAction("hotbar_prev"_hs).disconnect<&PlayerControlSystem::onHotbarPrev>(this);
+    input_manager_.onAction("hotbar_next"_hs).disconnect<&PlayerControlSystem::onHotbarNext>(this);
     disconnectHotbarSlots(std::make_index_sequence<10>{});  // 展开为 index_sequence<0,1,...,9>
     input_manager_.onAction("player_light"_hs).disconnect<&PlayerControlSystem::onPlayerLightToggle>(this);
     dispatcher_.disconnect(this);
@@ -89,8 +101,10 @@ PlayerControlSystem::PlayerControlSystem(entt::registry& registry,
     engine::spatial::SpatialIndexManager& spatial_index_manager,
     game::data::ItemCatalog* item_catalog)
     : registry_(registry), dispatcher_(dispatcher), input_manager_(input_manager), camera_(camera), spatial_index_manager_(spatial_index_manager), item_catalog_(item_catalog) {
-    input_manager_.onAction("mouse_left"_hs).connect<&PlayerControlSystem::onMouseLeftClick>(this);
-    input_manager_.onAction("mouse_right"_hs).connect<&PlayerControlSystem::onMouseRightClick>(this);
+    input_manager_.onAction("primary_action"_hs).connect<&PlayerControlSystem::onPrimaryAction>(this);
+    input_manager_.onAction("secondary_action"_hs).connect<&PlayerControlSystem::onSecondaryAction>(this);
+    input_manager_.onAction("hotbar_prev"_hs).connect<&PlayerControlSystem::onHotbarPrev>(this);
+    input_manager_.onAction("hotbar_next"_hs).connect<&PlayerControlSystem::onHotbarNext>(this);
     connectHotbarSlots(std::make_index_sequence<10>{});  // 展开为 index_sequence<0,1,...,9>
     input_manager_.onAction("player_light"_hs).connect<&PlayerControlSystem::onPlayerLightToggle>(this);
     dispatcher_.sink<game::defs::SwitchToolEvent>().connect<&PlayerControlSystem::onSwitchToolEvent>(this);
@@ -123,12 +137,10 @@ void PlayerControlSystem::update(float /* delta_time */) {
     }
 
     // 每帧流水线：
-    // 1) logical mouse -> world mouse（用于目标选择/交互）
-    // 2) move_* -> velocity/state（用于移动与动画）
-    // 3) tool/seed + mouse tile -> target cursor（用于“玩家意图”的可视化）
-    const auto mouse_world_position = computeMouseWorldPosition();
+    // 1) move_* -> velocity/state（用于移动与动画）
+    // 2) tool/seed + effective target tile -> target cursor（用于“玩家意图”的可视化）
     updateMovementIntent();
-    updateTargetAndSelection(mouse_world_position);
+    updateTargetAndSelection();
 }
 
 glm::vec2 PlayerControlSystem::computeMouseWorldPosition() const {
@@ -169,7 +181,7 @@ void PlayerControlSystem::updateMovementIntent() {
     }
 }
 
-void PlayerControlSystem::updateTargetAndSelection(glm::vec2 mouse_world_position) {
+void PlayerControlSystem::updateTargetAndSelection() {
     if (!registry_.valid(player_entity_) || !registry_.valid(target_entity_)) return;
 
     // 动作锁定中保持当前显示状态（目标不刷新，但也不在此处变更显示）
@@ -185,8 +197,7 @@ void PlayerControlSystem::updateTargetAndSelection(glm::vec2 mouse_world_positio
         return;
     }
 
-    // 只有鼠标在可操作范围内才显示目标
-    auto target_center = resolveTargetPosition(mouse_world_position);
+    const auto target_center = resolveEffectiveTargetCenter();
     if (!target_center) {
         registry_.emplace_or_replace<engine::component::InvisibleTag>(target_entity_);
         return;
@@ -220,21 +231,47 @@ glm::vec2 PlayerControlSystem::getMoveDirection() const {
     return glm::length(direction) > 1.0e-5f ? glm::normalize(direction) : glm::vec2(0.0f, 0.0f);
 }
 
-std::optional<glm::vec2> PlayerControlSystem::resolveTargetPosition(glm::vec2 mouse_world_position) const {
+std::optional<glm::vec2> PlayerControlSystem::resolveTargetTileCenterFromWorld(glm::vec2 world_pos) const {
     if (!registry_.valid(player_entity_)) return std::nullopt;
 
     const auto& player_transform = registry_.get<engine::component::TransformComponent>(player_entity_);
     const auto player_tile = spatial_index_manager_.getTileCoordAtWorldPos(player_transform.position_);
-    const auto mouse_tile = spatial_index_manager_.getTileCoordAtWorldPos(mouse_world_position);
+    const auto target_tile = spatial_index_manager_.getTileCoordAtWorldPos(world_pos);
 
-    const auto dx = mouse_tile.x - player_tile.x;
-    const auto dy = mouse_tile.y - player_tile.y;
+    const auto dx = target_tile.x - player_tile.x;
+    const auto dy = target_tile.y - player_tile.y;
     if (std::abs(dx) > game::defs::TOOL_TARGET_TILE_RANGE || std::abs(dy) > game::defs::TOOL_TARGET_TILE_RANGE) {
         return std::nullopt;
     }
 
-    const auto tile_rect = spatial_index_manager_.getRectAtWorldPos(mouse_world_position);
+    const auto tile_rect = spatial_index_manager_.getRectAtWorldPos(world_pos);
     return tile_rect.pos + tile_rect.size * 0.5f;
+}
+
+std::optional<glm::vec2> PlayerControlSystem::resolveEffectiveTargetCenter() const {
+    if (!registry_.valid(player_entity_)) return std::nullopt;
+
+    if (input_manager_.getLastInputDevice() != engine::input::InputDevice::Gamepad) {
+        return resolveTargetTileCenterFromWorld(computeMouseWorldPosition());
+    }
+
+    if (!registry_.all_of<engine::component::TransformComponent, game::component::StateComponent>(player_entity_)) {
+        return std::nullopt;
+    }
+
+    const auto& player_transform = registry_.get<engine::component::TransformComponent>(player_entity_);
+    const auto& state = registry_.get<game::component::StateComponent>(player_entity_);
+
+    auto direction = state.direction_;
+    const auto move_direction = getMoveDirection();
+    if (glm::length(move_direction) > 1.0e-5f) {
+        direction = resolveDirection(move_direction);
+    }
+
+    const glm::ivec2 offset = toOffset(direction);
+    const glm::vec2 probe_world_pos = player_transform.position_
+        + glm::vec2{static_cast<float>(offset.x), static_cast<float>(offset.y)} * game::defs::TILE_SIZE;
+    return resolveTargetTileCenterFromWorld(probe_world_pos);
 }
 
 bool PlayerControlSystem::ensureHotbar() {
@@ -309,17 +346,14 @@ bool PlayerControlSystem::hasUsableSeedStack() const {
     return true;
 }
 
-bool PlayerControlSystem::onMouseLeftClick() {
+bool PlayerControlSystem::onPrimaryAction() {
     if (!registry_.valid(player_entity_)) return true;
     if (!registry_.valid(target_entity_)) return true;
 
     if (registry_.all_of<game::component::ActionLockedTag>(player_entity_)) {
         return true; // 动作锁定中，忽略点击
     }
-    
-    // 以点击瞬间的鼠标位置为准（避免目标位置滞后一帧）
-    const auto mouse_world_position = computeMouseWorldPosition();
-    
+
     const auto& player_transform = registry_.get<engine::component::TransformComponent>(player_entity_);
     auto& actor = registry_.get<game::component::ActorComponent>(player_entity_);
     auto& state = registry_.get<game::component::StateComponent>(player_entity_);
@@ -329,8 +363,7 @@ bool PlayerControlSystem::onMouseLeftClick() {
         return true;
     }
 
-    // 只有鼠标在可操作范围内才允许激活动作
-    const auto target_center = resolveTargetPosition(mouse_world_position);
+    const auto target_center = resolveEffectiveTargetCenter();
     if (!target_center) {
         return true;
     }
@@ -374,9 +407,30 @@ bool PlayerControlSystem::onMouseLeftClick() {
     return true;
 }
 
-bool PlayerControlSystem::onMouseRightClick() {
+bool PlayerControlSystem::onSecondaryAction() {
     // 取消当前激活的工具/物品（工具 + 种子）
     clearSelection();
+    return true;
+}
+
+bool PlayerControlSystem::onHotbarPrev() {
+    if (!registry_.valid(player_entity_)) return true;
+    if (!ensureHotbar()) return true;
+
+    const int active_slot = hotbar_->active_slot_index_;
+    const int previous_slot =
+        (active_slot - 1 + game::component::HotbarComponent::SLOT_COUNT) % game::component::HotbarComponent::SLOT_COUNT;
+    switchToHotbarSlot(previous_slot);
+    return true;
+}
+
+bool PlayerControlSystem::onHotbarNext() {
+    if (!registry_.valid(player_entity_)) return true;
+    if (!ensureHotbar()) return true;
+
+    const int active_slot = hotbar_->active_slot_index_;
+    const int next_slot = (active_slot + 1) % game::component::HotbarComponent::SLOT_COUNT;
+    switchToHotbarSlot(next_slot);
     return true;
 }
 

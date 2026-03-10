@@ -130,7 +130,7 @@ protected:
         input_config_path_ = std::filesystem::temp_directory_path() / "map_manager_async_preload_input.json";
         std::ofstream input_config(input_config_path_);
         ASSERT_TRUE(input_config.is_open());
-        input_config << R"({"input_mappings":{"mouse_left":["MouseLeft"]}})";
+        input_config << R"({"input_mappings":{"primary_action":["MouseLeft"]}})";
         input_config.close();
 
         input_manager_ = engine::input::InputManager::create(&dispatcher_, game_state_.get(), input_config_path_.string());
