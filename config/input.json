@@ -2,23 +2,32 @@
   "input_mappings": {
     "pause": [
       "P",
-      "Escape"
+      "Escape",
+      "GamepadStart"
     ],
     "move_down": [
       "S",
-      "Down"
+      "Down",
+      "GamepadDpadDown",
+      "LeftStickDown"
     ],
     "move_up": [
       "W",
-      "Up"
+      "Up",
+      "GamepadDpadUp",
+      "LeftStickUp"
     ],
     "move_right": [
       "D",
-      "Right"
+      "Right",
+      "GamepadDpadRight",
+      "LeftStickRight"
     ],
     "move_left": [
       "A",
-      "Left"
+      "Left",
+      "GamepadDpadLeft",
+      "LeftStickLeft"
     ],
     "rotate_left": [
       "Q"
@@ -27,16 +36,19 @@
       "E"
     ],
     "interact": [
-      "F"
+      "F",
+      "GamepadWest"
     ],
     "player_light": [
       "L"
     ],
     "inventory": [
-      "I"
+      "I",
+      "GamepadBack"
     ],
     "hotbar": [
-      "Tab"
+      "Tab",
+      "GamepadNorth"
     ],
     "hotbar_1": [
       "1"
