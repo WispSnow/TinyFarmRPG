@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <cstdint>
+#include <optional>
 #include <SDL3/SDL.h>
 #include <glm/vec2.hpp>
 #include <entt/signal/sigh.hpp>
@@ -18,6 +19,31 @@ namespace engine::core {
 }
 
 namespace engine::input {
+
+inline constexpr std::size_t GAMEPAD_BUTTON_COUNT = static_cast<std::size_t>(SDL_GAMEPAD_BUTTON_COUNT);
+inline constexpr std::size_t GAMEPAD_AXIS_COUNT = static_cast<std::size_t>(SDL_GAMEPAD_AXIS_COUNT);
+
+enum class InputDevice : std::uint8_t {
+    KeyboardMouse,
+    Gamepad
+};
+
+enum class GamepadAxisDirection : std::uint8_t {
+    LeftStickUp,
+    LeftStickDown,
+    LeftStickLeft,
+    LeftStickRight,
+    RightStickUp,
+    RightStickDown,
+    RightStickLeft,
+    RightStickRight,
+    LeftTrigger,
+    RightTrigger,
+    Count
+};
+
+inline constexpr std::size_t GAMEPAD_AXIS_DIRECTION_COUNT =
+    static_cast<std::size_t>(GamepadAxisDirection::Count);
 
 /**
  * @brief 动作状态枚举, 除了表示状态外，还将用于函数数组索引(0~2)
@@ -37,6 +63,17 @@ struct ActionEntry {
     uint8_t     active_count = 0;              ///< 当前有几个物理输入按住此动作
     std::string name;                           ///< 调试用动作名称
     std::array<entt::sigh<bool()>, CALLBACK_STATE_COUNT> signals;
+};
+
+struct GamepadDebugState {
+    std::size_t connected_gamepad_count{0};
+    bool has_active_gamepad{false};
+    SDL_JoystickID active_gamepad_id{0};
+    std::string active_gamepad_name;
+    InputDevice last_input_device{InputDevice::KeyboardMouse};
+    std::array<bool, GAMEPAD_BUTTON_COUNT> button_states{};
+    std::array<Sint16, GAMEPAD_AXIS_COUNT> axis_raw_values{};
+    std::array<float, GAMEPAD_AXIS_COUNT> axis_normalized_values{};
 };
 
 /**
@@ -65,6 +102,23 @@ private:
     std::unordered_map<SDL_Scancode, bool> key_down_states_;
     /// @brief 鼠标按钮当前是否按下（边沿检测）
     std::unordered_map<Uint32, bool> mouse_down_states_;
+    /// @brief 手柄按钮 → 关联的动作 ID 列表
+    std::unordered_map<SDL_GamepadButton, std::vector<entt::id_type>> gamepad_button_to_actions_;
+    /// @brief 手柄轴方向 → 关联的动作 ID 列表
+    std::unordered_map<GamepadAxisDirection, std::vector<entt::id_type>> gamepad_axis_to_actions_;
+    /// @brief 手柄按钮当前是否按下（仅跟踪参与动作映射的按钮）
+    std::unordered_map<SDL_GamepadButton, bool> gamepad_button_down_states_;
+    /// @brief 手柄轴方向当前是否按下（仅跟踪参与动作映射的方向）
+    std::unordered_map<GamepadAxisDirection, bool> gamepad_axis_down_states_;
+
+    std::array<bool, GAMEPAD_BUTTON_COUNT> gamepad_button_states_{};
+    std::array<bool, GAMEPAD_AXIS_DIRECTION_COUNT> gamepad_axis_direction_states_{};
+    std::array<Sint16, GAMEPAD_AXIS_COUNT> gamepad_axis_raw_values_{};
+    std::array<float, GAMEPAD_AXIS_COUNT> gamepad_axis_normalized_values_{};
+    std::vector<SDL_JoystickID> connected_gamepad_ids_;
+    SDL_Gamepad* active_gamepad_{nullptr};
+    SDL_JoystickID active_gamepad_id_{0};
+    InputDevice last_input_device_{InputDevice::KeyboardMouse};
 
     glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
     glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
@@ -76,6 +130,7 @@ private:
 
 public:
     static constexpr std::string_view DEFAULT_CONFIG_PATH{"config/input.json"};
+    ~InputManager();
 
     /**
      * @brief 创建并初始化输入管理器。
@@ -135,6 +190,8 @@ public:
     glm::vec2 getMousePosition() const;                              ///< @brief 获取鼠标位置 （屏幕坐标）
     glm::vec2 getLogicalMousePosition() const;                       ///< @brief 获取鼠标位置 （逻辑坐标）
     glm::vec2 getMouseWheelDelta() const;                            ///< @brief 获取鼠标滚轮 delta
+    [[nodiscard]] InputDevice getLastInputDevice() const;
+    [[nodiscard]] GamepadDebugState getGamepadDebugState() const;
     void setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback);
     void setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback);
 
@@ -156,9 +213,16 @@ private:
     void processEvent(const SDL_Event& event);                      ///< @brief 处理 SDL 事件（将按键转换为动作状态）
     [[nodiscard]] bool loadConfig(std::string_view config_path);
     void initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname);
+    void initializeConnectedGamepads();
+    void switchActiveGamepad(SDL_JoystickID instance_id);
+    void closeActiveGamepad();
+    void clearGamepadContributions();
+    void resetGamepadDebugState();
 
-    SDL_Scancode scancodeFromString(std::string_view key_name);     ///< @brief 将字符串键名转换为 SDL_Scancode
-    Uint32 mouseButtonFromString(std::string_view button_name);     ///< @brief 将字符串按钮名转换为 SDL_Button
+    [[nodiscard]] SDL_Scancode scancodeFromString(std::string_view key_name) const;     ///< @brief 将字符串键名转换为 SDL_Scancode
+    [[nodiscard]] Uint32 mouseButtonFromString(std::string_view button_name) const;      ///< @brief 将字符串按钮名转换为 SDL_Button
+    [[nodiscard]] SDL_GamepadButton gamepadButtonFromString(std::string_view button_name) const;
+    [[nodiscard]] std::optional<GamepadAxisDirection> gamepadAxisDirectionFromString(std::string_view axis_name) const;
     void recalculateLogicalMousePosition();                         ///< @brief 根据当前窗口/逻辑尺寸更新逻辑坐标
 };
 

@@ -68,7 +68,8 @@ flowchart LR
 - 移动：`move_up/down/left/right`
 - 交互：`interact`
 - UI：`inventory`、`hotbar`
-- 快捷栏：`hotbar_1..hotbar_10`
+- 主/副操作：`primary_action`、`secondary_action`
+- 快捷栏：`hotbar_prev`、`hotbar_next`、`hotbar_1..hotbar_10`
 - 相机：`camera_reset_zoom`
 
 ---
@@ -82,16 +83,15 @@ flowchart LR
 
 ### 4.2 目标框不出现
 1. 目标框显示依赖“有选择”：`ActorComponent.tool_ != None` 或 `hold_seed_ != Unknown`
-2. 目标框显示依赖“范围门控”：`TOOL_TARGET_TILE_RANGE`（鼠标 tile 必须在玩家附近）
+2. 目标框显示依赖“范围门控”：`TOOL_TARGET_TILE_RANGE`（当前目标 tile 必须在玩家附近）
 3. 若玩家处于 `ActionLockTag`：目标框会保持当前状态但不刷新（避免动画命中位置抖动）
 
-### 4.3 左键点击没有触发动作
-1. 若 `ActionLockTag` 存在：点击会被忽略（动作锁期间只等待动画驱动的命中事件）
-2. 若鼠标超出范围：目标解析失败，会直接 return
-3. 若 UI 吃掉输入：检查 UI 是否占用 `mouse_left`（参见 `docs/input_system.md` 的“占用/转发规则”）
+### 4.3 主操作没有触发动作
+1. 若 `ActionLockTag` 存在：主操作会被忽略（动作锁期间只等待动画驱动的命中事件）
+2. 若当前目标超出范围：目标解析失败，会直接 return
+3. 若 UI 吃掉输入：检查 UI 是否占用 `primary_action`（参见 `docs/input_system.md` 的“占用/转发规则”）
 
 ### 4.4 相机缩放/边界表现异常
 1. 缩放 clamp：检查 `Camera::min_zoom/max_zoom`
 2. 边界 clamp：检查 `Camera::limit_bounds`（通常由 `MapManager::configureCamera` 设置）
 3. 如果边界区域小于视口：`Camera` 会把位置钉在边界中心（防止抖动）
-

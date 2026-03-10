@@ -27,6 +27,7 @@ set(TEST_SOURCES
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp
+    engine/input/input_manager_gamepad_test.cpp
     engine/input/input_manager_rmlui_routing_test.cpp
     engine/input/input_manager_no_exceptions_test.cpp
     engine/scene/entry_to_first_frame_safety_test.cpp

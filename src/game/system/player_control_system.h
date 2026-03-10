@@ -51,18 +51,21 @@ public:
 
 private:
 
-    /// @brief 每帧流水线：鼠标 world 坐标 -> 移动意图 -> 目标选择/显示
+    /// @brief 每帧流水线：输入动作 -> 移动意图 -> 目标选择/显示
     [[nodiscard]] glm::vec2 computeMouseWorldPosition() const;
     void updateMovementIntent();
-    void updateTargetAndSelection(glm::vec2 mouse_world_position);
+    void updateTargetAndSelection();
     void syncTargetComponent(glm::vec2 target_world_center);
 
     glm::vec2 getMoveDirection() const;
-    std::optional<glm::vec2> resolveTargetPosition(glm::vec2 mouse_world_position) const;
+    std::optional<glm::vec2> resolveTargetTileCenterFromWorld(glm::vec2 world_pos) const;
+    std::optional<glm::vec2> resolveEffectiveTargetCenter() const;
 
     // 输入控制回调函数
-    bool onMouseLeftClick();
-    bool onMouseRightClick();
+    bool onPrimaryAction();
+    bool onSecondaryAction();
+    bool onHotbarPrev();
+    bool onHotbarNext();
     bool onPlayerLightToggle();
 
     // 快捷栏动作 ID 表（与 config/input.json 中的 hotbar_1..hotbar_10 对齐）

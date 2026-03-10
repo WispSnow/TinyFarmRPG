@@ -32,7 +32,7 @@ protected:
     static inline bool sdl_ready_{false};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
     }
 
     static void TearDownTestSuite() {

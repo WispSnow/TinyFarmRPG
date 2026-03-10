@@ -31,7 +31,7 @@ protected:
     static inline bool sdl_ready_{false};
 
     static void SetUpTestSuite() {
-        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO);
+        sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
     }
 
     static void TearDownTestSuite() {
@@ -124,10 +124,15 @@ protected:
 	    EXPECT_FALSE(manager->isActionDown(action_id));
 	}
 
-	TEST_F(InputManagerTest, DefaultMouseActionReceivesEvents) {
+	TEST_F(InputManagerTest, PrimaryActionReceivesExplicitMouseBinding) {
+        std::ofstream config_file(config_path_);
+        ASSERT_TRUE(config_file.is_open());
+        config_file << R"({"input_mappings":{"primary_action":["MouseLeft"]}})";
+        config_file.close();
+
 	    auto manager = InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
 	    ASSERT_NE(manager, nullptr);
-	    const entt::id_type mouse_action_id = entt::hashed_string{"mouse_left"};
+	    const entt::id_type mouse_action_id = entt::hashed_string{"primary_action"};
 
     SDL_Event button_down{};
     button_down.type = SDL_EVENT_MOUSE_BUTTON_DOWN;

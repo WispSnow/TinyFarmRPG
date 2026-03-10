@@ -148,7 +148,7 @@ RML/RCSS 中应通过 `ninepatch(...)` 使用这些精灵，不在 C++ 中保留
 
 要求：
 
-- 迁移后删除旧的 `InputManager::onAction("mouse_right")` 连接/断开逻辑
+- 迁移后删除旧的 `InputManager::onAction("secondary_action")` 连接/断开逻辑
 - 右键点击发生在快捷栏区域内时，应在 RmlUi 侧完成消费，避免继续落到世界交互逻辑
 
 ### 2. Hover Tooltip
@@ -242,7 +242,7 @@ C++ 侧维护拖拽状态：
   - `setTooltipUI()`
   - `show()` / `hide()` / `toggle()`
 - 不再保留旧 `setUIManager()` 路径
-- 移除旧 `mouse_right` 全局输入监听
+- 移除旧 `secondary_action` 全局输入监听
 - 内部持有：
   - `engine::ui::rmlui::RmlUILayer&` 或等价引用
   - `engine::ui::rmlui::RmlDataBridge`

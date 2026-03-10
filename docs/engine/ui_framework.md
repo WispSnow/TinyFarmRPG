@@ -21,7 +21,7 @@ TinyFarm 的 UI 框架可以用一句话概括：
 - 职责：
   - 维护根节点 `UIPanel(root)`，所有 UI 元素作为其子树
   - 每帧处理 hover（轮询鼠标位置 + hit test）
-  - 监听 `mouse_left` 的 `PRESSED/RELEASED` 动作回调，驱动 press/release（并通过 `bool` 返回值“吃掉输入”）
+  - 监听 `primary_action` 的 `PRESSED/RELEASED` 动作回调，驱动 press/release（并通过 `bool` 返回值“吃掉输入”）
   - 负责 UI 渲染调用（递归 render）以及可选的自定义鼠标指针绘制
 
 ### 1.3 UIElement：元素树 + 布局模型
@@ -97,7 +97,7 @@ layout_position = anchor_reference + margin.left/top - layout_size * pivot
 ```mermaid
 flowchart TD
   IM["InputManager\ngetLogicalMousePosition"] --> UIM["UIManager"]
-  IM -->|onAction mouse_left\nPRESSED/RELEASED| UIM
+  IM -->|onAction primary_action\nPRESSED/RELEASED| UIM
 
   UIM -->|hit test| HIT["UIElement::findInteractiveAt"]
   HIT --> INT["UIInteractive"]
