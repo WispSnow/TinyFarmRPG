@@ -38,13 +38,10 @@ DialogueBubbleView::DialogueBubbleView(engine::core::Context& context,
                                        uint64_t owner_scene_id,
                                        entt::id_type font_id,
                                        int font_size)
-    : UIElement(glm::vec2{0.0F}, glm::vec2{0.0F, 0.0F}),
-      context_(context),
+    : context_(context),
       text_renderer_(text_renderer),
       font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
-    setAnchor({0.0F, 0.0F}, {0.0F, 0.0F});
-    setPivot({0.5F, 1.0F});
     initDocument(owner_scene_id);
     setVisible(false);
 }
@@ -110,7 +107,7 @@ void DialogueBubbleView::setText(std::string_view text) {
 }
 
 void DialogueBubbleView::setVisible(bool visible) {
-    UIElement::setVisible(visible);
+    visible_ = visible;
     if (!document_ || !layer_) {
         return;
     }
@@ -120,6 +117,14 @@ void DialogueBubbleView::setVisible(bool visible) {
     } else {
         layer_->hideDocument(document_);
     }
+}
+
+void DialogueBubbleView::setWorldAnchor(glm::vec2 world_position, glm::vec2 screen_offset) {
+    world_anchor_.setWorldAnchor(world_position, screen_offset);
+}
+
+void DialogueBubbleView::clearWorldAnchor() {
+    world_anchor_.clearWorldAnchor();
 }
 
 glm::vec2 DialogueBubbleView::measureText(std::string_view text) const {
@@ -148,18 +153,22 @@ void DialogueBubbleView::refreshLayoutFromText() {
         snapToPixel(std::max(0.0F, outer_size.y - padding_.height()))
     };
 
-    setSize(outer_size);
+    size_ = outer_size;
     setPixelProperty(panel_, "width", content_box_size.x);
     setPixelProperty(panel_, "height", content_box_size.y);
 }
 
-void DialogueBubbleView::renderSelf(engine::core::Context& context) {
-    (void)context;
-    if (!panel_ || !document_) {
+void DialogueBubbleView::refreshAnchoredPosition(const engine::render::Camera& camera, float interpolation_alpha) {
+    if (!visible_ || !panel_ || !document_ || !world_anchor_.hasWorldAnchor()) {
         return;
     }
 
-    const glm::vec2 position = getScreenPosition();
+    const glm::vec2 screen_anchor = world_anchor_.resolveScreenAnchorPosition(camera, interpolation_alpha);
+    const glm::vec2 top_left = screen_anchor - size_ * pivot_;
+    const glm::vec2 position{
+        snapToPixel(top_left.x),
+        snapToPixel(top_left.y),
+    };
     setPixelProperty(panel_, "left", position.x);
     setPixelProperty(panel_, "top", position.y);
 }

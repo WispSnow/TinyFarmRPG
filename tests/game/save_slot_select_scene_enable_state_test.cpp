@@ -22,16 +22,29 @@ namespace {
 namespace game::scene {
 namespace {
 
-TEST(SaveSlotSelectSceneEnableStateTest, RefreshSlotButtonsUsesSetEnabled) {
+TEST(SaveSlotSelectSceneEnableStateTest, RefreshSlotButtonsPublishesEnabledBinding) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/save_slot_select_scene.cpp").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/save_slot_select.rml").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
 
     const std::string source = readTextFile(source_path);
+    const std::string rml_source = readTextFile(rml_path);
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(rml_source.empty());
 
-    EXPECT_NE(source.find("button->setEnabled(enabled);"), std::string::npos)
-        << "SaveSlotSelectScene should use unified setEnabled(enabled) in refreshSlotButtons.";
+    EXPECT_NE(source.find("slot.enabled = enabled;"), std::string::npos)
+        << "SaveSlotSelectScene should publish per-slot enabled state into the RmlUi data model.";
+    EXPECT_NE(source.find("data_bridge_.markDirty(\"slots\")"), std::string::npos)
+        << "SaveSlotSelectScene should mark slots dirty after rebuilding slot view models.";
+    EXPECT_NE(rml_source.find("data-class-disabled=\"!slot.enabled\""), std::string::npos)
+        << "Save slot select RML should bind disabled styling to slot.enabled.";
+    EXPECT_NE(rml_source.find("data-attrif-disabled=\"!slot.enabled\""), std::string::npos)
+        << "Save slot select RML should bind disabled attr to slot.enabled.";
+    EXPECT_NE(rml_source.find("data-event-click=\"slot_select(slot.slot_index)\""), std::string::npos)
+        << "Save slot select RML should route slot clicks through the data model event.";
 }
 
 } // namespace

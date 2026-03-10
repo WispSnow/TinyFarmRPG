@@ -127,7 +127,10 @@ bool UITestScene::init() {
 
     const auto logical_size = context_.getGameState().getLogicalSize();
 
-    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size);
+    preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
+    (void)preset_manager_->loadButtonPresets("assets/data/ui_button_presets.json");
+    (void)preset_manager_->loadImagePresets("assets/data/ui_image_presets.json");
+    ui_manager_ = std::make_unique<engine::ui::UIManager>(context_, logical_size, preset_manager_.get());
     buildUI();
     if (!debug_panel_handle_) {
         auto panel = std::make_unique<UITestControlPanel>(*this);
@@ -185,14 +188,18 @@ void UITestScene::clean() {
     drag_item_id_ = entt::null;
     drag_item_count_ = 0;
     start_button_label_initialized_ = false;
+    ui_manager_.reset();
+    preset_manager_.reset();
     spdlog::info("UI 测试场景清理");
     Scene::clean();
 }
 
 void UITestScene::applyImagePresets() {
-    auto& preset_manager = context_.getUIPresetManager();
+    if (!preset_manager_) {
+        return;
+    }
 
-    if (const auto* panel_preset = preset_manager.getImagePreset(kInventoryPanelPresetKey.value())) {
+    if (const auto* panel_preset = preset_manager_->getImagePreset(kInventoryPanelPresetKey.value())) {
         panel_skin_image_ = *panel_preset;
         panel_slice_margins_ = panel_preset->getNineSliceMargins();
     } else {
@@ -293,9 +300,9 @@ void UITestScene::buildUI() {
         grid->setCellSize(grid_layout_cell_size_); // 假设 Slot 大小
         grid_layout_ = grid.get();
 
-        auto& preset_manager = context_.getUIPresetManager();
-        const auto* slot_bg_preset = preset_manager.getImagePreset(kQuickBarSlotPresetKey.value());
-        const auto* slot_selected_preset = preset_manager.getImagePreset(kQuickBarSelectedPresetKey.value());
+        const auto* slot_bg_preset = preset_manager_ ? preset_manager_->getImagePreset(kQuickBarSlotPresetKey.value()) : nullptr;
+        const auto* slot_selected_preset =
+            preset_manager_ ? preset_manager_->getImagePreset(kQuickBarSelectedPresetKey.value()) : nullptr;
         auto fallback_slot_bg = engine::render::Image(SLOT_ATLAS, engine::utils::Rect{glm::vec2{151,6}, glm::vec2{18, 18}});
         auto fallback_slot_selected = engine::render::Image(SLOT_ATLAS, engine::utils::Rect{glm::vec2{119,6}, glm::vec2{18, 18}});
         
@@ -584,7 +591,8 @@ void UITestScene::createButton(engine::ui::UIPanel& panel) {
         },
         []() {
             spdlog::debug("[UI Tester] 鼠标离开按钮");
-        });
+        },
+        preset_manager_.get());
 
     if (!button) {
         spdlog::error("[UI Tester] 创建 Start 按钮失败。");
@@ -616,13 +624,12 @@ void UITestScene::createButton(engine::ui::UIPanel& panel) {
 }
 
 void UITestScene::createPreviewImage(engine::ui::UIPanel& panel) {
-    auto& preset_manager = context_.getUIPresetManager();
     engine::render::Image preview_image_def = engine::render::Image(
         INVENTORY_ATLAS,
         engine::utils::Rect{glm::vec2{0.0f, 64.0f}, glm::vec2{48.0f, 48.0f}}
     );
 
-    if (const auto* preset = preset_manager.getImagePreset(kInventorySlotPresetKey.value())) {
+    if (const auto* preset = preset_manager_ ? preset_manager_->getImagePreset(kInventorySlotPresetKey.value()) : nullptr) {
         preview_image_def = *preset;
     }
 
@@ -899,7 +906,8 @@ void UITestScene::drawControlPanel() {
 	            }
 
 	            if (mode == 0) {
-	                const auto* preset = context_.getUIPresetManager().getButtonPreset(kStartButtonPresetKey.value());
+	                const auto* preset =
+	                    preset_manager_ ? preset_manager_->getButtonPreset(kStartButtonPresetKey.value()) : nullptr;
 	                if (!preset) {
 	                    start_button_->clearSoundEventOverride(event_id);
 	                    return;

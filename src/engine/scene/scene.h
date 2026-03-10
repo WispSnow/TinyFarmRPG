@@ -9,10 +9,6 @@ namespace engine::core {
     class Context;
 }
 
-namespace engine::ui {
-    class UIManager;
-}
-
 namespace engine::ui::rmlui {
     class RmlUILayer;
 }
@@ -35,7 +31,6 @@ protected:
     std::string scene_name_;                            ///< @brief 场景名称
     uint64_t instance_id_;                              ///< @brief 场景实例唯一 ID（用于 RML 文档归属等隔离）
     engine::core::Context& context_;                    ///< @brief 上下文引用（隐式，构造时传入）
-    std::unique_ptr<engine::ui::UIManager> ui_manager_; ///< @brief UI管理器（可选；派生类按需创建）
     entt::registry registry_;                           ///< @brief ECS注册表
 
     bool is_initialized_ = false;                       ///< @brief 场景是否已初始化(非当前场景很可能未被删除，因此需要初始化标志避免重复初始化)
@@ -60,7 +55,7 @@ public:
     Scene& operator=(Scene&&) = delete;
 
     // 核心循环方法
-    [[nodiscard]] virtual bool init();          ///< @brief 初始化场景（注意UI管理器并未初始化，派生类若需要UI，需要自行初始化）
+    [[nodiscard]] virtual bool init();
     virtual void fixedUpdate(float delta_time); ///< @brief 固定步长逻辑更新（默认空实现；仅需要固定逻辑的场景重写）
     virtual void update(float delta_time);      ///< @brief 更新场景。
     virtual void render(float interpolation_alpha); ///< @brief 渲染场景（interpolation_alpha 为渲染插值系数）。

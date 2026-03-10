@@ -22,16 +22,23 @@ namespace {
 namespace game::scene {
 namespace {
 
-TEST(TitleSceneMenuButtonTest, AddsMenuButtonPreset) {
+TEST(TitleSceneMenuButtonTest, BindsRmlMenuButtonToPauseMenuScene) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/title_scene.cpp").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/title.rml").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
 
     const std::string source = readTextFile(source_path);
+    const std::string rml_source = readTextFile(rml_path);
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(rml_source.empty());
 
-    EXPECT_NE(source.find("context_, \"menu\""), std::string::npos)
-        << "TitleScene should create a menu button using the 'menu' preset.";
+    EXPECT_NE(source.find("event_bridge_.on(\"menu\""), std::string::npos)
+        << "TitleScene should bind the menu command through the RmlUi event bridge.";
+    EXPECT_NE(rml_source.find("data-command=\"menu\""), std::string::npos)
+        << "TitleScene RML should expose a menu button command.";
     EXPECT_NE(source.find("PauseMenuScene"), std::string::npos)
         << "TitleScene should open PauseMenuScene from the menu button.";
 }

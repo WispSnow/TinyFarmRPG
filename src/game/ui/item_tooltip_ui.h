@@ -1,8 +1,8 @@
 #pragma once
 
-#include "engine/ui/ui_defaults.h"
-#include "engine/ui/ui_element.h"
+#include "engine/ui/ui_types.h"
 
+#include <cstdint>
 #include <glm/vec2.hpp>
 #include <string>
 #include <string_view>
@@ -22,7 +22,7 @@ class RmlUILayer;
 
 namespace game::ui {
 
-class ItemTooltipUI final : public engine::ui::UIElement {
+class ItemTooltipUI final {
     engine::core::Context& context_;
     engine::ui::rmlui::RmlUILayer* layer_{nullptr};
     Rml::ElementDocument* document_{nullptr};
@@ -31,6 +31,8 @@ class ItemTooltipUI final : public engine::ui::UIElement {
     Rml::Element* category_element_{nullptr};
     Rml::Element* description_element_{nullptr};
 
+    bool visible_{false};
+    glm::vec2 size_{0.0F, 0.0F};
     engine::ui::Thickness padding_{};
     float name_spacing_{0.0f};
     float category_spacing_{0.0f};
@@ -55,18 +57,18 @@ public:
                   uint64_t owner_scene_id,
                   entt::id_type font_id = entt::null,
                   int font_size = engine::ui::DEFAULT_UI_FONT_SIZE_PX);
-    ~ItemTooltipUI() override;
+    ~ItemTooltipUI();
 
     void showItem(std::string_view display_name,
                   std::string_view category,
                   std::string_view description);
     void hideTooltip();
-
-    void update(float delta_time, engine::core::Context& context) override;
+    void update(float delta_time);
 
     void setMaxTextWidth(float width);
     void setOffset(glm::vec2 offset) { offset_ = offset; }
     void setPadding(const engine::ui::Thickness& padding);
+    [[nodiscard]] bool isVisible() const { return visible_; }
 
 private:
     void initDocument(uint64_t owner_scene_id);

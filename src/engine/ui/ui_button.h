@@ -13,6 +13,8 @@
 
 namespace engine::ui {
 
+class UIPresetManager;
+
 enum class UIButtonVisualState : std::uint8_t {
     Normal = 0,
     Hover,
@@ -61,6 +63,7 @@ private:
     std::function<void()> hover_leave_callback_{};
 
     entt::id_type preset_id_{entt::null};
+    const UIPresetManager* preset_manager_{nullptr};
 
     TextLayoutMode text_layout_mode_{TextLayoutMode::Fixed};
     Thickness text_padding_{};
@@ -78,7 +81,8 @@ public:
                                                           glm::vec2 size = {0.0f, 0.0f},
                                                           std::function<void()> click_callback = nullptr,
                                                           std::function<void()> hover_enter_callback = nullptr,
-                                                          std::function<void()> hover_leave_callback = nullptr);
+                                                          std::function<void()> hover_leave_callback = nullptr,
+                                                          const UIPresetManager* preset_manager = nullptr);
 
     [[nodiscard]] static std::unique_ptr<UIButton> create(engine::core::Context& context,
                                                           std::string_view preset_key,
@@ -86,7 +90,8 @@ public:
                                                           glm::vec2 size = {0.0f, 0.0f},
                                                           std::function<void()> click_callback = nullptr,
                                                           std::function<void()> hover_enter_callback = nullptr,
-                                                          std::function<void()> hover_leave_callback = nullptr);
+                                                          std::function<void()> hover_leave_callback = nullptr,
+                                                          const UIPresetManager* preset_manager = nullptr);
 
     ~UIButton() override = default;
 
@@ -110,7 +115,8 @@ private:
              glm::vec2 size,
              std::function<void()> click_callback,
              std::function<void()> hover_enter_callback,
-             std::function<void()> hover_leave_callback);
+             std::function<void()> hover_leave_callback,
+             const UIPresetManager* preset_manager);
 
     [[nodiscard]] bool initFromPreset(entt::id_type preset_id);
     void bindCallbacksToBehaviors();

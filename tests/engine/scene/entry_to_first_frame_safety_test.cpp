@@ -22,7 +22,7 @@ namespace {
 namespace engine::scene {
 namespace {
 
-TEST(EntryToFirstFrameSafetyTest, SceneUpdateGuardsNullUiManager) {
+TEST(EntryToFirstFrameSafetyTest, SceneSourceNoLongerDependsOnUiManager) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/scene/scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -30,8 +30,8 @@ TEST(EntryToFirstFrameSafetyTest, SceneUpdateGuardsNullUiManager) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("if (ui_manager_)"), std::string::npos)
-        << "Scene::update/render should guard ui_manager_ being null.";
+    EXPECT_EQ(source.find("ui_manager_"), std::string::npos)
+        << "Scene runtime should no longer update or render the legacy UIManager tree.";
 }
 
 TEST(EntryToFirstFrameSafetyTest, ReplaceSceneDoesNotAssumeNonEmptyStack) {
@@ -76,4 +76,3 @@ TEST(EntryToFirstFrameSafetyTest, GameAppHooksQuitAndResizeBeforeSceneSetup) {
 } // namespace
 } // namespace engine::core
 // NOLINTEND
-

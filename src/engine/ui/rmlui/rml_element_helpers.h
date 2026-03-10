@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/ui/ui_element.h"
+#include "engine/ui/ui_types.h"
 
 #include <RmlUi/Core/ComputedValues.h>
 #include <RmlUi/Core/Element.h>

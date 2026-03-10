@@ -19,6 +19,7 @@ namespace engine::ui {
     class UIPanel; // UIPanel 将作为根元素
     class UIInteractive;
     class UIDragPreview;
+    class UIPresetManager;
 }
 
 namespace engine::ui {
@@ -32,6 +33,7 @@ namespace engine::ui {
 class UIManager final {
 private:
     engine::core::Context& context_;                         ///< @brief 上下文引用
+    UIPresetManager* preset_manager_{nullptr};               ///< @brief 旧 UI 预设，仅供 legacy tester 使用
     std::unique_ptr<UIPanel> root_element_;                  ///< @brief 一个UIPanel作为根节点(UI元素)
     UIInteractive* hovered_element_{nullptr};                ///< @brief 当前悬停的交互元素
     UIInteractive* pressed_element_{nullptr};                ///< @brief 当前按下的交互元素
@@ -42,7 +44,9 @@ private:
     bool hid_system_cursor_{false};                          ///< @brief 是否隐藏了系统鼠标（用于多 UIManager 叠加时恢复）
     
 public:
-    UIManager(engine::core::Context& context, const glm::vec2& window_size);
+    UIManager(engine::core::Context& context,
+              const glm::vec2& window_size,
+              UIPresetManager* preset_manager = nullptr);
 
     ~UIManager();
 

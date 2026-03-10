@@ -9,7 +9,6 @@
 #include "engine/resource/resource_manager.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "engine/async/main_thread_command_queue.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"

@@ -122,7 +122,6 @@ if(ENABLE_DEBUG_UI)
         engine/debug/panels/audio_debug_panel.cpp
         engine/debug/panels/text_renderer_debug_panel.cpp
         engine/debug/panels/res_mgr_debug_panel.cpp
-        engine/debug/panels/ui_preset_debug_panel.cpp
         engine/debug/panels/scene_debug_panel.cpp
         engine/debug/panels/spatial_index_debug_panel.cpp
         engine/debug/panels/gl_renderer_debug_panel.cpp

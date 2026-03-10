@@ -75,12 +75,9 @@ ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
                              uint64_t owner_scene_id,
                              entt::id_type font_id,
                              int font_size)
-    : UIElement(glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 0.0f}),
-      context_(context),
+    : context_(context),
       font_id_(engine::ui::resolveUIFontId(font_id)),
       font_size_(font_size) {
-    setAnchor({0.0f, 0.0f}, {0.0f, 0.0f});
-    setPivot({0.0f, 0.0f});
     initDocument(owner_scene_id);
     hideTooltip();
 }
@@ -290,7 +287,7 @@ void ItemTooltipUI::refreshLayout() {
         snapToPixel(std::max(0.0f, outer_size.y - padding_.height()))
     };
 
-    setSize(outer_size);
+    size_ = outer_size;
     setPixelProperty(panel_, "width", content_box_size.x);
     setPixelProperty(panel_, "height", content_box_size.y);
 }
@@ -306,29 +303,28 @@ void ItemTooltipUI::showItem(std::string_view display_name,
     category_ = std::string(category);
     description_ = std::string(description);
     refreshLayout();
-    UIElement::setVisible(true);
+    visible_ = true;
     if (layer_) {
         layer_->showDocument(document_);
     }
 }
 
 void ItemTooltipUI::hideTooltip() {
-    UIElement::setVisible(false);
+    visible_ = false;
     if (document_ && layer_) {
         layer_->hideDocument(document_);
     }
 }
 
-void ItemTooltipUI::update(float delta_time, engine::core::Context& context) {
-    UIElement::update(delta_time, context);
-
-    if (!isVisible() || !panel_) {
+void ItemTooltipUI::update(float delta_time) {
+    (void)delta_time;
+    if (!visible_ || !panel_) {
         return;
     }
 
     const glm::vec2 mouse_pos = context_.getInputManager().getLogicalMousePosition();
     const glm::vec2 logical_size = context_.getGameState().getLogicalSize();
-    const glm::vec2 tooltip_size = getRequestedSize();
+    const glm::vec2 tooltip_size = size_;
 
     glm::vec2 pos = mouse_pos + offset_;
     if (pos.x + tooltip_size.x > logical_size.x) {
@@ -343,7 +339,6 @@ void ItemTooltipUI::update(float delta_time, engine::core::Context& context) {
     pos.x = snapToPixel(pos.x);
     pos.y = snapToPixel(pos.y);
 
-    setPosition(pos);
     setPixelProperty(panel_, "left", pos.x);
     setPixelProperty(panel_, "top", pos.y);
 }

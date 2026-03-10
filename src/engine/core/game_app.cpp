@@ -3,7 +3,6 @@
 #include "engine/core/context.h"
 #include "engine/core/config.h"
 #include "engine/core/game_state.h"
-#include "engine/resource/asset_registry.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/audio/audio_player.h"
@@ -13,9 +12,7 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
 #include "engine/scene/scene_manager.h"
-#include "engine/ui/ui_preset_manager.h"
 #include "engine/async/main_thread_command_queue.h"
-#include "engine/utils/json_file_loader.h"
 #include "engine/utils/events.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -26,7 +23,6 @@
 #include "engine/debug/panels/gl_renderer_debug_panel.h"
 #include "engine/debug/panels/res_mgr_debug_panel.h"
 #include "engine/debug/panels/text_renderer_debug_panel.h"
-#include "engine/debug/panels/ui_preset_debug_panel.h"
 #include "engine/debug/panels/scene_debug_panel.h"
 #include "engine/debug/panels/spatial_index_debug_panel.h"
 #include "engine/debug/panels/vfx_debug_panel.h"
@@ -35,120 +31,15 @@
 #include "engine/spatial/spatial_index_manager.h"
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
-#include <entt/signal/dispatcher.hpp>
-#include <entt/core/hashed_string.hpp>
-#include <nlohmann/json.hpp>
 #include <chrono>
 #include <cstdint>
-#include <string_view>
+#include <entt/signal/dispatcher.hpp>
 
 namespace {
 
 constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
 constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
-
-template <typename Loader>
-void loadPresetList(const nlohmann::json& root,
-                    std::string_view field,
-                    std::string_view mapping_path,
-                    Loader&& loader) {
-    const auto it = root.find(std::string(field));
-    if (it == root.end()) {
-        return;
-    }
-
-    if (it->is_string()) {
-        loader(it->get<std::string>());
-        return;
-    }
-
-    if (it->is_array()) {
-        for (const auto& entry : *it) {
-            if (entry.is_string()) {
-                loader(entry.get<std::string>());
-            } else {
-                spdlog::warn("GameApp: 资源映射 '{}' 的 '{}' 数组包含无效条目 (应为 string)。", mapping_path, field);
-            }
-        }
-        return;
-    }
-
-    spdlog::warn("GameApp: 资源映射 '{}' 的 '{}' 字段格式无效 (应为 string 或 array)。", mapping_path, field);
-}
-
-[[nodiscard]] entt::id_type hashPath(std::string_view path) {
-    if (path.empty()) {
-        return entt::null;
-    }
-    return entt::hashed_string{path.data(), path.size()}.value();
-}
-
-void registerTexturePath(engine::resource::AssetRegistry& registry, entt::id_type id, std::string_view path) {
-    if (path.empty()) {
-        return;
-    }
-    const entt::id_type resolved_id = (id != entt::null) ? id : hashPath(path);
-    if (resolved_id == entt::null) {
-        return;
-    }
-    registry.registerTexture(resolved_id, path);
-}
-
-void registerImageTexture(engine::resource::AssetRegistry& registry, const engine::render::Image& image) {
-    registerTexturePath(registry, image.getTextureId(), image.getTexturePath());
-}
-
-void collectUIPresetAssets(const engine::ui::UIPresetManager& preset_manager, engine::resource::AssetRegistry& registry) {
-    const auto register_skin_images = [&registry](const engine::ui::UIButtonSkin& skin) {
-        if (skin.normal_image) {
-            registerImageTexture(registry, *skin.normal_image);
-        }
-        if (skin.hover_image) {
-            registerImageTexture(registry, *skin.hover_image);
-        }
-        if (skin.pressed_image) {
-            registerImageTexture(registry, *skin.pressed_image);
-        }
-        if (skin.disabled_image) {
-            registerImageTexture(registry, *skin.disabled_image);
-        }
-    };
-
-    for (const entt::id_type preset_id : preset_manager.listButtonPresetIds()) {
-        const auto* skin = preset_manager.getButtonPreset(preset_id);
-        if (!skin) {
-            continue;
-        }
-
-        register_skin_images(*skin);
-
-        if (skin->normal_label && skin->normal_label->font_id != entt::null && skin->normal_label->font_size > 0) {
-            const std::string_view font_path = preset_manager.findFontPath(skin->normal_label->font_id);
-            if (!font_path.empty()) {
-                registry.registerFont(skin->normal_label->font_id, skin->normal_label->font_size, font_path);
-            }
-        }
-
-        for (const auto& [_, sound_id] : skin->sound_events) {
-            if (sound_id == entt::null) {
-                continue;
-            }
-            const std::string_view sound_path = preset_manager.findSoundPath(sound_id);
-            if (!sound_path.empty()) {
-                registry.registerSound(sound_id, sound_path);
-            }
-        }
-    }
-
-    for (const entt::id_type preset_id : preset_manager.listImagePresetIds()) {
-        const auto* image = preset_manager.getImagePreset(preset_id);
-        if (!image) {
-            continue;
-        }
-        registerImageTexture(registry, *image);
-    }
-}
 
 } // namespace
 
@@ -261,7 +152,6 @@ bool GameApp::init() {
     if (!initMainThreadCommandQueue()) return false;
     if (!initResourceManager()) return false;
     if (!initAutoTileLibrary()) return false;
-    if (!initUIPresetManager()) return false;
     if (!initAudioPlayer()) return false;
     if (!initRenderer()) return false;
     if (!initCamera()) return false;
@@ -373,7 +263,6 @@ void GameApp::close() {
 
     // ResourceManager/FontManager/TextureManager 在析构时会释放 GL 资源（glDeleteTextures 等），
     // 必须确保此时 OpenGL 上下文仍然有效，因此要在 GLRenderer 之前销毁。
-    ui_preset_manager_.reset();
     auto_tile_library_.reset();
     if (resource_manager_) {
         resource_manager_->clear();
@@ -482,10 +371,6 @@ bool GameApp::registerDebugPanels() {
         std::make_unique<engine::debug::ResMgrDebugPanel>(*resource_manager_, *auto_tile_library_),
         false,
         engine::debug::PanelCategory::Engine);
-    debug_ui_manager_->registerPanel(
-        std::make_unique<engine::debug::UIPresetDebugPanel>(*ui_preset_manager_),
-        false,
-        engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SceneDebugPanel>(*scene_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SpatialIndexDebugPanel>(*scene_manager_, *spatial_index_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::RmlUiDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
@@ -536,41 +421,6 @@ bool GameApp::initResourceManager() {
 
 bool GameApp::initAutoTileLibrary() {
     auto_tile_library_ = std::make_unique<engine::resource::AutoTileLibrary>();
-    return true;
-}
-
-bool GameApp::initUIPresetManager() {
-    ui_preset_manager_ = std::make_unique<engine::ui::UIPresetManager>();
-
-    constexpr std::string_view kResourceMappingPath = "assets/data/resource_mapping.json";
-    nlohmann::json mapping_json{};
-    if (!engine::utils::loadJsonObjectFile(kResourceMappingPath, mapping_json, "GameApp")) {
-        spdlog::warn("GameApp: UI 预设映射未加载，将使用空预设表。");
-        return true;
-    }
-
-    loadPresetList(mapping_json,
-                   "ui_button_presets",
-                   kResourceMappingPath,
-                   [this](const std::string& preset_path) {
-                       if (!ui_preset_manager_->loadButtonPresets(preset_path)) {
-                           spdlog::warn("GameApp: 加载按钮预设失败: {}", preset_path);
-                       }
-                   });
-    loadPresetList(mapping_json,
-                   "ui_image_presets",
-                   kResourceMappingPath,
-                   [this](const std::string& preset_path) {
-                       if (!ui_preset_manager_->loadImagePresets(preset_path)) {
-                           spdlog::warn("GameApp: 加载图片预设失败: {}", preset_path);
-                       }
-                   });
-
-    if (resource_manager_) {
-        auto& asset_registry = resource_manager_->getAssetRegistry();
-        collectUIPresetAssets(*ui_preset_manager_, asset_registry);
-        resource_manager_->preloadRegisteredResources();
-    }
     return true;
 }
 
@@ -656,7 +506,7 @@ bool GameApp::initContext()
         *gl_renderer_, *renderer_, *camera_, *text_renderer_
     };
     engine::core::ResourceServices resource_services{
-        *resource_manager_, *auto_tile_library_, *ui_preset_manager_
+        *resource_manager_, *auto_tile_library_
     };
 
     context_ = engine::core::Context::create(

@@ -86,7 +86,6 @@ public:
 
     [[nodiscard]] engine::resource::ResourceManager& getResourceManager() const { return resource_.resource_manager; }
     [[nodiscard]] engine::resource::AutoTileLibrary& getAutoTileLibrary() const { return resource_.auto_tile_library; }
-    [[nodiscard]] engine::ui::UIPresetManager& getUIPresetManager() const { return resource_.ui_preset_manager; }
 
     [[nodiscard]] engine::audio::AudioPlayer& getAudioPlayer() const { return audio_player_; }
     [[nodiscard]] engine::spatial::SpatialIndexManager& getSpatialIndexManager() const { return spatial_index_manager_; }
