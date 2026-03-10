@@ -2,6 +2,8 @@
 
 **目标**：让游戏世界操作不再依赖鼠标专用动作，使手柄拥有自然的世界交互路径。
 
+**状态（2026-03-10）**：已完成。
+
 ---
 
 #### 设计要点
@@ -150,16 +152,26 @@ void updateTargetAndSelection();
 
 #### 待办清单
 
-- [ ] 替换 `mouse_left` → `primary_action`，`mouse_right` → `secondary_action`
-- [ ] 新增 `hotbar_prev` / `hotbar_next` 动作和回调
-- [ ] 删除 `initializeMappings` 中 `mouse_left/right` 自动注入逻辑
-- [ ] 实现设备无关的目标解析 helper（统一返回 tile 中心）
-- [ ] 统一 `PlayerControlSystem` 中所有目标读取路径
-- [ ] 更新目标光标显示逻辑
-- [ ] 更新依赖旧动作名的测试配置、visual tester 与断言
-- [ ] 编写/扩展 `PlayerControlSystem` 手柄路径测试
-- [ ] 同步更新核心文档中的动作名引用
-- [ ] 在文档中保留“手柄 UI capture 留到 Phase 3/4”的已知限制说明
+- [x] 替换 `mouse_left` → `primary_action`，`mouse_right` → `secondary_action`
+- [x] 新增 `hotbar_prev` / `hotbar_next` 动作和回调
+- [x] 删除 `initializeMappings` 中 `mouse_left/right` 自动注入逻辑
+- [x] 实现设备无关的目标解析 helper（统一返回 tile 中心）
+- [x] 统一 `PlayerControlSystem` 中所有目标读取路径
+- [x] 更新目标光标显示逻辑
+- [x] 更新依赖旧动作名的测试配置、visual tester 与断言
+- [x] 编写/扩展 `PlayerControlSystem` 手柄路径测试
+- [x] 同步更新核心文档中的动作名引用
+- [x] 在文档中保留“手柄 UI capture 留到 Phase 3/4”的已知限制说明
+
+#### 完成记录（2026-03-10）
+
+- 已将世界主/副操作迁移为 `primary_action` / `secondary_action`，并新增 `hotbar_prev` / `hotbar_next` 手柄热栏循环切换。
+- `PlayerControlSystem` 已统一采用设备无关目标解析：键鼠走鼠标世界坐标，手柄走“当前移动意图优先，否则退回角色朝向”的面前一格目标模型。
+- `TargetComponent` 继续保持 tile 原点语义；解析 helper 返回 tile 中心，由 `syncTargetComponent()` 统一收口转换。
+- 已迁移受影响测试、visual tester、输入配置与核心文档中的运行时动作名引用。
+- 验证结果：
+  - `./build/debug/tests/engine_tests`：185/185 通过
+  - `./build/debug/tests/game_tests`：178 通过，5 个 headless RmlUI 用例按预期跳过
 
 #### 完成标准
 

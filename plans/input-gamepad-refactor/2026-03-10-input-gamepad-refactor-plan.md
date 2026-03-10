@@ -11,7 +11,7 @@
 | Phase | 状态 | 文档 |
 |------|------|------|
 | Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[x]` | [`phase-01.md`](./phase-01.md) |
-| Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[ ]` | [`phase-02.md`](./phase-02.md) |
+| Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: InputContext 上下文分层 | `[ ]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[ ]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-05.md`](./phase-05.md) |
@@ -64,3 +64,13 @@
 - 自动化验证已通过：
   - `./build/debug/tests/engine_tests`：185/185 通过
   - `./build/debug/tests/game_tests`：173 通过，5 个 headless RmlUI 相关用例按预期跳过
+
+## Phase 2 完成记录（2026-03-10）
+
+- 世界玩法主/副操作已从 `mouse_left` / `mouse_right` 迁移为 `primary_action` / `secondary_action`。
+- 快捷栏已补齐 `hotbar_prev` / `hotbar_next` 手柄环形切换，键盘 `hotbar_1..10` 直达保留。
+- `PlayerControlSystem` 已改为设备无关目标模型：键鼠走鼠标目标，手柄走“当前 move intent 优先，否则角色朝向”的面前一格目标。
+- 相关测试配置、visual tester 与核心文档已同步迁移。
+- 自动化验证已通过：
+  - `./build/debug/tests/engine_tests`：185/185 通过
+  - `./build/debug/tests/game_tests`：178 通过，5 个 headless RmlUI 相关用例按预期跳过

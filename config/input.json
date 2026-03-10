@@ -29,6 +29,14 @@
       "GamepadDpadLeft",
       "LeftStickLeft"
     ],
+    "primary_action": [
+      "MouseLeft",
+      "GamepadSouth"
+    ],
+    "secondary_action": [
+      "MouseRight",
+      "GamepadEast"
+    ],
     "rotate_left": [
       "Q"
     ],
@@ -49,6 +57,12 @@
     "hotbar": [
       "Tab",
       "GamepadNorth"
+    ],
+    "hotbar_prev": [
+      "GamepadLeftShoulder"
+    ],
+    "hotbar_next": [
+      "GamepadRightShoulder"
     ],
     "hotbar_1": [
       "1"
