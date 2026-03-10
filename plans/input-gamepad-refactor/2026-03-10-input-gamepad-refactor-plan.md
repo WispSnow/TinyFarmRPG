@@ -10,7 +10,7 @@
 
 | Phase | 状态 | 文档 |
 |------|------|------|
-| Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[ ]` | [`phase-01.md`](./phase-01.md) |
+| Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[x]` | [`phase-01.md`](./phase-01.md) |
 | Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[ ]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: InputContext 上下文分层 | `[ ]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[ ]` | [`phase-04.md`](./phase-04.md) |
@@ -56,3 +56,11 @@
 - Phase 3：引入 InputContext 上下文栈，区分 Gameplay / Menu / Dialogue / Battle 输入域。
 - Phase 4：为菜单和 UI 建立手柄导航能力，接入 RmlUI。
 - Phase 5：补增强项（输入缓冲、Glyph、震动、重绑定），不阻塞前 4 阶段交付。
+
+## Phase 1 完成记录（2026-03-10）
+
+- `InputManager` 已支持 SDL3 gamepad 按钮、轴方向数字化、活动手柄切换、设备移除清理和 `last_input_device_` 跟踪。
+- `config/input.json` 与默认映射已加入 Phase 1 手柄绑定；调试面板已显示活动手柄、按钮、轴值和最近输入设备。
+- 自动化验证已通过：
+  - `./build/debug/tests/engine_tests`：185/185 通过
+  - `./build/debug/tests/game_tests`：173 通过，5 个 headless RmlUI 相关用例按预期跳过

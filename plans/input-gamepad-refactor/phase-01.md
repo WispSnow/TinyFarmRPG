@@ -2,6 +2,8 @@
 
 **目标**：让输入系统在底层完整支持 SDL3 手柄，复用现有 action 状态机，手柄可驱动已有动作。
 
+> 实施状态（2026-03-10）：已完成。代码、配置、调试面板和自动化测试均已落地。
+
 ---
 
 #### 设计要点
@@ -205,12 +207,15 @@ enum class InputDevice : uint8_t { KeyboardMouse, Gamepad };
 
 #### 测试策略
 
-使用 SDL3 `SDL_AttachVirtualJoystick` API 在测试中模拟手柄设备，无需物理手柄即可在 CI 上运行。
+使用 SDL3 `SDL_AttachVirtualJoystick` API 在测试中模拟手柄设备接入/移除，无需物理手柄即可在 CI 上运行。
 
 测试实现注意：
 - 使用 `SDL_VirtualJoystickDesc` 构造虚拟设备，并通过 `SDL_INIT_INTERFACE(&desc)` 初始化
 - 设置 `desc.type = SDL_JOYSTICK_TYPE_GAMEPAD`
-- 再配合 `SDL_SetJoystickVirtualButton()` / `SDL_SetJoystickVirtualAxis()` 驱动按钮与轴输入
+- 当前 SDL3 测试环境下，virtual joystick 的按钮/轴注入对 `SDL_EVENT_GAMEPAD_BUTTON_*` / `SDL_EVENT_GAMEPAD_AXIS_MOTION` 的触发不够稳定
+- 因此测试采用“两段式”策略：
+  - `SDL_AttachVirtualJoystick` 负责创建设备实例并验证插拔 / active 切换生命周期
+  - 按钮与轴输入使用 `SDL_PushEvent()` 手动推送对应的 gamepad 事件，确保 CI 下行为稳定、可重复
 
 测试用例：
 
@@ -233,22 +238,22 @@ enum class InputDevice : uint8_t { KeyboardMouse, Gamepad };
 
 #### 待办清单
 
-- [ ] 添加 `SDL_INIT_GAMEPAD` 到 SDL 初始化
-- [ ] 定义 `InputDevice` 枚举和 `GamepadAxisDirection` 枚举
-- [ ] 实现手柄设备生命周期管理（枚举/打开/移除）
-- [ ] 实现 active 手柄切换与 `SDL_CloseGamepad()` 收口逻辑
-- [ ] 实现 `gamepadButtonFromString()` 解析
-- [ ] 实现 `gamepadAxisDirectionFromString()` 解析
-- [ ] 处理 `SDL_EVENT_GAMEPAD_BUTTON_DOWN/UP`，接入 `handleInputEdge`
-- [ ] 处理 `SDL_EVENT_GAMEPAD_AXIS_MOTION`，实现双阈值数字化
-- [ ] 缓存手柄轴原始值 / 归一化值供调试显示
-- [ ] 手柄移除 / active 切换时按“系统清理”语义清空手柄侧状态
-- [ ] 窗口失焦 / 最小化时同步清空手柄状态
-- [ ] 维护 `last_input_device_` 并暴露查询接口
-- [ ] 更新 `config/input.json` 和 `defaultMappings()`
-- [ ] 更新输入调试面板
-- [ ] 更新 `tests/CMakeLists.txt`
-- [ ] 编写手柄测试（使用 virtual joystick）
+- [x] 添加 `SDL_INIT_GAMEPAD` 到 SDL 初始化
+- [x] 定义 `InputDevice` 枚举和 `GamepadAxisDirection` 枚举
+- [x] 实现手柄设备生命周期管理（枚举/打开/移除）
+- [x] 实现 active 手柄切换与 `SDL_CloseGamepad()` 收口逻辑
+- [x] 实现 `gamepadButtonFromString()` 解析
+- [x] 实现 `gamepadAxisDirectionFromString()` 解析
+- [x] 处理 `SDL_EVENT_GAMEPAD_BUTTON_DOWN/UP`，接入 `handleInputEdge`
+- [x] 处理 `SDL_EVENT_GAMEPAD_AXIS_MOTION`，实现双阈值数字化
+- [x] 缓存手柄轴原始值 / 归一化值供调试显示
+- [x] 手柄移除 / active 切换时按“系统清理”语义清空手柄侧状态
+- [x] 窗口失焦 / 最小化时同步清空手柄状态
+- [x] 维护 `last_input_device_` 并暴露查询接口
+- [x] 更新 `config/input.json` 和 `defaultMappings()`
+- [x] 更新输入调试面板
+- [x] 更新 `tests/CMakeLists.txt`
+- [x] 编写手柄测试（使用 virtual joystick）
 
 #### 完成标准
 
@@ -256,3 +261,7 @@ enum class InputDevice : uint8_t { KeyboardMouse, Gamepad };
 - `move_* / interact / pause / inventory` 能同时支持键盘和手柄。
 - 所有按钮、摇杆方向、插拔、失焦路径都有自动化测试，CI 可运行。
 - 调试面板可实时查看手柄状态。
+
+验证记录（2026-03-10）：
+- `./build/debug/tests/engine_tests`：185/185 通过
+- `./build/debug/tests/game_tests`：173 通过，5 个 headless RmlUI 相关用例按预期跳过
