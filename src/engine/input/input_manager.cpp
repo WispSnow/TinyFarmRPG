@@ -1,4 +1,5 @@
 #include "engine/input/input_manager.h"
+#include "engine/input/input_glyphs.h"
 
 #include "engine/core/game_state.h"
 #include "engine/utils/events.h"
@@ -16,6 +17,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <string_view>
 #include <utility>
 
 namespace engine::input {
@@ -24,6 +26,17 @@ namespace {
 
 constexpr float AXIS_PRESS_THRESHOLD = 0.6f;
 constexpr float AXIS_RELEASE_THRESHOLD = 0.4f;
+
+template <typename InputT>
+[[nodiscard]] BindingDefinition makeBindingDefinition(InputDevice device, InputT physical_input, std::string_view token) {
+    BindingDefinition binding;
+    binding.token = std::string(token);
+    binding.device = device;
+    binding.physical_input = PhysicalInput{physical_input};
+    binding.prompt_icon_id = buildPromptIconId(binding.device, binding.physical_input, binding.token);
+    binding.prompt_fallback_text = buildPromptFallbackText(binding.device, binding.physical_input, binding.token);
+    return binding;
+}
 
 [[nodiscard]] std::map<std::string, std::vector<std::string>> defaultMappings() {
     return {
@@ -68,7 +81,8 @@ void handleInputEdge(KeyT key,
                      std::unordered_map<KeyT, bool>& down_states,
                      std::unordered_map<entt::id_type, ActionEntry>& actions,
                      bool is_down,
-                     const std::unordered_set<entt::id_type>* allowed_actions) {
+                     const std::unordered_set<entt::id_type>* allowed_actions,
+                     Uint64 timestamp_ms) {
     auto actions_it = mapping.find(key);
     if (actions_it == mapping.end()) {
         return;
@@ -90,6 +104,7 @@ void handleInputEdge(KeyT key,
             ++entry.active_count;
             if (entry.active_count == 1) {
                 entry.state = ActionState::PRESSED;
+                entry.press_buffer.push(timestamp_ms);
             }
         } else if (entry.active_count > 0) {
             --entry.active_count;
@@ -150,6 +165,71 @@ void handleInputEdge(KeyT key,
         || action_name == "menu_cancel";
 }
 
+[[nodiscard]] const char* mouseButtonToken(Uint32 button) {
+    switch (button) {
+        case SDL_BUTTON_LEFT: return "MouseLeft";
+        case SDL_BUTTON_MIDDLE: return "MouseMiddle";
+        case SDL_BUTTON_RIGHT: return "MouseRight";
+        case SDL_BUTTON_X1: return "MouseX1";
+        case SDL_BUTTON_X2: return "MouseX2";
+        default: return "";
+    }
+}
+
+[[nodiscard]] const char* gamepadButtonToken(SDL_GamepadButton button) {
+    switch (button) {
+        case SDL_GAMEPAD_BUTTON_SOUTH: return "GamepadSouth";
+        case SDL_GAMEPAD_BUTTON_EAST: return "GamepadEast";
+        case SDL_GAMEPAD_BUTTON_WEST: return "GamepadWest";
+        case SDL_GAMEPAD_BUTTON_NORTH: return "GamepadNorth";
+        case SDL_GAMEPAD_BUTTON_BACK: return "GamepadBack";
+        case SDL_GAMEPAD_BUTTON_GUIDE: return "GamepadGuide";
+        case SDL_GAMEPAD_BUTTON_START: return "GamepadStart";
+        case SDL_GAMEPAD_BUTTON_LEFT_STICK: return "GamepadLeftStick";
+        case SDL_GAMEPAD_BUTTON_RIGHT_STICK: return "GamepadRightStick";
+        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: return "GamepadLeftShoulder";
+        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return "GamepadRightShoulder";
+        case SDL_GAMEPAD_BUTTON_DPAD_UP: return "GamepadDpadUp";
+        case SDL_GAMEPAD_BUTTON_DPAD_DOWN: return "GamepadDpadDown";
+        case SDL_GAMEPAD_BUTTON_DPAD_LEFT: return "GamepadDpadLeft";
+        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return "GamepadDpadRight";
+        case SDL_GAMEPAD_BUTTON_INVALID:
+        case SDL_GAMEPAD_BUTTON_MISC1:
+        case SDL_GAMEPAD_BUTTON_MISC2:
+        case SDL_GAMEPAD_BUTTON_MISC3:
+        case SDL_GAMEPAD_BUTTON_MISC4:
+        case SDL_GAMEPAD_BUTTON_MISC5:
+        case SDL_GAMEPAD_BUTTON_MISC6:
+        case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1:
+        case SDL_GAMEPAD_BUTTON_LEFT_PADDLE1:
+        case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2:
+        case SDL_GAMEPAD_BUTTON_LEFT_PADDLE2:
+        case SDL_GAMEPAD_BUTTON_TOUCHPAD:
+        case SDL_GAMEPAD_BUTTON_COUNT:
+            return "";
+    }
+
+    return "";
+}
+
+[[nodiscard]] const char* gamepadAxisDirectionToken(GamepadAxisDirection direction) {
+    switch (direction) {
+        case GamepadAxisDirection::LeftStickUp: return "LeftStickUp";
+        case GamepadAxisDirection::LeftStickDown: return "LeftStickDown";
+        case GamepadAxisDirection::LeftStickLeft: return "LeftStickLeft";
+        case GamepadAxisDirection::LeftStickRight: return "LeftStickRight";
+        case GamepadAxisDirection::RightStickUp: return "RightStickUp";
+        case GamepadAxisDirection::RightStickDown: return "RightStickDown";
+        case GamepadAxisDirection::RightStickLeft: return "RightStickLeft";
+        case GamepadAxisDirection::RightStickRight: return "RightStickRight";
+        case GamepadAxisDirection::LeftTrigger: return "LeftTrigger";
+        case GamepadAxisDirection::RightTrigger: return "RightTrigger";
+        case GamepadAxisDirection::Count: return "";
+    }
+
+    return "";
+}
+
 [[nodiscard]] bool isMenuLikeContext(const std::optional<InputContextId> context_id) {
     return context_id == InputContextId::Menu
         || context_id == InputContextId::Dialogue
@@ -199,7 +279,9 @@ std::unique_ptr<InputManager> InputManager::create(entt::dispatcher* dispatcher,
 InputManager::InputManager(entt::dispatcher* dispatcher,
                            engine::core::GameState* game_state,
                            std::string_view config_path)
-    : dispatcher_(dispatcher), game_state_(game_state) {
+    : dispatcher_(dispatcher),
+      game_state_(game_state),
+      config_path_(config_path) {
     if (!loadConfig(config_path)) {
         initializeMappings(defaultMappings());
     }
@@ -241,6 +323,17 @@ void InputManager::update() {
 void InputManager::sampleInputEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        if (rebind_capture_.active) {
+            if (handleRebindCaptureEvent(event)) {
+                continue;
+            }
+
+            if (isSystemEventDuringCapture(event)) {
+                processEvent(event);
+            }
+            continue;
+        }
+
         bool imgui_blocks_rmlui = false;
 #ifdef TF_ENABLE_DEBUG_UI
         if (imgui_event_callback_) {
@@ -386,6 +479,191 @@ GamepadDebugState InputManager::getGamepadDebugState() const {
     return state;
 }
 
+std::vector<BindingDefinition> InputManager::getActionBindings(entt::id_type action_name_id) const {
+    if (const auto it = action_bindings_.find(action_name_id); it != action_bindings_.end()) {
+        return it->second;
+    }
+
+    return {};
+}
+
+std::optional<ActionPrompt> InputManager::getActionPrompt(entt::id_type action_name_id) const {
+    const auto bindings_it = action_bindings_.find(action_name_id);
+    if (bindings_it == action_bindings_.end() || bindings_it->second.empty()) {
+        return std::nullopt;
+    }
+
+    const auto& bindings = bindings_it->second;
+    const auto exact_match = std::find_if(bindings.begin(), bindings.end(), [this](const BindingDefinition& binding) {
+        return binding.device == last_input_device_;
+    });
+    if (exact_match != bindings.end()) {
+        return makeActionPrompt(*exact_match);
+    }
+
+    if (last_input_device_ != InputDevice::Gamepad) {
+        const auto non_gamepad_match = std::find_if(bindings.begin(), bindings.end(), [](const BindingDefinition& binding) {
+            return binding.device != InputDevice::Gamepad;
+        });
+        if (non_gamepad_match != bindings.end()) {
+            return makeActionPrompt(*non_gamepad_match);
+        }
+    }
+
+    return makeActionPrompt(bindings.front());
+}
+
+bool InputManager::peekBufferedPress(entt::id_type action_name_id, Uint64 window_ms) const {
+    if (const auto it = actions_.find(action_name_id); it != actions_.end()) {
+        return it->second.press_buffer.peek(SDL_GetTicks(), window_ms);
+    }
+
+    return false;
+}
+
+bool InputManager::consumeBufferedPress(entt::id_type action_name_id, Uint64 window_ms) {
+    if (const auto it = actions_.find(action_name_id); it != actions_.end()) {
+        return it->second.press_buffer.consume(SDL_GetTicks(), window_ms);
+    }
+
+    return false;
+}
+
+InputDebugSnapshot InputManager::getDebugSnapshot(Uint64 now_ms) const {
+    const Uint64 snapshot_time_ms = now_ms == 0 ? SDL_GetTicks() : now_ms;
+
+    InputDebugSnapshot snapshot;
+    snapshot.last_input_device = last_input_device_;
+    snapshot.actions.reserve(actions_.size());
+
+    std::unordered_set<entt::id_type> seen_actions;
+    seen_actions.reserve(actions_.size());
+
+    const auto append_action = [&](entt::id_type action_id, const ActionEntry& entry) {
+        ActionDebugSnapshot action_snapshot;
+        action_snapshot.id = action_id;
+        action_snapshot.name = entry.name;
+        action_snapshot.state = entry.state;
+        action_snapshot.active_count = entry.active_count;
+        action_snapshot.bindings = getActionBindings(action_id);
+        action_snapshot.active_prompt = getActionPrompt(action_id);
+        const auto buffered_entries = entry.press_buffer.snapshot(snapshot_time_ms);
+        action_snapshot.buffered_presses.reserve(buffered_entries.size());
+        for (const auto& buffered_entry : buffered_entries) {
+            action_snapshot.buffered_presses.push_back(BufferedPressDebugEntry{
+                .timestamp_ms = buffered_entry.timestamp_ms,
+                .age_ms = buffered_entry.age_ms,
+            });
+        }
+        snapshot.actions.push_back(std::move(action_snapshot));
+        seen_actions.insert(action_id);
+    };
+
+    for (auto action_id : action_dispatch_order_) {
+        if (const auto it = actions_.find(action_id); it != actions_.end()) {
+            append_action(action_id, it->second);
+        }
+    }
+
+    for (const auto& [action_id, entry] : actions_) {
+        if (!seen_actions.contains(action_id)) {
+            append_action(action_id, entry);
+        }
+    }
+
+    snapshot.rumble = rumble_debug_state_;
+    if (active_rumble_.has_value() && snapshot_time_ms < active_rumble_->ends_at_ms) {
+        snapshot.rumble.active = true;
+        snapshot.rumble.current_intensity = active_rumble_->intensity;
+        snapshot.rumble.current_duration_ms = active_rumble_->duration_ms;
+        snapshot.rumble.remaining_ms = active_rumble_->ends_at_ms - snapshot_time_ms;
+    } else {
+        snapshot.rumble.active = false;
+        snapshot.rumble.current_intensity = 0.0f;
+        snapshot.rumble.current_duration_ms = 0;
+        snapshot.rumble.remaining_ms = 0;
+    }
+
+    snapshot.rebind.capture_active = rebind_capture_.active;
+    snapshot.rebind.action_id = rebind_capture_.action_id;
+    snapshot.rebind.binding_index = rebind_capture_.binding_index;
+    if (const auto action_it = actions_.find(rebind_capture_.action_id); action_it != actions_.end()) {
+        snapshot.rebind.action_name = action_it->second.name;
+    }
+    if (pending_rebind_conflict_.has_value()) {
+        snapshot.rebind.pending_conflict = true;
+        snapshot.rebind.pending_token = pending_rebind_conflict_->replacement.token;
+        for (const auto& [conflict_action_id, _] : pending_rebind_conflict_->conflicts) {
+            if (const auto action_it = actions_.find(conflict_action_id); action_it != actions_.end()) {
+                snapshot.rebind.conflicting_action_names.push_back(action_it->second.name);
+            }
+        }
+    }
+
+    return snapshot;
+}
+
+bool InputManager::rumble(float intensity, Uint32 duration_ms) {
+    rumble_debug_state_.has_last_request = true;
+    rumble_debug_state_.last_intensity = std::clamp(intensity, 0.0f, 1.0f);
+    rumble_debug_state_.last_duration_ms = duration_ms;
+    rumble_debug_state_.last_request_succeeded = false;
+
+    if (active_gamepad_ == nullptr || duration_ms == 0 || rumble_debug_state_.last_intensity <= 0.0f) {
+        active_rumble_.reset();
+        return false;
+    }
+
+    const auto amplitude = static_cast<Uint16>(std::clamp(rumble_debug_state_.last_intensity, 0.0f, 1.0f) * 65535.0f);
+    const bool ok = SDL_RumbleGamepad(active_gamepad_, amplitude, amplitude, duration_ms);
+    rumble_debug_state_.last_request_succeeded = ok;
+    if (ok) {
+        active_rumble_ = ActiveRumbleState{
+            .intensity = rumble_debug_state_.last_intensity,
+            .duration_ms = duration_ms,
+            .ends_at_ms = SDL_GetTicks() + duration_ms,
+        };
+    } else {
+        active_rumble_.reset();
+    }
+
+    return ok;
+}
+
+bool InputManager::beginRebindCapture(entt::id_type action_name_id, std::size_t binding_index) {
+    const auto bindings_it = action_bindings_.find(action_name_id);
+    if (bindings_it == action_bindings_.end() || binding_index > bindings_it->second.size()) {
+        return false;
+    }
+
+    pending_rebind_conflict_.reset();
+    clearAllInputState();
+    rebind_capture_ = RebindCaptureState{
+        .action_id = action_name_id,
+        .binding_index = binding_index,
+        .active = true,
+    };
+    return true;
+}
+
+void InputManager::cancelRebindCapture() {
+    rebind_capture_ = RebindCaptureState{};
+}
+
+bool InputManager::confirmPendingRebindConflict() {
+    if (!pending_rebind_conflict_.has_value()) {
+        return false;
+    }
+
+    const auto pending = *pending_rebind_conflict_;
+    pending_rebind_conflict_.reset();
+    return applyBindingReplacement(pending.action_id, pending.binding_index, pending.replacement, pending.conflicts);
+}
+
+void InputManager::discardPendingRebindConflict() {
+    pending_rebind_conflict_.reset();
+}
+
 void InputManager::setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback) {
     rmlui_event_callback_ = std::move(callback);
 }
@@ -409,6 +687,7 @@ void InputManager::processEvent(const SDL_Event& event) {
 #endif
     const auto* context_definition = currentContextDefinition();
     const auto* allowed_actions = context_definition != nullptr ? &context_definition->allowed_actions : nullptr;
+    const Uint64 timestamp_ms = SDL_GetTicks();
 
     switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
@@ -417,9 +696,9 @@ void InputManager::processEvent(const SDL_Event& event) {
                 break;
             }
             if (event.key.down) {
-                last_input_device_ = InputDevice::KeyboardMouse;
+                last_input_device_ = InputDevice::Keyboard;
             }
-            handleInputEdge(event.key.scancode, key_to_actions_, key_down_states_, actions_, event.key.down, allowed_actions);
+            handleInputEdge(event.key.scancode, key_to_actions_, key_down_states_, actions_, event.key.down, allowed_actions, timestamp_ms);
             break;
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -429,16 +708,16 @@ void InputManager::processEvent(const SDL_Event& event) {
                 break;
             }
             if (event.button.down) {
-                last_input_device_ = InputDevice::KeyboardMouse;
+                last_input_device_ = InputDevice::Mouse;
             }
             handleInputEdge(
-                static_cast<Uint32>(event.button.button), mouse_to_actions_, mouse_down_states_, actions_, event.button.down, allowed_actions);
+                static_cast<Uint32>(event.button.button), mouse_to_actions_, mouse_down_states_, actions_, event.button.down, allowed_actions, timestamp_ms);
             mouse_position_ = {event.button.x, event.button.y};
             recalculateLogicalMousePosition();
             break;
         }
         case SDL_EVENT_MOUSE_MOTION:
-            last_input_device_ = InputDevice::KeyboardMouse;
+            last_input_device_ = InputDevice::Mouse;
             mouse_position_ = {event.motion.x, event.motion.y};
             recalculateLogicalMousePosition();
             break;
@@ -446,7 +725,7 @@ void InputManager::processEvent(const SDL_Event& event) {
             if (block_mouse) {
                 break;
             }
-            last_input_device_ = InputDevice::KeyboardMouse;
+            last_input_device_ = InputDevice::Mouse;
             mouse_wheel_delta_.x += event.wheel.x;
             mouse_wheel_delta_.y += event.wheel.y;
             break;
@@ -487,7 +766,7 @@ void InputManager::processEvent(const SDL_Event& event) {
                 last_input_device_ = InputDevice::Gamepad;
             }
             handleInputEdge(
-                button, gamepad_button_to_actions_, gamepad_button_down_states_, actions_, event.gbutton.down, allowed_actions);
+                button, gamepad_button_to_actions_, gamepad_button_down_states_, actions_, event.gbutton.down, allowed_actions, timestamp_ms);
             break;
         }
         case SDL_EVENT_GAMEPAD_AXIS_MOTION: {
@@ -509,7 +788,7 @@ void InputManager::processEvent(const SDL_Event& event) {
                 : normalizeStickAxis(event.gaxis.value);
             gamepad_axis_normalized_values_[axis_index] = normalized_value;
 
-            const auto update_direction = [this, allowed_actions](GamepadAxisDirection direction, float magnitude) {
+            const auto update_direction = [this, allowed_actions, timestamp_ms](GamepadAxisDirection direction, float magnitude) {
                 const auto direction_index = gamepadAxisDirectionIndex(direction);
                 const bool was_direction_down = gamepad_axis_direction_states_[direction_index];
 
@@ -526,7 +805,7 @@ void InputManager::processEvent(const SDL_Event& event) {
                 }
 
                 handleInputEdge(
-                    direction, gamepad_axis_to_actions_, gamepad_axis_down_states_, actions_, is_direction_down, allowed_actions);
+                    direction, gamepad_axis_to_actions_, gamepad_axis_down_states_, actions_, is_direction_down, allowed_actions, timestamp_ms);
             };
 
             switch (axis) {
@@ -669,6 +948,38 @@ bool InputManager::loadConfig(std::string_view config_path) {
 
 void InputManager::initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname) {
     spdlog::trace("初始化输入映射...");
+    actions_.clear();
+    action_bindings_.clear();
+    action_dispatch_order_.clear();
+
+    for (const auto& [action_name, key_names] : actions_to_keyname) {
+        const auto action_name_id = entt::hashed_string(action_name.c_str());
+        auto& entry = actions_[action_name_id];
+        entry.name = action_name;
+        action_dispatch_order_.push_back(action_name_id);
+        auto& bindings = action_bindings_[action_name_id];
+        bindings.clear();
+
+        for (const auto& key_name : key_names) {
+            const auto binding = bindingDefinitionFromToken(key_name);
+            if (!binding.has_value()) {
+                spdlog::warn("输入映射警告: 未知键或按钮名称 '{}' 用于动作 '{}'.", key_name, action_name);
+                continue;
+            }
+            bindings.push_back(*binding);
+        }
+    }
+
+    rebuildBindingCaches(false);
+    initializeContextDefinitions();
+    spdlog::trace("输入映射初始化完成.");
+}
+
+void InputManager::rebuildBindingCaches(bool reset_runtime_state) {
+    if (reset_runtime_state) {
+        clearAllInputState();
+    }
+
     key_to_actions_.clear();
     mouse_to_actions_.clear();
     gamepad_button_to_actions_.clear();
@@ -678,40 +989,37 @@ void InputManager::initializeMappings(const std::map<std::string, std::vector<st
     mouse_down_states_.clear();
     gamepad_button_down_states_.clear();
     gamepad_axis_down_states_.clear();
-    actions_.clear();
-    action_dispatch_order_.clear();
 
-    for (const auto& [action_name, key_names] : actions_to_keyname) {
-        const auto action_name_id = entt::hashed_string(action_name.c_str());
-        auto& entry = actions_[action_name_id];
-        entry.name = action_name;
-        action_dispatch_order_.push_back(action_name_id);
+    for (auto action_id : action_dispatch_order_) {
+        const auto action_it = actions_.find(action_id);
+        if (action_it == actions_.end()) {
+            continue;
+        }
 
-        for (const auto& key_name : key_names) {
-            const SDL_Scancode scancode = scancodeFromString(key_name);
-            const Uint32 mouse_button = mouseButtonFromString(key_name);
-            const SDL_GamepadButton gamepad_button = gamepadButtonFromString(key_name);
-            const auto gamepad_axis_direction = gamepadAxisDirectionFromString(key_name);
+        const auto bindings_it = action_bindings_.find(action_id);
+        if (bindings_it == action_bindings_.end()) {
+            continue;
+        }
 
-            if (scancode != SDL_SCANCODE_UNKNOWN) {
-                key_to_actions_[scancode].push_back(action_name_id);
-                if (isMenuNavigationActionName(action_name) && scancode != SDL_SCANCODE_TAB) {
-                    rmlui_suppressed_navigation_scancodes_.insert(scancode);
+        for (const auto& binding : bindings_it->second) {
+            std::visit([&](const auto& value) {
+                using ValueT = std::decay_t<decltype(value)>;
+
+                if constexpr (std::is_same_v<ValueT, SDL_Scancode>) {
+                    key_to_actions_[value].push_back(action_id);
+                    if (isMenuNavigationActionName(action_it->second.name) && value != SDL_SCANCODE_TAB) {
+                        rmlui_suppressed_navigation_scancodes_.insert(value);
+                    }
+                } else if constexpr (std::is_same_v<ValueT, Uint32>) {
+                    mouse_to_actions_[value].push_back(action_id);
+                } else if constexpr (std::is_same_v<ValueT, SDL_GamepadButton>) {
+                    gamepad_button_to_actions_[value].push_back(action_id);
+                } else {
+                    gamepad_axis_to_actions_[value].push_back(action_id);
                 }
-            } else if (mouse_button != 0) {
-                mouse_to_actions_[mouse_button].push_back(action_name_id);
-            } else if (gamepad_button != SDL_GAMEPAD_BUTTON_INVALID) {
-                gamepad_button_to_actions_[gamepad_button].push_back(action_name_id);
-            } else if (gamepad_axis_direction.has_value()) {
-                gamepad_axis_to_actions_[*gamepad_axis_direction].push_back(action_name_id);
-            } else {
-                spdlog::warn("输入映射警告: 未知键或按钮名称 '{}' 用于动作 '{}'.", key_name, action_name);
-            }
+            }, binding.physical_input);
         }
     }
-
-    initializeContextDefinitions();
-    spdlog::trace("输入映射初始化完成.");
 }
 
 void InputManager::initializeContextDefinitions() {
@@ -887,6 +1195,348 @@ void InputManager::clearAllInputState() {
     for (auto& [_, entry] : actions_) {
         entry.active_count = 0;
         entry.state = ActionState::INACTIVE;
+        entry.press_buffer.clear();
+    }
+}
+
+std::optional<BindingDefinition> InputManager::bindingDefinitionFromToken(std::string_view token) const {
+    const SDL_Scancode scancode = scancodeFromString(token);
+    if (scancode != SDL_SCANCODE_UNKNOWN) {
+        return makeBindingDefinition(InputDevice::Keyboard, scancode, token);
+    }
+
+    const Uint32 mouse_button = mouseButtonFromString(token);
+    if (mouse_button != 0) {
+        return makeBindingDefinition(InputDevice::Mouse, mouse_button, token);
+    }
+
+    const SDL_GamepadButton gamepad_button = gamepadButtonFromString(token);
+    if (gamepad_button != SDL_GAMEPAD_BUTTON_INVALID) {
+        return makeBindingDefinition(InputDevice::Gamepad, gamepad_button, token);
+    }
+
+    const auto gamepad_axis_direction = gamepadAxisDirectionFromString(token);
+    if (gamepad_axis_direction.has_value()) {
+        return makeBindingDefinition(InputDevice::Gamepad, *gamepad_axis_direction, token);
+    }
+
+    return std::nullopt;
+}
+
+std::optional<BindingDefinition> InputManager::bindingDefinitionFromEvent(const SDL_Event& event) const {
+    switch (event.type) {
+        case SDL_EVENT_KEY_DOWN: {
+            if (!event.key.down || event.key.repeat || event.key.scancode == SDL_SCANCODE_UNKNOWN) {
+                return std::nullopt;
+            }
+
+            const char* name = SDL_GetScancodeName(event.key.scancode);
+            if (name == nullptr || name[0] == '\0') {
+                return std::nullopt;
+            }
+
+            return makeBindingDefinition(InputDevice::Keyboard, event.key.scancode, name);
+        }
+        case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+            if (!event.button.down) {
+                return std::nullopt;
+            }
+
+            const char* token = mouseButtonToken(static_cast<Uint32>(event.button.button));
+            if (token[0] == '\0') {
+                return std::nullopt;
+            }
+
+            return makeBindingDefinition(InputDevice::Mouse, static_cast<Uint32>(event.button.button), token);
+        }
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
+            if (!event.gbutton.down || event.gbutton.which != active_gamepad_id_) {
+                return std::nullopt;
+            }
+
+            const auto button = static_cast<SDL_GamepadButton>(event.gbutton.button);
+            const char* token = gamepadButtonToken(button);
+            if (token[0] == '\0') {
+                return std::nullopt;
+            }
+
+            return makeBindingDefinition(InputDevice::Gamepad, button, token);
+        }
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION: {
+            if (event.gaxis.which != active_gamepad_id_) {
+                return std::nullopt;
+            }
+
+            const auto axis = static_cast<SDL_GamepadAxis>(event.gaxis.axis);
+            const bool is_trigger = (axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+            const float normalized_value = is_trigger
+                ? normalizeTriggerAxis(event.gaxis.value)
+                : normalizeStickAxis(event.gaxis.value);
+
+            std::optional<GamepadAxisDirection> direction;
+            switch (axis) {
+                case SDL_GAMEPAD_AXIS_LEFTX:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::LeftStickRight;
+                    else if (-normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::LeftStickLeft;
+                    break;
+                case SDL_GAMEPAD_AXIS_LEFTY:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::LeftStickDown;
+                    else if (-normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::LeftStickUp;
+                    break;
+                case SDL_GAMEPAD_AXIS_RIGHTX:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::RightStickRight;
+                    else if (-normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::RightStickLeft;
+                    break;
+                case SDL_GAMEPAD_AXIS_RIGHTY:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::RightStickDown;
+                    else if (-normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::RightStickUp;
+                    break;
+                case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::LeftTrigger;
+                    break;
+                case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
+                    if (normalized_value > AXIS_PRESS_THRESHOLD) direction = GamepadAxisDirection::RightTrigger;
+                    break;
+                case SDL_GAMEPAD_AXIS_INVALID:
+                case SDL_GAMEPAD_AXIS_COUNT:
+                    break;
+            }
+
+            if (!direction.has_value()) {
+                return std::nullopt;
+            }
+
+            const char* token = gamepadAxisDirectionToken(*direction);
+            if (token[0] == '\0') {
+                return std::nullopt;
+            }
+
+            return makeBindingDefinition(InputDevice::Gamepad, *direction, token);
+        }
+        default:
+            return std::nullopt;
+    }
+}
+
+bool InputManager::persistBindings() const {
+    if (config_path_.empty()) {
+        spdlog::error("InputManager: 无法持久化绑定，config_path 为空。");
+        return false;
+    }
+
+    nlohmann::ordered_json mappings = nlohmann::ordered_json::object();
+    for (auto action_id : action_dispatch_order_) {
+        const auto action_it = actions_.find(action_id);
+        if (action_it == actions_.end()) {
+            continue;
+        }
+
+        nlohmann::ordered_json binding_array = nlohmann::ordered_json::array();
+        if (const auto bindings_it = action_bindings_.find(action_id); bindings_it != action_bindings_.end()) {
+            for (const auto& binding : bindings_it->second) {
+                binding_array.push_back(binding.token);
+            }
+        }
+
+        mappings[action_it->second.name] = std::move(binding_array);
+    }
+
+    nlohmann::ordered_json root = nlohmann::ordered_json::object();
+    root["input_mappings"] = std::move(mappings);
+
+    const std::filesystem::path path{config_path_};
+    const std::filesystem::path temp_path = path.string() + ".tmp";
+    const std::filesystem::path backup_path = path.string() + ".bak";
+    {
+        std::ofstream file(temp_path);
+        if (!file.is_open()) {
+            spdlog::error("InputManager: 无法写入临时输入配置文件 '{}'.", temp_path.string());
+            return false;
+        }
+        file << root.dump(2);
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(temp_path, path, ec);
+    if (!ec) {
+        ec.clear();
+        std::filesystem::remove(backup_path, ec);
+        return true;
+    }
+
+    const std::string rename_error = ec.message();
+    ec.clear();
+    const bool path_exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        spdlog::error("InputManager: 检查输入配置文件 '{}' 是否存在失败: {}", path.string(), ec.message());
+        std::filesystem::remove(temp_path, ec);
+        return false;
+    }
+    if (!path_exists) {
+        spdlog::error("InputManager: 替换输入配置文件 '{}' 失败: {}", path.string(), rename_error);
+        std::filesystem::remove(temp_path, ec);
+        return false;
+    }
+
+    ec.clear();
+    std::filesystem::remove(backup_path, ec);
+    ec.clear();
+    std::filesystem::rename(path, backup_path, ec);
+    if (ec) {
+        spdlog::error("InputManager: 备份输入配置文件 '{}' 失败: {}", path.string(), ec.message());
+        std::filesystem::remove(temp_path, ec);
+        return false;
+    }
+
+    ec.clear();
+    std::filesystem::rename(temp_path, path, ec);
+    if (ec) {
+        std::error_code restore_ec;
+        std::filesystem::rename(backup_path, path, restore_ec);
+        if (restore_ec) {
+            spdlog::error("InputManager: 恢复输入配置文件 '{}' 失败: {}", path.string(), restore_ec.message());
+        } else {
+            std::filesystem::remove(temp_path, restore_ec);
+        }
+        spdlog::error("InputManager: 替换输入配置文件 '{}' 失败: {}", path.string(), ec.message());
+        return false;
+    }
+
+    ec.clear();
+    std::filesystem::remove(backup_path, ec);
+    if (ec) {
+        spdlog::warn("InputManager: 清理输入配置备份 '{}' 失败: {}", backup_path.string(), ec.message());
+    }
+
+    return true;
+}
+
+bool InputManager::applyBindingReplacement(entt::id_type action_name_id,
+                                           std::size_t binding_index,
+                                           const BindingDefinition& replacement,
+                                           const std::vector<std::pair<entt::id_type, std::size_t>>& conflicts) {
+    const auto backup = action_bindings_;
+    auto& bindings = action_bindings_[action_name_id];
+    if (binding_index > bindings.size()) {
+        return false;
+    }
+
+    if (binding_index == bindings.size()) {
+        bindings.push_back(replacement);
+    } else {
+        bindings[binding_index] = replacement;
+    }
+
+    std::unordered_map<entt::id_type, std::vector<std::size_t>> conflict_map;
+    for (const auto& [conflict_action_id, conflict_index] : conflicts) {
+        conflict_map[conflict_action_id].push_back(conflict_index);
+    }
+
+    for (auto& [conflict_action_id, indexes] : conflict_map) {
+        auto conflict_bindings_it = action_bindings_.find(conflict_action_id);
+        if (conflict_bindings_it == action_bindings_.end()) {
+            continue;
+        }
+
+        std::sort(indexes.begin(), indexes.end(), std::greater<>{});
+        indexes.erase(std::unique(indexes.begin(), indexes.end()), indexes.end());
+        for (const auto index : indexes) {
+            if (index < conflict_bindings_it->second.size()) {
+                conflict_bindings_it->second.erase(conflict_bindings_it->second.begin() + static_cast<std::ptrdiff_t>(index));
+            }
+        }
+    }
+
+    rebuildBindingCaches(true);
+    if (!persistBindings()) {
+        action_bindings_ = backup;
+        rebuildBindingCaches(true);
+        return false;
+    }
+
+    return true;
+}
+
+std::vector<std::pair<entt::id_type, std::size_t>> InputManager::findBindingConflicts(
+    entt::id_type action_name_id,
+    std::size_t binding_index,
+    const BindingDefinition& candidate) const {
+    std::vector<std::pair<entt::id_type, std::size_t>> conflicts;
+
+    for (const auto& [existing_action_id, bindings] : action_bindings_) {
+        for (std::size_t i = 0; i < bindings.size(); ++i) {
+            if (existing_action_id == action_name_id && i == binding_index) {
+                continue;
+            }
+            if (bindings[i].physical_input == candidate.physical_input) {
+                conflicts.emplace_back(existing_action_id, i);
+            }
+        }
+    }
+
+    return conflicts;
+}
+
+bool InputManager::handleRebindCaptureEvent(const SDL_Event& event) {
+    switch (event.type) {
+        case SDL_EVENT_KEY_DOWN:
+            // Capture 模式会阻断 action dispatch，因此保留 Escape 作为固定的物理取消键。
+            if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                cancelRebindCapture();
+                return true;
+            }
+            [[fallthrough]];
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION: {
+            const auto candidate = bindingDefinitionFromEvent(event);
+            if (!candidate.has_value()) {
+                return true;
+            }
+
+            const auto conflicts = findBindingConflicts(rebind_capture_.action_id, rebind_capture_.binding_index, *candidate);
+            const auto captured_action_id = rebind_capture_.action_id;
+            const auto captured_binding_index = rebind_capture_.binding_index;
+            rebind_capture_ = RebindCaptureState{};
+            if (!conflicts.empty()) {
+                pending_rebind_conflict_ = PendingRebindConflict{
+                    .action_id = captured_action_id,
+                    .binding_index = captured_binding_index,
+                    .replacement = *candidate,
+                    .conflicts = conflicts,
+                };
+                return true;
+            }
+
+            (void)applyBindingReplacement(captured_action_id, captured_binding_index, *candidate, {});
+            return true;
+        }
+        case SDL_EVENT_KEY_UP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+        case SDL_EVENT_MOUSE_MOTION:
+        case SDL_EVENT_MOUSE_WHEEL:
+        case SDL_EVENT_TEXT_INPUT:
+        case SDL_EVENT_TEXT_EDITING:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool InputManager::isSystemEventDuringCapture(const SDL_Event& event) const {
+    switch (event.type) {
+        case SDL_EVENT_WINDOW_RESIZED:
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+        case SDL_EVENT_QUIT:
+        case SDL_EVENT_GAMEPAD_ADDED:
+        case SDL_EVENT_GAMEPAD_REMOVED:
+        case SDL_EVENT_GAMEPAD_REMAPPED:
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -975,6 +1625,11 @@ void InputManager::setActionStateDebug(entt::id_type action_name_id, ActionState
         return;
     }
     it->second.state = state;
+    if (state == ActionState::PRESSED) {
+        it->second.press_buffer.push(SDL_GetTicks());
+    } else if (state == ActionState::INACTIVE) {
+        it->second.press_buffer.clear();
+    }
     spdlog::trace("调试: 手动设置动作状态 {} 为 {}", action_name_id, static_cast<int>(state));
 }
 

@@ -14,6 +14,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_event_bridge.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
@@ -69,6 +70,9 @@ using namespace entt::literals;
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
 constexpr std::string_view GAME_OVERLAY_DOCUMENT_PATH = "ui/rmlui/hud/game_overlay.rml";
+constexpr std::string_view GAME_OVERLAY_MODEL_NAME = "game_overlay";
+
+using engine::ui::rmlui::updateBoundString;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -88,6 +92,14 @@ constexpr std::string_view GAME_OVERLAY_DOCUMENT_PATH = "ui/rmlui/hud/game_overl
     }
 
     return stocks;
+}
+
+[[nodiscard]] std::string promptTextForAction(engine::input::InputManager& input_manager, entt::id_type action_id) {
+    if (const auto prompt = input_manager.getActionPrompt(action_id); prompt.has_value()) {
+        return prompt->fallback_text;
+    }
+
+    return "-";
 }
 }
 
@@ -218,6 +230,7 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
+    refreshOverlayPrompts();
     if (!abort_to_title_ && services_ && services_->vfx_service) {
         services_->vfx_service->update(delta_time);
     }
@@ -325,6 +338,7 @@ void GameScene::clean() {
         context_pushed_ = false;
     }
     Scene::clean();
+    overlay_data_bridge_.destroy();
 }
 
 void GameScene::setGameMode(game::runtime::GameMode mode) {
@@ -477,13 +491,25 @@ bool GameScene::initUI() {
         hotbar_ui_->setInventoryUI(inventory_ui_.get());
     }
 
-    overlay_document_ = loadRmlDocument(GAME_OVERLAY_DOCUMENT_PATH);
-    if (overlay_document_) {
-        overlay_event_bridge_.on("menu", [this](Rml::Event&) { (void)onPauseToggle(); });
-        overlay_event_bridge_.registerTo(overlay_document_, "click");
-        overlay_click_listener_registered_ = true;
+    if (auto overlay_constructor = overlay_data_bridge_.create(rml_layer->getContext(), GAME_OVERLAY_MODEL_NAME)) {
+        overlay_constructor.Bind("primary_prompt_text", &primary_prompt_text_);
+        overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
+        overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
+        overlay_constructor.Bind("pause_prompt_text", &pause_prompt_text_);
+
+        refreshOverlayPrompts();
+        overlay_data_bridge_.markAllDirty();
+
+        overlay_document_ = loadRmlDocument(GAME_OVERLAY_DOCUMENT_PATH);
+        if (overlay_document_) {
+            overlay_event_bridge_.on("menu", [this](Rml::Event&) { (void)onPauseToggle(); });
+            overlay_event_bridge_.registerTo(overlay_document_, "click");
+            overlay_click_listener_registered_ = true;
+        } else {
+            spdlog::error("GameScene: 加载游戏内菜单按钮文档失败，UI初始化将继续。");
+        }
     } else {
-        spdlog::error("GameScene: 加载游戏内菜单按钮文档失败，UI初始化将继续。");
+        spdlog::error("GameScene: 创建 overlay data model 失败，输入提示将不可用。");
     }
 
     if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
@@ -497,6 +523,26 @@ bool GameScene::initUI() {
 
     spdlog::debug("游戏UI初始化完成（时钟UI、物品栏UI与快捷栏UI已创建）。");
     return true;
+}
+
+void GameScene::refreshOverlayPrompts() {
+    if (!overlay_data_bridge_.isValid()) {
+        return;
+    }
+
+    auto& input_manager = context_.getInputManager();
+    if (updateBoundString(primary_prompt_text_, promptTextForAction(input_manager, "primary_action"_hs))) {
+        overlay_data_bridge_.markDirty("primary_prompt_text");
+    }
+    if (updateBoundString(secondary_prompt_text_, promptTextForAction(input_manager, "secondary_action"_hs))) {
+        overlay_data_bridge_.markDirty("secondary_prompt_text");
+    }
+    if (updateBoundString(inventory_prompt_text_, promptTextForAction(input_manager, "inventory"_hs))) {
+        overlay_data_bridge_.markDirty("inventory_prompt_text");
+    }
+    if (updateBoundString(pause_prompt_text_, promptTextForAction(input_manager, "pause"_hs))) {
+        overlay_data_bridge_.markDirty("pause_prompt_text");
+    }
 }
 
 bool GameScene::onInventoryToggle() {

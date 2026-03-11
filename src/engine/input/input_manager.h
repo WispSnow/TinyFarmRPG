@@ -1,4 +1,6 @@
 #pragma once
+#include "engine/input/input_buffer.h"
+
 #include <string_view>
 #include <string>
 #include <map>
@@ -10,8 +12,10 @@
 #include <memory>
 #include <cstdint>
 #include <optional>
+#include <variant>
 #include <SDL3/SDL.h>
 #include <glm/vec2.hpp>
+#include <entt/core/fwd.hpp>
 #include <entt/signal/sigh.hpp>
 #include <entt/signal/fwd.hpp>
 
@@ -25,7 +29,8 @@ inline constexpr std::size_t GAMEPAD_BUTTON_COUNT = static_cast<std::size_t>(SDL
 inline constexpr std::size_t GAMEPAD_AXIS_COUNT = static_cast<std::size_t>(SDL_GAMEPAD_AXIS_COUNT);
 
 enum class InputDevice : std::uint8_t {
-    KeyboardMouse,
+    Keyboard,
+    Mouse,
     Gamepad
 };
 
@@ -53,6 +58,23 @@ enum class GamepadAxisDirection : std::uint8_t {
 inline constexpr std::size_t GAMEPAD_AXIS_DIRECTION_COUNT =
     static_cast<std::size_t>(GamepadAxisDirection::Count);
 
+using PhysicalInput = std::variant<SDL_Scancode, Uint32, SDL_GamepadButton, GamepadAxisDirection>;
+
+struct BindingDefinition {
+    std::string token;
+    InputDevice device{InputDevice::Keyboard};
+    PhysicalInput physical_input{SDL_SCANCODE_UNKNOWN};
+    std::string prompt_icon_id;
+    std::string prompt_fallback_text;
+};
+
+struct ActionPrompt {
+    InputDevice device{InputDevice::Keyboard};
+    std::string token;
+    std::string icon_id;
+    std::string fallback_text;
+};
+
 /**
  * @brief 动作状态枚举, 除了表示状态外，还将用于函数数组索引(0~2)
  */
@@ -63,6 +85,49 @@ enum class ActionState {
     INACTIVE    // 动作未激活 (放在最后，不占用数组索引)
 };
 
+struct BufferedPressDebugEntry {
+    Uint64 timestamp_ms{0};
+    Uint64 age_ms{0};
+};
+
+struct ActionDebugSnapshot {
+    entt::id_type id{0};
+    std::string name;
+    ActionState state{ActionState::INACTIVE};
+    std::uint8_t active_count{0};
+    std::vector<BindingDefinition> bindings;
+    std::optional<ActionPrompt> active_prompt;
+    std::vector<BufferedPressDebugEntry> buffered_presses;
+};
+
+struct RumbleDebugState {
+    bool has_last_request{false};
+    float last_intensity{0.0f};
+    Uint32 last_duration_ms{0};
+    bool last_request_succeeded{false};
+    bool active{false};
+    float current_intensity{0.0f};
+    Uint32 current_duration_ms{0};
+    Uint64 remaining_ms{0};
+};
+
+struct RebindCaptureDebugState {
+    bool capture_active{false};
+    entt::id_type action_id{0};
+    std::string action_name;
+    std::size_t binding_index{0};
+    bool pending_conflict{false};
+    std::string pending_token;
+    std::vector<std::string> conflicting_action_names;
+};
+
+struct InputDebugSnapshot {
+    InputDevice last_input_device{InputDevice::Keyboard};
+    std::vector<ActionDebugSnapshot> actions;
+    RumbleDebugState rumble;
+    RebindCaptureDebugState rebind;
+};
+
 /// @brief 动作数据聚合：状态 + 回调信号 + 引用计数 + 调试名称
 struct ActionEntry {
     static constexpr std::size_t CALLBACK_STATE_COUNT = static_cast<std::size_t>(ActionState::INACTIVE);
@@ -70,6 +135,7 @@ struct ActionEntry {
     ActionState state = ActionState::INACTIVE;
     uint8_t     active_count = 0;              ///< 当前有几个物理输入按住此动作
     std::string name;                           ///< 调试用动作名称
+    InputBuffer press_buffer{};
     std::array<entt::sigh<bool()>, CALLBACK_STATE_COUNT> signals;
 };
 
@@ -78,7 +144,7 @@ struct GamepadDebugState {
     bool has_active_gamepad{false};
     SDL_JoystickID active_gamepad_id{0};
     std::string active_gamepad_name;
-    InputDevice last_input_device{InputDevice::KeyboardMouse};
+    InputDevice last_input_device{InputDevice::Keyboard};
     std::array<bool, GAMEPAD_BUTTON_COUNT> button_states{};
     std::array<Sint16, GAMEPAD_AXIS_COUNT> axis_raw_values{};
     std::array<float, GAMEPAD_AXIS_COUNT> axis_normalized_values{};
@@ -134,7 +200,33 @@ private:
     std::vector<SDL_JoystickID> connected_gamepad_ids_;
     SDL_Gamepad* active_gamepad_{nullptr};
     SDL_JoystickID active_gamepad_id_{0};
-    InputDevice last_input_device_{InputDevice::KeyboardMouse};
+    InputDevice last_input_device_{InputDevice::Keyboard};
+    std::string config_path_{};
+    std::unordered_map<entt::id_type, std::vector<BindingDefinition>> action_bindings_{};
+
+    struct ActiveRumbleState {
+        float intensity{0.0f};
+        Uint32 duration_ms{0};
+        Uint64 ends_at_ms{0};
+    };
+
+    struct RebindCaptureState {
+        entt::id_type action_id{0};
+        std::size_t binding_index{0};
+        bool active{false};
+    };
+
+    struct PendingRebindConflict {
+        entt::id_type action_id{0};
+        std::size_t binding_index{0};
+        BindingDefinition replacement{};
+        std::vector<std::pair<entt::id_type, std::size_t>> conflicts;
+    };
+
+    RumbleDebugState rumble_debug_state_{};
+    std::optional<ActiveRumbleState> active_rumble_{};
+    RebindCaptureState rebind_capture_{};
+    std::optional<PendingRebindConflict> pending_rebind_conflict_{};
 
     glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
     glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
@@ -212,6 +304,16 @@ public:
     glm::vec2 getMouseWheelDelta() const;                            ///< @brief 获取鼠标滚轮 delta
     [[nodiscard]] InputDevice getLastInputDevice() const;
     [[nodiscard]] GamepadDebugState getGamepadDebugState() const;
+    [[nodiscard]] std::vector<BindingDefinition> getActionBindings(entt::id_type action_name_id) const;
+    [[nodiscard]] std::optional<ActionPrompt> getActionPrompt(entt::id_type action_name_id) const;
+    [[nodiscard]] bool peekBufferedPress(entt::id_type action_name_id, Uint64 window_ms) const;
+    bool consumeBufferedPress(entt::id_type action_name_id, Uint64 window_ms);
+    [[nodiscard]] InputDebugSnapshot getDebugSnapshot(Uint64 now_ms = 0) const;
+    [[nodiscard]] bool rumble(float intensity, Uint32 duration_ms);
+    [[nodiscard]] bool beginRebindCapture(entt::id_type action_name_id, std::size_t binding_index);
+    void cancelRebindCapture();
+    [[nodiscard]] bool confirmPendingRebindConflict();
+    void discardPendingRebindConflict();
     void setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback);
     void setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback);
 
@@ -233,12 +335,26 @@ private:
     void processEvent(const SDL_Event& event);                      ///< @brief 处理 SDL 事件（将按键转换为动作状态）
     [[nodiscard]] bool loadConfig(std::string_view config_path);
     void initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname);
+    void rebuildBindingCaches(bool reset_runtime_state = true);
     void initializeContextDefinitions();
     void initializeConnectedGamepads();
     void switchActiveGamepad(SDL_JoystickID instance_id);
     void closeActiveGamepad();
     void clearGamepadContributions();
     void clearAllInputState();
+    [[nodiscard]] std::optional<BindingDefinition> bindingDefinitionFromToken(std::string_view token) const;
+    [[nodiscard]] std::optional<BindingDefinition> bindingDefinitionFromEvent(const SDL_Event& event) const;
+    [[nodiscard]] bool persistBindings() const;
+    [[nodiscard]] bool applyBindingReplacement(entt::id_type action_name_id,
+                                               std::size_t binding_index,
+                                               const BindingDefinition& replacement,
+                                               const std::vector<std::pair<entt::id_type, std::size_t>>& conflicts);
+    [[nodiscard]] std::vector<std::pair<entt::id_type, std::size_t>> findBindingConflicts(
+        entt::id_type action_name_id,
+        std::size_t binding_index,
+        const BindingDefinition& candidate) const;
+    [[nodiscard]] bool handleRebindCaptureEvent(const SDL_Event& event);
+    [[nodiscard]] bool isSystemEventDuringCapture(const SDL_Event& event) const;
     [[nodiscard]] const InputContextDefinition* currentContextDefinition() const;
     [[nodiscard]] bool shouldSuppressRmlUiKeyboardEvent(const SDL_Event& event) const;
     void resetGamepadDebugState();

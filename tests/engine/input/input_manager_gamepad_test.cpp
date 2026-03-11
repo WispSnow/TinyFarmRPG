@@ -367,7 +367,7 @@ TEST_F(InputManagerGamepadTest, LastInputDeviceTracking) {
 
     pressKey(SDL_SCANCODE_A, true);
     manager->sampleInputEvents();
-    EXPECT_EQ(manager->getLastInputDevice(), InputDevice::KeyboardMouse);
+    EXPECT_EQ(manager->getLastInputDevice(), InputDevice::Keyboard);
     manager->consumeTick();
 
     pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_SOUTH, true);

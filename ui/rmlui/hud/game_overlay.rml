@@ -5,7 +5,28 @@
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="game_overlay.rcss"/>
 </head>
-<body>
-    <button id="game-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+<body data-model="game_overlay">
+    <div id="game-menu-anchor">
+        <button id="game-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+    </div>
+
+    <div id="game-prompt-bar">
+        <div class="game-prompt-item">
+            <div class="game-prompt-label">Use</div>
+            <div class="game-prompt-value">{{ primary_prompt_text }}</div>
+        </div>
+        <div class="game-prompt-item">
+            <div class="game-prompt-label">Alt</div>
+            <div class="game-prompt-value">{{ secondary_prompt_text }}</div>
+        </div>
+        <div class="game-prompt-item">
+            <div class="game-prompt-label">Bag</div>
+            <div class="game-prompt-value">{{ inventory_prompt_text }}</div>
+        </div>
+        <div class="game-prompt-item">
+            <div class="game-prompt-label">Menu</div>
+            <div class="game-prompt-value">{{ pause_prompt_text }}</div>
+        </div>
+    </div>
 </body>
 </rml>
