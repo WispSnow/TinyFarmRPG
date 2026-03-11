@@ -13,7 +13,7 @@
 | Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[x]` | [`phase-01.md`](./phase-01.md) |
 | Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: InputContext 上下文分层 | `[x]` | [`phase-03.md`](./phase-03.md) |
-| Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[ ]` | [`phase-04.md`](./phase-04.md) |
+| Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[x]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-05.md`](./phase-05.md) |
 
 ## 目标
@@ -84,3 +84,15 @@
   - `ninja -C build/debug engine_tests game_tests`
   - `./build/debug/tests/engine_tests`：192/192 通过
   - `./build/debug/tests/game_tests`：184 通过，6 个 headless RmlUI 相关用例按预期跳过
+
+## Phase 4 完成记录（2026-03-11）
+
+- 已新增 `menu_*` / `menu_confirm` / `menu_cancel` 语义动作，并在菜单类 context 下抑制对应原始键盘事件直通 RmlUI。
+- 已引入 `UINavigationController`，由 `GameApp` 持有并驱动 `RmlUILayer` 的方向导航、确认和焦点控制。
+- `RmlUILayer` 已支持焦点查询、直接聚焦、按 id / class 聚焦，以及在 `context->Update()` 后执行的 deferred focus 队列。
+- `TitleScene`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`BattleScene` 已接入默认焦点与 `menu_cancel` 语义。
+- 菜单样式已补齐 `nav-*` 与 `:focus`，RML 关键按钮已有稳定 id 可供聚焦。
+- 自动化验证已通过：
+  - `ninja -C build/debug engine_tests game_tests`
+  - `./build/debug/tests/engine_tests --gtest_filter='*Input*:*Navigation*'`
+  - `./build/debug/tests/game_tests --gtest_filter='*InputContext*:*RmlMenuNavigationStyle*:*TitleSceneMenuButton*:*PauseMenuScene*:*SaveSlotSelectScene*:*BattleSceneSmoke*:*RestAreaInteraction*'`
