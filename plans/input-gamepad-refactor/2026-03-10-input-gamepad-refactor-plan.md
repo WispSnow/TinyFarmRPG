@@ -14,7 +14,8 @@
 | Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[x]` | [`phase-02.md`](./phase-02.md) |
 | Phase 3: InputContext 上下文分层 | `[x]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[x]` | [`phase-04.md`](./phase-04.md) |
-| Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-05.md`](./phase-05.md) |
+| Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[x]` | [`phase-05.md`](./phase-05.md) |
+| Phase 6: 输入提示与菜单焦点打磨 | `[ ]` | [`phase-06.md`](./phase-06.md) |
 
 ## 目标
 
@@ -28,14 +29,14 @@
 - 采用最优方案，不考虑向后兼容（CLAUDE.md 明确要求）。
 - `InputManager` 仍然是 SDL 事件唯一入口，不新增第二个 poll 点。
 - 保留现有动作查询主接口：`onAction()`、`isActionDown()`、`isActionPressed()`、`isActionReleased()`。
-- Phase 默认按 `1 -> 5` 顺序执行，不要跳过前置阶段直接做后置特性。
+- Phase 默认按 `1 -> 6` 顺序执行，不要跳过前置阶段直接做后置特性。
 - 每次实施只读取本索引 + 当前 Phase 文档，避免无关上下文占用。
 - 只支持单个活动手柄（单人 RPG 场景），多手柄插入时取最近连接的。
 
 ## 架构共识（跨 Phase）
 
 - **不过度抽象 binding 层**：运行时保持分离的 per-device map（`key_to_actions_`、`mouse_to_actions_`、`gamepad_button_to_actions_`、`gamepad_axis_to_actions_`），只在解析侧新增 `gamepadButtonFromString` / `gamepadAxisDirectionFromString` 等函数。不引入统一的 `InputBinding` 包装类型。
-- **InputDevice 枚举**：Phase 1 引入 `enum class InputDevice : uint8_t { KeyboardMouse, Gamepad }`，`InputManager` 维护 `last_input_device_`，每次处理输入事件时更新。
+- **InputDevice 枚举**：当前运行时使用 `enum class InputDevice : uint8_t { Keyboard, Mouse, Gamepad }`，`InputManager` 维护 `last_input_device_`，每次处理输入事件时更新。
 - 上层玩法从 `mouse_left` / `mouse_right` / `hotbar_1..10` **直接迁移**到 `primary_action` / `secondary_action` / `hotbar_prev` / `hotbar_next` 等语义动作，旧名称直接删除。
 - 手柄目标选择不走"强模拟鼠标"，而走控制器友好的目标模型（基于角色朝向 + 范围约束）。
 - 菜单导航通过 `menu_*`、`menu_confirm`、`menu_cancel` 等语义动作驱动。
@@ -56,6 +57,7 @@
 - Phase 3：引入 InputContext 上下文栈，区分 Gameplay / Menu / Dialogue / Battle 输入域。
 - Phase 4：为菜单和 UI 建立手柄导航能力，接入 RmlUI。
 - Phase 5：补增强项（输入缓冲、Glyph、震动、重绑定），不阻塞前 4 阶段交付。
+- Phase 6：收紧游戏内提示条 HUD，并统一菜单中的 hover/focus/方向导航激活项。
 
 ## Phase 1 完成记录（2026-03-10）
 
@@ -96,3 +98,23 @@
   - `ninja -C build/debug engine_tests game_tests`
   - `./build/debug/tests/engine_tests --gtest_filter='*Input*:*Navigation*'`
   - `./build/debug/tests/game_tests --gtest_filter='*InputContext*:*RmlMenuNavigationStyle*:*TitleSceneMenuButton*:*PauseMenuScene*:*SaveSlotSelectScene*:*BattleSceneSmoke*:*RestAreaInteraction*'`
+
+## Phase 5 完成记录（2026-03-11）
+
+- `InputDevice` 已扩展为 `Keyboard / Mouse / Gamepad` 三值，`BindingDefinition` / `ActionPrompt` / `InputDebugSnapshot` 已成为后续输入展示与重绑定的统一元数据基础。
+- `InputManager` 已补齐：
+  - per-action `InputBuffer`
+  - glyph / prompt 查询
+  - rumble 请求与调试状态
+  - capture 模式重绑定
+  - 绑定持久化与运行时 mapping 重建
+- `GameScene` 左下角 overlay 已改为从输入 prompt 动态取词；输入调试面板也已切换到 snapshot 驱动，不再直接依赖旧的 debug map。
+- 重绑定流程已覆盖：
+  - capture 期间阻断 RmlUI / ImGui 普通输入转发
+  - 冲突检测
+  - `Escape` 固定物理取消
+  - 临时文件 + 备份恢复式落盘
+- 自动化验证已通过：
+  - `ninja -C build/debug engine_tests game_tests`
+  - `./build/debug/tests/engine_tests`：207/207 通过
+  - `./build/debug/tests/game_tests`：185 通过，6 个 headless RmlUI 相关用例按预期跳过
