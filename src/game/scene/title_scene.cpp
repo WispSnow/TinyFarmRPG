@@ -12,6 +12,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 
 #include <RmlUi/Core/Context.h>
@@ -38,7 +39,7 @@ TitleScene::TitleScene(std::string_view name, engine::core::Context& context, st
 }
 
 TitleScene::~TitleScene() {
-    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
+    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
         removeEventListeners();
         if (document_) {
             unloadAllRmlDocuments();
@@ -115,7 +116,10 @@ bool TitleScene::initUI() {
     event_bridge_.on("menu", [this](Rml::Event&) { onMenuClicked(); });
     event_bridge_.on("exit", [this](Rml::Event&) { onExitClicked(); });
     event_bridge_.registerTo(document_, "click");
+    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
+    document_->AddEventListener("mouseover", hover_focus_listener_.get());
     click_listener_registered_ = true;
+    hover_listener_registered_ = true;
 
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
@@ -128,6 +132,10 @@ void TitleScene::removeEventListeners() {
     if (document_ && click_listener_registered_) {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
+    }
+    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
+        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
+        hover_listener_registered_ = false;
     }
 }
 

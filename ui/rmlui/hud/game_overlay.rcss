@@ -31,13 +31,13 @@ body {
     bottom: 10dp;
     background-color: #0f1a26dd;
     border: 1dp #7c92a8ff;
-    padding: 6dp 8dp;
+    padding: 4dp 6dp;
     pointer-events: none;
 }
 
 .game-prompt-item {
     display: inline-block;
-    margin-right: 14dp;
+    margin-right: 10dp;
 }
 
 .game-prompt-item:last-child {
@@ -46,9 +46,11 @@ body {
 
 .game-prompt-label {
     color: #8eb7daff;
-    margin-bottom: 2dp;
+    margin-bottom: 1dp;
+    font-size: 10dp;
 }
 
 .game-prompt-value {
     color: #f6f3e8ff;
+    font-size: 12dp;
 }

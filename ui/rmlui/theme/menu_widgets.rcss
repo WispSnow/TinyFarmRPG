@@ -35,10 +35,7 @@ button {
     decorator: ninepatch(primary-button, primary-button-inner, 1.0);
 }
 
-.tf-button-primary:hover {
-    color: #fce97fff;
-}
-
+.tf-button-primary:hover,
 .tf-button-primary:focus {
     color: #fce97fff;
     box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
@@ -53,10 +50,7 @@ button {
     decorator: ninepatch(secondary-button, secondary-button-inner, 1.0);
 }
 
-.tf-button-secondary:hover {
-    color: #fce97fff;
-}
-
+.tf-button-secondary:hover,
 .tf-button-secondary:focus {
     color: #fce97fff;
     box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
@@ -80,6 +74,7 @@ button {
     height: 32dp;
 }
 
+.tf-icon-button:hover,
 .tf-icon-button:focus {
     box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
 }

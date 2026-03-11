@@ -6,6 +6,7 @@
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
@@ -73,6 +74,21 @@ constexpr std::string_view MODEL_NAME = "save_slot_select";
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 
+[[nodiscard]] bool elementOrAncestorHasId(Rml::Element* element, std::string_view id) {
+    if (element == nullptr || id.empty()) {
+        return false;
+    }
+
+    for (auto* current = element; current != nullptr; current = current->GetParentNode()) {
+        const auto& current_id = current->GetId();
+        if (current_id.size() == id.size() && current_id == Rml::String{id.data(), id.size()}) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 } // namespace
 
 namespace game::scene {
@@ -88,7 +104,8 @@ SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name,
 
 SaveSlotSelectScene::~SaveSlotSelectScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid()) {
+    if (document_ || data_bridge_.isValid() || hover_listener_registered_) {
+        removeEventListeners();
         if (document_) {
             unloadAllRmlDocuments();
             document_ = nullptr;
@@ -114,6 +131,7 @@ bool SaveSlotSelectScene::init() {
 
 void SaveSlotSelectScene::clean() {
     disconnectRuntimeListeners();
+    removeEventListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -126,6 +144,13 @@ void SaveSlotSelectScene::clean() {
 
 void SaveSlotSelectScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&SaveSlotSelectScene::onMenuCancelPressed>(this);
+}
+
+void SaveSlotSelectScene::removeEventListeners() {
+    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
+        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
+        hover_listener_registered_ = false;
+    }
 }
 
 bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {
@@ -203,6 +228,12 @@ bool SaveSlotSelectScene::initUI() {
         spdlog::error("SaveSlotSelectScene: 加载 RML 文档失败。");
         return false;
     }
+    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
+    hover_focus_listener_->setCandidateFilter([this](Rml::Element* element) {
+        return shouldSyncHoverFocus(element);
+    });
+    document_->AddEventListener("mouseover", hover_focus_listener_.get());
+    hover_listener_registered_ = true;
 
     refreshSlotButtons();
     data_bridge_.markAllDirty();
@@ -224,6 +255,14 @@ void SaveSlotSelectScene::queueDefaultFocus() {
     } else {
         layer->queueFocusElementById(document_, "save-slot-back");
     }
+}
+
+bool SaveSlotSelectScene::shouldSyncHoverFocus(Rml::Element* element) const {
+    if (!confirm_visible_) {
+        return true;
+    }
+
+    return elementOrAncestorHasId(element, "save-slot-confirm-layer");
 }
 
 void SaveSlotSelectScene::refreshSlotButtons() {

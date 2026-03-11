@@ -157,6 +157,7 @@ set(GAME_TEST_SOURCES
     game/game_scene_battle_entry_test.cpp
     game/game_scene_runtime_assembly_test.cpp
     game/input_context_scene_stack_test.cpp
+    game/menu_hover_focus_sync_test.cpp
     game/system_scheduler_profile_test.cpp
     game/system_scheduler_transition_gate_test.cpp
     game/system_scheduler_invariant_test.cpp

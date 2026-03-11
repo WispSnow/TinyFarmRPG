@@ -84,6 +84,7 @@ class GameScene : public engine::scene::Scene {
     Rml::String secondary_prompt_text_{};
     Rml::String inventory_prompt_text_{};
     Rml::String pause_prompt_text_{};
+    bool show_prompt_bar_{true};
     engine::ui::IScreenFade* screen_fade_{nullptr};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
@@ -116,6 +117,7 @@ private:
     bool onInventoryToggle();
     bool onHotbarToggle();
     bool onPauseToggle();
+    bool onTogglePromptBar();
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);

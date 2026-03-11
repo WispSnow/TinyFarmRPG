@@ -14,6 +14,10 @@ namespace Rml {
 class ElementDocument;
 }
 
+namespace engine::ui::rmlui {
+class HoverFocusSyncListener;
+}
+
 namespace game::data {
 struct GameTime;
 }
@@ -26,12 +30,14 @@ class TitleScene final : public engine::scene::Scene {
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
     Rml::ElementDocument* document_{nullptr};
     bool context_pushed_{false};
 
     Rml::String error_text_{};
     bool show_error_{false};
     bool click_listener_registered_{false};
+    bool hover_listener_registered_{false};
 
 public:
     TitleScene(std::string_view name, engine::core::Context& context, std::string error_message = {});

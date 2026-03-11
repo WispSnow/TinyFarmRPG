@@ -124,6 +124,7 @@ GameScene::~GameScene() noexcept {
     context_.getInputManager().onAction("inventory"_hs).disconnect<&GameScene::onInventoryToggle>(this);
     context_.getInputManager().onAction("hotbar"_hs).disconnect<&GameScene::onHotbarToggle>(this);
     context_.getInputManager().onAction("pause"_hs).disconnect<&GameScene::onPauseToggle>(this);
+    context_.getInputManager().onAction("toggle_prompt_bar"_hs).disconnect<&GameScene::onTogglePromptBar>(this);
     context_.getDispatcher().sink<game::defs::HotbarChanged>().disconnect<&GameScene::onHotbarChanged>(this);
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
@@ -350,6 +351,7 @@ void GameScene::bindSceneInputActions() {
     input_manager.onAction("inventory"_hs).connect<&GameScene::onInventoryToggle>(this);
     input_manager.onAction("hotbar"_hs).connect<&GameScene::onHotbarToggle>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::onPauseToggle>(this);
+    input_manager.onAction("toggle_prompt_bar"_hs).connect<&GameScene::onTogglePromptBar>(this);
 }
 
 void GameScene::removeOverlayEventListeners() {
@@ -496,6 +498,7 @@ bool GameScene::initUI() {
         overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
         overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
         overlay_constructor.Bind("pause_prompt_text", &pause_prompt_text_);
+        overlay_constructor.Bind("show_prompt_bar", &show_prompt_bar_);
 
         refreshOverlayPrompts();
         overlay_data_bridge_.markAllDirty();
@@ -610,6 +613,14 @@ bool GameScene::onPauseToggle() {
         services_->save_service.get(),
         game_time);
     requestPushScene(std::move(menu));
+    return true;
+}
+
+bool GameScene::onTogglePromptBar() {
+    show_prompt_bar_ = !show_prompt_bar_;
+    if (overlay_data_bridge_.isValid()) {
+        overlay_data_bridge_.markDirty("show_prompt_bar");
+    }
     return true;
 }
 
