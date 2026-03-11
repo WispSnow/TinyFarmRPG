@@ -12,6 +12,7 @@
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
+#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
@@ -29,12 +30,15 @@ using engine::ui::rmlui::updateBoundString;
 
 namespace game::scene {
 
+using namespace entt::literals;
+
 RestDialogScene::RestDialogScene(std::string_view name, engine::core::Context& context)
     : engine::scene::Scene(name, context),
       previous_state_(context.getGameState().getCurrentState()) {
 }
 
 RestDialogScene::~RestDialogScene() {
+    disconnectRuntimeListeners();
     if (document_ || data_bridge_.isValid() || click_listener_registered_) {
         removeEventListeners();
         if (document_) {
@@ -54,6 +58,7 @@ bool RestDialogScene::init() {
     if (!initUI()) {
         return false;
     }
+    context_.getInputManager().onAction("menu_cancel"_hs).connect<&RestDialogScene::onMenuCancelPressed>(this);
     if (!Scene::init()) {
         return false;
     }
@@ -62,6 +67,7 @@ bool RestDialogScene::init() {
 }
 
 void RestDialogScene::clean() {
+    disconnectRuntimeListeners();
     removeEventListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
@@ -109,6 +115,7 @@ bool RestDialogScene::initUI() {
     click_listener_registered_ = true;
 
     updateHoursLabel();
+    layer->queueFocusElementById(document_, "rest-hours-down-button");
     return true;
 }
 
@@ -117,6 +124,10 @@ void RestDialogScene::removeEventListeners() {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
     }
+}
+
+void RestDialogScene::disconnectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&RestDialogScene::onMenuCancelPressed>(this);
 }
 
 void RestDialogScene::updateHoursLabel() {
@@ -134,6 +145,11 @@ void RestDialogScene::adjustHours(int delta) {
 
     selected_hours_ = next;
     updateHoursLabel();
+}
+
+bool RestDialogScene::onMenuCancelPressed() {
+    onCancel();
+    return true;
 }
 
 void RestDialogScene::onConfirm() {

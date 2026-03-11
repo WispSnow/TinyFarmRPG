@@ -11,7 +11,19 @@
       "GamepadDpadDown",
       "LeftStickDown"
     ],
+    "menu_down": [
+      "S",
+      "Down",
+      "GamepadDpadDown",
+      "LeftStickDown"
+    ],
     "move_up": [
+      "W",
+      "Up",
+      "GamepadDpadUp",
+      "LeftStickUp"
+    ],
+    "menu_up": [
       "W",
       "Up",
       "GamepadDpadUp",
@@ -23,11 +35,32 @@
       "GamepadDpadRight",
       "LeftStickRight"
     ],
+    "menu_right": [
+      "D",
+      "Right",
+      "GamepadDpadRight",
+      "LeftStickRight"
+    ],
     "move_left": [
       "A",
       "Left",
       "GamepadDpadLeft",
       "LeftStickLeft"
+    ],
+    "menu_left": [
+      "A",
+      "Left",
+      "GamepadDpadLeft",
+      "LeftStickLeft"
+    ],
+    "menu_confirm": [
+      "Return",
+      "Space",
+      "GamepadSouth"
+    ],
+    "menu_cancel": [
+      "Escape",
+      "GamepadEast"
     ],
     "primary_action": [
       "MouseLeft",

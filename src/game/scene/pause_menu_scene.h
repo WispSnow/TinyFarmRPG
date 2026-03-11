@@ -75,7 +75,7 @@ private:
     void onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event);
     void setMessage(std::string message, bool is_error);
 
-    bool onPausePressed();
+    bool onMenuCancelPressed();
 
     void onResumeClicked();
     void onSaveClicked();

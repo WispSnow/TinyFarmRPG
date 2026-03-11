@@ -31,6 +31,12 @@ constexpr float AXIS_RELEASE_THRESHOLD = 0.4f;
         {"move_right", {"D", "Right", "GamepadDpadRight", "LeftStickRight"}},
         {"move_up", {"W", "Up", "GamepadDpadUp", "LeftStickUp"}},
         {"move_down", {"S", "Down", "GamepadDpadDown", "LeftStickDown"}},
+        {"menu_left", {"A", "Left", "GamepadDpadLeft", "LeftStickLeft"}},
+        {"menu_right", {"D", "Right", "GamepadDpadRight", "LeftStickRight"}},
+        {"menu_up", {"W", "Up", "GamepadDpadUp", "LeftStickUp"}},
+        {"menu_down", {"S", "Down", "GamepadDpadDown", "LeftStickDown"}},
+        {"menu_confirm", {"Return", "Space", "GamepadSouth"}},
+        {"menu_cancel", {"Escape", "GamepadEast"}},
         {"primary_action", {"MouseLeft", "GamepadSouth"}},
         {"secondary_action", {"MouseRight", "GamepadEast"}},
         {"pause", {"P", "Escape", "GamepadStart"}},
@@ -135,6 +141,21 @@ void handleInputEdge(KeyT key,
     return result;
 }
 
+[[nodiscard]] bool isMenuNavigationActionName(const std::string_view action_name) {
+    return action_name == "menu_up"
+        || action_name == "menu_down"
+        || action_name == "menu_left"
+        || action_name == "menu_right"
+        || action_name == "menu_confirm"
+        || action_name == "menu_cancel";
+}
+
+[[nodiscard]] bool isMenuLikeContext(const std::optional<InputContextId> context_id) {
+    return context_id == InputContextId::Menu
+        || context_id == InputContextId::Dialogue
+        || context_id == InputContextId::Battle;
+}
+
 #ifdef TF_ENABLE_DEBUG_UI
 [[nodiscard]] bool isImGuiBlockingRmlUi(const SDL_Event& event) {
     if (!ImGui::GetCurrentContext()) {
@@ -229,7 +250,7 @@ void InputManager::sampleInputEvents() {
 #endif
 
         bool should_propagate = true;
-        if (!imgui_blocks_rmlui && rmlui_event_callback_) {
+        if (!imgui_blocks_rmlui && rmlui_event_callback_ && !shouldSuppressRmlUiKeyboardEvent(event)) {
             should_propagate = rmlui_event_callback_(event);
         }
 
@@ -652,6 +673,7 @@ void InputManager::initializeMappings(const std::map<std::string, std::vector<st
     mouse_to_actions_.clear();
     gamepad_button_to_actions_.clear();
     gamepad_axis_to_actions_.clear();
+    rmlui_suppressed_navigation_scancodes_.clear();
     key_down_states_.clear();
     mouse_down_states_.clear();
     gamepad_button_down_states_.clear();
@@ -673,6 +695,9 @@ void InputManager::initializeMappings(const std::map<std::string, std::vector<st
 
             if (scancode != SDL_SCANCODE_UNKNOWN) {
                 key_to_actions_[scancode].push_back(action_name_id);
+                if (isMenuNavigationActionName(action_name) && scancode != SDL_SCANCODE_TAB) {
+                    rmlui_suppressed_navigation_scancodes_.insert(scancode);
+                }
             } else if (mouse_button != 0) {
                 mouse_to_actions_[mouse_button].push_back(action_name_id);
             } else if (gamepad_button != SDL_GAMEPAD_BUTTON_INVALID) {
@@ -742,9 +767,15 @@ void InputManager::initializeContextDefinitions() {
             "player_light",
             "camera_reset_zoom",
         }));
-    context_definitions_.emplace(InputContextId::Menu, build_definition({"pause"}));
-    context_definitions_.emplace(InputContextId::Dialogue, build_definition({}));
-    context_definitions_.emplace(InputContextId::Battle, build_definition({}));
+    context_definitions_.emplace(
+        InputContextId::Menu,
+        build_definition({"menu_left", "menu_right", "menu_up", "menu_down", "menu_confirm", "menu_cancel"}));
+    context_definitions_.emplace(
+        InputContextId::Dialogue,
+        build_definition({"menu_left", "menu_right", "menu_up", "menu_down", "menu_confirm", "menu_cancel"}));
+    context_definitions_.emplace(
+        InputContextId::Battle,
+        build_definition({"menu_left", "menu_right", "menu_up", "menu_down", "menu_confirm", "menu_cancel"}));
 }
 
 void InputManager::initializeConnectedGamepads() {
@@ -869,6 +900,19 @@ const InputContextDefinition* InputManager::currentContextDefinition() const {
     }
 
     return nullptr;
+}
+
+bool InputManager::shouldSuppressRmlUiKeyboardEvent(const SDL_Event& event) const {
+    if ((event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP)
+        || event.key.scancode == SDL_SCANCODE_TAB) {
+        return false;
+    }
+
+    if (!isMenuLikeContext(currentContext())) {
+        return false;
+    }
+
+    return rmlui_suppressed_navigation_scancodes_.contains(event.key.scancode);
 }
 
 void InputManager::resetGamepadDebugState() {

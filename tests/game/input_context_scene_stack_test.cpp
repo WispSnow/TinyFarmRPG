@@ -67,13 +67,13 @@ public:
     [[nodiscard]] bool init() override {
         context_.getInputManager().pushContext(engine::input::InputContextId::Menu);
         context_pushed_ = true;
-        context_.getInputManager().onAction("pause"_hs).connect<&TestMenuScene::onPause>(this);
+        context_.getInputManager().onAction("menu_cancel"_hs).connect<&TestMenuScene::onMenuCancel>(this);
 
         return Scene::init();
     }
 
     void clean() override {
-        context_.getInputManager().onAction("pause"_hs).disconnect<&TestMenuScene::onPause>(this);
+        context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&TestMenuScene::onMenuCancel>(this);
         if (context_pushed_) {
             context_.getInputManager().popContext();
             context_pushed_ = false;
@@ -82,7 +82,7 @@ public:
     }
 
 private:
-    bool onPause() {
+    bool onMenuCancel() {
         ++probe_.calls;
         probe_.order.emplace_back(getName());
         return probe_.consume;
@@ -190,7 +190,7 @@ protected:
                               std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".json");
         std::ofstream input_config(input_config_path_);
         ASSERT_TRUE(input_config.is_open());
-        input_config << R"({"input_mappings":{"pause":["Escape"]}})";
+        input_config << R"({"input_mappings":{"menu_cancel":["Escape"]}})";
         input_config.close();
 
         input_manager_ = engine::input::InputManager::create(&dispatcher_, game_state_.get(), input_config_path_.string());
@@ -311,7 +311,7 @@ protected:
     }
 };
 
-TEST_F(InputContextSceneStackTest, SceneManagerPrefersTopPauseListenerAndRestoresLowerSceneAfterPop) {
+TEST_F(InputContextSceneStackTest, SceneManagerPrefersTopMenuCancelListenerAndRestoresLowerSceneAfterPop) {
     SceneCallbackProbe pause_menu_probe{};
     pause_menu_probe.consume = false;
     SceneCallbackProbe save_slot_probe{};
@@ -352,6 +352,7 @@ TEST_F(InputContextSceneStackTest, SceneManagerPrefersTopPauseListenerAndRestore
 
 TEST(InputContextSceneSourceHookTest, ModalAndGameplayScenesPairPushAndPopHooks) {
     // 运行时行为由上面的 test scene 覆盖；这里额外保证真实 scene 文件没有漏接 hook。
+    expectSceneContextHooks("src/game/scene/title_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/game_scene.cpp", "Gameplay");
     expectSceneContextHooks("src/game/scene/pause_menu_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/save_slot_select_scene.cpp", "Menu");
@@ -359,16 +360,26 @@ TEST(InputContextSceneSourceHookTest, ModalAndGameplayScenesPairPushAndPopHooks)
     expectSceneContextHooks("src/game/scene/battle_scene.cpp", "Battle");
 }
 
-TEST(InputContextSceneSourceHookTest, TitleSceneKeepsLegacyEmptyStackBehavior) {
+TEST(InputContextSceneSourceHookTest, MenuScenesUseMenuCancelInsteadOfPause) {
     const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/title_scene.cpp").lexically_normal();
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_EQ(source.find("pushContext("), std::string::npos);
-    EXPECT_EQ(source.find("popContext("), std::string::npos);
+    EXPECT_NE(source.find("\"menu_cancel\"_hs"), std::string::npos);
+    EXPECT_EQ(source.find("\"pause\"_hs"), std::string::npos);
+
+    const std::filesystem::path save_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/save_slot_select_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(save_source_path)) << save_source_path;
+
+    const std::string save_source = readTextFile(save_source_path);
+    ASSERT_FALSE(save_source.empty());
+
+    EXPECT_NE(save_source.find("\"menu_cancel\"_hs"), std::string::npos);
+    EXPECT_EQ(save_source.find("\"pause\"_hs"), std::string::npos);
 }
 
 } // namespace

@@ -11,6 +11,7 @@
 #include <vector>
 
 namespace Rml {
+class Element;
 class ElementDocument;
 class Event;
 class DataModelHandle;
@@ -42,6 +43,7 @@ private:
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     Rml::ElementDocument* document_{nullptr};
+    Rml::Element* focus_before_confirm_{nullptr};
 
     std::vector<SlotViewModel> slots_{};
     bool confirm_visible_{false};
@@ -62,10 +64,11 @@ private:
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
     void disconnectRuntimeListeners();
     void refreshSlotButtons();
+    void queueDefaultFocus();
 
     void onSlotClicked(int slot);
     void onBackClicked();
-    bool onPausePressed();
+    bool onMenuCancelPressed();
 
     void showOverwriteConfirm(int slot);
     void hideOverwriteConfirm();

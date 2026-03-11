@@ -107,6 +107,7 @@ private:
     std::vector<entt::id_type> action_dispatch_order_;
     std::unordered_map<InputContextId, InputContextDefinition> context_definitions_;
     std::vector<InputContextId> context_stack_;
+    std::unordered_set<SDL_Scancode> rmlui_suppressed_navigation_scancodes_;
 
     /// @brief 键盘 scancode → 关联的动作 ID 列表
     std::unordered_map<SDL_Scancode, std::vector<entt::id_type>> key_to_actions_;
@@ -239,6 +240,7 @@ private:
     void clearGamepadContributions();
     void clearAllInputState();
     [[nodiscard]] const InputContextDefinition* currentContextDefinition() const;
+    [[nodiscard]] bool shouldSuppressRmlUiKeyboardEvent(const SDL_Event& event) const;
     void resetGamepadDebugState();
 
     [[nodiscard]] SDL_Scancode scancodeFromString(std::string_view key_name) const;     ///< @brief 将字符串键名转换为 SDL_Scancode

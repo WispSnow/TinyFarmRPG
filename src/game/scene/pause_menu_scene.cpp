@@ -94,7 +94,7 @@ bool PauseMenuScene::init() {
         return false;
     }
 
-    context_.getInputManager().onAction("pause"_hs).connect<&PauseMenuScene::onPausePressed>(this);
+    context_.getInputManager().onAction("menu_cancel"_hs).connect<&PauseMenuScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
         .connect<&PauseMenuScene::onAsyncSaveCompleted>(this);
 
@@ -184,6 +184,7 @@ bool PauseMenuScene::initUI() {
     refreshSaveActionButtons();
     setMessage("", true);
     data_bridge_.markAllDirty();
+    layer->queueFocusElementById(document_, "pause-resume-button");
     return true;
 }
 
@@ -195,7 +196,7 @@ void PauseMenuScene::removeEventListeners() {
 }
 
 void PauseMenuScene::disconnectRuntimeListeners() {
-    context_.getInputManager().onAction("pause"_hs).disconnect<&PauseMenuScene::onPausePressed>(this);
+    context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&PauseMenuScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
         .disconnect<&PauseMenuScene::onAsyncSaveCompleted>(this);
 }
@@ -268,7 +269,7 @@ void PauseMenuScene::setMessage(std::string message, bool is_error) {
     }
 }
 
-bool PauseMenuScene::onPausePressed() {
+bool PauseMenuScene::onMenuCancelPressed() {
     requestPopScene();
     return true;
 }

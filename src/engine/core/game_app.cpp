@@ -11,6 +11,8 @@
 #include "engine/render/text_renderer.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
+#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/ui_navigation_controller.h"
 #include "engine/scene/scene_manager.h"
 #include "engine/async/main_thread_command_queue.h"
 #include "engine/utils/events.h"
@@ -157,6 +159,7 @@ bool GameApp::init() {
     if (!initCamera()) return false;
     if (!initTextRenderer()) return false;
     if (!initInputManager()) return false;
+    if (!initUINavigationController()) return false;
     if (!initSpatialIndexManager()) return false;
 
     if (!initContext()) return false;
@@ -237,6 +240,8 @@ void GameApp::close() {
     // 断开事件处理函数
     dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
     dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
+
+    ui_navigation_controller_.reset();
 
     // 先关闭场景管理器，确保所有场景都被清理
     if (scene_manager_) {
@@ -484,6 +489,25 @@ bool GameApp::initInputManager()
     });
 #endif
     spdlog::trace("输入管理器初始化成功。");
+    return true;
+}
+
+bool GameApp::initUINavigationController()
+{
+    if (!input_manager_) {
+        spdlog::error("初始化 UI 导航控制器失败：InputManager 未初始化。");
+        return false;
+    }
+
+    ui_navigation_controller_ = std::make_unique<engine::ui::UINavigationController>(*input_manager_);
+    if (auto* layer = gl_renderer_ ? gl_renderer_->getRmlUILayer() : nullptr) {
+        ui_navigation_controller_->onNavigateUp().connect<&engine::ui::rmlui::RmlUILayer::navigateUp>(layer);
+        ui_navigation_controller_->onNavigateDown().connect<&engine::ui::rmlui::RmlUILayer::navigateDown>(layer);
+        ui_navigation_controller_->onNavigateLeft().connect<&engine::ui::rmlui::RmlUILayer::navigateLeft>(layer);
+        ui_navigation_controller_->onNavigateRight().connect<&engine::ui::rmlui::RmlUILayer::navigateRight>(layer);
+        ui_navigation_controller_->onConfirm().connect<&engine::ui::rmlui::RmlUILayer::confirmFocusedElement>(layer);
+    }
+
     return true;
 }
 

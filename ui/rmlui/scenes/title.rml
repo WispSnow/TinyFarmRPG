@@ -12,9 +12,9 @@
     <div id="title-error" data-visible="show_error">{{ error_text }}</div>
 
     <div id="title-buttons">
-        <button class="tf-button-secondary title-button" data-command="start">Start</button>
-        <button class="tf-button-secondary title-button" data-command="load">Load</button>
-        <button class="tf-button-secondary title-button" data-command="exit">Exit</button>
+        <button id="title-start-button" class="tf-button-secondary title-button" data-command="start">Start</button>
+        <button id="title-load-button" class="tf-button-secondary title-button" data-command="load">Load</button>
+        <button id="title-exit-button" class="tf-button-secondary title-button" data-command="exit">Exit</button>
     </div>
 
     <button id="title-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
