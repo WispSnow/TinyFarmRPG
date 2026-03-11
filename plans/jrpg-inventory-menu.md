@@ -63,9 +63,10 @@
 - [x] 确定菜单布局线框图 → `jrpg-inventory-menu-wireframe.md`
 - [x] 确定 Hotbar 去留 → 移除
 - [x] 确定菜单架构 → 独立场景 InventoryMenuScene
-- [ ] 评估 ItemCategory 是否需要扩展（Equipment、KeyItem 等新分类）
-- [ ] 确定物品存储模型调整方案（去除 InventoryComponent 的分页，改为平铺 40 slot）
-- [ ] 确定排序规则（按分类 → 按名称 or 按获取顺序）
+- [x] 评估 ItemCategory → 枚举中预留 Equipment、KeyItem，数据层暂不填充
+- [x] 确定物品存储模型 → 去除 active_page_，40 slot 平铺，Phase 2 开始时改
+- [x] 确定排序规则 → 默认获取顺序（slot index 自然序），后续加可选"按分类→按名称"排序
+- [x] 确认素材资源区域 → `jrpg-inventory-menu-sprites.md`（全部已确认）
 
 ## Phase 2: 场景与 UI 层实现
 
