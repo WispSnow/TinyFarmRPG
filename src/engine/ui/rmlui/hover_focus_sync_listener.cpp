@@ -41,6 +41,9 @@ void HoverFocusSyncListener::ProcessEvent(Rml::Event& event) {
         if (candidate_filter_ && !candidate_filter_(element)) {
             continue;
         }
+        if (layer_->getFocusedElement() == element) {
+            return;
+        }
         if (layer_->focusElement(element)) {
             return;
         }

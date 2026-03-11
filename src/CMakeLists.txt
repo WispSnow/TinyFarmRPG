@@ -197,6 +197,7 @@ target_sources(game PRIVATE
     # UI
     game/ui/time_clock_hud.cpp
     game/ui/inventory_ui.cpp
+    game/ui/inventory_menu_ui.cpp
     game/ui/hotbar_ui.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp
@@ -239,6 +240,7 @@ target_sources(game PRIVATE
     game/scene/save_slot_select_scene.cpp
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
+    game/scene/inventory_menu_scene.cpp
     game/scene/battle_scene.cpp
 )
 

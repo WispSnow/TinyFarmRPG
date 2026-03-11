@@ -37,6 +37,9 @@ class ItemTooltipUI final {
     float name_spacing_{0.0f};
     float category_spacing_{0.0f};
     glm::vec2 offset_{12.0f, 16.0f};
+    glm::vec2 anchor_position_{0.0f, 0.0f};
+    glm::vec2 anchor_size_{0.0f, 0.0f};
+    bool use_anchor_rect_{false};
     float max_text_width_{0.0f};
     float min_content_width_{0.0f};
     float min_content_height_{0.0f};
@@ -67,6 +70,8 @@ public:
 
     void setMaxTextWidth(float width);
     void setOffset(glm::vec2 offset) { offset_ = offset; }
+    void setAnchorRect(glm::vec2 position, glm::vec2 size);
+    void clearAnchorRect();
     void setPadding(const engine::ui::Thickness& padding);
     [[nodiscard]] bool isVisible() const { return visible_; }
 

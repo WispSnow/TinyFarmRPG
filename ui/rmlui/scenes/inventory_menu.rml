@@ -1,0 +1,95 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="inventory_menu.rcss"/>
+</head>
+<body data-model="inventory_menu">
+    <div id="inventory-menu-overlay"></div>
+
+    <div id="inventory-menu-panel">
+        <button id="inventory-menu-close" data-event-click="on_close()"></button>
+
+        <div id="inventory-menu-tabs">
+            <div class="inventory-menu-tab is-active">
+                <div class="inventory-menu-tab-icon icon-tab-inventory"></div>
+            </div>
+            <div class="inventory-menu-tab is-disabled">
+                <div class="inventory-menu-tab-icon icon-tab-equipment"></div>
+            </div>
+            <div class="inventory-menu-tab is-disabled">
+                <div class="inventory-menu-tab-icon icon-tab-quests"></div>
+            </div>
+            <div class="inventory-menu-tab is-disabled">
+                <div class="inventory-menu-tab-icon icon-tab-map"></div>
+            </div>
+            <div class="inventory-menu-tab is-disabled">
+                <div class="inventory-menu-tab-icon icon-tab-options"></div>
+            </div>
+        </div>
+
+        <div id="inventory-menu-backpack-title">Backpack</div>
+        <div id="inventory-menu-grid">
+            <button class="inventory-menu-slot-button inventory-menu-focusable"
+                    data-for="slot : inventory_slots"
+                    data-class-has-item="slot.has_item"
+                    data-class-has-count="slot.has_count"
+                    data-class-is-selected="slot.is_selected"
+                    data-class-draggable="slot.can_drag"
+                    data-attrif-disabled="action_menu_open"
+                    data-event-click="slot_confirm(slot.slot_index)"
+                    data-event-dragstart="slot_drag_start(slot.slot_index)"
+                    data-event-dragdrop="slot_drag_drop(slot.slot_index)"
+                    data-event-dragend="slot_drag_end(slot.slot_index)">
+                <div class="inventory-menu-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                <div class="inventory-menu-slot-count">{{ slot.count_text }}</div>
+            </button>
+        </div>
+
+        <div id="inventory-menu-divider"></div>
+
+        <div id="inventory-menu-info">
+            <div id="inventory-menu-portrait"></div>
+
+            <div id="inventory-menu-player">
+                <div class="inventory-menu-player-name">Farmer</div>
+                <div class="inventory-menu-player-meta">Lv.-- Adventurer</div>
+                <div class="inventory-menu-player-meta">Gold: -- g</div>
+                <div class="inventory-menu-player-meta">Farm: TinyFarm</div>
+            </div>
+
+            <div id="inventory-menu-equipment">
+                <div class="inventory-menu-equip-slot">H</div>
+                <div class="inventory-menu-equip-slot">N</div>
+                <div class="inventory-menu-equip-slot">S</div>
+                <div class="inventory-menu-equip-slot">G</div>
+                <div class="inventory-menu-equip-slot">P</div>
+                <div class="inventory-menu-equip-slot">R1</div>
+                <div class="inventory-menu-equip-slot">B</div>
+                <div class="inventory-menu-equip-slot">R2</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inventory-menu-action-menu"
+         data-visible="action_menu_open"
+         data-style-left="action_menu_left"
+         data-style-top="action_menu_top">
+        <div id="inventory-menu-action-title">{{ action_menu_title }}</div>
+        <button id="inventory-menu-action-use"
+                class="tf-button-secondary inventory-menu-action-button inventory-menu-focusable"
+                data-class-disabled="!can_use_selected"
+                data-attrif-disabled="!can_use_selected"
+                data-event-click="action_use()">Use</button>
+        <button id="inventory-menu-action-discard"
+                class="tf-button-secondary inventory-menu-action-button inventory-menu-focusable"
+                data-class-disabled="!can_discard_selected"
+                data-attrif-disabled="!can_discard_selected"
+                data-event-click="action_discard()">{{ discard_text }}</button>
+        <button id="inventory-menu-action-cancel"
+                class="tf-button-secondary inventory-menu-action-button inventory-menu-focusable"
+                data-event-click="action_cancel()">Cancel</button>
+    </div>
+</body>
+</rml>

@@ -1,0 +1,284 @@
+@spritesheet ui-menu-inventory {
+    src: ../../../assets/farm-rpg/UI/Inventory/inventory.png;
+    menu-slot-bg:         7px 9px 18px 18px;
+    menu-slot-bg-inner:   9px 11px 14px 14px;
+    menu-slot-selected:   7px 41px 18px 18px;
+    menu-slot-selected-inner: 9px 43px 14px 14px;
+    menu-panel-bg:        0px 64px 48px 48px;
+    menu-panel-bg-inner: 10px 74px 28px 28px;
+}
+
+@spritesheet ui-menu-hud {
+    src: ../../../assets/farm-rpg/UI/HUD.png;
+    tab-inventory: 48px 32px 16px 16px;
+    tab-equipment: 96px 16px 16px 16px;
+    tab-quests:   112px 32px 16px 16px;
+    tab-map:       64px 32px 16px 16px;
+    tab-options:  144px 0px 16px 16px;
+    trash-closed:  64px 0px 16px 16px;
+}
+
+@spritesheet ui-menu-portrait {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
+    portrait-default: 0px 0px 64px 64px;
+}
+
+body, div, h1, h2, h3, h4, p, hr, button, img, span {
+    display: block;
+}
+
+button {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-color: transparent;
+    color: #ffffffff;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    nav: auto;
+}
+
+#inventory-menu-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #1a1b26c0;
+    pointer-events: auto;
+}
+
+#inventory-menu-panel {
+    position: absolute;
+    left: 100dp;
+    top: 25dp;
+    width: 420dp;
+    height: 290dp;
+    padding: 10dp;
+    decorator: ninepatch(menu-panel-bg, menu-panel-bg-inner, 1.0);
+    pointer-events: auto;
+}
+
+#inventory-menu-close {
+    position: absolute;
+    right: 6dp;
+    top: 6dp;
+    width: 16dp;
+    height: 16dp;
+    decorator: image(close-icon);
+    pointer-events: auto;
+}
+
+#inventory-menu-close:active {
+    decorator: image(close-icon-pressed);
+}
+
+#inventory-menu-tabs {
+    width: 180dp;
+    height: 20dp;
+    display: flex;
+    flex-direction: row;
+    gap: 6dp;
+    align-items: center;
+}
+
+.inventory-menu-tab {
+    width: 20dp;
+    height: 20dp;
+    padding: 2dp;
+    opacity: 0.55;
+}
+
+.inventory-menu-tab.is-active {
+    opacity: 1.0;
+    box-shadow: #7aa2f7ff 0dp 0dp 0dp 2dp;
+}
+
+.inventory-menu-tab.is-disabled {
+    opacity: 0.35;
+}
+
+.inventory-menu-tab-icon {
+    width: 16dp;
+    height: 16dp;
+}
+
+.inventory-menu-tab-icon.icon-tab-inventory { decorator: image(tab-inventory); }
+.inventory-menu-tab-icon.icon-tab-equipment { decorator: image(tab-equipment); }
+.inventory-menu-tab-icon.icon-tab-quests { decorator: image(tab-quests); }
+.inventory-menu-tab-icon.icon-tab-map { decorator: image(tab-map); }
+.inventory-menu-tab-icon.icon-tab-options { decorator: image(tab-options); }
+
+#inventory-menu-backpack-title {
+    margin-top: 8dp;
+    margin-bottom: 4dp;
+    width: 120dp;
+    height: 16dp;
+    color: #2f1810ff;
+}
+
+#inventory-menu-grid {
+    width: 218dp;
+    height: 86dp;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 2dp;
+}
+
+.inventory-menu-slot-button {
+    position: relative;
+    width: 20dp;
+    height: 20dp;
+    decorator: ninepatch(menu-slot-bg, menu-slot-bg-inner, 1.0);
+    pointer-events: auto;
+    drag: none;
+    cursor: default;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.inventory-menu-slot-button.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.inventory-menu-slot-button:drag {
+    opacity: 0.75;
+}
+
+.inventory-menu-slot-button:hover,
+.inventory-menu-slot-button:focus,
+.inventory-menu-slot-button.is-selected {
+    decorator: ninepatch(menu-slot-selected, menu-slot-selected-inner, 1.0);
+}
+
+.inventory-menu-slot-button:disabled {
+    pointer-events: none;
+}
+
+.inventory-menu-slot-icon {
+    position: absolute;
+    left: 2dp;
+    top: 2dp;
+    width: 16dp;
+    height: 16dp;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.inventory-menu-slot-count {
+    position: absolute;
+    right: 1dp;
+    bottom: -1dp;
+    width: 16dp;
+    height: 10dp;
+    color: #ffffffff;
+    font-size: 10dp;
+    line-height: 10dp;
+    text-align: right;
+    font-effect: shadow(1dp 1dp #000000cc);
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.inventory-menu-slot-button.has-item .inventory-menu-slot-icon {
+    visibility: visible;
+}
+
+.inventory-menu-slot-button.has-count .inventory-menu-slot-count {
+    visibility: visible;
+}
+
+#inventory-menu-divider {
+    margin-top: 10dp;
+    width: 420dp;
+    height: 1dp;
+    background-color: #8a5a46aa;
+}
+
+#inventory-menu-info {
+    margin-top: 8dp;
+    width: 420dp;
+    height: 92dp;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+#inventory-menu-portrait {
+    width: 64dp;
+    height: 64dp;
+    decorator: image(portrait-default);
+}
+
+#inventory-menu-player {
+    margin-left: 8dp;
+    width: 150dp;
+    height: 80dp;
+}
+
+.inventory-menu-player-name {
+    height: 16dp;
+    color: #2f1810ff;
+}
+
+.inventory-menu-player-meta {
+    margin-top: 4dp;
+    height: 14dp;
+    color: #5f463aff;
+    font-size: 14dp;
+    line-height: 14dp;
+}
+
+#inventory-menu-equipment {
+    margin-left: 12dp;
+    width: 42dp;
+    height: 86dp;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 2dp;
+}
+
+.inventory-menu-equip-slot {
+    width: 20dp;
+    height: 20dp;
+    decorator: ninepatch(menu-slot-bg, menu-slot-bg-inner, 1.0);
+    color: #5f463aff;
+    font-size: 10dp;
+    line-height: 20dp;
+    text-align: center;
+    opacity: 0.9;
+}
+
+#inventory-menu-action-menu {
+    position: absolute;
+    left: 0dp;
+    top: 0dp;
+    width: 88dp;
+    padding: 8dp;
+    decorator: ninepatch(menu-panel-bg, menu-panel-bg-inner, 1.0);
+    pointer-events: auto;
+}
+
+#inventory-menu-action-title {
+    margin-bottom: 6dp;
+    color: #2f1810ff;
+    text-align: center;
+    font-size: 14dp;
+    line-height: 14dp;
+}
+
+.inventory-menu-action-button {
+    width: 88dp;
+    margin-top: 4dp;
+}

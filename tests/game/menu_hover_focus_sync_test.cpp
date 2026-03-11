@@ -81,6 +81,45 @@ TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisibl
     EXPECT_NE(source.find("save-slot-confirm-layer"), std::string::npos);
 }
 
+TEST(MenuHoverFocusSyncTest, InventoryMenuUsesDedicatedSceneAndRemovesHoverListenerBeforeUnload) {
+    const auto scene_path = projectPath("src/game/scene/game_scene.cpp");
+    const auto ui_path = projectPath("src/game/ui/inventory_menu_ui.cpp");
+    const auto rml_path = projectPath("ui/rmlui/scenes/inventory_menu.rml");
+    ASSERT_TRUE(std::filesystem::exists(scene_path)) << scene_path;
+    ASSERT_TRUE(std::filesystem::exists(ui_path)) << ui_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+
+    const std::string scene_source = readTextFile(scene_path);
+    const std::string ui_source = readTextFile(ui_path);
+    const std::string rml_source = readTextFile(rml_path);
+    ASSERT_FALSE(scene_source.empty()) << scene_path;
+    ASSERT_FALSE(ui_source.empty()) << ui_path;
+    ASSERT_FALSE(rml_source.empty()) << rml_path;
+
+    EXPECT_NE(scene_source.find("InventoryMenuScene"), std::string::npos);
+    EXPECT_NE(scene_source.find("requestPushScene(std::move(menu));"), std::string::npos);
+    EXPECT_EQ(scene_source.find("inventory_ui_"), std::string::npos);
+
+    EXPECT_NE(ui_source.find("HoverFocusSyncListener"), std::string::npos);
+    EXPECT_NE(ui_source.find("AddEventListener(\"mouseover\""), std::string::npos);
+    EXPECT_NE(ui_source.find("RemoveEventListener(\"mouseover\""), std::string::npos);
+    EXPECT_NE(ui_source.find("element->HasAttribute(\"data-for\")"), std::string::npos);
+
+    const std::size_t remove_events_pos = ui_source.find("removeEventListeners();");
+    const std::size_t unload_pos = ui_source.find("layer_.unloadDocument(document_);");
+    ASSERT_NE(remove_events_pos, std::string::npos) << ui_path;
+    ASSERT_NE(unload_pos, std::string::npos) << ui_path;
+    EXPECT_LT(remove_events_pos, unload_pos) << ui_path;
+
+    EXPECT_NE(rml_source.find("inventory-menu-slot-button inventory-menu-focusable"), std::string::npos);
+    EXPECT_NE(rml_source.find("inventory-menu-action-button inventory-menu-focusable"), std::string::npos);
+    EXPECT_NE(rml_source.find("data-attrif-disabled=\"action_menu_open\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-visible=\"action_menu_open\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-dragstart=\"slot_drag_start(slot.slot_index)\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-dragdrop=\"slot_drag_drop(slot.slot_index)\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-dragend=\"slot_drag_end(slot.slot_index)\""), std::string::npos);
+}
+
 TEST(MenuHoverFocusSyncTest, HoverFocusSyncListenerOnlyTargetsButtonsAndMenuBodiesEnableNavigation) {
     const auto listener_path = projectPath("src/engine/ui/rmlui/hover_focus_sync_listener.cpp");
     ASSERT_TRUE(std::filesystem::exists(listener_path)) << listener_path;
@@ -90,6 +129,7 @@ TEST(MenuHoverFocusSyncTest, HoverFocusSyncListenerOnlyTargetsButtonsAndMenuBodi
 
     EXPECT_NE(listener_source.find("GetTagName() == \"button\""), std::string::npos);
     EXPECT_NE(listener_source.find("IsVisible(true)"), std::string::npos);
+    EXPECT_NE(listener_source.find("getFocusedElement() == element"), std::string::npos);
 
     const std::array<std::filesystem::path, 3> style_paths{
         projectPath("ui/rmlui/scenes/title.rcss"),

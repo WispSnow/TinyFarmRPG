@@ -165,6 +165,18 @@ void ItemTooltipUI::setPadding(const engine::ui::Thickness& padding) {
     refreshLayout();
 }
 
+void ItemTooltipUI::setAnchorRect(glm::vec2 position, glm::vec2 size) {
+    anchor_position_ = position;
+    anchor_size_ = size;
+    use_anchor_rect_ = true;
+}
+
+void ItemTooltipUI::clearAnchorRect() {
+    anchor_position_ = glm::vec2{0.0f, 0.0f};
+    anchor_size_ = glm::vec2{0.0f, 0.0f};
+    use_anchor_rect_ = false;
+}
+
 std::string ItemTooltipUI::wrapText(std::string_view text, int font_size) const {
     if (text.empty()) {
         return {};
@@ -311,6 +323,7 @@ void ItemTooltipUI::showItem(std::string_view display_name,
 
 void ItemTooltipUI::hideTooltip() {
     visible_ = false;
+    clearAnchorRect();
     if (document_ && layer_) {
         layer_->hideDocument(document_);
     }
@@ -322,16 +335,29 @@ void ItemTooltipUI::update(float delta_time) {
         return;
     }
 
-    const glm::vec2 mouse_pos = context_.getInputManager().getLogicalMousePosition();
     const glm::vec2 logical_size = context_.getGameState().getLogicalSize();
     const glm::vec2 tooltip_size = size_;
 
-    glm::vec2 pos = mouse_pos + offset_;
-    if (pos.x + tooltip_size.x > logical_size.x) {
-        pos.x = mouse_pos.x - offset_.x - tooltip_size.x;
-    }
-    if (pos.y + tooltip_size.y > logical_size.y) {
-        pos.y = mouse_pos.y - offset_.y - tooltip_size.y;
+    glm::vec2 pos{0.0f, 0.0f};
+    if (use_anchor_rect_) {
+        pos.x = anchor_position_.x + anchor_size_.x + offset_.x;
+        pos.y = anchor_position_.y;
+
+        if (pos.x + tooltip_size.x > logical_size.x) {
+            pos.x = anchor_position_.x - offset_.x - tooltip_size.x;
+        }
+        if (pos.y + tooltip_size.y > logical_size.y) {
+            pos.y = anchor_position_.y + anchor_size_.y - tooltip_size.y;
+        }
+    } else {
+        const glm::vec2 mouse_pos = context_.getInputManager().getLogicalMousePosition();
+        pos = mouse_pos + offset_;
+        if (pos.x + tooltip_size.x > logical_size.x) {
+            pos.x = mouse_pos.x - offset_.x - tooltip_size.x;
+        }
+        if (pos.y + tooltip_size.y > logical_size.y) {
+            pos.y = mouse_pos.y - offset_.y - tooltip_size.y;
+        }
     }
 
     pos.x = std::clamp(pos.x, 0.0f, std::max(0.0f, logical_size.x - tooltip_size.x));
