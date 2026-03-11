@@ -10,6 +10,7 @@
 #include "engine/audio/audio_player.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
+#include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 
@@ -49,6 +50,8 @@ TitleScene::~TitleScene() {
 
 bool TitleScene::init() {
     context_.getGameState().setState(engine::core::State::Title);
+    context_.getInputManager().pushContext(engine::input::InputContextId::Menu);
+    context_pushed_ = true;
 
     title_game_time_ = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
     if (!title_game_time_) {
@@ -69,6 +72,10 @@ bool TitleScene::init() {
 
 void TitleScene::clean() {
     removeEventListeners();
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
     document_ = nullptr;
     data_bridge_.destroy();
@@ -113,6 +120,7 @@ bool TitleScene::initUI() {
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
     data_bridge_.markAllDirty();
+    layer->queueFocusElementById(document_, "title-start-button");
     return true;
 }
 

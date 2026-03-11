@@ -35,6 +35,10 @@ namespace engine::audio {
 class AudioPlayer;
 }
 
+namespace engine::ui {
+class UINavigationController;
+}
+
 namespace engine::debug {
 class DebugUIManager;
 }
@@ -76,6 +80,7 @@ private:
     std::unique_ptr<engine::render::TextRenderer> text_renderer_;
     std::unique_ptr<engine::core::Config> config_;
     std::unique_ptr<engine::input::InputManager> input_manager_;
+    std::unique_ptr<engine::ui::UINavigationController> ui_navigation_controller_;
     std::unique_ptr<engine::core::Context> context_;
     std::unique_ptr<engine::scene::SceneManager> scene_manager_;
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_;
@@ -138,6 +143,7 @@ private:
     [[nodiscard]] bool initTextRenderer();
     [[nodiscard]] bool initCamera();
     [[nodiscard]] bool initInputManager();
+    [[nodiscard]] bool initUINavigationController();
     [[nodiscard]] bool initSpatialIndexManager();
     [[nodiscard]] bool initContext();
     [[nodiscard]] bool initSceneManager();

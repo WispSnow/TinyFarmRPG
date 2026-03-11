@@ -12,6 +12,7 @@
 
 namespace Rml {
 class Context;
+class Element;
 class ElementDocument;
 }
 
@@ -41,6 +42,18 @@ public:
     void update();
     void render();
     void setViewport(int width, int height, int offset_x = 0, int offset_y = 0);
+    void navigateUp();
+    void navigateDown();
+    void navigateLeft();
+    void navigateRight();
+    void confirmFocusedElement();
+    [[nodiscard]] Rml::Element* getFocusedElement() const;
+    [[nodiscard]] bool focusElement(Rml::Element* element);
+    [[nodiscard]] bool focusElementById(Rml::ElementDocument* document, std::string_view element_id);
+    [[nodiscard]] bool focusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name);
+    void queueFocusElement(Rml::Element* element);
+    void queueFocusElementById(Rml::ElementDocument* document, std::string_view element_id);
+    void queueFocusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name);
 
     /// 设置逻辑分辨率。Context 以此为布局空间，dp_ratio 自动计算为 viewport/logical。
     /// 未设置时 Context 直接使用物理 viewport 尺寸。
@@ -110,6 +123,19 @@ private:
         std::string path;
     };
 
+    struct PendingFocusRequest {
+        enum class Kind : uint8_t {
+            Element,
+            ElementId,
+            FirstEnabledElementByClass
+        };
+
+        Kind kind{Kind::Element};
+        Rml::ElementDocument* document{nullptr};
+        Rml::Element* element{nullptr};
+        std::string token;
+    };
+
     SDL_Window* window_{nullptr};
     std::unique_ptr<RenderInterface_GL3_STB> render_interface_;
     std::unique_ptr<SystemInterface_SDL> system_interface_;
@@ -127,6 +153,9 @@ private:
     int logical_height_{0};  ///< 逻辑分辨率高
 
     bool initialized_{false};
+    std::vector<PendingFocusRequest> pending_focus_requests_;
+
+    void clearPendingFocusRequestsForDocument(Rml::ElementDocument* document);
 };
 
 } // namespace engine::ui::rmlui

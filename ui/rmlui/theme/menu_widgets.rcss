@@ -17,6 +17,15 @@ button {
 }
 
 .tf-button-primary,
+.tf-button-secondary,
+.tf-icon-button {
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.tf-button-primary,
 .tf-button-secondary {
     height: 32dp;
     line-height: 32dp;
@@ -30,6 +39,11 @@ button {
     color: #fce97fff;
 }
 
+.tf-button-primary:focus {
+    color: #fce97fff;
+    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
+}
+
 .tf-button-primary:active {
     decorator: ninepatch(primary-button-pressed, primary-button-pressed-inner, 1.0);
     color: #999999ff;
@@ -41,6 +55,11 @@ button {
 
 .tf-button-secondary:hover {
     color: #fce97fff;
+}
+
+.tf-button-secondary:focus {
+    color: #fce97fff;
+    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
 }
 
 .tf-button-secondary:active {
@@ -59,6 +78,10 @@ button {
 .tf-icon-button {
     width: 32dp;
     height: 32dp;
+}
+
+.tf-icon-button:focus {
+    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
 }
 
 .tf-icon-button.icon-menu {

@@ -140,7 +140,7 @@ TEST_F(InputContextTest, EmptyStackUsesLegacyBehavior) {
 TEST_F(InputContextTest, MenuContextFiltersSharedPhysicalBindingPerAction) {
     auto manager = createManager({
         {"move_up", {"W"}},
-        {"pause", {"W"}},
+        {"menu_up", {"W"}},
     });
     ASSERT_NE(manager, nullptr);
 
@@ -152,8 +152,8 @@ TEST_F(InputContextTest, MenuContextFiltersSharedPhysicalBindingPerAction) {
     EXPECT_EQ(manager->currentContext(), std::optional<InputContextId>{InputContextId::Menu});
     EXPECT_FALSE(manager->isActionPressed("move_up"_hs));
     EXPECT_FALSE(manager->isActionDown("move_up"_hs));
-    EXPECT_TRUE(manager->isActionPressed("pause"_hs));
-    EXPECT_TRUE(manager->isActionDown("pause"_hs));
+    EXPECT_TRUE(manager->isActionPressed("menu_up"_hs));
+    EXPECT_TRUE(manager->isActionDown("menu_up"_hs));
 }
 
 TEST_F(InputContextTest, ContextSwitchClearsActiveActionsAndPhysicalCaches) {
@@ -185,7 +185,7 @@ TEST_F(InputContextTest, ContextSwitchClearsActiveActionsAndPhysicalCaches) {
 TEST_F(InputContextTest, ContextStackMultipleLevelsRestoresPreviousFilters) {
     auto manager = createManager({
         {"move_left", {"A"}},
-        {"pause", {"Escape"}},
+        {"menu_cancel", {"Escape"}},
     });
     ASSERT_NE(manager, nullptr);
 
@@ -193,14 +193,14 @@ TEST_F(InputContextTest, ContextStackMultipleLevelsRestoresPreviousFilters) {
     manager->pushContext(InputContextId::Menu);
     manager->pushContext(InputContextId::Dialogue);
 
-    pushKey(SDL_SCANCODE_ESCAPE, true);
+    pushKey(SDL_SCANCODE_A, true);
     manager->sampleInputEvents();
-    EXPECT_FALSE(manager->isActionPressed("pause"_hs));
+    EXPECT_FALSE(manager->isActionPressed("move_left"_hs));
 
     manager->popContext();
     pushKey(SDL_SCANCODE_ESCAPE, true);
     manager->sampleInputEvents();
-    EXPECT_TRUE(manager->isActionPressed("pause"_hs));
+    EXPECT_TRUE(manager->isActionPressed("menu_cancel"_hs));
 
     manager->popContext();
     pushKey(SDL_SCANCODE_A, true);
@@ -209,23 +209,23 @@ TEST_F(InputContextTest, ContextStackMultipleLevelsRestoresPreviousFilters) {
 }
 
 TEST_F(InputContextTest, FocusLostBypassesContextFilter) {
-    auto manager = createManager({{"pause", {"Escape"}}});
+    auto manager = createManager({{"menu_cancel", {"Escape"}}});
     ASSERT_NE(manager, nullptr);
-    const auto pause = "pause"_hs;
+    const auto menu_cancel = "menu_cancel"_hs;
 
     manager->pushContext(InputContextId::Menu);
     pushKey(SDL_SCANCODE_ESCAPE, true);
     manager->sampleInputEvents();
     manager->consumeTick();
-    EXPECT_TRUE(manager->isActionDown(pause));
+    EXPECT_TRUE(manager->isActionDown(menu_cancel));
 
     pushFocusLost();
     manager->sampleInputEvents();
 
     EXPECT_EQ(manager->currentContext(), std::optional<InputContextId>{InputContextId::Menu});
-    EXPECT_FALSE(manager->isActionPressed(pause));
-    EXPECT_FALSE(manager->isActionDown(pause));
-    EXPECT_FALSE(manager->isActionReleased(pause));
+    EXPECT_FALSE(manager->isActionPressed(menu_cancel));
+    EXPECT_FALSE(manager->isActionDown(menu_cancel));
+    EXPECT_FALSE(manager->isActionReleased(menu_cancel));
 }
 
 TEST_F(InputContextTest, PopContextOnEmptyStackIsNoOp) {
@@ -241,7 +241,7 @@ TEST_F(InputContextTest, PopContextOnEmptyStackIsNoOp) {
 }
 
 TEST_F(InputContextTest, StackedMenuCallbacksPreferTopListenerAndRestoreAfterPop) {
-    auto manager = createManager({{"pause", {"Escape"}}});
+    auto manager = createManager({{"menu_cancel", {"Escape"}}});
     ASSERT_NE(manager, nullptr);
 
     CallbackListener lower{};
@@ -250,10 +250,10 @@ TEST_F(InputContextTest, StackedMenuCallbacksPreferTopListenerAndRestoreAfterPop
     upper.consume = true;
 
     manager->pushContext(InputContextId::Menu);
-    manager->onAction("pause"_hs).connect<&CallbackListener::onAction>(&lower);
+    manager->onAction("menu_cancel"_hs).connect<&CallbackListener::onAction>(&lower);
 
     manager->pushContext(InputContextId::Menu);
-    manager->onAction("pause"_hs).connect<&CallbackListener::onAction>(&upper);
+    manager->onAction("menu_cancel"_hs).connect<&CallbackListener::onAction>(&upper);
 
     pushKey(SDL_SCANCODE_ESCAPE, true);
     manager->sampleInputEvents();
@@ -263,7 +263,7 @@ TEST_F(InputContextTest, StackedMenuCallbacksPreferTopListenerAndRestoreAfterPop
     EXPECT_EQ(lower.calls, 0);
 
     manager->consumeTick();
-    manager->onAction("pause"_hs).disconnect<&CallbackListener::onAction>(&upper);
+    manager->onAction("menu_cancel"_hs).disconnect<&CallbackListener::onAction>(&upper);
     manager->popContext();
 
     pushKey(SDL_SCANCODE_ESCAPE, true);

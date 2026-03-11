@@ -25,8 +25,8 @@
         <div id="save-slot-confirm-panel">
             <div id="save-slot-confirm-text">{{ confirm_text }}</div>
             <div id="save-slot-confirm-actions">
-                <button class="tf-button-primary save-slot-confirm-button" data-event-click="confirm_yes">OK</button>
-                <button class="tf-button-secondary save-slot-confirm-button" data-event-click="confirm_no">Cancel</button>
+                <button id="save-slot-confirm-yes" class="tf-button-primary save-slot-confirm-button" data-event-click="confirm_yes">OK</button>
+                <button id="save-slot-confirm-no" class="tf-button-secondary save-slot-confirm-button" data-event-click="confirm_no">Cancel</button>
             </div>
         </div>
     </div>

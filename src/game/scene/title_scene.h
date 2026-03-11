@@ -27,6 +27,7 @@ class TitleScene final : public engine::scene::Scene {
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};
     Rml::ElementDocument* document_{nullptr};
+    bool context_pushed_{false};
 
     Rml::String error_text_{};
     bool show_error_{false};

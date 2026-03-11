@@ -73,6 +73,7 @@ set(TEST_SOURCES
     engine/render/bloom_precision_regression_test.cpp
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
+    engine/ui/ui_navigation_controller_test.cpp
     engine/ui/ui_world_anchor_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
     engine/spatial/static_tile_grid_rect_query_test.cpp
@@ -170,6 +171,7 @@ set(GAME_TEST_SOURCES
     game/world/async_preload_pipeline_test.cpp
     game/world_state_test.cpp
     game/rml_item_icon_helpers_test.cpp
+    game/rml_menu_navigation_style_test.cpp
     game/ui_layout_integration_test.cpp
 )
 

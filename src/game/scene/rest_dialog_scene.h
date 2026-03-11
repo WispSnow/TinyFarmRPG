@@ -41,8 +41,10 @@ public:
 private:
     [[nodiscard]] bool initUI();
     void removeEventListeners();
+    void disconnectRuntimeListeners();
     void updateHoursLabel();
     void adjustHours(int delta);
+    bool onMenuCancelPressed();
     void onConfirm();
     void onCancel();
 };

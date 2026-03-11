@@ -88,6 +88,9 @@ bool BattleScene::init() {
         state_ = FlowState::BattleEnd;
     }
     refreshView();
+    if (auto* layer = context_.getGLRenderer().getRmlUILayer(); layer && document_) {
+        layer->queueFocusElementById(document_, "battle-action-attack");
+    }
     return true;
 }
 
