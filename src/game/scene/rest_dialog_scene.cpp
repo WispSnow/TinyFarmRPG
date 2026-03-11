@@ -4,6 +4,7 @@
 
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
+#include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
@@ -47,6 +48,8 @@ RestDialogScene::~RestDialogScene() {
 bool RestDialogScene::init() {
     previous_state_ = context_.getGameState().getCurrentState();
     context_.getGameState().setState(engine::core::State::Paused);
+    context_.getInputManager().pushContext(engine::input::InputContextId::Dialogue);
+    context_pushed_ = true;
 
     if (!initUI()) {
         return false;
@@ -61,6 +64,10 @@ bool RestDialogScene::init() {
 void RestDialogScene::clean() {
     removeEventListeners();
     context_.getGameState().setState(previous_state_);
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
     document_ = nullptr;
     data_bridge_.destroy();

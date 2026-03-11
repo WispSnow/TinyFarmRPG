@@ -38,6 +38,7 @@ private:
     SlotSelectCallback on_select_{};
     Mode mode_{Mode::Load};
     std::optional<int> pending_overwrite_slot_{};
+    bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     Rml::ElementDocument* document_{nullptr};

@@ -65,6 +65,7 @@ class GameScene : public engine::scene::Scene {
     std::shared_ptr<game::data::GameTime> game_time_;
     std::optional<int> load_slot_{};
     bool abort_to_title_{false};
+    bool context_pushed_{false};
 
     std::unique_ptr<game::ui::InventoryUI> inventory_ui_{};
     std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};

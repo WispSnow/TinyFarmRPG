@@ -33,6 +33,7 @@ class BattleScene final : public engine::scene::Scene {
     std::optional<game::battle::BattleActionResult> last_action_result_{};
     float animation_timer_{0.0f};
     bool end_requested_{false};
+    bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};

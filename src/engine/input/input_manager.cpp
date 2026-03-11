@@ -61,7 +61,8 @@ void handleInputEdge(KeyT key,
                      std::unordered_map<KeyT, std::vector<entt::id_type>>& mapping,
                      std::unordered_map<KeyT, bool>& down_states,
                      std::unordered_map<entt::id_type, ActionEntry>& actions,
-                     bool is_down) {
+                     bool is_down,
+                     const std::unordered_set<entt::id_type>* allowed_actions) {
     auto actions_it = mapping.find(key);
     if (actions_it == mapping.end()) {
         return;
@@ -74,6 +75,10 @@ void handleInputEdge(KeyT key,
     was_down = is_down;
 
     for (auto action_id : actions_it->second) {
+        if (allowed_actions != nullptr && !allowed_actions->contains(action_id)) {
+            continue;
+        }
+
         auto& entry = actions[action_id];
         if (is_down) {
             ++entry.active_count;
@@ -249,8 +254,16 @@ void InputManager::sampleInputEvents() {
 }
 
 void InputManager::dispatchActionCallbacks() {
-    for (auto action_id : action_dispatch_order_) {
-        auto& entry = actions_[action_id];
+    const auto* context_definition = currentContextDefinition();
+    const auto& dispatch_order = context_definition != nullptr ? context_definition->dispatch_actions : action_dispatch_order_;
+
+    for (auto action_id : dispatch_order) {
+        auto action_it = actions_.find(action_id);
+        if (action_it == actions_.end()) {
+            continue;
+        }
+
+        auto& entry = action_it->second;
         if (entry.state != ActionState::INACTIVE) {
             entry.signals[static_cast<std::size_t>(entry.state)].collect([](bool result) {
                 return result;
@@ -269,6 +282,29 @@ void InputManager::consumeTick() {
     }
 
     mouse_wheel_delta_ = {0.0f, 0.0f};
+}
+
+void InputManager::pushContext(InputContextId id) {
+    clearAllInputState();
+    context_stack_.push_back(id);
+}
+
+void InputManager::popContext() {
+    if (context_stack_.empty()) {
+        spdlog::warn("InputManager::popContext: 上下文栈为空，忽略 pop。");
+        return;
+    }
+
+    clearAllInputState();
+    context_stack_.pop_back();
+}
+
+std::optional<InputContextId> InputManager::currentContext() const {
+    if (context_stack_.empty()) {
+        return std::nullopt;
+    }
+
+    return context_stack_.back();
 }
 
 void InputManager::quit() {
@@ -350,6 +386,8 @@ void InputManager::processEvent(const SDL_Event& event) {
     const bool block_keyboard = false;
     const bool block_mouse = false;
 #endif
+    const auto* context_definition = currentContextDefinition();
+    const auto* allowed_actions = context_definition != nullptr ? &context_definition->allowed_actions : nullptr;
 
     switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
@@ -360,7 +398,7 @@ void InputManager::processEvent(const SDL_Event& event) {
             if (event.key.down) {
                 last_input_device_ = InputDevice::KeyboardMouse;
             }
-            handleInputEdge(event.key.scancode, key_to_actions_, key_down_states_, actions_, event.key.down);
+            handleInputEdge(event.key.scancode, key_to_actions_, key_down_states_, actions_, event.key.down, allowed_actions);
             break;
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -372,7 +410,8 @@ void InputManager::processEvent(const SDL_Event& event) {
             if (event.button.down) {
                 last_input_device_ = InputDevice::KeyboardMouse;
             }
-            handleInputEdge(static_cast<Uint32>(event.button.button), mouse_to_actions_, mouse_down_states_, actions_, event.button.down);
+            handleInputEdge(
+                static_cast<Uint32>(event.button.button), mouse_to_actions_, mouse_down_states_, actions_, event.button.down, allowed_actions);
             mouse_position_ = {event.button.x, event.button.y};
             recalculateLogicalMousePosition();
             break;
@@ -426,7 +465,8 @@ void InputManager::processEvent(const SDL_Event& event) {
             if (event.gbutton.down) {
                 last_input_device_ = InputDevice::Gamepad;
             }
-            handleInputEdge(button, gamepad_button_to_actions_, gamepad_button_down_states_, actions_, event.gbutton.down);
+            handleInputEdge(
+                button, gamepad_button_to_actions_, gamepad_button_down_states_, actions_, event.gbutton.down, allowed_actions);
             break;
         }
         case SDL_EVENT_GAMEPAD_AXIS_MOTION: {
@@ -448,7 +488,7 @@ void InputManager::processEvent(const SDL_Event& event) {
                 : normalizeStickAxis(event.gaxis.value);
             gamepad_axis_normalized_values_[axis_index] = normalized_value;
 
-            const auto update_direction = [this](GamepadAxisDirection direction, float magnitude) {
+            const auto update_direction = [this, allowed_actions](GamepadAxisDirection direction, float magnitude) {
                 const auto direction_index = gamepadAxisDirectionIndex(direction);
                 const bool was_direction_down = gamepad_axis_direction_states_[direction_index];
 
@@ -464,7 +504,8 @@ void InputManager::processEvent(const SDL_Event& event) {
                     last_input_device_ = InputDevice::Gamepad;
                 }
 
-                handleInputEdge(direction, gamepad_axis_to_actions_, gamepad_axis_down_states_, actions_, is_direction_down);
+                handleInputEdge(
+                    direction, gamepad_axis_to_actions_, gamepad_axis_down_states_, actions_, is_direction_down, allowed_actions);
             };
 
             switch (axis) {
@@ -514,23 +555,7 @@ void InputManager::processEvent(const SDL_Event& event) {
             break;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         case SDL_EVENT_WINDOW_MINIMIZED:
-            for (auto& [_, down] : key_down_states_) {
-                down = false;
-            }
-            for (auto& [_, down] : mouse_down_states_) {
-                down = false;
-            }
-            for (auto& [_, down] : gamepad_button_down_states_) {
-                down = false;
-            }
-            for (auto& [_, down] : gamepad_axis_down_states_) {
-                down = false;
-            }
-            resetGamepadDebugState();
-            for (auto& [_, entry] : actions_) {
-                entry.active_count = 0;
-                entry.state = ActionState::INACTIVE;
-            }
+            clearAllInputState();
             dispatcher_->trigger<engine::utils::FocusLostEvent>();
             break;
         case SDL_EVENT_QUIT:
@@ -660,7 +685,66 @@ void InputManager::initializeMappings(const std::map<std::string, std::vector<st
         }
     }
 
+    initializeContextDefinitions();
     spdlog::trace("输入映射初始化完成.");
+}
+
+void InputManager::initializeContextDefinitions() {
+    context_definitions_.clear();
+
+    const auto build_definition = [this](std::initializer_list<const char*> action_names) {
+        InputContextDefinition definition;
+
+        for (const char* action_name : action_names) {
+            const auto action_id = entt::hashed_string{action_name}.value();
+            if (actions_.contains(action_id)) {
+                definition.allowed_actions.insert(action_id);
+            }
+        }
+
+        definition.dispatch_actions.reserve(definition.allowed_actions.size());
+        for (auto action_id : action_dispatch_order_) {
+            if (definition.allowed_actions.contains(action_id)) {
+                definition.dispatch_actions.push_back(action_id);
+            }
+        }
+
+        return definition;
+    };
+
+    context_definitions_.emplace(
+        InputContextId::Gameplay,
+        build_definition({
+            "move_left",
+            "move_right",
+            "move_up",
+            "move_down",
+            "primary_action",
+            "secondary_action",
+            "interact",
+            "pause",
+            "inventory",
+            "hotbar",
+            "hotbar_prev",
+            "hotbar_next",
+            "hotbar_1",
+            "hotbar_2",
+            "hotbar_3",
+            "hotbar_4",
+            "hotbar_5",
+            "hotbar_6",
+            "hotbar_7",
+            "hotbar_8",
+            "hotbar_9",
+            "hotbar_10",
+            "rotate_left",
+            "rotate_right",
+            "player_light",
+            "camera_reset_zoom",
+        }));
+    context_definitions_.emplace(InputContextId::Menu, build_definition({"pause"}));
+    context_definitions_.emplace(InputContextId::Dialogue, build_definition({}));
+    context_definitions_.emplace(InputContextId::Battle, build_definition({}));
 }
 
 void InputManager::initializeConnectedGamepads() {
@@ -750,6 +834,41 @@ void InputManager::clearGamepadContributions() {
         is_down = false;
     }
     resetGamepadDebugState();
+}
+
+void InputManager::clearAllInputState() {
+    for (auto& [_, down] : key_down_states_) {
+        down = false;
+    }
+    for (auto& [_, down] : mouse_down_states_) {
+        down = false;
+    }
+    for (auto& [_, down] : gamepad_button_down_states_) {
+        down = false;
+    }
+    for (auto& [_, down] : gamepad_axis_down_states_) {
+        down = false;
+    }
+
+    resetGamepadDebugState();
+    // Context 切换不应把一次性的滚轮输入带到下一个 scene / context。
+    mouse_wheel_delta_ = {0.0f, 0.0f};
+    for (auto& [_, entry] : actions_) {
+        entry.active_count = 0;
+        entry.state = ActionState::INACTIVE;
+    }
+}
+
+const InputContextDefinition* InputManager::currentContextDefinition() const {
+    if (context_stack_.empty()) {
+        return nullptr;
+    }
+
+    if (auto it = context_definitions_.find(context_stack_.back()); it != context_definitions_.end()) {
+        return &it->second;
+    }
+
+    return nullptr;
 }
 
 void InputManager::resetGamepadDebugState() {

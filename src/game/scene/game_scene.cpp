@@ -136,6 +136,8 @@ bool GameScene::init() {
         return false;
     }
 
+    context_.getInputManager().pushContext(engine::input::InputContextId::Gameplay);
+    context_pushed_ = true;
     bindSceneInputActions();
 
     if (!initUI()) {
@@ -318,6 +320,10 @@ void GameScene::clean() {
     rml_screen_fade_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
 }
 

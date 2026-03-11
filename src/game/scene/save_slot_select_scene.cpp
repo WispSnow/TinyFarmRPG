@@ -96,6 +96,9 @@ SaveSlotSelectScene::~SaveSlotSelectScene() {
 }
 
 bool SaveSlotSelectScene::init() {
+    context_.getInputManager().pushContext(engine::input::InputContextId::Menu);
+    context_pushed_ = true;
+
     if (!initUI()) {
         return false;
     }
@@ -109,6 +112,10 @@ bool SaveSlotSelectScene::init() {
 
 void SaveSlotSelectScene::clean() {
     disconnectRuntimeListeners();
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
     document_ = nullptr;
     data_bridge_.destroy();

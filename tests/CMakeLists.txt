@@ -27,6 +27,7 @@ set(TEST_SOURCES
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp
+    engine/input/input_context_test.cpp
     engine/input/input_manager_gamepad_test.cpp
     engine/input/input_manager_rmlui_routing_test.cpp
     engine/input/input_manager_no_exceptions_test.cpp
@@ -150,6 +151,7 @@ set(GAME_TEST_SOURCES
     game/game_scene_light_toggle_hook_test.cpp
     game/game_scene_battle_entry_test.cpp
     game/game_scene_runtime_assembly_test.cpp
+    game/input_context_scene_stack_test.cpp
     game/system_scheduler_profile_test.cpp
     game/system_scheduler_transition_gate_test.cpp
     game/system_scheduler_invariant_test.cpp

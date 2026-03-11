@@ -6,13 +6,13 @@
 - `[~]` 部分完成
 - `[ ]` 未开始
 
-## 当前进度（2026-03-10）
+## 当前进度（2026-03-11）
 
 | Phase | 状态 | 文档 |
 |------|------|------|
 | Phase 1: 输入核心（SDL3 手柄接入 + 轴方向数字化） | `[x]` | [`phase-01.md`](./phase-01.md) |
 | Phase 2: 玩法语义重构（语义动作 + 控制器目标模型） | `[x]` | [`phase-02.md`](./phase-02.md) |
-| Phase 3: InputContext 上下文分层 | `[ ]` | [`phase-03.md`](./phase-03.md) |
+| Phase 3: InputContext 上下文分层 | `[x]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[ ]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[ ]` | [`phase-05.md`](./phase-05.md) |
 
@@ -74,3 +74,13 @@
 - 自动化验证已通过：
   - `./build/debug/tests/engine_tests`：185/185 通过
   - `./build/debug/tests/game_tests`：178 通过，5 个 headless RmlUI 相关用例按预期跳过
+
+## Phase 3 完成记录（2026-03-11）
+
+- `InputManager` 已支持 InputContext 栈与运行时白名单过滤，空栈保留 legacy 行为，context 切换会同步清理动作状态与物理 down-state 缓存。
+- `GameScene`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`BattleScene` 已接入 `init()/clean()` push/pop；`TitleScene` 明确保持空栈路径。
+- `processEvent()` 与 `dispatchActionCallbacks()` 已按栈顶 context 过滤，且共享物理键多动作映射、stale down-state、scene 栈恢复等回归点都有测试覆盖。
+- 自动化验证已通过：
+  - `ninja -C build/debug engine_tests game_tests`
+  - `./build/debug/tests/engine_tests`：192/192 通过
+  - `./build/debug/tests/game_tests`：184 通过，6 个 headless RmlUI 相关用例按预期跳过
