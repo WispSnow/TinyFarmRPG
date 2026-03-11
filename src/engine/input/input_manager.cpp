@@ -369,6 +369,10 @@ void InputManager::sampleInputEvents() {
 }
 
 void InputManager::dispatchActionCallbacks() {
+    // 根据当前上下文选择派发顺序：
+    //   - 有激活上下文（Menu / Dialogue / Battle 等）时，只派发该上下文允许的动作子集，
+    //     顺序由 InputContextDefinition::dispatch_actions 决定；
+    //   - 无上下文时退回全局顺序 action_dispatch_order_（按 initializeMappings 中的注册顺序）。
     const auto* context_definition = currentContextDefinition();
     const auto& dispatch_order = context_definition != nullptr ? context_definition->dispatch_actions : action_dispatch_order_;
 

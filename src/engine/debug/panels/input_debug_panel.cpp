@@ -146,17 +146,27 @@ void InputDebugPanel::draw(bool& is_open) {
     ImGui::Separator();
     ImGui::Text("Rebind:");
     ImGui::Indent();
-    ImGui::Text("Capture Active: %s", snapshot.rebind.capture_active ? "Yes" : "No");
-    if (snapshot.rebind.capture_active) {
-        ImGui::Text("Target: %s[%zu]",
-                    snapshot.rebind.action_name.c_str(),
-                    snapshot.rebind.binding_index);
-    }
     if (snapshot.rebind.pending_conflict) {
-        ImGui::Text("Pending Token: %s", snapshot.rebind.pending_token.c_str());
+        ImGui::Text("Conflict: \"%s\" clashes with:", snapshot.rebind.pending_token.c_str());
         for (const auto& action_name : snapshot.rebind.conflicting_action_names) {
             ImGui::BulletText("%s", action_name.c_str());
         }
+        if (ImGui::Button("Confirm")) {
+            input_manager_.confirmPendingRebindConflict();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard")) {
+            input_manager_.discardPendingRebindConflict();
+        }
+    } else if (snapshot.rebind.capture_active) {
+        ImGui::Text("Waiting for input...  Target: %s[%zu]",
+                    snapshot.rebind.action_name.c_str(),
+                    snapshot.rebind.binding_index);
+        if (ImGui::Button("Cancel")) {
+            input_manager_.cancelRebindCapture();
+        }
+    } else {
+        ImGui::TextDisabled("Idle");
     }
     ImGui::Unindent();
 
@@ -166,11 +176,12 @@ void InputDebugPanel::draw(bool& is_open) {
     if (snapshot.actions.empty()) {
         ImGui::TextDisabled("<no actions>");
     } else {
-        if (ImGui::BeginTable("InputActionsTable", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
+        if (ImGui::BeginTable("InputActionsTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableSetupColumn("Action");
             ImGui::TableSetupColumn("ID");
             ImGui::TableSetupColumn("State");
             ImGui::TableSetupColumn("Bindings");
+            ImGui::TableSetupColumn("Rebind");
             ImGui::TableSetupColumn("Prompt");
             ImGui::TableSetupColumn("Buffer");
             ImGui::TableSetupColumn("Press");
@@ -205,6 +216,32 @@ void InputDebugPanel::draw(bool& is_open) {
                 }
 
                 ImGui::TableSetColumnIndex(4);
+                ImGui::PushID(makeImGuiId(action.id, 2u));
+                if (snapshot.rebind.capture_active) {
+                    ImGui::BeginDisabled();
+                }
+                if (action.bindings.empty()) {
+                    if (ImGui::SmallButton("Add")) {
+                        input_manager_.beginRebindCapture(action.id, 0);
+                    }
+                } else {
+                    for (std::size_t i = 0; i < action.bindings.size(); ++i) {
+                        ImGui::PushID(static_cast<int>(i));
+                        if (ImGui::SmallButton("Rebind")) {
+                            input_manager_.beginRebindCapture(action.id, i);
+                        }
+                        ImGui::PopID();
+                        if (i + 1 < action.bindings.size()) {
+                            ImGui::Separator();
+                        }
+                    }
+                }
+                if (snapshot.rebind.capture_active) {
+                    ImGui::EndDisabled();
+                }
+                ImGui::PopID();
+
+                ImGui::TableSetColumnIndex(5);
                 if (action.active_prompt.has_value()) {
                     ImGui::Text("%s", action.active_prompt->fallback_text.c_str());
                     ImGui::TextDisabled("%s", action.active_prompt->icon_id.c_str());
@@ -212,7 +249,7 @@ void InputDebugPanel::draw(bool& is_open) {
                     ImGui::TextDisabled("<none>");
                 }
 
-                ImGui::TableSetColumnIndex(5);
+                ImGui::TableSetColumnIndex(6);
                 if (action.buffered_presses.empty()) {
                     ImGui::TextDisabled("<empty>");
                 } else {
@@ -221,7 +258,7 @@ void InputDebugPanel::draw(bool& is_open) {
                     }
                 }
 
-                ImGui::TableSetColumnIndex(6);
+                ImGui::TableSetColumnIndex(7);
                 ImGui::PushID(makeImGuiId(action.id, 0u));
                 if (ImGui::Button("Press")) {
                     input_manager_.setActionStateDebug(action.id, engine::input::ActionState::PRESSED);
@@ -232,7 +269,7 @@ void InputDebugPanel::draw(bool& is_open) {
                 }
                 ImGui::PopID();
 
-                ImGui::TableSetColumnIndex(7);
+                ImGui::TableSetColumnIndex(8);
                 ImGui::PushID(makeImGuiId(action.id, 1u));
                 if (ImGui::Button("Release")) {
                     input_manager_.setActionStateDebug(action.id, engine::input::ActionState::RELEASED);
