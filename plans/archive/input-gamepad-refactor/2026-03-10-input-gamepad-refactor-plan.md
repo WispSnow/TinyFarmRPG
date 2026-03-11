@@ -15,7 +15,7 @@
 | Phase 3: InputContext 上下文分层 | `[x]` | [`phase-03.md`](./phase-03.md) |
 | Phase 4: UI 导航（Menu 动作 + 导航控制器） | `[x]` | [`phase-04.md`](./phase-04.md) |
 | Phase 5: 后续增强（Buffer / Glyph / Rumble / Rebind） | `[x]` | [`phase-05.md`](./phase-05.md) |
-| Phase 6: 输入提示与菜单焦点打磨 | `[ ]` | [`phase-06.md`](./phase-06.md) |
+| Phase 6: 输入提示与菜单焦点打磨 | `[x]` | [`phase-06.md`](./phase-06.md) |
 
 ## 目标
 
