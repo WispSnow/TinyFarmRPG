@@ -285,14 +285,99 @@ glm::vec2 getMouseWheelDelta() const;       // 每 consumeTick() 清零
 
 ### 3.6 Input Buffer（缓冲输入）
 
+#### 为什么需要 Input Buffer
+
+核心矛盾在于三阶段更新的时序：**`sampleInputEvents()` 每渲染帧只调用一次，但 `consumeTick()` 每个 fixed tick 都会把 PRESSED 推进为 HELD**。这意味着 PRESSED 状态只在该渲染帧的第一个 tick 中可见。
+
+```mermaid
+sequenceDiagram
+    participant Player as 玩家
+    participant IM as InputManager
+    participant Anim as 动画系统
+    participant Battle as 战斗系统
+
+    Note over IM: ── 渲染帧 ──
+    Player->>IM: 按下确认键
+    IM->>IM: sampleInputEvents()<br/>state = PRESSED<br/>press_buffer.push(t=200ms)
+
+    rect rgb(255, 230, 230)
+        Note over Anim,Battle: tick N — 动画未播完
+        IM->>IM: consumeTick()<br/>PRESSED → HELD
+    end
+
+    rect rgb(255, 230, 230)
+        Note over Anim,Battle: tick N+1 ~ N+3 — 仍在动画中
+        Note over IM: state 已经是 HELD
+    end
+
+    Note over IM: ── 渲染帧 ──
+    IM->>IM: sampleInputEvents()（无新事件）
+
+    rect rgb(230, 255, 230)
+        Note over Anim,Battle: tick N+4 — 动画播完
+        Battle->>IM: isActionPressed("confirm")?
+        IM-->>Battle: ❌ false（已是 HELD）
+        Note over Battle: 没有 buffer → 按键被吞掉！
+
+        Battle->>IM: consumeBufferedPress("confirm", 150ms)?
+        IM-->>Battle: ✅ true（t=200ms 在窗口内）
+        Note over Battle: 有 buffer → 按键正确响应
+    end
+```
+
+**没有 Input Buffer 的后果**：任何在 PRESSED 边沿之后才检查输入的系统都会"丢失"这次按键。典型场景：
+
+| 场景 | 问题 |
+|---|---|
+| 战斗中选择技能 | 动画/过场期间按的确认键在动画结束后无响应 |
+| 菜单快速连按 | 页面切换过渡期间的按键被吞掉 |
+| 对话推进 | 玩家在文字滚动中提前按确认，滚动结束后不触发下一句 |
+| QTE（快速时间事件） | 玩家"刚好差一帧"的按键被判定为未按 |
+
+这种"我明明按了但没反应"是 RPG/动作游戏中常见的操控不顺畅感的来源。
+
+#### 工作机制
+
+```mermaid
+graph LR
+    subgraph 写入端
+        PE["handleInputEdge()"] -->|"active_count 0→1 时"| PUSH["press_buffer.push(timestamp_ms)"]
+    end
+
+    subgraph buf["环形缓冲区 InputBuffer (容量=8)"]
+        PUSH --> BUF["[t=120] [t=200] [t=350] ..."]
+    end
+
+    subgraph 读取端
+        PEEK["peekBufferedPress(window_ms)"] --> CHECK{"now - t ≤ window_ms?"}
+        CONSUME["consumeBufferedPress(window_ms)"] --> CHECK
+        CHECK -->|是| HIT["✅ 返回 true"]
+        CHECK -->|否| MISS["❌ 返回 false"]
+        CONSUME --> DEL["从缓冲区移除该条目"]
+    end
+
+    BUF --> PEEK
+    BUF --> CONSUME
+```
+
+- **push**：每次动作进入 PRESSED 时记录 `SDL_GetTicks()` 时间戳
+- **peek**：只读查询——`window_ms` 毫秒内是否有按下记录
+- **consume**：查询并移除——消费后同一次按下不会被重复读取
+- **clear**：`clearAllInputState()` 时清空（上下文切换、焦点丢失等）
+- 满了之后新条目覆盖最旧的（环形缓冲，容量 8 远超实际需求）
+
+#### 接口
+
 ```cpp
 [[nodiscard]] bool peekBufferedPress(entt::id_type action_name_id, Uint64 window_ms) const;
 bool consumeBufferedPress(entt::id_type action_name_id, Uint64 window_ms);
 ```
 
-检测/消费 `window_ms` 毫秒内的 PRESSED 事件。适用于需要跨 tick 容差的场景（如战斗/菜单中的按键缓冲）。
+`window_ms` 是容差窗口大小。典型值 100~200ms，取决于游戏节奏。
 
-内部使用 `InputBuffer`——固定容量环形缓冲区，记录每次 PRESSED 的 `SDL_GetTicks()` 时间戳。
+**peek vs consume 的选择**：
+- `consume`：大多数场景使用——确认、攻击等"按一次触发一次"的动作
+- `peek`：需要多个系统共同检查同一次按键时使用（不消耗记录）
 
 ### 3.7 Prompt / Glyph
 
@@ -307,6 +392,8 @@ Glyph 构建函数（`input_glyphs.h`）：
 - `buildPromptIconId()`：生成 CSS 安全 ID，如 `"key_w"`, `"mouse_left"`, `"gamepad_a"`, `"gamepad_left_stick_up"`
 - `buildPromptFallbackText()`：生成人类可读文本
 - `makeActionPrompt()`：从 `BindingDefinition` 构建 `ActionPrompt`
+
+> 它们只是用于界面显示，不参与按键触发逻辑
 
 ---
 
@@ -354,7 +441,7 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph Context Stack（后进先出）
+    subgraph cs["Context Stack（后进先出）"]
         direction TB
         C3["栈顶 → 当前生效"]
         C2["..."]
@@ -596,7 +683,7 @@ flowchart TD
     RBC -->|否| IMGUI
 
     IMGUI["ImGui callback<br/>(仅 TF_ENABLE_DEBUG_UI)"] --> IGCAP{"ImGui<br/>WantCapture?"}
-    IGCAP -->|是 (键盘/鼠标)| ALWAYS{"总是放行?<br/>KEY_UP / MOUSE_UP<br/>MOTION / GAMEPAD_*"}
+    IGCAP -->|"是 (键盘/鼠标)"| ALWAYS{"总是放行?<br/>KEY_UP / MOUSE_UP<br/>MOTION / GAMEPAD_*"}
     IGCAP -->|否| RMLUI
 
     RMLUI["RmlUI callback"] --> SUP{"shouldSuppress<br/>RmlUiKeyboard?"}
