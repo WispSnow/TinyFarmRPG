@@ -6,6 +6,7 @@
 #include <RmlUi/Core/Types.h>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -16,6 +17,10 @@ class ElementDocument;
 class Event;
 class DataModelHandle;
 class DataModelConstructor;
+}
+
+namespace engine::ui::rmlui {
+class HoverFocusSyncListener;
 }
 
 namespace game::scene {
@@ -42,8 +47,10 @@ private:
     bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* focus_before_confirm_{nullptr};
+    bool hover_listener_registered_{false};
 
     std::vector<SlotViewModel> slots_{};
     bool confirm_visible_{false};
@@ -63,8 +70,10 @@ private:
     [[nodiscard]] bool initUI();
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
     void disconnectRuntimeListeners();
+    void removeEventListeners();
     void refreshSlotButtons();
     void queueDefaultFocus();
+    [[nodiscard]] bool shouldSyncHoverFocus(Rml::Element* element) const;
 
     void onSlotClicked(int slot);
     void onBackClicked();

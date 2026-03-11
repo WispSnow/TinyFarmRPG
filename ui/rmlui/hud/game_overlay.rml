@@ -10,7 +10,7 @@
         <button id="game-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
     </div>
 
-    <div id="game-prompt-bar">
+    <div id="game-prompt-bar" data-if="show_prompt_bar">
         <div class="game-prompt-item">
             <div class="game-prompt-label">Use</div>
             <div class="game-prompt-value">{{ primary_prompt_text }}</div>

@@ -22,7 +22,7 @@ namespace {
 namespace game::ui {
 namespace {
 
-TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndFocusStyle) {
+TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndUnifiedHoverFocusStyle) {
     const std::filesystem::path style_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/menu_widgets.rcss").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(style_path)) << style_path;
@@ -37,6 +37,9 @@ TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndFocusS
     EXPECT_NE(source.find(".tf-button-primary:focus"), std::string::npos);
     EXPECT_NE(source.find(".tf-button-secondary:focus"), std::string::npos);
     EXPECT_NE(source.find(".tf-icon-button:focus"), std::string::npos);
+    EXPECT_NE(source.find(".tf-button-primary:hover,\n.tf-button-primary:focus"), std::string::npos);
+    EXPECT_NE(source.find(".tf-button-secondary:hover,\n.tf-button-secondary:focus"), std::string::npos);
+    EXPECT_NE(source.find(".tf-icon-button:hover,\n.tf-icon-button:focus"), std::string::npos);
 }
 
 } // namespace

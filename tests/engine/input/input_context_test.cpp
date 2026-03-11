@@ -156,6 +156,34 @@ TEST_F(InputContextTest, MenuContextFiltersSharedPhysicalBindingPerAction) {
     EXPECT_TRUE(manager->isActionDown("menu_up"_hs));
 }
 
+TEST_F(InputContextTest, TogglePromptBarActionRespectsContextFilter) {
+    auto manager = createManager({
+        {"toggle_prompt_bar", {"F1"}},
+        {"menu_confirm", {"Return"}},
+    });
+    ASSERT_NE(manager, nullptr);
+
+    CallbackListener listener;
+    manager->onAction("toggle_prompt_bar"_hs).connect<&CallbackListener::onAction>(&listener);
+
+    manager->pushContext(InputContextId::Gameplay);
+    pushKey(SDL_SCANCODE_F1, true);
+    manager->sampleInputEvents();
+
+    EXPECT_TRUE(manager->isActionPressed("toggle_prompt_bar"_hs));
+    manager->dispatchActionCallbacks();
+    EXPECT_EQ(listener.calls, 1);
+
+    manager->consumeTick();
+    manager->pushContext(InputContextId::Menu);
+    pushKey(SDL_SCANCODE_F1, true);
+    manager->sampleInputEvents();
+
+    EXPECT_FALSE(manager->isActionPressed("toggle_prompt_bar"_hs));
+    manager->dispatchActionCallbacks();
+    EXPECT_EQ(listener.calls, 1);
+}
+
 TEST_F(InputContextTest, ContextSwitchClearsActiveActionsAndPhysicalCaches) {
     auto manager = createManager({{"move_left", {"A"}}});
     ASSERT_NE(manager, nullptr);

@@ -12,6 +12,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
@@ -74,7 +75,7 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
 
 PauseMenuScene::~PauseMenuScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
+    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
         removeEventListeners();
         if (document_) {
             unloadAllRmlDocuments();
@@ -177,7 +178,10 @@ bool PauseMenuScene::initUI() {
     event_bridge_.on("sound_down", [this](Rml::Event&) { adjustSoundVolume(-1); });
     event_bridge_.on("sound_up", [this](Rml::Event&) { adjustSoundVolume(1); });
     event_bridge_.registerTo(document_, "click");
+    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
+    document_->AddEventListener("mouseover", hover_focus_listener_.get());
     click_listener_registered_ = true;
+    hover_listener_registered_ = true;
 
     refreshVolumeLabels();
     refreshTimeScaleLabel();
@@ -192,6 +196,10 @@ void PauseMenuScene::removeEventListeners() {
     if (document_ && click_listener_registered_) {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
+    }
+    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
+        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
+        hover_listener_registered_ = false;
     }
 }
 

@@ -87,6 +87,9 @@
       "I",
       "GamepadBack"
     ],
+    "toggle_prompt_bar": [
+      "F1"
+    ],
     "hotbar": [
       "Tab",
       "GamepadNorth"
