@@ -27,7 +27,8 @@ const char* actionStateToString(engine::input::ActionState state) {
 
 const char* inputDeviceToString(engine::input::InputDevice device) {
     switch (device) {
-        case engine::input::InputDevice::KeyboardMouse: return "KeyboardMouse";
+        case engine::input::InputDevice::Keyboard: return "Keyboard";
+        case engine::input::InputDevice::Mouse: return "Mouse";
         case engine::input::InputDevice::Gamepad: return "Gamepad";
         default: return "Unknown";
     }
@@ -56,6 +57,7 @@ void InputDebugPanel::draw(bool& is_open) {
     const auto logical_pos = input_manager_.getLogicalMousePosition();
     const auto wheel = input_manager_.getMouseWheelDelta();
     const auto gamepad = input_manager_.getGamepadDebugState();
+    const auto snapshot = input_manager_.getDebugSnapshot();
 
     ImGui::Text("Mouse Position: (%.1f, %.1f)", mouse_pos.x, mouse_pos.y);
     ImGui::Text("Logical Position: (%.1f, %.1f)", logical_pos.x, logical_pos.y);
@@ -122,51 +124,118 @@ void InputDebugPanel::draw(bool& is_open) {
     ImGui::Unindent();
 
     ImGui::Separator();
+    ImGui::Text("Rumble:");
+    ImGui::Indent();
+    if (snapshot.rumble.has_last_request) {
+        ImGui::Text("Last Request: intensity=%.2f duration=%ums success=%s",
+                    snapshot.rumble.last_intensity,
+                    snapshot.rumble.last_duration_ms,
+                    snapshot.rumble.last_request_succeeded ? "true" : "false");
+    } else {
+        ImGui::TextDisabled("Last Request: <none>");
+    }
+    if (snapshot.rumble.active) {
+        ImGui::Text("Active: intensity=%.2f remaining=%llums",
+                    snapshot.rumble.current_intensity,
+                    static_cast<unsigned long long>(snapshot.rumble.remaining_ms));
+    } else {
+        ImGui::TextDisabled("Active: <none>");
+    }
+    ImGui::Unindent();
+
+    ImGui::Separator();
+    ImGui::Text("Rebind:");
+    ImGui::Indent();
+    ImGui::Text("Capture Active: %s", snapshot.rebind.capture_active ? "Yes" : "No");
+    if (snapshot.rebind.capture_active) {
+        ImGui::Text("Target: %s[%zu]",
+                    snapshot.rebind.action_name.c_str(),
+                    snapshot.rebind.binding_index);
+    }
+    if (snapshot.rebind.pending_conflict) {
+        ImGui::Text("Pending Token: %s", snapshot.rebind.pending_token.c_str());
+        for (const auto& action_name : snapshot.rebind.conflicting_action_names) {
+            ImGui::BulletText("%s", action_name.c_str());
+        }
+    }
+    ImGui::Unindent();
+
+    ImGui::Separator();
     ImGui::Text("Action States:");
     ImGui::Indent();
-    const auto& actions = input_manager_.getActionsDebug();
-    if (actions.empty()) {
+    if (snapshot.actions.empty()) {
         ImGui::TextDisabled("<no actions>");
     } else {
-        if (ImGui::BeginTable("InputActionsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
+        if (ImGui::BeginTable("InputActionsTable", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableSetupColumn("Action");
             ImGui::TableSetupColumn("ID");
             ImGui::TableSetupColumn("State");
-            ImGui::TableSetupColumn("Keys");
+            ImGui::TableSetupColumn("Bindings");
+            ImGui::TableSetupColumn("Prompt");
+            ImGui::TableSetupColumn("Buffer");
             ImGui::TableSetupColumn("Press");
             ImGui::TableSetupColumn("Release");
             ImGui::TableHeadersRow();
 
-            for (const auto& [id, entry] : actions) {
+            for (const auto& action : snapshot.actions) {
                 ImGui::TableNextRow();
 
                 ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(entry.name.c_str());
+                ImGui::TextUnformatted(action.name.c_str());
 
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text("0x%016llX", toUnsignedLongLong(id));
+                ImGui::Text("0x%016llX", toUnsignedLongLong(action.id));
 
                 ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(actionStateToString(entry.state));
+                ImGui::Text("%s (%u)",
+                            actionStateToString(action.state),
+                            static_cast<unsigned>(action.active_count));
 
                 ImGui::TableSetColumnIndex(3);
-                ImGui::Text("%u", static_cast<unsigned>(entry.active_count));
+                if (action.bindings.empty()) {
+                    ImGui::TextDisabled("<none>");
+                } else {
+                    for (std::size_t i = 0; i < action.bindings.size(); ++i) {
+                        const auto& binding = action.bindings[i];
+                        ImGui::Text("%s", binding.token.c_str());
+                        if (i + 1 < action.bindings.size()) {
+                            ImGui::Separator();
+                        }
+                    }
+                }
 
                 ImGui::TableSetColumnIndex(4);
-                ImGui::PushID(makeImGuiId(id, 0u));
+                if (action.active_prompt.has_value()) {
+                    ImGui::Text("%s", action.active_prompt->fallback_text.c_str());
+                    ImGui::TextDisabled("%s", action.active_prompt->icon_id.c_str());
+                } else {
+                    ImGui::TextDisabled("<none>");
+                }
+
+                ImGui::TableSetColumnIndex(5);
+                if (action.buffered_presses.empty()) {
+                    ImGui::TextDisabled("<empty>");
+                } else {
+                    for (const auto& buffered_press : action.buffered_presses) {
+                        ImGui::Text("%llums", static_cast<unsigned long long>(buffered_press.age_ms));
+                    }
+                }
+
+                ImGui::TableSetColumnIndex(6);
+                ImGui::PushID(makeImGuiId(action.id, 0u));
                 if (ImGui::Button("Press")) {
-                    input_manager_.setActionStateDebug(id, engine::input::ActionState::PRESSED);
+                    input_manager_.setActionStateDebug(action.id, engine::input::ActionState::PRESSED);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Hold")) {
-                    input_manager_.setActionStateDebug(id, engine::input::ActionState::HELD);
+                    input_manager_.setActionStateDebug(action.id, engine::input::ActionState::HELD);
                 }
                 ImGui::PopID();
 
-                ImGui::TableSetColumnIndex(5);
-                ImGui::PushID(makeImGuiId(id, 1u));
+                ImGui::TableSetColumnIndex(7);
+                ImGui::PushID(makeImGuiId(action.id, 1u));
                 if (ImGui::Button("Release")) {
-                    input_manager_.setActionStateDebug(id, engine::input::ActionState::RELEASED);
+                    input_manager_.setActionStateDebug(action.id, engine::input::ActionState::RELEASED);
                 }
                 ImGui::PopID();
             }

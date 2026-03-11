@@ -579,7 +579,7 @@ struct ToggleLightSpy {
     input->update();
     system.update(0.0f);
 
-    EXPECT_EQ(input->getLastInputDevice(), engine::input::InputDevice::KeyboardMouse);
+    EXPECT_EQ(input->getLastInputDevice(), engine::input::InputDevice::Mouse);
     const auto& mouse_cursor = registry.get<game::component::TargetComponent>(target);
     EXPECT_FLOAT_EQ(mouse_cursor.position_.x, 32.0f);
     EXPECT_FLOAT_EQ(mouse_cursor.position_.y, 16.0f);

@@ -62,6 +62,8 @@ target_sources(engine PRIVATE
     engine/render/opengl/world_vfx_pass.cpp
     engine/render/opengl/vfx_pass.cpp
     # Input
+    engine/input/input_buffer.cpp
+    engine/input/input_glyphs.cpp
     engine/input/input_manager.cpp
     # Loader
     engine/loader/level_loader.cpp

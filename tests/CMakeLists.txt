@@ -27,9 +27,13 @@ set(TEST_SOURCES
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp
+    engine/input/input_buffer_test.cpp
     engine/input/input_context_test.cpp
     engine/input/input_manager_gamepad_test.cpp
+    engine/input/input_glyphs_test.cpp
+    engine/input/input_rebind_test.cpp
     engine/input/input_manager_rmlui_routing_test.cpp
+    engine/input/input_manager_rumble_test.cpp
     engine/input/input_manager_no_exceptions_test.cpp
     engine/scene/entry_to_first_frame_safety_test.cpp
     engine/scene/scene_manager_safety_test.cpp
