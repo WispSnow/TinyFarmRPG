@@ -51,3 +51,22 @@ RmlUi 没有 `border-style` 属性，`border` 简写语法为 `<width> <color>`�
 - RML/RCSS 文件放在 `ui/`（项目根目录），不是 `assets/ui/`
 - 教程用 UI 文件放在 `ui/rmlui/learn/` 子目录，与游戏 UI 文件隔离
 - 代码中加载路径示例：`loadRmlDocument("ui/rmlui/learn/xxx.rml")`
+
+## 键盘/手柄导航需要 tab-index: auto
+
+RmlUi 中 `<button>` **不是** `ElementFormControl`，默认 `tab-index` 为 `none`。
+要让按钮支持键盘/手柄方向键导航（`nav-up/down/left/right`）和 Enter/Space 确认点击，
+**必须**显式设置 `tab-index: auto`：
+
+```css
+.my-button {
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+}
+```
+
+缺少 `tab-index: auto` 时：
+- `nav-*` 方向导航找不到该元素（`CanFocusElement` 返回 No）
+- Enter/Space 不会触发 `Click()`（`ProcessDefaultAction` 中的 `tab_index() == Auto` 检查失败）
+- 鼠标悬浮的 `:focus` 样式可能正常（`Focus()` 本身不检查 `tab-index`），容易造成误以为导航正常的假象

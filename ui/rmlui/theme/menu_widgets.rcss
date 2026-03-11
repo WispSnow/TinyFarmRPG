@@ -19,6 +19,7 @@ button {
 .tf-button-primary,
 .tf-button-secondary,
 .tf-icon-button {
+    tab-index: auto;
     nav-up: auto;
     nav-down: auto;
     nav-left: auto;
