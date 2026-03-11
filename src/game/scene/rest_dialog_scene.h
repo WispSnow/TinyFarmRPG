@@ -22,6 +22,7 @@ class RestDialogScene final : public engine::scene::Scene {
 private:
     engine::core::State previous_state_{};
     int selected_hours_{24};
+    bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};

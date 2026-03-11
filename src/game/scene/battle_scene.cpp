@@ -3,6 +3,7 @@
 #include "game/defs/events.h"
 
 #include "engine/core/context.h"
+#include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
@@ -72,6 +73,9 @@ BattleScene::~BattleScene() {
 }
 
 bool BattleScene::init() {
+    context_.getInputManager().pushContext(engine::input::InputContextId::Battle);
+    context_pushed_ = true;
+
     if (!initUI()) {
         return false;
     }
@@ -95,6 +99,10 @@ void BattleScene::update(float delta_time) {
 
 void BattleScene::clean() {
     removeEventListeners();
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
     document_ = nullptr;
     data_bridge_.destroy();

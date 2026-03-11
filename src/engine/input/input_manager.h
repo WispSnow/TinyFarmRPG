@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <array>
 #include <functional>
@@ -26,6 +27,13 @@ inline constexpr std::size_t GAMEPAD_AXIS_COUNT = static_cast<std::size_t>(SDL_G
 enum class InputDevice : std::uint8_t {
     KeyboardMouse,
     Gamepad
+};
+
+enum class InputContextId : std::uint8_t {
+    Gameplay,
+    Menu,
+    Dialogue,
+    Battle
 };
 
 enum class GamepadAxisDirection : std::uint8_t {
@@ -76,6 +84,11 @@ struct GamepadDebugState {
     std::array<float, GAMEPAD_AXIS_COUNT> axis_normalized_values{};
 };
 
+struct InputContextDefinition {
+    std::vector<entt::id_type> dispatch_actions;
+    std::unordered_set<entt::id_type> allowed_actions;
+};
+
 /**
  * @brief 输入管理器类，负责处理输入事件和动作状态。
  *
@@ -92,6 +105,8 @@ private:
 
     /// @brief 动作 ID 的稳定顺序列表（按配置加载顺序），用于 dispatchActionCallbacks
     std::vector<entt::id_type> action_dispatch_order_;
+    std::unordered_map<InputContextId, InputContextDefinition> context_definitions_;
+    std::vector<InputContextId> context_stack_;
 
     /// @brief 键盘 scancode → 关联的动作 ID 列表
     std::unordered_map<SDL_Scancode, std::vector<entt::id_type>> key_to_actions_;
@@ -180,6 +195,10 @@ public:
      */
     void consumeTick();
 
+    void pushContext(InputContextId id);
+    void popContext();
+    [[nodiscard]] std::optional<InputContextId> currentContext() const;
+
     void quit();                                      ///< @brief 退出游戏
 
     // 保留动作状态检查, 提供不同的使用选择
@@ -213,10 +232,13 @@ private:
     void processEvent(const SDL_Event& event);                      ///< @brief 处理 SDL 事件（将按键转换为动作状态）
     [[nodiscard]] bool loadConfig(std::string_view config_path);
     void initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname);
+    void initializeContextDefinitions();
     void initializeConnectedGamepads();
     void switchActiveGamepad(SDL_JoystickID instance_id);
     void closeActiveGamepad();
     void clearGamepadContributions();
+    void clearAllInputState();
+    [[nodiscard]] const InputContextDefinition* currentContextDefinition() const;
     void resetGamepadDebugState();
 
     [[nodiscard]] SDL_Scancode scancodeFromString(std::string_view key_name) const;     ///< @brief 将字符串键名转换为 SDL_Scancode

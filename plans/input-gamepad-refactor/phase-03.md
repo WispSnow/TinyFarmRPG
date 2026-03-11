@@ -150,17 +150,29 @@ struct InputContextDefinition {
 
 #### 待办清单
 
-- [ ] 定义 `InputContextId` 和运行时 context 定义
-- [ ] 实现 push/pop 上下文栈
-- [ ] 抽取 `clearAllInputState()` 并复用现有 focus-lost 清理逻辑
-- [ ] processEvent 中加入上下文过滤
-- [ ] dispatchActionCallbacks 中加入上下文过滤
-- [ ] 在 GameScene / PauseMenuScene / SaveSlotSelectScene / RestDialogScene / BattleScene 中接入 push/pop
-- [ ] 定义各上下文的动作白名单
-- [ ] 明确 `TitleScene` 继续使用空栈 legacy 行为
-- [ ] 编写上下文测试（含 stale down-state 回归）
-- [ ] 编写共享物理键跨 context 过滤测试
-- [ ] 编写 scene 栈集成测试（PauseMenu -> SaveSlotSelect）
+- [x] 定义 `InputContextId` 和运行时 context 定义
+- [x] 实现 push/pop 上下文栈
+- [x] 抽取 `clearAllInputState()` 并复用现有 focus-lost 清理逻辑
+- [x] processEvent 中加入上下文过滤
+- [x] dispatchActionCallbacks 中加入上下文过滤
+- [x] 在 GameScene / PauseMenuScene / SaveSlotSelectScene / RestDialogScene / BattleScene 中接入 push/pop
+- [x] 定义各上下文的动作白名单
+- [x] 明确 `TitleScene` 继续使用空栈 legacy 行为
+- [x] 编写上下文测试（含 stale down-state 回归）
+- [x] 编写共享物理键跨 context 过滤测试
+- [x] 编写 scene 栈集成测试（PauseMenu -> SaveSlotSelect）
+
+#### 完成记录（2026-03-11）
+
+- `InputManager` 已引入 `InputContextId`、context 定义表与 LIFO 上下文栈；空栈保持 legacy 行为，空栈 `popContext()` 仅 warn 并安全返回。
+- `processEvent()` 已改为“物理 down-state 始终更新、动作状态按栈顶 `allowed_actions` 逐 action 过滤”；`dispatchActionCallbacks()` 只遍历当前 context 的 `dispatch_actions`，并继续沿用既有 consume 语义。
+- `clearAllInputState()` 已从 focus-lost 流程抽取，供 context push/pop 与失焦路径复用；该 helper 不触发 `FocusLostEvent`，窗口失焦/最小化路径仍显式派发事件。
+- `GameScene`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`BattleScene` 已在 `init()/clean()` 中接入 context push/pop，并通过 `context_pushed_` 保证成对清理；`TitleScene` 保持空栈回退路径。
+- `Gameplay` / `Menu` / `Dialogue` / `Battle` 的运行时白名单已落地，其中 `Dialogue` 与 `Battle` 当前按计划保持空 context，只负责阻断 Gameplay 输入，等待 Phase 4 再接入 `menu_*` 动作。
+- 自动化验证已通过：
+  - `ninja -C build/debug engine_tests game_tests`
+  - `./build/debug/tests/engine_tests`：192/192 通过
+  - `./build/debug/tests/game_tests`：184 通过，6 个 headless/RmlUi 相关用例按预期跳过
 
 #### 完成标准
 

@@ -87,6 +87,8 @@ PauseMenuScene::~PauseMenuScene() {
 bool PauseMenuScene::init() {
     previous_state_ = context_.getGameState().getCurrentState();
     context_.getGameState().setState(engine::core::State::Paused);
+    context_.getInputManager().pushContext(engine::input::InputContextId::Menu);
+    context_pushed_ = true;
 
     if (!initUI()) {
         return false;
@@ -119,6 +121,10 @@ void PauseMenuScene::clean() {
     disconnectRuntimeListeners();
     removeEventListeners();
     context_.getGameState().setState(previous_state_);
+    if (context_pushed_) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+    }
     Scene::clean();
     document_ = nullptr;
     data_bridge_.destroy();

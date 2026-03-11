@@ -37,6 +37,7 @@ private:
     game::data::GameTime* game_time_{nullptr};
     engine::core::State previous_state_{};
     bool close_after_load_{false};
+    bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};
