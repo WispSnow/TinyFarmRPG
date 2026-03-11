@@ -68,26 +68,25 @@
 - [x] 确定排序规则 → 默认获取顺序（slot index 自然序），后续加可选"按分类→按名称"排序
 - [x] 确认素材资源区域 → `jrpg-inventory-menu-sprites.md`（全部已确认）
 
-## Phase 2: 场景与 UI 层实现
+## Phase 2: 场景与 UI 层实现 → `jrpg-inventory-menu-phase2.md`
 
-- [ ] 新建 InventoryMenuScene（继承 Scene，push/pop 生命周期）
-  - init: State::Paused + InputContext::Menu + 加载 RML
-  - clean: 恢复状态 + popContext + 卸载 RML
-- [ ] GameScene 中 inventory 键改为 pushScene(InventoryMenuScene)
-- [ ] 新建 inventory_menu.rml/rcss（440×310 面板、10×4 网格、标签页、角色信息区）
-- [ ] 新建 InventoryMenuUI C++ 控制器（RmlDataBridge 绑定 40 slot ViewModel）
-- [ ] 实现键盘/手柄导航（tab-index + nav-up/down/left/right 在 10×4 网格中）
-- [ ] 实现 Tooltip（选中 slot 时显示物品名称/分类/描述）
-- [ ] 实现操作子菜单（选中物品后弹出 Use/Equip/Discard）
-- [ ] 标签页 UI（初期只有 Inventory 页可用，其余灰色占位）
+- [ ] Step 1: InventoryMenuScene 骨架 (h/cpp，仿 PauseMenuScene 模式)
+- [ ] Step 2: inventory_menu.rml/rcss (面板布局 + spritesheet 定义)
+- [ ] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
+- [ ] Step 4: GameScene 集成 (inventory 键 → pushScene)
+- [ ] Step 5: 键盘/手柄网格导航 (tab-index + nav-auto)
+- [ ] Step 6: Tooltip 集成 (复用 ItemTooltipUI)
+- [ ] Step 7: 标签页 UI (仅 Inventory 可用，其余 disabled 占位)
+- [ ] 更新 CMakeLists.txt + 构建验证
 
 ## Phase 3: 交互逻辑与清理
 
+- [ ] 实现操作子菜单 (Use/Equip/Discard)
+- [ ] 实装角色信息区 (头像 + 名称 + 装备槽占位)
 - [ ] 移除旧 InventoryUI + HotbarUI + 相关 RML/RCSS
 - [ ] 移除 HotbarComponent / HotbarSystem 及相关 Command/Event
 - [ ] 清理 GameScene 中旧 inventory/hotbar 相关代码
-- [ ] 调整 InventoryComponent 去除分页（active_page_ 不再需要）
+- [ ] 调整 InventoryComponent 去除分页 (active_page_)
 - [ ] 实现物品自动排序 Command
-- [ ] 装备槽 UI 占位（8 格锁定状态，后续实装装备系统时激活）
-- [ ] 更新 CMakeLists.txt（添加新文件、移除旧文件）
-- [ ] 整体测试：场景 push/pop、键盘导航、物品同步、Tooltip、边界情况
+- [ ] 更新 CMakeLists.txt (移除旧文件)
+- [ ] 整体测试
