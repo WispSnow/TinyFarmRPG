@@ -1,6 +1,6 @@
 /* ===========================================
  * Inventory Menu — RCSS
- * Stardew Valley 风格物品栏全屏菜单
+ * Two-column layout: inventory left, character right
  * =========================================== */
 
 body, div, h1, h2, h3, h4, p, hr, button {
@@ -63,10 +63,10 @@ body, div, h1, h2, h3, h4, p, hr, button {
 
 #menu-panel {
     position: fixed;
-    left: 100dp;
-    top: 25dp;
-    width: 440dp;
-    height: 310dp;
+    left: 140dp;
+    top: 68dp;
+    width: 360dp;
+    height: 224dp;
     decorator: ninepatch(menu-panel-bg, menu-panel-bg-inner, 1.0);
     padding: 10dp;
 }
@@ -120,10 +120,26 @@ body, div, h1, h2, h3, h4, p, hr, button {
     background-color: #d9a88a66;
 }
 
+/* --- Two-Column Content --- */
+
+#content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 14dp;
+    margin-top: 4dp;
+}
+
+#inventory-col {
+    width: 218dp;
+}
+
+#char-col {
+    width: 108dp;
+}
+
 /* --- Hotbar Row --- */
 
 #hotbar-area {
-    margin-top: 4dp;
 }
 
 #hotbar-grid {
@@ -217,8 +233,6 @@ body, div, h1, h2, h3, h4, p, hr, button {
 /* --- Backpack Area --- */
 
 #backpack-area {
-    display: flex;
-    flex-direction: row;
     margin-top: 4dp;
 }
 
@@ -304,10 +318,15 @@ body, div, h1, h2, h3, h4, p, hr, button {
 
 /* --- Trash Button --- */
 
+#trash-row {
+    margin-top: 4dp;
+    text-align: right;
+}
+
 #trash-btn {
     width: 20dp;
     height: 20dp;
-    margin-left: 8dp;
+    display: inline-block;
     padding: 2dp;
     decorator: image(trash-closed);
     tab-index: auto;
@@ -323,55 +342,41 @@ body, div, h1, h2, h3, h4, p, hr, button {
     box-shadow: #f7768ecc 0dp 0dp 0dp 1dp;
 }
 
-/* --- Character Area --- */
-
-#char-area {
-    display: flex;
-    flex-direction: row;
-    margin-top: 4dp;
-    height: 80dp;
-    align-items: flex-start;
-}
-
-/* Portrait */
+/* --- Character Column --- */
 
 #char-portrait {
     width: 64dp;
     height: 64dp;
+    margin: 0 auto;
     decorator: image(portrait-default);
 }
 
-/* Name / Title */
-
 #char-info {
-    display: flex;
-    flex-direction: column;
-    margin-left: 8dp;
-    width: 120dp;
-    justify-content: center;
+    text-align: center;
+    margin-top: 4dp;
 }
 
 #char-name {
-    font-size: 16dp;
+    font-size: 12dp;
     color: #ffffff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #char-title {
-    font-size: 16dp;
+    font-size: 10dp;
     color: #a9b1d6;
-    margin-top: 4dp;
+    margin-top: 2dp;
 }
 
-/* Equipment Grid (2 col × 4 row) */
+/* Equipment Grid (4 col × 2 row) */
 
 #equip-grid {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    width: 42dp;
+    width: 86dp;
     gap: 2dp;
-    margin-left: 8dp;
+    margin: 8dp auto 0 auto;
 }
 
 .eq-slot {
@@ -391,32 +396,30 @@ body, div, h1, h2, h3, h4, p, hr, button {
     opacity: 0.4;
 }
 
-#eq-hat   .eq-placeholder { decorator: image(equip-hat); }
-#eq-neck  .eq-placeholder { decorator: image(equip-necklace); }
-#eq-shirt .eq-placeholder { decorator: image(equip-shirt); }
+#eq-hat    .eq-placeholder { decorator: image(equip-hat); }
+#eq-shirt  .eq-placeholder { decorator: image(equip-shirt); }
+#eq-pants  .eq-placeholder { decorator: image(equip-pants); }
+#eq-boots  .eq-placeholder { decorator: image(equip-boots); }
+#eq-neck   .eq-placeholder { decorator: image(equip-necklace); }
 #eq-gloves .eq-placeholder { decorator: image(equip-gloves); }
-#eq-pants .eq-placeholder { decorator: image(equip-pants); }
-#eq-ring1 .eq-placeholder { decorator: image(equip-ring); }
-#eq-boots .eq-placeholder { decorator: image(equip-boots); }
-#eq-ring2 .eq-placeholder { decorator: image(equip-ring); }
+#eq-ring1  .eq-placeholder { decorator: image(equip-ring); }
+#eq-ring2  .eq-placeholder { decorator: image(equip-ring); }
 
 /* Stats / Gold */
 
 #char-stats {
-    display: flex;
-    flex-direction: column;
-    margin-left: 8dp;
-    justify-content: center;
+    text-align: center;
+    margin-top: 8dp;
 }
 
 #gold-label {
-    font-size: 16dp;
+    font-size: 10dp;
     color: #e0af68;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #farm-label {
-    font-size: 16dp;
+    font-size: 10dp;
     color: #a9b1d6;
-    margin-top: 4dp;
+    margin-top: 2dp;
 }

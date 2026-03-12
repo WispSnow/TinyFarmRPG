@@ -22,78 +22,81 @@
         <!-- Separator -->
         <div class="menu-separator"></div>
 
-        <!-- Hotbar row -->
-        <div id="hotbar-area">
-            <div id="hotbar-grid">
-                <div class="hb-slot"
-                     data-for="hslot : hotbar_slots"
-                     data-class-has-item="hslot.has_item"
-                     data-class-has-count="hslot.has_count"
-                     data-class-hb-active="hslot.is_active"
-                     data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)">
-                    <div class="hb-slot-drag-proxy"
-                         data-class-draggable="hslot.can_drag"
-                         data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
-                         data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
-                         data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
-                         data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
-                        <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
-                        <div class="hb-slot-count">{{ hslot.count_text }}</div>
-                    </div>
-                    <div class="hb-slot-index">{{ hslot.label }}</div>
-                </div>
-            </div>
-        </div>
+        <!-- Two-column content -->
+        <div id="content-row">
 
-        <!-- Backpack grid 10x4 -->
-        <div id="backpack-area">
-            <div id="backpack-grid">
-                <div class="bp-slot"
-                     data-for="slot : backpack_slots"
-                     data-class-has-item="slot.has_item"
-                     data-class-has-count="slot.has_count"
-                     data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)">
-                    <div class="bp-slot-drag-proxy"
-                         data-class-draggable="slot.can_drag"
-                         data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
-                         data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
-                         data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
-                         data-event-dragend="bp_slot_drag_end(slot.slot_index)">
-                        <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
-                        <div class="bp-slot-count">{{ slot.count_text }}</div>
+            <!-- Left: Inventory -->
+            <div id="inventory-col">
+                <div id="hotbar-area">
+                    <div id="hotbar-grid">
+                        <div class="hb-slot"
+                             data-for="hslot : hotbar_slots"
+                             data-class-has-item="hslot.has_item"
+                             data-class-has-count="hslot.has_count"
+                             data-class-hb-active="hslot.is_active"
+                             data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)">
+                            <div class="hb-slot-drag-proxy"
+                                 data-class-draggable="hslot.can_drag"
+                                 data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
+                                 data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
+                                 data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
+                                 data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
+                                <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
+                                <div class="hb-slot-count">{{ hslot.count_text }}</div>
+                            </div>
+                            <div class="hb-slot-index">{{ hslot.label }}</div>
+                        </div>
                     </div>
                 </div>
+
+                <div id="backpack-area">
+                    <div id="backpack-grid">
+                        <div class="bp-slot"
+                             data-for="slot : backpack_slots"
+                             data-class-has-item="slot.has_item"
+                             data-class-has-count="slot.has_count"
+                             data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)">
+                            <div class="bp-slot-drag-proxy"
+                                 data-class-draggable="slot.can_drag"
+                                 data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
+                                 data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
+                                 data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
+                                 data-event-dragend="bp_slot_drag_end(slot.slot_index)">
+                                <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                                <div class="bp-slot-count">{{ slot.count_text }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="trash-row">
+                    <button id="trash-btn" data-command="trash"></button>
+                </div>
             </div>
-            <button id="trash-btn" data-command="trash"></button>
-        </div>
 
-        <!-- Separator -->
-        <div class="menu-separator"></div>
-
-        <!-- Character info area -->
-        <div id="char-area">
-            <div id="char-portrait"></div>
-
-            <div id="char-info">
-                <div id="char-name">Player</div>
-                <div id="char-title">Lv.1 Farmer</div>
+            <!-- Right: Character -->
+            <div id="char-col">
+                <div id="char-portrait"></div>
+                <div id="char-info">
+                    <div id="char-name">Player</div>
+                    <div id="char-title">Lv.1 Farmer</div>
+                </div>
+                <div id="equip-grid">
+                    <div class="eq-slot" id="eq-hat"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-shirt"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-pants"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-boots"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-neck"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-gloves"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-ring1"><div class="eq-placeholder"></div></div>
+                    <div class="eq-slot" id="eq-ring2"><div class="eq-placeholder"></div></div>
+                </div>
+                <div id="char-stats">
+                    <div id="gold-label">Gold: 0</div>
+                    <div id="farm-label">TinyFarm</div>
+                </div>
             </div>
 
-            <div id="equip-grid">
-                <div class="eq-slot" id="eq-hat"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-neck"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-shirt"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-gloves"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-pants"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-ring1"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-boots"><div class="eq-placeholder"></div></div>
-                <div class="eq-slot" id="eq-ring2"><div class="eq-placeholder"></div></div>
-            </div>
-
-            <div id="char-stats">
-                <div id="gold-label">Gold: 0</div>
-                <div id="farm-label">TinyFarm</div>
-            </div>
         </div>
     </div>
 </body>
