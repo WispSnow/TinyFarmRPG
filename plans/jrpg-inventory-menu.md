@@ -70,14 +70,14 @@
 
 ## Phase 2: 场景与 UI 层实现 → `jrpg-inventory-menu-phase2.md`
 
-- [ ] Step 1: InventoryMenuScene 骨架 (h/cpp，仿 PauseMenuScene 模式)
-- [ ] Step 2: inventory_menu.rml/rcss (面板布局 + spritesheet 定义)
-- [ ] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
-- [ ] Step 4: GameScene 集成 (inventory 键 → pushScene)
-- [ ] Step 5: 键盘/手柄网格导航 (tab-index + nav-auto)
+- [x] Step 1: InventoryMenuScene 骨架 (h/cpp，仿 PauseMenuScene 模式)
+- [x] Step 2: inventory_menu.rml/rcss (面板布局 + spritesheet 定义)
+- [x] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
+- [x] Step 4: GameScene 集成 (inventory 键 → pushScene)
+- [x] Step 5: 键盘/手柄网格导航 (tab-index + nav-auto)
 - [ ] Step 6: Tooltip 集成 (复用 ItemTooltipUI)
-- [ ] Step 7: 标签页 UI (仅 Inventory 可用，其余 disabled 占位)
-- [ ] 更新 CMakeLists.txt + 构建验证
+- [x] Step 7: 标签页 UI (仅 Inventory 可用，其余 disabled 占位)
+- [x] 更新 CMakeLists.txt + 构建验证
 
 ## Phase 3: 交互逻辑与清理
 

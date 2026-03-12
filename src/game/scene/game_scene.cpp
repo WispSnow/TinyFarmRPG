@@ -5,6 +5,7 @@
 #include "game/runtime/game_runtime_assembler.h"
 #include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
+#include "inventory_menu_scene.h"
 #include "pause_menu_scene.h"
 #include "title_scene.h"
 #include "engine/audio/audio_player.h"
@@ -557,20 +558,19 @@ bool GameScene::onInventoryToggle() {
         return false;
     }
 
-    if (inventory_ui_) {
-        inventory_ui_->toggle();
-        if (inventory_ui_->isVisible()) {
-            auto view = registry_.view<game::component::PlayerTag>();
-            if (!view.empty()) {
-                const entt::entity player = *view.begin();
-                context_.getDispatcher().enqueue<game::defs::InventorySyncCommand>(player);
-                context_.getDispatcher().enqueue<game::defs::HotbarSyncCommand>(player);
-            }
-        }
-        return true;
+    auto player_view = registry_.view<game::component::PlayerTag>();
+    if (player_view.begin() == player_view.end()) {
+        return false;
     }
+    const entt::entity player = *player_view.begin();
 
-    return false;
+    requestPushScene(std::make_unique<game::scene::InventoryMenuScene>(
+        "InventoryMenu",
+        context_,
+        registry_,
+        player,
+        services_->item_catalog.get()));
+    return true;
 }
 
 bool GameScene::onHotbarToggle() {
