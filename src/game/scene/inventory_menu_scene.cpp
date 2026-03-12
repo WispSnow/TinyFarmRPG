@@ -200,6 +200,10 @@ bool InventoryMenuScene::initUI() {
         data_bridge_.destroy();
         return false;
     }
+    constructor.Bind("detail_name", &detail_name_);
+    constructor.Bind("detail_category", &detail_category_);
+    constructor.Bind("detail_description", &detail_description_);
+    constructor.Bind("has_detail", &has_detail_);
 
     // --- slot event callbacks ---
     const auto bind_bp_event =
@@ -215,6 +219,7 @@ bool InventoryMenuScene::initUI() {
         !bind_bp_event("bp_slot_drag_start",  &InventoryMenuScene::onBpSlotDragStart) ||
         !bind_bp_event("bp_slot_drag_drop",   &InventoryMenuScene::onBpSlotDragDrop) ||
         !bind_bp_event("bp_slot_drag_end",    &InventoryMenuScene::onBpSlotDragEnd) ||
+        !bind_bp_event("hb_slot_mouse_up",    &InventoryMenuScene::onHbSlotMouseUp) ||
         !bind_bp_event("hb_slot_hover_enter", &InventoryMenuScene::onHbSlotHoverEnter) ||
         !bind_bp_event("hb_slot_hover_exit",  &InventoryMenuScene::onHbSlotHoverExit) ||
         !bind_bp_event("hb_slot_drag_start",  &InventoryMenuScene::onHbSlotDragStart) ||
@@ -443,6 +448,67 @@ void InventoryMenuScene::clearTooltip() {
 }
 
 // ---------------------------------------------------------------------------
+// Detail panel
+// ---------------------------------------------------------------------------
+
+void InventoryMenuScene::updateDetailForInventorySlot(int slot_index) {
+    if (!item_catalog_ || slot_index < 0 || slot_index >= TOTAL_SLOTS) {
+        clearDetail();
+        return;
+    }
+    auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+    if (!inventory) {
+        clearDetail();
+        return;
+    }
+    const auto& stack = inventory->slot(slot_index);
+    if (stack.empty()) {
+        clearDetail();
+        return;
+    }
+    const auto* item = item_catalog_->findItem(stack.item_id_);
+    if (!item) {
+        clearDetail();
+        return;
+    }
+    detail_name_ = item->display_name_;
+    detail_category_ = item->category_str_;
+    detail_description_ = item->description_;
+    has_detail_ = true;
+    data_bridge_.markDirty("detail_name");
+    data_bridge_.markDirty("detail_category");
+    data_bridge_.markDirty("detail_description");
+    data_bridge_.markDirty("has_detail");
+}
+
+void InventoryMenuScene::updateDetailForHotbarSlot(int hotbar_index) {
+    if (hotbar_index < 0 || hotbar_index >= HOTBAR_SLOTS) {
+        clearDetail();
+        return;
+    }
+    auto* hotbar = game_registry_.try_get<game::component::HotbarComponent>(player_);
+    if (!hotbar || hotbar->slot(hotbar_index).empty()) {
+        clearDetail();
+        return;
+    }
+    updateDetailForInventorySlot(hotbar->slot(hotbar_index).inventory_slot_index_);
+}
+
+void InventoryMenuScene::clearDetail() {
+    if (!has_detail_) {
+        return;
+    }
+    has_detail_ = false;
+    detail_name_.clear();
+    detail_category_.clear();
+    detail_description_.clear();
+    data_bridge_.markDirty("detail_name");
+    data_bridge_.markDirty("detail_category");
+    data_bridge_.markDirty("detail_description");
+    data_bridge_.markDirty("has_detail");
+}
+
+// ---------------------------------------------------------------------------
 // Drag
 // ---------------------------------------------------------------------------
 
@@ -501,6 +567,7 @@ void InventoryMenuScene::onBpSlotHoverEnter(int slot_index, Rml::Event& event) {
     hovered_slot_index_ = slot_index;
     hovered_hotbar_index_ = -1;
     showTooltipForInventorySlot(slot_index);
+    updateDetailForInventorySlot(slot_index);
 }
 
 void InventoryMenuScene::onBpSlotHoverExit(int slot_index, Rml::Event& event) {
@@ -510,6 +577,7 @@ void InventoryMenuScene::onBpSlotHoverExit(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     if (hovered_slot_index_ == slot_index) {
         clearTooltip();
+        clearDetail();
     }
 }
 
@@ -571,6 +639,21 @@ void InventoryMenuScene::onBpSlotDragEnd(int slot_index, Rml::Event& event) {
 // Hotbar slot events
 // ---------------------------------------------------------------------------
 
+void InventoryMenuScene::onHbSlotMouseUp(int slot_index, Rml::Event& event) {
+    if (slot_index < 0 || slot_index >= HOTBAR_SLOTS || player_ == entt::null) {
+        return;
+    }
+    const int button = event.GetParameter("button", -1);
+    if (button != 0) {
+        return;
+    }
+    event.StopPropagation();
+    context_.getDispatcher().trigger(
+        game::defs::HotbarActivateCommand{player_, slot_index});
+    syncHotbarFromInventory();
+    data_bridge_.markDirty("hotbar_slots");
+}
+
 void InventoryMenuScene::onHbSlotHoverEnter(int slot_index, Rml::Event& event) {
     if (slot_index < 0 || slot_index >= HOTBAR_SLOTS) {
         return;
@@ -579,6 +662,7 @@ void InventoryMenuScene::onHbSlotHoverEnter(int slot_index, Rml::Event& event) {
     hovered_hotbar_index_ = slot_index;
     hovered_slot_index_ = -1;
     showTooltipForHotbarSlot(slot_index);
+    updateDetailForHotbarSlot(slot_index);
 }
 
 void InventoryMenuScene::onHbSlotHoverExit(int slot_index, Rml::Event& event) {
@@ -588,6 +672,7 @@ void InventoryMenuScene::onHbSlotHoverExit(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     if (hovered_hotbar_index_ == slot_index) {
         clearTooltip();
+        clearDetail();
     }
 }
 

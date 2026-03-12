@@ -17,6 +17,7 @@
             <button class="tab-icon tab-disabled" id="tab-quests" disabled></button>
             <button class="tab-icon tab-disabled" id="tab-map" disabled></button>
             <button class="tab-icon tab-disabled" id="tab-options" disabled></button>
+            <button id="trash-btn" data-command="trash"></button>
         </div>
 
         <!-- Separator -->
@@ -34,7 +35,8 @@
                              data-class-has-item="hslot.has_item"
                              data-class-has-count="hslot.has_count"
                              data-class-hb-active="hslot.is_active"
-                             data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)">
+                             data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
+                             data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)">
                             <div class="hb-slot-drag-proxy"
                                  data-class-draggable="hslot.can_drag"
                                  data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
@@ -69,8 +71,10 @@
                     </div>
                 </div>
 
-                <div id="trash-row">
-                    <button id="trash-btn" data-command="trash"></button>
+                <div id="detail-area" data-if="has_detail">
+                    <div id="detail-name">{{ detail_name }}</div>
+                    <div id="detail-category">{{ detail_category }}</div>
+                    <div id="detail-description">{{ detail_description }}</div>
                 </div>
             </div>
 

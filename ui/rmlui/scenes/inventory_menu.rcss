@@ -316,17 +316,12 @@ body, div, h1, h2, h3, h4, p, hr, button {
     padding: 0 1dp 0 0;
 }
 
-/* --- Trash Button --- */
-
-#trash-row {
-    margin-top: 4dp;
-    text-align: right;
-}
+/* --- Trash Button (in tab-bar) --- */
 
 #trash-btn {
     width: 20dp;
     height: 20dp;
-    display: inline-block;
+    margin-left: auto;
     padding: 2dp;
     decorator: image(trash-closed);
     tab-index: auto;
@@ -340,6 +335,30 @@ body, div, h1, h2, h3, h4, p, hr, button {
 #trash-btn:focus {
     decorator: image(trash-open);
     box-shadow: #f7768ecc 0dp 0dp 0dp 1dp;
+}
+
+/* --- Detail Panel --- */
+
+#detail-area {
+    margin-top: 6dp;
+}
+
+#detail-name {
+    font-size: 12dp;
+    color: #ffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#detail-category {
+    font-size: 10dp;
+    color: #a9b1d6;
+    margin-top: 2dp;
+}
+
+#detail-description {
+    font-size: 10dp;
+    color: #c0caf5;
+    margin-top: 2dp;
 }
 
 /* --- Character Column --- */
