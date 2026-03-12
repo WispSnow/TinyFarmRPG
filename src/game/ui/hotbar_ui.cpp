@@ -1,6 +1,7 @@
 #include "hotbar_ui.h"
 
 #include "engine/core/context.h"
+#include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "game/component/hotbar_component.h"
 #include "game/defs/commands.h"
@@ -338,7 +339,7 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
 
     event.StopPropagation();
 
-    if (button == 0 && suppress_next_primary_mouse_up_) {
+    if (engine::ui::rmlui::isPrimaryMouseButton(button) && suppress_next_primary_mouse_up_) {
         suppress_next_primary_mouse_up_ = false;
         return;
     }
@@ -347,12 +348,12 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
         return;
     }
 
-    if (button == 0) {
+    if (engine::ui::rmlui::isPrimaryMouseButton(button)) {
         context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
         return;
     }
 
-    if (button != 2) {
+    if (!engine::ui::rmlui::isSecondaryMouseButton(button)) {
         return;
     }
 

@@ -100,6 +100,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     // Drag state
     bool dragging_{false};
     bool drop_handled_{false};
+    bool suppress_next_primary_mouse_up_{false};
     bool dragging_from_hotbar_{false};
     int dragging_slot_index_{-1};
 
@@ -175,7 +176,8 @@ private:
 
     // Backpack slot event callbacks (bound via BindEventCallback)
     void onBpSlotFocus(int slot_index, Rml::Event& event);
-    void onBpSlotClick(int slot_index, Rml::Event& event);
+    void onBpSlotMouseDown(int slot_index, Rml::Event& event);
+    void onBpSlotMouseUp(int slot_index, Rml::Event& event);
     void onBpSlotHoverEnter(int slot_index, Rml::Event& event);
     void onBpSlotHoverExit(int slot_index, Rml::Event& event);
     void onBpSlotDragStart(int slot_index, Rml::Event& event);
@@ -184,7 +186,8 @@ private:
 
     // Hotbar slot event callbacks
     void onHbSlotFocus(int slot_index, Rml::Event& event);
-    void onHbSlotClick(int slot_index, Rml::Event& event);
+    void onHbSlotMouseDown(int slot_index, Rml::Event& event);
+    void onHbSlotMouseUp(int slot_index, Rml::Event& event);
     void onHbSlotHoverEnter(int slot_index, Rml::Event& event);
     void onHbSlotHoverExit(int slot_index, Rml::Event& event);
     void onHbSlotDragStart(int slot_index, Rml::Event& event);

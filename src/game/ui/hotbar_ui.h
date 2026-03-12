@@ -84,7 +84,6 @@ public:
 
     [[nodiscard]] bool isReady() const { return document_ != nullptr && data_bridge_.isValid(); }
     [[nodiscard]] bool isVisible() const { return visible_; }
-    [[nodiscard]] bool isDragging() const { return dragging_; }
 
     void setSlotItem(int slot_index, const engine::ui::SlotItem& item);
     void clearSlot(int slot_index);

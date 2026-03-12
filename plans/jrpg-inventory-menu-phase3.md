@@ -102,12 +102,18 @@
 
 这样能减少死代码干扰，并避免新功能落在即将删除的旧耦合上。
 
-### 7. 关于 `Equip` / `Bind` 文案
+### 7. 关于动作文案与鼠标职责
 
-这个意见**合理**。
+当前交互应以最新菜单语义为准：
 
-按当前代码语义，本计划统一使用 `Bind`。  
-如果最终 UI 想保留更偏 JRPG 的文案，例如显示成 `Equip`，那也只应视为表现层文案，后端行为仍然是“绑定到 hotbar”。
+- backpack 子菜单不再提供 `Bind`
+- backpack 仅在物品可消费时显示 `Use`
+- backpack 左键只负责选中与刷新 detail
+- backpack 右键才打开子菜单
+- menu hotbar 左键直接触发 `HotbarActivateCommand`
+- menu hotbar 右键才打开子菜单
+
+也就是说，`Bind` 仍是拖拽绑定层面的运行时语义，但不再作为 backpack 子菜单动作暴露。
 
 ## 需要修正的地方
 
@@ -255,7 +261,10 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
 要求：
 
 - 键盘/手柄 `Confirm` 打开子菜单
-- 鼠标左键点击已选中槽位也可打开子菜单
+- backpack 鼠标左键只更新选中态与 detail，不打开子菜单
+- backpack 鼠标右键打开子菜单
+- menu hotbar 鼠标左键直接激活对应槽位
+- menu hotbar 鼠标右键打开子菜单
 - 鼠标拖拽开始时不打开子菜单
 - 子菜单打开时暂停主网格焦点漫游和 tooltip 漫游
 - 子菜单内部使用垂直列表导航，`nav-up/down` 在动作列表内收敛
@@ -268,11 +277,6 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
   - 条件：物品存在 `on_use_`
   - 行为：`UseItemCommand{ target, inventory_slot_index, 1, false }`
   - 说明：必须使用 `dispatcher.trigger(...)`，不使用 `enqueue`
-
-- `Bind`
-  - 条件：槽位非空
-  - 行为：绑定到当前 active hotbar slot，并触发激活
-  - 说明：这是当前代码语义，不是真正 RPG 装备
 
 - `Discard`
   - 条件：槽位非空
@@ -290,12 +294,13 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
 - 仅对当前选中的非空 backpack slot 生效
 - 若当前选中的是 hotbar 槽位或空背包槽位，则按钮禁用或点击无效
 
-### Step 5: 补齐 hotbar slot 的键盘/手柄交互
+### Step 5: 补齐 hotbar slot 的交互
 
-当前 menu hotbar 已有鼠标与拖拽路径，但键盘确认路径还不完整。  
+当前 menu hotbar 已有拖拽路径，但还需要统一鼠标与键盘确认语义。
 补齐后建议提供：
 
 - `Activate`
+  - 左键直接触发，或在子菜单中显式执行
   - 将该 hotbar 槽设为当前 active slot
 
 - `Use`
@@ -352,10 +357,14 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
 - 打开/关闭菜单
 - backpack 焦点移动
 - menu hotbar 焦点移动
+- backpack 左键只选中、不弹菜单
+- backpack 右键打开子菜单
 - 背包 -> hotbar 拖拽
 - hotbar -> 背包 拖拽
 - hotbar -> hotbar 换位/重绑
-- backpack 子菜单 `Use / Bind / Discard`
+- menu hotbar 左键直接激活
+- menu hotbar 右键打开子菜单
+- backpack 子菜单 `Use / Discard`
 - `trash-btn` -> discard 确认
 - hotbar 子菜单 `Activate / Use / Unbind`
 - 删除旧 `InventoryUI` 后探索态 `HotbarUI` 仍正常工作
@@ -364,17 +373,19 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
 
 ## 待办
 
-- [ ] Step 1: 删除旧 `InventoryUI` 与旧 inventory RML/RCSS
-- [ ] Step 1: 清理 `GameScene` 中旧 inventory UI 集成，保留探索态 `HotbarUI`
-- [ ] Step 1: 精简 `HotbarUI` 对旧 `InventoryUI` 的耦合
-- [ ] Step 2: 删除 `active_page_` 与相关分页命令/事件字段
-- [ ] Step 3: 为 `InventoryMenuScene` 增加操作子菜单状态机与对应 RML/RCSS
-- [ ] Step 4: 接通 backpack slot 的 `Use / Bind / Discard / Cancel`
-- [ ] Step 4: 让 `trash-btn` 复用 discard 确认逻辑
-- [ ] Step 5: 接通 hotbar slot 的 `Activate / Use / Unbind / Cancel`
-- [ ] Step 6: 将角色信息区改成真实数据绑定 + 占位显示
-- [ ] Step 7: 新增 `InventorySortCommand`，并在排序后修复 hotbar 映射
-- [ ] Step 8: 更新 `CMakeLists.txt` 并完成整体测试
+- [x] Step 1: 删除旧 `InventoryUI` 与旧 inventory RML/RCSS
+- [x] Step 1: 清理 `GameScene` 中旧 inventory UI 集成，保留探索态 `HotbarUI`
+- [x] Step 1: 精简 `HotbarUI` 对旧 `InventoryUI` 的耦合
+- [x] Step 2: 删除 `active_page_` 与相关分页命令/事件字段
+- [x] Step 3: 为 `InventoryMenuScene` 增加操作子菜单状态机与对应 RML/RCSS
+- [x] Step 4: 接通 backpack slot 的 `Use / Discard / Cancel`
+- [x] Step 4: 让 `trash-btn` 复用 discard 确认逻辑
+- [x] Step 4: 调整 backpack 鼠标交互为“左键选中，右键开菜单”
+- [x] Step 5: 接通 hotbar slot 的 `Activate / Use / Unbind / Cancel`
+- [x] Step 5: 调整 hotbar 鼠标交互为“左键激活，右键开菜单”
+- [x] Step 6: 将角色信息区改成真实数据绑定 + 占位显示
+- [x] Step 7: 新增 `InventorySortCommand`，并在排序后修复 hotbar 映射
+- [x] Step 8: 更新 `CMakeLists.txt` 并完成整体测试
 
 ## 非目标
 
@@ -395,4 +406,7 @@ Phase 3 继续以 `InventoryMenuScene` 为菜单主入口，保留当前 menu ho
 - 菜单内 hotbar 区域保留
 - `UseItemCommand` 明确使用 `trigger + show_prompt=false`
 - `trash-btn` 明确复用 discard 流程
+- backpack 子菜单收敛为 `Use / Discard / Cancel`
+- backpack 左键只选中，右键才开菜单
+- menu hotbar 左键直接激活，右键才开菜单
 - 执行顺序调整为“先清理，后补功能”
