@@ -29,9 +29,17 @@
                      data-for="hslot : hotbar_slots"
                      data-class-has-item="hslot.has_item"
                      data-class-has-count="hslot.has_count"
-                     data-class-hb-active="hslot.is_active">
-                    <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
-                    <div class="hb-slot-count">{{ hslot.count_text }}</div>
+                     data-class-hb-active="hslot.is_active"
+                     data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)">
+                    <div class="hb-slot-drag-proxy"
+                         data-class-draggable="hslot.can_drag"
+                         data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
+                         data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
+                         data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
+                         data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
+                        <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
+                        <div class="hb-slot-count">{{ hslot.count_text }}</div>
+                    </div>
                     <div class="hb-slot-index">{{ hslot.label }}</div>
                 </div>
             </div>
@@ -43,9 +51,17 @@
                 <div class="bp-slot"
                      data-for="slot : backpack_slots"
                      data-class-has-item="slot.has_item"
-                     data-class-has-count="slot.has_count">
-                    <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
-                    <div class="bp-slot-count">{{ slot.count_text }}</div>
+                     data-class-has-count="slot.has_count"
+                     data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)">
+                    <div class="bp-slot-drag-proxy"
+                         data-class-draggable="slot.can_drag"
+                         data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
+                         data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
+                         data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
+                         data-event-dragend="bp_slot_drag_end(slot.slot_index)">
+                        <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                        <div class="bp-slot-count">{{ slot.count_text }}</div>
+                    </div>
                 </div>
             </div>
             <button id="trash-btn" data-command="trash"></button>
