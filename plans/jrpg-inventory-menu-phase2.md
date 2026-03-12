@@ -91,12 +91,12 @@ RML 中每个 slot 元素设置 `tab-index: auto` + `nav-up/down/left/right: aut
 
 ## 待办
 
-- [ ] Step 1: InventoryMenuScene 骨架 (h/cpp)
-- [ ] Step 2: inventory_menu.rml/rcss (布局 + spritesheet)
-- [ ] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
-- [ ] Step 4: GameScene 集成 (pushScene 替代 toggle)
-- [ ] Step 5: 键盘/手柄网格导航
+- [x] Step 1: InventoryMenuScene 骨架 (h/cpp)
+- [x] Step 2: inventory_menu.rml/rcss (布局 + spritesheet)
+- [x] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
+- [x] Step 4: GameScene 集成 (pushScene 替代 toggle)
+- [x] Step 5: 键盘/手柄网格导航
 - [ ] Step 6: Tooltip 集成
-- [ ] Step 7: 标签页 UI
-- [ ] 更新 CMakeLists.txt
-- [ ] 构建验证 + 运行测试
+- [x] Step 7: 标签页 UI
+- [x] 更新 CMakeLists.txt
+- [x] 构建验证 + 运行测试

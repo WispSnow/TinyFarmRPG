@@ -1,0 +1,69 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="inventory_menu.rcss"/>
+</head>
+<body data-model="inventory_menu">
+    <div id="menu-overlay"></div>
+
+    <div id="menu-panel">
+
+        <!-- Tabs -->
+        <div id="tab-bar">
+            <button class="tab-icon tab-active" id="tab-inventory"></button>
+            <button class="tab-icon tab-disabled" id="tab-equipment" disabled></button>
+            <button class="tab-icon tab-disabled" id="tab-quests" disabled></button>
+            <button class="tab-icon tab-disabled" id="tab-map" disabled></button>
+            <button class="tab-icon tab-disabled" id="tab-options" disabled></button>
+        </div>
+
+        <!-- Separator -->
+        <div class="menu-separator"></div>
+
+        <!-- Backpack grid 10x4 -->
+        <div id="backpack-area">
+            <div id="backpack-grid">
+                <div class="bp-slot"
+                     data-for="slot : backpack_slots"
+                     data-class-has-item="slot.has_item"
+                     data-class-has-count="slot.has_count">
+                    <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                    <div class="bp-slot-count">{{ slot.count_text }}</div>
+                </div>
+            </div>
+            <button id="trash-btn" data-command="trash"></button>
+        </div>
+
+        <!-- Separator -->
+        <div class="menu-separator"></div>
+
+        <!-- Character info area -->
+        <div id="char-area">
+            <div id="char-portrait"></div>
+
+            <div id="char-info">
+                <div id="char-name">Player</div>
+                <div id="char-title">Lv.1 Farmer</div>
+            </div>
+
+            <div id="equip-grid">
+                <div class="eq-slot" id="eq-hat"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-neck"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-shirt"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-gloves"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-pants"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-ring1"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-boots"><div class="eq-placeholder"></div></div>
+                <div class="eq-slot" id="eq-ring2"><div class="eq-placeholder"></div></div>
+            </div>
+
+            <div id="char-stats">
+                <div id="gold-label">Gold: 0</div>
+                <div id="farm-label">TinyFarm</div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>
