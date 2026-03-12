@@ -5,6 +5,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
@@ -50,7 +51,6 @@ constexpr float ACTION_MENU_MAX_TOP_DP = 138.0F;
 
 enum class MenuActionId : int {
     Use = 1,
-    Bind,
     Discard,
     Activate,
     Unbind,
@@ -298,14 +298,16 @@ bool InventoryMenuScene::initUI() {
         };
 
     if (!bind_event("bp_slot_focus", &InventoryMenuScene::onBpSlotFocus) ||
-        !bind_event("bp_slot_click", &InventoryMenuScene::onBpSlotClick) ||
+        !bind_event("bp_slot_mouse_down", &InventoryMenuScene::onBpSlotMouseDown) ||
+        !bind_event("bp_slot_mouse_up", &InventoryMenuScene::onBpSlotMouseUp) ||
         !bind_event("bp_slot_hover_enter", &InventoryMenuScene::onBpSlotHoverEnter) ||
         !bind_event("bp_slot_hover_exit", &InventoryMenuScene::onBpSlotHoverExit) ||
         !bind_event("bp_slot_drag_start", &InventoryMenuScene::onBpSlotDragStart) ||
         !bind_event("bp_slot_drag_drop", &InventoryMenuScene::onBpSlotDragDrop) ||
         !bind_event("bp_slot_drag_end", &InventoryMenuScene::onBpSlotDragEnd) ||
         !bind_event("hb_slot_focus", &InventoryMenuScene::onHbSlotFocus) ||
-        !bind_event("hb_slot_click", &InventoryMenuScene::onHbSlotClick) ||
+        !bind_event("hb_slot_mouse_down", &InventoryMenuScene::onHbSlotMouseDown) ||
+        !bind_event("hb_slot_mouse_up", &InventoryMenuScene::onHbSlotMouseUp) ||
         !bind_event("hb_slot_hover_enter", &InventoryMenuScene::onHbSlotHoverEnter) ||
         !bind_event("hb_slot_hover_exit", &InventoryMenuScene::onHbSlotHoverExit) ||
         !bind_event("hb_slot_drag_start", &InventoryMenuScene::onHbSlotDragStart) ||
@@ -624,6 +626,7 @@ void InventoryMenuScene::clearSelectionAndDetail() {
 void InventoryMenuScene::clearDragState() {
     dragging_ = false;
     drop_handled_ = false;
+    suppress_next_primary_mouse_up_ = false;
     dragging_from_hotbar_ = false;
     dragging_slot_index_ = -1;
 }
@@ -669,7 +672,6 @@ void InventoryMenuScene::openBackpackActionMenu(int slot_index) {
     if (hasUsableItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index)) {
         action_menu_entries_.push_back({static_cast<int>(MenuActionId::Use), "Use", false});
     }
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Bind), "Bind", false});
     action_menu_entries_.push_back({static_cast<int>(MenuActionId::Discard), "Discard", true});
     action_menu_entries_.push_back({static_cast<int>(MenuActionId::Cancel), "Cancel", false});
 
@@ -824,16 +826,6 @@ void InventoryMenuScene::executeAction(int action_id) {
             }
             break;
         }
-        case MenuActionId::Bind: {
-            const auto* hotbar = tryGetHotbar(game_registry_, player_);
-            const int target_hotbar_slot = hotbar ? std::clamp(hotbar->active_slot_index_, 0, HOTBAR_SLOTS - 1) : -1;
-            closeActionMenu();
-            if (detail_bp_slot_ >= 0 && target_hotbar_slot >= 0) {
-                context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, target_hotbar_slot, detail_bp_slot_});
-                context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{player_, target_hotbar_slot});
-            }
-            break;
-        }
         case MenuActionId::Discard:
             if (detail_bp_slot_ >= 0) {
                 openDiscardConfirmForBackpackSlot(detail_bp_slot_);
@@ -964,8 +956,13 @@ void InventoryMenuScene::onBpSlotFocus(int slot_index, Rml::Event& /*event*/) {
     updateDetailForInventorySlot(slot_index);
 }
 
-void InventoryMenuScene::onBpSlotClick(int slot_index, Rml::Event& event) {
+void InventoryMenuScene::onBpSlotMouseDown(int slot_index, Rml::Event& event) {
     if (slot_index < 0 || slot_index >= TOTAL_SLOTS || dragging_) {
+        return;
+    }
+
+    const int button = event.GetParameter("button", -1);
+    if (!engine::ui::rmlui::isSecondaryMouseButton(button)) {
         return;
     }
 
@@ -982,6 +979,36 @@ void InventoryMenuScene::onBpSlotClick(int slot_index, Rml::Event& event) {
     }
 
     openBackpackActionMenu(slot_index);
+}
+
+void InventoryMenuScene::onBpSlotMouseUp(int slot_index, Rml::Event& event) {
+    if (slot_index < 0 || slot_index >= TOTAL_SLOTS || dragging_) {
+        return;
+    }
+
+    const int button = event.GetParameter("button", -1);
+    if (!engine::ui::rmlui::isPrimaryMouseButton(button)) {
+        return;
+    }
+
+    event.StopPropagation();
+    if (suppress_next_primary_mouse_up_) {
+        suppress_next_primary_mouse_up_ = false;
+        return;
+    }
+
+    selectBpSlot(slot_index);
+    detail_bp_slot_ = slot_index;
+    detail_hb_slot_ = -1;
+    updateDetailForInventorySlot(slot_index);
+
+    const auto* inventory = tryGetInventory(game_registry_, player_);
+    if (!inventory || slot_index >= inventory->slotCount() || inventory->slot(slot_index).empty()) {
+        closeActionMenu(false);
+        return;
+    }
+
+    closeActionMenu(false);
 }
 
 void InventoryMenuScene::onBpSlotHoverEnter(int slot_index, Rml::Event& event) {
@@ -1021,6 +1048,7 @@ void InventoryMenuScene::onBpSlotDragStart(int slot_index, Rml::Event& event) {
     clearTooltip();
     dragging_ = true;
     drop_handled_ = false;
+    suppress_next_primary_mouse_up_ = true;
     dragging_from_hotbar_ = false;
     dragging_slot_index_ = slot_index;
 }
@@ -1074,8 +1102,13 @@ void InventoryMenuScene::onHbSlotFocus(int slot_index, Rml::Event& /*event*/) {
     updateDetailForHotbarSlot(slot_index);
 }
 
-void InventoryMenuScene::onHbSlotClick(int slot_index, Rml::Event& event) {
+void InventoryMenuScene::onHbSlotMouseDown(int slot_index, Rml::Event& event) {
     if (slot_index < 0 || slot_index >= HOTBAR_SLOTS || player_ == entt::null || dragging_) {
+        return;
+    }
+
+    const int button = event.GetParameter("button", -1);
+    if (!engine::ui::rmlui::isSecondaryMouseButton(button)) {
         return;
     }
 
@@ -1088,11 +1121,35 @@ void InventoryMenuScene::onHbSlotClick(int slot_index, Rml::Event& event) {
     const auto* hotbar = tryGetHotbar(game_registry_, player_);
     if (!hotbar || hotbar->slot(slot_index).empty()) {
         closeActionMenu(false);
-        context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{player_, slot_index});
         return;
     }
 
     openHotbarActionMenu(slot_index);
+}
+
+void InventoryMenuScene::onHbSlotMouseUp(int slot_index, Rml::Event& event) {
+    if (slot_index < 0 || slot_index >= HOTBAR_SLOTS || player_ == entt::null || dragging_) {
+        return;
+    }
+
+    const int button = event.GetParameter("button", -1);
+    if (!engine::ui::rmlui::isPrimaryMouseButton(button)) {
+        return;
+    }
+
+    event.StopPropagation();
+    if (suppress_next_primary_mouse_up_) {
+        suppress_next_primary_mouse_up_ = false;
+        return;
+    }
+
+    selectHbSlot(slot_index);
+    detail_hb_slot_ = slot_index;
+    detail_bp_slot_ = -1;
+    updateDetailForHotbarSlot(slot_index);
+
+    closeActionMenu(false);
+    context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{player_, slot_index});
 }
 
 void InventoryMenuScene::onHbSlotHoverEnter(int slot_index, Rml::Event& event) {
@@ -1132,6 +1189,7 @@ void InventoryMenuScene::onHbSlotDragStart(int slot_index, Rml::Event& event) {
     clearTooltip();
     dragging_ = true;
     drop_handled_ = false;
+    suppress_next_primary_mouse_up_ = true;
     dragging_from_hotbar_ = true;
     dragging_slot_index_ = slot_index;
 }
