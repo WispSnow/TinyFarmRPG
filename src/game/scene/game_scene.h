@@ -23,7 +23,6 @@ namespace game::defs {
 }
 
 namespace game::ui {
-    class InventoryUI;
     class HotbarUI;
     class TimeClockHud;
     class DialogueBubbleView;
@@ -69,7 +68,6 @@ class GameScene : public engine::scene::Scene {
     bool abort_to_title_{false};
     bool context_pushed_{false};
 
-    std::unique_ptr<game::ui::InventoryUI> inventory_ui_{};
     std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};
     std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
     std::array<std::unique_ptr<game::ui::DialogueBubbleView>, 3> dialogue_bubbles_{};

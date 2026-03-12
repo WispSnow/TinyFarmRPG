@@ -42,9 +42,8 @@ struct InventoryMoveCommand {
     bool allow_merge{true};
 };
 
-struct InventorySetActivePageCommand {
+struct InventorySortCommand {
     entt::entity target{entt::null};
-    int active_page{0};
 };
 
 struct HotbarBindCommand {

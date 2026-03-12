@@ -130,6 +130,7 @@ body, div, h1, h2, h3, h4, p, hr, button {
 }
 
 #inventory-col {
+    position: relative;
     width: 218dp;
 }
 
@@ -316,12 +317,35 @@ body, div, h1, h2, h3, h4, p, hr, button {
     padding: 0 1dp 0 0;
 }
 
-/* --- Trash Button (in tab-bar) --- */
+/* --- Tab Actions --- */
+
+#sort-btn {
+    min-width: 36dp;
+    height: 20dp;
+    margin-left: auto;
+    padding: 2dp 6dp;
+    background-color: #2e3440cc;
+    border: 1dp #7aa2f7;
+    color: #f7f7f7;
+    font-size: 9dp;
+    text-align: center;
+    vertical-align: middle;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+#sort-btn:hover,
+#sort-btn:focus {
+    background-color: #3b4252;
+    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
+}
 
 #trash-btn {
     width: 20dp;
     height: 20dp;
-    margin-left: auto;
     padding: 2dp;
     decorator: image(trash-closed);
     tab-index: auto;
@@ -335,6 +359,53 @@ body, div, h1, h2, h3, h4, p, hr, button {
 #trash-btn:focus {
     decorator: image(trash-open);
     box-shadow: #f7768ecc 0dp 0dp 0dp 1dp;
+}
+
+/* --- Action Menu --- */
+
+#action-menu {
+    position: absolute;
+    width: 84dp;
+    padding: 4dp;
+    background-color: #1f2335f0;
+    border: 1dp #7aa2f7;
+    z-index: 8;
+}
+
+#action-menu-title {
+    font-size: 9dp;
+    color: #c0caf5;
+    margin-bottom: 3dp;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.action-menu-entry {
+    width: 100%;
+    min-height: 16dp;
+    padding: 2dp 4dp;
+    background-color: #24283bcc;
+    color: #f7f7f7;
+    font-size: 9dp;
+    text-align: left;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.action-menu-entry + .action-menu-entry {
+    margin-top: 2dp;
+}
+
+.action-menu-entry:hover,
+.action-menu-entry:focus {
+    background-color: #414868;
+    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
+}
+
+.action-danger {
+    color: #f7768e;
 }
 
 /* --- Detail Panel --- */

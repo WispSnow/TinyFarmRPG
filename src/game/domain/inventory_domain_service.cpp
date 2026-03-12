@@ -30,13 +30,11 @@ bool InventoryDomainService::ensureInventory(entt::entity target) {
 
 void InventoryDomainService::emitChanged(entt::entity target,
                                          const std::vector<game::defs::InventorySlotUpdate>& diff,
-                                         int active_page,
                                          bool from_add) const {
     game::defs::InventoryChanged evt{};
     evt.target = target;
     evt.slots = diff;
     evt.full_sync = false;
-    evt.active_page = active_page;
     evt.from_add = from_add;
     dispatcher_.trigger(evt);
 }
@@ -92,11 +90,10 @@ InventoryMutationResult InventoryDomainService::addItem(entt::entity target,
     }
 
     if (!diff.empty()) {
-        emitChanged(target, diff, inv.active_page_, true);
+        emitChanged(target, diff, true);
     }
 
     result.changed_slots = diff;
-    result.active_page = inv.active_page_;
     result.accepted = count - remaining;
     result.rejected = remaining;
 
@@ -152,11 +149,10 @@ InventoryMutationResult InventoryDomainService::removeItem(entt::entity target,
     }
 
     if (!diff.empty()) {
-        emitChanged(target, diff, inv.active_page_, false);
+        emitChanged(target, diff, false);
     }
 
     result.changed_slots = diff;
-    result.active_page = inv.active_page_;
     result.accepted = count - remaining;
     result.rejected = remaining;
     return result;

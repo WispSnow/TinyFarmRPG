@@ -1,4 +1,5 @@
 #include "inventory_system.h"
+#include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/domain/inventory_domain_service.h"
@@ -7,8 +8,38 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
+#include <string_view>
 
 namespace game::system {
+
+namespace {
+
+[[nodiscard]] int categoryOrder(game::data::ItemCategory category) {
+    using game::data::ItemCategory;
+    switch (category) {
+        case ItemCategory::Tool: return 0;
+        case ItemCategory::Seed: return 1;
+        case ItemCategory::Consumable: return 2;
+        case ItemCategory::Crop: return 3;
+        case ItemCategory::Material: return 4;
+        case ItemCategory::Unknown:
+        default:
+            return 5;
+    }
+}
+
+[[nodiscard]] std::vector<game::defs::InventorySlotUpdate>
+collectInventoryUpdates(const game::component::InventoryComponent& inventory) {
+    std::vector<game::defs::InventorySlotUpdate> updates;
+    updates.reserve(static_cast<std::size_t>(inventory.slotCount()));
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        const auto& stack = inventory.slot(i);
+        updates.push_back({i, stack.item_id_, stack.count_});
+    }
+    return updates;
+}
+
+} // namespace
 
 InventorySystem::InventorySystem(entt::registry& registry,
                                  entt::dispatcher& dispatcher,
@@ -30,7 +61,7 @@ void InventorySystem::subscribe() {
     dispatcher_.sink<game::defs::RemoveItemCommand>().connect<&InventorySystem::onRemoveItem>(this);
     dispatcher_.sink<game::defs::InventorySyncCommand>().connect<&InventorySystem::onSync>(this);
     dispatcher_.sink<game::defs::InventoryMoveCommand>().connect<&InventorySystem::onMoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySetActivePageCommand>().connect<&InventorySystem::onSetActivePage>(this);
+    dispatcher_.sink<game::defs::InventorySortCommand>().connect<&InventorySystem::onSort>(this);
 }
 
 void InventorySystem::unsubscribe() {
@@ -38,7 +69,7 @@ void InventorySystem::unsubscribe() {
     dispatcher_.sink<game::defs::RemoveItemCommand>().disconnect<&InventorySystem::onRemoveItem>(this);
     dispatcher_.sink<game::defs::InventorySyncCommand>().disconnect<&InventorySystem::onSync>(this);
     dispatcher_.sink<game::defs::InventoryMoveCommand>().disconnect<&InventorySystem::onMoveItem>(this);
-    dispatcher_.sink<game::defs::InventorySetActivePageCommand>().disconnect<&InventorySystem::onSetActivePage>(this);
+    dispatcher_.sink<game::defs::InventorySortCommand>().disconnect<&InventorySystem::onSort>(this);
 }
 
 bool InventorySystem::ensureInventory(entt::entity target) {
@@ -52,7 +83,6 @@ bool InventorySystem::ensureInventory(entt::entity target) {
 void InventorySystem::emitChanged(entt::entity target,
                                   const std::vector<game::defs::InventorySlotUpdate>& diff,
                                   bool full_sync,
-                                  int active_page,
                                   game::defs::InventoryMoveKind move_kind,
                                   int move_from_slot,
                                   int move_to_slot) {
@@ -60,7 +90,6 @@ void InventorySystem::emitChanged(entt::entity target,
     evt.target = target;
     evt.slots = diff;
     evt.full_sync = full_sync;
-    evt.active_page = active_page;
     evt.from_add = false;
     evt.move_kind = move_kind;
     evt.move_from_slot = move_from_slot;
@@ -82,22 +111,7 @@ void InventorySystem::onSync(const game::defs::InventorySyncCommand& evt) {
     if (evt.target == entt::null) return;
     if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
     auto& inv = registry_.get<game::component::InventoryComponent>(evt.target);
-
-    std::vector<game::defs::InventorySlotUpdate> all;
-    all.reserve(static_cast<std::size_t>(inv.slotCount()));
-    for (int i = 0; i < inv.slotCount(); ++i) {
-        const auto& stack = inv.slot(i);
-        all.push_back({i, stack.item_id_, stack.count_});
-    }
-    emitChanged(evt.target, all, true, inv.active_page_);
-}
-
-void InventorySystem::onSetActivePage(const game::defs::InventorySetActivePageCommand& evt) {
-    if (evt.target == entt::null) return;
-    if (!ensureInventory(evt.target)) return;
-
-    auto& inv = registry_.get<game::component::InventoryComponent>(evt.target);
-    inv.active_page_ = std::clamp(evt.active_page, 0, game::component::InventoryComponent::PAGE_COUNT - 1);
+    emitChanged(evt.target, collectInventoryUpdates(inv), true);
 }
 
 void InventorySystem::onMoveItem(const game::defs::InventoryMoveCommand& evt) {
@@ -145,7 +159,85 @@ void InventorySystem::onMoveItem(const game::defs::InventoryMoveCommand& evt) {
     }
 
     if (!diff.empty()) {
-        emitChanged(evt.target, diff, false, inv.active_page_, move_kind, evt.from_slot, evt.to_slot);
+        emitChanged(evt.target, diff, false, move_kind, evt.from_slot, evt.to_slot);
+    }
+}
+
+void InventorySystem::onSort(const game::defs::InventorySortCommand& evt) {
+    if (evt.target == entt::null) return;
+    if (!registry_.valid(evt.target) || !registry_.all_of<game::component::InventoryComponent>(evt.target)) return;
+
+    auto& inventory = registry_.get<game::component::InventoryComponent>(evt.target);
+
+    struct SortEntry {
+        game::component::ItemStack stack{};
+        int original_index{-1};
+    };
+
+    std::vector<SortEntry> entries;
+    entries.reserve(static_cast<std::size_t>(inventory.slotCount()));
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        entries.push_back({inventory.slot(i), i});
+    }
+
+    std::stable_sort(entries.begin(), entries.end(), [this](const SortEntry& lhs, const SortEntry& rhs) {
+        const bool lhs_empty = lhs.stack.empty();
+        const bool rhs_empty = rhs.stack.empty();
+        if (lhs_empty != rhs_empty) {
+            return !lhs_empty;
+        }
+        if (lhs_empty) {
+            return lhs.original_index < rhs.original_index;
+        }
+
+        const auto* lhs_item = catalog_.findItem(lhs.stack.item_id_);
+        const auto* rhs_item = catalog_.findItem(rhs.stack.item_id_);
+        const int lhs_category = categoryOrder(lhs_item ? lhs_item->category_ : game::data::ItemCategory::Unknown);
+        const int rhs_category = categoryOrder(rhs_item ? rhs_item->category_ : game::data::ItemCategory::Unknown);
+        if (lhs_category != rhs_category) {
+            return lhs_category < rhs_category;
+        }
+
+        const std::string_view lhs_name = lhs_item ? std::string_view{lhs_item->display_name_} : std::string_view{};
+        const std::string_view rhs_name = rhs_item ? std::string_view{rhs_item->display_name_} : std::string_view{};
+        if (lhs_name != rhs_name) {
+            return lhs_name < rhs_name;
+        }
+
+        return lhs.original_index < rhs.original_index;
+    });
+
+    std::vector<game::component::ItemStack> sorted_slots(static_cast<std::size_t>(inventory.slotCount()));
+    std::vector<int> old_to_new(static_cast<std::size_t>(inventory.slotCount()), -1);
+    for (int new_index = 0; new_index < inventory.slotCount(); ++new_index) {
+        sorted_slots[static_cast<std::size_t>(new_index)] = entries[static_cast<std::size_t>(new_index)].stack;
+        if (!entries[static_cast<std::size_t>(new_index)].stack.empty()) {
+            old_to_new[static_cast<std::size_t>(entries[static_cast<std::size_t>(new_index)].original_index)] = new_index;
+        }
+    }
+    inventory.slots_ = std::move(sorted_slots);
+
+    if (auto* hotbar = registry_.try_get<game::component::HotbarComponent>(evt.target)) {
+        for (int i = 0; i < game::component::HotbarComponent::SLOT_COUNT; ++i) {
+            auto& slot = hotbar->slot(i);
+            const int old_inventory_slot = slot.inventory_slot_index_;
+            if (old_inventory_slot < 0 || old_inventory_slot >= inventory.slotCount()) {
+                slot.clear();
+                continue;
+            }
+
+            const int new_inventory_slot = old_to_new[static_cast<std::size_t>(old_inventory_slot)];
+            if (new_inventory_slot < 0 || new_inventory_slot >= inventory.slotCount() || inventory.slot(new_inventory_slot).empty()) {
+                slot.clear();
+                continue;
+            }
+            slot.inventory_slot_index_ = new_inventory_slot;
+        }
+    }
+
+    emitChanged(evt.target, collectInventoryUpdates(inventory), true);
+    if (registry_.all_of<game::component::HotbarComponent>(evt.target)) {
+        dispatcher_.trigger(game::defs::HotbarSyncCommand{evt.target, true});
     }
 }
 

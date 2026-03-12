@@ -415,7 +415,6 @@ SaveData SaveService::capture(std::string& out_error) const {
     }
 
     if (const auto* inv = registry_.try_get<game::component::InventoryComponent>(player)) {
-        out.player.inventory.active_page = inv->active_page_;
         out.player.inventory.slots.clear();
         out.player.inventory.slots.reserve(inv->slots_.size());
         for (const auto& slot : inv->slots_) {
@@ -722,7 +721,6 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         return false;
     }
 
-    inv->active_page_ = data.player.inventory.active_page;
     inv->clearAll();
     for (std::size_t i = 0; i < inv->slots_.size() && i < data.player.inventory.slots.size(); ++i) {
         const auto& slot = data.player.inventory.slots[i];

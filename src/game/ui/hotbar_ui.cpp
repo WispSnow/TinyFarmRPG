@@ -4,7 +4,6 @@
 #include "engine/ui/rmlui/rml_ui_layer.h"
 #include "game/component/hotbar_component.h"
 #include "game/defs/commands.h"
-#include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/rml_item_icon_helpers.h"
 
@@ -202,7 +201,7 @@ std::optional<engine::ui::SlotItem> HotbarUI::getSlotItemData(int slot_index) co
 }
 
 void HotbarUI::showTooltipForSlot(int slot_index) {
-    if (!tooltip_ui_ || !item_catalog_ || dragging_ || !visible_ || (inventory_ui_ && inventory_ui_->isDragging())) {
+    if (!tooltip_ui_ || !item_catalog_ || dragging_ || !visible_) {
         return;
     }
 
@@ -344,10 +343,6 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
         return;
     }
 
-    if (button == 0 && inventory_ui_ && inventory_ui_->isDragging()) {
-        return;
-    }
-
     if (target_ == entt::null) {
         return;
     }
@@ -424,51 +419,29 @@ void HotbarUI::onSlotDragStart(int slot_index, Rml::Event& event) {
 }
 
 void HotbarUI::onSlotDragDrop(int slot_index, Rml::Event& event) {
-    if (!isValidSlotIndex(slot_index) || target_ == entt::null) {
-        return;
-    }
-
-    if (dragging_) {
-        if (dragging_slot_ < 0) {
-            return;
-        }
-
-        event.StopPropagation();
-        clearTooltip();
-        drop_handled_ = true;
-
-        if (slot_index == dragging_slot_) {
-            context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
-            return;
-        }
-
-        const int dst_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(slot_index)];
-        if (dst_inventory_index >= 0) {
-            context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, dragging_inventory_slot_});
-            context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, dragging_slot_, dst_inventory_index});
-        } else {
-            context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, dragging_inventory_slot_});
-            context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, dragging_slot_});
-        }
-
-        context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
-        return;
-    }
-
-    if (!inventory_ui_ || !inventory_ui_->isDragging()) {
-        return;
-    }
-
-    const int source_inventory_index = inventory_ui_->getDragInventoryIndex();
-    if (source_inventory_index < 0) {
+    if (!isValidSlotIndex(slot_index) || target_ == entt::null || !dragging_ || dragging_slot_ < 0) {
         return;
     }
 
     event.StopPropagation();
     clearTooltip();
-    suppress_next_primary_mouse_up_ = true;
-    context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, source_inventory_index});
-    inventory_ui_->notifyExternalDropHandled();
+    drop_handled_ = true;
+
+    if (slot_index == dragging_slot_) {
+        context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
+        return;
+    }
+
+    const int dst_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(slot_index)];
+    if (dst_inventory_index >= 0) {
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, dragging_inventory_slot_});
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, dragging_slot_, dst_inventory_index});
+    } else {
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, dragging_inventory_slot_});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, dragging_slot_});
+    }
+
+    context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
 }
 
 void HotbarUI::onSlotDragEnd(int slot_index, Rml::Event& event) {

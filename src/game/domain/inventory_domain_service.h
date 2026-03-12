@@ -17,7 +17,6 @@ namespace game::domain {
 struct InventoryMutationResult {
     entt::entity target{entt::null};
     std::vector<game::defs::InventorySlotUpdate> changed_slots{};
-    int active_page{0};
     int accepted{0};
     int rejected{0};
 };
@@ -45,7 +44,6 @@ public:
 private:
     void emitChanged(entt::entity target,
                      const std::vector<game::defs::InventorySlotUpdate>& diff,
-                     int active_page,
                      bool from_add) const;
 };
 
