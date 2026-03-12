@@ -1,0 +1,403 @@
+/* ==========================================================
+   L14: JRPG Battle Interface
+   ========================================================== */
+
+/* === Spritesheet === */
+
+@spritesheet battle-ui {
+    src: ../../../assets/textures/UI/learn_spritesheet.png;
+    resolution: 1x;
+
+    window-outer: 0px 0px 32px 32px;
+    window-inner: 4px 4px 24px 24px;
+}
+
+@spritesheet portraits {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
+    resolution: 1x;
+
+    face-0:   0px   0px 64px 64px;
+    face-1:  64px   0px 64px 64px;
+    face-2: 128px   0px 64px 64px;
+    face-3: 192px   0px 64px 64px;
+    face-4: 256px   0px 64px 64px;
+    face-5:   0px  64px 64px 64px;
+    face-6:  64px  64px 64px 64px;
+    face-7: 128px  64px 64px 64px;
+    face-8: 192px  64px 64px 64px;
+    face-9: 256px  64px 64px 64px;
+    face-10:  0px 128px 64px 64px;
+    face-11: 64px 128px 64px 64px;
+    face-12:128px 128px 64px 64px;
+    face-13:192px 128px 64px 64px;
+    face-14:256px 128px 64px 64px;
+}
+
+/* === Reset === */
+body, div, h1, h2, h3, h4, p, hr, span {
+    display: block;
+}
+
+/* === Body === */
+body {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    font-size: 12dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #c0caf5;
+}
+
+/* === Window skin === */
+
+.jrpg-window {
+    decorator: ninepatch(window-outer, window-inner, 1.0);
+    padding: 4dp 6dp;
+}
+
+.win-blue   { image-color: #8090c0; }
+.win-teal   { image-color: #70a898; }
+.win-dark   { image-color: #606068; }
+.win-red    { image-color: #c07070; }
+
+.win-title {
+    font-size: 10dp;
+    font-weight: bold;
+    color: #e0af68;
+    padding-bottom: 2dp;
+    margin-bottom: 3dp;
+    border-bottom: 1dp #565f89;
+}
+
+/* ==========================================================
+   Main Layout
+   ========================================================== */
+
+/* Top: battle scene area (enemies / turn log) */
+.battle-scene {
+    flex-grow: 1;
+    position: relative;
+    background-color: #0d0d18;
+    overflow: visible;
+}
+
+.turn-indicator {
+    position: absolute;
+    top: 4dp;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 11dp;
+    color: #e0af68;
+    font-weight: bold;
+}
+
+/* Bottom: HUD area */
+.battle-hud {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+}
+
+/* ==========================================================
+   Command Menu (left panel)
+   ========================================================== */
+
+.cmd-panel {
+    width: 100dp;
+}
+
+.cmd-item {
+    padding: 2dp 4dp;
+    color: #c0caf5;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color padding-left color 0.1s cubic-out;
+}
+
+.cmd-item:hover {
+    background-color: #7aa2f720;
+    color: #7dcfff;
+}
+
+.cmd-item:focus-visible {
+    background-color: #7aa2f730;
+    color: #7dcfff;
+    padding-left: 10dp;
+}
+
+.cmd-item:active {
+    background-color: #7aa2f750;
+    color: #ffffff;
+}
+
+.cursor {
+    display: inline;
+    color: #e0af68;
+    margin-right: 2dp;
+    font-size: 10dp;
+    opacity: 0;
+}
+
+.cmd-item:focus-visible .cursor {
+    opacity: 1;
+    animation: 0.8s linear infinite cursor-blink;
+}
+
+@keyframes cursor-blink {
+    from { opacity: 1; }
+    50%  { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ==========================================================
+   Party Status Panel (right panel)
+   ========================================================== */
+
+.party-panel {
+    flex-grow: 1;
+}
+
+.party-list {
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+}
+
+.char-card {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+    padding: 2dp;
+    border: 1dp #33335500;
+    overflow: hidden;
+    transition: border-color 0.15s cubic-out;
+}
+
+.char-card.active-char {
+    border: 1dp #e0af6880;
+}
+
+.char-portrait {
+    width: 28dp;
+    height: 28dp;
+    min-width: 28dp;
+}
+
+.face-0  { decorator: image(face-0); }
+.face-1  { decorator: image(face-1); }
+.face-2  { decorator: image(face-2); }
+.face-3  { decorator: image(face-3); }
+.face-4  { decorator: image(face-4); }
+.face-5  { decorator: image(face-5); }
+
+.char-info {
+    flex-grow: 1;
+    width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1dp;
+    overflow: hidden;
+}
+
+.char-name {
+    font-size: 10dp;
+    font-weight: bold;
+    color: #c0caf5;
+}
+
+.stat-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 3dp;
+}
+
+.stat-label {
+    font-size: 9dp;
+    color: #565f89;
+    width: 16dp;
+}
+
+.stat-value {
+    font-size: 8dp;
+    color: #a9b1d6;
+    white-space: nowrap;
+}
+
+/* --- HP / MP bars --- */
+
+progress {
+    display: block;
+    flex-grow: 1;
+    height: 6dp;
+    background-color: #1a1b26;
+    border: 1dp #333355;
+}
+
+progress fill {
+    background-color: #9ece6a;
+}
+
+progress.mp-bar fill {
+    background-color: #7aa2f7;
+}
+
+/* Low HP warning */
+progress.hp-low fill {
+    background-color: #f7768e;
+}
+
+/* ==========================================================
+   Sub-menu (Skills / Items)
+   ========================================================== */
+
+.sub-panel {
+    position: absolute;
+    left: 100dp;
+    bottom: 0;
+    width: 200dp;
+}
+
+.sub-panel.hidden {
+    display: none;
+}
+
+.sub-list {
+    max-height: 120dp;
+    overflow: auto scroll;
+}
+
+.sub-item {
+    display: flex;
+    flex-direction: row;
+    padding: 2dp 4dp;
+    color: #c0caf5;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color padding-left color 0.1s cubic-out;
+}
+
+.sub-item:hover {
+    background-color: #7aa2f720;
+    color: #7dcfff;
+}
+
+.sub-item:focus-visible {
+    background-color: #7aa2f730;
+    color: #7dcfff;
+    padding-left: 10dp;
+}
+
+.sub-item:active {
+    background-color: #7aa2f750;
+    color: #ffffff;
+}
+
+.sub-item .cursor {
+    display: block;
+}
+
+.sub-item:focus-visible .cursor {
+    opacity: 1;
+    animation: 0.8s linear infinite cursor-blink;
+}
+
+.sub-item-name {
+    flex-grow: 1;
+}
+
+.sub-item-cost {
+    font-size: 10dp;
+    color: #565f89;
+    margin-left: 4dp;
+}
+
+/* Disabled item (not enough MP / qty 0) */
+.sub-item.disabled {
+    color: #444466;
+    tab-index: none;
+}
+
+.sub-item.disabled .sub-item-cost {
+    color: #333355;
+}
+
+/* Description bar (bottom of sub-panel) */
+.desc-bar {
+    font-size: 9dp;
+    color: #565f89;
+    padding-top: 3dp;
+    margin-top: 3dp;
+    border-top: 1dp #333355;
+    min-height: 12dp;
+}
+
+/* ==========================================================
+   Damage Popups
+   ========================================================== */
+
+.dmg-popup {
+    position: absolute;
+    font-size: 14dp;
+    font-weight: bold;
+    color: #f7768e;
+    opacity: 0;
+}
+
+.dmg-popup.heal {
+    color: #9ece6a;
+}
+
+.dmg-animate {
+    animation: 0.9s cubic-out dmg-float;
+}
+
+@keyframes dmg-float {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-30dp);
+        opacity: 0;
+    }
+}
+
+/* ==========================================================
+   Hit Flash Effect
+   ========================================================== */
+
+.hit-flash {
+    animation: 0.3s linear hit-blink;
+}
+
+@keyframes hit-blink {
+    0%  { opacity: 1; }
+    25% { opacity: 0.2; }
+    50% { opacity: 1; }
+    75% { opacity: 0.2; }
+    100%{ opacity: 1; }
+}
+
+/* ==========================================================
+   Battle Log
+   ========================================================== */
+
+.log-text {
+    position: absolute;
+    bottom: 4dp;
+    left: 8dp;
+    font-size: 10dp;
+    color: #565f89;
+}
