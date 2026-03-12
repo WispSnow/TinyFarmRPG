@@ -24,6 +24,24 @@
 
 JRPG 窗口的核心需求：**同一套边框素材适应不同尺寸**。九宫格（9-patch）装饰器把一张窗口素材切成 9 个区域——四角固定、四边拉伸、中心填充——天然满足此需求。
 
+```mermaid
+block-beta
+    columns 3
+    TL["角 (固定)"] TC["边 (水平拉伸)"] TR["角 (固定)"]
+    ML["边<br/>(垂直拉伸)"] MC["中心<br/>(双向拉伸)"] MR["边<br/>(垂直拉伸)"]
+    BL["角 (固定)"] BC["边 (水平拉伸)"] BR["角 (固定)"]
+
+    style TL fill:#e0af68,color:#1a1b26
+    style TR fill:#e0af68,color:#1a1b26
+    style BL fill:#e0af68,color:#1a1b26
+    style BR fill:#e0af68,color:#1a1b26
+    style TC fill:#7aa2f7,color:#1a1b26
+    style BC fill:#7aa2f7,color:#1a1b26
+    style ML fill:#7aa2f7,color:#1a1b26
+    style MR fill:#7aa2f7,color:#1a1b26
+    style MC fill:#565f89,color:#c0caf5
+```
+
 ### 2.2 ninepatch 声明
 
 ```css
@@ -104,6 +122,20 @@ JRPG 的操作模型以 **方向键 + 确认/取消** 为核心，与 Web 的鼠
 
 ### 3.1 tab-index — 使元素可聚焦
 
+```mermaid
+flowchart LR
+    KEY["⌨️ 方向键 / Tab"] --> CHECK{tab-index?}
+    CHECK -- "none (默认)" --> SKIP["跳过该元素"]
+    CHECK -- "auto" --> FOCUS["获得焦点"]
+    FOCUS --> NAV{nav-* 属性}
+    NAV -- "auto" --> HEUR["启发式搜索最近元素"]
+    NAV -- "#id" --> TARGET["跳转到指定元素"]
+    NAV -- "none" --> BLOCK["阻断该方向"]
+
+    FOCUS --> ENTER["Enter / Space"]
+    ENTER --> CLICK["触发 click 事件"]
+```
+
 ```css
 .menu-item {
     tab-index: auto;
@@ -151,6 +183,18 @@ JRPG 的操作模型以 **方向键 + 确认/取消** 为核心，与 Web 的鼠
 ### 3.4 焦点陷阱（模态弹窗）
 
 弹窗内的按钮应限制导航范围，防止焦点逃逸到背景：
+
+```mermaid
+flowchart LR
+    YES["#popup-yes"] -- "nav-right" --> NO["#popup-no"]
+    NO -- "nav-left" --> YES
+
+    YES -. "nav-up / down / left" .-> NONE1["none ✕"]
+    NO -. "nav-up / down / right" .-> NONE2["none ✕"]
+
+    style NONE1 fill:#f7768e,color:#1a1b26,stroke-dasharray:5 5
+    style NONE2 fill:#f7768e,color:#1a1b26,stroke-dasharray:5 5
+```
 
 ```css
 #popup-yes {
@@ -330,14 +374,35 @@ if (popup_close_timer_ <= 0.0f) {
 
 ### 6.2 完整弹窗流程
 
-1. 用户选择 "Exit" → C++ 调用 `openPopup()`
-2. 覆盖层 `display: flex` + 弹窗播放打开动画
-3. 焦点转移到 "No" 按钮（安全默认选择）
-4. 用户用左右键在 Yes/No 间切换
-5. Enter 确认 → `closePopup(true/false)`
-6. Escape 键 → `closePopup(false)`
-7. 关闭动画播放 → 倒计时结束 → 覆盖层 `display: none`
-8. 焦点返回主菜单
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant S as C++ Scene
+    participant D as RmlUi DOM
+
+    U->>S: 选择 "Exit" (click)
+    S->>D: overlay.SetClass("visible", true)
+    S->>D: popup.SetClass("anim-open", true)
+    S->>D: popup-no.Focus(true)
+    Note over D: 弹窗淡入 + 缩放动画
+
+    U->>S: 左右键切换 Yes/No
+    Note over D: nav-left / nav-right 在两个按钮间跳转
+
+    alt 按 Enter 确认
+        U->>S: Enter on focused button
+        S->>S: closePopup(confirmed)
+    else 按 Escape 取消
+        U->>S: Escape (keydown)
+        S->>S: closePopup(false)
+    end
+
+    S->>D: popup.SetClass("anim-close", true)
+    Note over S: popup_close_timer_ 倒计时
+    S->>D: overlay.SetClass("visible", false)
+    S->>D: mi-5.Focus(true)
+    Note over D: 焦点返回主菜单
+```
 
 ---
 
@@ -349,6 +414,26 @@ if (popup_close_timer_ <= 0.0f) {
 - 需要监听 `focus` 事件（data-event-focus 行为不确定）
 - 需要监听 `keydown` 事件处理 Escape 键
 - 所有逻辑集中在一个 `ProcessEvent` 方法中
+
+```mermaid
+flowchart TD
+    subgraph UIEventListener["UIEventListener::ProcessEvent"]
+        direction TB
+        TYPE{event.GetType}
+        TYPE -- "focus" --> FOCUS["解析 mi-N → onMenuFocus(N)"]
+        TYPE -- "click" --> CLICK{target ID?}
+        CLICK -- "mi-N" --> SELECT["onMenuSelect(N)"]
+        CLICK -- "popup-yes" --> CLOSE_Y["closePopup(true)"]
+        CLICK -- "popup-no" --> CLOSE_N["closePopup(false)"]
+        TYPE -- "keydown" --> KEY{key?}
+        KEY -- "Escape" --> ESC["closePopup(false)"]
+    end
+
+    FOCUS --> INFO["更新 Info Panel 内容"]
+    SELECT --> ACTION{index == 5?}
+    ACTION -- "Yes" --> POPUP["openPopup()"]
+    ACTION -- "No" --> STATUS["更新 Status Bar"]
+```
 
 ```cpp
 class UIEventListener final : public Rml::EventListener {
@@ -367,21 +452,43 @@ public:
 
 注册时记录到列表，清理时统一移除：
 
-```cpp
-struct ListenerReg {
-    Rml::Element* el;
-    Rml::String   event;
-    bool          capture;
-};
-std::vector<ListenerReg> registrations_;
+```mermaid
+flowchart LR
+    subgraph init["init()"]
+        R1["addListener(mi-0, focus)"]
+        R2["addListener(mi-0, click)"]
+        R3["..."]
+        R4["addListener(doc, keydown)"]
+    end
 
+    subgraph store["registrations_ vector"]
+        direction TB
+        S1["{ mi-0, focus, false }"]
+        S2["{ mi-0, click, false }"]
+        S3["..."]
+        S4["{ doc, keydown, false }"]
+    end
+
+    subgraph clean_["clean()"]
+        direction TB
+        C1["for each reg: RemoveEventListener"]
+        C2["registrations_.clear()"]
+        C3["unloadAllRmlDocuments()"]
+    end
+
+    init --> store --> clean_
+```
+
+> **顺序至关重要**：`RemoveEventListener` 必须在 `unloadAllRmlDocuments()` **之前**调用。
+
+```cpp
 void addListener(Rml::Element* el, const Rml::String& event, bool capture = false) {
     el->AddEventListener(event, listener_.get(), capture);
     registrations_.push_back({el, event, capture});
 }
 ```
 
-清理（**必须在 `unloadAllRmlDocuments()` 之前**）：
+清理：
 
 ```cpp
 void clean() override {
