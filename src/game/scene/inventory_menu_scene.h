@@ -32,6 +32,11 @@ class ItemCatalog;
 
 namespace game::defs {
 struct InventoryChanged;
+struct HotbarChanged;
+}
+
+namespace game::ui {
+class ItemTooltipUI;
 }
 
 namespace game::scene {
@@ -43,6 +48,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
         Rml::String count_text{};
         bool has_item{false};
         bool has_count{false};
+        bool can_drag{false};
     };
 
     struct HotbarSlotViewModel {
@@ -53,6 +59,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
         bool has_item{false};
         bool has_count{false};
         bool is_active{false};
+        bool can_drag{false};
     };
 
     entt::registry& game_registry_;
@@ -72,6 +79,17 @@ class InventoryMenuScene final : public engine::scene::Scene {
     std::vector<SlotViewModel> backpack_slots_{};
     std::vector<HotbarSlotViewModel> hotbar_slots_{};
     bool data_types_registered_{false};
+
+    // Tooltip
+    std::unique_ptr<game::ui::ItemTooltipUI> tooltip_ui_{};
+    int hovered_slot_index_{-1};
+    int hovered_hotbar_index_{-1};
+
+    // Drag state
+    bool dragging_{false};
+    bool drop_handled_{false};
+    bool dragging_from_hotbar_{false};
+    int dragging_slot_index_{-1};
 
 public:
     InventoryMenuScene(std::string_view name,
@@ -95,9 +113,33 @@ private:
     void refreshSlot(int slot_index);
     void markSlotsDirty();
 
+    // Tooltip
+    void showTooltipForInventorySlot(int slot_index);
+    void showTooltipForHotbarSlot(int hotbar_index);
+    void clearTooltip();
+
+    // Drag
+    void clearDragState();
+
+    // Actions
     bool onMenuCancelPressed();
     void onCloseClicked();
     void onInventoryChanged(const game::defs::InventoryChanged& evt);
+    void onHotbarChanged(const game::defs::HotbarChanged& evt);
+
+    // Backpack slot event callbacks (bound via BindEventCallback)
+    void onBpSlotHoverEnter(int slot_index, Rml::Event& event);
+    void onBpSlotHoverExit(int slot_index, Rml::Event& event);
+    void onBpSlotDragStart(int slot_index, Rml::Event& event);
+    void onBpSlotDragDrop(int slot_index, Rml::Event& event);
+    void onBpSlotDragEnd(int slot_index, Rml::Event& event);
+
+    // Hotbar slot event callbacks
+    void onHbSlotHoverEnter(int slot_index, Rml::Event& event);
+    void onHbSlotHoverExit(int slot_index, Rml::Event& event);
+    void onHbSlotDragStart(int slot_index, Rml::Event& event);
+    void onHbSlotDragDrop(int slot_index, Rml::Event& event);
+    void onHbSlotDragEnd(int slot_index, Rml::Event& event);
 };
 
 } // namespace game::scene

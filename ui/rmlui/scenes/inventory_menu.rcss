@@ -148,6 +148,25 @@ body, div, h1, h2, h3, h4, p, hr, button {
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
+.hb-slot-drag-proxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20dp;
+    height: 20dp;
+    drag: none;
+    pointer-events: auto;
+}
+
+.hb-slot-drag-proxy.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.hb-slot-drag-proxy:drag {
+    opacity: 0.5;
+}
+
 .hb-slot-icon {
     position: absolute;
     left: 2dp;
@@ -228,6 +247,25 @@ body, div, h1, h2, h3, h4, p, hr, button {
 .bp-slot:focus {
     decorator: ninepatch(menu-slot-selected, menu-slot-selected-inner, 1.0);
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
+}
+
+.bp-slot-drag-proxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20dp;
+    height: 20dp;
+    drag: none;
+    pointer-events: auto;
+}
+
+.bp-slot-drag-proxy.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.bp-slot-drag-proxy:drag {
+    opacity: 0.5;
 }
 
 .bp-slot-icon {
