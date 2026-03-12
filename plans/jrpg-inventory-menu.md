@@ -75,7 +75,7 @@
 - [x] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
 - [x] Step 4: GameScene 集成 (inventory 键 → pushScene)
 - [x] Step 5: 键盘/手柄网格导航 (tab-index + nav-auto)
-- [ ] Step 6: Tooltip 集成 (复用 ItemTooltipUI)
+- [x] Step 6: Tooltip 集成 (复用 ItemTooltipUI)
 - [x] Step 7: 标签页 UI (仅 Inventory 可用，其余 disabled 占位)
 - [x] 更新 CMakeLists.txt + 构建验证
 

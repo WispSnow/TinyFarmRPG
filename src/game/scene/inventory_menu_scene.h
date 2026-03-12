@@ -22,10 +22,6 @@ namespace Rml {
 class ElementDocument;
 }
 
-namespace engine::ui::rmlui {
-class HoverFocusSyncListener;
-}
-
 namespace game::data {
 class ItemCatalog;
 }
@@ -49,6 +45,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
         bool has_item{false};
         bool has_count{false};
         bool can_drag{false};
+        bool is_selected{false};
     };
 
     struct HotbarSlotViewModel {
@@ -60,6 +57,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
         bool has_count{false};
         bool is_active{false};
         bool can_drag{false};
+        bool is_selected{false};
     };
 
     entt::registry& game_registry_;
@@ -71,10 +69,8 @@ class InventoryMenuScene final : public engine::scene::Scene {
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
     engine::ui::rmlui::RmlEventBridge event_bridge_{};
     Rml::DataTypeRegister type_register_{};
-    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
     Rml::ElementDocument* document_{nullptr};
     bool click_listener_registered_{false};
-    bool hover_listener_registered_{false};
 
     std::vector<SlotViewModel> backpack_slots_{};
     std::vector<HotbarSlotViewModel> hotbar_slots_{};
@@ -85,11 +81,13 @@ class InventoryMenuScene final : public engine::scene::Scene {
     int hovered_slot_index_{-1};
     int hovered_hotbar_index_{-1};
 
-    // Detail panel
+    // Detail panel (driven by focus, not hover)
     Rml::String detail_name_{};
     Rml::String detail_category_{};
     Rml::String detail_description_{};
     bool has_detail_{false};
+    int detail_bp_slot_{-1};
+    int detail_hb_slot_{-1};
 
     // Drag state
     bool dragging_{false};
@@ -124,10 +122,13 @@ private:
     void showTooltipForHotbarSlot(int hotbar_index);
     void clearTooltip();
 
-    // Detail panel
+    // Detail panel & selection
     void updateDetailForInventorySlot(int slot_index);
     void updateDetailForHotbarSlot(int hotbar_index);
     void clearDetail();
+    void selectBpSlot(int slot_index);
+    void selectHbSlot(int slot_index);
+    void clearSelection();
 
     // Drag
     void clearDragState();
@@ -139,6 +140,7 @@ private:
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
 
     // Backpack slot event callbacks (bound via BindEventCallback)
+    void onBpSlotFocus(int slot_index, Rml::Event& event);
     void onBpSlotHoverEnter(int slot_index, Rml::Event& event);
     void onBpSlotHoverExit(int slot_index, Rml::Event& event);
     void onBpSlotDragStart(int slot_index, Rml::Event& event);
@@ -146,6 +148,7 @@ private:
     void onBpSlotDragEnd(int slot_index, Rml::Event& event);
 
     // Hotbar slot event callbacks
+    void onHbSlotFocus(int slot_index, Rml::Event& event);
     void onHbSlotMouseUp(int slot_index, Rml::Event& event);
     void onHbSlotHoverEnter(int slot_index, Rml::Event& event);
     void onHbSlotHoverExit(int slot_index, Rml::Event& event);

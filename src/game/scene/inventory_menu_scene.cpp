@@ -12,7 +12,6 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 #include "engine/ui/rmlui/rml_ui_layer.h"
 
 #include <RmlUi/Core/Context.h>
@@ -70,7 +69,7 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
 
 InventoryMenuScene::~InventoryMenuScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
+    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
         removeEventListeners();
         tooltip_ui_.reset();
         if (document_) {
@@ -158,6 +157,7 @@ bool InventoryMenuScene::initUI() {
             slot_handle.RegisterMember("has_item", &SlotViewModel::has_item);
             slot_handle.RegisterMember("has_count", &SlotViewModel::has_count);
             slot_handle.RegisterMember("can_drag", &SlotViewModel::can_drag);
+            slot_handle.RegisterMember("is_selected", &SlotViewModel::is_selected);
         } else {
             spdlog::error("InventoryMenuScene: RegisterStruct<SlotViewModel> 失败。");
             data_bridge_.destroy();
@@ -177,6 +177,7 @@ bool InventoryMenuScene::initUI() {
             hslot_handle.RegisterMember("has_count", &HotbarSlotViewModel::has_count);
             hslot_handle.RegisterMember("is_active", &HotbarSlotViewModel::is_active);
             hslot_handle.RegisterMember("can_drag", &HotbarSlotViewModel::can_drag);
+            hslot_handle.RegisterMember("is_selected", &HotbarSlotViewModel::is_selected);
         } else {
             spdlog::error("InventoryMenuScene: RegisterStruct<HotbarSlotViewModel> 失败。");
             data_bridge_.destroy();
@@ -214,11 +215,13 @@ bool InventoryMenuScene::initUI() {
                 });
         };
 
-    if (!bind_bp_event("bp_slot_hover_enter", &InventoryMenuScene::onBpSlotHoverEnter) ||
+    if (!bind_bp_event("bp_slot_focus",       &InventoryMenuScene::onBpSlotFocus) ||
+        !bind_bp_event("bp_slot_hover_enter", &InventoryMenuScene::onBpSlotHoverEnter) ||
         !bind_bp_event("bp_slot_hover_exit",  &InventoryMenuScene::onBpSlotHoverExit) ||
         !bind_bp_event("bp_slot_drag_start",  &InventoryMenuScene::onBpSlotDragStart) ||
         !bind_bp_event("bp_slot_drag_drop",   &InventoryMenuScene::onBpSlotDragDrop) ||
         !bind_bp_event("bp_slot_drag_end",    &InventoryMenuScene::onBpSlotDragEnd) ||
+        !bind_bp_event("hb_slot_focus",       &InventoryMenuScene::onHbSlotFocus) ||
         !bind_bp_event("hb_slot_mouse_up",    &InventoryMenuScene::onHbSlotMouseUp) ||
         !bind_bp_event("hb_slot_hover_enter", &InventoryMenuScene::onHbSlotHoverEnter) ||
         !bind_bp_event("hb_slot_hover_exit",  &InventoryMenuScene::onHbSlotHoverExit) ||
@@ -243,10 +246,6 @@ bool InventoryMenuScene::initUI() {
     event_bridge_.registerTo(document_, "click");
     click_listener_registered_ = true;
 
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    hover_listener_registered_ = true;
-
     // --- tooltip ---
     tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
 
@@ -263,10 +262,6 @@ void InventoryMenuScene::removeEventListeners() {
     if (document_ && click_listener_registered_) {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
-    }
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
     }
 }
 
@@ -508,6 +503,31 @@ void InventoryMenuScene::clearDetail() {
     data_bridge_.markDirty("has_detail");
 }
 
+void InventoryMenuScene::selectBpSlot(int slot_index) {
+    clearSelection();
+    if (slot_index >= 0 && slot_index < TOTAL_SLOTS) {
+        backpack_slots_[slot_index].is_selected = true;
+    }
+    markSlotsDirty();
+}
+
+void InventoryMenuScene::selectHbSlot(int slot_index) {
+    clearSelection();
+    if (slot_index >= 0 && slot_index < HOTBAR_SLOTS) {
+        hotbar_slots_[slot_index].is_selected = true;
+    }
+    markSlotsDirty();
+}
+
+void InventoryMenuScene::clearSelection() {
+    if (detail_bp_slot_ >= 0 && detail_bp_slot_ < TOTAL_SLOTS) {
+        backpack_slots_[detail_bp_slot_].is_selected = false;
+    }
+    if (detail_hb_slot_ >= 0 && detail_hb_slot_ < HOTBAR_SLOTS) {
+        hotbar_slots_[detail_hb_slot_].is_selected = false;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Drag
 // ---------------------------------------------------------------------------
@@ -545,6 +565,13 @@ void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& 
         }
     }
     data_bridge_.markDirty("backpack_slots");
+
+    // Refresh detail panel for the currently focused slot
+    if (detail_bp_slot_ >= 0) {
+        updateDetailForInventorySlot(detail_bp_slot_);
+    } else if (detail_hb_slot_ >= 0) {
+        updateDetailForHotbarSlot(detail_hb_slot_);
+    }
 }
 
 void InventoryMenuScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {
@@ -553,11 +580,25 @@ void InventoryMenuScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {
     }
     syncHotbarFromInventory();
     data_bridge_.markDirty("hotbar_slots");
+
+    if (detail_hb_slot_ >= 0) {
+        updateDetailForHotbarSlot(detail_hb_slot_);
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Backpack slot events
 // ---------------------------------------------------------------------------
+
+void InventoryMenuScene::onBpSlotFocus(int slot_index, Rml::Event& /*event*/) {
+    if (slot_index < 0 || slot_index >= TOTAL_SLOTS || dragging_) {
+        return;
+    }
+    selectBpSlot(slot_index);
+    detail_bp_slot_ = slot_index;
+    detail_hb_slot_ = -1;
+    updateDetailForInventorySlot(slot_index);
+}
 
 void InventoryMenuScene::onBpSlotHoverEnter(int slot_index, Rml::Event& event) {
     if (slot_index < 0 || slot_index >= TOTAL_SLOTS) {
@@ -567,7 +608,6 @@ void InventoryMenuScene::onBpSlotHoverEnter(int slot_index, Rml::Event& event) {
     hovered_slot_index_ = slot_index;
     hovered_hotbar_index_ = -1;
     showTooltipForInventorySlot(slot_index);
-    updateDetailForInventorySlot(slot_index);
 }
 
 void InventoryMenuScene::onBpSlotHoverExit(int slot_index, Rml::Event& event) {
@@ -577,7 +617,6 @@ void InventoryMenuScene::onBpSlotHoverExit(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     if (hovered_slot_index_ == slot_index) {
         clearTooltip();
-        clearDetail();
     }
 }
 
@@ -639,6 +678,16 @@ void InventoryMenuScene::onBpSlotDragEnd(int slot_index, Rml::Event& event) {
 // Hotbar slot events
 // ---------------------------------------------------------------------------
 
+void InventoryMenuScene::onHbSlotFocus(int slot_index, Rml::Event& /*event*/) {
+    if (slot_index < 0 || slot_index >= HOTBAR_SLOTS || dragging_) {
+        return;
+    }
+    selectHbSlot(slot_index);
+    detail_hb_slot_ = slot_index;
+    detail_bp_slot_ = -1;
+    updateDetailForHotbarSlot(slot_index);
+}
+
 void InventoryMenuScene::onHbSlotMouseUp(int slot_index, Rml::Event& event) {
     if (slot_index < 0 || slot_index >= HOTBAR_SLOTS || player_ == entt::null) {
         return;
@@ -662,7 +711,6 @@ void InventoryMenuScene::onHbSlotHoverEnter(int slot_index, Rml::Event& event) {
     hovered_hotbar_index_ = slot_index;
     hovered_slot_index_ = -1;
     showTooltipForHotbarSlot(slot_index);
-    updateDetailForHotbarSlot(slot_index);
 }
 
 void InventoryMenuScene::onHbSlotHoverExit(int slot_index, Rml::Event& event) {
@@ -672,7 +720,6 @@ void InventoryMenuScene::onHbSlotHoverExit(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     if (hovered_hotbar_index_ == slot_index) {
         clearTooltip();
-        clearDetail();
     }
 }
 

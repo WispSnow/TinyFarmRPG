@@ -35,8 +35,10 @@
                              data-class-has-item="hslot.has_item"
                              data-class-has-count="hslot.has_count"
                              data-class-hb-active="hslot.is_active"
+                             data-class-hb-selected="hslot.is_selected"
                              data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
-                             data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)">
+                             data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)"
+                             data-event-focus="hb_slot_focus(hslot.slot_index)">
                             <div class="hb-slot-drag-proxy"
                                  data-class-draggable="hslot.can_drag"
                                  data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
@@ -57,7 +59,9 @@
                              data-for="slot : backpack_slots"
                              data-class-has-item="slot.has_item"
                              data-class-has-count="slot.has_count"
-                             data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)">
+                             data-class-bp-selected="slot.is_selected"
+                             data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)"
+                             data-event-focus="bp_slot_focus(slot.slot_index)">
                             <div class="bp-slot-drag-proxy"
                                  data-class-draggable="slot.can_drag"
                                  data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
