@@ -160,7 +160,7 @@ body, div, h1, h2, h3, h4, p, hr, button {
     nav-right: auto;
 }
 
-.hb-slot:focus {
+.hb-selected {
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
@@ -258,7 +258,7 @@ body, div, h1, h2, h3, h4, p, hr, button {
     nav-right: auto;
 }
 
-.bp-slot:focus {
+.bp-selected {
     decorator: ninepatch(menu-slot-selected, menu-slot-selected-inner, 1.0);
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }

@@ -96,7 +96,7 @@ RML 中每个 slot 元素设置 `tab-index: auto` + `nav-up/down/left/right: aut
 - [x] Step 3: Slot ViewModel 数据绑定 + syncFromInventory
 - [x] Step 4: GameScene 集成 (pushScene 替代 toggle)
 - [x] Step 5: 键盘/手柄网格导航
-- [ ] Step 6: Tooltip 集成
+- [x] Step 6: Tooltip 集成
 - [x] Step 7: 标签页 UI
 - [x] 更新 CMakeLists.txt
 - [x] 构建验证 + 运行测试
