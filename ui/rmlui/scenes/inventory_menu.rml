@@ -22,6 +22,21 @@
         <!-- Separator -->
         <div class="menu-separator"></div>
 
+        <!-- Hotbar row -->
+        <div id="hotbar-area">
+            <div id="hotbar-grid">
+                <div class="hb-slot"
+                     data-for="hslot : hotbar_slots"
+                     data-class-has-item="hslot.has_item"
+                     data-class-has-count="hslot.has_count"
+                     data-class-hb-active="hslot.is_active">
+                    <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
+                    <div class="hb-slot-count">{{ hslot.count_text }}</div>
+                    <div class="hb-slot-index">{{ hslot.label }}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Backpack grid 10x4 -->
         <div id="backpack-area">
             <div id="backpack-grid">
