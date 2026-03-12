@@ -12,7 +12,6 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <limits>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -38,8 +37,8 @@
 #include "engine/spatial/spatial_index_manager.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/scene/inventory_menu_scene.h"
 #include "game/ui/hotbar_ui.h"
-#include "game/ui/inventory_ui.h"
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -56,10 +55,6 @@ namespace {
 
 float centerX(Rml::Element* element) {
     return element->GetAbsoluteLeft() + element->GetOffsetWidth() * 0.5F;
-}
-
-float centerY(Rml::Element* element) {
-    return element->GetAbsoluteTop() + element->GetOffsetHeight() * 0.5F;
 }
 
 Rml::ElementDocument* findDocumentByElementId(Rml::Context& context, std::string_view element_id) {
@@ -354,7 +349,7 @@ TEST_F(UILayoutIntegrationTest, RmlContextSupportsCrossDocumentDragCloneDrop) {
     layer->update();
 }
 
-TEST_F(UILayoutIntegrationTest, InventoryRmlDocumentKeepsGridAndPaginationLayout) {
+TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbarLayout) {
     auto* layer = gl_renderer_->getRmlUILayer();
     if (!layer) {
         GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
@@ -364,75 +359,63 @@ TEST_F(UILayoutIntegrationTest, InventoryRmlDocumentKeepsGridAndPaginationLayout
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
 
-    constexpr uint64_t kOwnerSceneId = 4343;
     const int initial_document_count = rml_context->GetNumDocuments();
 
     {
-        game::ui::InventoryUI inventory(*layer, *context_, kOwnerSceneId, nullptr);
-        ASSERT_TRUE(inventory.isReady());
-        inventory.show();
+        entt::registry registry;
+        const entt::entity player = registry.create();
+        registry.emplace<game::component::InventoryComponent>(player);
+        registry.emplace<game::component::HotbarComponent>(player);
+
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
+        ASSERT_TRUE(menu.init());
 
         layer->update();
 
         EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
 
-        auto* document = findDocumentByElementId(*rml_context, "inventory-panel");
+        auto* document = findDocumentByElementId(*rml_context, "menu-panel");
         ASSERT_NE(document, nullptr);
 
-        auto* panel = document->GetElementById("inventory-panel");
-        auto* grid = document->GetElementById("inventory-grid");
-        auto* pagination = document->GetElementById("inventory-pagination");
-        auto* page_left = document->GetElementById("inventory-page-left");
-        auto* page_right = document->GetElementById("inventory-page-right");
-        auto* page_label = document->GetElementById("inventory-page-label");
+        auto* panel = document->GetElementById("menu-panel");
+        auto* hotbar_grid = document->GetElementById("hotbar-grid");
+        auto* backpack_grid = document->GetElementById("backpack-grid");
+        auto* sort_button = document->GetElementById("sort-btn");
+        auto* trash_button = document->GetElementById("trash-btn");
         ASSERT_NE(panel, nullptr);
-        ASSERT_NE(grid, nullptr);
-        ASSERT_NE(pagination, nullptr);
-        ASSERT_NE(page_left, nullptr);
-        ASSERT_NE(page_right, nullptr);
-        ASSERT_NE(page_label, nullptr);
+        ASSERT_NE(hotbar_grid, nullptr);
+        ASSERT_NE(backpack_grid, nullptr);
+        ASSERT_NE(sort_button, nullptr);
+        ASSERT_NE(trash_button, nullptr);
 
-        EXPECT_NEAR(panel->GetOffsetWidth(), 208.0F, 0.1F);
-        EXPECT_NEAR(panel->GetOffsetHeight(), 186.0F, 0.1F);
-        EXPECT_NEAR(panel->GetAbsoluteLeft(), 412.0F, 0.1F);
-        EXPECT_NEAR(panel->GetAbsoluteTop(), 87.0F, 0.1F);
+        ASSERT_EQ(hotbar_grid->GetNumChildren(), game::component::HotbarComponent::SLOT_COUNT);
+        ASSERT_EQ(backpack_grid->GetNumChildren(), game::component::InventoryComponent::TOTAL_SLOTS);
 
-        ASSERT_EQ(grid->GetNumChildren(), game::component::InventoryComponent::SLOTS_PER_PAGE);
+        auto* hotbar_slot0 = hotbar_grid->GetChild(0);
+        auto* hotbar_slot1 = hotbar_grid->GetChild(1);
+        auto* backpack_slot0 = backpack_grid->GetChild(0);
+        auto* backpack_slot1 = backpack_grid->GetChild(1);
+        auto* backpack_slot10 = backpack_grid->GetChild(10);
+        ASSERT_NE(hotbar_slot0, nullptr);
+        ASSERT_NE(hotbar_slot1, nullptr);
+        ASSERT_NE(backpack_slot0, nullptr);
+        ASSERT_NE(backpack_slot1, nullptr);
+        ASSERT_NE(backpack_slot10, nullptr);
 
-        float max_slot_bottom = std::numeric_limits<float>::lowest();
-        for (int index = 0; index < grid->GetNumChildren(); ++index) {
-            auto* slot = grid->GetChild(index);
-            ASSERT_NE(slot, nullptr);
-            EXPECT_NEAR(slot->GetOffsetWidth(), 32.0F, 0.1F);
-            EXPECT_NEAR(slot->GetOffsetHeight(), 32.0F, 0.1F);
-            max_slot_bottom = std::max(max_slot_bottom, slot->GetAbsoluteTop() + slot->GetOffsetHeight());
-        }
+        EXPECT_NEAR(hotbar_slot0->GetOffsetWidth(), 20.0F, 0.1F);
+        EXPECT_NEAR(hotbar_slot0->GetOffsetHeight(), 20.0F, 0.1F);
+        EXPECT_NEAR(hotbar_slot1->GetAbsoluteLeft() - hotbar_slot0->GetAbsoluteLeft(), 22.0F, 0.2F);
 
-        auto* slot0 = grid->GetChild(0);
-        auto* slot1 = grid->GetChild(1);
-        auto* slot5 = grid->GetChild(5);
-        ASSERT_NE(slot0, nullptr);
-        ASSERT_NE(slot1, nullptr);
-        ASSERT_NE(slot5, nullptr);
+        EXPECT_NEAR(backpack_slot0->GetOffsetWidth(), 20.0F, 0.1F);
+        EXPECT_NEAR(backpack_slot0->GetOffsetHeight(), 20.0F, 0.1F);
+        EXPECT_NEAR(backpack_slot1->GetAbsoluteLeft() - backpack_slot0->GetAbsoluteLeft(), 22.0F, 0.2F);
+        EXPECT_NEAR(backpack_slot10->GetAbsoluteLeft(), backpack_slot0->GetAbsoluteLeft(), 0.2F);
+        EXPECT_NEAR(backpack_slot10->GetAbsoluteTop() - backpack_slot0->GetAbsoluteTop(), 22.0F, 0.2F);
 
-        EXPECT_NEAR(slot1->GetAbsoluteLeft() - slot0->GetAbsoluteLeft(), 38.0F, 0.1F);
-        EXPECT_NEAR(slot1->GetAbsoluteTop(), slot0->GetAbsoluteTop(), 0.1F);
-        EXPECT_NEAR(slot5->GetAbsoluteLeft(), slot0->GetAbsoluteLeft(), 0.1F);
-        EXPECT_NEAR(slot5->GetAbsoluteTop() - slot0->GetAbsoluteTop(), 38.0F, 0.1F);
+        EXPECT_GT(sort_button->GetAbsoluteLeft(), centerX(hotbar_slot1));
+        EXPECT_GT(trash_button->GetAbsoluteLeft(), sort_button->GetAbsoluteLeft());
 
-        EXPECT_NEAR(page_left->GetOffsetWidth(), 20.0F, 0.1F);
-        EXPECT_NEAR(page_left->GetOffsetHeight(), 20.0F, 0.1F);
-        EXPECT_NEAR(page_right->GetOffsetWidth(), 20.0F, 0.1F);
-        EXPECT_NEAR(page_right->GetOffsetHeight(), 20.0F, 0.1F);
-
-        const float expected_label_center_x = (centerX(page_left) + centerX(page_right)) * 0.5F;
-        EXPECT_NEAR(centerX(page_label), expected_label_center_x, 0.2F);
-        EXPECT_NEAR(centerY(page_label), centerY(page_left), 0.2F);
-
-        EXPECT_GT(page_left->GetAbsoluteTop(), max_slot_bottom);
-        EXPECT_GT(page_right->GetAbsoluteTop(), max_slot_bottom);
-        EXPECT_GT(page_label->GetAbsoluteTop(), max_slot_bottom);
-        EXPECT_NEAR(pagination->GetAbsoluteTop() - panel->GetAbsoluteTop(), 162.0F, 0.1F);
+        menu.clean();
     }
 
     layer->update();
@@ -512,53 +495,52 @@ TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyI
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
 
-    constexpr uint64_t kOwnerSceneId = 5151;
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::InventoryComponent>(player);
+    registry.emplace<game::component::HotbarComponent>(player);
 
-    game::ui::InventoryUI inventory(*layer, *context_, kOwnerSceneId, nullptr);
-    game::ui::HotbarUI hotbar(*layer, *context_, kOwnerSceneId, nullptr);
-    ASSERT_TRUE(inventory.isReady());
-    ASSERT_TRUE(hotbar.isReady());
-
-    inventory.show();
+    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
+    ASSERT_TRUE(menu.init());
     layer->update();
 
-    auto* inventory_document = findDocumentByElementId(*rml_context, "inventory-panel");
-    auto* hotbar_document = findDocumentByElementId(*rml_context, "hotbar-panel");
-    ASSERT_NE(inventory_document, nullptr);
-    ASSERT_NE(hotbar_document, nullptr);
+    auto* menu_document = findDocumentByElementId(*rml_context, "menu-panel");
+    ASSERT_NE(menu_document, nullptr);
 
-    auto* inventory_grid = inventory_document->GetElementById("inventory-grid");
-    auto* hotbar_slots = hotbar_document->GetElementById("hotbar-slots");
-    ASSERT_NE(inventory_grid, nullptr);
-    ASSERT_NE(hotbar_slots, nullptr);
-    ASSERT_GT(inventory_grid->GetNumChildren(), 0);
-    ASSERT_GT(hotbar_slots->GetNumChildren(), 0);
+    auto* backpack_grid = menu_document->GetElementById("backpack-grid");
+    auto* hotbar_grid = menu_document->GetElementById("hotbar-grid");
+    ASSERT_NE(backpack_grid, nullptr);
+    ASSERT_NE(hotbar_grid, nullptr);
+    ASSERT_GT(backpack_grid->GetNumChildren(), 0);
+    ASSERT_GT(hotbar_grid->GetNumChildren(), 0);
 
-    auto* inventory_slot = inventory_grid->GetChild(0);
-    ASSERT_NE(inventory_slot, nullptr);
-    ASSERT_GT(inventory_slot->GetNumChildren(), 0);
-    auto* inventory_drag_proxy = inventory_slot->GetChild(0);
-    ASSERT_NE(inventory_drag_proxy, nullptr);
-    ASSERT_GT(inventory_drag_proxy->GetNumChildren(), 0);
-    auto* inventory_icon = inventory_drag_proxy->GetChild(0);
-    ASSERT_NE(inventory_icon, nullptr);
+    auto* backpack_slot = backpack_grid->GetChild(0);
+    ASSERT_NE(backpack_slot, nullptr);
+    ASSERT_GT(backpack_slot->GetNumChildren(), 0);
+    auto* backpack_drag_proxy = backpack_slot->GetChild(0);
+    ASSERT_NE(backpack_drag_proxy, nullptr);
+    ASSERT_GT(backpack_drag_proxy->GetNumChildren(), 0);
+    auto* backpack_icon = backpack_drag_proxy->GetChild(0);
+    ASSERT_NE(backpack_icon, nullptr);
 
-    auto* hotbar_slot = hotbar_slots->GetChild(0);
+    auto* hotbar_slot = hotbar_grid->GetChild(0);
     ASSERT_NE(hotbar_slot, nullptr);
-    ASSERT_GT(hotbar_slot->GetNumChildren(), 1);
-    auto* hotbar_drag_proxy = hotbar_slot->GetChild(1);
+    ASSERT_GT(hotbar_slot->GetNumChildren(), 0);
+    auto* hotbar_drag_proxy = hotbar_slot->GetChild(0);
     ASSERT_NE(hotbar_drag_proxy, nullptr);
     ASSERT_GT(hotbar_drag_proxy->GetNumChildren(), 0);
     auto* hotbar_icon = hotbar_drag_proxy->GetChild(0);
     ASSERT_NE(hotbar_icon, nullptr);
 
-    const Rml::Property* inventory_decorator = inventory_icon->GetLocalProperty("decorator");
+    const Rml::Property* backpack_decorator = backpack_icon->GetLocalProperty("decorator");
     const Rml::Property* hotbar_decorator = hotbar_icon->GetLocalProperty("decorator");
-    ASSERT_NE(inventory_decorator, nullptr);
+    ASSERT_NE(backpack_decorator, nullptr);
     ASSERT_NE(hotbar_decorator, nullptr);
 
-    EXPECT_EQ(inventory_decorator->ToString(), "none");
+    EXPECT_EQ(backpack_decorator->ToString(), "none");
     EXPECT_EQ(hotbar_decorator->ToString(), "none");
+
+    menu.clean();
 }
 
 } // namespace

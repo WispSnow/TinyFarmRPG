@@ -196,7 +196,6 @@ target_sources(game PRIVATE
     game/runtime/system_scheduler.cpp
     # UI
     game/ui/time_clock_hud.cpp
-    game/ui/inventory_ui.cpp
     game/ui/hotbar_ui.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp

@@ -47,7 +47,6 @@ constexpr std::string_view KEY_GOLD = "gold";
 constexpr std::string_view KEY_ACTION = "action";
 constexpr std::string_view KEY_DIRECTION = "direction";
 
-constexpr std::string_view KEY_ACTIVE_PAGE = "active_page";
 constexpr std::string_view KEY_SLOTS = "slots";
 constexpr std::string_view KEY_ITEM_ID = "item_id";
 constexpr std::string_view KEY_COUNT = "count";
@@ -199,7 +198,6 @@ nlohmann::json serialize(const SaveData& data) {
     };
 
     nlohmann::json inventory = nlohmann::json::object();
-    inventory[KEY_ACTIVE_PAGE] = data.player.inventory.active_page;
     inventory[KEY_SLOTS] = nlohmann::json::array();
     for (const auto& slot : data.player.inventory.slots) {
         inventory[KEY_SLOTS].push_back(nlohmann::json{
@@ -344,7 +342,6 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
 
         if (player.contains(KEY_INVENTORY) && player[KEY_INVENTORY].is_object()) {
             const auto& inv = player[KEY_INVENTORY];
-            out.player.inventory.active_page = inv.value<int>(KEY_ACTIVE_PAGE.data(), 0);
             out.player.inventory.slots.clear();
             if (inv.contains(KEY_SLOTS) && inv[KEY_SLOTS].is_array()) {
                 for (const auto& slot_json : inv[KEY_SLOTS]) {

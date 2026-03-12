@@ -60,7 +60,6 @@ struct ItemStackSaveData {
 };
 
 struct InventorySaveData {
-    int active_page{0};
     std::vector<ItemStackSaveData> slots{};
 };
 

@@ -19,6 +19,7 @@ enum class State;
 }
 
 namespace Rml {
+class Element;
 class ElementDocument;
 }
 
@@ -60,6 +61,12 @@ class InventoryMenuScene final : public engine::scene::Scene {
         bool is_selected{false};
     };
 
+    struct ActionEntryViewModel {
+        int action_id{0};
+        Rml::String label{};
+        bool is_destructive{false};
+    };
+
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
@@ -74,6 +81,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
 
     std::vector<SlotViewModel> backpack_slots_{};
     std::vector<HotbarSlotViewModel> hotbar_slots_{};
+    std::vector<ActionEntryViewModel> action_menu_entries_{};
     bool data_types_registered_{false};
 
     // Tooltip
@@ -95,6 +103,20 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool dragging_from_hotbar_{false};
     int dragging_slot_index_{-1};
 
+    // Action menu
+    Rml::String action_menu_title_{};
+    Rml::String action_menu_left_{"0dp"};
+    Rml::String action_menu_top_{"0dp"};
+    bool action_menu_visible_{false};
+    int highlighted_action_id_{-1};
+    Rml::Element* focus_before_action_menu_{nullptr};
+
+    // Character panel
+    Rml::String char_name_{"Player"};
+    Rml::String char_title_{"Lv.1 Farmer"};
+    Rml::String gold_label_{"Gold: --"};
+    Rml::String farm_label_{"TinyFarm"};
+
 public:
     InventoryMenuScene(std::string_view name,
                        engine::core::Context& context,
@@ -114,8 +136,10 @@ private:
 
     void syncFromInventory();
     void syncHotbarFromInventory();
+    void syncCharacterPanel();
     void refreshSlot(int slot_index);
     void markSlotsDirty();
+    void markActionMenuDirty();
 
     // Tooltip
     void showTooltipForInventorySlot(int slot_index);
@@ -132,15 +156,26 @@ private:
 
     // Drag
     void clearDragState();
+    void closeActionMenu(bool restore_focus = true);
+    void openBackpackActionMenu(int slot_index);
+    void openHotbarActionMenu(int slot_index);
+    void openDiscardConfirmForBackpackSlot(int slot_index);
+    void setActionMenuPositionForBackpackSlot(int slot_index);
+    void setActionMenuPositionForHotbarSlot(int slot_index);
+    void setActionMenuPosition(float left_dp, float top_dp);
+    void executeAction(int action_id);
+    void clearSelectionAndDetail();
 
     // Actions
     bool onMenuCancelPressed();
-    void onCloseClicked();
+    void onTrashClicked();
+    void onSortClicked();
     void onInventoryChanged(const game::defs::InventoryChanged& evt);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
 
     // Backpack slot event callbacks (bound via BindEventCallback)
     void onBpSlotFocus(int slot_index, Rml::Event& event);
+    void onBpSlotClick(int slot_index, Rml::Event& event);
     void onBpSlotHoverEnter(int slot_index, Rml::Event& event);
     void onBpSlotHoverExit(int slot_index, Rml::Event& event);
     void onBpSlotDragStart(int slot_index, Rml::Event& event);
@@ -149,12 +184,16 @@ private:
 
     // Hotbar slot event callbacks
     void onHbSlotFocus(int slot_index, Rml::Event& event);
-    void onHbSlotMouseUp(int slot_index, Rml::Event& event);
+    void onHbSlotClick(int slot_index, Rml::Event& event);
     void onHbSlotHoverEnter(int slot_index, Rml::Event& event);
     void onHbSlotHoverExit(int slot_index, Rml::Event& event);
     void onHbSlotDragStart(int slot_index, Rml::Event& event);
     void onHbSlotDragDrop(int slot_index, Rml::Event& event);
     void onHbSlotDragEnd(int slot_index, Rml::Event& event);
+
+    // Action menu entry callbacks
+    void onActionEntryFocus(int action_id, Rml::Event& event);
+    void onActionEntryClick(int action_id, Rml::Event& event);
 };
 
 } // namespace game::scene

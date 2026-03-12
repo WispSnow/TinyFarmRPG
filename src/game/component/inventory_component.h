@@ -20,16 +20,13 @@ struct ItemStack {
     }
 };
 
-/// @brief 玩家背包组件（两页，每页 5x4）
+/// @brief 玩家背包组件（10x4 平铺）
 struct InventoryComponent {
-    static constexpr int COLUMNS = 5;
+    static constexpr int COLUMNS = 10;
     static constexpr int ROWS = 4;
-    static constexpr int SLOTS_PER_PAGE = COLUMNS * ROWS;
-    static constexpr int PAGE_COUNT = 2;
-    static constexpr int TOTAL_SLOTS = SLOTS_PER_PAGE * PAGE_COUNT;
+    static constexpr int TOTAL_SLOTS = COLUMNS * ROWS;
 
     std::vector<ItemStack> slots_{static_cast<std::size_t>(TOTAL_SLOTS)};   // 使用vector，未来有拓展可能
-    int active_page_{0};  ///< 0 or 1
 
     [[nodiscard]] int slotCount() const { return static_cast<int>(slots_.size()); }
     [[nodiscard]] ItemStack& slot(int index) { assert(index >= 0 && index < slotCount()); return slots_[static_cast<std::size_t>(index)]; }

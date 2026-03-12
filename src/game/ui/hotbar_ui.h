@@ -29,7 +29,6 @@ class RmlUILayer;
 
 namespace game::ui {
 
-class InventoryUI;
 class ItemTooltipUI;
 
 class HotbarUI final {
@@ -62,7 +61,6 @@ class HotbarUI final {
     bool visible_{true};
     bool data_types_registered_{false};
 
-    game::ui::InventoryUI* inventory_ui_{nullptr};
     game::ui::ItemTooltipUI* tooltip_ui_{nullptr};
 
     bool dragging_{false};
@@ -87,8 +85,6 @@ public:
     [[nodiscard]] bool isReady() const { return document_ != nullptr && data_bridge_.isValid(); }
     [[nodiscard]] bool isVisible() const { return visible_; }
     [[nodiscard]] bool isDragging() const { return dragging_; }
-    [[nodiscard]] int getDragInventoryIndex() const { return dragging_inventory_slot_; }
-    void notifyExternalDropHandled() { drop_handled_ = true; }
 
     void setSlotItem(int slot_index, const engine::ui::SlotItem& item);
     void clearSlot(int slot_index);
@@ -96,7 +92,6 @@ public:
     void setActiveSlot(int slot_index);
     [[nodiscard]] int getActiveSlotIndex() const { return active_slot_index_; }
 
-    void setInventoryUI(game::ui::InventoryUI* inventory_ui) { inventory_ui_ = inventory_ui; }
     void setTooltipUI(game::ui::ItemTooltipUI* tooltip_ui) { tooltip_ui_ = tooltip_ui; }
     void setTarget(entt::entity target) { target_ = target; }
 

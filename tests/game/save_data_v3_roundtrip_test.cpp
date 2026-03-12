@@ -26,7 +26,6 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     input.player.hp = 88;
     input.player.gold = 345;
 
-    input.player.inventory.active_page = 1;
     input.player.inventory.slots = {
         ItemStackSaveData{1001u, 3},
         ItemStackSaveData{1002u, 1},
@@ -87,6 +86,9 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_TRUE(json.contains(json_keys::COMBAT_STATE.data()));
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].is_object());
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].contains(json_keys::PENDING_BATTLE.data()));
+    ASSERT_TRUE(json.contains("player"));
+    ASSERT_TRUE(json["player"].contains("inventory"));
+    EXPECT_FALSE(json["player"]["inventory"].contains("active_page"));
 
     SaveData output{};
     std::string error;
@@ -112,7 +114,6 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_EQ(output.player.hp, input.player.hp);
     EXPECT_EQ(output.player.gold, input.player.gold);
 
-    EXPECT_EQ(output.player.inventory.active_page, input.player.inventory.active_page);
     ASSERT_EQ(output.player.inventory.slots.size(), input.player.inventory.slots.size());
     EXPECT_EQ(output.player.inventory.slots[0].item_id, input.player.inventory.slots[0].item_id);
     EXPECT_EQ(output.player.inventory.slots[0].count, input.player.inventory.slots[0].count);

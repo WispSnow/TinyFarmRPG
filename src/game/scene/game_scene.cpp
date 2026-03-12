@@ -39,7 +39,6 @@
 #include "game/ui/dialogue_bubble_controller.h"
 #include "game/ui/dialogue_bubble_view.h"
 #include "game/ui/hotbar_ui.h"
-#include "game/ui/inventory_ui.h"
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/time_clock_hud.h"
 #include "game/world/map_manager.h"
@@ -324,7 +323,6 @@ void GameScene::clean() {
     for (auto& bubble : dialogue_bubbles_) {
         bubble.reset();
     }
-    inventory_ui_.reset();
     hotbar_ui_.reset();
     item_tooltip_ui_.reset();
     overlay_document_ = nullptr;
@@ -444,12 +442,6 @@ bool GameScene::initUI() {
     // 时钟 HUD（RmlUi 驱动）
     time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
 
-    inventory_ui_ = std::make_unique<game::ui::InventoryUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
-    if (!inventory_ui_ || !inventory_ui_->isReady()) {
-        spdlog::error("GameScene: 创建 InventoryUI 失败。");
-        return false;
-    }
-
     hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
     if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
         spdlog::error("GameScene: 创建 HotbarUI 失败。");
@@ -470,9 +462,6 @@ bool GameScene::initUI() {
     dialogue_controller_->registerBubble(2, dialogue_bubbles_[2].get(), {0.0F, -56.0F});
 
     if (item_tooltip_ui_) {
-        if (inventory_ui_) {
-            inventory_ui_->setTooltipUI(item_tooltip_ui_.get());
-        }
         if (hotbar_ui_) {
             hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
         }
@@ -481,17 +470,9 @@ bool GameScene::initUI() {
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (!player_view.empty()) {
         const entt::entity player = *player_view.begin();
-        if (inventory_ui_) {
-            inventory_ui_->setTarget(player);
-        }
         if (hotbar_ui_) {
             hotbar_ui_->setTarget(player);
         }
-    }
-
-    if (inventory_ui_ && hotbar_ui_) {
-        inventory_ui_->setHotbarUI(hotbar_ui_.get());
-        hotbar_ui_->setInventoryUI(inventory_ui_.get());
     }
 
     if (auto overlay_constructor = overlay_data_bridge_.create(rml_layer->getContext(), GAME_OVERLAY_MODEL_NAME)) {
@@ -525,7 +506,7 @@ bool GameScene::initUI() {
         systems_->map_transition_system->setFadeOverlay(screen_fade_);
     }
 
-    spdlog::debug("游戏UI初始化完成（时钟UI、物品栏UI与快捷栏UI已创建）。");
+    spdlog::debug("游戏UI初始化完成（时钟UI与快捷栏UI已创建）。");
     return true;
 }
 
