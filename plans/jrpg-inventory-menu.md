@@ -83,14 +83,15 @@
 
 ## Phase 3: 交互逻辑与清理 → `jrpg-inventory-menu-phase3.md`
 
-- [ ] 为 `InventoryMenuScene` 增加操作子菜单状态机
-- [ ] 接通 backpack slot 的 `Use / Equip(Bind) / Discard / Cancel`
-- [ ] 接通 hotbar slot 的 `Activate / Use / Unbind / Cancel`
-- [ ] 实装角色信息区数据绑定（名称 + 占位头像/装备槽）
 - [ ] 移除旧 `InventoryUI` 与旧 inventory RML/RCSS
 - [ ] 清理 `GameScene` 中旧 inventory UI 集成，保留探索态 `HotbarUI`
 - [ ] 精简 `HotbarUI` 对旧 `InventoryUI` 的耦合
 - [ ] 调整 `InventoryComponent` 去除分页 (`active_page_`)
+- [ ] 为 `InventoryMenuScene` 增加操作子菜单状态机与对应 RML/RCSS
+- [ ] 接通 backpack slot 的 `Use / Bind / Discard / Cancel`
+- [ ] 让 `trash-btn` 复用 discard 确认逻辑
+- [ ] 接通 hotbar slot 的 `Activate / Use / Unbind / Cancel`
+- [ ] 实装角色信息区数据绑定（名称 + 占位头像/装备槽）
 - [ ] 实现物品自动排序 Command，并同步修复 hotbar 映射
 - [ ] 更新 `CMakeLists.txt`（移除旧 inventory UI 文件，保留 hotbar 文件）
 - [ ] 整体测试
