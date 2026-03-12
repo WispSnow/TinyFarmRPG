@@ -45,6 +45,16 @@ class InventoryMenuScene final : public engine::scene::Scene {
         bool has_count{false};
     };
 
+    struct HotbarSlotViewModel {
+        int slot_index{0};
+        Rml::String icon_decorator{"none"};
+        Rml::String count_text{};
+        Rml::String label{};
+        bool has_item{false};
+        bool has_count{false};
+        bool is_active{false};
+    };
+
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
@@ -60,6 +70,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool hover_listener_registered_{false};
 
     std::vector<SlotViewModel> backpack_slots_{};
+    std::vector<HotbarSlotViewModel> hotbar_slots_{};
     bool data_types_registered_{false};
 
 public:
@@ -80,6 +91,7 @@ private:
     void disconnectRuntimeListeners();
 
     void syncFromInventory();
+    void syncHotbarFromInventory();
     void refreshSlot(int slot_index);
     void markSlotsDirty();
 

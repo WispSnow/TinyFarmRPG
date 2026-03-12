@@ -1,5 +1,6 @@
 #include "inventory_menu_scene.h"
 
+#include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
@@ -28,6 +29,7 @@ using namespace entt::literals;
 namespace {
 
 constexpr int TOTAL_SLOTS = game::component::InventoryComponent::TOTAL_SLOTS;
+constexpr int HOTBAR_SLOTS = game::component::HotbarComponent::SLOT_COUNT;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
 
@@ -53,6 +55,11 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
     backpack_slots_.resize(TOTAL_SLOTS);
     for (int i = 0; i < TOTAL_SLOTS; ++i) {
         backpack_slots_[i].slot_index = i;
+    }
+    hotbar_slots_.resize(HOTBAR_SLOTS);
+    for (int i = 0; i < HOTBAR_SLOTS; ++i) {
+        hotbar_slots_[i].slot_index = i;
+        hotbar_slots_[i].label = std::to_string((i + 1) % 10);
     }
 }
 
@@ -147,11 +154,34 @@ bool InventoryMenuScene::initUI() {
             data_bridge_.destroy();
             return false;
         }
+        if (auto hslot_handle = constructor.RegisterStruct<HotbarSlotViewModel>()) {
+            hslot_handle.RegisterMember("slot_index", &HotbarSlotViewModel::slot_index);
+            hslot_handle.RegisterMember("icon_decorator", &HotbarSlotViewModel::icon_decorator);
+            hslot_handle.RegisterMember("count_text", &HotbarSlotViewModel::count_text);
+            hslot_handle.RegisterMember("label", &HotbarSlotViewModel::label);
+            hslot_handle.RegisterMember("has_item", &HotbarSlotViewModel::has_item);
+            hslot_handle.RegisterMember("has_count", &HotbarSlotViewModel::has_count);
+            hslot_handle.RegisterMember("is_active", &HotbarSlotViewModel::is_active);
+        } else {
+            spdlog::error("InventoryMenuScene: RegisterStruct<HotbarSlotViewModel> 失败。");
+            data_bridge_.destroy();
+            return false;
+        }
+        if (!constructor.RegisterArray<decltype(hotbar_slots_)>()) {
+            spdlog::error("InventoryMenuScene: RegisterArray<hotbar> 失败。");
+            data_bridge_.destroy();
+            return false;
+        }
         data_types_registered_ = true;
     }
 
     if (!constructor.Bind("backpack_slots", &backpack_slots_)) {
         spdlog::error("InventoryMenuScene: Bind backpack_slots 失败。");
+        data_bridge_.destroy();
+        return false;
+    }
+    if (!constructor.Bind("hotbar_slots", &hotbar_slots_)) {
+        spdlog::error("InventoryMenuScene: Bind hotbar_slots 失败。");
         data_bridge_.destroy();
         return false;
     }
@@ -175,9 +205,10 @@ bool InventoryMenuScene::initUI() {
 
     // --- populate data from player inventory ---
     syncFromInventory();
+    syncHotbarFromInventory();
     data_bridge_.markAllDirty();
 
-    layer->queueFocusFirstEnabledElementByClass(document_, "bp-slot");
+    layer->queueFocusFirstEnabledElementByClass(document_, "hb-slot");
     return true;
 }
 
@@ -227,6 +258,46 @@ void InventoryMenuScene::syncFromInventory() {
     }
 }
 
+void InventoryMenuScene::syncHotbarFromInventory() {
+    auto* hotbar = game_registry_.try_get<game::component::HotbarComponent>(player_);
+    auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+
+    for (int i = 0; i < HOTBAR_SLOTS; ++i) {
+        auto& vm = hotbar_slots_[i];
+        vm.is_active = hotbar && (hotbar->active_slot_index_ == i);
+
+        if (!hotbar || hotbar->slot(i).empty() || !inventory) {
+            vm.icon_decorator = "none";
+            vm.count_text.clear();
+            vm.has_item = false;
+            vm.has_count = false;
+            continue;
+        }
+
+        const int inv_idx = hotbar->slot(i).inventory_slot_index_;
+        if (inv_idx < 0 || inv_idx >= inventory->slotCount()) {
+            vm.icon_decorator = "none";
+            vm.count_text.clear();
+            vm.has_item = false;
+            vm.has_count = false;
+            continue;
+        }
+
+        const auto& stack = inventory->slot(inv_idx);
+        if (stack.empty()) {
+            vm.icon_decorator = "none";
+            vm.count_text.clear();
+            vm.has_item = false;
+            vm.has_count = false;
+        } else {
+            vm.icon_decorator = game::ui::buildItemIconDecorator(item_catalog_, stack.item_id_);
+            vm.has_item = game::ui::hasDecorator(vm.icon_decorator);
+            vm.has_count = stack.count_ > 1;
+            vm.count_text = vm.has_count ? std::to_string(stack.count_) : Rml::String{};
+        }
+    }
+}
+
 void InventoryMenuScene::refreshSlot(int slot_index) {
     if (slot_index < 0 || slot_index >= TOTAL_SLOTS) {
         return;
@@ -255,6 +326,7 @@ void InventoryMenuScene::refreshSlot(int slot_index) {
 
 void InventoryMenuScene::markSlotsDirty() {
     data_bridge_.markDirty("backpack_slots");
+    data_bridge_.markDirty("hotbar_slots");
 }
 
 // ---------------------------------------------------------------------------
@@ -277,10 +349,12 @@ void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& 
 
     if (evt.full_sync) {
         syncFromInventory();
+        syncHotbarFromInventory();
     } else {
         for (const auto& update : evt.slots) {
             refreshSlot(update.slot_index);
         }
+        syncHotbarFromInventory();
     }
     markSlotsDirty();
 }
