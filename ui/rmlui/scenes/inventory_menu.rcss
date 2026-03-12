@@ -23,13 +23,13 @@ body, div, h1, h2, h3, h4, p, hr, button {
 
 @spritesheet menu-armor {
     src: ../../../assets/farm-rpg/UI/Inventory/Slot Armor.png;
-    equip-hat:       0px 32px 16px 32px;
-    equip-shirt:    16px 32px 16px 32px;
-    equip-pants:    32px 32px 16px 32px;
-    equip-gloves:   48px 32px 16px 32px;
-    equip-boots:    64px 32px 16px 32px;
-    equip-necklace: 80px 32px 16px 32px;
-    equip-ring:     96px 32px 16px 32px;
+    equip-hat:        8px 40px 16px 16px;
+    equip-shirt:     40px 40px 16px 16px;
+    equip-pants:     72px 40px 16px 16px;
+    equip-gloves:   104px 40px 16px 16px;
+    equip-boots:    136px 40px 16px 16px;
+    equip-necklace: 168px 40px 16px 16px;
+    equip-ring:     200px 40px 16px 16px;
 }
 
 @spritesheet menu-hud {
