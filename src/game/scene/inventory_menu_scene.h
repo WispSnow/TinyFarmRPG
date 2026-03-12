@@ -85,6 +85,12 @@ class InventoryMenuScene final : public engine::scene::Scene {
     int hovered_slot_index_{-1};
     int hovered_hotbar_index_{-1};
 
+    // Detail panel
+    Rml::String detail_name_{};
+    Rml::String detail_category_{};
+    Rml::String detail_description_{};
+    bool has_detail_{false};
+
     // Drag state
     bool dragging_{false};
     bool drop_handled_{false};
@@ -118,6 +124,11 @@ private:
     void showTooltipForHotbarSlot(int hotbar_index);
     void clearTooltip();
 
+    // Detail panel
+    void updateDetailForInventorySlot(int slot_index);
+    void updateDetailForHotbarSlot(int hotbar_index);
+    void clearDetail();
+
     // Drag
     void clearDragState();
 
@@ -135,6 +146,7 @@ private:
     void onBpSlotDragEnd(int slot_index, Rml::Event& event);
 
     // Hotbar slot event callbacks
+    void onHbSlotMouseUp(int slot_index, Rml::Event& event);
     void onHbSlotHoverEnter(int slot_index, Rml::Event& event);
     void onHbSlotHoverExit(int slot_index, Rml::Event& event);
     void onHbSlotDragStart(int slot_index, Rml::Event& event);
