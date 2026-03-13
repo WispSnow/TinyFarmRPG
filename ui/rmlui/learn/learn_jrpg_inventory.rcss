@@ -12,24 +12,44 @@
     window-inner: 4px 4px 24px 24px;
 }
 
-@spritesheet inv-icons {
-    src: ../../../assets/textures/UI/learn_spritesheet.png;
+@spritesheet inv-potions {
+    src: ../../../assets/farm-rpg/Icons/Weapons/Books and Potions/Potions.png;
     resolution: 1x;
 
-    /* 8 item icons from the sprite sheet (16x16 each) */
-    icon-0: 32px  0px 16px 16px;
-    icon-1: 48px  0px 16px 16px;
-    icon-2: 32px 16px 16px 16px;
-    icon-3: 48px 16px 16px 16px;
-    icon-4: 64px  0px 16px 16px;
-    icon-5: 80px  0px 16px 16px;
-    icon-6: 64px 16px 16px 16px;
-    icon-7: 80px 16px 16px 16px;
+    icon-0: 32px 32px 16px 16px;
+    icon-1: 48px 32px 16px 16px;
+    icon-2: 64px 32px 16px 16px;
+    icon-3: 16px 32px 16px 16px;
+}
+
+@spritesheet inv-rpg {
+    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/1.png;
+    resolution: 1x;
+
+    icon-4: 32px 0px 16px 16px;
+}
+
+@spritesheet inv-armor {
+    src: ../../../assets/farm-rpg/UI/Inventory/Slot Armor.png;
+    resolution: 1x;
+
+    icon-5: 128px 0px 32px 32px;
+    icon-6: 0px 0px 32px 32px;
+    icon-7: 32px 0px 32px 32px;
 }
 
 /* === Reset === */
-body, div, h1, h2, h3, h4, p, hr, span {
+body, div, h1, h2, h3, h4, p, hr, span, button {
     display: block;
+}
+
+button {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-color: transparent;
+    color: inherit;
 }
 
 /* === Body === */
@@ -154,7 +174,8 @@ body {
 
 .nav-item:focus-visible .cursor,
 .equip-slot-item:focus-visible .cursor,
-.candidate-item:focus-visible .cursor {
+.candidate-item:focus-visible .cursor,
+.target-item:focus-visible .cursor {
     opacity: 1;
     animation: 0.8s linear infinite cursor-blink;
 }
@@ -209,12 +230,13 @@ body {
 }
 
 .tab-btn {
-    padding: 2dp 6dp;
-    font-size: 9dp;
+    padding: 2dp 5dp;
+    font-size: 8dp;
     color: #565f89;
     tab-index: auto;
     nav-left: auto;
     nav-right: auto;
+    nav-down: auto;
     transition: color background-color 0.1s cubic-out;
 }
 
@@ -242,15 +264,22 @@ body {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: flex-start;
     gap: 3dp;
     overflow: auto scroll;
     flex-grow: 1;
+    width: 100%;
 }
 
 .item-cell {
-    width: 36dp;
+    flex: 0 0 36dp;
+    min-width: 36dp;
+    max-width: 36dp;
     height: 36dp;
     position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
     background-color: #1a1b2680;
     border: 1dp #33335580;
     tab-index: auto;
@@ -272,8 +301,12 @@ body {
 }
 
 .item-icon {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    left: 2dp;
+    top: 2dp;
+    width: 32dp;
+    height: 32dp;
+    pointer-events: none;
 }
 
 /* Icon decorator classes */
@@ -295,6 +328,101 @@ body {
     color: #ffffff;
     background-color: #00000080;
     padding: 0 2dp;
+    pointer-events: none;
+}
+
+/* Target panel */
+
+.target-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.target-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+    gap: 3dp;
+    max-height: 180dp;
+    overflow: auto scroll;
+}
+
+.target-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4dp;
+    border: 1dp #00000000;
+    box-sizing: border-box;
+    align-self: stretch;
+    padding: 3dp 4dp;
+    color: #c0caf5;
+    font-size: 9dp;
+    line-height: 1.2;
+    text-align: left;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+    transition: background-color border-color color 0.1s cubic-out;
+}
+
+.target-item:hover {
+    background-color: #7aa2f720;
+    color: #7dcfff;
+}
+
+.target-item:focus-visible {
+    background-color: #7aa2f730;
+    color: #7dcfff;
+    border: 1dp #7aa2f760;
+}
+
+.target-item.disabled {
+    color: #565f89;
+    background-color: #00000010;
+    border: 1dp #00000000;
+}
+
+.target-item.disabled .cursor {
+    opacity: 0;
+    animation: none;
+}
+
+.target-item.target-selected,
+.target-item:focus-visible.target-selected {
+    border: 1dp #e0af6860;
+}
+
+.target-name,
+.target-status,
+.target-stat {
+    display: inline;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.target-name {
+    min-width: 52dp;
+}
+
+.target-status {
+    min-width: 34dp;
+    color: #a9b1d6;
+}
+
+.target-stat {
+    color: #c0caf5;
+}
+
+.target-item.disabled .target-status,
+.target-item.disabled .target-stat {
+    color: #565f89;
 }
 
 /* ==========================================================
@@ -498,6 +626,8 @@ body {
     tab-index: auto;
     nav-up: auto;
     nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
     transition: background-color color 0.1s cubic-out;
 }
 
