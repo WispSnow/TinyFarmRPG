@@ -39,7 +39,7 @@
 }
 
 /* === Reset === */
-body, div, h1, h2, h3, h4, p, hr, span, button {
+body, div, h1, h2, h3, h4, p, hr, button {
     display: block;
 }
 

@@ -121,7 +121,7 @@ void JrpgInventoryScene::UIEventListener::ProcessEvent(Rml::Event& event) {
         return;
     }
 
-    if (type == "mousedown" || type == "click") {
+    if (type == "click") {
         for (auto* element = event.GetTargetElement(); element != nullptr; element = element->GetParentNode()) {
             if (const int idx = parseIndexedElementId(element->GetId(), "target-"); idx >= 0) {
                 scene_.confirmTargetUse(idx);
@@ -177,7 +177,6 @@ bool JrpgInventoryScene::init() {
 
     listener_ = std::make_unique<UIEventListener>(*this);
     addListener(doc_, "keydown");
-    addListener(doc_, "mousedown", true);
     addListener(doc_, "click", true);
     addListener(doc_, "focus", true);
     hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(
