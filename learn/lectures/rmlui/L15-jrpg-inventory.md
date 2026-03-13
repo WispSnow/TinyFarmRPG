@@ -130,16 +130,20 @@ flowchart LR
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
+    align-content: flex-start;
     gap: 3dp;
     overflow: auto scroll;
-    max-height: 200dp;
+    flex-grow: 1;             /* 填满剩余空间 */
+    width: 100%;
 }
 
 .item-cell {
     flex: 0 0 36dp;
     min-width: 36dp;
+    max-width: 36dp;
     height: 36dp;
     position: relative;      /* 数量角标的定位锚点 */
+    box-sizing: border-box;
     tab-index: auto;
     nav-up: auto;
     nav-down: auto;
@@ -154,13 +158,21 @@ flowchart LR
 ### 4.2 物品数量角标
 
 ```html
-<div data-for="item : filtered_items" class="item-cell"
+<div data-for="item : filtered_items" class="item-cell" id="item-{{it_index}}"
+     data-event-mouseover="on_item_select(it_index)"
      data-event-click="on_item_select(it_index)">
-    <div class="item-icon" data-class-icon-potion="item.icon_potion"
-         data-class-icon-sword="item.icon_sword" ...></div>
-    <div data-if="item.qty > 1" class="item-qty">{{item.qty}}</div>
+    <div class="item-icon"
+         data-class-ic0="item.ic0" data-class-ic1="item.ic1"
+         data-class-ic2="item.ic2" data-class-ic3="item.ic3"
+         data-class-ic4="item.ic4" data-class-ic5="item.ic5"
+         data-class-ic6="item.ic6" data-class-ic7="item.ic7">
+    </div>
+    <div data-if="item.qty > 1" class="item-qty">x{{item.qty}}</div>
 </div>
 ```
+
+每个图标 ID 对应一个布尔值 `ic0`~`ic7`，通过 `data-class-icN` 条件地添加 CSS 类。
+这是 RmlUi data binding 不支持动态 decorator 名称的变通方案（同 L14 头像切换）。
 
 角标使用绝对定位叠加在格子右下角：
 
@@ -217,18 +229,19 @@ void filterItems() {
 }
 
 .tab-btn {
-    padding: 2dp 8dp;
-    font-size: 10dp;
+    padding: 2dp 5dp;
+    font-size: 8dp;
     color: #565f89;
     tab-index: auto;
     nav-left: auto;
     nav-right: auto;
+    nav-down: auto;
     transition: color background-color 0.1s cubic-out;
 }
 
 .tab-btn.tab-active {
     color: #e0af68;
-    background-color: #e0af6820;
+    background-color: #e0af6818;
     border-bottom: 1dp #e0af68;
 }
 ```
@@ -255,19 +268,31 @@ void onItemSelect(int filtered_idx) {
 
 ### 5.2 图标切换
 
-与 L14 头像切换相同的 `data-class-*` 模式——每种图标对应一个布尔值：
+与 L14 头像切换相同的 `data-class-*` 模式——每种图标 ID 对应一个布尔值和一个 CSS 类：
 
 ```css
 .detail-icon {
     width: 32dp;
     height: 32dp;
-    margin: 0 auto 4dp auto;
+    margin: 4dp auto 6dp auto;
+    border: 1dp #33335580;
+    background-color: #1a1b2640;
 }
 
-.icon-potion  { decorator: image(icon-potion); }
-.icon-sword   { decorator: image(icon-sword); }
-.icon-shield  { decorator: image(icon-shield); }
-/* ... */
+/* icon-0 ~ icon-7 在 @spritesheet 中定义 */
+.ic0 { decorator: image(icon-0); }
+.ic1 { decorator: image(icon-1); }
+.ic2 { decorator: image(icon-2); }
+/* ... ic3 ~ ic7 同理 */
+```
+
+```html
+<div data-if="show_detail_icon" class="detail-icon"
+     data-class-ic0="det_ic0" data-class-ic1="det_ic1"
+     data-class-ic2="det_ic2" data-class-ic3="det_ic3"
+     data-class-ic4="det_ic4" data-class-ic5="det_ic5"
+     data-class-ic6="det_ic6" data-class-ic7="det_ic7">
+</div>
 ```
 
 ### 5.3 使用按钮 + 目标选择
@@ -337,6 +362,80 @@ void confirmTargetUse(int target_idx) {
 }
 ```
 
+### 5.4 目标有效性判断
+
+不同消耗品对目标有不同的限制条件——回复药只能对活着的人用，复活道具只能对 KO 的人用，解毒只对中毒目标有意义：
+
+```cpp
+bool isTargetValidForItem(const ItemData& item, const PartyMember& target) const {
+    // 复活道具只能对 KO 目标使用
+    if (item.revive_hp > 0) return target.isDown();
+
+    // KO 目标不能接受非复活道具
+    if (!target.isAlive()) return false;
+
+    // 解毒：目标必须中毒（除非同时有 HP/MP 回复效果）
+    if (item.cure_poison && !target.poisoned && item.heal_hp == 0 && item.heal_mp == 0)
+        return false;
+
+    return (item.heal_hp > 0) || (item.heal_mp > 0) || item.cure_poison;
+}
+```
+
+`canUseItem()` 则遍历全队判断是否至少有一个有效目标，控制 Use 按钮的显示：
+
+```cpp
+bool canUseItem(const ItemData& item) const {
+    if (item.category != kCatConsumable || item.qty <= 0) return false;
+    return std::any_of(party_.begin(), party_.end(),
+        [&](const PartyMember& m) { return isTargetValidForItem(item, m); });
+}
+```
+
+### 5.5 目标预览文字
+
+选中目标时在 detail-panel 中显示使用效果预览：
+
+```cpp
+std::string buildTargetPreviewText(const ItemData& item, const PartyMember& target) const {
+    if (item.revive_hp > 0 && target.isDown()) {
+        return std::format("Revive {} with {} HP.", target.name,
+                           std::min(target.max_hp, item.revive_hp));
+    }
+    if (item.heal_hp > 0 && target.isAlive()) {
+        int next_hp = std::min(target.max_hp, target.hp + item.heal_hp);
+        return std::format("HP {} / {} -> {} / {}.",
+                           target.hp, target.max_hp, next_hp, target.max_hp);
+    }
+    if (item.heal_mp > 0) {
+        int next_mp = std::min(target.max_mp, target.mp + item.heal_mp);
+        return std::format("MP {} / {} -> {} / {}.",
+                           target.mp, target.max_mp, next_mp, target.max_mp);
+    }
+    if (item.cure_poison) {
+        return target.poisoned ? "Will cure poison." : "Target is not poisoned.";
+    }
+    return target.status_text;
+}
+```
+
+### 5.6 鼠标与键盘交互同步
+
+目标列表同时支持鼠标 hover 和键盘方向键导航。使用引擎提供的 `HoverFocusSyncListener` 将鼠标悬停自动转化为焦点，确保两种输入方式的状态始终一致：
+
+```cpp
+hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(
+    *context_.getGLRenderer().getRmlUILayer(),
+    [](Rml::Element* element) {
+        // 只同步非禁用的 target-item
+        return element != nullptr && element->IsClassSet("target-item")
+            && !element->IsClassSet("disabled");
+    });
+doc_->AddEventListener("mouseover", hover_focus_listener_.get());
+```
+
+> **注意事项**：`HoverFocusSyncListener` 在 `clean()` 时必须先于 `unloadAllRmlDocuments()` 移除。
+
 ---
 
 ## 6. 装备系统
@@ -364,15 +463,22 @@ flowchart TD
 struct EquipSlot {
     std::string slot_name;     // "Weapon", "Shield", ...
     std::string equipped_name; // 当前装备名，空="(empty)"
-    int  slot_type = 0;        // 0=Weapon,1=Shield,2=Helmet,3=Armor,4=Accessory
-    bool is_selected = false;  // 当前选中的槽位
+    int  slot_type    = 0;     // 0=Weapon,1=Shield,2=Helmet,3=Armor,4=Accessory
+    bool is_selected  = false; // 当前选中的槽位
+    int  equipped_idx = -1;    // 在 all_items_ 中的索引，-1 = 空
+
+    // icon 布尔值（同 ItemData 的 ic0~ic7 模式）
+    bool ic0 = false, ic1 = false, ic2 = false, ic3 = false;
+    bool ic4 = false, ic5 = false, ic6 = false, ic7 = false;
+    void setIconFlags(int icon_id);
 };
 
 struct EquipCandidate {
     std::string name;
-    int  atk_delta = 0;   // 与当前装备的攻击差值
-    int  def_delta = 0;   // 与当前装备的防御差值
-    int  item_index = -1; // 在 all_items_ 中的索引
+    int  atk_delta  = 0;   // 与当前装备的攻击差值
+    int  def_delta  = 0;   // 与当前装备的防御差值
+    int  spd_delta  = 0;   // 与当前装备的速度差值
+    int  item_index = -1;  // 在 all_items_ 中的索引，-1 = "(Remove)"
 };
 ```
 
@@ -400,11 +506,10 @@ sequenceDiagram
 
 ```cpp
 struct StatDelta {
-    std::string label;  // "ATK", "DEF", ...
-    int   value = 0;    // +5, -1
-    bool  is_positive = false;
-    bool  is_negative = false;
-    std::string display; // "+5" or "-1"
+    std::string label;       // "ATK", "DEF", "SPD"
+    std::string display;     // "+5", "-1", "0"
+    bool is_positive = false;
+    bool is_negative = false;
 };
 ```
 
@@ -459,24 +564,39 @@ stateDiagram-v2
 ### 7.2 候选列表筛选
 
 ```cpp
-void openCandidateList(int slot_type) {
+void openCandidateList(int slot_idx) {
+    auto& slot = equip_slots_[slot_idx];
     candidates_.clear();
 
-    // (None) 选项：卸下当前装备
-    candidates_.push_back({"(Remove)", 0, 0, -1});
-
-    for (int i = 0; i < ssize(all_items_); ++i) {
-        auto& item = all_items_[i];
-        if (item.category != 1) continue;             // 非装备跳过
-        if (item.equip_slot_type != slot_type) continue; // 类型不匹配跳过
-
-        int atk_d = item.atk - current_equip_atk;
-        int def_d = item.def - current_equip_def;
-        candidates_.push_back({item.name, atk_d, def_d, i});
+    // "(Remove)" 选项：卸下当前装备（只在已装备时出现）
+    if (slot.equipped_idx >= 0) {
+        auto& cur = all_items_[slot.equipped_idx];
+        candidates_.push_back({"(Remove)", -cur.atk, -cur.def, -cur.spd, -1});
     }
 
+    // 从背包中筛选匹配该槽位类型的装备
+    for (int i = 0; i < static_cast<int>(all_items_.size()); ++i) {
+        auto& item = all_items_[i];
+        if (item.category != kCatEquipment) continue;
+        if (item.equip_slot != slot.slot_type) continue;
+        if (item.qty <= 0) continue;
+        if (i == slot.equipped_idx) continue;  // 跳过已装备的
+
+        int cur_atk = 0, cur_def = 0, cur_spd = 0;
+        if (slot.equipped_idx >= 0) {
+            auto& cur = all_items_[slot.equipped_idx];
+            cur_atk = cur.atk; cur_def = cur.def; cur_spd = cur.spd;
+        }
+        candidates_.push_back({
+            item.name,
+            item.atk - cur_atk, item.def - cur_def, item.spd - cur_spd,
+            i
+        });
+    }
+
+    show_candidates_ = true;
     model_handle_.DirtyVariable("candidates");
-    equip_state_ = EquipState::ChoosingCandidate;
+    model_handle_.DirtyVariable("show_candidates");
     focus_candidate_deferred_ = true;
 }
 ```
@@ -620,33 +740,26 @@ ctor.Bind("filtered_items", &filtered_items_);
 ### 10.1 当前属性显示
 
 ```html
-<div class="char-stats">
-    <div class="stat-row">
-        <span class="stat-label">ATK</span>
-        <span class="stat-value">{{char_atk}}</span>
-    </div>
-    <div class="stat-row">
-        <span class="stat-label">DEF</span>
-        <span class="stat-value">{{char_def}}</span>
-    </div>
-    <div class="stat-row">
-        <span class="stat-label">SPD</span>
-        <span class="stat-value">{{char_spd}}</span>
-    </div>
+<div class="char-stats-row">
+    <span class="stat-chip">ATK {{char_atk_text}}</span>
+    <span class="stat-chip">DEF {{char_def_text}}</span>
+    <span class="stat-chip">SPD {{char_spd_text}}</span>
 </div>
 ```
 
+绑定的是 `char_atk_text_`（`std::string`）而非 `char_atk_`（`int`），因为 RmlUi 文本插值直接显示字符串更方便，也方便未来加格式化（如千位分隔符）。
+
 ### 10.2 装备属性预览的实现技巧
 
-选中候选装备时，同时显示「当前值」和「变化后值 + 差值箭头」：
+选中候选装备时，detail-panel 中显示属性差值：
 
 ```
-ATK  25  →  30   +5 ↑ (绿)
-DEF  18  →  17   -1 ↓ (红)
-SPD  12  →  12    0   (灰)
+ATK  +5  (绿)
+DEF  -1  (红)
+SPD   0  (灰)
 ```
 
-通过 `stat_deltas_` 数组渲染，每个元素包含 label / value / is_positive / is_negative：
+通过 `stat_deltas_` 数组渲染，每个元素包含 label / display / is_positive / is_negative：
 
 ```css
 .delta-value {
