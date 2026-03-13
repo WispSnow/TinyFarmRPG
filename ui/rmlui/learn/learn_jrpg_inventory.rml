@@ -35,16 +35,19 @@
             <div data-if="view_mode == 0" class="items-view jrpg-window win-dark">
                 <!-- Tab bar -->
                 <div class="tab-bar">
-                    <div class="tab-btn" data-class-tab-active="tab0_active"
+                    <div class="tab-btn" data-class-tab-active="tab_all_active"
+                         data-event-click="on_tab(-1)">All</div>
+                    <div class="tab-btn" data-class-tab-active="tab_consumable_active"
                          data-event-click="on_tab(0)">Consumable</div>
-                    <div class="tab-btn" data-class-tab-active="tab1_active"
+                    <div class="tab-btn" data-class-tab-active="tab_equipment_active"
                          data-event-click="on_tab(1)">Equipment</div>
-                    <div class="tab-btn" data-class-tab-active="tab2_active"
+                    <div class="tab-btn" data-class-tab-active="tab_key_active"
                          data-event-click="on_tab(2)">Key Items</div>
                 </div>
                 <!-- Item grid -->
                 <div class="item-grid" id="item-grid">
-                    <div data-for="item : filtered_items" class="item-cell"
+                    <div data-for="item : filtered_items" class="item-cell" id="item-{{it_index}}"
+                         data-event-mouseover="on_item_select(it_index)"
                          data-event-click="on_item_select(it_index)">
                         <div class="item-icon"
                              data-class-ic0="item.ic0" data-class-ic1="item.ic1"
@@ -52,7 +55,24 @@
                              data-class-ic4="item.ic4" data-class-ic5="item.ic5"
                              data-class-ic6="item.ic6" data-class-ic7="item.ic7">
                         </div>
-                        <div class="item-qty">x{{item.qty}}</div>
+                        <div data-if="item.qty > 1" class="item-qty">x{{item.qty}}</div>
+                    </div>
+                </div>
+                <!-- Target panel (shown when using a consumable) -->
+                <div data-if="show_targets" class="target-panel jrpg-window win-teal">
+                    <div class="win-title">{{target_panel_title}}</div>
+                    <div class="target-list" id="target-list">
+                        <div data-for="member : party" class="target-item" id="target-{{it_index}}"
+                             data-class-disabled="member.disabled"
+                             data-class-target-selected="member.is_selected"
+                             data-event-mouseover="on_target_focus(it_index)"
+                             data-event-click="on_target_select(it_index)">
+                            <span class="cursor">&gt;</span>
+                            <span class="target-name">{{member.name}}</span>
+                            <span class="target-status">[{{member.status_text}}]</span>
+                            <span class="target-stat">HP {{member.hp}}/{{member.max_hp}}</span>
+                            <span class="target-stat">MP {{member.mp}}/{{member.max_mp}}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,9 +89,11 @@
                 </div>
                 <!-- Equip slots -->
                 <div class="equip-slot-list" id="equip-slot-list">
-                    <div data-for="slot : equip_slots" class="equip-slot-item"
+                    <div data-for="slot : equip_slots" class="equip-slot-item" id="slot-{{it_index}}"
                          data-class-slot-selected="slot.is_selected"
+                         data-event-mouseover="on_slot_focus(it_index)"
                          data-event-click="on_slot_select(it_index)">
+                        <span class="cursor">&gt;</span>
                         <span class="slot-label">{{slot.slot_name}}</span>
                         <div class="slot-icon"
                              data-class-ic0="slot.ic0" data-class-ic1="slot.ic1"
@@ -86,7 +108,7 @@
                 <div data-if="show_candidates" class="candidate-panel jrpg-window win-teal">
                     <div class="win-title">Select Equipment</div>
                     <div class="candidate-list" id="candidate-list">
-                        <div data-for="cand : candidates" class="candidate-item"
+                        <div data-for="cand : candidates" class="candidate-item" id="cand-{{it_index}}"
                              data-event-click="on_candidate_select(it_index)"
                              data-event-mouseover="on_candidate_focus(it_index)">
                             <span class="cursor">&gt;</span>
@@ -122,7 +144,7 @@
             </div>
 
             <!-- Use button (consumables only) -->
-            <div data-if="can_use" class="action-btn"
+            <div data-if="show_use_button" class="action-btn"
                  data-event-click="on_use_item">
                 Use
             </div>

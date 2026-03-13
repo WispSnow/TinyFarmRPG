@@ -8,7 +8,7 @@
 
 背包与装备系统是 JRPG 中核心的资源管理界面。本课实现：
 
-- **背包标签页**：消耗品 / 装备 / 关键道具三个分类，`<tabset>` 切换
+- **背包标签页**：All / 消耗品 / 装备 / 关键道具四分类，自定义 tab 按钮组切换
 - **物品网格**：`flex-wrap` 实现 N×M 格子布局，`data-for` 渲染物品列表
 - **物品详情**：选中物品后在右侧显示名称、图标、描述、效果
 - **装备面板**：5 个装备槽位（武器/盾牌/头盔/铠甲/饰品），当前装备显示
@@ -53,9 +53,11 @@ flowchart TD
     CONTENT --> ITEMS_VIEW["items-view"]
     CONTENT --> EQUIP_VIEW["equip-view"]
 
-    ITEMS_VIEW --> TABS["tab-bar: 消耗品/装备/关键道具"]
+    ITEMS_VIEW --> TABS["tab-bar: All / 消耗品 / 装备 / 关键道具"]
     ITEMS_VIEW --> GRID["item-grid (flex-wrap)"]
     GRID --> CELL["data-for: item : filtered_items"]
+    ITEMS_VIEW --> TARGETS["target-panel (选择使用目标)"]
+    TARGETS --> TROW["data-for: member : party"]
 
     EQUIP_VIEW --> SLOTS["equip-slots"]
     SLOTS --> SLOT["data-for: slot : equip_slots"]
@@ -134,7 +136,8 @@ flowchart LR
 }
 
 .item-cell {
-    width: 36dp;
+    flex: 0 0 36dp;
+    min-width: 36dp;
     height: 36dp;
     position: relative;      /* 数量角标的定位锚点 */
     tab-index: auto;
@@ -177,14 +180,15 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    TAB0["Consumable<br/>tab_index=0"] --> FILTER["filterItems()"]
+    TABA["All<br/>tab_index=-1"] --> FILTER["filterItems()"]
+    TAB0["Consumable<br/>tab_index=0"] --> FILTER
     TAB1["Equipment<br/>tab_index=1"] --> FILTER
     TAB2["Key Items<br/>tab_index=2"] --> FILTER
     FILTER --> UPDATE["filtered_items_ = 筛选结果"]
     UPDATE --> DIRTY["DirtyVariable('filtered_items')"]
 ```
 
-用 C++ 端手动过滤而非 RmlUi 内置 `<tabset>`，因为我们需要对列表数据做分类筛选：
+本课使用自定义 tab 按钮组，而不是 RmlUi 内置 `<tabset>`。原因是切换标签时不仅要切视觉状态，还要在 C++ 端同步重建 `filtered_items_`：
 
 ```cpp
 enum class ItemCategory { Consumable, Equipment, KeyItem };
@@ -192,7 +196,9 @@ enum class ItemCategory { Consumable, Equipment, KeyItem };
 void filterItems() {
     filtered_items_.clear();
     for (int i = 0; i < static_cast<int>(all_items_.size()); ++i) {
-        if (all_items_[i].category == static_cast<int>(current_tab_)) {
+        const bool tab_matches = (current_tab_ == -1)
+                              || (all_items_[i].category == current_tab_);
+        if (tab_matches && all_items_[i].qty > 0) {
             filtered_items_.push_back(all_items_[i]);
         }
     }
@@ -235,16 +241,15 @@ void filterItems() {
 
 ```cpp
 void onItemSelect(int filtered_idx) {
-    if (filtered_idx < 0 || filtered_idx >= ssize(filtered_items_)) return;
+    if (filtered_idx < 0 || filtered_idx >= static_cast<int>(filtered_items_.size())) return;
 
     auto& item = filtered_items_[filtered_idx];
     detail_name_ = item.name;
     detail_desc_ = item.desc;
-    detail_icon_id_ = item.icon_id;
-    updateDetailIcon();
+    setDetailIcon(item.icon_id);
+    can_use_ = canUseItem(item);
 
-    model_handle_.DirtyVariable("detail_name");
-    model_handle_.DirtyVariable("detail_desc");
+    dirtyDetailBindings();
 }
 ```
 
@@ -265,22 +270,70 @@ void onItemSelect(int filtered_idx) {
 /* ... */
 ```
 
-### 5.3 使用/装备按钮
+### 5.3 使用按钮 + 目标选择
 
 ```html
-<div data-if="can_use" class="action-btn"
+<div data-if="show_use_button" class="action-btn"
      data-event-click="on_use_item">
     Use
 </div>
+
+<div data-if="show_targets" class="target-panel jrpg-window win-teal">
+    <div class="win-title">{{target_panel_title}}</div>
+    <div class="target-list" id="target-list">
+        <div data-for="member : party" class="target-item"
+             data-class-disabled="member.disabled"
+             data-event-click="on_target_select(it_index)">
+            <span class="cursor">&gt;</span>
+            <span class="target-summary">{{member.target_summary}}</span>
+        </div>
+    </div>
+</div>
 ```
 
-```cpp
-bool can_use_ = false;  // 绑定到 data model
+目标列表这里刻意保持单行摘要，不在条目里堆两行复杂布局。这样布局更稳，鼠标命中区和键盘/手柄焦点也更容易保持一致。
 
-void refreshCanUse() {
-    can_use_ = (selected_item_idx_ >= 0)
-            && (filtered_items_[selected_item_idx_].category == 0); // Consumable
-    model_handle_.DirtyVariable("can_use");
+```cpp
+void PartyMember::refreshStatus() {
+    status_text = isDown() ? "KO" : (poisoned ? "Poison" : "OK");
+    target_summary = std::format("{} [{}]  HP {}/{}  MP {}/{}",
+                                 name, status_text, hp, max_hp, mp, max_mp);
+}
+
+void onUseItem() {
+    if (!can_use_) return;
+    openTargetPanel();
+}
+
+void openTargetPanel() {
+    const auto& item = all_items_[selected_item_master_idx_];
+    show_targets_ = true;
+    show_use_button_ = false;
+    target_panel_title_ = "Use " + item.name;
+
+    for (auto& member : party_) {
+        member.disabled = !isTargetValidForItem(item, member);
+    }
+
+    model_handle_.DirtyVariable("show_targets");
+    model_handle_.DirtyVariable("show_use_button");
+    model_handle_.DirtyVariable("party");
+    focus_target_deferred_ = true;
+}
+
+// 在 update(dt) 中维持目标列表焦点，避免弹窗失焦后方向键/手柄失效
+if (show_targets_ && !focus_target_deferred_ && !hasFocusedTargetElement()) {
+    focusTargetElement(getPreferredTargetIndex());
+}
+
+void confirmTargetUse(int target_idx) {
+    auto& item = all_items_[selected_item_master_idx_];
+    auto& target = party_[target_idx];
+
+    // 根据道具效果结算 HP / MP / 复活 / 解毒
+    item.qty--;
+    closeTargetPanel(false, false);
+    filterItems();
 }
 ```
 
@@ -435,21 +488,25 @@ void confirmEquip(int cand_idx) {
     auto& cand = candidates_[cand_idx];
     auto& slot = equip_slots_[selected_slot_idx_];
 
-    // 将旧装备放回背包（如果有）
-    if (!slot.equipped_name.empty() && slot.equipped_name != "(empty)") {
-        // 恢复物品到 all_items_
+    // 旧装备回到背包
+    if (slot.equipped_idx >= 0) {
+        all_items_[slot.equipped_idx].qty++;
     }
 
-    // 装备新物品
+    // 新装备从背包扣除
     if (cand.item_index >= 0) {
+        all_items_[cand.item_index].qty--;
         slot.equipped_name = cand.name;
+        slot.equipped_idx = cand.item_index;
         // 更新角色属性
     } else {
         slot.equipped_name = "(empty)";
+        slot.equipped_idx = -1;
     }
 
-    // 刷新 UI
+    // 刷新 UI 和背包过滤结果
     model_handle_.DirtyVariable("equip_slots");
+    filterItems();
     closeCandidateList();
 }
 ```
@@ -471,6 +528,7 @@ flowchart TD
         subgraph ItemsView["物品视图"]
             TABS["标签页"]
             GRID["物品网格"]
+            TARGETS["目标列表"]
         end
         subgraph EquipView["装备视图"]
             SLOTS["装备槽位"]
@@ -486,6 +544,8 @@ flowchart TD
     NAV_EQUIP -- "Enter" --> SLOTS
     TABS -- "Enter" --> GRID
     GRID -- "Escape" --> TABS
+    GRID -- "Use" --> TARGETS
+    TARGETS -- "Escape" --> GRID
     TABS -- "Escape" --> NAV_ITEMS
     SLOTS -- "Enter" --> CANDS
     CANDS -- "Escape" --> SLOTS
@@ -496,7 +556,7 @@ flowchart TD
 
 ### 8.2 延迟聚焦
 
-与 L14 相同，`data-for` / `data-if` 生成的元素需要等一帧后才能聚焦：
+与 L14 相同，`data-for` / `data-if` 生成的元素需要等一帧后才能聚焦。物品格子、装备槽、候选列表、目标列表都采用同一套延迟聚焦模式：
 
 ```cpp
 // 在 update(dt) 中
@@ -609,7 +669,7 @@ SPD  12  →  12    0   (灰)
 
 ### 11.1 基础练习
 1. 物品使用后数量减少，到 0 时从列表移除（更新 `all_items_` 并重新过滤）
-2. 在物品格子上添加 `:focus-visible` 高亮边框样式
+2. 为目标列表补上头像或状态图标，让 `Phoenix Down` / `Antidote` 的可用目标更直观
 3. 装备更换后重新计算角色总属性并刷新显示
 
 ### 11.2 进阶练习
@@ -626,13 +686,14 @@ SPD  12  →  12    0   (灰)
 
 | 概念 | 要点 |
 |------|------|
-| `flex-wrap` | 弹性换行，实现自适应网格布局，需配合固定宽度子元素 |
+| `flex-wrap` | 弹性换行，实现自适应网格布局，需配合固定 `flex-basis` 子元素 |
 | `nav-left/right` + `nav-up/down` | 网格布局需四方向导航（菜单列表只需上下） |
 | `data-if` 表达式 | 支持 `==` 比较，用整数控制多视图切换 |
 | C++ 端过滤 | `data-for` 不支持过滤表达式，用 C++ 准备子集数组 |
 | 绝对定位角标 | 父元素 `position: relative`，角标 `position: absolute` + `right/bottom` |
 | `data-class-*` 图标切换 | 每种图标对应一个布尔值，同 L14 头像切换模式 |
 | 属性差值预览 | `StatDelta` 结构 + `is_positive/is_negative` 布尔 → 条件 CSS 类 |
-| 多层焦点流 | 导航栏 → 内容区 → 详情面板，Enter 进入 / Escape 返回 |
+| 多层焦点流 | 导航栏 → 内容区 → 详情面板 / 目标列表，Enter 进入 / Escape 返回 |
 | `overflow: auto scroll` | 列表超出时自动显示滚动条 |
 | 候选列表筛选 | 根据槽位类型过滤背包中的装备项 |
+| 目标选择覆盖层 | `Use` 打开 `target-panel`，选择角色后再结算道具效果 |
