@@ -1,0 +1,517 @@
+/* ==========================================================
+   L15: JRPG Inventory & Equipment
+   ========================================================== */
+
+/* === Spritesheet === */
+
+@spritesheet inv-ui {
+    src: ../../../assets/textures/UI/learn_spritesheet.png;
+    resolution: 1x;
+
+    window-outer: 0px 0px 32px 32px;
+    window-inner: 4px 4px 24px 24px;
+}
+
+@spritesheet inv-icons {
+    src: ../../../assets/textures/UI/learn_spritesheet.png;
+    resolution: 1x;
+
+    /* 8 item icons from the sprite sheet (16x16 each) */
+    icon-0: 32px  0px 16px 16px;
+    icon-1: 48px  0px 16px 16px;
+    icon-2: 32px 16px 16px 16px;
+    icon-3: 48px 16px 16px 16px;
+    icon-4: 64px  0px 16px 16px;
+    icon-5: 80px  0px 16px 16px;
+    icon-6: 64px 16px 16px 16px;
+    icon-7: 80px 16px 16px 16px;
+}
+
+/* === Reset === */
+body, div, h1, h2, h3, h4, p, hr, span {
+    display: block;
+}
+
+/* === Body === */
+body {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 4dp;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    font-size: 12dp;
+    font-family: "VonwaonBitmap 16px";
+    color: #c0caf5;
+    gap: 3dp;
+}
+
+/* ==========================================================
+   Window Skin (shared)
+   ========================================================== */
+
+.jrpg-window {
+    decorator: ninepatch(window-outer, window-inner, 1.0);
+    padding: 4dp 6dp;
+}
+
+.win-blue { image-color: #8090c0; }
+.win-teal { image-color: #70a898; }
+.win-dark { image-color: #606068; }
+
+.win-title {
+    font-size: 10dp;
+    font-weight: bold;
+    color: #e0af68;
+    padding-bottom: 2dp;
+    margin-bottom: 3dp;
+    border-bottom: 1dp #565f89;
+}
+
+/* ==========================================================
+   Header Bar
+   ========================================================== */
+
+.header-bar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2dp 6dp;
+}
+
+.header-name {
+    font-size: 11dp;
+    font-weight: bold;
+    color: #bb9af7;
+}
+
+.header-gold {
+    font-size: 11dp;
+    color: #e0af68;
+    font-weight: bold;
+}
+
+/* ==========================================================
+   Main 3-Column Layout
+   ========================================================== */
+
+.main-row {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    gap: 3dp;
+    overflow: hidden;
+}
+
+/* --- Left: Navigation --- */
+
+.nav-bar {
+    width: 70dp;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-item {
+    padding: 3dp 4dp;
+    color: #a9b1d6;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color padding-left color 0.1s cubic-out;
+}
+
+.nav-item:hover {
+    background-color: #7aa2f720;
+    color: #7dcfff;
+}
+
+.nav-item:focus-visible {
+    background-color: #7aa2f730;
+    color: #7dcfff;
+    padding-left: 10dp;
+}
+
+.nav-item:active {
+    background-color: #7aa2f750;
+    color: #ffffff;
+}
+
+.nav-item.nav-active {
+    color: #e0af68;
+    border-left: 2dp #e0af68;
+}
+
+/* cursor (shared) */
+.cursor {
+    display: inline;
+    color: #e0af68;
+    margin-right: 2dp;
+    font-size: 10dp;
+    opacity: 0;
+}
+
+.nav-item:focus-visible .cursor,
+.equip-slot-item:focus-visible .cursor,
+.candidate-item:focus-visible .cursor {
+    opacity: 1;
+    animation: 0.8s linear infinite cursor-blink;
+}
+
+@keyframes cursor-blink {
+    from { opacity: 1; }
+    50%  { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* --- Center: Content --- */
+
+.content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.items-view {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.equip-view {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- Right: Detail panel --- */
+
+.detail-panel {
+    width: 160dp;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==========================================================
+   Tab Bar
+   ========================================================== */
+
+.tab-bar {
+    display: flex;
+    flex-direction: row;
+    gap: 2dp;
+    margin-bottom: 4dp;
+}
+
+.tab-btn {
+    padding: 2dp 6dp;
+    font-size: 9dp;
+    color: #565f89;
+    tab-index: auto;
+    nav-left: auto;
+    nav-right: auto;
+    transition: color background-color 0.1s cubic-out;
+}
+
+.tab-btn:hover {
+    color: #a9b1d6;
+    background-color: #ffffff10;
+}
+
+.tab-btn:focus-visible {
+    color: #c0caf5;
+    background-color: #7aa2f720;
+}
+
+.tab-btn.tab-active {
+    color: #e0af68;
+    background-color: #e0af6818;
+    border-bottom: 1dp #e0af68;
+}
+
+/* ==========================================================
+   Item Grid (flex-wrap)
+   ========================================================== */
+
+.item-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 3dp;
+    overflow: auto scroll;
+    flex-grow: 1;
+}
+
+.item-cell {
+    width: 36dp;
+    height: 36dp;
+    position: relative;
+    background-color: #1a1b2680;
+    border: 1dp #33335580;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+    transition: border-color background-color 0.1s cubic-out;
+}
+
+.item-cell:hover {
+    border: 1dp #7aa2f760;
+    background-color: #7aa2f715;
+}
+
+.item-cell:focus-visible {
+    border: 1dp #7aa2f7;
+    background-color: #7aa2f720;
+}
+
+.item-icon {
+    width: 100%;
+    height: 100%;
+}
+
+/* Icon decorator classes */
+.ic0 { decorator: image(icon-0); }
+.ic1 { decorator: image(icon-1); }
+.ic2 { decorator: image(icon-2); }
+.ic3 { decorator: image(icon-3); }
+.ic4 { decorator: image(icon-4); }
+.ic5 { decorator: image(icon-5); }
+.ic6 { decorator: image(icon-6); }
+.ic7 { decorator: image(icon-7); }
+
+/* Quantity badge */
+.item-qty {
+    position: absolute;
+    right: 1dp;
+    bottom: 0;
+    font-size: 8dp;
+    color: #ffffff;
+    background-color: #00000080;
+    padding: 0 2dp;
+}
+
+/* ==========================================================
+   Equipment View
+   ========================================================== */
+
+.equip-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4dp;
+    padding-bottom: 2dp;
+    border-bottom: 1dp #565f89;
+}
+
+.equip-title {
+    font-size: 10dp;
+    font-weight: bold;
+    color: #e0af68;
+}
+
+.char-stats-row {
+    display: flex;
+    flex-direction: row;
+    gap: 6dp;
+}
+
+.stat-chip {
+    font-size: 9dp;
+    color: #a9b1d6;
+}
+
+/* Equip slot list */
+
+.equip-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2dp;
+}
+
+.equip-slot-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4dp;
+    padding: 3dp 4dp;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color padding-left 0.1s cubic-out;
+}
+
+.equip-slot-item:hover {
+    background-color: #7aa2f720;
+}
+
+.equip-slot-item:focus-visible {
+    background-color: #7aa2f730;
+    padding-left: 10dp;
+}
+
+.equip-slot-item.slot-selected {
+    border: 1dp #e0af6860;
+}
+
+.slot-label {
+    font-size: 9dp;
+    color: #565f89;
+    width: 55dp;
+}
+
+.slot-icon {
+    width: 16dp;
+    height: 16dp;
+    min-width: 16dp;
+}
+
+.slot-equip-name {
+    flex-grow: 1;
+    font-size: 10dp;
+    color: #c0caf5;
+}
+
+/* ==========================================================
+   Candidate Panel (overlaid on equip view)
+   ========================================================== */
+
+.candidate-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.candidate-list {
+    max-height: 180dp;
+    overflow: auto scroll;
+}
+
+.candidate-item {
+    display: flex;
+    flex-direction: row;
+    padding: 2dp 4dp;
+    color: #c0caf5;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color padding-left color 0.1s cubic-out;
+}
+
+.candidate-item:hover {
+    background-color: #7aa2f720;
+    color: #7dcfff;
+}
+
+.candidate-item:focus-visible {
+    background-color: #7aa2f730;
+    color: #7dcfff;
+    padding-left: 10dp;
+}
+
+.candidate-item:active {
+    background-color: #7aa2f750;
+    color: #ffffff;
+}
+
+.cand-name {
+    flex-grow: 1;
+}
+
+/* ==========================================================
+   Detail Panel Content
+   ========================================================== */
+
+.detail-icon {
+    width: 32dp;
+    height: 32dp;
+    margin: 4dp auto 6dp auto;
+    border: 1dp #33335580;
+    background-color: #1a1b2640;
+}
+
+.detail-name {
+    font-size: 11dp;
+    font-weight: bold;
+    color: #bb9af7;
+    margin-bottom: 4dp;
+}
+
+.detail-desc {
+    font-size: 10dp;
+    color: #a9b1d6;
+    line-height: 1.3;
+    margin-bottom: 6dp;
+}
+
+/* Stat delta list */
+
+.stat-delta-list {
+    margin-top: 4dp;
+}
+
+.stat-delta-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 1dp 0;
+}
+
+.delta-label {
+    font-size: 10dp;
+    color: #565f89;
+    width: 40dp;
+}
+
+.delta-value {
+    font-size: 10dp;
+    color: #565f89;
+}
+
+.delta-value.delta-up {
+    color: #9ece6a;
+}
+
+.delta-value.delta-down {
+    color: #f7768e;
+}
+
+/* Use button */
+
+.action-btn {
+    margin-top: 8dp;
+    padding: 3dp 8dp;
+    text-align: center;
+    font-size: 10dp;
+    color: #c0caf5;
+    background-color: #7aa2f720;
+    border: 1dp #7aa2f760;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    transition: background-color color 0.1s cubic-out;
+}
+
+.action-btn:hover {
+    background-color: #7aa2f740;
+    color: #ffffff;
+}
+
+.action-btn:focus-visible {
+    background-color: #7aa2f750;
+    color: #ffffff;
+    border: 1dp #7aa2f7;
+}
+
+.action-btn:active {
+    background-color: #7aa2f770;
+}
