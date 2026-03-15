@@ -20,6 +20,7 @@ set(TEST_SOURCES
     engine/core/time_test.cpp
     engine/core/config_factory_api_test.cpp
     engine/core/config_loop_timing_test.cpp
+    engine/core/config_rmlui_debugger_test.cpp
     engine/core/config_rmlui_texture_filter_test.cpp
     engine/core/game_app_no_exceptions_test.cpp
     engine/core/game_app_dispatcher_trace_test.cpp
@@ -69,6 +70,7 @@ set(TEST_SOURCES
     engine/render/render_pass_interface_test.cpp
     engine/render/sprite_batch_source_test.cpp
     engine/render/gl_renderer_lifecycle_test.cpp
+    engine/render/rmlui_debugger_pipeline_test.cpp
     engine/render/rmlui_pipeline_stage_test.cpp
     engine/render/rmlui_texture_filter_pipeline_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
