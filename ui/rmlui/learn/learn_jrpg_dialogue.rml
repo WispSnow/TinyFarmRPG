@@ -1,0 +1,52 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_jrpg_dialogue.rcss"/>
+    <title>L13 JRPG Dialogue</title>
+</head>
+<body data-model="dialogue">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <span class="page-title">L13: Dialogue System</span>
+    </div>
+
+    <!-- Scene area (empty game world backdrop; holds choices window) -->
+    <div class="scene-area">
+        <div class="choices-window jrpg-window win-blue" data-if="show_choices">
+            <div id="choices-list">
+                <div data-for="choice : choices" class="choice-item"
+                     data-event-click="on_choice(it_index)">
+                    <span class="cursor">&gt;</span> {{choice.label}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Name tag (overlaps into dialogue window via negative margin) -->
+    <div class="name-tag-row" data-if="has_speaker">
+        <div class="name-tag jrpg-window win-blue">
+            {{speaker_name}}
+        </div>
+    </div>
+
+    <!-- Dialogue Window -->
+    <div class="jrpg-window win-blue dialogue-window" id="dialogue-window">
+        <div class="win-body">
+            <div class="dialogue-row">
+                <div class="portrait" id="portrait"></div>
+                <div class="text-area">
+                    <span>{{displayed_text}}</span><span class="continue-marker" data-if="show_continue">_</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-row">
+        <div class="jrpg-window win-dark">
+            <div class="status-text" id="status-text">{{hint_text}}</div>
+        </div>
+    </div>
+
+</body>
+</rml>
