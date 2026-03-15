@@ -231,10 +231,8 @@ private:
     glm::vec2 mouse_position_{0.0f, 0.0f};                          ///< @brief 鼠标位置 (针对屏幕坐标)
     glm::vec2 logical_mouse_position_{0.0f, 0.0f};                  ///< @brief 鼠标位置 (针对逻辑坐标)
     glm::vec2 mouse_wheel_delta_{0.0f, 0.0f};                       ///< @brief 鼠标滚轮 delta
+    std::function<void(const SDL_Event&)> sdl_event_observer_;      ///< SDL 事件观察回调，不参与消费判定
     std::function<bool(SDL_Event&)> rmlui_event_callback_;  ///< RmlUI 事件转发回调，回调为空时自动跳过
-#ifdef TF_ENABLE_DEBUG_UI
-    std::function<void(const SDL_Event&)> imgui_event_callback_;
-#endif
 
 public:
     static constexpr std::string_view DEFAULT_CONFIG_PATH{"config/input.json"};
@@ -314,8 +312,8 @@ public:
     void cancelRebindCapture();
     [[nodiscard]] bool confirmPendingRebindConflict();
     void discardPendingRebindConflict();
+    void setSdlEventObserver(std::function<void(const SDL_Event&)> callback);
     void setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback);
-    void setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback);
 
     const std::unordered_map<entt::id_type, ActionEntry>& getActionsDebug() const { return actions_; }
 

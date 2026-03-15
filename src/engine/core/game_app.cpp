@@ -339,6 +339,7 @@ bool GameApp::initGLRenderer() {
     }
     gl_renderer_->setVSyncEnabled(config_->vsync_enabled_);
     gl_renderer_->setDebugUIEnabled(config_->debug_ui_enabled_);
+    gl_renderer_->setRmlUiDebuggerEnabled(config_->rmlui_debugger_enabled_);
     gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);
     spdlog::trace("OpenGL 渲染器初始化成功。");
     return true;
@@ -481,13 +482,11 @@ bool GameApp::initInputManager()
         }
         return true;
     });
-#ifdef TF_ENABLE_DEBUG_UI
-    input_manager_->setImGuiEventForwarder([this](const SDL_Event& event) {
+    input_manager_->setSdlEventObserver([this](const SDL_Event& event) {
         if (gl_renderer_) {
             gl_renderer_->handleSDLEvent(event);
         }
     });
-#endif
     spdlog::trace("输入管理器初始化成功。");
     return true;
 }

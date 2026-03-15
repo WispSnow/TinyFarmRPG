@@ -355,11 +355,40 @@ void GLRenderer::setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilter
     }
 }
 
-void GLRenderer::handleSDLEvent(const SDL_Event& event) {
-#ifdef TF_ENABLE_DEBUG_UI
-    if (!imgui_layer_) {
-        return;
+void GLRenderer::setRmlUiDebuggerEnabled(bool enabled) {
+    rmlui_debugger_enabled_ = enabled;
+    if (rmlui_layer_) {
+        rmlui_layer_->setDebuggerEnabled(enabled);
     }
+}
+
+bool GLRenderer::isRmlUiDebuggerEnabled() const {
+    if (rmlui_layer_) {
+        return rmlui_layer_->isDebuggerEnabled();
+    }
+    return rmlui_debugger_enabled_;
+}
+
+void GLRenderer::toggleRmlUiDebuggerVisible() {
+    if (rmlui_layer_) {
+        rmlui_layer_->toggleDebuggerVisible();
+    }
+}
+
+bool GLRenderer::isRmlUiDebuggerVisible() const {
+    if (!rmlui_layer_) {
+        return false;
+    }
+    return rmlui_layer_->isDebuggerVisible();
+}
+
+void GLRenderer::handleSDLEvent(const SDL_Event& event) {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.scancode == SDL_SCANCODE_F4) {
+        toggleRmlUiDebuggerVisible();
+    }
+#endif
+#ifdef TF_ENABLE_DEBUG_UI
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && debug_ui_manager_) {
         const size_t category_count = engine::debug::DebugUIManager::getCategoryCount();
         // F5开始，根据面板类别数量自动扩展按键: F5 + category_index。
@@ -372,8 +401,11 @@ void GLRenderer::handleSDLEvent(const SDL_Event& event) {
             }
         }
     }
-    imgui_layer_->processEvent(event);
-#else
+    if (imgui_layer_) {
+        imgui_layer_->processEvent(event);
+    }
+#endif
+#if !defined(TF_ENABLE_DEBUG_UI) && !defined(TF_ENABLE_RMLUI_DEBUGGER)
     (void)event;
 #endif
 }
@@ -857,6 +889,7 @@ bool GLRenderer::initRmlUiLayer() {
         static_cast<int>(std::round(logical_size_.x)),
         static_cast<int>(std::round(logical_size_.y)));
     rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);
+    rmlui_layer_->setDebuggerEnabled(rmlui_debugger_enabled_);
 
     return true;
 }

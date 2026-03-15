@@ -10,6 +10,9 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Input.h>
 #include <RmlUi/Core/Log.h>
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+#include <RmlUi/Debugger.h>
+#endif
 
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
@@ -106,6 +109,8 @@ bool RmlUILayer::init(SDL_Window* window,
 }
 
 void RmlUILayer::clean() {
+    setDebuggerEnabled(false);
+
     // 关闭所有已跟踪的文档
     for (auto& entry : documents_) {
         if (entry.doc) {
@@ -351,6 +356,54 @@ RmlUiTextureFilterMode RmlUILayer::getTextureFilterMode() const {
     return render_interface_->getTextureFilterMode();
 }
 
+void RmlUILayer::setDebuggerEnabled(bool enabled) {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    debugger_enabled_ = enabled;
+    if (!debugger_enabled_) {
+        if (debugger_initialized_) {
+            Rml::Debugger::SetVisible(false);
+            Rml::Debugger::Shutdown();
+            debugger_initialized_ = false;
+        }
+        return;
+    }
+
+    (void)ensureDebuggerInitialized();
+#else
+    (void)enabled;
+    debugger_enabled_ = false;
+#endif
+}
+
+void RmlUILayer::toggleDebuggerVisible() {
+    setDebuggerVisible(!isDebuggerVisible());
+}
+
+void RmlUILayer::setDebuggerVisible(bool visible) {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (!debugger_enabled_ || (!visible && !debugger_initialized_)) {
+        return;
+    }
+    if (visible && !ensureDebuggerInitialized()) {
+        return;
+    }
+    Rml::Debugger::SetVisible(visible);
+#else
+    (void)visible;
+#endif
+}
+
+bool RmlUILayer::isDebuggerVisible() const {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (!debugger_initialized_) {
+        return false;
+    }
+    return Rml::Debugger::IsVisible();
+#else
+    return false;
+#endif
+}
+
 // --- 多文档管理 ---
 
 Rml::ElementDocument* RmlUILayer::loadDocument(std::string_view document_path,
@@ -480,6 +533,25 @@ bool RmlUILayer::reloadLastDocument() {
 
     unloadDocument(last.doc);
     return loadDocument(path, owner) != nullptr;
+}
+
+bool RmlUILayer::ensureDebuggerInitialized() {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (debugger_initialized_) {
+        return true;
+    }
+    if (!context_) {
+        return false;
+    }
+    if (!Rml::Debugger::Initialise(context_)) {
+        spdlog::error("RmlUILayer: failed to initialize RmlUi debugger.");
+        return false;
+    }
+    debugger_initialized_ = true;
+    return true;
+#else
+    return false;
+#endif
 }
 
 void RmlUILayer::adjustEventForViewport(SDL_Event& event) const {

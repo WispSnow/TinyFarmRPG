@@ -246,39 +246,26 @@ TEST_F(InputManagerRmlUiRoutingTest, TabKeepsRawRmlUiForwardingInMenuContext) {
     EXPECT_FALSE(manager->isActionPressed("hotbar"_hs));
 }
 
-#ifdef TF_ENABLE_DEBUG_UI
-TEST_F(InputManagerRmlUiRoutingTest, ImGuiForwarderRunsBeforeRmlUiAndAlwaysReceivesEvent) {
+TEST_F(InputManagerRmlUiRoutingTest, SdlEventObserverRunsBeforeRmlUiAndAlwaysReceivesEvent) {
     auto manager = createManager(R"({"input_mappings":{"move_left":["A"]}})");
     ASSERT_NE(manager, nullptr);
 
-    int imgui_forward_count = 0;
-    manager->setImGuiEventForwarder([&](const SDL_Event&) {
-        ++imgui_forward_count;
+    std::vector<std::string> call_order;
+    manager->setSdlEventObserver([&](const SDL_Event&) {
+        call_order.emplace_back("observer");
+    });
+    manager->setRmlUiEventForwarder([&](SDL_Event&) {
+        call_order.emplace_back("rmlui");
+        return false;
     });
 
-    manager->setRmlUiEventForwarder([](SDL_Event&) { return false; });
-
-    SDL_Event motion{};
-    motion.type = SDL_EVENT_MOUSE_MOTION;
-    motion.motion.x = 32;
-    motion.motion.y = 48;
-    ASSERT_EQ(SDL_PushEvent(&motion), true);
-
+    pushKey(SDL_SCANCODE_A, true);
     manager->sampleInputEvents();
-    EXPECT_GE(imgui_forward_count, 1);
 
-    manager->setRmlUiEventForwarder([](SDL_Event&) { return true; });
-
-    SDL_Event motion2{};
-    motion2.type = SDL_EVENT_MOUSE_MOTION;
-    motion2.motion.x = 64;
-    motion2.motion.y = 96;
-    ASSERT_EQ(SDL_PushEvent(&motion2), true);
-
-    manager->sampleInputEvents();
-    EXPECT_GE(imgui_forward_count, 2);
+    ASSERT_EQ(call_order.size(), 2u);
+    EXPECT_EQ(call_order[0], "observer");
+    EXPECT_EQ(call_order[1], "rmlui");
 }
-#endif
 
 } // namespace
 } // namespace engine::input

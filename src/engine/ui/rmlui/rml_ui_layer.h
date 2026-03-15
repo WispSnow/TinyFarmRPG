@@ -61,6 +61,11 @@ public:
 
     void setTextureFilterMode(RmlUiTextureFilterMode mode);
     [[nodiscard]] RmlUiTextureFilterMode getTextureFilterMode() const;
+    void setDebuggerEnabled(bool enabled);
+    [[nodiscard]] bool isDebuggerEnabled() const { return debugger_enabled_; }
+    void toggleDebuggerVisible();
+    void setDebuggerVisible(bool visible);
+    [[nodiscard]] bool isDebuggerVisible() const;
 
     // --- 多文档管理 ---
 
@@ -153,8 +158,11 @@ private:
     int logical_height_{0};  ///< 逻辑分辨率高
 
     bool initialized_{false};
+    bool debugger_enabled_{false};
+    bool debugger_initialized_{false};
     std::vector<PendingFocusRequest> pending_focus_requests_;
 
+    [[nodiscard]] bool ensureDebuggerInitialized();
     void clearPendingFocusRequestsForDocument(Rml::ElementDocument* document);
 };
 

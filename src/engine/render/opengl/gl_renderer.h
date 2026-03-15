@@ -77,6 +77,7 @@ private:
     std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_layer_;
     engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
         engine::ui::rmlui::RmlUiTextureFilterMode::Nearest};
+    bool rmlui_debugger_enabled_{true};
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<ImGuiLayer> imgui_layer_;
     engine::debug::DebugUIManager* debug_ui_manager_{nullptr};
@@ -179,6 +180,10 @@ public:
     [[nodiscard]] bool reloadRmlUiDocument();
     [[nodiscard]] engine::ui::rmlui::RmlUILayer* getRmlUILayer() const;
     void setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode);
+    void setRmlUiDebuggerEnabled(bool enabled);
+    [[nodiscard]] bool isRmlUiDebuggerEnabled() const;
+    void toggleRmlUiDebuggerVisible();
+    [[nodiscard]] bool isRmlUiDebuggerVisible() const;
     [[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode getRmlUiTextureFilterMode() const {
         return rmlui_texture_filter_mode_;
     }
