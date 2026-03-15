@@ -1,0 +1,156 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_jrpg_inventory.rcss"/>
+    <title>L15 JRPG Inventory</title>
+</head>
+<body data-model="inventory">
+
+    <!-- Header bar: character name + gold -->
+    <div class="header-bar">
+        <span class="header-name">Aelindra</span>
+        <span class="header-gold">{{gold_text}}</span>
+    </div>
+
+    <!-- Main 3-column layout -->
+    <div class="main-row">
+
+        <!-- Left: Navigation -->
+        <div class="nav-bar jrpg-window win-blue">
+            <div class="nav-item" id="nav-items"
+                 data-class-nav-active="is_items_view"
+                 data-event-click="on_nav(0)">
+                <span class="cursor">&gt;</span> Items
+            </div>
+            <div class="nav-item" id="nav-equip"
+                 data-class-nav-active="is_equip_view"
+                 data-event-click="on_nav(1)">
+                <span class="cursor">&gt;</span> Equip
+            </div>
+        </div>
+
+        <!-- Center: Content area -->
+        <div class="content-area">
+
+            <!-- Items View -->
+            <div data-if="view_mode == 0" class="items-view jrpg-window win-dark">
+                <!-- Tab bar -->
+                <div class="tab-bar">
+                    <div class="tab-btn" data-class-tab-active="tab_all_active"
+                         data-event-click="on_tab(-1)">All</div>
+                    <div class="tab-btn" data-class-tab-active="tab_consumable_active"
+                         data-event-click="on_tab(0)">Consumable</div>
+                    <div class="tab-btn" data-class-tab-active="tab_equipment_active"
+                         data-event-click="on_tab(1)">Equipment</div>
+                    <div class="tab-btn" data-class-tab-active="tab_key_active"
+                         data-event-click="on_tab(2)">Key Items</div>
+                </div>
+                <!-- Item grid -->
+                <div class="item-grid" id="item-grid">
+                    <div data-for="item : filtered_items" class="item-cell" id="item-{{it_index}}"
+                         data-event-mouseover="on_item_select(it_index)"
+                         data-event-click="on_item_select(it_index)">
+                        <div class="item-icon"
+                             data-class-ic0="item.ic0" data-class-ic1="item.ic1"
+                             data-class-ic2="item.ic2" data-class-ic3="item.ic3"
+                             data-class-ic4="item.ic4" data-class-ic5="item.ic5"
+                             data-class-ic6="item.ic6" data-class-ic7="item.ic7">
+                        </div>
+                        <div data-if="item.qty > 1" class="item-qty">x{{item.qty}}</div>
+                    </div>
+                </div>
+                <!-- Target panel (shown when using a consumable) -->
+                <div data-if="show_targets" class="target-panel jrpg-window win-teal">
+                    <div class="win-title">{{target_panel_title}}</div>
+                    <div class="target-list" id="target-list">
+                        <div data-for="member : party" class="target-item" id="target-{{it_index}}"
+                             data-class-disabled="member.disabled"
+                             data-class-target-selected="member.is_selected"
+                             data-event-mouseover="on_target_focus(it_index)"
+                             data-event-click="on_target_select(it_index)">
+                            <span class="cursor">&gt;</span>
+                            <span class="target-name">{{member.name}}</span>
+                            <span class="target-status">[{{member.status_text}}]</span>
+                            <span class="target-stat">HP {{member.hp}}/{{member.max_hp}}</span>
+                            <span class="target-stat">MP {{member.mp}}/{{member.max_mp}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equip View -->
+            <div data-if="view_mode == 1" class="equip-view jrpg-window win-dark">
+                <div class="equip-header">
+                    <span class="equip-title">Equipment</span>
+                    <div class="char-stats-row">
+                        <span class="stat-chip">ATK {{char_atk_text}}</span>
+                        <span class="stat-chip">DEF {{char_def_text}}</span>
+                        <span class="stat-chip">SPD {{char_spd_text}}</span>
+                    </div>
+                </div>
+                <!-- Equip slots -->
+                <div class="equip-slot-list" id="equip-slot-list">
+                    <div data-for="slot : equip_slots" class="equip-slot-item" id="slot-{{it_index}}"
+                         data-class-slot-selected="slot.is_selected"
+                         data-event-mouseover="on_slot_focus(it_index)"
+                         data-event-click="on_slot_select(it_index)">
+                        <span class="cursor">&gt;</span>
+                        <span class="slot-label">{{slot.slot_name}}</span>
+                        <div class="slot-icon"
+                             data-class-ic0="slot.ic0" data-class-ic1="slot.ic1"
+                             data-class-ic2="slot.ic2" data-class-ic3="slot.ic3"
+                             data-class-ic4="slot.ic4" data-class-ic5="slot.ic5"
+                             data-class-ic6="slot.ic6" data-class-ic7="slot.ic7">
+                        </div>
+                        <span class="slot-equip-name">{{slot.equipped_name}}</span>
+                    </div>
+                </div>
+                <!-- Candidate list (shown when a slot is selected) -->
+                <div data-if="show_candidates" class="candidate-panel jrpg-window win-teal">
+                    <div class="win-title">Select Equipment</div>
+                    <div class="candidate-list" id="candidate-list">
+                        <div data-for="cand : candidates" class="candidate-item" id="cand-{{it_index}}"
+                             data-event-click="on_candidate_select(it_index)"
+                             data-event-mouseover="on_candidate_focus(it_index)">
+                            <span class="cursor">&gt;</span>
+                            <span class="cand-name">{{cand.name}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right: Detail panel -->
+        <div class="detail-panel jrpg-window win-teal">
+            <div class="win-title">Details</div>
+            <!-- Item icon -->
+            <div data-if="show_detail_icon" class="detail-icon"
+                 data-class-ic0="det_ic0" data-class-ic1="det_ic1"
+                 data-class-ic2="det_ic2" data-class-ic3="det_ic3"
+                 data-class-ic4="det_ic4" data-class-ic5="det_ic5"
+                 data-class-ic6="det_ic6" data-class-ic7="det_ic7">
+            </div>
+            <div class="detail-name">{{detail_name}}</div>
+            <div class="detail-desc">{{detail_desc}}</div>
+
+            <!-- Stat deltas -->
+            <div class="stat-delta-list">
+                <div data-for="s : stat_deltas" class="stat-delta-row">
+                    <span class="delta-label">{{s.label}}</span>
+                    <span class="delta-value"
+                          data-class-delta-up="s.is_positive"
+                          data-class-delta-down="s.is_negative">{{s.display}}</span>
+                </div>
+            </div>
+
+            <!-- Use button (consumables only) -->
+            <div data-if="show_use_button" class="action-btn"
+                 data-event-click="on_use_item">
+                Use
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</rml>

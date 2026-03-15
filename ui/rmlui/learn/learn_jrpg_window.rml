@@ -1,0 +1,71 @@
+<rml>
+<head>
+    <link type="text/rcss" href="learn_jrpg_window.rcss"/>
+    <title>L12 JRPG Window</title>
+</head>
+<body>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <span class="page-title">L12: JRPG Window &amp; Navigation</span>
+        <span class="page-hint">Arrows: navigate | Enter: select | Esc: back</span>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="main-row">
+
+        <!-- Left: Command Menu -->
+        <div class="menu-col">
+            <div class="jrpg-window win-blue" id="menu-window">
+                <div class="win-title">Command</div>
+                <div class="win-body" id="menu-list">
+                    <div class="menu-item" id="mi-0"><span class="cursor">&gt;</span> Items</div>
+                    <div class="menu-item" id="mi-1"><span class="cursor">&gt;</span> Equipment</div>
+                    <div class="menu-item" id="mi-2"><span class="cursor">&gt;</span> Skills</div>
+                    <div class="menu-item" id="mi-3"><span class="cursor">&gt;</span> Status</div>
+                    <div class="menu-item" id="mi-4"><span class="cursor">&gt;</span> Save</div>
+                    <div class="menu-item" id="mi-5"><span class="cursor">&gt;</span> Exit</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Info Panel -->
+        <div class="info-col">
+            <div class="jrpg-window win-teal" id="info-window">
+                <div class="win-title" id="info-title">Information</div>
+                <div class="win-body">
+                    <div class="info-desc" id="info-desc">
+                        Navigate the menu with arrow keys.
+                        Press Enter to select an option.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom: Status Bar -->
+    <div class="status-row">
+        <div class="jrpg-window win-dark" id="status-bar">
+            <div class="status-text" id="status-text">
+                Arrows: move cursor | Enter: confirm | Esc: cancel
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup Overlay -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="jrpg-window win-gold popup-window" id="popup-window">
+            <div class="win-title">Confirm</div>
+            <div class="win-body">
+                <div class="popup-msg">Return to title screen?</div>
+                <div class="popup-choices">
+                    <div class="menu-item" id="popup-yes"><span class="cursor">&gt;</span> Yes</div>
+                    <div class="menu-item" id="popup-no"><span class="cursor">&gt;</span> No</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</rml>
