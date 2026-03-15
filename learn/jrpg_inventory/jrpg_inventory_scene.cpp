@@ -111,12 +111,17 @@ void JrpgInventoryScene::UIEventListener::ProcessEvent(Rml::Event& event) {
             }
         }
 
-        if (key == static_cast<int>(Rml::Input::KI_ESCAPE)) {
-            if (scene_.show_candidates_) {
+        if (scene_.show_candidates_) {
+            if (key == static_cast<int>(Rml::Input::KI_ESCAPE)) {
                 scene_.closeCandidateList();
                 event.StopPropagation();
+                return;
             }
-            return;
+            if (key == static_cast<int>(Rml::Input::KI_RETURN) && scene_.selected_cand_idx_ >= 0) {
+                scene_.confirmEquip(scene_.selected_cand_idx_);
+                event.StopPropagation();
+                return;
+            }
         }
         return;
     }
@@ -125,6 +130,11 @@ void JrpgInventoryScene::UIEventListener::ProcessEvent(Rml::Event& event) {
         for (auto* element = event.GetTargetElement(); element != nullptr; element = element->GetParentNode()) {
             if (const int idx = parseIndexedElementId(element->GetId(), "target-"); idx >= 0) {
                 scene_.confirmTargetUse(idx);
+                event.StopPropagation();
+                return;
+            }
+            if (const int idx = parseIndexedElementId(element->GetId(), "cand-"); idx >= 0) {
+                scene_.confirmEquip(idx);
                 event.StopPropagation();
                 return;
             }
