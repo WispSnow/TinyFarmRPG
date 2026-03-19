@@ -33,6 +33,7 @@
 #include <imgui.h>
 #include <spdlog/spdlog.h>
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
 #include <filesystem>
 
@@ -222,7 +223,7 @@ void TileAutoTileYSortVisualTest::initialize(engine::core::Context& context) {
         registry.emplace<engine::component::RenderComponent>(entity, layer, 0.0f);
 
         if (auto_tile) {
-            registry.emplace<engine::component::AutoTileComponent>(entity, kRuleSoilTilled, 0u);
+            registry.emplace<engine::component::AutoTileComponent>(entity, kRuleSoilTilled, static_cast<std::uint8_t>(0));
             registry.emplace_or_replace<engine::component::AutoTileDirtyTag>(entity);
         }
 
@@ -379,7 +380,7 @@ void TileAutoTileYSortVisualTest::onUpdate(float /*delta_time*/, engine::core::C
                 false);
             registry.emplace<engine::component::SpriteComponent>(entity, std::move(sprite), glm::vec2(tile_size_), glm::vec2{0.0f, 0.0f});
             registry.emplace<engine::component::RenderComponent>(entity, 0, 0.0f);
-            registry.emplace<engine::component::AutoTileComponent>(entity, kRuleSoilTilled, 0u);
+            registry.emplace<engine::component::AutoTileComponent>(entity, kRuleSoilTilled, static_cast<std::uint8_t>(0));
             registry.emplace_or_replace<engine::component::AutoTileDirtyTag>(entity);
 
             context.getSpatialIndexManager().addTileEntity(hovered_tile_, entity);
