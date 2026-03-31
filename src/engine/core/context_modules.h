@@ -24,6 +24,10 @@ namespace engine::async {
     class MainThreadCommandQueue;
 }
 
+namespace engine::ui::rmlui {
+    class RmlUiRuntime;
+}
+
 namespace engine::core {
     class GameState;
     class Time;
@@ -49,6 +53,15 @@ struct RenderServices {
 struct ResourceServices {
     engine::resource::ResourceManager& resource_manager;
     engine::resource::AutoTileLibrary& auto_tile_library;
+};
+
+/// @brief UI 服务（当前只包含 retained-mode RmlUi runtime）
+///
+/// 这里有意使用指针而不是引用：
+/// - headless / 测试环境允许没有 RmlUi runtime
+/// - Context 仍保持统一入口，由上层按需判空安全退化
+struct UiServices {
+    engine::ui::rmlui::RmlUiRuntime* rmlui{nullptr};
 };
 
 } // namespace engine::core

@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "engine/utils/defs.h"
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <array>
@@ -46,6 +47,8 @@ namespace engine::render::opengl {
 
 class GLRenderer final {
 public:
+    using RmlUiRenderHook = std::function<void(const engine::utils::Rect&)>;
+
     enum class PassType : uint8_t {
         Scene = 0,
         Lighting,
@@ -74,7 +77,8 @@ private:
     std::unique_ptr<BloomPass> bloom_pass_;
     std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
-    std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_layer_;
+    RmlUiRenderHook rmlui_render_hook_{};
+    engine::ui::rmlui::RmlUILayer* rmlui_legacy_layer_{nullptr};
     engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
         engine::ui::rmlui::RmlUiTextureFilterMode::Nearest};
 #ifdef TF_ENABLE_DEBUG_UI
@@ -174,15 +178,14 @@ public:
     void beginDebugUI();
     void endDebugUI();
 
-    [[nodiscard]] bool initRmlUiLayer();
+    void setRmlUiRenderHook(RmlUiRenderHook hook);
+    void setLegacyRmlUiLayer(engine::ui::rmlui::RmlUILayer* layer);
     [[nodiscard]] bool handleRmlUiEvent(SDL_Event& event);
     [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
     [[nodiscard]] bool reloadRmlUiDocument();
     [[nodiscard]] engine::ui::rmlui::RmlUILayer* getRmlUILayer() const;
     void setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode);
-    [[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode getRmlUiTextureFilterMode() const {
-        return rmlui_texture_filter_mode_;
-    }
+    [[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode getRmlUiTextureFilterMode() const;
     void handleSDLEvent(const SDL_Event& event);
     void setDebugUIManager(engine::debug::DebugUIManager* manager);
 

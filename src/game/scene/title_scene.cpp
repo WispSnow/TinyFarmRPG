@@ -84,7 +84,8 @@ void TitleScene::clean() {
 
 bool TitleScene::initUI() {
     auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
+    auto* runtime = context_.getRmlUi();
+    if (!layer || !runtime) {
         spdlog::error("TitleScene: RmlUILayer 不可用。");
         return false;
     }
@@ -116,7 +117,7 @@ bool TitleScene::initUI() {
     event_bridge_.on("menu", [this](Rml::Event&) { onMenuClicked(); });
     event_bridge_.on("exit", [this](Rml::Event&) { onExitClicked(); });
     event_bridge_.registerTo(document_, "click");
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
+    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*runtime);
     document_->AddEventListener("mouseover", hover_focus_listener_.get());
     click_listener_registered_ = true;
     hover_listener_registered_ = true;

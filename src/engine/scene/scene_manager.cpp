@@ -1,8 +1,7 @@
 #include "engine/scene/scene_manager.h"
 #include "engine/scene/scene.h"
 #include "engine/core/context.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
 #include <string_view>
@@ -51,6 +50,26 @@ void SceneManager::fixedUpdate(float delta_time) {
     }
     // 执行可能的切换场景操作（固定逻辑阶段）
     processPendingActions();
+}
+
+void SceneManager::prepareUi(float interpolation_alpha) {
+    if (scene_stack_.empty()) {
+        return;
+    }
+
+    const size_t top_index = scene_stack_.size() - 1;
+    for (size_t i = 0; i < scene_stack_.size(); ++i) {
+        const auto& scene = scene_stack_[i];
+        if (!scene) {
+            continue;
+        }
+
+        if (i == top_index) {
+            scene->prepareUi(interpolation_alpha);
+        } else {
+            scene->prepareUi(1.0f);
+        }
+    }
 }
 
 void SceneManager::render(float interpolation_alpha) {
@@ -120,7 +139,7 @@ void SceneManager::onReplaceScene(engine::utils::ReplaceSceneEvent& event) {
 // --- Private Methods ---
 
 void SceneManager::syncRmlActiveScene() {
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+    if (auto* layer = context_.getRmlUi()) {
         const auto* top = getCurrentScene();
         layer->setActiveScene(top ? top->instanceId() : 0);
     }

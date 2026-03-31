@@ -22,6 +22,16 @@ std::unique_ptr<RmlUILayer> RmlUILayer::create(SDL_Window* window,
     return layer;
 }
 
+std::unique_ptr<RmlUILayer> RmlUILayer::createFacade(SDL_Window* window,
+                                                     RmlUiRuntime& runtime,
+                                                     RmlUiRenderBackendGl& render_backend) {
+    auto layer = std::unique_ptr<RmlUILayer>(new RmlUILayer());
+    if (!layer->initFacade(window, runtime, render_backend)) {
+        return nullptr;
+    }
+    return layer;
+}
+
 RmlUILayer::~RmlUILayer() {
     clean();
 }
@@ -39,24 +49,26 @@ bool RmlUILayer::init(SDL_Window* window,
     }
 
     window_ = window;
-    render_backend_ = RmlUiRenderBackendGl::create();
-    if (!render_backend_) {
+    owned_render_backend_ = RmlUiRenderBackendGl::create();
+    if (!owned_render_backend_) {
         spdlog::error("RmlUILayer::init failed: render backend creation failed.");
         clean();
         return false;
     }
+    render_backend_ = owned_render_backend_.get();
 
-    runtime_ = RmlUiRuntime::create(window_, *render_backend_->getRenderInterface(), RmlUiViewport{
+    owned_runtime_ = RmlUiRuntime::create(window_, *render_backend_->getRenderInterface(), RmlUiViewport{
         .width = viewport_width,
         .height = viewport_height,
         .offset_x = viewport_offset_x,
         .offset_y = viewport_offset_y,
     });
-    if (!runtime_) {
+    if (!owned_runtime_) {
         spdlog::error("RmlUILayer::init failed: runtime creation failed.");
         clean();
         return false;
     }
+    runtime_ = owned_runtime_.get();
 
     if (logical_width_ > 0 && logical_height_ > 0) {
         runtime_->setLogicalSize(logical_width_, logical_height_);
@@ -67,9 +79,21 @@ bool RmlUILayer::init(SDL_Window* window,
     return true;
 }
 
+bool RmlUILayer::initFacade(SDL_Window* window, RmlUiRuntime& runtime, RmlUiRenderBackendGl& render_backend) {
+    clean();
+
+    window_ = window;
+    runtime_ = &runtime;
+    render_backend_ = &render_backend;
+    spdlog::trace("RmlUILayer facade initialized.");
+    return true;
+}
+
 void RmlUILayer::clean() {
-    runtime_.reset();
-    render_backend_.reset();
+    owned_runtime_.reset();
+    owned_render_backend_.reset();
+    runtime_ = nullptr;
+    render_backend_ = nullptr;
     logical_width_ = 0;
     logical_height_ = 0;
     window_ = nullptr;
@@ -84,7 +108,7 @@ bool RmlUILayer::loadFontFace(std::string_view path) const {
 
 bool RmlUILayer::processEvent(SDL_Event& event) {
     if (!runtime_) {
-        return true;
+        return false;
     }
     return runtime_->processEvent(event);
 }

@@ -39,6 +39,12 @@ namespace engine::ui {
 class UINavigationController;
 }
 
+namespace engine::ui::rmlui {
+class RmlUILayer;
+class RmlUiRenderBackendGl;
+class RmlUiRuntime;
+}
+
 namespace engine::debug {
 class DebugUIManager;
 }
@@ -92,6 +98,9 @@ private:
     std::unique_ptr<engine::debug::DebugUIManager> debug_ui_manager_;
 #endif
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_;
+    std::unique_ptr<engine::ui::rmlui::RmlUiRenderBackendGl> rmlui_render_backend_;
+    std::unique_ptr<engine::ui::rmlui::RmlUiRuntime> rmlui_runtime_;
+    std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_compat_layer_;
 
 public:
     GameApp();
@@ -121,6 +130,7 @@ private:
     void handleEvents();
     void update(float delta_time);
     void updateFrame(float delta_time);
+    void updateRmlUiFrame();
     void render(float interpolation_alpha);
     void drainMainThreadCommands();
     void close();
@@ -151,6 +161,7 @@ private:
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool registerDebugPanels();
 #endif
+    void syncRmlUiViewport();
 
     // 事件处理函数
     void onQuitEvent();

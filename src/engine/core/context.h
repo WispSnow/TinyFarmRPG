@@ -22,13 +22,14 @@ namespace engine::core {
  * @brief 持有对核心引擎模块引用的上下文对象。
  *
  * 用于简化依赖注入，传递Context即可获取引擎的各个模块。
- * 服务按职责分组为 CoreServices / RenderServices / ResourceServices 三个模块。
+ * 服务按职责分组为 CoreServices / RenderServices / ResourceServices / UiServices 四个模块。
  */
 class Context final {
 private:
     CoreServices     core_;
     RenderServices   render_;
     ResourceServices resource_;
+    UiServices       ui_;
 
     engine::audio::AudioPlayer& audio_player_;
     engine::spatial::SpatialIndexManager& spatial_index_manager_;
@@ -39,6 +40,7 @@ private:
     Context(CoreServices core,
             RenderServices render,
             ResourceServices resource,
+            UiServices ui,
             engine::audio::AudioPlayer& audio_player,
             engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
@@ -54,6 +56,7 @@ public:
             CoreServices core,
             RenderServices render,
             ResourceServices resource,
+            UiServices ui,
             engine::audio::AudioPlayer& audio_player,
             engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
@@ -71,6 +74,7 @@ public:
     [[nodiscard]] const CoreServices&     core()     const { return core_; }
     [[nodiscard]] const RenderServices&   render()   const { return render_; }
     [[nodiscard]] const ResourceServices& resource() const { return resource_; }
+    [[nodiscard]] const UiServices&       ui()       const { return ui_; }
 
     // --- 便捷 Getters（转发至模块成员，保持现有调用点兼容）---
     [[nodiscard]] entt::dispatcher& getDispatcher() const { return core_.dispatcher; }
@@ -86,6 +90,7 @@ public:
 
     [[nodiscard]] engine::resource::ResourceManager& getResourceManager() const { return resource_.resource_manager; }
     [[nodiscard]] engine::resource::AutoTileLibrary& getAutoTileLibrary() const { return resource_.auto_tile_library; }
+    [[nodiscard]] engine::ui::rmlui::RmlUiRuntime* getRmlUi() const { return ui_.rmlui; }
 
     [[nodiscard]] engine::audio::AudioPlayer& getAudioPlayer() const { return audio_player_; }
     [[nodiscard]] engine::spatial::SpatialIndexManager& getSpatialIndexManager() const { return spatial_index_manager_; }

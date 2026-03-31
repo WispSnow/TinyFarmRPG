@@ -29,6 +29,9 @@ public:
                                                              int viewport_height,
                                                              int viewport_offset_x = 0,
                                                              int viewport_offset_y = 0);
+    [[nodiscard]] static std::unique_ptr<RmlUILayer> createFacade(SDL_Window* window,
+                                                                  RmlUiRuntime& runtime,
+                                                                  RmlUiRenderBackendGl& render_backend);
     ~RmlUILayer();
 
     RmlUILayer(const RmlUILayer&) = delete;
@@ -114,12 +117,15 @@ private:
                             int viewport_height,
                             int viewport_offset_x,
                             int viewport_offset_y);
+    [[nodiscard]] bool initFacade(SDL_Window* window, RmlUiRuntime& runtime, RmlUiRenderBackendGl& render_backend);
 
     SDL_Window* window_{nullptr};
     int logical_width_{0};
     int logical_height_{0};
-    std::unique_ptr<RmlUiRenderBackendGl> render_backend_;
-    std::unique_ptr<RmlUiRuntime> runtime_;
+    RmlUiRenderBackendGl* render_backend_{nullptr};
+    RmlUiRuntime* runtime_{nullptr};
+    std::unique_ptr<RmlUiRenderBackendGl> owned_render_backend_;
+    std::unique_ptr<RmlUiRuntime> owned_runtime_;
 };
 
 } // namespace engine::ui::rmlui
