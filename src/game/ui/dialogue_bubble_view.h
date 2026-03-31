@@ -23,7 +23,7 @@ class TextRenderer;
 }
 
 namespace engine::ui::rmlui {
-class RmlUILayer;
+class RmlUiRuntime;
 }
 
 namespace game::ui {
@@ -31,7 +31,7 @@ namespace game::ui {
 class DialogueBubbleView final {
     engine::core::Context& context_;
     engine::render::TextRenderer& text_renderer_;
-    engine::ui::rmlui::RmlUILayer* layer_{nullptr};
+    engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* panel_{nullptr};
     Rml::Element* text_element_{nullptr};

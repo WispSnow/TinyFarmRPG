@@ -11,9 +11,8 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -83,14 +82,13 @@ void TitleScene::clean() {
 }
 
 bool TitleScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
     auto* runtime = context_.getRmlUi();
-    if (!layer || !runtime) {
-        spdlog::error("TitleScene: RmlUILayer 不可用。");
+    if (!runtime) {
+        spdlog::error("TitleScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         spdlog::error("TitleScene: RmlUi context 不可用。");
         return false;
@@ -125,7 +123,7 @@ bool TitleScene::initUI() {
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
     data_bridge_.markAllDirty();
-    layer->queueFocusElementById(document_, "title-start-button");
+    runtime->queueFocusElementById(document_, "title-start-button");
     return true;
 }
 

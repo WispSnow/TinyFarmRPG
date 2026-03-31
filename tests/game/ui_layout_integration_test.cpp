@@ -29,7 +29,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/render/renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/auto_tile_library.h"
@@ -256,11 +256,11 @@ protected:
 };
 
 TEST_F(UILayoutIntegrationTest, RmlContextSupportsCrossDocumentDragCloneDrop) {
-    auto* layer = gl_renderer_->getRmlUILayer();
-    if (!layer) {
-        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
     }
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
@@ -325,7 +325,7 @@ TEST_F(UILayoutIntegrationTest, RmlContextSupportsCrossDocumentDragCloneDrop) {
 
     source_document->Show();
     target_document->Show();
-    layer->update();
+    runtime->update();
 
     auto* target = target_document->GetElementById("probe-target");
     ASSERT_NE(target, nullptr);
@@ -334,28 +334,28 @@ TEST_F(UILayoutIntegrationTest, RmlContextSupportsCrossDocumentDragCloneDrop) {
     target->AddEventListener(Rml::EventId::Dragdrop, &dragdrop_listener);
 
     EXPECT_TRUE(rml_context->ProcessMouseMove(16, 16, 0));
-    layer->update();
+    runtime->update();
     EXPECT_TRUE(rml_context->ProcessMouseButtonDown(0, 0));
-    layer->update();
+    runtime->update();
     EXPECT_TRUE(rml_context->ProcessMouseMove(176, 16, 0));
-    layer->update();
+    runtime->update();
     EXPECT_TRUE(rml_context->ProcessMouseButtonUp(0, 0));
-    layer->update();
+    runtime->update();
 
     EXPECT_EQ(dragdrop_listener.count, 1);
 
     target->RemoveEventListener(Rml::EventId::Dragdrop, &dragdrop_listener);
     source_document->Close();
     target_document->Close();
-    layer->update();
+    runtime->update();
 }
 
 TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbarLayout) {
-    auto* layer = gl_renderer_->getRmlUILayer();
-    if (!layer) {
-        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
     }
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
@@ -371,7 +371,7 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbar
         game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
         ASSERT_TRUE(menu.init());
 
-        layer->update();
+        runtime->update();
 
         EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
 
@@ -419,16 +419,16 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbar
         menu.clean();
     }
 
-    layer->update();
+    runtime->update();
     EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
 }
 
 TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelAnchor) {
-    auto* layer = gl_renderer_->getRmlUILayer();
-    if (!layer) {
-        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
     }
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
@@ -437,10 +437,10 @@ TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelA
     const int initial_document_count = rml_context->GetNumDocuments();
 
     {
-        game::ui::HotbarUI hotbar(*layer, *context_, kOwnerSceneId, nullptr);
+        game::ui::HotbarUI hotbar(*runtime, *context_, kOwnerSceneId, nullptr);
         ASSERT_TRUE(hotbar.isReady());
 
-        layer->update();
+        runtime->update();
 
         EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count + 1);
 
@@ -482,16 +482,16 @@ TEST_F(UILayoutIntegrationTest, HotbarRmlDocumentKeepsHorizontalSpacingAndPanelA
         }
     }
 
-    layer->update();
+    runtime->update();
     EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
 }
 
 TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyInlineStyle) {
-    auto* layer = gl_renderer_->getRmlUILayer();
-    if (!layer) {
-        GTEST_SKIP() << "RmlUILayer not available in headless layout test environment.";
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
     }
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
     }
@@ -503,7 +503,7 @@ TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyI
 
     game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
     ASSERT_TRUE(menu.init());
-    layer->update();
+    runtime->update();
 
     auto* menu_document = findDocumentByElementId(*rml_context, "menu-panel");
     ASSERT_NE(menu_document, nullptr);

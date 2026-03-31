@@ -24,7 +24,7 @@ class Context;
 }
 
 namespace engine::ui::rmlui {
-class RmlUILayer;
+class RmlUiRuntime;
 }
 
 namespace game::ui {
@@ -43,7 +43,7 @@ class HotbarUI final {
         bool can_drag{false};
     };
 
-    engine::ui::rmlui::RmlUILayer& layer_;
+    engine::ui::rmlui::RmlUiRuntime& runtime_;
     engine::core::Context& context_;
     game::data::ItemCatalog* item_catalog_{nullptr};
     uint64_t owner_scene_id_{0};
@@ -71,7 +71,7 @@ class HotbarUI final {
     std::optional<engine::ui::SlotItem> dragging_item_{};
 
 public:
-    HotbarUI(engine::ui::rmlui::RmlUILayer& layer,
+    HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
              engine::core::Context& context,
              uint64_t owner_scene_id,
              game::data::ItemCatalog* catalog = nullptr);

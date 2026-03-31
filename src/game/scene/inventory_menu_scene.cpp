@@ -4,9 +4,8 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_mouse_buttons.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
@@ -188,13 +187,13 @@ void InventoryMenuScene::clean() {
 }
 
 bool InventoryMenuScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("InventoryMenuScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("InventoryMenuScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         spdlog::error("InventoryMenuScene: RmlUi context 不可用。");
         return false;
@@ -339,7 +338,7 @@ bool InventoryMenuScene::initUI() {
     syncCharacterPanel();
     data_bridge_.markAllDirty();
 
-    layer->queueFocusFirstEnabledElementByClass(document_, "hb-slot");
+    runtime->queueFocusFirstEnabledElementByClass(document_, "hb-slot");
     return true;
 }
 
@@ -645,9 +644,9 @@ void InventoryMenuScene::closeActionMenu(bool restore_focus) {
     markActionMenuDirty();
 
     if (restore_focus) {
-        if (auto* layer = context_.getGLRenderer().getRmlUILayer();
-            layer && focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() == document_) {
-            layer->queueFocusElement(focus_before_action_menu_);
+        if (auto* runtime = context_.getRmlUi();
+            runtime && focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() == document_) {
+            runtime->queueFocusElement(focus_before_action_menu_);
         }
     }
 
@@ -661,8 +660,8 @@ void InventoryMenuScene::openBackpackActionMenu(int slot_index) {
         return;
     }
 
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        focus_before_action_menu_ = layer->getFocusedElement();
+    if (auto* runtime = context_.getRmlUi()) {
+        focus_before_action_menu_ = runtime->getFocusedElement();
         if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
             focus_before_action_menu_ = nullptr;
         }
@@ -687,8 +686,8 @@ void InventoryMenuScene::openBackpackActionMenu(int slot_index) {
     markActionMenuDirty();
     clearTooltip();
 
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        layer->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
+    if (auto* runtime = context_.getRmlUi()) {
+        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
     }
 }
 
@@ -699,8 +698,8 @@ void InventoryMenuScene::openHotbarActionMenu(int slot_index) {
         return;
     }
 
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        focus_before_action_menu_ = layer->getFocusedElement();
+    if (auto* runtime = context_.getRmlUi()) {
+        focus_before_action_menu_ = runtime->getFocusedElement();
         if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
             focus_before_action_menu_ = nullptr;
         }
@@ -728,8 +727,8 @@ void InventoryMenuScene::openHotbarActionMenu(int slot_index) {
     markActionMenuDirty();
     clearTooltip();
 
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        layer->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
+    if (auto* runtime = context_.getRmlUi()) {
+        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
     }
 }
 
@@ -745,8 +744,8 @@ void InventoryMenuScene::openDiscardConfirmForBackpackSlot(int slot_index) {
     }
 
     if (!action_menu_visible_) {
-        if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-            focus_before_action_menu_ = layer->getFocusedElement();
+        if (auto* runtime = context_.getRmlUi()) {
+            focus_before_action_menu_ = runtime->getFocusedElement();
             if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
                 focus_before_action_menu_ = nullptr;
             }
@@ -769,8 +768,8 @@ void InventoryMenuScene::openDiscardConfirmForBackpackSlot(int slot_index) {
     markActionMenuDirty();
     clearTooltip();
 
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        layer->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
+    if (auto* runtime = context_.getRmlUi()) {
+        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
     }
 }
 

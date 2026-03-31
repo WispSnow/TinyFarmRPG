@@ -3,12 +3,11 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/font_manager.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -83,8 +82,8 @@ ItemTooltipUI::ItemTooltipUI(engine::core::Context& context,
 }
 
 ItemTooltipUI::~ItemTooltipUI() {
-    if (document_ && layer_) {
-        layer_->unloadDocument(document_);
+    if (document_ && runtime_) {
+        runtime_->unloadDocument(document_);
     }
     document_ = nullptr;
     panel_ = nullptr;
@@ -94,13 +93,13 @@ ItemTooltipUI::~ItemTooltipUI() {
 }
 
 void ItemTooltipUI::initDocument(uint64_t owner_scene_id) {
-    layer_ = context_.getGLRenderer().getRmlUILayer();
-    if (!layer_) {
-        spdlog::error("ItemTooltipUI: RmlUILayer 不可用。");
+    runtime_ = context_.getRmlUi();
+    if (!runtime_) {
+        spdlog::error("ItemTooltipUI: RmlUiRuntime 不可用。");
         return;
     }
 
-    document_ = layer_->loadDocument(DOCUMENT_PATH, owner_scene_id);
+    document_ = runtime_->loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
         spdlog::error("ItemTooltipUI: 加载 RML 文档失败: {}", DOCUMENT_PATH);
         return;
@@ -112,8 +111,8 @@ void ItemTooltipUI::initDocument(uint64_t owner_scene_id) {
     description_element_ = document_->GetElementById("item-tooltip-description");
     if (!panel_ || !name_element_ || !category_element_ || !description_element_) {
         spdlog::error("ItemTooltipUI: RML 元素缺失。");
-        if (layer_) {
-            layer_->unloadDocument(document_);
+        if (runtime_) {
+            runtime_->unloadDocument(document_);
         }
         document_ = nullptr;
         panel_ = nullptr;
@@ -124,7 +123,7 @@ void ItemTooltipUI::initDocument(uint64_t owner_scene_id) {
     }
 
     syncStyleMetricsFromDocument();
-    layer_->hideDocument(document_);
+    runtime_->hideDocument(document_);
 }
 
 void ItemTooltipUI::syncStyleMetricsFromDocument() {
@@ -304,15 +303,15 @@ void ItemTooltipUI::showItem(std::string_view display_name,
     description_ = std::string(description);
     refreshLayout();
     visible_ = true;
-    if (layer_) {
-        layer_->showDocument(document_);
+    if (runtime_) {
+        runtime_->showDocument(document_);
     }
 }
 
 void ItemTooltipUI::hideTooltip() {
     visible_ = false;
-    if (document_ && layer_) {
-        layer_->hideDocument(document_);
+    if (document_ && runtime_) {
+        runtime_->hideDocument(document_);
     }
 }
 

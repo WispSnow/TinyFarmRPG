@@ -17,14 +17,14 @@ class Context;
 }
 
 namespace engine::ui::rmlui {
-class RmlUILayer;
+class RmlUiRuntime;
 }
 
 namespace game::ui {
 
 class ItemTooltipUI final {
     engine::core::Context& context_;
-    engine::ui::rmlui::RmlUILayer* layer_{nullptr};
+    engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* panel_{nullptr};
     Rml::Element* name_element_{nullptr};

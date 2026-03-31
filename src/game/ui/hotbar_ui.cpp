@@ -2,7 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/ui/rmlui/rml_mouse_buttons.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
 #include "game/defs/commands.h"
 #include "game/ui/item_tooltip_ui.h"
@@ -34,11 +34,11 @@ constexpr std::string_view MODEL_NAME = "hotbar_ui";
 
 namespace game::ui {
 
-HotbarUI::HotbarUI(engine::ui::rmlui::RmlUILayer& layer,
+HotbarUI::HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
                    engine::core::Context& context,
                    uint64_t owner_scene_id,
                    game::data::ItemCatalog* catalog)
-    : layer_(layer),
+    : runtime_(runtime),
       context_(context),
       item_catalog_(catalog),
       owner_scene_id_(owner_scene_id) {
@@ -58,7 +58,7 @@ HotbarUI::~HotbarUI() {
 }
 
 bool HotbarUI::initDocument() {
-    auto* rml_context = layer_.getContext();
+    auto* rml_context = runtime_.getContext();
     if (!rml_context) {
         spdlog::error("HotbarUI: RmlUi context 不可用。");
         return false;
@@ -100,7 +100,7 @@ bool HotbarUI::initDocument() {
         return false;
     }
 
-    document_ = layer_.loadDocument(DOCUMENT_PATH, owner_scene_id_);
+    document_ = runtime_.loadDocument(DOCUMENT_PATH, owner_scene_id_);
     if (!document_) {
         spdlog::error("HotbarUI: 加载 RML 文档失败: {}", DOCUMENT_PATH);
         data_bridge_.destroy();
@@ -109,7 +109,7 @@ bool HotbarUI::initDocument() {
 
     data_bridge_.markAllDirty();
     if (!visible_) {
-        layer_.hideDocument(document_);
+        runtime_.hideDocument(document_);
     }
     return true;
 }
@@ -143,7 +143,7 @@ bool HotbarUI::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor)
 void HotbarUI::destroyDocument() {
     clearDragState();
     if (document_) {
-        layer_.unloadDocument(document_);
+        runtime_.unloadDocument(document_);
         document_ = nullptr;
     }
 }
@@ -306,7 +306,7 @@ void HotbarUI::resetInventoryMappings() {
 void HotbarUI::show() {
     visible_ = true;
     if (document_) {
-        layer_.showDocument(document_);
+        runtime_.showDocument(document_);
     }
 }
 
@@ -315,7 +315,7 @@ void HotbarUI::hide() {
     clearTooltip();
     clearDragState();
     if (document_) {
-        layer_.hideDocument(document_);
+        runtime_.hideDocument(document_);
     }
 }
 
