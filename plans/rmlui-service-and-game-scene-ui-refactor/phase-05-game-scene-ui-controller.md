@@ -51,6 +51,7 @@
 - 新建 `src/game/ui/game_scene_ui_controller.cpp`
 - 修改 `src/game/scene/game_scene.h`
 - 修改 `src/game/scene/game_scene.cpp`
+- 修改 `tests/game/menu_hover_focus_sync_test.cpp`
 
 #### 验证
 
@@ -60,8 +61,8 @@
 
 #### 完成标记
 
-- [ ] 新增 `GameSceneUiController`
-- [ ] `GameScene` UI 初始化逻辑迁移到 controller
-- [ ] `GameScene` UI update 逻辑迁移到 controller
-- [ ] `GameScene` anchored widget 刷新逻辑迁移到 controller
-- [ ] `GameScene` clean 逻辑迁移到 controller
+- [x] 新增 `GameSceneUiController`
+- [x] `GameScene` UI 初始化逻辑迁移到 controller
+- [x] `GameScene` UI update 逻辑迁移到 controller
+- [x] `GameScene` anchored widget 刷新逻辑迁移到 controller
+- [x] `GameScene` clean 逻辑迁移到 controller

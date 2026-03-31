@@ -70,7 +70,7 @@
 | Phase 2 | `[x]` | [`phase-02-engine-wiring.md`](./rmlui-service-and-game-scene-ui-refactor/phase-02-engine-wiring.md) | `GameApp` ownership、render hook、`Context` 入口、引擎层接线 |
 | Phase 3 | `[x]` | [`phase-03-frame-loop.md`](./rmlui-service-and-game-scene-ui-refactor/phase-03-frame-loop.md) | 恢复 `ProcessEvents / Update / Render` 三段式 |
 | Phase 4 | `[x]` | [`phase-04-game-migration.md`](./rmlui-service-and-game-scene-ui-refactor/phase-04-game-migration.md) | 迁移游戏层场景、wrapper、菜单和库存 UI |
-| Phase 5 | `[ ]` | [`phase-05-game-scene-ui-controller.md`](./rmlui-service-and-game-scene-ui-refactor/phase-05-game-scene-ui-controller.md) | 提取 `GameSceneUiController` |
+| Phase 5 | `[x]` | [`phase-05-game-scene-ui-controller.md`](./rmlui-service-and-game-scene-ui-refactor/phase-05-game-scene-ui-controller.md) | 提取 `GameSceneUiController` |
 | Phase 6 | `[ ]` | [`phase-06-cleanup-and-tests.md`](./rmlui-service-and-game-scene-ui-refactor/phase-06-cleanup-and-tests.md) | 删除兼容壳与旧入口，补测试 |
 
 ## 关键检查点
@@ -95,5 +95,5 @@
 - [x] Phase 2 完成
 - [x] Phase 3 完成
 - [x] Phase 4 完成
-- [ ] Phase 5 完成
+- [x] Phase 5 完成
 - [ ] Phase 6 完成
