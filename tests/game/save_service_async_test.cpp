@@ -274,8 +274,9 @@ protected:
         engine::core::ResourceServices resource_services{
             *resource_manager_, auto_tile_library_
         };
+        engine::core::UiServices ui_services{};
         context_ = engine::core::Context::create(
-            core_services, render_services, resource_services,
+            core_services, render_services, resource_services, ui_services,
             *audio_player_, spatial_index_manager_
 #ifdef TF_ENABLE_DEBUG_UI
             , *debug_ui_manager_

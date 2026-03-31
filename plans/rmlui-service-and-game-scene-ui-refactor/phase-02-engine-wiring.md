@@ -5,9 +5,9 @@
 本阶段完成后，引擎层应满足：
 
 - `GameApp` 持有 runtime 和 backend
-- `GLRenderer` 只保留 render hook
+- `GLRenderer` 通过 render hook 接入 RmlUi，并只保留一个面向游戏层过渡期的 legacy bridge
 - `Context` 直接暴露 `getRmlUi()`
-- `src/engine/**` 中不再出现 `getRmlUILayer()`
+- `src/engine/**` 中不再出现对 `getRmlUILayer()` 的直接调用
 
 #### 本阶段要做的事
 
@@ -24,6 +24,7 @@
 
 2. `GLRenderer` 改为 render hook 接入
    - 新增 `setRmlUiRenderHook(...)`
+   - 过渡期保留一个 `setLegacyRmlUiLayer(...)` backdoor，只服务尚未迁移的游戏层调用
    - `present()` 在世界合成后只触发 hook
    - 不再持有或查询 runtime
    - 过渡期内，render hook 暂时同时执行：
@@ -85,22 +86,23 @@
 - 引擎层场景加载、active scene、输入路由、导航接线仍正常
 - `RmlUiDebugPanel` 可继续访问文档状态和 texture filter
 - 过渡期 render hook 内同时执行 update + render，行为与旧主循环保持一致
-- grep `src/engine/**` 时 `getRmlUILayer()` 为零
+- grep `src/engine/**` 时，对 `getRmlUILayer()` 的直接调用为零
+- 仅允许在 `GLRenderer` 的 legacy bridge 声明/定义中保留 `getRmlUILayer()`
 
 #### 完成标记
 
-- [ ] `GameApp` 持有 `rmlui_runtime_`
-- [ ] `GameApp` 持有 `rmlui_render_backend_`
-- [ ] `GameApp` 在 init 和 resize 后同步 RmlUi viewport
-- [ ] `GLRenderer` 新增 `setRmlUiRenderHook(...)`
-- [ ] `GLRenderer::present()` 改为调用 RmlUi render hook
-- [ ] 过渡期 render hook 暂时同时包含 RmlUi update + render
-- [ ] `Context` 新增 `UiServices`
-- [ ] `Context::getRmlUi()` 返回 `RmlUiRuntime*`
-- [ ] `Scene::loadRmlDocument()` / `unloadAllRmlDocuments()` 切到 `getRmlUi()`
-- [ ] `SceneManager::syncRmlActiveScene()` 切到 `getRmlUi()`
-- [ ] `InputManager` 的 RmlUi event forwarder 改为使用 `RmlUiRuntime`
-- [ ] `UINavigationController` 的导航接线改为连接 `RmlUiRuntime`
-- [ ] `HoverFocusSyncListener` 改为依赖 `RmlUiRuntime`
-- [ ] `RmlUiDebugPanel` 同时改用 runtime 和 render backend 的正确入口
-- [ ] 阶段 A grep 检查通过：`src/engine/**` 中 `getRmlUILayer()` 为零
+- [x] `GameApp` 持有 `rmlui_runtime_`
+- [x] `GameApp` 持有 `rmlui_render_backend_`
+- [x] `GameApp` 在 init 和 resize 后同步 RmlUi viewport
+- [x] `GLRenderer` 新增 `setRmlUiRenderHook(...)`
+- [x] `GLRenderer::present()` 改为调用 RmlUi render hook
+- [x] 过渡期 render hook 暂时同时包含 RmlUi update + render
+- [x] `Context` 新增 `UiServices`
+- [x] `Context::getRmlUi()` 返回 `RmlUiRuntime*`
+- [x] `Scene::loadRmlDocument()` / `unloadAllRmlDocuments()` 切到 `getRmlUi()`
+- [x] `SceneManager::syncRmlActiveScene()` 切到 `getRmlUi()`
+- [x] `InputManager` 的 RmlUi event forwarder 改为使用 `RmlUiRuntime`
+- [x] `UINavigationController` 的导航接线改为连接 `RmlUiRuntime`
+- [x] `HoverFocusSyncListener` 改为依赖 `RmlUiRuntime`
+- [x] `RmlUiDebugPanel` 同时改用 runtime 和 render backend 的正确入口
+- [x] 阶段 A grep 检查通过：`src/engine/**` 中已无对 `getRmlUILayer()` 的直接调用（仅保留 `GLRenderer` legacy bridge）

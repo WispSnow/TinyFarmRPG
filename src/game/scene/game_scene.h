@@ -96,6 +96,7 @@ public:
     bool init() override;
     void fixedUpdate(float delta_time) override;
     void update(float delta_time) override;
+    void prepareUi(float interpolation_alpha) override;
     void render(float interpolation_alpha) override;
 
     void clean() override;

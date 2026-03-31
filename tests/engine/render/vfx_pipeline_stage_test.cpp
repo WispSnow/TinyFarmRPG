@@ -49,15 +49,15 @@ TEST(VfxPipelineStageTest, PresentRunsWorldVfxBeforeCompositeAndOverlayBeforeRml
     const std::size_t pos_world_vfx = present_block.find("world_vfx_pass_->flush(world_vfx_context)");
     const std::size_t pos_composite = present_block.find("composite_pass_->render(viewport)");
     const std::size_t pos_overlay_vfx = present_block.find("vfx_pass_->flush(overlay_vfx_context)");
-    const std::size_t pos_rml_update = present_block.find("rmlui_layer_->update();");
+    const std::size_t pos_rml_hook = present_block.find("rmlui_render_hook_(viewport);");
 
     ASSERT_NE(pos_world_vfx, std::string::npos);
     ASSERT_NE(pos_composite, std::string::npos);
     ASSERT_NE(pos_overlay_vfx, std::string::npos);
-    ASSERT_NE(pos_rml_update, std::string::npos);
+    ASSERT_NE(pos_rml_hook, std::string::npos);
     EXPECT_LT(pos_world_vfx, pos_composite);
     EXPECT_LT(pos_composite, pos_overlay_vfx);
-    EXPECT_LT(pos_overlay_vfx, pos_rml_update);
+    EXPECT_LT(pos_overlay_vfx, pos_rml_hook);
 }
 
 TEST(VfxPipelineStageTest, CleanReleasesWorldAndOverlayVfxPasses) {

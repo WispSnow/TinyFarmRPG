@@ -1,6 +1,6 @@
 #include "engine/ui/rmlui/hover_focus_sync_listener.h"
 
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Event.h>
@@ -17,8 +17,8 @@ namespace {
 
 } // namespace
 
-HoverFocusSyncListener::HoverFocusSyncListener(RmlUILayer& layer, CandidateFilter candidate_filter)
-    : layer_(&layer),
+HoverFocusSyncListener::HoverFocusSyncListener(RmlUiRuntime& runtime, CandidateFilter candidate_filter)
+    : runtime_(&runtime),
       candidate_filter_(std::move(candidate_filter)) {
 }
 
@@ -27,7 +27,7 @@ void HoverFocusSyncListener::setCandidateFilter(CandidateFilter candidate_filter
 }
 
 void HoverFocusSyncListener::ProcessEvent(Rml::Event& event) {
-    if (!layer_) {
+    if (!runtime_) {
         return;
     }
 
@@ -41,7 +41,7 @@ void HoverFocusSyncListener::ProcessEvent(Rml::Event& event) {
         if (candidate_filter_ && !candidate_filter_(element)) {
             continue;
         }
-        if (layer_->focusElement(element)) {
+        if (runtime_->focusElement(element)) {
             return;
         }
     }

@@ -90,12 +90,13 @@ TEST(RmlUiTextureFilterPipelineTest, GlRendererCachesAndForwardsTextureFilterMod
         test_source_utils::extractFunctionBlock(content, "void GLRenderer::setRmlUiTextureFilterMode(");
     ASSERT_FALSE(set_filter_block.empty());
     EXPECT_NE(set_filter_block.find("rmlui_texture_filter_mode_ = mode;"), std::string::npos);
-    EXPECT_NE(set_filter_block.find("rmlui_layer_->setTextureFilterMode(mode);"), std::string::npos);
+    EXPECT_NE(set_filter_block.find("rmlui_legacy_layer_->setTextureFilterMode(mode);"), std::string::npos);
 
-    const std::string init_rmlui_block =
-        test_source_utils::extractFunctionBlock(content, "bool GLRenderer::initRmlUiLayer()");
-    ASSERT_FALSE(init_rmlui_block.empty());
-    EXPECT_NE(init_rmlui_block.find("rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);"), std::string::npos);
+    const std::string set_legacy_layer_block =
+        test_source_utils::extractFunctionBlock(content, "void GLRenderer::setLegacyRmlUiLayer(");
+    ASSERT_FALSE(set_legacy_layer_block.empty());
+    EXPECT_NE(set_legacy_layer_block.find("rmlui_legacy_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);"),
+              std::string::npos);
 }
 
 TEST(RmlUiTextureFilterPipelineTest, RmlUiLayerForwardsTextureFilterToRenderBackend) {
@@ -137,7 +138,8 @@ TEST(RmlUiTextureFilterPipelineTest, RmlUiDebugPanelExposesRuntimeToggle) {
 
     EXPECT_NE(content.find("Nearest (Pixel Art)"), std::string::npos);
     EXPECT_NE(content.find("Linear (Smooth)"), std::string::npos);
-    EXPECT_NE(content.find("renderer_.setRmlUiTextureFilterMode("), std::string::npos);
+    EXPECT_NE(content.find("render_backend_.setTextureFilterMode("), std::string::npos);
+    EXPECT_NE(content.find("context_.getRmlUi()"), std::string::npos);
 }
 
 } // namespace

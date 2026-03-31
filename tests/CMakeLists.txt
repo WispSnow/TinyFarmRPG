@@ -23,6 +23,7 @@ set(TEST_SOURCES
     engine/core/config_rmlui_texture_filter_test.cpp
     engine/core/game_app_no_exceptions_test.cpp
     engine/core/game_app_dispatcher_trace_test.cpp
+    engine/core/game_app_rmlui_frame_loop_test.cpp
     engine/core/ecs_safety_test.cpp
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp

@@ -182,7 +182,8 @@ bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& c
 
 bool SaveSlotSelectScene::initUI() {
     auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
+    auto* runtime = context_.getRmlUi();
+    if (!layer || !runtime) {
         spdlog::error("SaveSlotSelectScene: RmlUILayer 不可用。");
         return false;
     }
@@ -228,7 +229,7 @@ bool SaveSlotSelectScene::initUI() {
         spdlog::error("SaveSlotSelectScene: 加载 RML 文档失败。");
         return false;
     }
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
+    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*runtime);
     hover_focus_listener_->setCandidateFilter([this](Rml::Element* element) {
         return shouldSyncHoverFocus(element);
     });

@@ -247,6 +247,33 @@ void GameScene::update(float delta_time) {
     Scene::update(delta_time);
 }
 
+void GameScene::prepareUi(float interpolation_alpha) {
+    if (!isInitialized() || abort_to_title_) {
+        return;
+    }
+
+    auto& camera = context_.getCamera();
+    const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
+    const glm::vec2 camera_position_before = camera.getPosition();
+    if (has_previous_camera_position_) {
+        const glm::vec2 ui_camera_position =
+            glm::mix(previous_camera_position_, camera_position_before, clamped_alpha);
+        camera.setPosition(ui_camera_position);
+    }
+
+    // 这里传入 clamped_alpha 是为了插值 world anchor 本身；
+    // 相机插值已经在上面通过临时 camera 位置完成，两者作用对象不同。
+    for (auto& bubble : dialogue_bubbles_) {
+        if (bubble) {
+            bubble->refreshAnchoredPosition(camera, clamped_alpha);
+        }
+    }
+
+    if (has_previous_camera_position_) {
+        camera.setPosition(camera_position_before);
+    }
+}
+
 void GameScene::render(float interpolation_alpha) {
     if (abort_to_title_) {
         Scene::render(interpolation_alpha);
@@ -272,12 +299,6 @@ void GameScene::render(float interpolation_alpha) {
         systems_->debug_render_system->render(registry_, renderer);
     }
 #endif
-
-    for (auto& bubble : dialogue_bubbles_) {
-        if (bubble) {
-            bubble->refreshAnchoredPosition(camera, clamped_alpha);
-        }
-    }
 
     Scene::render(interpolation_alpha);
 

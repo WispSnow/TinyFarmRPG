@@ -67,8 +67,8 @@
 | Phase | 状态 | 文档 | 说明 |
 |------|------|------|------|
 | Phase 1 | `[x]` | [`phase-01-bootstrap.md`](./rmlui-service-and-game-scene-ui-refactor/phase-01-bootstrap.md) | 拆 `runtime / backend / viewport`，建立 bootstrap 与兼容壳 |
-| Phase 2 | `[ ]` | [`phase-02-engine-wiring.md`](./rmlui-service-and-game-scene-ui-refactor/phase-02-engine-wiring.md) | `GameApp` ownership、render hook、`Context` 入口、引擎层接线 |
-| Phase 3 | `[ ]` | [`phase-03-frame-loop.md`](./rmlui-service-and-game-scene-ui-refactor/phase-03-frame-loop.md) | 恢复 `ProcessEvents / Update / Render` 三段式 |
+| Phase 2 | `[x]` | [`phase-02-engine-wiring.md`](./rmlui-service-and-game-scene-ui-refactor/phase-02-engine-wiring.md) | `GameApp` ownership、render hook、`Context` 入口、引擎层接线 |
+| Phase 3 | `[x]` | [`phase-03-frame-loop.md`](./rmlui-service-and-game-scene-ui-refactor/phase-03-frame-loop.md) | 恢复 `ProcessEvents / Update / Render` 三段式 |
 | Phase 4 | `[ ]` | [`phase-04-game-migration.md`](./rmlui-service-and-game-scene-ui-refactor/phase-04-game-migration.md) | 迁移游戏层场景、wrapper、菜单和库存 UI |
 | Phase 5 | `[ ]` | [`phase-05-game-scene-ui-controller.md`](./rmlui-service-and-game-scene-ui-refactor/phase-05-game-scene-ui-controller.md) | 提取 `GameSceneUiController` |
 | Phase 6 | `[ ]` | [`phase-06-cleanup-and-tests.md`](./rmlui-service-and-game-scene-ui-refactor/phase-06-cleanup-and-tests.md) | 删除兼容壳与旧入口，补测试 |
@@ -76,7 +76,8 @@
 ## 关键检查点
 
 - Phase 2 结束后，执行阶段 A 检查：
-  - `src/engine/**` 中 `getRmlUILayer()` 调用为零
+  - `src/engine/**` 中对 `getRmlUILayer()` 的直接调用为零
+  - 仅允许 `GLRenderer` 的 legacy bridge 保留 `getRmlUILayer()` 声明/定义
   - 引擎层全部改走 `Context::getRmlUi()` 或 render hook
 - Phase 6 开始前，执行阶段 B 检查：
   - 全仓库 `getRmlUILayer()` 调用为零
@@ -91,8 +92,8 @@
 ## 当前总待办
 
 - [x] Phase 1 完成
-- [ ] Phase 2 完成
-- [ ] Phase 3 完成
+- [x] Phase 2 完成
+- [x] Phase 3 完成
 - [ ] Phase 4 完成
 - [ ] Phase 5 完成
 - [ ] Phase 6 完成
