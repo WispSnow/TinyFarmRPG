@@ -1,6 +1,6 @@
 #include "rml_screen_fade.h"
 
-#include "rml_ui_layer.h"
+#include "rml_ui_runtime.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -22,9 +22,9 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/overlay/screen_fade.rml";
 
 namespace engine::ui::rmlui {
 
-RmlScreenFade::RmlScreenFade(RmlUILayer& layer, uint64_t owner_scene_id)
-    : layer_(layer) {
-    document_ = layer_.loadDocument(DOCUMENT_PATH, owner_scene_id);
+RmlScreenFade::RmlScreenFade(RmlUiRuntime& runtime, uint64_t owner_scene_id)
+    : runtime_(runtime) {
+    document_ = runtime_.loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
         spdlog::error("RmlScreenFade: failed to load '{}'.", DOCUMENT_PATH);
         return;
@@ -33,19 +33,19 @@ RmlScreenFade::RmlScreenFade(RmlUILayer& layer, uint64_t owner_scene_id)
     overlay_ = document_->GetElementById("fade-overlay");
     if (!overlay_) {
         spdlog::error("RmlScreenFade: #fade-overlay element not found.");
-        layer_.unloadDocument(document_);
+        runtime_.unloadDocument(document_);
         document_ = nullptr;
         return;
     }
 
     // Start hidden
-    layer_.hideDocument(document_);
+    runtime_.hideDocument(document_);
     spdlog::debug("RmlScreenFade initialized.");
 }
 
 RmlScreenFade::~RmlScreenFade() {
     if (document_) {
-        layer_.unloadDocument(document_);
+        runtime_.unloadDocument(document_);
         document_ = nullptr;
     }
 }
@@ -90,7 +90,7 @@ void RmlScreenFade::update(float delta_time) {
             setOverlayInteractive(false);
             applyOpacity();
             if (document_) {
-                layer_.hideDocument(document_);
+                runtime_.hideDocument(document_);
             }
             return;
         }
@@ -107,7 +107,7 @@ void RmlScreenFade::startFade(Phase next_phase, float target_alpha, float second
     timer_ = 0.0f;
 
     if (document_) {
-        layer_.showDocument(document_);
+        runtime_.showDocument(document_);
     }
     setOverlayInteractive(true);
     applyOpacity();

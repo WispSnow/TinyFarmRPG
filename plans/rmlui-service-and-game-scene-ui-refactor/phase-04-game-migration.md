@@ -76,19 +76,19 @@
 - `InventoryMenuScene` 的拖拽和 action menu 焦点恢复正常
 - wrapper 不再通过 renderer 间接拿 RmlUi
 - `GameScene` 中的 wrapper 构造调用已全部同步到新签名并可编译通过
-- 游戏层 grep `getRmlUILayer()` 只允许保留在未迁移位置；阶段结束后应尽量归零
+- `src/game/**` grep `getRmlUILayer()` 结果为零
 
 #### 完成标记
 
-- [ ] `TitleScene` 迁移
-- [ ] `PauseMenuScene` 迁移
-- [ ] `SaveSlotSelectScene` 迁移
-- [ ] `RestDialogScene` 迁移
-- [ ] `BattleScene` 迁移
-- [ ] `InventoryMenuScene` 迁移
-- [ ] `TimeClockHud` 迁移
-- [ ] `HotbarUI` 迁移
-- [ ] `ItemTooltipUI` 迁移
-- [ ] `DialogueBubbleView` 迁移
-- [ ] `RmlScreenFade` 迁移
-- [ ] `GameScene` 中的 wrapper 构造调用同步更新
+- [x] `TitleScene` 迁移
+- [x] `PauseMenuScene` 迁移
+- [x] `SaveSlotSelectScene` 迁移
+- [x] `RestDialogScene` 迁移
+- [x] `BattleScene` 迁移
+- [x] `InventoryMenuScene` 迁移
+- [x] `TimeClockHud` 迁移
+- [x] `HotbarUI` 迁移
+- [x] `ItemTooltipUI` 迁移
+- [x] `DialogueBubbleView` 迁移
+- [x] `RmlScreenFade` 迁移
+- [x] `GameScene` 中的 wrapper 构造调用同步更新

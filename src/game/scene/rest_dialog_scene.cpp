@@ -5,9 +5,8 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -80,13 +79,13 @@ void RestDialogScene::clean() {
 }
 
 bool RestDialogScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("RestDialogScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("RestDialogScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         spdlog::error("RestDialogScene: RmlUi context 不可用。");
         return false;
@@ -115,7 +114,7 @@ bool RestDialogScene::initUI() {
     click_listener_registered_ = true;
 
     updateHoursLabel();
-    layer->queueFocusElementById(document_, "rest-hours-down-button");
+    runtime->queueFocusElementById(document_, "rest-hours-down-button");
     return true;
 }
 

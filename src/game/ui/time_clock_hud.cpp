@@ -1,7 +1,7 @@
 #include "time_clock_hud.h"
 
 #include "game/data/game_time.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -23,10 +23,10 @@ constexpr std::string_view MODEL_NAME = "time_clock";
 
 namespace game::ui {
 
-TimeClockHud::TimeClockHud(engine::ui::rmlui::RmlUILayer& layer,
-                           Rml::Context* context,
+TimeClockHud::TimeClockHud(engine::ui::rmlui::RmlUiRuntime& runtime,
                            uint64_t owner_scene_id)
-    : layer_(layer) {
+    : runtime_(runtime) {
+    auto* context = runtime_.getContext();
     if (!context) {
         spdlog::error("TimeClockHud: context is null.");
         return;
@@ -42,19 +42,19 @@ TimeClockHud::TimeClockHud(engine::ui::rmlui::RmlUILayer& layer,
     constructor.Bind("time_text", &time_text_);
     constructor.Bind("hand_decorator", &hand_decorator_);
 
-    document_ = layer_.loadDocument(DOCUMENT_PATH, owner_scene_id);
+    document_ = runtime_.loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
         spdlog::error("TimeClockHud: failed to load '{}'.", DOCUMENT_PATH);
         return;
     }
 
-    layer_.showDocument(document_);
+    runtime_.showDocument(document_);
     spdlog::debug("TimeClockHud 初始化完成。");
 }
 
 TimeClockHud::~TimeClockHud() {
     if (document_) {
-        layer_.unloadDocument(document_);
+        runtime_.unloadDocument(document_);
         document_ = nullptr;
     }
     data_bridge_.destroy();

@@ -1,12 +1,11 @@
 #include "dialogue_bubble_view.h"
 
 #include "engine/core/context.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/font_manager.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -47,8 +46,8 @@ DialogueBubbleView::DialogueBubbleView(engine::core::Context& context,
 }
 
 DialogueBubbleView::~DialogueBubbleView() {
-    if (document_ && layer_) {
-        layer_->unloadDocument(document_);
+    if (document_ && runtime_) {
+        runtime_->unloadDocument(document_);
     }
     document_ = nullptr;
     panel_ = nullptr;
@@ -56,13 +55,13 @@ DialogueBubbleView::~DialogueBubbleView() {
 }
 
 void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
-    layer_ = context_.getGLRenderer().getRmlUILayer();
-    if (!layer_) {
-        spdlog::error("DialogueBubbleView: RmlUILayer 不可用。");
+    runtime_ = context_.getRmlUi();
+    if (!runtime_) {
+        spdlog::error("DialogueBubbleView: RmlUiRuntime 不可用。");
         return;
     }
 
-    document_ = layer_->loadDocument(DOCUMENT_PATH, owner_scene_id);
+    document_ = runtime_->loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
         spdlog::error("DialogueBubbleView: 加载 RML 文档失败: {}", DOCUMENT_PATH);
         return;
@@ -72,8 +71,8 @@ void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
     text_element_ = document_->GetElementById("dialogue-bubble-text");
     if (!panel_ || !text_element_) {
         spdlog::error("DialogueBubbleView: RML 元素缺失。");
-        if (layer_) {
-            layer_->unloadDocument(document_);
+        if (runtime_) {
+            runtime_->unloadDocument(document_);
         }
         document_ = nullptr;
         panel_ = nullptr;
@@ -82,7 +81,7 @@ void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
     }
 
     syncStyleMetricsFromDocument();
-    layer_->hideDocument(document_);
+    runtime_->hideDocument(document_);
     refreshLayoutFromText();
 }
 
@@ -108,14 +107,14 @@ void DialogueBubbleView::setText(std::string_view text) {
 
 void DialogueBubbleView::setVisible(bool visible) {
     visible_ = visible;
-    if (!document_ || !layer_) {
+    if (!document_ || !runtime_) {
         return;
     }
 
     if (visible) {
-        layer_->showDocument(document_);
+        runtime_->showDocument(document_);
     } else {
-        layer_->hideDocument(document_);
+        runtime_->hideDocument(document_);
     }
 }
 

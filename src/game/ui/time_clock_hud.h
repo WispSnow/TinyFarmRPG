@@ -12,7 +12,7 @@ class Context;
 }
 
 namespace engine::ui::rmlui {
-class RmlUILayer;
+class RmlUiRuntime;
 }
 
 namespace game::data {
@@ -29,9 +29,8 @@ namespace game::ui {
  */
 class TimeClockHud final {
 public:
-    /// @param owner_scene_id 场景实例 ID，用于 RmlUILayer 文档归属管理
-    TimeClockHud(engine::ui::rmlui::RmlUILayer& layer,
-                 Rml::Context* context,
+    /// @param owner_scene_id 场景实例 ID，用于 RmlUiRuntime 文档归属管理
+    TimeClockHud(engine::ui::rmlui::RmlUiRuntime& runtime,
                  uint64_t owner_scene_id);
     ~TimeClockHud();
 
@@ -42,7 +41,7 @@ public:
     void update(const game::data::GameTime* game_time);
 
 private:
-    engine::ui::rmlui::RmlUILayer& layer_;
+    engine::ui::rmlui::RmlUiRuntime& runtime_;
     engine::ui::rmlui::RmlDataBridge data_bridge_;
     Rml::ElementDocument* document_{nullptr};
 

@@ -193,8 +193,8 @@ protected:
 };
 
 TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
-    if (!context_->getGLRenderer().getRmlUILayer()) {
-        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    if (!context_->getRmlUi()) {
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
     }
 
     game::ui::DialogueBubbleController controller(dispatcher_);
@@ -236,8 +236,8 @@ TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
 }
 
 TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers) {
-    if (!context_->getGLRenderer().getRmlUILayer()) {
-        GTEST_SKIP() << "RmlUILayer not available in dialogue bubble test environment.";
+    if (!context_->getRmlUi()) {
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
     }
 
     game::ui::DialogueBubbleController controller(dispatcher_);

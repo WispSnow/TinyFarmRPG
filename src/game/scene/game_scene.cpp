@@ -16,9 +16,9 @@
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_event_bridge.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
 #include "engine/vfx/vfx_service.h"
@@ -454,16 +454,21 @@ bool GameScene::registerDebugPanels() {
 bool GameScene::initUI() {
     auto& text_renderer = context_.getTextRenderer();
 
-    auto* rml_layer = context_.getGLRenderer().getRmlUILayer();
-    if (!rml_layer) {
-        spdlog::error("GameScene: RmlUILayer 不可用，无法初始化 RmlUi HUD。");
+    auto* rml_runtime = context_.getRmlUi();
+    if (!rml_runtime) {
+        spdlog::error("GameScene: RmlUiRuntime 不可用，无法初始化 RmlUi HUD。");
+        return false;
+    }
+    auto* rml_context = rml_runtime->getContext();
+    if (!rml_context) {
+        spdlog::error("GameScene: RmlUi context 不可用，无法初始化 RmlUi HUD。");
         return false;
     }
 
     // 时钟 HUD（RmlUi 驱动）
-    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_layer, rml_layer->getContext(), instance_id_);
+    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, instance_id_);
 
-    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_layer, context_, instance_id_, services_->item_catalog.get());
+    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_runtime, context_, instance_id_, services_->item_catalog.get());
     if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
         spdlog::error("GameScene: 创建 HotbarUI 失败。");
         return false;
@@ -496,7 +501,7 @@ bool GameScene::initUI() {
         }
     }
 
-    if (auto overlay_constructor = overlay_data_bridge_.create(rml_layer->getContext(), GAME_OVERLAY_MODEL_NAME)) {
+    if (auto overlay_constructor = overlay_data_bridge_.create(rml_context, GAME_OVERLAY_MODEL_NAME)) {
         overlay_constructor.Bind("primary_prompt_text", &primary_prompt_text_);
         overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
         overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
@@ -518,10 +523,8 @@ bool GameScene::initUI() {
         spdlog::error("GameScene: 创建 overlay data model 失败，输入提示将不可用。");
     }
 
-    if (auto* rml_layer = context_.getGLRenderer().getRmlUILayer()) {
-        rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_layer, instance_id_);
-        screen_fade_ = rml_screen_fade_.get();
-    }
+    rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_runtime, instance_id_);
+    screen_fade_ = rml_screen_fade_.get();
 
     if (systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(screen_fade_);

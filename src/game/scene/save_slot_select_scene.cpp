@@ -5,10 +5,9 @@
 
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -181,14 +180,13 @@ bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& c
 }
 
 bool SaveSlotSelectScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
     auto* runtime = context_.getRmlUi();
-    if (!layer || !runtime) {
-        spdlog::error("SaveSlotSelectScene: RmlUILayer 不可用。");
+    if (!runtime) {
+        spdlog::error("SaveSlotSelectScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         spdlog::error("SaveSlotSelectScene: RmlUi context 不可用。");
         return false;
@@ -243,8 +241,8 @@ bool SaveSlotSelectScene::initUI() {
 }
 
 void SaveSlotSelectScene::queueDefaultFocus() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer || !document_) {
+    auto* runtime = context_.getRmlUi();
+    if (!runtime || !document_) {
         return;
     }
 
@@ -252,9 +250,9 @@ void SaveSlotSelectScene::queueDefaultFocus() {
         return slot.enabled;
     });
     if (has_enabled_slot) {
-        layer->queueFocusFirstEnabledElementByClass(document_, "save-slot-button");
+        runtime->queueFocusFirstEnabledElementByClass(document_, "save-slot-button");
     } else {
-        layer->queueFocusElementById(document_, "save-slot-back");
+        runtime->queueFocusElementById(document_, "save-slot-back");
     }
 }
 
@@ -360,8 +358,8 @@ bool SaveSlotSelectScene::onMenuCancelPressed() {
 
 void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     pending_overwrite_slot_ = slot;
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        focus_before_confirm_ = layer->getFocusedElement();
+    if (auto* runtime = context_.getRmlUi()) {
+        focus_before_confirm_ = runtime->getFocusedElement();
         if (focus_before_confirm_ && focus_before_confirm_->GetOwnerDocument() != document_) {
             focus_before_confirm_ = nullptr;
         }
@@ -374,8 +372,8 @@ void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     if (updateBoundBool(confirm_visible_, true)) {
         data_bridge_.markDirty("confirm_visible");
     }
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        layer->queueFocusElementById(document_, "save-slot-confirm-yes");
+    if (auto* runtime = context_.getRmlUi()) {
+        runtime->queueFocusElementById(document_, "save-slot-confirm-yes");
     }
 }
 
@@ -384,9 +382,9 @@ void SaveSlotSelectScene::hideOverwriteConfirm() {
     if (updateBoundBool(confirm_visible_, false)) {
         data_bridge_.markDirty("confirm_visible");
     }
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
+    if (auto* runtime = context_.getRmlUi()) {
         if (focus_before_confirm_) {
-            layer->queueFocusElement(focus_before_confirm_);
+            runtime->queueFocusElement(focus_before_confirm_);
         } else {
             queueDefaultFocus();
         }

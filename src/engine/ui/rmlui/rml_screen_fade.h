@@ -11,7 +11,7 @@ class ElementDocument;
 
 namespace engine::ui::rmlui {
 
-class RmlUILayer;
+class RmlUiRuntime;
 
 /**
  * @brief RmlUi 驱动的全屏淡入淡出。
@@ -23,7 +23,7 @@ class RmlUILayer;
  */
 class RmlScreenFade final : public IScreenFade {
 public:
-    RmlScreenFade(RmlUILayer& layer, uint64_t owner_scene_id);
+    RmlScreenFade(RmlUiRuntime& runtime, uint64_t owner_scene_id);
     ~RmlScreenFade();
 
     RmlScreenFade(const RmlScreenFade&) = delete;
@@ -40,7 +40,7 @@ private:
     void applyOpacity();
     void setOverlayInteractive(bool interactive);
 
-    RmlUILayer& layer_;
+    RmlUiRuntime& runtime_;
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* overlay_{nullptr};
 

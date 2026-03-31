@@ -4,9 +4,8 @@
 
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -88,8 +87,8 @@ bool BattleScene::init() {
         state_ = FlowState::BattleEnd;
     }
     refreshView();
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer(); layer && document_) {
-        layer->queueFocusElementById(document_, "battle-action-attack");
+    if (auto* runtime = context_.getRmlUi(); runtime && document_) {
+        runtime->queueFocusElementById(document_, "battle-action-attack");
     }
     return true;
 }
@@ -112,13 +111,13 @@ void BattleScene::clean() {
 }
 
 bool BattleScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("BattleScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("BattleScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
+    auto* rml_context = runtime->getContext();
     if (!rml_context) {
         spdlog::error("BattleScene: RmlUi context 不可用。");
         return false;
