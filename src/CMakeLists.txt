@@ -201,6 +201,7 @@ target_sources(game PRIVATE
     game/ui/hotbar_ui.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp
+    game/ui/game_scene_ui_controller.cpp
     game/ui/item_tooltip_ui.cpp
     # System
     game/system/state_system.cpp

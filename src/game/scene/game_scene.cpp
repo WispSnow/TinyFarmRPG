@@ -15,15 +15,9 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
-#include "engine/ui/rmlui/rml_screen_fade.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
-#include "engine/vfx/vfx_service.h"
 #include "engine/system/ysort_system.h"
-#include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
@@ -36,12 +30,9 @@
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/render_target_system.h"
-#include "game/ui/dialogue_bubble_controller.h"
-#include "game/ui/dialogue_bubble_view.h"
-#include "game/ui/hotbar_ui.h"
-#include "game/ui/item_tooltip_ui.h"
-#include "game/ui/time_clock_hud.h"
+#include "game/ui/game_scene_ui_controller.h"
 #include "game/world/map_manager.h"
+#include "engine/vfx/vfx_service.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
 #include "engine/debug/panels/vfx_debug_panel.h"
@@ -57,8 +48,6 @@
 #endif
 
 #include <entt/core/hashed_string.hpp>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
@@ -69,10 +58,6 @@ using namespace entt::literals;
 
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
-constexpr std::string_view GAME_OVERLAY_DOCUMENT_PATH = "ui/rmlui/hud/game_overlay.rml";
-constexpr std::string_view GAME_OVERLAY_MODEL_NAME = "game_overlay";
-
-using engine::ui::rmlui::updateBoundString;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -92,14 +77,6 @@ using engine::ui::rmlui::updateBoundString;
     }
 
     return stocks;
-}
-
-[[nodiscard]] std::string promptTextForAction(engine::input::InputManager& input_manager, entt::id_type action_id) {
-    if (const auto prompt = input_manager.getActionPrompt(action_id); prompt.has_value()) {
-        return prompt->fallback_text;
-    }
-
-    return "-";
 }
 }
 
@@ -231,18 +208,11 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
-    refreshOverlayPrompts();
     if (!abort_to_title_ && services_ && services_->vfx_service) {
         services_->vfx_service->update(delta_time);
     }
-    if (!abort_to_title_ && time_clock_hud_) {
-        time_clock_hud_->update(registry_.ctx().find<game::data::GameTime>());
-    }
-    if (!abort_to_title_ && rml_screen_fade_) {
-        rml_screen_fade_->update(delta_time);
-    }
-    if (!abort_to_title_ && item_tooltip_ui_) {
-        item_tooltip_ui_->update(delta_time);
+    if (!abort_to_title_ && ui_controller_) {
+        ui_controller_->update(delta_time);
     }
     Scene::update(delta_time);
 }
@@ -263,10 +233,8 @@ void GameScene::prepareUi(float interpolation_alpha) {
 
     // 这里传入 clamped_alpha 是为了插值 world anchor 本身；
     // 相机插值已经在上面通过临时 camera 位置完成，两者作用对象不同。
-    for (auto& bubble : dialogue_bubbles_) {
-        if (bubble) {
-            bubble->refreshAnchoredPosition(camera, clamped_alpha);
-        }
+    if (ui_controller_) {
+        ui_controller_->refreshAnchoredWidgets(camera, clamped_alpha);
     }
 
     if (has_previous_camera_position_) {
@@ -319,8 +287,6 @@ void GameScene::snapshotInterpolationState() {
 }
 
 void GameScene::clean() {
-    removeOverlayEventListeners();
-    time_clock_hud_.reset();
     context_.getGLRenderer().setVfxBackend(nullptr);
 
     if (services_ && services_->script_host) {
@@ -335,23 +301,10 @@ void GameScene::clean() {
     }
     context_.getDebugUIManager().unregisterPanels(engine::debug::PanelCategory::Game);
 #endif
-    auto& dispatcher = context_.getDispatcher();
-    dispatcher.clear<game::defs::DialogueShowEvent>();
-    dispatcher.clear<game::defs::DialogueMoveEvent>();
-    dispatcher.clear<game::defs::DialogueHideEvent>();
-
-    dialogue_controller_.reset();
-    for (auto& bubble : dialogue_bubbles_) {
-        bubble.reset();
-    }
-    hotbar_ui_.reset();
-    item_tooltip_ui_.reset();
-    overlay_document_ = nullptr;
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(nullptr);
     }
-    screen_fade_ = nullptr;
-    rml_screen_fade_.reset();
+    ui_controller_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
     if (context_pushed_) {
@@ -359,7 +312,6 @@ void GameScene::clean() {
         context_pushed_ = false;
     }
     Scene::clean();
-    overlay_data_bridge_.destroy();
 }
 
 void GameScene::setGameMode(game::runtime::GameMode mode) {
@@ -372,13 +324,6 @@ void GameScene::bindSceneInputActions() {
     input_manager.onAction("hotbar"_hs).connect<&GameScene::onHotbarToggle>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::onPauseToggle>(this);
     input_manager.onAction("toggle_prompt_bar"_hs).connect<&GameScene::onTogglePromptBar>(this);
-}
-
-void GameScene::removeOverlayEventListeners() {
-    if (overlay_document_ && overlay_click_listener_registered_) {
-        overlay_document_->RemoveEventListener("click", &overlay_event_bridge_);
-        overlay_click_listener_registered_ = false;
-    }
 }
 
 #ifdef TF_ENABLE_DEBUG_UI
@@ -452,106 +397,24 @@ bool GameScene::registerDebugPanels() {
 #endif
 
 bool GameScene::initUI() {
-    auto& text_renderer = context_.getTextRenderer();
-
-    auto* rml_runtime = context_.getRmlUi();
-    if (!rml_runtime) {
-        spdlog::error("GameScene: RmlUiRuntime 不可用，无法初始化 RmlUi HUD。");
-        return false;
-    }
-    auto* rml_context = rml_runtime->getContext();
-    if (!rml_context) {
-        spdlog::error("GameScene: RmlUi context 不可用，无法初始化 RmlUi HUD。");
-        return false;
-    }
-
-    // 时钟 HUD（RmlUi 驱动）
-    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, instance_id_);
-
-    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_runtime, context_, instance_id_, services_->item_catalog.get());
-    if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
-        spdlog::error("GameScene: 创建 HotbarUI 失败。");
+    ui_controller_ = std::make_unique<game::ui::GameSceneUiController>(
+        context_,
+        registry_,
+        instance_id_,
+        services_ ? services_->item_catalog.get() : nullptr,
+        [this]() { (void)onPauseToggle(); });
+    if (!ui_controller_ || !ui_controller_->init()) {
+        spdlog::error("GameScene: 创建 GameSceneUiController 失败。");
+        ui_controller_.reset();
         return false;
     }
 
-    item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
-
-    auto& dispatcher_ref = context_.getDispatcher();
-    dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(dispatcher_ref);
-
-    dialogue_bubbles_[0] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
-    dialogue_bubbles_[1] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
-    dialogue_bubbles_[2] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, instance_id_);
-
-    dialogue_controller_->registerBubble(0, dialogue_bubbles_[0].get());
-    dialogue_controller_->registerBubble(1, dialogue_bubbles_[1].get());
-    dialogue_controller_->registerBubble(2, dialogue_bubbles_[2].get(), {0.0F, -56.0F});
-
-    if (item_tooltip_ui_) {
-        if (hotbar_ui_) {
-            hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
-        }
+    if (systems_ && systems_->map_transition_system) {
+        systems_->map_transition_system->setFadeOverlay(ui_controller_->screenFade());
     }
 
-    auto player_view = registry_.view<game::component::PlayerTag>();
-    if (!player_view.empty()) {
-        const entt::entity player = *player_view.begin();
-        if (hotbar_ui_) {
-            hotbar_ui_->setTarget(player);
-        }
-    }
-
-    if (auto overlay_constructor = overlay_data_bridge_.create(rml_context, GAME_OVERLAY_MODEL_NAME)) {
-        overlay_constructor.Bind("primary_prompt_text", &primary_prompt_text_);
-        overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
-        overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
-        overlay_constructor.Bind("pause_prompt_text", &pause_prompt_text_);
-        overlay_constructor.Bind("show_prompt_bar", &show_prompt_bar_);
-
-        refreshOverlayPrompts();
-        overlay_data_bridge_.markAllDirty();
-
-        overlay_document_ = loadRmlDocument(GAME_OVERLAY_DOCUMENT_PATH);
-        if (overlay_document_) {
-            overlay_event_bridge_.on("menu", [this](Rml::Event&) { (void)onPauseToggle(); });
-            overlay_event_bridge_.registerTo(overlay_document_, "click");
-            overlay_click_listener_registered_ = true;
-        } else {
-            spdlog::error("GameScene: 加载游戏内菜单按钮文档失败，UI初始化将继续。");
-        }
-    } else {
-        spdlog::error("GameScene: 创建 overlay data model 失败，输入提示将不可用。");
-    }
-
-    rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_runtime, instance_id_);
-    screen_fade_ = rml_screen_fade_.get();
-
-    if (systems_->map_transition_system) {
-        systems_->map_transition_system->setFadeOverlay(screen_fade_);
-    }
-
-    spdlog::debug("游戏UI初始化完成（时钟UI与快捷栏UI已创建）。");
+    spdlog::debug("GameScene: UI controller 初始化完成。");
     return true;
-}
-
-void GameScene::refreshOverlayPrompts() {
-    if (!overlay_data_bridge_.isValid()) {
-        return;
-    }
-
-    auto& input_manager = context_.getInputManager();
-    if (updateBoundString(primary_prompt_text_, promptTextForAction(input_manager, "primary_action"_hs))) {
-        overlay_data_bridge_.markDirty("primary_prompt_text");
-    }
-    if (updateBoundString(secondary_prompt_text_, promptTextForAction(input_manager, "secondary_action"_hs))) {
-        overlay_data_bridge_.markDirty("secondary_prompt_text");
-    }
-    if (updateBoundString(inventory_prompt_text_, promptTextForAction(input_manager, "inventory"_hs))) {
-        overlay_data_bridge_.markDirty("inventory_prompt_text");
-    }
-    if (updateBoundString(pause_prompt_text_, promptTextForAction(input_manager, "pause"_hs))) {
-        overlay_data_bridge_.markDirty("pause_prompt_text");
-    }
 }
 
 bool GameScene::onInventoryToggle() {
@@ -587,16 +450,8 @@ bool GameScene::onHotbarToggle() {
         return false;
     }
 
-    if (hotbar_ui_) {
-        hotbar_ui_->toggle();
-        if (hotbar_ui_->isVisible()) {
-            auto view = registry_.view<game::component::PlayerTag>();
-            if (!view.empty()) {
-                const entt::entity player = *view.begin();
-                context_.getDispatcher().enqueue<game::defs::HotbarSyncCommand>(player);
-            }
-        }
-        return true;
+    if (ui_controller_) {
+        return ui_controller_->toggleHotbar();
     }
 
     return false;
@@ -622,51 +477,23 @@ bool GameScene::onPauseToggle() {
 }
 
 bool GameScene::onTogglePromptBar() {
-    show_prompt_bar_ = !show_prompt_bar_;
-    if (overlay_data_bridge_.isValid()) {
-        overlay_data_bridge_.markDirty("show_prompt_bar");
+    if (ui_controller_) {
+        ui_controller_->setPromptBarVisible(!ui_controller_->isPromptBarVisible());
+        return true;
     }
-    return true;
+
+    return false;
 }
 
 void GameScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {
-    if (!hotbar_ui_) {
-        return;
-    }
-
-    if (!registry_.valid(evt.target)) {
-        return;
-    }
-
-    if (evt.full_sync) {
-        hotbar_ui_->clearAllSlots();
-        hotbar_ui_->resetInventoryMappings();
-    }
-
-    for (const auto& slot : evt.slots) {
-        if (slot.hotbar_index < 0 || slot.hotbar_index >= game::component::HotbarComponent::SLOT_COUNT) {
-            continue;
-        }
-
-        hotbar_ui_->setSlotInventoryIndex(slot.hotbar_index, slot.inventory_slot_index);
-        if (slot.item_id != entt::null && slot.count > 0) {
-            const engine::render::Image icon = services_->item_catalog
-                ? services_->item_catalog->getItemIcon(slot.item_id)
-                : engine::render::Image{};
-            hotbar_ui_->setSlotItem(slot.hotbar_index, engine::ui::SlotItem{slot.item_id, slot.count, icon});
-        } else {
-            hotbar_ui_->clearSlot(slot.hotbar_index);
-        }
+    if (ui_controller_) {
+        ui_controller_->applyHotbarChanged(evt);
     }
 }
 
 void GameScene::onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt) {
-    if (!registry_.valid(evt.target)) {
-        return;
-    }
-
-    if (hotbar_ui_) {
-        hotbar_ui_->setActiveSlot(evt.slot_index);
+    if (ui_controller_) {
+        ui_controller_->applyHotbarSlotChanged(evt);
     }
 }
 
