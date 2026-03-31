@@ -66,7 +66,7 @@
 
 | Phase | 状态 | 文档 | 说明 |
 |------|------|------|------|
-| Phase 1 | `[ ]` | [`phase-01-bootstrap.md`](./rmlui-service-and-game-scene-ui-refactor/phase-01-bootstrap.md) | 拆 `runtime / backend / viewport`，建立 bootstrap 与兼容壳 |
+| Phase 1 | `[x]` | [`phase-01-bootstrap.md`](./rmlui-service-and-game-scene-ui-refactor/phase-01-bootstrap.md) | 拆 `runtime / backend / viewport`，建立 bootstrap 与兼容壳 |
 | Phase 2 | `[ ]` | [`phase-02-engine-wiring.md`](./rmlui-service-and-game-scene-ui-refactor/phase-02-engine-wiring.md) | `GameApp` ownership、render hook、`Context` 入口、引擎层接线 |
 | Phase 3 | `[ ]` | [`phase-03-frame-loop.md`](./rmlui-service-and-game-scene-ui-refactor/phase-03-frame-loop.md) | 恢复 `ProcessEvents / Update / Render` 三段式 |
 | Phase 4 | `[ ]` | [`phase-04-game-migration.md`](./rmlui-service-and-game-scene-ui-refactor/phase-04-game-migration.md) | 迁移游戏层场景、wrapper、菜单和库存 UI |
@@ -90,7 +90,7 @@
 
 ## 当前总待办
 
-- [ ] Phase 1 完成
+- [x] Phase 1 完成
 - [ ] Phase 2 完成
 - [ ] Phase 3 完成
 - [ ] Phase 4 完成
