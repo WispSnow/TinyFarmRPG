@@ -42,6 +42,7 @@ namespace {
 constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
 constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
+constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
 
 } // namespace
 
@@ -146,6 +147,7 @@ bool GameApp::init() {
     if (!initConfig()) return false;
     if (!initSDL())  return false;
     if (!initGLRenderer()) return false;
+    if (!initRmlUi()) return false;
 #ifdef TF_ENABLE_DEBUG_UI
     if (!initDebugUIManager()) return false;
 #endif
@@ -341,6 +343,28 @@ bool GameApp::initGLRenderer() {
     gl_renderer_->setDebugUIEnabled(config_->debug_ui_enabled_);
     gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);
     spdlog::trace("OpenGL 渲染器初始化成功。");
+    return true;
+}
+
+bool GameApp::initRmlUi() {
+    if (!gl_renderer_) {
+        spdlog::error("初始化 RmlUi 失败：GLRenderer 未初始化。");
+        return false;
+    }
+    if (!gl_renderer_->initRmlUiLayer()) {
+        spdlog::error("初始化 RmlUi 失败：创建 RmlUILayer 失败。");
+        return false;
+    }
+
+    auto* layer = gl_renderer_->getRmlUILayer();
+    if (!layer) {
+        spdlog::error("初始化 RmlUi 失败：RmlUILayer 未创建。");
+        return false;
+    }
+
+    if (!layer->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
+        spdlog::warn("GameApp::initRmlUi failed to load default font {}.", DEFAULT_RMLUI_FONT_PATH);
+    }
     return true;
 }
 

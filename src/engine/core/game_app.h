@@ -130,6 +130,7 @@ private:
     [[nodiscard]] bool initConfig();
     [[nodiscard]] bool initSDL();
     [[nodiscard]] bool initGLRenderer();
+    [[nodiscard]] bool initRmlUi();
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool initDebugUIManager();
 #endif

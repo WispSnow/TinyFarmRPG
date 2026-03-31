@@ -79,10 +79,6 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("初始化 ViewportManager 失败。");
         return false;
     }
-    if (!initRmlUiLayer()) {
-        spdlog::error("创建 RmlUILayer 失败。");
-        return false;
-    }
     shader_library_ = std::make_unique<ShaderLibrary>();
 
     // 初始化各个通道：场景、光照、自发光、泛光、世界/叠加特效、合成
@@ -837,6 +833,11 @@ bool GLRenderer::initImGuiLayer() {
 bool GLRenderer::initRmlUiLayer() {
     if (!render_context_ || !viewport_manager_) {
         return false;
+    }
+
+    if (rmlui_layer_) {
+        rmlui_layer_->clean();
+        rmlui_layer_.reset();
     }
 
     const auto viewport = viewport_manager_->getViewport();

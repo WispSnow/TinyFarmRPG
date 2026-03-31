@@ -174,6 +174,7 @@ public:
     void beginDebugUI();
     void endDebugUI();
 
+    [[nodiscard]] bool initRmlUiLayer();
     [[nodiscard]] bool handleRmlUiEvent(SDL_Event& event);
     [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
     [[nodiscard]] bool reloadRmlUiDocument();
@@ -256,7 +257,6 @@ private:
     [[nodiscard]] bool init(SDL_Window* window, const glm::vec2& logical_size, std::string_view params_json_path = "");
 
     [[nodiscard]] bool initViewportManager();
-    [[nodiscard]] bool initRmlUiLayer();
     [[nodiscard]] bool initImGuiLayer();
     [[nodiscard]] bool initLightingPass();
     [[nodiscard]] bool initEmissivePass();

@@ -98,7 +98,7 @@ TEST(RmlUiTextureFilterPipelineTest, GlRendererCachesAndForwardsTextureFilterMod
     EXPECT_NE(init_rmlui_block.find("rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);"), std::string::npos);
 }
 
-TEST(RmlUiTextureFilterPipelineTest, RmlUiLayerForwardsTextureFilterToRenderInterface) {
+TEST(RmlUiTextureFilterPipelineTest, RmlUiLayerForwardsTextureFilterToRenderBackend) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_layer.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -108,6 +108,21 @@ TEST(RmlUiTextureFilterPipelineTest, RmlUiLayerForwardsTextureFilterToRenderInte
 
     const std::string set_filter_block =
         test_source_utils::extractFunctionBlock(content, "void RmlUILayer::setTextureFilterMode(");
+    ASSERT_FALSE(set_filter_block.empty());
+    EXPECT_NE(set_filter_block.find("render_backend_->setTextureFilterMode(mode);"), std::string::npos);
+}
+
+TEST(RmlUiTextureFilterPipelineTest, RmlUiRenderBackendForwardsTextureFilterToRenderInterface) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_render_backend_gl.cpp")
+            .lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string content = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
+
+    const std::string set_filter_block =
+        test_source_utils::extractFunctionBlock(content, "void RmlUiRenderBackendGl::setTextureFilterMode(");
     ASSERT_FALSE(set_filter_block.empty());
     EXPECT_NE(set_filter_block.find("render_interface_->setTextureFilterMode(mode);"), std::string::npos);
 }

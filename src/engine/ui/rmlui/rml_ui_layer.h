@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 
 #include <SDL3/SDL.h>
@@ -8,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace Rml {
@@ -16,11 +18,9 @@ class Element;
 class ElementDocument;
 }
 
-class SystemInterface_SDL;
-
 namespace engine::ui::rmlui {
 
-class RenderInterface_GL3_STB;
+class RmlUiRenderBackendGl;
 
 class RmlUILayer final {
 public:
@@ -38,6 +38,7 @@ public:
 
     void clean();
 
+    [[nodiscard]] bool loadFontFace(std::string_view path) const;
     [[nodiscard]] bool processEvent(SDL_Event& event);
     void update();
     void render();
@@ -84,24 +85,24 @@ public:
     /// 设置活跃场景实例 ID。非活跃场景的文档将禁止交互并失去焦点。
     void setActiveScene(uint64_t scene_id);
 
-    [[nodiscard]] uint64_t getActiveSceneId() const { return active_scene_id_; }
+    [[nodiscard]] uint64_t getActiveSceneId() const;
 
     // --- 向后兼容 (过渡期) ---
 
     /// 重新加载最近加载的文档（调试用）。
     [[nodiscard]] bool reloadLastDocument();
 
-    [[nodiscard]] Rml::Context* getContext() const { return context_; }
+    [[nodiscard]] Rml::Context* getContext() const;
 
     // --- 调试信息 ---
 
-    [[nodiscard]] size_t getDocumentCount() const { return documents_.size(); }
+    [[nodiscard]] size_t getDocumentCount() const;
 
     /// 遍历所有已加载文档，回调签名: void(const std::string& path, uint64_t owner)
     template<typename Fn>
     void forEachDocument(Fn&& fn) const {
-        for (const auto& entry : documents_) {
-            fn(entry.path, entry.owner);
+        if (runtime_) {
+            runtime_->forEachDocument(std::forward<Fn>(fn));
         }
     }
 
@@ -114,48 +115,11 @@ private:
                             int viewport_offset_x,
                             int viewport_offset_y);
 
-    void adjustEventForViewport(SDL_Event& event) const;
-    void applyInteractionPolicy();
-
-    struct DocumentEntry {
-        Rml::ElementDocument* doc{nullptr};
-        uint64_t owner{0};   ///< 场景实例 ID，0 = 全局（无归属）
-        std::string path;
-    };
-
-    struct PendingFocusRequest {
-        enum class Kind : uint8_t {
-            Element,
-            ElementId,
-            FirstEnabledElementByClass
-        };
-
-        Kind kind{Kind::Element};
-        Rml::ElementDocument* document{nullptr};
-        Rml::Element* element{nullptr};
-        std::string token;
-    };
-
     SDL_Window* window_{nullptr};
-    std::unique_ptr<RenderInterface_GL3_STB> render_interface_;
-    std::unique_ptr<SystemInterface_SDL> system_interface_;
-    Rml::Context* context_{nullptr};
-
-    std::vector<DocumentEntry> documents_;
-    uint64_t active_scene_id_{0};
-
-    int viewport_width_{1};
-    int viewport_height_{1};
-    int viewport_offset_x_{0};
-    int viewport_offset_y_{0};
-
-    int logical_width_{0};   ///< 逻辑分辨率宽（0 = 未设置，使用 viewport）
-    int logical_height_{0};  ///< 逻辑分辨率高
-
-    bool initialized_{false};
-    std::vector<PendingFocusRequest> pending_focus_requests_;
-
-    void clearPendingFocusRequestsForDocument(Rml::ElementDocument* document);
+    int logical_width_{0};
+    int logical_height_{0};
+    std::unique_ptr<RmlUiRenderBackendGl> render_backend_;
+    std::unique_ptr<RmlUiRuntime> runtime_;
 };
 
 } // namespace engine::ui::rmlui

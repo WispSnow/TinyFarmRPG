@@ -80,11 +80,11 @@
 
 #### 完成标记
 
-- [ ] 新增 `RmlUiViewport`
-- [ ] 新增 `RmlUiRenderBackendGl`
-- [ ] 新增 `RmlUiRuntime`
-- [ ] `RmlUiRenderBackendGl::render(context, viewport)` 签名稳定
-- [ ] `GameApp` 新增统一的 `initRmlUi()`
-- [ ] 默认字体加载迁移到 `GameApp::initRmlUi()`
-- [ ] `Rml::Shutdown()` 责任迁移到 `RmlUiRuntime`
-- [ ] 保留一个可工作的 `RmlUILayer` 兼容壳
+- [x] 新增 `RmlUiViewport`
+- [x] 新增 `RmlUiRenderBackendGl`
+- [x] 新增 `RmlUiRuntime`
+- [x] `RmlUiRenderBackendGl::render(context, viewport)` 签名稳定
+- [x] `GameApp` 新增统一的 `initRmlUi()`
+- [x] 默认字体加载迁移到 `GameApp::initRmlUi()`
+- [x] `Rml::Shutdown()` 责任迁移到 `RmlUiRuntime`
+- [x] 保留一个可工作的 `RmlUILayer` 兼容壳
