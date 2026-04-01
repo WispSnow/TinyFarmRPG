@@ -139,7 +139,6 @@ target_sources(engine PRIVATE
     engine/ui/ui_navigation_controller.cpp
     engine/ui/rmlui/rml_ui_runtime.cpp
     engine/ui/rmlui/rml_ui_render_backend_gl.cpp
-    engine/ui/rmlui/rml_ui_layer.cpp
     engine/ui/rmlui/rml_data_bridge.cpp
     engine/ui/rmlui/rml_event_bridge.cpp
     engine/ui/rmlui/hover_focus_sync_listener.cpp

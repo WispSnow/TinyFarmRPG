@@ -1,5 +1,4 @@
 #pragma once
-#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "engine/utils/defs.h"
 #include <functional>
 #include <memory>
@@ -25,10 +24,6 @@ namespace engine::debug {
 
 namespace engine::vfx {
     class VfxBackend;
-}
-
-namespace engine::ui::rmlui {
-    class RmlUILayer;
 }
 
 namespace engine::render::opengl {
@@ -78,9 +73,6 @@ private:
     std::unique_ptr<WorldVfxPass> world_vfx_pass_;
     std::unique_ptr<VfxPass> vfx_pass_;
     RmlUiRenderHook rmlui_render_hook_{};
-    engine::ui::rmlui::RmlUILayer* rmlui_legacy_layer_{nullptr};
-    engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
-        engine::ui::rmlui::RmlUiTextureFilterMode::Nearest};
 #ifdef TF_ENABLE_DEBUG_UI
     std::unique_ptr<ImGuiLayer> imgui_layer_;
     engine::debug::DebugUIManager* debug_ui_manager_{nullptr};
@@ -178,14 +170,9 @@ public:
     void beginDebugUI();
     void endDebugUI();
 
+    // GLRenderer 只知道“在 present() 的哪个阶段调用 retained UI 渲染”。
+    // runtime/update/document 管理不再通过 renderer 暴露回上层。
     void setRmlUiRenderHook(RmlUiRenderHook hook);
-    void setLegacyRmlUiLayer(engine::ui::rmlui::RmlUILayer* layer);
-    [[nodiscard]] bool handleRmlUiEvent(SDL_Event& event);
-    [[nodiscard]] bool loadRmlUiDocument(std::string_view path);
-    [[nodiscard]] bool reloadRmlUiDocument();
-    [[nodiscard]] engine::ui::rmlui::RmlUILayer* getRmlUILayer() const;
-    void setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode);
-    [[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode getRmlUiTextureFilterMode() const;
     void handleSDLEvent(const SDL_Event& event);
     void setDebugUIManager(engine::debug::DebugUIManager* manager);
 

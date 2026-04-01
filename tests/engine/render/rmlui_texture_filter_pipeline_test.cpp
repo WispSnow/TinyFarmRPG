@@ -78,41 +78,6 @@ TEST(RmlUiTextureFilterPipelineTest, SaveLayerAsTextureStillUsesDedicatedEffectP
 namespace engine::render::opengl {
 namespace {
 
-TEST(RmlUiTextureFilterPipelineTest, GlRendererCachesAndForwardsTextureFilterMode) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string content = test_source_utils::readTextFile(source_path);
-    ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
-
-    const std::string set_filter_block =
-        test_source_utils::extractFunctionBlock(content, "void GLRenderer::setRmlUiTextureFilterMode(");
-    ASSERT_FALSE(set_filter_block.empty());
-    EXPECT_NE(set_filter_block.find("rmlui_texture_filter_mode_ = mode;"), std::string::npos);
-    EXPECT_NE(set_filter_block.find("rmlui_legacy_layer_->setTextureFilterMode(mode);"), std::string::npos);
-
-    const std::string set_legacy_layer_block =
-        test_source_utils::extractFunctionBlock(content, "void GLRenderer::setLegacyRmlUiLayer(");
-    ASSERT_FALSE(set_legacy_layer_block.empty());
-    EXPECT_NE(set_legacy_layer_block.find("rmlui_legacy_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);"),
-              std::string::npos);
-}
-
-TEST(RmlUiTextureFilterPipelineTest, RmlUiLayerForwardsTextureFilterToRenderBackend) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_layer.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string content = test_source_utils::readTextFile(source_path);
-    ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
-
-    const std::string set_filter_block =
-        test_source_utils::extractFunctionBlock(content, "void RmlUILayer::setTextureFilterMode(");
-    ASSERT_FALSE(set_filter_block.empty());
-    EXPECT_NE(set_filter_block.find("render_backend_->setTextureFilterMode(mode);"), std::string::npos);
-}
-
 TEST(RmlUiTextureFilterPipelineTest, RmlUiRenderBackendForwardsTextureFilterToRenderInterface) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_render_backend_gl.cpp")
@@ -148,7 +113,7 @@ TEST(RmlUiTextureFilterPipelineTest, RmlUiDebugPanelExposesRuntimeToggle) {
 namespace engine::core {
 namespace {
 
-TEST(RmlUiTextureFilterPipelineTest, GameAppAppliesConfiguredFilterAfterRendererCreation) {
+TEST(RmlUiTextureFilterPipelineTest, GameAppAppliesConfiguredFilterDuringRmlUiInit) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/core/game_app.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -156,11 +121,32 @@ TEST(RmlUiTextureFilterPipelineTest, GameAppAppliesConfiguredFilterAfterRenderer
     const std::string content = test_source_utils::readTextFile(source_path);
     ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
 
-    const std::string init_gl_renderer_block =
-        test_source_utils::extractFunctionBlock(content, "bool GameApp::initGLRenderer()");
-    ASSERT_FALSE(init_gl_renderer_block.empty());
-    EXPECT_NE(init_gl_renderer_block.find("gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);"),
-              std::string::npos);
+    const std::string init_rmlui_block =
+        test_source_utils::extractFunctionBlock(content, "bool GameApp::initRmlUi()");
+    ASSERT_FALSE(init_rmlui_block.empty());
+
+    const std::size_t pos_set_filter =
+        init_rmlui_block.find("rmlui_render_backend_->setTextureFilterMode(config_->rmlui_texture_filter_mode_);");
+    const std::size_t pos_load_font =
+        init_rmlui_block.find("rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)");
+
+    ASSERT_NE(pos_set_filter, std::string::npos);
+    ASSERT_NE(pos_load_font, std::string::npos);
+    EXPECT_LT(pos_set_filter, pos_load_font);
+    EXPECT_EQ(init_rmlui_block.find("gl_renderer_->setRmlUiTextureFilterMode("), std::string::npos);
+}
+
+TEST(RmlUiTextureFilterPipelineTest, GlRendererNoLongerOwnsRmlUiTextureFilterState) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+
+    const std::string content = test_source_utils::readTextFile(header_path);
+    ASSERT_FALSE(content.empty()) << "无法读取: " << header_path;
+
+    EXPECT_EQ(content.find("setRmlUiTextureFilterMode("), std::string::npos);
+    EXPECT_EQ(content.find("getRmlUiTextureFilterMode("), std::string::npos);
+    EXPECT_EQ(content.find("rmlui_texture_filter_mode_"), std::string::npos);
 }
 
 } // namespace

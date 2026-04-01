@@ -65,8 +65,8 @@ TEST(RenderInterpolationPipelineTest, GameSceneConsumesAlphaForRenderSystems) {
         << "GameScene should prepare retained UI composition before RmlUi update.";
     EXPECT_NE(source.find("const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);"), std::string::npos)
         << "GameScene render should clamp incoming alpha before use.";
-    EXPECT_NE(source.find("bubble->refreshAnchoredPosition(camera, clamped_alpha);"), std::string::npos)
-        << "Dialogue bubbles should refresh anchored positions in the prepareUi path.";
+    EXPECT_NE(source.find("ui_controller_->refreshAnchoredWidgets(camera, clamped_alpha);"), std::string::npos)
+        << "UI controller should refresh anchored widgets (dialogue bubbles) in the prepareUi path.";
     EXPECT_NE(source.find("systems_->ysort_system->render(registry_, clamped_alpha);"), std::string::npos)
         << "YSort should consume interpolated alpha path.";
     EXPECT_NE(source.find("systems_->render_system->render(registry_, renderer, camera, clamped_alpha);"), std::string::npos)

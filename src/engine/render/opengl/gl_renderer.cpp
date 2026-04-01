@@ -1,7 +1,6 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/render/opengl/render_context.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/render/opengl/imgui_layer.h"
 #endif
@@ -320,54 +319,8 @@ void GLRenderer::endDebugUI() {
 #endif
 }
 
-bool GLRenderer::handleRmlUiEvent(SDL_Event& event) {
-    if (!rmlui_legacy_layer_) {
-        return true;
-    }
-    return rmlui_legacy_layer_->processEvent(event);
-}
-
-bool GLRenderer::loadRmlUiDocument(std::string_view path) {
-    if (!rmlui_legacy_layer_) {
-        return false;
-    }
-    return rmlui_legacy_layer_->loadDocument(path) != nullptr;
-}
-
-bool GLRenderer::reloadRmlUiDocument() {
-    if (!rmlui_legacy_layer_) {
-        return false;
-    }
-    return rmlui_legacy_layer_->reloadLastDocument();
-}
-
-engine::ui::rmlui::RmlUILayer* GLRenderer::getRmlUILayer() const {
-    return rmlui_legacy_layer_;
-}
-
 void GLRenderer::setRmlUiRenderHook(RmlUiRenderHook hook) {
     rmlui_render_hook_ = std::move(hook);
-}
-
-void GLRenderer::setLegacyRmlUiLayer(engine::ui::rmlui::RmlUILayer* layer) {
-    rmlui_legacy_layer_ = layer;
-    if (rmlui_legacy_layer_) {
-        rmlui_legacy_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);
-    }
-}
-
-void GLRenderer::setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode) {
-    rmlui_texture_filter_mode_ = mode;
-    if (rmlui_legacy_layer_) {
-        rmlui_legacy_layer_->setTextureFilterMode(mode);
-    }
-}
-
-engine::ui::rmlui::RmlUiTextureFilterMode GLRenderer::getRmlUiTextureFilterMode() const {
-    if (rmlui_legacy_layer_) {
-        return rmlui_legacy_layer_->getTextureFilterMode();
-    }
-    return rmlui_texture_filter_mode_;
 }
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
@@ -642,7 +595,6 @@ void GLRenderer::clean() {
         vfx_pass_.reset();
     }
     rmlui_render_hook_ = {};
-    rmlui_legacy_layer_ = nullptr;
     pass_stats_ = {};
     scene_color_tex_ = 0;
     light_color_tex_ = 0;
