@@ -63,7 +63,7 @@ BattleScene::BattleScene(std::string_view name,
 }
 
 BattleScene::~BattleScene() {
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool BattleScene::init() {
@@ -95,6 +95,7 @@ void BattleScene::update(float delta_time) {
 }
 
 void BattleScene::clean() {
+    shutdownUI();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -149,11 +150,9 @@ bool BattleScene::initUI() {
     return true;
 }
 
-void BattleScene::beforeUnloadOwnedRmlDocuments() {
+void BattleScene::shutdownUI() {
     event_bridge_.unregisterAll();
-}
-
-void BattleScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     data_bridge_.destroy();
 }

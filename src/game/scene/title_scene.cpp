@@ -38,7 +38,7 @@ TitleScene::TitleScene(std::string_view name, engine::core::Context& context, st
 }
 
 TitleScene::~TitleScene() {
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool TitleScene::init() {
@@ -64,6 +64,7 @@ bool TitleScene::init() {
 }
 
 void TitleScene::clean() {
+    shutdownUI();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -115,14 +116,12 @@ bool TitleScene::initUI() {
     return true;
 }
 
-void TitleScene::beforeUnloadOwnedRmlDocuments() {
+void TitleScene::shutdownUI() {
     event_bridge_.unregisterAll();
     if (hover_focus_listener_) {
         hover_focus_listener_->unregisterAll();
     }
-}
-
-void TitleScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     data_bridge_.destroy();
 }

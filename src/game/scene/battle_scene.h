@@ -57,8 +57,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void beforeUnloadOwnedRmlDocuments() override;
-    void afterUnloadOwnedRmlDocuments() override;
+    void shutdownUI();
     void runStateMachine(float delta_time);
     void refreshView();
 

@@ -103,7 +103,7 @@ SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name,
 
 SaveSlotSelectScene::~SaveSlotSelectScene() {
     disconnectRuntimeListeners();
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool SaveSlotSelectScene::init() {
@@ -122,6 +122,7 @@ bool SaveSlotSelectScene::init() {
 }
 
 void SaveSlotSelectScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
@@ -134,13 +135,11 @@ void SaveSlotSelectScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&SaveSlotSelectScene::onMenuCancelPressed>(this);
 }
 
-void SaveSlotSelectScene::beforeUnloadOwnedRmlDocuments() {
+void SaveSlotSelectScene::shutdownUI() {
     if (hover_focus_listener_) {
         hover_focus_listener_->unregisterAll();
     }
-}
-
-void SaveSlotSelectScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     focus_before_confirm_ = nullptr;
     data_bridge_.destroy();

@@ -67,8 +67,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void beforeUnloadOwnedRmlDocuments() override;
-    void afterUnloadOwnedRmlDocuments() override;
+    void shutdownUI();
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
     void disconnectRuntimeListeners();
     void refreshSlotButtons();
