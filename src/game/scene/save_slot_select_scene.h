@@ -50,7 +50,6 @@ private:
     std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* focus_before_confirm_{nullptr};
-    bool hover_listener_registered_{false};
 
     std::vector<SlotViewModel> slots_{};
     bool confirm_visible_{false};
@@ -72,7 +71,6 @@ private:
     void afterUnloadOwnedRmlDocuments() override;
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
     void disconnectRuntimeListeners();
-    void removeEventListeners();
     void refreshSlotButtons();
     void queueDefaultFocus();
     [[nodiscard]] bool shouldSyncHoverFocus(Rml::Element* element) const;

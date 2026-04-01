@@ -58,8 +58,6 @@ private:
     bool can_save_{false};
     bool can_load_{false};
     bool can_back_title_{true};
-    bool click_listener_registered_{false};
-    bool hover_listener_registered_{false};
 
 public:
     PauseMenuScene(std::string_view name,
@@ -76,7 +74,6 @@ private:
     [[nodiscard]] bool initUI();
     void beforeUnloadOwnedRmlDocuments() override;
     void afterUnloadOwnedRmlDocuments() override;
-    void removeEventListeners();
     void disconnectRuntimeListeners();
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();

@@ -29,7 +29,6 @@ private:
     Rml::ElementDocument* document_{nullptr};
 
     Rml::String hours_text_{"24h"};
-    bool click_listener_registered_{false};
 
 public:
     RestDialogScene(std::string_view name, engine::core::Context& context);
@@ -42,7 +41,6 @@ private:
     [[nodiscard]] bool initUI();
     void beforeUnloadOwnedRmlDocuments() override;
     void afterUnloadOwnedRmlDocuments() override;
-    void removeEventListeners();
     void disconnectRuntimeListeners();
     void updateHoursLabel();
     void adjustHours(int delta);

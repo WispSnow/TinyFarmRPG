@@ -319,7 +319,6 @@ bool InventoryMenuScene::initUI() {
     event_bridge_.on("trash", [this](Rml::Event&) { onTrashClicked(); });
     event_bridge_.on("sort", [this](Rml::Event&) { onSortClicked(); });
     event_bridge_.registerTo(document_, "click");
-    click_listener_registered_ = true;
 
     tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
 
@@ -332,15 +331,8 @@ bool InventoryMenuScene::initUI() {
     return true;
 }
 
-void InventoryMenuScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-}
-
 void InventoryMenuScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    event_bridge_.unregisterAll();
 }
 
 void InventoryMenuScene::afterUnloadOwnedRmlDocuments() {

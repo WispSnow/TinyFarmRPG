@@ -26,6 +26,23 @@ void HoverFocusSyncListener::setCandidateFilter(CandidateFilter candidate_filter
     candidate_filter_ = std::move(candidate_filter);
 }
 
+void HoverFocusSyncListener::registerTo(Rml::Element* element, std::string_view event_type) {
+    if (!element) {
+        return;
+    }
+    const Rml::String type{event_type.data(), event_type.size()};
+    element->AddEventListener(type, this);
+    registrations_.push_back({element, std::string(event_type)});
+}
+
+void HoverFocusSyncListener::unregisterAll() {
+    for (const auto& reg : registrations_) {
+        const Rml::String type{reg.event_type.data(), reg.event_type.size()};
+        reg.element->RemoveEventListener(type, this);
+    }
+    registrations_.clear();
+}
+
 void HoverFocusSyncListener::ProcessEvent(Rml::Event& event) {
     if (!runtime_) {
         return;

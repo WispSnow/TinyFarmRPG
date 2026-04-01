@@ -36,8 +36,6 @@ class TitleScene final : public engine::scene::Scene {
 
     Rml::String error_text_{};
     bool show_error_{false};
-    bool click_listener_registered_{false};
-    bool hover_listener_registered_{false};
 
 public:
     TitleScene(std::string_view name, engine::core::Context& context, std::string error_message = {});
@@ -50,7 +48,6 @@ private:
     [[nodiscard]] bool initUI();
     void beforeUnloadOwnedRmlDocuments() override;
     void afterUnloadOwnedRmlDocuments() override;
-    void removeEventListeners();
 
     void onStartClicked();
     void onLoadClicked();
