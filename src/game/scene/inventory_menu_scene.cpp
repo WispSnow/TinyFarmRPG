@@ -132,15 +132,8 @@ InventoryMenuScene::~InventoryMenuScene() {
     focus_before_action_menu_ = nullptr;
     action_menu_entries_.clear();
     action_menu_visible_ = false;
-    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
-        removeEventListeners();
-        tooltip_ui_.reset();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    tooltip_ui_.reset();
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool InventoryMenuScene::init() {
@@ -172,7 +165,6 @@ void InventoryMenuScene::update(float delta_time) {
 
 void InventoryMenuScene::clean() {
     disconnectRuntimeListeners();
-    removeEventListeners();
     clearTooltip();
     closeActionMenu(false);
     tooltip_ui_.reset();
@@ -182,8 +174,6 @@ void InventoryMenuScene::clean() {
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool InventoryMenuScene::initUI() {
@@ -347,6 +337,16 @@ void InventoryMenuScene::removeEventListeners() {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
     }
+}
+
+void InventoryMenuScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void InventoryMenuScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    focus_before_action_menu_ = nullptr;
+    data_bridge_.destroy();
 }
 
 void InventoryMenuScene::disconnectRuntimeListeners() {

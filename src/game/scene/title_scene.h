@@ -48,6 +48,8 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
+    void beforeUnloadOwnedRmlDocuments() override;
+    void afterUnloadOwnedRmlDocuments() override;
     void removeEventListeners();
 
     void onStartClicked();

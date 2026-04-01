@@ -63,12 +63,7 @@ BattleScene::BattleScene(std::string_view name,
 }
 
 BattleScene::~BattleScene() {
-    removeEventListeners();
-    if (document_) {
-        unloadAllRmlDocuments();
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool BattleScene::init() {
@@ -100,14 +95,11 @@ void BattleScene::update(float delta_time) {
 }
 
 void BattleScene::clean() {
-    removeEventListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool BattleScene::initUI() {
@@ -163,6 +155,15 @@ void BattleScene::removeEventListeners() {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
     }
+}
+
+void BattleScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void BattleScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 void BattleScene::runStateMachine(float delta_time) {

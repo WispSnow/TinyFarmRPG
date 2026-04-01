@@ -103,14 +103,7 @@ SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name,
 
 SaveSlotSelectScene::~SaveSlotSelectScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || hover_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool SaveSlotSelectScene::init() {
@@ -130,15 +123,11 @@ bool SaveSlotSelectScene::init() {
 
 void SaveSlotSelectScene::clean() {
     disconnectRuntimeListeners();
-    removeEventListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    focus_before_confirm_ = nullptr;
-    data_bridge_.destroy();
 }
 
 void SaveSlotSelectScene::disconnectRuntimeListeners() {
@@ -150,6 +139,16 @@ void SaveSlotSelectScene::removeEventListeners() {
         document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
         hover_listener_registered_ = false;
     }
+}
+
+void SaveSlotSelectScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void SaveSlotSelectScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    focus_before_confirm_ = nullptr;
+    data_bridge_.destroy();
 }
 
 bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {

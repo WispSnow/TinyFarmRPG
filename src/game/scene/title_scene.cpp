@@ -38,14 +38,7 @@ TitleScene::TitleScene(std::string_view name, engine::core::Context& context, st
 }
 
 TitleScene::~TitleScene() {
-    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool TitleScene::init() {
@@ -71,14 +64,11 @@ bool TitleScene::init() {
 }
 
 void TitleScene::clean() {
-    removeEventListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool TitleScene::initUI() {
@@ -136,6 +126,15 @@ void TitleScene::removeEventListeners() {
         document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
         hover_listener_registered_ = false;
     }
+}
+
+void TitleScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void TitleScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 void TitleScene::onStartClicked() {
