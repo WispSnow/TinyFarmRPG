@@ -1,6 +1,5 @@
 #pragma once
 
-#include "engine/ui/ui_types.h"
 #include "game/ui/world_anchor_state.h"
 
 #include <cstdint>
@@ -19,7 +18,6 @@ class Context;
 
 namespace engine::render {
 class Camera;
-class TextRenderer;
 }
 
 namespace engine::ui::rmlui {
@@ -30,7 +28,6 @@ namespace game::ui {
 
 class DialogueBubbleView final {
     engine::core::Context& context_;
-    engine::render::TextRenderer& text_renderer_;
     engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
     Rml::Element* panel_{nullptr};
@@ -39,20 +36,10 @@ class DialogueBubbleView final {
     std::string text_{};
     glm::vec2 size_{0.0F, 0.0F};
     glm::vec2 pivot_{0.5F, 1.0F};
-    engine::ui::Thickness padding_{};
     game::ui::WorldAnchorState world_anchor_{};
-    float min_content_width_{0.0F};
-    float min_content_height_{0.0F};
-    float line_height_{0.0F};
-    entt::id_type font_id_{engine::ui::DEFAULT_UI_FONT_ID};
-    int font_size_{engine::ui::DEFAULT_UI_FONT_SIZE_PX};
 
 public:
-    DialogueBubbleView(engine::core::Context& context,
-                       engine::render::TextRenderer& text_renderer,
-                       uint64_t owner_scene_id,
-                       entt::id_type font_id = entt::null,
-                       int font_size = engine::ui::DEFAULT_UI_FONT_SIZE_PX);
+    DialogueBubbleView(engine::core::Context& context, uint64_t owner_scene_id);
     ~DialogueBubbleView();
 
     void setText(std::string_view text);
@@ -71,9 +58,7 @@ public:
 
 private:
     void initDocument(uint64_t owner_scene_id);
-    void syncStyleMetricsFromDocument();
-    void refreshLayoutFromText();
-    [[nodiscard]] glm::vec2 measureText(std::string_view text) const;
+    void refreshLayoutMetrics();
 };
 
 } // namespace game::ui

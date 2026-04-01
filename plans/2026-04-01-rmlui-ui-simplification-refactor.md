@@ -496,8 +496,8 @@
 - [x] T2 将 hover->focus 注册与解绑迁移到 `RmlDocumentController` 内部
 - [x] T3 全量迁移简单场景到 `data-event-* + BindEventCallback`
 - [x] T4 删除 `RmlEventBridge`
-- [ ] T5 tooltip 改为 RmlUi 原生文本布局，并明确布局刷新时序
-- [ ] T6 dialogue bubble 改为 RmlUi 原生文本布局，并删除 `MAX_CHARS_PER_LINE` 风格换行
+- [x] T5 tooltip 改为 RmlUi 原生文本布局，并明确布局刷新时序
+- [x] T6 dialogue bubble 改为 RmlUi 原生文本布局，并删除 `MAX_CHARS_PER_LINE` 风格换行
 - [ ] T7 `RmlScreenFade` 改为动态 transition 驱动
 - [ ] T8 收缩 `rml_element_helpers.h` 到最小必要工具集
 - [ ] T9 抽出共享 slot view model / `populateSlotViewModel(...)` / drag-drop state

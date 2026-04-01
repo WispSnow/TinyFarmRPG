@@ -9,11 +9,14 @@ body {
 }
 
 #item-tooltip-panel {
+    display: inline-block;
     position: absolute;
     left: 0;
     top: 0;
-    width: 104dp;
-    height: 8dp;
+    width: auto;
+    height: auto;
+    min-width: 104dp;
+    min-height: 8dp;
     padding: 8dp;
     decorator: ninepatch(tooltip-panel-bg, tooltip-panel-bg-inner, 1.0);
     pointer-events: none;
@@ -24,6 +27,8 @@ body {
 #item-tooltip-description {
     color: #000000ff;
     max-width: 240dp;
+    white-space: pre-wrap;
+    word-break: break-word;
     pointer-events: none;
 }
 

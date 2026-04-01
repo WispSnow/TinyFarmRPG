@@ -199,7 +199,7 @@ TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
 
     game::ui::DialogueBubbleController controller(dispatcher_);
 
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
     auto* bubble_ptr = bubble.get();
     controller.registerBubble(1, bubble_ptr, {3.0F, -7.0F});
 
@@ -242,7 +242,7 @@ TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers
 
     game::ui::DialogueBubbleController controller(dispatcher_);
 
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
     auto* bubble_ptr = bubble.get();
     controller.registerBubble(1, bubble_ptr);
 
@@ -258,13 +258,36 @@ TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers
     dispatcher_.trigger(show_evt);
     EXPECT_FALSE(bubble_ptr->isVisible());
 
-    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, *text_renderer_, 1);
+    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
     auto* recreated_ptr = recreated.get();
 
     controller.registerBubble(1, recreated_ptr);
     dispatcher_.trigger(show_evt);
     EXPECT_TRUE(recreated_ptr->isVisible());
     EXPECT_TRUE(recreated_ptr->hasWorldAnchor());
+}
+
+TEST_F(DialogueBubbleControllerTest, LongDialogueTextIsNotManuallyWrappedByController) {
+    if (!context_->getRmlUi()) {
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
+    }
+
+    game::ui::DialogueBubbleController controller(dispatcher_);
+
+    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
+    auto* bubble_ptr = bubble.get();
+    controller.registerBubble(1, bubble_ptr);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = 1;
+    show_evt.speaker = "Narrator";
+    show_evt.text = "This line is intentionally longer than the old wrapping threshold.";
+    show_evt.world_position = {8.0F, 12.0F};
+    dispatcher_.trigger(show_evt);
+
+    EXPECT_EQ(
+        bubble_ptr->getText(),
+        "Narrator: \nThis line is intentionally longer than the old wrapping threshold.");
 }
 
 } // namespace
