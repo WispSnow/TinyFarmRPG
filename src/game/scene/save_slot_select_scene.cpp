@@ -134,15 +134,10 @@ void SaveSlotSelectScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&SaveSlotSelectScene::onMenuCancelPressed>(this);
 }
 
-void SaveSlotSelectScene::removeEventListeners() {
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
-    }
-}
-
 void SaveSlotSelectScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    if (hover_focus_listener_) {
+        hover_focus_listener_->unregisterAll();
+    }
 }
 
 void SaveSlotSelectScene::afterUnloadOwnedRmlDocuments() {
@@ -230,8 +225,7 @@ bool SaveSlotSelectScene::initUI() {
     hover_focus_listener_->setCandidateFilter([this](Rml::Element* element) {
         return shouldSyncHoverFocus(element);
     });
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    hover_listener_registered_ = true;
+    hover_focus_listener_->registerTo(document_, "mouseover");
 
     refreshSlotButtons();
     data_bridge_.markAllDirty();

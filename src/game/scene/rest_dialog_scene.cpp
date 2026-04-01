@@ -101,22 +101,14 @@ bool RestDialogScene::initUI() {
     event_bridge_.on("confirm", [this](Rml::Event&) { onConfirm(); });
     event_bridge_.on("cancel", [this](Rml::Event&) { onCancel(); });
     event_bridge_.registerTo(document_, "click");
-    click_listener_registered_ = true;
 
     updateHoursLabel();
     runtime->queueFocusElementById(document_, "rest-hours-down-button");
     return true;
 }
 
-void RestDialogScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-}
-
 void RestDialogScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    event_bridge_.unregisterAll();
 }
 
 void RestDialogScene::afterUnloadOwnedRmlDocuments() {

@@ -168,9 +168,7 @@ bool PauseMenuScene::initUI() {
     event_bridge_.on("sound_up", [this](Rml::Event&) { adjustSoundVolume(1); });
     event_bridge_.registerTo(document_, "click");
     hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*runtime);
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    click_listener_registered_ = true;
-    hover_listener_registered_ = true;
+    hover_focus_listener_->registerTo(document_, "mouseover");
 
     refreshVolumeLabels();
     refreshTimeScaleLabel();
@@ -181,19 +179,11 @@ bool PauseMenuScene::initUI() {
     return true;
 }
 
-void PauseMenuScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
-    }
-}
-
 void PauseMenuScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    event_bridge_.unregisterAll();
+    if (hover_focus_listener_) {
+        hover_focus_listener_->unregisterAll();
+    }
 }
 
 void PauseMenuScene::afterUnloadOwnedRmlDocuments() {

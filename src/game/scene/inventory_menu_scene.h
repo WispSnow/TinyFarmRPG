@@ -77,7 +77,6 @@ class InventoryMenuScene final : public engine::scene::Scene {
     engine::ui::rmlui::RmlEventBridge event_bridge_{};
     Rml::DataTypeRegister type_register_{};
     Rml::ElementDocument* document_{nullptr};
-    bool click_listener_registered_{false};
 
     std::vector<SlotViewModel> backpack_slots_{};
     std::vector<HotbarSlotViewModel> hotbar_slots_{};
@@ -134,7 +133,6 @@ private:
     [[nodiscard]] bool initUI();
     void beforeUnloadOwnedRmlDocuments() override;
     void afterUnloadOwnedRmlDocuments() override;
-    void removeEventListeners();
     void disconnectRuntimeListeners();
 
     void syncFromInventory();

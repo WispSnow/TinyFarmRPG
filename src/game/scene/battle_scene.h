@@ -43,7 +43,6 @@ class BattleScene final : public engine::scene::Scene {
     Rml::String units_text_{"Units: -"};
     Rml::String result_text_{"Result: Choose action"};
     bool actions_enabled_{false};
-    bool click_listener_registered_{false};
 
 public:
     BattleScene(std::string_view name,
@@ -60,7 +59,6 @@ private:
     [[nodiscard]] bool initUI();
     void beforeUnloadOwnedRmlDocuments() override;
     void afterUnloadOwnedRmlDocuments() override;
-    void removeEventListeners();
     void runStateMachine(float delta_time);
     void refreshView();
 

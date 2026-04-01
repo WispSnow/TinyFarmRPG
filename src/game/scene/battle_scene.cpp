@@ -144,21 +144,13 @@ bool BattleScene::initUI() {
     event_bridge_.on("escape", [this](Rml::Event&) { queueEscapeAction(); });
     event_bridge_.on("end_turn", [this](Rml::Event&) { queueEndTurnAction(); });
     event_bridge_.registerTo(document_, "click");
-    click_listener_registered_ = true;
 
     data_bridge_.markAllDirty();
     return true;
 }
 
-void BattleScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-}
-
 void BattleScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    event_bridge_.unregisterAll();
 }
 
 void BattleScene::afterUnloadOwnedRmlDocuments() {

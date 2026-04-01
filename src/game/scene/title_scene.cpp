@@ -106,9 +106,7 @@ bool TitleScene::initUI() {
     event_bridge_.on("exit", [this](Rml::Event&) { onExitClicked(); });
     event_bridge_.registerTo(document_, "click");
     hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*runtime);
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    click_listener_registered_ = true;
-    hover_listener_registered_ = true;
+    hover_focus_listener_->registerTo(document_, "mouseover");
 
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
@@ -117,19 +115,11 @@ bool TitleScene::initUI() {
     return true;
 }
 
-void TitleScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
-    }
-}
-
 void TitleScene::beforeUnloadOwnedRmlDocuments() {
-    removeEventListeners();
+    event_bridge_.unregisterAll();
+    if (hover_focus_listener_) {
+        hover_focus_listener_->unregisterAll();
+    }
 }
 
 void TitleScene::afterUnloadOwnedRmlDocuments() {
