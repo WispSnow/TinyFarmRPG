@@ -80,6 +80,8 @@ set(TEST_SOURCES
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
     engine/ui/rml_mouse_buttons_test.cpp
+    engine/ui/rml_screen_fade_transition_source_test.cpp
+    engine/ui/rmlui_transition_behavior_test.cpp
     engine/ui/ui_navigation_controller_test.cpp
     engine/ui/ui_world_anchor_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
