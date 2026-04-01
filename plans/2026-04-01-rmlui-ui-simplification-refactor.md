@@ -4,7 +4,7 @@
 - 任务ID：`UI-RML-001`
 - 任务标题：`RmlUi UI 简化重构`
 - 优先级：`P0`
-- 状态：`Todo`
+- 状态：`In Progress`
 - 负责人：`TBD`
 - 计划时间：`2026-04-01` 起
 - 依赖任务：`无`
@@ -301,7 +301,7 @@
 - 相关 RML/RCSS
 
 ### 主要改动
-- 新增统一的 slot view model/presenter
+- 新增轻量共享 `slot_grid_support.*`，统一 slot view model、事件绑定和 drag state
 - 新增共享的基础 view model 定义，避免 `HotbarSlotViewModel` / `SlotViewModel` 多处重复定义
 - 新增统一的 `populateSlotViewModel(...)` 或等价 helper，收敛 “stack -> decorator/count/flags” 投影逻辑
 - 新增共享 drag-drop 状态对象，避免各自维护一套 `dragging_/drop_handled_/suppress_next_primary_mouse_up_`
@@ -316,9 +316,10 @@
   - detail panel / action menu 的业务动作
 
 ### 边界约束
-- presenter 只负责 slot 状态投影、drag state 管理、DOM 事件转发
+- 共享层只负责 slot 状态投影、drag state 管理、DOM 事件转发
 - 具体 drop 后如何交换、装备、消费、取消，全部由外部策略/回调决定
-- 不把业务规则塞进 presenter，避免抽象后再次膨胀
+- 不引入过重的 `RmlSlotGridPresenter` 类层级；优先保持“共享 helper + Scene/HUD 注入业务回调”的简洁结构
+- 不把业务规则塞进共享层，避免抽象后再次膨胀
 
 ### 验收标准
 - `HotbarUI` 与 `InventoryMenuScene` 不再各自注册一整套重复 slot 事件
@@ -424,10 +425,8 @@
 ## 预计新增文件
 - `src/engine/ui/rmlui/rml_document_controller.h`
 - `src/engine/ui/rmlui/rml_document_controller.cpp`
-- `src/game/ui/rml_slot_view_models.h`
-- `src/game/ui/rml_drag_drop_state.h`
-- `src/game/ui/rml_slot_grid_presenter.h`
-- `src/game/ui/rml_slot_grid_presenter.cpp`
+- `src/game/ui/slot_grid_support.h`
+- `src/game/ui/slot_grid_support.cpp`
 - `ui/rmlui/theme/reset.rcss`
 - `ui/rmlui/theme/modal.rcss`
 - `ui/rmlui/theme/slot_widgets.rcss`
@@ -500,9 +499,9 @@
 - [x] T6 dialogue bubble 改为 RmlUi 原生文本布局，并删除 `MAX_CHARS_PER_LINE` 风格换行
 - [x] T7 `RmlScreenFade` 改为动态 transition 驱动
 - [ ] T8 收缩 `rml_element_helpers.h` 到最小必要工具集
-- [ ] T9 抽出共享 slot view model / `populateSlotViewModel(...)` / drag-drop state
-- [ ] T10 抽出 `RmlSlotGridPresenter`
-- [ ] T11 合并 HUD hotbar / inventory slot 重复逻辑
+- [x] T9 抽出共享 slot view model / `populateSlotViewModel(...)` / drag-drop state
+- [x] T10 以轻量 `slot_grid_support.*` 统一 indexed slot event 绑定与 slot-grid 接线
+- [x] T11 合并 HUD hotbar / inventory slot 重复逻辑
 - [ ] T12 inventory action menu 改为基于 DOM 几何定位
 - [ ] T13 收敛 theme/reset/modal/nav/slot 样式
 - [ ] T14 删除死字段与废弃 glue code
