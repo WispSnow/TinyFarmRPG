@@ -72,6 +72,7 @@ set(TEST_SOURCES
     engine/render/gl_renderer_lifecycle_test.cpp
     engine/render/rmlui_pipeline_stage_test.cpp
     engine/render/rmlui_texture_filter_pipeline_test.cpp
+    engine/ui/rmlui_runtime_access_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
     engine/render/vfx_dual_channel_pipeline_test.cpp
     engine/render/opengl_pass_state_test.cpp
@@ -179,6 +180,7 @@ set(GAME_TEST_SOURCES
     game/world_state_test.cpp
     game/rml_item_icon_helpers_test.cpp
     game/rml_menu_navigation_style_test.cpp
+    game/game_scene_ui_controller_smoke_test.cpp
     game/ui_layout_integration_test.cpp
 )
 

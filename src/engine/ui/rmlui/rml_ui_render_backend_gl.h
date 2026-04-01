@@ -13,6 +13,10 @@ namespace engine::ui::rmlui {
 
 class RenderInterface_GL3_STB;
 
+/// @brief RmlUi 的 OpenGL 渲染 backend。
+///
+/// 负责持有 `RenderInterface_GL3_STB`、逻辑尺寸与纹理过滤配置，
+/// 并在 render 阶段把 `Rml::Context` 绘制到给定 viewport。
 class RmlUiRenderBackendGl final {
 public:
     [[nodiscard]] static std::unique_ptr<RmlUiRenderBackendGl> create();

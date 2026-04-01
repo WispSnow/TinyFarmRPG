@@ -28,6 +28,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                            engine::core::CoreServices,
                            engine::core::RenderServices,
                            engine::core::ResourceServices,
+                           engine::core::UiServices,
                            engine::audio::AudioPlayer&,
                            engine::spatial::SpatialIndexManager&,
                            engine::debug::DebugUIManager&>));
@@ -35,6 +36,7 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                                          engine::core::CoreServices,
                                          engine::core::RenderServices,
                                          engine::core::ResourceServices,
+                                         engine::core::UiServices,
                                          engine::audio::AudioPlayer&,
                                          engine::spatial::SpatialIndexManager&,
                                          engine::debug::DebugUIManager&>));
@@ -43,12 +45,14 @@ TEST(FactoryVisibilityTest, EngineFactoryRequiredTypesFollowFactoryPattern) {
                            engine::core::CoreServices,
                            engine::core::RenderServices,
                            engine::core::ResourceServices,
+                           engine::core::UiServices,
                            engine::audio::AudioPlayer&,
                            engine::spatial::SpatialIndexManager&>));
     EXPECT_FALSE((std::is_constructible_v<engine::core::Context,
                                          engine::core::CoreServices,
                                          engine::core::RenderServices,
                                          engine::core::ResourceServices,
+                                         engine::core::UiServices,
                                          engine::audio::AudioPlayer&,
                                          engine::spatial::SpatialIndexManager&>));
 #endif

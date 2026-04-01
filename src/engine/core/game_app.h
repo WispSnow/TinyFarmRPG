@@ -40,7 +40,6 @@ class UINavigationController;
 }
 
 namespace engine::ui::rmlui {
-class RmlUILayer;
 class RmlUiRenderBackendGl;
 class RmlUiRuntime;
 }
@@ -100,7 +99,6 @@ private:
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_;
     std::unique_ptr<engine::ui::rmlui::RmlUiRenderBackendGl> rmlui_render_backend_;
     std::unique_ptr<engine::ui::rmlui::RmlUiRuntime> rmlui_runtime_;
-    std::unique_ptr<engine::ui::rmlui::RmlUILayer> rmlui_compat_layer_;
 
 public:
     GameApp();

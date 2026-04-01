@@ -39,7 +39,7 @@ TEST(RmlUiPipelineStageTest, PresentCallsRmlUiRenderHookBetweenOverlayVfxAndImGu
     EXPECT_LT(pos_srgb_restore, pos_imgui);
 }
 
-TEST(RmlUiPipelineStageTest, CleanClearsRmlUiHookAndLegacyLayerBeforeRenderContext) {
+TEST(RmlUiPipelineStageTest, CleanClearsRmlUiHookBeforeRenderContext) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/opengl/gl_renderer.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -51,15 +51,12 @@ TEST(RmlUiPipelineStageTest, CleanClearsRmlUiHookAndLegacyLayerBeforeRenderConte
     ASSERT_FALSE(clean_block.empty());
 
     const std::size_t pos_hook_reset = clean_block.find("rmlui_render_hook_ = {};");
-    const std::size_t pos_legacy_reset = clean_block.find("rmlui_legacy_layer_ = nullptr;");
     const std::size_t pos_context_clean = clean_block.find("render_context_->clean();");
 
     ASSERT_NE(pos_hook_reset, std::string::npos);
-    ASSERT_NE(pos_legacy_reset, std::string::npos);
     ASSERT_NE(pos_context_clean, std::string::npos);
 
     EXPECT_LT(pos_hook_reset, pos_context_clean);
-    EXPECT_LT(pos_legacy_reset, pos_context_clean);
 }
 
 } // namespace

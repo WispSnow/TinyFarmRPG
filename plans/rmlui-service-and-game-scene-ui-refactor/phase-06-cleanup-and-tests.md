@@ -5,8 +5,9 @@
 #### 本阶段要做的事
 
 1. 执行阶段 B 检查
-   - 全仓库 grep `getRmlUILayer()`
+   - grep `src/` 中的 `getRmlUILayer()`
    - 结果必须为零
+   - `tests/` 若保留该字符串，只能用于“应当不存在”的源码断言
 
 2. 删除兼容壳和旧入口
    - 删除 `RmlUILayer`
@@ -34,15 +35,16 @@
 
 #### 验证
 
-- 全仓库不再存在 `getRmlUILayer()`
+- `src/` 中不再存在 `getRmlUILayer()`
+- `tests/` 中若保留该字符串，仅用于“应当不存在”的源码断言
 - 项目可编译
 - 测试可运行
 - 文档和代码注释能说明新的职责边界
 
 #### 完成标记
 
-- [ ] 阶段 B grep 检查通过：全仓库 `getRmlUILayer()` 为零
-- [ ] 删除 `RmlUILayer`
-- [ ] 删除 `GLRenderer::getRmlUILayer()`
-- [ ] 新增 `rmlui_runtime_access_test.cpp`
-- [ ] 新增 `game_scene_ui_controller_smoke_test.cpp`
+- [x] 阶段 B grep 检查通过：`src/` 中 `getRmlUILayer()` 为零，`tests/` 仅保留否定断言
+- [x] 删除 `RmlUILayer`
+- [x] 删除 `GLRenderer::getRmlUILayer()`
+- [x] 新增 `rmlui_runtime_access_test.cpp`
+- [x] 新增 `game_scene_ui_controller_smoke_test.cpp`

@@ -11,7 +11,6 @@
 #include "engine/render/text_renderer.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
@@ -301,12 +300,12 @@ void GameApp::close() {
     main_thread_command_queue_.reset();
 
     if (gl_renderer_) {
-        // GLRenderer 持有 render hook 和 legacy bridge。
-        // 必须先断开它们，再销毁 runtime / backend，避免 renderer 末期仍保留悬空回调或裸指针。
+        // 先清空 render hook，再销毁 runtime / backend。
+        // 这样可以确保 GLRenderer 在析构末期不会再持有指向 RmlUi 对象的悬空回调。
         gl_renderer_->setRmlUiRenderHook({});
-        gl_renderer_->setLegacyRmlUiLayer(nullptr);
     }
-    rmlui_compat_layer_.reset();
+
+    // RmlUiRuntime::clean() 会执行 Rml::Shutdown()，必须发生在 render backend 释放之前。
     rmlui_runtime_.reset();
     rmlui_render_backend_.reset();
 
@@ -374,7 +373,6 @@ bool GameApp::initGLRenderer() {
     }
     gl_renderer_->setVSyncEnabled(config_->vsync_enabled_);
     gl_renderer_->setDebugUIEnabled(config_->debug_ui_enabled_);
-    gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);
     spdlog::trace("OpenGL 渲染器初始化成功。");
     return true;
 }
@@ -391,6 +389,8 @@ bool GameApp::initRmlUi() {
         return false;
     }
 
+    // 顺序不能交换：runtime 初始化期间会把 render interface 注册到 RmlUi，
+    // 然后调用 Rml::Initialise() 并创建主 context。
     const auto viewport = gl_renderer_->getViewportPixels();
     rmlui_runtime_ = engine::ui::rmlui::RmlUiRuntime::create(
         window_,
@@ -406,22 +406,15 @@ bool GameApp::initRmlUi() {
     const int logical_height = static_cast<int>(std::round(logical_size.y));
     rmlui_runtime_->setLogicalSize(logical_width, logical_height);
     rmlui_render_backend_->setLogicalSize(logical_width, logical_height);
+    rmlui_render_backend_->setTextureFilterMode(config_->rmlui_texture_filter_mode_);
     syncRmlUiViewport();
 
-    rmlui_compat_layer_ = engine::ui::rmlui::RmlUILayer::createFacade(
-        window_,
-        *rmlui_runtime_,
-        *rmlui_render_backend_);
-    if (!rmlui_compat_layer_) {
-        spdlog::error("初始化 RmlUi 失败：创建兼容层 RmlUILayer 失败。");
-        return false;
-    }
-    rmlui_compat_layer_->setLogicalSize(logical_width, logical_height);
-
-    gl_renderer_->setLegacyRmlUiLayer(rmlui_compat_layer_.get());
     if (!rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
         spdlog::warn("GameApp::initRmlUi failed to load default font {}.", DEFAULT_RMLUI_FONT_PATH);
     }
+
+    // GLRenderer 只知道“在 present() 的 retained UI 阶段执行渲染”。
+    // runtime update / document lifecycle 仍由 GameApp 与 Context 协调，不经 renderer 回传。
     gl_renderer_->setRmlUiRenderHook([this](const engine::utils::Rect& current_viewport) {
         if (!rmlui_runtime_ || !rmlui_render_backend_) {
             return;

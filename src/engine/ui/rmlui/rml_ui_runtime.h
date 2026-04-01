@@ -22,6 +22,10 @@ namespace engine::ui::rmlui {
 
 class RenderInterface_GL3_STB;
 
+/// @brief RmlUi retained-mode runtime。
+///
+/// 负责全局 RmlUi 初始化/关闭、主 `Rml::Context`、文档与焦点管理、SDL 事件处理，
+/// 以及显式的 `Update()` 阶段。渲染细节不在这里处理。
 class RmlUiRuntime final {
 public:
     [[nodiscard]] static std::unique_ptr<RmlUiRuntime> create(SDL_Window* window,

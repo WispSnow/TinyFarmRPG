@@ -71,7 +71,7 @@
 | Phase 3 | `[x]` | [`phase-03-frame-loop.md`](./rmlui-service-and-game-scene-ui-refactor/phase-03-frame-loop.md) | 恢复 `ProcessEvents / Update / Render` 三段式 |
 | Phase 4 | `[x]` | [`phase-04-game-migration.md`](./rmlui-service-and-game-scene-ui-refactor/phase-04-game-migration.md) | 迁移游戏层场景、wrapper、菜单和库存 UI |
 | Phase 5 | `[x]` | [`phase-05-game-scene-ui-controller.md`](./rmlui-service-and-game-scene-ui-refactor/phase-05-game-scene-ui-controller.md) | 提取 `GameSceneUiController` |
-| Phase 6 | `[ ]` | [`phase-06-cleanup-and-tests.md`](./rmlui-service-and-game-scene-ui-refactor/phase-06-cleanup-and-tests.md) | 删除兼容壳与旧入口，补测试 |
+| Phase 6 | `[x]` | [`phase-06-cleanup-and-tests.md`](./rmlui-service-and-game-scene-ui-refactor/phase-06-cleanup-and-tests.md) | 删除兼容壳与旧入口，补测试 |
 
 ## 关键检查点
 
@@ -80,7 +80,8 @@
   - 仅允许 `GLRenderer` 的 legacy bridge 保留 `getRmlUILayer()` 声明/定义
   - 引擎层全部改走 `Context::getRmlUi()` 或 render hook
 - Phase 6 开始前，执行阶段 B 检查：
-  - 全仓库 `getRmlUILayer()` 调用为零
+  - `src/` 中的 `getRmlUILayer()` 调用为零
+  - `tests/` 里若保留该字符串，只能用于“应当不存在”的源码断言
   - 可以删除兼容壳与 renderer backdoor
 
 ## 使用方式
@@ -96,4 +97,4 @@
 - [x] Phase 3 完成
 - [x] Phase 4 完成
 - [x] Phase 5 完成
-- [ ] Phase 6 完成
+- [x] Phase 6 完成
