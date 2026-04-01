@@ -2,8 +2,6 @@
 
 #include <RmlUi/Core/EventListener.h>
 
-#include <entt/signal/fwd.hpp>
-
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -16,9 +14,14 @@ class Event;
 namespace engine::ui::rmlui {
 
 /**
- * @brief 将 RML 元素事件桥接到游戏侧回调。
+ * @brief 将 RML 点击事件桥接为基于 data-command 的游戏命令回调。
  *
- * 作为 Rml::EventListener 注册到 RML 元素上，解析事件参数后调用预注册的 C++ 回调。
+ * 作为 Rml::EventListener 注册到容器元素上，利用事件冒泡从触发节点向上查找最近的
+ * data-command 属性，再分发到预注册的 C++ 回调。
+ *
+ * 适合标题菜单、暂停菜单、战斗菜单这类“简单按钮 -> 命令”的 UI。
+ * 对于带参数、拖拽、强交互状态同步等复杂事件，优先直接使用
+ * RmlUi DataModelConstructor::BindEventCallback。
  *
  * 用法：
  *   bridge.on("start_game", [&](Rml::Event&) { ... });
