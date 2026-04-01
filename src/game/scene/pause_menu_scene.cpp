@@ -74,14 +74,7 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
 
 PauseMenuScene::~PauseMenuScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool PauseMenuScene::init() {
@@ -119,15 +112,12 @@ void PauseMenuScene::update(float delta_time) {
 
 void PauseMenuScene::clean() {
     disconnectRuntimeListeners();
-    removeEventListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool PauseMenuScene::initUI() {
@@ -200,6 +190,15 @@ void PauseMenuScene::removeEventListeners() {
         document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
         hover_listener_registered_ = false;
     }
+}
+
+void PauseMenuScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void PauseMenuScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 void PauseMenuScene::disconnectRuntimeListeners() {

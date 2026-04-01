@@ -55,6 +55,10 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBefor
         projectPath("src/game/scene/pause_menu_scene.cpp"),
         projectPath("src/game/scene/save_slot_select_scene.cpp"),
     };
+    const auto scene_base_path = projectPath("src/engine/scene/scene.cpp");
+    ASSERT_TRUE(std::filesystem::exists(scene_base_path)) << scene_base_path;
+    const std::string scene_base_source = readTextFile(scene_base_path);
+    ASSERT_FALSE(scene_base_source.empty()) << scene_base_path;
 
     for (const auto& path : scene_paths) {
         ASSERT_TRUE(std::filesystem::exists(path)) << path;
@@ -64,13 +68,19 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBefor
         EXPECT_NE(source.find("HoverFocusSyncListener"), std::string::npos) << path;
         EXPECT_NE(source.find("AddEventListener(\"mouseover\""), std::string::npos) << path;
         EXPECT_NE(source.find("RemoveEventListener(\"mouseover\""), std::string::npos) << path;
-
-        const std::size_t remove_events_pos = source.find("removeEventListeners();");
-        const std::size_t unload_pos = source.find("unloadAllRmlDocuments();");
-        ASSERT_NE(remove_events_pos, std::string::npos) << path;
-        ASSERT_NE(unload_pos, std::string::npos) << path;
-        EXPECT_LT(remove_events_pos, unload_pos) << path;
+        EXPECT_NE(source.find("beforeUnloadOwnedRmlDocuments"), std::string::npos) << path;
+        EXPECT_NE(source.find("afterUnloadOwnedRmlDocuments"), std::string::npos) << path;
+        EXPECT_NE(source.find("removeEventListeners();"), std::string::npos) << path;
     }
+
+    const std::size_t before_hook_pos = scene_base_source.find("beforeUnloadOwnedRmlDocuments();");
+    const std::size_t unload_pos = scene_base_source.find("unloadAllRmlDocuments();");
+    const std::size_t after_hook_pos = scene_base_source.find("afterUnloadOwnedRmlDocuments();");
+    ASSERT_NE(before_hook_pos, std::string::npos) << scene_base_path;
+    ASSERT_NE(unload_pos, std::string::npos) << scene_base_path;
+    ASSERT_NE(after_hook_pos, std::string::npos) << scene_base_path;
+    EXPECT_LT(before_hook_pos, unload_pos) << scene_base_path;
+    EXPECT_LT(unload_pos, after_hook_pos) << scene_base_path;
 }
 
 TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisible) {

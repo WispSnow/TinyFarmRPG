@@ -38,14 +38,7 @@ RestDialogScene::RestDialogScene(std::string_view name, engine::core::Context& c
 
 RestDialogScene::~RestDialogScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    unloadOwnedRmlDocumentsNow();
 }
 
 bool RestDialogScene::init() {
@@ -67,15 +60,12 @@ bool RestDialogScene::init() {
 
 void RestDialogScene::clean() {
     disconnectRuntimeListeners();
-    removeEventListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool RestDialogScene::initUI() {
@@ -123,6 +113,15 @@ void RestDialogScene::removeEventListeners() {
         document_->RemoveEventListener("click", &event_bridge_);
         click_listener_registered_ = false;
     }
+}
+
+void RestDialogScene::beforeUnloadOwnedRmlDocuments() {
+    removeEventListeners();
+}
+
+void RestDialogScene::afterUnloadOwnedRmlDocuments() {
+    document_ = nullptr;
+    data_bridge_.destroy();
 }
 
 void RestDialogScene::disconnectRuntimeListeners() {

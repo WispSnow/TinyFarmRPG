@@ -23,6 +23,18 @@ Scene::Scene(std::string_view name, engine::core::Context& context)
 
 Scene::~Scene() = default;
 
+void Scene::beforeUnloadOwnedRmlDocuments() {
+}
+
+void Scene::afterUnloadOwnedRmlDocuments() {
+}
+
+void Scene::unloadOwnedRmlDocumentsNow() {
+    beforeUnloadOwnedRmlDocuments();
+    unloadAllRmlDocuments();
+    afterUnloadOwnedRmlDocuments();
+}
+
 bool Scene::init() {
     is_initialized_ = true;
     spdlog::trace("场景 '{}' 初始化完成。", scene_name_);
@@ -46,7 +58,7 @@ void Scene::render(float /*interpolation_alpha*/) {
 }
 
 void Scene::clean() {
-    unloadAllRmlDocuments();
+    unloadOwnedRmlDocumentsNow();
     if (!is_initialized_) return;
 
     context_.getSpatialIndexManager().resetIfUsingRegistry(&registry_);
