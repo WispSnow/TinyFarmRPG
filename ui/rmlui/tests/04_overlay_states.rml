@@ -11,7 +11,7 @@
         <div class="label-large">Overlay States</div>
         <div class="label-small">Visual test for HUD + modal stacking.</div>
         <div class="divider"></div>
-        <button class="button transition-color" data-command="open_menu">Open Menu</button>
+        <button class="button transition-color">Open Menu</button>
     </div>
 
     <div id="modal-mask"></div>
@@ -20,8 +20,8 @@
         <div class="label">Only modal controls should be used here.</div>
         <div class="divider"></div>
         <div class="flex-row gap-8 button-row">
-            <button class="button button-primary transition-color" data-command="resume">Resume</button>
-            <button class="button transition-color" data-command="quit">Quit</button>
+            <button class="button button-primary transition-color">Resume</button>
+            <button class="button transition-color">Quit</button>
         </div>
     </div>
 </body>

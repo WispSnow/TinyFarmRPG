@@ -4,6 +4,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
@@ -304,7 +305,9 @@ bool InventoryMenuScene::initUI() {
         !bind_event("hb_slot_drag_drop", &InventoryMenuScene::onHbSlotDragDrop) ||
         !bind_event("hb_slot_drag_end", &InventoryMenuScene::onHbSlotDragEnd) ||
         !bind_event("action_entry_focus", &InventoryMenuScene::onActionEntryFocus) ||
-        !bind_event("action_entry_click", &InventoryMenuScene::onActionEntryClick)) {
+        !bind_event("action_entry_click", &InventoryMenuScene::onActionEntryClick) ||
+        !engine::ui::rmlui::bindSimpleEventCallback(constructor, "trash", [this] { onTrashClicked(); }) ||
+        !engine::ui::rmlui::bindSimpleEventCallback(constructor, "sort", [this] { onSortClicked(); })) {
         spdlog::error("InventoryMenuScene: 绑定 event 回调失败。");
         data_bridge_.destroy();
         return false;
@@ -316,10 +319,6 @@ bool InventoryMenuScene::initUI() {
         spdlog::error("InventoryMenuScene: 加载 RML 文档失败。");
         return false;
     }
-
-    event_bridge_.on("trash", [this](Rml::Event&) { onTrashClicked(); });
-    event_bridge_.on("sort", [this](Rml::Event&) { onSortClicked(); });
-    event_bridge_.registerTo(document_, "click");
 
     tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
 
@@ -333,7 +332,6 @@ bool InventoryMenuScene::initUI() {
 }
 
 void InventoryMenuScene::shutdownUI() {
-    event_bridge_.unregisterAll();
     unloadAllRmlDocuments();
     document_ = nullptr;
     focus_before_action_menu_ = nullptr;

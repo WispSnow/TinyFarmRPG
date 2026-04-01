@@ -11,9 +11,9 @@
             <div class="label">Use this page to test document load and switch behavior.</div>
             <div class="divider"></div>
             <div class="flex-row gap-8 button-row">
-                <button class="button button-primary transition-color" data-command="accept">Primary</button>
-                <button class="button transition-color" data-command="cancel">Secondary</button>
-                <button class="button transition-color" data-command="danger">Danger</button>
+                <button class="button button-primary transition-color">Primary</button>
+                <button class="button transition-color">Secondary</button>
+                <button class="button transition-color">Danger</button>
             </div>
         </div>
     </div>

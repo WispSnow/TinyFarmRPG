@@ -1,8 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 
 #include <RmlUi/Core/Types.h>
 
@@ -10,10 +9,6 @@
 
 namespace engine::core {
 enum class State;
-}
-
-namespace Rml {
-class ElementDocument;
 }
 
 namespace game::scene {
@@ -24,9 +19,7 @@ private:
     int selected_hours_{24};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
 
     Rml::String hours_text_{"24h"};
 

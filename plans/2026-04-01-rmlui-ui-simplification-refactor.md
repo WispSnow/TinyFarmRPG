@@ -492,10 +492,10 @@
 - `InventoryMenuScene` 最后单独做，因为它是重复逻辑和业务逻辑最密集的点。
 
 ## 待办清单
-- [ ] T1 新增 `RmlDocumentController`，采用成员组合方式并提供 `load/bindEvent/bindModel/setDefaultFocus/enableHoverFocusSync/show/hide/unload`
-- [ ] T2 将 hover->focus 注册与解绑迁移到 `RmlDocumentController` 内部
-- [ ] T3 全量迁移简单场景到 `data-event-* + BindEventCallback`
-- [ ] T4 删除 `RmlEventBridge`
+- [x] T1 新增 `RmlDocumentController`，采用成员组合方式并提供 `load/bindEvent/bindModel/setDefaultFocus/enableHoverFocusSync/show/hide/unload`
+- [x] T2 将 hover->focus 注册与解绑迁移到 `RmlDocumentController` 内部
+- [x] T3 全量迁移简单场景到 `data-event-* + BindEventCallback`
+- [x] T4 删除 `RmlEventBridge`
 - [ ] T5 tooltip 改为 RmlUi 原生文本布局，并明确布局刷新时序
 - [ ] T6 dialogue bubble 改为 RmlUi 原生文本布局，并删除 `MAX_CHARS_PER_LINE` 风格换行
 - [ ] T7 `RmlScreenFade` 改为动态 transition 驱动

@@ -6,7 +6,6 @@
 #include "engine/render/text_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
@@ -18,9 +17,6 @@
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/time_clock_hud.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <spdlog/spdlog.h>
@@ -75,12 +71,6 @@ bool GameSceneUiController::init() {
         return false;
     }
 
-    auto* rml_context = rml_runtime->getContext();
-    if (!rml_context) {
-        spdlog::error("GameSceneUiController: RmlUi context 不可用，无法初始化游戏 HUD。");
-        return false;
-    }
-
     auto& text_renderer = context_.getTextRenderer();
     time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, scene_instance_id_);
 
@@ -107,27 +97,29 @@ bool GameSceneUiController::init() {
         hotbar_ui_->setTarget(player);
     }
 
-    if (auto overlay_constructor = overlay_data_bridge_.create(rml_context, GAME_OVERLAY_MODEL_NAME)) {
+    overlay_controller_.attach(rml_runtime, scene_instance_id_);
+    if (auto overlay_constructor = overlay_controller_.createModel(GAME_OVERLAY_MODEL_NAME)) {
         overlay_constructor.Bind("primary_prompt_text", &primary_prompt_text_);
         overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
         overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
         overlay_constructor.Bind("pause_prompt_text", &pause_prompt_text_);
         overlay_constructor.Bind("show_prompt_bar", &show_prompt_bar_);
 
-        refreshOverlayPrompts();
-        overlay_data_bridge_.markAllDirty();
-
-        overlay_document_ = rml_runtime->loadDocument(GAME_OVERLAY_DOCUMENT_PATH, scene_instance_id_);
-        if (overlay_document_) {
-            overlay_event_bridge_.on("menu", [this](Rml::Event&) {
+        if (!overlay_controller_.bindSimpleEvent(overlay_constructor, "menu", [this] {
                 if (on_menu_requested_) {
                     on_menu_requested_();
                 }
-            });
-            overlay_event_bridge_.registerTo(overlay_document_, "click");
-            overlay_click_listener_registered_ = true;
+            })) {
+            spdlog::error("GameSceneUiController: 绑定 overlay data event 回调失败，游戏内菜单按钮将不可用。");
+            overlay_controller_.unload();
         } else {
-            spdlog::error("GameSceneUiController: 加载 overlay 文档失败，游戏内菜单按钮将不可用。");
+            refreshOverlayPrompts();
+            overlay_controller_.markAllDirty();
+
+            if (!overlay_controller_.load(GAME_OVERLAY_DOCUMENT_PATH)) {
+                spdlog::error("GameSceneUiController: 加载 overlay 文档失败，游戏内菜单按钮将不可用。");
+                overlay_controller_.unload();
+            }
         }
     } else {
         spdlog::error("GameSceneUiController: 创建 overlay data model 失败，输入提示将不可用。");
@@ -163,8 +155,6 @@ void GameSceneUiController::refreshAnchoredWidgets(const engine::render::Camera&
 }
 
 void GameSceneUiController::clean() {
-    removeOverlayEventListeners();
-
     auto& dispatcher = context_.getDispatcher();
     dispatcher.clear<game::defs::DialogueShowEvent>();
     dispatcher.clear<game::defs::DialogueMoveEvent>();
@@ -179,15 +169,7 @@ void GameSceneUiController::clean() {
     item_tooltip_ui_.reset();
     screen_fade_ = nullptr;
     rml_screen_fade_.reset();
-
-    if (overlay_document_) {
-        if (auto* runtime = context_.getRmlUi()) {
-            runtime->unloadDocument(overlay_document_);
-        }
-        overlay_document_ = nullptr;
-    }
-
-    overlay_data_bridge_.destroy();
+    overlay_controller_.unload();
     primary_prompt_text_.clear();
     secondary_prompt_text_.clear();
     inventory_prompt_text_.clear();
@@ -261,8 +243,8 @@ void GameSceneUiController::setPromptBarVisible(bool visible) {
     }
 
     show_prompt_bar_ = visible;
-    if (overlay_data_bridge_.isValid()) {
-        overlay_data_bridge_.markDirty("show_prompt_bar");
+    if (overlay_controller_.isModelValid()) {
+        overlay_controller_.markDirty("show_prompt_bar");
     }
 }
 
@@ -275,30 +257,23 @@ entt::entity GameSceneUiController::findPlayerEntity() const {
     return *player_view.begin();
 }
 
-void GameSceneUiController::removeOverlayEventListeners() {
-    if (overlay_document_ && overlay_click_listener_registered_) {
-        overlay_document_->RemoveEventListener("click", &overlay_event_bridge_);
-        overlay_click_listener_registered_ = false;
-    }
-}
-
 void GameSceneUiController::refreshOverlayPrompts() {
-    if (!overlay_data_bridge_.isValid()) {
+    if (!overlay_controller_.isModelValid()) {
         return;
     }
 
     auto& input_manager = context_.getInputManager();
     if (updateBoundString(primary_prompt_text_, promptTextForAction(input_manager, "primary_action"_hs))) {
-        overlay_data_bridge_.markDirty("primary_prompt_text");
+        overlay_controller_.markDirty("primary_prompt_text");
     }
     if (updateBoundString(secondary_prompt_text_, promptTextForAction(input_manager, "secondary_action"_hs))) {
-        overlay_data_bridge_.markDirty("secondary_prompt_text");
+        overlay_controller_.markDirty("secondary_prompt_text");
     }
     if (updateBoundString(inventory_prompt_text_, promptTextForAction(input_manager, "inventory"_hs))) {
-        overlay_data_bridge_.markDirty("inventory_prompt_text");
+        overlay_controller_.markDirty("inventory_prompt_text");
     }
     if (updateBoundString(pause_prompt_text_, promptTextForAction(input_manager, "pause"_hs))) {
-        overlay_data_bridge_.markDirty("pause_prompt_text");
+        overlay_controller_.markDirty("pause_prompt_text");
     }
 }
 

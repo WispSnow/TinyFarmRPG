@@ -1,26 +1,20 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 
 #include <RmlUi/Core/Types.h>
 
 #include <functional>
-#include <memory>
 #include <optional>
 #include <string_view>
 #include <vector>
 
 namespace Rml {
 class Element;
-class ElementDocument;
 class Event;
 class DataModelHandle;
 class DataModelConstructor;
-}
-
-namespace engine::ui::rmlui {
-class HoverFocusSyncListener;
 }
 
 namespace game::scene {
@@ -46,9 +40,7 @@ private:
     std::optional<int> pending_overwrite_slot_{};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::Element* focus_before_confirm_{nullptr};
 
     std::vector<SlotViewModel> slots_{};

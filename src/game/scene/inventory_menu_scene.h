@@ -2,7 +2,6 @@
 
 #include "engine/scene/scene.h"
 #include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
@@ -74,7 +73,6 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool context_pushed_{false};
 
     engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
     Rml::DataTypeRegister type_register_{};
     Rml::ElementDocument* document_{nullptr};
 

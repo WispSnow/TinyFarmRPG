@@ -6,11 +6,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -76,13 +72,8 @@ bool RestDialogScene::initUI() {
         return false;
     }
 
-    auto* rml_context = runtime->getContext();
-    if (!rml_context) {
-        spdlog::error("RestDialogScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("RestDialogScene: 创建 data model 失败。");
         return false;
@@ -90,29 +81,28 @@ bool RestDialogScene::initUI() {
 
     constructor.Bind("hours_text", &hours_text_);
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
-        spdlog::error("RestDialogScene: 加载 RML 文档失败。");
+    if (!document_controller_.bindSimpleEvent(constructor, "hours_down", [this] { adjustHours(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "hours_up", [this] { adjustHours(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "confirm", [this] { onConfirm(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "cancel", [this] { onCancel(); })) {
+        spdlog::error("RestDialogScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("hours_down", [this](Rml::Event&) { adjustHours(-1); });
-    event_bridge_.on("hours_up", [this](Rml::Event&) { adjustHours(1); });
-    event_bridge_.on("confirm", [this](Rml::Event&) { onConfirm(); });
-    event_bridge_.on("cancel", [this](Rml::Event&) { onCancel(); });
-    event_bridge_.registerTo(document_, "click");
+    document_controller_.setDefaultFocusById("rest-hours-down-button");
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        spdlog::error("RestDialogScene: 加载 RML 文档失败。");
+        document_controller_.unload();
+        return false;
+    }
 
     updateHoursLabel();
-    runtime->queueFocusElementById(document_, "rest-hours-down-button");
     return true;
 }
 
 void RestDialogScene::shutdownUI() {
-    event_bridge_.unregisterAll();
-    unloadAllRmlDocuments();
-    document_ = nullptr;
-    data_bridge_.destroy();
+    document_controller_.unload();
 }
 
 void RestDialogScene::disconnectRuntimeListeners() {
@@ -122,7 +112,7 @@ void RestDialogScene::disconnectRuntimeListeners() {
 void RestDialogScene::updateHoursLabel() {
     const auto text = std::to_string(selected_hours_) + "h";
     if (updateBoundString(hours_text_, text)) {
-        data_bridge_.markDirty("hours_text");
+        document_controller_.markDirty("hours_text");
     }
 }
 

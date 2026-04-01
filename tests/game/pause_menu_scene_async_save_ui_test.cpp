@@ -55,9 +55,9 @@ TEST(PauseMenuSceneAsyncSaveUiTest, DisablesBackToTitleWhileSaving) {
 
     EXPECT_NE(scene_source.find("updateBoundBool(can_back_title_, !saving)"), std::string::npos)
         << "PauseMenuScene should publish Back to Title enable state through the RmlUi data model.";
-    EXPECT_NE(scene_source.find("data_bridge_.markDirty(\"can_back_title\")"), std::string::npos)
+    EXPECT_NE(scene_source.find("document_controller_.markDirty(\"can_back_title\")"), std::string::npos)
         << "PauseMenuScene should mark can_back_title dirty after save state changes.";
-    EXPECT_NE(rml_source.find("data-command=\"back_to_title\""), std::string::npos)
+    EXPECT_NE(rml_source.find("data-event-click=\"back_to_title\""), std::string::npos)
         << "Pause menu RML should expose a Back to Title action button.";
     EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_back_title\""), std::string::npos)
         << "Pause menu Title button should bind disabled attr to can_back_title.";
