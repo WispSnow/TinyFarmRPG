@@ -3,6 +3,7 @@
 #include "engine/ui/rmlui/rml_data_bridge.h"
 #include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
+#include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
@@ -32,17 +33,6 @@ namespace game::ui {
 class ItemTooltipUI;
 
 class HotbarUI final {
-    struct HotbarSlotViewModel {
-        int slot_index{0};
-        Rml::String icon_decorator{"none"};
-        Rml::String count_text{};
-        bool has_item{false};
-        bool has_count{false};
-        bool is_active{false};
-        bool is_bound{false};
-        bool can_drag{false};
-    };
-
     engine::ui::rmlui::RmlUiRuntime& runtime_;
     engine::core::Context& context_;
     game::data::ItemCatalog* item_catalog_{nullptr};
@@ -52,7 +42,7 @@ class HotbarUI final {
     Rml::DataTypeRegister type_register_{};
     Rml::ElementDocument* document_{nullptr};
 
-    std::vector<HotbarSlotViewModel> hotbar_slots_{};
+    std::vector<SlotGridViewModel> hotbar_slots_{};
     std::vector<std::optional<engine::ui::SlotItem>> slot_items_{};
     std::vector<int> slot_inventory_indices_{};
     entt::entity target_{entt::null};
@@ -63,12 +53,7 @@ class HotbarUI final {
 
     game::ui::ItemTooltipUI* tooltip_ui_{nullptr};
 
-    bool dragging_{false};
-    bool drop_handled_{false};
-    bool suppress_next_primary_mouse_up_{false};
-    int dragging_slot_{-1};
-    int dragging_inventory_slot_{-1};
-    std::optional<engine::ui::SlotItem> dragging_item_{};
+    SlotGridDragState drag_state_{};
 
 public:
     HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,

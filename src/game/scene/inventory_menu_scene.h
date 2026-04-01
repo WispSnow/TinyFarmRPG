@@ -2,6 +2,7 @@
 
 #include "engine/scene/scene.h"
 #include "engine/ui/rmlui/rml_data_bridge.h"
+#include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
@@ -38,28 +39,6 @@ class ItemTooltipUI;
 namespace game::scene {
 
 class InventoryMenuScene final : public engine::scene::Scene {
-    struct SlotViewModel {
-        int slot_index{0};
-        Rml::String icon_decorator{"none"};
-        Rml::String count_text{};
-        bool has_item{false};
-        bool has_count{false};
-        bool can_drag{false};
-        bool is_selected{false};
-    };
-
-    struct HotbarSlotViewModel {
-        int slot_index{0};
-        Rml::String icon_decorator{"none"};
-        Rml::String count_text{};
-        Rml::String label{};
-        bool has_item{false};
-        bool has_count{false};
-        bool is_active{false};
-        bool can_drag{false};
-        bool is_selected{false};
-    };
-
     struct ActionEntryViewModel {
         int action_id{0};
         Rml::String label{};
@@ -76,8 +55,8 @@ class InventoryMenuScene final : public engine::scene::Scene {
     Rml::DataTypeRegister type_register_{};
     Rml::ElementDocument* document_{nullptr};
 
-    std::vector<SlotViewModel> backpack_slots_{};
-    std::vector<HotbarSlotViewModel> hotbar_slots_{};
+    std::vector<game::ui::SlotGridViewModel> backpack_slots_{};
+    std::vector<game::ui::SlotGridViewModel> hotbar_slots_{};
     std::vector<ActionEntryViewModel> action_menu_entries_{};
     bool data_types_registered_{false};
 
@@ -95,11 +74,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     int detail_hb_slot_{-1};
 
     // Drag state
-    bool dragging_{false};
-    bool drop_handled_{false};
-    bool suppress_next_primary_mouse_up_{false};
-    bool dragging_from_hotbar_{false};
-    int dragging_slot_index_{-1};
+    game::ui::SlotGridDragState drag_state_{};
 
     // Action menu
     Rml::String action_menu_title_{};

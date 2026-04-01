@@ -198,6 +198,7 @@ target_sources(game PRIVATE
     # UI
     game/ui/time_clock_hud.cpp
     game/ui/hotbar_ui.cpp
+    game/ui/slot_grid_support.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp
     game/ui/game_scene_ui_controller.cpp
