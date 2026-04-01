@@ -17,8 +17,8 @@
             <button class="tab-icon tab-disabled" id="tab-quests" disabled></button>
             <button class="tab-icon tab-disabled" id="tab-map" disabled></button>
             <button class="tab-icon tab-disabled" id="tab-options" disabled></button>
-            <button id="sort-btn" data-command="sort">Sort</button>
-            <button id="trash-btn" data-command="trash"></button>
+            <button id="sort-btn" data-event-click="sort">Sort</button>
+            <button id="trash-btn" data-event-click="trash"></button>
         </div>
 
         <!-- Separator -->

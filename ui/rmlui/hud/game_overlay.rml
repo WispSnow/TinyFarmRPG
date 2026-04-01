@@ -7,7 +7,7 @@
 </head>
 <body data-model="game_overlay">
     <div id="game-menu-anchor">
-        <button id="game-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+        <button id="game-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
     </div>
 
     <div id="game-prompt-bar" data-if="show_prompt_bar">

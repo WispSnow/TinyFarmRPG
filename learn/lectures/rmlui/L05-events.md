@@ -194,35 +194,30 @@ element->SetProperty("opacity", "0.5");
 
 ---
 
-## 7. 引擎中的 RmlEventBridge
+## 7. 项目中的推荐模式
 
-TinyFarmRPG 引擎提供了 `RmlEventBridge`，通过 `data-command` 属性简化事件分发：
+当前项目推荐直接使用 RmlUi 的 `data-event-*` 与 `BindEventCallback`：
 
 ```cpp
-#include "engine/ui/rmlui/rml_event_bridge.h"
-
-// 注册命名回调
-bridge_.on("attack", [](Rml::Event&) {
+auto constructor = data_bridge_.create(runtime->getContext(), "menu_model");
+constructor.BindEventCallback("attack", [](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
     spdlog::info("Attack!");
 });
-bridge_.on("flee", [](Rml::Event&) {
+constructor.BindEventCallback("flee", [](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
     spdlog::info("Flee!");
 });
-
-// 注册到文档（冒泡阶段在 body 上统一监听）
-bridge_.registerTo(document->GetElementById("menu"), "click");
 ```
 
-RML 侧用 `data-command` 指定回调名：
+RML 侧直接声明 `data-event-click`：
 
 ```xml
 <div id="menu">
-    <button data-command="attack">Attack</button>
-    <button data-command="flee">Flee</button>
+    <button data-event-click="attack">Attack</button>
+    <button data-event-click="flee">Flee</button>
 </div>
 ```
 
-`RmlEventBridge` 会沿 DOM 树向上查找 `data-command` 属性，找到后调用对应回调。
+这样事件名、RML 和 C++ 绑定关系都更直接，也更容易和 data model 放在一起维护。
 
 ---
 
@@ -233,7 +228,7 @@ RML 侧用 `data-command` 指定回调名：
 `learn/rmlui_events/events_scene.cpp` — 演示三种事件处理模式：
 
 1. **直接 EventListener** — 自定义 `Rml::EventListener` 子类，注册到单个元素
-2. **RmlEventBridge** — 引擎提供的命令分发桥，通过 `data-command` 匹配
+2. **命令按钮监听** — 多个命令按钮各自注册 click 监听并更新日志
 3. **动态 DOM 操作** — 点击后修改元素内容和样式
 
 ### RML 文档
@@ -241,7 +236,7 @@ RML 侧用 `data-command` 指定回调名：
 文档包含 3 个 demo 区块：
 
 1. **Click Counter** — 点击按钮，C++ 端累加计数并更新显示
-2. **Command Menu** — 5 个 JRPG 命令按钮，通过 RmlEventBridge 分发
+2. **Command Menu** — 5 个 JRPG 命令按钮，点击后在右侧日志显示所选命令
 3. **Hover Info** — 鼠标悬停显示不同提示信息
 
 ---
@@ -289,7 +284,7 @@ ninja -C build/debug learn_rmlui_events
 | 传播控制 | `StopPropagation()` / `StopImmediatePropagation()` |
 | DOM 查询 | `GetElementById()` / `GetElementsByClassName()` / `QuerySelector()` |
 | DOM 修改 | `SetInnerRML()` / `SetProperty()` / `SetClass()` / `SetAttribute()` |
-| RmlEventBridge | 引擎桥接器，用 `data-command` 属性做命令分发 |
+| data-event-* | 在 RML 中声明事件名，再由 `BindEventCallback` 绑定到 C++ |
 
 ---
 

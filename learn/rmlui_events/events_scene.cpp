@@ -52,6 +52,26 @@ void HoverInfoListener::ProcessEvent(Rml::Event& event) {
     }
 }
 
+// --- CommandInfoListener ---
+
+CommandInfoListener::CommandInfoListener(Rml::Element* log_display)
+    : log_display_(log_display) {}
+
+void CommandInfoListener::ProcessEvent(Rml::Event& event) {
+    if (event.GetId() != Rml::EventId::Click) {
+        return;
+    }
+
+    auto* target = event.GetTargetElement();
+    if (!target || !log_display_) {
+        return;
+    }
+
+    const auto label = target->GetInnerRML();
+    spdlog::info("Command: {}", label.c_str());
+    log_display_->SetInnerRML(Rml::String("&gt; ") + label);
+}
+
 // --- EventsScene ---
 
 bool EventsScene::init() {
@@ -82,39 +102,17 @@ void EventsScene::setupClickCounter() {
 }
 
 void EventsScene::setupCommandMenu() {
-    command_bridge_.on("cmd_attack", [this](Rml::Event&) {
-        spdlog::info("Command: Attack!");
-        if (auto* log = doc_->GetElementById("cmd-log")) {
-            log->SetInnerRML("&gt; Attack!");
-        }
-    });
-    command_bridge_.on("cmd_magic", [this](Rml::Event&) {
-        spdlog::info("Command: Magic!");
-        if (auto* log = doc_->GetElementById("cmd-log")) {
-            log->SetInnerRML("&gt; Magic!");
-        }
-    });
-    command_bridge_.on("cmd_items", [this](Rml::Event&) {
-        spdlog::info("Command: Items!");
-        if (auto* log = doc_->GetElementById("cmd-log")) {
-            log->SetInnerRML("&gt; Items!");
-        }
-    });
-    command_bridge_.on("cmd_defend", [this](Rml::Event&) {
-        spdlog::info("Command: Defend!");
-        if (auto* log = doc_->GetElementById("cmd-log")) {
-            log->SetInnerRML("&gt; Defend!");
-        }
-    });
-    command_bridge_.on("cmd_flee", [this](Rml::Event&) {
-        spdlog::info("Command: Flee!");
-        if (auto* log = doc_->GetElementById("cmd-log")) {
-            log->SetInnerRML("&gt; Flee!");
-        }
-    });
+    auto* log_display = doc_->GetElementById("cmd-log");
+    if (!log_display) {
+        return;
+    }
 
-    if (auto* menu = doc_->GetElementById("cmd-menu")) {
-        command_bridge_.registerTo(menu, "click");
+    command_listener_ = new CommandInfoListener(log_display);
+
+    Rml::ElementList buttons;
+    doc_->GetElementsByClassName(buttons, "cmd-btn");
+    for (auto* button : buttons) {
+        button->AddEventListener(Rml::EventId::Click, command_listener_);
     }
 }
 
@@ -143,9 +141,13 @@ void EventsScene::removeAllListeners() {
         btn->RemoveEventListener(Rml::EventId::Click, &click_counter_);
     }
 
-    // 移除 command bridge 监听器
-    if (auto* menu = doc_->GetElementById("cmd-menu")) {
-        menu->RemoveEventListener("click", &command_bridge_);
+    // 移除 command 监听器
+    if (command_listener_) {
+        Rml::ElementList buttons;
+        doc_->GetElementsByClassName(buttons, "cmd-btn");
+        for (auto* button : buttons) {
+            button->RemoveEventListener(Rml::EventId::Click, command_listener_);
+        }
     }
 
     // 移除 hover 监听器
@@ -165,6 +167,9 @@ void EventsScene::clean() {
 
     unloadAllRmlDocuments();
     doc_ = nullptr;
+
+    delete command_listener_;
+    command_listener_ = nullptr;
 
     delete hover_listener_;
     hover_listener_ = nullptr;

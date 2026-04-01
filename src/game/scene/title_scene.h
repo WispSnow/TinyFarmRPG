@@ -1,22 +1,11 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 
 #include <RmlUi/Core/Types.h>
-
-#include <memory>
 #include <string>
 #include <string_view>
-
-namespace Rml {
-class ElementDocument;
-}
-
-namespace engine::ui::rmlui {
-class HoverFocusSyncListener;
-}
 
 namespace game::data {
 struct GameTime;
@@ -28,10 +17,7 @@ class TitleScene final : public engine::scene::Scene {
     std::shared_ptr<game::data::GameTime> title_game_time_{};
     std::string error_message_{};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
-    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
     bool context_pushed_{false};
 
     Rml::String error_text_{};

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/defs/events.h"
 
 #include <RmlUi/Core/Types.h>
@@ -11,10 +10,6 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-
-namespace Rml {
-class ElementDocument;
-}
 
 namespace engine::core {
 class Context;
@@ -77,7 +72,6 @@ public:
 
 private:
     [[nodiscard]] entt::entity findPlayerEntity() const;
-    void removeOverlayEventListeners();
     void refreshOverlayPrompts();
 
     engine::core::Context& context_;
@@ -93,10 +87,7 @@ private:
     std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_{};
     std::unique_ptr<engine::ui::rmlui::RmlScreenFade> rml_screen_fade_{};
 
-    engine::ui::rmlui::RmlDataBridge overlay_data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge overlay_event_bridge_{};
-    Rml::ElementDocument* overlay_document_{nullptr};
-    bool overlay_click_listener_registered_{false};
+    engine::ui::rmlui::RmlDocumentController overlay_controller_{};
     Rml::String primary_prompt_text_{};
     Rml::String secondary_prompt_text_{};
     Rml::String inventory_prompt_text_{};

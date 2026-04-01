@@ -12,14 +12,14 @@
         <div id="rest-title">Rest</div>
 
         <div id="rest-selector">
-            <button id="rest-hours-down-button" class="tf-icon-button icon-page-left" data-command="hours_down"></button>
+            <button id="rest-hours-down-button" class="tf-icon-button icon-page-left" data-event-click="hours_down"></button>
             <div id="rest-hours" class="tf-value-label">{{ hours_text }}</div>
-            <button id="rest-hours-up-button" class="tf-icon-button icon-page-right" data-command="hours_up"></button>
+            <button id="rest-hours-up-button" class="tf-icon-button icon-page-right" data-event-click="hours_up"></button>
         </div>
 
         <div id="rest-actions">
-            <button id="rest-confirm-button" class="tf-button-primary rest-action-button" data-command="confirm">Confirm</button>
-            <button id="rest-cancel-button" class="tf-button-secondary rest-action-button" data-command="cancel">Cancel</button>
+            <button id="rest-confirm-button" class="tf-button-primary rest-action-button" data-event-click="confirm">Confirm</button>
+            <button id="rest-cancel-button" class="tf-button-secondary rest-action-button" data-event-click="cancel">Cancel</button>
         </div>
     </div>
 </body>

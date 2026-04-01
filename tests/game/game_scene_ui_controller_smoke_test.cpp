@@ -99,7 +99,7 @@ TEST(GameSceneUiControllerSmokeTest, ControllerOwnsHudOverlayDialogueAndFadeComp
     EXPECT_NE(init_block.find("item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>("), std::string::npos);
     EXPECT_NE(init_block.find("dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>("),
               std::string::npos);
-    EXPECT_NE(init_block.find("overlay_document_ = rml_runtime->loadDocument("), std::string::npos);
+    EXPECT_NE(init_block.find("overlay_controller_.load(GAME_OVERLAY_DOCUMENT_PATH)"), std::string::npos);
     EXPECT_NE(init_block.find("rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>("),
               std::string::npos);
 }

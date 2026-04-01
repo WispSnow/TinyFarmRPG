@@ -23,8 +23,8 @@
             </div>
 
             <div class="flex-row gap-8 button-row">
-                <button class="button button-primary transition-color" data-command="apply">Apply</button>
-                <button class="button transition-color" data-command="reset">Reset</button>
+                <button class="button button-primary transition-color">Apply</button>
+                <button class="button transition-color">Reset</button>
             </div>
         </div>
     </div>

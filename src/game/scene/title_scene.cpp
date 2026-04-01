@@ -11,12 +11,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <spdlog/spdlog.h>
 
 #include <memory>
@@ -79,13 +74,8 @@ bool TitleScene::initUI() {
         return false;
     }
 
-    auto* rml_context = runtime->getContext();
-    if (!rml_context) {
-        spdlog::error("TitleScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("TitleScene: 创建 data model 失败。");
         return false;
@@ -94,36 +84,31 @@ bool TitleScene::initUI() {
     constructor.Bind("error_text", &error_text_);
     constructor.Bind("show_error", &show_error_);
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
-        spdlog::error("TitleScene: 加载 RML 文档失败。");
+    if (!document_controller_.bindSimpleEvent(constructor, "start", [this] { onStartClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "load", [this] { onLoadClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "menu", [this] { onMenuClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "exit", [this] { onExitClicked(); })) {
+        spdlog::error("TitleScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("start", [this](Rml::Event&) { onStartClicked(); });
-    event_bridge_.on("load", [this](Rml::Event&) { onLoadClicked(); });
-    event_bridge_.on("menu", [this](Rml::Event&) { onMenuClicked(); });
-    event_bridge_.on("exit", [this](Rml::Event&) { onExitClicked(); });
-    event_bridge_.registerTo(document_, "click");
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*runtime);
-    hover_focus_listener_->registerTo(document_, "mouseover");
+    document_controller_.enableHoverFocusSync();
+    document_controller_.setDefaultFocusById("title-start-button");
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        spdlog::error("TitleScene: 加载 RML 文档失败。");
+        document_controller_.unload();
+        return false;
+    }
 
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
-    data_bridge_.markAllDirty();
-    runtime->queueFocusElementById(document_, "title-start-button");
+    document_controller_.markAllDirty();
     return true;
 }
 
 void TitleScene::shutdownUI() {
-    event_bridge_.unregisterAll();
-    if (hover_focus_listener_) {
-        hover_focus_listener_->unregisterAll();
-    }
-    unloadAllRmlDocuments();
-    document_ = nullptr;
-    data_bridge_.destroy();
+    document_controller_.unload();
 }
 
 void TitleScene::onStartClicked() {
