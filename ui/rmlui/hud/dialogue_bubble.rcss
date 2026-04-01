@@ -9,11 +9,14 @@ body {
 }
 
 #dialogue-bubble-panel {
+    display: inline-block;
     position: absolute;
     left: 0;
     top: 0;
-    width: 144dp;
-    height: 32dp;
+    width: auto;
+    height: auto;
+    min-width: 144dp;
+    min-height: 32dp;
     padding: 8dp;
     decorator: ninepatch(dialogue-bubble-bg, dialogue-bubble-bg-inner, 1.0);
     pointer-events: none;
@@ -21,7 +24,10 @@ body {
 
 #dialogue-bubble-text {
     color: #000000ff;
+    max-width: 144dp;
     font-size: 16dp;
     line-height: 16dp;
+    white-space: pre-wrap;
+    word-break: break-word;
     pointer-events: none;
 }

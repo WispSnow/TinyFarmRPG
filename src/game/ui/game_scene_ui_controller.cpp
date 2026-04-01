@@ -3,7 +3,6 @@
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
-#include "engine/render/text_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
 #include "game/component/hotbar_component.h"
@@ -71,7 +70,6 @@ bool GameSceneUiController::init() {
         return false;
     }
 
-    auto& text_renderer = context_.getTextRenderer();
     time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, scene_instance_id_);
 
     hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_runtime, context_, scene_instance_id_, item_catalog_);
@@ -84,9 +82,9 @@ bool GameSceneUiController::init() {
     item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, scene_instance_id_);
     dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(context_.getDispatcher());
 
-    dialogue_bubbles_[0] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, scene_instance_id_);
-    dialogue_bubbles_[1] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, scene_instance_id_);
-    dialogue_bubbles_[2] = std::make_unique<game::ui::DialogueBubbleView>(context_, text_renderer, scene_instance_id_);
+    dialogue_bubbles_[0] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
+    dialogue_bubbles_[1] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
+    dialogue_bubbles_[2] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
 
     dialogue_controller_->registerBubble(0, dialogue_bubbles_[0].get());
     dialogue_controller_->registerBubble(1, dialogue_bubbles_[1].get());

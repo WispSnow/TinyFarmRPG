@@ -4,10 +4,6 @@
 
 #include <spdlog/spdlog.h>
 
-namespace {
-constexpr std::size_t MAX_CHARS_PER_LINE = 28;
-} // namespace
-
 namespace game::ui {
 
 DialogueBubbleController::DialogueBubbleController(entt::dispatcher& dispatcher)
@@ -96,33 +92,7 @@ std::string DialogueBubbleController::formatDialogueText(std::string_view speake
         output.push_back('\n');
     }
 
-    std::size_t line_len = 0;
-    for (const char c : text) {
-        output.push_back(c);
-        if (c == '\n') {
-            line_len = 0;
-            continue;
-        }
-
-        ++line_len;
-        if (line_len < MAX_CHARS_PER_LINE) {
-            continue;
-        }
-
-        std::size_t back = output.size();
-        while (back > 0 && output[back - 1] != ' ' && output[back - 1] != '\n' &&
-               (output.size() - back) < MAX_CHARS_PER_LINE) {
-            --back;
-        }
-
-        if (back > 0 && output[back - 1] == ' ') {
-            output[back - 1] = '\n';
-        } else {
-            output.push_back('\n');
-        }
-
-        line_len = 0;
-    }
+    output.append(text);
 
     return output;
 }
