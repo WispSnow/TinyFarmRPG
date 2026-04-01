@@ -32,9 +32,6 @@ protected:
     bool is_initialized_ = false;                       ///< @brief 场景是否已初始化(非当前场景很可能未被删除，因此需要初始化标志避免重复初始化)
 
     static uint64_t nextInstanceId();                   ///< @brief 生成全局唯一的场景实例 ID
-    virtual void beforeUnloadOwnedRmlDocuments();       ///< @brief 卸载当前 scene owner 下的 RML 文档前调用
-    virtual void afterUnloadOwnedRmlDocuments();        ///< @brief 卸载当前 scene owner 下的 RML 文档后调用
-    void unloadOwnedRmlDocumentsNow();                  ///< @brief 触发 owner-scoped RML 文档清理流程
 
 public:
     /**

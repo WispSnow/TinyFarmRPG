@@ -38,7 +38,7 @@ RestDialogScene::RestDialogScene(std::string_view name, engine::core::Context& c
 
 RestDialogScene::~RestDialogScene() {
     disconnectRuntimeListeners();
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool RestDialogScene::init() {
@@ -59,6 +59,7 @@ bool RestDialogScene::init() {
 }
 
 void RestDialogScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
@@ -107,11 +108,9 @@ bool RestDialogScene::initUI() {
     return true;
 }
 
-void RestDialogScene::beforeUnloadOwnedRmlDocuments() {
+void RestDialogScene::shutdownUI() {
     event_bridge_.unregisterAll();
-}
-
-void RestDialogScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     data_bridge_.destroy();
 }

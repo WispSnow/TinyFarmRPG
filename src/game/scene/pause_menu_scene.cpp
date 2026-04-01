@@ -74,7 +74,7 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
 
 PauseMenuScene::~PauseMenuScene() {
     disconnectRuntimeListeners();
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool PauseMenuScene::init() {
@@ -111,6 +111,7 @@ void PauseMenuScene::update(float delta_time) {
 }
 
 void PauseMenuScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
@@ -179,14 +180,12 @@ bool PauseMenuScene::initUI() {
     return true;
 }
 
-void PauseMenuScene::beforeUnloadOwnedRmlDocuments() {
+void PauseMenuScene::shutdownUI() {
     event_bridge_.unregisterAll();
     if (hover_focus_listener_) {
         hover_focus_listener_->unregisterAll();
     }
-}
-
-void PauseMenuScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     data_bridge_.destroy();
 }

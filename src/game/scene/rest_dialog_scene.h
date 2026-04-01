@@ -39,8 +39,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void beforeUnloadOwnedRmlDocuments() override;
-    void afterUnloadOwnedRmlDocuments() override;
+    void shutdownUI();
     void disconnectRuntimeListeners();
     void updateHoursLabel();
     void adjustHours(int delta);

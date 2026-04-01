@@ -133,7 +133,7 @@ InventoryMenuScene::~InventoryMenuScene() {
     action_menu_entries_.clear();
     action_menu_visible_ = false;
     tooltip_ui_.reset();
-    unloadOwnedRmlDocumentsNow();
+    shutdownUI();
 }
 
 bool InventoryMenuScene::init() {
@@ -164,6 +164,7 @@ void InventoryMenuScene::update(float delta_time) {
 }
 
 void InventoryMenuScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
     clearTooltip();
     closeActionMenu(false);
@@ -331,11 +332,9 @@ bool InventoryMenuScene::initUI() {
     return true;
 }
 
-void InventoryMenuScene::beforeUnloadOwnedRmlDocuments() {
+void InventoryMenuScene::shutdownUI() {
     event_bridge_.unregisterAll();
-}
-
-void InventoryMenuScene::afterUnloadOwnedRmlDocuments() {
+    unloadAllRmlDocuments();
     document_ = nullptr;
     focus_before_action_menu_ = nullptr;
     data_bridge_.destroy();

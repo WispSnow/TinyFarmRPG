@@ -49,16 +49,12 @@ TEST(MenuHoverFocusSyncTest, GameOverlayBindsPromptBarVisibilityAndToggleAction)
     EXPECT_NE(overlay_source.find("data-if=\"show_prompt_bar\""), std::string::npos);
 }
 
-TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBeforeUnload) {
+TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndCleanupViaShutdownUI) {
     const std::array<std::filesystem::path, 3> scene_paths{
         projectPath("src/game/scene/title_scene.cpp"),
         projectPath("src/game/scene/pause_menu_scene.cpp"),
         projectPath("src/game/scene/save_slot_select_scene.cpp"),
     };
-    const auto scene_base_path = projectPath("src/engine/scene/scene.cpp");
-    ASSERT_TRUE(std::filesystem::exists(scene_base_path)) << scene_base_path;
-    const std::string scene_base_source = readTextFile(scene_base_path);
-    ASSERT_FALSE(scene_base_source.empty()) << scene_base_path;
 
     for (const auto& path : scene_paths) {
         ASSERT_TRUE(std::filesystem::exists(path)) << path;
@@ -68,18 +64,14 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBefor
         EXPECT_NE(source.find("HoverFocusSyncListener"), std::string::npos) << path;
         EXPECT_NE(source.find("registerTo("), std::string::npos) << path;
         EXPECT_NE(source.find("unregisterAll()"), std::string::npos) << path;
-        EXPECT_NE(source.find("beforeUnloadOwnedRmlDocuments"), std::string::npos) << path;
-        EXPECT_NE(source.find("afterUnloadOwnedRmlDocuments"), std::string::npos) << path;
-    }
 
-    const std::size_t before_hook_pos = scene_base_source.find("beforeUnloadOwnedRmlDocuments();");
-    const std::size_t unload_pos = scene_base_source.find("unloadAllRmlDocuments();");
-    const std::size_t after_hook_pos = scene_base_source.find("afterUnloadOwnedRmlDocuments();");
-    ASSERT_NE(before_hook_pos, std::string::npos) << scene_base_path;
-    ASSERT_NE(unload_pos, std::string::npos) << scene_base_path;
-    ASSERT_NE(after_hook_pos, std::string::npos) << scene_base_path;
-    EXPECT_LT(before_hook_pos, unload_pos) << scene_base_path;
-    EXPECT_LT(unload_pos, after_hook_pos) << scene_base_path;
+        // shutdownUI() 中 unregisterAll 在 unloadAllRmlDocuments 之前
+        const std::size_t unregister_pos = source.find("unregisterAll()");
+        const std::size_t unload_pos = source.find("unloadAllRmlDocuments()");
+        ASSERT_NE(unregister_pos, std::string::npos) << path;
+        ASSERT_NE(unload_pos, std::string::npos) << path;
+        EXPECT_LT(unregister_pos, unload_pos) << path;
+    }
 }
 
 TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisible) {
