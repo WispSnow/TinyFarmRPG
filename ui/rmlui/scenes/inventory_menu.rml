@@ -29,66 +29,65 @@
 
             <!-- Left: Inventory -->
             <div id="inventory-col">
-                <div id="hotbar-area">
-                    <div id="hotbar-grid">
-                        <div class="hb-slot"
-                             data-for="hslot : hotbar_slots"
-                             data-class-has-item="hslot.has_item"
-                             data-class-has-count="hslot.has_count"
-                             data-class-hb-active="hslot.is_active"
-                             data-class-hb-selected="hslot.is_selected"
-                             data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
-                             data-event-mousedown="hb_slot_mouse_down(hslot.slot_index)"
-                             data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)"
-                             data-event-focus="hb_slot_focus(hslot.slot_index)">
-                            <div class="hb-slot-drag-proxy"
-                                 data-class-draggable="hslot.can_drag"
-                                 data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
-                                 data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
-                                 data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
-                                 data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
-                                <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
-                                <div class="hb-slot-count">{{ hslot.count_text }}</div>
-                            </div>
-                            <div class="hb-slot-index">{{ hslot.label }}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="backpack-area">
-                    <div id="backpack-grid">
-                        <div class="bp-slot"
-                             data-for="slot : backpack_slots"
-                             data-class-has-item="slot.has_item"
-                             data-class-has-count="slot.has_count"
-                             data-class-bp-selected="slot.is_selected"
-                             data-event-mousedown="bp_slot_mouse_down(slot.slot_index)"
-                             data-event-mouseup="bp_slot_mouse_up(slot.slot_index)"
-                             data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)"
-                             data-event-focus="bp_slot_focus(slot.slot_index)">
-                            <div class="bp-slot-drag-proxy"
-                                 data-class-draggable="slot.can_drag"
-                                 data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
-                                 data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
-                                 data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
-                                 data-event-dragend="bp_slot_drag_end(slot.slot_index)">
-                                <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
-                                <div class="bp-slot-count">{{ slot.count_text }}</div>
+                <div id="slot-region">
+                    <div id="hotbar-area">
+                        <div id="hotbar-grid">
+                            <div class="hb-slot"
+                                 data-for="hslot : hotbar_slots"
+                                 data-class-has-item="hslot.has_item"
+                                 data-class-has-count="hslot.has_count"
+                                 data-class-hb-active="hslot.is_active"
+                                 data-class-hb-selected="hslot.is_selected"
+                                 data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
+                                 data-event-mousedown="hb_slot_mouse_down(hslot.slot_index)"
+                                 data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)"
+                                 data-event-focus="hb_slot_focus(hslot.slot_index)">
+                                <div class="hb-slot-drag-proxy"
+                                     data-class-draggable="hslot.can_drag"
+                                     data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
+                                     data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
+                                     data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
+                                     data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
+                                    <div class="hb-slot-icon" data-style-decorator="hslot.icon_decorator"></div>
+                                    <div class="hb-slot-count">{{ hslot.count_text }}</div>
+                                </div>
+                                <div class="hb-slot-index">{{ hslot.label }}</div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div id="action-menu"
-                     data-if="action_menu_visible"
-                     data-style-left="action_menu_left"
-                     data-style-top="action_menu_top">
-                    <div id="action-menu-title">{{ action_menu_title }}</div>
-                    <button class="action-menu-entry"
-                            data-for="action : action_menu_entries"
-                            data-class-action-danger="action.is_destructive"
-                            data-event-focus="action_entry_focus(action.action_id)"
-                            data-event-click="action_entry_click(action.action_id)">{{ action.label }}</button>
+                    <div id="backpack-area">
+                        <div id="backpack-grid">
+                            <div class="bp-slot"
+                                 data-for="slot : backpack_slots"
+                                 data-class-has-item="slot.has_item"
+                                 data-class-has-count="slot.has_count"
+                                 data-class-bp-selected="slot.is_selected"
+                                 data-event-mousedown="bp_slot_mouse_down(slot.slot_index)"
+                                 data-event-mouseup="bp_slot_mouse_up(slot.slot_index)"
+                                 data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)"
+                                 data-event-focus="bp_slot_focus(slot.slot_index)">
+                                <div class="bp-slot-drag-proxy"
+                                     data-class-draggable="slot.can_drag"
+                                     data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
+                                     data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
+                                     data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
+                                     data-event-dragend="bp_slot_drag_end(slot.slot_index)">
+                                    <div class="bp-slot-icon" data-style-decorator="slot.icon_decorator"></div>
+                                    <div class="bp-slot-count">{{ slot.count_text }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="action-menu"
+                         data-if="action_menu_visible">
+                        <div id="action-menu-title">{{ action_menu_title }}</div>
+                        <button class="action-menu-entry"
+                                data-for="action : action_menu_entries"
+                                data-class-action-danger="action.is_destructive"
+                                data-event-click="action_entry_click(action.action_id)">{{ action.label }}</button>
+                    </div>
                 </div>
 
                 <div id="detail-area" data-if="has_detail">

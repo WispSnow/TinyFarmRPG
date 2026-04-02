@@ -5,6 +5,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/ui/rmlui/rml_element_helpers.h"
 #include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
@@ -13,7 +14,6 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/ui/item_tooltip_ui.h"
-#include "game/ui/rml_item_icon_helpers.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -25,29 +25,20 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 #include <string_view>
+#include <utility>
 
 using namespace entt::literals;
 
 namespace {
 
+using engine::ui::rmlui::setPixelProperty;
+
 constexpr int TOTAL_SLOTS = game::component::InventoryComponent::TOTAL_SLOTS;
 constexpr int HOTBAR_SLOTS = game::component::HotbarComponent::SLOT_COUNT;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
-
-constexpr float SLOT_SIZE_DP = 20.0F;
-constexpr float SLOT_GAP_DP = 2.0F;
-constexpr float HOTBAR_TOP_DP = 0.0F;
-constexpr float BACKPACK_TOP_DP = 24.0F;
-constexpr float ACTION_MENU_GAP_DP = 6.0F;
-constexpr float INVENTORY_COLUMN_WIDTH_DP = 218.0F;
-constexpr float ACTION_MENU_WIDTH_DP = 84.0F;
-constexpr float ACTION_MENU_HEADER_DP = 18.0F;
-constexpr float ACTION_MENU_ENTRY_DP = 18.0F;
-constexpr float ACTION_MENU_MAX_TOP_DP = 138.0F;
 
 enum class MenuActionId : int {
     Use = 1,
@@ -57,10 +48,6 @@ enum class MenuActionId : int {
     ConfirmDiscard,
     Cancel
 };
-
-[[nodiscard]] Rml::String toDpString(float value) {
-    return std::to_string(static_cast<int>(std::round(value))) + "dp";
-}
 
 [[nodiscard]] const game::component::InventoryComponent*
 tryGetInventory(const entt::registry& registry, entt::entity player) {
@@ -251,8 +238,6 @@ bool InventoryMenuScene::initUI() {
     constructor.Bind("detail_description", &detail_description_);
     constructor.Bind("has_detail", &has_detail_);
     constructor.Bind("action_menu_title", &action_menu_title_);
-    constructor.Bind("action_menu_left", &action_menu_left_);
-    constructor.Bind("action_menu_top", &action_menu_top_);
     constructor.Bind("action_menu_visible", &action_menu_visible_);
     constructor.Bind("char_name", &char_name_);
     constructor.Bind("char_title", &char_title_);
@@ -291,7 +276,6 @@ bool InventoryMenuScene::initUI() {
             constructor,
             this,
             {
-                {"action_entry_focus", &InventoryMenuScene::onActionEntryFocus},
                 {"action_entry_click", &InventoryMenuScene::onActionEntryClick},
             }) ||
         !engine::ui::rmlui::bindSimpleEventCallback(constructor, "trash", [this] { onTrashClicked(); }) ||
@@ -450,8 +434,6 @@ void InventoryMenuScene::markSlotsDirty() {
 void InventoryMenuScene::markActionMenuDirty() {
     data_bridge_.markDirty("action_menu_entries");
     data_bridge_.markDirty("action_menu_title");
-    data_bridge_.markDirty("action_menu_left");
-    data_bridge_.markDirty("action_menu_top");
     data_bridge_.markDirty("action_menu_visible");
 }
 
@@ -595,17 +577,51 @@ void InventoryMenuScene::clearDragState() {
     drag_state_.clear();
 }
 
+Rml::Element* InventoryMenuScene::findIndexedChildElement(std::string_view parent_id, int child_index) const {
+    if (!document_ || child_index < 0) {
+        return nullptr;
+    }
+
+    auto* parent = document_->GetElementById(Rml::String{parent_id.data(), parent_id.size()});
+    if (!parent || child_index >= parent->GetNumChildren()) {
+        return nullptr;
+    }
+
+    return parent->GetChild(child_index);
+}
+
+float InventoryMenuScene::measureGridHorizontalGap(std::string_view grid_id) const {
+    auto* first_slot = findIndexedChildElement(grid_id, 0);
+    auto* second_slot = findIndexedChildElement(grid_id, 1);
+    if (!first_slot || !second_slot) {
+        return 0.0F;
+    }
+
+    return std::max(0.0F, second_slot->GetAbsoluteLeft() - first_slot->GetAbsoluteLeft() - first_slot->GetOffsetWidth());
+}
+
+void InventoryMenuScene::rememberFocusBeforeActionMenu() {
+    if (action_menu_visible_) {
+        return;
+    }
+
+    if (auto* runtime = context_.getRmlUi()) {
+        focus_before_action_menu_ = runtime->getFocusedElement();
+        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
+            focus_before_action_menu_ = nullptr;
+        }
+    }
+}
+
 void InventoryMenuScene::closeActionMenu(bool restore_focus) {
     if (!action_menu_visible_ && action_menu_entries_.empty()) {
         focus_before_action_menu_ = nullptr;
-        highlighted_action_id_ = -1;
         return;
     }
 
     action_menu_visible_ = false;
     action_menu_entries_.clear();
     action_menu_title_.clear();
-    highlighted_action_id_ = -1;
     markActionMenuDirty();
 
     if (restore_focus) {
@@ -618,6 +634,66 @@ void InventoryMenuScene::closeActionMenu(bool restore_focus) {
     focus_before_action_menu_ = nullptr;
 }
 
+void InventoryMenuScene::positionActionMenuForGridSlot(std::string_view grid_id, int slot_index) {
+    if (!document_ || !action_menu_visible_) {
+        return;
+    }
+
+    auto* slot_region = document_->GetElementById("slot-region");
+    auto* action_menu = document_->GetElementById("action-menu");
+    auto* anchor_slot = findIndexedChildElement(grid_id, slot_index);
+    if (!slot_region || !action_menu || !anchor_slot) {
+        return;
+    }
+
+    const float gap = measureGridHorizontalGap(grid_id);
+    const float region_left = slot_region->GetAbsoluteLeft();
+    const float region_top = slot_region->GetAbsoluteTop();
+    const float region_width = slot_region->GetOffsetWidth();
+    const float region_height = slot_region->GetOffsetHeight();
+
+    const float anchor_left = anchor_slot->GetAbsoluteLeft() - region_left;
+    const float anchor_top = anchor_slot->GetAbsoluteTop() - region_top;
+    const float anchor_width = anchor_slot->GetOffsetWidth();
+    const float menu_width = action_menu->GetOffsetWidth();
+    const float menu_height = action_menu->GetOffsetHeight();
+
+    float left = anchor_left + anchor_width + gap;
+    if (left + menu_width > region_width) {
+        left = anchor_left - menu_width - gap;
+    }
+
+    left = std::clamp(left, 0.0F, std::max(0.0F, region_width - menu_width));
+    const float top = std::clamp(anchor_top, 0.0F, std::max(0.0F, region_height - menu_height));
+
+    setPixelProperty(action_menu, "left", left);
+    setPixelProperty(action_menu, "top", top);
+}
+
+void InventoryMenuScene::showActionMenu(Rml::String title,
+                                        std::vector<ActionEntryViewModel> entries,
+                                        std::string_view anchor_grid_id,
+                                        int anchor_slot_index) {
+    if (entries.empty()) {
+        closeActionMenu(false);
+        return;
+    }
+
+    rememberFocusBeforeActionMenu();
+    action_menu_entries_ = std::move(entries);
+    action_menu_title_ = std::move(title);
+    action_menu_visible_ = true;
+    markActionMenuDirty();
+    clearTooltip();
+
+    if (auto* runtime = context_.getRmlUi()) {
+        // `data-if` / `data-for` materialize on context update; update once before measuring the menu box.
+        runtime->update();
+        positionActionMenuForGridSlot(anchor_grid_id, anchor_slot_index);
+        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
+    }
+}
+
 void InventoryMenuScene::openBackpackActionMenu(int slot_index) {
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
     if (!inventory || slot_index < 0 || slot_index >= inventory->slotCount() || inventory->slot(slot_index).empty()) {
@@ -625,35 +701,27 @@ void InventoryMenuScene::openBackpackActionMenu(int slot_index) {
         return;
     }
 
-    if (auto* runtime = context_.getRmlUi()) {
-        focus_before_action_menu_ = runtime->getFocusedElement();
-        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
-            focus_before_action_menu_ = nullptr;
-        }
-    }
-
-    action_menu_entries_.clear();
+    std::vector<ActionEntryViewModel> entries;
     if (hasUsableItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index)) {
-        action_menu_entries_.push_back({static_cast<int>(MenuActionId::Use), "Use", false});
+        entries.push_back(ActionEntryViewModel{
+            .action_id = static_cast<int>(MenuActionId::Use),
+            .label = "Use",
+            .is_destructive = false,
+        });
     }
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Discard), "Discard", true});
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Cancel), "Cancel", false});
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Discard),
+        .label = "Discard",
+        .is_destructive = true,
+    });
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Cancel),
+        .label = "Cancel",
+        .is_destructive = false,
+    });
 
-    if (const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index)) {
-        action_menu_title_ = item->display_name_;
-    } else {
-        action_menu_title_ = "Backpack";
-    }
-
-    action_menu_visible_ = true;
-    highlighted_action_id_ = action_menu_entries_.empty() ? -1 : action_menu_entries_.front().action_id;
-    setActionMenuPositionForBackpackSlot(slot_index);
-    markActionMenuDirty();
-    clearTooltip();
-
-    if (auto* runtime = context_.getRmlUi()) {
-        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
-    }
+    const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index);
+    showActionMenu(item ? item->display_name_ : Rml::String{"Backpack"}, std::move(entries), "backpack-grid", slot_index);
 }
 
 void InventoryMenuScene::openHotbarActionMenu(int slot_index) {
@@ -663,38 +731,34 @@ void InventoryMenuScene::openHotbarActionMenu(int slot_index) {
         return;
     }
 
-    if (auto* runtime = context_.getRmlUi()) {
-        focus_before_action_menu_ = runtime->getFocusedElement();
-        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
-            focus_before_action_menu_ = nullptr;
-        }
-    }
-
     const int inventory_slot = hotbar->slot(slot_index).inventory_slot_index_;
 
-    action_menu_entries_.clear();
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Activate), "Activate", false});
+    std::vector<ActionEntryViewModel> entries;
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Activate),
+        .label = "Activate",
+        .is_destructive = false,
+    });
     if (hasUsableItemAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot)) {
-        action_menu_entries_.push_back({static_cast<int>(MenuActionId::Use), "Use", false});
+        entries.push_back(ActionEntryViewModel{
+            .action_id = static_cast<int>(MenuActionId::Use),
+            .label = "Use",
+            .is_destructive = false,
+        });
     }
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Unbind), "Unbind", false});
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Cancel), "Cancel", false});
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Unbind),
+        .label = "Unbind",
+        .is_destructive = false,
+    });
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Cancel),
+        .label = "Cancel",
+        .is_destructive = false,
+    });
 
-    if (const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot)) {
-        action_menu_title_ = item->display_name_;
-    } else {
-        action_menu_title_ = "Hotbar";
-    }
-
-    action_menu_visible_ = true;
-    highlighted_action_id_ = action_menu_entries_.empty() ? -1 : action_menu_entries_.front().action_id;
-    setActionMenuPositionForHotbarSlot(slot_index);
-    markActionMenuDirty();
-    clearTooltip();
-
-    if (auto* runtime = context_.getRmlUi()) {
-        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
-    }
+    const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot);
+    showActionMenu(item ? item->display_name_ : Rml::String{"Hotbar"}, std::move(entries), "hotbar-grid", slot_index);
 }
 
 void InventoryMenuScene::openDiscardConfirmForBackpackSlot(int slot_index) {
@@ -708,64 +772,24 @@ void InventoryMenuScene::openDiscardConfirmForBackpackSlot(int slot_index) {
         return;
     }
 
-    if (!action_menu_visible_) {
-        if (auto* runtime = context_.getRmlUi()) {
-            focus_before_action_menu_ = runtime->getFocusedElement();
-            if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
-                focus_before_action_menu_ = nullptr;
-            }
-        }
-    }
+    std::vector<ActionEntryViewModel> entries;
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::ConfirmDiscard),
+        .label = "Discard",
+        .is_destructive = true,
+    });
+    entries.push_back(ActionEntryViewModel{
+        .action_id = static_cast<int>(MenuActionId::Cancel),
+        .label = "Cancel",
+        .is_destructive = false,
+    });
 
-    action_menu_entries_.clear();
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::ConfirmDiscard), "Discard", true});
-    action_menu_entries_.push_back({static_cast<int>(MenuActionId::Cancel), "Cancel", false});
-
+    Rml::String title{"Discard stack?"};
     if (const auto* item = item_catalog_ ? item_catalog_->findItem(stack.item_id_) : nullptr) {
-        action_menu_title_ = "Discard " + item->display_name_ + " x" + std::to_string(stack.count_) + "?";
-    } else {
-        action_menu_title_ = "Discard stack?";
+        title = "Discard " + item->display_name_ + " x" + std::to_string(stack.count_) + "?";
     }
 
-    action_menu_visible_ = true;
-    highlighted_action_id_ = action_menu_entries_.front().action_id;
-    setActionMenuPositionForBackpackSlot(slot_index);
-    markActionMenuDirty();
-    clearTooltip();
-
-    if (auto* runtime = context_.getRmlUi()) {
-        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
-    }
-}
-
-void InventoryMenuScene::setActionMenuPositionForBackpackSlot(int slot_index) {
-    const int column = slot_index % game::component::InventoryComponent::COLUMNS;
-    const int row = slot_index / game::component::InventoryComponent::COLUMNS;
-    setActionMenuPosition(
-        static_cast<float>(column) * (SLOT_SIZE_DP + SLOT_GAP_DP),
-        BACKPACK_TOP_DP + static_cast<float>(row) * (SLOT_SIZE_DP + SLOT_GAP_DP));
-}
-
-void InventoryMenuScene::setActionMenuPositionForHotbarSlot(int slot_index) {
-    setActionMenuPosition(
-        static_cast<float>(slot_index) * (SLOT_SIZE_DP + SLOT_GAP_DP),
-        HOTBAR_TOP_DP);
-}
-
-void InventoryMenuScene::setActionMenuPosition(float left_dp, float top_dp) {
-    const float menu_height =
-        ACTION_MENU_HEADER_DP + ACTION_MENU_ENTRY_DP * static_cast<float>(std::max<std::size_t>(1, action_menu_entries_.size()));
-
-    float final_left = left_dp + SLOT_SIZE_DP + ACTION_MENU_GAP_DP;
-    if (final_left + ACTION_MENU_WIDTH_DP > INVENTORY_COLUMN_WIDTH_DP) {
-        final_left = left_dp - ACTION_MENU_WIDTH_DP - ACTION_MENU_GAP_DP;
-    }
-
-    final_left = std::clamp(final_left, 0.0F, std::max(0.0F, INVENTORY_COLUMN_WIDTH_DP - ACTION_MENU_WIDTH_DP));
-    const float final_top = std::clamp(top_dp, 0.0F, std::max(0.0F, ACTION_MENU_MAX_TOP_DP - menu_height));
-
-    action_menu_left_ = toDpString(final_left);
-    action_menu_top_ = toDpString(final_top);
+    showActionMenu(std::move(title), std::move(entries), "backpack-grid", slot_index);
 }
 
 void InventoryMenuScene::executeAction(int action_id) {
@@ -1195,11 +1219,6 @@ void InventoryMenuScene::onHbSlotDragEnd(int slot_index, Rml::Event& event) {
         context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_state_.source_slot_index});
     }
     clearDragState();
-}
-
-void InventoryMenuScene::onActionEntryFocus(int action_id, Rml::Event& event) {
-    event.StopPropagation();
-    highlighted_action_id_ = action_id;
 }
 
 void InventoryMenuScene::onActionEntryClick(int action_id, Rml::Event& event) {

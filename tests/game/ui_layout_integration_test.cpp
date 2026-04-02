@@ -57,6 +57,10 @@ float centerX(Rml::Element* element) {
     return element->GetAbsoluteLeft() + element->GetOffsetWidth() * 0.5F;
 }
 
+float centerY(Rml::Element* element) {
+    return element->GetAbsoluteTop() + element->GetOffsetHeight() * 0.5F;
+}
+
 Rml::ElementDocument* findDocumentByElementId(Rml::Context& context, std::string_view element_id) {
     const Rml::String id{element_id.data(), element_id.size()};
     for (int index = 0; index < context.GetNumDocuments(); ++index) {
@@ -540,6 +544,68 @@ TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyI
 
     EXPECT_EQ(backpack_decorator->ToString(), "none");
     EXPECT_EQ(hotbar_decorator->ToString(), "none");
+
+    menu.clean();
+}
+
+TEST_F(UILayoutIntegrationTest, InventoryActionMenuAnchorsToSlotGeometryAndStaysInsideSlotRegion) {
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
+    }
+    auto* rml_context = runtime->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
+
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    registry.emplace<game::component::HotbarComponent>(player);
+    inventory.slot(game::component::InventoryComponent::TOTAL_SLOTS - 1) = game::component::ItemStack{
+        .item_id_ = 1,
+        .count_ = 3,
+    };
+
+    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
+    ASSERT_TRUE(menu.init());
+    runtime->update();
+
+    auto* document = findDocumentByElementId(*rml_context, "menu-panel");
+    ASSERT_NE(document, nullptr);
+
+    auto* slot_region = document->GetElementById("slot-region");
+    auto* backpack_grid = document->GetElementById("backpack-grid");
+    ASSERT_NE(slot_region, nullptr);
+    ASSERT_NE(backpack_grid, nullptr);
+    ASSERT_EQ(backpack_grid->GetNumChildren(), game::component::InventoryComponent::TOTAL_SLOTS);
+
+    auto* last_slot = backpack_grid->GetChild(game::component::InventoryComponent::TOTAL_SLOTS - 1);
+    ASSERT_NE(last_slot, nullptr);
+
+    EXPECT_TRUE(rml_context->ProcessMouseMove(static_cast<int>(centerX(last_slot)), static_cast<int>(centerY(last_slot)), 0));
+    runtime->update();
+    EXPECT_TRUE(rml_context->ProcessMouseButtonDown(1, 0));
+    runtime->update();
+
+    auto* action_menu = document->GetElementById("action-menu");
+    ASSERT_NE(action_menu, nullptr);
+
+    const float region_left = slot_region->GetAbsoluteLeft();
+    const float region_top = slot_region->GetAbsoluteTop();
+    const float region_right = region_left + slot_region->GetOffsetWidth();
+    const float region_bottom = region_top + slot_region->GetOffsetHeight();
+    const float menu_left = action_menu->GetAbsoluteLeft();
+    const float menu_top = action_menu->GetAbsoluteTop();
+    const float menu_right = menu_left + action_menu->GetOffsetWidth();
+    const float menu_bottom = menu_top + action_menu->GetOffsetHeight();
+
+    EXPECT_GE(menu_left, region_left - 0.1F);
+    EXPECT_GE(menu_top, region_top - 0.1F);
+    EXPECT_LE(menu_right, region_right + 0.1F);
+    EXPECT_LE(menu_bottom, region_bottom + 0.1F);
+    EXPECT_LT(menu_left, last_slot->GetAbsoluteLeft())
+        << "The menu should flip to the left when the slot is on the right edge of the grid.";
 
     menu.clean();
 }

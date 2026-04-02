@@ -130,12 +130,16 @@ body, div, h1, h2, h3, h4, p, hr, button {
 }
 
 #inventory-col {
-    position: relative;
     width: 218dp;
 }
 
 #char-col {
     width: 108dp;
+}
+
+#slot-region {
+    position: relative;
+    width: 218dp;
 }
 
 /* --- Hotbar Row --- */
