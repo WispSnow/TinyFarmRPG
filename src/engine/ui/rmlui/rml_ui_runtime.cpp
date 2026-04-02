@@ -437,6 +437,11 @@ void RmlUiRuntime::adjustEventForViewport(SDL_Event& event) const {
     }
 }
 
+// 根据当前活跃 Scene 更新所有文档的交互权限。
+// owner == 0 的文档为全局 UI（如 HUD），始终保持可交互；
+// owner 与 active_scene_id_ 匹配的文档属于当前 Scene，恢复正常交互；
+// 其余文档（后台 Scene 的 UI）设置 pointer-events:none 并清除焦点，
+// 防止非活跃 Scene 的界面响应鼠标点击或持有键盘焦点。
 void RmlUiRuntime::applyInteractionPolicy() {
     for (auto& entry : documents_) {
         if (!entry.doc) {
@@ -445,6 +450,9 @@ void RmlUiRuntime::applyInteractionPolicy() {
 
         const bool interactive = (entry.owner == 0) || (entry.owner == active_scene_id_);
         if (interactive) {
+            // 移除之前写入的内联样式覆盖，而非设为 "auto"。
+            // pointer-events 是 RmlUi 内置属性，默认值即为 auto（可交互）。
+            // 用 RemoveProperty 可恢复 RCSS 层叠规则，避免覆盖文档自身的样式设定。
             entry.doc->RemoveProperty("pointer-events");
         } else {
             entry.doc->SetProperty("pointer-events", "none");
