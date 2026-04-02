@@ -1,8 +1,9 @@
 <rml>
 <head>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="screen_fade.rcss"/>
 </head>
-<body>
+<body class="tf-screen-root">
     <div id="fade-overlay"></div>
 </body>
 </rml>

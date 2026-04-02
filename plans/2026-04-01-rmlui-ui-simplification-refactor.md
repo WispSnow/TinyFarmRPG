@@ -498,12 +498,12 @@
 - [x] T5 tooltip 改为 RmlUi 原生文本布局，并明确布局刷新时序
 - [x] T6 dialogue bubble 改为 RmlUi 原生文本布局，并删除 `MAX_CHARS_PER_LINE` 风格换行
 - [x] T7 `RmlScreenFade` 改为动态 transition 驱动
-- [ ] T8 收缩 `rml_element_helpers.h` 到最小必要工具集
+- [x] T8 收缩 `rml_element_helpers.h` 到最小必要工具集
 - [x] T9 抽出共享 slot view model / `populateSlotViewModel(...)` / drag-drop state
 - [x] T10 以轻量 `slot_grid_support.*` 统一 indexed slot event 绑定与 slot-grid 接线
 - [x] T11 合并 HUD hotbar / inventory slot 重复逻辑
 - [x] T12 inventory action menu 改为基于 DOM 几何定位
-- [ ] T13 收敛 theme/reset/modal/nav/slot 样式
+- [x] T13 收敛 theme/reset/modal/nav/slot 样式
 - [ ] T14 删除死字段与废弃 glue code
 - [ ] T15 用 `ninja` 完成构建并做关键交互回归
 

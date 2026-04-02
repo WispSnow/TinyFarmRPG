@@ -1,0 +1,26 @@
+.tf-nav-root {
+    nav: auto;
+}
+
+.tf-nav-auto {
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.tf-focus-ring-blue:hover,
+.tf-focus-ring-blue:focus {
+    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
+}
+
+.tf-focus-ring-gold:hover,
+.tf-focus-ring-gold:focus {
+    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
+}
+
+.tf-focus-ring-danger:hover,
+.tf-focus-ring-danger:focus {
+    box-shadow: #f7768ecc 0dp 0dp 0dp 1dp;
+}

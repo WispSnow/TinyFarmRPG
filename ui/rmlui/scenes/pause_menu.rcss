@@ -1,32 +1,9 @@
-body, div, h1, h2, h3, h4, p, hr, button, img {
-    display: block;
-}
-
-body {
-    width: 100%;
-    height: 100%;
-    nav: auto;
-}
-
-#pause-overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #00000099;
-    pointer-events: auto;
-}
-
 #pause-panel {
-    position: absolute;
     left: 216dp;
     top: 8dp;
     width: 160dp;
     height: 296dp;
     padding: 24dp;
-    background-color: #000000bf;
-    pointer-events: auto;
 }
 
 #pause-message {

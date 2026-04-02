@@ -1,10 +1,11 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="item_tooltip.rcss"/>
 </head>
-<body>
+<body class="tf-screen-root">
     <div id="item-tooltip-panel">
         <div id="item-tooltip-name"></div>
         <div id="item-tooltip-category"></div>
