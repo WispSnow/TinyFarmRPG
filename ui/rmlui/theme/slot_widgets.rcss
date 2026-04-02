@@ -1,0 +1,37 @@
+.tf-slot-focusable {
+    position: relative;
+    pointer-events: auto;
+}
+
+.tf-slot-drag-proxy {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    drag: none;
+    cursor: default;
+    pointer-events: auto;
+}
+
+.tf-slot-drag-proxy.draggable {
+    drag: clone;
+    cursor: move;
+}
+
+.tf-slot-count {
+    display: none;
+}
+
+.has-count .tf-slot-count {
+    display: block;
+}
+
+.tf-slot-icon-pop {
+    transform-origin: 50% 50%;
+    transition: transform 0.08s cubic-out;
+}
+
+.tf-slot-hover-scale:hover .tf-slot-icon-pop {
+    transform: scale(1.15);
+}

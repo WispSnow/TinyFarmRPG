@@ -1,13 +1,15 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/slot_widgets.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="hotbar.rcss"/>
 </head>
-<body data-model="hotbar_ui">
+<body class="tf-screen-root" data-model="hotbar_ui">
     <div id="hotbar-panel">
         <div id="hotbar-slots">
-            <div class="hotbar-slot"
+            <div class="hotbar-slot tf-slot-focusable"
                  data-for="slot : hotbar_slots"
                  data-class-has-item="slot.has_item"
                  data-class-has-count="slot.has_count"
@@ -15,7 +17,7 @@
                  data-event-mouseup="slot_mouse_up(slot.slot_index)"
                  data-event-dragdrop="slot_drag_drop(slot.slot_index)">
                 <div class="hotbar-slot-selected"></div>
-                <div class="hotbar-slot-drag-proxy"
+                <div class="hotbar-slot-drag-proxy tf-slot-drag-proxy"
                      data-class-draggable="slot.can_drag"
                      data-class-has-item="slot.has_item"
                      data-class-has-count="slot.has_count"
@@ -24,7 +26,7 @@
                      data-event-dragstart="slot_drag_start(slot.slot_index)"
                      data-event-dragend="slot_drag_end(slot.slot_index)">
                     <div class="hotbar-slot-icon" data-style-decorator="slot.icon_decorator"></div>
-                    <div class="hotbar-slot-count">{{ slot.count_text }}</div>
+                    <div class="hotbar-slot-count tf-slot-count">{{ slot.count_text }}</div>
                 </div>
             </div>
         </div>

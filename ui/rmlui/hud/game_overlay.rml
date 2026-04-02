@@ -1,11 +1,12 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="game_overlay.rcss"/>
 </head>
-<body data-model="game_overlay">
+<body class="tf-screen-root" data-model="game_overlay">
     <div id="game-menu-anchor">
         <button id="game-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
     </div>

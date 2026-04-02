@@ -1,11 +1,13 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="title.rcss"/>
 </head>
-<body data-model="title_scene">
+<body class="tf-screen-root tf-nav-root" data-model="title_scene">
     <img id="title-bg" src="../../../assets/textures/UI/farm-rpg-bg.png"/>
     <img id="title-logo" src="../../../assets/textures/UI/farm-rpg-logo.png"/>
 
