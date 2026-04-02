@@ -80,6 +80,8 @@ set(TEST_SOURCES
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
     engine/ui/rml_mouse_buttons_test.cpp
+    engine/ui/rml_document_controller_source_test.cpp
+    engine/ui/rml_element_helpers_source_test.cpp
     engine/ui/rml_screen_fade_transition_source_test.cpp
     engine/ui/rmlui_transition_behavior_test.cpp
     engine/ui/ui_navigation_controller_test.cpp
@@ -172,6 +174,7 @@ set(GAME_TEST_SOURCES
     game/dialogue_bubble_controller_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
     game/inventory_menu_scene_slot_grid_registration_test.cpp
+    game/rmlui_architecture_regression_test.cpp
     game/time_advance_sleep_test.cpp
     game/rest_area_interaction_test.cpp
     game/time_of_day_light_system_test.cpp

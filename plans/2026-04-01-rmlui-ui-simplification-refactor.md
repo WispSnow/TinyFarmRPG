@@ -4,7 +4,7 @@
 - 任务ID：`UI-RML-001`
 - 任务标题：`RmlUi UI 简化重构`
 - 优先级：`P0`
-- 状态：`In Progress`
+- 状态：`Completed`
 - 负责人：`TBD`
 - 计划时间：`2026-04-01` 起
 - 依赖任务：`无`
@@ -70,12 +70,13 @@
 - 不引入新的 scene 基类或额外继承链
 
 最小接口草案：
+- `createModel(...)`
+- `bindEvent(...) / bindSimpleEvent(...)`
 - `load(...) / unload()`
-- `bindModel(...)` 与模型注册辅助
-- `bindEvent(...)`
-- `setDefaultFocus(...)`
+- `setDefaultFocusById(...) / setDefaultFocusFirstEnabledByClass(...)`
+- `queueFocusElement(...) / queueFocusElementById(...) / queueFocusFirstEnabledElementByClass(...)`
 - `enableHoverFocusSync(...)`
-- `show() / hide()`
+- `markDirty(...) / markAllDirty()`
 
 目标效果：
 - `TitleScene`
@@ -416,6 +417,7 @@
 - dialogue bubble 文本与世界锚点定位
 - inventory/hotbar 的 drag/drop 行为
 - action menu 定位与焦点恢复
+- 架构回归：生产 RML 不再回退到 `data-command`，运行时代码不再引用已删除桥接层，共享 helper/controller 维持轻量 API
 
 ### 验收标准
 - 不再引用已删除的桥接层
@@ -504,8 +506,8 @@
 - [x] T11 合并 HUD hotbar / inventory slot 重复逻辑
 - [x] T12 inventory action menu 改为基于 DOM 几何定位
 - [x] T13 收敛 theme/reset/modal/nav/slot 样式
-- [ ] T14 删除死字段与废弃 glue code
-- [ ] T15 用 `ninja` 完成构建并做关键交互回归
+- [x] T14 删除死字段与废弃 glue code
+- [x] T15 用 `ninja` 完成构建并做关键交互回归
 
 ## DoD
 - 项目内不再存在 `data-command + RmlEventBridge` 交互链路。

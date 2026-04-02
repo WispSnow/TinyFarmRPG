@@ -61,16 +61,12 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndCleanupViaShutdownUI
         const std::string source = readTextFile(path);
         ASSERT_FALSE(source.empty()) << path;
 
-        EXPECT_NE(source.find("HoverFocusSyncListener"), std::string::npos) << path;
-        EXPECT_NE(source.find("registerTo("), std::string::npos) << path;
-        EXPECT_NE(source.find("unregisterAll()"), std::string::npos) << path;
+        EXPECT_NE(source.find("document_controller_.enableHoverFocusSync("), std::string::npos) << path;
+        EXPECT_NE(source.find("document_controller_.unload();"), std::string::npos) << path;
 
-        // shutdownUI() 中 unregisterAll 在 unloadAllRmlDocuments 之前
-        const std::size_t unregister_pos = source.find("unregisterAll()");
-        const std::size_t unload_pos = source.find("unloadAllRmlDocuments()");
-        ASSERT_NE(unregister_pos, std::string::npos) << path;
-        ASSERT_NE(unload_pos, std::string::npos) << path;
-        EXPECT_LT(unregister_pos, unload_pos) << path;
+        EXPECT_EQ(source.find("HoverFocusSyncListener"), std::string::npos) << path;
+        EXPECT_EQ(source.find("registerTo("), std::string::npos) << path;
+        EXPECT_EQ(source.find("unregisterAll()"), std::string::npos) << path;
     }
 }
 
@@ -88,25 +84,32 @@ TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisibl
 
 TEST(MenuHoverFocusSyncTest, HoverFocusSyncListenerOnlyTargetsButtonsAndMenuBodiesEnableNavigation) {
     const auto listener_path = projectPath("src/engine/ui/rmlui/hover_focus_sync_listener.cpp");
+    const auto nav_theme_path = projectPath("ui/rmlui/theme/nav.rcss");
     ASSERT_TRUE(std::filesystem::exists(listener_path)) << listener_path;
+    ASSERT_TRUE(std::filesystem::exists(nav_theme_path)) << nav_theme_path;
 
     const std::string listener_source = readTextFile(listener_path);
+    const std::string nav_theme_source = readTextFile(nav_theme_path);
     ASSERT_FALSE(listener_source.empty());
+    ASSERT_FALSE(nav_theme_source.empty());
 
     EXPECT_NE(listener_source.find("GetTagName() == \"button\""), std::string::npos);
     EXPECT_NE(listener_source.find("IsVisible(true)"), std::string::npos);
+    EXPECT_NE(nav_theme_source.find(".tf-nav-root"), std::string::npos);
+    EXPECT_NE(nav_theme_source.find("nav: auto;"), std::string::npos);
 
     const std::array<std::filesystem::path, 3> style_paths{
-        projectPath("ui/rmlui/scenes/title.rcss"),
-        projectPath("ui/rmlui/scenes/pause_menu.rcss"),
-        projectPath("ui/rmlui/scenes/save_slot_select.rcss"),
+        projectPath("ui/rmlui/scenes/title.rml"),
+        projectPath("ui/rmlui/scenes/pause_menu.rml"),
+        projectPath("ui/rmlui/scenes/save_slot_select.rml"),
     };
 
     for (const auto& path : style_paths) {
         ASSERT_TRUE(std::filesystem::exists(path)) << path;
         const std::string source = readTextFile(path);
         ASSERT_FALSE(source.empty()) << path;
-        EXPECT_NE(source.find("nav: auto;"), std::string::npos) << path;
+        EXPECT_NE(source.find("../theme/nav.rcss"), std::string::npos) << path;
+        EXPECT_NE(source.find("tf-nav-root"), std::string::npos) << path;
     }
 }
 
