@@ -1,15 +1,10 @@
 #pragma once
 
-#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 
 #include <RmlUi/Core/Types.h>
 
 #include <string>
-
-namespace Rml {
-class ElementDocument;
-class Context;
-}
 
 namespace engine::ui::rmlui {
 class RmlUiRuntime;
@@ -41,9 +36,7 @@ public:
     void update(const game::data::GameTime* game_time);
 
 private:
-    engine::ui::rmlui::RmlUiRuntime& runtime_;
-    engine::ui::rmlui::RmlDataBridge data_bridge_;
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
 
     // 绑定数据
     Rml::String day_text_{"Day --"};

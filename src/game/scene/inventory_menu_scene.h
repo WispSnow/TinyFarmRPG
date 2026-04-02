@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -20,7 +20,6 @@ enum class State;
 
 namespace Rml {
 class Element;
-class ElementDocument;
 }
 
 namespace game::data {
@@ -51,9 +50,8 @@ class InventoryMenuScene final : public engine::scene::Scene {
     engine::core::State previous_state_{};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
-    Rml::ElementDocument* document_{nullptr};
 
     std::vector<game::ui::SlotGridViewModel> backpack_slots_{};
     std::vector<game::ui::SlotGridViewModel> hotbar_slots_{};

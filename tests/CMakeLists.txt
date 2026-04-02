@@ -72,6 +72,7 @@ set(TEST_SOURCES
     engine/render/gl_renderer_lifecycle_test.cpp
     engine/render/rmlui_pipeline_stage_test.cpp
     engine/render/rmlui_texture_filter_pipeline_test.cpp
+    engine/core/game_app_ui_navigation_source_test.cpp
     engine/ui/rmlui_runtime_access_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
     engine/render/vfx_dual_channel_pipeline_test.cpp
@@ -84,7 +85,7 @@ set(TEST_SOURCES
     engine/ui/rml_element_helpers_source_test.cpp
     engine/ui/rml_screen_fade_transition_source_test.cpp
     engine/ui/rmlui_transition_behavior_test.cpp
-    engine/ui/ui_navigation_controller_test.cpp
+    engine/ui/ui_types_source_test.cpp
     engine/ui/ui_world_anchor_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
     engine/spatial/static_tile_grid_rect_query_test.cpp
@@ -172,6 +173,7 @@ set(GAME_TEST_SOURCES
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/pause_menu_scene_async_save_ui_test.cpp
     game/dialogue_bubble_controller_test.cpp
+    game/hud_document_controller_source_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
     game/inventory_menu_scene_slot_grid_registration_test.cpp
     game/rmlui_architecture_regression_test.cpp

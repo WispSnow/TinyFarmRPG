@@ -4,7 +4,6 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
 #include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
@@ -15,7 +14,6 @@
 #include "game/defs/events.h"
 #include "game/ui/item_tooltip_ui.h"
 
-#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -179,13 +177,8 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
 
-    auto* rml_context = runtime->getContext();
-    if (!rml_context) {
-        spdlog::error("InventoryMenuScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME, &type_register_);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
     if (!constructor) {
         spdlog::error("InventoryMenuScene: 创建 data model 失败。");
         return false;
@@ -194,7 +187,7 @@ bool InventoryMenuScene::initUI() {
     if (!data_types_registered_) {
         if (!game::ui::registerSlotGridViewModelType(constructor)) {
             spdlog::error("InventoryMenuScene: RegisterStruct<SlotGridViewModel> 失败。");
-            data_bridge_.destroy();
+            document_controller_.unload();
             return false;
         }
 
@@ -202,7 +195,7 @@ bool InventoryMenuScene::initUI() {
         // 这个数组类型只需要注册一次；重复注册会被 RmlUi 视为失败。
         if (!constructor.RegisterArray<decltype(backpack_slots_)>()) {
             spdlog::error("InventoryMenuScene: RegisterArray<backpack> 失败。");
-            data_bridge_.destroy();
+            document_controller_.unload();
             return false;
         }
 
@@ -212,13 +205,13 @@ bool InventoryMenuScene::initUI() {
             action_handle.RegisterMember("is_destructive", &ActionEntryViewModel::is_destructive);
         } else {
             spdlog::error("InventoryMenuScene: RegisterStruct<ActionEntryViewModel> 失败。");
-            data_bridge_.destroy();
+            document_controller_.unload();
             return false;
         }
 
         if (!constructor.RegisterArray<decltype(action_menu_entries_)>()) {
             spdlog::error("InventoryMenuScene: RegisterArray<actions> 失败。");
-            data_bridge_.destroy();
+            document_controller_.unload();
             return false;
         }
 
@@ -229,7 +222,7 @@ bool InventoryMenuScene::initUI() {
         !constructor.Bind("hotbar_slots", &hotbar_slots_) ||
         !constructor.Bind("action_menu_entries", &action_menu_entries_)) {
         spdlog::error("InventoryMenuScene: 绑定数组 data model 失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
@@ -278,36 +271,33 @@ bool InventoryMenuScene::initUI() {
             {
                 {"action_entry_click", &InventoryMenuScene::onActionEntryClick},
             }) ||
-        !engine::ui::rmlui::bindSimpleEventCallback(constructor, "trash", [this] { onTrashClicked(); }) ||
-        !engine::ui::rmlui::bindSimpleEventCallback(constructor, "sort", [this] { onSortClicked(); })) {
+        !document_controller_.bindSimpleEvent(constructor, "trash", [this] { onTrashClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "sort", [this] { onSortClicked(); })) {
         spdlog::error("InventoryMenuScene: 绑定 event 回调失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        document_controller_.unload();
         spdlog::error("InventoryMenuScene: 加载 RML 文档失败。");
         return false;
     }
 
-    tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instance_id_);
+    tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, instanceId());
 
     syncFromInventory();
     syncHotbarFromInventory();
     syncCharacterPanel();
-    data_bridge_.markAllDirty();
+    document_controller_.markAllDirty();
 
-    runtime->queueFocusFirstEnabledElementByClass(document_, "hb-slot");
+    document_controller_.queueFocusFirstEnabledElementByClass("hb-slot");
     return true;
 }
 
 void InventoryMenuScene::shutdownUI() {
-    unloadAllRmlDocuments();
-    document_ = nullptr;
+    document_controller_.unload();
     focus_before_action_menu_ = nullptr;
-    data_bridge_.destroy();
 }
 
 void InventoryMenuScene::disconnectRuntimeListeners() {
@@ -398,10 +388,10 @@ void InventoryMenuScene::syncCharacterPanel() {
     gold_label_ = "Gold: --";
     farm_label_ = "TinyFarm";
 
-    data_bridge_.markDirty("char_name");
-    data_bridge_.markDirty("char_title");
-    data_bridge_.markDirty("gold_label");
-    data_bridge_.markDirty("farm_label");
+    document_controller_.markDirty("char_name");
+    document_controller_.markDirty("char_title");
+    document_controller_.markDirty("gold_label");
+    document_controller_.markDirty("farm_label");
 }
 
 void InventoryMenuScene::refreshSlot(int slot_index) {
@@ -427,14 +417,14 @@ void InventoryMenuScene::refreshSlot(int slot_index) {
 }
 
 void InventoryMenuScene::markSlotsDirty() {
-    data_bridge_.markDirty("backpack_slots");
-    data_bridge_.markDirty("hotbar_slots");
+    document_controller_.markDirty("backpack_slots");
+    document_controller_.markDirty("hotbar_slots");
 }
 
 void InventoryMenuScene::markActionMenuDirty() {
-    data_bridge_.markDirty("action_menu_entries");
-    data_bridge_.markDirty("action_menu_title");
-    data_bridge_.markDirty("action_menu_visible");
+    document_controller_.markDirty("action_menu_entries");
+    document_controller_.markDirty("action_menu_title");
+    document_controller_.markDirty("action_menu_visible");
 }
 
 void InventoryMenuScene::showTooltipForInventorySlot(int slot_index) {
@@ -504,10 +494,10 @@ void InventoryMenuScene::updateDetailForInventorySlot(int slot_index) {
     detail_category_ = item->category_str_;
     detail_description_ = item->description_;
     has_detail_ = true;
-    data_bridge_.markDirty("detail_name");
-    data_bridge_.markDirty("detail_category");
-    data_bridge_.markDirty("detail_description");
-    data_bridge_.markDirty("has_detail");
+    document_controller_.markDirty("detail_name");
+    document_controller_.markDirty("detail_category");
+    document_controller_.markDirty("detail_description");
+    document_controller_.markDirty("has_detail");
 }
 
 void InventoryMenuScene::updateDetailForHotbarSlot(int hotbar_index) {
@@ -534,10 +524,10 @@ void InventoryMenuScene::clearDetail() {
     detail_name_.clear();
     detail_category_.clear();
     detail_description_.clear();
-    data_bridge_.markDirty("detail_name");
-    data_bridge_.markDirty("detail_category");
-    data_bridge_.markDirty("detail_description");
-    data_bridge_.markDirty("has_detail");
+    document_controller_.markDirty("detail_name");
+    document_controller_.markDirty("detail_category");
+    document_controller_.markDirty("detail_description");
+    document_controller_.markDirty("has_detail");
 }
 
 void InventoryMenuScene::selectBpSlot(int slot_index) {
@@ -578,11 +568,12 @@ void InventoryMenuScene::clearDragState() {
 }
 
 Rml::Element* InventoryMenuScene::findIndexedChildElement(std::string_view parent_id, int child_index) const {
-    if (!document_ || child_index < 0) {
+    auto* document = document_controller_.document();
+    if (!document || child_index < 0) {
         return nullptr;
     }
 
-    auto* parent = document_->GetElementById(Rml::String{parent_id.data(), parent_id.size()});
+    auto* parent = document->GetElementById(Rml::String{parent_id.data(), parent_id.size()});
     if (!parent || child_index >= parent->GetNumChildren()) {
         return nullptr;
     }
@@ -607,7 +598,7 @@ void InventoryMenuScene::rememberFocusBeforeActionMenu() {
 
     if (auto* runtime = context_.getRmlUi()) {
         focus_before_action_menu_ = runtime->getFocusedElement();
-        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_) {
+        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_controller_.document()) {
             focus_before_action_menu_ = nullptr;
         }
     }
@@ -625,9 +616,9 @@ void InventoryMenuScene::closeActionMenu(bool restore_focus) {
     markActionMenuDirty();
 
     if (restore_focus) {
-        if (auto* runtime = context_.getRmlUi();
-            runtime && focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() == document_) {
-            runtime->queueFocusElement(focus_before_action_menu_);
+        if (focus_before_action_menu_ &&
+            focus_before_action_menu_->GetOwnerDocument() == document_controller_.document()) {
+            document_controller_.queueFocusElement(focus_before_action_menu_);
         }
     }
 
@@ -635,12 +626,13 @@ void InventoryMenuScene::closeActionMenu(bool restore_focus) {
 }
 
 void InventoryMenuScene::positionActionMenuForGridSlot(std::string_view grid_id, int slot_index) {
-    if (!document_ || !action_menu_visible_) {
+    auto* document = document_controller_.document();
+    if (!document || !action_menu_visible_) {
         return;
     }
 
-    auto* slot_region = document_->GetElementById("slot-region");
-    auto* action_menu = document_->GetElementById("action-menu");
+    auto* slot_region = document->GetElementById("slot-region");
+    auto* action_menu = document->GetElementById("action-menu");
     auto* anchor_slot = findIndexedChildElement(grid_id, slot_index);
     if (!slot_region || !action_menu || !anchor_slot) {
         return;
@@ -690,7 +682,7 @@ void InventoryMenuScene::showActionMenu(Rml::String title,
         // `data-if` / `data-for` materialize on context update; update once before measuring the menu box.
         runtime->update();
         positionActionMenuForGridSlot(anchor_grid_id, anchor_slot_index);
-        runtime->queueFocusFirstEnabledElementByClass(document_, "action-menu-entry");
+        document_controller_.queueFocusFirstEnabledElementByClass("action-menu-entry");
     }
 }
 
@@ -900,7 +892,7 @@ void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& 
             refreshSlot(update.slot_index);
         }
     }
-    data_bridge_.markDirty("backpack_slots");
+    document_controller_.markDirty("backpack_slots");
 
     if (detail_bp_slot_ >= 0) {
         updateDetailForInventorySlot(detail_bp_slot_);
@@ -920,7 +912,7 @@ void InventoryMenuScene::onHotbarChanged(const game::defs::HotbarChanged& evt) {
     }
 
     syncHotbarFromInventory();
-    data_bridge_.markDirty("hotbar_slots");
+    document_controller_.markDirty("hotbar_slots");
 
     if (detail_hb_slot_ >= 0) {
         updateDetailForHotbarSlot(detail_hb_slot_);

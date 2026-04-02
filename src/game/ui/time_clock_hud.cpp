@@ -3,9 +3,7 @@
 #include "game/data/game_time.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 
-#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/ElementDocument.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -24,15 +22,9 @@ constexpr std::string_view MODEL_NAME = "time_clock";
 namespace game::ui {
 
 TimeClockHud::TimeClockHud(engine::ui::rmlui::RmlUiRuntime& runtime,
-                           uint64_t owner_scene_id)
-    : runtime_(runtime) {
-    auto* context = runtime_.getContext();
-    if (!context) {
-        spdlog::error("TimeClockHud: context is null.");
-        return;
-    }
-
-    auto constructor = data_bridge_.create(context, MODEL_NAME);
+                           uint64_t owner_scene_id) {
+    document_controller_.attach(&runtime, owner_scene_id);
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("TimeClockHud: failed to create data model '{}'.", MODEL_NAME);
         return;
@@ -42,26 +34,22 @@ TimeClockHud::TimeClockHud(engine::ui::rmlui::RmlUiRuntime& runtime,
     constructor.Bind("time_text", &time_text_);
     constructor.Bind("hand_decorator", &hand_decorator_);
 
-    document_ = runtime_.loadDocument(DOCUMENT_PATH, owner_scene_id);
-    if (!document_) {
+    if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("TimeClockHud: failed to load '{}'.", DOCUMENT_PATH);
+        document_controller_.unload();
         return;
     }
 
-    runtime_.showDocument(document_);
+    document_controller_.markAllDirty();
     spdlog::debug("TimeClockHud 初始化完成。");
 }
 
 TimeClockHud::~TimeClockHud() {
-    if (document_) {
-        runtime_.unloadDocument(document_);
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
+    document_controller_.unload();
 }
 
 void TimeClockHud::update(const game::data::GameTime* game_time) {
-    if (!data_bridge_.isValid()) {
+    if (!document_controller_.isModelValid()) {
         return;
     }
 
@@ -74,7 +62,7 @@ void TimeClockHud::update(const game::data::GameTime* game_time) {
             last_day_ = -1;
             last_hour_ = -1;
             last_minute_ = -1;
-            data_bridge_.markAllDirty();
+            document_controller_.markAllDirty();
         }
         return;
     }
@@ -82,13 +70,11 @@ void TimeClockHud::update(const game::data::GameTime* game_time) {
     const int day = static_cast<int>(game_time->day_);
     const int hour = static_cast<int>(game_time->hour_);
     const int minute = static_cast<int>(game_time->minute_);
-    bool dirty = false;
 
     if (day != last_day_) {
         day_text_ = std::format("Day {}", game_time->day_);
-        data_bridge_.markDirty("day_text");
+        document_controller_.markDirty("day_text");
         last_day_ = day;
-        dirty = true;
     }
 
     if (hour != last_hour_ || minute != last_minute_) {
@@ -100,19 +86,16 @@ void TimeClockHud::update(const game::data::GameTime* game_time) {
         const int display_hour = (total_minutes / 60) % 24;
         const int display_minute = total_minutes % 60;
         time_text_ = std::format("{:02d}:{:02d}", display_hour, display_minute);
-        data_bridge_.markDirty("time_text");
+        document_controller_.markDirty("time_text");
 
         // 更新指针帧
         const int hand_index = pickHandIndex(game_time->hour_, game_time->minute_);
         hand_decorator_ = formatHandDecorator(hand_index);
-        data_bridge_.markDirty("hand_decorator");
+        document_controller_.markDirty("hand_decorator");
 
         last_hour_ = hour;
         last_minute_ = minute;
-        dirty = true;
     }
-
-    (void)dirty;
 }
 
 int TimeClockHud::pickHandIndex(float hour, float minute) {
