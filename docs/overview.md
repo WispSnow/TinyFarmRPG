@@ -11,7 +11,7 @@ TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模
 - **窗口与输入**: SDL3
 - **ECS 框架**: EnTT
 - **图形渲染**: OpenGL + GLAD
-- **UI 框架**: RmlUi + ImGui
+- **UI 框架**: RmlUi（生产 UI） + ImGui（调试 UI）
 - **资源加载**: stb_image.h
 - **字体渲染**: FreeType + HarfBuzz
 - **音频**: MiniAudio
@@ -44,7 +44,7 @@ TinyFarmRPG/
 │   │   ├── script/              #   脚本宿主内核（可选，Lua VM/安全边界/句柄校验/模块安装）
 │   │   ├── spatial/             #   碰撞检测与空间分区（静态网格/动态网格）
 │   │   ├── system/              #   引擎层 ECS 系统（动画/移动/渲染/Y排序/光照）
-│   │   ├── ui/                  #   RmlUi 集成层与共享 UI 类型/接口（文档桥接/纹理过滤/屏幕淡入淡出）
+│   │   ├── ui/                  #   RmlUi 运行时与共享 UI 基础设施（runtime/document controller/屏幕淡入淡出/共享 slot 类型）
 │   │   ├── utils/               #   工具函数（数学/对齐/事件定义）
 │   │   └── vfx/                 #   特效服务与后端抽象（VfxService/VfxBackend/EffekseerBackend）
 │   ├── game/                    # 游戏特定逻辑层
@@ -60,7 +60,7 @@ TinyFarmRPG/
 │   │   ├── scene/               #   游戏场景（Title/GameScene/PauseMenu/SaveSlotSelect/RestDialog）
 │   │   ├── script/              #   TinyFarm 脚本扩展模块（tf.time/player/command/dialogue 绑定）
 │   │   ├── system/              #   游戏 ECS 系统（农场/交互/NPC/对话/地图切换/物品使用等）
-│   │   ├── ui/                  #   游戏 UI 封装（物品栏/快捷栏/对话气泡/时钟 HUD/tooltip/world anchor）
+│   │   ├── ui/                  #   游戏 UI 组合层（GameSceneUiController/快捷栏/时钟 HUD/tooltip/对话气泡/slot grid 支撑）
 │   │   └── world/               #   世界地图系统（MapManager 异步预加载状态机/WorldState/快照序列化）
 │   └── main.cpp                 # 可执行入口薄壳
 ├── assets/                      # 运行时资源
@@ -71,7 +71,7 @@ TinyFarmRPG/
 │   ├── shaders/                 #   GLSL 着色器 (.vert/.frag)
 │   ├── textures/                #   纹理资源 (.png/.gif/.json)
 │   └── vfx/                     #   Effekseer 特效资源 (.efkefc/.efk)
-├── ui/                          # UI 资源（RmlUi 文档/样式/主题）
+├── ui/                          # UI 资源（RmlUi 文档/样式/主题；场景、HUD、overlay 分层）
 ├── scripts/                     # Lua 脚本
 ├── config/                      # 引擎配置（窗口/输入/渲染/音频/文本）
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/RmlUi 与 ImGui 集成等）

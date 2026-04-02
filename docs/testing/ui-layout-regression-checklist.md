@@ -1,90 +1,105 @@
-# UI 布局回归检查清单（UILayout Refactor）
+# UI 布局回归检查清单（RmlUi Layout）
 
-本文档用于 `UIL-000` 基线冻结与后续 `UIL-*` 迭代回归。
+本文档用于当前 RmlUi 布局体系的人工回归。
 
 ## 使用说明
-- 适用范围：`src/engine/ui/ui_element.*`、`src/engine/ui/layout/*`、Inventory/Hotbar/拖拽预览等布局相关行为。
-- 执行时机：每个 `UIL` 子任务完成后至少执行一次。
-- 结果记录：建议在 PR 描述中按场景标注 `PASS/FAIL/N/A`，并附关键截图（推荐同分辨率）。
+- 适用范围：
+  - `ui/rmlui/**`
+  - `src/game/ui/**`
+  - `src/game/scene/inventory_menu_scene.cpp`
+  - `src/engine/ui/rmlui/rml_screen_fade.cpp`
+- 执行时机：改动 RML/RCSS、slot 布局、浮动控件定位、屏幕过渡后至少执行一次
+- 结果记录：建议按场景标注 `PASS/FAIL/N/A`，并附同分辨率截图
 
 ## 预置条件
-1. 游戏可进入 `GameScene`，可打开 Inventory 与 Hotbar。
-2. 推荐使用固定逻辑分辨率进行对比（避免分辨率差异带来误判）。
-3. Inventory 中准备足够物品，确保可触发多页与拖拽预览数量文本（`count > 1`）。
-4. 若某场景当前无入口（如 `UIProgressBar`），按 `N/A` 记录并说明原因。
+1. 游戏可进入 `GameScene`，可打开 InventoryMenu 与 Hotbar。
+2. 推荐固定逻辑分辨率做对比，避免视口差异引入误判。
+3. Inventory 中准备足够物品，确保可以覆盖空槽、堆叠物品、拖拽、action menu。
 
 ## 执行记录模板
 - 日期：
 - 分支/提交：
 - 分辨率：
 - 场景结果：
-  - Inventory 网格：
-  - Hotbar 水平布局：
-  - Inventory 分页按钮区：
-  - ProgressBar：
-  - 拖拽预览文本对齐：
+  - InventoryMenu 网格：
+  - InventoryMenu action menu：
+  - HUD Hotbar：
+  - Tooltip：
+  - Dialogue bubble：
+  - Screen fade：
 - 备注（失败复现步骤或截图路径）：
 
 ## 重点场景
 
-### 1) Inventory 网格（UIGridLayout + 固定 Cell）
-1. 打开 Inventory 面板。
-2. 观察首行与首列槽位是否从内容区左上角开始排列，无越界或重叠。
-3. 比较任意相邻两槽位的水平间距、垂直间距，应一致。
-4. 切换分页（左右按钮）后，网格区域位置与尺寸不应抖动。
-5. 拖动 Inventory 面板后，网格相对面板的位置保持不变。
-6. 若有空槽与有物品槽混排，槽位框尺寸应一致（不因内容变化拉伸）。
+### 1) InventoryMenu：背包网格与 hotbar 区
+
+1. 打开 InventoryMenu。
+2. 观察背包网格首行首列是否对齐，无越界、无重叠。
+3. 相邻槽位的水平与垂直间距应一致。
+4. 背包区与 hotbar 区之间的相对位置稳定。
+5. 空槽与有物品槽混排时，槽位尺寸不应因内容变化而拉伸。
+6. 打开/关闭 action menu 前后，grid 自身位置不应抖动。
 
 通过标准：
-- 无重叠、无错位、无明显“跳一帧”抖动。
-- 网格定位在面板内容区内，分页切换不改变网格几何布局。
+- 网格稳定，间距一致，两个区域都处在各自容器内。
 
-### 2) Hotbar 水平布局（UIStackLayout + AutoResize）
-1. 进入 GameScene，确认 Hotbar 默认显示在底部中间区域。
-2. 观察所有槽位是否沿水平方向排列，间距一致。
-3. 切换激活槽位（数字键），高亮变化不应导致槽位整体位移。
-4. 多次显示/隐藏相关 UI（如 Inventory 开关）后，Hotbar 位置不应漂移。
-5. 在 Hotbar 内进行拖拽并释放，槽位容器尺寸与对齐不应变化。
+### 2) InventoryMenu：action menu 几何
 
-通过标准：
-- 水平排列稳定，间距一致，底部布局不漂移。
-- 高亮与拖拽只影响视觉，不影响几何排布。
-
-### 3) Inventory 分页按钮区（按钮 + 文本标签）
-1. 确保 Inventory 有至少 2 页（可看到页码变化）。
-2. 检查左按钮、页码文本、右按钮位于同一按钮区域内。
-3. 页码文本应位于左右按钮中间，左右按钮垂直对齐。
-4. 连续切换页码（包含一位数与两位数页码场景）时：
-   - 左右按钮位置不应抖动；
-   - 页码文本中心应保持在按钮区中线附近。
+1. 在中间槽位打开 action menu，菜单应贴近当前槽位。
+2. 在最右侧槽位打开 action menu，应向左翻转。
+3. 在最下侧槽位打开 action menu，应保持在 `slot-region` 内，不越界。
+4. action menu 打开后不应挤压背包网格本身。
 
 通过标准：
-- 按钮区元素相对关系稳定，页码变化不导致按钮漂移。
+- 菜单锚定正确，边界钳制稳定，不影响原始布局。
 
-### 4) ProgressBar（UIProgressBar）
-1. 若当前构建有 ProgressBar 可见场景：
-   - 调整进度值，检查填充方向与长度符合配置；
-   - 显示标签时，文本应居中于进度条区域；
-   - 反复更新数值，进度条与标签不应抖动。
-2. 若当前没有可进入的 ProgressBar 场景：
-   - 记录为 `N/A`，并在备注中写明“当前主流程无 ProgressBar 入口”。
+### 3) HUD Hotbar
 
-通过标准：
-- 可见场景下填充与文本对齐稳定；不可见场景按 `N/A` 记录即可。
-
-### 5) 拖拽预览文本对齐（UIDragPreview）
-1. 在 Inventory 或 Hotbar 中拖拽一个 `count > 1` 的堆叠物品。
-2. 观察拖拽预览图标：数量文本应显示在图标右下角附近。
-3. 移动鼠标过程中，文本应随预览一起移动，不与图标分离。
-4. 拖拽 `count == 1` 的物品时，数量文本应隐藏。
-5. 拖拽结束（成功或取消）后，预览与文本应及时消失，不残留。
+1. 进入 `GameScene`，确认 Hotbar 位于底部中间区域。
+2. 所有槽位沿水平方向排列，间距一致。
+3. 切换 active slot 时，高亮变化不应导致容器尺寸或位置变化。
+4. 多次显示/隐藏 Hotbar 后，位置不应漂移。
+5. 进行拖拽后，slot 容器几何不应变化。
 
 通过标准：
-- 文本锚点稳定（右下角 + 固定内边距观感），无残留、无明显抖动。
+- 只变视觉状态，不变几何。
 
-## 失败记录要求
-- 必须记录：
-  - 复现路径（最短步骤）
-  - 首次出现位置（场景/操作）
-  - 稳定性（必现/概率）
-  - 对比截图（建议“预期正常版本”与“当前版本”）
+### 4) Tooltip
+
+1. hover 有物品槽位时，tooltip 自适应内容高度。
+2. 长描述文本自动换行，不溢出面板。
+3. 移动鼠标时 tooltip 跟随。
+4. 靠近屏幕边缘时会自动翻转/钳制，不出界。
+
+通过标准：
+- 尺寸由内容驱动，定位稳定，无裁切。
+
+### 5) Dialogue bubble
+
+1. 长文本自动换行，面板高度自动增长。
+2. 气泡跟随实体世界坐标移动。
+3. 镜头移动或角色移动时，气泡相对目标位置稳定。
+4. `show / move / hide` 多次切换后，不应残留旧尺寸或旧位置。
+
+通过标准：
+- 文本布局与世界锚点都稳定，无明显一帧跳动。
+
+### 6) Screen fade
+
+1. fade overlay 覆盖整个逻辑视口。
+2. `fadeOut(seconds)` 与 `fadeIn(seconds)` 时，透明度变化平滑。
+3. 淡入完成后 overlay 隐藏，不再遮挡下层内容。
+
+通过标准：
+- 过渡正确、范围正确、不残留遮罩。
+
+## 自动化参考
+
+- `tests/game/ui_layout_integration_test.cpp`
+- `tests/game/dialogue_bubble_controller_test.cpp`
+- `tests/engine/ui/rml_screen_fade_transition_source_test.cpp`
+- `tests/engine/ui/rmlui_transition_behavior_test.cpp`
+
+说明：
+- `ui_layout_integration_test` 在 headless 环境下可能被 `SKIPPED`
+- 这类情况下仍需要一轮实机布局确认

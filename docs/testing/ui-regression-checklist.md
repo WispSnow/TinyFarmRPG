@@ -1,57 +1,99 @@
-# UI 回归检查清单（交互重构）
+# UI 回归检查清单（RmlUi 生产界面）
 
-本文档用于 `UIR-000` 基线冻结与后续 `UIR-*` 迭代回归。
+本文档用于当前 RmlUi UI 架构的人工回归。
 
 ## 使用说明
-- 适用范围：`src/engine/ui` 交互行为（按钮、槽位、模态遮罩、拖拽）
-- 执行时机：每个 `UIR` 子任务完成后至少执行一次
-- 结果记录：建议在 PR 描述中逐项标注 `PASS/FAIL`
+- 适用范围：
+  - `ui/rmlui/**`
+  - `src/engine/ui/rmlui/**`
+  - `src/game/scene/*_scene.cpp` 中的 RmlUi 场景
+  - `src/game/ui/**` 中的 HUD / tooltip / dialogue / fade
+- 执行时机：任何修改 UI 结构、样式、导航、drag-drop、文档生命周期后至少执行一次
+- 结果记录：建议在 PR 描述中逐项标注 `PASS/FAIL/N/A`
 
 ## 预置条件
-1. 可正常进入：Title、Game、Pause、SaveSlot、Inventory、Hotbar、RestDialog
-2. 鼠标输入可用，UI 预设可正常加载
-3. 若启用日志，建议打开 `trace` 级别便于定位状态变化
+1. 可正常进入：Title、Game、Pause、SaveSlotSelect、InventoryMenu、RestDialog、Battle
+2. 鼠标与键盘菜单输入可用；若有手柄，也建议补一轮
+3. 若启用日志，建议打开 `debug/trace` 便于定位文档加载、事件绑定与焦点切换
 
 ## 重点场景
 
-### 1) Pause 菜单按钮
-1. 打开 Pause 菜单。
-2. 鼠标移入按钮：应出现 hover 视觉变化。
-3. 按下并在按钮内释放：应触发点击。
-4. 按下后移出按钮释放：不应触发点击。
-5. 当按钮禁用（SaveService 缺失等）时：
-   - 不响应 hover/press/click
-   - 视觉为 disabled（而非 normal/hover）
+### 1) 菜单按钮与焦点导航
+覆盖：Title / Pause / SaveSlotSelect / RestDialog / Battle
 
-### 2) SaveSlot 可用/不可用状态
-1. 进入 SaveSlot 选择界面。
-2. 对可用槽位点击：应触发对应动作。
-3. 对不可用槽位点击：不应触发动作。
-4. 切换可用状态后，视觉与交互状态必须同步。
+1. 进入菜单后，默认焦点应落在首个可操作元素。
+2. 鼠标悬停按钮：视觉状态应切到 hover，焦点应同步跟随。
+3. 鼠标点击按钮：应只触发一次对应动作。
+4. 键盘或手柄 `menu_up/down/left/right/confirm`：
+   - 焦点按预期移动
+   - `confirm` 触发当前 focused 元素
+5. 不可用按钮或槽位：
+   - 不响应点击
+   - 焦点不应停在不可用元素上
 
-### 3) Inventory/Hotbar 槽位拖拽
-1. 在 Inventory 槽位按下并移动：应开始拖拽预览。
-2. 拖拽过程中悬停目标槽位：tooltip/hover 行为正常。
-3. 在可接受区域释放：触发拖拽结束与落点逻辑。
-4. 在无效区域释放：不应错误落点；状态应回收。
-5. 拖拽中若隐藏/关闭相关 UI：不应残留“按下中/拖拽中”状态。
+### 2) Gameplay HUD
+覆盖：prompt bar / clock / hotbar
 
-### 4) 模态遮罩（UIInputBlocker）
-1. 打开带遮罩的模态层（Pause/SaveConfirm/RestDialog）。
-2. 点击遮罩下方元素：应被阻断，不触发底层交互。
-3. 关闭模态后：底层交互应恢复。
+1. 进入 `GameScene` 后，overlay prompt bar 正常显示输入提示。
+2. Hotbar 显示/隐藏切换后，位置与可见状态正确。
+3. Hotbar active slot 切换只影响高亮，不应导致整体几何漂移。
+4. 时钟文本和表针会随 `GameTime` 变化更新。
 
-### 5) Hover 与 Click 音效
-1. 鼠标移入支持音效元素：hover 音效触发一次。
-2. 按下支持音效元素：click 音效触发一次。
-3. 快速移入移出与重复点击，不应出现明显重复触发异常。
+### 3) InventoryMenu 交互
 
-## 已知问题（基线阶段）
-- 历史问题：同一帧“移入并按下”可能不触发点击。
-- 触发条件：鼠标进入元素并立即按下，按下事件先于 hover 状态切换。
-- 处理状态：已在 `UIR-010` 修复（`UINormalState::onMousePressed()` 直达 `PressedState`）。
-- 回归要求：每轮至少验证一次“同帧移入并按下 -> 元素内释放 -> click 触发”。
+1. 打开背包菜单后，背包槽位与 hotbar 区域都能正确显示内容。
+2. 背包内拖拽：
+   - move / swap / merge 行为正确
+   - 无效区域释放时状态回收，不残留拖拽态
+3. 背包 <-> hotbar：
+   - 绑定、互换、解绑行为正确
+4. 右键 action menu：
+   - 在正确槽位打开
+   - 最右/最下边界不会跑出容器
+   - 关闭后焦点恢复到原先槽位或合理的 fallback
+5. `sort`、`trash`、`use`、`activate` 等命令只触发一次且结果正确
 
-## 验收建议
-- 最少覆盖：Pause + SaveSlot + Inventory/Hotbar + 模态遮罩。
-- 任一项 FAIL 时：记录复现路径、发生场景、是否可稳定复现。
+### 4) 模态 Scene 与输入隔离
+
+1. 打开 Pause / Save 覆盖层 / RestDialog / InventoryMenu 时：
+   - gameplay 不应继续响应世界交互
+   - `menu_cancel` / Back 能关闭当前顶层 Scene
+2. 关闭覆盖层后：
+   - 底层 Scene 恢复交互
+   - 输入上下文与焦点状态恢复正常
+
+### 5) 浮动控件
+
+1. Tooltip：
+   - hover 有物品槽位时显示
+   - 跟随鼠标
+   - 靠近屏幕边缘时会自动翻转/钳制，不跑出视口
+2. Dialogue bubble：
+   - `show / move / hide` 正常
+   - 长文本自动换行
+   - 跟随目标世界坐标移动，不明显滞后
+
+### 6) Screen fade
+
+1. 切场景或触发 fade 时有真实淡入/淡出过渡。
+2. 淡出完成后可停留在全黑 holding 态。
+3. 淡入完成后文档隐藏，不残留黑屏遮罩。
+4. 不同时长的 `fadeIn/fadeOut(seconds)` 都应正常工作。
+
+## 建议同时查看的自动化回归
+
+- `tests/game/rmlui_architecture_regression_test.cpp`
+- `tests/game/menu_hover_focus_sync_test.cpp`
+- `tests/game/ui_layout_integration_test.cpp`
+- `tests/game/game_scene_ui_controller_smoke_test.cpp`
+- `tests/engine/ui/rml_document_controller_source_test.cpp`
+- `tests/engine/ui/rml_screen_fade_transition_source_test.cpp`
+
+## 失败记录要求
+
+任一项失败时至少记录：
+- 最短复现路径
+- 发生场景
+- 输入方式（鼠标 / 键盘 / 手柄）
+- 是否稳定复现
+- 截图或录屏

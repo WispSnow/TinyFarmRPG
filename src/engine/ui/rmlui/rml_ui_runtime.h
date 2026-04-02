@@ -55,8 +55,17 @@ public:
     [[nodiscard]] bool focusElement(Rml::Element* element);
     [[nodiscard]] bool focusElementById(Rml::ElementDocument* document, std::string_view element_id);
     [[nodiscard]] bool focusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name);
+
+    /// @brief 延迟到下一次 @ref update 末尾再设置焦点。
+    ///
+    /// 当目标元素尚未完成布局时（如文档刚加载、尚未经过首次 `Context::Update()`），
+    /// 直接调用 `focusElement` 会静默失败。此系列函数将请求加入队列，
+    /// 在 `update()` 调用 `Context::Update()` 完成布局后再统一执行，确保成功。
+    /// @see update
     void queueFocusElement(Rml::Element* element);
+    /// @brief 按元素 ID 延迟设置焦点。@see queueFocusElement
     void queueFocusElementById(Rml::ElementDocument* document, std::string_view element_id);
+    /// @brief 按 CSS 类名查找第一个未禁用元素并延迟设置焦点。@see queueFocusElement
     void queueFocusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name);
 
     [[nodiscard]] Rml::ElementDocument* loadDocument(std::string_view document_path,

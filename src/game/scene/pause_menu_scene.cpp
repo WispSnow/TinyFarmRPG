@@ -19,7 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <format>
 #include <string>
 #include <utility>
 
@@ -45,9 +45,7 @@ constexpr std::string_view MODEL_NAME = "pause_menu";
 
 [[nodiscard]] std::string toMultiplierLabel(std::string_view prefix, float value) {
     const float clamped = std::clamp(value, TIME_SCALE_MIN, TIME_SCALE_MAX);
-    char buffer[64]{};
-    std::snprintf(buffer, sizeof(buffer), "%.2fx", clamped);
-    return std::string(prefix) + " " + buffer;
+    return std::format("{} {:.2f}x", prefix, clamped);
 }
 
 using engine::ui::rmlui::updateBoundBool;
