@@ -78,10 +78,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
 
     // Action menu
     Rml::String action_menu_title_{};
-    Rml::String action_menu_left_{"0dp"};
-    Rml::String action_menu_top_{"0dp"};
     bool action_menu_visible_{false};
-    int highlighted_action_id_{-1};
     Rml::Element* focus_before_action_menu_{nullptr};
 
     // Character panel
@@ -133,9 +130,14 @@ private:
     void openBackpackActionMenu(int slot_index);
     void openHotbarActionMenu(int slot_index);
     void openDiscardConfirmForBackpackSlot(int slot_index);
-    void setActionMenuPositionForBackpackSlot(int slot_index);
-    void setActionMenuPositionForHotbarSlot(int slot_index);
-    void setActionMenuPosition(float left_dp, float top_dp);
+    void rememberFocusBeforeActionMenu();
+    void showActionMenu(Rml::String title,
+                        std::vector<ActionEntryViewModel> entries,
+                        std::string_view anchor_grid_id,
+                        int anchor_slot_index);
+    void positionActionMenuForGridSlot(std::string_view grid_id, int slot_index);
+    [[nodiscard]] Rml::Element* findIndexedChildElement(std::string_view parent_id, int child_index) const;
+    [[nodiscard]] float measureGridHorizontalGap(std::string_view grid_id) const;
     void executeAction(int action_id);
     void clearSelectionAndDetail();
 
@@ -167,7 +169,6 @@ private:
     void onHbSlotDragEnd(int slot_index, Rml::Event& event);
 
     // Action menu entry callbacks
-    void onActionEntryFocus(int action_id, Rml::Event& event);
     void onActionEntryClick(int action_id, Rml::Event& event);
 };
 

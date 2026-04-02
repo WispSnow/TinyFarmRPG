@@ -502,7 +502,7 @@
 - [x] T9 抽出共享 slot view model / `populateSlotViewModel(...)` / drag-drop state
 - [x] T10 以轻量 `slot_grid_support.*` 统一 indexed slot event 绑定与 slot-grid 接线
 - [x] T11 合并 HUD hotbar / inventory slot 重复逻辑
-- [ ] T12 inventory action menu 改为基于 DOM 几何定位
+- [x] T12 inventory action menu 改为基于 DOM 几何定位
 - [ ] T13 收敛 theme/reset/modal/nav/slot 样式
 - [ ] T14 删除死字段与废弃 glue code
 - [ ] T15 用 `ninja` 完成构建并做关键交互回归
