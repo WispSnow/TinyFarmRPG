@@ -1,6 +1,5 @@
 #pragma once
 
-#include "engine/render/image.h"
 #include "engine/resource/default_resource_ids.h"
 
 #include <entt/entity/entity.hpp>
@@ -25,7 +24,6 @@ struct Thickness {
 struct SlotItem {
     entt::id_type item_id{entt::null};
     int count{0};
-    engine::render::Image icon{};
 };
 
 inline constexpr std::string_view DEFAULT_UI_FONT_PATH{engine::resource::defaults::UI_DEFAULT_FONT_PATH};

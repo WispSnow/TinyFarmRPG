@@ -35,10 +35,6 @@ namespace engine::audio {
 class AudioPlayer;
 }
 
-namespace engine::ui {
-class UINavigationController;
-}
-
 namespace engine::ui::rmlui {
 class RmlUiRenderBackendGl;
 class RmlUiRuntime;
@@ -85,7 +81,6 @@ private:
     std::unique_ptr<engine::render::TextRenderer> text_renderer_;
     std::unique_ptr<engine::core::Config> config_;
     std::unique_ptr<engine::input::InputManager> input_manager_;
-    std::unique_ptr<engine::ui::UINavigationController> ui_navigation_controller_;
     std::unique_ptr<engine::core::Context> context_;
     std::unique_ptr<engine::scene::SceneManager> scene_manager_;
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_;
@@ -152,7 +147,7 @@ private:
     [[nodiscard]] bool initTextRenderer();
     [[nodiscard]] bool initCamera();
     [[nodiscard]] bool initInputManager();
-    [[nodiscard]] bool initUINavigationController();
+    [[nodiscard]] bool initMenuNavigationBindings();
     [[nodiscard]] bool initSpatialIndexManager();
     [[nodiscard]] bool initContext();
     [[nodiscard]] bool initSceneManager();
@@ -160,8 +155,14 @@ private:
     [[nodiscard]] bool registerDebugPanels();
 #endif
     void syncRmlUiViewport();
+    void disconnectMenuNavigationBindings();
 
     // 事件处理函数
+    bool onMenuNavigateUpPressed();
+    bool onMenuNavigateDownPressed();
+    bool onMenuNavigateLeftPressed();
+    bool onMenuNavigateRightPressed();
+    bool onMenuConfirmPressed();
     void onQuitEvent();
     void onWindowResized(const engine::utils::WindowResizedEvent& e);
 };

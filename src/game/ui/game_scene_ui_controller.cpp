@@ -216,10 +216,7 @@ void GameSceneUiController::applyHotbarChanged(const game::defs::HotbarChanged& 
 
         hotbar_ui_->setSlotInventoryIndex(slot.hotbar_index, slot.inventory_slot_index);
         if (slot.item_id != entt::null && slot.count > 0) {
-            const engine::render::Image icon = item_catalog_
-                ? item_catalog_->getItemIcon(slot.item_id)
-                : engine::render::Image{};
-            hotbar_ui_->setSlotItem(slot.hotbar_index, engine::ui::SlotItem{slot.item_id, slot.count, icon});
+            hotbar_ui_->setSlotItem(slot.hotbar_index, engine::ui::SlotItem{slot.item_id, slot.count});
         } else {
             hotbar_ui_->clearSlot(slot.hotbar_index);
         }

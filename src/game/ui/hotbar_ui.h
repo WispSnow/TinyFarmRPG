@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/ui/rmlui/rml_data_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 #include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
 #include "game/ui/slot_grid_support.h"
@@ -16,7 +16,6 @@
 
 namespace Rml {
 class DataModelConstructor;
-class ElementDocument;
 class Event;
 }
 
@@ -38,9 +37,8 @@ class HotbarUI final {
     game::data::ItemCatalog* item_catalog_{nullptr};
     uint64_t owner_scene_id_{0};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
-    Rml::ElementDocument* document_{nullptr};
 
     std::vector<SlotGridViewModel> hotbar_slots_{};
     std::vector<std::optional<engine::ui::SlotItem>> slot_items_{};
@@ -67,7 +65,9 @@ public:
     HotbarUI(HotbarUI&&) = delete;
     HotbarUI& operator=(HotbarUI&&) = delete;
 
-    [[nodiscard]] bool isReady() const { return document_ != nullptr && data_bridge_.isValid(); }
+    [[nodiscard]] bool isReady() const {
+        return document_controller_.document() != nullptr && document_controller_.isModelValid();
+    }
     [[nodiscard]] bool isVisible() const { return visible_; }
 
     void setSlotItem(int slot_index, const engine::ui::SlotItem& item);

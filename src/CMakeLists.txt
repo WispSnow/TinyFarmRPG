@@ -136,7 +136,6 @@ set(_rmlui_renderer_gl3_src "${_rmlui_source_root}/Backends/RmlUi_Renderer_GL3.c
 target_sources(engine PRIVATE
     ${_rmlui_platform_sdl_src}
     ${_rmlui_renderer_gl3_src}
-    engine/ui/ui_navigation_controller.cpp
     engine/ui/rmlui/rml_ui_runtime.cpp
     engine/ui/rmlui/rml_ui_render_backend_gl.cpp
     engine/ui/rmlui/rml_data_bridge.cpp

@@ -14,7 +14,6 @@
 #include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
-#include "engine/ui/ui_navigation_controller.h"
 #include "engine/scene/scene_manager.h"
 #include "engine/async/main_thread_command_queue.h"
 #include "engine/utils/events.h"
@@ -38,6 +37,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cmath>
+#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 namespace {
@@ -57,6 +57,8 @@ constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf"
 }
 
 } // namespace
+
+using namespace entt::literals;
 
 namespace engine::core {
 
@@ -173,7 +175,7 @@ bool GameApp::init() {
     if (!initCamera()) return false;
     if (!initTextRenderer()) return false;
     if (!initInputManager()) return false;
-    if (!initUINavigationController()) return false;
+    if (!initMenuNavigationBindings()) return false;
     if (!initSpatialIndexManager()) return false;
 
     if (!initContext()) return false;
@@ -265,7 +267,7 @@ void GameApp::close() {
     dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
     dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
 
-    ui_navigation_controller_.reset();
+    disconnectMenuNavigationBindings();
 
     // 先关闭场景管理器，确保所有场景都被清理
     if (scene_manager_) {
@@ -576,23 +578,66 @@ bool GameApp::initInputManager()
     return true;
 }
 
-bool GameApp::initUINavigationController()
+bool GameApp::initMenuNavigationBindings()
 {
     if (!input_manager_) {
-        spdlog::error("初始化 UI 导航控制器失败：InputManager 未初始化。");
+        spdlog::error("初始化 UI 导航输入绑定失败：InputManager 未初始化。");
         return false;
     }
 
-    ui_navigation_controller_ = std::make_unique<engine::ui::UINavigationController>(*input_manager_);
-    if (rmlui_runtime_) {
-        ui_navigation_controller_->onNavigateUp().connect<&engine::ui::rmlui::RmlUiRuntime::navigateUp>(rmlui_runtime_.get());
-        ui_navigation_controller_->onNavigateDown().connect<&engine::ui::rmlui::RmlUiRuntime::navigateDown>(rmlui_runtime_.get());
-        ui_navigation_controller_->onNavigateLeft().connect<&engine::ui::rmlui::RmlUiRuntime::navigateLeft>(rmlui_runtime_.get());
-        ui_navigation_controller_->onNavigateRight().connect<&engine::ui::rmlui::RmlUiRuntime::navigateRight>(rmlui_runtime_.get());
-        ui_navigation_controller_->onConfirm().connect<&engine::ui::rmlui::RmlUiRuntime::confirmFocusedElement>(rmlui_runtime_.get());
+    input_manager_->onAction("menu_up"_hs).connect<&GameApp::onMenuNavigateUpPressed>(this);
+    input_manager_->onAction("menu_down"_hs).connect<&GameApp::onMenuNavigateDownPressed>(this);
+    input_manager_->onAction("menu_left"_hs).connect<&GameApp::onMenuNavigateLeftPressed>(this);
+    input_manager_->onAction("menu_right"_hs).connect<&GameApp::onMenuNavigateRightPressed>(this);
+    input_manager_->onAction("menu_confirm"_hs).connect<&GameApp::onMenuConfirmPressed>(this);
+    return true;
+}
+
+void GameApp::disconnectMenuNavigationBindings() {
+    if (!input_manager_) {
+        return;
     }
 
-    return true;
+    input_manager_->onAction("menu_up"_hs).disconnect<&GameApp::onMenuNavigateUpPressed>(this);
+    input_manager_->onAction("menu_down"_hs).disconnect<&GameApp::onMenuNavigateDownPressed>(this);
+    input_manager_->onAction("menu_left"_hs).disconnect<&GameApp::onMenuNavigateLeftPressed>(this);
+    input_manager_->onAction("menu_right"_hs).disconnect<&GameApp::onMenuNavigateRightPressed>(this);
+    input_manager_->onAction("menu_confirm"_hs).disconnect<&GameApp::onMenuConfirmPressed>(this);
+}
+
+bool GameApp::onMenuNavigateUpPressed() {
+    if (rmlui_runtime_) {
+        rmlui_runtime_->navigateUp();
+    }
+    return false;
+}
+
+bool GameApp::onMenuNavigateDownPressed() {
+    if (rmlui_runtime_) {
+        rmlui_runtime_->navigateDown();
+    }
+    return false;
+}
+
+bool GameApp::onMenuNavigateLeftPressed() {
+    if (rmlui_runtime_) {
+        rmlui_runtime_->navigateLeft();
+    }
+    return false;
+}
+
+bool GameApp::onMenuNavigateRightPressed() {
+    if (rmlui_runtime_) {
+        rmlui_runtime_->navigateRight();
+    }
+    return false;
+}
+
+bool GameApp::onMenuConfirmPressed() {
+    if (rmlui_runtime_) {
+        rmlui_runtime_->confirmFocusedElement();
+    }
+    return false;
 }
 
 bool GameApp::initSpatialIndexManager()

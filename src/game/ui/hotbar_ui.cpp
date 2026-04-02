@@ -6,12 +6,9 @@
 #include "game/component/hotbar_component.h"
 #include "game/defs/commands.h"
 #include "game/ui/item_tooltip_ui.h"
-#include "game/ui/rml_item_icon_helpers.h"
 
-#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
-#include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -50,17 +47,11 @@ HotbarUI::HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
 HotbarUI::~HotbarUI() {
     clearTooltip();
     destroyDocument();
-    data_bridge_.destroy();
 }
 
 bool HotbarUI::initDocument() {
-    auto* rml_context = runtime_.getContext();
-    if (!rml_context) {
-        spdlog::error("HotbarUI: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME, &type_register_);
+    document_controller_.attach(&runtime_, owner_scene_id_);
+    auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
     if (!constructor) {
         spdlog::error("HotbarUI: 创建 data model 失败。");
         return false;
@@ -68,13 +59,13 @@ bool HotbarUI::initDocument() {
 
     if (!ensureDataTypesRegistered(constructor)) {
         spdlog::error("HotbarUI: 注册 hotbar data types 失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
     if (!constructor.Bind("hotbar_slots", &hotbar_slots_)) {
         spdlog::error("HotbarUI: 绑定 hotbar_slots 失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
@@ -91,20 +82,19 @@ bool HotbarUI::initDocument() {
                 .on_drag_end = &HotbarUI::onSlotDragEnd,
             })) {
         spdlog::error("HotbarUI: 绑定 data event 回调失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
-    document_ = runtime_.loadDocument(DOCUMENT_PATH, owner_scene_id_);
-    if (!document_) {
+    if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("HotbarUI: 加载 RML 文档失败: {}", DOCUMENT_PATH);
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
-    data_bridge_.markAllDirty();
-    if (!visible_) {
-        runtime_.hideDocument(document_);
+    document_controller_.markAllDirty();
+    if (!visible_ && document_controller_.document()) {
+        runtime_.hideDocument(document_controller_.document());
     }
     return true;
 }
@@ -128,10 +118,7 @@ bool HotbarUI::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor)
 
 void HotbarUI::destroyDocument() {
     clearDragState();
-    if (document_) {
-        runtime_.unloadDocument(document_);
-        document_ = nullptr;
-    }
+    document_controller_.unload();
 }
 
 bool HotbarUI::isValidSlotIndex(int slot_index) const {
@@ -162,8 +149,8 @@ void HotbarUI::refreshSlotViewModel(int slot_index) {
 }
 
 void HotbarUI::markSlotsDirty() {
-    if (data_bridge_.isValid()) {
-        data_bridge_.markDirty("hotbar_slots");
+    if (document_controller_.isModelValid()) {
+        document_controller_.markDirty("hotbar_slots");
     }
     refreshTooltipForHoveredSlot();
 }
@@ -274,8 +261,8 @@ void HotbarUI::resetInventoryMappings() {
 
 void HotbarUI::show() {
     visible_ = true;
-    if (document_) {
-        runtime_.showDocument(document_);
+    if (auto* document = document_controller_.document()) {
+        runtime_.showDocument(document);
     }
 }
 
@@ -283,8 +270,8 @@ void HotbarUI::hide() {
     visible_ = false;
     clearTooltip();
     clearDragState();
-    if (document_) {
-        runtime_.hideDocument(document_);
+    if (auto* document = document_controller_.document()) {
+        runtime_.hideDocument(document);
     }
 }
 
