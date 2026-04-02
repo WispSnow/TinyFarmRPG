@@ -63,12 +63,6 @@ void RmlDocumentController::enableHoverFocusSync(HoverFocusSyncListener::Candida
     applyHoverFocusSync();
 }
 
-void RmlDocumentController::disableHoverFocusSync() {
-    hover_focus_sync_enabled_ = false;
-    hover_focus_candidate_filter_ = {};
-    clearHoverFocusListener();
-}
-
 void RmlDocumentController::setDefaultFocusById(std::string_view element_id) {
     default_focus_kind_ = DefaultFocusKind::ElementId;
     default_focus_token_ = std::string(element_id);
@@ -79,11 +73,6 @@ void RmlDocumentController::setDefaultFocusFirstEnabledByClass(std::string_view 
     default_focus_kind_ = DefaultFocusKind::FirstEnabledElementByClass;
     default_focus_token_ = std::string(class_name);
     queueDefaultFocus();
-}
-
-void RmlDocumentController::clearDefaultFocus() {
-    default_focus_kind_ = DefaultFocusKind::None;
-    default_focus_token_.clear();
 }
 
 void RmlDocumentController::queueDefaultFocus() {
@@ -124,30 +113,12 @@ void RmlDocumentController::queueFocusFirstEnabledElementByClass(std::string_vie
     runtime_->queueFocusFirstEnabledElementByClass(document_, class_name);
 }
 
-void RmlDocumentController::show() {
-    if (!runtime_ || !document_) {
-        return;
-    }
-    runtime_->showDocument(document_);
-}
-
-void RmlDocumentController::hide() {
-    if (!runtime_ || !document_) {
-        return;
-    }
-    runtime_->hideDocument(document_);
-}
-
 void RmlDocumentController::markDirty(std::string_view variable_name) {
     data_bridge_.markDirty(variable_name);
 }
 
 void RmlDocumentController::markAllDirty() {
     data_bridge_.markAllDirty();
-}
-
-void RmlDocumentController::destroyModel() {
-    data_bridge_.destroy();
 }
 
 void RmlDocumentController::applyHoverFocusSync() {

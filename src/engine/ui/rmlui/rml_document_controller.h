@@ -55,23 +55,17 @@ public:
     void unload();
 
     void enableHoverFocusSync(HoverFocusSyncListener::CandidateFilter candidate_filter = {});
-    void disableHoverFocusSync();
 
     void setDefaultFocusById(std::string_view element_id);
     void setDefaultFocusFirstEnabledByClass(std::string_view class_name);
-    void clearDefaultFocus();
     void queueDefaultFocus();
 
     void queueFocusElement(Rml::Element* element);
     void queueFocusElementById(std::string_view element_id);
     void queueFocusFirstEnabledElementByClass(std::string_view class_name);
 
-    void show();
-    void hide();
-
     void markDirty(std::string_view variable_name);
     void markAllDirty();
-    void destroyModel();
 
     [[nodiscard]] bool isModelValid() const { return data_bridge_.isValid(); }
     [[nodiscard]] Rml::ElementDocument* document() const { return document_; }
