@@ -195,6 +195,7 @@ target_sources(game PRIVATE
     game/runtime/system_scheduler.cpp
     # UI
     game/ui/time_clock_hud.cpp
+    game/ui/game_overlay.cpp
     game/ui/game_input_prompt_overlay.cpp
     game/ui/hotbar_ui.cpp
     game/ui/slot_grid_support.cpp

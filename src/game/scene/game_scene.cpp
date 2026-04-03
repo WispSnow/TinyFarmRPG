@@ -31,6 +31,7 @@
 #include "game/system/map_transition_system.h"
 #include "game/system/render_target_system.h"
 #include "game/ui/game_input_prompt_overlay.h"
+#include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
 #include "game/world/map_manager.h"
 #include "engine/vfx/vfx_service.h"
@@ -308,6 +309,7 @@ void GameScene::clean() {
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(nullptr);
     }
+    game_overlay_.reset();
     input_prompt_overlay_.reset();
     ui_controller_.reset();
     has_previous_camera_position_ = false;
@@ -416,6 +418,11 @@ bool GameScene::initUI() {
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(ui_controller_->screenFade());
     }
+
+    game_overlay_ = std::make_unique<game::ui::GameOverlay>(
+        *context_.getRmlUi(),
+        instance_id_,
+        [this]() { (void)onPauseToggle(); });
 
     input_prompt_overlay_ = std::make_unique<game::ui::GameInputPromptOverlay>(
         *context_.getRmlUi(),

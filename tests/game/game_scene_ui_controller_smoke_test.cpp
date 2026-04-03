@@ -13,7 +13,7 @@
 namespace game::scene {
 namespace {
 
-TEST(GameSceneUiControllerSmokeTest, GameSceneOwnsAndBuildsUiControllerAndInputPromptOverlay) {
+TEST(GameSceneUiControllerSmokeTest, GameSceneOwnsAndBuildsUiControllerAndSceneOverlays) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.h").lexically_normal();
     const std::filesystem::path source_path =
@@ -27,6 +27,7 @@ TEST(GameSceneUiControllerSmokeTest, GameSceneOwnsAndBuildsUiControllerAndInputP
     ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
 
     EXPECT_NE(header.find("std::unique_ptr<game::ui::GameSceneUiController> ui_controller_{};"), std::string::npos);
+    EXPECT_NE(header.find("std::unique_ptr<game::ui::GameOverlay> game_overlay_{};"), std::string::npos);
     EXPECT_NE(header.find("std::unique_ptr<game::ui::GameInputPromptOverlay> input_prompt_overlay_{};"),
               std::string::npos);
 
@@ -34,6 +35,7 @@ TEST(GameSceneUiControllerSmokeTest, GameSceneOwnsAndBuildsUiControllerAndInputP
     ASSERT_FALSE(init_ui_block.empty());
     EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameSceneUiController>("), std::string::npos);
     EXPECT_NE(init_ui_block.find("ui_controller_->init()"), std::string::npos);
+    EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameOverlay>("), std::string::npos);
     EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameInputPromptOverlay>("), std::string::npos);
     EXPECT_NE(init_ui_block.find("systems_->map_transition_system->setFadeOverlay(ui_controller_->screenFade());"),
               std::string::npos);
@@ -62,6 +64,7 @@ TEST(GameSceneUiControllerSmokeTest, GameSceneDelegatesUiLifecycleAndActionsToCo
     EXPECT_NE(update_block.find("ui_controller_->update(delta_time);"), std::string::npos);
     EXPECT_NE(update_block.find("input_prompt_overlay_->update();"), std::string::npos);
     EXPECT_NE(prepare_ui_block.find("ui_controller_->refreshAnchoredWidgets(camera, clamped_alpha);"), std::string::npos);
+    EXPECT_NE(clean_block.find("game_overlay_.reset();"), std::string::npos);
     EXPECT_NE(clean_block.find("input_prompt_overlay_.reset();"), std::string::npos);
     EXPECT_NE(clean_block.find("ui_controller_.reset();"), std::string::npos);
     EXPECT_NE(hotbar_block.find("ui_controller_->toggleHotbar();"), std::string::npos);
@@ -123,8 +126,27 @@ TEST(GameSceneUiControllerSmokeTest, InputPromptOverlayOwnsPromptDocumentAndVisi
     EXPECT_NE(header.find("void toggleVisible();"), std::string::npos);
     EXPECT_NE(header.find("bool visible_{false};"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.load(DOCUMENT_PATH)"), std::string::npos);
+    EXPECT_NE(source.find("game_input_prompt_overlay.rml"), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"visible\", &visible_);"), std::string::npos);
     EXPECT_NE(source.find("refresh_prompt(\"toggle_prompt_text\""), std::string::npos);
+}
+
+TEST(GameSceneUiControllerSmokeTest, GameOverlayOwnsMenuButtonDocumentAndCallback) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/game_overlay.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/game_overlay.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(header.find("class GameOverlay final"), std::string::npos);
+    EXPECT_NE(source.find("game_overlay.rml"), std::string::npos);
+    EXPECT_NE(source.find("bindSimpleEvent(constructor, \"menu\""), std::string::npos);
 }
 
 } // namespace

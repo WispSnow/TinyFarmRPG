@@ -2,31 +2,14 @@
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="game_overlay.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="input_prompt_overlay">
-    <div id="game-prompt-bar" data-if="visible">
-        <div class="game-prompt-item">
-            <div class="game-prompt-label">Use</div>
-            <div class="game-prompt-value">{{ primary_prompt_text }}</div>
-        </div>
-        <div class="game-prompt-item">
-            <div class="game-prompt-label">Alt</div>
-            <div class="game-prompt-value">{{ secondary_prompt_text }}</div>
-        </div>
-        <div class="game-prompt-item">
-            <div class="game-prompt-label">Bag</div>
-            <div class="game-prompt-value">{{ inventory_prompt_text }}</div>
-        </div>
-        <div class="game-prompt-item">
-            <div class="game-prompt-label">Menu</div>
-            <div class="game-prompt-value">{{ pause_prompt_text }}</div>
-        </div>
-        <div class="game-prompt-item">
-            <div class="game-prompt-label">Hints</div>
-            <div class="game-prompt-value">{{ toggle_prompt_text }}</div>
-        </div>
+<body class="tf-screen-root tf-nav-root" data-model="game_overlay">
+    <div id="game-overlay-top-right">
+        <button id="game-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
     </div>
 </body>
 </rml>
