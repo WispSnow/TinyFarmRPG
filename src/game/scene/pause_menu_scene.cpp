@@ -164,7 +164,7 @@ bool PauseMenuScene::initUI() {
     refreshVolumeLabels();
     refreshTimeScaleLabel();
     refreshSaveActionButtons();
-    setMessage("", true);
+    setMessage("", false);
     document_controller_.markAllDirty();
     return true;
 }
