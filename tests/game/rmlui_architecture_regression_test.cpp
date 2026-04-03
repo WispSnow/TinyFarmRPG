@@ -71,7 +71,6 @@ TEST(RmlUiArchitectureRegressionTest, ProductionRmlUsesDataEventAndSharedThemeFi
             normalized.ends_with("/scenes/save_slot_select.rml") ||
             normalized.ends_with("/scenes/battle.rml") ||
             normalized.ends_with("/scenes/inventory_menu.rml") ||
-            normalized.ends_with("/hud/game_overlay.rml") ||
             normalized.ends_with("/hud/hotbar.rml");
 
         if (should_be_interactive) {

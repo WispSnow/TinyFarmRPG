@@ -30,6 +30,7 @@
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/render_target_system.h"
+#include "game/ui/game_input_prompt_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
 #include "game/world/map_manager.h"
 #include "engine/vfx/vfx_service.h"
@@ -211,6 +212,9 @@ void GameScene::update(float delta_time) {
     if (!abort_to_title_ && services_ && services_->vfx_service) {
         services_->vfx_service->update(delta_time);
     }
+    if (!abort_to_title_ && input_prompt_overlay_) {
+        input_prompt_overlay_->update();
+    }
     if (!abort_to_title_ && ui_controller_) {
         ui_controller_->update(delta_time);
     }
@@ -304,6 +308,7 @@ void GameScene::clean() {
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(nullptr);
     }
+    input_prompt_overlay_.reset();
     ui_controller_.reset();
     has_previous_camera_position_ = false;
     previous_camera_position_ = glm::vec2{0.0f, 0.0f};
@@ -401,8 +406,7 @@ bool GameScene::initUI() {
         context_,
         registry_,
         instance_id_,
-        services_ ? services_->item_catalog.get() : nullptr,
-        [this]() { (void)onPauseToggle(); });
+        services_ ? services_->item_catalog.get() : nullptr);
     if (!ui_controller_ || !ui_controller_->init()) {
         spdlog::error("GameScene: 创建 GameSceneUiController 失败。");
         ui_controller_.reset();
@@ -412,6 +416,11 @@ bool GameScene::initUI() {
     if (systems_ && systems_->map_transition_system) {
         systems_->map_transition_system->setFadeOverlay(ui_controller_->screenFade());
     }
+
+    input_prompt_overlay_ = std::make_unique<game::ui::GameInputPromptOverlay>(
+        *context_.getRmlUi(),
+        context_.getInputManager(),
+        instance_id_);
 
     spdlog::debug("GameScene: UI controller 初始化完成。");
     return true;
@@ -477,8 +486,8 @@ bool GameScene::onPauseToggle() {
 }
 
 bool GameScene::onTogglePromptBar() {
-    if (ui_controller_) {
-        ui_controller_->setPromptBarVisible(!ui_controller_->isPromptBarVisible());
+    if (input_prompt_overlay_) {
+        input_prompt_overlay_->toggleVisible();
         return true;
     }
 

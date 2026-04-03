@@ -1,9 +1,7 @@
 #include "game_scene_ui_controller.h"
 
 #include "engine/core/context.h"
-#include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
-#include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
@@ -16,45 +14,19 @@
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/time_clock_hud.h"
 
-#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <string>
-#include <string_view>
-
-using namespace entt::literals;
-
-namespace {
-
-constexpr std::string_view GAME_OVERLAY_DOCUMENT_PATH = "ui/rmlui/hud/game_overlay.rml";
-constexpr std::string_view GAME_OVERLAY_MODEL_NAME = "game_overlay";
-
-using engine::ui::rmlui::updateBoundString;
-
-[[nodiscard]] std::string promptTextForAction(engine::input::InputManager& input_manager, entt::id_type action_id) {
-    if (const auto prompt = input_manager.getActionPrompt(action_id); prompt.has_value()) {
-        return prompt->fallback_text;
-    }
-
-    return "-";
-}
-
-} // namespace
 
 namespace game::ui {
 
 GameSceneUiController::GameSceneUiController(engine::core::Context& context,
                                              entt::registry& registry,
                                              uint64_t scene_instance_id,
-                                             game::data::ItemCatalog* item_catalog,
-                                             MenuRequestHandler on_menu_requested)
+                                             game::data::ItemCatalog* item_catalog)
     : context_(context),
       registry_(registry),
       scene_instance_id_(scene_instance_id),
-      item_catalog_(item_catalog),
-      on_menu_requested_(std::move(on_menu_requested)) {
+      item_catalog_(item_catalog) {
 }
 
 GameSceneUiController::~GameSceneUiController() {
@@ -95,34 +67,6 @@ bool GameSceneUiController::init() {
         hotbar_ui_->setTarget(player);
     }
 
-    overlay_controller_.attach(rml_runtime, scene_instance_id_);
-    if (auto overlay_constructor = overlay_controller_.createModel(GAME_OVERLAY_MODEL_NAME)) {
-        overlay_constructor.Bind("primary_prompt_text", &primary_prompt_text_);
-        overlay_constructor.Bind("secondary_prompt_text", &secondary_prompt_text_);
-        overlay_constructor.Bind("inventory_prompt_text", &inventory_prompt_text_);
-        overlay_constructor.Bind("pause_prompt_text", &pause_prompt_text_);
-        overlay_constructor.Bind("show_prompt_bar", &show_prompt_bar_);
-
-        if (!overlay_controller_.bindSimpleEvent(overlay_constructor, "menu", [this] {
-                if (on_menu_requested_) {
-                    on_menu_requested_();
-                }
-            })) {
-            spdlog::error("GameSceneUiController: 绑定 overlay data event 回调失败，游戏内菜单按钮将不可用。");
-            overlay_controller_.unload();
-        } else {
-            refreshOverlayPrompts();
-            overlay_controller_.markAllDirty();
-
-            if (!overlay_controller_.load(GAME_OVERLAY_DOCUMENT_PATH)) {
-                spdlog::error("GameSceneUiController: 加载 overlay 文档失败，游戏内菜单按钮将不可用。");
-                overlay_controller_.unload();
-            }
-        }
-    } else {
-        spdlog::error("GameSceneUiController: 创建 overlay data model 失败，输入提示将不可用。");
-    }
-
     rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_runtime, scene_instance_id_);
     screen_fade_ = rml_screen_fade_.get();
 
@@ -131,8 +75,6 @@ bool GameSceneUiController::init() {
 }
 
 void GameSceneUiController::update(float delta_time) {
-    refreshOverlayPrompts();
-
     if (time_clock_hud_) {
         time_clock_hud_->update(registry_.ctx().find<game::data::GameTime>());
     }
@@ -167,12 +109,6 @@ void GameSceneUiController::clean() {
     item_tooltip_ui_.reset();
     screen_fade_ = nullptr;
     rml_screen_fade_.reset();
-    overlay_controller_.unload();
-    primary_prompt_text_.clear();
-    secondary_prompt_text_.clear();
-    inventory_prompt_text_.clear();
-    pause_prompt_text_.clear();
-    show_prompt_bar_ = true;
 }
 
 bool GameSceneUiController::toggleHotbar() {
@@ -232,17 +168,6 @@ void GameSceneUiController::applyHotbarSlotChanged(const game::defs::HotbarSlotC
     hotbar_ui_->setActiveSlot(evt.slot_index);
 }
 
-void GameSceneUiController::setPromptBarVisible(bool visible) {
-    if (show_prompt_bar_ == visible) {
-        return;
-    }
-
-    show_prompt_bar_ = visible;
-    if (overlay_controller_.isModelValid()) {
-        overlay_controller_.markDirty("show_prompt_bar");
-    }
-}
-
 entt::entity GameSceneUiController::findPlayerEntity() const {
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (player_view.empty()) {
@@ -250,26 +175,6 @@ entt::entity GameSceneUiController::findPlayerEntity() const {
     }
 
     return *player_view.begin();
-}
-
-void GameSceneUiController::refreshOverlayPrompts() {
-    if (!overlay_controller_.isModelValid()) {
-        return;
-    }
-
-    auto& input_manager = context_.getInputManager();
-    if (updateBoundString(primary_prompt_text_, promptTextForAction(input_manager, "primary_action"_hs))) {
-        overlay_controller_.markDirty("primary_prompt_text");
-    }
-    if (updateBoundString(secondary_prompt_text_, promptTextForAction(input_manager, "secondary_action"_hs))) {
-        overlay_controller_.markDirty("secondary_prompt_text");
-    }
-    if (updateBoundString(inventory_prompt_text_, promptTextForAction(input_manager, "inventory"_hs))) {
-        overlay_controller_.markDirty("inventory_prompt_text");
-    }
-    if (updateBoundString(pause_prompt_text_, promptTextForAction(input_manager, "pause"_hs))) {
-        overlay_controller_.markDirty("pause_prompt_text");
-    }
 }
 
 } // namespace game::ui
