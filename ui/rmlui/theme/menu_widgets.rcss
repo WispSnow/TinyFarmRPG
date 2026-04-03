@@ -20,6 +20,9 @@ button {
     nav-down: auto;
     nav-left: auto;
     nav-right: auto;
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, color 0.08s cubic-out, image-color 0.08s cubic-out,
+        filter 0.08s cubic-out;
 }
 
 .tf-button-primary,
@@ -32,14 +35,15 @@ button {
     decorator: ninepatch(primary-button, primary-button-inner, 1.0);
 }
 
-.tf-button-primary:hover,
-.tf-button-primary:focus {
+.tf-input-mouse .tf-button-primary:hover,
+.tf-input-nav .tf-button-primary:focus {
+    transform: translateY(-1dp);
     color: #fce97fff;
-    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
 }
 
 .tf-button-primary:active {
     decorator: ninepatch(primary-button-pressed, primary-button-pressed-inner, 1.0);
+    transform: translateY(1dp);
     color: #999999ff;
 }
 
@@ -47,14 +51,15 @@ button {
     decorator: ninepatch(secondary-button, secondary-button-inner, 1.0);
 }
 
-.tf-button-secondary:hover,
-.tf-button-secondary:focus {
+.tf-input-mouse .tf-button-secondary:hover,
+.tf-input-nav .tf-button-secondary:focus {
+    transform: translateY(-1dp);
     color: #fce97fff;
-    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
 }
 
 .tf-button-secondary:active {
     decorator: ninepatch(secondary-button-pressed, secondary-button-pressed-inner, 1.0);
+    transform: translateY(1dp);
     color: #999999ff;
 }
 
@@ -64,16 +69,21 @@ button {
 .tf-button-secondary:disabled {
     color: #666666ff;
     opacity: 0.75;
+    transform: translateY(0);
 }
 
 .tf-icon-button {
     width: 32dp;
     height: 32dp;
+    image-color: #d8dee9d8;
+    filter: saturate(0.75) brightness(0.95);
 }
 
-.tf-icon-button:hover,
-.tf-icon-button:focus {
-    box-shadow: #fce97fff 0dp 0dp 0dp 2dp;
+.tf-input-mouse .tf-icon-button:hover,
+.tf-input-nav .tf-icon-button:focus {
+    transform: translateY(-1dp);
+    image-color: #fce97fff;
+    filter: saturate(1.15) brightness(1.08);
 }
 
 .tf-icon-button.icon-menu {
@@ -82,6 +92,9 @@ button {
 
 .tf-icon-button.icon-menu:active {
     decorator: image(menu-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-volume-up {
@@ -90,6 +103,9 @@ button {
 
 .tf-icon-button.icon-volume-up:active {
     decorator: image(volume-up-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-volume-down {
@@ -98,6 +114,9 @@ button {
 
 .tf-icon-button.icon-volume-down:active {
     decorator: image(volume-down-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-arrow-left {
@@ -106,6 +125,9 @@ button {
 
 .tf-icon-button.icon-arrow-left:active {
     decorator: image(arrow-left-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-arrow-right {
@@ -114,6 +136,9 @@ button {
 
 .tf-icon-button.icon-arrow-right:active {
     decorator: image(arrow-right-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-page-left {
@@ -122,6 +147,9 @@ button {
 
 .tf-icon-button.icon-page-left:active {
     decorator: image(page-left-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
 }
 
 .tf-icon-button.icon-page-right {
@@ -130,6 +158,17 @@ button {
 
 .tf-icon-button.icon-page-right:active {
     decorator: image(page-right-icon-pressed);
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
+}
+
+.tf-icon-button.disabled,
+.tf-icon-button:disabled {
+    opacity: 0.6;
+    image-color: #9aa5b1b0;
+    filter: saturate(0.4) brightness(0.7);
+    transform: translateY(0);
 }
 
 .tf-value-label {

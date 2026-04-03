@@ -81,6 +81,10 @@
     width: 20dp;
     height: 20dp;
     padding: 2dp;
+    image-color: #d8dee9d0;
+    filter: saturate(0.8) brightness(0.95);
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
 .tab-active {
@@ -90,6 +94,8 @@
 
 .tab-disabled {
     opacity: 0.4;
+    image-color: #8f98a8a0;
+    filter: saturate(0.45) brightness(0.72);
 }
 
 #tab-inventory  { decorator: image(tab-inventory); }
@@ -97,6 +103,11 @@
 #tab-quests     { decorator: image(tab-quests); }
 #tab-map        { decorator: image(tab-map); }
 #tab-options    { decorator: image(tab-options); }
+
+.tf-input-mouse .tab-icon:hover,
+.tf-input-nav .tab-icon:focus {
+    filter: saturate(1.12) brightness(1.08);
+}
 
 /* --- Separator --- */
 
@@ -258,8 +269,8 @@
     vertical-align: middle;
 }
 
-#sort-btn:hover,
-#sort-btn:focus {
+.tf-input-mouse #sort-btn:hover,
+.tf-input-nav #sort-btn:focus {
     background-color: #3b4252;
 }
 
@@ -268,11 +279,16 @@
     height: 20dp;
     padding: 2dp;
     decorator: image(trash-closed);
+    image-color: #d8dee9d0;
+    filter: saturate(0.8) brightness(0.95);
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
-#trash-btn:hover,
-#trash-btn:focus {
+.tf-input-mouse #trash-btn:hover,
+.tf-input-nav #trash-btn:focus {
     decorator: image(trash-open);
+    filter: saturate(1.2) brightness(1.08);
 }
 
 /* --- Action Menu --- */
@@ -307,8 +323,8 @@
     margin-top: 2dp;
 }
 
-.action-menu-entry:hover,
-.action-menu-entry:focus {
+.tf-input-mouse .action-menu-entry:hover,
+.tf-input-nav .action-menu-entry:focus {
     background-color: #414868;
 }
 

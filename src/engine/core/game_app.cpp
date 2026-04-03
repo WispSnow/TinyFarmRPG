@@ -213,6 +213,13 @@ void GameApp::updateFrame(float delta_time) {
 
 void GameApp::updateRmlUiFrame() {
     if (rmlui_runtime_) {
+        if (input_manager_) {
+            const auto last_input_device = input_manager_->getLastInputDevice();
+            const auto input_mode = last_input_device == engine::input::InputDevice::Mouse
+                ? engine::ui::rmlui::RmlUiRuntime::InputMode::Mouse
+                : engine::ui::rmlui::RmlUiRuntime::InputMode::Navigation;
+            rmlui_runtime_->setInputMode(input_mode);
+        }
         rmlui_runtime_->update();
     }
 }
