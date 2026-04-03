@@ -27,6 +27,11 @@ class RenderInterface_GL3_STB;
 /// 以及显式的 `Update()` 阶段。渲染细节不在这里处理。
 class RmlUiRuntime final {
 public:
+    enum class InputMode : std::uint8_t {
+        Mouse,
+        Navigation,
+    };
+
     [[nodiscard]] static std::unique_ptr<RmlUiRuntime> create(SDL_Window* window,
                                                               RenderInterface_GL3_STB& render_interface,
                                                               const RmlUiViewport& viewport);
@@ -44,6 +49,8 @@ public:
     void update();
     void syncViewport(const RmlUiViewport& viewport);
     void setLogicalSize(int width, int height);
+    void setInputMode(InputMode mode);
+    [[nodiscard]] InputMode getInputMode() const { return input_mode_; }
 
     [[nodiscard]] Rml::ElementDocument* loadDocument(std::string_view document_path,
                                                      uint64_t owner_scene_id = 0);
@@ -77,6 +84,8 @@ private:
     void applyContextDimensions();
     void adjustEventForViewport(SDL_Event& event) const;
     void applyInteractionPolicy();
+    void applyInputModeClass(Rml::ElementDocument* doc);
+    void applyInputModeClasses();
 
     struct DocumentEntry {
         Rml::ElementDocument* doc{nullptr};
@@ -95,6 +104,7 @@ private:
 
     std::vector<DocumentEntry> documents_;
     uint64_t active_scene_id_{0};
+    InputMode input_mode_{InputMode::Mouse};
 };
 
 } // namespace engine::ui::rmlui

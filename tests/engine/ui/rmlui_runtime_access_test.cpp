@@ -58,6 +58,30 @@ TEST(RmlUiRuntimeAccessTest, GameAppInitRmlUiUsesRenderHookWithoutCompatLayer) {
     EXPECT_EQ(init_rmlui_block.find("setLegacyRmlUiLayer("), std::string::npos);
 }
 
+TEST(RmlUiRuntimeAccessTest, RuntimeHeaderAndSourceExposeInputModeClassSync) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(header.find("enum class InputMode : std::uint8_t"), std::string::npos);
+    EXPECT_NE(header.find("void setInputMode(InputMode mode);"), std::string::npos);
+    EXPECT_NE(source.find("constexpr char INPUT_MODE_MOUSE_CLASS[] = \"tf-input-mouse\";"), std::string::npos);
+    EXPECT_NE(source.find("constexpr char INPUT_MODE_NAV_CLASS[] = \"tf-input-nav\";"), std::string::npos);
+    EXPECT_NE(source.find("Rml::Element* root = doc->QuerySelector(\"body\");"), std::string::npos);
+    EXPECT_NE(source.find("root->SetClass(Rml::String{INPUT_MODE_MOUSE_CLASS}, input_mode_ == InputMode::Mouse);"),
+              std::string::npos);
+    EXPECT_NE(source.find("root->SetClass(Rml::String{INPUT_MODE_NAV_CLASS}, input_mode_ == InputMode::Navigation);"),
+              std::string::npos);
+}
+
 } // namespace
 } // namespace engine::core
 

@@ -51,7 +51,15 @@ TEST(GameAppRmlUiFrameLoopTest, UpdateRmlUiFrameOwnsRuntimeUpdate) {
     ASSERT_FALSE(update_block.empty());
 
     EXPECT_NE(update_block.find("if (rmlui_runtime_)"), std::string::npos);
+    EXPECT_NE(update_block.find("input_manager_->getLastInputDevice()"), std::string::npos);
+    EXPECT_NE(update_block.find("rmlui_runtime_->setInputMode(input_mode);"), std::string::npos);
     EXPECT_NE(update_block.find("rmlui_runtime_->update();"), std::string::npos);
+
+    const std::size_t pos_set_input_mode = update_block.find("rmlui_runtime_->setInputMode(input_mode);");
+    const std::size_t pos_runtime_update = update_block.find("rmlui_runtime_->update();");
+    ASSERT_NE(pos_set_input_mode, std::string::npos);
+    ASSERT_NE(pos_runtime_update, std::string::npos);
+    EXPECT_LT(pos_set_input_mode, pos_runtime_update);
 }
 
 TEST(GameAppRmlUiFrameLoopTest, InitRmlUiRegistersRenderOnlyHook) {

@@ -5,6 +5,7 @@
 #include "RmlUi_Platform_SDL.h"
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Log.h>
@@ -17,6 +18,9 @@
 namespace engine::ui::rmlui {
 
 namespace {
+
+constexpr char INPUT_MODE_MOUSE_CLASS[] = "tf-input-mouse";
+constexpr char INPUT_MODE_NAV_CLASS[] = "tf-input-nav";
 
 [[nodiscard]] RmlUiViewport sanitizeViewport(RmlUiViewport viewport) {
     viewport.width = std::max(viewport.width, 1);
@@ -92,6 +96,7 @@ void RmlUiRuntime::clean() {
     }
     documents_.clear();
     active_scene_id_ = 0;
+    input_mode_ = InputMode::Mouse;
 
     if (context_) {
         const Rml::String context_name = context_->GetName();
@@ -152,6 +157,15 @@ void RmlUiRuntime::setLogicalSize(int width, int height) {
     applyContextDimensions();
 }
 
+void RmlUiRuntime::setInputMode(InputMode mode) {
+    if (input_mode_ == mode) {
+        return;
+    }
+
+    input_mode_ = mode;
+    applyInputModeClasses();
+}
+
 Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path, uint64_t owner_scene_id) {
     if (!context_) {
         return nullptr;
@@ -170,6 +184,7 @@ Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path,
 
     doc->Show();
     documents_.push_back({doc, owner_scene_id, std::string(document_path)});
+    applyInputModeClass(doc);
 
     if (active_scene_id_ != 0) {
         applyInteractionPolicy();
@@ -327,6 +342,26 @@ void RmlUiRuntime::applyInteractionPolicy() {
         } else {
             entry.doc->SetProperty("pointer-events", "none");
         }
+    }
+}
+
+void RmlUiRuntime::applyInputModeClass(Rml::ElementDocument* doc) {
+    if (!doc) {
+        return;
+    }
+
+    Rml::Element* root = doc->QuerySelector("body");
+    if (!root) {
+        root = doc;
+    }
+
+    root->SetClass(Rml::String{INPUT_MODE_MOUSE_CLASS}, input_mode_ == InputMode::Mouse);
+    root->SetClass(Rml::String{INPUT_MODE_NAV_CLASS}, input_mode_ == InputMode::Navigation);
+}
+
+void RmlUiRuntime::applyInputModeClasses() {
+    for (auto& entry : documents_) {
+        applyInputModeClass(entry.doc);
     }
 }
 
