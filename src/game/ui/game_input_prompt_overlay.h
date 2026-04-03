@@ -19,7 +19,7 @@ namespace game::ui {
 /**
  * @brief 游戏内输入提示 overlay
  *
- * 独立负责读取当前输入设备对应的按键提示，并将其渲染到 game_overlay.rml。
+ * 独立负责读取当前输入设备对应的按键提示，并将其渲染到专用的 prompt overlay 文档。
  */
 class GameInputPromptOverlay final {
 public:

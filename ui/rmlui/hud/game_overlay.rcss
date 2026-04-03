@@ -11,32 +11,17 @@ body {
     pointer-events: none;
 }
 
-#game-prompt-bar {
+#game-overlay-top-right {
     position: absolute;
-    left: 12dp;
-    bottom: 12dp;
-    background-color: #081018e8;
-    border: 1dp #6f8093ff;
-    padding: 4dp 6dp;
+    right: 10dp;
+    top: 10dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8dp;
     pointer-events: none;
 }
 
-.game-prompt-item {
-    display: inline-block;
-    margin-right: 8dp;
-}
-
-.game-prompt-item:last-child {
-    margin-right: 0;
-}
-
-.game-prompt-label {
-    color: #8eb7daff;
-    margin-bottom: 1dp;
-    font-size: 10dp;
-}
-
-.game-prompt-value {
-    color: #f6f3e8ff;
-    font-size: 12dp;
+#game-menu-button {
+    pointer-events: auto;
 }

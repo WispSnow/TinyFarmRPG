@@ -28,30 +28,41 @@ namespace {
 namespace game::scene {
 namespace {
 
-TEST(MenuHoverFocusSyncTest, GameOverlayUsesDedicatedPromptOverlayAndToggleAction) {
+TEST(MenuHoverFocusSyncTest, GameOverlaySeparatesMenuButtonAndPromptOverlay) {
     const auto game_scene_path = projectPath("src/game/scene/game_scene.cpp");
+    const auto game_overlay_path = projectPath("src/game/ui/game_overlay.cpp");
     const auto prompt_overlay_path = projectPath("src/game/ui/game_input_prompt_overlay.cpp");
     const auto controller_path = projectPath("src/game/ui/game_scene_ui_controller.cpp");
     const auto overlay_path = projectPath("ui/rmlui/hud/game_overlay.rml");
+    const auto prompt_rml_path = projectPath("ui/rmlui/hud/game_input_prompt_overlay.rml");
     ASSERT_TRUE(std::filesystem::exists(game_scene_path)) << game_scene_path;
+    ASSERT_TRUE(std::filesystem::exists(game_overlay_path)) << game_overlay_path;
     ASSERT_TRUE(std::filesystem::exists(prompt_overlay_path)) << prompt_overlay_path;
     ASSERT_TRUE(std::filesystem::exists(controller_path)) << controller_path;
     ASSERT_TRUE(std::filesystem::exists(overlay_path)) << overlay_path;
+    ASSERT_TRUE(std::filesystem::exists(prompt_rml_path)) << prompt_rml_path;
 
     const std::string game_scene_source = readTextFile(game_scene_path);
+    const std::string game_overlay_source = readTextFile(game_overlay_path);
     const std::string prompt_overlay_source = readTextFile(prompt_overlay_path);
     const std::string controller_source = readTextFile(controller_path);
     const std::string overlay_source = readTextFile(overlay_path);
+    const std::string prompt_rml_source = readTextFile(prompt_rml_path);
     ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(game_overlay_source.empty());
     ASSERT_FALSE(prompt_overlay_source.empty());
     ASSERT_FALSE(controller_source.empty());
     ASSERT_FALSE(overlay_source.empty());
+    ASSERT_FALSE(prompt_rml_source.empty());
 
     EXPECT_NE(prompt_overlay_source.find("Bind(\"visible\""), std::string::npos);
+    EXPECT_NE(game_overlay_source.find("bindSimpleEvent(constructor, \"menu\""), std::string::npos);
     EXPECT_NE(game_scene_source.find("onAction(\"toggle_prompt_bar\"_hs)"), std::string::npos);
     EXPECT_NE(prompt_overlay_source.find("markDirty(\"visible\")"), std::string::npos);
-    EXPECT_NE(overlay_source.find("data-if=\"visible\""), std::string::npos);
-    EXPECT_EQ(overlay_source.find("data-event-click=\"menu\""), std::string::npos);
+    EXPECT_NE(overlay_source.find("data-event-click=\"menu\""), std::string::npos);
+    EXPECT_NE(overlay_source.find("class=\"tf-icon-button icon-menu\""), std::string::npos);
+    EXPECT_NE(prompt_rml_source.find("data-if=\"visible\""), std::string::npos);
+    EXPECT_EQ(prompt_rml_source.find("data-event-click=\"menu\""), std::string::npos);
     EXPECT_EQ(controller_source.find("game_overlay.rml"), std::string::npos);
 }
 

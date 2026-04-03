@@ -14,7 +14,7 @@ using namespace entt::literals;
 
 namespace {
 
-constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/game_overlay.rml";
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/game_input_prompt_overlay.rml";
 constexpr std::string_view MODEL_NAME = "input_prompt_overlay";
 
 using engine::ui::rmlui::updateBoundString;
