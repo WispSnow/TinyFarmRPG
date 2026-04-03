@@ -294,9 +294,7 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
     }
 
     event.StopPropagation();
-
-    if (engine::ui::rmlui::isPrimaryMouseButton(button) && drag_state_.suppress_next_primary_mouse_up) {
-        drag_state_.suppress_next_primary_mouse_up = false;
+    if (drag_state_.active) {
         return;
     }
 
@@ -366,12 +364,23 @@ void HotbarUI::onSlotDragStart(int slot_index, Rml::Event& event) {
     }
 
     event.StopPropagation();
-    drag_state_.startFromHotbar(slot_index, inventory_index);
+    drag_state_.start();
     clearTooltip();
 }
 
 void HotbarUI::onSlotDragDrop(int slot_index, Rml::Event& event) {
-    if (!isValidSlotIndex(slot_index) || target_ == entt::null || !drag_state_.active || drag_state_.source_slot_index < 0) {
+    if (!isValidSlotIndex(slot_index) || target_ == entt::null || !drag_state_.active) {
+        return;
+    }
+
+    const auto drag_info = getSlotGridDragInfo(event);
+    if (!drag_info || !drag_info->fromHotbar() || !isValidSlotIndex(drag_info->slot_index)) {
+        return;
+    }
+
+    const int source_slot_index = drag_info->slot_index;
+    const int source_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(source_slot_index)];
+    if (source_inventory_index < 0) {
         return;
     }
 
@@ -379,34 +388,32 @@ void HotbarUI::onSlotDragDrop(int slot_index, Rml::Event& event) {
     clearTooltip();
     drag_state_.drop_handled = true;
 
-    if (slot_index == drag_state_.source_slot_index) {
+    if (slot_index == source_slot_index) {
         context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
         return;
     }
 
     const int dst_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(slot_index)];
     if (dst_inventory_index >= 0) {
-        context_.getDispatcher().trigger(
-            game::defs::HotbarBindCommand{target_, slot_index, drag_state_.source_inventory_slot_index});
-        context_.getDispatcher().trigger(
-            game::defs::HotbarBindCommand{target_, drag_state_.source_slot_index, dst_inventory_index});
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, source_inventory_index});
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, source_slot_index, dst_inventory_index});
     } else {
-        context_.getDispatcher().trigger(
-            game::defs::HotbarBindCommand{target_, slot_index, drag_state_.source_inventory_slot_index});
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, drag_state_.source_slot_index});
+        context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, source_inventory_index});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, source_slot_index});
     }
 
     context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
 }
 
 void HotbarUI::onSlotDragEnd(int slot_index, Rml::Event& event) {
-    if (!drag_state_.active || slot_index != drag_state_.source_slot_index) {
+    const auto drag_info = getSlotGridDragInfo(event);
+    if (!drag_state_.active || !drag_info || !drag_info->fromHotbar() || slot_index != drag_info->slot_index) {
         return;
     }
 
     event.StopPropagation();
     if (!drag_state_.drop_handled && target_ != entt::null) {
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, drag_state_.source_slot_index});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, drag_info->slot_index});
     }
     clearDragState();
 }

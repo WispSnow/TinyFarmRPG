@@ -47,6 +47,8 @@
                                  data-event-focus="hb_slot_focus(hslot.slot_index)">
                                 <div class="hb-slot-drag-proxy tf-slot-drag-proxy"
                                      data-class-draggable="hslot.can_drag"
+                                     data-attr-slot_grid_source="2"
+                                     data-attr-slot_index="hslot.slot_index"
                                      data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
                                      data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
                                      data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
@@ -72,6 +74,8 @@
                                  data-event-focus="bp_slot_focus(slot.slot_index)">
                                 <div class="bp-slot-drag-proxy tf-slot-drag-proxy"
                                      data-class-draggable="slot.can_drag"
+                                     data-attr-slot_grid_source="1"
+                                     data-attr-slot_index="slot.slot_index"
                                      data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
                                      data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
                                      data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
