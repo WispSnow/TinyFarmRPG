@@ -3,15 +3,10 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
-    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="game_overlay.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="game_overlay">
-    <div id="game-menu-anchor">
-        <button id="game-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
-    </div>
-
-    <div id="game-prompt-bar" data-if="show_prompt_bar">
+<body class="tf-screen-root" data-model="input_prompt_overlay">
+    <div id="game-prompt-bar" data-if="visible">
         <div class="game-prompt-item">
             <div class="game-prompt-label">Use</div>
             <div class="game-prompt-value">{{ primary_prompt_text }}</div>
@@ -27,6 +22,10 @@
         <div class="game-prompt-item">
             <div class="game-prompt-label">Menu</div>
             <div class="game-prompt-value">{{ pause_prompt_text }}</div>
+        </div>
+        <div class="game-prompt-item">
+            <div class="game-prompt-label">Hints</div>
+            <div class="game-prompt-value">{{ toggle_prompt_text }}</div>
         </div>
     </div>
 </body>

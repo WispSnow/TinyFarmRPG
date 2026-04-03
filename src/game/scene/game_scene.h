@@ -19,6 +19,7 @@ namespace game::defs {
 }
 
 namespace game::ui {
+    class GameInputPromptOverlay;
     class GameSceneUiController;
 }
 
@@ -49,6 +50,7 @@ class GameScene : public engine::scene::Scene {
     bool context_pushed_{false};
 
     std::unique_ptr<game::ui::GameSceneUiController> ui_controller_{};
+    std::unique_ptr<game::ui::GameInputPromptOverlay> input_prompt_overlay_{};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
 
