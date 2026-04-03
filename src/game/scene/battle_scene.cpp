@@ -78,7 +78,6 @@ bool BattleScene::init() {
         state_ = FlowState::BattleEnd;
     }
     refreshView();
-    document_controller_.queueDefaultFocus();
     return true;
 }
 
@@ -131,7 +130,6 @@ bool BattleScene::initUI() {
         return false;
     }
 
-    document_controller_.setDefaultFocusById("battle-action-attack");
     if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("BattleScene: 加载 RML 文档失败。");
         document_controller_.unload();

@@ -93,8 +93,6 @@ bool TitleScene::initUI() {
         return false;
     }
 
-    document_controller_.enableHoverFocusSync();
-    document_controller_.setDefaultFocusById("title-start-button");
     if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("TitleScene: 加载 RML 文档失败。");
         document_controller_.unload();

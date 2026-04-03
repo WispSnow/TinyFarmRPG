@@ -6,10 +6,8 @@
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/fmt/chrono.h>
@@ -68,21 +66,6 @@ constexpr std::string_view MODEL_NAME = "save_slot_select";
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 
-[[nodiscard]] bool elementOrAncestorHasId(Rml::Element* element, std::string_view id) {
-    if (element == nullptr || id.empty()) {
-        return false;
-    }
-
-    for (auto* current = element; current != nullptr; current = current->GetParentNode()) {
-        const auto& current_id = current->GetId();
-        if (current_id.size() == id.size() && current_id == Rml::String{id.data(), id.size()}) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 } // namespace
 
 namespace game::scene {
@@ -132,7 +115,6 @@ void SaveSlotSelectScene::disconnectRuntimeListeners() {
 
 void SaveSlotSelectScene::shutdownUI() {
     document_controller_.unload();
-    focus_before_confirm_ = nullptr;
 }
 
 bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {
@@ -193,9 +175,6 @@ bool SaveSlotSelectScene::initUI() {
         return false;
     }
 
-    document_controller_.enableHoverFocusSync([this](Rml::Element* element) {
-        return shouldSyncHoverFocus(element);
-    });
     if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("SaveSlotSelectScene: 加载 RML 文档失败。");
         document_controller_.unload();
@@ -204,31 +183,7 @@ bool SaveSlotSelectScene::initUI() {
 
     refreshSlotButtons();
     document_controller_.markAllDirty();
-    queueDefaultFocus();
     return true;
-}
-
-void SaveSlotSelectScene::queueDefaultFocus() {
-    if (!document_controller_.runtime() || !document_controller_.document()) {
-        return;
-    }
-
-    const bool has_enabled_slot = std::any_of(slots_.begin(), slots_.end(), [](const SlotViewModel& slot) {
-        return slot.enabled;
-    });
-    if (has_enabled_slot) {
-        document_controller_.queueFocusFirstEnabledElementByClass("save-slot-button");
-    } else {
-        document_controller_.queueFocusElementById("save-slot-back");
-    }
-}
-
-bool SaveSlotSelectScene::shouldSyncHoverFocus(Rml::Element* element) const {
-    if (!confirm_visible_) {
-        return true;
-    }
-
-    return elementOrAncestorHasId(element, "save-slot-confirm-layer");
 }
 
 void SaveSlotSelectScene::refreshSlotButtons() {
@@ -325,12 +280,6 @@ bool SaveSlotSelectScene::onMenuCancelPressed() {
 
 void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     pending_overwrite_slot_ = slot;
-    if (auto* runtime = context_.getRmlUi()) {
-        focus_before_confirm_ = runtime->getFocusedElement();
-        if (focus_before_confirm_ && focus_before_confirm_->GetOwnerDocument() != document_controller_.document()) {
-            focus_before_confirm_ = nullptr;
-        }
-    }
 
     const auto text = "Overwrite slot " + std::to_string(slot + 1) + "?";
     if (updateBoundString(confirm_text_, text)) {
@@ -339,7 +288,6 @@ void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     if (updateBoundBool(confirm_visible_, true)) {
         document_controller_.markDirty("confirm_visible");
     }
-    document_controller_.queueFocusElementById("save-slot-confirm-yes");
 }
 
 void SaveSlotSelectScene::hideOverwriteConfirm() {
@@ -347,12 +295,6 @@ void SaveSlotSelectScene::hideOverwriteConfirm() {
     if (updateBoundBool(confirm_visible_, false)) {
         document_controller_.markDirty("confirm_visible");
     }
-    if (focus_before_confirm_) {
-        document_controller_.queueFocusElement(focus_before_confirm_);
-    } else {
-        queueDefaultFocus();
-    }
-    focus_before_confirm_ = nullptr;
 }
 
 void SaveSlotSelectScene::onOverwriteConfirmYes() {

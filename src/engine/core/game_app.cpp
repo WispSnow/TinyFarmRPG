@@ -175,7 +175,6 @@ bool GameApp::init() {
     if (!initCamera()) return false;
     if (!initTextRenderer()) return false;
     if (!initInputManager()) return false;
-    if (!initMenuNavigationBindings()) return false;
     if (!initSpatialIndexManager()) return false;
 
     if (!initContext()) return false;
@@ -266,8 +265,6 @@ void GameApp::close() {
     // 断开事件处理函数
     dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
     dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
-
-    disconnectMenuNavigationBindings();
 
     // 先关闭场景管理器，确保所有场景都被清理
     if (scene_manager_) {
@@ -576,68 +573,6 @@ bool GameApp::initInputManager()
 #endif
     spdlog::trace("输入管理器初始化成功。");
     return true;
-}
-
-bool GameApp::initMenuNavigationBindings()
-{
-    if (!input_manager_) {
-        spdlog::error("初始化 UI 导航输入绑定失败：InputManager 未初始化。");
-        return false;
-    }
-
-    input_manager_->onAction("menu_up"_hs).connect<&GameApp::onMenuNavigateUpPressed>(this);
-    input_manager_->onAction("menu_down"_hs).connect<&GameApp::onMenuNavigateDownPressed>(this);
-    input_manager_->onAction("menu_left"_hs).connect<&GameApp::onMenuNavigateLeftPressed>(this);
-    input_manager_->onAction("menu_right"_hs).connect<&GameApp::onMenuNavigateRightPressed>(this);
-    input_manager_->onAction("menu_confirm"_hs).connect<&GameApp::onMenuConfirmPressed>(this);
-    return true;
-}
-
-void GameApp::disconnectMenuNavigationBindings() {
-    if (!input_manager_) {
-        return;
-    }
-
-    input_manager_->onAction("menu_up"_hs).disconnect<&GameApp::onMenuNavigateUpPressed>(this);
-    input_manager_->onAction("menu_down"_hs).disconnect<&GameApp::onMenuNavigateDownPressed>(this);
-    input_manager_->onAction("menu_left"_hs).disconnect<&GameApp::onMenuNavigateLeftPressed>(this);
-    input_manager_->onAction("menu_right"_hs).disconnect<&GameApp::onMenuNavigateRightPressed>(this);
-    input_manager_->onAction("menu_confirm"_hs).disconnect<&GameApp::onMenuConfirmPressed>(this);
-}
-
-bool GameApp::onMenuNavigateUpPressed() {
-    if (rmlui_runtime_) {
-        rmlui_runtime_->navigateUp();
-    }
-    return false;
-}
-
-bool GameApp::onMenuNavigateDownPressed() {
-    if (rmlui_runtime_) {
-        rmlui_runtime_->navigateDown();
-    }
-    return false;
-}
-
-bool GameApp::onMenuNavigateLeftPressed() {
-    if (rmlui_runtime_) {
-        rmlui_runtime_->navigateLeft();
-    }
-    return false;
-}
-
-bool GameApp::onMenuNavigateRightPressed() {
-    if (rmlui_runtime_) {
-        rmlui_runtime_->navigateRight();
-    }
-    return false;
-}
-
-bool GameApp::onMenuConfirmPressed() {
-    if (rmlui_runtime_) {
-        rmlui_runtime_->confirmFocusedElement();
-    }
-    return false;
 }
 
 bool GameApp::initSpatialIndexManager()

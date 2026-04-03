@@ -1,6 +1,5 @@
 #pragma once
 
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "engine/ui/rmlui/rml_data_bridge.h"
 
@@ -9,14 +8,11 @@
 
 #include <concepts>
 #include <cstdint>
-#include <memory>
-#include <string>
 #include <string_view>
 #include <utility>
 
 namespace Rml {
 class DataTypeRegister;
-class Element;
 class ElementDocument;
 }
 
@@ -27,28 +23,21 @@ class RmlUiRuntime;
 /// @brief 单个 RmlUi 文档的生命周期与功能管理器。
 ///
 /// 每个 UI 界面（Scene）持有一个 RmlDocumentController，负责将分散的
-/// RmlUi 操作（文档加载/卸载、数据绑定、焦点管理、hover 同步）
+/// RmlUi 操作（文档加载/卸载、数据绑定、事件绑定）
 /// 统一封装为面向游戏层的简洁接口。
 ///
 /// **主要职责：**
 /// - **文档生命周期**：通过 @ref load / @ref unload 加载和卸载 `.rml` 文档，
-///   并在加载时自动触发默认焦点设置和 hover 同步注册。
+///   并统一托管文档实例生命周期。
 /// - **数据模型**：通过 @ref createModel 创建 RmlUi 数据模型，并提供
 ///   @ref bindEvent / @ref bindSimpleEvent 快捷方法绑定事件回调；
 ///   通过 @ref markDirty / @ref markAllDirty 通知 RmlUi 刷新绑定变量。
-/// - **焦点管理**：支持按元素 ID 或 CSS 类名设定默认焦点（`setDefaultFocusById` /
-///   `setDefaultFocusFirstEnabledByClass`），以及随时通过 `queueFocusElement*`
-///   系列方法将焦点切换到任意元素。
-/// - **Hover-Focus 同步**：通过 @ref enableHoverFocusSync 启用
-///   @ref HoverFocusSyncListener，使鼠标悬停自动同步为键盘焦点，
-///   支持鼠标与手柄混合导航。
 ///
 /// **使用流程：**
 /// 1. 调用 @ref attach 绑定 @ref RmlUiRuntime 和所属 Scene ID。
 /// 2. （可选）调用 `createModel` 创建数据模型并绑定变量/事件。
-/// 3. （可选）调用 `enableHoverFocusSync` / `setDefaultFocusById` 等配置界面行为。
-/// 4. 调用 @ref load 加载文档，配置会自动应用。
-/// 5. 场景卸载时调用 @ref unload 清理所有资源。
+/// 3. 调用 @ref load 加载文档。
+/// 4. 场景卸载时调用 @ref unload 清理所有资源。
 class RmlDocumentController final {
 public:
     RmlDocumentController() = default;
@@ -102,16 +91,6 @@ public:
     [[nodiscard]] Rml::ElementDocument* load(std::string_view document_path);
     void unload();
 
-    void enableHoverFocusSync(HoverFocusSyncListener::CandidateFilter candidate_filter = {});
-
-    void setDefaultFocusById(std::string_view element_id);
-    void setDefaultFocusFirstEnabledByClass(std::string_view class_name);
-    void queueDefaultFocus();
-
-    void queueFocusElement(Rml::Element* element);
-    void queueFocusElementById(std::string_view element_id);
-    void queueFocusFirstEnabledElementByClass(std::string_view class_name);
-
     void markDirty(std::string_view variable_name);
     void markAllDirty();
 
@@ -120,26 +99,12 @@ public:
     [[nodiscard]] RmlUiRuntime* runtime() const { return runtime_; }
 
 private:
-    /// 默认焦点的定位策略。配合 default_focus_token_ 使用，在每次 load() 后自动重新应用。
-    enum class DefaultFocusKind : std::uint8_t {
-        None,                       ///< 不设默认焦点
-        ElementId,                  ///< 按元素 ID 精确定位，适合固定目标（如"确认"按钮）
-        FirstEnabledElementByClass, ///< 按 CSS 类名找第一个未禁用的元素，适合动态列表/菜单
-    };
-
-    void applyHoverFocusSync();
-    void clearHoverFocusListener();
     void unloadDocument();
 
     RmlUiRuntime* runtime_{nullptr};
     uint64_t owner_scene_id_{0};
     RmlDataBridge data_bridge_{};
-    std::unique_ptr<HoverFocusSyncListener> hover_focus_listener_{};
     Rml::ElementDocument* document_{nullptr};
-    HoverFocusSyncListener::CandidateFilter hover_focus_candidate_filter_{};
-    bool hover_focus_sync_enabled_{false};
-    DefaultFocusKind default_focus_kind_{DefaultFocusKind::None};
-    std::string default_focus_token_{};
 };
 
 } // namespace engine::ui::rmlui

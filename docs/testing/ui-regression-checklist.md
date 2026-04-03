@@ -13,23 +13,19 @@
 
 ## 预置条件
 1. 可正常进入：Title、Game、Pause、SaveSlotSelect、InventoryMenu、RestDialog、Battle
-2. 鼠标与键盘菜单输入可用；若有手柄，也建议补一轮
-3. 若启用日志，建议打开 `debug/trace` 便于定位文档加载、事件绑定与焦点切换
+2. 鼠标 UI 输入可用
+3. 若启用日志，建议打开 `debug/trace` 便于定位文档加载、事件绑定与点击事件
 
 ## 重点场景
 
-### 1) 菜单按钮与焦点导航
+### 1) 菜单按钮与鼠标交互
 覆盖：Title / Pause / SaveSlotSelect / RestDialog / Battle
 
-1. 进入菜单后，默认焦点应落在首个可操作元素。
-2. 鼠标悬停按钮：视觉状态应切到 hover，焦点应同步跟随。
-3. 鼠标点击按钮：应只触发一次对应动作。
-4. 键盘或手柄 `menu_up/down/left/right/confirm`：
-   - 焦点按预期移动
-   - `confirm` 触发当前 focused 元素
-5. 不可用按钮或槽位：
+1. 鼠标悬停按钮：视觉状态应切到 hover。
+2. 鼠标点击按钮：应只触发一次对应动作。
+3. 若点击后出现 `:focus` 高亮，视觉表现应符合预期；若不符合，记录具体样式问题。
+4. 不可用按钮或槽位：
    - 不响应点击
-   - 焦点不应停在不可用元素上
 
 ### 2) Gameplay HUD
 覆盖：prompt bar / clock / hotbar
@@ -50,7 +46,7 @@
 4. 右键 action menu：
    - 在正确槽位打开
    - 最右/最下边界不会跑出容器
-   - 关闭后焦点恢复到原先槽位或合理的 fallback
+   - 关闭后槽位选中态、detail panel 与 tooltip 状态合理，不残留错误高亮
 5. `sort`、`trash`、`use`、`activate` 等命令只触发一次且结果正确
 
 ### 4) 模态 Scene 与输入隔离
@@ -60,7 +56,7 @@
    - `menu_cancel` / Back 能关闭当前顶层 Scene
 2. 关闭覆盖层后：
    - 底层 Scene 恢复交互
-   - 输入上下文与焦点状态恢复正常
+   - 输入上下文恢复正常
 
 ### 5) 浮动控件
 

@@ -147,7 +147,6 @@ private:
     [[nodiscard]] bool initTextRenderer();
     [[nodiscard]] bool initCamera();
     [[nodiscard]] bool initInputManager();
-    [[nodiscard]] bool initMenuNavigationBindings();
     [[nodiscard]] bool initSpatialIndexManager();
     [[nodiscard]] bool initContext();
     [[nodiscard]] bool initSceneManager();
@@ -155,14 +154,8 @@ private:
     [[nodiscard]] bool registerDebugPanels();
 #endif
     void syncRmlUiViewport();
-    void disconnectMenuNavigationBindings();
 
     // 事件处理函数
-    bool onMenuNavigateUpPressed();
-    bool onMenuNavigateDownPressed();
-    bool onMenuNavigateLeftPressed();
-    bool onMenuNavigateRightPressed();
-    bool onMenuConfirmPressed();
     void onQuitEvent();
     void onWindowResized(const engine::utils::WindowResizedEvent& e);
 };

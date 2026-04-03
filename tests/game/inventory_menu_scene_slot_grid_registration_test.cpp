@@ -60,7 +60,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SceneUsesDocumentControllerForU
     EXPECT_NE(init_ui_block.find("document_controller_.createModel(MODEL_NAME, &type_register_)"), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.load(DOCUMENT_PATH)"), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.markAllDirty()"), std::string::npos);
-    EXPECT_NE(init_ui_block.find("document_controller_.queueFocusFirstEnabledElementByClass(\"hb-slot\")"),
+    EXPECT_EQ(init_ui_block.find("document_controller_.queueFocusFirstEnabledElementByClass(\"hb-slot\")"),
               std::string::npos);
     EXPECT_NE(shutdown_ui_block.find("document_controller_.unload();"), std::string::npos);
     EXPECT_EQ(source.find("loadRmlDocument("), std::string::npos);

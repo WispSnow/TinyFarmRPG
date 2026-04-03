@@ -122,7 +122,6 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
 
 InventoryMenuScene::~InventoryMenuScene() {
     disconnectRuntimeListeners();
-    focus_before_action_menu_ = nullptr;
     action_menu_entries_.clear();
     action_menu_visible_ = false;
     tooltip_ui_.reset();
@@ -290,14 +289,11 @@ bool InventoryMenuScene::initUI() {
     syncHotbarFromInventory();
     syncCharacterPanel();
     document_controller_.markAllDirty();
-
-    document_controller_.queueFocusFirstEnabledElementByClass("hb-slot");
     return true;
 }
 
 void InventoryMenuScene::shutdownUI() {
     document_controller_.unload();
-    focus_before_action_menu_ = nullptr;
 }
 
 void InventoryMenuScene::disconnectRuntimeListeners() {
@@ -591,22 +587,8 @@ float InventoryMenuScene::measureGridHorizontalGap(std::string_view grid_id) con
     return std::max(0.0F, second_slot->GetAbsoluteLeft() - first_slot->GetAbsoluteLeft() - first_slot->GetOffsetWidth());
 }
 
-void InventoryMenuScene::rememberFocusBeforeActionMenu() {
-    if (action_menu_visible_) {
-        return;
-    }
-
-    if (auto* runtime = context_.getRmlUi()) {
-        focus_before_action_menu_ = runtime->getFocusedElement();
-        if (focus_before_action_menu_ && focus_before_action_menu_->GetOwnerDocument() != document_controller_.document()) {
-            focus_before_action_menu_ = nullptr;
-        }
-    }
-}
-
-void InventoryMenuScene::closeActionMenu(bool restore_focus) {
+void InventoryMenuScene::closeActionMenu(bool /*restore_focus*/) {
     if (!action_menu_visible_ && action_menu_entries_.empty()) {
-        focus_before_action_menu_ = nullptr;
         return;
     }
 
@@ -614,15 +596,6 @@ void InventoryMenuScene::closeActionMenu(bool restore_focus) {
     action_menu_entries_.clear();
     action_menu_title_.clear();
     markActionMenuDirty();
-
-    if (restore_focus) {
-        if (focus_before_action_menu_ &&
-            focus_before_action_menu_->GetOwnerDocument() == document_controller_.document()) {
-            document_controller_.queueFocusElement(focus_before_action_menu_);
-        }
-    }
-
-    focus_before_action_menu_ = nullptr;
 }
 
 void InventoryMenuScene::positionActionMenuForGridSlot(std::string_view grid_id, int slot_index) {
@@ -671,7 +644,6 @@ void InventoryMenuScene::showActionMenu(Rml::String title,
         return;
     }
 
-    rememberFocusBeforeActionMenu();
     action_menu_entries_ = std::move(entries);
     action_menu_title_ = std::move(title);
     action_menu_visible_ = true;
@@ -682,7 +654,6 @@ void InventoryMenuScene::showActionMenu(Rml::String title,
         // `data-if` / `data-for` materialize on context update; update once before measuring the menu box.
         runtime->update();
         positionActionMenuForGridSlot(anchor_grid_id, anchor_slot_index);
-        document_controller_.queueFocusFirstEnabledElementByClass("action-menu-entry");
     }
 }
 

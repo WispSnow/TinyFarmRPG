@@ -77,7 +77,6 @@ class InventoryMenuScene final : public engine::scene::Scene {
     // Action menu
     Rml::String action_menu_title_{};
     bool action_menu_visible_{false};
-    Rml::Element* focus_before_action_menu_{nullptr};
 
     // Character panel
     Rml::String char_name_{"Player"};
@@ -128,7 +127,6 @@ private:
     void openBackpackActionMenu(int slot_index);
     void openHotbarActionMenu(int slot_index);
     void openDiscardConfirmForBackpackSlot(int slot_index);
-    void rememberFocusBeforeActionMenu();
     void showActionMenu(Rml::String title,
                         std::vector<ActionEntryViewModel> entries,
                         std::string_view anchor_grid_id,
