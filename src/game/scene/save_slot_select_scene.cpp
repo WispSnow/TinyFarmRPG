@@ -9,7 +9,6 @@
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
@@ -25,7 +24,6 @@
 #include <optional>
 #include <string>
 #include <system_error>
-#include <unordered_set>
 #include <utility>
 
 using namespace entt::literals;
@@ -138,13 +136,7 @@ void SaveSlotSelectScene::shutdownUI() {
 }
 
 bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& constructor) {
-    static std::unordered_set<Rml::DataTypeRegister*> registered_type_registers;
-
-    auto* type_register = constructor.GetDataTypeRegister();
-    if (!type_register) {
-        return false;
-    }
-    if (registered_type_registers.contains(type_register)) {
+    if (data_types_registered_) {
         return true;
     }
 
@@ -160,7 +152,7 @@ bool SaveSlotSelectScene::ensureDataTypesRegistered(Rml::DataModelConstructor& c
         return false;
     }
 
-    registered_type_registers.insert(type_register);
+    data_types_registered_ = true;
     return true;
 }
 
@@ -172,7 +164,7 @@ bool SaveSlotSelectScene::initUI() {
     }
 
     document_controller_.attach(runtime, instanceId());
-    auto constructor = document_controller_.createModel(MODEL_NAME);
+    auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
     if (!constructor) {
         spdlog::error("SaveSlotSelectScene: 创建 data model 失败。");
         return false;
