@@ -14,7 +14,6 @@
   - 持有全局 `Rml::Context`
   - 接收 SDL 事件并转发给 RmlUi
   - 按 `owner_scene_id` 加载/卸载文档，避免跨 Scene 泄漏
-  - 提供焦点导航与延迟聚焦队列
   - 在每个渲染帧显式执行 `update()`
 
 关于 `owner_scene_id`，有两个容易混淆的点：
@@ -45,8 +44,6 @@
   - `bindSimpleEvent(...)` / `bindEvent(...)`
   - `load(document_path)` / `unload()`
   - `markDirty(name)` / `markAllDirty()`
-  - 默认焦点与延迟聚焦
-  - hover -> focus 同步的统一托管
 
 推荐理解：
 - `RmlUiRuntime` 是全局宿主
@@ -61,7 +58,7 @@
 ### 1.4 游戏侧 UI 组合层
 - `src/game/scene/title_scene.cpp`、`pause_menu_scene.cpp`、`save_slot_select_scene.cpp`、`rest_dialog_scene.cpp`、`battle_scene.cpp`
   - 各自持有一个 `RmlDocumentController`
-  - 负责简单菜单、按钮和默认焦点
+  - 负责简单菜单、按钮和鼠标点击流程
 - `src/game/scene/inventory_menu_scene.cpp`
   - 也是一个独立 Scene，但会额外维护 slot grid view model、action menu 和 tooltip
 - `src/game/ui/game_scene_ui_controller.cpp`
@@ -99,10 +96,9 @@
 2. `auto constructor = document_controller_.createModel("model_name", &type_register_)`
 3. `constructor.Bind(...)` 绑定字符串、布尔、数组或 struct view model
 4. `document_controller_.bindSimpleEvent(constructor, "event_name", ...)`
-5. 可选：设置默认焦点、启用 hover-focus 同步
-6. `document_controller_.load("ui/rmlui/...")`
-7. 初始同步后 `markDirty(...)` / `markAllDirty()`
-8. `clean()` 或析构时统一 `document_controller_.unload()`
+5. `document_controller_.load("ui/rmlui/...")`
+6. 初始同步后 `markDirty(...)` / `markAllDirty()`
+7. `clean()` 或析构时统一 `document_controller_.unload()`
 
 如果一个 Scene 里有多个并存模块，模式就是把这套流程各自跑一遍，而不是把所有模块硬塞进同一个 controller。
 
@@ -117,9 +113,6 @@ constructor.Bind("status_text", &status_text_);
 
 document_controller_.bindSimpleEvent(constructor, "resume", [this] { onResume(); });
 document_controller_.bindSimpleEvent(constructor, "back_to_title", [this] { onBackToTitle(); });
-
-document_controller_.setDefaultFocusFirstEnabledByClass("menu-button");
-document_controller_.enableHoverFocusSync();
 
 document_controller_.load("ui/rmlui/scenes/pause_menu.rml");
 document_controller_.markAllDirty();
@@ -148,22 +141,20 @@ document_controller_.markAllDirty();
 - 在 C++ 里镜像维护一套和 RCSS 重复的 grid/menu 几何常量
 - 为简单的 signal -> runtime 转发单独创建一层薄控制器抽象
 
-## 4) 输入、焦点与导航
+## 4) 输入与交互
 
-### 4.1 事件进入 RmlUi 的两条路径
+### 4.1 事件进入 RmlUi 的路径
 - 原始 SDL 键盘/鼠标事件：`InputManager` 通过 `setRmlUiEventForwarder(...)` 转发给 `RmlUiRuntime`
-- 逻辑菜单动作：`GameApp` 直接把 `menu_up/down/left/right/confirm` 绑定到
-  - `navigateUp/Down/Left/Right()`
-  - `confirmFocusedElement()`
 
-这条逻辑动作路径是当前菜单导航的标准入口，原因是：
-- 它统一了键盘与手柄
-- 在菜单上下文中，绑定到 `menu_*` 的扫描码会被 `shouldSuppressRmlUiKeyboardEvent()` 抑制，避免 SDL 键盘事件和逻辑动作双重导航
+当前阶段是鼠标优先：
+- 菜单与弹层交互以 hover / click 为主
+- `GameApp` 不再把 `menu_*` 逻辑动作桥接到 RmlUi 导航
+- 在菜单上下文中，绑定到 `menu_*` 的扫描码仍会被 `shouldSuppressRmlUiKeyboardEvent()` 抑制，因此键盘/手柄菜单导航当前处于关闭状态
 
-### 4.2 焦点约定
-- 简单菜单优先用默认焦点 + hover 同步
-- 需要恢复焦点的位置时，使用 `queueFocusElement(...)` / `queueFocusFirstEnabledElementByClass(...)`
-- hover-focus 同步由 `RmlDocumentController` 内部托管 `HoverFocusSyncListener`
+### 4.2 当前交互约定
+- 项目不再在 Scene C++ 层维护默认焦点、hover-focus 同步或关闭弹层后的焦点恢复
+- RmlUi 原生鼠标点击仍可能触发 `:focus`，因此点击后的 focus 样式应视为库自身行为，而不是项目级 focus 管理
+- 若未来恢复键盘/手柄导航，再按场景类型分层加回默认焦点和弹层焦点语义
 
 ### 4.3 模态与输入隔离
 - 项目不再使用旧式的全屏点击阻断器
@@ -180,7 +171,7 @@ document_controller_.markAllDirty();
   - 单文档
   - 少量布尔/文本 data binding
   - `data-event-click`
-  - 默认焦点、hover-focus 同步
+  - 鼠标交互优先
 
 ### 5.2 Gameplay HUD
 - 代表：`GameSceneUiController`
@@ -238,8 +229,8 @@ document_controller_.markAllDirty();
 - 解决：所有生产 UI 都通过 `RmlDocumentController` 或 owner-scene 文档统一清理
 
 4. 菜单导航重复触发或不触发
-- 原因：绕过 `menu_*` 逻辑动作路径，或者菜单上下文没正确 push/pop
-- 解决：保持 `GameApp` 的逻辑导航绑定，菜单 Scene 正确使用 `InputContextId::Menu`
+- 原因：当前鼠标优先阶段仍在期待键盘/手柄菜单导航，或者菜单上下文没正确 push/pop
+- 解决：先按鼠标路径回归；若要恢复键盘/手柄，再同步恢复 `menu_* -> RmlUi` 桥接与默认焦点语义
 
 5. 布局常量在 C++ 和 RCSS 双份维护
 - 解决：优先读取真实 DOM 几何；只在浮动控件定位时做必要的像素级补充

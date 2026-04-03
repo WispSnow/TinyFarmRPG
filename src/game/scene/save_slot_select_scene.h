@@ -12,7 +12,6 @@
 #include <vector>
 
 namespace Rml {
-class Element;
 class Event;
 class DataModelHandle;
 class DataModelConstructor;
@@ -28,7 +27,6 @@ namespace game::scene {
  * - Load 模式：仅已有存档的槽可选；点击后直接调用 on_select_ 回调。
  * - Save 模式：空槽和已有存档槽均可选；点击已有存档槽时弹出覆盖确认对话框，
  *   确认后再调用 on_select_ 回调。
- * - 确认对话框期间，焦点锁定在对话框层；关闭后恢复到之前聚焦的元素。
  */
 class SaveSlotSelectScene final : public engine::scene::Scene {
 public:
@@ -55,7 +53,6 @@ private:
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
-    Rml::Element* focus_before_confirm_{nullptr}; ///< 打开确认框前记录的焦点元素，关闭后恢复。
 
     std::vector<SlotViewModel> slots_{};          ///< 与 RmlUi data model 绑定的槽列表。
     bool confirm_visible_{false};                 ///< 控制覆盖确认对话框的显示/隐藏。
@@ -80,10 +77,6 @@ private:
     void disconnectRuntimeListeners();
     /// 重新扫描磁盘并刷新 slots_ 列表及 UI。
     void refreshSlotButtons();
-    /// 将焦点设置到第一个可用槽按钮，若全部禁用则聚焦返回按钮。
-    void queueDefaultFocus();
-    /// 确认框显示期间，只允许确认框层内的元素同步悬停焦点。
-    [[nodiscard]] bool shouldSyncHoverFocus(Rml::Element* element) const;
 
     void onSlotClicked(int slot);
     void onBackClicked();

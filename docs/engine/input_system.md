@@ -703,13 +703,13 @@ flowchart TD
 
 当前约定是：
 - 原始 SDL 键盘/鼠标事件仍会尽量转发给 RmlUi
-- 但真正的菜单导航以 `menu_up/down/left/right/confirm` 这些逻辑动作为准
-- `GameApp` 会直接把这些动作映射到 `RmlUiRuntime::navigate*()` / `confirmFocusedElement()`
+- 当前阶段不再把 `menu_up/down/left/right/confirm` 这些逻辑动作桥接到 RmlUi
+- 菜单与弹层交互以鼠标 hover / click 为主
 
-这样做可以同时覆盖：
-- 键盘导航
-- 手柄导航
-- 被键盘抑制机制拦截后的菜单输入
+因此当前行为是：
+- 鼠标 UI 交互保持可用
+- 键盘/手柄菜单导航在菜单上下文中处于关闭状态
+- `menu_*` 动作保留为未来恢复导航时的输入语义
 
 ### 总是放行的事件
 
@@ -748,7 +748,7 @@ graph TB
 
     IM --> INPUT
 
-    GA --> NAV["GameApp<br/>订阅 menu_* 动作<br/>-> RmlUiRuntime::navigate*"]
+    GA --> NAV["GameApp<br/>当前不再桥接 menu_* 到 RmlUi"]
     SCENES --> PCS["PlayerControlSystem<br/>polling + callback"]
     SCENES --> IS["InteractionSystem<br/>isActionPressed"]
 ```
@@ -765,7 +765,7 @@ struct CoreServices {
 };
 ```
 
-`GameApp` 直接订阅 `menu_*` 动作驱动 RmlUi 焦点导航，不再额外维护独立的导航中转类。
+当前鼠标优先阶段中，`GameApp` 不再把 `menu_*` 动作桥接到 RmlUi；这些动作定义仍保留在 `InputManager` 中，供未来恢复键盘/手柄导航时复用。
 
 ---
 

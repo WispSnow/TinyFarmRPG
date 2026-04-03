@@ -49,7 +49,7 @@ TEST(MenuHoverFocusSyncTest, GameOverlayBindsPromptBarVisibilityAndToggleAction)
     EXPECT_NE(overlay_source.find("data-if=\"show_prompt_bar\""), std::string::npos);
 }
 
-TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndCleanupViaShutdownUI) {
+TEST(MenuHoverFocusSyncTest, ScenesNoLongerRegisterHoverFocusSyncAndStillCleanupViaShutdownUI) {
     const std::array<std::filesystem::path, 3> scene_paths{
         projectPath("src/game/scene/title_scene.cpp"),
         projectPath("src/game/scene/pause_menu_scene.cpp"),
@@ -61,7 +61,7 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndCleanupViaShutdownUI
         const std::string source = readTextFile(path);
         ASSERT_FALSE(source.empty()) << path;
 
-        EXPECT_NE(source.find("document_controller_.enableHoverFocusSync("), std::string::npos) << path;
+        EXPECT_EQ(source.find("document_controller_.enableHoverFocusSync("), std::string::npos) << path;
         EXPECT_NE(source.find("document_controller_.unload();"), std::string::npos) << path;
 
         EXPECT_EQ(source.find("HoverFocusSyncListener"), std::string::npos) << path;
@@ -70,31 +70,27 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndCleanupViaShutdownUI
     }
 }
 
-TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisible) {
+TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneNoLongerKeepsCustomFocusRecoveryLogic) {
     const auto source_path = projectPath("src/game/scene/save_slot_select_scene.cpp");
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("shouldSyncHoverFocus"), std::string::npos);
+    EXPECT_EQ(source.find("shouldSyncHoverFocus"), std::string::npos);
+    EXPECT_EQ(source.find("focus_before_confirm_"), std::string::npos);
     EXPECT_NE(source.find("confirm_visible_"), std::string::npos);
-    EXPECT_NE(source.find("save-slot-confirm-layer"), std::string::npos);
 }
 
-TEST(MenuHoverFocusSyncTest, HoverFocusSyncListenerOnlyTargetsButtonsAndMenuBodiesEnableNavigation) {
+TEST(MenuHoverFocusSyncTest, NavigationThemeRemainsAvailableAfterCustomFocusRemoval) {
     const auto listener_path = projectPath("src/engine/ui/rmlui/hover_focus_sync_listener.cpp");
     const auto nav_theme_path = projectPath("ui/rmlui/theme/nav.rcss");
-    ASSERT_TRUE(std::filesystem::exists(listener_path)) << listener_path;
+    EXPECT_FALSE(std::filesystem::exists(listener_path));
     ASSERT_TRUE(std::filesystem::exists(nav_theme_path)) << nav_theme_path;
 
-    const std::string listener_source = readTextFile(listener_path);
     const std::string nav_theme_source = readTextFile(nav_theme_path);
-    ASSERT_FALSE(listener_source.empty());
     ASSERT_FALSE(nav_theme_source.empty());
 
-    EXPECT_NE(listener_source.find("GetTagName() == \"button\""), std::string::npos);
-    EXPECT_NE(listener_source.find("IsVisible(true)"), std::string::npos);
     EXPECT_NE(nav_theme_source.find(".tf-nav-root"), std::string::npos);
     EXPECT_NE(nav_theme_source.find("nav: auto;"), std::string::npos);
 

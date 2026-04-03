@@ -6,16 +6,13 @@
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Core.h>
-#include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Input.h>
 #include <RmlUi/Core/Log.h>
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
-#include <utility>
 
 namespace engine::ui::rmlui {
 
@@ -95,7 +92,6 @@ void RmlUiRuntime::clean() {
     }
     documents_.clear();
     active_scene_id_ = 0;
-    pending_focus_requests_.clear();
 
     if (context_) {
         const Rml::String context_name = context_->GetName();
@@ -143,21 +139,6 @@ void RmlUiRuntime::update() {
     }
 
     context_->Update();
-
-    const auto pending_requests = std::exchange(pending_focus_requests_, {});
-    for (const auto& request : pending_requests) {
-        switch (request.kind) {
-        case PendingFocusRequest::Kind::Element:
-            (void)focusElement(request.element);
-            break;
-        case PendingFocusRequest::Kind::ElementId:
-            (void)focusElementById(request.document, request.token);
-            break;
-        case PendingFocusRequest::Kind::FirstEnabledElementByClass:
-            (void)focusFirstEnabledElementByClass(request.document, request.token);
-            break;
-        }
-    }
 }
 
 void RmlUiRuntime::syncViewport(const RmlUiViewport& viewport) {
@@ -169,115 +150,6 @@ void RmlUiRuntime::setLogicalSize(int width, int height) {
     logical_width_ = std::max(width, 0);
     logical_height_ = std::max(height, 0);
     applyContextDimensions();
-}
-
-void RmlUiRuntime::navigateUp() {
-    if (context_) {
-        context_->ProcessKeyDown(Rml::Input::KI_UP, 0);
-    }
-}
-
-void RmlUiRuntime::navigateDown() {
-    if (context_) {
-        context_->ProcessKeyDown(Rml::Input::KI_DOWN, 0);
-    }
-}
-
-void RmlUiRuntime::navigateLeft() {
-    if (context_) {
-        context_->ProcessKeyDown(Rml::Input::KI_LEFT, 0);
-    }
-}
-
-void RmlUiRuntime::navigateRight() {
-    if (context_) {
-        context_->ProcessKeyDown(Rml::Input::KI_RIGHT, 0);
-    }
-}
-
-void RmlUiRuntime::confirmFocusedElement() {
-    if (context_) {
-        context_->ProcessKeyDown(Rml::Input::KI_RETURN, 0);
-    }
-}
-
-Rml::Element* RmlUiRuntime::getFocusedElement() const {
-    if (!context_) {
-        return nullptr;
-    }
-    return context_->GetFocusElement();
-}
-
-bool RmlUiRuntime::focusElement(Rml::Element* element) {
-    if (!element) {
-        return false;
-    }
-
-    const bool focused = element->Focus(true);
-    if (focused) {
-        element->ScrollIntoView(Rml::ScrollAlignment::Nearest);
-    }
-    return focused;
-}
-
-bool RmlUiRuntime::focusElementById(Rml::ElementDocument* document, std::string_view element_id) {
-    if (!document || element_id.empty()) {
-        return false;
-    }
-
-    const Rml::String id{element_id.data(), element_id.size()};
-    return focusElement(document->GetElementById(id));
-}
-
-bool RmlUiRuntime::focusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name) {
-    if (!document || class_name.empty()) {
-        return false;
-    }
-
-    Rml::ElementList elements;
-    document->GetElementsByClassName(elements, Rml::String{class_name.data(), class_name.size()});
-    for (auto* element : elements) {
-        if (element && !element->HasAttribute("disabled")) {
-            return focusElement(element);
-        }
-    }
-    return false;
-}
-
-void RmlUiRuntime::queueFocusElement(Rml::Element* element) {
-    if (!element) {
-        return;
-    }
-
-    pending_focus_requests_.push_back(PendingFocusRequest{
-        .kind = PendingFocusRequest::Kind::Element,
-        .document = element->GetOwnerDocument(),
-        .element = element,
-    });
-}
-
-void RmlUiRuntime::queueFocusElementById(Rml::ElementDocument* document, std::string_view element_id) {
-    if (!document || element_id.empty()) {
-        return;
-    }
-
-    pending_focus_requests_.push_back(PendingFocusRequest{
-        .kind = PendingFocusRequest::Kind::ElementId,
-        .document = document,
-        .token = std::string(element_id),
-    });
-}
-
-void RmlUiRuntime::queueFocusFirstEnabledElementByClass(Rml::ElementDocument* document, std::string_view class_name) {
-    if (!document || class_name.empty()) {
-        return;
-    }
-
-    pending_focus_requests_.push_back(PendingFocusRequest{
-        .kind = PendingFocusRequest::Kind::FirstEnabledElementByClass,
-        .document = document,
-        .token = std::string(class_name),
-    });
 }
 
 Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path, uint64_t owner_scene_id) {
@@ -317,7 +189,6 @@ void RmlUiRuntime::unloadDocument(Rml::ElementDocument* doc) {
         documents_.erase(it);
     }
 
-    clearPendingFocusRequestsForDocument(doc);
     doc->Close();
 }
 
@@ -325,7 +196,6 @@ void RmlUiRuntime::unloadDocumentsByOwner(uint64_t owner_scene_id) {
     std::vector<Rml::ElementDocument*> documents_to_close;
     for (const auto& entry : documents_) {
         if (entry.owner == owner_scene_id) {
-            clearPendingFocusRequestsForDocument(entry.doc);
             documents_to_close.push_back(entry.doc);
         }
     }
@@ -440,8 +310,8 @@ void RmlUiRuntime::adjustEventForViewport(SDL_Event& event) const {
 // 根据当前活跃 Scene 更新所有文档的交互权限。
 // owner == 0 的文档为全局 UI（如 HUD），始终保持可交互；
 // owner 与 active_scene_id_ 匹配的文档属于当前 Scene，恢复正常交互；
-// 其余文档（后台 Scene 的 UI）设置 pointer-events:none 并清除焦点，
-// 防止非活跃 Scene 的界面响应鼠标点击或持有键盘焦点。
+// 其余文档（后台 Scene 的 UI）设置 pointer-events:none，
+// 防止非活跃 Scene 的界面响应鼠标点击。
 void RmlUiRuntime::applyInteractionPolicy() {
     for (auto& entry : documents_) {
         if (!entry.doc) {
@@ -456,19 +326,8 @@ void RmlUiRuntime::applyInteractionPolicy() {
             entry.doc->RemoveProperty("pointer-events");
         } else {
             entry.doc->SetProperty("pointer-events", "none");
-            entry.doc->Blur();
         }
     }
-}
-
-void RmlUiRuntime::clearPendingFocusRequestsForDocument(Rml::ElementDocument* document) {
-    if (!document) {
-        return;
-    }
-
-    std::erase_if(pending_focus_requests_, [document](const PendingFocusRequest& request) {
-        return request.document == document;
-    });
 }
 
 } // namespace engine::ui::rmlui

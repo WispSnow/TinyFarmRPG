@@ -90,7 +90,6 @@ bool RestDialogScene::initUI() {
         return false;
     }
 
-    document_controller_.setDefaultFocusById("rest-hours-down-button");
     if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("RestDialogScene: 加载 RML 文档失败。");
         document_controller_.unload();
