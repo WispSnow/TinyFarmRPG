@@ -21,6 +21,8 @@
                      data-class-draggable="slot.can_drag"
                      data-class-has-item="slot.has_item"
                      data-class-has-count="slot.has_count"
+                     data-attr-slot_grid_source="2"
+                     data-attr-slot_index="slot.slot_index"
                      data-event-mouseover="slot_hover_enter(slot.slot_index)"
                      data-event-mouseout="slot_hover_exit(slot.slot_index)"
                      data-event-dragstart="slot_drag_start(slot.slot_index)"

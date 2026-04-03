@@ -943,11 +943,6 @@ void InventoryMenuScene::onBpSlotMouseUp(int slot_index, Rml::Event& event) {
     }
 
     event.StopPropagation();
-    if (drag_state_.suppress_next_primary_mouse_up) {
-        drag_state_.suppress_next_primary_mouse_up = false;
-        return;
-    }
-
     selectBpSlot(slot_index);
     detail_bp_slot_ = slot_index;
     detail_hb_slot_ = -1;
@@ -997,7 +992,7 @@ void InventoryMenuScene::onBpSlotDragStart(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     closeActionMenu(false);
     clearTooltip();
-    drag_state_.startFromInventory(slot_index);
+    drag_state_.start();
 }
 
 void InventoryMenuScene::onBpSlotDragDrop(int slot_index, Rml::Event& event) {
@@ -1005,17 +1000,22 @@ void InventoryMenuScene::onBpSlotDragDrop(int slot_index, Rml::Event& event) {
         return;
     }
 
+    const auto drag_info = game::ui::getSlotGridDragInfo(event);
+    if (!drag_info) {
+        return;
+    }
+
     event.StopPropagation();
     clearTooltip();
     drag_state_.drop_handled = true;
 
-    if (drag_state_.fromHotbar()) {
+    if (drag_info->fromHotbar()) {
         const auto* hotbar = game_registry_.try_get<game::component::HotbarComponent>(player_);
-        if (!hotbar || drag_state_.source_slot_index < 0 || drag_state_.source_slot_index >= HOTBAR_SLOTS) {
+        if (!hotbar || drag_info->slot_index >= HOTBAR_SLOTS) {
             return;
         }
 
-        const int source_inventory_slot = hotbar->slot(drag_state_.source_slot_index).inventory_slot_index_;
+        const int source_inventory_slot = hotbar->slot(drag_info->slot_index).inventory_slot_index_;
         if (source_inventory_slot >= 0 && source_inventory_slot != slot_index) {
             context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{
                 player_, source_inventory_slot, slot_index, true});
@@ -1023,14 +1023,14 @@ void InventoryMenuScene::onBpSlotDragDrop(int slot_index, Rml::Event& event) {
         return;
     }
 
-    if (drag_state_.source_slot_index != slot_index) {
-        context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{
-            player_, drag_state_.source_slot_index, slot_index, true});
+    if (drag_info->slot_index != slot_index) {
+        context_.getDispatcher().trigger(game::defs::InventoryMoveCommand{player_, drag_info->slot_index, slot_index, true});
     }
 }
 
 void InventoryMenuScene::onBpSlotDragEnd(int slot_index, Rml::Event& event) {
-    if (!drag_state_.active || drag_state_.fromHotbar() || slot_index != drag_state_.source_slot_index) {
+    const auto drag_info = game::ui::getSlotGridDragInfo(event);
+    if (!drag_state_.active || !drag_info || !drag_info->fromInventory() || slot_index != drag_info->slot_index) {
         return;
     }
 
@@ -1085,11 +1085,6 @@ void InventoryMenuScene::onHbSlotMouseUp(int slot_index, Rml::Event& event) {
     }
 
     event.StopPropagation();
-    if (drag_state_.suppress_next_primary_mouse_up) {
-        drag_state_.suppress_next_primary_mouse_up = false;
-        return;
-    }
-
     selectHbSlot(slot_index);
     detail_hb_slot_ = slot_index;
     detail_bp_slot_ = -1;
@@ -1134,7 +1129,7 @@ void InventoryMenuScene::onHbSlotDragStart(int slot_index, Rml::Event& event) {
     event.StopPropagation();
     closeActionMenu(false);
     clearTooltip();
-    drag_state_.startFromHotbar(slot_index, hotbar->slot(slot_index).inventory_slot_index_);
+    drag_state_.start();
 }
 
 void InventoryMenuScene::onHbSlotDragDrop(int slot_index, Rml::Event& event) {
@@ -1142,12 +1137,17 @@ void InventoryMenuScene::onHbSlotDragDrop(int slot_index, Rml::Event& event) {
         return;
     }
 
+    const auto drag_info = game::ui::getSlotGridDragInfo(event);
+    if (!drag_info) {
+        return;
+    }
+
     event.StopPropagation();
     clearTooltip();
     drag_state_.drop_handled = true;
 
-    if (drag_state_.fromHotbar()) {
-        if (drag_state_.source_slot_index == slot_index) {
+    if (drag_info->fromHotbar()) {
+        if (drag_info->slot_index == slot_index) {
             return;
         }
 
@@ -1156,30 +1156,30 @@ void InventoryMenuScene::onHbSlotDragDrop(int slot_index, Rml::Event& event) {
             return;
         }
 
-        const int source_inventory_slot = hotbar->slot(drag_state_.source_slot_index).inventory_slot_index_;
+        const int source_inventory_slot = hotbar->slot(drag_info->slot_index).inventory_slot_index_;
         if (hotbar->slot(slot_index).empty()) {
             context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, source_inventory_slot});
-            context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_state_.source_slot_index});
+            context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_info->slot_index});
         } else {
             const int target_inventory_slot = hotbar->slot(slot_index).inventory_slot_index_;
             context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, source_inventory_slot});
-            context_.getDispatcher().trigger(
-                game::defs::HotbarBindCommand{player_, drag_state_.source_slot_index, target_inventory_slot});
+            context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, drag_info->slot_index, target_inventory_slot});
         }
         return;
     }
 
-    context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, drag_state_.source_slot_index});
+    context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, drag_info->slot_index});
 }
 
 void InventoryMenuScene::onHbSlotDragEnd(int slot_index, Rml::Event& event) {
-    if (!drag_state_.active || !drag_state_.fromHotbar() || slot_index != drag_state_.source_slot_index) {
+    const auto drag_info = game::ui::getSlotGridDragInfo(event);
+    if (!drag_state_.active || !drag_info || !drag_info->fromHotbar() || slot_index != drag_info->slot_index) {
         return;
     }
 
     event.StopPropagation();
     if (!drag_state_.drop_handled) {
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_state_.source_slot_index});
+        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_info->slot_index});
     }
     clearDragState();
 }
