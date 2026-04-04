@@ -78,12 +78,17 @@ void populateSlotGridViewModel(SlotGridViewModel& view_model,
                                const SlotGridViewModelOptions& options = {});
 
 // 从 RmlUi 回调的 arguments 中提取单个整数参数（槽位索引）。
+// 对应 RML 写法例如：data-event-mouseup="slot_mouse_up(slot.slot_index)"，
+// 其中 `slot` 来自 `data-for="slot : hotbar_slots"` / `data-for="slot : backpack_slots"` 的当前迭代项，
+// 因此点击某一格时，RmlUi 会在该格对应的数据上下文里求值 `slot.slot_index`，
+// 再把结果作为唯一参数放入 VariantList。
 [[nodiscard]] int getSingleIntArgument(const Rml::VariantList& arguments);
 // 从事件参数中解析拖拽来源信息，不存在时返回 nullopt。
 [[nodiscard]] std::optional<SlotGridDragInfo> getSlotGridDragInfo(const Rml::Event& event);
 
 // 统一的“按槽位索引分发”成员函数签名。
 // 约定参数顺序为 (slot_index, event)。
+// 注意：这不是 RmlUi 原生要求的签名，而是本项目在 slot-grid 场景下的简化适配层。
 template<typename Owner>
 using IndexedEventHandler = void (Owner::*)(int, Rml::Event&);
 
@@ -110,6 +115,17 @@ struct SlotGridEventHandlers {
 
 // 绑定单个“带槽位索引”的事件回调。
 // 若 owner 或 handler 为空，直接返回 false，避免悬空调用。
+//
+// RmlUi 原生 data event 回调签名是：
+//   void(Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&)
+// 这里额外包了一层，把它适配成项目里更常用的：
+//   void(slot_index, event)
+//
+// 例如：
+// - RML: data-event-mouseup="slot_mouse_up(slot.slot_index)"
+// - 注册名: "slot_mouse_up"
+// - arguments: { slot.slot_index }
+// - 最终调用: owner->onSlotMouseUp(slot_index, event)
 template<typename Owner>
 [[nodiscard]] bool bindIndexedEventCallback(Rml::DataModelConstructor& constructor,
                                             std::string_view name,
@@ -119,8 +135,10 @@ template<typename Owner>
         return false;
     }
 
-    // 将 RmlUi 的 (event, arguments) 适配为强类型成员函数调用：
-    // handler(slot_index, event)。
+    // 将 RmlUi 的原生回调参数：
+    //   (DataModelHandle, event, arguments)
+    // 适配为项目约定的成员函数调用：
+    //   handler(slot_index, event)
     return constructor.BindEventCallback(
         Rml::String{name.data(), name.size()},
         [owner, handler](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList& arguments) {
@@ -147,7 +165,8 @@ template<typename Owner>
 }
 
 // 按统一命名规则批量绑定槽位网格事件。
-// 事件名由 prefix + 后缀组成，例如 "inventory" + "_mouse_down"。
+// 事件名由 prefix + 后缀组成，例如 "slot" + "_mouse_up" -> "slot_mouse_up"。
+// 这要求 RML 中 `data-event-*` 的函数名与这里拼出的名字保持一致。
 template<typename Owner>
 [[nodiscard]] bool bindSlotGridEvents(Rml::DataModelConstructor& constructor,
                                       std::string_view prefix,

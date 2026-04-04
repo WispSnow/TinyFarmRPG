@@ -1158,8 +1158,8 @@ void InventoryMenuScene::onHbSlotDragDrop(int slot_index, Rml::Event& event) {
 
         const int source_inventory_slot = hotbar->slot(drag_info->slot_index).inventory_slot_index_;
         if (hotbar->slot(slot_index).empty()) {
+            // onBind 会自动清理旧 hotbar 槽位上的同一 inventory 引用，这里不必再显式 unbind。
             context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, source_inventory_slot});
-            context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{player_, drag_info->slot_index});
         } else {
             const int target_inventory_slot = hotbar->slot(slot_index).inventory_slot_index_;
             context_.getDispatcher().trigger(game::defs::HotbarBindCommand{player_, slot_index, source_inventory_slot});
