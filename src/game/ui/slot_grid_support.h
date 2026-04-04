@@ -22,6 +22,14 @@ class ItemCatalog;
 
 namespace game::ui {
 
+// 标识菜单中可交互面板的种类（选中、焦点语境）。
+// 与拖拽来源分离定义，避免“可选中但不可拖拽”的面板被错误耦合。
+enum class MenuPanelKind {
+    None = 0,
+    Backpack,
+    Hotbar,
+};
+
 // 单个槽位格子的 UI 数据快照，绑定到 RmlUi 数据模型供模板渲染。
 struct SlotGridViewModel {
     int slot_index{0};
@@ -66,6 +74,29 @@ struct SlotGridDragState {
 
     bool active{false};
     bool drop_handled{false};
+};
+
+// 统一记录当前选中的槽位：面板种类 + 索引。
+struct SelectedSlot {
+    MenuPanelKind panel{MenuPanelKind::None};
+    int index{-1};
+
+    [[nodiscard]] bool valid() const {
+        return panel != MenuPanelKind::None && index >= 0;
+    }
+
+    [[nodiscard]] bool isBackpack() const {
+        return panel == MenuPanelKind::Backpack;
+    }
+
+    [[nodiscard]] bool isHotbar() const {
+        return panel == MenuPanelKind::Hotbar;
+    }
+
+    void clear() {
+        panel = MenuPanelKind::None;
+        index = -1;
+    }
 };
 
 // 向 RmlUi 注册 SlotGridViewModel 的字段类型，使其可被数据绑定读取。

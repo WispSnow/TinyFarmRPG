@@ -4,10 +4,23 @@
 - 任务ID：`UI-INVMENU-001`
 - 任务标题：`InventoryMenuScene 拆分为 Tab 管理器 + Tab Content 组件`
 - 优先级：`P1`
-- 状态：`Pending`
+- 状态：`In Progress`
 - 计划时间：`2026-04-04` 起
 - 依赖任务：`无`
 - 设计原则：`Scene 只做文档/生命周期/标签切换壳；每个标签页内容由独立组件承担，各 Tab 之间零耦合；充分利用 RmlUi 声明式绑定管理 tab 状态；资源释放遵循 RAII`
+
+## 执行状态（2026-04-04）
+
+- [x] Stage 0：完成
+- [x] Stage 1：完成
+- [x] Stage 2：完成
+- [x] Stage 3：完成
+- [x] Stage 4：完成
+- [x] 编译验证：`ninja -C build/debug game_tests`、`ninja -C build/debug game`
+- [x] 全量测试：`cd build/debug && ctest --output-on-failure`（441/441 通过）
+- [ ] 交互/视觉手测：仍待在可渲染 RmlUi 的运行环境中确认
+
+> 说明：当前终端/测试环境下，部分依赖 RmlUi 渲染上下文的 `UILayoutIntegrationTest.*` 用例会被框架自动标记为 skipped，不代表本次改动存在失败用例。
 
 ## 背景
 
@@ -265,7 +278,7 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 
 ## 执行步骤
 
-### Stage 0：前置准备（不改变运行时行为）
+### Stage 0：前置准备（不改变运行时行为，已完成）
 
 1. 在 `slot_grid_support.h` 中新增 `MenuPanelKind` 枚举和 `SelectedSlot` 结构体
 2. 创建 `menu_tab_content.h`，定义 `MenuTabId` 枚举和 `IMenuTabContent` 接口（无 `cleanup()`）
@@ -273,7 +286,7 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 4. 更新 `CMakeLists.txt`（暂无新 .cpp）
 5. 编译验证
 
-### Stage 1：Tab 状态声明化 + 角色面板归属调整
+### Stage 1：Tab 状态声明化 + 角色面板归属调整（已完成）
 
 此阶段仍在 `InventoryMenuScene` 内部改造，不创建新类，确保每步可独立验证。
 
@@ -288,7 +301,7 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 5. 确认角色面板（`char_*`、`gold_*`、`farm_*`）绑定变量和 `syncCharacterPanel()` 留在 Scene 中，不迁移到 Tab Content
 6. 编译验证，确认 tab 高亮与当前行为一致
 
-### Stage 2：提取 InventoryTabContent + 多 Tab 架子
+### Stage 2：提取 InventoryTabContent + 多 Tab 架子（已完成）
 
 1. 创建 `inventory_tab_content.h`，声明类：
    - 构造函数接收 `Context&`、`RmlDocumentController&`、`entt::registry&`、`entt::entity player`、`ItemCatalog*`
@@ -368,7 +381,7 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 
 11. 编译验证，全量测试
 
-### Stage 3：Backpack / Hotbar 回调参数化 + SelectedSlot
+### Stage 3：Backpack / Hotbar 回调参数化 + SelectedSlot（已完成）
 
 1. 在 `InventoryTabContent` 中新增 8 个 `onSlot*(MenuPanelKind, int, Event&)` 参数化方法
 
@@ -382,7 +395,7 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 
 6. 编译验证，全量测试
 
-### Stage 4：RCSS 去重
+### Stage 4：RCSS 去重（已完成）
 
 注意：`slot_widgets.rcss` 中现有的 `.tf-slot-count` 仅负责显隐逻辑（`display: none/block`），`.tf-slot-icon-pop` 仅负责 hover 动画（`transform-origin + transition`）。真正的图标定位（`position: absolute; left: 2dp; top: 2dp; width: 16dp; height: 16dp`）和数量文字排版（`font-size, color, font-effect, text-align` 等）在页面级 `.bp-slot-icon` / `.hb-slot-icon` 中。因此**不能**直接把样式移入现有的 utility class，需要新建共享几何类。
 
@@ -426,8 +439,8 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 
 ## 验证清单
 
-- [ ] 编译通过（`ninja -C build`）
-- [ ] 全量测试通过（`ctest --output-on-failure`）
+- [x] 编译通过（`ninja -C build/debug game_tests`、`ninja -C build/debug game`）
+- [x] 全量测试通过（`cd build/debug && ctest --output-on-failure`）
 - [ ] 背包界面打开/关闭正常
 - [ ] 背包 slot 悬停 tooltip 正常
 - [ ] 背包 slot 左键点击选中 + detail panel 显示正常
@@ -444,9 +457,9 @@ bind_grid_events("hb_slot", MenuPanelKind::Hotbar);
 - [ ] ESC 关闭 action menu / 返回游戏正常
 - [ ] 外部 InventoryChanged / HotbarChanged 事件触发 UI 刷新正常
 - [ ] 角色面板信息显示正常
-- [ ] tab bar 高亮跟随 active_tab_id 切换（当前仅 Inventory 可点击，其余 disabled）
+- [x] tab bar 高亮跟随 active_tab_id 切换（当前仅 Inventory 可点击，其余 disabled）
 - [ ] Slot 图标和数量文字样式无视觉变化（Stage 4 后）
-- [ ] `tf-nav-root` 已添加：RmlUi 原生键盘/手柄导航根已启用（`nav: auto` 生效），为将来恢复导航做好准备
+- [x] `tf-nav-root` 已添加：RmlUi 原生键盘/手柄导航根已启用（`nav: auto` 生效），为将来恢复导航做好准备
 - [ ] 非活跃 tab 的 `onDeactivated` 确实断开了 dispatcher（切换到未来新 tab 后，InventoryChanged 不再触发 inventory 逻辑）
 
 ## 风险与注意事项
