@@ -170,6 +170,29 @@ TEST_F(RmlUiTransitionBehaviorTest, InvalidLinearTweenKeywordPreventsTransitione
     overlay->RemoveEventListener("transitionend", &listener);
 }
 
+TEST_F(RmlUiTransitionBehaviorTest, NoneTransitionPreventsTransitionend) {
+    std::unique_ptr<Rml::ElementDocument, void (*)(Rml::ElementDocument*)> document(loadDocument(), [](Rml::ElementDocument* doc) {
+        if (doc) {
+            doc->Close();
+        }
+    });
+    ASSERT_NE(document.get(), nullptr);
+
+    auto* overlay = document->GetElementById("fade-overlay");
+    ASSERT_NE(overlay, nullptr);
+
+    TransitionListener listener{};
+    overlay->AddEventListener("transitionend", &listener);
+
+    overlay->SetProperty("transition", "none");
+    overlay->SetClass("is-opaque", true);
+    advanceContext(0.3, 6);
+
+    EXPECT_EQ(listener.count, 0);
+
+    overlay->RemoveEventListener("transitionend", &listener);
+}
+
 TEST_F(RmlUiTransitionBehaviorTest, ValidLinearInOutTweenKeywordFiresTransitionend) {
     std::unique_ptr<Rml::ElementDocument, void (*)(Rml::ElementDocument*)> document(loadDocument(), [](Rml::ElementDocument* doc) {
         if (doc) {

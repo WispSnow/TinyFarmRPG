@@ -116,6 +116,11 @@ void RmlScreenFade::setTransitionDuration(float seconds) {
     }
 
     const float duration = sanitizeDuration(seconds);
+    if (duration <= 0.0f) {
+        overlay_->SetProperty("transition", "none");
+        return;
+    }
+
     overlay_->SetProperty("transition", std::format("opacity {:.3f}s linear-in-out", duration));
 }
 
