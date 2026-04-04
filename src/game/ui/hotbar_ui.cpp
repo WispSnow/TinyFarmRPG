@@ -136,6 +136,7 @@ void HotbarUI::refreshSlotViewModel(int slot_index) {
         return;
     }
 
+    // HotbarUI 不直接依赖 ECS 组件；这里只把外部同步进来的缓存转换成 RmlUi 可绑定字段。
     auto& slot = hotbar_slots_[static_cast<std::size_t>(slot_index)];
     slot.slot_index = slot_index;
     populateSlotGridViewModel(
@@ -295,6 +296,7 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
 
     event.StopPropagation();
     if (drag_state_.active) {
+        // 拖拽以 mouseup 收尾；拖拽期间忽略“点击激活”，避免一次操作落成两条命令。
         return;
     }
 
@@ -364,6 +366,7 @@ void HotbarUI::onSlotDragStart(int slot_index, Rml::Event& event) {
     }
 
     event.StopPropagation();
+    // 具体来源槽位索引会写在拖拽代理元素属性上，并由 dragdrop / dragend 从事件参数取回。
     drag_state_.start();
     clearTooltip();
 }
@@ -378,6 +381,8 @@ void HotbarUI::onSlotDragDrop(int slot_index, Rml::Event& event) {
         return;
     }
 
+    // RmlUi 已经完成了拖拽 clone、命中检测和 drop 目标选择；
+    // 这里仅把“来源槽位 -> 目标槽位”的结果翻译为 gameplay 命令。
     const int source_slot_index = drag_info->slot_index;
     const int source_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(source_slot_index)];
     if (source_inventory_index < 0) {
@@ -393,13 +398,17 @@ void HotbarUI::onSlotDragDrop(int slot_index, Rml::Event& event) {
         return;
     }
 
+    // 注意区分两种“空”：
+    // - 命中了某个 hotbar 槽位，但该槽位当前没有绑定 inventory：走本函数的 else 分支（移动到空槽位）。
+    // - 没有命中任何槽位，拖到了 UI 空白区域：不会进入 dragdrop，而会在 dragend 中执行 unbind。
     const int dst_inventory_index = slot_inventory_indices_[static_cast<std::size_t>(slot_index)];
     if (dst_inventory_index >= 0) {
         context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, source_inventory_index});
         context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, source_slot_index, dst_inventory_index});
     } else {
+        // onBind 会维护“一个 inventory 槽只对应一个 hotbar 槽”的约束，
+        // 因此绑定到新槽位后，旧 source 槽位会被自动清空，无需额外 unbind。
         context_.getDispatcher().trigger(game::defs::HotbarBindCommand{target_, slot_index, source_inventory_index});
-        context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, source_slot_index});
     }
 
     context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{target_, slot_index});
@@ -413,6 +422,9 @@ void HotbarUI::onSlotDragEnd(int slot_index, Rml::Event& event) {
 
     event.StopPropagation();
     if (!drag_state_.drop_handled && target_ != entt::null) {
+        // 只有“没有命中任何合法 drop 目标”才会走到这里，
+        // 例如把 hotbar 图标拖到所有槽位之外的空白区域。
+        // 这和“拖到一个空槽位”不同；空槽位会先触发 dragdrop，并在 onSlotDragDrop 中处理。
         context_.getDispatcher().trigger(game::defs::HotbarUnbindCommand{target_, drag_info->slot_index});
     }
     clearDragState();
