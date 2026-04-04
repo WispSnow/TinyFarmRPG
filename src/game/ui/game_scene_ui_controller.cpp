@@ -138,25 +138,7 @@ void GameSceneUiController::applyHotbarChanged(const game::defs::HotbarChanged& 
         return;
     }
 
-    hotbar_ui_->setTarget(evt.target);
-
-    if (evt.full_sync) {
-        hotbar_ui_->clearAllSlots();
-        hotbar_ui_->resetInventoryMappings();
-    }
-
-    for (const auto& slot : evt.slots) {
-        if (slot.hotbar_index < 0 || slot.hotbar_index >= game::component::HotbarComponent::SLOT_COUNT) {
-            continue;
-        }
-
-        hotbar_ui_->setSlotInventoryIndex(slot.hotbar_index, slot.inventory_slot_index);
-        if (slot.item_id != entt::null && slot.count > 0) {
-            hotbar_ui_->setSlotItem(slot.hotbar_index, engine::ui::SlotItem{slot.item_id, slot.count});
-        } else {
-            hotbar_ui_->clearSlot(slot.hotbar_index);
-        }
-    }
+    hotbar_ui_->syncState(evt.target, evt.full_sync, evt.active_slot, evt.slots);
 }
 
 void GameSceneUiController::applyHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt) {
@@ -164,8 +146,7 @@ void GameSceneUiController::applyHotbarSlotChanged(const game::defs::HotbarSlotC
         return;
     }
 
-    hotbar_ui_->setTarget(evt.target);
-    hotbar_ui_->setActiveSlot(evt.slot_index);
+    hotbar_ui_->syncActiveSlot(evt.target, evt.slot_index);
 }
 
 entt::entity GameSceneUiController::findPlayerEntity() const {

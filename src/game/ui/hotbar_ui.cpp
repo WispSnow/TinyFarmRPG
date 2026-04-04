@@ -284,6 +284,45 @@ void HotbarUI::toggle() {
     }
 }
 
+void HotbarUI::syncState(entt::entity target,
+                         bool full_sync,
+                         int active_slot,
+                         std::span<const game::defs::HotbarSlotUpdate> slot_updates) {
+    setTarget(target);
+
+    if (full_sync) {
+        for (auto& item : slot_items_) {
+            item.reset();
+        }
+        std::fill(slot_inventory_indices_.begin(), slot_inventory_indices_.end(), -1);
+    }
+
+    if (active_slot >= -1 && active_slot < SLOT_COUNT) {
+        active_slot_index_ = active_slot;
+    }
+
+    for (const auto& slot : slot_updates) {
+        if (!isValidSlotIndex(slot.hotbar_index)) {
+            continue;
+        }
+
+        slot_inventory_indices_[static_cast<std::size_t>(slot.hotbar_index)] = slot.inventory_slot_index;
+        if (slot.item_id != entt::null && slot.count > 0) {
+            slot_items_[static_cast<std::size_t>(slot.hotbar_index)] = engine::ui::SlotItem{slot.item_id, slot.count};
+        } else {
+            slot_items_[static_cast<std::size_t>(slot.hotbar_index)].reset();
+        }
+    }
+
+    refreshAllSlotViewModels();
+    markSlotsDirty();
+}
+
+void HotbarUI::syncActiveSlot(entt::entity target, int slot_index) {
+    setTarget(target);
+    setActiveSlot(slot_index);
+}
+
 void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
     if (!isValidSlotIndex(slot_index)) {
         return;

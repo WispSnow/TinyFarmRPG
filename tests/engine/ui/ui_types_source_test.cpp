@@ -30,14 +30,16 @@ TEST(UiTypesSourceTest, SlotItemKeepsOnlyItemIdentityAndCount) {
 
 TEST(UiTypesSourceTest, HotbarSyncNoLongerFetchesLegacyImageIconsForSlotItems) {
     const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/game_scene_ui_controller.cpp").lexically_normal();
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/hotbar_ui.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = test_source_utils::readTextFile(source_path);
     ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
 
     const std::string block =
-        test_source_utils::extractFunctionBlock(source, "void GameSceneUiController::applyHotbarChanged(const game::defs::HotbarChanged& evt)");
+        test_source_utils::extractFunctionBlock(
+            source,
+            "void HotbarUI::syncState(entt::entity target,");
     ASSERT_FALSE(block.empty());
 
     EXPECT_EQ(block.find("getItemIcon("), std::string::npos);
