@@ -164,7 +164,7 @@
     opacity: 0.5;
 }
 
-.hb-slot-icon {
+.inv-slot-icon {
     position: absolute;
     left: 2dp;
     top: 2dp;
@@ -172,7 +172,7 @@
     height: 16dp;
 }
 
-.hb-slot-count {
+.inv-slot-count {
     position: absolute;
     left: 0;
     top: 0;
@@ -229,29 +229,6 @@
 
 .bp-slot-drag-proxy:drag {
     opacity: 0.5;
-}
-
-.bp-slot-icon {
-    position: absolute;
-    left: 2dp;
-    top: 2dp;
-    width: 16dp;
-    height: 16dp;
-}
-
-.bp-slot-count {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 20dp;
-    height: 20dp;
-    text-align: right;
-    vertical-align: bottom;
-    font-size: 8dp;
-    color: #ffffff;
-    font-effect: shadow(1dp 1dp #000000cc);
-    line-height: 20dp;
-    padding: 0 1dp 0 0;
 }
 
 /* --- Tab Actions --- */

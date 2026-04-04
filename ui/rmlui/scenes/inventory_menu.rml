@@ -8,20 +8,41 @@
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="inventory_menu.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="inventory_menu">
+<body class="tf-screen-root tf-nav-root" data-model="inventory_menu">
     <div id="menu-overlay"></div>
 
     <div id="menu-panel">
 
         <!-- Tabs -->
         <div id="tab-bar">
-            <button class="tab-icon tab-active tf-nav-auto tf-focus-ring-gold" id="tab-inventory"></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold" id="tab-equipment" disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold" id="tab-quests" disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold" id="tab-map" disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold" id="tab-options" disabled></button>
-            <button class="tf-nav-auto tf-focus-ring-blue" id="sort-btn" data-event-click="sort">Sort</button>
-            <button class="tf-nav-auto tf-focus-ring-danger" id="trash-btn" data-event-click="trash"></button>
+            <button class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                    id="tab-inventory"
+                    data-class-tab-active="active_tab_id == 0"
+                    data-event-click="switch_tab(0)"></button>
+            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
+                    id="tab-equipment"
+                    data-class-tab-active="active_tab_id == 1"
+                    disabled></button>
+            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
+                    id="tab-quests"
+                    data-class-tab-active="active_tab_id == 2"
+                    disabled></button>
+            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
+                    id="tab-map"
+                    data-class-tab-active="active_tab_id == 3"
+                    disabled></button>
+            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
+                    id="tab-options"
+                    data-class-tab-active="active_tab_id == 4"
+                    disabled></button>
+            <button class="tf-nav-auto tf-focus-ring-blue"
+                    id="sort-btn"
+                    data-if="active_tab_id == 0"
+                    data-event-click="sort">Sort</button>
+            <button class="tf-nav-auto tf-focus-ring-danger"
+                    id="trash-btn"
+                    data-if="active_tab_id == 0"
+                    data-event-click="trash"></button>
         </div>
 
         <!-- Separator -->
@@ -31,7 +52,7 @@
         <div id="content-row">
 
             <!-- Left: Inventory -->
-            <div id="inventory-col">
+            <div id="inventory-col" data-if="active_tab_id == 0">
                 <div id="slot-region">
                     <div id="hotbar-area">
                         <div id="hotbar-grid">
@@ -53,8 +74,8 @@
                                      data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
                                      data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
                                      data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
-                                    <div class="hb-slot-icon tf-slot-icon-pop" data-style-decorator="hslot.icon_decorator"></div>
-                                    <div class="hb-slot-count tf-slot-count">{{ hslot.count_text }}</div>
+                                    <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="hslot.icon_decorator"></div>
+                                    <div class="inv-slot-count tf-slot-count">{{ hslot.count_text }}</div>
                                 </div>
                                 <div class="hb-slot-index">{{ hslot.label }}</div>
                             </div>
@@ -80,8 +101,8 @@
                                      data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
                                      data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
                                      data-event-dragend="bp_slot_drag_end(slot.slot_index)">
-                                    <div class="bp-slot-icon tf-slot-icon-pop" data-style-decorator="slot.icon_decorator"></div>
-                                    <div class="bp-slot-count tf-slot-count">{{ slot.count_text }}</div>
+                                    <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="slot.icon_decorator"></div>
+                                    <div class="inv-slot-count tf-slot-count">{{ slot.count_text }}</div>
                                 </div>
                             </div>
                         </div>
