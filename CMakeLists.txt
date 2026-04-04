@@ -199,7 +199,7 @@ endif()
 # 学习/实验配置
 # ============================================
 
-option(BUILD_LEARN "构建学习/实验目标" OFF)
+option(BUILD_LEARN "构建学习/实验目标" ON)
 
 if(BUILD_LEARN)
     add_subdirectory(learn)
