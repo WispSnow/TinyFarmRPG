@@ -23,6 +23,7 @@ TEST(RmlScreenFadeTransitionSourceTest, SourceUsesTransitionendAndDynamicTransit
 
     EXPECT_NE(source.find("transitionend"), std::string::npos);
     EXPECT_NE(source.find("event.GetParameter<Rml::String>(\"property\", \"\")"), std::string::npos);
+    EXPECT_NE(source.find("overlay_->SetProperty(\"transition\", \"none\");"), std::string::npos);
     EXPECT_NE(source.find("overlay_->SetProperty(\"transition\", std::format(\"opacity {:.3f}s linear-in-out\", duration));"),
               std::string::npos);
     EXPECT_NE(source.find("overlay_->SetClass(Rml::String{OPAQUE_CLASS.data(), OPAQUE_CLASS.size()}, opaque);"),
@@ -59,7 +60,7 @@ TEST(RmlScreenFadeTransitionSourceTest, OverlayRcssDefinesOpaqueClassAndTransiti
     const std::string rcss = test_source_utils::readTextFile(rcss_path);
     ASSERT_FALSE(rcss.empty()) << "无法读取: " << rcss_path;
 
-    EXPECT_NE(rcss.find("transition: opacity 0s linear-in-out;"), std::string::npos);
+    EXPECT_NE(rcss.find("transition: none;"), std::string::npos);
     EXPECT_NE(rcss.find("#fade-overlay.is-opaque"), std::string::npos);
     EXPECT_NE(rcss.find("opacity: 1;"), std::string::npos);
 }
