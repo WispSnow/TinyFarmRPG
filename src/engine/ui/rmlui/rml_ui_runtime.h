@@ -64,6 +64,13 @@ public:
 
     [[nodiscard]] bool reloadLastDocument();
 
+    // Debugger
+    void setDebuggerEnabled(bool enabled);
+    [[nodiscard]] bool isDebuggerEnabled() const { return debugger_enabled_; }
+    void toggleDebuggerVisible();
+    void setDebuggerVisible(bool visible);
+    [[nodiscard]] bool isDebuggerVisible() const;
+
     [[nodiscard]] Rml::Context* getContext() const { return context_; }
     [[nodiscard]] const RmlUiViewport& getViewport() const { return viewport_; }
     [[nodiscard]] size_t getDocumentCount() const { return documents_.size(); }
@@ -93,6 +100,8 @@ private:
         std::string path;
     };
 
+    [[nodiscard]] bool ensureDebuggerInitialized();
+
     SDL_Window* window_{nullptr};
     std::unique_ptr<SystemInterface_SDL> system_interface_;
     RenderInterface_GL3_STB* render_interface_{nullptr};
@@ -101,6 +110,8 @@ private:
     int logical_width_{0};
     int logical_height_{0};
     bool initialized_{false};
+    bool debugger_enabled_{false};
+    bool debugger_initialized_{false};
 
     std::vector<DocumentEntry> documents_;
     uint64_t active_scene_id_{0};

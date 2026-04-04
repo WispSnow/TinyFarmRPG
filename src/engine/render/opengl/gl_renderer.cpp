@@ -325,9 +325,6 @@ void GLRenderer::setRmlUiRenderHook(RmlUiRenderHook hook) {
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
 #ifdef TF_ENABLE_DEBUG_UI
-    if (!imgui_layer_) {
-        return;
-    }
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && debug_ui_manager_) {
         const size_t category_count = engine::debug::DebugUIManager::getCategoryCount();
         // F5开始，根据面板类别数量自动扩展按键: F5 + category_index。
@@ -340,8 +337,11 @@ void GLRenderer::handleSDLEvent(const SDL_Event& event) {
             }
         }
     }
-    imgui_layer_->processEvent(event);
-#else
+    if (imgui_layer_) {
+        imgui_layer_->processEvent(event);
+    }
+#endif
+#if !defined(TF_ENABLE_DEBUG_UI) && !defined(TF_ENABLE_RMLUI_DEBUGGER)
     (void)event;
 #endif
 }

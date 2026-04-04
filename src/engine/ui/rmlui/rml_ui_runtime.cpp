@@ -9,6 +9,9 @@
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Log.h>
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+#include <RmlUi/Debugger.h>
+#endif
 
 #include <spdlog/spdlog.h>
 
@@ -104,6 +107,14 @@ void RmlUiRuntime::clean() {
         context_ = nullptr;
     }
 
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (debugger_initialized_) {
+        Rml::Debugger::Shutdown();
+        debugger_initialized_ = false;
+    }
+#endif
+    debugger_enabled_ = false;
+
     if (initialized_) {
         Rml::Shutdown();
         initialized_ = false;
@@ -118,6 +129,72 @@ void RmlUiRuntime::clean() {
     logical_width_ = 0;
     logical_height_ = 0;
     window_ = nullptr;
+}
+
+void RmlUiRuntime::setDebuggerEnabled(bool enabled) {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    debugger_enabled_ = enabled;
+    if (!debugger_enabled_) {
+        if (debugger_initialized_) {
+            Rml::Debugger::SetVisible(false);
+            Rml::Debugger::Shutdown();
+            debugger_initialized_ = false;
+        }
+        return;
+    }
+    (void)ensureDebuggerInitialized();
+#else
+    (void)enabled;
+    debugger_enabled_ = false;
+#endif
+}
+
+void RmlUiRuntime::toggleDebuggerVisible() {
+    setDebuggerVisible(!isDebuggerVisible());
+}
+
+void RmlUiRuntime::setDebuggerVisible(bool visible) {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (!debugger_enabled_ || (!visible && !debugger_initialized_)) {
+        return;
+    }
+    if (visible && !ensureDebuggerInitialized()) {
+        return;
+    }
+    Rml::Debugger::SetVisible(visible);
+#else
+    (void)visible;
+#endif
+}
+
+bool RmlUiRuntime::isDebuggerVisible() const {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (!debugger_initialized_) {
+        return false;
+    }
+    return Rml::Debugger::IsVisible();
+#else
+    return false;
+#endif
+}
+
+bool RmlUiRuntime::ensureDebuggerInitialized() {
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+    if (debugger_initialized_) {
+        return true;
+    }
+    if (!context_) {
+        return false;
+    }
+    if (!Rml::Debugger::Initialise(context_)) {
+        spdlog::error("RmlUiRuntime: failed to initialize RmlUi debugger.");
+        return false;
+    }
+    debugger_initialized_ = true;
+    return true;
+#else
+    return false;
+#endif
 }
 
 bool RmlUiRuntime::loadFontFace(std::string_view path) const {

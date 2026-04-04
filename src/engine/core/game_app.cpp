@@ -413,6 +413,7 @@ bool GameApp::initRmlUi() {
     rmlui_runtime_->setLogicalSize(logical_width, logical_height);
     rmlui_render_backend_->setLogicalSize(logical_width, logical_height);
     rmlui_render_backend_->setTextureFilterMode(config_->rmlui_texture_filter_mode_);
+    rmlui_runtime_->setDebuggerEnabled(config_->rmlui_debugger_enabled_);
     syncRmlUiViewport();
 
     if (!rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
@@ -571,13 +572,17 @@ bool GameApp::initInputManager()
         }
         return false;
     });
-#ifdef TF_ENABLE_DEBUG_UI
-    input_manager_->setImGuiEventForwarder([this](const SDL_Event& event) {
+    input_manager_->setSdlEventObserver([this](const SDL_Event& event) {
         if (gl_renderer_) {
             gl_renderer_->handleSDLEvent(event);
         }
-    });
+#ifdef TF_ENABLE_RMLUI_DEBUGGER
+        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+            event.key.scancode == SDL_SCANCODE_F4 && rmlui_runtime_) {
+            rmlui_runtime_->toggleDebuggerVisible();
+        }
 #endif
+    });
     spdlog::trace("输入管理器初始化成功。");
     return true;
 }

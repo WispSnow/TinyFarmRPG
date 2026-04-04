@@ -19,6 +19,7 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 # 注意：可以在Dependencies.cmake中为每个库单独指定
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
+option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
@@ -81,6 +82,9 @@ add_library(engine STATIC ${IMGUI_SOURCES})
 if(ENABLE_DEBUG_UI)
     target_compile_definitions(engine PUBLIC TF_ENABLE_DEBUG_UI)
 endif()
+if(ENABLE_RMLUI_DEBUGGER)
+    target_compile_definitions(engine PUBLIC TF_ENABLE_RMLUI_DEBUGGER)
+endif()
 
 # 链接所有依赖库
 target_link_libraries(engine
@@ -131,8 +135,14 @@ target_include_directories(engine
 target_link_libraries(engine
     PUBLIC
         rmlui_core
-        rmlui_debugger
 )
+
+if(ENABLE_RMLUI_DEBUGGER)
+    target_link_libraries(engine
+        PUBLIC
+            rmlui_debugger
+    )
+endif()
 
 # 创建可执行文件
 add_executable(${TARGET})

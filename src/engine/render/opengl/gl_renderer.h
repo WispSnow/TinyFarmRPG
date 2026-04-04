@@ -170,7 +170,7 @@ public:
     void beginDebugUI();
     void endDebugUI();
 
-    // GLRenderer 只知道“在 present() 的哪个阶段调用 retained UI 渲染”。
+    // GLRenderer 只知道”在 present() 的哪个阶段调用 retained UI 渲染”。
     // runtime/update/document 管理不再通过 renderer 暴露回上层。
     void setRmlUiRenderHook(RmlUiRenderHook hook);
     void handleSDLEvent(const SDL_Event& event);
