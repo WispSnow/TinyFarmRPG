@@ -2,6 +2,8 @@
 
 > 编写 RML/RCSS 或涉及 UI 层 C++ 代码时，请先阅读本文件。
 
+遇到任何不确定的问题，或持续出现bug，都优先从RmlUi仓库 `external/RmlUi-6.2` 中寻找答案。
+
 RmlUi 的 RCSS 与标准 CSS 有若干关键差异，编写时必须注意：
 
 ## 默认 display 是 inline

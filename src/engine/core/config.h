@@ -27,6 +27,7 @@ public:
     // 图形设置
     bool vsync_enabled_ = true;             ///< @brief 是否启用垂直同步
     bool debug_ui_enabled_ = true;          ///< @brief 是否启用 ImGui 调试界面
+    bool rmlui_debugger_enabled_ = true;    ///< @brief 是否启用 RmlUi Debugger 运行时开关
     engine::ui::rmlui::RmlUiTextureFilterMode rmlui_texture_filter_mode_{
         engine::ui::rmlui::RmlUiTextureFilterMode::Nearest}; ///< @brief RmlUi 图片和字体 atlas 的采样模式
 

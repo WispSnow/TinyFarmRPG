@@ -158,6 +158,7 @@ void Config::fromJson(const nlohmann::json& j) {
         const auto& graphics_config = *it;
         assignBool(graphics_config, "vsync", vsync_enabled_);
         assignBool(graphics_config, "debug_ui", debug_ui_enabled_);
+        assignBool(graphics_config, "rmlui_debugger", rmlui_debugger_enabled_);
         if (const auto it_filter = graphics_config.find("rmlui_texture_filter");
             it_filter != graphics_config.end() && it_filter->is_string()) {
             const std::string filter_value = it_filter->get<std::string>();
@@ -203,6 +204,7 @@ nlohmann::ordered_json Config::toJson() const {
         {"graphics", {
             {"vsync", vsync_enabled_},
             {"debug_ui", debug_ui_enabled_},
+            {"rmlui_debugger", rmlui_debugger_enabled_},
             {"rmlui_texture_filter", engine::ui::rmlui::rmlUiTextureFilterModeToString(rmlui_texture_filter_mode_)}
         }},
         {"performance", {

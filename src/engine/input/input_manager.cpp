@@ -336,10 +336,12 @@ void InputManager::sampleInputEvents() {
         }
 
         bool imgui_blocks_rmlui = false;
-#ifdef TF_ENABLE_DEBUG_UI
-        if (imgui_event_callback_) {
-            imgui_event_callback_(event);
+        // Observer 必须先运行。GLRenderer 会在这里把事件喂给 ImGui，
+        // 这样后续 isImGuiBlockingRmlUi() 读取到的 WantCapture* 才对应当前事件后的状态。
+        if (sdl_event_observer_) {
+            sdl_event_observer_(event);
         }
+#ifdef TF_ENABLE_DEBUG_UI
         imgui_blocks_rmlui = isImGuiBlockingRmlUi(event);
 #endif
 
@@ -669,16 +671,12 @@ void InputManager::discardPendingRebindConflict() {
     pending_rebind_conflict_.reset();
 }
 
-void InputManager::setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback) {
-    rmlui_event_callback_ = std::move(callback);
+void InputManager::setSdlEventObserver(std::function<void(const SDL_Event&)> callback) {
+    sdl_event_observer_ = std::move(callback);
 }
 
-void InputManager::setImGuiEventForwarder(std::function<void(const SDL_Event&)> callback) {
-#ifdef TF_ENABLE_DEBUG_UI
-    imgui_event_callback_ = std::move(callback);
-#else
-    (void)callback;
-#endif
+void InputManager::setRmlUiEventForwarder(std::function<bool(SDL_Event&)> callback) {
+    rmlui_event_callback_ = std::move(callback);
 }
 
 void InputManager::processEvent(const SDL_Event& event) {

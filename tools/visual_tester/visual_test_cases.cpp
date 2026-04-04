@@ -33,6 +33,7 @@
 #include <imgui.h>
 #include <spdlog/spdlog.h>
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>

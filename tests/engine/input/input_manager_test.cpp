@@ -163,30 +163,28 @@ protected:
 	    EXPECT_FALSE(manager->isActionDown(mouse_action_id));
 	}
 
-	TEST_F(InputManagerTest, ImGuiForwarderReceivesQueuedEvents) {
+	TEST_F(InputManagerTest, SdlEventObserverReceivesQueuedEvents) {
 	    auto manager = InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
 	    ASSERT_NE(manager, nullptr);
 	    int callback_count = 0;
 	    bool received_motion = false;
-	    manager->setImGuiEventForwarder([&](const SDL_Event& event) {
+	    manager->setSdlEventObserver([&](const SDL_Event& event) {
 	        ++callback_count;
 	        if (event.type == SDL_EVENT_MOUSE_MOTION) {
 	            received_motion = true;
 	        }
 	    });
 
-    SDL_Event motion{};
-    motion.type = SDL_EVENT_MOUSE_MOTION;
-    motion.motion.x = 256;
-    motion.motion.y = 144;
-    ASSERT_EQ(SDL_PushEvent(&motion), true);
+	    SDL_Event motion{};
+	    motion.type = SDL_EVENT_MOUSE_MOTION;
+	    motion.motion.x = 256;
+	    motion.motion.y = 144;
+	    ASSERT_EQ(SDL_PushEvent(&motion), true);
 
 	    manager->update();
 
-	    EXPECT_GE(callback_count, 0);
-	    if (callback_count > 0) {
-	        EXPECT_TRUE(received_motion);
-	    }
+	    EXPECT_GT(callback_count, 0);
+	    EXPECT_TRUE(received_motion);
 	    const auto logical_position = manager->getLogicalMousePosition();
 	    EXPECT_FLOAT_EQ(logical_position.x, 256.0F);
 	    EXPECT_FLOAT_EQ(logical_position.y, 144.0F);
