@@ -1,22 +1,24 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="title.rcss"/>
 </head>
-<body data-model="title_scene">
+<body class="tf-screen-root tf-nav-root" data-model="title_scene">
     <img id="title-bg" src="../../../assets/textures/UI/farm-rpg-bg.png"/>
     <img id="title-logo" src="../../../assets/textures/UI/farm-rpg-logo.png"/>
 
     <div id="title-error" data-visible="show_error">{{ error_text }}</div>
 
     <div id="title-buttons">
-        <button id="title-start-button" class="tf-button-secondary title-button" data-command="start">Start</button>
-        <button id="title-load-button" class="tf-button-secondary title-button" data-command="load">Load</button>
-        <button id="title-exit-button" class="tf-button-secondary title-button" data-command="exit">Exit</button>
+        <button id="title-start-button" class="tf-button-secondary title-button" data-event-click="start">Start</button>
+        <button id="title-load-button" class="tf-button-secondary title-button" data-event-click="load">Load</button>
+        <button id="title-exit-button" class="tf-button-secondary title-button" data-event-click="exit">Exit</button>
     </div>
 
-    <button id="title-menu-button" class="tf-icon-button icon-menu" data-command="menu"></button>
+    <button id="title-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
 </body>
 </rml>

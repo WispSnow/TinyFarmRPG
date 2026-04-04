@@ -1,25 +1,15 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 
 #include <RmlUi/Core/Types.h>
 
-#include <memory>
 #include <string>
 #include <string_view>
 
 namespace engine::core {
 enum class State;
-}
-
-namespace Rml {
-class ElementDocument;
-}
-
-namespace engine::ui::rmlui {
-class HoverFocusSyncListener;
 }
 
 namespace game::save {
@@ -44,10 +34,7 @@ private:
     bool close_after_load_{false};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
-    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
 
     Rml::String message_text_{};
     Rml::String music_text_{"Music 0%"};
@@ -58,8 +45,6 @@ private:
     bool can_save_{false};
     bool can_load_{false};
     bool can_back_title_{true};
-    bool click_listener_registered_{false};
-    bool hover_listener_registered_{false};
 
 public:
     PauseMenuScene(std::string_view name,
@@ -74,7 +59,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void removeEventListeners();
+    void shutdownUI();
     void disconnectRuntimeListeners();
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();

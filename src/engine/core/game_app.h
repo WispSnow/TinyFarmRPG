@@ -35,8 +35,9 @@ namespace engine::audio {
 class AudioPlayer;
 }
 
-namespace engine::ui {
-class UINavigationController;
+namespace engine::ui::rmlui {
+class RmlUiRenderBackendGl;
+class RmlUiRuntime;
 }
 
 namespace engine::debug {
@@ -80,7 +81,6 @@ private:
     std::unique_ptr<engine::render::TextRenderer> text_renderer_;
     std::unique_ptr<engine::core::Config> config_;
     std::unique_ptr<engine::input::InputManager> input_manager_;
-    std::unique_ptr<engine::ui::UINavigationController> ui_navigation_controller_;
     std::unique_ptr<engine::core::Context> context_;
     std::unique_ptr<engine::scene::SceneManager> scene_manager_;
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_;
@@ -92,6 +92,8 @@ private:
     std::unique_ptr<engine::debug::DebugUIManager> debug_ui_manager_;
 #endif
     std::unique_ptr<engine::render::opengl::GLRenderer> gl_renderer_;
+    std::unique_ptr<engine::ui::rmlui::RmlUiRenderBackendGl> rmlui_render_backend_;
+    std::unique_ptr<engine::ui::rmlui::RmlUiRuntime> rmlui_runtime_;
 
 public:
     GameApp();
@@ -121,6 +123,7 @@ private:
     void handleEvents();
     void update(float delta_time);
     void updateFrame(float delta_time);
+    void updateRmlUiFrame();
     void render(float interpolation_alpha);
     void drainMainThreadCommands();
     void close();
@@ -130,6 +133,7 @@ private:
     [[nodiscard]] bool initConfig();
     [[nodiscard]] bool initSDL();
     [[nodiscard]] bool initGLRenderer();
+    [[nodiscard]] bool initRmlUi();
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool initDebugUIManager();
 #endif
@@ -143,13 +147,13 @@ private:
     [[nodiscard]] bool initTextRenderer();
     [[nodiscard]] bool initCamera();
     [[nodiscard]] bool initInputManager();
-    [[nodiscard]] bool initUINavigationController();
     [[nodiscard]] bool initSpatialIndexManager();
     [[nodiscard]] bool initContext();
     [[nodiscard]] bool initSceneManager();
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool registerDebugPanels();
 #endif
+    void syncRmlUiViewport();
 
     // 事件处理函数
     void onQuitEvent();

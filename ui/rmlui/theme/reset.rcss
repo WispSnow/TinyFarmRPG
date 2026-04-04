@@ -1,0 +1,8 @@
+body, div, h1, h2, h3, h4, p, hr, button, img, span {
+    display: block;
+}
+
+.tf-screen-root {
+    width: 100%;
+    height: 100%;
+}

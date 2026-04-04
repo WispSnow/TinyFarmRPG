@@ -11,13 +11,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <spdlog/spdlog.h>
 
 #include <memory>
@@ -39,14 +33,7 @@ TitleScene::TitleScene(std::string_view name, engine::core::Context& context, st
 }
 
 TitleScene::~TitleScene() {
-    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    shutdownUI();
 }
 
 bool TitleScene::init() {
@@ -72,30 +59,23 @@ bool TitleScene::init() {
 }
 
 void TitleScene::clean() {
-    removeEventListeners();
+    shutdownUI();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool TitleScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("TitleScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("TitleScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
-    if (!rml_context) {
-        spdlog::error("TitleScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("TitleScene: 创建 data model 失败。");
         return false;
@@ -104,39 +84,29 @@ bool TitleScene::initUI() {
     constructor.Bind("error_text", &error_text_);
     constructor.Bind("show_error", &show_error_);
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
-        spdlog::error("TitleScene: 加载 RML 文档失败。");
+    if (!document_controller_.bindSimpleEvent(constructor, "start", [this] { onStartClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "load", [this] { onLoadClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "menu", [this] { onMenuClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "exit", [this] { onExitClicked(); })) {
+        spdlog::error("TitleScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("start", [this](Rml::Event&) { onStartClicked(); });
-    event_bridge_.on("load", [this](Rml::Event&) { onLoadClicked(); });
-    event_bridge_.on("menu", [this](Rml::Event&) { onMenuClicked(); });
-    event_bridge_.on("exit", [this](Rml::Event&) { onExitClicked(); });
-    event_bridge_.registerTo(document_, "click");
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    click_listener_registered_ = true;
-    hover_listener_registered_ = true;
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        spdlog::error("TitleScene: 加载 RML 文档失败。");
+        document_controller_.unload();
+        return false;
+    }
 
     error_text_ = Rml::String{error_message_.data(), error_message_.size()};
     show_error_ = !error_message_.empty();
-    data_bridge_.markAllDirty();
-    layer->queueFocusElementById(document_, "title-start-button");
+    document_controller_.markAllDirty();
     return true;
 }
 
-void TitleScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
-    }
+void TitleScene::shutdownUI() {
+    document_controller_.unload();
 }
 
 void TitleScene::onStartClicked() {

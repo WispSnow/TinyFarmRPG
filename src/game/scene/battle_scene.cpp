@@ -4,13 +4,8 @@
 
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <entt/entity/entity.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -64,12 +59,7 @@ BattleScene::BattleScene(std::string_view name,
 }
 
 BattleScene::~BattleScene() {
-    removeEventListeners();
-    if (document_) {
-        unloadAllRmlDocuments();
-        document_ = nullptr;
-    }
-    data_bridge_.destroy();
+    shutdownUI();
 }
 
 bool BattleScene::init() {
@@ -88,9 +78,6 @@ bool BattleScene::init() {
         state_ = FlowState::BattleEnd;
     }
     refreshView();
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer(); layer && document_) {
-        layer->queueFocusElementById(document_, "battle-action-attack");
-    }
     return true;
 }
 
@@ -101,30 +88,23 @@ void BattleScene::update(float delta_time) {
 }
 
 void BattleScene::clean() {
-    removeEventListeners();
+    shutdownUI();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool BattleScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("BattleScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("BattleScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
-    if (!rml_context) {
-        spdlog::error("BattleScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("BattleScene: 创建 data model 失败。");
         return false;
@@ -135,35 +115,33 @@ bool BattleScene::initUI() {
         !constructor.Bind("result_text", &result_text_) ||
         !constructor.Bind("actions_enabled", &actions_enabled_)) {
         spdlog::error("BattleScene: 绑定 data model 变量失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
+    if (!document_controller_.bindSimpleEvent(constructor, "attack", [this] { queueAttackAction(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "skill", [this] { queueSkillAction(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "item", [this] { queueItemAction(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "guard", [this] { queueGuardAction(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "escape", [this] { queueEscapeAction(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "end_turn", [this] { queueEndTurnAction(); })) {
+        spdlog::error("BattleScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
+        return false;
+    }
+
+    if (!document_controller_.load(DOCUMENT_PATH)) {
         spdlog::error("BattleScene: 加载 RML 文档失败。");
-        data_bridge_.destroy();
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("attack", [this](Rml::Event&) { queueAttackAction(); });
-    event_bridge_.on("skill", [this](Rml::Event&) { queueSkillAction(); });
-    event_bridge_.on("item", [this](Rml::Event&) { queueItemAction(); });
-    event_bridge_.on("guard", [this](Rml::Event&) { queueGuardAction(); });
-    event_bridge_.on("escape", [this](Rml::Event&) { queueEscapeAction(); });
-    event_bridge_.on("end_turn", [this](Rml::Event&) { queueEndTurnAction(); });
-    event_bridge_.registerTo(document_, "click");
-    click_listener_registered_ = true;
-
-    data_bridge_.markAllDirty();
+    document_controller_.markAllDirty();
     return true;
 }
 
-void BattleScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
+void BattleScene::shutdownUI() {
+    document_controller_.unload();
 }
 
 void BattleScene::runStateMachine(float delta_time) {
@@ -222,12 +200,12 @@ void BattleScene::refreshView() {
         }
     }
     if (updateBoundString(turn_text_, turn_text)) {
-        data_bridge_.markDirty("turn_text");
+        document_controller_.markDirty("turn_text");
     }
 
     const std::string units_text = formatUnitsLine(units);
     if (updateBoundString(units_text_, units_text)) {
-        data_bridge_.markDirty("units_text");
+        document_controller_.markDirty("units_text");
     }
 
     std::string result_text = "Result: Choose action";
@@ -278,7 +256,7 @@ void BattleScene::refreshView() {
         }
     }
     if (updateBoundString(result_text_, result_text)) {
-        data_bridge_.markDirty("result_text");
+        document_controller_.markDirty("result_text");
     }
 
     const bool can_submit_action =
@@ -288,7 +266,7 @@ void BattleScene::refreshView() {
         current_actor_id.has_value();
 
     if (updateBoundBool(actions_enabled_, can_submit_action)) {
-        data_bridge_.markDirty("actions_enabled");
+        document_controller_.markDirty("actions_enabled");
     }
 }
 

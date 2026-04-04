@@ -23,6 +23,7 @@ std::unique_ptr<Context> Context::create(
         CoreServices core,
         RenderServices render,
         ResourceServices resource,
+        UiServices ui,
         engine::audio::AudioPlayer& audio_player,
         engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
@@ -33,6 +34,7 @@ std::unique_ptr<Context> Context::create(
         new Context(core,
                     render,
                     resource,
+                    ui,
                     audio_player,
                     spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
@@ -45,6 +47,7 @@ std::unique_ptr<Context> Context::create(
 Context::Context(CoreServices core,
                  RenderServices render,
                  ResourceServices resource,
+                 UiServices ui,
                  engine::audio::AudioPlayer& audio_player,
                  engine::spatial::SpatialIndexManager& spatial_index_manager
 #ifdef TF_ENABLE_DEBUG_UI
@@ -54,6 +57,7 @@ Context::Context(CoreServices core,
     : core_(core),
       render_(render),
       resource_(resource),
+      ui_(ui),
       audio_player_(audio_player),
       spatial_index_manager_(spatial_index_manager)
 #ifdef TF_ENABLE_DEBUG_UI

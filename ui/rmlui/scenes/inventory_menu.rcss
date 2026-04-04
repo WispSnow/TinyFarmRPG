@@ -3,10 +3,6 @@
  * Two-column layout: inventory left, character right
  * =========================================== */
 
-body, div, h1, h2, h3, h4, p, hr, button {
-    display: block;
-}
-
 /* --- Spritesheets --- */
 
 @spritesheet menu-inventory {
@@ -85,16 +81,10 @@ body, div, h1, h2, h3, h4, p, hr, button {
     width: 20dp;
     height: 20dp;
     padding: 2dp;
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
-}
-
-.tab-icon:hover,
-.tab-icon:focus {
-    box-shadow: #fce97fff 0dp 0dp 0dp 1dp;
+    image-color: #d8dee9d0;
+    filter: saturate(0.8) brightness(0.95);
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
 .tab-active {
@@ -104,6 +94,8 @@ body, div, h1, h2, h3, h4, p, hr, button {
 
 .tab-disabled {
     opacity: 0.4;
+    image-color: #8f98a8a0;
+    filter: saturate(0.45) brightness(0.72);
 }
 
 #tab-inventory  { decorator: image(tab-inventory); }
@@ -111,6 +103,11 @@ body, div, h1, h2, h3, h4, p, hr, button {
 #tab-quests     { decorator: image(tab-quests); }
 #tab-map        { decorator: image(tab-map); }
 #tab-options    { decorator: image(tab-options); }
+
+.tf-input-mouse .tab-icon:hover,
+.tf-input-nav .tab-icon:focus {
+    filter: saturate(1.12) brightness(1.08);
+}
 
 /* --- Separator --- */
 
@@ -130,12 +127,16 @@ body, div, h1, h2, h3, h4, p, hr, button {
 }
 
 #inventory-col {
-    position: relative;
     width: 218dp;
 }
 
 #char-col {
     width: 108dp;
+}
+
+#slot-region {
+    position: relative;
+    width: 218dp;
 }
 
 /* --- Hotbar Row --- */
@@ -152,32 +153,11 @@ body, div, h1, h2, h3, h4, p, hr, button {
 .hb-slot {
     width: 20dp;
     height: 20dp;
-    position: relative;
     decorator: ninepatch(menu-slot-selected, menu-slot-selected-inner, 1.0);
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
 }
 
 .hb-selected {
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
-}
-
-.hb-slot-drag-proxy {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 20dp;
-    height: 20dp;
-    drag: none;
-    pointer-events: auto;
-}
-
-.hb-slot-drag-proxy.draggable {
-    drag: clone;
-    cursor: move;
 }
 
 .hb-slot-drag-proxy:drag {
@@ -190,20 +170,9 @@ body, div, h1, h2, h3, h4, p, hr, button {
     top: 2dp;
     width: 16dp;
     height: 16dp;
-    transform-origin: 50% 50%;
-    transition: transform 0.08s cubic-out;
-}
-
-.hb-slot:hover .hb-slot-icon {
-    transform: scale(1.15);
 }
 
 .hb-slot-count {
-    display: none;
-}
-
-.has-count .hb-slot-count {
-    display: block;
     position: absolute;
     left: 0;
     top: 0;
@@ -250,33 +219,12 @@ body, div, h1, h2, h3, h4, p, hr, button {
 .bp-slot {
     width: 20dp;
     height: 20dp;
-    position: relative;
     decorator: ninepatch(menu-slot-bg, menu-slot-bg-inner, 1.0);
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
 }
 
 .bp-selected {
     decorator: ninepatch(menu-slot-selected, menu-slot-selected-inner, 1.0);
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
-}
-
-.bp-slot-drag-proxy {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 20dp;
-    height: 20dp;
-    drag: none;
-    pointer-events: auto;
-}
-
-.bp-slot-drag-proxy.draggable {
-    drag: clone;
-    cursor: move;
 }
 
 .bp-slot-drag-proxy:drag {
@@ -289,20 +237,9 @@ body, div, h1, h2, h3, h4, p, hr, button {
     top: 2dp;
     width: 16dp;
     height: 16dp;
-    transform-origin: 50% 50%;
-    transition: transform 0.08s cubic-out;
-}
-
-.bp-slot:hover .bp-slot-icon {
-    transform: scale(1.15);
 }
 
 .bp-slot-count {
-    display: none;
-}
-
-.has-count .bp-slot-count {
-    display: block;
     position: absolute;
     left: 0;
     top: 0;
@@ -330,17 +267,11 @@ body, div, h1, h2, h3, h4, p, hr, button {
     font-size: 9dp;
     text-align: center;
     vertical-align: middle;
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
 }
 
-#sort-btn:hover,
-#sort-btn:focus {
+.tf-input-mouse #sort-btn:hover,
+.tf-input-nav #sort-btn:focus {
     background-color: #3b4252;
-    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
 #trash-btn {
@@ -348,17 +279,16 @@ body, div, h1, h2, h3, h4, p, hr, button {
     height: 20dp;
     padding: 2dp;
     decorator: image(trash-closed);
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
+    image-color: #d8dee9d0;
+    filter: saturate(0.8) brightness(0.95);
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
-#trash-btn:hover,
-#trash-btn:focus {
+.tf-input-mouse #trash-btn:hover,
+.tf-input-nav #trash-btn:focus {
     decorator: image(trash-open);
-    box-shadow: #f7768ecc 0dp 0dp 0dp 1dp;
+    filter: saturate(1.2) brightness(1.08);
 }
 
 /* --- Action Menu --- */
@@ -387,21 +317,15 @@ body, div, h1, h2, h3, h4, p, hr, button {
     color: #f7f7f7;
     font-size: 9dp;
     text-align: left;
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
 }
 
 .action-menu-entry + .action-menu-entry {
     margin-top: 2dp;
 }
 
-.action-menu-entry:hover,
-.action-menu-entry:focus {
+.tf-input-mouse .action-menu-entry:hover,
+.tf-input-nav .action-menu-entry:focus {
     background-color: #414868;
-    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
 .action-danger {

@@ -1,7 +1,8 @@
 #include "engine/debug/panels/rmlui_debug_panel.h"
 
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/core/context.h"
+#include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 
@@ -37,8 +38,10 @@ void copyToBuffer(std::array<char, 512>& buf, std::string_view str) {
 
 } // namespace
 
-RmlUiDebugPanel::RmlUiDebugPanel(engine::render::opengl::GLRenderer& renderer)
-    : renderer_(renderer) {
+RmlUiDebugPanel::RmlUiDebugPanel(engine::core::Context& context,
+                                 engine::ui::rmlui::RmlUiRenderBackendGl& render_backend)
+    : context_(context),
+      render_backend_(render_backend) {
     refreshAvailableDocuments();
     // 初始化 message buffer
     constexpr std::string_view default_msg{"Hello RmlUi!"};
@@ -134,8 +137,7 @@ void RmlUiDebugPanel::drawDebugDocuments() {
         // 可见性切换
         bool visible = entry.visible;
         if (ImGui::Checkbox("##vis", &visible)) {
-            auto* layer = renderer_.getRmlUILayer();
-            if (layer) {
+            if (auto* layer = context_.getRmlUi()) {
                 if (visible) {
                     layer->showDocument(entry.doc);
                 } else {
@@ -158,9 +160,9 @@ void RmlUiDebugPanel::drawDebugDocuments() {
 // ---- 全局文档列表（只读） ----
 
 void RmlUiDebugPanel::drawLoadedDocuments() {
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     if (!layer) {
-        ImGui::TextUnformatted("RmlUILayer not available.");
+        ImGui::TextUnformatted("RmlUiRuntime not available.");
         return;
     }
 
@@ -193,7 +195,7 @@ void RmlUiDebugPanel::drawTextureFilter() {
     ImGui::TextUnformatted("Texture Filter");
 
     int filter_index = 0;
-    switch (renderer_.getRmlUiTextureFilterMode()) {
+    switch (render_backend_.getTextureFilterMode()) {
     case engine::ui::rmlui::RmlUiTextureFilterMode::Nearest:
         filter_index = 0;
         break;
@@ -203,10 +205,10 @@ void RmlUiDebugPanel::drawTextureFilter() {
     }
 
     if (ImGui::RadioButton("Nearest (Pixel Art)", filter_index == 0)) {
-        renderer_.setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
+        render_backend_.setTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
     }
     if (ImGui::RadioButton("Linear (Smooth)", filter_index == 1)) {
-        renderer_.setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
+        render_backend_.setTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
     }
 
     ImGui::TextDisabled("Affects RmlUi images and font atlases. Filters and off-screen effects remain linear.");
@@ -250,7 +252,7 @@ void RmlUiDebugPanel::drawDataBindingTest() {
 }
 
 void RmlUiDebugPanel::initDataBindingTest() {
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     if (!layer || !layer->getContext()) {
         status_message_ = "Cannot start binding test: no RmlUi context.";
         status_is_error_ = true;
@@ -284,7 +286,7 @@ void RmlUiDebugPanel::initDataBindingTest() {
 }
 
 void RmlUiDebugPanel::destroyDataBindingTest() {
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     if (layer && binding_test_doc_) {
         layer->unloadDocument(binding_test_doc_);
     }
@@ -341,9 +343,9 @@ void RmlUiDebugPanel::updateSelectedIndex() {
 // ---- 文档加载/卸载 ----
 
 bool RmlUiDebugPanel::loadDocument(std::string_view path) {
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     if (!layer) {
-        status_message_ = "RmlUILayer not available.";
+        status_message_ = "RmlUiRuntime not available.";
         status_is_error_ = true;
         return false;
     }
@@ -373,7 +375,7 @@ void RmlUiDebugPanel::unloadDebugDocument(size_t index) {
         return;
     }
 
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     if (layer) {
         layer->unloadDocument(debug_documents_[index].doc);
     }
@@ -381,7 +383,7 @@ void RmlUiDebugPanel::unloadDebugDocument(size_t index) {
 }
 
 void RmlUiDebugPanel::unloadAllDebugDocuments() {
-    auto* layer = renderer_.getRmlUILayer();
+    auto* layer = context_.getRmlUi();
     for (auto& entry : debug_documents_) {
         if (layer) {
             layer->unloadDocument(entry.doc);

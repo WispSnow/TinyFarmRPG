@@ -28,24 +28,45 @@ namespace {
 namespace game::scene {
 namespace {
 
-TEST(MenuHoverFocusSyncTest, GameOverlayBindsPromptBarVisibilityAndToggleAction) {
+TEST(MenuHoverFocusSyncTest, GameOverlaySeparatesMenuButtonAndPromptOverlay) {
     const auto game_scene_path = projectPath("src/game/scene/game_scene.cpp");
+    const auto game_overlay_path = projectPath("src/game/ui/game_overlay.cpp");
+    const auto prompt_overlay_path = projectPath("src/game/ui/game_input_prompt_overlay.cpp");
+    const auto controller_path = projectPath("src/game/ui/game_scene_ui_controller.cpp");
     const auto overlay_path = projectPath("ui/rmlui/hud/game_overlay.rml");
+    const auto prompt_rml_path = projectPath("ui/rmlui/hud/game_input_prompt_overlay.rml");
     ASSERT_TRUE(std::filesystem::exists(game_scene_path)) << game_scene_path;
+    ASSERT_TRUE(std::filesystem::exists(game_overlay_path)) << game_overlay_path;
+    ASSERT_TRUE(std::filesystem::exists(prompt_overlay_path)) << prompt_overlay_path;
+    ASSERT_TRUE(std::filesystem::exists(controller_path)) << controller_path;
     ASSERT_TRUE(std::filesystem::exists(overlay_path)) << overlay_path;
+    ASSERT_TRUE(std::filesystem::exists(prompt_rml_path)) << prompt_rml_path;
 
     const std::string game_scene_source = readTextFile(game_scene_path);
+    const std::string game_overlay_source = readTextFile(game_overlay_path);
+    const std::string prompt_overlay_source = readTextFile(prompt_overlay_path);
+    const std::string controller_source = readTextFile(controller_path);
     const std::string overlay_source = readTextFile(overlay_path);
+    const std::string prompt_rml_source = readTextFile(prompt_rml_path);
     ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(game_overlay_source.empty());
+    ASSERT_FALSE(prompt_overlay_source.empty());
+    ASSERT_FALSE(controller_source.empty());
     ASSERT_FALSE(overlay_source.empty());
+    ASSERT_FALSE(prompt_rml_source.empty());
 
-    EXPECT_NE(game_scene_source.find("Bind(\"show_prompt_bar\""), std::string::npos);
+    EXPECT_NE(prompt_overlay_source.find("Bind(\"visible\""), std::string::npos);
+    EXPECT_NE(game_overlay_source.find("bindSimpleEvent(constructor, \"menu\""), std::string::npos);
     EXPECT_NE(game_scene_source.find("onAction(\"toggle_prompt_bar\"_hs)"), std::string::npos);
-    EXPECT_NE(game_scene_source.find("markDirty(\"show_prompt_bar\")"), std::string::npos);
-    EXPECT_NE(overlay_source.find("data-if=\"show_prompt_bar\""), std::string::npos);
+    EXPECT_NE(prompt_overlay_source.find("markDirty(\"visible\")"), std::string::npos);
+    EXPECT_NE(overlay_source.find("data-event-click=\"menu\""), std::string::npos);
+    EXPECT_NE(overlay_source.find("class=\"tf-icon-button icon-menu\""), std::string::npos);
+    EXPECT_NE(prompt_rml_source.find("data-if=\"visible\""), std::string::npos);
+    EXPECT_EQ(prompt_rml_source.find("data-event-click=\"menu\""), std::string::npos);
+    EXPECT_EQ(controller_source.find("game_overlay.rml"), std::string::npos);
 }
 
-TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBeforeUnload) {
+TEST(MenuHoverFocusSyncTest, ScenesNoLongerRegisterHoverFocusSyncAndStillCleanupViaShutdownUI) {
     const std::array<std::filesystem::path, 3> scene_paths{
         projectPath("src/game/scene/title_scene.cpp"),
         projectPath("src/game/scene/pause_menu_scene.cpp"),
@@ -57,51 +78,51 @@ TEST(MenuHoverFocusSyncTest, ScenesRegisterHoverFocusSyncAndRemoveListenersBefor
         const std::string source = readTextFile(path);
         ASSERT_FALSE(source.empty()) << path;
 
-        EXPECT_NE(source.find("HoverFocusSyncListener"), std::string::npos) << path;
-        EXPECT_NE(source.find("AddEventListener(\"mouseover\""), std::string::npos) << path;
-        EXPECT_NE(source.find("RemoveEventListener(\"mouseover\""), std::string::npos) << path;
+        EXPECT_EQ(source.find("document_controller_.enableHoverFocusSync("), std::string::npos) << path;
+        EXPECT_NE(source.find("document_controller_.unload();"), std::string::npos) << path;
 
-        const std::size_t remove_events_pos = source.find("removeEventListeners();");
-        const std::size_t unload_pos = source.find("unloadAllRmlDocuments();");
-        ASSERT_NE(remove_events_pos, std::string::npos) << path;
-        ASSERT_NE(unload_pos, std::string::npos) << path;
-        EXPECT_LT(remove_events_pos, unload_pos) << path;
+        EXPECT_EQ(source.find("HoverFocusSyncListener"), std::string::npos) << path;
+        EXPECT_EQ(source.find("registerTo("), std::string::npos) << path;
+        EXPECT_EQ(source.find("unregisterAll()"), std::string::npos) << path;
     }
 }
 
-TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneGuardsHoverSyncWhenConfirmVisible) {
+TEST(MenuHoverFocusSyncTest, SaveSlotSelectSceneNoLongerKeepsCustomFocusRecoveryLogic) {
     const auto source_path = projectPath("src/game/scene/save_slot_select_scene.cpp");
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("shouldSyncHoverFocus"), std::string::npos);
+    EXPECT_EQ(source.find("shouldSyncHoverFocus"), std::string::npos);
+    EXPECT_EQ(source.find("focus_before_confirm_"), std::string::npos);
     EXPECT_NE(source.find("confirm_visible_"), std::string::npos);
-    EXPECT_NE(source.find("save-slot-confirm-layer"), std::string::npos);
 }
 
-TEST(MenuHoverFocusSyncTest, HoverFocusSyncListenerOnlyTargetsButtonsAndMenuBodiesEnableNavigation) {
+TEST(MenuHoverFocusSyncTest, NavigationThemeRemainsAvailableAfterCustomFocusRemoval) {
     const auto listener_path = projectPath("src/engine/ui/rmlui/hover_focus_sync_listener.cpp");
-    ASSERT_TRUE(std::filesystem::exists(listener_path)) << listener_path;
+    const auto nav_theme_path = projectPath("ui/rmlui/theme/nav.rcss");
+    EXPECT_FALSE(std::filesystem::exists(listener_path));
+    ASSERT_TRUE(std::filesystem::exists(nav_theme_path)) << nav_theme_path;
 
-    const std::string listener_source = readTextFile(listener_path);
-    ASSERT_FALSE(listener_source.empty());
+    const std::string nav_theme_source = readTextFile(nav_theme_path);
+    ASSERT_FALSE(nav_theme_source.empty());
 
-    EXPECT_NE(listener_source.find("GetTagName() == \"button\""), std::string::npos);
-    EXPECT_NE(listener_source.find("IsVisible(true)"), std::string::npos);
+    EXPECT_NE(nav_theme_source.find(".tf-nav-root"), std::string::npos);
+    EXPECT_NE(nav_theme_source.find("nav: auto;"), std::string::npos);
 
     const std::array<std::filesystem::path, 3> style_paths{
-        projectPath("ui/rmlui/scenes/title.rcss"),
-        projectPath("ui/rmlui/scenes/pause_menu.rcss"),
-        projectPath("ui/rmlui/scenes/save_slot_select.rcss"),
+        projectPath("ui/rmlui/scenes/title.rml"),
+        projectPath("ui/rmlui/scenes/pause_menu.rml"),
+        projectPath("ui/rmlui/scenes/save_slot_select.rml"),
     };
 
     for (const auto& path : style_paths) {
         ASSERT_TRUE(std::filesystem::exists(path)) << path;
         const std::string source = readTextFile(path);
         ASSERT_FALSE(source.empty()) << path;
-        EXPECT_NE(source.find("nav: auto;"), std::string::npos) << path;
+        EXPECT_NE(source.find("../theme/nav.rcss"), std::string::npos) << path;
+        EXPECT_NE(source.find("tf-nav-root"), std::string::npos) << path;
     }
 }
 

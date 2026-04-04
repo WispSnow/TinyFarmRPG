@@ -1,31 +1,9 @@
-body, div, h1, h2, h3, h4, p, hr, button, img {
-    display: block;
-}
-
-body {
-    width: 100%;
-    height: 100%;
-}
-
-#rest-overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #00000099;
-    pointer-events: auto;
-}
-
 #rest-panel {
-    position: absolute;
     left: 160dp;
     top: 98dp;
     width: 272dp;
     height: 116dp;
     padding: 24dp;
-    background-color: #000000bf;
-    pointer-events: auto;
 }
 
 #rest-title {

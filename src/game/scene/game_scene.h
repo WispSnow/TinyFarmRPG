@@ -1,15 +1,11 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
 #include "game/runtime/game_mode.h"
 #include "game/defs/events.h"
 
-#include <RmlUi/Core/Types.h>
 #include <glm/vec2.hpp>
 
-#include <array>
 #include <memory>
 #include <optional>
 
@@ -23,23 +19,9 @@ namespace game::defs {
 }
 
 namespace game::ui {
-    class HotbarUI;
-    class TimeClockHud;
-    class DialogueBubbleView;
-    class DialogueBubbleController;
-    class ItemTooltipUI;
-}
-
-namespace engine::ui {
-    class IScreenFade;
-}
-
-namespace engine::ui::rmlui {
-    class RmlScreenFade;
-}
-
-namespace Rml {
-    class ElementDocument;
+    class GameInputPromptOverlay;
+    class GameOverlay;
+    class GameSceneUiController;
 }
 
 namespace game::runtime {
@@ -68,22 +50,9 @@ class GameScene : public engine::scene::Scene {
     bool abort_to_title_{false};
     bool context_pushed_{false};
 
-    std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};
-    std::unique_ptr<game::ui::DialogueBubbleController> dialogue_controller_{};
-    std::array<std::unique_ptr<game::ui::DialogueBubbleView>, 3> dialogue_bubbles_{};
-    std::unique_ptr<game::ui::ItemTooltipUI> item_tooltip_ui_{};
-    std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_;
-    std::unique_ptr<engine::ui::rmlui::RmlScreenFade> rml_screen_fade_;
-    engine::ui::rmlui::RmlDataBridge overlay_data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge overlay_event_bridge_{};
-    Rml::ElementDocument* overlay_document_{nullptr};
-    bool overlay_click_listener_registered_{false};
-    Rml::String primary_prompt_text_{};
-    Rml::String secondary_prompt_text_{};
-    Rml::String inventory_prompt_text_{};
-    Rml::String pause_prompt_text_{};
-    bool show_prompt_bar_{true};
-    engine::ui::IScreenFade* screen_fade_{nullptr};
+    std::unique_ptr<game::ui::GameSceneUiController> ui_controller_{};
+    std::unique_ptr<game::ui::GameOverlay> game_overlay_{};
+    std::unique_ptr<game::ui::GameInputPromptOverlay> input_prompt_overlay_{};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
 
@@ -96,6 +65,7 @@ public:
     bool init() override;
     void fixedUpdate(float delta_time) override;
     void update(float delta_time) override;
+    void prepareUi(float interpolation_alpha) override;
     void render(float interpolation_alpha) override;
 
     void clean() override;
@@ -106,8 +76,6 @@ private:
     void snapshotInterpolationState();
     void bindSceneInputActions();
     [[nodiscard]] bool initUI();
-    void refreshOverlayPrompts();
-    void removeOverlayEventListeners();
 #ifdef TF_ENABLE_DEBUG_UI
     [[nodiscard]] bool registerDebugPanels();
 #endif

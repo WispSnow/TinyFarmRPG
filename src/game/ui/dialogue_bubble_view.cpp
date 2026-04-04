@@ -1,28 +1,15 @@
 #include "dialogue_bubble_view.h"
 
 #include "engine/core/context.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/render/text_renderer.h"
-#include "engine/resource/font_manager.h"
-#include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <cmath>
-#include <string>
-
 namespace {
-using engine::ui::rmlui::computeLineSpacingScale;
-using engine::ui::rmlui::getComputedFontSize;
-using engine::ui::rmlui::getComputedHeight;
-using engine::ui::rmlui::getComputedLineHeight;
-using engine::ui::rmlui::getComputedPadding;
-using engine::ui::rmlui::getComputedWidth;
+
 using engine::ui::rmlui::setPixelProperty;
 using engine::ui::rmlui::snapToPixel;
 using engine::ui::rmlui::textToInnerRml;
@@ -33,22 +20,15 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/dialogue_bubble.rml";
 
 namespace game::ui {
 
-DialogueBubbleView::DialogueBubbleView(engine::core::Context& context,
-                                       engine::render::TextRenderer& text_renderer,
-                                       uint64_t owner_scene_id,
-                                       entt::id_type font_id,
-                                       int font_size)
-    : context_(context),
-      text_renderer_(text_renderer),
-      font_id_(engine::ui::resolveUIFontId(font_id)),
-      font_size_(font_size) {
+DialogueBubbleView::DialogueBubbleView(engine::core::Context& context, uint64_t owner_scene_id)
+    : context_(context) {
     initDocument(owner_scene_id);
     setVisible(false);
 }
 
 DialogueBubbleView::~DialogueBubbleView() {
-    if (document_ && layer_) {
-        layer_->unloadDocument(document_);
+    if (document_ && runtime_) {
+        runtime_->unloadDocument(document_);
     }
     document_ = nullptr;
     panel_ = nullptr;
@@ -56,13 +36,13 @@ DialogueBubbleView::~DialogueBubbleView() {
 }
 
 void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
-    layer_ = context_.getGLRenderer().getRmlUILayer();
-    if (!layer_) {
-        spdlog::error("DialogueBubbleView: RmlUILayer 不可用。");
+    runtime_ = context_.getRmlUi();
+    if (!runtime_) {
+        spdlog::error("DialogueBubbleView: RmlUiRuntime 不可用。");
         return;
     }
 
-    document_ = layer_->loadDocument(DOCUMENT_PATH, owner_scene_id);
+    document_ = runtime_->loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
         spdlog::error("DialogueBubbleView: 加载 RML 文档失败: {}", DOCUMENT_PATH);
         return;
@@ -72,30 +52,26 @@ void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
     text_element_ = document_->GetElementById("dialogue-bubble-text");
     if (!panel_ || !text_element_) {
         spdlog::error("DialogueBubbleView: RML 元素缺失。");
-        if (layer_) {
-            layer_->unloadDocument(document_);
-        }
+        runtime_->unloadDocument(document_);
         document_ = nullptr;
         panel_ = nullptr;
         text_element_ = nullptr;
         return;
     }
 
-    syncStyleMetricsFromDocument();
-    layer_->hideDocument(document_);
-    refreshLayoutFromText();
+    runtime_->hideDocument(document_);
 }
 
-void DialogueBubbleView::syncStyleMetricsFromDocument() {
-    if (!panel_ || !text_element_) {
+void DialogueBubbleView::refreshLayoutMetrics() {
+    if (!document_ || !panel_) {
         return;
     }
 
-    padding_ = getComputedPadding(panel_, padding_);
-    min_content_width_ = getComputedWidth(panel_, min_content_width_);
-    min_content_height_ = getComputedHeight(panel_, min_content_height_);
-    font_size_ = std::max(1, static_cast<int>(std::lround(getComputedFontSize(text_element_, static_cast<float>(font_size_)))));
-    line_height_ = getComputedLineHeight(text_element_, static_cast<float>(font_size_));
+    document_->UpdateDocument();
+    size_ = {
+        snapToPixel(panel_->GetOffsetWidth()),
+        snapToPixel(panel_->GetOffsetHeight()),
+    };
 }
 
 void DialogueBubbleView::setText(std::string_view text) {
@@ -103,19 +79,22 @@ void DialogueBubbleView::setText(std::string_view text) {
     if (text_element_) {
         text_element_->SetInnerRML(textToInnerRml(text_));
     }
-    refreshLayoutFromText();
+    if (visible_) {
+        refreshLayoutMetrics();
+    }
 }
 
 void DialogueBubbleView::setVisible(bool visible) {
     visible_ = visible;
-    if (!document_ || !layer_) {
+    if (!document_ || !runtime_) {
         return;
     }
 
     if (visible) {
-        layer_->showDocument(document_);
+        runtime_->showDocument(document_);
+        refreshLayoutMetrics();
     } else {
-        layer_->hideDocument(document_);
+        runtime_->hideDocument(document_);
     }
 }
 
@@ -127,37 +106,6 @@ void DialogueBubbleView::clearWorldAnchor() {
     world_anchor_.clearWorldAnchor();
 }
 
-glm::vec2 DialogueBubbleView::measureText(std::string_view text) const {
-    if (text.empty()) {
-        return glm::vec2{0.0F, 0.0F};
-    }
-
-    engine::utils::LayoutOptions layout_options{};
-    if (auto* font = context_.getResourceManager().getFont(font_id_, font_size_)) {
-        layout_options.line_spacing_scale = computeLineSpacingScale(line_height_, font->getLineHeight());
-    }
-
-    return text_renderer_.getTextSize(text, font_id_, font_size_, &layout_options);
-}
-
-void DialogueBubbleView::refreshLayoutFromText() {
-    const glm::vec2 text_size = measureText(text_);
-    const float min_outer_width = min_content_width_ + padding_.width();
-    const float min_outer_height = min_content_height_ + padding_.height();
-    const glm::vec2 outer_size{
-        snapToPixel(std::max(min_outer_width, text_size.x + padding_.width())),
-        snapToPixel(std::max(min_outer_height, text_size.y + padding_.height()))
-    };
-    const glm::vec2 content_box_size{
-        snapToPixel(std::max(0.0F, outer_size.x - padding_.width())),
-        snapToPixel(std::max(0.0F, outer_size.y - padding_.height()))
-    };
-
-    size_ = outer_size;
-    setPixelProperty(panel_, "width", content_box_size.x);
-    setPixelProperty(panel_, "height", content_box_size.y);
-}
-
 void DialogueBubbleView::refreshAnchoredPosition(const engine::render::Camera& camera, float interpolation_alpha) {
     if (!visible_ || !panel_ || !document_ || !world_anchor_.hasWorldAnchor()) {
         return;
@@ -165,12 +113,8 @@ void DialogueBubbleView::refreshAnchoredPosition(const engine::render::Camera& c
 
     const glm::vec2 screen_anchor = world_anchor_.resolveScreenAnchorPosition(camera, interpolation_alpha);
     const glm::vec2 top_left = screen_anchor - size_ * pivot_;
-    const glm::vec2 position{
-        snapToPixel(top_left.x),
-        snapToPixel(top_left.y),
-    };
-    setPixelProperty(panel_, "left", position.x);
-    setPixelProperty(panel_, "top", position.y);
+    setPixelProperty(panel_, "left", top_left.x);
+    setPixelProperty(panel_, "top", top_left.y);
 }
 
 } // namespace game::ui

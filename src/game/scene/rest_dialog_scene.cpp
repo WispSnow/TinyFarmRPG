@@ -5,13 +5,8 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -39,14 +34,7 @@ RestDialogScene::RestDialogScene(std::string_view name, engine::core::Context& c
 
 RestDialogScene::~RestDialogScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    shutdownUI();
 }
 
 bool RestDialogScene::init() {
@@ -67,32 +55,25 @@ bool RestDialogScene::init() {
 }
 
 void RestDialogScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
-    removeEventListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool RestDialogScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("RestDialogScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("RestDialogScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
-    if (!rml_context) {
-        spdlog::error("RestDialogScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("RestDialogScene: 创建 data model 失败。");
         return false;
@@ -100,30 +81,27 @@ bool RestDialogScene::initUI() {
 
     constructor.Bind("hours_text", &hours_text_);
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
-        spdlog::error("RestDialogScene: 加载 RML 文档失败。");
+    if (!document_controller_.bindSimpleEvent(constructor, "hours_down", [this] { adjustHours(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "hours_up", [this] { adjustHours(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "confirm", [this] { onConfirm(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "cancel", [this] { onCancel(); })) {
+        spdlog::error("RestDialogScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("hours_down", [this](Rml::Event&) { adjustHours(-1); });
-    event_bridge_.on("hours_up", [this](Rml::Event&) { adjustHours(1); });
-    event_bridge_.on("confirm", [this](Rml::Event&) { onConfirm(); });
-    event_bridge_.on("cancel", [this](Rml::Event&) { onCancel(); });
-    event_bridge_.registerTo(document_, "click");
-    click_listener_registered_ = true;
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        spdlog::error("RestDialogScene: 加载 RML 文档失败。");
+        document_controller_.unload();
+        return false;
+    }
 
     updateHoursLabel();
-    layer->queueFocusElementById(document_, "rest-hours-down-button");
     return true;
 }
 
-void RestDialogScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
+void RestDialogScene::shutdownUI() {
+    document_controller_.unload();
 }
 
 void RestDialogScene::disconnectRuntimeListeners() {
@@ -133,7 +111,7 @@ void RestDialogScene::disconnectRuntimeListeners() {
 void RestDialogScene::updateHoursLabel() {
     const auto text = std::to_string(selected_hours_) + "h";
     if (updateBoundString(hours_text_, text)) {
-        data_bridge_.markDirty("hours_text");
+        document_controller_.markDirty("hours_text");
     }
 }
 

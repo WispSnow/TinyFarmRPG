@@ -35,10 +35,10 @@ TEST(TitleSceneMenuButtonTest, BindsRmlMenuButtonToPauseMenuScene) {
     ASSERT_FALSE(source.empty());
     ASSERT_FALSE(rml_source.empty());
 
-    EXPECT_NE(source.find("event_bridge_.on(\"menu\""), std::string::npos)
-        << "TitleScene should bind the menu command through the RmlUi event bridge.";
-    EXPECT_NE(rml_source.find("data-command=\"menu\""), std::string::npos)
-        << "TitleScene RML should expose a menu button command.";
+    EXPECT_NE(source.find("bindSimpleEvent(constructor, \"menu\""), std::string::npos)
+        << "TitleScene should bind the menu button through data-event callbacks.";
+    EXPECT_NE(rml_source.find("data-event-click=\"menu\""), std::string::npos)
+        << "TitleScene RML should expose a menu button data event.";
     EXPECT_NE(source.find("PauseMenuScene"), std::string::npos)
         << "TitleScene should open PauseMenuScene from the menu button.";
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
 
 #include <RmlUi/Core/EventListener.h>
 
@@ -31,6 +30,15 @@ private:
     Rml::Element* info_display_;
 };
 
+class CommandInfoListener final : public Rml::EventListener {
+public:
+    explicit CommandInfoListener(Rml::Element* log_display);
+    void ProcessEvent(Rml::Event& event) override;
+
+private:
+    Rml::Element* log_display_;
+};
+
 /// 事件系统演示场景
 class EventsScene final : public engine::scene::Scene {
 public:
@@ -47,8 +55,8 @@ private:
 
     Rml::ElementDocument* doc_ = nullptr;
     ClickCounter click_counter_;
+    CommandInfoListener* command_listener_ = nullptr;
     HoverInfoListener* hover_listener_ = nullptr;
-    engine::ui::rmlui::RmlEventBridge command_bridge_;
 };
 
 } // namespace learn::rmlui

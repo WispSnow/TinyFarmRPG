@@ -20,7 +20,7 @@ graph TB
 
     subgraph InputManager
         direction TB
-        EF["事件转发<br/>(ImGui → RmlUI → processEvent)"]
+        EF["事件转发<br/>(ImGui → RmlUi → processEvent)"]
         BM["Binding Map<br/>PhysicalInput → Action ID"]
         SM["Action State Machine<br/>PRESSED / HELD / RELEASED / INACTIVE"]
         CTX["Context Stack<br/>动作白名单过滤"]
@@ -598,7 +598,7 @@ void discardPendingRebindConflict();
 ### 流程
 
 1. `beginRebindCapture()` 进入捕获模式，清空所有输入状态
-2. 捕获期间 `sampleInputEvents()` 将事件路由到 `handleRebindCaptureEvent()`，阻断正常动作分发和 RmlUI/ImGui 转发
+2. 捕获期间 `sampleInputEvents()` 将事件路由到 `handleRebindCaptureEvent()`，阻断正常动作分发和 RmlUi/ImGui 转发
 3. `Escape` 无条件取消捕获
 4. 检测到有效物理输入后进行冲突检测
 5. 若存在冲突 → 存储 `PendingRebindConflict`，调用方需调用 `confirm` 或 `discard`
@@ -672,7 +672,7 @@ flowchart LR
 
 ---
 
-## 9) RmlUI / ImGui 集成
+## 9) RmlUi / ImGui 集成
 
 ### 事件转发顺序
 
@@ -686,10 +686,10 @@ flowchart TD
     IGCAP -->|"是 (键盘/鼠标)"| ALWAYS{"总是放行?<br/>KEY_UP / MOUSE_UP<br/>MOTION / GAMEPAD_*"}
     IGCAP -->|否| RMLUI
 
-    RMLUI["RmlUI callback"] --> SUP{"shouldSuppress<br/>RmlUiKeyboard?"}
+    RMLUI["RmlUi callback"] --> SUP{"shouldSuppress<br/>RmlUiKeyboard?"}
     SUP -->|是| PE["processEvent()<br/>（游戏输入）"]
-    SUP -->|否| RMLPROC["RmlUI 处理"]
-    RMLPROC --> RMLCAP{"RmlUI<br/>已处理?"}
+    SUP -->|否| RMLPROC["RmlUi 处理"]
+    RMLPROC --> RMLCAP{"RmlUi<br/>已处理?"}
     RMLCAP -->|是| ALWAYS
     RMLCAP -->|否| PE
 
@@ -697,13 +697,23 @@ flowchart TD
     ALWAYS -->|否| DONE["丢弃"]
 ```
 
-### RmlUI 键盘抑制
+### RmlUi 键盘抑制
 
-在菜单类上下文（Menu / Dialogue / Battle）中，绑定到 `menu_*` 动作的扫描码（Tab 除外）会被 `shouldSuppressRmlUiKeyboardEvent()` 拦截，不转发给 RmlUI，防止双重处理。
+在菜单类上下文（Menu / Dialogue / Battle）中，绑定到 `menu_*` 动作的扫描码（Tab 除外）会被 `shouldSuppressRmlUiKeyboardEvent()` 拦截，不转发给 RmlUi，防止双重处理。
+
+当前约定是：
+- 原始 SDL 键盘/鼠标事件仍会尽量转发给 RmlUi
+- 当前阶段不再把 `menu_up/down/left/right/confirm` 这些逻辑动作桥接到 RmlUi
+- 菜单与弹层交互以鼠标 hover / click 为主
+
+因此当前行为是：
+- 鼠标 UI 交互保持可用
+- 键盘/手柄菜单导航在菜单上下文中处于关闭状态
+- `menu_*` 动作保留为未来恢复导航时的输入语义
 
 ### 总是放行的事件
 
-以下事件类型即使 RmlUI 声称已处理，也会继续传递给 `processEvent()`：
+以下事件类型即使 RmlUi 声称已处理，也会继续传递给 `processEvent()`：
 `KEY_UP`, `MOUSE_BUTTON_UP`, `MOUSE_MOTION`, `GAMEPAD_BUTTON_UP`, `GAMEPAD_AXIS_MOTION`, `GAMEPAD_ADDED`, `GAMEPAD_REMOVED`, `GAMEPAD_REMAPPED`
 
 ---
@@ -738,7 +748,7 @@ graph TB
 
     IM --> INPUT
 
-    SCENES --> UNC["UINavigationController<br/>订阅 menu_* 动作"]
+    GA --> NAV["GameApp<br/>当前不再桥接 menu_* 到 RmlUi"]
     SCENES --> PCS["PlayerControlSystem<br/>polling + callback"]
     SCENES --> IS["InteractionSystem<br/>isActionPressed"]
 ```
@@ -755,7 +765,7 @@ struct CoreServices {
 };
 ```
 
-`UINavigationController`（引擎层）订阅 `menu_*` 动作驱动 RmlUI 焦点导航。
+当前鼠标优先阶段中，`GameApp` 不再把 `menu_*` 动作桥接到 RmlUi；这些动作定义仍保留在 `InputManager` 中，供未来恢复键盘/手柄导航时复用。
 
 ---
 
@@ -779,8 +789,8 @@ struct CoreServices {
    - 排查：看 Input 面板状态变化 + 日志
 
 2. **UI 点击与世界点击同时触发**
-   - 原因：UI 没有吃掉输入
-   - 解决：回调返回 `true` 占用；必要时用 `UIInputBlocker`
+   - 原因：菜单 Scene 没有切入 `Menu` 输入上下文，或顶层 Rml 文档没有正确接管交互
+   - 解决：确认菜单/模态 Scene 在进入时 `pushContext(Menu)`，并让栈顶 Scene 的 Rml 文档处理当前交互
 
 3. **鼠标坐标不对（缩放/letterbox/高 DPI）**
    - 解决：统一使用 `getLogicalMousePosition()`

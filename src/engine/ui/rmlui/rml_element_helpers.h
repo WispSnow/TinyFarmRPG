@@ -1,27 +1,33 @@
 #pragma once
 
-#include "engine/ui/ui_types.h"
-
-#include <RmlUi/Core/ComputedValues.h>
 #include <RmlUi/Core/Element.h>
 
 #include <algorithm>
 #include <cmath>
 #include <format>
-#include <limits>
 #include <string>
 #include <string_view>
 
 namespace engine::ui::rmlui {
 
+/// @brief 将浮点坐标吸附到最近的像素整数，避免子像素布局带来的显示误差。
+/// @param value 待吸附的原始数值。
+/// @return 四舍五入后的像素值。
 [[nodiscard]] inline float snapToPixel(float value) {
     return std::round(value);
 }
 
+/// @brief 将像素数值转换为 RmlUi 可识别的 `Npx` 字符串，并确保结果不小于 0。
+/// @param value 待转换的像素数值。
+/// @return 格式化后的像素字符串。
 [[nodiscard]] inline std::string toPixelString(float value) {
     return std::format("{:.1f}px", std::max(0.0f, snapToPixel(value)));
 }
 
+/// @brief 为元素设置像素单位属性，空指针时静默跳过。
+/// @param element 目标 RmlUi 元素。
+/// @param name 属性名，例如 `left`、`top`、`width`。
+/// @param value 待写入的像素值。
 inline void setPixelProperty(Rml::Element* element, std::string_view name, float value) {
     if (!element) {
         return;
@@ -29,105 +35,9 @@ inline void setPixelProperty(Rml::Element* element, std::string_view name, float
     element->SetProperty(std::string(name), toPixelString(value));
 }
 
-inline void setPaddingProperties(Rml::Element* element, const engine::ui::Thickness& padding) {
-    setPixelProperty(element, "padding-left", padding.left);
-    setPixelProperty(element, "padding-top", padding.top);
-    setPixelProperty(element, "padding-right", padding.right);
-    setPixelProperty(element, "padding-bottom", padding.bottom);
-}
-
-inline void setFontSizeProperty(Rml::Element* element, float font_size) {
-    setPixelProperty(element, "font-size", font_size);
-}
-
-[[nodiscard]] inline float computeLineSpacingScale(float target_line_height, float font_line_height) {
-    if (target_line_height <= 0.0f || font_line_height <= 0.0f) {
-        return 1.0f;
-    }
-    return std::max(target_line_height / font_line_height, 0.01f);
-}
-
-[[nodiscard]] inline float computedLengthOr(const Rml::Style::LengthPercentage& value, float fallback) {
-    if (value.type != Rml::Style::LengthPercentage::Length) {
-        return fallback;
-    }
-    const float resolved = value.value;
-    if (!std::isfinite(resolved) || resolved >= std::numeric_limits<float>::max() * 0.5f) {
-        return fallback;
-    }
-    return resolved;
-}
-
-[[nodiscard]] inline float computedLengthOr(const Rml::Style::LengthPercentageAuto& value, float fallback) {
-    if (value.type != Rml::Style::LengthPercentageAuto::Length) {
-        return fallback;
-    }
-    const float resolved = value.value;
-    if (!std::isfinite(resolved) || resolved >= std::numeric_limits<float>::max() * 0.5f) {
-        return fallback;
-    }
-    return resolved;
-}
-
-[[nodiscard]] inline engine::ui::Thickness getComputedPadding(const Rml::Element* element,
-                                                              const engine::ui::Thickness& fallback) {
-    if (!element) {
-        return fallback;
-    }
-
-    const auto& computed = element->GetComputedValues();
-    return engine::ui::Thickness{
-        computedLengthOr(computed.padding_left(), fallback.left),
-        computedLengthOr(computed.padding_top(), fallback.top),
-        computedLengthOr(computed.padding_right(), fallback.right),
-        computedLengthOr(computed.padding_bottom(), fallback.bottom)
-    };
-}
-
-[[nodiscard]] inline float getComputedFontSize(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    const float value = element->GetComputedValues().font_size();
-    return std::isfinite(value) && value > 0.0f ? value : fallback;
-}
-
-[[nodiscard]] inline float getComputedLineHeight(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    const float value = element->GetComputedValues().line_height().value;
-    return std::isfinite(value) && value > 0.0f ? value : fallback;
-}
-
-[[nodiscard]] inline float getComputedWidth(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    return computedLengthOr(element->GetComputedValues().width(), fallback);
-}
-
-[[nodiscard]] inline float getComputedHeight(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    return computedLengthOr(element->GetComputedValues().height(), fallback);
-}
-
-[[nodiscard]] inline float getComputedMaxWidth(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    return computedLengthOr(element->GetComputedValues().max_width(), fallback);
-}
-
-[[nodiscard]] inline float getComputedMarginBottom(const Rml::Element* element, float fallback) {
-    if (!element) {
-        return fallback;
-    }
-    return computedLengthOr(element->GetComputedValues().margin_bottom(), fallback);
-}
-
+/// @brief 将普通文本转为可安全写入 inner RML 的字符串，并处理换行。
+/// @param text 原始文本内容。
+/// @return 转义后的 RML 字符串，其中换行会被替换为 `<br/>`。
 [[nodiscard]] inline std::string textToInnerRml(std::string_view text) {
     std::string output;
     output.reserve(text.size() + 16);

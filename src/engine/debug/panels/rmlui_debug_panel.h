@@ -15,11 +15,19 @@ namespace engine::render::opengl {
 class GLRenderer;
 }
 
+namespace engine::core {
+class Context;
+}
+
+namespace engine::ui::rmlui {
+class RmlUiRenderBackendGl;
+}
+
 namespace engine::debug {
 
 class RmlUiDebugPanel final : public DebugPanel {
 public:
-    explicit RmlUiDebugPanel(engine::render::opengl::GLRenderer& renderer);
+    RmlUiDebugPanel(engine::core::Context& context, engine::ui::rmlui::RmlUiRenderBackendGl& render_backend);
 
     [[nodiscard]] std::string_view name() const override;
     void draw(bool& is_open) override;
@@ -41,7 +49,8 @@ private:
     void initDataBindingTest();
     void destroyDataBindingTest();
 
-    engine::render::opengl::GLRenderer& renderer_;
+    engine::core::Context& context_;
+    engine::ui::rmlui::RmlUiRenderBackendGl& render_backend_;
 
     // 文件浏览
     std::vector<std::string> available_documents_;

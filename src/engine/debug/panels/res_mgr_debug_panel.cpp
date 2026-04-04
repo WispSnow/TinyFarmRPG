@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cfloat>
-#include <cstdio>
+#include <format>
 #include <numeric>
 #include <ranges>
 #include <string>
@@ -418,15 +418,13 @@ void ResMgrDebugPanel::drawAutoTileSection() {
 
             ImGui::TableNextColumn();
             const float ratio = static_cast<float>(info.defined_mask_count) / 256.0f;
-            char overlay[32];
-            std::snprintf(overlay, sizeof(overlay), "%zu/256", info.defined_mask_count);
-            ImGui::ProgressBar(ratio, ImVec2(-FLT_MIN, 0.0f), overlay);
-            
+            const auto overlay = std::format("{}/256", info.defined_mask_count);
+            ImGui::ProgressBar(ratio, ImVec2(-FLT_MIN, 0.0f), overlay.c_str());
+
             ImGui::TableNextColumn();
             const float manual_ratio = static_cast<float>(info.manual_mask_count) / 256.0f;
-            char manual_overlay[32];
-            std::snprintf(manual_overlay, sizeof(manual_overlay), "%zu", info.manual_mask_count);
-            ImGui::ProgressBar(manual_ratio, ImVec2(-FLT_MIN, 0.0f), manual_overlay);
+            const auto manual_overlay = std::format("{}", info.manual_mask_count);
+            ImGui::ProgressBar(manual_ratio, ImVec2(-FLT_MIN, 0.0f), manual_overlay.c_str());
 
             ImGui::TableNextColumn();
             ImGui::Text("0x%016llX", static_cast<unsigned long long>(info.texture_id));
