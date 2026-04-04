@@ -2,7 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -12,6 +12,15 @@
 #include <algorithm>
 
 namespace learn::rmlui {
+
+namespace {
+
+[[nodiscard]] Rml::Context* getRmlContext(const engine::core::Context& context) {
+    auto* runtime = context.getRmlUi();
+    return runtime ? runtime->getContext() : nullptr;
+}
+
+} // namespace
 
 bool DataBindingScene::init() {
     if (!Scene::init()) return false;
@@ -45,7 +54,7 @@ bool DataBindingScene::init() {
 }
 
 bool DataBindingScene::setupDataModel() {
-    auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext();
+    auto* rml_ctx = getRmlContext(context_);
     if (!rml_ctx) return false;
 
     Rml::DataModelConstructor constructor = rml_ctx->CreateDataModel("character");
@@ -171,7 +180,7 @@ void DataBindingScene::clean() {
     doc_ = nullptr;
 
     // 移除数据模型（场景重载时 CreateDataModel 同名会失败，必须先删除）
-    if (auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext()) {
+    if (auto* rml_ctx = getRmlContext(context_)) {
         rml_ctx->RemoveDataModel("character");
     }
 

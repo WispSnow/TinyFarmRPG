@@ -330,10 +330,10 @@ menu->PushToBack();
 ```cpp
 bool CustomElementsScene::init() {
     // 加载 HUD（底层，始终可见）
-    hud_doc_ = loadRmlDocument("learn_custom_hud.rml");
+    hud_doc_ = loadRmlDocument("ui/rmlui/learn/learn_custom_hud.rml");
 
     // 加载菜单（顶层，初始隐藏）
-    menu_doc_ = loadRmlDocument("learn_custom_menu.rml");
+    menu_doc_ = loadRmlDocument("ui/rmlui/learn/learn_custom_menu.rml");
     menu_doc_->Hide();
     return true;
 }

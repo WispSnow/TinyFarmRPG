@@ -196,23 +196,19 @@ RmlUi 中最常用的尺寸单位是 `dp`（density-independent pixel，密度�
 
 ## 5. 引擎如何加载 RML 文档
 
-在 TinyFarmRPG 引擎中，RmlUi 已经集成为引擎的一部分。加载一个 RML 文档只需要一行代码：
+在 TinyFarmRPG 引擎中，RmlUi 已经集成为引擎的一部分。对于 `learn` 场景，加载一个 RML 文档只需要调用 `Scene` 基类提供的辅助方法：
 
 ```cpp
-auto& gl_renderer = context_.getGLRenderer();
-gl_renderer.loadRmlUiDocument("ui/rmlui/learn/learn_hello.rml");
+loadRmlDocument("ui/rmlui/learn/learn_hello.rml");
 ```
 
 ### 引擎内部的完整流程
 
 ```
-loadRmlUiDocument(path)
+Scene::loadRmlDocument(path)
     │
     ▼
-RmlUILayer::loadDocument(path)
-    │
-    ├── 关闭当前文档（如有）
-    │       current_document_->Close()
+RmlUiRuntime::loadDocument(path, owner_scene_id)
     │
     ├── 加载新文档
     │       context_->LoadDocument(path)
@@ -222,10 +218,10 @@ RmlUILayer::loadDocument(path)
     │       └── 构建 <body> 元素树
     │
     └── 显示文档
-            current_document_->Show()
+            doc->Show()
 ```
 
-你**不需要**手动初始化 RmlUi、创建 Context 或管理渲染循环——引擎已经处理了这些。
+`Scene::loadRmlDocument()` 会自动把文档归属到当前场景实例 ID，场景退出时 `Scene::clean()` 会统一回收这一组文档。你**不需要**手动初始化 RmlUi、创建 Context 或管理渲染循环；如果后续课程需要直接创建数据模型，则通过 `context_.getRmlUi()->getContext()` 访问共享的 `Rml::Context`。
 
 ### 引擎已预加载的字体
 
@@ -335,7 +331,7 @@ bool RmlUiBasicsScene::init() {
     gl_renderer.setDebugUIEnabled(true);   // 启用 ImGui 调试面板
 
     // 加载 RML 文档 —— 核心调用
-    if (!gl_renderer.loadRmlUiDocument("ui/rmlui/learn/learn_hello.rml")) {
+    if (!loadRmlDocument("ui/rmlui/learn/learn_hello.rml")) {
         spdlog::error("Failed to load learn_hello.rml");
         return false;
     }
@@ -354,7 +350,7 @@ void RmlUiBasicsScene::clean() {
 关键点：
 - `Scene::init()` 必须先调用（初始化基类）
 - `setDebugUIEnabled(true)` 启用 ImGui 调试面板，方便观察
-- `loadRmlUiDocument()` 加载 .rml 文件并显示
+- `loadRmlDocument()` 通过当前场景的 owner ID 加载并显示 .rml 文件
 
 ### learn_hello.rml — RML 文档
 
@@ -533,7 +529,7 @@ ninja -C build learn_rmlui_basics
 | 基础元素 | `<div>`, `<p>`, `<h1>`~`<h4>`, `<span>`, `<img>`, `<button>`, `<br/>`, `<hr/>` |
 | RCSS 选择器 | 元素 / `#id` / `.class` / 后代 / 子代 |
 | 推荐单位 | `dp`（密度无关像素） |
-| 引擎加载 | `gl_renderer.loadRmlUiDocument("path/to/file.rml")` |
+| 引擎加载 | `loadRmlDocument("path/to/file.rml")` |
 
 ---
 

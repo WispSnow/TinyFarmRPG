@@ -421,11 +421,11 @@ std::string buildTargetPreviewText(const ItemData& item, const PartyMember& targ
 
 ### 5.6 鼠标与键盘交互同步
 
-目标列表同时支持鼠标 hover 和键盘方向键导航。使用引擎提供的 `HoverFocusSyncListener` 将鼠标悬停自动转化为焦点，确保两种输入方式的状态始终一致：
+目标列表同时支持鼠标 hover 和键盘方向键导航。由于旧的共享 helper 已移除，本示例在 `jrpg_inventory_scene.cpp` 中实现了一个轻量 `HoverFocusListener`，将鼠标悬停自动转化为焦点，确保两种输入方式的状态始终一致：
 
 ```cpp
-hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(
-    *context_.getGLRenderer().getRmlUILayer(),
+hover_focus_listener_ = std::make_unique<HoverFocusListener>(
+    *context_.getRmlUi(),
     [](Rml::Element* element) {
         // 只同步非禁用的 target-item
         return element != nullptr && element->IsClassSet("target-item")
@@ -434,7 +434,7 @@ hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListen
 doc_->AddEventListener("mouseover", hover_focus_listener_.get());
 ```
 
-> **注意事项**：`HoverFocusSyncListener` 在 `clean()` 时必须先于 `unloadAllRmlDocuments()` 移除。
+> **注意事项**：这类事件监听器在 `clean()` 时必须先于 `unloadAllRmlDocuments()` 移除。
 
 ---
 

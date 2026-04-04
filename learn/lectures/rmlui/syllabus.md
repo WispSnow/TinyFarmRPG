@@ -28,7 +28,7 @@
 - RML 文档结构：`<rml>` / `<head>` / `<body>`
 - RCSS 样式表引入：`<link type="text/rcss" href="...">`
 - 基础元素：`<div>`, `<p>`, `<h1>`–`<h4>`, `<span>`, `<img>`, `<br>`
-- 引擎集成入口：`GLRenderer::loadRmlUiDocument()`
+- 当前 learn 集成入口：`Scene::loadRmlDocument()` / `Context::getRmlUi()`
 - RmlUi Debugger 的使用（元素检查、样式查看）
 
 **练习**：`learn/rmlui_basics` — 已完成的 Hello World 页面
@@ -416,6 +416,7 @@
 - RmlUi 6.2 源码：`external/RmlUi-6.2/`
 - RmlUi 官方文档：https://mikke89.github.io/RmlUiDoc/
 - 引擎 RmlUi 集成层：`src/engine/ui/rmlui/`
-- 引擎 RmlUI 渲染入口：`src/engine/render/opengl/gl_renderer.h` — `loadRmlUiDocument()`
+- learn 文档加载入口：`src/engine/scene/scene.h` — `loadRmlDocument()`
+- 共享 RmlUi 运行时：`src/engine/ui/rmlui/rml_ui_runtime.h`
 - RmlUi Debugger：运行时按 F8 或通过 `Rml::Debugger::SetVisible(true)` 启用
 - RmlUi 官方示例：`external/RmlUi-6.2/Samples/`（animation / data_binding / drag / effects / invaders 等）

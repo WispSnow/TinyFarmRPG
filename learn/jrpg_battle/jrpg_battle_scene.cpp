@@ -2,7 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -14,6 +14,15 @@
 #include <cstdlib>
 
 namespace learn::jrpg {
+
+namespace {
+
+[[nodiscard]] Rml::Context* getRmlContext(const engine::core::Context& context) {
+    auto* runtime = context.getRmlUi();
+    return runtime ? runtime->getContext() : nullptr;
+}
+
+} // namespace
 
 // ── PartyMember helpers ────────────────────────────────────
 
@@ -145,7 +154,7 @@ void JrpgBattleScene::clean() {
     unloadAllRmlDocuments();
     doc_ = nullptr;
 
-    if (auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext()) {
+    if (auto* rml_ctx = getRmlContext(context_)) {
         rml_ctx->RemoveDataModel("battle");
     }
 
@@ -155,7 +164,7 @@ void JrpgBattleScene::clean() {
 // ── Data model ─────────────────────────────────────────────
 
 void JrpgBattleScene::setupDataModel() {
-    auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext();
+    auto* rml_ctx = getRmlContext(context_);
     if (!rml_ctx) return;
 
     auto ctor = rml_ctx->CreateDataModel("battle");

@@ -2,8 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -15,10 +14,46 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include <functional>
 #include <format>
 #include <string_view>
 
 namespace {
+
+[[nodiscard]] Rml::Context* getRmlContext(const engine::core::Context& context) {
+    auto* runtime = context.getRmlUi();
+    return runtime ? runtime->getContext() : nullptr;
+}
+
+class HoverFocusListener final : public Rml::EventListener {
+public:
+    using Filter = std::function<bool(Rml::Element*)>;
+
+    HoverFocusListener(engine::ui::rmlui::RmlUiRuntime& runtime, Filter filter)
+        : runtime_(runtime), filter_(std::move(filter)) {
+    }
+
+    void ProcessEvent(Rml::Event& event) override {
+        auto* rml_ctx = runtime_.getContext();
+        if (!rml_ctx) {
+            return;
+        }
+
+        for (auto* element = event.GetTargetElement(); element != nullptr; element = element->GetParentNode()) {
+            if (!filter_(element)) {
+                continue;
+            }
+            if (rml_ctx->GetFocusElement() != element) {
+                element->Focus(true);
+            }
+            return;
+        }
+    }
+
+private:
+    engine::ui::rmlui::RmlUiRuntime& runtime_;
+    Filter filter_;
+};
 
 [[nodiscard]] int parseIndexedElementId(const Rml::String& id, std::string_view prefix) {
     if (id.rfind(prefix.data(), 0) != 0) {
@@ -189,14 +224,16 @@ bool JrpgInventoryScene::init() {
     addListener(doc_, "keydown");
     addListener(doc_, "click", true);
     addListener(doc_, "focus", true);
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(
-        *context_.getGLRenderer().getRmlUILayer(),
-        [](Rml::Element* element) {
-            return element != nullptr && element->IsClassSet("target-item")
-                && !element->IsClassSet("disabled");
-        });
-    doc_->AddEventListener("mouseover", hover_focus_listener_.get());
-    hover_listener_registered_ = true;
+    if (auto* runtime = context_.getRmlUi()) {
+        hover_focus_listener_ = std::make_unique<HoverFocusListener>(
+            *runtime,
+            [](Rml::Element* element) {
+                return element != nullptr && element->IsClassSet("target-item")
+                    && !element->IsClassSet("disabled");
+            });
+        doc_->AddEventListener("mouseover", hover_focus_listener_.get());
+        hover_listener_registered_ = true;
+    }
 
     // Initial state
     filterItems();
@@ -284,7 +321,7 @@ void JrpgInventoryScene::clean() {
     unloadAllRmlDocuments();
     doc_ = nullptr;
 
-    if (auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext()) {
+    if (auto* rml_ctx = getRmlContext(context_)) {
         rml_ctx->RemoveDataModel("inventory");
     }
 
@@ -294,7 +331,7 @@ void JrpgInventoryScene::clean() {
 // ── Data model setup ──────────────────────────────────────
 
 void JrpgInventoryScene::setupDataModel() {
-    auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext();
+    auto* rml_ctx = getRmlContext(context_);
     if (!rml_ctx) return;
 
     auto ctor = rml_ctx->CreateDataModel("inventory");
@@ -1059,12 +1096,12 @@ int JrpgInventoryScene::getPreferredTargetIndex() const {
 }
 
 bool JrpgInventoryScene::hasFocusedTargetElement() const {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
+    auto* rml_ctx = getRmlContext(context_);
+    if (!rml_ctx) {
         return false;
     }
 
-    for (auto* element = layer->getFocusedElement(); element != nullptr; element = element->GetParentNode()) {
+    for (auto* element = rml_ctx->GetFocusElement(); element != nullptr; element = element->GetParentNode()) {
         if (parseIndexedElementId(element->GetId(), "target-") >= 0) {
             return true;
         }
@@ -1079,9 +1116,7 @@ void JrpgInventoryScene::focusTargetElement(int target_idx) {
     }
 
     if (auto* element = doc_->GetElementById("target-" + std::to_string(target_idx))) {
-        if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-            (void)layer->focusElement(element);
-        }
+        element->Focus(true);
     }
 }
 

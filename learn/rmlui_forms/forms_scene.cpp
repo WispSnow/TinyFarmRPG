@@ -2,7 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -10,6 +10,15 @@
 #include <spdlog/spdlog.h>
 
 namespace learn::rmlui {
+
+namespace {
+
+[[nodiscard]] Rml::Context* getRmlContext(const engine::core::Context& context) {
+    auto* runtime = context.getRmlUi();
+    return runtime ? runtime->getContext() : nullptr;
+}
+
+} // namespace
 
 bool FormsScene::init() {
     if (!Scene::init()) return false;
@@ -34,7 +43,7 @@ bool FormsScene::init() {
 }
 
 bool FormsScene::setupDataModel() {
-    auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext();
+    auto* rml_ctx = getRmlContext(context_);
     if (!rml_ctx) return false;
 
     Rml::DataModelConstructor constructor = rml_ctx->CreateDataModel("settings");
@@ -102,7 +111,7 @@ void FormsScene::clean() {
     unloadAllRmlDocuments();
     doc_ = nullptr;
 
-    if (auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext()) {
+    if (auto* rml_ctx = getRmlContext(context_)) {
         rml_ctx->RemoveDataModel("settings");
     }
 

@@ -317,8 +317,10 @@ void DataBindingScene::clean() {
     unloadAllRmlDocuments();   // 先卸载文档
 
     // 再移除数据模型
-    if (auto* rml_ctx = context_.getGLRenderer().getRmlUILayer()->getContext()) {
-        rml_ctx->RemoveDataModel("character");
+    if (auto* runtime = context_.getRmlUi()) {
+        if (auto* rml_ctx = runtime->getContext()) {
+            rml_ctx->RemoveDataModel("character");
+        }
     }
 
     Scene::clean();

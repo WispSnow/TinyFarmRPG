@@ -1,7 +1,6 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/EventListener.h>
@@ -156,7 +155,7 @@ private:
     Rml::DataModelHandle  model_handle_{};
 
     std::unique_ptr<UIEventListener> listener_;
-    std::unique_ptr<engine::ui::rmlui::HoverFocusSyncListener> hover_focus_listener_{};
+    std::unique_ptr<Rml::EventListener> hover_focus_listener_{};
     struct ListenerReg { Rml::Element* el; Rml::String event; bool capture; };
     std::vector<ListenerReg> registrations_;
     bool hover_listener_registered_ = false;
