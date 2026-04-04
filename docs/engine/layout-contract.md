@@ -91,7 +91,8 @@ RmlUi 的布局是惰性完成的，因此：
 
 ### 6.2 屏幕淡入淡出
 - `RmlScreenFade` 使用：
-  - 动态 `transition: opacity <seconds>s linear-in-out`
+  - `seconds > 0` 时动态写入 `transition: opacity <seconds>s linear-in-out`
+  - `seconds <= 0` 时使用 `transition: none`
   - `.is-opaque` class
   - `transitionend`
 - 约束：

@@ -11,7 +11,7 @@ body {
     height: 100%;
     background-color: #000000;
     opacity: 0;
-    transition: opacity 0s linear-in-out;
+    transition: none;
     pointer-events: none;
 }
 
