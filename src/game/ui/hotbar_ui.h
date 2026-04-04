@@ -3,6 +3,7 @@
 #include "engine/ui/rmlui/rml_document_controller.h"
 #include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
+#include "game/defs/events.h"
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -10,6 +11,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -102,6 +104,18 @@ public:
     void show();
     void hide();
     void toggle();
+
+    /// @brief 同步整份快捷栏状态快照到 HUD。
+    /// @details
+    /// 这是一个“纯 UI 状态同步”接口，而不是 dispatcher 事件回调。
+    /// 调用方负责先拆开 gameplay 事件，再把必要字段传进来。
+    void syncState(entt::entity target,
+                   bool full_sync,
+                   int active_slot,
+                   std::span<const game::defs::HotbarSlotUpdate> slot_updates);
+    /// @brief 同步当前激活槽位到 HUD 高亮。
+    /// @details 同样由上层把事件拆散后调用，避免 HotbarUI 暴露出事件回调风格签名。
+    void syncActiveSlot(entt::entity target, int slot_index);
 
 private:
     /// 创建 data model、绑定事件、加载 RML 文档。
