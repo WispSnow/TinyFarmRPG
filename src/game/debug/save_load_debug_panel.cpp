@@ -5,7 +5,6 @@
 #include <imgui.h>
 
 #include <algorithm>
-#include <cstdio>
 #include <filesystem>
 #include <string>
 
@@ -37,8 +36,8 @@ void SaveLoadDebugPanel::draw(bool& is_open) {
         path_ = game::save::SaveService::slotPath(slot_).string();
     }
 
-    char path_buf[512];
-    std::snprintf(path_buf, sizeof(path_buf), "%s", path_.c_str());
+    char path_buf[512]{};
+    path_.copy(path_buf, sizeof(path_buf) - 1);
     if (ImGui::InputText("Path", path_buf, sizeof(path_buf))) {
         path_ = path_buf;
     }

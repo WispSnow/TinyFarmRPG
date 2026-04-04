@@ -1,40 +1,43 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="pause_menu.rcss"/>
 </head>
-<body data-model="pause_menu">
-    <div id="pause-overlay"></div>
+<body class="tf-screen-root tf-nav-root" data-model="pause_menu">
+    <div id="pause-overlay" class="tf-modal-overlay"></div>
 
-    <div id="pause-panel">
+    <div id="pause-panel" class="tf-modal-panel">
         <div id="pause-message" data-visible="has_message" data-class-is-error="message_is_error" data-class-is-success="!message_is_error">{{ message_text }}</div>
 
         <div id="pause-actions">
-            <button id="pause-resume-button" class="tf-button-primary pause-action-button" data-command="resume">Resume</button>
-            <button id="pause-save-button" class="tf-button-primary pause-action-button" data-command="save" data-class-disabled="!can_save" data-attrif-disabled="!can_save">Save</button>
-            <button id="pause-load-button" class="tf-button-primary pause-action-button" data-command="load" data-class-disabled="!can_load" data-attrif-disabled="!can_load">Load</button>
-            <button id="pause-title-button" class="tf-button-primary pause-action-button" data-command="back_to_title" data-class-disabled="!can_back_title" data-attrif-disabled="!can_back_title">Title</button>
+            <button id="pause-resume-button" class="tf-button-primary pause-action-button" data-event-click="resume">Resume</button>
+            <button id="pause-save-button" class="tf-button-primary pause-action-button" data-event-click="save" data-class-disabled="!can_save" data-attrif-disabled="!can_save">Save</button>
+            <button id="pause-load-button" class="tf-button-primary pause-action-button" data-event-click="load" data-class-disabled="!can_load" data-attrif-disabled="!can_load">Load</button>
+            <button id="pause-title-button" class="tf-button-primary pause-action-button" data-event-click="back_to_title" data-class-disabled="!can_back_title" data-attrif-disabled="!can_back_title">Title</button>
         </div>
 
         <div id="pause-values">
             <div class="pause-value-row">
-                <button class="tf-icon-button icon-arrow-left" data-command="speed_down"></button>
+                <button class="tf-icon-button icon-arrow-left" data-event-click="speed_down"></button>
                 <div class="tf-value-label">{{ speed_text }}</div>
-                <button class="tf-icon-button icon-arrow-right" data-command="speed_up"></button>
+                <button class="tf-icon-button icon-arrow-right" data-event-click="speed_up"></button>
             </div>
 
             <div class="pause-value-row">
-                <button class="tf-icon-button icon-volume-down" data-command="music_down"></button>
+                <button class="tf-icon-button icon-volume-down" data-event-click="music_down"></button>
                 <div class="tf-value-label">{{ music_text }}</div>
-                <button class="tf-icon-button icon-volume-up" data-command="music_up"></button>
+                <button class="tf-icon-button icon-volume-up" data-event-click="music_up"></button>
             </div>
 
             <div class="pause-value-row">
-                <button class="tf-icon-button icon-volume-down" data-command="sound_down"></button>
+                <button class="tf-icon-button icon-volume-down" data-event-click="sound_down"></button>
                 <div class="tf-value-label">{{ sound_text }}</div>
-                <button class="tf-icon-button icon-volume-up" data-command="sound_up"></button>
+                <button class="tf-icon-button icon-volume-up" data-event-click="sound_up"></button>
             </div>
         </div>
     </div>

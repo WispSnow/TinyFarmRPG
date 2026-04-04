@@ -1,7 +1,6 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/render/opengl/render_context.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/render/opengl/imgui_layer.h"
 #endif
@@ -28,6 +27,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 #include <glm/geometric.hpp>
 
 using namespace entt::literals;
@@ -77,10 +77,6 @@ bool GLRenderer::init(SDL_Window* window,
 #endif
     if (!initViewportManager()) {
         spdlog::error("初始化 ViewportManager 失败。");
-        return false;
-    }
-    if (!initRmlUiLayer()) {
-        spdlog::error("创建 RmlUILayer 失败。");
         return false;
     }
     shader_library_ = std::make_unique<ShaderLibrary>();
@@ -323,36 +319,8 @@ void GLRenderer::endDebugUI() {
 #endif
 }
 
-bool GLRenderer::handleRmlUiEvent(SDL_Event& event) {
-    if (!rmlui_layer_) {
-        return true;
-    }
-    return rmlui_layer_->processEvent(event);
-}
-
-bool GLRenderer::loadRmlUiDocument(std::string_view path) {
-    if (!rmlui_layer_) {
-        return false;
-    }
-    return rmlui_layer_->loadDocument(path) != nullptr;
-}
-
-bool GLRenderer::reloadRmlUiDocument() {
-    if (!rmlui_layer_) {
-        return false;
-    }
-    return rmlui_layer_->reloadLastDocument();
-}
-
-engine::ui::rmlui::RmlUILayer* GLRenderer::getRmlUILayer() const {
-    return rmlui_layer_.get();
-}
-
-void GLRenderer::setRmlUiTextureFilterMode(engine::ui::rmlui::RmlUiTextureFilterMode mode) {
-    rmlui_texture_filter_mode_ = mode;
-    if (rmlui_layer_) {
-        rmlui_layer_->setTextureFilterMode(mode);
-    }
+void GLRenderer::setRmlUiRenderHook(RmlUiRenderHook hook) {
+    rmlui_render_hook_ = std::move(hook);
 }
 
 void GLRenderer::handleSDLEvent(const SDL_Event& event) {
@@ -564,14 +532,8 @@ void GLRenderer::present() {
         0u
     };
 
-    if (rmlui_layer_) {
-        const int viewport_x = static_cast<int>(std::round(viewport.pos.x));
-        const int viewport_y = static_cast<int>(std::round(viewport.pos.y));
-        const int viewport_w = static_cast<int>(std::round(viewport.size.x));
-        const int viewport_h = static_cast<int>(std::round(viewport.size.y));
-        rmlui_layer_->setViewport(viewport_w, viewport_h, viewport_x, viewport_y);
-        rmlui_layer_->update();
-        rmlui_layer_->render();
+    if (rmlui_render_hook_) {
+        rmlui_render_hook_(viewport);
         // RmlUi 的 GL3 backend 会关闭 GL_FRAMEBUFFER_SRGB，需在本管线中显式恢复。
         glEnable(GL_FRAMEBUFFER_SRGB);
     }
@@ -601,15 +563,6 @@ void GLRenderer::resize(int width, int height) {
     // 仅更新视口管理器（letterbox），离屏缓冲保持逻辑分辨率
     viewport_manager_->setWindowSize(glm::vec2(width, height));
     viewport_manager_->update();
-    if (rmlui_layer_) {
-        const auto viewport = viewport_manager_->getViewport();
-        rmlui_layer_->setViewport(
-            static_cast<int>(std::round(viewport.size.x)),
-            static_cast<int>(std::round(viewport.size.y)),
-            static_cast<int>(std::round(viewport.pos.x)),
-            static_cast<int>(std::round(viewport.pos.y))
-        );
-    }
 }
 
 void GLRenderer::clean() {
@@ -641,10 +594,7 @@ void GLRenderer::clean() {
         vfx_pass_->clean();
         vfx_pass_.reset();
     }
-    if (rmlui_layer_) {
-        rmlui_layer_->clean();
-        rmlui_layer_.reset();
-    }
+    rmlui_render_hook_ = {};
     pass_stats_ = {};
     scene_color_tex_ = 0;
     light_color_tex_ = 0;
@@ -832,33 +782,6 @@ bool GLRenderer::initImGuiLayer() {
 #else
     return true;
 #endif
-}
-
-bool GLRenderer::initRmlUiLayer() {
-    if (!render_context_ || !viewport_manager_) {
-        return false;
-    }
-
-    const auto viewport = viewport_manager_->getViewport();
-    rmlui_layer_ = engine::ui::rmlui::RmlUILayer::create(
-        render_context_->window(),
-        static_cast<int>(std::round(viewport.size.x)),
-        static_cast<int>(std::round(viewport.size.y)),
-        static_cast<int>(std::round(viewport.pos.x)),
-        static_cast<int>(std::round(viewport.pos.y))
-    );
-    if (!rmlui_layer_) {
-        spdlog::error("创建 RmlUILayer 失败。");
-        return false;
-    }
-
-    // 锁定逻辑分辨率：1dp = 1逻辑像素，随窗口缩放自动适配
-    rmlui_layer_->setLogicalSize(
-        static_cast<int>(std::round(logical_size_.x)),
-        static_cast<int>(std::round(logical_size_.y)));
-    rmlui_layer_->setTextureFilterMode(rmlui_texture_filter_mode_);
-
-    return true;
 }
 
 bool GLRenderer::initLightingPass() {

@@ -23,6 +23,7 @@ set(TEST_SOURCES
     engine/core/config_rmlui_texture_filter_test.cpp
     engine/core/game_app_no_exceptions_test.cpp
     engine/core/game_app_dispatcher_trace_test.cpp
+    engine/core/game_app_rmlui_frame_loop_test.cpp
     engine/core/ecs_safety_test.cpp
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
@@ -71,6 +72,8 @@ set(TEST_SOURCES
     engine/render/gl_renderer_lifecycle_test.cpp
     engine/render/rmlui_pipeline_stage_test.cpp
     engine/render/rmlui_texture_filter_pipeline_test.cpp
+    engine/core/game_app_ui_navigation_source_test.cpp
+    engine/ui/rmlui_runtime_access_test.cpp
     engine/render/vfx_pipeline_stage_test.cpp
     engine/render/vfx_dual_channel_pipeline_test.cpp
     engine/render/opengl_pass_state_test.cpp
@@ -78,7 +81,11 @@ set(TEST_SOURCES
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
     engine/ui/rml_mouse_buttons_test.cpp
-    engine/ui/ui_navigation_controller_test.cpp
+    engine/ui/rml_document_controller_source_test.cpp
+    engine/ui/rml_element_helpers_source_test.cpp
+    engine/ui/rml_screen_fade_transition_source_test.cpp
+    engine/ui/rmlui_transition_behavior_test.cpp
+    engine/ui/ui_types_source_test.cpp
     engine/ui/ui_world_anchor_test.cpp
     engine/spatial/static_tile_grid_sweep_test.cpp
     engine/spatial/static_tile_grid_rect_query_test.cpp
@@ -166,7 +173,10 @@ set(GAME_TEST_SOURCES
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/pause_menu_scene_async_save_ui_test.cpp
     game/dialogue_bubble_controller_test.cpp
+    game/hud_document_controller_source_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
+    game/inventory_menu_scene_slot_grid_registration_test.cpp
+    game/rmlui_architecture_regression_test.cpp
     game/time_advance_sleep_test.cpp
     game/rest_area_interaction_test.cpp
     game/time_of_day_light_system_test.cpp
@@ -178,6 +188,7 @@ set(GAME_TEST_SOURCES
     game/world_state_test.cpp
     game/rml_item_icon_helpers_test.cpp
     game/rml_menu_navigation_style_test.cpp
+    game/game_scene_ui_controller_smoke_test.cpp
     game/ui_layout_integration_test.cpp
 )
 

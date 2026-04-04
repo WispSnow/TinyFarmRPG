@@ -41,15 +41,15 @@ TEST(PauseMenuSceneSaveLoadDisabledTest, DisablesButtonsWhenSaveServiceMissing) 
         << "PauseMenuScene should publish Save enable state through the RmlUi data model.";
     EXPECT_NE(scene_source.find("updateBoundBool(can_load_, has_save_service && !saving)"), std::string::npos)
         << "PauseMenuScene should publish Load enable state through the RmlUi data model.";
-    EXPECT_NE(scene_source.find("data_bridge_.markDirty(\"can_save\")"), std::string::npos)
+    EXPECT_NE(scene_source.find("document_controller_.markDirty(\"can_save\")"), std::string::npos)
         << "PauseMenuScene should mark can_save dirty after state changes.";
-    EXPECT_NE(scene_source.find("data_bridge_.markDirty(\"can_load\")"), std::string::npos)
+    EXPECT_NE(scene_source.find("document_controller_.markDirty(\"can_load\")"), std::string::npos)
         << "PauseMenuScene should mark can_load dirty after state changes.";
     EXPECT_NE(scene_source.find("refreshSaveActionButtons();"), std::string::npos)
         << "PauseMenuScene should refresh Save/Load enable state via unified helper.";
-    EXPECT_NE(rml_source.find("data-command=\"save\""), std::string::npos)
+    EXPECT_NE(rml_source.find("data-event-click=\"save\""), std::string::npos)
         << "Pause menu RML should expose a Save action button.";
-    EXPECT_NE(rml_source.find("data-command=\"load\""), std::string::npos)
+    EXPECT_NE(rml_source.find("data-event-click=\"load\""), std::string::npos)
         << "Pause menu RML should expose a Load action button.";
     EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_save\""), std::string::npos)
         << "Pause menu Save button should bind disabled attr to can_save.";

@@ -14,23 +14,23 @@
         <p class="label">C++ ClickCounter::ProcessEvent increments and updates via SetInnerRML</p>
     </div>
 
-    <!-- ② Command Menu: RmlEventBridge + data-command -->
+    <!-- ② Command Menu: per-element click listeners -->
     <div class="section">
-        <h2>Command Menu (RmlEventBridge)</h2>
+        <h2>Command Menu (EventListener)</h2>
         <div class="cmd-row">
             <div id="cmd-menu" class="cmd-list">
-                <div class="cmd-btn" data-command="cmd_attack">Attack</div>
-                <div class="cmd-btn" data-command="cmd_magic">Magic</div>
-                <div class="cmd-btn" data-command="cmd_items">Items</div>
-                <div class="cmd-btn" data-command="cmd_defend">Defend</div>
-                <div class="cmd-btn" data-command="cmd_flee">Flee</div>
+                <div class="cmd-btn">Attack</div>
+                <div class="cmd-btn">Magic</div>
+                <div class="cmd-btn">Items</div>
+                <div class="cmd-btn">Defend</div>
+                <div class="cmd-btn">Flee</div>
             </div>
             <div class="cmd-log-box">
                 <p class="label">Command Log:</p>
                 <div id="cmd-log" class="cmd-log-text">Select a command...</div>
             </div>
         </div>
-        <p class="label">Single listener on #cmd-menu, dispatched by data-command attribute (event bubbling)</p>
+        <p class="label">Each command button registers a click listener and writes the selected label to the log</p>
     </div>
 
     <!-- ③ Hover Info: mouseover + 动态内容 -->

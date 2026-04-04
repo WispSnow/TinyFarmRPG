@@ -11,20 +11,20 @@
             <div class="divider"></div>
 
             <div id="list">
-                <div class="row"><div class="slot"></div><div class="label item-name">Apple x03</div><button class="button row-btn" data-command="use_01">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Berry x11</div><button class="button row-btn" data-command="use_02">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Carrot x08</div><button class="button row-btn" data-command="use_03">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Corn x21</div><button class="button row-btn" data-command="use_04">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Egg x06</div><button class="button row-btn" data-command="use_05">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Fiber x14</div><button class="button row-btn" data-command="use_06">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Fish x02</div><button class="button row-btn" data-command="use_07">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Flour x09</div><button class="button row-btn" data-command="use_08">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Herb x17</div><button class="button row-btn" data-command="use_09">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Honey x04</div><button class="button row-btn" data-command="use_10">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Iron Ore x12</div><button class="button row-btn" data-command="use_11">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Milk x05</div><button class="button row-btn" data-command="use_12">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Potato x16</div><button class="button row-btn" data-command="use_13">Use</button></div>
-                <div class="row"><div class="slot"></div><div class="label item-name">Tomato x07</div><button class="button row-btn" data-command="use_14">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Apple x03</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Berry x11</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Carrot x08</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Corn x21</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Egg x06</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Fiber x14</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Fish x02</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Flour x09</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Herb x17</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Honey x04</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Iron Ore x12</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Milk x05</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Potato x16</div><button class="button row-btn">Use</button></div>
+                <div class="row"><div class="slot"></div><div class="label item-name">Tomato x07</div><button class="button row-btn">Use</button></div>
             </div>
         </div>
     </div>

@@ -1,10 +1,11 @@
 <rml>
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="time_clock.rcss"/>
 </head>
-<body data-model="time_clock">
+<body class="tf-screen-root" data-model="time_clock">
     <div id="time-clock">
         <!-- 右侧面板（先渲染，在底层） -->
         <div class="info-panel">

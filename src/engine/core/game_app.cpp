@@ -11,8 +11,9 @@
 #include "engine/render/text_renderer.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
-#include "engine/ui/ui_navigation_controller.h"
+#include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
+#include "engine/ui/rmlui/rml_ui_viewport.h"
 #include "engine/scene/scene_manager.h"
 #include "engine/async/main_thread_command_queue.h"
 #include "engine/utils/events.h"
@@ -35,6 +36,8 @@
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <cstdint>
+#include <cmath>
+#include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 namespace {
@@ -42,8 +45,20 @@ namespace {
 constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
 constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
+constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
+
+[[nodiscard]] engine::ui::rmlui::RmlUiViewport toRmlUiViewport(const engine::utils::Rect& viewport) {
+    return engine::ui::rmlui::RmlUiViewport{
+        .width = static_cast<int>(std::round(viewport.size.x)),
+        .height = static_cast<int>(std::round(viewport.size.y)),
+        .offset_x = static_cast<int>(std::round(viewport.pos.x)),
+        .offset_y = static_cast<int>(std::round(viewport.pos.y)),
+    };
+}
 
 } // namespace
+
+using namespace entt::literals;
 
 namespace engine::core {
 
@@ -146,6 +161,7 @@ bool GameApp::init() {
     if (!initConfig()) return false;
     if (!initSDL())  return false;
     if (!initGLRenderer()) return false;
+    if (!initRmlUi()) return false;
 #ifdef TF_ENABLE_DEBUG_UI
     if (!initDebugUIManager()) return false;
 #endif
@@ -159,7 +175,6 @@ bool GameApp::init() {
     if (!initCamera()) return false;
     if (!initTextRenderer()) return false;
     if (!initInputManager()) return false;
-    if (!initUINavigationController()) return false;
     if (!initSpatialIndexManager()) return false;
 
     if (!initContext()) return false;
@@ -196,6 +211,19 @@ void GameApp::updateFrame(float delta_time) {
     scene_manager_->update(delta_time);
 }
 
+void GameApp::updateRmlUiFrame() {
+    if (rmlui_runtime_) {
+        if (input_manager_) {
+            const auto last_input_device = input_manager_->getLastInputDevice();
+            const auto input_mode = last_input_device == engine::input::InputDevice::Mouse
+                ? engine::ui::rmlui::RmlUiRuntime::InputMode::Mouse
+                : engine::ui::rmlui::RmlUiRuntime::InputMode::Navigation;
+            rmlui_runtime_->setInputMode(input_mode);
+        }
+        rmlui_runtime_->update();
+    }
+}
+
 void GameApp::render(float interpolation_alpha) {
     // 1. 清除屏幕
     renderer_->clearScreen();
@@ -203,13 +231,17 @@ void GameApp::render(float interpolation_alpha) {
     gl_renderer_->beginDebugUI();
 #endif
 
-    // 2. 具体渲染代码
+    // 2. 先准备 retained UI 组合数据，再显式执行 RmlUi::Update。
+    scene_manager_->prepareUi(interpolation_alpha);
+    updateRmlUiFrame();
+
+    // 3. 具体渲染代码
     scene_manager_->render(interpolation_alpha);
 #ifdef TF_ENABLE_DEBUG_UI
     gl_renderer_->endDebugUI();
 #endif
 
-    // 3. 更新屏幕显示
+    // 4. 更新屏幕显示
     renderer_->present();
 }
 
@@ -241,8 +273,6 @@ void GameApp::close() {
     dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
     dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
 
-    ui_navigation_controller_.reset();
-
     // 先关闭场景管理器，确保所有场景都被清理
     if (scene_manager_) {
         scene_manager_->close();
@@ -253,18 +283,18 @@ void GameApp::close() {
         main_thread_command_queue_->clear();
     }
 
-    // 释放持有引用关系的 Context，再依次释放依赖的渲染对象
-    context_.reset();
-    renderer_.reset();
-    text_renderer_.reset();
-    camera_.reset();
-
 #ifdef TF_ENABLE_DEBUG_UI
     if (gl_renderer_) {
         gl_renderer_->setDebugUIManager(nullptr);
     }
     debug_ui_manager_.reset();
 #endif
+
+    // 释放持有引用关系的 Context，再依次释放依赖的渲染对象
+    context_.reset();
+    renderer_.reset();
+    text_renderer_.reset();
+    camera_.reset();
 
     // ResourceManager/FontManager/TextureManager 在析构时会释放 GL 资源（glDeleteTextures 等），
     // 必须确保此时 OpenGL 上下文仍然有效，因此要在 GLRenderer 之前销毁。
@@ -274,6 +304,16 @@ void GameApp::close() {
     }
     resource_manager_.reset();
     main_thread_command_queue_.reset();
+
+    if (gl_renderer_) {
+        // 先清空 render hook，再销毁 runtime / backend。
+        // 这样可以确保 GLRenderer 在析构末期不会再持有指向 RmlUi 对象的悬空回调。
+        gl_renderer_->setRmlUiRenderHook({});
+    }
+
+    // RmlUiRuntime::clean() 会执行 Rml::Shutdown()，必须发生在 render backend 释放之前。
+    rmlui_runtime_.reset();
+    rmlui_render_backend_.reset();
 
     // ImGui 依赖的 OpenGL 上下文必须在窗口销毁前清理
     gl_renderer_.reset();
@@ -339,8 +379,58 @@ bool GameApp::initGLRenderer() {
     }
     gl_renderer_->setVSyncEnabled(config_->vsync_enabled_);
     gl_renderer_->setDebugUIEnabled(config_->debug_ui_enabled_);
-    gl_renderer_->setRmlUiTextureFilterMode(config_->rmlui_texture_filter_mode_);
     spdlog::trace("OpenGL 渲染器初始化成功。");
+    return true;
+}
+
+bool GameApp::initRmlUi() {
+    if (!gl_renderer_) {
+        spdlog::error("初始化 RmlUi 失败：GLRenderer 未初始化。");
+        return false;
+    }
+
+    rmlui_render_backend_ = engine::ui::rmlui::RmlUiRenderBackendGl::create();
+    if (!rmlui_render_backend_) {
+        spdlog::error("初始化 RmlUi 失败：创建 RmlUiRenderBackendGl 失败。");
+        return false;
+    }
+
+    // 顺序不能交换：runtime 初始化期间会把 render interface 注册到 RmlUi，
+    // 然后调用 Rml::Initialise() 并创建主 context。
+    const auto viewport = gl_renderer_->getViewportPixels();
+    rmlui_runtime_ = engine::ui::rmlui::RmlUiRuntime::create(
+        window_,
+        *rmlui_render_backend_->getRenderInterface(),
+        toRmlUiViewport(viewport));
+    if (!rmlui_runtime_) {
+        spdlog::error("初始化 RmlUi 失败：创建 RmlUiRuntime 失败。");
+        return false;
+    }
+
+    const auto& logical_size = gl_renderer_->getLogicalSize();
+    const int logical_width = static_cast<int>(std::round(logical_size.x));
+    const int logical_height = static_cast<int>(std::round(logical_size.y));
+    rmlui_runtime_->setLogicalSize(logical_width, logical_height);
+    rmlui_render_backend_->setLogicalSize(logical_width, logical_height);
+    rmlui_render_backend_->setTextureFilterMode(config_->rmlui_texture_filter_mode_);
+    syncRmlUiViewport();
+
+    if (!rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
+        spdlog::warn("GameApp::initRmlUi failed to load default font {}.", DEFAULT_RMLUI_FONT_PATH);
+    }
+
+    // GLRenderer 只知道“在 present() 的 retained UI 阶段执行渲染”。
+    // runtime update / document lifecycle 仍由 GameApp 与 Context 协调，不经 renderer 回传。
+    gl_renderer_->setRmlUiRenderHook([this](const engine::utils::Rect& current_viewport) {
+        if (!rmlui_runtime_ || !rmlui_render_backend_) {
+            return;
+        }
+
+        if (auto* context = rmlui_runtime_->getContext()) {
+            rmlui_render_backend_->render(*context, toRmlUiViewport(current_viewport));
+        }
+    });
+
     return true;
 }
 
@@ -379,7 +469,7 @@ bool GameApp::registerDebugPanels() {
         engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SceneDebugPanel>(*scene_manager_), false, engine::debug::PanelCategory::Engine);
     debug_ui_manager_->registerPanel(std::make_unique<engine::debug::SpatialIndexDebugPanel>(*scene_manager_, *spatial_index_manager_), false, engine::debug::PanelCategory::Engine);
-    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::RmlUiDebugPanel>(*gl_renderer_), false, engine::debug::PanelCategory::Engine);
+    debug_ui_manager_->registerPanel(std::make_unique<engine::debug::RmlUiDebugPanel>(*context_, *rmlui_render_backend_), false, engine::debug::PanelCategory::Engine);
     return true;
 }
 #endif
@@ -476,10 +566,10 @@ bool GameApp::initInputManager()
         return false;
     }
     input_manager_->setRmlUiEventForwarder([this](SDL_Event& event) {
-        if (gl_renderer_) {
-            return gl_renderer_->handleRmlUiEvent(event);
+        if (rmlui_runtime_) {
+            return rmlui_runtime_->processEvent(event);
         }
-        return true;
+        return false;
     });
 #ifdef TF_ENABLE_DEBUG_UI
     input_manager_->setImGuiEventForwarder([this](const SDL_Event& event) {
@@ -489,25 +579,6 @@ bool GameApp::initInputManager()
     });
 #endif
     spdlog::trace("输入管理器初始化成功。");
-    return true;
-}
-
-bool GameApp::initUINavigationController()
-{
-    if (!input_manager_) {
-        spdlog::error("初始化 UI 导航控制器失败：InputManager 未初始化。");
-        return false;
-    }
-
-    ui_navigation_controller_ = std::make_unique<engine::ui::UINavigationController>(*input_manager_);
-    if (auto* layer = gl_renderer_ ? gl_renderer_->getRmlUILayer() : nullptr) {
-        ui_navigation_controller_->onNavigateUp().connect<&engine::ui::rmlui::RmlUILayer::navigateUp>(layer);
-        ui_navigation_controller_->onNavigateDown().connect<&engine::ui::rmlui::RmlUILayer::navigateDown>(layer);
-        ui_navigation_controller_->onNavigateLeft().connect<&engine::ui::rmlui::RmlUILayer::navigateLeft>(layer);
-        ui_navigation_controller_->onNavigateRight().connect<&engine::ui::rmlui::RmlUILayer::navigateRight>(layer);
-        ui_navigation_controller_->onConfirm().connect<&engine::ui::rmlui::RmlUILayer::confirmFocusedElement>(layer);
-    }
-
     return true;
 }
 
@@ -533,11 +604,15 @@ bool GameApp::initContext()
     engine::core::ResourceServices resource_services{
         *resource_manager_, *auto_tile_library_
     };
+    engine::core::UiServices ui_services{
+        rmlui_runtime_.get()
+    };
 
     context_ = engine::core::Context::create(
         core_services,
         render_services,
         resource_services,
+        ui_services,
         *audio_player_,
         *spatial_index_manager_
 #ifdef TF_ENABLE_DEBUG_UI
@@ -558,6 +633,14 @@ bool GameApp::initSceneManager()
     return true;
 }
 
+void GameApp::syncRmlUiViewport() {
+    if (!gl_renderer_ || !rmlui_runtime_) {
+        return;
+    }
+
+    rmlui_runtime_->syncViewport(toRmlUiViewport(gl_renderer_->getViewportPixels()));
+}
+
 void GameApp::onQuitEvent()
 {
     spdlog::trace("GameApp 收到来自事件分发器的退出请求。");
@@ -576,6 +659,7 @@ void GameApp::onWindowResized(const engine::utils::WindowResizedEvent& e)
     if (gl_renderer_) {
         gl_renderer_->resize(w, h);
     }
+    syncRmlUiViewport();
 }
 
 } // namespace engine::core

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
+#include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
@@ -20,7 +20,6 @@ enum class State;
 
 namespace Rml {
 class Element;
-class ElementDocument;
 }
 
 namespace game::data {
@@ -39,28 +38,6 @@ class ItemTooltipUI;
 namespace game::scene {
 
 class InventoryMenuScene final : public engine::scene::Scene {
-    struct SlotViewModel {
-        int slot_index{0};
-        Rml::String icon_decorator{"none"};
-        Rml::String count_text{};
-        bool has_item{false};
-        bool has_count{false};
-        bool can_drag{false};
-        bool is_selected{false};
-    };
-
-    struct HotbarSlotViewModel {
-        int slot_index{0};
-        Rml::String icon_decorator{"none"};
-        Rml::String count_text{};
-        Rml::String label{};
-        bool has_item{false};
-        bool has_count{false};
-        bool is_active{false};
-        bool can_drag{false};
-        bool is_selected{false};
-    };
-
     struct ActionEntryViewModel {
         int action_id{0};
         Rml::String label{};
@@ -73,14 +50,11 @@ class InventoryMenuScene final : public engine::scene::Scene {
     engine::core::State previous_state_{};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
-    Rml::ElementDocument* document_{nullptr};
-    bool click_listener_registered_{false};
 
-    std::vector<SlotViewModel> backpack_slots_{};
-    std::vector<HotbarSlotViewModel> hotbar_slots_{};
+    std::vector<game::ui::SlotGridViewModel> backpack_slots_{};
+    std::vector<game::ui::SlotGridViewModel> hotbar_slots_{};
     std::vector<ActionEntryViewModel> action_menu_entries_{};
     bool data_types_registered_{false};
 
@@ -98,19 +72,11 @@ class InventoryMenuScene final : public engine::scene::Scene {
     int detail_hb_slot_{-1};
 
     // Drag state
-    bool dragging_{false};
-    bool drop_handled_{false};
-    bool suppress_next_primary_mouse_up_{false};
-    bool dragging_from_hotbar_{false};
-    int dragging_slot_index_{-1};
+    game::ui::SlotGridDragState drag_state_{};
 
     // Action menu
     Rml::String action_menu_title_{};
-    Rml::String action_menu_left_{"0dp"};
-    Rml::String action_menu_top_{"0dp"};
     bool action_menu_visible_{false};
-    int highlighted_action_id_{-1};
-    Rml::Element* focus_before_action_menu_{nullptr};
 
     // Character panel
     Rml::String char_name_{"Player"};
@@ -132,7 +98,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void removeEventListeners();
+    void shutdownUI();
     void disconnectRuntimeListeners();
 
     void syncFromInventory();
@@ -161,9 +127,13 @@ private:
     void openBackpackActionMenu(int slot_index);
     void openHotbarActionMenu(int slot_index);
     void openDiscardConfirmForBackpackSlot(int slot_index);
-    void setActionMenuPositionForBackpackSlot(int slot_index);
-    void setActionMenuPositionForHotbarSlot(int slot_index);
-    void setActionMenuPosition(float left_dp, float top_dp);
+    void showActionMenu(Rml::String title,
+                        std::vector<ActionEntryViewModel> entries,
+                        std::string_view anchor_grid_id,
+                        int anchor_slot_index);
+    void positionActionMenuForGridSlot(std::string_view grid_id, int slot_index);
+    [[nodiscard]] Rml::Element* findIndexedChildElement(std::string_view parent_id, int child_index) const;
+    [[nodiscard]] float measureGridHorizontalGap(std::string_view grid_id) const;
     void executeAction(int action_id);
     void clearSelectionAndDetail();
 
@@ -195,7 +165,6 @@ private:
     void onHbSlotDragEnd(int slot_index, Rml::Event& event);
 
     // Action menu entry callbacks
-    void onActionEntryFocus(int action_id, Rml::Event& event);
     void onActionEntryClick(int action_id, Rml::Event& event);
 };
 

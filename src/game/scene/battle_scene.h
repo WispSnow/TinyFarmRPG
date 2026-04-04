@@ -1,8 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
-#include "engine/ui/rmlui/rml_data_bridge.h"
-#include "engine/ui/rmlui/rml_event_bridge.h"
+#include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/battle/battle_session.h"
 
 #include <RmlUi/Core/Types.h>
@@ -10,10 +9,6 @@
 #include <optional>
 #include <string_view>
 #include <vector>
-
-namespace Rml {
-class ElementDocument;
-}
 
 namespace game::scene {
 
@@ -35,15 +30,12 @@ class BattleScene final : public engine::scene::Scene {
     bool end_requested_{false};
     bool context_pushed_{false};
 
-    engine::ui::rmlui::RmlDataBridge data_bridge_{};
-    engine::ui::rmlui::RmlEventBridge event_bridge_{};
-    Rml::ElementDocument* document_{nullptr};
+    engine::ui::rmlui::RmlDocumentController document_controller_{};
 
     Rml::String turn_text_{"Turn: -"};
     Rml::String units_text_{"Units: -"};
     Rml::String result_text_{"Result: Choose action"};
     bool actions_enabled_{false};
-    bool click_listener_registered_{false};
 
 public:
     BattleScene(std::string_view name,
@@ -58,7 +50,7 @@ public:
 
 private:
     [[nodiscard]] bool initUI();
-    void removeEventListeners();
+    void shutdownUI();
     void runStateMachine(float delta_time);
     void refreshView();
 

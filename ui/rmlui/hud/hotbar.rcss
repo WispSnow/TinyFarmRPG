@@ -1,10 +1,4 @@
-body, div, h1, h2, h3, h4, p, hr, button, img, span {
-    display: block;
-}
-
 body {
-    width: 100%;
-    height: 100%;
     pointer-events: none;
 }
 
@@ -29,11 +23,9 @@ body {
 }
 
 .hotbar-slot {
-    position: relative;
     width: 32dp;
     height: 32dp;
     decorator: ninepatch(hotbar-slot-bg, hotbar-slot-bg-inner, 1.0);
-    pointer-events: auto;
 }
 
 .hotbar-slot-selected {
@@ -49,22 +41,6 @@ body {
 
 .hotbar-slot.is-active .hotbar-slot-selected {
     visibility: visible;
-}
-
-.hotbar-slot-drag-proxy {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 32dp;
-    height: 32dp;
-    drag: none;
-    cursor: default;
-    pointer-events: auto;
-}
-
-.hotbar-slot-drag-proxy.draggable {
-    drag: clone;
-    cursor: move;
 }
 
 .hotbar-slot-drag-proxy:drag {
@@ -93,15 +69,9 @@ body {
     line-height: 14dp;
     font-effect: shadow(1dp 1dp #000000cc);
     pointer-events: none;
-    visibility: hidden;
 }
 
 .hotbar-slot.has-item .hotbar-slot-icon,
 .hotbar-slot-drag-proxy.has-item .hotbar-slot-icon {
-    visibility: visible;
-}
-
-.hotbar-slot.has-count .hotbar-slot-count,
-.hotbar-slot-drag-proxy.has-count .hotbar-slot-count {
     visibility: visible;
 }

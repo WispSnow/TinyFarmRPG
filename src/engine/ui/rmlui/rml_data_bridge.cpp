@@ -4,15 +4,41 @@
 #include <RmlUi/Core/DataModelHandle.h>
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 namespace engine::ui::rmlui {
+
+RmlDataBridge::~RmlDataBridge() {
+    destroy();
+}
+
+RmlDataBridge::RmlDataBridge(RmlDataBridge&& other) noexcept
+    : handle_(std::exchange(other.handle_, {})),
+      context_(std::exchange(other.context_, nullptr)),
+      model_name_(std::move(other.model_name_)),
+      valid_(std::exchange(other.valid_, false)) {
+    other.model_name_.clear();
+}
+
+RmlDataBridge& RmlDataBridge::operator=(RmlDataBridge&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+
+    destroy();
+
+    handle_ = std::exchange(other.handle_, {});
+    context_ = std::exchange(other.context_, nullptr);
+    model_name_ = std::move(other.model_name_);
+    valid_ = std::exchange(other.valid_, false);
+    other.model_name_.clear();
+    return *this;
+}
 
 Rml::DataModelConstructor RmlDataBridge::create(Rml::Context* context,
                                                  std::string_view model_name,
                                                  Rml::DataTypeRegister* data_type_register) {
-    valid_ = false;
-    handle_ = {};
-    context_ = nullptr;
-    model_name_.clear();
+    destroy();
 
     if (!context) {
         spdlog::error("RmlDataBridge::create failed: context is null.");

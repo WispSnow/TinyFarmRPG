@@ -8,8 +8,6 @@
 
 body {
     /* 占满视口用于定位，不拦截鼠标 */
-    width: 100%;
-    height: 100%;
     pointer-events: none;
 }
 

@@ -4,7 +4,7 @@
 #include "engine/debug/debug_panel.h"
 #include "engine/debug/debug_ui_manager.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -239,8 +239,8 @@ bool RmlUiTestScene::loadDocument(std::string_view path) {
     }
 
     if (current_document_ && current_document_ != next_document) {
-        if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-            layer->unloadDocument(current_document_);
+        if (auto* runtime = context_.getRmlUi()) {
+            runtime->unloadDocument(current_document_);
         }
     }
     current_document_ = next_document;

@@ -3,7 +3,6 @@
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Types.h>
 
-#include <functional>
 #include <string>
 #include <string_view>
 
@@ -16,25 +15,29 @@ class DataTypeRegister;
 namespace engine::ui::rmlui {
 
 /**
- * @brief 封装 RmlUi Data Model 绑定，简化游戏数据与 RML 文档的数据驱动关联。
+ * @brief 管理 RmlUi data model 的生命周期与脏标记。
  *
  * 典型用法：
  *   RmlDataBridge bridge;
- *   bridge.create(context, "time_clock");
- *   bridge.bind("day", &model.day);
- *   bridge.bind("time_text", &model.time_text);
+ *   auto constructor = bridge.create(context, "time_clock");
+ *   constructor.Bind("day", &model.day);
+ *   constructor.Bind("time_text", &model.time_text);
  *   // 每帧数据变更时：
  *   bridge.markDirty("day");
+ *
+ * bridge 只负责 Create/RemoveDataModel、保存 handle、以及 dirty API；
+ * 具体 Bind/RegisterStruct/BindEventCallback 仍直接通过返回的
+ * DataModelConstructor 完成。
  */
 class RmlDataBridge final {
 public:
     RmlDataBridge() = default;
-    ~RmlDataBridge() = default;
+    ~RmlDataBridge();
 
     RmlDataBridge(const RmlDataBridge&) = delete;
     RmlDataBridge& operator=(const RmlDataBridge&) = delete;
-    RmlDataBridge(RmlDataBridge&&) noexcept = default;
-    RmlDataBridge& operator=(RmlDataBridge&&) noexcept = default;
+    RmlDataBridge(RmlDataBridge&& other) noexcept;
+    RmlDataBridge& operator=(RmlDataBridge&& other) noexcept;
 
     /// 创建一个命名 data model。返回 DataModelConstructor 供进一步绑定。
     /// @param context  RmlUi 上下文

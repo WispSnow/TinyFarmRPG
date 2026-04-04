@@ -1,12 +1,5 @@
-body, div, h1, h2, h3, h4, p, hr, button, img {
-    display: block;
-}
-
 body {
-    width: 100%;
-    height: 100%;
     overflow: hidden;
-    nav: auto;
 }
 
 #title-bg {

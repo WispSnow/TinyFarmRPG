@@ -9,10 +9,6 @@ namespace engine::core {
     class Context;
 }
 
-namespace engine::ui::rmlui {
-    class RmlUILayer;
-}
-
 namespace Rml {
 class ElementDocument;
 }
@@ -58,6 +54,7 @@ public:
     [[nodiscard]] virtual bool init();
     virtual void fixedUpdate(float delta_time); ///< @brief 固定步长逻辑更新（默认空实现；仅需要固定逻辑的场景重写）
     virtual void update(float delta_time);      ///< @brief 更新场景。
+    virtual void prepareUi(float interpolation_alpha); ///< @brief 在 RmlUi::Update 前准备 retained UI 组合数据。
     virtual void render(float interpolation_alpha); ///< @brief 渲染场景（interpolation_alpha 为渲染插值系数）。
     virtual void clean();                       ///< @brief 清理场景。
 

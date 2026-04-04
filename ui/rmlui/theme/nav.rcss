@@ -1,0 +1,45 @@
+.tf-nav-root {
+    nav: auto;
+}
+
+.tf-nav-auto {
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.tf-focus-ring-blue,
+.tf-focus-ring-gold,
+.tf-focus-ring-danger {
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, color 0.08s cubic-out, image-color 0.08s cubic-out;
+}
+
+.tf-input-mouse .tf-focus-ring-blue:hover,
+.tf-input-nav .tf-focus-ring-blue:focus {
+    transform: translateY(-1dp);
+    color: #8db8ffff;
+    image-color: #8db8ffff;
+}
+
+.tf-input-mouse .tf-focus-ring-gold:hover,
+.tf-input-nav .tf-focus-ring-gold:focus {
+    transform: translateY(-1dp);
+    color: #fce97fff;
+    image-color: #fce97fff;
+}
+
+.tf-input-mouse .tf-focus-ring-danger:hover,
+.tf-input-nav .tf-focus-ring-danger:focus {
+    transform: translateY(-1dp);
+    color: #f78fa3ff;
+    image-color: #f78fa3ff;
+}
+
+.tf-focus-ring-blue:active,
+.tf-focus-ring-gold:active,
+.tf-focus-ring-danger:active {
+    transform: translateY(1dp);
+}

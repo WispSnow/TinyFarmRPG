@@ -11,21 +11,15 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/hover_focus_sync_listener.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <format>
 #include <string>
 #include <utility>
 
@@ -51,9 +45,7 @@ constexpr std::string_view MODEL_NAME = "pause_menu";
 
 [[nodiscard]] std::string toMultiplierLabel(std::string_view prefix, float value) {
     const float clamped = std::clamp(value, TIME_SCALE_MIN, TIME_SCALE_MAX);
-    char buffer[64]{};
-    std::snprintf(buffer, sizeof(buffer), "%.2fx", clamped);
-    return std::string(prefix) + " " + buffer;
+    return std::format("{} {:.2f}x", prefix, clamped);
 }
 
 using engine::ui::rmlui::updateBoundBool;
@@ -75,14 +67,7 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
 
 PauseMenuScene::~PauseMenuScene() {
     disconnectRuntimeListeners();
-    if (document_ || data_bridge_.isValid() || click_listener_registered_ || hover_listener_registered_) {
-        removeEventListeners();
-        if (document_) {
-            unloadAllRmlDocuments();
-            document_ = nullptr;
-        }
-        data_bridge_.destroy();
-    }
+    shutdownUI();
 }
 
 bool PauseMenuScene::init() {
@@ -119,32 +104,25 @@ void PauseMenuScene::update(float delta_time) {
 }
 
 void PauseMenuScene::clean() {
+    shutdownUI();
     disconnectRuntimeListeners();
-    removeEventListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
-    document_ = nullptr;
-    data_bridge_.destroy();
 }
 
 bool PauseMenuScene::initUI() {
-    auto* layer = context_.getGLRenderer().getRmlUILayer();
-    if (!layer) {
-        spdlog::error("PauseMenuScene: RmlUILayer 不可用。");
+    auto* runtime = context_.getRmlUi();
+    if (!runtime) {
+        spdlog::error("PauseMenuScene: RmlUiRuntime 不可用。");
         return false;
     }
 
-    auto* rml_context = layer->getContext();
-    if (!rml_context) {
-        spdlog::error("PauseMenuScene: RmlUi context 不可用。");
-        return false;
-    }
-
-    auto constructor = data_bridge_.create(rml_context, MODEL_NAME);
+    document_controller_.attach(runtime, instanceId());
+    auto constructor = document_controller_.createModel(MODEL_NAME);
     if (!constructor) {
         spdlog::error("PauseMenuScene: 创建 data model 失败。");
         return false;
@@ -160,47 +138,37 @@ bool PauseMenuScene::initUI() {
     constructor.Bind("can_load", &can_load_);
     constructor.Bind("can_back_title", &can_back_title_);
 
-    document_ = loadRmlDocument(DOCUMENT_PATH);
-    if (!document_) {
-        data_bridge_.destroy();
-        spdlog::error("PauseMenuScene: 加载 RML 文档失败。");
+    if (!document_controller_.bindSimpleEvent(constructor, "resume", [this] { onResumeClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "save", [this] { onSaveClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "load", [this] { onLoadClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "back_to_title", [this] { onBackToTitleClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "speed_down", [this] { adjustTimeScale(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "speed_up", [this] { adjustTimeScale(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "music_down", [this] { adjustMusicVolume(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "music_up", [this] { adjustMusicVolume(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "sound_down", [this] { adjustSoundVolume(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "sound_up", [this] { adjustSoundVolume(1); })) {
+        spdlog::error("PauseMenuScene: 绑定 data event 回调失败。");
+        document_controller_.unload();
         return false;
     }
 
-    event_bridge_.on("resume", [this](Rml::Event&) { onResumeClicked(); });
-    event_bridge_.on("save", [this](Rml::Event&) { onSaveClicked(); });
-    event_bridge_.on("load", [this](Rml::Event&) { onLoadClicked(); });
-    event_bridge_.on("back_to_title", [this](Rml::Event&) { onBackToTitleClicked(); });
-    event_bridge_.on("speed_down", [this](Rml::Event&) { adjustTimeScale(-1); });
-    event_bridge_.on("speed_up", [this](Rml::Event&) { adjustTimeScale(1); });
-    event_bridge_.on("music_down", [this](Rml::Event&) { adjustMusicVolume(-1); });
-    event_bridge_.on("music_up", [this](Rml::Event&) { adjustMusicVolume(1); });
-    event_bridge_.on("sound_down", [this](Rml::Event&) { adjustSoundVolume(-1); });
-    event_bridge_.on("sound_up", [this](Rml::Event&) { adjustSoundVolume(1); });
-    event_bridge_.registerTo(document_, "click");
-    hover_focus_listener_ = std::make_unique<engine::ui::rmlui::HoverFocusSyncListener>(*layer);
-    document_->AddEventListener("mouseover", hover_focus_listener_.get());
-    click_listener_registered_ = true;
-    hover_listener_registered_ = true;
+    if (!document_controller_.load(DOCUMENT_PATH)) {
+        spdlog::error("PauseMenuScene: 加载 RML 文档失败。");
+        document_controller_.unload();
+        return false;
+    }
 
     refreshVolumeLabels();
     refreshTimeScaleLabel();
     refreshSaveActionButtons();
-    setMessage("", true);
-    data_bridge_.markAllDirty();
-    layer->queueFocusElementById(document_, "pause-resume-button");
+    setMessage("", false);
+    document_controller_.markAllDirty();
     return true;
 }
 
-void PauseMenuScene::removeEventListeners() {
-    if (document_ && click_listener_registered_) {
-        document_->RemoveEventListener("click", &event_bridge_);
-        click_listener_registered_ = false;
-    }
-    if (document_ && hover_listener_registered_ && hover_focus_listener_) {
-        document_->RemoveEventListener("mouseover", hover_focus_listener_.get());
-        hover_listener_registered_ = false;
-    }
+void PauseMenuScene::shutdownUI() {
+    document_controller_.unload();
 }
 
 void PauseMenuScene::disconnectRuntimeListeners() {
@@ -213,10 +181,10 @@ void PauseMenuScene::refreshVolumeLabels() {
     auto& audio = context_.getAudioPlayer();
 
     if (updateBoundString(music_text_, toPercentLabel("Music", audio.getMusicVolume()))) {
-        data_bridge_.markDirty("music_text");
+        document_controller_.markDirty("music_text");
     }
     if (updateBoundString(sound_text_, toPercentLabel("SFX", audio.getSoundVolume()))) {
-        data_bridge_.markDirty("sound_text");
+        document_controller_.markDirty("sound_text");
     }
 }
 
@@ -231,7 +199,7 @@ void PauseMenuScene::refreshTimeScaleLabel() {
     }
 
     if (updateBoundString(speed_text_, toMultiplierLabel("Speed", scale))) {
-        data_bridge_.markDirty("speed_text");
+        document_controller_.markDirty("speed_text");
     }
 }
 
@@ -240,13 +208,13 @@ void PauseMenuScene::refreshSaveActionButtons() {
     const bool saving = has_save_service && save_service_->isSaving();
 
     if (updateBoundBool(can_save_, has_save_service && !saving)) {
-        data_bridge_.markDirty("can_save");
+        document_controller_.markDirty("can_save");
     }
     if (updateBoundBool(can_load_, has_save_service && !saving)) {
-        data_bridge_.markDirty("can_load");
+        document_controller_.markDirty("can_load");
     }
     if (updateBoundBool(can_back_title_, !saving)) {
-        data_bridge_.markDirty("can_back_title");
+        document_controller_.markDirty("can_back_title");
     }
 }
 
@@ -267,13 +235,13 @@ void PauseMenuScene::onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEv
 
 void PauseMenuScene::setMessage(std::string message, bool is_error) {
     if (updateBoundString(message_text_, message)) {
-        data_bridge_.markDirty("message_text");
+        document_controller_.markDirty("message_text");
     }
     if (updateBoundBool(has_message_, !message.empty())) {
-        data_bridge_.markDirty("has_message");
+        document_controller_.markDirty("has_message");
     }
     if (updateBoundBool(message_is_error_, is_error)) {
-        data_bridge_.markDirty("message_is_error");
+        document_controller_.markDirty("message_is_error");
     }
 }
 

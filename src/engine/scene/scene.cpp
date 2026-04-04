@@ -1,7 +1,6 @@
 #include "engine/scene/scene.h"
 #include "engine/core/context.h"
-#include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_layer.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "engine/utils/events.h"
 #include <atomic>
@@ -35,6 +34,10 @@ void Scene::fixedUpdate(float /* delta_time */) {
 }
 
 void Scene::update(float /*delta_time*/) {
+    if (!is_initialized_) return;
+}
+
+void Scene::prepareUi(float /*interpolation_alpha*/) {
     if (!is_initialized_) return;
 }
 
@@ -73,16 +76,16 @@ void Scene::quit()
 }
 
 Rml::ElementDocument* Scene::loadRmlDocument(std::string_view path) {
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        return layer->loadDocument(path, instance_id_);
+    if (auto* rmlui = context_.getRmlUi()) {
+        return rmlui->loadDocument(path, instance_id_);
     }
-    spdlog::warn("Scene '{}': RmlUILayer 不可用，无法加载文档 '{}'。", scene_name_, path);
+    spdlog::warn("Scene '{}': RmlUiRuntime 不可用，无法加载文档 '{}'。", scene_name_, path);
     return nullptr;
 }
 
 void Scene::unloadAllRmlDocuments() {
-    if (auto* layer = context_.getGLRenderer().getRmlUILayer()) {
-        layer->unloadDocumentsByOwner(instance_id_);
+    if (auto* rmlui = context_.getRmlUi()) {
+        rmlui->unloadDocumentsByOwner(instance_id_);
     }
 }
 

@@ -2,6 +2,7 @@
 #ifndef __EFFEKSEER_SIMD_BASE_H__
 #define __EFFEKSEER_SIMD_BASE_H__
 
+#include <stddef.h>
 #include <cstdint>
 #include <cmath>
 #include "../Effekseer.Math.h"

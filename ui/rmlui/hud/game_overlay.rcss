@@ -1,4 +1,4 @@
-body, div, h1, h2, h3, h4, p, hr, button, img {
+body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
@@ -11,46 +11,17 @@ body {
     pointer-events: none;
 }
 
-#game-menu-anchor {
+#game-overlay-top-right {
     position: absolute;
     right: 10dp;
     top: 10dp;
-    width: 32dp;
-    height: 32dp;
-}
-
-#game-menu-button {
-    width: 32dp;
-    height: 32dp;
-    pointer-events: auto;
-}
-
-#game-prompt-bar {
-    position: absolute;
-    left: 10dp;
-    bottom: 10dp;
-    background-color: #0f1a26dd;
-    border: 1dp #7c92a8ff;
-    padding: 4dp 6dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8dp;
     pointer-events: none;
 }
 
-.game-prompt-item {
-    display: inline-block;
-    margin-right: 10dp;
-}
-
-.game-prompt-item:last-child {
-    margin-right: 0;
-}
-
-.game-prompt-label {
-    color: #8eb7daff;
-    margin-bottom: 1dp;
-    font-size: 10dp;
-}
-
-.game-prompt-value {
-    color: #f6f3e8ff;
-    font-size: 12dp;
+#game-menu-button {
+    pointer-events: auto;
 }
