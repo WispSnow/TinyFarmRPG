@@ -101,7 +101,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEn
     ASSERT_FALSE(source.empty()) << "无法读取: " << tab_source_path;
 
     const std::string close_action_menu_block =
-        test_source_utils::extractFunctionBlock(source, "void InventoryTabContent::closeActionMenu(bool /*restore_focus*/)");
+        test_source_utils::extractFunctionBlock(source, "void InventoryTabContent::closeActionMenu()");
     ASSERT_FALSE(close_action_menu_block.empty());
 
     EXPECT_NE(close_action_menu_block.find("action_menu_visible_ = false;"), std::string::npos);

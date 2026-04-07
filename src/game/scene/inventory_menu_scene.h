@@ -22,10 +22,6 @@ namespace game::data {
 class ItemCatalog;
 }
 
-namespace game::ui {
-class IMenuTabContent;
-}
-
 namespace game::scene {
 
 struct MenuTabIdHash {
@@ -33,9 +29,6 @@ struct MenuTabIdHash {
         return static_cast<std::size_t>(id);
     }
 };
-}
-
-namespace game::scene {
 
 class InventoryMenuScene final : public engine::scene::Scene {
     entt::registry& game_registry_;

@@ -112,7 +112,7 @@ private:
     void clearSelectionAndDetail();
 
     void clearDragState();
-    void closeActionMenu(bool restore_focus = true);
+    void closeActionMenu();
     void openBackpackActionMenu(int slot_index);
     void openHotbarActionMenu(int slot_index);
     void openDiscardConfirmForBackpackSlot(int slot_index);
