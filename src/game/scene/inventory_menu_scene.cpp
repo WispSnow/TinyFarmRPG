@@ -27,6 +27,21 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
 using SlotGridViewModels = std::vector<game::ui::SlotGridViewModel>;
 
+class PlaceholderTabContent final : public game::ui::IMenuTabContent {
+public:
+    [[nodiscard]] bool bindModel(Rml::DataModelConstructor&) override {
+        return true;
+    }
+
+    void onActivated() override {}
+    void onDeactivated() override {}
+    void update(float /*delta_time*/) override {}
+
+    [[nodiscard]] bool onCancel() override {
+        return false;
+    }
+};
+
 [[nodiscard]] std::optional<game::ui::MenuTabId> toMenuTabId(int tab_index) {
     switch (tab_index) {
         case 0:
@@ -114,7 +129,6 @@ bool InventoryMenuScene::initUI() {
     }
 
     active_tab_id_ = game::ui::MenuTabId::Inventory;
-    active_tab_id_bind_ = static_cast<int>(active_tab_id_);
 
     document_controller_.attach(runtime, instanceId());
     auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
@@ -139,7 +153,6 @@ bool InventoryMenuScene::initUI() {
         data_types_registered_ = true;
     }
 
-    constructor.Bind("active_tab_id", &active_tab_id_bind_);
     constructor.Bind("char_name", &char_name_);
     constructor.Bind("char_title", &char_title_);
     constructor.Bind("gold_label", &gold_label_);
@@ -148,7 +161,7 @@ bool InventoryMenuScene::initUI() {
     if (!constructor.BindEventCallback(
             "switch_tab",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
-                switchTabByIndex(game::ui::getSingleIntArgument(arguments));
+                switchTabFromTabsetIndex(game::ui::getSingleIntArgument(arguments));
             })) {
         spdlog::error("InventoryMenuScene: 绑定 switch_tab 回调失败。");
         document_controller_.unload();
@@ -164,6 +177,10 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
     tabs_.emplace(game::ui::MenuTabId::Inventory, std::move(inventory_tab));
+    tabs_.emplace(game::ui::MenuTabId::Equipment, std::make_unique<PlaceholderTabContent>());
+    tabs_.emplace(game::ui::MenuTabId::Quests, std::make_unique<PlaceholderTabContent>());
+    tabs_.emplace(game::ui::MenuTabId::Map, std::make_unique<PlaceholderTabContent>());
+    tabs_.emplace(game::ui::MenuTabId::Options, std::make_unique<PlaceholderTabContent>());
 
     if (!document_controller_.load(DOCUMENT_PATH)) {
         tabs_.clear();
@@ -226,12 +243,10 @@ void InventoryMenuScene::switchTab(game::ui::MenuTabId new_tab) {
     }
 
     active_tab_id_ = new_tab;
-    active_tab_id_bind_ = static_cast<int>(new_tab);
-    document_controller_.markDirty("active_tab_id");
     next_it->second->onActivated();
 }
 
-void InventoryMenuScene::switchTabByIndex(int tab_index) {
+void InventoryMenuScene::switchTabFromTabsetIndex(int tab_index) {
     if (const auto tab_id = toMenuTabId(tab_index)) {
         switchTab(*tab_id);
     }

@@ -67,14 +67,34 @@
     padding: 10dp;
 }
 
-/* --- Tab Bar --- */
+/* --- Tabset --- */
 
-#tab-bar {
+#menu-tabset {
+    display: block;
+    position: relative;
+    width: 218dp;
+}
+
+#menu-tabset tabs {
     display: flex;
     flex-direction: row;
     gap: 6dp;
     height: 20dp;
     align-items: center;
+    border-width: 0 0 1dp 0;
+    border-color: #d9a88a66;
+    padding: 0 0 4dp 0;
+    margin-bottom: 8dp;
+}
+
+#menu-tabset panels,
+#menu-tabset panel {
+    display: block;
+    width: 218dp;
+}
+
+#menu-tabset tab {
+    display: block;
 }
 
 .tab-icon {
@@ -87,15 +107,16 @@
     transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
-.tab-active {
+#menu-tabset tab:selected {
     border-width: 0 0 2dp 0;
     border-color: #7aa2f7;
 }
 
-.tab-disabled {
-    opacity: 0.4;
-    image-color: #8f98a8a0;
-    filter: saturate(0.45) brightness(0.72);
+/* 尚未实现功能的占位标签页：可点击但给予视觉提示。
+   实现完毕后移除此类即可，不影响其他样式。 */
+.tab-placeholder {
+    opacity: 0.55;
+    filter: saturate(0.5) brightness(0.85);
 }
 
 #tab-inventory  { decorator: image(tab-inventory); }
@@ -109,25 +130,12 @@
     filter: saturate(1.12) brightness(1.08);
 }
 
-/* --- Separator --- */
-
-.menu-separator {
-    height: 1dp;
-    margin: 4dp 0;
-    background-color: #d9a88a66;
-}
-
 /* --- Two-Column Content --- */
 
 #content-row {
     display: flex;
     flex-direction: row;
     gap: 14dp;
-    margin-top: 4dp;
-}
-
-#inventory-col {
-    width: 218dp;
 }
 
 #char-col {
@@ -140,9 +148,6 @@
 }
 
 /* --- Hotbar Row --- */
-
-#hotbar-area {
-}
 
 #hotbar-grid {
     display: flex;
@@ -233,10 +238,21 @@
 
 /* --- Tab Actions --- */
 
-#sort-btn {
-    min-width: 36dp;
+#inventory-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 62dp;
     height: 20dp;
-    margin-left: auto;
+    display: flex;
+    flex-direction: row;
+    gap: 6dp;
+    z-index: 6;
+}
+
+#sort-btn {
+    width: 36dp;
+    height: 20dp;
     padding: 2dp 6dp;
     background-color: #2e3440cc;
     border: 1dp #7aa2f7;
@@ -266,6 +282,18 @@
 .tf-input-nav #trash-btn:focus {
     decorator: image(trash-open);
     filter: saturate(1.2) brightness(1.08);
+}
+
+.placeholder-panel {
+    height: 154dp;
+    text-align: center;
+}
+
+.placeholder-title {
+    margin-top: 48dp;
+    color: #a9b1d6;
+    font-size: 12dp;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 /* --- Action Menu --- */

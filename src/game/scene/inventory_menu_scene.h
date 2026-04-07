@@ -43,7 +43,6 @@ class InventoryMenuScene final : public engine::scene::Scene {
 
     std::unordered_map<game::ui::MenuTabId, std::unique_ptr<game::ui::IMenuTabContent>, MenuTabIdHash> tabs_{};
     game::ui::MenuTabId active_tab_id_{game::ui::MenuTabId::Inventory};
-    int active_tab_id_bind_{static_cast<int>(game::ui::MenuTabId::Inventory)};
 
     // Character panel
     Rml::String char_name_{"Player"};
@@ -69,7 +68,7 @@ private:
     void disconnectRuntimeListeners();
     void syncCharacterPanel();
     void switchTab(game::ui::MenuTabId new_tab);
-    void switchTabByIndex(int tab_index);
+    void switchTabFromTabsetIndex(int tab_index);
     [[nodiscard]] game::ui::IMenuTabContent* activeTab();
 
     bool onMenuCancelPressed();
