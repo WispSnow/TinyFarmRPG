@@ -119,7 +119,6 @@ InventoryTabContent::InventoryTabContent(engine::core::Context& context,
 
 InventoryTabContent::~InventoryTabContent() {
     disconnectRuntimeListeners();
-    tooltip_ui_.reset();
 }
 
 bool InventoryTabContent::bindModel(Rml::DataModelConstructor& constructor) {
@@ -210,7 +209,7 @@ void InventoryTabContent::onActivated() {
 
 void InventoryTabContent::onDeactivated() {
     disconnectRuntimeListeners();
-    closeActionMenu(false);
+    closeActionMenu();
     clearTooltip();
     clearSelectionAndDetail();
     clearDragState();
@@ -579,7 +578,7 @@ void InventoryTabContent::clearDragState() {
     drag_state_.clear();
 }
 
-void InventoryTabContent::closeActionMenu(bool /*restore_focus*/) {
+void InventoryTabContent::closeActionMenu() {
     if (!action_menu_visible_) {
         return;
     }
@@ -658,7 +657,7 @@ void InventoryTabContent::showActionMenu(Rml::String title,
                                          std::string_view anchor_grid_id,
                                          int anchor_slot_index) {
     if (entries.empty()) {
-        closeActionMenu(false);
+        closeActionMenu();
         return;
     }
 
@@ -677,7 +676,7 @@ void InventoryTabContent::showActionMenu(Rml::String title,
 void InventoryTabContent::openBackpackActionMenu(int slot_index) {
     const auto* inventory = tryGetInventory(game_registry_, player_);
     if (!inventory || slot_index < 0 || slot_index >= inventory->slotCount() || inventory->slot(slot_index).empty()) {
-        closeActionMenu(false);
+        closeActionMenu();
         return;
     }
 
@@ -707,7 +706,7 @@ void InventoryTabContent::openBackpackActionMenu(int slot_index) {
 void InventoryTabContent::openHotbarActionMenu(int slot_index) {
     const auto* hotbar = tryGetHotbar(game_registry_, player_);
     if (!hotbar || slot_index < 0 || slot_index >= HOTBAR_SLOTS || hotbar->slot(slot_index).empty()) {
-        closeActionMenu(false);
+        closeActionMenu();
         return;
     }
 
@@ -863,7 +862,7 @@ void InventoryTabContent::onInventoryChanged(const game::defs::InventoryChanged&
 
     if (evt.full_sync) {
         syncFromInventory();
-        closeActionMenu(false);
+        closeActionMenu();
     } else {
         for (const auto& update : evt.slots) {
             refreshSlot(update.slot_index);
@@ -876,7 +875,7 @@ void InventoryTabContent::onInventoryChanged(const game::defs::InventoryChanged&
         const auto* inventory = tryGetInventory(game_registry_, player_);
         if (action_menu_visible_ &&
             (!inventory || selected_slot_.index >= inventory->slotCount() || inventory->slot(selected_slot_.index).empty())) {
-            closeActionMenu(false);
+            closeActionMenu();
         }
     } else if (selected_slot_.isHotbar()) {
         updateDetailForHotbarSlot(selected_slot_.index);
@@ -897,7 +896,7 @@ void InventoryTabContent::onHotbarChanged(const game::defs::HotbarChanged& evt) 
         const auto* hotbar = tryGetHotbar(game_registry_, player_);
         if (action_menu_visible_ &&
             (!hotbar || selected_slot_.index >= HOTBAR_SLOTS || hotbar->slot(selected_slot_.index).empty())) {
-            closeActionMenu(false);
+            closeActionMenu();
         }
     }
 }
@@ -926,7 +925,7 @@ void InventoryTabContent::onSlotMouseDown(MenuPanelKind kind, int slot_index, Rm
     updateDetailForPanel(kind, slot_index);
 
     if (isPanelEmpty(kind, slot_index)) {
-        closeActionMenu(false);
+        closeActionMenu();
         return;
     }
 
@@ -951,22 +950,11 @@ void InventoryTabContent::onSlotMouseUp(MenuPanelKind kind, int slot_index, Rml:
     selectSlot(kind, slot_index);
     updateDetailForPanel(kind, slot_index);
 
-    if (kind == MenuPanelKind::Backpack) {
-        if (isPanelEmpty(kind, slot_index)) {
-            closeActionMenu(false);
-            return;
-        }
+    closeActionMenu();
 
-        closeActionMenu(false);
-        return;
+    if (kind == MenuPanelKind::Hotbar && player_ != entt::null) {
+        context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{player_, slot_index});
     }
-
-    if (player_ == entt::null) {
-        return;
-    }
-
-    closeActionMenu(false);
-    context_.getDispatcher().trigger(game::defs::HotbarActivateCommand{player_, slot_index});
 }
 
 void InventoryTabContent::onSlotHoverEnter(MenuPanelKind kind, int slot_index, Rml::Event& event) {
@@ -1003,7 +991,7 @@ void InventoryTabContent::onSlotDragStart(MenuPanelKind kind, int slot_index, Rm
     }
 
     event.StopPropagation();
-    closeActionMenu(false);
+    closeActionMenu();
     clearTooltip();
     drag_state_.start();
 }
