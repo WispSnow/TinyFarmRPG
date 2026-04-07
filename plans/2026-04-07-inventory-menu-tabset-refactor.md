@@ -85,47 +85,55 @@ Claude 的判断中，“`<tabset>` 当前收益有限，等第二个标签页�
 </div>
 ```
 
-目标：
+目标结构必须保留右侧角色栏为 Scene 共享面板：`char-col` 不能放进任一 `<panel>`，也不要在每个 panel 中重复。`content-row` 继续作为左右两列容器，左侧由 `<tabset>` 承担，右侧 `char-col` 始终可见。
 
 ```xml
-<tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">
-    <tab id="tab-inventory" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
-    <panel id="panel-inventory">
-        <div id="inventory-actions">
-            <button id="sort-btn" class="tf-nav-auto tf-focus-ring-blue" data-event-click="sort">Sort</button>
-            <button id="trash-btn" class="tf-nav-auto tf-focus-ring-danger" data-event-click="trash"></button>
-        </div>
-        <!-- existing inventory content -->
-    </panel>
+<div id="content-row">
+    <tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">
+        <tab id="tab-inventory" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
+        <panel id="panel-inventory">
+            <div id="inventory-actions">
+                <button id="sort-btn" class="tf-nav-auto tf-focus-ring-blue" data-event-click="sort">Sort</button>
+                <button id="trash-btn" class="tf-nav-auto tf-focus-ring-danger" data-event-click="trash"></button>
+            </div>
+            <!-- existing hotbar + backpack + action-menu + detail -->
+        </panel>
 
-    <tab id="tab-equipment" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
-    <panel id="panel-equipment" class="placeholder-panel">
-        <div class="placeholder-title">Equipment</div>
-    </panel>
+        <tab id="tab-equipment" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
+        <panel id="panel-equipment" class="placeholder-panel">
+            <div class="placeholder-title">Equipment</div>
+        </panel>
 
-    <tab id="tab-quests" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
-    <panel id="panel-quests" class="placeholder-panel">
-        <div class="placeholder-title">Quests</div>
-    </panel>
+        <tab id="tab-quests" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
+        <panel id="panel-quests" class="placeholder-panel">
+            <div class="placeholder-title">Quests</div>
+        </panel>
 
-    <tab id="tab-map" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
-    <panel id="panel-map" class="placeholder-panel">
-        <div class="placeholder-title">Map</div>
-    </panel>
+        <tab id="tab-map" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
+        <panel id="panel-map" class="placeholder-panel">
+            <div class="placeholder-title">Map</div>
+        </panel>
 
-    <tab id="tab-options" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
-    <panel id="panel-options" class="placeholder-panel">
-        <div class="placeholder-title">Options</div>
-    </panel>
-</tabset>
+        <tab id="tab-options" class="tab-icon tf-nav-auto tf-focus-ring-gold"></tab>
+        <panel id="panel-options" class="placeholder-panel">
+            <div class="placeholder-title">Options</div>
+        </panel>
+    </tabset>
+
+    <div id="char-col">
+        <!-- existing portrait + char-info + equip-grid + char-stats -->
+    </div>
+</div>
 ```
 
 注意：
 
-- `Sort` / `Trash` 不放进 `<tabs>`；它们属于 Inventory panel 的内容。需要通过 RCSS 把它们视觉上放到 tab 行右侧，或放在 inventory panel 顶部。
+- `Sort` / `Trash` 不放进 `<tabs>`；它们属于 Inventory panel 的内容。采用方案 B：放在 `#panel-inventory` 内，但通过绝对定位悬浮到 tab 行右侧，保持旧视觉；切走 Inventory 时 panel 被 `display:none`，按钮也自然隐藏。
 - `<tab>` 是普通元素，不是 button；必须保留 `tf-nav-auto` 或显式 `tab-index: auto`，否则键盘/手柄导航会退化。
 - 原 `.tab-active` 改为 `tab:selected` 或 `#menu-tabset tab:selected`。
 - 原 `.tab-disabled` 删除；未实现 tabs 先展示 placeholder，避免和 tabset 的默认切换机制冲突。
+- 原 `.menu-separator` 节点删除；分隔线改由 `tabs` 的 bottom border / padding / margin 表达，避免在 `<tabs>` 和 `<panels>` 之间插入额外 DOM。
+- `#menu-tabset` 设为 `position: relative; width: 218dp;`；`#inventory-actions` 使用 `position: absolute; top: 0; right: 0;` 或等效值对齐 tab 行右侧。由于 RmlUi 不支持 absolute 元素通过 `left+right` 隐式拉伸，相关宽高必须显式设置。
 
 ### 2. C++ Tab 生命周期仍由 Scene 管
 
@@ -163,6 +171,8 @@ void InventoryMenuScene::switchTabFromTabsetIndex(int tab_index) {
 ```
 
 `data-event-tabchange="switch_tab(ev.tab_index)"` 继续绑定到 `switch_tab` event callback。
+
+`switchTab(...)` 只处理 C++ 生命周期，不操作 tabset DOM。未来若需要 C++ 主动切 tab（例如手柄 LB/RB），应先找到 `#menu-tabset` 并调用 `Rml::ElementTabSet::SetActiveTab(new_index)`，让 RmlUi 触发 `tabchange`，再自然进入 `switch_tab(ev.tab_index)` 回调。不要在 `switchTab(...)` 内反向调用 `SetActiveTab(...)`，避免循环调用。
 
 `initUI()` 加载文档后仍手动激活默认 Inventory tab：
 
@@ -310,11 +320,6 @@ public:
 
 ### Stage 0：基线确认
 
-- [ ] 记录当前相关文件行数：
-  - `src/game/scene/inventory_menu_scene.*`
-  - `src/game/ui/inventory_tab_content.*`
-  - `ui/rmlui/scenes/inventory_menu.rml`
-  - `ui/rmlui/scenes/inventory_menu.rcss`
 - [ ] 跑现有相关测试，确认改前状态：
   - `ninja -C build/debug game_tests`
   - `cd build/debug && ctest --output-on-failure -R InventoryMenu`
@@ -323,23 +328,28 @@ public:
 
 - [ ] 修改 `inventory_menu.rml`：
   - [ ] 用 `<tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">` 替换手写 tab bar。
+  - [ ] 保持 `content-row` 为左右两列：左侧 `menu-tabset`，右侧 `char-col`，不要把 `char-col` 放入任一 `<panel>`。
   - [ ] 把 Inventory 内容放进 `<panel id="panel-inventory">`。
   - [ ] 增加 Equipment / Quests / Map / Options placeholder panels。
   - [ ] 移除 `data-class-tab-active`。
   - [ ] 移除 `data-if="active_tab_id == 0"`。
   - [ ] 将 Sort / Trash 移入 Inventory panel。
+  - [ ] 删除 `.menu-separator` 对应 DOM，由 RCSS 在 `tabs` 上绘制分隔线。
 - [ ] 修改 `inventory_menu.rcss`：
   - [ ] 为 `tabset`、`tabs`、`tab`、`panels`、`panel` 设置显式 `display`。
+  - [ ] 设置 `#menu-tabset { position: relative; width: 218dp; }`，保持左列宽度。
   - [ ] 用 `tab:selected` 替代 `.tab-active`。
   - [ ] 删除 `.tab-disabled`。
   - [ ] 保证 `<tab>` 有 `tab-index: auto` / `nav-*`。
-  - [ ] 调整 Sort / Trash 的定位，使视觉不明显退化。
+  - [ ] 将 `tabs` 的 bottom border / padding / margin 用作原 separator 的替代。
+  - [ ] 将 `#inventory-actions` 绝对定位到 tab 行右侧；显式设置尺寸，避免依赖 RmlUi 不支持的 absolute 隐式拉伸。
 - [ ] 修改 `InventoryMenuScene`：
   - [ ] 删除 `active_tab_id_bind_` 和 `active_tab_id` data binding。
   - [ ] 使用 tabset index -> `MenuTabId` 的固定映射。
   - [ ] 绑定 `switch_tab(ev.tab_index)`。
   - [ ] 给四个未实现 tabs 注册 placeholder content。
   - [ ] 保持初始化时显式激活 Inventory content。
+  - [ ] 确保 `switchTab(...)` 只处理 C++ lifecycle，不反向操作 tabset DOM；如需主动切 tab，单独通过 `ElementTabSet::SetActiveTab(...)` 入口触发。
 - [ ] 更新测试：
   - [ ] `InventoryMenuSceneSlotGridRegistrationTest` 不再断言 `data-class-tab-active`。
   - [ ] 新断言 RML 包含 `<tabset id="menu-tabset">`、`data-event-tabchange="switch_tab(ev.tab_index)"`、五个 `<panel id="panel-*">`。
