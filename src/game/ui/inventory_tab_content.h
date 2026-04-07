@@ -23,6 +23,7 @@ class Context;
 }
 
 namespace game::data {
+struct ItemData;
 class ItemCatalog;
 }
 
@@ -88,6 +89,8 @@ private:
     [[nodiscard]] bool isValidPanelIndex(MenuPanelKind kind, int slot_index) const;
     [[nodiscard]] bool isPanelEmpty(MenuPanelKind kind, int slot_index) const;
     [[nodiscard]] int resolveInventorySlotFromHotbar(int hotbar_index) const;
+    [[nodiscard]] int resolveInventorySlotForPanel(MenuPanelKind kind, int slot_index) const;
+    [[nodiscard]] const game::data::ItemData* resolveItemForPanel(MenuPanelKind kind, int slot_index) const;
 
     void ensureTooltip();
     void disconnectRuntimeListeners();
@@ -98,13 +101,10 @@ private:
     void markSlotsDirty();
     void markActionMenuDirty();
 
-    void showTooltipForInventorySlot(int slot_index);
-    void showTooltipForHotbarSlot(int hotbar_index);
     void showTooltipForPanel(MenuPanelKind kind, int slot_index);
     void clearTooltip();
 
-    void updateDetailForInventorySlot(int slot_index);
-    void updateDetailForHotbarSlot(int hotbar_index);
+    void setDetailFromItem(const game::data::ItemData& item);
     void updateDetailForPanel(MenuPanelKind kind, int slot_index);
     void clearDetail();
     void selectSlot(MenuPanelKind kind, int slot_index);

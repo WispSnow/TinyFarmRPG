@@ -69,7 +69,9 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SceneUsesDocumentControllerForU
     EXPECT_NE(init_ui_block.find("document_controller_.createModel(MODEL_NAME, &type_register_)"), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.load(DOCUMENT_PATH)"), std::string::npos);
     EXPECT_NE(init_ui_block.find("InventoryTabContent"), std::string::npos);
-    EXPECT_NE(init_ui_block.find("Bind(\"active_tab_id\", &active_tab_id_bind_)"), std::string::npos);
+    EXPECT_EQ(init_ui_block.find("Bind(\"active_tab_id\""), std::string::npos);
+    EXPECT_NE(init_ui_block.find("PlaceholderTabContent"), std::string::npos);
+    EXPECT_NE(init_ui_block.find("switchTabFromTabsetIndex"), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.markAllDirty()"), std::string::npos);
     EXPECT_EQ(init_ui_block.find("document_controller_.queueFocusFirstEnabledElementByClass(\"hb-slot\")"),
               std::string::npos);
@@ -78,7 +80,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SceneUsesDocumentControllerForU
     EXPECT_EQ(source.find("unloadAllRmlDocuments("), std::string::npos);
 }
 
-TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationRootAndDeclarativeTabState) {
+TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationRootAndNativeTabset) {
     const std::filesystem::path rml_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rml").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
@@ -87,9 +89,22 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     ASSERT_FALSE(source.empty()) << "无法读取: " << rml_path;
 
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
-    EXPECT_NE(source.find("data-class-tab-active=\"active_tab_id == 0\""), std::string::npos);
-    EXPECT_NE(source.find("data-event-click=\"switch_tab(0)\""), std::string::npos);
-    EXPECT_NE(source.find("data-if=\"active_tab_id == 0\""), std::string::npos);
+    EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
+              std::string::npos);
+    EXPECT_NE(source.find("<panel id=\"panel-inventory\""), std::string::npos);
+    EXPECT_NE(source.find("<panel id=\"panel-equipment\""), std::string::npos);
+    EXPECT_NE(source.find("<panel id=\"panel-quests\""), std::string::npos);
+    EXPECT_NE(source.find("<panel id=\"panel-map\""), std::string::npos);
+    EXPECT_NE(source.find("<panel id=\"panel-options\""), std::string::npos);
+    EXPECT_EQ(source.find("data-class-tab-active"), std::string::npos);
+    EXPECT_EQ(source.find("active_tab_id =="), std::string::npos);
+    EXPECT_EQ(source.find("class=\"menu-separator\""), std::string::npos);
+
+    const auto tabset_end = source.find("</tabset>");
+    const auto char_col = source.find("id=\"char-col\"");
+    ASSERT_NE(tabset_end, std::string::npos);
+    ASSERT_NE(char_col, std::string::npos);
+    EXPECT_LT(tabset_end, char_col) << "char-col must stay outside tabset so it remains visible for every tab.";
 }
 
 TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEntriesInSameUiTick) {

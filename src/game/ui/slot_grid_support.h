@@ -144,6 +144,27 @@ struct SlotGridEventHandlers {
     IndexedEventHandler<Owner> on_drag_end{nullptr};
 };
 
+// 统一的“上下文 + 槽位索引”分发成员函数签名。
+// 约定参数顺序为 (context, slot_index, event)。
+template<typename Owner, typename Context>
+using IndexedContextEventHandler = void (Owner::*)(Context, int, Rml::Event&);
+
+/// 槽位网格常见交互事件集合，额外携带一个调用方定义的上下文。
+///
+/// 当同一组事件处理函数需要区分面板来源（如 Backpack vs Hotbar）时，
+/// 使用此版本并以面板种类枚举作为 Context；不需要区分时使用 SlotGridEventHandlers。
+template<typename Owner, typename Context>
+struct SlotGridContextEventHandlers {
+    IndexedContextEventHandler<Owner, Context> on_focus{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_mouse_down{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_mouse_up{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_hover_enter{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_hover_exit{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_drag_start{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_drag_drop{nullptr};
+    IndexedContextEventHandler<Owner, Context> on_drag_end{nullptr};
+};
+
 // 绑定单个“带槽位索引”的事件回调。
 // 若 owner 或 handler 为空，直接返回 false，避免悬空调用。
 //
@@ -174,6 +195,24 @@ template<typename Owner>
         Rml::String{name.data(), name.size()},
         [owner, handler](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList& arguments) {
             (owner->*handler)(getSingleIntArgument(arguments), event);
+        });
+}
+
+// 绑定单个“上下文 + 槽位索引”的事件回调。
+template<typename Owner, typename Context>
+[[nodiscard]] bool bindIndexedContextEventCallback(Rml::DataModelConstructor& constructor,
+                                                   std::string_view name,
+                                                   Owner* owner,
+                                                   Context context,
+                                                   IndexedContextEventHandler<Owner, Context> handler) {
+    if (!owner || !handler) {
+        return false;
+    }
+
+    return constructor.BindEventCallback(
+        Rml::String{name.data(), name.size()},
+        [owner, context, handler](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList& arguments) {
+            (owner->*handler)(context, getSingleIntArgument(arguments), event);
         });
 }
 
@@ -221,6 +260,37 @@ template<typename Owner>
     };
 
     // 依次绑定常见交互事件，任意一项失败都返回 false。
+    return bind("_focus", handlers.on_focus) &&
+           bind("_mouse_down", handlers.on_mouse_down) &&
+           bind("_mouse_up", handlers.on_mouse_up) &&
+           bind("_hover_enter", handlers.on_hover_enter) &&
+           bind("_hover_exit", handlers.on_hover_exit) &&
+           bind("_drag_start", handlers.on_drag_start) &&
+           bind("_drag_drop", handlers.on_drag_drop) &&
+           bind("_drag_end", handlers.on_drag_end);
+}
+
+// 按统一命名规则批量绑定带额外上下文的槽位网格事件。
+template<typename Owner, typename Context>
+[[nodiscard]] bool bindSlotGridContextEvents(Rml::DataModelConstructor& constructor,
+                                             std::string_view prefix,
+                                             Owner* owner,
+                                             Context context,
+                                             const SlotGridContextEventHandlers<Owner, Context>& handlers) {
+    const auto make_name = [prefix](std::string_view suffix) {
+        std::string name{prefix};
+        name += suffix;
+        return name;
+    };
+
+    const auto bind = [&](std::string_view suffix, IndexedContextEventHandler<Owner, Context> handler) {
+        if (!handler) {
+            return true;
+        }
+        const std::string event_name = make_name(suffix);
+        return bindIndexedContextEventCallback(constructor, event_name, owner, context, handler);
+    };
+
     return bind("_focus", handlers.on_focus) &&
            bind("_mouse_down", handlers.on_mouse_down) &&
            bind("_mouse_up", handlers.on_mouse_up) &&

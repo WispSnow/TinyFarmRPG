@@ -5,10 +5,16 @@
 - 任务ID：`UI-INVMENU-002`
 - 任务标题：`InventoryMenuScene 迁移到 RmlUi tabset，并精简 InventoryTabContent`
 - 优先级：`P1`
-- 状态：`Proposed`
+- 状态：`Stage 1-3 completed; Stage 4 deferred`
 - 计划时间：`2026-04-07` 起
 - 依赖任务：`UI-INVMENU-001` 已完成的 Scene 薄壳化与 `InventoryTabContent` 拆分
 - 设计原则：优先使用 RmlUi 原生控件和数据绑定；保留 `IMenuTabContent` 生命周期边界；先搭好多 Tab 框架，再做局部复杂度收敛；不做向后兼容包袱
+
+执行记录（2026-04-07）：
+
+- 已完成 Stage 0-3：tabset 迁移、placeholder tab content、`InventoryTabContent` 物品解析与 hotbar 同步精简、slot grid context event helper。
+- 已验证：`ninja -C build/debug game_tests`、`ctest --output-on-failure -R InventoryMenu`、`ctest --output-on-failure -R Hotbar`、`ctest --output-on-failure`。
+- Stage 4 action menu 抽取暂缓，作为后续单独重构处理，避免和 tabset 迁移/slot 行为收敛混在同一轮高风险改动中。
 
 ## 背景
 
@@ -320,59 +326,59 @@ public:
 
 ### Stage 0：基线确认
 
-- [ ] 跑现有相关测试，确认改前状态：
+- [x] 跑现有相关测试，确认改前状态：
   - `ninja -C build/debug game_tests`
   - `cd build/debug && ctest --output-on-failure -R InventoryMenu`
 
 ### Stage 1：迁移到 `<tabset>`
 
-- [ ] 修改 `inventory_menu.rml`：
-  - [ ] 用 `<tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">` 替换手写 tab bar。
-  - [ ] 保持 `content-row` 为左右两列：左侧 `menu-tabset`，右侧 `char-col`，不要把 `char-col` 放入任一 `<panel>`。
-  - [ ] 把 Inventory 内容放进 `<panel id="panel-inventory">`。
-  - [ ] 增加 Equipment / Quests / Map / Options placeholder panels。
-  - [ ] 移除 `data-class-tab-active`。
-  - [ ] 移除 `data-if="active_tab_id == 0"`。
-  - [ ] 将 Sort / Trash 移入 Inventory panel。
-  - [ ] 删除 `.menu-separator` 对应 DOM，由 RCSS 在 `tabs` 上绘制分隔线。
-- [ ] 修改 `inventory_menu.rcss`：
-  - [ ] 为 `tabset`、`tabs`、`tab`、`panels`、`panel` 设置显式 `display`。
-  - [ ] 设置 `#menu-tabset { position: relative; width: 218dp; }`，保持左列宽度。
-  - [ ] 用 `tab:selected` 替代 `.tab-active`。
-  - [ ] 删除 `.tab-disabled`。
-  - [ ] 保证 `<tab>` 有 `tab-index: auto` / `nav-*`。
-  - [ ] 将 `tabs` 的 bottom border / padding / margin 用作原 separator 的替代。
-  - [ ] 将 `#inventory-actions` 绝对定位到 tab 行右侧；显式设置尺寸，避免依赖 RmlUi 不支持的 absolute 隐式拉伸。
-- [ ] 修改 `InventoryMenuScene`：
-  - [ ] 删除 `active_tab_id_bind_` 和 `active_tab_id` data binding。
-  - [ ] 使用 tabset index -> `MenuTabId` 的固定映射。
-  - [ ] 绑定 `switch_tab(ev.tab_index)`。
-  - [ ] 给四个未实现 tabs 注册 placeholder content。
-  - [ ] 保持初始化时显式激活 Inventory content。
-  - [ ] 确保 `switchTab(...)` 只处理 C++ lifecycle，不反向操作 tabset DOM；如需主动切 tab，单独通过 `ElementTabSet::SetActiveTab(...)` 入口触发。
-- [ ] 更新测试：
-  - [ ] `InventoryMenuSceneSlotGridRegistrationTest` 不再断言 `data-class-tab-active`。
-  - [ ] 新断言 RML 包含 `<tabset id="menu-tabset">`、`data-event-tabchange="switch_tab(ev.tab_index)"`、五个 `<panel id="panel-*">`。
-  - [ ] 新断言 Scene 不再绑定 `active_tab_id`，但仍绑定 `switch_tab`。
+- [x] 修改 `inventory_menu.rml`：
+  - [x] 用 `<tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">` 替换手写 tab bar。
+  - [x] 保持 `content-row` 为左右两列：左侧 `menu-tabset`，右侧 `char-col`，不要把 `char-col` 放入任一 `<panel>`。
+  - [x] 把 Inventory 内容放进 `<panel id="panel-inventory">`。
+  - [x] 增加 Equipment / Quests / Map / Options placeholder panels。
+  - [x] 移除 `data-class-tab-active`。
+  - [x] 移除 `data-if="active_tab_id == 0"`。
+  - [x] 将 Sort / Trash 移入 Inventory panel。
+  - [x] 删除 `.menu-separator` 对应 DOM，由 RCSS 在 `tabs` 上绘制分隔线。
+- [x] 修改 `inventory_menu.rcss`：
+  - [x] 为 `tabset`、`tabs`、`tab`、`panels`、`panel` 设置显式 `display`。
+  - [x] 设置 `#menu-tabset { position: relative; width: 218dp; }`，保持左列宽度。
+  - [x] 用 `tab:selected` 替代 `.tab-active`。
+  - [x] 删除 `.tab-disabled`。
+  - [x] 保证 `<tab>` 有 `tab-index: auto` / `nav-*`。
+  - [x] 将 `tabs` 的 bottom border / padding / margin 用作原 separator 的替代。
+  - [x] 将 `#inventory-actions` 绝对定位到 tab 行右侧；显式设置尺寸，避免依赖 RmlUi 不支持的 absolute 隐式拉伸。
+- [x] 修改 `InventoryMenuScene`：
+  - [x] 删除 `active_tab_id_bind_` 和 `active_tab_id` data binding。
+  - [x] 使用 tabset index -> `MenuTabId` 的固定映射。
+  - [x] 绑定 `switch_tab(ev.tab_index)`。
+  - [x] 给四个未实现 tabs 注册 placeholder content。
+  - [x] 保持初始化时显式激活 Inventory content。
+  - [x] 确保 `switchTab(...)` 只处理 C++ lifecycle，不反向操作 tabset DOM；如需主动切 tab，单独通过 `ElementTabSet::SetActiveTab(...)` 入口触发。
+- [x] 更新测试：
+  - [x] `InventoryMenuSceneSlotGridRegistrationTest` 不再断言 `data-class-tab-active`。
+  - [x] 新断言 RML 包含 `<tabset id="menu-tabset">`、`data-event-tabchange="switch_tab(ev.tab_index)"`、五个 `<panel id="panel-*">`。
+  - [x] 新断言 Scene 不再绑定 `active_tab_id`，但仍绑定 `switch_tab`。
 
 ### Stage 2：低风险精简 `InventoryTabContent`
 
-- [ ] 新增 `resolveInventorySlotForPanel(...)`。
-- [ ] 新增 `resolveItemForPanel(...)`。
-- [ ] 合并 tooltip/detail 的重复 item lookup。
-- [ ] 简化 `syncHotbarFromInventory()` 的重复 `populateSlotGridViewModel(...)` 分支。
-- [ ] 保持 `markDirty` 粒度不大改，只在重复明显处增加小 helper。
-- [ ] 跑 `game_tests` 和 `InventoryMenu` 相关测试。
+- [x] 新增 `resolveInventorySlotForPanel(...)`。
+- [x] 新增 `resolveItemForPanel(...)`。
+- [x] 合并 tooltip/detail 的重复 item lookup。
+- [x] 简化 `syncHotbarFromInventory()` 的重复 `populateSlotGridViewModel(...)` 分支。
+- [x] 保持 `markDirty` 粒度不大改，只在重复明显处增加小 helper。
+- [x] 跑 `game_tests` 和 `InventoryMenu` 相关测试。
 
 ### Stage 3：统一 slot event 绑定 helper
 
-- [ ] 评估扩展 `slot_grid_support.h` 的通用 helper，支持额外 `MenuPanelKind` 上下文。
-- [ ] 用 helper 替换 `InventoryTabContent::bindModel()` 内部手写 `bind_grid_events`。
-- [ ] 不改变 RML 事件名，减少行为风险。
+- [x] 评估扩展 `slot_grid_support.h` 的通用 helper，支持额外 `MenuPanelKind` 上下文。
+- [x] 用 helper 替换 `InventoryTabContent::bindModel()` 内部手写 `bind_grid_events`。
+- [x] 不改变 RML 事件名，减少行为风险。
 
 ### Stage 4：Action menu 提取评估与实施
 
-- [ ] 先确认 Stage 1-3 后 `InventoryTabContent` 的规模和复杂度。
+- [x] 先确认 Stage 1-3 后 `InventoryTabContent` 的规模和复杂度。
 - [ ] 如果 action menu 仍是最大复杂源，新增 `SlotActionMenu`。
 - [ ] 抽取状态：
   - `ActionEntryViewModel`
@@ -387,9 +393,9 @@ public:
 
 ### 自动化验证
 
-- [ ] `ninja -C build/debug game_tests`
-- [ ] `cd build/debug && ctest --output-on-failure -R InventoryMenu`
-- [ ] 如改动 slot/grid 公共 helper，再跑：
+- [x] `ninja -C build/debug game_tests`
+- [x] `cd build/debug && ctest --output-on-failure -R InventoryMenu`
+- [x] 如改动 slot/grid 公共 helper，再跑：
   - `cd build/debug && ctest --output-on-failure -R Hotbar`
 
 ### 手动验证

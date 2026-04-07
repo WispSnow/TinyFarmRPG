@@ -13,117 +13,114 @@
 
     <div id="menu-panel">
 
-        <!-- Tabs -->
-        <div id="tab-bar">
-            <button class="tab-icon tf-nav-auto tf-focus-ring-gold"
-                    id="tab-inventory"
-                    data-class-tab-active="active_tab_id == 0"
-                    data-event-click="switch_tab(0)"></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
-                    id="tab-equipment"
-                    data-class-tab-active="active_tab_id == 1"
-                    disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
-                    id="tab-quests"
-                    data-class-tab-active="active_tab_id == 2"
-                    disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
-                    id="tab-map"
-                    data-class-tab-active="active_tab_id == 3"
-                    disabled></button>
-            <button class="tab-icon tab-disabled tf-nav-auto tf-focus-ring-gold"
-                    id="tab-options"
-                    data-class-tab-active="active_tab_id == 4"
-                    disabled></button>
-            <button class="tf-nav-auto tf-focus-ring-blue"
-                    id="sort-btn"
-                    data-if="active_tab_id == 0"
-                    data-event-click="sort">Sort</button>
-            <button class="tf-nav-auto tf-focus-ring-danger"
-                    id="trash-btn"
-                    data-if="active_tab_id == 0"
-                    data-event-click="trash"></button>
-        </div>
-
-        <!-- Separator -->
-        <div class="menu-separator"></div>
-
         <!-- Two-column content -->
         <div id="content-row">
 
-            <!-- Left: Inventory -->
-            <div id="inventory-col" data-if="active_tab_id == 0">
-                <div id="slot-region">
-                    <div id="hotbar-area">
-                        <div id="hotbar-grid">
-                            <div class="hb-slot tf-slot-focusable tf-slot-hover-scale tf-nav-auto"
-                                 data-for="hslot : hotbar_slots"
-                                 data-class-has-item="hslot.has_item"
-                                 data-class-has-count="hslot.has_count"
-                                 data-class-hb-active="hslot.is_active"
-                                 data-class-hb-selected="hslot.is_selected"
-                                 data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
-                                 data-event-mousedown="hb_slot_mouse_down(hslot.slot_index)"
-                                 data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)"
-                                 data-event-focus="hb_slot_focus(hslot.slot_index)">
-                                <div class="hb-slot-drag-proxy tf-slot-drag-proxy"
-                                     data-class-draggable="hslot.can_drag"
-                                     data-attr-slot_grid_source="2"
-                                     data-attr-slot_index="hslot.slot_index"
-                                     data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
-                                     data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
-                                     data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
-                                     data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
-                                    <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="hslot.icon_decorator"></div>
-                                    <div class="inv-slot-count tf-slot-count">{{ hslot.count_text }}</div>
-                                </div>
-                                <div class="hb-slot-index">{{ hslot.label }}</div>
-                            </div>
-                        </div>
+            <!-- Left: Tabbed content -->
+            <tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-inventory"></tab>
+                <panel id="panel-inventory">
+                    <div id="inventory-actions">
+                        <button class="tf-nav-auto tf-focus-ring-blue"
+                                id="sort-btn"
+                                data-event-click="sort">Sort</button>
+                        <button class="tf-nav-auto tf-focus-ring-danger"
+                                id="trash-btn"
+                                data-event-click="trash"></button>
                     </div>
 
-                    <div id="backpack-area">
-                        <div id="backpack-grid">
-                            <div class="bp-slot tf-slot-focusable tf-slot-hover-scale tf-nav-auto"
-                                 data-for="slot : backpack_slots"
-                                 data-class-has-item="slot.has_item"
-                                 data-class-has-count="slot.has_count"
-                                 data-class-bp-selected="slot.is_selected"
-                                 data-event-mousedown="bp_slot_mouse_down(slot.slot_index)"
-                                 data-event-mouseup="bp_slot_mouse_up(slot.slot_index)"
-                                 data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)"
-                                 data-event-focus="bp_slot_focus(slot.slot_index)">
-                                <div class="bp-slot-drag-proxy tf-slot-drag-proxy"
-                                     data-class-draggable="slot.can_drag"
-                                     data-attr-slot_grid_source="1"
-                                     data-attr-slot_index="slot.slot_index"
-                                     data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
-                                     data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
-                                     data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
-                                     data-event-dragend="bp_slot_drag_end(slot.slot_index)">
-                                    <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="slot.icon_decorator"></div>
-                                    <div class="inv-slot-count tf-slot-count">{{ slot.count_text }}</div>
+                    <div id="slot-region">
+                        <div id="hotbar-area">
+                            <div id="hotbar-grid">
+                                <div class="hb-slot tf-slot-focusable tf-slot-hover-scale tf-nav-auto"
+                                     data-for="hslot : hotbar_slots"
+                                     data-class-has-item="hslot.has_item"
+                                     data-class-has-count="hslot.has_count"
+                                     data-class-hb-active="hslot.is_active"
+                                     data-class-hb-selected="hslot.is_selected"
+                                     data-event-dragdrop="hb_slot_drag_drop(hslot.slot_index)"
+                                     data-event-mousedown="hb_slot_mouse_down(hslot.slot_index)"
+                                     data-event-mouseup="hb_slot_mouse_up(hslot.slot_index)"
+                                     data-event-focus="hb_slot_focus(hslot.slot_index)">
+                                    <div class="hb-slot-drag-proxy tf-slot-drag-proxy"
+                                         data-class-draggable="hslot.can_drag"
+                                         data-attr-slot_grid_source="2"
+                                         data-attr-slot_index="hslot.slot_index"
+                                         data-event-mouseover="hb_slot_hover_enter(hslot.slot_index)"
+                                         data-event-mouseout="hb_slot_hover_exit(hslot.slot_index)"
+                                         data-event-dragstart="hb_slot_drag_start(hslot.slot_index)"
+                                         data-event-dragend="hb_slot_drag_end(hslot.slot_index)">
+                                        <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="hslot.icon_decorator"></div>
+                                        <div class="inv-slot-count tf-slot-count">{{ hslot.count_text }}</div>
+                                    </div>
+                                    <div class="hb-slot-index">{{ hslot.label }}</div>
                                 </div>
                             </div>
                         </div>
+
+                        <div id="backpack-area">
+                            <div id="backpack-grid">
+                                <div class="bp-slot tf-slot-focusable tf-slot-hover-scale tf-nav-auto"
+                                     data-for="slot : backpack_slots"
+                                     data-class-has-item="slot.has_item"
+                                     data-class-has-count="slot.has_count"
+                                     data-class-bp-selected="slot.is_selected"
+                                     data-event-mousedown="bp_slot_mouse_down(slot.slot_index)"
+                                     data-event-mouseup="bp_slot_mouse_up(slot.slot_index)"
+                                     data-event-dragdrop="bp_slot_drag_drop(slot.slot_index)"
+                                     data-event-focus="bp_slot_focus(slot.slot_index)">
+                                    <div class="bp-slot-drag-proxy tf-slot-drag-proxy"
+                                         data-class-draggable="slot.can_drag"
+                                         data-attr-slot_grid_source="1"
+                                         data-attr-slot_index="slot.slot_index"
+                                         data-event-mouseover="bp_slot_hover_enter(slot.slot_index)"
+                                         data-event-mouseout="bp_slot_hover_exit(slot.slot_index)"
+                                         data-event-dragstart="bp_slot_drag_start(slot.slot_index)"
+                                         data-event-dragend="bp_slot_drag_end(slot.slot_index)">
+                                        <div class="inv-slot-icon tf-slot-icon-pop" data-style-decorator="slot.icon_decorator"></div>
+                                        <div class="inv-slot-count tf-slot-count">{{ slot.count_text }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="action-menu"
+                             data-if="action_menu_visible">
+                            <div id="action-menu-title">{{ action_menu_title }}</div>
+                            <button class="action-menu-entry tf-nav-auto tf-focus-ring-blue"
+                                    data-for="action : action_menu_entries"
+                                    data-class-action-danger="action.is_destructive"
+                                    data-event-click="action_entry_click(action.action_id)">{{ action.label }}</button>
+                        </div>
                     </div>
 
-                    <div id="action-menu"
-                         data-if="action_menu_visible">
-                        <div id="action-menu-title">{{ action_menu_title }}</div>
-                        <button class="action-menu-entry tf-nav-auto tf-focus-ring-blue"
-                                data-for="action : action_menu_entries"
-                                data-class-action-danger="action.is_destructive"
-                                data-event-click="action_entry_click(action.action_id)">{{ action.label }}</button>
+                    <div id="detail-area" data-if="has_detail">
+                        <div id="detail-name">{{ detail_name }}</div>
+                        <div id="detail-category">{{ detail_category }}</div>
+                        <div id="detail-description">{{ detail_description }}</div>
                     </div>
-                </div>
+                </panel>
 
-                <div id="detail-area" data-if="has_detail">
-                    <div id="detail-name">{{ detail_name }}</div>
-                    <div id="detail-category">{{ detail_category }}</div>
-                    <div id="detail-description">{{ detail_description }}</div>
-                </div>
-            </div>
+                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-equipment"></tab>
+                <panel id="panel-equipment" class="placeholder-panel">
+                    <div class="placeholder-title">Equipment</div>
+                </panel>
+
+                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-quests"></tab>
+                <panel id="panel-quests" class="placeholder-panel">
+                    <div class="placeholder-title">Quests</div>
+                </panel>
+
+                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-map"></tab>
+                <panel id="panel-map" class="placeholder-panel">
+                    <div class="placeholder-title">Map</div>
+                </panel>
+
+                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-options"></tab>
+                <panel id="panel-options" class="placeholder-panel">
+                    <div class="placeholder-title">Options</div>
+                </panel>
+            </tabset>
 
             <!-- Right: Character -->
             <div id="char-col">
