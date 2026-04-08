@@ -29,3 +29,10 @@
 - Milestone B: 敌人 AI + 战斗奖励 + 金币/掉落入包。
 - Milestone C: 最小任务系统，先支持“接任务 / 杀怪计数 / 交付完成”。
 - Milestone D: 商店 UI 和买卖规则。
+
+Milestone A 执行约束
+
+- 战斗菜单 UI 实现应遵循当前 RmlUi 集成方式：生产场景使用 `RmlDocumentController` 管理文档、data model、事件绑定和脏标记，不回退到旧的直接 `RmlDataBridge` / `loadRmlDocument()` 路径。
+- 键盘 / 手柄移动、确认与返回应按 `InputContext::Battle` 的 `menu_up/down/left/right/confirm/cancel` 场景输入处理；鼠标点击继续走 RML `data-event-click`。
+- 战斗菜单 Stage 1 采用 `BattleScene` 自主管理光标并程序化同步 RmlUi 焦点的方案，不依赖 RmlUi 原生方向键导航。
+- 物品菜单若进入“真实消耗”阶段，必须同时定义战斗运行时 `item_stocks` 与真实玩家背包之间的同步 / 写回路径。
