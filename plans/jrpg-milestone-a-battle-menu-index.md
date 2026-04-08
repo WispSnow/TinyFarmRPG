@@ -288,7 +288,7 @@
 - [x] Stage 2: 细化技能候选数据来源与过滤规则 → `plans/jrpg-milestone-a-stage2-skill-source.md`
 - [x] Stage 3: 细化物品候选数据来源与库存映射规则 → `plans/jrpg-milestone-a-stage3-item-source.md`
 - [x] Stage 4: 细化目标选择与动作提交流程 → `plans/jrpg-milestone-a-stage4-target-selection.md`
-- [ ] Stage 5: 细化 Battle RML/RCSS 与测试补强方案
+- [x] Stage 5: 细化 Battle RML/RCSS 与测试补强方案 → `plans/jrpg-milestone-a-stage5-ui-and-tests.md`
 
 ## 备注
 
