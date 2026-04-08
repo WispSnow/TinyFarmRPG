@@ -78,7 +78,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
 }
 
-TEST(BattleSceneSmokeTest, WiresStage2SkillListWithoutSubmittingSkillAction) {
+TEST(BattleSceneSmokeTest, WiresStage2SkillListToDraftSelection) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -90,13 +90,12 @@ TEST(BattleSceneSmokeTest, WiresStage2SkillListWithoutSubmittingSkillAction) {
     EXPECT_NE(source.find("findSkill(skill_id)"), std::string::npos);
     EXPECT_NE(source.find("isSkillEntryEnabled"), std::string::npos);
     EXPECT_NE(source.find("selected_skill_id = skill->id_"), std::string::npos);
-    EXPECT_NE(source.find("requiresTargetSelection(skill->scope_)"), std::string::npos);
-    EXPECT_NE(source.find("Target selection coming in Stage 4"), std::string::npos);
+    EXPECT_NE(source.find("continueDraftAfterScopeSelected(skill->scope_, *actor)"), std::string::npos);
     EXPECT_NE(source.find("menuStateForActionDraftSource"), std::string::npos);
     EXPECT_EQ(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
 }
 
-TEST(BattleSceneSmokeTest, WiresStage3ItemListWithoutSubmittingItemAction) {
+TEST(BattleSceneSmokeTest, WiresStage3ItemListToDraftSelection) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -108,9 +107,33 @@ TEST(BattleSceneSmokeTest, WiresStage3ItemListWithoutSubmittingItemAction) {
     EXPECT_NE(source.find("item_catalog_->listItems()"), std::string::npos);
     EXPECT_NE(source.find("findBattleItemByEntryId"), std::string::npos);
     EXPECT_NE(source.find("selected_item_id = item->id_str_"), std::string::npos);
-    EXPECT_NE(source.find("Item selected. Resolution coming in Stage 4."), std::string::npos);
+    EXPECT_NE(source.find("continueDraftAfterScopeSelected(item->battle_use_->scope, *actor)"), std::string::npos);
     EXPECT_NE(source.find("remaining_item_stocks = session_.itemStocks()"), std::string::npos);
     EXPECT_EQ(source.find("enterListMenu(MenuState::ItemList)"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, WiresStage4TargetSelectionAndDraftSubmit) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("populateTargetEntries"), std::string::npos);
+    EXPECT_NE(source.find("findTargetEntry"), std::string::npos);
+    EXPECT_NE(source.find("firstEnabledTargetEntryIndex"), std::string::npos);
+    EXPECT_NE(source.find("continueDraftAfterScopeSelected"), std::string::npos);
+    EXPECT_NE(source.find("submitDraftAction"), std::string::npos);
+    EXPECT_NE(source.find("selected_target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id)"), std::string::npos);
+    EXPECT_NE(source.find("continueDraftAfterScopeSelected(game::data::Scope::OneEnemy, *actor)"), std::string::npos);
+    EXPECT_NE(source.find("case game::data::Scope::Self:"), std::string::npos);
+    EXPECT_NE(source.find("case game::data::Scope::AllEnemies:"), std::string::npos);
+    EXPECT_NE(source.find("case game::data::Scope::AllAllies:"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(menuStateForActionDraftSource())"), std::string::npos);
+    EXPECT_EQ(source.find("selectDefaultTarget("), std::string::npos);
+    EXPECT_EQ(source.find("Target selection coming in Stage 4"), std::string::npos);
+    EXPECT_EQ(source.find("enterTargetPlaceholder"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {

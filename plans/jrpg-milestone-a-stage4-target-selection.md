@@ -313,19 +313,19 @@ Stage 4 明确不修改 result text：
 
 ## ToDo
 
-- [ ] 新增真实 `target_entries_` 构建、target 查找与第一个 enabled target helper
-- [ ] `Attack` 改为显式 `OneEnemy` 目标选择
-- [ ] `Skill` 的 `OneEnemy / OneAlly` scope 进入真实目标选择
-- [ ] `Item` 的 `OneEnemy / OneAlly` scope 进入真实目标选择
-- [ ] `Skill` 的 `Self / AllEnemies / AllAllies` scope 直接提交
-- [ ] `Item` 的 `Self / AllEnemies / AllAllies` scope 直接提交
-- [ ] 新增 `continueDraftAfterScopeSelected()` 并让 Attack / Skill / Item 复用
-- [ ] 新增统一 `submitDraftAction()` 构造最终 `BattleAction`
-- [ ] `handleTargetEntry()` 写入 `selected_target_id` 并提交草稿
-- [ ] 移除 Stage 2/3 的 `"Target selection coming in Stage 4"` 占位路径
-- [ ] 删除或彻底停用 `enterTargetPlaceholder()`
-- [ ] 保持 `TargetSelect -> cancel` 返回来源菜单且不清空 `list_entries_`
-- [ ] 补充 BattleScene smoke / resolver / session 测试
+- [x] 新增真实 `target_entries_` 构建、target 查找与第一个 enabled target helper
+- [x] `Attack` 改为显式 `OneEnemy` 目标选择
+- [x] `Skill` 的 `OneEnemy / OneAlly` scope 进入真实目标选择
+- [x] `Item` 的 `OneEnemy / OneAlly` scope 进入真实目标选择
+- [x] `Skill` 的 `Self / AllEnemies / AllAllies` scope 直接提交
+- [x] `Item` 的 `Self / AllEnemies / AllAllies` scope 直接提交
+- [x] 新增 `continueDraftAfterScopeSelected()` 并让 Attack / Skill / Item 复用
+- [x] 新增统一 `submitDraftAction()` 构造最终 `BattleAction`
+- [x] `handleTargetEntry()` 写入 `selected_target_id` 并提交草稿
+- [x] 移除 Stage 2/3 的 `"Target selection coming in Stage 4"` 占位路径
+- [x] 删除或彻底停用 `enterTargetPlaceholder()`
+- [x] 保持 `TargetSelect -> cancel` 返回来源菜单且不清空 `list_entries_`
+- [x] 补充 BattleScene smoke / resolver / session 测试
 
 ## 完成标准
 
