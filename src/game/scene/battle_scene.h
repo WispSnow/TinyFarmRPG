@@ -158,13 +158,19 @@ private:
     [[nodiscard]] Rml::String itemSubtitle(int stock_count, const game::data::BattleItemUseConfig& use) const;
     [[nodiscard]] bool requiresTargetSelection(game::data::Scope scope) const;
     [[nodiscard]] int firstEnabledListEntryIndex() const;
+    void populateTargetEntries(game::data::Scope scope, const game::battle::BattleUnit& actor);
+    [[nodiscard]] const TargetEntryViewModel* findTargetEntry(int entry_index) const;
+    [[nodiscard]] int firstEnabledTargetEntryIndex() const;
+    [[nodiscard]] Rml::String targetLabel(const game::battle::BattleUnit& unit) const;
     [[nodiscard]] MenuState menuStateForActionDraftSource() const;
-    void enterTargetPlaceholder(std::string_view text);
+    void setMenuHint(std::string_view text);
+    void continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor);
     void handleMainAction(int entry_index);
     void handleListEntry(int entry_index);
     void handleSkillEntry(const ListEntryViewModel& entry);
     void handleItemEntry(const ListEntryViewModel& entry);
     void handleTargetEntry(int entry_index);
+    [[nodiscard]] bool submitDraftAction();
     void submitAction(game::battle::BattleAction action);
     [[nodiscard]] bool isWaitingForActionInput() const;
     [[nodiscard]] bool moveMenuCursor(int delta);
@@ -184,7 +190,6 @@ private:
     void queueEscapeAction();
     void queueEndTurnAction();
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
-    [[nodiscard]] std::optional<game::battle::BattleUnitId> selectDefaultTarget(game::battle::BattleSide actor_side) const;
 
     void requestBattleEnd();
 };

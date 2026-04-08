@@ -759,6 +759,59 @@ int BattleScene::firstEnabledListEntryIndex() const {
     return list_entries_.empty() ? -1 : list_entries_.front().entry_index;
 }
 
+void BattleScene::populateTargetEntries(game::data::Scope scope, const game::battle::BattleUnit& actor) {
+    target_entries_.clear();
+    target_entry_cursor_ = -1;
+    target_empty_text_ = "No valid targets";
+
+    int entry_index = 0;
+    for (const auto& unit : session_.units()) {
+        const bool matches_scope = (scope == game::data::Scope::OneEnemy && unit.side != actor.side) ||
+            (scope == game::data::Scope::OneAlly && unit.side == actor.side);
+        if (!matches_scope) {
+            continue;
+        }
+
+        target_entries_.push_back(TargetEntryViewModel{
+            .entry_index = entry_index++,
+            .unit_id = static_cast<int>(unit.id),
+            .label = targetLabel(unit),
+            .enabled = unit.isAlive(),
+            .is_ally = unit.side == actor.side,
+            .is_dead = !unit.isAlive()
+        });
+    }
+
+    target_entry_cursor_ = firstEnabledTargetEntryIndex();
+}
+
+const BattleScene::TargetEntryViewModel* BattleScene::findTargetEntry(int entry_index) const {
+    const auto it = std::find_if(
+        target_entries_.begin(),
+        target_entries_.end(),
+        [entry_index](const TargetEntryViewModel& entry) {
+            return entry.entry_index == entry_index;
+        });
+    return it == target_entries_.end() ? nullptr : &*it;
+}
+
+int BattleScene::firstEnabledTargetEntryIndex() const {
+    for (const auto& entry : target_entries_) {
+        if (entry.enabled) {
+            return entry.entry_index;
+        }
+    }
+    return target_entries_.empty() ? -1 : target_entries_.front().entry_index;
+}
+
+Rml::String BattleScene::targetLabel(const game::battle::BattleUnit& unit) const {
+    std::string label = unit.name + " HP " + std::to_string(unit.hp) + "/" + std::to_string(unit.max_hp);
+    if (!unit.isAlive()) {
+        label += " (KO)";
+    }
+    return label;
+}
+
 BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
     switch (action_draft_.pending_type) {
         case game::battle::BattleActionType::Skill:
@@ -774,12 +827,30 @@ BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
     return MenuState::MainMenu;
 }
 
-void BattleScene::enterTargetPlaceholder(std::string_view text) {
-    target_entries_.clear();
-    target_entry_cursor_ = -1;
-    setMenuState(MenuState::TargetSelect);
-    target_empty_text_ = makeRmlString(text);
-    document_controller_.markDirty("target_empty_text");
+void BattleScene::setMenuHint(std::string_view text) {
+    menu_hint_ = makeRmlString(text);
+    document_controller_.markDirty("menu_hint");
+}
+
+void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor) {
+    action_draft_.requires_target_selection = requiresTargetSelection(scope);
+    action_draft_.selected_target_id.reset();
+
+    switch (scope) {
+        case game::data::Scope::OneEnemy:
+        case game::data::Scope::OneAlly:
+            populateTargetEntries(scope, actor);
+            setMenuState(MenuState::TargetSelect);
+            return;
+        case game::data::Scope::Self:
+        case game::data::Scope::AllEnemies:
+        case game::data::Scope::AllAllies:
+            (void)submitDraftAction();
+            return;
+        case game::data::Scope::None:
+            setMenuHint("Action cannot be used.");
+            return;
+    }
 }
 
 void BattleScene::handleMainAction(int entry_index) {
@@ -855,20 +926,18 @@ void BattleScene::handleSkillEntry(const ListEntryViewModel& entry) {
         .pending_type = game::battle::BattleActionType::Skill,
         .selected_skill_id = skill->id_,
         .selected_item_id = std::nullopt,
-        .selected_target_id = std::nullopt,
-        .requires_target_selection = requiresTargetSelection(skill->scope_)
+        .selected_target_id = std::nullopt
     };
-
-    if (action_draft_.requires_target_selection) {
-        enterTargetPlaceholder("Target selection coming in Stage 4");
-        return;
-    }
-
-    menu_hint_ = "Skill selected. Resolution coming in Stage 4.";
-    document_controller_.markDirty("menu_hint");
+    continueDraftAfterScopeSelected(skill->scope_, *actor);
 }
 
 void BattleScene::handleItemEntry(const ListEntryViewModel& entry) {
+    game::battle::BattleUnitId actor_id = 0;
+    const auto* actor = prepareActionActor(actor_id);
+    if (!actor) {
+        return;
+    }
+
     int stock_count = 0;
     const auto* item = findBattleItemByEntryId(entry.entry_id, &stock_count);
     if (!item || !item->battle_use_ || !isItemEntryEnabled(stock_count, *item->battle_use_)) {
@@ -879,26 +948,87 @@ void BattleScene::handleItemEntry(const ListEntryViewModel& entry) {
         .pending_type = game::battle::BattleActionType::Item,
         .selected_skill_id = std::nullopt,
         .selected_item_id = item->id_str_,
-        .selected_target_id = std::nullopt,
-        .requires_target_selection = requiresTargetSelection(item->battle_use_->scope)
+        .selected_target_id = std::nullopt
     };
-
-    if (action_draft_.requires_target_selection) {
-        enterTargetPlaceholder("Target selection coming in Stage 4");
-        return;
-    }
-
-    menu_hint_ = "Item selected. Resolution coming in Stage 4.";
-    document_controller_.markDirty("menu_hint");
+    continueDraftAfterScopeSelected(item->battle_use_->scope, *actor);
 }
 
 void BattleScene::handleTargetEntry(int entry_index) {
-    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(target_entries_.size())) {
+    if (!isWaitingForActionInput()) {
         return;
     }
 
-    target_entry_cursor_ = entry_index;
+    const auto* entry = findTargetEntry(entry_index);
+    if (!entry) {
+        return;
+    }
+
+    target_entry_cursor_ = entry->entry_index;
     menu_focus_dirty_ = true;
+    if (!entry->enabled) {
+        return;
+    }
+
+    action_draft_.selected_target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
+    (void)submitDraftAction();
+}
+
+bool BattleScene::submitDraftAction() {
+    game::battle::BattleUnitId actor_id = 0;
+    if (!prepareActionActor(actor_id)) {
+        setMenuHint("Action is no longer available.");
+        return false;
+    }
+
+    if (action_draft_.requires_target_selection && !action_draft_.selected_target_id) {
+        setMenuHint("Choose a target.");
+        return false;
+    }
+
+    switch (action_draft_.pending_type) {
+        case game::battle::BattleActionType::Attack:
+            if (!action_draft_.selected_target_id) {
+                setMenuHint("Choose a target.");
+                return false;
+            }
+            submitAction(game::battle::BattleAction{
+                .type = game::battle::BattleActionType::Attack,
+                .actor_id = actor_id,
+                .target_id = action_draft_.selected_target_id
+            });
+            return true;
+        case game::battle::BattleActionType::Skill:
+            if (!action_draft_.selected_skill_id) {
+                setMenuHint("Action is no longer available.");
+                return false;
+            }
+            submitAction(game::battle::BattleAction{
+                .type = game::battle::BattleActionType::Skill,
+                .actor_id = actor_id,
+                .target_id = action_draft_.selected_target_id,
+                .skill_id = *action_draft_.selected_skill_id
+            });
+            return true;
+        case game::battle::BattleActionType::Item:
+            if (!action_draft_.selected_item_id) {
+                setMenuHint("Action is no longer available.");
+                return false;
+            }
+            submitAction(game::battle::BattleAction{
+                .type = game::battle::BattleActionType::Item,
+                .actor_id = actor_id,
+                .target_id = action_draft_.selected_target_id,
+                .item_id = *action_draft_.selected_item_id
+            });
+            return true;
+        case game::battle::BattleActionType::Guard:
+        case game::battle::BattleActionType::Escape:
+        case game::battle::BattleActionType::EndTurn:
+            setMenuHint("Action is no longer available.");
+            return false;
+    }
+
+    return false;
 }
 
 void BattleScene::submitAction(game::battle::BattleAction action) {
@@ -1062,16 +1192,11 @@ void BattleScene::queueAttackAction() {
         return;
     }
 
-    const auto target_id = selectDefaultTarget(actor->side);
-    if (!target_id) {
-        return;
-    }
-
-    submitAction(game::battle::BattleAction{
-        .type = game::battle::BattleActionType::Attack,
-        .actor_id = actor_id,
-        .target_id = target_id
-    });
+    action_draft_ = ActionDraft{
+        .pending_type = game::battle::BattleActionType::Attack,
+        .requires_target_selection = true
+    };
+    continueDraftAfterScopeSelected(game::data::Scope::OneEnemy, *actor);
 }
 
 void BattleScene::queueSkillAction() {
@@ -1159,20 +1284,6 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
 
     out_actor_id = *actor_id;
     return actor;
-}
-
-std::optional<game::battle::BattleUnitId> BattleScene::selectDefaultTarget(const game::battle::BattleSide actor_side) const {
-    for (const auto& unit : session_.units()) {
-        if (!unit.isAlive()) {
-            continue;
-        }
-        if (unit.side == actor_side) {
-            continue;
-        }
-        return unit.id;
-    }
-
-    return std::nullopt;
 }
 
 void BattleScene::requestBattleEnd() {

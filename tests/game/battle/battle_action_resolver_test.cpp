@@ -419,6 +419,38 @@ TEST(BattleActionResolverTest, ItemConsumesStockAndRecoversHp) {
     EXPECT_EQ(runtime_state.item_stocks.count(game::data::RpgCatalog::hashId("item.potion")), 0U);
 }
 
+TEST(BattleActionResolverTest, ItemOneAllyScopeAcceptsExplicitAllyTarget) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_explicit_ally_fixture");
+
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));
+
+    auto units = makeUnits();
+    units[1].hp = 40;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.potion")] = 1;
+
+    BattleActionResolver resolver{
+        BattleActionResolver::Dependencies{
+            .rpg_catalog = nullptr,
+            .item_catalog = &item_catalog}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Item,
+        .actor_id = 1,
+        .target_id = 2,
+        .item_id = "item.potion"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.hp_recovered, 50);
+    const auto* partner = turn_core.findUnit(2);
+    ASSERT_NE(partner, nullptr);
+    EXPECT_EQ(partner->hp, 90);
+    EXPECT_EQ(runtime_state.item_stocks.count(game::data::RpgCatalog::hashId("item.potion")), 0U);
+}
+
 TEST(BattleActionResolverTest, ItemCanRecoverMp) {
     const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_mp_fixture");
 
