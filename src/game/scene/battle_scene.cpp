@@ -62,6 +62,76 @@ enum class MainActionId : int {
     return stream.str();
 }
 
+[[nodiscard]] std::string formatRecoveryText(const game::battle::BattleActionResult& result) {
+    std::string text;
+    if (result.hp_recovered > 0) {
+        text = "recovered " + std::to_string(result.hp_recovered) + " HP";
+    }
+    if (result.mp_recovered > 0) {
+        if (!text.empty()) {
+            text += ", ";
+            text += std::to_string(result.mp_recovered) + " MP";
+        } else {
+            text = "recovered " + std::to_string(result.mp_recovered) + " MP";
+        }
+    }
+    return text;
+}
+
+[[nodiscard]] std::string formatActionResultText(const game::battle::BattleActionResult& result) {
+    if (result.status == game::battle::BattleActionStatus::Rejected) {
+        return result.failure_reason.empty() ? "Result: Action rejected" : "Result: " + result.failure_reason;
+    }
+
+    const std::string recovery_text = formatRecoveryText(result);
+    switch (result.action_type) {
+        case game::battle::BattleActionType::Attack: {
+            std::string result_text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
+            if (result.target_defeated) {
+                result_text += " (KO)";
+            }
+            return result_text;
+        }
+        case game::battle::BattleActionType::Skill: {
+            std::string result_text = "Result: Skill";
+            if (result.missed) {
+                result_text += " missed";
+                return result_text;
+            }
+
+            bool has_effect = false;
+            if (result.damage > 0) {
+                result_text += " dealt " + std::to_string(result.damage) + " dmg";
+                has_effect = true;
+            }
+            if (!recovery_text.empty()) {
+                result_text += has_effect ? ", " : " ";
+                result_text += recovery_text;
+                has_effect = true;
+            }
+            if (!result.states_added.empty()) {
+                result_text += has_effect ? " " : " applied ";
+                result_text += "+" + result.states_added.front();
+                has_effect = true;
+            }
+            if (!has_effect) {
+                result_text += " applied";
+            }
+            return result_text;
+        }
+        case game::battle::BattleActionType::Item:
+            return recovery_text.empty() ? "Result: Item used" : "Result: Item " + recovery_text;
+        case game::battle::BattleActionType::Guard:
+            return "Result: Guarding";
+        case game::battle::BattleActionType::Escape:
+            return result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed";
+        case game::battle::BattleActionType::EndTurn:
+            return "Result: Turn ended";
+    }
+
+    return "Result: Action applied";
+}
+
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 using namespace entt::literals;
@@ -382,48 +452,7 @@ void BattleScene::refreshView() {
     if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
     } else if (last_action_result_) {
-        const auto& result = *last_action_result_;
-        if (result.status == game::battle::BattleActionStatus::Rejected) {
-            if (!result.failure_reason.empty()) {
-                result_text = "Result: " + result.failure_reason;
-            } else {
-                result_text = "Result: Action rejected";
-            }
-        } else {
-            switch (result.action_type) {
-                case game::battle::BattleActionType::Attack: {
-                    result_text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
-                    if (result.target_defeated) {
-                        result_text += " (KO)";
-                    }
-                    break;
-                }
-                case game::battle::BattleActionType::Skill: {
-                    result_text = "Result: Skill";
-                    if (result.missed) {
-                        result_text += " missed";
-                    } else {
-                        result_text += " dealt " + std::to_string(result.damage) + " dmg";
-                        if (!result.states_added.empty()) {
-                            result_text += " +" + result.states_added.front();
-                        }
-                    }
-                    break;
-                }
-                case game::battle::BattleActionType::Item:
-                    result_text = "Result: Item used";
-                    break;
-                case game::battle::BattleActionType::Guard:
-                    result_text = "Result: Guarding";
-                    break;
-                case game::battle::BattleActionType::Escape:
-                    result_text = result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed";
-                    break;
-                case game::battle::BattleActionType::EndTurn:
-                    result_text = "Result: Turn ended";
-                    break;
-            }
-        }
+        result_text = formatActionResultText(*last_action_result_);
     }
     if (updateBoundString(result_text_, result_text)) {
         document_controller_.markDirty("result_text");

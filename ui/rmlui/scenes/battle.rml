@@ -13,7 +13,7 @@
 
     <div id="battle-panel" class="tf-modal-panel">
         <div id="battle-content">
-            <div id="battle-title">Battle Prototype</div>
+            <div id="battle-title">Battle</div>
             <div id="battle-turn">{{ turn_text }}</div>
             <div id="battle-units">{{ units_text }}</div>
             <div id="battle-result">{{ result_text }}</div>

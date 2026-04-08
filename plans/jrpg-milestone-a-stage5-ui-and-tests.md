@@ -288,12 +288,12 @@ git diff --check
 
 ## ToDo
 
-- [ ] 清理 `battle.rml` 的原型标题与确认导航/事件绑定
-- [ ] 补齐 `battle.rcss` 的目标 ally/dead/disabled 视觉状态与空态样式
-- [ ] 抽出或收敛 result text 拼接逻辑，补最小恢复类结果反馈
-- [ ] 补强 `BattleSceneSmokeTest` 的 RML/RCSS/result text 回归断言
-- [ ] 如共享导航样式被改动，补强 `RmlMenuNavigationStyleTest`
-- [ ] 运行 targeted gtest、完整 `game_tests`、`ctest` 与 `git diff --check`
+- [x] 清理 `battle.rml` 的原型标题与确认导航/事件绑定
+- [x] 补齐 `battle.rcss` 的目标 ally/dead/disabled 视觉状态与空态样式
+- [x] 抽出或收敛 result text 拼接逻辑，补最小恢复类结果反馈
+- [x] 补强 `BattleSceneSmokeTest` 的 RML/RCSS/result text 回归断言
+- [x] 如共享导航样式被改动，补强 `RmlMenuNavigationStyleTest`
+- [x] 运行 targeted gtest、完整 `game_tests`、`ctest` 与 `git diff --check`
 
 ## 完成标准
 

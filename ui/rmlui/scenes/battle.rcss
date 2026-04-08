@@ -30,6 +30,7 @@
     top: 0;
     height: 16dp;
     text-align: center;
+    color: #fce97fff;
 }
 
 #battle-turn {
@@ -153,6 +154,44 @@
     width: 220dp;
     color: #a9b1d6ff;
     text-align: right;
+}
+
+.battle-list-entry.disabled,
+.battle-list-entry:disabled {
+    color: #666666ff;
+}
+
+.battle-list-entry.disabled .battle-entry-sublabel,
+.battle-list-entry:disabled .battle-entry-sublabel {
+    color: #666666ff;
+}
+
+.tf-input-mouse .battle-list-entry.disabled:hover,
+.tf-input-nav .battle-list-entry.disabled:focus,
+.tf-input-mouse .battle-list-entry:disabled:hover,
+.tf-input-nav .battle-list-entry:disabled:focus {
+    color: #666666ff;
+    transform: translateY(0);
+}
+
+.battle-target-entry.is-ally {
+    color: #8db8ffff;
+}
+
+.battle-target-entry.is-dead,
+.battle-target-entry.disabled,
+.battle-target-entry:disabled {
+    color: #666666ff;
+}
+
+.tf-input-mouse .battle-target-entry.is-dead:hover,
+.tf-input-nav .battle-target-entry.is-dead:focus,
+.tf-input-mouse .battle-target-entry.disabled:hover,
+.tf-input-nav .battle-target-entry.disabled:focus,
+.tf-input-mouse .battle-target-entry:disabled:hover,
+.tf-input-nav .battle-target-entry:disabled:focus {
+    color: #666666ff;
+    transform: translateY(0);
 }
 
 #battle-list-empty,
