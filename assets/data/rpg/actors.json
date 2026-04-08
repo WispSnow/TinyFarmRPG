@@ -5,21 +5,31 @@
             "display_name": "里德",
             "class_id": "class.swordsman",
             "initial_level": 1,
-            "max_level": 99
+            "max_level": 99,
+            "skill_ids": [
+                "skill.attack",
+                "skill.bash"
+            ]
         },
         {
             "id": "actor.priscilla",
             "display_name": "普丽西拉",
             "class_id": "class.swordsman",
             "initial_level": 1,
-            "max_level": 99
+            "max_level": 99,
+            "skill_ids": [
+                "skill.attack"
+            ]
         },
         {
             "id": "actor.gale",
             "display_name": "盖尔",
             "class_id": "class.monk",
             "initial_level": 1,
-            "max_level": 99
+            "max_level": 99,
+            "skill_ids": [
+                "skill.attack"
+            ]
         }
     ]
 }

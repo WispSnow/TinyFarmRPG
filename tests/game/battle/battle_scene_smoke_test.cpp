@@ -69,9 +69,29 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
-    EXPECT_NE(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
+    EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
+    EXPECT_NE(source.find("populateSkillEntries"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(MenuState::SkillList)"), std::string::npos);
     EXPECT_NE(source.find("enterListMenu(MenuState::ItemList)"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, WiresStage2SkillListWithoutSubmittingSkillAction) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("actor.skill_ids"), std::string::npos);
+    EXPECT_NE(source.find("findSkill(skill_id)"), std::string::npos);
+    EXPECT_NE(source.find("isSkillEntryEnabled"), std::string::npos);
+    EXPECT_NE(source.find("selected_skill_id = skill->id_"), std::string::npos);
+    EXPECT_NE(source.find("requiresTargetSelection(skill->scope_)"), std::string::npos);
+    EXPECT_NE(source.find("Target selection coming in Stage 4"), std::string::npos);
+    EXPECT_NE(source.find("menuStateForActionDraftSource"), std::string::npos);
+    EXPECT_EQ(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {

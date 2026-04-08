@@ -85,7 +85,8 @@ FixturePaths createValidRpgFixture() {
       "display_name": "Hero",
       "class_id": "class.adventurer",
       "initial_level": 1,
-      "max_level": 99
+      "max_level": 99,
+      "skill_ids": ["skill.attack"]
     }
   ]
 })json");
@@ -207,6 +208,8 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* actor = catalog.findActor("actor.hero");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->class_id_, "class.adventurer");
+    ASSERT_EQ(actor->skill_ids_.size(), 1U);
+    EXPECT_EQ(actor->skill_ids_[0], "skill.attack");
 
     const auto* skill = catalog.findSkill("skill.attack");
     ASSERT_NE(skill, nullptr);
@@ -252,6 +255,54 @@ TEST(RpgCatalogTest, ValidateFailsOnMissingSkillReference) {
     std::string error{};
     EXPECT_FALSE(catalog.validateReferences(error));
     EXPECT_NE(error.find("skill.missing"), std::string::npos);
+}
+
+TEST(RpgCatalogTest, ValidateFailsOnMissingActorSkillReference) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.actors,
+        R"json({
+  "actors": [
+    {
+      "id": "actor.hero",
+      "display_name": "Hero",
+      "class_id": "class.adventurer",
+      "initial_level": 1,
+      "max_level": 99,
+      "skill_ids": ["skill.missing"]
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
+
+    std::string error{};
+    EXPECT_FALSE(catalog.validateReferences(error));
+    EXPECT_NE(error.find("skill.missing"), std::string::npos);
+}
+
+TEST(RpgCatalogTest, LoadActorsFailsWhenSkillIdsContainsNonStringEntry) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.actors,
+        R"json({
+  "actors": [
+    {
+      "id": "actor.hero",
+      "display_name": "Hero",
+      "class_id": "class.adventurer",
+      "initial_level": 1,
+      "max_level": 99,
+      "skill_ids": ["skill.attack", 42]
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadActors(paths.actors.string()));
 }
 
 TEST(RpgCatalogTest, ValidateFailsOnMissingEnemyReference) {
