@@ -55,44 +55,111 @@
 #battle-actions {
     position: absolute;
     left: 0;
-    top: 0;
+    top: 170dp;
     width: 520dp;
-    height: 280dp;
+    height: 110dp;
+}
+
+#battle-menu-title,
+#battle-menu-hint,
+#battle-back-hint,
+#battle-list-empty,
+#battle-target-empty {
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#battle-menu-title {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 120dp;
+    height: 16dp;
+    line-height: 16dp;
+}
+
+#battle-menu-hint {
+    position: absolute;
+    left: 132dp;
+    top: 0;
+    width: 388dp;
+    height: 16dp;
+    line-height: 16dp;
+    color: #d8dee9ff;
+}
+
+#battle-back-hint {
+    position: absolute;
+    left: 0;
+    top: 92dp;
+    width: 520dp;
+    height: 16dp;
+    line-height: 16dp;
+    color: #a9b1d6ff;
+}
+
+#battle-main-actions,
+#battle-list-menu,
+#battle-target-menu {
+    position: absolute;
+    left: 0;
+    top: 24dp;
+    width: 520dp;
+    height: 62dp;
+}
+
+#battle-main-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8dp;
 }
 
 .battle-action-button {
-    position: absolute;
-    width: 160dp;
-    height: 36dp;
-    line-height: 36dp;
+    width: 168dp;
+    height: 28dp;
+    line-height: 28dp;
 }
 
-#battle-action-attack {
-    left: 0;
-    top: 180dp;
+#battle-list-menu,
+#battle-target-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4dp;
 }
 
-#battle-action-skill {
-    left: 172dp;
-    top: 180dp;
+.battle-list-entry,
+.battle-target-entry {
+    width: 520dp;
+    height: 28dp;
+    line-height: 28dp;
+    text-align: left;
+    padding-left: 8dp;
+    padding-right: 8dp;
 }
 
-#battle-action-item {
-    left: 344dp;
-    top: 180dp;
+.battle-entry-label,
+.battle-entry-sublabel {
+    display: inline-block;
+    line-height: 28dp;
 }
 
-#battle-action-guard {
-    left: 0;
-    top: 224dp;
+.battle-entry-label {
+    width: 260dp;
 }
 
-#battle-action-escape {
-    left: 172dp;
-    top: 224dp;
+.battle-entry-sublabel {
+    width: 220dp;
+    color: #a9b1d6ff;
+    text-align: right;
 }
 
-#battle-action-end-turn {
-    left: 344dp;
-    top: 224dp;
+#battle-list-empty,
+#battle-target-empty {
+    width: 520dp;
+    height: 28dp;
+    line-height: 28dp;
+    color: #a9b1d6ff;
+    text-align: center;
 }
