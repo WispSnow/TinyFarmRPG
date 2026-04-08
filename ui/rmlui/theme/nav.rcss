@@ -38,8 +38,20 @@
     image-color: #f78fa3ff;
 }
 
+.tf-input-mouse .tf-focus-ring-blue:hover:active,
+.tf-input-nav .tf-focus-ring-blue:focus:active,
+.tf-input-mouse .tf-focus-ring-blue:active,
+.tf-input-nav .tf-focus-ring-blue:active,
 .tf-focus-ring-blue:active,
+.tf-input-mouse .tf-focus-ring-gold:hover:active,
+.tf-input-nav .tf-focus-ring-gold:focus:active,
+.tf-input-mouse .tf-focus-ring-gold:active,
+.tf-input-nav .tf-focus-ring-gold:active,
 .tf-focus-ring-gold:active,
+.tf-input-mouse .tf-focus-ring-danger:hover:active,
+.tf-input-nav .tf-focus-ring-danger:focus:active,
+.tf-input-mouse .tf-focus-ring-danger:active,
+.tf-input-nav .tf-focus-ring-danger:active,
 .tf-focus-ring-danger:active {
     transform: translateY(1dp);
 }
