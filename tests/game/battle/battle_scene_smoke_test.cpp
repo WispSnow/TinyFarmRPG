@@ -17,6 +17,16 @@ namespace {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
+[[nodiscard]] std::size_t countOccurrences(const std::string& source, const std::string& needle) {
+    std::size_t count = 0;
+    std::size_t position = 0;
+    while ((position = source.find(needle, position)) != std::string::npos) {
+        ++count;
+        position += needle.size();
+    }
+    return count;
+}
+
 } // namespace
 
 namespace game::scene {
@@ -136,6 +146,23 @@ TEST(BattleSceneSmokeTest, WiresStage4TargetSelectionAndDraftSubmit) {
     EXPECT_EQ(source.find("enterTargetPlaceholder"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, FormatsStage5RecoveryResultText) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("formatActionResultText"), std::string::npos);
+    EXPECT_NE(source.find("formatRecoveryText"), std::string::npos);
+    EXPECT_NE(source.find("result.hp_recovered > 0"), std::string::npos);
+    EXPECT_NE(source.find("result.mp_recovered > 0"), std::string::npos);
+    EXPECT_NE(source.find("result.damage > 0"), std::string::npos);
+    EXPECT_NE(source.find("Result: Item used"), std::string::npos);
+    EXPECT_EQ(source.find("dealt 0 dmg"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     const std::filesystem::path rml_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rml").lexically_normal();
@@ -146,12 +173,38 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
 
     EXPECT_NE(rml.find("../theme/nav.rcss"), std::string::npos);
     EXPECT_NE(rml.find("tf-screen-root tf-nav-root"), std::string::npos);
+    EXPECT_NE(rml.find("<div id=\"battle-title\">Battle</div>"), std::string::npos);
+    EXPECT_EQ(rml.find("Battle Prototype"), std::string::npos);
+    EXPECT_GE(countOccurrences(rml, "tf-nav-auto"), 3U);
     EXPECT_NE(rml.find("data-for=\"action : main_actions\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"main_action_select(action.entry_index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"list_menu_visible\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : list_entries\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"target_menu_visible\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"target : target_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"target_entry_select(target.entry_index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-is-ally=\"target.is_ally\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-is-dead=\"target.is_dead\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-disabled=\"!target.enabled\""), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
+    const std::filesystem::path rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+
+    const std::string rcss = readTextFile(rcss_path);
+    ASSERT_FALSE(rcss.empty());
+
+    EXPECT_NE(rcss.find(".battle-list-entry.disabled"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-list-entry.disabled .battle-entry-sublabel"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-target-entry.is-ally"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-target-entry.is-dead"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-target-entry.disabled"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-list-empty"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-target-empty"), std::string::npos);
+    EXPECT_EQ(rcss.find("solid"), std::string::npos);
+    EXPECT_EQ(rcss.find("font-style: italic"), std::string::npos);
 }
 
 } // namespace
