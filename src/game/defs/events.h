@@ -116,10 +116,13 @@ struct AsyncSaveCompletedEvent {
     std::string error{};
 };
 
+/// @brief 战斗场景退出时发出的结算事件。
+///
+/// GameScene 通过该事件恢复探索流程并处理未来的经验、掉落、任务推进等结算逻辑。
 struct BattleEndedEvent {
-    game::battle::BattleOutcome outcome{game::battle::BattleOutcome::Ongoing};
-    std::vector<game::battle::BattleUnit> final_units{};
-    std::unordered_map<entt::id_type, int> remaining_item_stocks{};
+    game::battle::BattleOutcome outcome{game::battle::BattleOutcome::Ongoing};    ///< 战斗最终结果。
+    std::vector<game::battle::BattleUnit> final_units{};                          ///< 战斗结束时的完整单位状态副本。
+    std::unordered_map<entt::id_type, int> remaining_item_stocks{};                ///< 战斗结束时剩余的战斗内道具库存。
 };
 
 } // namespace game::defs

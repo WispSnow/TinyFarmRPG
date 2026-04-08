@@ -56,7 +56,9 @@ bool TurnCore::advanceTurn() {
     const std::size_t previous_index = current_turn_index_;
     for (std::size_t offset = 0; offset < order_size; ++offset) {
         current_turn_index_ = (current_turn_index_ + 1) % order_size;
+        // 只要找到一个存活行动者就立即返回；如果所有行动者都已阵亡，循环结束后 refresh() 会更新 outcome_。
         if (isAlive(turn_order_[current_turn_index_])) {
+            // 如果跨过了轮次边界，触发回调并推进轮次计数。
             if (current_turn_index_ <= previous_index) {
                 const std::uint32_t finished_round = round_index_ == 0U ? 1U : round_index_;
                 if (on_round_end_) {

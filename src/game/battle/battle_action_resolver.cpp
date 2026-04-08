@@ -307,6 +307,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                                                  BattleRuntimeState& runtime_state) {
     BattleActionResult result = makeRejectedResult(action);
 
+    // 公共前置校验：战斗必须仍在进行，且提交者必须是当前回合的存活行动者。
     if (turn_core.outcome() != BattleOutcome::Ongoing) {
         result.failure_reason = "battle is not ongoing";
         return result;
@@ -324,9 +325,11 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
         return result;
     }
 
+    // runtime_state 保存防御、状态回合数、战斗内道具库存等不进入快照的临时数据。
     auto& actor_state = runtime_state.units.try_emplace(action.actor_id).first->second;
 
     switch (action.type) {
+        // EndTurn / Guard / Escape 都不需要目标。前两者直接交出回合；Escape 成功时强制终局。
         case BattleActionType::EndTurn: {
             result.status = BattleActionStatus::Applied;
             (void)turn_core.advanceTurn();
@@ -350,6 +353,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             return result;
         }
         case BattleActionType::Skill: {
+            // 技能结算链：目录查表 -> 目标收集 -> MP/命中校验 -> 主效果与附加效果 -> 胜负/回合推进。
             if (!dependencies_.rpg_catalog) {
                 result.failure_reason = "rpg catalog is unavailable";
                 return result;
@@ -377,12 +381,14 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             result.status = BattleActionStatus::Applied;
             result.mp_spent = skill->mp_cost_;
             actor->mp = std::max(0, actor->mp - skill->mp_cost_);
+            // MP 在命中判定前扣除；未命中仍然消耗行动并推进回合。
             if (nextPercentRoll() > clampPercent(skill->success_rate_)) {
                 result.missed = true;
                 (void)turn_core.advanceTurn();
                 return result;
             }
 
+            // repeats * targets 展开为多次效果应用；目标中途阵亡后不再吃后续 repeat。
             for (int repeat = 0; repeat < skill->repeats_; ++repeat) {
                 for (BattleUnit* target : targets) {
                     if (!target || !target->isAlive()) {
@@ -396,6 +402,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                     const bool eval_ok = formula_evaluator_.evaluate(skill->damage_, *actor, *target, evaluated_damage, eval_error);
                     const int base_value = eval_ok ? evaluated_damage : 0;
 
+                    // DamageType 决定公式结果的语义：伤害、吸收、回复或无主效果。
                     switch (skill->damage_.type) {
                         case game::data::DamageType::HpDamage:
                         case game::data::DamageType::HpDrain: {
@@ -460,6 +467,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                 }
             }
 
+            // 技能可能改变双方存活集合；先刷新胜负，再决定是否推进到下一行动者。
             turn_core.refresh();
             if (turn_core.outcome() == BattleOutcome::Ongoing) {
                 (void)turn_core.advanceTurn();
@@ -467,6 +475,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             return result;
         }
         case BattleActionType::Item: {
+            // 道具结算链：目录查表 -> on_use 校验 -> 战斗内库存扣除 -> 应用道具效果 -> 胜负/回合推进。
             if (!dependencies_.item_catalog) {
                 result.failure_reason = "item catalog is unavailable";
                 return result;
@@ -513,6 +522,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                 applyBattleItemEffects(battle_use, *target, result);
             }
 
+            // 这里修改的是进入战斗时复制出的库存，不直接写回探索场景的 InventoryComponent。
             stock_it->second -= consume;
             if (stock_it->second <= 0) {
                 runtime_state.item_stocks.erase(stock_it);
@@ -525,6 +535,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             return result;
         }
         case BattleActionType::Attack: {
+            // 普通攻击是最小伤害链：目标校验 -> 公式求值 -> 防御减伤 -> 扣 HP -> 胜负/回合推进。
             if (!action.target_id) {
                 result.failure_reason = "attack target is missing";
                 return result;
@@ -538,6 +549,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
 
             int evaluated_damage = 0;
             std::string eval_error{};
+            // 普攻也走公式求值器，便于后续把默认公式替换成数据驱动；失败时回退到 actor.attack。
             const bool eval_ok = formula_evaluator_.evaluate("a.atk", *actor, *target, evaluated_damage, eval_error);
             int damage = eval_ok ? std::max(1, evaluated_damage) : std::max(1, actor->attack);
 
@@ -553,6 +565,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             result.damage = damage;
             result.target_defeated = !target->isAlive();
 
+            // 攻击可能结束战斗；若仍在进行，才交给 TurnCore 选择下一个存活行动者。
             turn_core.refresh();
             if (turn_core.outcome() == BattleOutcome::Ongoing) {
                 (void)turn_core.advanceTurn();

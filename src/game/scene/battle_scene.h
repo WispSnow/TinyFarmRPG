@@ -28,14 +28,20 @@ enum class Scope : std::uint8_t;
 
 namespace game::scene {
 
+/// @brief 回合制战斗表现层场景。
+///
+/// BattleScene 负责 UI、输入与状态机编排；领域规则通过 BattleSession 访问，
+/// 不直接修改 TurnCore。该场景以 push/pop 方式叠加在探索场景之上，战斗结束后
+/// 发出 BattleEndedEvent 并请求弹出自身。
 class BattleScene final : public engine::scene::Scene {
+    /// @brief 单帧同步推进的战斗流程状态。
     enum class FlowState {
-        WaitingForInput,
-        ExecutingAction,
-        AnimatingResult,
-        CheckVictory,
-        NextTurn,
-        BattleEnd
+        WaitingForInput,    ///< 等待玩家或未来 AI 提交行动。
+        ExecutingAction,    ///< 将 pending_action_ 提交给 BattleSession。
+        AnimatingResult,    ///< 展示动作结果；当前以短计时占位。
+        CheckVictory,       ///< 根据 BattleActionResult::outcome_after 判断是否结束战斗。
+        NextTurn,           ///< 刷新到下一个行动者并回到输入等待。
+        BattleEnd           ///< 发送结算事件并请求弹出场景。
     };
 
     enum class MenuState {
@@ -118,24 +124,47 @@ class BattleScene final : public engine::scene::Scene {
     int target_entry_cursor_{-1};
 
 public:
+    /// @brief 构造战斗场景。
+    /// @param name 场景名称。
+    /// @param context 引擎上下文。
+    /// @param units 初始战斗单位。
+    /// @param session_options BattleSession 使用的技能/道具目录与库存依赖。
     BattleScene(std::string_view name,
                 engine::core::Context& context,
                 std::vector<game::battle::BattleUnit> units,
                 game::battle::BattleSessionOptions session_options = {});
     ~BattleScene() override;
 
+    /// @brief 初始化战斗场景和 UI。
     bool init() override;
+
+    /// @brief 每帧推进战斗状态机。
     void update(float delta_time) override;
+
+    /// @brief 在 UI 提交渲染前同步 RmlUi 菜单焦点。
     void prepareUi(float interpolation_alpha) override;
+
+    /// @brief 清理战斗 UI 与场景资源。
     void clean() override;
 
 private:
+    /// @brief 初始化 RmlUi 战斗面板。
     [[nodiscard]] bool initUI();
+
+    /// @brief 关闭 RmlUi 战斗面板。
     void shutdownUI();
+
+    /// @brief 注册 RmlUi 数据模型需要的结构体与数组类型。
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
+
+    /// @brief 连接/断开战斗菜单输入监听。
     void connectInputListeners();
     void disconnectInputListeners();
+
+    /// @brief 运行同步战斗流程状态机，直到进入需要等待的状态。
     void runStateMachine(float delta_time);
+
+    /// @brief 根据 BattleSession 快照刷新 UI 文本和按钮状态。
     void refreshView();
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
@@ -183,14 +212,29 @@ private:
     bool onMenuConfirmPressed();
     bool onMenuCancelPressed();
 
+    /// @brief 构造并排队普通攻击行动。
     void queueAttackAction();
+
+    /// @brief 构造并排队默认技能行动。
     void queueSkillAction();
+
+    /// @brief 构造并排队默认道具行动。
     void queueItemAction();
+
+    /// @brief 构造并排队防御行动。
     void queueGuardAction();
+
+    /// @brief 构造并排队逃跑行动。
     void queueEscapeAction();
+
+    /// @brief 构造并排队跳过回合行动。
     void queueEndTurnAction();
+
+    /// @brief 获取当前行动者并写出 actor id。
+    /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
 
+    /// @brief 发送战斗结束事件并请求弹出战斗场景。
     void requestBattleEnd();
 };
 
