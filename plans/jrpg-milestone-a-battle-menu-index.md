@@ -286,7 +286,7 @@
 
 - [x] Stage 1: 细化 `BattleScene` 菜单状态与 ViewModel 方案 → `plans/jrpg-milestone-a-stage1-battle-menu-state.md`
 - [x] Stage 2: 细化技能候选数据来源与过滤规则 → `plans/jrpg-milestone-a-stage2-skill-source.md`
-- [ ] Stage 3: 细化物品候选数据来源与库存映射规则
+- [x] Stage 3: 细化物品候选数据来源与库存映射规则 → `plans/jrpg-milestone-a-stage3-item-source.md`
 - [ ] Stage 4: 细化目标选择与动作提交流程
 - [ ] Stage 5: 细化 Battle RML/RCSS 与测试补强方案
 
