@@ -320,21 +320,21 @@ case MenuState::TargetSelect:
 
 ## ToDo
 
-- [ ] 为 `ActorData` 增加 `skill_ids_` 并解析 `actors.json` 的 `skill_ids`
-- [ ] 在 `validateReferences()` 中校验 actor skill references
-- [ ] 为 demo actors 配置初始技能列表
-- [ ] 为 `BattleUnit` 增加 `skill_ids`
-- [ ] 在 `buildBattleUnitsFromCatalog()` 中填充玩家 skill ids
-- [ ] 在 `buildBattleUnitsFromCatalog()` 中从 enemy actions 提取并去重 skill ids
-- [ ] 在 `BattleScene` 中保存 `rpg_catalog_` 非 owning 指针
-- [ ] 确保 `rpg_catalog_` 声明顺序与构造函数初始化列表都在 `session_` 之前
-- [ ] 实现 `SkillList` 的真实 `list_entries_` 构建
-- [ ] `queueSkillAction()` 填充技能列表后直接 `setMenuState(MenuState::SkillList)`，不要调用会清空列表的 `enterListMenu(MenuState::SkillList)`
-- [ ] 根据 MP 与 scope 计算技能 entry enabled
-- [ ] 选择 enabled 技能时写入 `ActionDraft::selected_skill_id`
-- [ ] 保持 Stage 2 不直接提交技能 `BattleAction`
-- [ ] 如进入 `TargetSelect` 占位态，保持 `list_entries_` 不变，并同步修正 `menu_cancel` 只清除 target 字段后返回来源菜单
-- [ ] 补充 catalog / unit factory / BattleScene smoke 测试
+- [x] 为 `ActorData` 增加 `skill_ids_` 并解析 `actors.json` 的 `skill_ids`
+- [x] 在 `validateReferences()` 中校验 actor skill references
+- [x] 为 demo actors 配置初始技能列表
+- [x] 为 `BattleUnit` 增加 `skill_ids`
+- [x] 在 `buildBattleUnitsFromCatalog()` 中填充玩家 skill ids
+- [x] 在 `buildBattleUnitsFromCatalog()` 中从 enemy actions 提取并去重 skill ids
+- [x] 在 `BattleScene` 中保存 `rpg_catalog_` 非 owning 指针
+- [x] 确保 `rpg_catalog_` 声明顺序与构造函数初始化列表都在 `session_` 之前
+- [x] 实现 `SkillList` 的真实 `list_entries_` 构建
+- [x] `queueSkillAction()` 填充技能列表后直接 `setMenuState(MenuState::SkillList)`，不要调用会清空列表的 `enterListMenu(MenuState::SkillList)`
+- [x] 根据 MP 与 scope 计算技能 entry enabled
+- [x] 选择 enabled 技能时写入 `ActionDraft::selected_skill_id`
+- [x] 保持 Stage 2 不直接提交技能 `BattleAction`
+- [x] 如进入 `TargetSelect` 占位态，保持 `list_entries_` 不变，并同步修正 `menu_cancel` 只清除 target 字段后返回来源菜单
+- [x] 补充 catalog / unit factory / BattleScene smoke 测试
 
 ## 完成标准
 

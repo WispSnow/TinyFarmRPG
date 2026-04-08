@@ -75,6 +75,7 @@ struct BattleUnit {
     int magic_defense{10};
     int speed{10};
     int luck{10};
+    std::vector<std::string> skill_ids{};
 
     [[nodiscard]] bool isAlive() const { return hp > 0; }
 };

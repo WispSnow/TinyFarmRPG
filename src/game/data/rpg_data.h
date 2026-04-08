@@ -60,6 +60,7 @@ struct ActorData {
     std::string class_id_{};
     int initial_level_{1};
     int max_level_{99};
+    std::vector<std::string> skill_ids_{};
 };
 
 struct StateData {

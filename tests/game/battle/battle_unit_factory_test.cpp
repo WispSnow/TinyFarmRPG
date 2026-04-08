@@ -44,8 +44,22 @@ struct FixturePaths {
         data_root / "actors.json",
         R"json({
   "actors": [
-    { "id": "actor.hero", "display_name": "Hero", "class_id": "class.swordsman", "initial_level": 1, "max_level": 99 },
-    { "id": "actor.mage", "display_name": "Mage", "class_id": "class.mage", "initial_level": 1, "max_level": 99 }
+    {
+      "id": "actor.hero",
+      "display_name": "Hero",
+      "class_id": "class.swordsman",
+      "initial_level": 1,
+      "max_level": 99,
+      "skill_ids": ["skill.attack", "skill.cleave"]
+    },
+    {
+      "id": "actor.mage",
+      "display_name": "Mage",
+      "class_id": "class.mage",
+      "initial_level": 1,
+      "max_level": 99,
+      "skill_ids": ["skill.fire"]
+    }
   ]
 })json");
 
@@ -59,7 +73,11 @@ struct FixturePaths {
       "params": [60, 0, 12, 8, 5, 5, 10, 5],
       "exp": 5,
       "gold": 2,
-      "actions": []
+      "actions": [
+        { "skill_id": "skill.attack", "rating": 5 },
+        { "skill_id": "skill.bash", "rating": 3 },
+        { "skill_id": "skill.attack", "rating": 1 }
+      ]
     },
     {
       "id": "enemy.wolf",
@@ -67,7 +85,9 @@ struct FixturePaths {
       "params": [70, 0, 15, 7, 4, 4, 16, 6],
       "exp": 8,
       "gold": 3,
-      "actions": []
+      "actions": [
+        { "skill_id": "skill.howl", "rating": 4 }
+      ]
     }
   ]
 })json");
@@ -124,6 +144,9 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     EXPECT_EQ(units[0].magic_defense, 16);
     EXPECT_EQ(units[0].speed, 18);
     EXPECT_EQ(units[0].luck, 8);
+    ASSERT_EQ(units[0].skill_ids.size(), 2U);
+    EXPECT_EQ(units[0].skill_ids[0], "skill.attack");
+    EXPECT_EQ(units[0].skill_ids[1], "skill.cleave");
 
     EXPECT_EQ(units[1].name, "Mage");
     EXPECT_EQ(units[1].max_hp, 80);
@@ -134,6 +157,8 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     EXPECT_EQ(units[1].magic_defense, 18);
     EXPECT_EQ(units[1].speed, 14);
     EXPECT_EQ(units[1].luck, 10);
+    ASSERT_EQ(units[1].skill_ids.size(), 1U);
+    EXPECT_EQ(units[1].skill_ids[0], "skill.fire");
 
     EXPECT_EQ(units[2].side, BattleSide::Enemy);
     EXPECT_EQ(units[2].name, "Goblin");
@@ -142,7 +167,13 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     EXPECT_EQ(units[2].magic_attack, 5);
     EXPECT_EQ(units[2].magic_defense, 5);
     EXPECT_EQ(units[2].luck, 5);
+    ASSERT_EQ(units[2].skill_ids.size(), 2U);
+    EXPECT_EQ(units[2].skill_ids[0], "skill.attack");
+    EXPECT_EQ(units[2].skill_ids[1], "skill.bash");
     EXPECT_EQ(units[3].name, "Goblin 2");
+    ASSERT_EQ(units[3].skill_ids.size(), 2U);
+    EXPECT_EQ(units[3].skill_ids[0], "skill.attack");
+    EXPECT_EQ(units[3].skill_ids[1], "skill.bash");
 }
 
 TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
@@ -164,8 +195,12 @@ TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
     ASSERT_EQ(units.size(), 2U);
     EXPECT_EQ(units[0].name, "Mage");
     EXPECT_EQ(units[0].side, BattleSide::Player);
+    ASSERT_EQ(units[0].skill_ids.size(), 1U);
+    EXPECT_EQ(units[0].skill_ids[0], "skill.fire");
     EXPECT_EQ(units[1].name, "Wolf");
     EXPECT_EQ(units[1].side, BattleSide::Enemy);
+    ASSERT_EQ(units[1].skill_ids.size(), 1U);
+    EXPECT_EQ(units[1].skill_ids[0], "skill.howl");
 }
 
 TEST(BattleUnitFactoryTest, FailsWhenRequestedActorIsMissing) {

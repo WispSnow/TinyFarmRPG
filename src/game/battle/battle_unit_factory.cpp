@@ -33,6 +33,18 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
     return base_name + " " + std::to_string(ordinal);
 }
 
+[[nodiscard]] std::vector<std::string> collectEnemySkillIds(const game::data::EnemyData& enemy) {
+    std::vector<std::string> skill_ids{};
+    skill_ids.reserve(enemy.actions_.size());
+    for (const auto& action : enemy.actions_) {
+        if (std::find(skill_ids.begin(), skill_ids.end(), action.skill_id_) != skill_ids.end()) {
+            continue;
+        }
+        skill_ids.push_back(action.skill_id_);
+    }
+    return skill_ids;
+}
+
 } // namespace
 
 bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
@@ -85,7 +97,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
             .magic_attack = mat,
             .magic_defense = mdf,
             .speed = agi,
-            .luck = luk
+            .luck = luk,
+            .skill_ids = actor->skill_ids_
         });
     }
 
@@ -147,7 +160,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
             .magic_attack = mat,
             .magic_defense = mdf,
             .speed = agi,
-            .luck = luk
+            .luck = luk,
+            .skill_ids = collectEnemySkillIds(*enemy)
         });
     }
 

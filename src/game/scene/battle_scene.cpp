@@ -5,6 +5,9 @@
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "game/data/rpg_catalog.h"
+#include "game/data/rpg_data.h"
+#include "game/data/rpg_types.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -76,6 +79,10 @@ using namespace entt::literals;
     return element_id;
 }
 
+[[nodiscard]] Rml::String makeRmlString(std::string_view value) {
+    return Rml::String{value.data(), value.size()};
+}
+
 } // namespace
 
 namespace game::scene {
@@ -85,6 +92,7 @@ BattleScene::BattleScene(std::string_view name,
                          std::vector<game::battle::BattleUnit> units,
                          game::battle::BattleSessionOptions session_options)
     : engine::scene::Scene(name, context),
+      rpg_catalog_(session_options.rpg_catalog),
       session_(std::move(units), std::move(session_options)) {
 }
 
@@ -597,6 +605,99 @@ void BattleScene::enterListMenu(MenuState list_state) {
     setMenuState(list_state);
 }
 
+void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
+    list_entries_.clear();
+    list_entry_cursor_ = -1;
+    list_empty_text_ = "No skills available";
+
+    if (!rpg_catalog_) {
+        spdlog::warn("BattleScene: RPG catalog 不可用，无法生成技能列表。");
+        return;
+    }
+
+    int entry_index = 0;
+    for (const auto& skill_id : actor.skill_ids) {
+        const auto* skill = rpg_catalog_->findSkill(skill_id);
+        if (!skill) {
+            spdlog::warn("BattleScene: skill '{}' 不存在于 RPG catalog，已跳过。", skill_id);
+            continue;
+        }
+
+        const std::string_view label = skill->display_name_.empty()
+            ? std::string_view{skill->id_}
+            : std::string_view{skill->display_name_};
+        list_entries_.push_back(ListEntryViewModel{
+            .entry_index = entry_index++,
+            .entry_id = skill->id_,
+            .label = makeRmlString(label),
+            .sublabel = skillSubtitle(actor, *skill),
+            .enabled = isSkillEntryEnabled(actor, *skill)
+        });
+    }
+
+    list_entry_cursor_ = firstEnabledListEntryIndex();
+}
+
+const BattleScene::ListEntryViewModel* BattleScene::findListEntry(int entry_index) const {
+    const auto it = std::find_if(
+        list_entries_.begin(),
+        list_entries_.end(),
+        [entry_index](const ListEntryViewModel& entry) {
+            return entry.entry_index == entry_index;
+        });
+    return it == list_entries_.end() ? nullptr : &*it;
+}
+
+bool BattleScene::isSkillEntryEnabled(const game::battle::BattleUnit& actor,
+                                      const game::data::SkillData& skill) const {
+    return actor.mp >= skill.mp_cost_ && skill.scope_ != game::data::Scope::None;
+}
+
+Rml::String BattleScene::skillSubtitle(const game::battle::BattleUnit& actor,
+                                       const game::data::SkillData& skill) const {
+    std::string subtitle = "MP " + std::to_string(skill.mp_cost_);
+    if (actor.mp < skill.mp_cost_) {
+        subtitle += " / Low MP";
+    }
+    return subtitle;
+}
+
+bool BattleScene::requiresTargetSelection(game::data::Scope scope) const {
+    return scope == game::data::Scope::OneEnemy || scope == game::data::Scope::OneAlly;
+}
+
+int BattleScene::firstEnabledListEntryIndex() const {
+    for (const auto& entry : list_entries_) {
+        if (entry.enabled) {
+            return entry.entry_index;
+        }
+    }
+    return list_entries_.empty() ? -1 : list_entries_.front().entry_index;
+}
+
+BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
+    switch (action_draft_.pending_type) {
+        case game::battle::BattleActionType::Skill:
+            return MenuState::SkillList;
+        case game::battle::BattleActionType::Item:
+            return MenuState::ItemList;
+        case game::battle::BattleActionType::Attack:
+        case game::battle::BattleActionType::Guard:
+        case game::battle::BattleActionType::Escape:
+        case game::battle::BattleActionType::EndTurn:
+            return MenuState::MainMenu;
+    }
+    return MenuState::MainMenu;
+}
+
+void BattleScene::enterTargetPlaceholder(std::string_view text) {
+    target_entries_.clear();
+    target_entry_cursor_ = -1;
+    setMenuState(MenuState::TargetSelect);
+    target_empty_text_ = makeRmlString(text);
+    document_controller_.markDirty("target_empty_text");
+}
+
 void BattleScene::handleMainAction(int entry_index) {
     if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(main_actions_.size())) {
         return;
@@ -636,8 +737,49 @@ void BattleScene::handleListEntry(int entry_index) {
         return;
     }
 
-    list_entry_cursor_ = entry_index;
+    const auto* entry = findListEntry(entry_index);
+    if (!entry) {
+        return;
+    }
+
+    list_entry_cursor_ = entry->entry_index;
     menu_focus_dirty_ = true;
+    if (!entry->enabled) {
+        return;
+    }
+
+    if (menu_state_ == MenuState::SkillList) {
+        handleSkillEntry(*entry);
+    }
+}
+
+void BattleScene::handleSkillEntry(const ListEntryViewModel& entry) {
+    game::battle::BattleUnitId actor_id = 0;
+    const auto* actor = prepareActionActor(actor_id);
+    if (!actor || !rpg_catalog_) {
+        return;
+    }
+
+    const auto* skill = rpg_catalog_->findSkill(entry.entry_id);
+    if (!skill || !isSkillEntryEnabled(*actor, *skill)) {
+        return;
+    }
+
+    action_draft_ = ActionDraft{
+        .pending_type = game::battle::BattleActionType::Skill,
+        .selected_skill_id = skill->id_,
+        .selected_item_id = std::nullopt,
+        .selected_target_id = std::nullopt,
+        .requires_target_selection = requiresTargetSelection(skill->scope_)
+    };
+
+    if (action_draft_.requires_target_selection) {
+        enterTargetPlaceholder("Target selection coming in Stage 4");
+        return;
+    }
+
+    menu_hint_ = "Skill selected. Resolution coming in Stage 4.";
+    document_controller_.markDirty("menu_hint");
 }
 
 void BattleScene::handleTargetEntry(int entry_index) {
@@ -787,9 +929,12 @@ bool BattleScene::onMenuCancelPressed() {
     }
 
     switch (menu_state_) {
+        case MenuState::TargetSelect:
+            action_draft_.selected_target_id.reset();
+            setMenuState(menuStateForActionDraftSource());
+            return true;
         case MenuState::SkillList:
         case MenuState::ItemList:
-        case MenuState::TargetSelect:
             action_draft_ = {};
             setMenuState(MenuState::MainMenu);
             return true;
@@ -821,7 +966,8 @@ void BattleScene::queueAttackAction() {
 
 void BattleScene::queueSkillAction() {
     game::battle::BattleUnitId actor_id = 0;
-    if (!prepareActionActor(actor_id)) {
+    const auto* actor = prepareActionActor(actor_id);
+    if (!actor) {
         return;
     }
 
@@ -829,7 +975,8 @@ void BattleScene::queueSkillAction() {
         .pending_type = game::battle::BattleActionType::Skill,
         .requires_target_selection = true
     };
-    enterListMenu(MenuState::SkillList);
+    populateSkillEntries(*actor);
+    setMenuState(MenuState::SkillList);
 }
 
 void BattleScene::queueItemAction() {

@@ -130,6 +130,25 @@ using Json = nlohmann::json;
     return true;
 }
 
+[[nodiscard]] bool parseStringList(const Json& node, std::vector<std::string>& out_values) {
+    out_values.clear();
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_array()) {
+        return false;
+    }
+
+    out_values.reserve(node.size());
+    for (const auto& value_node : node) {
+        if (!value_node.is_string()) {
+            return false;
+        }
+        out_values.push_back(value_node.get<std::string>());
+    }
+    return true;
+}
+
 } // namespace
 
 entt::id_type RpgCatalog::hashId(const std::string_view id) {
@@ -275,6 +294,12 @@ bool RpgCatalog::loadActors(const std::string_view file_path) {
 
         if (actor.class_id_.empty()) {
             spdlog::error("RpgCatalog: actor '{}' 缺少 class_id", actor.id_);
+            return false;
+        }
+
+        if (const auto skills_it = actor_node.find("skill_ids");
+            skills_it != actor_node.end() && !parseStringList(*skills_it, actor.skill_ids_)) {
+            spdlog::error("RpgCatalog: actor '{}' skill_ids 必须是 string 数组", actor.id_);
             return false;
         }
 
@@ -613,6 +638,14 @@ bool RpgCatalog::validateReferences(std::string& out_error, const ItemCatalog* i
         if (!classes_.contains(class_id_hash)) {
             out_error = "Actor '" + actor.id_ + "' references missing class '" + actor.class_id_ + "'";
             return false;
+        }
+
+        for (const auto& skill_id : actor.skill_ids_) {
+            const entt::id_type skill_id_hash = RpgCatalog::hashId(skill_id);
+            if (!skills_.contains(skill_id_hash)) {
+                out_error = "Actor '" + actor.id_ + "' references missing skill '" + skill_id + "'";
+                return false;
+            }
         }
     }
 
