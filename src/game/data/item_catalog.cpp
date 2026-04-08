@@ -36,6 +36,12 @@ ItemUseEffectType useEffectTypeFromString(std::string_view value) {
     return ItemUseEffectType::Unknown;
 }
 
+BattleItemEffectType battleItemEffectTypeFromString(std::string_view value) {
+    if (value == "recover_hp") return BattleItemEffectType::RecoverHp;
+    if (value == "recover_mp") return BattleItemEffectType::RecoverMp;
+    return BattleItemEffectType::Unknown;
+}
+
 int defaultStackLimit(ItemCategory category) {
     return category == ItemCategory::Tool ? TOOL_STACK_LIMIT : DEFAULT_STACK_LIMIT;
 }
@@ -56,6 +62,85 @@ engine::render::Image parseImage(const nlohmann::json& json) {
     const float w = source[2];
     const float h = source[3];
     return engine::render::Image(path, engine::utils::Rect{glm::vec2{x, y}, glm::vec2{w, h}});
+}
+
+bool parseBattleUseConfig(const std::string& item_id,
+                          const nlohmann::json& node,
+                          BattleItemUseConfig& out_use) {
+    if (!node.is_object()) {
+        spdlog::error("物品 '{}' 的 battle_use 必须是 object", item_id);
+        return false;
+    }
+
+    BattleItemUseConfig use{};
+    if (const auto consume_it = node.find("consume"); consume_it != node.end()) {
+        if (!consume_it->is_number_integer()) {
+            spdlog::error("物品 '{}' 的 battle_use.consume 必须是整数", item_id);
+            return false;
+        }
+        use.consume = consume_it->get<int>();
+    }
+    if (use.consume <= 0) {
+        spdlog::error("物品 '{}' 的 battle_use.consume 必须 > 0", item_id);
+        return false;
+    }
+
+    const auto scope_it = node.find("scope");
+    if (scope_it == node.end() || !scope_it->is_string()) {
+        spdlog::error("物品 '{}' 的 battle_use.scope 缺失或不是 string", item_id);
+        return false;
+    }
+    const auto scope = scopeFromString(scope_it->get<std::string>());
+    if (!scope.has_value()) {
+        spdlog::error("物品 '{}' 的 battle_use.scope 非法", item_id);
+        return false;
+    }
+    use.scope = *scope;
+
+    const auto effects_it = node.find("effects");
+    if (effects_it == node.end() || !effects_it->is_array() || effects_it->empty()) {
+        spdlog::error("物品 '{}' 的 battle_use.effects 缺失或不是非空数组", item_id);
+        return false;
+    }
+
+    for (const auto& effect_obj : *effects_it) {
+        if (!effect_obj.is_object()) {
+            spdlog::error("物品 '{}' 的 battle_use.effects 存在非 object 条目", item_id);
+            return false;
+        }
+
+        const auto type_it = effect_obj.find("type");
+        if (type_it == effect_obj.end() || !type_it->is_string()) {
+            spdlog::error("物品 '{}' 的 battle_use.effects 缺少 type", item_id);
+            return false;
+        }
+
+        const auto type = battleItemEffectTypeFromString(type_it->get<std::string>());
+        if (type == BattleItemEffectType::Unknown) {
+            spdlog::error("物品 '{}' 的 battle_use.effects 存在未知类型 '{}'", item_id, type_it->get<std::string>());
+            return false;
+        }
+
+        const auto amount_it = effect_obj.find("amount");
+        if (amount_it == effect_obj.end() || !amount_it->is_number_integer()) {
+            spdlog::error("物品 '{}' 的 battle_use.effects 缺少整数 amount", item_id);
+            return false;
+        }
+
+        const int amount = amount_it->get<int>();
+        if (amount <= 0) {
+            spdlog::error("物品 '{}' 的 battle_use.effects amount 必须 > 0", item_id);
+            return false;
+        }
+
+        use.effects.push_back(BattleItemEffect{
+            .type = type,
+            .amount = amount
+        });
+    }
+
+    out_use = std::move(use);
+    return true;
 }
 
 } // namespace
@@ -123,6 +208,7 @@ bool ItemCatalog::loadItemConfig(std::string_view file_path) {
 
         ItemData data;
         data.id_ = makeId(id_str);
+        data.id_str_ = id_str;
         data.display_name_ = item_obj.value("display_name", id_str);
 
         const std::string category_str = item_obj.value("category", "");
@@ -175,6 +261,14 @@ bool ItemCatalog::loadItemConfig(std::string_view file_path) {
             if (!use.effects.empty()) {
                 data.on_use_ = std::move(use);
             }
+        }
+
+        if (const auto battle_use_it = item_obj.find("battle_use"); battle_use_it != item_obj.end()) {
+            BattleItemUseConfig battle_use{};
+            if (!parseBattleUseConfig(id_str, *battle_use_it, battle_use)) {
+                return false;
+            }
+            data.battle_use_ = std::move(battle_use);
         }
 
         items_.insert_or_assign(data.id_, std::move(data));

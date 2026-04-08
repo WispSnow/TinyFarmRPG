@@ -18,7 +18,10 @@ class DataModelConstructor;
 }
 
 namespace game::data {
+class ItemCatalog;
 class RpgCatalog;
+struct BattleItemUseConfig;
+struct ItemData;
 struct SkillData;
 enum class Scope : std::uint8_t;
 } // namespace game::data
@@ -76,6 +79,7 @@ class BattleScene final : public engine::scene::Scene {
     };
 
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
+    const game::data::ItemCatalog* item_catalog_{nullptr};
     game::battle::BattleSession session_;
     FlowState state_{FlowState::WaitingForInput};
     MenuState menu_state_{MenuState::MainMenu};
@@ -141,13 +145,17 @@ private:
     void syncMenuFocus();
     [[nodiscard]] bool focusElementById(std::string_view element_id);
     void populateMainActions();
-    void enterListMenu(MenuState list_state);
     void populateSkillEntries(const game::battle::BattleUnit& actor);
+    void populateItemEntries();
     [[nodiscard]] const ListEntryViewModel* findListEntry(int entry_index) const;
     [[nodiscard]] bool isSkillEntryEnabled(const game::battle::BattleUnit& actor,
                                            const game::data::SkillData& skill) const;
     [[nodiscard]] Rml::String skillSubtitle(const game::battle::BattleUnit& actor,
                                             const game::data::SkillData& skill) const;
+    [[nodiscard]] const game::data::ItemData* findBattleItemByEntryId(std::string_view entry_id,
+                                                                      int* out_stock_count = nullptr) const;
+    [[nodiscard]] bool isItemEntryEnabled(int stock_count, const game::data::BattleItemUseConfig& use) const;
+    [[nodiscard]] Rml::String itemSubtitle(int stock_count, const game::data::BattleItemUseConfig& use) const;
     [[nodiscard]] bool requiresTargetSelection(game::data::Scope scope) const;
     [[nodiscard]] int firstEnabledListEntryIndex() const;
     [[nodiscard]] MenuState menuStateForActionDraftSource() const;
@@ -155,6 +163,7 @@ private:
     void handleMainAction(int entry_index);
     void handleListEntry(int entry_index);
     void handleSkillEntry(const ListEntryViewModel& entry);
+    void handleItemEntry(const ListEntryViewModel& entry);
     void handleTargetEntry(int entry_index);
     void submitAction(game::battle::BattleAction action);
     [[nodiscard]] bool isWaitingForActionInput() const;

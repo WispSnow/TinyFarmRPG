@@ -70,9 +70,11 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
+    EXPECT_NE(source.find("item_catalog_(session_options.item_catalog)"), std::string::npos);
     EXPECT_NE(source.find("populateSkillEntries"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::SkillList)"), std::string::npos);
-    EXPECT_NE(source.find("enterListMenu(MenuState::ItemList)"), std::string::npos);
+    EXPECT_NE(source.find("populateItemEntries"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(MenuState::ItemList)"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
 }
 
@@ -92,6 +94,23 @@ TEST(BattleSceneSmokeTest, WiresStage2SkillListWithoutSubmittingSkillAction) {
     EXPECT_NE(source.find("Target selection coming in Stage 4"), std::string::npos);
     EXPECT_NE(source.find("menuStateForActionDraftSource"), std::string::npos);
     EXPECT_EQ(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, WiresStage3ItemListWithoutSubmittingItemAction) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("session_.itemStocks()"), std::string::npos);
+    EXPECT_NE(source.find("item_catalog_->listItems()"), std::string::npos);
+    EXPECT_NE(source.find("findBattleItemByEntryId"), std::string::npos);
+    EXPECT_NE(source.find("selected_item_id = item->id_str_"), std::string::npos);
+    EXPECT_NE(source.find("Item selected. Resolution coming in Stage 4."), std::string::npos);
+    EXPECT_NE(source.find("remaining_item_stocks = session_.itemStocks()"), std::string::npos);
+    EXPECT_EQ(source.find("enterListMenu(MenuState::ItemList)"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {

@@ -41,6 +41,12 @@
             "source": [0, 64, 16, 16]
         }
     },
+    "consumables":{
+        "potion": {
+            "path": "assets/farm-rpg/Icons/Weapons/Books and Potions/Potions.png",
+            "source": [32, 96, 16, 16]
+        }
+    },
     "materials":{
         "timber": {
             "path": "assets/farm-rpg/Icons/Weapons/14.png",

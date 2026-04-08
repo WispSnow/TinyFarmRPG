@@ -216,6 +216,7 @@ TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
               BattleActionStatus::Applied);
 
     ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+    ASSERT_NE(session.findUnit(1), nullptr);
     const BattleActionResult item_result = session.submitAction(BattleAction{
         .type = BattleActionType::Item,
         .actor_id = 1,
@@ -223,6 +224,7 @@ TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
     });
     EXPECT_EQ(item_result.status, BattleActionStatus::Applied);
     EXPECT_EQ(item_result.outcome_after, BattleOutcome::Ongoing);
+    EXPECT_EQ(session.itemStocks().count(game::data::RpgCatalog::hashId("item.potion")), 0U);
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
 }
 

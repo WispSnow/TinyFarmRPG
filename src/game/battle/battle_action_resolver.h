@@ -8,11 +8,13 @@
 #include <functional>
 #include <random>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace game::data {
 class RpgCatalog;
 class ItemCatalog;
+struct BattleItemUseConfig;
 struct SkillData;
 enum class Scope : std::uint8_t;
 } // namespace game::data
@@ -46,6 +48,13 @@ public:
 
 private:
     [[nodiscard]] int nextPercentRoll();
+    [[nodiscard]] bool collectTargets(const BattleAction& action,
+                                      const BattleUnit& actor,
+                                      game::data::Scope scope,
+                                      TurnCore& turn_core,
+                                      std::vector<BattleUnit*>& out_targets,
+                                      std::string& out_error,
+                                      std::string_view action_label);
     [[nodiscard]] bool collectSkillTargets(const BattleAction& action,
                                            const BattleUnit& actor,
                                            const game::data::SkillData& skill,
@@ -56,6 +65,9 @@ private:
                            BattleUnit& target,
                            BattleRuntimeState::UnitRuntimeState& target_state,
                            BattleActionResult& result);
+    void applyBattleItemEffects(const game::data::BattleItemUseConfig& use,
+                                BattleUnit& target,
+                                BattleActionResult& result);
     [[nodiscard]] int nextEscapeRoll();
 };
 

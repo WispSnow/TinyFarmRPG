@@ -7,6 +7,7 @@
 #include <string>
 #include <cstdint>
 #include <entt/entity/entity.hpp>
+#include <unordered_map>
 #include <vector>
 
 namespace game::defs {
@@ -118,6 +119,7 @@ struct AsyncSaveCompletedEvent {
 struct BattleEndedEvent {
     game::battle::BattleOutcome outcome{game::battle::BattleOutcome::Ongoing};
     std::vector<game::battle::BattleUnit> final_units{};
+    std::unordered_map<entt::id_type, int> remaining_item_stocks{};
 };
 
 } // namespace game::defs

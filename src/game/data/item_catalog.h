@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/render/image.h"
+#include "game/data/rpg_types.h"
 #include "game/defs/constants.h"
 #include "game/defs/crop_defs.h"
 #include <entt/entity/entity.hpp>
@@ -39,8 +40,26 @@ struct ItemUseConfig {
     std::vector<ItemUseEffect> effects{};
 };
 
+enum class BattleItemEffectType {
+    RecoverHp,
+    RecoverMp,
+    Unknown
+};
+
+struct BattleItemEffect {
+    BattleItemEffectType type{BattleItemEffectType::Unknown};
+    int amount{0};
+};
+
+struct BattleItemUseConfig {
+    int consume{1};
+    game::data::Scope scope{game::data::Scope::None};
+    std::vector<BattleItemEffect> effects{};
+};
+
 struct ItemData {
     entt::id_type id_{entt::null};
+    std::string id_str_{};
     std::string display_name_{};
     std::string category_str_{};   ///< @brief 配置文件中的原始 category 字符串（用于UI展示）
     std::string description_{};    ///< @brief 配置文件中的 description（用于tooltip）
@@ -50,6 +69,7 @@ struct ItemData {
     game::defs::Tool tool_type_{game::defs::Tool::None};              ///< 仅 Tool 类别使用
     game::defs::CropType crop_type_{game::defs::CropType::Unknown};   ///< 仅 Crop 类别使用
     std::optional<ItemUseConfig> on_use_{};
+    std::optional<BattleItemUseConfig> battle_use_{};
 };
 
 class ItemCatalog final {
