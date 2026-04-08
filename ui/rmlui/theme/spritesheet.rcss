@@ -82,6 +82,12 @@
     item-seeds-potato-seed:     0px 64px 16px 16px;
 }
 
+/* --- 物品图标 (Icons/Weapons/Books and Potions/Potions.png) --- */
+@spritesheet ui-items-consumables {
+    src: ../../../assets/farm-rpg/Icons/Weapons/Books and Potions/Potions.png;
+    item-consumables-potion: 32px 96px 16px 16px;
+}
+
 /* --- 物品图标 (Icons/Weapons/14.png) --- */
 @spritesheet ui-items-materials {
     src: ../../../assets/farm-rpg/Icons/Weapons/14.png;

@@ -81,14 +81,19 @@ int BattleActionResolver::nextEscapeRoll() {
     return nextPercentRoll();
 }
 
-bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
-                                               const BattleUnit& actor,
-                                               const game::data::SkillData& skill,
-                                               TurnCore& turn_core,
-                                               std::vector<BattleUnit*>& out_targets,
-                                               std::string& out_error) {
+bool BattleActionResolver::collectTargets(const BattleAction& action,
+                                          const BattleUnit& actor,
+                                          const game::data::Scope scope,
+                                          TurnCore& turn_core,
+                                          std::vector<BattleUnit*>& out_targets,
+                                          std::string& out_error,
+                                          const std::string_view action_label) {
     out_targets.clear();
     out_error.clear();
+
+    const auto make_error = [action_label](const std::string_view reason) {
+        return std::string{action_label} + " " + std::string{reason};
+    };
 
     const auto first_match = [&turn_core](auto&& predicate) -> BattleUnit* {
         for (const auto unit_id : turn_core.turnOrder()) {
@@ -126,7 +131,7 @@ bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
         }
     };
 
-    switch (skill.scope_) {
+    switch (scope) {
         case game::data::Scope::Self: {
             push_single_target(turn_core.findUnitMutable(actor.id));
             break;
@@ -142,7 +147,7 @@ bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
             }
 
             if (!validate_target(target, game::data::Scope::OneEnemy)) {
-                out_error = "skill target is invalid";
+                out_error = make_error("target is invalid");
                 return false;
             }
             push_single_target(target);
@@ -157,7 +162,7 @@ bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
             }
 
             if (!validate_target(target, game::data::Scope::OneAlly)) {
-                out_error = "skill target is invalid";
+                out_error = make_error("target is invalid");
                 return false;
             }
             push_single_target(target);
@@ -188,16 +193,25 @@ bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
             break;
         }
         case game::data::Scope::None:
-            out_error = "skill scope is none";
+            out_error = make_error("scope is none");
             return false;
     }
 
     if (out_targets.empty()) {
-        out_error = "skill has no valid targets";
+        out_error = make_error("has no valid targets");
         return false;
     }
 
     return true;
+}
+
+bool BattleActionResolver::collectSkillTargets(const BattleAction& action,
+                                               const BattleUnit& actor,
+                                               const game::data::SkillData& skill,
+                                               TurnCore& turn_core,
+                                               std::vector<BattleUnit*>& out_targets,
+                                               std::string& out_error) {
+    return collectTargets(action, actor, skill.scope_, turn_core, out_targets, out_error, "skill");
 }
 
 void BattleActionResolver::applySkillEffects(const game::data::SkillData& skill,
@@ -260,6 +274,29 @@ void BattleActionResolver::applySkillEffects(const game::data::SkillData& skill,
             }
             case game::data::EffectType::AddItem:
             case game::data::EffectType::Unknown:
+                break;
+        }
+    }
+}
+
+void BattleActionResolver::applyBattleItemEffects(const game::data::BattleItemUseConfig& use,
+                                                  BattleUnit& target,
+                                                  BattleActionResult& result) {
+    for (const auto& effect : use.effects) {
+        switch (effect.type) {
+            case game::data::BattleItemEffectType::RecoverHp: {
+                const int before = target.hp;
+                target.hp = std::min(target.max_hp, target.hp + effect.amount);
+                result.hp_recovered += target.hp - before;
+                break;
+            }
+            case game::data::BattleItemEffectType::RecoverMp: {
+                const int before = target.mp;
+                target.mp = std::min(target.max_mp, target.mp + effect.amount);
+                result.mp_recovered += target.mp - before;
+                break;
+            }
+            case game::data::BattleItemEffectType::Unknown:
                 break;
         }
     }
@@ -445,16 +482,35 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                 result.failure_reason = "item does not exist";
                 return result;
             }
-            if (!item->on_use_) {
+            if (!item->battle_use_) {
                 result.failure_reason = "item cannot be used in battle";
                 return result;
             }
 
+            const auto& battle_use = *item->battle_use_;
             auto stock_it = runtime_state.item_stocks.find(item_id);
-            const int consume = std::max(1, item->on_use_->consume);
+            const int consume = std::max(1, battle_use.consume);
             if (stock_it == runtime_state.item_stocks.end() || stock_it->second < consume) {
                 result.failure_reason = "insufficient item stock";
                 return result;
+            }
+
+            if (battle_use.effects.empty()) {
+                result.failure_reason = "item has no battle effects";
+                return result;
+            }
+
+            std::vector<BattleUnit*> targets{};
+            if (!collectTargets(action, *actor, battle_use.scope, turn_core, targets, result.failure_reason, "item")) {
+                return result;
+            }
+
+            result.status = BattleActionStatus::Applied;
+            for (BattleUnit* target : targets) {
+                if (!target || !target->isAlive()) {
+                    continue;
+                }
+                applyBattleItemEffects(battle_use, *target, result);
             }
 
             stock_it->second -= consume;
@@ -462,18 +518,6 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                 runtime_state.item_stocks.erase(stock_it);
             }
 
-            for (const auto& effect : item->on_use_->effects) {
-                if (effect.type != game::data::ItemUseEffectType::AddItem) {
-                    // TODO(FND-010): support non-AddItem battle effects (RecoverHp/RecoverMp/State).
-                    continue;
-                }
-                if (effect.item_id == entt::null || effect.count <= 0) {
-                    continue;
-                }
-                runtime_state.item_stocks[effect.item_id] += effect.count;
-            }
-
-            result.status = BattleActionStatus::Applied;
             turn_core.refresh();
             if (turn_core.outcome() == BattleOutcome::Ongoing) {
                 (void)turn_core.advanceTurn();

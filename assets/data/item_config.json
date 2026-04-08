@@ -102,6 +102,24 @@
             "description": "A seed for producing potatoes"
         },
         {
+            "id": "potion",
+            "category": "consumable",
+            "icon_id": "consumables/potion",
+            "stack_limit": 99,
+            "battle_use": {
+                "consume": 1,
+                "scope": "one_ally",
+                "effects": [
+                    {
+                        "type": "recover_hp",
+                        "amount": 50
+                    }
+                ]
+            },
+            "display_name": "Potion",
+            "description": "Restores a small amount of HP in battle"
+        },
+        {
             "id": "material_timber",
             "category": "material",
             "icon_id": "materials/timber",

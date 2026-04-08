@@ -417,22 +417,22 @@ bool has_active_battle_item_stocks_{false};
 
 ## ToDo
 
-- [ ] 为 `ItemData` 增加原始 string id 字段
-- [ ] 新增并解析 `battle_use` schema
-- [ ] 为 demo item 配置至少一个战斗恢复物品
-- [ ] 确保 debug/test battle 运行时能拿到至少一个 battle item 以验证 `ItemList` 非空
-- [ ] 更新 `battle_catalog_fixture.h` 中的 `item.potion` 和依赖它的 resolver/session 测试
-- [ ] `BattleActionResolver` 改用 `battle_use_`，并支持 `RecoverHp / RecoverMp`
-- [ ] `BattleSession` 暴露只读 `itemStocks()`
-- [ ] `BattleEndedEvent` 携带 `remaining_item_stocks`
-- [ ] `BattleScene` 保存 `item_catalog_` 非 owning 指针
-- [ ] 实现 `ItemList` 的真实 `list_entries_` 构建
-- [ ] `queueItemAction()` populate 后直接 `setMenuState(MenuState::ItemList)`
-- [ ] 选择 enabled 物品时写入 `ActionDraft::selected_item_id`
-- [ ] 保持 Stage 3 UI 不直接提交 item `BattleAction`
-- [ ] `TargetSelect` 占位态 cancel 保持 `list_entries_` 与 `selected_item_id`
-- [ ] `GameScene` 保存 battle 初始库存并在 battle end 应用 delta
-- [ ] 补充 item catalog / resolver / session / GameScene / BattleScene smoke 测试
+- [x] 为 `ItemData` 增加原始 string id 字段
+- [x] 新增并解析 `battle_use` schema
+- [x] 为 demo item 配置至少一个战斗恢复物品
+- [x] 确保 debug/test battle 运行时能拿到至少一个 battle item 以验证 `ItemList` 非空
+- [x] 更新 `battle_catalog_fixture.h` 中的 `item.potion` 和依赖它的 resolver/session 测试
+- [x] `BattleActionResolver` 改用 `battle_use_`，并支持 `RecoverHp / RecoverMp`
+- [x] `BattleSession` 暴露只读 `itemStocks()`
+- [x] `BattleEndedEvent` 携带 `remaining_item_stocks`
+- [x] `BattleScene` 保存 `item_catalog_` 非 owning 指针
+- [x] 实现 `ItemList` 的真实 `list_entries_` 构建
+- [x] `queueItemAction()` populate 后直接 `setMenuState(MenuState::ItemList)`
+- [x] 选择 enabled 物品时写入 `ActionDraft::selected_item_id`
+- [x] 保持 Stage 3 UI 不直接提交 item `BattleAction`
+- [x] `TargetSelect` 占位态 cancel 保持 `list_entries_` 与 `selected_item_id`
+- [x] `GameScene` 保存 battle 初始库存并在 battle end 应用 delta
+- [x] 补充 item catalog / resolver / session / GameScene / BattleScene smoke 测试
 
 ## 完成标准
 

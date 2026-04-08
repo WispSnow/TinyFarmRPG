@@ -5,6 +5,7 @@
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/data/rpg_types.h"
@@ -93,6 +94,7 @@ BattleScene::BattleScene(std::string_view name,
                          game::battle::BattleSessionOptions session_options)
     : engine::scene::Scene(name, context),
       rpg_catalog_(session_options.rpg_catalog),
+      item_catalog_(session_options.item_catalog),
       session_(std::move(units), std::move(session_options)) {
 }
 
@@ -599,12 +601,6 @@ void BattleScene::populateMainActions() {
     };
 }
 
-void BattleScene::enterListMenu(MenuState list_state) {
-    list_entries_.clear();
-    list_entry_cursor_ = -1;
-    setMenuState(list_state);
-}
-
 void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
     list_entries_.clear();
     list_entry_cursor_ = -1;
@@ -638,6 +634,61 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
     list_entry_cursor_ = firstEnabledListEntryIndex();
 }
 
+void BattleScene::populateItemEntries() {
+    list_entries_.clear();
+    list_entry_cursor_ = -1;
+    list_empty_text_ = "No battle items available";
+
+    if (!item_catalog_) {
+        spdlog::warn("BattleScene: Item catalog 不可用，无法生成物品列表。");
+        return;
+    }
+
+    const auto& item_stocks = session_.itemStocks();
+    if (item_stocks.empty()) {
+        return;
+    }
+
+    auto items = item_catalog_->listItems();
+    std::sort(items.begin(), items.end(), [](const game::data::ItemData* lhs, const game::data::ItemData* rhs) {
+        const std::string_view lhs_label = lhs && !lhs->display_name_.empty()
+            ? std::string_view{lhs->display_name_}
+            : (lhs ? std::string_view{lhs->id_str_} : std::string_view{});
+        const std::string_view rhs_label = rhs && !rhs->display_name_.empty()
+            ? std::string_view{rhs->display_name_}
+            : (rhs ? std::string_view{rhs->id_str_} : std::string_view{});
+        if (lhs_label == rhs_label) {
+            return (lhs ? lhs->id_str_ : std::string{}) < (rhs ? rhs->id_str_ : std::string{});
+        }
+        return lhs_label < rhs_label;
+    });
+
+    int entry_index = 0;
+    for (const auto* item : items) {
+        if (!item || item->id_str_.empty() || !item->battle_use_) {
+            continue;
+        }
+
+        const auto stock_it = item_stocks.find(item->id_);
+        if (stock_it == item_stocks.end() || stock_it->second <= 0) {
+            continue;
+        }
+
+        const std::string_view label = item->display_name_.empty()
+            ? std::string_view{item->id_str_}
+            : std::string_view{item->display_name_};
+        list_entries_.push_back(ListEntryViewModel{
+            .entry_index = entry_index++,
+            .entry_id = item->id_str_,
+            .label = makeRmlString(label),
+            .sublabel = itemSubtitle(stock_it->second, *item->battle_use_),
+            .enabled = isItemEntryEnabled(stock_it->second, *item->battle_use_)
+        });
+    }
+
+    list_entry_cursor_ = firstEnabledListEntryIndex();
+}
+
 const BattleScene::ListEntryViewModel* BattleScene::findListEntry(int entry_index) const {
     const auto it = std::find_if(
         list_entries_.begin(),
@@ -658,6 +709,39 @@ Rml::String BattleScene::skillSubtitle(const game::battle::BattleUnit& actor,
     std::string subtitle = "MP " + std::to_string(skill.mp_cost_);
     if (actor.mp < skill.mp_cost_) {
         subtitle += " / Low MP";
+    }
+    return subtitle;
+}
+
+const game::data::ItemData* BattleScene::findBattleItemByEntryId(std::string_view entry_id,
+                                                                 int* out_stock_count) const {
+    if (out_stock_count) {
+        *out_stock_count = 0;
+    }
+    if (!item_catalog_ || entry_id.empty()) {
+        return nullptr;
+    }
+
+    const entt::id_type item_id = game::data::RpgCatalog::hashId(entry_id);
+    if (out_stock_count) {
+        if (const auto stock_it = session_.itemStocks().find(item_id); stock_it != session_.itemStocks().end()) {
+            *out_stock_count = stock_it->second;
+        }
+    }
+    return item_catalog_->findItem(item_id);
+}
+
+bool BattleScene::isItemEntryEnabled(int stock_count, const game::data::BattleItemUseConfig& use) const {
+    return stock_count >= std::max(1, use.consume) && use.scope != game::data::Scope::None;
+}
+
+Rml::String BattleScene::itemSubtitle(int stock_count, const game::data::BattleItemUseConfig& use) const {
+    std::string subtitle = "x" + std::to_string(std::max(0, stock_count));
+    if (use.consume > 1) {
+        subtitle += " / Use " + std::to_string(use.consume);
+    }
+    if (stock_count < std::max(1, use.consume)) {
+        subtitle += " / Low Stock";
     }
     return subtitle;
 }
@@ -750,6 +834,8 @@ void BattleScene::handleListEntry(int entry_index) {
 
     if (menu_state_ == MenuState::SkillList) {
         handleSkillEntry(*entry);
+    } else if (menu_state_ == MenuState::ItemList) {
+        handleItemEntry(*entry);
     }
 }
 
@@ -779,6 +865,30 @@ void BattleScene::handleSkillEntry(const ListEntryViewModel& entry) {
     }
 
     menu_hint_ = "Skill selected. Resolution coming in Stage 4.";
+    document_controller_.markDirty("menu_hint");
+}
+
+void BattleScene::handleItemEntry(const ListEntryViewModel& entry) {
+    int stock_count = 0;
+    const auto* item = findBattleItemByEntryId(entry.entry_id, &stock_count);
+    if (!item || !item->battle_use_ || !isItemEntryEnabled(stock_count, *item->battle_use_)) {
+        return;
+    }
+
+    action_draft_ = ActionDraft{
+        .pending_type = game::battle::BattleActionType::Item,
+        .selected_skill_id = std::nullopt,
+        .selected_item_id = item->id_str_,
+        .selected_target_id = std::nullopt,
+        .requires_target_selection = requiresTargetSelection(item->battle_use_->scope)
+    };
+
+    if (action_draft_.requires_target_selection) {
+        enterTargetPlaceholder("Target selection coming in Stage 4");
+        return;
+    }
+
+    menu_hint_ = "Item selected. Resolution coming in Stage 4.";
     document_controller_.markDirty("menu_hint");
 }
 
@@ -989,7 +1099,8 @@ void BattleScene::queueItemAction() {
         .pending_type = game::battle::BattleActionType::Item,
         .requires_target_selection = false
     };
-    enterListMenu(MenuState::ItemList);
+    populateItemEntries();
+    setMenuState(MenuState::ItemList);
 }
 
 void BattleScene::queueGuardAction() {
@@ -1074,6 +1185,7 @@ void BattleScene::requestBattleEnd() {
     game::defs::BattleEndedEvent event{};
     event.outcome = session_.outcome();
     event.final_units = session_.units();
+    event.remaining_item_stocks = session_.itemStocks();
     context_.getDispatcher().trigger(event);
 
     requestPopScene();

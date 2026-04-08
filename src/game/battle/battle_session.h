@@ -36,6 +36,7 @@ public:
     [[nodiscard]] const BattleUnit* findUnit(BattleUnitId id) const { return turn_core_.findUnit(id); }
     [[nodiscard]] std::optional<BattleUnitId> currentActorId() const { return turn_core_.currentActorId(); }
     [[nodiscard]] BattleOutcome outcome() const { return turn_core_.outcome(); }
+    [[nodiscard]] const std::unordered_map<entt::id_type, int>& itemStocks() const { return runtime_state_.item_stocks; }
     [[nodiscard]] BattleSnapshot snapshot() const;
 
     [[nodiscard]] BattleActionResult submitAction(const BattleAction& action);

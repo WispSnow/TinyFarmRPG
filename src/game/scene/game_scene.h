@@ -6,8 +6,11 @@
 
 #include <glm/vec2.hpp>
 
+#include <entt/core/fwd.hpp>
+
 #include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace game::data {
     struct GameTime;
@@ -55,6 +58,8 @@ class GameScene : public engine::scene::Scene {
     std::unique_ptr<game::ui::GameInputPromptOverlay> input_prompt_overlay_{};
     glm::vec2 previous_camera_position_{0.0f, 0.0f};
     bool has_previous_camera_position_{false};
+    std::unordered_map<entt::id_type, int> active_battle_initial_item_stocks_{};
+    bool has_active_battle_item_stocks_{false};
 
 public:
     GameScene(std::string_view name, engine::core::Context& context,
@@ -88,6 +93,7 @@ private:
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
+    void applyBattleItemStockDelta(const std::unordered_map<entt::id_type, int>& remaining_item_stocks);
 };
 
 } // namespace game::scene

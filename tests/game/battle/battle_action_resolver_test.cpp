@@ -387,13 +387,15 @@ TEST(BattleActionResolverTest, SkillConsumesMpAndRejectsWhenInsufficient) {
     EXPECT_NE(second_cast.failure_reason.find("mp"), std::string::npos);
 }
 
-TEST(BattleActionResolverTest, ItemConsumesStockAndTriggersOnUseEffects) {
+TEST(BattleActionResolverTest, ItemConsumesStockAndRecoversHp) {
     const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_fixture");
 
     game::data::ItemCatalog item_catalog;
     ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));
 
-    TurnCore turn_core(makeUnits());
+    auto units = makeUnits();
+    units[0].hp = 70;
+    TurnCore turn_core(std::move(units));
     BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
     runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.potion")] = 1;
 
@@ -409,9 +411,111 @@ TEST(BattleActionResolverTest, ItemConsumesStockAndTriggersOnUseEffects) {
     }, turn_core, runtime_state);
 
     EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.hp_recovered, 50);
+    const auto* hero = turn_core.findUnit(1);
+    ASSERT_NE(hero, nullptr);
+    EXPECT_EQ(hero->hp, 120);
     EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{2});
-    EXPECT_EQ(runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.empty_bottle")], 2);
     EXPECT_EQ(runtime_state.item_stocks.count(game::data::RpgCatalog::hashId("item.potion")), 0U);
+}
+
+TEST(BattleActionResolverTest, ItemCanRecoverMp) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_mp_fixture");
+
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));
+
+    auto units = makeUnits();
+    units[0].mp = 2;
+    units[0].max_mp = 12;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.ether")] = 1;
+
+    BattleActionResolver resolver{
+        BattleActionResolver::Dependencies{
+            .rpg_catalog = nullptr,
+            .item_catalog = &item_catalog}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Item,
+        .actor_id = 1,
+        .item_id = "item.ether"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.mp_recovered, 10);
+    const auto* hero = turn_core.findUnit(1);
+    ASSERT_NE(hero, nullptr);
+    EXPECT_EQ(hero->mp, 12);
+    EXPECT_EQ(runtime_state.item_stocks.count(game::data::RpgCatalog::hashId("item.ether")), 0U);
+}
+
+TEST(BattleActionResolverTest, ItemRejectsWithoutStockOrValidTargetAndDoesNotConsume) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_reject_fixture");
+
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));
+
+    auto units = makeUnits();
+    units[0].hp = 70;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.potion")] = 1;
+
+    BattleActionResolver resolver{
+        BattleActionResolver::Dependencies{
+            .rpg_catalog = nullptr,
+            .item_catalog = &item_catalog}};
+
+    const BattleActionResult invalid_target = resolver.resolve(BattleAction{
+        .type = BattleActionType::Item,
+        .actor_id = 1,
+        .target_id = 101,
+        .item_id = "item.potion"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(invalid_target.status, BattleActionStatus::Rejected);
+    EXPECT_NE(invalid_target.failure_reason.find("target"), std::string::npos);
+    EXPECT_EQ(runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.potion")], 1);
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{1});
+
+    runtime_state.item_stocks.clear();
+    const BattleActionResult insufficient_stock = resolver.resolve(BattleAction{
+        .type = BattleActionType::Item,
+        .actor_id = 1,
+        .item_id = "item.potion"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(insufficient_stock.status, BattleActionStatus::Rejected);
+    EXPECT_NE(insufficient_stock.failure_reason.find("stock"), std::string::npos);
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{1});
+}
+
+TEST(BattleActionResolverTest, ItemRejectsWhenBattleUseIsMissing) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_no_battle_use_fixture");
+
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(fixture.items.string()));
+
+    TurnCore turn_core(makeUnits());
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.empty_bottle")] = 1;
+
+    BattleActionResolver resolver{
+        BattleActionResolver::Dependencies{
+            .rpg_catalog = nullptr,
+            .item_catalog = &item_catalog}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Item,
+        .actor_id = 1,
+        .item_id = "item.empty_bottle"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Rejected);
+    EXPECT_NE(result.failure_reason.find("battle"), std::string::npos);
+    EXPECT_EQ(runtime_state.item_stocks[game::data::RpgCatalog::hashId("item.empty_bottle")], 1);
 }
 
 TEST(BattleActionResolverTest, GuardReducesIncomingDamage) {

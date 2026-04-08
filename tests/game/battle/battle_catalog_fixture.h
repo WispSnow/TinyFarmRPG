@@ -125,11 +125,25 @@ inline CatalogFixturePaths createCatalogFixture(std::string_view prefix) {
       "id": "item.potion",
       "display_name": "Potion",
       "category": "consumable",
-      "icon_id": "consumable/potion",
-      "on_use": {
+      "icon_id": "consumables/potion",
+      "battle_use": {
         "consume": 1,
+        "scope": "one_ally",
         "effects": [
-          { "type": "add_item", "id": "item.empty_bottle", "count": 2 }
+          { "type": "recover_hp", "amount": 50 }
+        ]
+      }
+    },
+    {
+      "id": "item.ether",
+      "display_name": "Ether",
+      "category": "consumable",
+      "icon_id": "consumables/ether",
+      "battle_use": {
+        "consume": 1,
+        "scope": "one_ally",
+        "effects": [
+          { "type": "recover_mp", "amount": 10 }
         ]
       }
     },

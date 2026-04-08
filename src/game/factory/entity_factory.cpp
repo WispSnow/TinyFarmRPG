@@ -181,6 +181,12 @@ entt::entity EntityFactory::createActor(const entt::id_type actor_name_id, const
                 hotbar.setSlotMapping(static_cast<int>(i), static_cast<int>(i));
             }
         }
+
+        constexpr std::size_t battle_item_slot = 5;
+        if (battle_item_slot < inventory.slots_.size()) {
+            inventory.slots_[battle_item_slot].item_id_ = "potion"_hs;
+            inventory.slots_[battle_item_slot].count_ = 3;
+        }
     }
     else {
         registry_.emplace<game::component::NPCTag>(entity);
