@@ -45,7 +45,14 @@ TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndUnifie
               std::string::npos);
     EXPECT_NE(source.find(".tf-input-mouse .tf-icon-button:hover,\n.tf-input-nav .tf-icon-button:focus"),
               std::string::npos);
+    EXPECT_NE(source.find(".tf-input-mouse .tf-button-primary:hover:active,\n.tf-input-nav .tf-button-primary:focus:active"),
+              std::string::npos);
+    EXPECT_NE(source.find(".tf-input-mouse .tf-button-secondary:hover:active,\n.tf-input-nav .tf-button-secondary:focus:active"),
+              std::string::npos);
+    EXPECT_NE(source.find(".tf-input-mouse .tf-icon-button:hover:active,\n.tf-input-nav .tf-icon-button:focus:active"),
+              std::string::npos);
     EXPECT_NE(source.find("transform: translateY(-1dp);"), std::string::npos);
+    EXPECT_NE(source.find("transform: translateY(1dp);"), std::string::npos);
     EXPECT_NE(source.find("image-color: #fce97fff;"), std::string::npos);
     EXPECT_EQ(source.find("box-shadow:"), std::string::npos);
 
@@ -54,6 +61,8 @@ TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndUnifie
     EXPECT_NE(nav_source.find(".tf-input-mouse .tf-focus-ring-gold:hover,\n.tf-input-nav .tf-focus-ring-gold:focus"),
               std::string::npos);
     EXPECT_NE(nav_source.find(".tf-input-mouse .tf-focus-ring-danger:hover,\n.tf-input-nav .tf-focus-ring-danger:focus"),
+              std::string::npos);
+    EXPECT_NE(nav_source.find(".tf-input-mouse .tf-focus-ring-gold:hover:active,\n.tf-input-nav .tf-focus-ring-gold:focus:active"),
               std::string::npos);
     EXPECT_NE(nav_source.find("image-color: #fce97fff;"), std::string::npos);
     EXPECT_EQ(nav_source.find("box-shadow:"), std::string::npos);
