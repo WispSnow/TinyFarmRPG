@@ -20,7 +20,14 @@
 同时，当前项目里已经有两类可直接复用的基础：
 
 - `InputContext::Battle` 已包含 `menu_left / menu_right / menu_up / menu_down / menu_confirm / menu_cancel`
-- `InventoryMenuScene` / `SaveSlotSelectScene` 已演示了 `RegisterStruct<T>() + RegisterArray<>() + data-for` 的 RmlUi 列表绑定模式
+- `InventoryMenuScene` / `SaveSlotSelectScene` 已演示了 `RmlDocumentController + RegisterStruct<T>() + RegisterArray<>() + data-for` 的 RmlUi 列表绑定模式
+
+RmlUi 集成现状需要在本阶段直接遵守：
+
+- 生产场景不再直接持有 `RmlDataBridge`，也不直接调用 `loadRmlDocument()` / `unloadAllRmlDocuments()`
+- `BattleScene` 应继续通过 `engine::ui::rmlui::RmlDocumentController` 管理 data model、事件、文档加载、脏标记与卸载
+- 当前 `BattleScene::initUI()` 已使用 `RmlDocumentController`，但尚未传入 `Rml::DataTypeRegister`；涉及列表绑定时，需要参考 `InventoryMenuScene` / `SaveSlotSelectScene`，为 `BattleScene` 新增 `Rml::DataTypeRegister` 与 `data_types_registered_`，并改为通过 `document_controller_.createModel(MODEL_NAME, &type_register_)` 创建模型
+- 通过 `data-if` 隐藏包含 `data-for` 的面板时，不要在同一帧清空 backing vector；先切显隐并 mark dirty，避免 RmlUi 短暂访问旧 `data-for` 实例造成数组越界警告
 
 因此，Stage 1 的目标不是重写战斗流程，也不是接真实技能/物品数据，而是先把 `BattleScene` 改造成能承载“主菜单 -> 列表 -> 目标选择”层级的骨架。
 
@@ -109,14 +116,14 @@ Stage 1 的核心不是“先塞数据”，而是先把可绑定结构搭出来
 建议 ViewModel 分三类：
 
 - `MainActionViewModel`
-  - 字段建议：`action_id / label / enabled`
+  - 字段建议：`action_id / entry_index / label / enabled`
 
 - `ListEntryViewModel`
-  - 字段建议：`entry_id / label / sublabel / enabled`
+  - 字段建议：`entry_index / entry_id / label / sublabel / enabled`
   - `Skill` 与 `Item` 共用，先不要拆成两套
 
 - `TargetEntryViewModel`
-  - 字段建议：`unit_id / label / enabled / is_ally / is_dead`
+  - 字段建议：`entry_index / unit_id / label / enabled / is_ally / is_dead`
 
 绑定约束要写死：
 
@@ -126,34 +133,61 @@ Stage 1 的核心不是“先塞数据”，而是先把可绑定结构搭出来
 
 绑定方式约定如下：
 
+- `BattleScene` 持有 `RmlDocumentController document_controller_`
+- `BattleScene` 持有 `Rml::DataTypeRegister type_register_` 与 `bool data_types_registered_`
+- `document_controller_.attach(runtime, instanceId())`
+- `document_controller_.createModel(MODEL_NAME, &type_register_)`
 - `constructor.RegisterStruct<T>()` 注册字段
 - `constructor.RegisterArray<decltype(vec_)>()` 注册数组
 - `constructor.Bind("main_actions", &main_actions_)`
 - `constructor.Bind("list_entries", &list_entries_)`
 - `constructor.Bind("target_entries", &target_entries_)`
+- `document_controller_.bindEvent(...)` / `bindSimpleEvent(...)` 绑定 RML data event
+- `document_controller_.load(DOCUMENT_PATH)` 加载文档
+- 通过 `document_controller_.markDirty(...)` / `markAllDirty()` 刷新绑定
 - RML 中通过 `data-for="entry : list_entries"` 循环渲染
+
+不再使用的旧路径：
+
+- 不在 `BattleScene` 中直接持有 `RmlDataBridge`
+- 不直接调用 `Scene::loadRmlDocument()` / `Scene::unloadAllRmlDocuments()`
+- 不通过旧的 `data-command` 或自定义 event bridge 做生产 UI 事件
 
 视觉选中态的第一版建议：
 
-- 先依赖 `:focus` 伪类与现有导航焦点
+- 先依赖 `:focus` 伪类与程序化设置的导航焦点
 - 不把 `selected` 作为 Stage 1 的强制字段
 - 只有当后续确认需要“焦点”和“已选值”分离时，再补 `selected`
 
-### 4. Cancel / Back 应走输入动作，而不是隐藏按钮
+### 4. 菜单输入由 BattleScene 自主管理
 
 这一点要在 Stage 1 就锁定。
 
 推荐方案：
 
-- `Confirm` 继续走现有按钮点击与 `menu_confirm`
+- 鼠标点击继续走 RML 的 `data-event-click`
+- 键盘 / 手柄方向移动由 `BattleScene` 监听 `menu_up / menu_down / menu_left / menu_right`
+- 键盘 / 手柄确认由 `BattleScene` 监听 `menu_confirm`
 - `Cancel / Back` 统一走 `InputManager` 的 `menu_cancel`
-- 由 `BattleScene` 自己监听或轮询 `menu_cancel`，而不是在 RML 里塞隐藏按钮
+- `BattleScene` 自己维护当前菜单光标，并程序化调用当前条目的 `Focus()`
+- 不在 RML 里塞隐藏按钮，也不依赖 RmlUi 原生方向键导航作为 Stage 1 的主路径
 
 原因：
 
-- `Cancel` 本质是场景输入动作，不是具体 UI 元素点击
-- 当前 `InputContext::Battle` 已存在 `menu_cancel`
+- `Direction` / `Confirm` / `Cancel` 本质是场景输入动作，不是具体 UI 元素点击
+- 当前 `InputContext::Battle` 已存在 `menu_up/down/left/right/confirm/cancel`
+- `InputManager` 会在 `Battle` / `Menu` / `Dialogue` 这类菜单上下文中抑制 `menu_up/down/left/right/confirm/cancel` 对应的键盘事件转发给 RmlUi；即使 RML 元素有 `tab-index: auto` 与 `nav-*`，键盘方向导航也不会自然到达 RmlUi
 - 这条路径与 `PauseMenuScene`、`InventoryMenuScene` 等场景更一致
+
+本阶段锁定的实现路径是“自主管理光标”，而不是查询 RmlUi 当前焦点：
+
+- `BattleScene` 持有每层菜单的光标索引，例如 `main_action_cursor_ / list_entry_cursor_ / target_entry_cursor_`
+- 进入某个 `MenuState` 时，把对应光标 clamp 到第一个可用条目；空列表使用 `-1` 或 `std::optional<int>` 表示无可确认条目
+- `menu_up/down/left/right` 根据当前 `MenuState` 移动对应光标，并跳过 disabled 条目
+- 移动后通过稳定元素 id 程序化调用 `element->Focus()`，例如主菜单、列表、目标项都用 `entry_index` 或 `it_index` 生成可预测 id
+- `menu_confirm` 根据当前 `MenuState` 和光标索引从 `main_actions_ / list_entries_ / target_entries_` 中读取条目并提交，不通过 `document()->GetFocusLeafNode()` 反推业务选择
+- 鼠标点击条目的 `data-event-click` 也应进入同一套选择辅助函数，并同步更新对应光标，避免鼠标与键盘状态分叉
+- `tf-nav-auto` / `nav.rcss` 仍需保留，用于让元素可聚焦、复用焦点样式，并给后续可能的原生导航路径留空间；但 Stage 1 不把 RmlUi 原生 `nav-*` 作为键盘导航依赖
 
 状态回退规则：
 
@@ -190,6 +224,14 @@ Stage 1 的核心不是“先塞数据”，而是先把可绑定结构搭出来
 
 Stage 1 不追求最终视觉稿，但要先把结构改成能支持后续迭代的骨架。
 
+导航基础也应在 Stage 1 一起补齐，而不是留到 Stage 5：
+
+- `battle.rml` 引入 `../theme/nav.rcss`
+- `body` 使用 `tf-screen-root tf-nav-root`
+- 可聚焦条目使用 `tf-nav-auto`，或继续使用包含 `tab-index: auto` / `nav-*` 的共享按钮类
+- 三层面板切换后，需要确保隐藏面板不会参与焦点
+- 由于 `Battle` 上下文会抑制键盘导航事件转发给 RmlUi，`nav-*` 在 Stage 1 主要作为可聚焦与样式骨架；实际方向移动由 `BattleScene` 的 `menu_up/down/left/right` 光标逻辑驱动
+
 推荐结构：
 
 - `#battle-main-menu`
@@ -204,6 +246,7 @@ Stage 1 不追求最终视觉稿，但要先把结构改成能支持后续迭代
 - 同屏只显示一层主交互面板
 - 三个面板用 `data-if` 控制显隐，而不是只靠 class 切换
 - 这样隐藏面板不会继续参与导航焦点，也更符合“菜单层互斥”的语义
+- 若退出面板时需要替换 `list_entries_` / `target_entries_`，先隐藏 `data-if` 子树并 mark dirty，不要同帧清空数组
 
 Stage 1 的占位行为也应明确：
 
@@ -254,9 +297,19 @@ Stage 1 的占位行为也应明确：
 
 新增动作草稿结构、主菜单/列表/目标三类 ViewModel，以及菜单标题、提示、返回提示等绑定字段。
 
+同时新增 `Rml::DataTypeRegister type_register_` 与 `data_types_registered_`，把当前 `BattleScene::initUI()` 的 `createModel(MODEL_NAME)` 改成 `createModel(MODEL_NAME, &type_register_)`，这是 Stage 1 新增列表绑定的必要改动。
+
 ### Step 3: 建立列表绑定骨架与输入捕获路径
 
-为 `main_actions_ / list_entries_ / target_entries_` 建立 `RegisterStruct<T>()`、`RegisterArray<>()` 与 `Bind()` 接线；同时把 `menu_cancel` 的场景输入处理接入 `BattleScene`。
+为 `main_actions_ / list_entries_ / target_entries_` 建立 `RegisterStruct<T>()`、`RegisterArray<>()` 与 `Bind()` 接线；同时把 `menu_up / menu_down / menu_left / menu_right / menu_confirm / menu_cancel` 的场景输入处理接入 `BattleScene`。
+
+本阶段选用自主管理光标方案：
+
+- 不通过 `document()->GetFocusLeafNode()` 反推当前业务项
+- `BattleScene` 维护每层菜单光标索引
+- 方向动作移动索引并调用当前 RML 元素 `Focus()`
+- 确认动作根据索引读取 ViewModel，再调用统一的选择/提交辅助函数
+- 场景 `clean()` / 析构前断开所有 `menu_*` action listener，避免场景弹出后仍触发回调
 
 ### Step 4: 重构输入期菜单流转
 
@@ -272,23 +325,40 @@ Stage 1 的占位行为也应明确：
 
 把当前固定按钮区升级为主菜单 / 列表 / 目标三层容器；面板使用 `data-if` 互斥显示，并为空列表预留占位文案区域。
 
+同时补齐 RmlUi 导航基础：
+
+- 引入 `../theme/nav.rcss`
+- `body` 增加 `tf-nav-root`
+- 新增列表/目标条目使用 `tf-nav-auto` 或共享按钮类
+- 验证隐藏面板不参与焦点
+- 为 `data-for` 生成的条目设置稳定 id，方便 `BattleScene` 根据当前光标调用 `Focus()`
+
 ### Step 6: 补充结构性测试
 
 至少补两类验证：
 
 - `BattleScene` 仍保留现有顶层 `FlowState`
 - `Skill` / `Item` 可进入空列表面板，并能通过 `menu_cancel` 返回 `MainMenu`
+- `battle.rml` 已引入 `nav.rcss` 并使用 `tf-nav-root`
+- `BattleScene` 使用 `RmlDocumentController + Rml::DataTypeRegister`，不回退到直接 `RmlDataBridge` 或 `loadRmlDocument()`
+- `menu_up/down/left/right/confirm/cancel` 有明确的场景输入监听与断开路径
+- `menu_confirm` 不依赖 `GetFocusLeafNode()` 反推选择，而是通过 `BattleScene` 自己维护的光标索引提交
 
 ## ToDo
 
 - [ ] 定义 `MenuState`，并明确其只在 `FlowState::WaitingForInput` 内流转
 - [ ] 定义动作草稿结构，并补上 `requires_target_selection`
 - [ ] 定义 `MainActionViewModel / ListEntryViewModel / TargetEntryViewModel`
-- [ ] 按 RmlUi 约束完成 `RegisterStruct<T>() + RegisterArray<>() + Bind()` 设计
+- [ ] 按当前 RmlUi 集成方式完成 `RmlDocumentController + Rml::DataTypeRegister + RegisterStruct<T>() + RegisterArray<>() + Bind()` 设计
+- [ ] 将当前 `BattleScene::initUI()` 的 `createModel(MODEL_NAME)` 改为 `createModel(MODEL_NAME, &type_register_)`
 - [ ] 为 `BattleScene` 增加 `menu_title / menu_hint / back_hint / main_actions / list_entries / target_entries` 等绑定字段
-- [ ] 将 `menu_cancel` 明确接入 `BattleScene`，作为唯一的 `Cancel / Back` 输入路径
+- [ ] 为 `BattleScene` 增加主菜单 / 列表 / 目标选择的光标索引
+- [ ] 将 `menu_up/down/left/right/confirm/cancel` 明确接入 `BattleScene`，作为键盘/手柄移动、确认与返回路径
+- [ ] 鼠标 `data-event-click` 与键盘/手柄确认复用同一套选择辅助函数，并同步光标索引
 - [ ] 把 `Skill` / `Item` 从直接提交改成进入空列表占位态
 - [ ] 重构 `battle.rml/rcss` 为主菜单 / 列表 / 目标三层骨架，并用 `data-if` 控制显隐
+- [ ] 为 `battle.rml` 补齐 `nav.rcss` / `tf-nav-root` / 可聚焦条目的导航类和稳定元素 id
+- [ ] 避免隐藏 `data-if + data-for` 面板时同帧清空 backing vector
 - [ ] 补充场景级 smoke / 接线测试，验证进入列表与返回主菜单的闭环
 
 ## 备注
@@ -299,6 +369,9 @@ Stage 1 的完成标准是：
 - 新增 `MenuState`，且只在 `WaitingForInput` 内工作
 - `BattleScene` data model 可以绑定至少一组列表型 ViewModel
 - `Skill` / `Item` 进入各自空列表面板时，UI 可显示占位文案
+- 鼠标点击走 `data-event-click`，键盘/手柄方向与确认走 `menu_up/down/left/right/confirm`
 - `menu_cancel` 可以把 `SkillList / ItemList / TargetSelect` 正确退回上一层
-- 三个菜单面板互斥显示，隐藏面板不参与导航焦点
+- `battle.rml` 已具备共享导航主题与 `tf-nav-root`
+- `BattleScene` 通过自维护光标索引确定当前选中项，并程序化同步 RmlUi 焦点
+- 三个菜单面板互斥显示，隐藏面板不参与焦点
 - 本阶段仍不要求真实技能、物品、目标数据接线

@@ -8,6 +8,7 @@
 - `BattleSession` / `BattleActionResolver` / `TurnCore` 已形成稳定的领域闭环
 - `RpgCatalog` 已支持技能数据加载与查表
 - 背包 / 快捷栏 / 存档系统已可提供后续物品接线基础
+- RmlUi 生产界面已统一为 `RmlDocumentController` 管理文档、data model、事件绑定和脏标记
 
 当前真正缺失的是战斗菜单这一层的“可玩化接线”：
 
@@ -64,6 +65,9 @@
 - 现有 `BattleScene` 的 6 段式战斗流程状态机保持不变
 - 菜单层级状态只作为 `FlowState::WaitingForInput` 内部的子状态机
 - 不把“主菜单 / 技能列表 / 物品列表 / 目标选择”提升为顶层战斗流程状态
+- RmlUi 接线遵循当前 `RmlDocumentController + Rml::DataTypeRegister` 路径，不回退到直接持有 `RmlDataBridge` 或调用 `loadRmlDocument()` / `unloadAllRmlDocuments()`
+- 键盘 / 手柄的 `menu_up/down/left/right/confirm/cancel` 作为场景输入动作处理；鼠标点击仍走 RML `data-event-click`
+- 由于 `Battle` 上下文会抑制菜单导航键盘事件转发给 RmlUi，Stage 1 采用 `BattleScene` 自主管理光标并程序化 `Focus()` 的方案，不依赖 RmlUi 原生方向键导航
 
 ## 阶段索引
 
@@ -80,14 +84,19 @@
 - 定义技能/物品/目标候选的 ViewModel 结构与 RmlUi 列表绑定约束
 - 定义当前动作选择上下文
 - 明确 `Cancel / Back / Confirm` 的状态流
+- 明确 `RmlDocumentController + Rml::DataTypeRegister` 的 data model 注册路径
+- 明确 `battle.rml` 需要引入 `nav.rcss` 与 `tf-nav-root`
+- 明确 `data-if + data-for` 面板隐藏时不能同帧清空 backing vector
+- 明确 `menu_up/down/left/right/confirm` 的场景输入路径，避免只依赖被输入层抑制的键盘事件转发
+- 明确当前选中项来源：`BattleScene` 维护菜单光标索引，方向动作移动索引并程序化 `Focus()`，确认动作根据索引读取 ViewModel
 - 锁定 `menu_cancel` 作为 `Cancel / Back` 的主输入路径
 - 定义空列表占位态，确保 Stage 1 结束时就有完整流转闭环
 
 阶段交付物：
 
 - 可扩展的战斗菜单状态机
-- 可绑定的数据模型骨架
-- 统一的输入流转规则
+- 遵循当前 RmlUi 集成方式的可绑定数据模型骨架
+- 统一的鼠标点击与键盘/手柄光标输入流转规则
 - `Skill / Item -> 空列表 -> Cancel 返回 MainMenu` 的最小可验证闭环
 
 建议后续细化文档：
@@ -112,7 +121,9 @@
 
 - 在当前代码结构下，优先把技能列表直接挂到战斗单位模型或其构建输入上
 - 不通过 `ActorData -> ClassData` 做深层间接查找
-- 先从“当前战斗单位的已学技能 / 预设技能列表”读取
+- 先为 `BattleUnit` 或 battle unit 构建输入补一个最小 `skill_ids` / learned-skill 列表桥接字段
+- 玩家单位从“当前战斗单位的已学技能 / 预设技能列表”读取
+- 敌人单位从 `EnemyData::actions_` 提取可用技能 id，先不实现 AI 权重选择
 - 不在本阶段扩展完整场外技能管理界面
 
 原因：
@@ -151,16 +162,20 @@
 - 只展示 `on_use_.has_value()` 的可用物品
 - 物品候选需要额外给出“解析后的 battle scope”，而不是假定当前 `ItemData` 已自带 `scope`
 - 不做“战斗外专用背包分页”或额外库存模型
+- 明确战斗内 `item_stocks` 快照与真实背包之间的同步策略：若 Stage 3 允许消耗物品，就必须同时补剩余库存 / 物品变更的写回路径
 
 本阶段必须同时覆盖：
 
 - 让战斗内物品选择与实际效果执行形成闭环
+- 明确消耗后的库存真相：可以选择战斗结束时通过 `BattleEndedEvent` 携带剩余 `item_stocks` / delta 让 `GameScene` 写回，或在战斗内通过库存领域服务即时写回；但不能只更新 `BattleRuntimeState` 后丢弃
 - 若本阶段引入恢复类战斗物品，则需要同时扩展物品 use schema 与 resolver，至少补齐 `RecoverHp / RecoverMp`
 - 若仍只支持当前 `AddItem` 语义，则战斗菜单必须先限制到现有可闭环的物品类型，避免出现“可选但无效果”的假入口
 
 原因：
 
 - 当前代码中的 `ItemData` 还没有独立 battle scope 字段，也没有完整的恢复类战斗效果执行
+- 当前 `GameScene` 进入战斗时只把玩家背包聚合成 `BattleSessionOptions::item_stocks` 快照，resolver 消耗的是 `BattleRuntimeState::item_stocks`
+- 当前 `BattleEndedEvent` 还没有携带物品库存结果，若不扩展事件或即时写回，战斗内消耗不会反映到真实背包
 - 仅做物品列表展示而不补目标规则和效果执行，战斗内物品选择将无法形成闭环
 
 阶段交付物：
