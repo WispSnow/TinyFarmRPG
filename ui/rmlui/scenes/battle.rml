@@ -3,11 +3,12 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="battle.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="battle_scene">
+<body class="tf-screen-root tf-nav-root" data-model="battle_scene">
     <div id="battle-overlay" class="tf-modal-overlay"></div>
 
     <div id="battle-panel" class="tf-modal-panel">
@@ -17,13 +18,45 @@
             <div id="battle-units">{{ units_text }}</div>
             <div id="battle-result">{{ result_text }}</div>
 
-            <div id="battle-actions">
-                <button id="battle-action-attack" class="tf-button-primary battle-action-button" data-event-click="attack" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Attack</button>
-                <button id="battle-action-skill" class="tf-button-secondary battle-action-button" data-event-click="skill" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Skill</button>
-                <button id="battle-action-item" class="tf-button-secondary battle-action-button" data-event-click="item" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Item</button>
-                <button id="battle-action-guard" class="tf-button-secondary battle-action-button" data-event-click="guard" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Guard</button>
-                <button id="battle-action-escape" class="tf-button-secondary battle-action-button" data-event-click="escape" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">Escape</button>
-                <button id="battle-action-end-turn" class="tf-button-secondary battle-action-button" data-event-click="end_turn" data-class-disabled="!actions_enabled" data-attrif-disabled="!actions_enabled">End Turn</button>
+            <div id="battle-actions" data-if="actions_enabled">
+                <div id="battle-menu-title">{{ menu_title }}</div>
+                <div id="battle-menu-hint">{{ menu_hint }}</div>
+
+                <div id="battle-main-actions" data-if="main_menu_visible">
+                    <button class="tf-button-secondary tf-nav-auto battle-action-button"
+                            data-for="action : main_actions"
+                            id="battle-main-action-{{ action.entry_index }}"
+                            data-class-disabled="!action.enabled"
+                            data-attrif-disabled="!action.enabled"
+                            data-event-click="main_action_select(action.entry_index)">{{ action.label }}</button>
+                </div>
+
+                <div id="battle-list-menu" data-if="list_menu_visible">
+                    <div id="battle-list-empty" data-if="list_empty">{{ list_empty_text }}</div>
+                    <button class="tf-button-secondary tf-nav-auto battle-list-entry"
+                            data-for="entry : list_entries"
+                            id="battle-list-entry-{{ entry.entry_index }}"
+                            data-class-disabled="!entry.enabled"
+                            data-attrif-disabled="!entry.enabled"
+                            data-event-click="list_entry_select(entry.entry_index)">
+                        <span class="battle-entry-label">{{ entry.label }}</span>
+                        <span class="battle-entry-sublabel">{{ entry.sublabel }}</span>
+                    </button>
+                </div>
+
+                <div id="battle-target-menu" data-if="target_menu_visible">
+                    <div id="battle-target-empty" data-if="target_empty">{{ target_empty_text }}</div>
+                    <button class="tf-button-secondary tf-nav-auto battle-target-entry"
+                            data-for="target : target_entries"
+                            id="battle-target-entry-{{ target.entry_index }}"
+                            data-class-disabled="!target.enabled"
+                            data-attrif-disabled="!target.enabled"
+                            data-class-is-ally="target.is_ally"
+                            data-class-is-dead="target.is_dead"
+                            data-event-click="target_entry_select(target.entry_index)">{{ target.label }}</button>
+                </div>
+
+                <div id="battle-back-hint">{{ back_hint }}</div>
             </div>
         </div>
     </div>

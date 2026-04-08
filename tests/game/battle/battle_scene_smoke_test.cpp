@@ -50,6 +50,48 @@ TEST(BattleSceneSmokeTest, EmitsBattleEndedEventAndRequestsPop) {
     EXPECT_NE(source.find("requestPopScene()"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("createModel(MODEL_NAME, &type_register_)"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<MainActionViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<ListEntryViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<TargetEntryViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_down\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_left\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_right\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("Focus(true)"), std::string::npos);
+    EXPECT_NE(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
+    EXPECT_NE(source.find("enterListMenu(MenuState::ItemList)"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rml").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+
+    const std::string rml = readTextFile(rml_path);
+    ASSERT_FALSE(rml.empty());
+
+    EXPECT_NE(rml.find("../theme/nav.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("tf-screen-root tf-nav-root"), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"action : main_actions\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"main_action_select(action.entry_index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"list_menu_visible\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"entry : list_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"target_menu_visible\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"target : target_entries\""), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

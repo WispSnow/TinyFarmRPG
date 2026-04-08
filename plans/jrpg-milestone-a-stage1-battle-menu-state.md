@@ -346,20 +346,20 @@ Stage 1 的占位行为也应明确：
 
 ## ToDo
 
-- [ ] 定义 `MenuState`，并明确其只在 `FlowState::WaitingForInput` 内流转
-- [ ] 定义动作草稿结构，并补上 `requires_target_selection`
-- [ ] 定义 `MainActionViewModel / ListEntryViewModel / TargetEntryViewModel`
-- [ ] 按当前 RmlUi 集成方式完成 `RmlDocumentController + Rml::DataTypeRegister + RegisterStruct<T>() + RegisterArray<>() + Bind()` 设计
-- [ ] 将当前 `BattleScene::initUI()` 的 `createModel(MODEL_NAME)` 改为 `createModel(MODEL_NAME, &type_register_)`
-- [ ] 为 `BattleScene` 增加 `menu_title / menu_hint / back_hint / main_actions / list_entries / target_entries` 等绑定字段
-- [ ] 为 `BattleScene` 增加主菜单 / 列表 / 目标选择的光标索引
-- [ ] 将 `menu_up/down/left/right/confirm/cancel` 明确接入 `BattleScene`，作为键盘/手柄移动、确认与返回路径
-- [ ] 鼠标 `data-event-click` 与键盘/手柄确认复用同一套选择辅助函数，并同步光标索引
-- [ ] 把 `Skill` / `Item` 从直接提交改成进入空列表占位态
-- [ ] 重构 `battle.rml/rcss` 为主菜单 / 列表 / 目标三层骨架，并用 `data-if` 控制显隐
-- [ ] 为 `battle.rml` 补齐 `nav.rcss` / `tf-nav-root` / 可聚焦条目的导航类和稳定元素 id
-- [ ] 避免隐藏 `data-if + data-for` 面板时同帧清空 backing vector
-- [ ] 补充场景级 smoke / 接线测试，验证进入列表与返回主菜单的闭环
+- [x] 定义 `MenuState`，并明确其只在 `FlowState::WaitingForInput` 内流转
+- [x] 定义动作草稿结构，并补上 `requires_target_selection`
+- [x] 定义 `MainActionViewModel / ListEntryViewModel / TargetEntryViewModel`
+- [x] 按当前 RmlUi 集成方式完成 `RmlDocumentController + Rml::DataTypeRegister + RegisterStruct<T>() + RegisterArray<>() + Bind()` 设计
+- [x] 将当前 `BattleScene::initUI()` 的 `createModel(MODEL_NAME)` 改为 `createModel(MODEL_NAME, &type_register_)`
+- [x] 为 `BattleScene` 增加 `menu_title / menu_hint / back_hint / main_actions / list_entries / target_entries` 等绑定字段
+- [x] 为 `BattleScene` 增加主菜单 / 列表 / 目标选择的光标索引
+- [x] 将 `menu_up/down/left/right/confirm/cancel` 明确接入 `BattleScene`，作为键盘/手柄移动、确认与返回路径
+- [x] 鼠标 `data-event-click` 与键盘/手柄确认复用同一套选择辅助函数，并同步光标索引
+- [x] 把 `Skill` / `Item` 从直接提交改成进入空列表占位态
+- [x] 重构 `battle.rml/rcss` 为主菜单 / 列表 / 目标三层骨架，并用 `data-if` 控制显隐
+- [x] 为 `battle.rml` 补齐 `nav.rcss` / `tf-nav-root` / 可聚焦条目的导航类和稳定元素 id
+- [x] 避免隐藏 `data-if + data-for` 面板时同帧清空 backing vector
+- [x] 补充场景级 smoke / 接线测试，验证进入列表与返回主菜单的闭环
 
 ## 备注
 
