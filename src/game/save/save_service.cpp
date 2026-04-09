@@ -10,6 +10,7 @@
 #include "game/component/crop_component.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
@@ -440,6 +441,13 @@ SaveData SaveService::capture(std::string& out_error) const {
         return out;
     }
 
+    if (const auto* wallet = registry_.try_get<game::component::PlayerWalletComponent>(player)) {
+        out.player.gold = wallet->gold_;
+    } else {
+        out.player.gold = 0;
+        spdlog::warn("SaveService: 玩家缺少 PlayerWalletComponent，存档金币将按 0 写出。");
+    }
+
     if (const auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         out.appearance_state.gender = appearance->gender_;
         out.appearance_state.slots = appearance->slot_variants_;
@@ -736,6 +744,10 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     for (std::size_t i = 0; i < hotbar->slots_.size() && i < data.player.hotbar.inventory_slot_indices.size(); ++i) {
         hotbar->slots_[i].inventory_slot_index_ = data.player.hotbar.inventory_slot_indices[i];
     }
+
+    registry_.emplace_or_replace<game::component::PlayerWalletComponent>(
+        player,
+        game::component::PlayerWalletComponent{.gold_ = data.player.gold});
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         if (!data.appearance_state.gender.empty()) {

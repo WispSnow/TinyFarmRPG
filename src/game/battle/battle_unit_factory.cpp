@@ -98,7 +98,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
             .magic_defense = mdf,
             .speed = agi,
             .luck = luk,
-            .skill_ids = actor->skill_ids_
+            .skill_ids = actor->skill_ids_,
+            .source_actor_id = actor->id_
         });
     }
 
@@ -161,7 +162,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
             .magic_defense = mdf,
             .speed = agi,
             .luck = luk,
-            .skill_ids = collectEnemySkillIds(*enemy)
+            .skill_ids = collectEnemySkillIds(*enemy),
+            .source_enemy_id = enemy->id_
         });
     }
 

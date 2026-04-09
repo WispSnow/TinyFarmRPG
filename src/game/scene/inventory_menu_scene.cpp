@@ -5,6 +5,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
+#include "game/component/player_wallet_component.h"
 #include "game/data/item_catalog.h"
 #include "game/ui/inventory_tab_content.h"
 #include "game/ui/slot_grid_support.h"
@@ -12,6 +13,7 @@
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <optional>
@@ -214,7 +216,12 @@ void InventoryMenuScene::syncCharacterPanel() {
     }
 
     char_title_ = "Lv.1 Farmer";
-    gold_label_ = "Gold: --";
+    if (const auto* wallet = game_registry_.try_get<game::component::PlayerWalletComponent>(player_)) {
+        gold_label_ = fmt::format("Gold: {}", wallet->gold_);
+    } else {
+        gold_label_ = "Gold: 0";
+        spdlog::warn("InventoryMenuScene: 玩家缺少 PlayerWalletComponent，金币显示回退为 0。");
+    }
     farm_label_ = "TinyFarm";
 
     document_controller_.markDirty("char_name");

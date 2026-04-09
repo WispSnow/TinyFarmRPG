@@ -147,6 +147,9 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     ASSERT_EQ(units[0].skill_ids.size(), 2U);
     EXPECT_EQ(units[0].skill_ids[0], "skill.attack");
     EXPECT_EQ(units[0].skill_ids[1], "skill.cleave");
+    ASSERT_TRUE(units[0].source_actor_id.has_value());
+    EXPECT_EQ(*units[0].source_actor_id, "actor.hero");
+    EXPECT_FALSE(units[0].source_enemy_id.has_value());
 
     EXPECT_EQ(units[1].name, "Mage");
     EXPECT_EQ(units[1].max_hp, 80);
@@ -159,6 +162,9 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     EXPECT_EQ(units[1].luck, 10);
     ASSERT_EQ(units[1].skill_ids.size(), 1U);
     EXPECT_EQ(units[1].skill_ids[0], "skill.fire");
+    ASSERT_TRUE(units[1].source_actor_id.has_value());
+    EXPECT_EQ(*units[1].source_actor_id, "actor.mage");
+    EXPECT_FALSE(units[1].source_enemy_id.has_value());
 
     EXPECT_EQ(units[2].side, BattleSide::Enemy);
     EXPECT_EQ(units[2].name, "Goblin");
@@ -170,10 +176,16 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     ASSERT_EQ(units[2].skill_ids.size(), 2U);
     EXPECT_EQ(units[2].skill_ids[0], "skill.attack");
     EXPECT_EQ(units[2].skill_ids[1], "skill.bash");
+    EXPECT_FALSE(units[2].source_actor_id.has_value());
+    ASSERT_TRUE(units[2].source_enemy_id.has_value());
+    EXPECT_EQ(*units[2].source_enemy_id, "enemy.goblin");
     EXPECT_EQ(units[3].name, "Goblin 2");
     ASSERT_EQ(units[3].skill_ids.size(), 2U);
     EXPECT_EQ(units[3].skill_ids[0], "skill.attack");
     EXPECT_EQ(units[3].skill_ids[1], "skill.bash");
+    EXPECT_FALSE(units[3].source_actor_id.has_value());
+    ASSERT_TRUE(units[3].source_enemy_id.has_value());
+    EXPECT_EQ(*units[3].source_enemy_id, "enemy.goblin");
 }
 
 TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
@@ -197,10 +209,16 @@ TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
     EXPECT_EQ(units[0].side, BattleSide::Player);
     ASSERT_EQ(units[0].skill_ids.size(), 1U);
     EXPECT_EQ(units[0].skill_ids[0], "skill.fire");
+    ASSERT_TRUE(units[0].source_actor_id.has_value());
+    EXPECT_EQ(*units[0].source_actor_id, "actor.mage");
+    EXPECT_FALSE(units[0].source_enemy_id.has_value());
     EXPECT_EQ(units[1].name, "Wolf");
     EXPECT_EQ(units[1].side, BattleSide::Enemy);
     ASSERT_EQ(units[1].skill_ids.size(), 1U);
     EXPECT_EQ(units[1].skill_ids[0], "skill.howl");
+    EXPECT_FALSE(units[1].source_actor_id.has_value());
+    ASSERT_TRUE(units[1].source_enemy_id.has_value());
+    EXPECT_EQ(*units[1].source_enemy_id, "enemy.wolf");
 }
 
 TEST(BattleUnitFactoryTest, FailsWhenRequestedActorIsMissing) {
