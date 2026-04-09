@@ -139,6 +139,7 @@ set(GAME_TEST_SOURCES
     game/battle/battle_unit_factory_test.cpp
     game/battle/battle_formula_evaluator_test.cpp
     game/battle/battle_action_resolver_test.cpp
+    game/battle/battle_ai_planner_test.cpp
     game/battle/battle_session_test.cpp
     game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp

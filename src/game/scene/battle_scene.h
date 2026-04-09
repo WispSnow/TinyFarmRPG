@@ -36,11 +36,11 @@ namespace game::scene {
 class BattleScene final : public engine::scene::Scene {
     /// @brief 单帧同步推进的战斗流程状态。
     enum class FlowState {
-        WaitingForInput,    ///< 等待玩家或未来 AI 提交行动。
+        WaitingForInput,    ///< 等待玩家输入行动。
         ExecutingAction,    ///< 将 pending_action_ 提交给 BattleSession。
         AnimatingResult,    ///< 展示动作结果；当前以短计时占位。
         CheckVictory,       ///< 根据 BattleActionResult::outcome_after 判断是否结束战斗。
-        NextTurn,           ///< 刷新到下一个行动者并回到输入等待。
+        NextTurn,           ///< 刷新到下一个行动者并路由到玩家输入或敌方自动行动。
         BattleEnd           ///< 发送结算事件并请求弹出场景。
     };
 
@@ -163,6 +163,9 @@ private:
 
     /// @brief 运行同步战斗流程状态机，直到进入需要等待的状态。
     void runStateMachine(float delta_time);
+    void beginCurrentTurnFlow();
+    [[nodiscard]] const game::battle::BattleUnit* currentActor() const;
+    [[nodiscard]] game::battle::BattleAction buildEnemyAction(const game::battle::BattleUnit& actor) const;
 
     /// @brief 根据 BattleSession 快照刷新 UI 文本和按钮状态。
     void refreshView();

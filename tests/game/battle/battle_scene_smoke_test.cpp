@@ -27,6 +27,14 @@ namespace {
     return count;
 }
 
+[[nodiscard]] std::string snippetFrom(const std::string& source, const std::string& anchor, const std::size_t length = 320U) {
+    const auto position = source.find(anchor);
+    if (position == std::string::npos) {
+        return {};
+    }
+    return source.substr(position, length);
+}
+
 } // namespace
 
 namespace game::scene {
@@ -144,6 +152,29 @@ TEST(BattleSceneSmokeTest, WiresStage4TargetSelectionAndDraftSubmit) {
     EXPECT_EQ(source.find("selectDefaultTarget("), std::string::npos);
     EXPECT_EQ(source.find("Target selection coming in Stage 4"), std::string::npos);
     EXPECT_EQ(source.find("enterTargetPlaceholder"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, RoutesEnemyTurnsWithoutFallingBackToPlayerMenu) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("BattleAiPlanner::planEnemyAction"), std::string::npos);
+    EXPECT_NE(source.find("BattleAiPlanner::planFallbackAction"), std::string::npos);
+    EXPECT_NE(source.find("actor->side == game::battle::BattleSide::Enemy"), std::string::npos);
+
+    const std::string next_turn_block = snippetFrom(source, "case FlowState::NextTurn:");
+    ASSERT_FALSE(next_turn_block.empty());
+    EXPECT_EQ(next_turn_block.find("state_ = FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_EQ(next_turn_block.find("enterInputMenu()"), std::string::npos);
+
+    const std::string missing_pending_block = snippetFrom(source, "if (!pending_action_) {");
+    ASSERT_FALSE(missing_pending_block.empty());
+    EXPECT_EQ(missing_pending_block.find("state_ = FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_EQ(missing_pending_block.find("enterInputMenu()"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, FormatsStage5RecoveryResultText) {

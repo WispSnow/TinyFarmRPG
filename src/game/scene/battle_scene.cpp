@@ -1,5 +1,6 @@
 #include "battle_scene.h"
 
+#include "game/battle/battle_ai_planner.h"
 #include "game/defs/events.h"
 
 #include "engine/core/context.h"
@@ -196,7 +197,7 @@ bool BattleScene::init() {
         state_ = FlowState::BattleEnd;
         leaveInputMenu();
     } else {
-        enterInputMenu();
+        beginCurrentTurnFlow();
     }
     refreshView();
     return true;
@@ -390,9 +391,9 @@ void BattleScene::runStateMachine(float delta_time) {
                 return;
             case FlowState::ExecutingAction: {
                 if (!pending_action_) {
-                    state_ = FlowState::WaitingForInput;
-                    enterInputMenu();
-                    return;
+                    beginCurrentTurnFlow();
+                    keep_running = true;
+                    break;
                 }
 
                 last_action_result_ = session_.submitAction(*pending_action_);
@@ -418,8 +419,8 @@ void BattleScene::runStateMachine(float delta_time) {
                 keep_running = true;
                 break;
             case FlowState::NextTurn:
-                state_ = FlowState::WaitingForInput;
-                enterInputMenu();
+                beginCurrentTurnFlow();
+                keep_running = true;
                 break;
             case FlowState::BattleEnd:
                 leaveInputMenu();
@@ -427,6 +428,70 @@ void BattleScene::runStateMachine(float delta_time) {
                 return;
         }
     }
+}
+
+void BattleScene::beginCurrentTurnFlow() {
+    pending_action_.reset();
+
+    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        state_ = FlowState::BattleEnd;
+        leaveInputMenu();
+        return;
+    }
+
+    const auto* actor = currentActor();
+    if (!actor) {
+        state_ = FlowState::BattleEnd;
+        leaveInputMenu();
+        return;
+    }
+
+    if (actor->side == game::battle::BattleSide::Enemy) {
+        submitAction(buildEnemyAction(*actor));
+        return;
+    }
+
+    state_ = FlowState::WaitingForInput;
+    enterInputMenu();
+}
+
+const game::battle::BattleUnit* BattleScene::currentActor() const {
+    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return nullptr;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id.has_value()) {
+        return nullptr;
+    }
+
+    return session_.findUnit(*actor_id);
+}
+
+game::battle::BattleAction BattleScene::buildEnemyAction(const game::battle::BattleUnit& actor) const {
+    const auto fallback_action = game::battle::BattleAiPlanner::planFallbackAction(actor, session_.units());
+
+    if (actor.side != game::battle::BattleSide::Enemy) {
+        return fallback_action;
+    }
+
+    if (!rpg_catalog_) {
+        spdlog::warn("BattleScene: enemy actor '{}' 缺少 RPG catalog，回退为基础行动。", actor.name);
+        return fallback_action;
+    }
+
+    if (!actor.source_enemy_id.has_value()) {
+        spdlog::warn("BattleScene: enemy actor '{}' 缺少 source_enemy_id，回退为基础行动。", actor.name);
+        return fallback_action;
+    }
+
+    const auto* enemy = rpg_catalog_->findEnemy(*actor.source_enemy_id);
+    if (!enemy) {
+        spdlog::warn("BattleScene: enemy source '{}' 不存在于 RPG catalog，回退为基础行动。", *actor.source_enemy_id);
+        return fallback_action;
+    }
+
+    return game::battle::BattleAiPlanner::planEnemyAction(actor, *enemy, session_.units(), *rpg_catalog_);
 }
 
 void BattleScene::refreshView() {
