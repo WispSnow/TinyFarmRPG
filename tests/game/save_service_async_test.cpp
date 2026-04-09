@@ -35,6 +35,7 @@
 #include "engine/spatial/spatial_index_manager.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
@@ -306,6 +307,7 @@ protected:
         inventory.slots_[0].count_ = 1;
         auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
         hotbar.slots_[0].inventory_slot_index_ = 0;
+        registry.emplace<game::component::PlayerWalletComponent>(player, game::component::PlayerWalletComponent{.gold_ = 345});
         registry.emplace<game::component::StateComponent>(player);
 
         const entt::id_type initial_map_id = entt::hashed_string{"home_exterior"}.value();
@@ -396,6 +398,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveSucceedsAndWritesJsonFile) {
     EXPECT_EQ(json.at("schema_version").get<std::uint32_t>(), SAVE_SCHEMA_VERSION);
     EXPECT_TRUE(json.contains("player"));
     EXPECT_TRUE(json.contains("maps"));
+    EXPECT_EQ(json.at("player").at("gold").get<int>(), 345);
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContainers) {
@@ -441,6 +444,30 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContaine
     EXPECT_TRUE(combat_state.at("item_stocks").is_object());
     EXPECT_TRUE(combat_state.contains("escape_attempt_count"));
     EXPECT_TRUE(combat_state.at("escape_attempt_count").is_number_unsigned());
+    ASSERT_TRUE(json.contains("player"));
+    EXPECT_TRUE(json.at("player").contains("gold"));
+    EXPECT_EQ(json.at("player").at("gold").get<int>(), 345);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPlayerWalletGold) {
+    const auto file_path = tempFilePath("save_wallet_restore.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PlayerWalletComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+    auto& wallet = player_view.get<game::component::PlayerWalletComponent>(player);
+    wallet.gold_ = 12;
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PlayerWalletComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity loaded_player = *player_view.begin();
+    const auto& loaded_wallet = player_view.get<game::component::PlayerWalletComponent>(loaded_player);
+    EXPECT_EQ(loaded_wallet.gold_, 345);
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveReportsWriteFailureForInvalidPath) {

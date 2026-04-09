@@ -87,6 +87,8 @@ struct BattleUnit {
     int speed{10};                             ///< 敏捷/速度属性；数值越高，在稳定回合顺序中越早行动。
     int luck{10};                              ///< 幸运属性，预留给未来暴击、状态命中等公式逻辑使用。
     std::vector<std::string> skill_ids{};       ///< 该单位可在战斗菜单中使用的技能 ID 列表。
+    std::optional<std::string> source_actor_id{};   ///< 对应 RPG catalog actor id；无来源时为空。
+    std::optional<std::string> source_enemy_id{};   ///< 对应 RPG catalog enemy id；无来源时为空。
 
     /// @brief 判断单位是否仍可行动或作为存活目标被选择。
     [[nodiscard]] bool isAlive() const { return hp > 0; }

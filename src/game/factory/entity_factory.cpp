@@ -10,6 +10,7 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/pickup_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/commands.h"
@@ -126,6 +127,7 @@ entt::entity EntityFactory::createActor(const entt::id_type actor_name_id, const
         // 为玩家添加物品栏和快捷栏组件
         auto& inventory = registry_.emplace<game::component::InventoryComponent>(entity);
         auto& hotbar = registry_.emplace<game::component::HotbarComponent>(entity);
+        registry_.emplace<game::component::PlayerWalletComponent>(entity);
 
         if (appearance_catalog_) {
             game::component::AppearanceComponent appearance{};
