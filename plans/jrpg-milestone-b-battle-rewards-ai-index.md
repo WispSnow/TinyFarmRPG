@@ -312,7 +312,7 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 - [x] Stage 1: 细化 battle unit 来源信息与金币真相方案 → `plans/jrpg-milestone-b-stage1-battle-provenance.md`
 - [x] Stage 2: 细化敌方 AI 动作规划与目标选择规则 → `plans/jrpg-milestone-b-stage2-enemy-ai.md`
-- [ ] Stage 3: 细化奖励汇总、掉落随机与 Victory 结算边界 → `plans/jrpg-milestone-b-stage3-battle-reward-summary.md`
+- [x] Stage 3: 细化奖励汇总、掉落随机与 Victory 结算边界 → `plans/jrpg-milestone-b-stage3-battle-reward-summary.md`
 - [ ] Stage 4: 细化 `GameScene` 奖励写回与最小反馈方案 → `plans/jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
 - [ ] Stage 5: 细化金币 UI、存档与测试补强方案 → `plans/jrpg-milestone-b-stage5-ui-save-and-tests.md`
 
