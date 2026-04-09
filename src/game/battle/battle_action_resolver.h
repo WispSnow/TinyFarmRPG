@@ -62,7 +62,7 @@ public:
     /// @param action 待处理的行动意图。
     /// @param turn_core 要读取并修改的回合核心。
     /// @param runtime_state 会话内临时状态，例如防御标记、状态计数和道具库存。
-    /// @return 动作结算结果；此处不填充全量 snapshot。
+    /// @return 动作结算结果；此处不负责填充完整 BattleSnapshot，BattleSession 会在后续补齐。
     [[nodiscard]] BattleActionResult resolve(const BattleAction& action,
                                              TurnCore& turn_core,
                                              BattleRuntimeState& runtime_state);

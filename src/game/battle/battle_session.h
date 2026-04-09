@@ -19,9 +19,6 @@ class ItemCatalog;
 namespace game::battle {
 
 /// @brief 创建 BattleSession 时注入的可选外部数据。
-///
-/// 领域核心本身不依赖目录或库存系统；这些依赖只在动作结算需要技能、
-/// 道具与初始库存时由会话层传入。
 struct BattleSessionOptions {
     const game::data::RpgCatalog* rpg_catalog{nullptr};       ///< RPG 数据目录，用于查找技能、状态等战斗数据。
     const game::data::ItemCatalog* item_catalog{nullptr};     ///< 物品数据目录，用于查找可在战斗中使用的道具。
@@ -43,18 +40,11 @@ public:
     /// @param units 初始战斗单位；通常由命令或 BattleUnit 工厂提供。
     /// @param options 技能/物品目录与库存等可选依赖。
     explicit BattleSession(std::vector<BattleUnit> units, BattleSessionOptions options = {});
-
-    /// @brief 返回当前单位状态的只读视图。
     [[nodiscard]] const std::vector<BattleUnit>& units() const { return turn_core_.units(); }
-
-    /// @brief 按 ID 查找单位。
-    /// @return 找到时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const BattleUnit* findUnit(BattleUnitId id) const { return turn_core_.findUnit(id); }
 
     /// @brief 返回当前行动者；战斗结束时为 nullopt。
     [[nodiscard]] std::optional<BattleUnitId> currentActorId() const { return turn_core_.currentActorId(); }
-
-    /// @brief 返回当前战斗结果。
     [[nodiscard]] BattleOutcome outcome() const { return turn_core_.outcome(); }
 
     /// @brief 返回战斗内剩余道具库存；该库存是进入战斗时复制出的运行时副本。
