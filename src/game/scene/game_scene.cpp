@@ -63,6 +63,7 @@ using namespace entt::literals;
 
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
+constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -214,6 +215,9 @@ void GameScene::fixedUpdate(float delta_time) {
 void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
+    if (!abort_to_title_) {
+        updateBattleRewardNotification(delta_time);
+    }
     if (!abort_to_title_ && services_ && services_->vfx_service) {
         services_->vfx_service->update(delta_time);
     }
@@ -570,7 +574,17 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
         services_.get(),
         active_battle_initial_item_stocks_,
         has_active_battle_item_stocks_,
+        battle_reward_notification_,
         evt);
+}
+
+void GameScene::updateBattleRewardNotification(const float delta_time) {
+    game::system::helpers::updateTimedNotification(
+        registry_,
+        context_.getDispatcher(),
+        BATTLE_REWARD_NOTIFICATION_CHANNEL,
+        battle_reward_notification_,
+        delta_time);
 }
 
 } // namespace game::scene

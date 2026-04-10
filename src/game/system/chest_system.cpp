@@ -81,37 +81,19 @@ void ChestSystem::update(float delta_time) {
 }
 
 void ChestSystem::updateNotification(float delta_time) {
-    if (notification_timer_ <= 0.0f) {
-        return;
-    }
-
-    notification_timer_ = std::max(0.0f, notification_timer_ - delta_time);
-    if (notification_target_ != entt::null) {
-        const glm::vec2 head_pos = helpers::computeHeadPosition(registry_, notification_target_);
-        helpers::emitDialogueBubbleMove(dispatcher_, NOTIFICATION_CHANNEL, notification_target_, head_pos);
-    }
-
-    if (notification_timer_ <= 0.0f && notification_target_ != entt::null) {
-        hideNotification(notification_target_);
-        notification_target_ = entt::null;
-    }
+    helpers::updateTimedNotification(registry_, dispatcher_, NOTIFICATION_CHANNEL, notification_, delta_time);
 }
 
 void ChestSystem::showNotification(entt::entity player, std::string text) {
-    if (player == entt::null || text.empty()) return;
-
-    notification_timer_ = NOTIFICATION_SECONDS;
-    notification_target_ = player;
-    helpers::emitDialogueBubbleShow(dispatcher_,
-                                   NOTIFICATION_CHANNEL,
-                                   player,
-                                   std::string{},
-                                   std::move(text),
-                                   helpers::computeHeadPosition(registry_, player));
-}
-
-void ChestSystem::hideNotification(entt::entity player) {
-    helpers::emitDialogueBubbleHide(dispatcher_, NOTIFICATION_CHANNEL, player);
+    helpers::showTimedNotification(
+        registry_,
+        dispatcher_,
+        NOTIFICATION_CHANNEL,
+        notification_,
+        player,
+        std::string{},
+        std::move(text),
+        NOTIFICATION_SECONDS);
 }
 
 void ChestSystem::onInteractCommand(const game::defs::InteractCommand& event) {

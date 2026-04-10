@@ -10,6 +10,7 @@
 #include <entt/signal/dispatcher.hpp>
 #include <glm/vec2.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -23,6 +24,11 @@ struct PlayerEntityContext {
 } // namespace game::data
 
 namespace game::system::helpers {
+
+struct NotificationTimer {
+    entt::entity target{entt::null};
+    float remaining_seconds{0.0f};
+};
 
 [[nodiscard]] inline entt::entity getPlayerEntity(entt::registry& registry) {
     auto* cached = registry.ctx().find<game::data::PlayerEntityContext>();
@@ -88,6 +94,51 @@ inline void emitDialogueBubbleHide(entt::dispatcher& dispatcher, std::uint8_t ch
     evt.target = target;
     evt.channel = channel;
     dispatcher.enqueue(evt);
+}
+
+inline void showTimedNotification(entt::registry& registry,
+                                  entt::dispatcher& dispatcher,
+                                  std::uint8_t channel,
+                                  NotificationTimer& timer,
+                                  entt::entity target,
+                                  std::string speaker,
+                                  std::string text,
+                                  float seconds) {
+    if (target == entt::null || text.empty() || seconds <= 0.0f) {
+        timer = {};
+        return;
+    }
+
+    timer.target = target;
+    timer.remaining_seconds = seconds;
+    emitDialogueBubbleShow(
+        dispatcher,
+        channel,
+        target,
+        std::move(speaker),
+        std::move(text),
+        computeHeadPosition(registry, target));
+}
+
+inline void updateTimedNotification(entt::registry& registry,
+                                    entt::dispatcher& dispatcher,
+                                    std::uint8_t channel,
+                                    NotificationTimer& timer,
+                                    float delta_time) {
+    if (timer.target == entt::null || timer.remaining_seconds <= 0.0f) {
+        return;
+    }
+
+    timer.remaining_seconds = std::max(0.0f, timer.remaining_seconds - delta_time);
+
+    if (registry.valid(timer.target)) {
+        emitDialogueBubbleMove(dispatcher, channel, timer.target, computeHeadPosition(registry, timer.target));
+    }
+
+    if (timer.remaining_seconds <= 0.0f) {
+        emitDialogueBubbleHide(dispatcher, channel, timer.target);
+        timer = {};
+    }
 }
 
 } // namespace game::system::helpers

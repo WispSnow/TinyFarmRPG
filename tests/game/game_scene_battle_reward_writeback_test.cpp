@@ -51,9 +51,19 @@ namespace {
 
 struct DialogueCapture final {
     std::vector<game::defs::DialogueShowEvent> shows{};
+    std::vector<game::defs::DialogueMoveEvent> moves{};
+    std::vector<game::defs::DialogueHideEvent> hides{};
 
     void onShow(const game::defs::DialogueShowEvent& evt) {
         shows.push_back(evt);
+    }
+
+    void onMove(const game::defs::DialogueMoveEvent& evt) {
+        moves.push_back(evt);
+    }
+
+    void onHide(const game::defs::DialogueHideEvent& evt) {
+        hides.push_back(evt);
     }
 };
 
@@ -178,18 +188,22 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotif
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
 
+    game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
         registry_,
         dispatcher_,
         &services_,
         active_battle_initial_item_stocks_,
         has_active_battle_item_stocks_,
+        notification_state,
         evt);
 
     EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, 14);
     EXPECT_EQ(countItem(player, herb_id), 2);
     EXPECT_FALSE(has_active_battle_item_stocks_);
     EXPECT_TRUE(active_battle_initial_item_stocks_.empty());
+    EXPECT_EQ(notification_state.target, player);
+    EXPECT_FLOAT_EQ(notification_state.remaining_seconds, 2.0F);
 
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].target, player);
@@ -199,6 +213,63 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotif
     EXPECT_EQ(capture.shows[0].channel, 1);
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
+TEST_F(GameSceneBattleRewardWritebackTest, VictoryNotificationMovesAndAutoHidesAfterTimeout) {
+    DialogueCapture capture;
+    auto show_sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    auto move_sink = dispatcher_.sink<game::defs::DialogueMoveEvent>();
+    auto hide_sink = dispatcher_.sink<game::defs::DialogueHideEvent>();
+    show_sink.connect<&DialogueCapture::onShow>(&capture);
+    move_sink.connect<&DialogueCapture::onMove>(&capture);
+    hide_sink.connect<&DialogueCapture::onHide>(&capture);
+
+    const entt::entity player = createPlayer(10, 0);
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    ASSERT_EQ(capture.shows.size(), 1U);
+    ASSERT_EQ(notification_state.target, player);
+    EXPECT_FLOAT_EQ(notification_state.remaining_seconds, 2.0F);
+
+    auto& transform = registry_.get<engine::component::TransformComponent>(player);
+    transform.position_ = {160.0f, 96.0f};
+
+    game::system::helpers::updateTimedNotification(registry_, dispatcher_, 1, notification_state, 0.5F);
+    EXPECT_EQ(capture.moves.size(), 1U);
+    EXPECT_EQ(capture.moves[0].target, player);
+    EXPECT_EQ(capture.moves[0].channel, 1);
+    EXPECT_FLOAT_EQ(capture.moves[0].world_position.x, 160.0F);
+    EXPECT_FLOAT_EQ(capture.moves[0].world_position.y, 80.0F);
+    EXPECT_GT(notification_state.remaining_seconds, 0.0F);
+
+    game::system::helpers::updateTimedNotification(registry_, dispatcher_, 1, notification_state, 1.5F);
+    dispatcher_.update();
+
+    EXPECT_EQ(capture.moves.size(), 2U);
+    EXPECT_EQ(capture.hides.size(), 1U);
+    EXPECT_EQ(capture.hides[0].target, player);
+    EXPECT_EQ(capture.hides[0].channel, 1);
+    EXPECT_TRUE(notification_state.target == entt::null);
+    EXPECT_FLOAT_EQ(notification_state.remaining_seconds, 0.0F);
+
+    hide_sink.disconnect<&DialogueCapture::onHide>(&capture);
+    move_sink.disconnect<&DialogueCapture::onMove>(&capture);
+    show_sink.disconnect<&DialogueCapture::onShow>(&capture);
 }
 
 TEST_F(GameSceneBattleRewardWritebackTest, DefeatOnlyWritesBackBattleItemDelta) {
@@ -218,13 +289,16 @@ TEST_F(GameSceneBattleRewardWritebackTest, DefeatOnlyWritesBackBattleItemDelta) 
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 0, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
 
+    game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
         registry_,
         dispatcher_,
         &services_,
         active_battle_initial_item_stocks_,
         has_active_battle_item_stocks_,
+        notification_state,
         evt);
+    EXPECT_TRUE(notification_state.target == entt::null);
 
     EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, 10);
     EXPECT_EQ(countItem(player, herb_id), 1);
@@ -252,13 +326,16 @@ TEST_F(GameSceneBattleRewardWritebackTest, EscapedOnlyWritesBackBattleItemDelta)
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 12, 20, std::string{"enemy.slime"})};
 
+    game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
         registry_,
         dispatcher_,
         &services_,
         active_battle_initial_item_stocks_,
         has_active_battle_item_stocks_,
+        notification_state,
         evt);
+    EXPECT_TRUE(notification_state.target == entt::null);
 
     EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, 10);
     EXPECT_EQ(countItem(player, herb_id), 1);
@@ -282,13 +359,16 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInvent
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
 
+    game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
         registry_,
         dispatcher_,
         &services_,
         active_battle_initial_item_stocks_,
         has_active_battle_item_stocks_,
+        notification_state,
         evt);
+    EXPECT_EQ(notification_state.target, player);
 
     EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, 14);
     EXPECT_EQ(countItem(player, game::data::RpgCatalog::hashId("item.herb")), 99);
