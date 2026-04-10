@@ -240,6 +240,8 @@ target_sources(game PRIVATE
     game/world/map_snapshot_serializer.cpp
     # Scene
     game/scene/game_scene.cpp
+    game/scene/game_scene_battle_settlement.cpp
+    game/scene/game_scene_reward_feedback.cpp
     game/scene/title_scene.cpp
     game/scene/save_slot_select_scene.cpp
     game/scene/pause_menu_scene.cpp

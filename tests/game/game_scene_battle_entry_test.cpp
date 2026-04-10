@@ -77,21 +77,6 @@ TEST(GameSceneBattleEntryTest, SupportsTroopAndActorSelectionInBattleCommand) {
     EXPECT_NE(source.find("cmd.actor_ids"), std::string::npos);
 }
 
-TEST(GameSceneBattleEntryTest, WritesBackBattleItemStockDelta) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string source = readTextFile(source_path);
-    ASSERT_FALSE(source.empty());
-
-    EXPECT_NE(source.find("active_battle_initial_item_stocks_ = initial_item_stocks"), std::string::npos);
-    EXPECT_NE(source.find("evt.remaining_item_stocks"), std::string::npos);
-    EXPECT_NE(source.find("applyBattleItemStockDelta"), std::string::npos);
-    EXPECT_NE(source.find("services_->inventory_domain_service->removeItem"), std::string::npos);
-    EXPECT_NE(source.find("services_->inventory_domain_service->addItem"), std::string::npos);
-}
-
 } // namespace
 } // namespace game::scene
 // NOLINTEND

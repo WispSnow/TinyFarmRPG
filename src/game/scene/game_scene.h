@@ -93,7 +93,6 @@ private:
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
-    void applyBattleItemStockDelta(const std::unordered_map<entt::id_type, int>& remaining_item_stocks);
 };
 
 } // namespace game::scene
