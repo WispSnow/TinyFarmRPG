@@ -57,7 +57,9 @@
 - 优先补行为测试，其次纯函数测试。
 - 不再新增新的源码扫描 smoke test。
 - 当前 `tests/game/game_scene_battle_reward_writeback_test.cpp` 已经是行为测试，不再需要执行“源码扫描 -> 行为测试”的替换动作。
-- `tests/game/inventory_menu_scene_slot_grid_registration_test.cpp` 仍包含一条金币标签源码扫描断言，但它更偏 Inventory UI 结构护栏，不作为 Milestone B 的阻塞项；除非顺手能低成本补成行为测试，否则可暂时保留。
+- 已把金币标签源码扫描断言移除，并改为：
+  - `tests/game/inventory_menu_character_panel_test.cpp`：稳定覆盖金币文案纯逻辑
+  - `tests/game/ui_layout_integration_test.cpp`：在有 RmlUi runtime 的环境里补真实布局显示护栏
 
 ### Step 4. 更新最小玩法文档
 
@@ -75,9 +77,9 @@
 - [x] 确认 `InventoryMenuScene` 不再残留占位金币文案
 - [x] 审核并收口金币存档 roundtrip 路径
 - [x] 确认现有 `SaveService` 金币 roundtrip 测试已覆盖主路径
-- [ ] 复核 Milestone B 关键路径测试矩阵
-- [ ] 若有缺口，优先补行为测试而不是源码字符串测试
-- [ ] 视需要更新 `docs/gameplay/turn-based-battle.md`
+- [x] 复核 Milestone B 关键路径测试矩阵
+- [x] 若有缺口，优先补行为测试而不是源码字符串测试
+- [x] 视需要更新 `docs/gameplay/turn-based-battle.md`
 
 ## 疑问
 

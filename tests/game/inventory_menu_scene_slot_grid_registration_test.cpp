@@ -125,25 +125,6 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEn
            "can make stale data-for bindings read action_menu_entries[n] and trigger RmlUi out-of-bounds warnings.";
 }
 
-TEST(InventoryMenuSceneSlotGridRegistrationTest, GoldLabelReadsPlayerWalletComponent) {
-    const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/inventory_menu_scene.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
-
-    const std::string source = test_source_utils::readTextFile(source_path);
-    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
-
-    const std::string sync_character_panel_block =
-        test_source_utils::extractFunctionBlock(source, "void InventoryMenuScene::syncCharacterPanel()");
-    ASSERT_FALSE(sync_character_panel_block.empty());
-
-    EXPECT_NE(source.find("player_wallet_component.h"), std::string::npos);
-    EXPECT_NE(sync_character_panel_block.find("try_get<game::component::PlayerWalletComponent>"), std::string::npos);
-    EXPECT_NE(sync_character_panel_block.find("fmt::format(\"Gold: {}\", wallet->gold_)"), std::string::npos);
-    EXPECT_NE(sync_character_panel_block.find("spdlog::warn"), std::string::npos);
-    EXPECT_EQ(sync_character_panel_block.find("gold_label_ = \"Gold: --\";"), std::string::npos);
-}
-
 } // namespace
 } // namespace game::scene
 // NOLINTEND

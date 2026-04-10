@@ -181,6 +181,7 @@ set(GAME_TEST_SOURCES
     game/dialogue_bubble_controller_test.cpp
     game/hud_document_controller_source_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
+    game/inventory_menu_character_panel_test.cpp
     game/inventory_menu_scene_slot_grid_registration_test.cpp
     game/rmlui_architecture_regression_test.cpp
     game/time_advance_sleep_test.cpp

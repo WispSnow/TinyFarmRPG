@@ -247,6 +247,7 @@ target_sources(game PRIVATE
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
     game/scene/battle_scene.cpp
+    game/scene/inventory_menu_character_panel.cpp
     game/scene/inventory_menu_scene.cpp
 )
 
