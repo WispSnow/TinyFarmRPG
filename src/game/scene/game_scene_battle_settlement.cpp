@@ -22,6 +22,7 @@ namespace game::scene {
 namespace {
 
 constexpr std::uint8_t NOTIFICATION_CHANNEL = 1;
+constexpr float NOTIFICATION_SECONDS = 2.0f;
 
 [[nodiscard]] entt::entity findPlayerEntityWithInventory(entt::registry& registry) {
     auto players = registry.view<game::component::PlayerTag, game::component::InventoryComponent>();
@@ -112,6 +113,7 @@ void applyBattleItemStockDelta(entt::registry& registry,
 void applyVictoryRewards(entt::registry& registry,
                          entt::dispatcher& dispatcher,
                          game::runtime::GameRuntimeServices* services,
+                         game::system::helpers::NotificationTimer& reward_notification,
                          const game::defs::BattleEndedEvent& evt) {
     if (evt.outcome != game::battle::BattleOutcome::Victory) {
         return;
@@ -168,29 +170,34 @@ void applyVictoryRewards(entt::registry& registry,
 
     const game::data::ItemCatalog* item_catalog = services->item_catalog ? services->item_catalog.get() : nullptr;
     const std::string feedback = game::scene::formatRewardFeedback(gold_written_back, item_results, item_catalog);
-    game::system::helpers::emitDialogueBubbleShow(dispatcher,
-                                                  NOTIFICATION_CHANNEL,
-                                                  player,
-                                                  std::string{},
-                                                  feedback,
-                                                  game::system::helpers::computeHeadPosition(registry, player));
+    game::system::helpers::showTimedNotification(
+        registry,
+        dispatcher,
+        NOTIFICATION_CHANNEL,
+        reward_notification,
+        player,
+        std::string{},
+        feedback,
+        NOTIFICATION_SECONDS);
 }
 
 } // namespace
 
-void processBattleEndedForGameScene(entt::registry& registry,
-                                    entt::dispatcher& dispatcher,
-                                    game::runtime::GameRuntimeServices* services,
-                                    std::unordered_map<entt::id_type, int>& active_battle_initial_item_stocks,
-                                    bool& has_active_battle_item_stocks,
-                                    const game::defs::BattleEndedEvent& evt) {
+void processBattleEndedForGameScene(
+    entt::registry& registry,
+    entt::dispatcher& dispatcher,
+    game::runtime::GameRuntimeServices* services,
+    std::unordered_map<entt::id_type, int>& active_battle_initial_item_stocks,
+    bool& has_active_battle_item_stocks,
+    game::system::helpers::NotificationTimer& reward_notification,
+    const game::defs::BattleEndedEvent& evt) {
     applyBattleItemStockDelta(
         registry,
         services,
         active_battle_initial_item_stocks,
         has_active_battle_item_stocks,
         evt.remaining_item_stocks);
-    applyVictoryRewards(registry, dispatcher, services, evt);
+    applyVictoryRewards(registry, dispatcher, services, reward_notification, evt);
 }
 
 } // namespace game::scene

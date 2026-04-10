@@ -1,5 +1,7 @@
 #pragma once
 
+#include "system_helpers.h"
+
 #include <entt/entity/entity.hpp>
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
@@ -35,8 +37,7 @@ class ChestSystem final {
     game::data::ItemCatalog& item_catalog_;
     game::domain::InventoryDomainService& inventory_domain_service_;
 
-    float notification_timer_{0.0f};
-    entt::entity notification_target_{entt::null};
+    game::system::helpers::NotificationTimer notification_{};
 
 public:
     ChestSystem(entt::registry& registry,
@@ -51,7 +52,6 @@ public:
 private:
     void updateNotification(float delta_time);
     void showNotification(entt::entity player, std::string text);
-    void hideNotification(entt::entity player);
 
     void onInteractCommand(const game::defs::InteractCommand& event);
     bool tryOpenChest(entt::entity player, entt::entity chest_entity);

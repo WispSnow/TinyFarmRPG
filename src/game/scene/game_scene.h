@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game_scene_battle_settlement.h"
 #include "engine/scene/scene.h"
 #include "game/runtime/game_mode.h"
 #include "game/defs/events.h"
@@ -60,6 +61,7 @@ class GameScene : public engine::scene::Scene {
     bool has_previous_camera_position_{false};
     std::unordered_map<entt::id_type, int> active_battle_initial_item_stocks_{};
     bool has_active_battle_item_stocks_{false};
+    game::system::helpers::NotificationTimer battle_reward_notification_{};
 
 public:
     GameScene(std::string_view name, engine::core::Context& context,
@@ -79,6 +81,7 @@ public:
 
 private:
     void snapshotInterpolationState();
+    void updateBattleRewardNotification(float delta_time);
     void bindSceneInputActions();
     [[nodiscard]] bool initUI();
 #ifdef TF_ENABLE_DEBUG_UI

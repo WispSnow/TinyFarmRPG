@@ -1,5 +1,6 @@
 #pragma once
 
+#include "system_helpers.h"
 #include "game/defs/commands.h"
 
 #include <entt/entity/registry.hpp>
@@ -21,8 +22,7 @@ class ItemUseSystem final {
     game::data::ItemCatalog& catalog_;
     game::domain::InventoryDomainService& inventory_domain_service_;
 
-    float notification_timer_{0.0f};
-    entt::entity notification_target_{entt::null};
+    game::system::helpers::NotificationTimer notification_{};
 
 public:
     ItemUseSystem(entt::registry& registry,

@@ -71,23 +71,7 @@ void ItemUseSystem::update(float delta_time) {
 }
 
 void ItemUseSystem::updateNotification(float delta_time) {
-    if (notification_timer_ <= 0.0f) {
-        return;
-    }
-
-    notification_timer_ = std::max(0.0f, notification_timer_ - delta_time);
-
-    if (notification_target_ != entt::null && registry_.valid(notification_target_)) {
-        helpers::emitDialogueBubbleMove(dispatcher_,
-                                       NOTIFICATION_CHANNEL,
-                                       notification_target_,
-                                       helpers::computeHeadPosition(registry_, notification_target_));
-    }
-
-    if (notification_timer_ <= 0.0f && notification_target_ != entt::null) {
-        helpers::emitDialogueBubbleHide(dispatcher_, NOTIFICATION_CHANNEL, notification_target_);
-        notification_target_ = entt::null;
-    }
+    helpers::updateTimedNotification(registry_, dispatcher_, NOTIFICATION_CHANNEL, notification_, delta_time);
 }
 
 void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
@@ -137,14 +121,15 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
 
     if (!ok) {
         if (evt.show_prompt) {
-            notification_timer_ = NOTIFICATION_SECONDS;
-            notification_target_ = evt.target;
-            helpers::emitDialogueBubbleShow(dispatcher_,
-                                           NOTIFICATION_CHANNEL,
-                                           evt.target,
-                                           std::string{},
-                                           "背包空间不足",
-                                           helpers::computeHeadPosition(registry_, evt.target));
+            helpers::showTimedNotification(
+                registry_,
+                dispatcher_,
+                NOTIFICATION_CHANNEL,
+                notification_,
+                evt.target,
+                std::string{},
+                "背包空间不足",
+                NOTIFICATION_SECONDS);
         }
         return;
     }
@@ -178,14 +163,15 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
         }
         const std::string text = first ? "使用成功" : oss.str();
 
-        notification_timer_ = NOTIFICATION_SECONDS;
-        notification_target_ = evt.target;
-        helpers::emitDialogueBubbleShow(dispatcher_,
-                                       NOTIFICATION_CHANNEL,
-                                       evt.target,
-                                       std::string{},
-                                       text,
-                                       helpers::computeHeadPosition(registry_, evt.target));
+        helpers::showTimedNotification(
+            registry_,
+            dispatcher_,
+            NOTIFICATION_CHANNEL,
+            notification_,
+            evt.target,
+            std::string{},
+            text,
+            NOTIFICATION_SECONDS);
     }
 }
 
