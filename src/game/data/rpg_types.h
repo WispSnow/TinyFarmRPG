@@ -23,6 +23,7 @@ enum class ParamIndex : std::uint8_t {
 inline constexpr std::size_t kParamCount = static_cast<std::size_t>(ParamIndex::Count);
 using ParamArray = std::array<int, kParamCount>;
 
+/// @brief 角色范围，例如单个还是全部敌人/盟友。
 enum class Scope : std::uint8_t {
     None = 0,
     OneEnemy,
@@ -32,6 +33,7 @@ enum class Scope : std::uint8_t {
     Self
 };
 
+/// @brief 技能或状态的伤害类型，可针对HP/MP造成伤害或恢复。
 enum class DamageType : std::uint8_t {
     None = 0,
     HpDamage,
@@ -42,12 +44,14 @@ enum class DamageType : std::uint8_t {
     MpDrain
 };
 
+/// @brief 技能的命中类型，分物理和魔法
 enum class HitType : std::uint8_t {
     Certain = 0,
     Physical,
     Magical
 };
 
+/// @brief 特性类型，例如参数倍率、元素倍率、状态倍率或状态免疫。
 enum class TraitType : std::uint8_t {
     ParamRate = 0,
     ElementRate,
@@ -56,6 +60,7 @@ enum class TraitType : std::uint8_t {
     Unknown
 };
 
+/// @brief 技能或状态的效果类型，例如恢复HP/MP、增减状态或增减道具。
 enum class EffectType : std::uint8_t {
     RecoverHp = 0,
     RecoverMp,
