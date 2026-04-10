@@ -235,6 +235,40 @@ TEST_F(GameSceneBattleRewardWritebackTest, DefeatOnlyWritesBackBattleItemDelta) 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }
 
+TEST_F(GameSceneBattleRewardWritebackTest, EscapedOnlyWritesBackBattleItemDelta) {
+    DialogueCapture capture;
+    auto sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    sink.connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(10, 3);
+    const entt::id_type herb_id = game::data::RpgCatalog::hashId("item.herb");
+    active_battle_initial_item_stocks_[herb_id] = 3;
+    has_active_battle_item_stocks_ = true;
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Escaped;
+    evt.remaining_item_stocks = {{herb_id, 1}};
+    evt.final_units = {
+        makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 12, 20, std::string{"enemy.slime"})};
+
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        evt);
+
+    EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, 10);
+    EXPECT_EQ(countItem(player, herb_id), 1);
+    EXPECT_FALSE(has_active_battle_item_stocks_);
+    EXPECT_TRUE(active_battle_initial_item_stocks_.empty());
+    EXPECT_TRUE(capture.shows.empty());
+
+    sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
 TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInventoryIsFull) {
     DialogueCapture capture;
     auto sink = dispatcher_.sink<game::defs::DialogueShowEvent>();

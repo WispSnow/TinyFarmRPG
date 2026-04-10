@@ -1,19 +1,17 @@
 #include "inventory_menu_scene.h"
 
-#include "engine/component/name_component.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
-#include "game/component/player_wallet_component.h"
 #include "game/data/item_catalog.h"
+#include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/inventory_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
-#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <optional>
@@ -209,20 +207,12 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
 }
 
 void InventoryMenuScene::syncCharacterPanel() {
-    char_name_ = "Player";
-    if (const auto* name = game_registry_.try_get<engine::component::NameComponent>(player_);
-        name && !name->name_.empty()) {
-        char_name_ = name->name_;
-    }
-
-    char_title_ = "Lv.1 Farmer";
-    if (const auto* wallet = game_registry_.try_get<game::component::PlayerWalletComponent>(player_)) {
-        gold_label_ = fmt::format("Gold: {}", wallet->gold_);
-    } else {
-        gold_label_ = "Gold: 0";
-        spdlog::warn("InventoryMenuScene: 玩家缺少 PlayerWalletComponent，金币显示回退为 0。");
-    }
-    farm_label_ = "TinyFarm";
+    const InventoryMenuCharacterPanelData data =
+        buildInventoryMenuCharacterPanelData(game_registry_, player_);
+    char_name_ = data.char_name;
+    char_title_ = data.char_title;
+    gold_label_ = data.gold_label;
+    farm_label_ = data.farm_label;
 
     document_controller_.markDirty("char_name");
     document_controller_.markDirty("char_title");

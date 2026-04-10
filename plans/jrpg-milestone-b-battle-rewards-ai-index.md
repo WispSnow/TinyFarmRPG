@@ -308,6 +308,8 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 完成 Stage 5 细化计划，统一金币 UI、存档接线与测试策略。
 
+当前 Stage 1-5 对应实现已全部落地，Milestone B 已形成“敌方自动行动 + Victory 奖励闭环”。
+
 ## ToDo
 
 - [x] Stage 1: 细化 battle unit 来源信息与金币真相方案 → `plans/jrpg-milestone-b-stage1-battle-provenance.md`

@@ -47,7 +47,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     // Character panel
     Rml::String char_name_{"Player"};
     Rml::String char_title_{"Lv.1 Farmer"};
-    Rml::String gold_label_{"Gold: --"};
+    Rml::String gold_label_{"Gold: 0"};
     Rml::String farm_label_{"TinyFarm"};
 
 public:

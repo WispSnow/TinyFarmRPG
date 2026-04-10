@@ -5,10 +5,12 @@
 回合制战斗系统会把游戏从“实时探索”切换到“策略回合”模式，玩家与敌方单位按速度顺序交替行动，直到一方全灭或玩家成功逃跑。当前实现已经不再是最初的 Attack 原型，而是具备完整战斗菜单闭环的最小 JRPG 战斗骨架：
 
 - `BattleScene` 负责 RmlUi 菜单、输入和表现层状态机
+- `BattleAiPlanner` 负责敌方回合的最小自动行动规划
 - `BattleSession` 负责接收行动并返回全量结果快照
 - `BattleActionResolver` 负责技能、物品、防御、逃跑等具体结算
+- `BattleRewardResolver` 负责胜利后的金币、掉落与经验汇总
 - `TurnCore` 负责行动顺序推进与胜负判定
-- `GameScene` 负责战斗入口、场景 push/pop，以及战斗物品库存写回
+- `GameScene` 负责战斗入口、场景 push/pop、战斗库存写回与胜利奖励落地
 
 核心设计原则：
 
@@ -25,6 +27,7 @@ graph TD
         UI["RmlUi 菜单与结果文本"]
         FSM["FlowState + MenuState"]
         INPUT["menu_up/down/confirm/cancel"]
+        AI["BattleAiPlanner"]
     end
 
     subgraph "应用层 — BattleSession"
@@ -37,6 +40,10 @@ graph TD
         CATALOG["RpgCatalog / ItemCatalog"]
     end
 
+    subgraph "奖励层 — BattleRewardResolver"
+        REWARD["gold / drops / exp summary"]
+    end
+
     subgraph "领域核心 — TurnCore"
         ORDER["速度排序"]
         ADV["advanceTurn()"]
@@ -45,11 +52,13 @@ graph TD
 
     subgraph "探索侧 — GameScene"
         PUSH["requestPushScene(BattleScene)"]
-        WRITEBACK["BattleEndedEvent + 库存写回"]
+        WRITEBACK["BattleEndedEvent + 库存/奖励写回"]
+        WALLET["PlayerWalletComponent"]
     end
 
     INPUT --> FSM
     UI --> FSM
+    AI --> FSM
     FSM --> SESSION
     SESSION --> STOCKS
     SESSION --> RESOLVE
@@ -57,7 +66,9 @@ graph TD
     RESOLVE --> ORDER
     RESOLVE --> ADV
     RESOLVE --> OUTCOME
-    WRITEBACK --> PUSH
+    WRITEBACK --> REWARD
+    WRITEBACK --> WALLET
+    PUSH --> WRITEBACK
 ```
 
 关键边界：
@@ -65,7 +76,9 @@ graph TD
 - `BattleScene` 不直接操作 `TurnCore`
 - `BattleSession` 是表现层进入战斗逻辑的唯一入口
 - `BattleActionResolver` 是动作规则真相来源，UI 只做前置筛选
-- `GameScene` 保持对真实背包和探索流程的所有权
+- `BattleAiPlanner` 只生成敌方行动，不直接修改回合状态
+- `BattleRewardResolver` 只生成奖励摘要，不直接写探索态真相
+- `GameScene` 保持对真实背包、金币和探索流程的所有权
 
 ## 回合驱动原理
 
@@ -96,13 +109,14 @@ graph TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WaitingForInput
+    [*] --> NextTurn
+    NextTurn --> WaitingForInput : 当前行动者是玩家
+    NextTurn --> ExecutingAction : 当前行动者是敌人
     WaitingForInput --> ExecutingAction : 提交 BattleAction
     ExecutingAction --> AnimatingResult : session_.submitAction()
     AnimatingResult --> CheckVictory : 0.2s 占位计时结束
     CheckVictory --> NextTurn : outcome == Ongoing
     CheckVictory --> BattleEnd : Victory / Defeat / Escaped
-    NextTurn --> WaitingForInput
     BattleEnd --> [*]
 ```
 
@@ -114,6 +128,11 @@ stateDiagram-v2
 - `SkillList`
 - `ItemList`
 - `TargetSelect`
+
+说明：
+
+- `WaitingForInput` 的语义已经收紧为“等待玩家输入”
+- 敌方回合不会进入玩家菜单，而是在 `NextTurn` 阶段直接通过 `BattleAiPlanner` 生成并提交动作
 
 ### 输入路径
 
@@ -231,6 +250,8 @@ sequenceDiagram
 
 ## 战斗库存与结算协议
 
+### 战斗物品库存
+
 战斗物品不是直接读写真实背包，而是“进入战斗复制，战斗结束写回”：
 
 ```mermaid
@@ -246,7 +267,7 @@ sequenceDiagram
     SE-->>BS: itemStocks() 剩余库存
     BS->>EVT: remaining_item_stocks
     EVT->>GS: onBattleEnded()
-    GS->>GS: applyBattleItemStockDelta()
+    GS->>GS: 写回 battle item delta
 ```
 
 这保证了：
@@ -255,17 +276,58 @@ sequenceDiagram
 - 物品消耗不会在战斗结束后丢失
 - `GameScene` 仍保有真实背包同步的最终控制权
 
+### Victory 奖励写回
+
+标准奖励只在 `Victory` 时生效：
+
+```mermaid
+sequenceDiagram
+    participant BS as BattleScene
+    participant EVT as BattleEndedEvent
+    participant GS as GameScene
+    participant RR as BattleRewardResolver
+    participant INV as InventoryDomainService
+    participant WALLET as PlayerWalletComponent
+
+    BS->>EVT: BattleEndedEvent{outcome, final_units, remaining_item_stocks}
+    EVT->>GS: onBattleEnded()
+    GS->>GS: 先写回 battle item delta
+    alt outcome == Victory
+        GS->>RR: resolve(final_units, rpg_catalog)
+        RR-->>GS: gold_total / item_drops / exp_total
+        GS->>WALLET: gold += gold_total
+        GS->>INV: addItem(item_drops)
+        GS->>GS: 通过 DialogueShowEvent 显示最小奖励反馈
+    else outcome == Defeat / Escaped
+        GS->>GS: 不发标准奖励
+    end
+```
+
+当前规则：
+
+- `Victory`：写回金币与掉落，并显示最小奖励反馈
+- `Defeat`：不发金币/掉落/经验，但保留战斗中已发生的物品消耗
+- `Escaped`：不发金币/掉落/经验，但同样保留战斗中已发生的物品消耗
+- 金币真相位于 player entity 的 `PlayerWalletComponent`
+
 ## 数据结构
 
 ### 核心类型
 
 | 类型 | 当前关键字段 |
 |---|---|
-| `BattleUnit` | `id / name / side / hp / max_hp / mp / max_mp / attack / defense / magic_attack / magic_defense / speed / luck / skill_ids` |
+| `BattleUnit` | `id / name / side / hp / max_hp / mp / max_mp / attack / defense / magic_attack / magic_defense / speed / luck / skill_ids / source_actor_id / source_enemy_id` |
 | `BattleAction` | `type / actor_id / target_id / skill_id / item_id` |
 | `BattleActionResult` | `status / action_type / damage / hp_recovered / mp_recovered / mp_spent / missed / critical / target_guarded / target_defeated / escape_succeeded / states_added / states_removed / failure_reason / outcome_after / snapshot` |
 | `BattleSnapshot` | `units / current_actor_id / round_index / outcome` |
 | `BattleSessionOptions` | `rpg_catalog / item_catalog / item_stocks` |
+
+### 关键辅助类型
+
+| 类型 | 当前职责 |
+|---|---|
+| `BattleRewardSummary` | 胜利后的 `gold_total / item_drops / exp_total` 聚合结果 |
+| `PlayerWalletComponent` | 探索态金币真相 |
 
 ### 命令与事件
 
@@ -294,12 +356,14 @@ sequenceDiagram
     GS->>BUF: buildBattleUnitsFromCatalog(...)
     GS->>GS: requestPushScene(BattleScene)
 
-    BS->>BS: initUI() + createModel() + bind events
-    BS->>BS: enterInputMenu()
-
     loop 每个行动者回合
-        BS->>BS: MainMenu / SkillList / ItemList / TargetSelect
-        BS->>SE: submitAction(BattleAction)
+        alt 当前行动者是玩家
+            BS->>BS: MainMenu / SkillList / ItemList / TargetSelect
+            BS->>SE: submitAction(BattleAction)
+        else 当前行动者是敌人
+            BS->>BS: BattleAiPlanner 生成动作
+            BS->>SE: submitAction(BattleAction)
+        end
         SE-->>BS: BattleActionResult + Snapshot
         BS->>BS: AnimatingResult(0.2s)
     end
@@ -307,7 +371,8 @@ sequenceDiagram
     BS->>D: BattleEndedEvent{outcome, final_units, remaining_item_stocks}
     BS->>GS: requestPopScene()
     D->>GS: onBattleEnded()
-    GS->>GS: applyBattleItemStockDelta()
+    GS->>GS: 写回 battle item delta
+    GS->>GS: Victory 时写回金币/掉落
 ```
 
 ## 扩展指南
@@ -317,11 +382,11 @@ sequenceDiagram
 | 技能系统 | 已接入目录与 scope | 扩展学习/成长/技能详情 UI |
 | 战斗物品 | 已接入 `battle_use` 与库存写回 | 扩展状态类、伤害类 battle item 效果 |
 | 状态异常 | 已有 runtime state 与 added state 基础 | 扩展回合开始/结束 hook 与更多状态表现 |
-| AI | 敌方仍可继续强化 | 在敌方回合生成 `BattleAction` 即可 |
+| AI | 已有最小敌方自动行动 | 继续扩展评分规则、目标偏好、条件分支 |
 | 全体 / 自身动作 | 已通过 scope 直接提交支持 | 后续可补更丰富的结果展示 |
 | 目标 UI | 已支持单体敌/友选择 | 后续可补头像、弱点、预览、复活目标规则 |
 | 战斗日志 | 当前只有简短 `result_text` | 后续可拆独立 log/popup 系统 |
-| 奖励结算 | 仅 outcome + final_units + item delta | 后续在 `BattleEndedEvent` 上扩经验、掉落、任务推进 |
+| 奖励结算 | 已完成 Victory 金币/掉落写回 | 后续可扩经验消费方、任务推进、独立结算界面 |
 
 ## 测试策略
 
@@ -331,9 +396,15 @@ sequenceDiagram
 |---|---|
 | `tests/game/battle/turn_core_test.cpp` | 速度排序、死亡跳过、胜负判定 |
 | `tests/game/battle/battle_action_resolver_test.cpp` | Attack / Skill / Item / Guard / Escape 的规则与 scope |
+| `tests/game/battle/battle_unit_factory_test.cpp` | `BattleUnit` 来源信息与 catalog 构建路径 |
+| `tests/game/battle/battle_ai_planner_test.cpp` | 敌方最小 AI 选技与目标选择 |
+| `tests/game/battle/battle_reward_resolver_test.cpp` | Victory 奖励汇总、掉落合并、非 Victory 空摘要 |
 | `tests/game/battle/battle_session_test.cpp` | 会话级提交、快照、回合推进 |
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
-| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback、库存写回 |
+| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback |
+| `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存与奖励写回 |
+| `tests/game/save_service_async_test.cpp` | 钱包金币写出与 roundtrip 恢复 |
+| `tests/game/ui_layout_integration_test.cpp` | InventoryMenuScene 的真实金币展示 |
 | `tests/game/rml_menu_navigation_style_test.cpp` | 共享导航样式与 focus/hover 规范 |
 
 当前没有为 BattleScene 建完整 RmlUi runtime 交互测试；该层仍以 smoke 方式验证接线和静态约束为主。
@@ -344,13 +415,18 @@ sequenceDiagram
 |---|---|---|
 | `src/game/battle/battle_types.h` | 领域 | 战斗数据类型定义 |
 | `src/game/battle/turn_core.h/.cpp` | 领域 | 回合顺序与胜负判定 |
+| `src/game/battle/battle_ai_planner.h/.cpp` | 领域 | 敌方最小自动行动规划 |
 | `src/game/battle/battle_action_resolver.h/.cpp` | 执行 | 技能、物品、防御、逃跑等动作结算 |
+| `src/game/battle/battle_reward_resolver.h/.cpp` | 应用 | Victory 奖励汇总 |
 | `src/game/battle/battle_session.h/.cpp` | 应用 | 组织 resolver、runtime_state 与 snapshot |
 | `src/game/battle/battle_unit_factory.cpp` | 应用 | 由 actor/troop/catalog 构建战斗单位 |
 | `src/game/scene/battle_scene.h/.cpp` | 表现 | RmlUi 菜单、输入、FlowState / MenuState 编排 |
 | `ui/rmlui/scenes/battle.rml` | UI | 战斗菜单 RML 结构 |
 | `ui/rmlui/scenes/battle.rcss` | UI | 战斗菜单样式与 target/list 状态表现 |
-| `src/game/scene/game_scene.h/.cpp` | 表现 | 战斗入口、push/pop、物品库存写回 |
+| `src/game/scene/game_scene.h/.cpp` | 表现 | 战斗入口、push/pop 与战后结算入口 |
+| `src/game/scene/game_scene_battle_settlement.h/.cpp` | 表现 | 战斗库存与 Victory 奖励写回编排 |
+| `src/game/scene/game_scene_reward_feedback.h/.cpp` | 表现 | 最小奖励反馈文本格式化 |
+| `src/game/component/player_wallet_component.h` | 探索态 | 金币真相 |
 | `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表 |
 | `src/game/data/item_catalog.*` | 数据 | `battle_use` 物品效果查表 |
 | `src/game/defs/commands.h` | 契约 | `EnterBattleCommand` / `SubmitBattleActionCommand` |

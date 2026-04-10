@@ -29,14 +29,15 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
-#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/render/renderer.h"
 #include "engine/render/text_renderer.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/scene/inventory_menu_scene.h"
 #include "game/ui/hotbar_ui.h"
 
@@ -424,6 +425,66 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbar
     }
 
     runtime->update();
+    EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
+}
+
+TEST_F(UILayoutIntegrationTest, InventoryMenuSceneDisplaysWalletGoldAndFallbackText) {
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
+    }
+    auto* rml_context = runtime->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
+
+    const int initial_document_count = rml_context->GetNumDocuments();
+
+    {
+        entt::registry registry;
+        const entt::entity player = registry.create();
+        registry.emplace<game::component::InventoryComponent>(player);
+        registry.emplace<game::component::HotbarComponent>(player);
+        registry.emplace<game::component::PlayerWalletComponent>(
+            player,
+            game::component::PlayerWalletComponent{.gold_ = 345});
+
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
+        ASSERT_TRUE(menu.init());
+
+        runtime->update();
+
+        auto* document = findDocumentByElementId(*rml_context, "menu-panel");
+        ASSERT_NE(document, nullptr);
+        auto* gold_label = document->GetElementById("gold-label");
+        ASSERT_NE(gold_label, nullptr);
+        EXPECT_EQ(gold_label->GetInnerRML(), "Gold: 345");
+
+        menu.clean();
+        runtime->update();
+    }
+
+    {
+        entt::registry registry;
+        const entt::entity player = registry.create();
+        registry.emplace<game::component::InventoryComponent>(player);
+        registry.emplace<game::component::HotbarComponent>(player);
+
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr);
+        ASSERT_TRUE(menu.init());
+
+        runtime->update();
+
+        auto* document = findDocumentByElementId(*rml_context, "menu-panel");
+        ASSERT_NE(document, nullptr);
+        auto* gold_label = document->GetElementById("gold-label");
+        ASSERT_NE(gold_label, nullptr);
+        EXPECT_EQ(gold_label->GetInnerRML(), "Gold: 0");
+
+        menu.clean();
+        runtime->update();
+    }
+
     EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
 }
 
