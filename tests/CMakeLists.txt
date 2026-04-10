@@ -135,6 +135,7 @@ set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
     game/rpg_catalog_test.cpp
     game/item_catalog_test.cpp
+    game/quest_catalog_test.cpp
     game/battle/turn_core_test.cpp
     game/battle/battle_unit_factory_test.cpp
     game/battle/battle_formula_evaluator_test.cpp

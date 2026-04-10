@@ -11,6 +11,7 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/player_wallet_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
@@ -448,6 +449,15 @@ SaveData SaveService::capture(std::string& out_error) const {
         spdlog::warn("SaveService: 玩家缺少 PlayerWalletComponent，存档金币将按 0 写出。");
     }
 
+    if (const auto* quest_log = registry_.try_get<game::component::QuestLogComponent>(player)) {
+        out.quest_state.active_quests = quest_log->active_quests;
+        out.quest_state.completed_quests = quest_log->completed_quests;
+        out.quest_state.objective_progress = quest_log->objective_progress;
+    } else {
+        out_error = "玩家缺少 QuestLogComponent";
+        return out;
+    }
+
     if (const auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         out.appearance_state.gender = appearance->gender_;
         out.appearance_state.slots = appearance->slot_variants_;
@@ -748,6 +758,12 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     registry_.emplace_or_replace<game::component::PlayerWalletComponent>(
         player,
         game::component::PlayerWalletComponent{.gold_ = data.player.gold});
+    registry_.emplace_or_replace<game::component::QuestLogComponent>(
+        player,
+        game::component::QuestLogComponent{
+            .active_quests = data.quest_state.active_quests,
+            .completed_quests = data.quest_state.completed_quests,
+            .objective_progress = data.quest_state.objective_progress});
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         if (!data.appearance_state.gender.empty()) {

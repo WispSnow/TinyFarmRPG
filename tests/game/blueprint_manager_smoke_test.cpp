@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "game/component/quest_log_component.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 
@@ -90,6 +91,19 @@ TEST(EntityFactoryTest, CreateActor_MissingBlueprintReturnsNull) {
 
     const entt::entity entity = factory.createActor(entt::hashed_string{"missing_actor"}.value(), glm::vec2{0.0f, 0.0f});
     EXPECT_EQ(entity, entt::entity{entt::null});
+}
+
+TEST(EntityFactoryTest, CreateActor_PlayerGetsQuestLogComponent) {
+    entt::registry registry;
+    BlueprintManager manager;
+    const std::string path = std::string(PROJECT_SOURCE_DIR) + "/assets/data/actor_blueprint.json";
+    ASSERT_TRUE(manager.loadActorBlueprints(path));
+
+    EntityFactory factory(registry, manager, nullptr, nullptr);
+    const entt::entity entity = factory.createActor(entt::hashed_string{"player"}.value(), glm::vec2{16.0f, 24.0f});
+
+    ASSERT_NE(entity, entt::entity{entt::null});
+    EXPECT_TRUE(registry.all_of<game::component::QuestLogComponent>(entity));
 }
 
 } // namespace game::factory

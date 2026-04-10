@@ -32,6 +32,7 @@
 #include "game/data/game_time.h"
 #include "game/data/appearance_catalog.h"
 #include "game/data/item_catalog.h"
+#include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
@@ -370,6 +371,35 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     return true;
 }
 
+[[nodiscard]] bool ensureQuestCatalog(game::runtime::GameRuntimeServices& services) {
+    if (services.quest_catalog) {
+        return true;
+    }
+
+    if (!services.rpg_catalog || !services.item_catalog) {
+        spdlog::error("QuestCatalog 依赖 RpgCatalog 和 ItemCatalog。");
+        return false;
+    }
+
+    services.quest_catalog = std::make_shared<game::data::QuestCatalog>();
+    constexpr std::string_view kQuestCatalogPath = "assets/data/quests.json";
+    if (!services.quest_catalog->loadFromFile(kQuestCatalogPath)) {
+        spdlog::error("加载 QuestCatalog 失败: {}", kQuestCatalogPath);
+        return false;
+    }
+
+    std::string reference_error{};
+    if (!services.quest_catalog->validateReferences(
+            services.rpg_catalog.get(),
+            services.item_catalog.get(),
+            reference_error)) {
+        spdlog::error("QuestCatalog 引用校验失败: {}", reference_error);
+        return false;
+    }
+
+    return true;
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
@@ -596,6 +626,9 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
         return false;
     }
     if (!ensureRpgCatalog(params.services)) {
+        return false;
+    }
+    if (!ensureQuestCatalog(params.services)) {
         return false;
     }
 

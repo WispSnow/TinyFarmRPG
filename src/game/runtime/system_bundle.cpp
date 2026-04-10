@@ -41,6 +41,7 @@
 #include "game/factory/blueprint_manager.h"
 #include "game/data/item_catalog.h"
 #include "game/data/appearance_catalog.h"
+#include "game/data/quest_catalog.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/save/save_service.h"
 #include "game/world/world_state.h"

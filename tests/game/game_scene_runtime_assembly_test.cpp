@@ -48,7 +48,9 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     EXPECT_NE(assembler_source.find("bool GameRuntimeAssembler::assembleSystems"), std::string::npos);
     EXPECT_NE(assembler_source.find("ensureAppearanceCatalog"), std::string::npos);
     EXPECT_NE(assembler_source.find("ensureRpgCatalog"), std::string::npos);
+    EXPECT_NE(assembler_source.find("ensureQuestCatalog"), std::string::npos);
     EXPECT_NE(assembler_source.find("if (!ensureRpgCatalog(params.services))"), std::string::npos);
+    EXPECT_NE(assembler_source.find("if (!ensureQuestCatalog(params.services))"), std::string::npos);
     EXPECT_NE(assembler_source.find("AppearanceSystem"), std::string::npos);
 }
 

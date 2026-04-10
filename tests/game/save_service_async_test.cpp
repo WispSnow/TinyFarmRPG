@@ -36,9 +36,11 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/player_wallet_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/data/quest_data.h"
 #include "game/defs/events.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
@@ -308,6 +310,14 @@ protected:
         auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
         hotbar.slots_[0].inventory_slot_index_ = 0;
         registry.emplace<game::component::PlayerWalletComponent>(player, game::component::PlayerWalletComponent{.gold_ = 345});
+        auto& quest_log = registry.emplace<game::component::QuestLogComponent>(player);
+        quest_log.active_quests = {"quest.village.goblin_cleanup"};
+        quest_log.completed_quests = {"quest.tutorial.intro"};
+        quest_log.objective_progress = {
+            {game::data::makeQuestObjectiveProgressKey(
+                 "quest.village.goblin_cleanup",
+                 "kill_goblins"),
+             2}};
         registry.emplace<game::component::StateComponent>(player);
 
         const entt::id_type initial_map_id = entt::hashed_string{"home_exterior"}.value();
@@ -416,10 +426,19 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContaine
     const auto& quest_state = json.at("quest_state");
     EXPECT_TRUE(quest_state.contains("active_quests"));
     EXPECT_TRUE(quest_state.at("active_quests").is_array());
+    ASSERT_EQ(quest_state.at("active_quests").size(), 1U);
+    EXPECT_EQ(quest_state.at("active_quests").at(0).get<std::string>(), "quest.village.goblin_cleanup");
     EXPECT_TRUE(quest_state.contains("completed_quests"));
     EXPECT_TRUE(quest_state.at("completed_quests").is_array());
+    ASSERT_EQ(quest_state.at("completed_quests").size(), 1U);
+    EXPECT_EQ(quest_state.at("completed_quests").at(0).get<std::string>(), "quest.tutorial.intro");
     EXPECT_TRUE(quest_state.contains("objective_progress"));
     EXPECT_TRUE(quest_state.at("objective_progress").is_object());
+    EXPECT_EQ(
+        quest_state.at("objective_progress")
+            .at("quest.village.goblin_cleanup::kill_goblins")
+            .get<int>(),
+        2);
 
     ASSERT_TRUE(json.contains("skill_state"));
     ASSERT_TRUE(json.at("skill_state").is_object());
@@ -468,6 +487,50 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPlayerWalletGold) {
     const entt::entity loaded_player = *player_view.begin();
     const auto& loaded_wallet = player_view.get<game::component::PlayerWalletComponent>(loaded_player);
     EXPECT_EQ(loaded_wallet.gold_, 345);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresQuestLogState) {
+    const auto file_path = tempFilePath("save_quest_log_restore.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::QuestLogComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+    auto& quest_log = player_view.get<game::component::QuestLogComponent>(player);
+    quest_log.active_quests = {"quest.changed"};
+    quest_log.completed_quests.clear();
+    quest_log.objective_progress.clear();
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::QuestLogComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity loaded_player = *player_view.begin();
+    const auto& loaded_quest_log = player_view.get<game::component::QuestLogComponent>(loaded_player);
+    EXPECT_EQ(loaded_quest_log.active_quests, std::vector<std::string>({"quest.village.goblin_cleanup"}));
+    EXPECT_EQ(loaded_quest_log.completed_quests, std::vector<std::string>({"quest.tutorial.intro"}));
+    ASSERT_EQ(loaded_quest_log.objective_progress.size(), 1U);
+    EXPECT_EQ(
+        loaded_quest_log.objective_progress.at(
+            game::data::makeQuestObjectiveProgressKey(
+                "quest.village.goblin_cleanup",
+                "kill_goblins")),
+        2);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileFailsWhenPlayerMissingQuestLogComponent) {
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    for (const entt::entity player : player_view) {
+        scene_->getRegistry().remove<game::component::QuestLogComponent>(player);
+    }
+
+    const auto file_path = tempFilePath("save_missing_quest_log.json");
+    std::string save_error;
+    EXPECT_FALSE(save_service_->saveToFile(file_path, save_error));
+    EXPECT_EQ(save_error, "玩家缺少 QuestLogComponent");
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveReportsWriteFailureForInvalidPath) {
