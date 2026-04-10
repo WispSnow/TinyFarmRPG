@@ -171,6 +171,7 @@ target_sources(game PRIVATE
     game/data/rpg_catalog.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
+    game/data/quest_catalog.cpp
     # Battle
     game/battle/battle_action_resolver.cpp
     game/battle/battle_ai_planner.cpp
