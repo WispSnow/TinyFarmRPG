@@ -167,6 +167,8 @@ set(GAME_TEST_SOURCES
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
     game/game_scene_battle_entry_test.cpp
+    game/game_scene_battle_reward_writeback_test.cpp
+    game/game_scene_reward_feedback_test.cpp
     game/game_scene_runtime_assembly_test.cpp
     game/input_context_scene_stack_test.cpp
     game/menu_hover_focus_sync_test.cpp

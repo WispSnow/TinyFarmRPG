@@ -5,6 +5,7 @@
 #include "game/runtime/game_runtime_assembler.h"
 #include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
+#include "game_scene_battle_settlement.h"
 #include "inventory_menu_scene.h"
 #include "pause_menu_scene.h"
 #include "title_scene.h"
@@ -83,13 +84,6 @@ constexpr int MUSIC_FADE_IN_MS = 200;
     return stocks;
 }
 
-[[nodiscard]] entt::entity findPlayerEntityWithInventory(entt::registry& registry) {
-    auto players = registry.view<game::component::PlayerTag, game::component::InventoryComponent>();
-    if (players.begin() == players.end()) {
-        return entt::null;
-    }
-    return *players.begin();
-}
 }
 
 namespace game::scene {
@@ -567,77 +561,16 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
 }
 
 void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
-    applyBattleItemStockDelta(evt.remaining_item_stocks);
-
     spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
-}
-
-void GameScene::applyBattleItemStockDelta(const std::unordered_map<entt::id_type, int>& remaining_item_stocks) {
-    if (!has_active_battle_item_stocks_) {
-        return;
-    }
-
-    if (!services_ || !services_->inventory_domain_service) {
-        spdlog::warn("GameScene: InventoryDomainService 不可用，跳过战斗物品库存写回。");
-        active_battle_initial_item_stocks_.clear();
-        has_active_battle_item_stocks_ = false;
-        return;
-    }
-
-    const entt::entity player = findPlayerEntityWithInventory(registry_);
-    if (player == entt::null) {
-        spdlog::warn("GameScene: 找不到带 InventoryComponent 的玩家，跳过战斗物品库存写回。");
-        active_battle_initial_item_stocks_.clear();
-        has_active_battle_item_stocks_ = false;
-        return;
-    }
-
-    std::unordered_map<entt::id_type, int> deltas{};
-    for (const auto& [item_id, count] : remaining_item_stocks) {
-        if (item_id != entt::null && count != 0) {
-            deltas[item_id] += count;
-        }
-    }
-    for (const auto& [item_id, count] : active_battle_initial_item_stocks_) {
-        if (item_id != entt::null && count != 0) {
-            deltas[item_id] -= count;
-        }
-    }
-
-    std::vector<std::pair<entt::id_type, int>> removals{};
-    std::vector<std::pair<entt::id_type, int>> additions{};
-    for (const auto& [item_id, delta] : deltas) {
-        if (delta < 0) {
-            removals.emplace_back(item_id, -delta);
-        } else if (delta > 0) {
-            additions.emplace_back(item_id, delta);
-        }
-    }
-
-    for (const auto& [item_id, count] : removals) {
-        const auto result = services_->inventory_domain_service->removeItem(player, item_id, count);
-        if (result.accepted != count) {
-            spdlog::warn("GameScene: 战斗物品扣除不完整 item_id={}, expected={}, accepted={}.",
-                         item_id,
-                         count,
-                         result.accepted);
-        }
-    }
-    for (const auto& [item_id, count] : additions) {
-        const auto result = services_->inventory_domain_service->addItem(player, item_id, count);
-        if (result.accepted != count) {
-            spdlog::warn("GameScene: 战斗物品写回不完整 item_id={}, expected={}, accepted={}, rejected={}.",
-                         item_id,
-                         count,
-                         result.accepted,
-                         result.rejected);
-        }
-    }
-
-    active_battle_initial_item_stocks_.clear();
-    has_active_battle_item_stocks_ = false;
+    game::scene::processBattleEndedForGameScene(
+        registry_,
+        context_.getDispatcher(),
+        services_.get(),
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        evt);
 }
 
 } // namespace game::scene

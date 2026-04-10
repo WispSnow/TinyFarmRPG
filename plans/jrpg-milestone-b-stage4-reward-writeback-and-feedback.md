@@ -68,13 +68,13 @@
 
 ## ToDo
 
-- [ ] 在 `GameScene::onBattleEnded()` 接入 `BattleRewardResolver`
-- [ ] 明确在 `onBattleEnded()` 内局部构造 `BattleRewardResolver`
-- [ ] 固定 `Victory / Defeat / Escaped` 的奖励写回规则
-- [ ] 把金币写入 `PlayerWalletComponent`
-- [ ] 把掉落统一接到 `InventoryDomainService`
-- [ ] 让奖励反馈位置明确走 player 的 `TransformComponent/head position`
-- [ ] 抽出可测的 `formatRewardFeedback(...)` 纯函数
-- [ ] 复用 `DialogueShowEvent` 做最小奖励反馈
-- [ ] 对掉落 reject 场景补 `warn` 与玩家可见提示
-- [ ] 补齐 Stage 4 写回测试
+- [x] 在 `GameScene::onBattleEnded()` 接入 `BattleRewardResolver`
+- [x] 明确在 `onBattleEnded()` 内局部构造 `BattleRewardResolver`
+- [x] 固定 `Victory / Defeat / Escaped` 的奖励写回规则
+- [x] 把金币写入 `PlayerWalletComponent`
+- [x] 把掉落统一接到 `InventoryDomainService`
+- [x] 让奖励反馈位置明确走 player 的 `TransformComponent/head position`
+- [x] 抽出可测的 `formatRewardFeedback(...)` 纯函数
+- [x] 复用 `DialogueShowEvent` 做最小奖励反馈
+- [x] 对掉落 reject 场景补 `warn` 与玩家可见提示
+- [x] 补齐 Stage 4 写回测试
