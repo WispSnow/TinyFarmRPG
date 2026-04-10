@@ -174,6 +174,7 @@ target_sources(game PRIVATE
     # Battle
     game/battle/battle_action_resolver.cpp
     game/battle/battle_ai_planner.cpp
+    game/battle/battle_reward_resolver.cpp
     game/battle/battle_unit_factory.cpp
     game/battle/battle_formula_evaluator.cpp
     game/battle/turn_core.cpp
