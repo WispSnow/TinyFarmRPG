@@ -44,6 +44,7 @@ class BattleScene final : public engine::scene::Scene {
         BattleEnd           ///< 发送结算事件并请求弹出场景。
     };
 
+    /// @brief 当前菜单上下文，用于区分主菜单、技能列表、道具列表和目标选择等不同输入语义。
     enum class MenuState {
         None,
         MainMenu,
@@ -52,6 +53,10 @@ class BattleScene final : public engine::scene::Scene {
         TargetSelect
     };
 
+    /// @brief 记录玩家在菜单中逐步拼装中的行动草稿。
+    ///
+    /// BattleScene 会先记录动作类型、技能/道具来源与已选目标，再在信息足够时
+    /// 组装为最终 BattleAction 并提交给 BattleSession。
     struct ActionDraft {
         game::battle::BattleActionType pending_type{game::battle::BattleActionType::EndTurn};
         std::optional<std::string> selected_skill_id{};
@@ -60,6 +65,10 @@ class BattleScene final : public engine::scene::Scene {
         bool requires_target_selection{false};
     };
 
+    /// @brief 主动作菜单单项的表现层视图模型。
+    ///
+    /// 该结构体只服务于 RmlUi 数据绑定，用于描述 Attack/Skill/Item 等顶层菜单项
+    /// 的文本、顺序与可选状态。
     struct MainActionViewModel {
         int action_id{0};
         int entry_index{0};
@@ -67,6 +76,10 @@ class BattleScene final : public engine::scene::Scene {
         bool enabled{false};
     };
 
+    /// @brief 技能列表或道具列表共用的条目视图模型。
+    ///
+    /// BattleScene 会按当前菜单上下文生成这类条目，供 RmlUi 渲染可滚动列表并在
+    /// 选择后回查对应技能或道具。
     struct ListEntryViewModel {
         int entry_index{0};
         Rml::String entry_id{};
@@ -75,6 +88,10 @@ class BattleScene final : public engine::scene::Scene {
         bool enabled{false};
     };
 
+    /// @brief 目标选择菜单中单个战斗单位的视图模型。
+    ///
+    /// 该结构体把 BattleUnit 转换为 UI 需要的目标条目数据，供玩家在选择技能或
+    /// 道具作用对象时展示阵营、死亡状态与标签文本。
     struct TargetEntryViewModel {
         int entry_index{0};
         int unit_id{0};
@@ -135,29 +152,16 @@ public:
                 game::battle::BattleSessionOptions session_options = {});
     ~BattleScene() override;
 
-    /// @brief 初始化战斗场景和 UI。
     bool init() override;
-
-    /// @brief 每帧推进战斗状态机。
     void update(float delta_time) override;
-
-    /// @brief 在 UI 提交渲染前同步 RmlUi 菜单焦点。
     void prepareUi(float interpolation_alpha) override;
-
-    /// @brief 清理战斗 UI 与场景资源。
     void clean() override;
 
 private:
-    /// @brief 初始化 RmlUi 战斗面板。
     [[nodiscard]] bool initUI();
-
-    /// @brief 关闭 RmlUi 战斗面板。
     void shutdownUI();
-
-    /// @brief 注册 RmlUi 数据模型需要的结构体与数组类型。
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
 
-    /// @brief 连接/断开战斗菜单输入监听。
     void connectInputListeners();
     void disconnectInputListeners();
 
@@ -217,27 +221,16 @@ private:
 
     /// @brief 构造并排队普通攻击行动。
     void queueAttackAction();
-
-    /// @brief 构造并排队默认技能行动。
     void queueSkillAction();
-
-    /// @brief 构造并排队默认道具行动。
     void queueItemAction();
-
-    /// @brief 构造并排队防御行动。
     void queueGuardAction();
-
-    /// @brief 构造并排队逃跑行动。
     void queueEscapeAction();
-
-    /// @brief 构造并排队跳过回合行动。
     void queueEndTurnAction();
 
     /// @brief 获取当前行动者并写出 actor id。
     /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
 
-    /// @brief 发送战斗结束事件并请求弹出战斗场景。
     void requestBattleEnd();
 };
 

@@ -56,16 +56,12 @@ public:
 
     /// @brief 返回缓存的战斗结果。
     [[nodiscard]] BattleOutcome outcome() const { return outcome_; }
-
-    /// @brief outcome() 不再是 BattleOutcome::Ongoing 时返回 true。
     [[nodiscard]] bool isBattleEnded() const { return outcome_ != BattleOutcome::Ongoing; }
 
     /// @brief 返回从 1 开始的轮次索引；首个行动者不存在时为 0。
     [[nodiscard]] std::uint32_t roundIndex() const { return round_index_; }
 
     /// @brief 安装由会话运行时状态使用的可选轮次切换回调。
-    /// @param on_round_begin round_index_ 推进到新轮次后调用。
-    /// @param on_round_end 离开已完成轮次前调用。
     void setRoundHooks(RoundHook on_round_begin, RoundHook on_round_end);
 
     /// @brief 推进到下一个存活行动者，必要时跨轮。
@@ -91,8 +87,6 @@ private:
 
     /// @brief 必要时将 current_turn_index_ 移动到下一个存活单位。
     void alignCurrentActor();
-
-    /// @brief 单位存在且 hp > 0 时返回 true。
     [[nodiscard]] bool isAlive(BattleUnitId id) const;
 };
 
