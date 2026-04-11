@@ -6,6 +6,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 namespace game::scene {
 namespace {
@@ -34,6 +35,27 @@ void appendLine(std::string& text, const std::string& line) {
     return item_result.drop.item_id;
 }
 
+void appendQuestProgressLines(std::string& text, const game::domain::QuestBattleProgressSummary& quest_progress_summary) {
+    std::unordered_set<entt::id_type> ready_quests{};
+    ready_quests.reserve(quest_progress_summary.became_ready_to_turn_in_quests.size());
+    for (const auto& quest : quest_progress_summary.became_ready_to_turn_in_quests) {
+        if (quest.quest_id_hash != entt::null) {
+            ready_quests.insert(quest.quest_id_hash);
+        }
+    }
+
+    for (const auto& quest : quest_progress_summary.updated_quests) {
+        if (quest.quest_id_hash != entt::null && ready_quests.contains(quest.quest_id_hash)) {
+            continue;
+        }
+        appendLine(text, fmt::format("任务更新：{}", quest.quest_title));
+    }
+
+    for (const auto& quest : quest_progress_summary.became_ready_to_turn_in_quests) {
+        appendLine(text, fmt::format("可交付：{}", quest.quest_title));
+    }
+}
+
 } // namespace
 
 std::string formatRewardFeedback(const int gold_written_back,
@@ -59,6 +81,22 @@ std::string formatRewardFeedback(const int gold_written_back,
         return std::string{kVictoryText};
     }
     return text;
+}
+
+std::string formatBattleSettlementFeedback(const BattleRewardWritebackResult& reward_result,
+                                           const game::domain::QuestBattleProgressSummary& quest_progress_summary,
+                                           const game::data::ItemCatalog* item_catalog) {
+    if (reward_result.empty() && quest_progress_summary.empty()) {
+        return formatRewardFeedback(0, {}, item_catalog);
+    }
+
+    std::string text{};
+    if (!reward_result.empty()) {
+        text = formatRewardFeedback(reward_result.gold_written_back, reward_result.item_results, item_catalog);
+    }
+
+    appendQuestProgressLines(text, quest_progress_summary);
+    return text.empty() ? std::string{kVictoryText} : text;
 }
 
 } // namespace game::scene

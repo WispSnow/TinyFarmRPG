@@ -3,9 +3,11 @@
 #include "game/battle/battle_reward_resolver.h"
 #include "game/component/inventory_component.h"
 #include "game/component/player_wallet_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/quest_battle_progress_resolver.h"
 #include "game/runtime/system_bundle.h"
 #include "game/scene/game_scene_reward_feedback.h"
 #include "game/system/system_helpers.h"
@@ -110,75 +112,93 @@ void applyBattleItemStockDelta(entt::registry& registry,
     has_active_battle_item_stocks = false;
 }
 
-void applyVictoryRewards(entt::registry& registry,
-                         entt::dispatcher& dispatcher,
-                         game::runtime::GameRuntimeServices* services,
-                         game::system::helpers::NotificationTimer& reward_notification,
-                         const game::defs::BattleEndedEvent& evt) {
+[[nodiscard]] game::scene::BattleRewardWritebackResult applyVictoryRewards(
+    entt::registry& registry,
+    game::runtime::GameRuntimeServices* services,
+    const game::defs::BattleEndedEvent& evt) {
+    game::scene::BattleRewardWritebackResult writeback_result{};
     if (evt.outcome != game::battle::BattleOutcome::Victory) {
-        return;
+        return writeback_result;
     }
 
     if (!services || !services->rpg_catalog) {
         spdlog::warn("GameScene: RPG catalog 不可用，跳过战斗奖励写回。");
-        return;
+        return writeback_result;
     }
 
     const entt::entity player = findPlayerEntity(registry);
     if (player == entt::null) {
         spdlog::warn("GameScene: 找不到玩家实体，跳过战斗奖励写回。");
-        return;
+        return writeback_result;
     }
 
     game::battle::BattleRewardResolver resolver{};
     const game::battle::BattleRewardSummary reward_summary =
         resolver.resolve(evt.outcome, evt.final_units, *services->rpg_catalog);
 
-    int gold_written_back = 0;
     if (reward_summary.gold_total > 0) {
         if (auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {
             wallet->gold_ += reward_summary.gold_total;
-            gold_written_back = reward_summary.gold_total;
+            writeback_result.gold_written_back = reward_summary.gold_total;
         } else {
             spdlog::warn("GameScene: 玩家缺少 PlayerWalletComponent，跳过金币写回。");
         }
     }
 
-    std::vector<game::scene::BattleRewardWritebackItemResult> item_results{};
-    item_results.reserve(reward_summary.item_drops.size());
+    writeback_result.item_results.reserve(reward_summary.item_drops.size());
 
     if (!reward_summary.item_drops.empty()) {
         if (!services->inventory_domain_service) {
             spdlog::warn("GameScene: InventoryDomainService 不可用，跳过掉落入包。");
         } else {
             for (const auto& drop : reward_summary.item_drops) {
-                const auto result = services->inventory_domain_service->addItem(player, drop.item_id_hash, drop.count);
-                if (result.accepted != drop.count) {
+                const auto add_result = services->inventory_domain_service->addItem(player, drop.item_id_hash, drop.count);
+                if (add_result.accepted != drop.count) {
                     spdlog::warn("GameScene: 战斗掉落入包不完整 item_id={}, expected={}, accepted={}, rejected={}.",
                                  drop.item_id,
                                  drop.count,
-                                 result.accepted,
-                                 result.rejected);
+                                 add_result.accepted,
+                                 add_result.rejected);
                 }
-                item_results.push_back(game::scene::BattleRewardWritebackItemResult{
+                writeback_result.item_results.push_back(game::scene::BattleRewardWritebackItemResult{
                     .drop = drop,
-                    .accepted = result.accepted,
-                    .rejected = result.rejected});
+                    .accepted = add_result.accepted,
+                    .rejected = add_result.rejected});
             }
         }
     }
 
-    const game::data::ItemCatalog* item_catalog = services->item_catalog ? services->item_catalog.get() : nullptr;
-    const std::string feedback = game::scene::formatRewardFeedback(gold_written_back, item_results, item_catalog);
-    game::system::helpers::showTimedNotification(
-        registry,
-        dispatcher,
-        NOTIFICATION_CHANNEL,
-        reward_notification,
-        player,
-        std::string{},
-        feedback,
-        NOTIFICATION_SECONDS);
+    return writeback_result;
+}
+
+[[nodiscard]] game::domain::QuestBattleProgressSummary applyQuestBattleProgress(
+    entt::registry& registry,
+    game::runtime::GameRuntimeServices* services,
+    const game::defs::BattleEndedEvent& evt) {
+    game::domain::QuestBattleProgressSummary result{};
+    if (evt.outcome != game::battle::BattleOutcome::Victory) {
+        return result;
+    }
+
+    if (!services || !services->quest_catalog) {
+        spdlog::warn("GameScene: QuestCatalog 不可用，跳过战斗任务推进。");
+        return result;
+    }
+
+    const entt::entity player = findPlayerEntity(registry);
+    if (player == entt::null) {
+        spdlog::warn("GameScene: 找不到玩家实体，跳过战斗任务推进。");
+        return result;
+    }
+
+    auto* quest_log = registry.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        spdlog::warn("GameScene: 玩家缺少 QuestLogComponent，跳过战斗任务推进。");
+        return result;
+    }
+
+    game::domain::QuestBattleProgressResolver resolver{};
+    return resolver.apply(evt.outcome, evt.final_units, *services->quest_catalog, *quest_log);
 }
 
 } // namespace
@@ -197,7 +217,30 @@ void processBattleEndedForGameScene(
         active_battle_initial_item_stocks,
         has_active_battle_item_stocks,
         evt.remaining_item_stocks);
-    applyVictoryRewards(registry, dispatcher, services, reward_notification, evt);
+
+    if (evt.outcome != game::battle::BattleOutcome::Victory) {
+        return;
+    }
+
+    const game::scene::BattleRewardWritebackResult reward_result = applyVictoryRewards(registry, services, evt);
+    const game::domain::QuestBattleProgressSummary quest_result = applyQuestBattleProgress(registry, services, evt);
+
+    const entt::entity player = findPlayerEntity(registry);
+    if (player == entt::null) {
+        return;
+    }
+
+    const game::data::ItemCatalog* item_catalog = services && services->item_catalog ? services->item_catalog.get() : nullptr;
+    const std::string feedback = game::scene::formatBattleSettlementFeedback(reward_result, quest_result, item_catalog);
+    game::system::helpers::showTimedNotification(
+        registry,
+        dispatcher,
+        NOTIFICATION_CHANNEL,
+        reward_notification,
+        player,
+        std::string{},
+        feedback,
+        NOTIFICATION_SECONDS);
 }
 
 } // namespace game::scene
