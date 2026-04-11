@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.test.hunter_trial",
+      "title": "Hunter Trial",
+      "description": "Defeat slimes and bats for the village.",
+      "objectives": [
+        {
+          "id": "slime_hunt",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.slime",
+          "required_count": 2
+        },
+        {
+          "id": "bat_hunt",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.bat",
+          "required_count": 1
+        }
+      ],
+      "giver_text": {
+        "offer": "Take this hunt.",
+        "progress": "Keep going.",
+        "ready_to_turn_in": "You finished the hunt.",
+        "completed": "You have already helped."
+      }
+    }
+  ]
+}

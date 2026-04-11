@@ -1,6 +1,7 @@
 #include "dialogue_system.h"
 #include "system_helpers.h"
 #include "game/component/npc_component.h"
+#include "game/component/quest_giver_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "engine/component/transform_component.h"
@@ -95,6 +96,7 @@ void DialogueSystem::onInteractCommand(const game::defs::InteractCommand& event)
     const entt::entity player = helpers::getPlayerEntity(registry_);
     if (player == entt::null || event.player != player) return;
     if (event.target == entt::null || !registry_.valid(event.target)) return;
+    if (registry_.all_of<game::component::QuestGiverComponent>(event.target)) return;
 
     auto* dialogue = registry_.try_get<game::component::DialogueComponent>(event.target);
     if (!dialogue || dialogue->dialogue_id_ == entt::null) return;

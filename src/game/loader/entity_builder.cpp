@@ -5,6 +5,7 @@
 #include "game/component/map_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/chest_component.h"
+#include "game/component/quest_giver_component.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
 #include "game/data/game_time.h"
@@ -26,6 +27,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 using namespace entt::literals;
@@ -52,6 +54,44 @@ struct TimeVisibilityFlags {
         else if (name == "day_only") flags.day_only = property.value("value", false);
     }
     return flags;
+}
+
+[[nodiscard]] std::optional<std::string> findObjectStringProperty(const nlohmann::json* object_json,
+                                                                  const std::string_view property_name) {
+    if (!object_json) {
+        return std::nullopt;
+    }
+
+    const auto properties_it = object_json->find("properties");
+    if (properties_it == object_json->end() || !properties_it->is_array()) {
+        return std::nullopt;
+    }
+
+    for (const auto& property : *properties_it) {
+        if (!property.is_object()) {
+            continue;
+        }
+
+        const auto name_it = property.find("name");
+        if (name_it == property.end() || !name_it->is_string() || name_it->get_ref<const std::string&>() != property_name) {
+            continue;
+        }
+
+        const auto type_it = property.find("type");
+        const auto value_it = property.find("value");
+        if (type_it == property.end() || !type_it->is_string() || type_it->get_ref<const std::string&>() != "string" ||
+            value_it == property.end() || !value_it->is_string()) {
+            return std::nullopt;
+        }
+
+        const std::string& value = value_it->get_ref<const std::string&>();
+        if (value.empty()) {
+            return std::nullopt;
+        }
+        return value;
+    }
+
+    return std::nullopt;
 }
 
 void applyTimeVisibilityTags(entt::registry& registry, entt::entity entity, bool night_only, bool day_only, const char* label) {
@@ -225,6 +265,17 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
     }
 
     entity_id_ = entity_factory_.createActor(name_id, position);
+    if (entity_id_ == entt::null) {
+        return;
+    }
+
+    if (const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID); quest_offer_id) {
+        registry_.emplace_or_replace<game::component::QuestGiverComponent>(
+            entity_id_,
+            game::component::QuestGiverComponent{
+                .quest_id_ = *quest_offer_id,
+                .quest_id_hash_ = entt::hashed_string{quest_offer_id->c_str()}.value()});
+    }
 }
 
 void EntityBuilder::buildAnimal(entt::id_type name_id) {

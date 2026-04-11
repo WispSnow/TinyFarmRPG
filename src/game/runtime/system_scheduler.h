@@ -32,6 +32,7 @@ enum class SchedulerStage {
     Chest,
     ItemUse,
     Dialogue,
+    QuestInteraction,
     ActionSound,
     AutoTile,
     State,

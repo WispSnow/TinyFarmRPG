@@ -53,6 +53,18 @@ TEST(SystemSchedulerProfileTest, ExplorationKeepsTimeBeforeDayNight) {
     EXPECT_LT(time, day_night);
 }
 
+TEST(SystemSchedulerProfileTest, ExplorationKeepsQuestInteractionBetweenDialogueAndAutoTile) {
+    const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
+    ASSERT_FALSE(stages.empty());
+
+    const size_t dialogue = indexOf(stages, SchedulerStage::Dialogue);
+    const size_t quest_interaction = indexOf(stages, SchedulerStage::QuestInteraction);
+    const size_t auto_tile = indexOf(stages, SchedulerStage::AutoTile);
+
+    EXPECT_LT(dialogue, quest_interaction);
+    EXPECT_LT(quest_interaction, auto_tile);
+}
+
 TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransition) {
     entt::registry registry;
     entt::dispatcher dispatcher;

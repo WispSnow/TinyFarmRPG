@@ -19,6 +19,7 @@ class ItemUseSystem;
 class NPCWanderSystem;
 class AnimalBehaviorSystem;
 class DialogueSystem;
+class QuestInteractionSystem;
 class ChestSystem;
 class InteractionSystem;
 class MapTransitionSystem;
