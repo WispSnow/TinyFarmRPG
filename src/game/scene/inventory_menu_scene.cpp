@@ -5,8 +5,10 @@
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/data/item_catalog.h"
+#include "game/data/quest_catalog.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/inventory_tab_content.h"
+#include "game/ui/quest_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -67,11 +69,13 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
                                        engine::core::Context& context,
                                        entt::registry& game_registry,
                                        entt::entity player,
-                                       game::data::ItemCatalog* item_catalog)
+                                       game::data::ItemCatalog* item_catalog,
+                                       const game::data::QuestCatalog* quest_catalog)
     : engine::scene::Scene(name, context),
       game_registry_(game_registry),
       player_(player),
       item_catalog_(item_catalog),
+      quest_catalog_(quest_catalog),
       previous_state_(context.getGameState().getCurrentState()) {}
 
 InventoryMenuScene::~InventoryMenuScene() {
@@ -150,6 +154,12 @@ bool InventoryMenuScene::initUI() {
             return false;
         }
 
+        if (!game::ui::registerQuestTabDataTypes(constructor)) {
+            spdlog::error("InventoryMenuScene: QuestTabContent data types 注册失败。");
+            document_controller_.unload();
+            return false;
+        }
+
         data_types_registered_ = true;
     }
 
@@ -178,7 +188,17 @@ bool InventoryMenuScene::initUI() {
     }
     tabs_.emplace(game::ui::MenuTabId::Inventory, std::move(inventory_tab));
     tabs_.emplace(game::ui::MenuTabId::Equipment, std::make_unique<PlaceholderTabContent>());
-    tabs_.emplace(game::ui::MenuTabId::Quests, std::make_unique<PlaceholderTabContent>());
+    auto quest_tab = std::make_unique<game::ui::QuestTabContent>(
+        document_controller_,
+        game_registry_,
+        player_,
+        quest_catalog_);
+    if (!quest_tab->bindModel(constructor)) {
+        spdlog::error("InventoryMenuScene: QuestTabContent 绑定失败。");
+        document_controller_.unload();
+        return false;
+    }
+    tabs_.emplace(game::ui::MenuTabId::Quests, std::move(quest_tab));
     tabs_.emplace(game::ui::MenuTabId::Map, std::make_unique<PlaceholderTabContent>());
     tabs_.emplace(game::ui::MenuTabId::Options, std::make_unique<PlaceholderTabContent>());
 

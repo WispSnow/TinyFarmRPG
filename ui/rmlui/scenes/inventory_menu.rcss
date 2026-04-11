@@ -296,6 +296,86 @@
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
+/* --- Quest Panel --- */
+
+#quests-content {
+    width: 218dp;
+    height: 154dp;
+    overflow-y: auto;
+    padding-right: 2dp;
+}
+
+.quest-section + .quest-section {
+    margin-top: 10dp;
+    padding-top: 8dp;
+    border-width: 1dp 0 0 0;
+    border-color: #d9a88a44;
+}
+
+.quest-section-title {
+    font-size: 11dp;
+    color: #ffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.quest-empty {
+    margin-top: 6dp;
+    color: #a9b1d6;
+    font-size: 10dp;
+}
+
+.quest-list {
+    margin-top: 6dp;
+}
+
+.quest-entry {
+    padding: 6dp;
+    background-color: #24283bcc;
+    border: 1dp #414868;
+}
+
+.quest-entry + .quest-entry {
+    margin-top: 4dp;
+}
+
+.quest-entry-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 6dp;
+}
+
+.quest-title {
+    width: 136dp;
+    font-size: 10dp;
+    color: #f7f7f7;
+    font-effect: shadow(1dp 1dp #000000aa);
+}
+
+.quest-status {
+    width: 56dp;
+    text-align: right;
+    font-size: 9dp;
+    color: #e0af68;
+}
+
+.quest-description {
+    margin-top: 3dp;
+    font-size: 9dp;
+    color: #a9b1d6;
+}
+
+.quest-progress {
+    margin-top: 4dp;
+    font-size: 9dp;
+    color: #c0caf5;
+    white-space: pre-wrap;
+}
+
+.quest-entry-completed .quest-status {
+    color: #7dcfff;
+}
+
 /* --- Action Menu --- */
 
 #action-menu {
