@@ -4,6 +4,7 @@
 #include "game/component/chest_component.h"
 #include "game/component/map_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/quest_giver_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/defs/commands.h"
@@ -141,7 +142,9 @@ entt::entity InteractionSystem::chooseFacingTarget(entt::entity player, entt::id
     const auto collision = spatial_index_manager_.checkCollision(probe_rect);
     const auto& candidates = collision.dynamic_colliders;
 
-    // 3) Pick best target by priority: Dialogue NPC > Chest > Rest tile.
+    // 3) Pick best target by priority: Quest giver > Dialogue NPC > Chest > Rest tile.
+    entt::entity best_quest_giver = entt::null;
+    float best_quest_giver_distance = std::numeric_limits<float>::max();
     entt::entity best_npc = entt::null;
     float best_npc_distance = std::numeric_limits<float>::max();
     entt::entity best_chest = entt::null;
@@ -159,6 +162,15 @@ entt::entity InteractionSystem::chooseFacingTarget(entt::entity player, entt::id
         if (!transform) continue;
 
         const float distance = glm::distance(transform->position_, player_transform->position_);
+
+        if (const auto* quest_giver = registry_.try_get<game::component::QuestGiverComponent>(entity)) {
+            if (quest_giver->quest_id_hash_ == entt::null || quest_giver->quest_id_.empty()) continue;
+            if (distance < best_quest_giver_distance) {
+                best_quest_giver_distance = distance;
+                best_quest_giver = entity;
+            }
+            continue;
+        }
 
         if (auto* dialogue = registry_.try_get<game::component::DialogueComponent>(entity)) {
             if (dialogue->dialogue_id_ == entt::null) continue;
@@ -181,7 +193,7 @@ entt::entity InteractionSystem::chooseFacingTarget(entt::entity player, entt::id
         }
     }
 
-    if (best_npc == entt::null && best_chest == entt::null) {
+    if (best_quest_giver == entt::null && best_npc == entt::null && best_chest == entt::null) {
         if (auto rest = spatial_index_manager_.getTileEntityAtWorldPos(probe_world_pos, game::defs::spatial_layer::REST);
             rest != entt::null && registry_.valid(rest)) {
             if (auto* map = registry_.try_get<game::component::MapId>(rest); map && map->id_ != current_map) {
@@ -191,6 +203,9 @@ entt::entity InteractionSystem::chooseFacingTarget(entt::entity player, entt::id
         }
     }
 
+    if (best_quest_giver != entt::null) {
+        return best_quest_giver;
+    }
     return best_npc != entt::null ? best_npc : best_chest;
 }
 

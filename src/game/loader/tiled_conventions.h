@@ -25,6 +25,11 @@ inline constexpr std::string_view LIGHT_NAME_SPOT = "spot";
 inline constexpr std::string_view LIGHT_NAME_EMISSIVE = "emissive";
 
 // ----------------------------
+// Actor instance properties
+// ----------------------------
+inline constexpr std::string_view ACTOR_PROP_QUEST_OFFER_ID = "quest_offer_id";
+
+// ----------------------------
 // Tile properties: obj_type values
 // ----------------------------
 inline constexpr std::string_view TILE_OBJ_TYPE_CHEST = "chest";

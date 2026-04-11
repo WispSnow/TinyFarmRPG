@@ -59,6 +59,7 @@
 #include "game/system/npc_wander_system.h"
 #include "game/system/player_control_system.h"
 #include "game/system/pickup_system.h"
+#include "game/system/quest_interaction_system.h"
 #include "game/system/render_target_system.h"
 #include "game/system/rest_system.h"
 #include "game/system/state_system.h"
@@ -672,7 +673,7 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     auto& services = params.services;
     if (!services.collision_resolver || !services.entity_factory || !services.blueprint_manager ||
         !services.item_catalog || !services.appearance_catalog || !services.world_state || !services.map_manager ||
-        !services.vfx_service) {
+        !services.vfx_service || !services.quest_catalog) {
         spdlog::error("Runtime services 未完成装配，无法创建 systems");
         return false;
     }
@@ -765,6 +766,10 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     systems.animal_behavior_system = std::make_unique<game::system::AnimalBehaviorSystem>(params.registry);
     systems.dialogue_system = std::make_unique<game::system::DialogueSystem>(params.registry, dispatcher);
     systems.dialogue_system->loadDialogueFile("assets/data/dialogue_script.json");
+    systems.quest_interaction_system = std::make_unique<game::system::QuestInteractionSystem>(
+        params.registry,
+        dispatcher,
+        *services.quest_catalog);
 
     systems.chest_system = std::make_unique<game::system::ChestSystem>(
         params.registry,

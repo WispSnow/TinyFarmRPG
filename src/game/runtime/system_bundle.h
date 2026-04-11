@@ -105,6 +105,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::NPCWanderSystem> npc_wander_system;
     std::unique_ptr<game::system::AnimalBehaviorSystem> animal_behavior_system;
     std::unique_ptr<game::system::DialogueSystem> dialogue_system;
+    std::unique_ptr<game::system::QuestInteractionSystem> quest_interaction_system;
     std::unique_ptr<game::system::ChestSystem> chest_system;
     std::unique_ptr<game::system::InteractionSystem> interaction_system;
     std::unique_ptr<game::system::RestSystem> rest_system;

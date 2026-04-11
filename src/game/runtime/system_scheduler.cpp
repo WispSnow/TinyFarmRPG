@@ -39,6 +39,7 @@
 #include "game/system/npc_wander_system.h"
 #include "game/system/pickup_system.h"
 #include "game/system/player_control_system.h"
+#include "game/system/quest_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_system.h"
 
@@ -85,6 +86,7 @@ const std::vector<SchedulerStage>& exploration_profile() {
         SchedulerStage::Chest,
         SchedulerStage::ItemUse,
         SchedulerStage::Dialogue,
+        SchedulerStage::QuestInteraction,
         SchedulerStage::AutoTile,
         // ActionSound/State 在 tick 中以同一并行 wave 执行；
         // 此处顺序仅用于 profile 展示和 fallback 串行回退，不代表 happens-before。
@@ -210,6 +212,11 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
         case SchedulerStage::Dialogue:
             if (systems.dialogue_system) {
                 systems.dialogue_system->update(delta_time);
+            }
+            break;
+        case SchedulerStage::QuestInteraction:
+            if (systems.quest_interaction_system) {
+                systems.quest_interaction_system->update(delta_time);
             }
             break;
         case SchedulerStage::ActionSound:
@@ -369,6 +376,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
     execute_stage_main_thread(params, SchedulerStage::Chest, result);
     execute_stage_main_thread(params, SchedulerStage::ItemUse, result);
     execute_stage_main_thread(params, SchedulerStage::Dialogue, result);
+    execute_stage_main_thread(params, SchedulerStage::QuestInteraction, result);
     execute_stage_main_thread(params, SchedulerStage::AutoTile, result);
 
     prepare_pre_movement_parallel_island_registry(params.registry);
@@ -662,6 +670,8 @@ const char* toString(const SchedulerStage stage) {
             return "ItemUse";
         case SchedulerStage::Dialogue:
             return "Dialogue";
+        case SchedulerStage::QuestInteraction:
+            return "QuestInteraction";
         case SchedulerStage::ActionSound:
             return "ActionSound";
         case SchedulerStage::AutoTile:

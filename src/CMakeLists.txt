@@ -182,6 +182,7 @@ target_sources(game PRIVATE
     game/battle/battle_session.cpp
     # Domain
     game/domain/inventory_domain_service.cpp
+    game/domain/quest_log_ops.cpp
     # Save
     game/save/save_data.cpp
     game/save/save_migrator.cpp
@@ -228,6 +229,7 @@ target_sources(game PRIVATE
     game/system/animal_behavior_system.cpp
     game/system/wander_runtime.cpp
     game/system/dialogue_system.cpp
+    game/system/quest_interaction_system.cpp
     game/system/chest_system.cpp
     game/system/interaction_system.cpp
     game/system/map_transition_system.cpp
