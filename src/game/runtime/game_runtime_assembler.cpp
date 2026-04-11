@@ -37,6 +37,7 @@
 #include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/quest_turn_in_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/script/tinyfarm_script_module.h"
@@ -698,6 +699,12 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
             dispatcher,
             *services.item_catalog);
     }
+    if (!services.quest_turn_in_service) {
+        services.quest_turn_in_service = std::make_unique<game::domain::QuestTurnInService>(
+            params.registry,
+            *services.item_catalog,
+            *services.inventory_domain_service);
+    }
 
     systems.render_system = std::make_unique<engine::system::RenderSystem>();
     systems.light_system = std::make_unique<engine::system::LightSystem>();
@@ -769,7 +776,8 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     systems.quest_interaction_system = std::make_unique<game::system::QuestInteractionSystem>(
         params.registry,
         dispatcher,
-        *services.quest_catalog);
+        *services.quest_catalog,
+        *services.quest_turn_in_service);
 
     systems.chest_system = std::make_unique<game::system::ChestSystem>(
         params.registry,

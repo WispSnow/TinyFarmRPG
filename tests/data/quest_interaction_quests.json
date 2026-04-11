@@ -19,11 +19,20 @@
           "required_count": 1
         }
       ],
+      "rewards": {
+        "gold": 4,
+        "items": [
+          {
+            "item_id": "strawberry_seed",
+            "count": 2
+          }
+        ]
+      },
       "giver_text": {
         "offer": "Take this hunt.",
         "progress": "Keep going.",
         "ready_to_turn_in": "You finished the hunt.",
-        "completed": "You have already helped."
+        "completed": "Thanks for finishing the hunt."
       }
     }
   ]

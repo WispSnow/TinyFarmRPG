@@ -38,6 +38,7 @@
 #include "game/system/appearance_system.h"
 #include "engine/vfx/vfx_bridge_system.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/quest_turn_in_service.h"
 #include "game/factory/entity_factory.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/data/item_catalog.h"

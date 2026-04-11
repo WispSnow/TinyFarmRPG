@@ -106,12 +106,12 @@
 
 ## ToDo
 
-- [ ] 新增 `QuestTurnInService` 与 `QuestTurnInResult`
-- [ ] 固定 turn-in 的事务化规则，禁止部分奖励到账
-- [ ] 复用 `PlayerWalletComponent + InventoryDomainService` 完成最小奖励写回
-- [ ] 在 turn-in 成功后把 quest 从 `active_quests` 迁到 `completed_quests`
-- [ ] 在 turn-in 成功后清理该 quest 的 objective progress keys
-- [ ] 让 `QuestInteractionSystem` 的 `ReadyToTurnIn` 分支真正执行 turn-in
-- [ ] 继续复用 `DialogueShowEvent(channel=1)` 输出单条完成反馈
-- [ ] 在 runtime assembler 中接入 `QuestTurnInService`
-- [ ] 补齐 turn-in success / failure / reward writeback / progress cleanup 测试
+- [x] 新增 `QuestTurnInService` 与 `QuestTurnInResult`
+- [x] 固定 turn-in 的事务化规则，禁止部分奖励到账
+- [x] 复用 `PlayerWalletComponent + InventoryDomainService` 完成最小奖励写回
+- [x] 在 turn-in 成功后把 quest 从 `active_quests` 迁到 `completed_quests`
+- [x] 在 turn-in 成功后清理该 quest 的 objective progress keys
+- [x] 让 `QuestInteractionSystem` 的 `ReadyToTurnIn` 分支真正执行 turn-in
+- [x] 继续复用 `DialogueShowEvent(channel=1)` 输出单条完成反馈
+- [x] 在 runtime assembler 中接入 `QuestTurnInService`
+- [x] 补齐 turn-in success / failure / reward writeback / progress cleanup 测试

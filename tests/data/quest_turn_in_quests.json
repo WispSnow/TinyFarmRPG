@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.test.turn_in_no_reward",
+      "title": "No Reward Quest",
+      "description": "Complete without extra rewards.",
+      "objectives": [
+        {
+          "id": "slime_hunt",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.slime",
+          "required_count": 1
+        }
+      ],
+      "giver_text": {
+        "completed": "Finished without reward."
+      }
+    },
+    {
+      "id": "quest.test.turn_in_rewarded",
+      "title": "Rewarded Quest",
+      "description": "Complete and get basic rewards.",
+      "objectives": [
+        {
+          "id": "slime_hunt",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.slime",
+          "required_count": 1
+        }
+      ],
+      "rewards": {
+        "gold": 7,
+        "items": [
+          {
+            "item_id": "strawberry_seed",
+            "count": 3
+          }
+        ]
+      },
+      "giver_text": {
+        "completed": "Reward paid."
+      }
+    },
+    {
+      "id": "quest.test.turn_in_cumulative",
+      "title": "Cumulative Reward Quest",
+      "description": "Requires cumulative inventory simulation.",
+      "objectives": [
+        {
+          "id": "slime_hunt",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.slime",
+          "required_count": 1
+        }
+      ],
+      "rewards": {
+        "items": [
+          {
+            "item_id": "strawberry_seed",
+            "count": 999
+          },
+          {
+            "item_id": "potato_seed",
+            "count": 1
+          }
+        ]
+      },
+      "giver_text": {
+        "completed": "Cumulative reward paid."
+      }
+    }
+  ]
+}

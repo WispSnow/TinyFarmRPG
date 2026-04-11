@@ -23,6 +23,7 @@ class QuestCatalog;
 
 namespace game::domain {
 class InventoryDomainService;
+class QuestTurnInService;
 }
 
 namespace game::save {
@@ -59,6 +60,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::factory::EntityFactory> entity_factory;
     std::unique_ptr<game::world::MapManager> map_manager;
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
+    std::unique_ptr<game::domain::QuestTurnInService> quest_turn_in_service;
     std::unique_ptr<game::save::SaveService> save_service;
     std::unique_ptr<engine::vfx::VfxService> vfx_service;
     std::unique_ptr<engine::script::ScriptHost> script_host;
