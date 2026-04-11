@@ -153,6 +153,8 @@ set(GAME_TEST_SOURCES
     game/inventory_move_hotbar_follow_test.cpp
     game/interaction_command_pipeline_test.cpp
     game/quest_battle_progress_resolver_test.cpp
+    game/quest_debug_panel_helpers_test.cpp
+    game/quest_debug_panel_registration_test.cpp
     game/quest_interaction_system_test.cpp
     game/quest_tab_content_test.cpp
     game/quest_turn_in_service_test.cpp
