@@ -266,6 +266,7 @@ target_sources(game PRIVATE
 # Game Debug 面板（仅在启用 Debug UI 时编译）
 if(ENABLE_DEBUG_UI)
     target_sources(game PRIVATE
+        game/debug/battle_debug_panel.cpp
         game/debug/player_debug_panel.cpp
         game/debug/inventory_debug_panel.cpp
         game/debug/quest_debug_panel.cpp

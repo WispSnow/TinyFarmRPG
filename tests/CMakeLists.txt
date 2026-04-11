@@ -133,6 +133,7 @@ endif()
 
 set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
+    game/battle_debug_panel_registration_test.cpp
     game/rpg_catalog_test.cpp
     game/item_catalog_test.cpp
     game/quest_catalog_test.cpp
