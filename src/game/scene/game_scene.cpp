@@ -46,6 +46,7 @@
 #include "game/debug/inventory_debug_panel.h"
 #include "game/debug/map_inspector_debug_panel.h"
 #include "game/debug/player_debug_panel.h"
+#include "game/debug/quest_debug_panel.h"
 #include "game/debug/scheduler_debug_panel.h"
 #include "game/debug/scheduler_profiler.h"
 #include "game/debug/save_load_debug_panel.h"
@@ -360,6 +361,17 @@ bool GameScene::registerDebugPanels() {
         std::make_unique<game::debug::InventoryDebugPanel>(registry_, dispatcher, services_->item_catalog.get()),
         false,
         engine::debug::PanelCategory::Game);
+
+    if (services_->quest_catalog && services_->quest_turn_in_service) {
+        debug_ui_manager.registerPanel(
+            std::make_unique<game::debug::QuestDebugPanel>(
+                registry_,
+                services_->quest_catalog.get(),
+                services_->item_catalog.get(),
+                services_->quest_turn_in_service.get()),
+            false,
+            engine::debug::PanelCategory::Game);
+    }
 
     if (services_->save_service) {
         debug_ui_manager.registerPanel(

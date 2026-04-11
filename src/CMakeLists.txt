@@ -185,6 +185,8 @@ target_sources(game PRIVATE
     game/domain/quest_battle_progress_resolver.cpp
     game/domain/quest_log_ops.cpp
     game/domain/quest_turn_in_service.cpp
+    # Debug helpers
+    game/debug/quest_debug_panel_helpers.cpp
     # Save
     game/save/save_data.cpp
     game/save/save_migrator.cpp
@@ -266,6 +268,7 @@ if(ENABLE_DEBUG_UI)
     target_sources(game PRIVATE
         game/debug/player_debug_panel.cpp
         game/debug/inventory_debug_panel.cpp
+        game/debug/quest_debug_panel.cpp
         game/debug/game_time_debug_panel.cpp
         game/debug/save_load_debug_panel.cpp
         game/debug/map_inspector_debug_panel.cpp

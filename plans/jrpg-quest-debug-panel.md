@@ -140,15 +140,15 @@
 
 ## ToDo
 
-- [ ] 新增独立 `QuestDebugPanel`
-- [ ] 让面板自动绑定当前玩家的 `QuestLogComponent`
-- [ ] 接入 `QuestCatalog` 驱动的 quest 列表与筛选
-- [ ] 在面板中显示选中 quest 的 objectives、状态与 reward 预览
-- [ ] 复用 `quest_log_ops::tryAcceptQuest(...)` 实现 `Accept`
-- [ ] 实现基于 `progress_step_` 的 objective `+Progress / Fill / Fill All` 调试动作，并统一 `clamp`
-- [ ] 实现 `Reset Selected`，并复用 `eraseQuestProgress(...)` 清理 progress keys
-- [ ] 实现 `Clear All Quest State`
-- [ ] 复用 `QuestTurnInService::turnIn(...)` 实现真实 turn-in 调试入口
-- [ ] 在 `GameScene::registerDebugPanels()` 中把面板注册到 `PanelCategory::Game`
-- [ ] 补齐 quest debug panel 的 source-based registration smoke test
-- [ ] 抽取 quest debug helper 并补齐筛选 / 状态 / clamp 单测
+- [x] 新增独立 `QuestDebugPanel`
+- [x] 让面板自动绑定当前玩家的 `QuestLogComponent`
+- [x] 接入 `QuestCatalog` 驱动的 quest 列表与筛选
+- [x] 在面板中显示选中 quest 的 objectives、状态与 reward 预览
+- [x] 复用 `quest_log_ops::tryAcceptQuest(...)` 实现 `Accept`
+- [x] 实现基于 `progress_step_` 的 objective `+Progress / Fill / Fill All` 调试动作，并统一 `clamp`
+- [x] 实现 `Reset Selected`，并复用 `eraseQuestProgress(...)` 清理 progress keys
+- [x] 实现 `Clear All Quest State`
+- [x] 复用 `QuestTurnInService::turnIn(...)` 实现真实 turn-in 调试入口
+- [x] 在 `GameScene::registerDebugPanels()` 中把面板注册到 `PanelCategory::Game`
+- [x] 补齐 quest debug panel 的 source-based registration smoke test
+- [x] 抽取 quest debug helper 并补齐筛选 / 状态 / clamp 单测
