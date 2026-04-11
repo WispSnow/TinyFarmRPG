@@ -349,7 +349,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 - [x] Stage 1: 细化 quest 目录、objective key 与 runtime truth 方案 → `plans/jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
 - [ ] Stage 2: 细化 quest giver 入口与任务交互状态机
 - [ ] Stage 3: 细化 Victory kill count 推进与 battle 接缝
-- [ ] Stage 4: 细化 turn-in、completed 状态迁移与可选 reward 写回
+- [x] Stage 4: 细化 turn-in、completed 状态迁移与可选 reward 写回
 - [ ] Stage 5: 细化 quest UI、存档与测试补强方案
 
 ## 备注

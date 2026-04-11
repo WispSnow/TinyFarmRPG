@@ -4,6 +4,7 @@
 #include "game/system/system_helpers.h"
 
 #include <cstdint>
+#include <string>
 
 #include <entt/entity/entity.hpp>
 #include <entt/entity/fwd.hpp>
@@ -12,7 +13,11 @@
 namespace game::data {
 class QuestCatalog;
 struct QuestData;
-struct QuestGiverTextData;
+}
+
+namespace game::domain {
+class QuestTurnInService;
+struct QuestTurnInResult;
 }
 
 namespace game::defs {
@@ -32,7 +37,8 @@ public:
 
     QuestInteractionSystem(entt::registry& registry,
                            entt::dispatcher& dispatcher,
-                           const game::data::QuestCatalog& quest_catalog);
+                           const game::data::QuestCatalog& quest_catalog,
+                           game::domain::QuestTurnInService& quest_turn_in_service);
     ~QuestInteractionSystem();
 
     void update(float delta_time);
@@ -41,11 +47,13 @@ private:
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
     const game::data::QuestCatalog& quest_catalog_;
+    game::domain::QuestTurnInService& quest_turn_in_service_;
     game::system::helpers::NotificationTimer notification_{};
 
     void onInteractCommand(const game::defs::InteractCommand& event);
     [[nodiscard]] InteractionState resolveState(const game::component::QuestLogComponent& quest_log,
                                                 const game::data::QuestData& quest) const;
+    void showText(entt::entity giver, std::string text);
     void showQuestText(entt::entity giver,
                        const game::data::QuestData& quest,
                        InteractionState state);

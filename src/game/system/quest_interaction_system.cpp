@@ -6,9 +6,11 @@
 #include "game/data/quest_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/quest_log_ops.h"
+#include "game/domain/quest_turn_in_service.h"
 
 #include "engine/component/name_component.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
@@ -59,14 +61,43 @@ constexpr float NOTIFICATION_SECONDS = 2.0f;
     return quest.title_;
 }
 
+void appendLine(std::string& text, const std::string& line) {
+    if (line.empty()) {
+        return;
+    }
+    if (!text.empty()) {
+        text.append("\n");
+    }
+    text.append(line);
+}
+
+[[nodiscard]] std::string formatTurnInSuccessText(const game::data::QuestData& quest,
+                                                  const game::domain::QuestTurnInResult& result) {
+    std::string text = quest.giver_text_.completed_;
+    if (text.empty()) {
+        text = makeFallbackQuestText(quest, QuestInteractionSystem::InteractionState::Completed);
+    }
+
+    if (result.gold_reward > 0) {
+        appendLine(text, fmt::format("获得金币 {}", result.gold_reward));
+    }
+    for (const auto& item_reward : result.item_rewards) {
+        appendLine(text, fmt::format("获得 {} x{}", item_reward.item_name, item_reward.count));
+    }
+
+    return text;
+}
+
 } // namespace
 
 QuestInteractionSystem::QuestInteractionSystem(entt::registry& registry,
                                                entt::dispatcher& dispatcher,
-                                               const game::data::QuestCatalog& quest_catalog)
+                                               const game::data::QuestCatalog& quest_catalog,
+                                               game::domain::QuestTurnInService& quest_turn_in_service)
     : registry_(registry),
       dispatcher_(dispatcher),
-      quest_catalog_(quest_catalog) {
+      quest_catalog_(quest_catalog),
+      quest_turn_in_service_(quest_turn_in_service) {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&QuestInteractionSystem::onInteractCommand>(this);
 }
 
@@ -93,14 +124,7 @@ QuestInteractionSystem::InteractionState QuestInteractionSystem::resolveState(
     return InteractionState::Offerable;
 }
 
-void QuestInteractionSystem::showQuestText(const entt::entity giver,
-                                           const game::data::QuestData& quest,
-                                           const InteractionState state) {
-    std::string text = selectQuestText(quest, state);
-    if (text.empty()) {
-        text = makeFallbackQuestText(quest, state);
-    }
-
+void QuestInteractionSystem::showText(const entt::entity giver, std::string text) {
     helpers::showTimedNotification(
         registry_,
         dispatcher_,
@@ -110,6 +134,16 @@ void QuestInteractionSystem::showQuestText(const entt::entity giver,
         findSpeakerName(registry_, giver),
         std::move(text),
         NOTIFICATION_SECONDS);
+}
+
+void QuestInteractionSystem::showQuestText(const entt::entity giver,
+                                           const game::data::QuestData& quest,
+                                           const InteractionState state) {
+    std::string text = selectQuestText(quest, state);
+    if (text.empty()) {
+        text = makeFallbackQuestText(quest, state);
+    }
+    showText(giver, std::move(text));
 }
 
 void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand& event) {
@@ -139,13 +173,27 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
     }
 
     const InteractionState state = resolveState(*quest_log, *quest);
-    if (state == InteractionState::Offerable) {
-        if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
+    switch (state) {
+        case InteractionState::Offerable:
+            if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
+                return;
+            }
+            showQuestText(event.target, *quest, state);
+            return;
+        case InteractionState::ReadyToTurnIn: {
+            const auto turn_in_result = quest_turn_in_service_.turnIn(player, *quest, *quest_log);
+            if (!turn_in_result.completed()) {
+                showText(event.target, turn_in_result.failure_message);
+                return;
+            }
+            showText(event.target, formatTurnInSuccessText(*quest, turn_in_result));
             return;
         }
+        case InteractionState::InProgress:
+        case InteractionState::Completed:
+            showQuestText(event.target, *quest, state);
+            return;
     }
-
-    showQuestText(event.target, *quest, state);
 }
 
 } // namespace game::system

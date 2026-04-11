@@ -13,41 +13,12 @@
 
 namespace game::system {
 
-using detail::tryMerge;
-using detail::tryFillEmpty;
-
 namespace {
 
 constexpr float NOTIFICATION_SECONDS = 2.0f;
 constexpr std::uint8_t NOTIFICATION_CHANNEL = 2;
 
 using game::system::detail::stackLimitOrDefault;
-
-[[nodiscard]] bool simulateAdd(std::vector<game::component::ItemStack>& slots,
-                               int preferred_slot_index,
-                               entt::id_type item_id,
-                               int count,
-                               int stack_limit) {
-    if (item_id == entt::null || count <= 0) return true;
-    int remaining = count;
-
-    if (preferred_slot_index >= 0 && preferred_slot_index < static_cast<int>(slots.size()) && remaining > 0) {
-        remaining = tryMerge(slots[static_cast<std::size_t>(preferred_slot_index)], item_id, remaining, stack_limit);
-        remaining = tryFillEmpty(slots[static_cast<std::size_t>(preferred_slot_index)], item_id, remaining, stack_limit);
-    }
-
-    for (auto& slot : slots) {
-        if (remaining <= 0) break;
-        remaining = tryMerge(slot, item_id, remaining, stack_limit);
-    }
-
-    for (auto& slot : slots) {
-        if (remaining <= 0) break;
-        remaining = tryFillEmpty(slot, item_id, remaining, stack_limit);
-    }
-
-    return remaining <= 0;
-}
 
 } // namespace
 
@@ -113,7 +84,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
         const int add_total = effect.count * use_times;
         if (effect.item_id == entt::null || add_total <= 0) continue;
         const int stack_limit = stackLimitOrDefault(&catalog_, effect.item_id);
-        if (!simulateAdd(simulated, evt.inventory_slot_index, effect.item_id, add_total, stack_limit)) {
+        if (!detail::simulateAdd(simulated, evt.inventory_slot_index, effect.item_id, add_total, stack_limit)) {
             ok = false;
             break;
         }

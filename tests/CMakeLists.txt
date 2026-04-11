@@ -154,6 +154,7 @@ set(GAME_TEST_SOURCES
     game/interaction_command_pipeline_test.cpp
     game/quest_battle_progress_resolver_test.cpp
     game/quest_interaction_system_test.cpp
+    game/quest_turn_in_service_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
     game/state_animation_event_chain_test.cpp

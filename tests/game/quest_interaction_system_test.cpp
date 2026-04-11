@@ -22,16 +22,21 @@
 #include "engine/spatial/spatial_index_manager.h"
 
 #include "game/component/chest_component.h"
+#include "game/component/inventory_component.h"
 #include "game/component/map_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
+#include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/spatial_layers.h"
+#include "game/domain/inventory_domain_service.h"
+#include "game/domain/quest_turn_in_service.h"
 #include "game/system/dialogue_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/quest_interaction_system.h"
@@ -53,9 +58,19 @@ constexpr std::string_view QUEST_ID = "quest.test.hunter_trial";
     return std::string(PROJECT_SOURCE_DIR) + "/tests/data/quest_interaction_quests.json";
 }
 
+[[nodiscard]] std::string testItemConfigPath() {
+    return std::string(PROJECT_SOURCE_DIR) + "/tests/data/item_use_items.json";
+}
+
 [[nodiscard]] game::data::QuestCatalog loadQuestCatalog() {
     game::data::QuestCatalog catalog;
     EXPECT_TRUE(catalog.loadFromFile(testQuestConfigPath()));
+    return catalog;
+}
+
+[[nodiscard]] game::data::ItemCatalog loadItemCatalog() {
+    game::data::ItemCatalog catalog;
+    EXPECT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     return catalog;
 }
 
@@ -71,6 +86,8 @@ struct DialogueCapture {
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2(16.0f, 16.0f));
+    registry.emplace<game::component::InventoryComponent>(player);
+    registry.emplace<game::component::PlayerWalletComponent>(player);
     registry.emplace<game::component::QuestLogComponent>(player);
     return player;
 }
@@ -163,10 +180,13 @@ namespace game::system {
 TEST(QuestInteractionSystemTest, OfferableInteractionAcceptsQuestAndInitializesProgressKeys) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
     auto catalog = loadQuestCatalog();
     ASSERT_NE(catalog.findQuest(QUEST_ID), nullptr);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
 
-    QuestInteractionSystem system(registry, dispatcher, catalog);
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
     DialogueCapture capture{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
 
@@ -191,9 +211,12 @@ TEST(QuestInteractionSystemTest, OfferableInteractionAcceptsQuestAndInitializesP
 TEST(QuestInteractionSystemTest, ActiveQuestShowsProgressTextWithoutDuplicatingQuestEntry) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
     auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
 
-    QuestInteractionSystem system(registry, dispatcher, catalog);
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
     DialogueCapture capture{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
 
@@ -213,12 +236,15 @@ TEST(QuestInteractionSystemTest, ActiveQuestShowsProgressTextWithoutDuplicatingQ
     EXPECT_EQ(capture.shows.front().text, "Keep going.");
 }
 
-TEST(QuestInteractionSystemTest, ReadyToTurnInShowsReadyTextWithoutCompletingQuest) {
+TEST(QuestInteractionSystemTest, ReadyToTurnInCompletesQuestAndShowsRewardSummary) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
     auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
 
-    QuestInteractionSystem system(registry, dispatcher, catalog);
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
     DialogueCapture capture{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
 
@@ -232,19 +258,65 @@ TEST(QuestInteractionSystemTest, ReadyToTurnInShowsReadyTextWithoutCompletingQue
 
     dispatcher.trigger(game::defs::InteractCommand{player, giver});
 
-    EXPECT_TRUE(quest_log.completed_quests.empty());
+    EXPECT_TRUE(quest_log.active_quests.empty());
+    ASSERT_EQ(quest_log.completed_quests.size(), 1u);
+    EXPECT_EQ(quest_log.completed_quests.front(), QUEST_ID);
+    EXPECT_FALSE(quest_log.objective_progress.contains(game::data::makeQuestObjectiveProgressKey(QUEST_ID, "slime_hunt")));
+    EXPECT_FALSE(quest_log.objective_progress.contains(game::data::makeQuestObjectiveProgressKey(QUEST_ID, "bat_hunt")));
+    const auto& wallet = registry.get<game::component::PlayerWalletComponent>(player);
+    EXPECT_EQ(wallet.gold_, 4);
+    const auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"strawberry_seed"}.value());
+    EXPECT_EQ(inventory.slot(0).count_, 2);
+    ASSERT_EQ(capture.shows.size(), 1u);
+    EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.\n获得金币 4\n获得 Strawberry Seed x2");
+}
+
+TEST(QuestInteractionSystemTest, ReadyToTurnInFailureKeepsQuestReadyAndShowsFailureMessage) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
+
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity giver = createQuestGiver(registry);
+
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        inventory.slot(i).item_id_ = entt::hashed_string{"dummy_full"}.value();
+        inventory.slot(i).count_ = 1;
+    }
+
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    quest_log.active_quests.push_back(std::string(QUEST_ID));
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "slime_hunt")] = 2;
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "bat_hunt")] = 1;
+
+    dispatcher.trigger(game::defs::InteractCommand{player, giver});
+
     ASSERT_EQ(quest_log.active_quests.size(), 1u);
     EXPECT_EQ(quest_log.active_quests.front(), QUEST_ID);
+    EXPECT_TRUE(quest_log.completed_quests.empty());
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 0);
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows.front().text, "You finished the hunt.");
+    EXPECT_EQ(capture.shows.front().text, "背包空间不足");
 }
 
 TEST(QuestInteractionSystemTest, CompletedQuestShowsCompletedText) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
     auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
 
-    QuestInteractionSystem system(registry, dispatcher, catalog);
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
     DialogueCapture capture{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
 
@@ -257,16 +329,19 @@ TEST(QuestInteractionSystemTest, CompletedQuestShowsCompletedText) {
     dispatcher.trigger(game::defs::InteractCommand{player, giver});
 
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows.front().text, "You have already helped.");
+    EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.");
     EXPECT_TRUE(quest_log.active_quests.empty());
 }
 
 TEST(QuestInteractionSystemTest, MissingQuestDefinitionDoesNotModifyQuestLogOrEmitFeedback) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
     auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
 
-    QuestInteractionSystem system(registry, dispatcher, catalog);
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
     DialogueCapture capture{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
 

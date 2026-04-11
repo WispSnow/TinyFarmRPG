@@ -64,4 +64,41 @@ bool tryAcceptQuest(game::component::QuestLogComponent& quest_log, const game::d
     return true;
 }
 
+bool completeQuest(game::component::QuestLogComponent& quest_log, const std::string_view quest_id) {
+    const entt::id_type quest_id_hash = hashQuestId(quest_id);
+    if (quest_id_hash == entt::null || !isQuestActive(quest_log, quest_id_hash)) {
+        return false;
+    }
+
+    quest_log.active_quests.erase(
+        std::remove_if(
+            quest_log.active_quests.begin(),
+            quest_log.active_quests.end(),
+            [quest_id_hash](const std::string& active_id) {
+                return hashQuestId(active_id) == quest_id_hash;
+            }),
+        quest_log.active_quests.end());
+
+    if (!isQuestCompleted(quest_log, quest_id_hash)) {
+        quest_log.completed_quests.push_back(std::string(quest_id));
+    }
+
+    return true;
+}
+
+void eraseQuestProgress(game::component::QuestLogComponent& quest_log, const std::string_view quest_id) {
+    if (quest_id.empty()) {
+        return;
+    }
+
+    const std::string prefix = std::string(quest_id) + std::string(game::data::kQuestObjectiveProgressKeySeparator);
+    for (auto it = quest_log.objective_progress.begin(); it != quest_log.objective_progress.end();) {
+        if (it->first.rfind(prefix, 0) == 0) {
+            it = quest_log.objective_progress.erase(it);
+            continue;
+        }
+        ++it;
+    }
+}
+
 } // namespace game::domain::quest_log_ops
