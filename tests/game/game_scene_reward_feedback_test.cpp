@@ -65,6 +65,45 @@ TEST(GameSceneRewardFeedbackTest, ReturnsVictoryTextWhenNothingWasWrittenBack) {
     EXPECT_EQ(formatRewardFeedback(0, {}, nullptr), "战斗胜利");
 }
 
+TEST(GameSceneRewardFeedbackTest, FormatsBattleSettlementFeedbackWithQuestLines) {
+    BattleRewardWritebackResult reward_result{};
+    reward_result.gold_written_back = 4;
+
+    game::domain::QuestBattleProgressSummary quest_summary{};
+    quest_summary.updated_quests.push_back(game::domain::QuestBattleProgressQuestEntry{
+        .quest_id = "quest.alpha",
+        .quest_id_hash = game::data::RpgCatalog::hashId("quest.alpha"),
+        .quest_title = "Alpha"});
+    quest_summary.updated_quests.push_back(game::domain::QuestBattleProgressQuestEntry{
+        .quest_id = "quest.beta",
+        .quest_id_hash = game::data::RpgCatalog::hashId("quest.beta"),
+        .quest_title = "Beta"});
+    quest_summary.became_ready_to_turn_in_quests.push_back(game::domain::QuestBattleProgressQuestEntry{
+        .quest_id = "quest.beta",
+        .quest_id_hash = game::data::RpgCatalog::hashId("quest.beta"),
+        .quest_title = "Beta"});
+
+    const std::string feedback = formatBattleSettlementFeedback(reward_result, quest_summary, nullptr);
+
+    EXPECT_EQ(feedback,
+              "获得金币 4\n"
+              "任务更新：Alpha\n"
+              "可交付：Beta");
+}
+
+TEST(GameSceneRewardFeedbackTest, FormatsQuestOnlyFeedbackWithoutVictoryFallbackPrefix) {
+    BattleRewardWritebackResult reward_result{};
+    game::domain::QuestBattleProgressSummary quest_summary{};
+    quest_summary.became_ready_to_turn_in_quests.push_back(game::domain::QuestBattleProgressQuestEntry{
+        .quest_id = "quest.beta",
+        .quest_id_hash = game::data::RpgCatalog::hashId("quest.beta"),
+        .quest_title = "Beta"});
+
+    const std::string feedback = formatBattleSettlementFeedback(reward_result, quest_summary, nullptr);
+
+    EXPECT_EQ(feedback, "可交付：Beta");
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

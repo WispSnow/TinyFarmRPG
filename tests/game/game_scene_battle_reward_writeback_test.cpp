@@ -5,8 +5,10 @@
 #include "engine/component/transform_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/player_wallet_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
+#include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
@@ -75,6 +77,7 @@ protected:
     std::unordered_map<entt::id_type, int> active_battle_initial_item_stocks_{};
     bool has_active_battle_item_stocks_{false};
     std::shared_ptr<game::data::ItemCatalog> item_catalog_{};
+    std::shared_ptr<game::data::QuestCatalog> quest_catalog_{};
     std::shared_ptr<game::data::RpgCatalog> rpg_catalog_{};
 
     [[nodiscard]] std::filesystem::path writeConfig(std::string_view file_name, std::string_view body) const {
@@ -126,7 +129,30 @@ protected:
 })json");
         ASSERT_TRUE(rpg_catalog_->loadEnemies(enemies_path.string()));
 
+        quest_catalog_ = std::make_shared<game::data::QuestCatalog>();
+        const auto quests_path = writeConfig(
+            "quests.json",
+            R"json({
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.slime_hunt",
+      "title": "Slime Hunt",
+      "objectives": [
+        {
+          "id": "slime_count",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.slime",
+          "required_count": 2
+        }
+      ]
+    }
+  ]
+})json");
+        ASSERT_TRUE(quest_catalog_->loadFromFile(quests_path.string()));
+
         services_.item_catalog = item_catalog_;
+        services_.quest_catalog = quest_catalog_;
         services_.rpg_catalog = rpg_catalog_;
         services_.inventory_domain_service =
             std::make_unique<game::domain::InventoryDomainService>(registry_, dispatcher_, *item_catalog_);
@@ -152,6 +178,7 @@ protected:
         registry_.emplace<game::component::PlayerWalletComponent>(
             player,
             game::component::PlayerWalletComponent{.gold_ = initial_gold});
+        registry_.emplace<game::component::QuestLogComponent>(player);
         return player;
     }
 
@@ -375,6 +402,41 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInvent
 
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].text, "获得金币 4\n背包已满，未获得 Herb x1");
+
+    sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
+TEST_F(GameSceneBattleRewardWritebackTest, VictoryCombinesRewardAndQuestProgressIntoSingleNotification) {
+    DialogueCapture capture;
+    auto sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    sink.connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(10, 0);
+    auto& quest_log = registry_.get<game::component::QuestLogComponent>(player);
+    quest_log.active_quests.push_back("quest.slime_hunt");
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey("quest.slime_hunt", "slime_count")] = 1;
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    EXPECT_EQ(quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey("quest.slime_hunt", "slime_count")], 2);
+    ASSERT_EQ(capture.shows.size(), 1U);
+    EXPECT_EQ(capture.shows[0].target, player);
+    EXPECT_EQ(capture.shows[0].channel, 1);
+    EXPECT_EQ(capture.shows[0].text, "获得金币 4\n获得 Herb x1\n可交付：Slime Hunt");
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }

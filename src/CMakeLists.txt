@@ -182,6 +182,7 @@ target_sources(game PRIVATE
     game/battle/battle_session.cpp
     # Domain
     game/domain/inventory_domain_service.cpp
+    game/domain/quest_battle_progress_resolver.cpp
     game/domain/quest_log_ops.cpp
     # Save
     game/save/save_data.cpp

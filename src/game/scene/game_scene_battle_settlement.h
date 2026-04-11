@@ -14,7 +14,7 @@ struct GameRuntimeServices;
 
 namespace game::scene {
 
-/// @brief 处理战斗结束后的物品库存写回、胜利奖励写回与最小反馈。
+/// @brief 处理战斗结束后的物品库存写回、胜利奖励写回、任务推进与单次最小反馈。
 void processBattleEndedForGameScene(
     entt::registry& registry,
     entt::dispatcher& dispatcher,
