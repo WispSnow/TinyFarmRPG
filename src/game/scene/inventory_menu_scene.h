@@ -20,6 +20,7 @@ enum class State;
 
 namespace game::data {
 class ItemCatalog;
+class QuestCatalog;
 }
 
 namespace game::scene {
@@ -34,6 +35,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::data::QuestCatalog* quest_catalog_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
 
@@ -55,7 +57,8 @@ public:
                        engine::core::Context& context,
                        entt::registry& game_registry,
                        entt::entity player,
-                       game::data::ItemCatalog* item_catalog);
+                       game::data::ItemCatalog* item_catalog,
+                       const game::data::QuestCatalog* quest_catalog);
     ~InventoryMenuScene() override;
 
     bool init() override;

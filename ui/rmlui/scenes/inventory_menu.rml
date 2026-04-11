@@ -107,8 +107,36 @@
                 </panel>
 
                 <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-quests"></tab>
-                <panel id="panel-quests" class="placeholder-panel">
-                    <div class="placeholder-title">Quests</div>
+                <panel id="panel-quests">
+                    <div id="quests-content">
+                        <div class="quest-section">
+                            <div class="quest-section-title">进行中的任务</div>
+                            <div class="quest-empty" data-if="!has_active_quests">暂无进行中的任务</div>
+                            <div class="quest-list" data-if="has_active_quests">
+                                <div class="quest-entry" data-for="quest : active_quest_entries">
+                                    <div class="quest-entry-header">
+                                        <div class="quest-title">{{ quest.title }}</div>
+                                        <div class="quest-status">{{ quest.status_label }}</div>
+                                    </div>
+                                    <div class="quest-description" data-if="quest.has_description">{{ quest.description }}</div>
+                                    <div class="quest-progress" data-if="quest.has_progress_summary">{{ quest.progress_summary }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="quest-section quest-section-completed">
+                            <div class="quest-section-title">已完成的任务</div>
+                            <div class="quest-empty" data-if="!has_completed_quests">暂无已完成的任务</div>
+                            <div class="quest-list" data-if="has_completed_quests">
+                                <div class="quest-entry quest-entry-completed" data-for="quest : completed_quest_entries">
+                                    <div class="quest-entry-header">
+                                        <div class="quest-title">{{ quest.title }}</div>
+                                        <div class="quest-status">{{ quest.status_label }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </panel>
 
                 <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-map"></tab>

@@ -461,7 +461,8 @@ bool GameScene::onInventoryToggle() {
         context_,
         registry_,
         player,
-        services_->item_catalog.get()));
+        services_->item_catalog.get(),
+        services_->quest_catalog.get()));
     return true;
 }
 

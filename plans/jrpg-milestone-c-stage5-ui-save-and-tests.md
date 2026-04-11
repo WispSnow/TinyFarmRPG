@@ -96,13 +96,13 @@
 
 ## ToDo
 
-- [ ] 新增 `QuestTabContent` 与 quest 页最小 view model
-- [ ] 给 `InventoryMenuScene` / 菜单打开路径补 `QuestCatalog*` 注入
-- [ ] 在 `InventoryMenuScene` 中用 `QuestTabContent` 替换 `Quests` placeholder
-- [ ] 在 `inventory_menu.rml` 中落地 active/completed quest 列表与 empty state
-- [ ] 统一 active quest 的 progress summary 格式化规则
-- [ ] 复用 `quest_log_ops::isQuestReadyToTurnIn(...)` 生成 `status_label`
-- [ ] 对 UI 显示值按 `required_count` 做 `clamp`
-- [ ] 缺失 quest 定义时在任务页安全跳过并记录 `warn`
-- [ ] 补齐 quest 页 view model / RML 接线测试
-- [ ] 补齐 quest save roundtrip 测试
+- [x] 新增 `QuestTabContent` 与 quest 页最小 view model
+- [x] 给 `InventoryMenuScene` / 菜单打开路径补 `QuestCatalog*` 注入
+- [x] 在 `InventoryMenuScene` 中用 `QuestTabContent` 替换 `Quests` placeholder
+- [x] 在 `inventory_menu.rml` 中落地 active/completed quest 列表与 empty state
+- [x] 统一 active quest 的 progress summary 格式化规则
+- [x] 复用 `quest_log_ops::isQuestReadyToTurnIn(...)` 生成 `status_label`
+- [x] 对 UI 显示值按 `required_count` 做 `clamp`
+- [x] 缺失 quest 定义时在任务页安全跳过并记录 `warn`
+- [x] 补齐 quest 页 view model / RML 接线测试
+- [x] 补齐 quest save roundtrip 测试
