@@ -41,6 +41,7 @@
 #include "engine/debug/debug_ui_manager.h"
 #include "engine/debug/panels/vfx_debug_panel.h"
 #include "engine/system/debug_render_system.h"
+#include "game/debug/battle_debug_panel.h"
 #include "game/debug/blueprint_inspector_debug_panel.h"
 #include "game/debug/game_time_debug_panel.h"
 #include "game/debug/inventory_debug_panel.h"
@@ -351,6 +352,16 @@ bool GameScene::registerDebugPanels() {
         std::make_unique<game::debug::PlayerDebugPanel>(registry_, dispatcher, services_->appearance_catalog.get()),
         false,
         engine::debug::PanelCategory::Game);
+
+    if (services_->rpg_catalog) {
+        debug_ui_manager.registerPanel(
+            std::make_unique<game::debug::BattleDebugPanel>(
+                registry_,
+                dispatcher,
+                services_->rpg_catalog.get()),
+            false,
+            engine::debug::PanelCategory::Game);
+    }
 
     debug_ui_manager.registerPanel(
         std::make_unique<game::debug::GameTimeDebugPanel>(registry_, dispatcher),

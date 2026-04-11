@@ -1,7 +1,6 @@
 #include "player_debug_panel.h"
 #include "game/component/actor_component.h"
 #include "game/component/appearance_component.h"
-#include "game/component/inventory_component.h"
 #include "game/component/tags.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/commands.h"
@@ -9,7 +8,6 @@
 #include "game/defs/crop_defs.h"
 #include "game/defs/events.h"
 #include "engine/component/velocity_component.h"
-#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
@@ -53,32 +51,6 @@ constexpr std::array<AppearanceSlotDebugEntry, 5> kDebugSwitchSlots{{
     {"hair", "Hair"},
     {"acc", "Accessory"},
 }};
-
-void ensureDebugBattlePotion(entt::registry& registry, entt::dispatcher& dispatcher, entt::entity player_entity) {
-    if (!registry.valid(player_entity)) {
-        return;
-    }
-
-    auto& inventory = registry.get_or_emplace<game::component::InventoryComponent>(player_entity);
-    const entt::id_type potion_id = entt::hashed_string{"potion"}.value();
-
-    for (auto& slot : inventory.slots_) {
-        if (slot.item_id_ == potion_id && slot.count_ > 0) {
-            return;
-        }
-    }
-
-    for (auto& slot : inventory.slots_) {
-        if (!slot.empty()) {
-            continue;
-        }
-
-        slot.item_id_ = potion_id;
-        slot.count_ = 3;
-        dispatcher.trigger(game::defs::InventorySyncCommand{player_entity});
-        return;
-    }
-}
 
 } // namespace
 
@@ -179,12 +151,6 @@ void PlayerDebugPanel::draw(bool& is_open) {
         ImGui::Text("速度向量: (%.2f, %.2f)", velocity.velocity_.x, velocity.velocity_.y);
         const float velocity_magnitude = glm::length(velocity.velocity_);
         ImGui::Text("速度大小: %.2f", velocity_magnitude);
-    }
-
-    ImGui::Separator();
-    if (ImGui::Button("Start Test Battle (Catalog)")) {
-        ensureDebugBattlePotion(registry_, dispatcher_, player_entity);
-        dispatcher_.trigger(game::defs::EnterBattleCommand{});
     }
 
     if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {
