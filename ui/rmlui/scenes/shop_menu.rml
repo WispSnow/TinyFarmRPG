@@ -22,9 +22,24 @@
 
         <div id="shop-body">
             <div id="shop-list-column">
-                <div class="shop-section-title">Buy</div>
-                <div id="shop-empty-text" data-if="!has_buy_entries">{{ empty_text }}</div>
-                <div id="shop-buy-list" data-if="has_buy_entries">
+                <div id="shop-list-header">
+                    <div id="shop-list-title" class="shop-section-title">{{ list_title_text }}</div>
+                    <div id="shop-mode-toggle">
+                        <button id="shop-mode-buy"
+                                class="tf-button-secondary shop-mode-button"
+                                data-class-selected="is_buy_mode"
+                                data-event-click="switch_mode_buy">Buy</button>
+                        <button id="shop-mode-sell"
+                                class="tf-button-secondary shop-mode-button"
+                                data-class-selected="is_sell_mode"
+                                data-event-click="switch_mode_sell">Sell</button>
+                    </div>
+                </div>
+
+                <div class="shop-empty-text" data-if="is_buy_mode &amp;&amp; !has_buy_entries">{{ empty_text }}</div>
+                <div class="shop-empty-text" data-if="is_sell_mode &amp;&amp; !has_sell_entries">{{ empty_text }}</div>
+
+                <div id="shop-buy-list" data-if="is_buy_mode &amp;&amp; has_buy_entries">
                     <button class="tf-button-secondary shop-buy-entry"
                             data-for="entry : buy_entries"
                             id="shop-buy-entry-{{ entry.index }}"
@@ -32,12 +47,28 @@
                             data-class-disabled="entry.is_disabled"
                             data-attrif-disabled="entry.is_disabled"
                             data-event-click="buy_entry_select(entry.index)">
-                        <div class="shop-buy-entry-icon" data-style-decorator="entry.icon_decorator"></div>
-                        <div class="shop-buy-entry-copy">
-                            <div class="shop-buy-entry-name">{{ entry.item_name }}</div>
-                            <div class="shop-buy-entry-owned">{{ entry.owned_text }}</div>
+                        <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
+                        <div class="shop-entry-copy">
+                            <div class="shop-entry-name">{{ entry.item_name }}</div>
+                            <div class="shop-entry-meta">{{ entry.owned_text }}</div>
                         </div>
-                        <div class="shop-buy-entry-price">{{ entry.price_text }}</div>
+                        <div class="shop-entry-price">{{ entry.price_text }}</div>
+                    </button>
+                </div>
+
+                <div id="shop-sell-list" data-if="is_sell_mode &amp;&amp; has_sell_entries">
+                    <button class="tf-button-secondary shop-sell-entry"
+                            data-for="entry : sell_entries"
+                            id="shop-sell-entry-{{ entry.slot_index }}"
+                            data-class-selected="entry.is_selected"
+                            data-class-disabled="entry.is_disabled"
+                            data-event-click="sell_entry_select(entry.index)">
+                        <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
+                        <div class="shop-entry-copy">
+                            <div class="shop-entry-name">{{ entry.item_name }}</div>
+                            <div class="shop-entry-meta">{{ entry.count_text }}</div>
+                        </div>
+                        <div class="shop-entry-price">{{ entry.price_text }}</div>
                     </button>
                 </div>
             </div>
@@ -61,7 +92,7 @@
                     </div>
 
                     <div class="shop-detail-row">
-                        <div class="shop-detail-label">Owned</div>
+                        <div class="shop-detail-label">{{ detail_owned_label }}</div>
                         <div id="shop-detail-owned">{{ detail_owned_text }}</div>
                     </div>
 
@@ -93,11 +124,11 @@
                 <div id="shop-status">{{ status_text }}</div>
 
                 <div id="shop-actions">
-                    <button id="shop-buy-button"
+                    <button id="shop-primary-action-button"
                             class="tf-button-primary shop-action-button"
-                            data-class-disabled="!buy_enabled"
-                            data-attrif-disabled="!buy_enabled"
-                            data-event-click="buy_confirm">Buy</button>
+                            data-class-disabled="!primary_action_enabled"
+                            data-attrif-disabled="!primary_action_enabled"
+                            data-event-click="confirm_trade">{{ primary_action_text }}</button>
                     <button id="shop-close-footer" class="tf-button-secondary shop-action-button" data-event-click="close">Leave</button>
                 </div>
             </div>

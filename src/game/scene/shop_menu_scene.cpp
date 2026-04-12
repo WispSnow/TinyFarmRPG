@@ -23,8 +23,10 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/shop_menu.rml";
 constexpr std::string_view MODEL_NAME = "shop_menu";
-constexpr std::string_view DEFAULT_READY_STATUS = "Confirm to buy. Left / Right changes quantity.";
+constexpr std::string_view DEFAULT_BUY_READY_STATUS = "Confirm to buy. Left / Right changes quantity.";
+constexpr std::string_view DEFAULT_SELL_READY_STATUS = "Confirm to sell. Left / Right changes quantity.";
 
+using ShopMenuMode = game::scene::ShopMenuScene::ShopMenuMode;
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 using namespace entt::literals;
@@ -66,39 +68,54 @@ void updateBoolBinding(engine::ui::rmlui::RmlDocumentController& controller,
     return "x" + std::to_string(std::max(0, quantity));
 }
 
-[[nodiscard]] std::string formatFailureText(const game::domain::ShopTradeFailureReason failure_reason) {
+[[nodiscard]] std::string_view defaultReadyStatus(const ShopMenuMode mode) {
+    return mode == ShopMenuMode::Buy ? DEFAULT_BUY_READY_STATUS : DEFAULT_SELL_READY_STATUS;
+}
+
+[[nodiscard]] std::string_view defaultEmptyText(const ShopMenuMode mode) {
+    return mode == ShopMenuMode::Buy ? "This shop has no goods available." : "You have nothing to sell.";
+}
+
+[[nodiscard]] std::string formatFailureText(const ShopMenuMode mode,
+                                            const game::domain::ShopTradeFailureReason failure_reason) {
     using game::domain::ShopTradeFailureReason;
 
     switch (failure_reason) {
         case ShopTradeFailureReason::None:
-            return std::string{DEFAULT_READY_STATUS};
+            return std::string{defaultReadyStatus(mode)};
         case ShopTradeFailureReason::InsufficientGold:
             return "Not enough gold.";
         case ShopTradeFailureReason::InventoryFull:
-            return "Inventory is full.";
+            return mode == ShopMenuMode::Buy ? "Inventory is full." : "Action unavailable.";
         case ShopTradeFailureReason::InvalidQuantity:
             return "Invalid quantity.";
         case ShopTradeFailureReason::InvalidPlayer:
             return "Action unavailable.";
         case ShopTradeFailureReason::InvalidShop:
+            return mode == ShopMenuMode::Buy ? "This shop is unavailable." : "Action unavailable.";
         case ShopTradeFailureReason::InvalidItem:
+            return "Action unavailable.";
         case ShopTradeFailureReason::ItemNotSoldHere:
             return "This item cannot be purchased here.";
         case ShopTradeFailureReason::ItemNotSellable:
+            return "This item cannot be sold.";
         case ShopTradeFailureReason::SlotMismatch:
+            return "This slot changed.";
         case ShopTradeFailureReason::InsufficientItemCount:
-            return "Purchase failed.";
+            return "Not enough items in this slot.";
     }
 
-    return "Purchase failed.";
+    return mode == ShopMenuMode::Buy ? "Purchase failed." : "Sale failed.";
 }
 
-[[nodiscard]] std::string formatSuccessText(std::string_view item_name, const int quantity) {
-    std::string text{"Purchased "};
+[[nodiscard]] std::string formatSuccessText(const ShopMenuMode mode,
+                                            std::string_view item_name,
+                                            const int quantity) {
+    std::string text = mode == ShopMenuMode::Buy ? "Purchased " : "Sold ";
     text.append(item_name);
     if (quantity > 1) {
         text.push_back(' ');
-        text += 'x';
+        text.push_back('x');
         text += std::to_string(quantity);
     }
     text.push_back('.');
@@ -217,8 +234,10 @@ bool ShopMenuScene::initUI() {
 
     if (!data_types_registered_) {
         if (!game::ui::registerShopBuyEntryViewModelType(constructor) ||
-            !constructor.RegisterArray<decltype(buy_entries_)>()) {
-            spdlog::error("ShopMenuScene: 注册 ShopBuyEntryViewModel data types 失败。");
+            !constructor.RegisterArray<decltype(buy_entries_)>() ||
+            !game::ui::registerShopSellEntryViewModelType(constructor) ||
+            !constructor.RegisterArray<decltype(sell_entries_)>()) {
+            spdlog::error("ShopMenuScene: 注册 ShopMenu data types 失败。");
             document_controller_.unload();
             return false;
         }
@@ -229,6 +248,7 @@ bool ShopMenuScene::initUI() {
         !constructor.Bind("shop_greeting", &shop_greeting_) ||
         !constructor.Bind("gold_label", &gold_label_) ||
         !constructor.Bind("status_text", &status_text_) ||
+        !constructor.Bind("list_title_text", &list_title_text_) ||
         !constructor.Bind("empty_text", &empty_text_) ||
         !constructor.Bind("detail_name", &detail_name_) ||
         !constructor.Bind("detail_description", &detail_description_) ||
@@ -236,12 +256,20 @@ bool ShopMenuScene::initUI() {
         !constructor.Bind("detail_total_text", &detail_total_text_) ||
         !constructor.Bind("detail_after_gold_text", &detail_after_gold_text_) ||
         !constructor.Bind("detail_quantity_text", &detail_quantity_text_) ||
+        !constructor.Bind("detail_owned_label", &detail_owned_label_) ||
         !constructor.Bind("detail_owned_text", &detail_owned_text_) ||
+        !constructor.Bind("is_buy_mode", &is_buy_mode_) ||
+        !constructor.Bind("is_sell_mode", &is_sell_mode_) ||
         !constructor.Bind("has_buy_entries", &has_buy_entries_) ||
+        !constructor.Bind("has_sell_entries", &has_sell_entries_) ||
         !constructor.Bind("buy_enabled", &buy_enabled_) ||
+        !constructor.Bind("sell_enabled", &sell_enabled_) ||
+        !constructor.Bind("primary_action_enabled", &primary_action_enabled_) ||
+        !constructor.Bind("primary_action_text", &primary_action_text_) ||
         !constructor.Bind("quantity_decrease_enabled", &quantity_decrease_enabled_) ||
         !constructor.Bind("quantity_increase_enabled", &quantity_increase_enabled_) ||
-        !constructor.Bind("buy_entries", &buy_entries_)) {
+        !constructor.Bind("buy_entries", &buy_entries_) ||
+        !constructor.Bind("sell_entries", &sell_entries_)) {
         spdlog::error("ShopMenuScene: 绑定 data model 变量失败。");
         document_controller_.unload();
         return false;
@@ -255,11 +283,22 @@ bool ShopMenuScene::initUI() {
             }) ||
         !document_controller_.bindEvent(
             constructor,
+            "sell_entry_select",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
+                selectSellEntry(game::ui::getSingleIntArgument(arguments));
+            }) ||
+        !document_controller_.bindEvent(
+            constructor,
             "adjust_quantity",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
                 adjustQuantity(game::ui::getSingleIntArgument(arguments));
             }) ||
-        !document_controller_.bindSimpleEvent(constructor, "buy_confirm", [this] { confirmBuy(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "switch_mode_buy", [this] { switchMode(ShopMenuMode::Buy); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "switch_mode_sell", [this] { switchMode(ShopMenuMode::Sell); }) ||
+        !document_controller_.bindSimpleEvent(
+            constructor,
+            "confirm_trade",
+            [this] { current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "close", [this] { onClose(); })) {
         spdlog::error("ShopMenuScene: 绑定 data event 回调失败。");
         document_controller_.unload();
@@ -315,14 +354,43 @@ void ShopMenuScene::syncGoldLabel() {
     updateStringBinding(document_controller_, "gold_label", gold_label_, formatGoldLabel(wallet ? wallet->gold_ : 0));
 }
 
+void ShopMenuScene::syncModeBindings() {
+    const bool is_buy_mode = current_mode_ == ShopMenuMode::Buy;
+    updateBoolBinding(document_controller_, "is_buy_mode", is_buy_mode_, is_buy_mode);
+    updateBoolBinding(document_controller_, "is_sell_mode", is_sell_mode_, !is_buy_mode);
+    updateStringBinding(document_controller_, "list_title_text", list_title_text_, is_buy_mode ? "Buy" : "Sell");
+    updateStringBinding(
+        document_controller_,
+        "empty_text",
+        empty_text_,
+        is_buy_mode ? defaultEmptyText(ShopMenuMode::Buy) : defaultEmptyText(ShopMenuMode::Sell));
+    updateStringBinding(
+        document_controller_,
+        "detail_owned_label",
+        detail_owned_label_,
+        is_buy_mode ? "Owned" : "In Slot");
+    updateStringBinding(document_controller_, "primary_action_text", primary_action_text_, is_buy_mode ? "Buy" : "Sell");
+    updateBoolBinding(
+        document_controller_,
+        "primary_action_enabled",
+        primary_action_enabled_,
+        is_buy_mode ? buy_enabled_ : sell_enabled_);
+}
+
+void ShopMenuScene::markTradeListsDirty() {
+    buy_entries_dirty_ = true;
+    sell_entries_dirty_ = true;
+}
+
 void ShopMenuScene::rebuildBuyEntries() {
     buy_entry_refs_.clear();
     buy_entries_.clear();
 
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
     if (!shop_data_ || !item_catalog_) {
+        updateBoolBinding(document_controller_, "has_buy_entries", has_buy_entries_, false);
         document_controller_.markDirty("buy_entries");
-        document_controller_.markDirty("has_buy_entries");
+        buy_entries_dirty_ = false;
         return;
     }
 
@@ -359,11 +427,52 @@ void ShopMenuScene::rebuildBuyEntries() {
     }
 
     document_controller_.markDirty("buy_entries");
+    buy_entries_dirty_ = false;
+}
+
+void ShopMenuScene::rebuildSellEntries() {
+    sell_entries_.clear();
+
+    const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+    if (!inventory || !item_catalog_ || !shop_catalog_) {
+        updateBoolBinding(document_controller_, "has_sell_entries", has_sell_entries_, false);
+        document_controller_.markDirty("sell_entries");
+        sell_entries_dirty_ = false;
+        return;
+    }
+
+    sell_entries_.reserve(static_cast<std::size_t>(inventory->slotCount()));
+    for (int slot_index = 0; slot_index < inventory->slotCount(); ++slot_index) {
+        const auto& stack = inventory->slot(slot_index);
+        if (stack.empty()) {
+            continue;
+        }
+
+        game::ui::ShopSellEntryViewModel view_model{};
+        game::ui::populateShopSellEntryViewModel(
+            view_model,
+            static_cast<int>(sell_entries_.size()),
+            slot_index,
+            stack,
+            shop_catalog_->findSellRule(stack.item_id_),
+            item_catalog_,
+            false);
+        sell_entries_.push_back(std::move(view_model));
+    }
+
+    updateBoolBinding(document_controller_, "has_sell_entries", has_sell_entries_, !sell_entries_.empty());
+    selected_sell_index_ = clampSelectionIndex(selected_sell_index_, static_cast<int>(sell_entries_.size()));
+    for (auto& entry : sell_entries_) {
+        entry.is_selected = has_sell_entries_ && entry.index == selected_sell_index_;
+    }
+
+    document_controller_.markDirty("sell_entries");
+    sell_entries_dirty_ = false;
 }
 
 void ShopMenuScene::refreshSelectedBuyEntry() {
     const auto* buy_entry = currentBuyEntry();
-    const auto* item = currentItemData();
+    const auto* item = currentBuyItemData();
     if (!buy_entry || !item) {
         requested_buy_quantity_ = 1;
         updateStringBinding(document_controller_, "detail_name", detail_name_, "No goods available");
@@ -392,7 +501,7 @@ void ShopMenuScene::refreshSelectedBuyEntry() {
         document_controller_,
         "detail_owned_text",
         detail_owned_text_,
-        std::to_string(currentOwnedCount()));
+        std::to_string(currentBuyOwnedCount()));
 
     const bool quantity_adjustable = currentQuantityUiMax() > 1;
     updateBoolBinding(
@@ -405,6 +514,52 @@ void ShopMenuScene::refreshSelectedBuyEntry() {
         "quantity_increase_enabled",
         quantity_increase_enabled_,
         quantity_adjustable && requested_buy_quantity_ < currentQuantityUiMax());
+}
+
+void ShopMenuScene::refreshSelectedSellEntry() {
+    const auto* sell_entry = currentSellEntry();
+    const auto* item = currentSellItemData();
+    if (!sell_entry || !item) {
+        requested_sell_quantity_ = 1;
+        updateStringBinding(document_controller_, "detail_name", detail_name_, "No items available");
+        updateStringBinding(document_controller_, "detail_description", detail_description_, "You have nothing to sell.");
+        updateStringBinding(document_controller_, "detail_quantity_text", detail_quantity_text_, "x0");
+        updateStringBinding(document_controller_, "detail_owned_text", detail_owned_text_, "0");
+        updateBoolBinding(document_controller_, "quantity_decrease_enabled", quantity_decrease_enabled_, false);
+        updateBoolBinding(document_controller_, "quantity_increase_enabled", quantity_increase_enabled_, false);
+        return;
+    }
+
+    requested_sell_quantity_ = std::clamp(requested_sell_quantity_, 1, currentQuantityUiMax());
+
+    updateStringBinding(
+        document_controller_,
+        "detail_name",
+        detail_name_,
+        item->display_name_.empty() ? item->id_str_ : item->display_name_);
+    updateStringBinding(document_controller_, "detail_description", detail_description_, item->description_);
+    updateStringBinding(
+        document_controller_,
+        "detail_quantity_text",
+        detail_quantity_text_,
+        formatQuantityText(requested_sell_quantity_));
+    updateStringBinding(
+        document_controller_,
+        "detail_owned_text",
+        detail_owned_text_,
+        std::to_string(currentSellSlotCount()));
+
+    const bool quantity_adjustable = currentQuantityUiMax() > 1;
+    updateBoolBinding(
+        document_controller_,
+        "quantity_decrease_enabled",
+        quantity_decrease_enabled_,
+        quantity_adjustable && requested_sell_quantity_ > 1);
+    updateBoolBinding(
+        document_controller_,
+        "quantity_increase_enabled",
+        quantity_increase_enabled_,
+        quantity_adjustable && requested_sell_quantity_ < currentQuantityUiMax());
 }
 
 void ShopMenuScene::refreshBuyPreview() {
@@ -442,29 +597,88 @@ void ShopMenuScene::refreshBuyPreview() {
     updateBoolBinding(document_controller_, "buy_enabled", buy_enabled_, active_buy_preview_.canCommit());
 }
 
-void ShopMenuScene::refreshStatusText() {
-    if (!has_buy_entries_) {
-        updateStringBinding(document_controller_, "status_text", status_text_, "This shop has nothing to sell.");
+void ShopMenuScene::refreshSellPreview() {
+    const auto* sell_entry = currentSellEntry();
+    const entt::id_type item_id = currentSellItemId();
+    if (!sell_entry || item_id == entt::null || !shop_transaction_service_) {
+        active_sell_preview_ = {};
+        updateStringBinding(document_controller_, "detail_price_text", detail_price_text_, "-");
+        updateStringBinding(document_controller_, "detail_total_text", detail_total_text_, "-");
+        updateStringBinding(document_controller_, "detail_after_gold_text", detail_after_gold_text_, "-");
+        updateBoolBinding(document_controller_, "sell_enabled", sell_enabled_, false);
         return;
     }
 
-    if (status_override_.has_value()) {
-        updateStringBinding(document_controller_, "status_text", status_text_, *status_override_);
+    active_sell_preview_ = shop_transaction_service_->previewSell(
+        player_,
+        item_id,
+        requested_sell_quantity_,
+        sell_entry->slot_index);
+
+    if (sell_entry->is_disabled) {
+        updateStringBinding(document_controller_, "detail_price_text", detail_price_text_, sell_entry->price_text);
+        updateStringBinding(document_controller_, "detail_total_text", detail_total_text_, "-");
+        updateStringBinding(
+            document_controller_,
+            "detail_after_gold_text",
+            detail_after_gold_text_,
+            formatGoldValue(active_sell_preview_.final_gold_after));
+        updateBoolBinding(document_controller_, "sell_enabled", sell_enabled_, false);
         return;
     }
 
     updateStringBinding(
         document_controller_,
-        "status_text",
-        status_text_,
-        formatFailureText(active_buy_preview_.failure_reason));
+        "detail_price_text",
+        detail_price_text_,
+        formatGoldValue(active_sell_preview_.unit_price));
+    updateStringBinding(
+        document_controller_,
+        "detail_total_text",
+        detail_total_text_,
+        formatGoldValue(active_sell_preview_.total_price));
+    updateStringBinding(
+        document_controller_,
+        "detail_after_gold_text",
+        detail_after_gold_text_,
+        formatGoldValue(active_sell_preview_.final_gold_after));
+    updateBoolBinding(document_controller_, "sell_enabled", sell_enabled_, active_sell_preview_.canCommit());
+}
+
+void ShopMenuScene::refreshStatusText() {
+    if (status_override_.has_value()) {
+        updateStringBinding(document_controller_, "status_text", status_text_, *status_override_);
+        return;
+    }
+
+    if (!hasCurrentEntries()) {
+        updateStringBinding(document_controller_, "status_text", status_text_, defaultEmptyText(current_mode_));
+        return;
+    }
+
+    const auto failure_reason =
+        current_mode_ == ShopMenuMode::Buy ? active_buy_preview_.failure_reason : active_sell_preview_.failure_reason;
+    updateStringBinding(document_controller_, "status_text", status_text_, formatFailureText(current_mode_, failure_reason));
 }
 
 void ShopMenuScene::refreshAll() {
     syncGoldLabel();
-    rebuildBuyEntries();
-    refreshSelectedBuyEntry();
-    refreshBuyPreview();
+    if (buy_entries_dirty_) {
+        rebuildBuyEntries();
+    }
+    if (sell_entries_dirty_) {
+        rebuildSellEntries();
+    }
+
+    if (current_mode_ == ShopMenuMode::Buy) {
+        refreshSelectedBuyEntry();
+        refreshBuyPreview();
+    } else {
+        refreshSelectedSellEntry();
+        refreshSellPreview();
+    }
+
+    syncModeBindings();
     refreshStatusText();
 }
 
@@ -481,7 +695,7 @@ const game::data::ShopBuyEntryData* ShopMenuScene::currentBuyEntry() const {
     return buy_entry_refs_[selected_buy_index_];
 }
 
-const game::data::ItemData* ShopMenuScene::currentItemData() const {
+const game::data::ItemData* ShopMenuScene::currentBuyItemData() const {
     const auto* buy_entry = currentBuyEntry();
     if (!buy_entry || !item_catalog_) {
         return nullptr;
@@ -490,7 +704,38 @@ const game::data::ItemData* ShopMenuScene::currentItemData() const {
     return item_catalog_->findItem(buy_entry->item_id_hash_);
 }
 
-int ShopMenuScene::currentOwnedCount() const {
+const game::ui::ShopSellEntryViewModel* ShopMenuScene::currentSellEntry() const {
+    if (!has_sell_entries_ || selected_sell_index_ < 0 || selected_sell_index_ >= static_cast<int>(sell_entries_.size())) {
+        return nullptr;
+    }
+
+    return &sell_entries_[selected_sell_index_];
+}
+
+const game::data::ItemData* ShopMenuScene::currentSellItemData() const {
+    const entt::id_type item_id = currentSellItemId();
+    if (item_id == entt::null || !item_catalog_) {
+        return nullptr;
+    }
+
+    return item_catalog_->findItem(item_id);
+}
+
+entt::id_type ShopMenuScene::currentSellItemId() const {
+    const auto* sell_entry = currentSellEntry();
+    if (sell_entry == nullptr) {
+        return entt::null;
+    }
+
+    return sell_entry->item_id_hash;
+}
+
+int ShopMenuScene::currentSellSlotIndex() const {
+    const auto* sell_entry = currentSellEntry();
+    return sell_entry ? sell_entry->slot_index : -1;
+}
+
+int ShopMenuScene::currentBuyOwnedCount() const {
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
     const auto* buy_entry = currentBuyEntry();
     if (!inventory || !buy_entry) {
@@ -500,8 +745,32 @@ int ShopMenuScene::currentOwnedCount() const {
     return game::ui::countOwnedItems(*inventory, buy_entry->item_id_hash_);
 }
 
+int ShopMenuScene::currentSellSlotCount() const {
+    const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+    const int slot_index = currentSellSlotIndex();
+    if (!inventory || slot_index < 0 || slot_index >= inventory->slotCount()) {
+        return 0;
+    }
+
+    return std::max(0, inventory->slot(slot_index).count_);
+}
+
+bool ShopMenuScene::hasCurrentEntries() const {
+    return current_mode_ == ShopMenuMode::Buy ? has_buy_entries_ : has_sell_entries_;
+}
+
 int ShopMenuScene::currentQuantityUiMax() const {
-    if (const auto* item = currentItemData()) {
+    if (current_mode_ == ShopMenuMode::Sell) {
+        const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+        const int slot_index = currentSellSlotIndex();
+        if (!inventory || slot_index < 0 || slot_index >= inventory->slotCount()) {
+            return 1;
+        }
+
+        return game::ui::resolveSellQuantityUiMax(inventory->slot(slot_index));
+    }
+
+    if (const auto* item = currentBuyItemData()) {
         return game::ui::resolveBuyQuantityUiMax(*item);
     }
     return 1;
@@ -522,30 +791,68 @@ void ShopMenuScene::selectBuyEntry(const int index) {
     document_controller_.markDirty("buy_entries");
     refreshSelectedBuyEntry();
     refreshBuyPreview();
+    syncModeBindings();
+    refreshStatusText();
+}
+
+void ShopMenuScene::selectSellEntry(const int index) {
+    if (!has_sell_entries_ || index < 0 || index >= static_cast<int>(sell_entries_.size()) || index == selected_sell_index_) {
+        return;
+    }
+
+    if (selected_sell_index_ >= 0 && selected_sell_index_ < static_cast<int>(sell_entries_.size())) {
+        sell_entries_[selected_sell_index_].is_selected = false;
+    }
+    selected_sell_index_ = index;
+    sell_entries_[selected_sell_index_].is_selected = true;
+    requested_sell_quantity_ = 1;
+    clearStatusOverride();
+    document_controller_.markDirty("sell_entries");
+    refreshSelectedSellEntry();
+    refreshSellPreview();
+    syncModeBindings();
     refreshStatusText();
 }
 
 void ShopMenuScene::adjustQuantity(const int delta) {
-    if (delta == 0 || !has_buy_entries_) {
+    if (delta == 0 || !hasCurrentEntries()) {
         return;
     }
 
     const int max_quantity = currentQuantityUiMax();
-    const int next_quantity = std::clamp(requested_buy_quantity_ + delta, 1, max_quantity);
-    if (next_quantity == requested_buy_quantity_) {
+    int& requested_quantity =
+        current_mode_ == ShopMenuMode::Buy ? requested_buy_quantity_ : requested_sell_quantity_;
+    const int next_quantity = std::clamp(requested_quantity + delta, 1, max_quantity);
+    if (next_quantity == requested_quantity) {
         return;
     }
 
-    requested_buy_quantity_ = next_quantity;
+    requested_quantity = next_quantity;
     clearStatusOverride();
-    refreshSelectedBuyEntry();
-    refreshBuyPreview();
+    if (current_mode_ == ShopMenuMode::Buy) {
+        refreshSelectedBuyEntry();
+        refreshBuyPreview();
+    } else {
+        refreshSelectedSellEntry();
+        refreshSellPreview();
+    }
+    syncModeBindings();
     refreshStatusText();
+}
+
+void ShopMenuScene::switchMode(const ShopMenuMode next_mode) {
+    if (current_mode_ == next_mode) {
+        return;
+    }
+
+    current_mode_ = next_mode;
+    clearStatusOverride();
+    refreshAll();
 }
 
 void ShopMenuScene::confirmBuy() {
     const auto* buy_entry = currentBuyEntry();
-    const auto* item = currentItemData();
+    const auto* item = currentBuyItemData();
     if (!buy_entry || !item || !shop_transaction_service_) {
         status_override_ = "No item selected.";
         refreshStatusText();
@@ -553,7 +860,7 @@ void ShopMenuScene::confirmBuy() {
     }
 
     if (!active_buy_preview_.canCommit()) {
-        status_override_ = formatFailureText(active_buy_preview_.failure_reason);
+        status_override_ = formatFailureText(ShopMenuMode::Buy, active_buy_preview_.failure_reason);
         refreshStatusText();
         return;
     }
@@ -566,27 +873,77 @@ void ShopMenuScene::confirmBuy() {
         buy_entry->item_id_hash_,
         requested_buy_quantity_);
     if (result.completed()) {
-        status_override_ = formatSuccessText(item_name, result.resolved_quantity);
+        status_override_ = formatSuccessText(ShopMenuMode::Buy, item_name, result.resolved_quantity);
     } else {
-        status_override_ = formatFailureText(result.failure_reason);
+        status_override_ = formatFailureText(ShopMenuMode::Buy, result.failure_reason);
     }
 
+    markTradeListsDirty();
+    refreshAll();
+}
+
+void ShopMenuScene::confirmSell() {
+    const auto* item = currentSellItemData();
+    const entt::id_type item_id = currentSellItemId();
+    const int slot_index = currentSellSlotIndex();
+    if (!item || item_id == entt::null || slot_index < 0 || !shop_transaction_service_) {
+        status_override_ = "No item selected.";
+        refreshStatusText();
+        return;
+    }
+
+    if (!active_sell_preview_.canCommit()) {
+        status_override_ = formatFailureText(ShopMenuMode::Sell, active_sell_preview_.failure_reason);
+        refreshStatusText();
+        return;
+    }
+
+    const std::string_view item_name =
+        item->display_name_.empty() ? std::string_view{item->id_str_} : std::string_view{item->display_name_};
+    const auto result = shop_transaction_service_->commitSell(
+        player_,
+        item_id,
+        requested_sell_quantity_,
+        slot_index);
+    if (result.completed()) {
+        status_override_ = formatSuccessText(ShopMenuMode::Sell, item_name, result.resolved_quantity);
+    } else {
+        status_override_ = formatFailureText(ShopMenuMode::Sell, result.failure_reason);
+    }
+
+    markTradeListsDirty();
     refreshAll();
 }
 
 bool ShopMenuScene::onMenuUpPressed() {
-    if (has_buy_entries_) {
+    if (!hasCurrentEntries()) {
+        return true;
+    }
+
+    if (current_mode_ == ShopMenuMode::Buy) {
         const int entry_count = static_cast<int>(buy_entries_.size());
         selectBuyEntry((selected_buy_index_ + entry_count - 1) % entry_count);
+        return true;
     }
+
+    const int entry_count = static_cast<int>(sell_entries_.size());
+    selectSellEntry((selected_sell_index_ + entry_count - 1) % entry_count);
     return true;
 }
 
 bool ShopMenuScene::onMenuDownPressed() {
-    if (has_buy_entries_) {
+    if (!hasCurrentEntries()) {
+        return true;
+    }
+
+    if (current_mode_ == ShopMenuMode::Buy) {
         const int entry_count = static_cast<int>(buy_entries_.size());
         selectBuyEntry((selected_buy_index_ + 1) % entry_count);
+        return true;
     }
+
+    const int entry_count = static_cast<int>(sell_entries_.size());
+    selectSellEntry((selected_sell_index_ + 1) % entry_count);
     return true;
 }
 
@@ -601,7 +958,7 @@ bool ShopMenuScene::onMenuRightPressed() {
 }
 
 bool ShopMenuScene::onMenuConfirmPressed() {
-    confirmBuy();
+    current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell();
     return true;
 }
 

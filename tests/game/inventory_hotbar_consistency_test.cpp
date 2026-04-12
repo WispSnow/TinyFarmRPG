@@ -1,26 +1,41 @@
 #include <gtest/gtest.h>
 
+#include "appearance_test_fixture_utils.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/data/item_catalog.h"
+#include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/shop_transaction_service.h"
 #include "game/system/hotbar_system.h"
 #include "game/system/inventory_system.h"
 
+#include <algorithm>
+#include <filesystem>
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 #include <string>
+#include <string_view>
 
 namespace game::system {
 
 namespace {
 
+#ifndef PROJECT_SOURCE_DIR
+#define PROJECT_SOURCE_DIR "."
+#endif
+
 std::string testItemConfigPath() {
     return std::string(PROJECT_SOURCE_DIR) + "/tests/data/item_use_items.json";
+}
+
+std::string projectItemConfigPath() {
+    return std::string(PROJECT_SOURCE_DIR) + "/assets/data/item_config.json";
 }
 
 struct InventoryChangedCapture {
@@ -32,6 +47,36 @@ struct HotbarChangedCapture {
     std::vector<game::defs::HotbarChanged> events{};
     void onEvent(const game::defs::HotbarChanged& evt) { events.push_back(evt); }
 };
+
+[[nodiscard]] std::filesystem::path writeShopConfig(std::string_view prefix, std::string_view body) {
+    const auto temp_root = game::test::createUniqueTempDir(prefix);
+    const auto config_path = temp_root / "shops.json";
+    game::test::writeTextFile(config_path, body);
+    return config_path;
+}
+
+[[nodiscard]] game::data::ShopCatalog loadShopCatalog(std::string_view body, std::string_view prefix) {
+    const auto path = writeShopConfig(prefix, body);
+    game::data::ShopCatalog catalog;
+    EXPECT_TRUE(catalog.loadFromFile(path.string()));
+    return catalog;
+}
+
+constexpr std::string_view kSellShopConfig = R"json({
+  "schema_version": 1,
+  "shops": [
+    {
+      "id": "shop.alpha",
+      "title": "Alpha",
+      "buy_entries": [
+        { "item_id": "potion", "buy_price": 30 }
+      ]
+    }
+  ],
+  "sell_rules": [
+    { "item_id": "potion", "sell_price": 15 }
+  ]
+})json";
 
 } // namespace
 
@@ -171,6 +216,101 @@ TEST(InventoryHotbarConsistencyTest, Sort_RemapsHotbarMappingsAndEmitsFullSync) 
     ASSERT_GE(hotbar_capture.events.back().slots.size(), 2u);
     EXPECT_EQ(hotbar_capture.events.back().slots[0].inventory_slot_index, 1);
     EXPECT_EQ(hotbar_capture.events.back().slots[1].inventory_slot_index, 0);
+}
+
+TEST(InventoryHotbarConsistencyTest, ShopSellCommit_KeepsHotbarMappingWhenSlotStillHasItems) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto shop_catalog = loadShopCatalog(kSellShopConfig, "hotbar_sell_partial");
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+    HotbarSystem hotbar_system(registry, dispatcher);
+    game::domain::ShopTransactionService shop_transaction_service(registry, catalog, shop_catalog, inventory_domain_service);
+
+    InventoryChangedCapture inventory_capture{};
+    HotbarChangedCapture hotbar_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&inventory_capture);
+    dispatcher.sink<game::defs::HotbarChanged>().connect<&HotbarChangedCapture::onEvent>(&hotbar_capture);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
+    auto& wallet =
+        registry.emplace<game::component::PlayerWalletComponent>(player, game::component::PlayerWalletComponent{.gold_ = 10});
+
+    inventory.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inventory.slot(0).count_ = 3;
+    hotbar.slot(0).inventory_slot_index_ = 0;
+
+    const auto result = shop_transaction_service.commitSell(player, entt::hashed_string{"potion"}.value(), 2, 0);
+
+    ASSERT_TRUE(result.completed());
+    EXPECT_EQ(wallet.gold_, 40);
+    EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"potion"}.value());
+    EXPECT_EQ(inventory.slot(0).count_, 1);
+    EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, 0);
+
+    ASSERT_FALSE(inventory_capture.events.empty());
+    EXPECT_FALSE(inventory_capture.events.back().from_add);
+
+    ASSERT_FALSE(hotbar_capture.events.empty());
+    const auto& hotbar_event = hotbar_capture.events.back();
+    const auto it = std::find_if(hotbar_event.slots.begin(), hotbar_event.slots.end(), [](const auto& update) {
+        return update.hotbar_index == 0;
+    });
+    ASSERT_NE(it, hotbar_event.slots.end());
+    EXPECT_EQ(it->inventory_slot_index, 0);
+    EXPECT_EQ(it->item_id, entt::hashed_string{"potion"}.value());
+    EXPECT_EQ(it->count, 1);
+}
+
+TEST(InventoryHotbarConsistencyTest, ShopSellCommit_ClearsHotbarMappingWhenSlotBecomesEmpty) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto shop_catalog = loadShopCatalog(kSellShopConfig, "hotbar_sell_clear");
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+    HotbarSystem hotbar_system(registry, dispatcher);
+    game::domain::ShopTransactionService shop_transaction_service(registry, catalog, shop_catalog, inventory_domain_service);
+
+    InventoryChangedCapture inventory_capture{};
+    HotbarChangedCapture hotbar_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&inventory_capture);
+    dispatcher.sink<game::defs::HotbarChanged>().connect<&HotbarChangedCapture::onEvent>(&hotbar_capture);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
+    auto& wallet =
+        registry.emplace<game::component::PlayerWalletComponent>(player, game::component::PlayerWalletComponent{.gold_ = 10});
+
+    inventory.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inventory.slot(0).count_ = 2;
+    hotbar.slot(0).inventory_slot_index_ = 0;
+
+    const auto result = shop_transaction_service.commitSell(player, entt::hashed_string{"potion"}.value(), 2, 0);
+
+    ASSERT_TRUE(result.completed());
+    EXPECT_EQ(wallet.gold_, 40);
+    EXPECT_TRUE(inventory.slot(0).empty());
+    EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, -1);
+
+    ASSERT_FALSE(inventory_capture.events.empty());
+    EXPECT_FALSE(inventory_capture.events.back().from_add);
+
+    ASSERT_FALSE(hotbar_capture.events.empty());
+    const auto& hotbar_event = hotbar_capture.events.back();
+    const auto it = std::find_if(hotbar_event.slots.begin(), hotbar_event.slots.end(), [](const auto& update) {
+        return update.hotbar_index == 0;
+    });
+    ASSERT_NE(it, hotbar_event.slots.end());
+    EXPECT_EQ(it->inventory_slot_index, -1);
+    EXPECT_EQ(it->item_id, static_cast<entt::id_type>(entt::null));
+    EXPECT_EQ(it->count, 0);
 }
 
 } // namespace game::system
