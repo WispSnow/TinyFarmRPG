@@ -3,53 +3,224 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #shop-panel {
-    left: 120dp;
-    top: 78dp;
-    width: 400dp;
-    height: 168dp;
-    padding: 20dp 22dp 18dp 22dp;
+    left: 48dp;
+    top: 34dp;
+    width: 544dp;
+    height: 292dp;
+    padding: 16dp 18dp 16dp 18dp;
 }
 
 #shop-header {
     width: 100%;
+    height: 48dp;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+#shop-header-copy {
+    width: 404dp;
+    height: 48dp;
+}
+
+#shop-title {
+    width: 100%;
+    height: 22dp;
+    line-height: 22dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#shop-greeting {
+    margin-top: 6dp;
+    width: 100%;
+    color: #d8e3e6ff;
+}
+
+#shop-body {
+    margin-top: 12dp;
+    width: 100%;
+    height: 212dp;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+#shop-list-column {
+    width: 190dp;
+    height: 212dp;
+}
+
+#shop-detail-column {
+    width: 312dp;
+    height: 212dp;
+}
+
+.shop-section-title {
+    width: 100%;
+    height: 20dp;
+    line-height: 20dp;
+    color: #fce97fff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#shop-empty-text {
+    margin-top: 16dp;
+    width: 100%;
+    color: #d8e3e6ff;
+}
+
+#shop-buy-list {
+    margin-top: 10dp;
+    width: 100%;
+    height: 182dp;
+    overflow-y: auto;
+}
+
+.shop-buy-entry {
+    width: 100%;
+    height: 48dp;
+    margin-bottom: 8dp;
+    padding: 8dp 10dp 8dp 10dp;
+    text-align: left;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.shop-buy-entry.selected {
+    color: #fce97fff;
+    transform: translateY(-1dp);
+}
+
+.shop-buy-entry-icon {
+    width: 28dp;
     height: 28dp;
+}
+
+.shop-buy-entry-copy {
+    margin-left: 8dp;
+    width: 92dp;
+    height: 32dp;
+}
+
+.shop-buy-entry-name {
+    width: 100%;
+    height: 18dp;
+    line-height: 18dp;
+    color: #ffffffff;
+}
+
+.shop-buy-entry-owned {
+    margin-top: 2dp;
+    width: 100%;
+    height: 14dp;
+    line-height: 14dp;
+    color: #b9c9d0ff;
+    font-size: 14dp;
+}
+
+.shop-buy-entry-price {
+    width: 56dp;
+    height: 18dp;
+    line-height: 18dp;
+    text-align: right;
+    color: #fce97fff;
+}
+
+#shop-gold-label {
+    margin-top: 10dp;
+    width: 100%;
+    color: #ffffffff;
+}
+
+#shop-detail-card {
+    margin-top: 8dp;
+    width: 100%;
+    height: 118dp;
+    padding: 10dp 12dp 10dp 12dp;
+    border: 1dp #7c91a8cc;
+    background-color: #15212af0;
+}
+
+#shop-detail-name {
+    width: 100%;
+    height: 20dp;
+    line-height: 20dp;
+    color: #ffffffff;
+}
+
+#shop-detail-description {
+    margin-top: 6dp;
+    width: 100%;
+    height: 36dp;
+    color: #cdd8dcff;
+}
+
+.shop-detail-row {
+    margin-top: 4dp;
+    width: 100%;
+    height: 16dp;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
 }
 
-#shop-title {
-    width: 268dp;
-    height: 24dp;
-    line-height: 24dp;
+.shop-detail-label {
+    width: 80dp;
+    color: #9fb0baff;
+}
+
+#shop-detail-price,
+#shop-detail-quantity,
+#shop-detail-owned,
+#shop-detail-total,
+#shop-detail-after {
+    width: 124dp;
+    text-align: right;
     color: #ffffffff;
-    font-effect: shadow(1dp 1dp #000000cc);
 }
 
-#shop-greeting {
-    margin-top: 18dp;
-    width: 100%;
-    color: #f5edd8ff;
+#shop-quantity-controls {
+    margin-top: 10dp;
+    width: 160dp;
+    height: 32dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
-#shop-placeholder {
-    margin-top: 16dp;
+#shop-quantity-readout {
+    width: 80dp;
+    height: 32dp;
+    line-height: 32dp;
+    text-align: center;
+    color: #ffffffff;
+}
+
+.shop-qty-button {
+    width: 32dp;
+}
+
+#shop-status {
+    margin-top: 10dp;
     width: 100%;
+    height: 34dp;
     color: #fff4b3ff;
 }
 
-#shop-hint {
-    margin-top: 20dp;
+#shop-actions {
+    margin-top: 8dp;
     width: 100%;
-    color: #c9d6d8ff;
+    height: 32dp;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
 }
 
-.shop-menu-close {
+.shop-action-button {
     width: 96dp;
-    tab-index: auto;
-    nav-left: auto;
-    nav-right: auto;
-    nav-up: auto;
-    nav-down: auto;
+    margin-right: 10dp;
 }

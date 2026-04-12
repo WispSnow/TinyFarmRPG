@@ -3,21 +3,105 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="shop_menu.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="shop_menu">
+<body class="tf-screen-root tf-nav-root" data-model="shop_menu">
     <div id="shop-overlay" class="tf-modal-overlay"></div>
 
     <div id="shop-panel" class="tf-modal-panel">
         <div id="shop-header">
-            <div id="shop-title">{{ shop_title }}</div>
-            <button id="shop-close-button" class="tf-button-secondary shop-menu-close" data-event-click="close">Close</button>
+            <div id="shop-header-copy">
+                <div id="shop-title">{{ shop_title }}</div>
+                <div id="shop-greeting">{{ shop_greeting }}</div>
+            </div>
+            <button id="shop-close-button" class="tf-button-secondary shop-action-button" data-event-click="close">Close</button>
         </div>
 
-        <p id="shop-greeting">{{ shop_greeting }}</p>
-        <p id="shop-placeholder">Buy / Sell coming soon.</p>
-        <p id="shop-hint">Press Esc to close.</p>
+        <div id="shop-body">
+            <div id="shop-list-column">
+                <div class="shop-section-title">Buy</div>
+                <div id="shop-empty-text" data-if="!has_buy_entries">{{ empty_text }}</div>
+                <div id="shop-buy-list" data-if="has_buy_entries">
+                    <button class="tf-button-secondary shop-buy-entry"
+                            data-for="entry : buy_entries"
+                            id="shop-buy-entry-{{ entry.index }}"
+                            data-class-selected="entry.is_selected"
+                            data-class-disabled="entry.is_disabled"
+                            data-attrif-disabled="entry.is_disabled"
+                            data-event-click="buy_entry_select(entry.index)">
+                        <div class="shop-buy-entry-icon" data-style-decorator="entry.icon_decorator"></div>
+                        <div class="shop-buy-entry-copy">
+                            <div class="shop-buy-entry-name">{{ entry.item_name }}</div>
+                            <div class="shop-buy-entry-owned">{{ entry.owned_text }}</div>
+                        </div>
+                        <div class="shop-buy-entry-price">{{ entry.price_text }}</div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="shop-detail-column">
+                <div class="shop-section-title">Details</div>
+                <div id="shop-gold-label">{{ gold_label }}</div>
+
+                <div id="shop-detail-card">
+                    <div id="shop-detail-name">{{ detail_name }}</div>
+                    <div id="shop-detail-description">{{ detail_description }}</div>
+
+                    <div class="shop-detail-row">
+                        <div class="shop-detail-label">Price</div>
+                        <div id="shop-detail-price">{{ detail_price_text }}</div>
+                    </div>
+
+                    <div class="shop-detail-row">
+                        <div class="shop-detail-label">Qty</div>
+                        <div id="shop-detail-quantity">{{ detail_quantity_text }}</div>
+                    </div>
+
+                    <div class="shop-detail-row">
+                        <div class="shop-detail-label">Owned</div>
+                        <div id="shop-detail-owned">{{ detail_owned_text }}</div>
+                    </div>
+
+                    <div class="shop-detail-row">
+                        <div class="shop-detail-label">Total</div>
+                        <div id="shop-detail-total">{{ detail_total_text }}</div>
+                    </div>
+
+                    <div class="shop-detail-row">
+                        <div class="shop-detail-label">After</div>
+                        <div id="shop-detail-after">{{ detail_after_gold_text }}</div>
+                    </div>
+                </div>
+
+                <div id="shop-quantity-controls">
+                    <button id="shop-qty-down"
+                            class="tf-icon-button icon-arrow-left shop-qty-button"
+                            data-class-disabled="!quantity_decrease_enabled"
+                            data-attrif-disabled="!quantity_decrease_enabled"
+                            data-event-click="adjust_quantity(-1)"></button>
+                    <div id="shop-quantity-readout">{{ detail_quantity_text }}</div>
+                    <button id="shop-qty-up"
+                            class="tf-icon-button icon-arrow-right shop-qty-button"
+                            data-class-disabled="!quantity_increase_enabled"
+                            data-attrif-disabled="!quantity_increase_enabled"
+                            data-event-click="adjust_quantity(1)"></button>
+                </div>
+
+                <div id="shop-status">{{ status_text }}</div>
+
+                <div id="shop-actions">
+                    <button id="shop-buy-button"
+                            class="tf-button-primary shop-action-button"
+                            data-class-disabled="!buy_enabled"
+                            data-attrif-disabled="!buy_enabled"
+                            data-event-click="buy_confirm">Buy</button>
+                    <button id="shop-close-footer" class="tf-button-secondary shop-action-button" data-event-click="close">Leave</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </rml>

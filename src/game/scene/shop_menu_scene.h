@@ -1,13 +1,19 @@
 #pragma once
 
+#include "game/domain/shop_transaction_service.h"
+#include "game/ui/shop_menu_support.h"
+
 #include "engine/scene/scene.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
 
+#include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
 #include <entt/entity/entity.hpp>
 
+#include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace engine::core {
 enum class State;
@@ -16,10 +22,9 @@ enum class State;
 namespace game::data {
 class ItemCatalog;
 class ShopCatalog;
-}
-
-namespace game::domain {
-class ShopTransactionService;
+struct ItemData;
+struct ShopBuyEntryData;
+struct ShopData;
 }
 
 namespace game::scene {
@@ -31,12 +36,36 @@ class ShopMenuScene final : public engine::scene::Scene {
     const game::data::ShopCatalog* shop_catalog_{nullptr};
     game::data::ItemCatalog* item_catalog_{nullptr};
     game::domain::ShopTransactionService* shop_transaction_service_{nullptr};
+    const game::data::ShopData* shop_data_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
+    bool data_types_registered_{false};
+    bool input_listeners_connected_{false};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
+    Rml::DataTypeRegister type_register_{};
     Rml::String shop_title_{"Shop"};
     Rml::String shop_greeting_{"Welcome."};
+    std::vector<const game::data::ShopBuyEntryData*> buy_entry_refs_{};
+    std::vector<game::ui::ShopBuyEntryViewModel> buy_entries_{};
+    int selected_buy_index_{0};
+    int requested_buy_quantity_{1};
+    game::domain::ShopBuyPreview active_buy_preview_{};
+    std::optional<std::string> status_override_{};
+    Rml::String gold_label_{"Gold: 0"};
+    Rml::String status_text_{"Select an item to buy."};
+    Rml::String empty_text_{"This shop has nothing to sell."};
+    Rml::String detail_name_{"No goods available"};
+    Rml::String detail_description_{};
+    Rml::String detail_price_text_{"-"};
+    Rml::String detail_total_text_{"-"};
+    Rml::String detail_after_gold_text_{"-"};
+    Rml::String detail_quantity_text_{"x0"};
+    Rml::String detail_owned_text_{"0"};
+    bool has_buy_entries_{false};
+    bool buy_enabled_{false};
+    bool quantity_decrease_enabled_{false};
+    bool quantity_increase_enabled_{false};
 
 public:
     ShopMenuScene(std::string_view name,
@@ -55,7 +84,27 @@ public:
 private:
     [[nodiscard]] bool initUI();
     void shutdownUI();
+    void connectRuntimeListeners();
     void disconnectRuntimeListeners();
+    void syncGoldLabel();
+    void rebuildBuyEntries();
+    void refreshSelectedBuyEntry();
+    void refreshBuyPreview();
+    void refreshStatusText();
+    void refreshAll();
+    void clearStatusOverride();
+    [[nodiscard]] const game::data::ShopBuyEntryData* currentBuyEntry() const;
+    [[nodiscard]] const game::data::ItemData* currentItemData() const;
+    [[nodiscard]] int currentOwnedCount() const;
+    [[nodiscard]] int currentQuantityUiMax() const;
+    void selectBuyEntry(int index);
+    void adjustQuantity(int delta);
+    void confirmBuy();
+    [[nodiscard]] bool onMenuUpPressed();
+    [[nodiscard]] bool onMenuDownPressed();
+    [[nodiscard]] bool onMenuLeftPressed();
+    [[nodiscard]] bool onMenuRightPressed();
+    [[nodiscard]] bool onMenuConfirmPressed();
     [[nodiscard]] bool onMenuCancelPressed();
     void onClose();
 };
