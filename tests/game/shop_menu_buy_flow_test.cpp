@@ -89,9 +89,12 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh)
     ASSERT_FALSE(source.empty());
     const std::string select_block =
         test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::selectBuyEntry(const int index)");
+    const std::string confirm_buy_block =
+        test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::confirmBuy()");
     const std::string destructor_block =
         test_source_utils::extractFunctionBlock(source, "ShopMenuScene::~ShopMenuScene()");
     ASSERT_FALSE(select_block.empty());
+    ASSERT_FALSE(confirm_buy_block.empty());
     ASSERT_FALSE(destructor_block.empty());
 
     EXPECT_NE(source.find("shop_transaction_service_->previewBuy"), std::string::npos);
@@ -110,6 +113,7 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh)
     EXPECT_NE(select_block.find("document_controller_.markDirty(\"buy_entries\")"), std::string::npos);
     EXPECT_NE(select_block.find("buy_entries_[selected_buy_index_].is_selected = true;"), std::string::npos);
     EXPECT_EQ(select_block.find("refreshAll();"), std::string::npos);
+    EXPECT_NE(confirm_buy_block.find("requested_buy_quantity_ = 1;"), std::string::npos);
     EXPECT_NE(destructor_block.find("if (context_pushed_)"), std::string::npos);
     EXPECT_NE(destructor_block.find("context_.getInputManager().popContext();"), std::string::npos);
 }

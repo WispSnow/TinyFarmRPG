@@ -54,8 +54,13 @@ private:
     Rml::String shop_title_{"Shop"};
     Rml::String shop_greeting_{"Welcome."};
     ShopMenuMode current_mode_{ShopMenuMode::Buy};
+    game::ui::ShopMenuFocusArea current_focus_area_{game::ui::ShopMenuFocusArea::EntryList};
     bool is_buy_mode_{true};
     bool is_sell_mode_{false};
+    bool is_mode_toggle_focused_{false};
+    bool is_entry_list_focused_{true};
+    bool is_quantity_focused_{false};
+    bool is_primary_action_focused_{false};
     bool buy_entries_dirty_{true};
     bool sell_entries_dirty_{true};
     std::vector<const game::data::ShopBuyEntryData*> buy_entry_refs_{};
@@ -110,6 +115,8 @@ private:
     void disconnectRuntimeListeners();
     void syncGoldLabel();
     void syncModeBindings();
+    void syncFocusBindings();
+    void normalizeFocusArea();
     void markTradeListsDirty();
     void rebuildBuyEntries();
     void rebuildSellEntries();
@@ -130,6 +137,10 @@ private:
     [[nodiscard]] int currentSellSlotCount() const;
     [[nodiscard]] bool hasCurrentEntries() const;
     [[nodiscard]] int currentQuantityUiMax() const;
+    [[nodiscard]] bool isCurrentQuantityAdjustable() const;
+    [[nodiscard]] game::ui::ShopMenuNavigationState makeNavigationState() const;
+    void applyFocusArea(game::ui::ShopMenuFocusArea next_focus_area);
+    void applyNavigationDecision(const game::ui::ShopMenuNavigationDecision& decision);
     void selectBuyEntry(int index);
     void selectSellEntry(int index);
     void adjustQuantity(int delta);

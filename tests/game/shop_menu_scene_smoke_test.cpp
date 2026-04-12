@@ -44,12 +44,15 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(header.find("std::vector<game::ui::ShopSellEntryViewModel> sell_entries_"), std::string::npos);
     EXPECT_NE(header.find("ShopBuyPreview active_buy_preview_"), std::string::npos);
     EXPECT_NE(header.find("ShopSellPreview active_sell_preview_"), std::string::npos);
+    EXPECT_NE(header.find("ShopMenuFocusArea current_focus_area_"), std::string::npos);
 
     const std::string init_block = test_source_utils::extractFunctionBlock(source, "bool ShopMenuScene::init()");
     const std::string init_ui_block = test_source_utils::extractFunctionBlock(source, "bool ShopMenuScene::initUI()");
     const std::string clean_block = test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::clean()");
     const std::string connect_block =
         test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::connectRuntimeListeners()");
+    const std::string focus_block =
+        test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::syncFocusBindings()");
     const std::string buy_preview_block =
         test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::refreshBuyPreview()");
     const std::string sell_preview_block =
@@ -60,6 +63,7 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     ASSERT_FALSE(init_ui_block.empty());
     ASSERT_FALSE(clean_block.empty());
     ASSERT_FALSE(connect_block.empty());
+    ASSERT_FALSE(focus_block.empty());
     ASSERT_FALSE(buy_preview_block.empty());
     ASSERT_FALSE(sell_preview_block.empty());
     ASSERT_FALSE(status_block.empty());
@@ -88,8 +92,13 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(source.find("shop_transaction_service_->commitSell"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"buy_entries\")"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"sell_entries\")"), std::string::npos);
+    EXPECT_NE(focus_block.find("\"is_mode_toggle_focused\""), std::string::npos);
+    EXPECT_NE(focus_block.find("\"is_entry_list_focused\""), std::string::npos);
+    EXPECT_NE(focus_block.find("\"is_quantity_focused\""), std::string::npos);
+    EXPECT_NE(focus_block.find("\"is_primary_action_focused\""), std::string::npos);
     EXPECT_NE(status_block.find("\"status_text\""), std::string::npos);
     EXPECT_NE(status_block.find("active_sell_preview_"), std::string::npos);
+    EXPECT_NE(status_block.find("formatFocusStatus"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getInputManager().popContext();"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getGameState().setState(previous_state_);"), std::string::npos);
 
@@ -112,12 +121,18 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(rml.find("{{ detail_owned_label }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ detail_name }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ status_text }}"), std::string::npos);
+    EXPECT_NE(rml.find("data-class-focused=\"is_mode_toggle_focused\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-focused=\"is_entry_list_focused\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-focused=\"is_quantity_focused\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-focused=\"is_primary_action_focused\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"close\""), std::string::npos);
     EXPECT_NE(rcss.find("display: block;"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-mode-button"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-buy-entry.selected"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-sell-entry.selected"), std::string::npos);
     EXPECT_NE(rcss.find("#shop-sell-list"), std::string::npos);
+    EXPECT_NE(rcss.find("#shop-mode-toggle.focused"), std::string::npos);
+    EXPECT_NE(rcss.find("#shop-quantity-controls.focused"), std::string::npos);
     EXPECT_NE(rcss.find("#shop-quantity-controls"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-action-button"), std::string::npos);
 }

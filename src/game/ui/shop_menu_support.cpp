@@ -12,6 +12,115 @@
 
 namespace game::ui {
 
+ShopMenuFocusArea resolvePreferredShopMenuFocus(const bool has_current_entries) {
+    return has_current_entries ? ShopMenuFocusArea::EntryList : ShopMenuFocusArea::ModeToggle;
+}
+
+ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationState& state,
+                                                     const ShopMenuNavigationInput input) {
+    ShopMenuNavigationDecision decision{};
+    decision.next_focus_area = state.focus_area;
+    decision.next_is_buy_mode = state.is_buy_mode;
+
+    const bool has_current_entries = state.hasCurrentEntries();
+    switch (state.focus_area) {
+        case ShopMenuFocusArea::ModeToggle:
+            if (input == ShopMenuNavigationInput::Left && !state.is_buy_mode) {
+                decision.switch_mode = true;
+                decision.next_is_buy_mode = true;
+            } else if (input == ShopMenuNavigationInput::Right && state.is_buy_mode) {
+                decision.switch_mode = true;
+                decision.next_is_buy_mode = false;
+            } else if (input == ShopMenuNavigationInput::Down || input == ShopMenuNavigationInput::Confirm) {
+                decision.next_focus_area = resolvePreferredShopMenuFocus(has_current_entries);
+            }
+            break;
+
+        case ShopMenuFocusArea::EntryList:
+            if (!has_current_entries) {
+                if (input == ShopMenuNavigationInput::Left) {
+                    decision.next_focus_area = ShopMenuFocusArea::ModeToggle;
+                }
+                break;
+            }
+
+            switch (input) {
+                case ShopMenuNavigationInput::Up:
+                    decision.entry_delta = -1;
+                    break;
+                case ShopMenuNavigationInput::Down:
+                    decision.entry_delta = 1;
+                    break;
+                case ShopMenuNavigationInput::Left:
+                    decision.next_focus_area = ShopMenuFocusArea::ModeToggle;
+                    break;
+                case ShopMenuNavigationInput::Right:
+                    decision.next_focus_area = ShopMenuFocusArea::Quantity;
+                    break;
+                case ShopMenuNavigationInput::Confirm:
+                    decision.next_focus_area = ShopMenuFocusArea::PrimaryAction;
+                    break;
+            }
+            break;
+
+        case ShopMenuFocusArea::Quantity:
+            if (!has_current_entries) {
+                if (input == ShopMenuNavigationInput::Up || input == ShopMenuNavigationInput::Down ||
+                    input == ShopMenuNavigationInput::Confirm) {
+                    decision.next_focus_area = resolvePreferredShopMenuFocus(false);
+                }
+                break;
+            }
+
+            switch (input) {
+                case ShopMenuNavigationInput::Up:
+                    decision.next_focus_area = ShopMenuFocusArea::EntryList;
+                    break;
+                case ShopMenuNavigationInput::Down:
+                case ShopMenuNavigationInput::Confirm:
+                    decision.next_focus_area = ShopMenuFocusArea::PrimaryAction;
+                    break;
+                case ShopMenuNavigationInput::Left:
+                    if (state.quantity_adjustable) {
+                        decision.quantity_delta = -1;
+                    }
+                    break;
+                case ShopMenuNavigationInput::Right:
+                    if (state.quantity_adjustable) {
+                        decision.quantity_delta = 1;
+                    }
+                    break;
+            }
+            break;
+
+        case ShopMenuFocusArea::PrimaryAction:
+            if (!has_current_entries) {
+                if (input == ShopMenuNavigationInput::Left || input == ShopMenuNavigationInput::Up) {
+                    decision.next_focus_area = resolvePreferredShopMenuFocus(false);
+                }
+                break;
+            }
+
+            switch (input) {
+                case ShopMenuNavigationInput::Up:
+                    decision.next_focus_area = ShopMenuFocusArea::Quantity;
+                    break;
+                case ShopMenuNavigationInput::Left:
+                    decision.next_focus_area = ShopMenuFocusArea::EntryList;
+                    break;
+                case ShopMenuNavigationInput::Confirm:
+                    decision.confirm_trade = true;
+                    break;
+                case ShopMenuNavigationInput::Down:
+                case ShopMenuNavigationInput::Right:
+                    break;
+            }
+            break;
+    }
+
+    return decision;
+}
+
 bool registerShopBuyEntryViewModelType(Rml::DataModelConstructor& constructor) {
     if (auto handle = constructor.RegisterStruct<ShopBuyEntryViewModel>()) {
         handle.RegisterMember("index", &ShopBuyEntryViewModel::index);

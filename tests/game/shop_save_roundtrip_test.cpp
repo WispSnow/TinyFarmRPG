@@ -10,11 +10,11 @@
 #include <string>
 
 #include <entt/core/hashed_string.hpp>
-#include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 #include "engine/audio/audio_player.h"
 #include "engine/async/main_thread_command_queue.h"
+#include "engine/component/transform_component.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/core/time.h"
@@ -28,23 +28,30 @@
 #include "engine/render/text_renderer.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/scene/scene.h"
 #include "engine/spatial/spatial_index_manager.h"
-#include "engine/utils/events.h"
-
-#include "game/component/merchant_component.h"
+#include "game/component/hotbar_component.h"
+#include "game/component/inventory_component.h"
+#include "game/component/player_wallet_component.h"
+#include "game/component/quest_log_component.h"
+#include "game/component/state_component.h"
+#include "game/component/tags.h"
+#include "game/data/game_time.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_catalog.h"
-#include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/shop_transaction_service.h"
-#include "game/scene/shop_menu_scene.h"
-#include "game/system/shop_interaction_system.h"
+#include "game/factory/blueprint_manager.h"
+#include "game/factory/entity_factory.h"
+#include "game/save/save_service.h"
+#include "game/world/map_loading_settings.h"
+#include "game/world/map_manager.h"
+#include "game/world/world_state.h"
 
-#ifndef PROJECT_SOURCE_DIR
-#define PROJECT_SOURCE_DIR "."
-#endif
-
+namespace game::save {
 namespace {
+
+using namespace entt::literals;
 
 [[nodiscard]] bool initSdlVideoWithDummyFallback(const Uint32 flags) {
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
@@ -54,47 +61,29 @@ namespace {
 
 [[nodiscard]] game::data::ItemCatalog loadProjectItemCatalog() {
     game::data::ItemCatalog catalog;
-    const auto config_path = (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/item_config.json").lexically_normal();
+    const auto config_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/item_config.json").lexically_normal();
     EXPECT_TRUE(catalog.loadItemConfig(config_path.string()));
     return catalog;
 }
 
 [[nodiscard]] game::data::ShopCatalog loadProjectShopCatalog() {
     game::data::ShopCatalog catalog;
-    const auto root = std::filesystem::path{PROJECT_SOURCE_DIR};
-    EXPECT_TRUE(catalog.loadFromFile((root / "assets/data/shops.json").string()));
+    const auto config_path = (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/shops.json").lexically_normal();
+    EXPECT_TRUE(catalog.loadFromFile(config_path.string()));
     auto item_catalog = loadProjectItemCatalog();
     std::string validation_error{};
     EXPECT_TRUE(catalog.validateReferences(&item_catalog, validation_error)) << validation_error;
     return catalog;
 }
 
-struct PushSceneCapture {
-    int count{0};
-    std::string scene_name{};
-    bool saw_shop_menu_scene{false};
-    std::unique_ptr<engine::scene::Scene> captured_scene{};
-
-    void onEvent(engine::utils::PushSceneEvent& event) {
-        ++count;
-        if (!event.scene) {
-            return;
-        }
-        scene_name = std::string(event.scene->getName());
-        saw_shop_menu_scene = dynamic_cast<game::scene::ShopMenuScene*>(event.scene.get()) != nullptr;
-        captured_scene = std::move(event.scene);
-    }
+class TestScene final : public engine::scene::Scene {
+public:
+    explicit TestScene(engine::core::Context& context)
+        : Scene("ShopSaveRoundtripTestScene", context) {}
 };
 
-struct PopSceneCapture {
-    int count{0};
-
-    void onEvent(engine::utils::PopSceneEvent&) {
-        ++count;
-    }
-};
-
-class ShopInteractionSystemTest : public ::testing::Test {
+class ShopSaveRoundtripTest : public ::testing::Test {
 protected:
     static inline bool sdl_ready_{false};
 
@@ -102,6 +91,7 @@ protected:
     std::filesystem::path input_config_path_{};
     std::filesystem::path original_working_dir_{};
     std::filesystem::path runtime_root_{};
+    std::filesystem::path temp_dir_{};
 
     entt::dispatcher dispatcher_{};
     std::unique_ptr<engine::core::GameState> game_state_{};
@@ -121,6 +111,13 @@ protected:
 #endif
     std::unique_ptr<engine::core::Context> context_{};
 
+    std::unique_ptr<TestScene> scene_{};
+    game::world::WorldState world_state_{};
+    game::factory::BlueprintManager blueprint_manager_{};
+    std::unique_ptr<game::factory::EntityFactory> entity_factory_{};
+    std::unique_ptr<game::world::MapManager> map_manager_{};
+    std::unique_ptr<SaveService> save_service_{};
+
     static void SetUpTestSuite() {
         sdl_ready_ = initSdlVideoWithDummyFallback(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     }
@@ -129,6 +126,24 @@ protected:
         if (sdl_ready_) {
             SDL_Quit();
         }
+    }
+
+    [[nodiscard]] std::filesystem::path tempFilePath(std::string_view filename) const {
+        return (temp_dir_ / filename).lexically_normal();
+    }
+
+    [[nodiscard]] entt::entity player() const {
+        auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
+        EXPECT_NE(player_view.begin(), player_view.end());
+        return player_view.begin() == player_view.end() ? entt::null : *player_view.begin();
+    }
+
+    game::component::PlayerWalletComponent& wallet() {
+        return scene_->getRegistry().get<game::component::PlayerWalletComponent>(player());
+    }
+
+    game::component::InventoryComponent& inventory() {
+        return scene_->getRegistry().get<game::component::InventoryComponent>(player());
     }
 
     void SetUp() override {
@@ -143,7 +158,7 @@ protected:
             runtime_root_ = runtime_root_.parent_path();
         }
         if (!std::filesystem::exists(runtime_root_ / "assets")) {
-            GTEST_SKIP() << "Unable to locate runtime assets directory.";
+            GTEST_SKIP() << "Unable to locate runtime assets directory for shop save roundtrip test.";
         }
 
         std::error_code ec;
@@ -152,7 +167,15 @@ protected:
             GTEST_SKIP() << "Failed to switch working directory to runtime root.";
         }
 
-        window_ = SDL_CreateWindow("ShopInteractionSystemTest", 640, 360, SDL_WINDOW_HIDDEN);
+        temp_dir_ = std::filesystem::temp_directory_path() /
+                    ("tinyfarm-shop-save-roundtrip-" +
+                     std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(temp_dir_, ec);
+        if (ec) {
+            GTEST_SKIP() << "Failed to create temp directory for shop save roundtrip test.";
+        }
+
+        window_ = SDL_CreateWindow("ShopSaveRoundtripTest", 640, 360, SDL_WINDOW_HIDDEN);
         if (!window_) {
             GTEST_SKIP() << "Failed to create SDL window.";
         }
@@ -161,16 +184,13 @@ protected:
         if (!game_state_) {
             GTEST_SKIP() << "Failed to create GameState.";
         }
-        game_state_->setState(engine::core::State::Playing);
         game_state_->setWindowSize({640.0F, 360.0F});
         game_state_->setLogicalSize({640.0F, 360.0F});
 
-        input_config_path_ = std::filesystem::temp_directory_path() /
-                             ("shop_interaction_input_" +
-                              std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".json");
+        input_config_path_ = temp_dir_ / "input_config.json";
         std::ofstream input_config(input_config_path_);
         ASSERT_TRUE(input_config.is_open());
-        input_config << R"({"input_mappings":{}})";
+        input_config << R"({"input_mappings":{"primary_action":["MouseLeft"]}})";
         input_config.close();
 
         input_manager_ = engine::input::InputManager::create(&dispatcher_, game_state_.get(), input_config_path_.string());
@@ -221,22 +241,59 @@ protected:
         };
         engine::core::UiServices ui_services{};
         context_ = engine::core::Context::create(
-            core_services,
-            render_services,
-            resource_services,
-            ui_services,
-            *audio_player_,
-            spatial_index_manager_
+            core_services, render_services, resource_services, ui_services,
+            *audio_player_, spatial_index_manager_
 #ifdef TF_ENABLE_DEBUG_UI
             , *debug_ui_manager_
 #endif
         );
-        if (!context_) {
-            GTEST_SKIP() << "Failed to create Context.";
-        }
+        ASSERT_NE(context_, nullptr);
+
+        scene_ = std::make_unique<TestScene>(*context_);
+        ASSERT_TRUE(scene_->init());
+
+        auto& registry = scene_->getRegistry();
+        auto& game_time = registry.ctx().emplace<game::data::GameTime>();
+        game_time.day_ = 3;
+        game_time.hour_ = 8.0f;
+        game_time.minute_ = 30.0f;
+        game_time.time_scale_ = 1.0f;
+        game_time.paused_ = false;
+        game_time.time_of_day_ = game_time.calculateTimeOfDay(game_time.hour_);
+
+        const entt::entity player_entity = registry.create();
+        registry.emplace<game::component::PlayerTag>(player_entity);
+        registry.emplace<engine::component::TransformComponent>(player_entity, glm::vec2{128.0f, 128.0f});
+        registry.emplace<game::component::InventoryComponent>(player_entity);
+        registry.emplace<game::component::HotbarComponent>(player_entity);
+        registry.emplace<game::component::PlayerWalletComponent>(
+            player_entity,
+            game::component::PlayerWalletComponent{.gold_ = 123});
+        registry.emplace<game::component::QuestLogComponent>(player_entity);
+        registry.emplace<game::component::StateComponent>(player_entity);
+
+        const entt::id_type initial_map_id = entt::hashed_string{"home_exterior"}.value();
+        ASSERT_TRUE(world_state_.loadFromWorldFile("assets/maps/farm-rpg.world", initial_map_id, "assets/maps/"));
+
+        entity_factory_ = std::make_unique<game::factory::EntityFactory>(
+            registry, blueprint_manager_, &context_->getSpatialIndexManager(), &context_->getAutoTileLibrary());
+        map_manager_ = std::make_unique<game::world::MapManager>(
+            *scene_, *context_, registry, world_state_, *entity_factory_, blueprint_manager_);
+
+        game::world::MapLoadingSettings settings{};
+        settings.async_preload_enabled = false;
+        map_manager_->setLoadingSettings(settings);
+        ASSERT_TRUE(map_manager_->loadMap(initial_map_id));
+
+        save_service_ = std::make_unique<SaveService>(
+            *context_, registry, world_state_, *map_manager_, blueprint_manager_);
     }
 
     void TearDown() override {
+        save_service_.reset();
+        map_manager_.reset();
+        entity_factory_.reset();
+        scene_.reset();
         context_.reset();
 #ifdef TF_ENABLE_DEBUG_UI
         debug_ui_manager_.reset();
@@ -258,158 +315,82 @@ protected:
         }
 
         std::error_code ec;
-        std::filesystem::remove(input_config_path_, ec);
-        std::filesystem::current_path(original_working_dir_, ec);
+        if (!input_config_path_.empty()) {
+            std::filesystem::remove(input_config_path_, ec);
+        }
+        if (!temp_dir_.empty()) {
+            std::filesystem::remove_all(temp_dir_, ec);
+        }
+        if (!original_working_dir_.empty()) {
+            std::filesystem::current_path(original_working_dir_, ec);
+        }
     }
 };
 
+TEST_F(ShopSaveRoundtripTest, RoundtripRestoresBuyMutationWithoutShopSpecificSaveSchema) {
+    auto& registry = scene_->getRegistry();
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+
+    const auto result = shop_transaction_service.commitBuy(player(), "shop.village.general", "potion"_hs, 2);
+    ASSERT_TRUE(result.completed());
+    ASSERT_EQ(wallet().gold_, 63);
+    ASSERT_EQ(inventory().slot(0).item_id_, "potion"_hs);
+    ASSERT_EQ(inventory().slot(0).count_, 2);
+
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(tempFilePath("shop_buy_roundtrip.json"), save_error)) << save_error;
+
+    wallet().gold_ = 999;
+    inventory().clearAll();
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(tempFilePath("shop_buy_roundtrip.json"), load_error)) << load_error;
+
+    EXPECT_EQ(wallet().gold_, 63);
+    EXPECT_EQ(inventory().slot(0).item_id_, "potion"_hs);
+    EXPECT_EQ(inventory().slot(0).count_, 2);
+}
+
+TEST_F(ShopSaveRoundtripTest, RoundtripRestoresSellMutationWithoutShopSpecificSaveSchema) {
+    auto& registry = scene_->getRegistry();
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+
+    inventory().slot(0).item_id_ = "potion"_hs;
+    inventory().slot(0).count_ = 3;
+
+    const auto result = shop_transaction_service.commitSell(player(), "potion"_hs, 3, 0);
+    ASSERT_TRUE(result.completed());
+    ASSERT_EQ(wallet().gold_, 168);
+    EXPECT_TRUE(inventory().slot(0).empty());
+
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(tempFilePath("shop_sell_roundtrip.json"), save_error)) << save_error;
+
+    wallet().gold_ = 1;
+    inventory().slot(0).item_id_ = "material_timber"_hs;
+    inventory().slot(0).count_ = 7;
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(tempFilePath("shop_sell_roundtrip.json"), load_error)) << load_error;
+
+    EXPECT_EQ(wallet().gold_, 168);
+    EXPECT_TRUE(inventory().slot(0).empty());
+}
+
 } // namespace
-
-namespace game::system {
-
-TEST_F(ShopInteractionSystemTest, ValidMerchantPushesShopMenuScene) {
-    entt::registry registry;
-    auto item_catalog = loadProjectItemCatalog();
-    auto shop_catalog = loadProjectShopCatalog();
-    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
-    game::domain::ShopTransactionService shop_transaction_service(
-        registry,
-        item_catalog,
-        shop_catalog,
-        inventory_domain_service);
-    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
-
-    const entt::entity player = registry.create();
-    const entt::entity merchant = registry.create();
-    registry.emplace<game::component::MerchantComponent>(
-        merchant,
-        game::component::MerchantComponent{
-            .shop_id_ = "shop.village.general",
-            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
-
-    PushSceneCapture capture{};
-    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
-
-    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
-
-    EXPECT_EQ(capture.count, 1);
-    EXPECT_EQ(capture.scene_name, "ShopMenu");
-    EXPECT_TRUE(capture.saw_shop_menu_scene);
-    ASSERT_NE(capture.captured_scene, nullptr);
-}
-
-TEST_F(ShopInteractionSystemTest, PushedShopMenuSceneRemainsClosableAfterMerchantInteraction) {
-    entt::registry registry;
-    auto item_catalog = loadProjectItemCatalog();
-    auto shop_catalog = loadProjectShopCatalog();
-    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
-    game::domain::ShopTransactionService shop_transaction_service(
-        registry,
-        item_catalog,
-        shop_catalog,
-        inventory_domain_service);
-    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
-
-    const entt::entity player = registry.create();
-    const entt::entity merchant = registry.create();
-    registry.emplace<game::component::MerchantComponent>(
-        merchant,
-        game::component::MerchantComponent{
-            .shop_id_ = "shop.village.general",
-            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
-
-    PushSceneCapture capture{};
-    PopSceneCapture pop_capture{};
-    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
-    dispatcher_.sink<engine::utils::PopSceneEvent>().connect<&PopSceneCapture::onEvent>(&pop_capture);
-
-    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
-
-    ASSERT_NE(capture.captured_scene, nullptr);
-    EXPECT_EQ(capture.captured_scene->getName(), "ShopMenu");
-    capture.captured_scene->requestPopScene();
-    EXPECT_EQ(pop_capture.count, 1);
-}
-
-TEST_F(ShopInteractionSystemTest, InvalidShopIdDoesNotPushScene) {
-    entt::registry registry;
-    auto item_catalog = loadProjectItemCatalog();
-    auto shop_catalog = loadProjectShopCatalog();
-    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
-    game::domain::ShopTransactionService shop_transaction_service(
-        registry,
-        item_catalog,
-        shop_catalog,
-        inventory_domain_service);
-    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
-
-    const entt::entity player = registry.create();
-    const entt::entity merchant = registry.create();
-    registry.emplace<game::component::MerchantComponent>(
-        merchant,
-        game::component::MerchantComponent{
-            .shop_id_ = "shop.missing",
-            .shop_id_hash_ = entt::hashed_string{"shop.missing"}.value()});
-
-    PushSceneCapture capture{};
-    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
-
-    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
-
-    EXPECT_EQ(capture.count, 0);
-}
-
-TEST_F(ShopInteractionSystemTest, PausedStateDoesNotPushScene) {
-    entt::registry registry;
-    auto item_catalog = loadProjectItemCatalog();
-    auto shop_catalog = loadProjectShopCatalog();
-    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
-    game::domain::ShopTransactionService shop_transaction_service(
-        registry,
-        item_catalog,
-        shop_catalog,
-        inventory_domain_service);
-    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
-
-    const entt::entity player = registry.create();
-    const entt::entity merchant = registry.create();
-    registry.emplace<game::component::MerchantComponent>(
-        merchant,
-        game::component::MerchantComponent{
-            .shop_id_ = "shop.village.general",
-            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
-
-    PushSceneCapture capture{};
-    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
-
-    context_->getGameState().setState(engine::core::State::Paused);
-    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
-
-    EXPECT_EQ(capture.count, 0);
-}
-
-TEST_F(ShopInteractionSystemTest, NonMerchantTargetDoesNotPushScene) {
-    entt::registry registry;
-    auto item_catalog = loadProjectItemCatalog();
-    auto shop_catalog = loadProjectShopCatalog();
-    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
-    game::domain::ShopTransactionService shop_transaction_service(
-        registry,
-        item_catalog,
-        shop_catalog,
-        inventory_domain_service);
-    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
-
-    const entt::entity player = registry.create();
-    const entt::entity npc = registry.create();
-
-    PushSceneCapture capture{};
-    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
-
-    dispatcher_.trigger(game::defs::InteractCommand{player, npc});
-
-    EXPECT_EQ(capture.count, 0);
-}
-
-} // namespace game::system
+} // namespace game::save
 // NOLINTEND

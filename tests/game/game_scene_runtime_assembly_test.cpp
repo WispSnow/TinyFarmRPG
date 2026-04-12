@@ -58,6 +58,8 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     EXPECT_NE(assembler_source.find("QuestTurnInService"), std::string::npos);
     EXPECT_NE(assembler_source.find("ShopInteractionSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("ShopTransactionService"), std::string::npos);
+    EXPECT_NE(assembler_source.find("*services.shop_transaction_service"), std::string::npos);
+    EXPECT_NE(assembler_source.find("*services.shop_catalog"), std::string::npos);
 }
 
 TEST(GameSceneRuntimeAssemblyTest, CleanResetsCameraInterpolationState) {

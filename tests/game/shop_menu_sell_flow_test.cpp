@@ -115,6 +115,7 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuSceneWiresSellPreviewModeSwitchAndExact
     EXPECT_NE(sell_preview_block.find("currentSellItemId()"), std::string::npos);
     EXPECT_NE(sell_preview_block.find("sell_entry->slot_index"), std::string::npos);
     EXPECT_NE(sell_select_block.find("document_controller_.markDirty(\"sell_entries\")"), std::string::npos);
+    EXPECT_NE(confirm_sell_block.find("requested_sell_quantity_ = 1;"), std::string::npos);
     EXPECT_NE(confirm_sell_block.find("markTradeListsDirty();"), std::string::npos);
     EXPECT_NE(switch_mode_block.find("current_mode_ = next_mode;"), std::string::npos);
     EXPECT_NE(switch_mode_block.find("refreshAll();"), std::string::npos);
