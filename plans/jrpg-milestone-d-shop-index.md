@@ -369,7 +369,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 - [x] Stage 1: 细化 shop 目录、sell rule 与交易原子性方案 → `plans/jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
 - [x] Stage 1: 锁定 preview 返回结构、价格告警策略与 `removeItem(slot_index)` 的交易语义
-- [ ] Stage 2: 细化 merchant 入口、交互 owner 与 Scene 路由
+- [x] Stage 2: 细化 merchant 入口、交互 owner 与 Scene 路由 → `plans/jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
 - [ ] Stage 3: 细化 `ShopMenuScene`、Buy 列表与数量确认
 - [ ] Stage 4: 细化 Sell 流程、slot 语义与 hotbar 同步边界
 - [ ] Stage 5: 细化 UI 收尾、测试补强与文档更新
