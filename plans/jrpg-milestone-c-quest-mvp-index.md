@@ -297,6 +297,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 - `plans/jrpg-milestone-c-stage3-battle-progress.md`
 - `plans/jrpg-milestone-c-stage4-turn-in-and-rewards.md`
 - `plans/jrpg-milestone-c-stage5-ui-save-and-tests.md`
+- `plans/jrpg-quest-debug-panel.md`
 
 若按推荐方案实施，代码层后续大概率会新增：
 
@@ -335,6 +336,10 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 完成 Stage 5 细化计划，统一 quest UI、存档接线与测试策略。
 
+### Step 6
+
+补充 Quest / Battle 调试面板，方便直接验证任务接取、推进、交付以及指定 troop 的战斗入口。
+
 当前索引计划的推荐结论是：
 
 - 先立 quest catalog 与 runtime truth，再做入口和推进
@@ -351,6 +356,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 - [x] Stage 3: 细化 Victory kill count 推进与 battle 接缝
 - [x] Stage 4: 细化 turn-in、completed 状态迁移与可选 reward 写回
 - [x] Stage 5: 细化 quest UI、存档与测试补强方案
+- [x] 补充 Quest / Battle 调试面板与对应回归 → `plans/jrpg-quest-debug-panel.md`
 
 ## 备注
 
@@ -372,5 +378,11 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 - 不推荐让任务目标完成后自动 completed；Milestone C 应保留“回去交付”的 JRPG 手感
 - 不推荐在 Milestone C 首批支持多种 objective 类型；先把 `DefeatEnemyCount` 的闭环和测试打稳更重要
 - 若 Stage 1 没有先锁定复合 progress key 规则，后续 UI 排序、配置重构或多目标任务都会很容易破坏进度恢复
+
+Milestone C 完成后的调试工具补充：
+
+- 已新增独立 `QuestDebugPanel`，用于直接验证 Accept / Progress / Fill / Turn In / Clear quest state 闭环
+- 已新增独立 `BattleDebugPanel`，用于选择指定 `troop_id` 后发起战斗，便于验证 `troop.goblin_pair -> quest.village.goblin_cleanup` 这类链路
+- 对应计划文档：`plans/jrpg-quest-debug-panel.md`
 
 这样可以保证 Milestone C 形成一个真正可持续扩展的“接任务 + 杀怪计数 + 交付完成”闭环。
