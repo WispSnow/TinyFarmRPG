@@ -33,11 +33,13 @@
 #include "game/data/appearance_catalog.h"
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
+#include "game/data/shop_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_turn_in_service.h"
+#include "game/domain/shop_transaction_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/script/tinyfarm_script_module.h"
@@ -402,6 +404,32 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     return true;
 }
 
+[[nodiscard]] bool ensureShopCatalog(game::runtime::GameRuntimeServices& services) {
+    if (services.shop_catalog) {
+        return true;
+    }
+
+    if (!services.item_catalog) {
+        spdlog::error("ShopCatalog 依赖 ItemCatalog。");
+        return false;
+    }
+
+    services.shop_catalog = std::make_shared<game::data::ShopCatalog>();
+    constexpr std::string_view kShopCatalogPath = "assets/data/shops.json";
+    if (!services.shop_catalog->loadFromFile(kShopCatalogPath)) {
+        spdlog::error("加载 ShopCatalog 失败: {}", kShopCatalogPath);
+        return false;
+    }
+
+    std::string reference_error{};
+    if (!services.shop_catalog->validateReferences(services.item_catalog.get(), reference_error)) {
+        spdlog::error("ShopCatalog 引用校验失败: {}", reference_error);
+        return false;
+    }
+
+    return true;
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
@@ -633,6 +661,9 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     if (!ensureQuestCatalog(params.services)) {
         return false;
     }
+    if (!ensureShopCatalog(params.services)) {
+        return false;
+    }
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(
         params.registry,
@@ -674,7 +705,7 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     auto& services = params.services;
     if (!services.collision_resolver || !services.entity_factory || !services.blueprint_manager ||
         !services.item_catalog || !services.appearance_catalog || !services.world_state || !services.map_manager ||
-        !services.vfx_service || !services.quest_catalog) {
+        !services.vfx_service || !services.quest_catalog || !services.shop_catalog) {
         spdlog::error("Runtime services 未完成装配，无法创建 systems");
         return false;
     }
@@ -703,6 +734,13 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         services.quest_turn_in_service = std::make_unique<game::domain::QuestTurnInService>(
             params.registry,
             *services.item_catalog,
+            *services.inventory_domain_service);
+    }
+    if (!services.shop_transaction_service) {
+        services.shop_transaction_service = std::make_unique<game::domain::ShopTransactionService>(
+            params.registry,
+            *services.item_catalog,
+            *services.shop_catalog,
             *services.inventory_domain_service);
     }
 

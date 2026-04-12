@@ -19,11 +19,13 @@ class ItemCatalog;
 class AppearanceCatalog;
 class RpgCatalog;
 class QuestCatalog;
+class ShopCatalog;
 }
 
 namespace game::domain {
 class InventoryDomainService;
 class QuestTurnInService;
+class ShopTransactionService;
 }
 
 namespace game::save {
@@ -54,6 +56,7 @@ struct GameRuntimeServices {
     std::shared_ptr<engine::vfx::VfxCatalog> vfx_catalog;
     std::shared_ptr<game::data::RpgCatalog> rpg_catalog;
     std::shared_ptr<game::data::QuestCatalog> quest_catalog;
+    std::shared_ptr<game::data::ShopCatalog> shop_catalog;
 
     std::unique_ptr<engine::spatial::CollisionResolver> collision_resolver;
     std::unique_ptr<game::world::WorldState> world_state;
@@ -61,6 +64,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::world::MapManager> map_manager;
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
     std::unique_ptr<game::domain::QuestTurnInService> quest_turn_in_service;
+    std::unique_ptr<game::domain::ShopTransactionService> shop_transaction_service;
     std::unique_ptr<game::save::SaveService> save_service;
     std::unique_ptr<engine::vfx::VfxService> vfx_service;
     std::unique_ptr<engine::script::ScriptHost> script_host;
