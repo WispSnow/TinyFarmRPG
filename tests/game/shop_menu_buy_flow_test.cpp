@@ -132,7 +132,8 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuRmlBindsBuyListAndQuantityControls) {
     EXPECT_NE(rml.find("data-event-click=\"buy_entry_select(entry.index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(-1)\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(1)\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"buy_confirm\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"shop-primary-action-button\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"confirm_trade\""), std::string::npos);
     EXPECT_NE(rml.find("{{ detail_after_gold_text }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ status_text }}"), std::string::npos);
 

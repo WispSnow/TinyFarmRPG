@@ -27,6 +27,22 @@ bool registerShopBuyEntryViewModelType(Rml::DataModelConstructor& constructor) {
     return false;
 }
 
+bool registerShopSellEntryViewModelType(Rml::DataModelConstructor& constructor) {
+    if (auto handle = constructor.RegisterStruct<ShopSellEntryViewModel>()) {
+        handle.RegisterMember("index", &ShopSellEntryViewModel::index);
+        handle.RegisterMember("slot_index", &ShopSellEntryViewModel::slot_index);
+        handle.RegisterMember("icon_decorator", &ShopSellEntryViewModel::icon_decorator);
+        handle.RegisterMember("item_name", &ShopSellEntryViewModel::item_name);
+        handle.RegisterMember("count_text", &ShopSellEntryViewModel::count_text);
+        handle.RegisterMember("price_text", &ShopSellEntryViewModel::price_text);
+        handle.RegisterMember("is_selected", &ShopSellEntryViewModel::is_selected);
+        handle.RegisterMember("is_disabled", &ShopSellEntryViewModel::is_disabled);
+        return true;
+    }
+
+    return false;
+}
+
 int countOwnedItems(const game::component::InventoryComponent& inventory, const entt::id_type item_id_hash) {
     if (item_id_hash == 0) {
         return 0;
@@ -50,6 +66,10 @@ int resolveBuyQuantityUiMax(const game::data::ItemData& item) {
     return std::max(1, std::min(item.stack_limit_, 99));
 }
 
+int resolveSellQuantityUiMax(const game::component::ItemStack& stack) {
+    return std::max(1, stack.count_);
+}
+
 void populateShopBuyEntryViewModel(ShopBuyEntryViewModel& view_model,
                                    const int index,
                                    const game::data::ShopBuyEntryData& buy_entry,
@@ -71,6 +91,30 @@ void populateShopBuyEntryViewModel(ShopBuyEntryViewModel& view_model,
     } else {
         view_model.item_name = buy_entry.item_id_;
     }
+}
+
+void populateShopSellEntryViewModel(ShopSellEntryViewModel& view_model,
+                                    const int index,
+                                    const int slot_index,
+                                    const game::component::ItemStack& stack,
+                                    const game::data::ShopSellRuleData* sell_rule,
+                                    const game::data::ItemCatalog* item_catalog,
+                                    const bool is_selected) {
+    view_model.index = index;
+    view_model.slot_index = slot_index;
+    view_model.item_id_hash = stack.item_id_;
+    view_model.icon_decorator = buildItemIconDecorator(item_catalog, stack.item_id_);
+    view_model.count_text = "x" + std::to_string(std::max(0, stack.count_));
+    view_model.is_selected = is_selected;
+    view_model.is_disabled = sell_rule == nullptr;
+    view_model.price_text = sell_rule ? std::to_string(sell_rule->sell_price_) + " G" : "--";
+
+    if (const auto* item = item_catalog ? item_catalog->findItem(stack.item_id_) : nullptr; item != nullptr) {
+        view_model.item_name = item->display_name_.empty() ? item->id_str_ : item->display_name_;
+        return;
+    }
+
+    view_model.item_name = "Unknown item";
 }
 
 } // namespace game::ui

@@ -201,6 +201,7 @@ set(GAME_TEST_SOURCES
     game/rest_area_interaction_test.cpp
     game/shop_menu_scene_smoke_test.cpp
     game/shop_menu_buy_flow_test.cpp
+    game/shop_menu_sell_flow_test.cpp
     game/time_of_day_light_system_test.cpp
     game/item_use_system_test.cpp
     game/npc_animal_parallel_domain_test.cpp
