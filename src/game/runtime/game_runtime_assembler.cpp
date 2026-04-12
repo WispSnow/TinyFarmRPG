@@ -63,6 +63,7 @@
 #include "game/system/player_control_system.h"
 #include "game/system/pickup_system.h"
 #include "game/system/quest_interaction_system.h"
+#include "game/system/shop_interaction_system.h"
 #include "game/system/render_target_system.h"
 #include "game/system/rest_system.h"
 #include "game/system/state_system.h"
@@ -816,6 +817,12 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         dispatcher,
         *services.quest_catalog,
         *services.quest_turn_in_service);
+    systems.shop_interaction_system = std::make_unique<game::system::ShopInteractionSystem>(
+        params.registry,
+        params.context,
+        *services.shop_catalog,
+        *services.item_catalog,
+        *services.shop_transaction_service);
 
     systems.chest_system = std::make_unique<game::system::ChestSystem>(
         params.registry,

@@ -1,6 +1,7 @@
 #include "game/system/quest_interaction_system.h"
 
 #include "game/component/npc_component.h"
+#include "game/component/merchant_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/data/quest_catalog.h"
@@ -152,6 +153,9 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
         return;
     }
     if (event.target == entt::null || !registry_.valid(event.target)) {
+        return;
+    }
+    if (registry_.all_of<game::component::MerchantComponent>(event.target)) {
         return;
     }
 

@@ -5,6 +5,7 @@
 #include "game/component/map_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/chest_component.h"
+#include "game/component/merchant_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
@@ -269,7 +270,21 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
         return;
     }
 
-    if (const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID); quest_offer_id) {
+    const auto shop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_SHOP_ID);
+    const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
+
+    if (shop_id) {
+        if (quest_offer_id) {
+            spdlog::warn("EntityBuilder: actor 同时声明 shop_id='{}' 与 quest_offer_id='{}'，本阶段按 merchant 优先处理。",
+                         *shop_id,
+                         *quest_offer_id);
+        }
+        registry_.emplace_or_replace<game::component::MerchantComponent>(
+            entity_id_,
+            game::component::MerchantComponent{
+                .shop_id_ = *shop_id,
+                .shop_id_hash_ = entt::hashed_string{shop_id->c_str()}.value()});
+    } else if (quest_offer_id) {
         registry_.emplace_or_replace<game::component::QuestGiverComponent>(
             entity_id_,
             game::component::QuestGiverComponent{
