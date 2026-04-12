@@ -31,6 +31,7 @@
 #include "game/system/animal_behavior_system.h"
 #include "game/system/dialogue_system.h"
 #include "game/system/quest_interaction_system.h"
+#include "game/system/shop_interaction_system.h"
 #include "game/system/chest_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/rest_system.h"

@@ -237,6 +237,7 @@ target_sources(game PRIVATE
     game/system/wander_runtime.cpp
     game/system/dialogue_system.cpp
     game/system/quest_interaction_system.cpp
+    game/system/shop_interaction_system.cpp
     game/system/chest_system.cpp
     game/system/interaction_system.cpp
     game/system/map_transition_system.cpp
@@ -256,6 +257,7 @@ target_sources(game PRIVATE
     game/scene/save_slot_select_scene.cpp
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
+    game/scene/shop_menu_scene.cpp
     game/scene/battle_scene.cpp
     game/scene/inventory_menu_character_panel.cpp
     game/scene/inventory_menu_scene.cpp

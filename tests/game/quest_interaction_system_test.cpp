@@ -24,6 +24,7 @@
 #include "game/component/chest_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/map_component.h"
+#include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_giver_component.h"
@@ -101,6 +102,18 @@ struct DialogueCapture {
             .quest_id_ = std::string(quest_id),
             .quest_id_hash_ = entt::hashed_string{quest_id.data(), quest_id.size()}.value()});
     return giver;
+}
+
+[[nodiscard]] entt::entity createMerchant(entt::registry& registry,
+                                          const std::string_view shop_id = "shop.village.general") {
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2(32.0f, 16.0f));
+    registry.emplace<game::component::MerchantComponent>(
+        merchant,
+        game::component::MerchantComponent{
+            .shop_id_ = std::string(shop_id),
+            .shop_id_hash_ = entt::hashed_string{shop_id.data(), shop_id.size()}.value()});
+    return merchant;
 }
 
 class QuestInteractionPriorityTest : public ::testing::Test {
@@ -379,6 +392,53 @@ TEST(QuestInteractionSystemTest, DialogueSystemSkipsQuestGiverTargets) {
     EXPECT_EQ(dialogue.current_line_, 0u);
 }
 
+TEST(QuestInteractionSystemTest, DialogueSystemSkipsMerchantTargets) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    DialogueSystem system(registry, dispatcher);
+    ASSERT_TRUE(system.loadDialogueFile(std::string(PROJECT_SOURCE_DIR) + "/assets/data/dialogue_script.json"));
+
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity merchant = createMerchant(registry);
+    auto& dialogue = registry.emplace<game::component::DialogueComponent>(
+        merchant,
+        game::component::DialogueComponent{entt::hashed_string{"friend_intro"}.value()});
+
+    dispatcher.trigger(game::defs::InteractCommand{player, merchant});
+
+    EXPECT_TRUE(capture.shows.empty());
+    EXPECT_FALSE(dialogue.active_);
+    EXPECT_EQ(dialogue.current_line_, 0u);
+}
+
+TEST(QuestInteractionSystemTest, QuestInteractionSystemSkipsMerchantTargets) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
+
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity merchant = createMerchant(registry);
+    registry.emplace<game::component::QuestGiverComponent>(
+        merchant,
+        game::component::QuestGiverComponent{
+            .quest_id_ = std::string(QUEST_ID),
+            .quest_id_hash_ = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value()});
+
+    dispatcher.trigger(game::defs::InteractCommand{player, merchant});
+
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    EXPECT_TRUE(quest_log.active_quests.empty());
+    EXPECT_TRUE(quest_log.completed_quests.empty());
+}
+
 TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersQuestGiverOverDialogueChestAndRest) {
     entt::registry registry;
     engine::spatial::SpatialIndexManager spatial;
@@ -462,6 +522,103 @@ TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersQuestGiverOverDialo
     ASSERT_EQ(capture.events.size(), 1u);
     EXPECT_EQ(capture.events.front().player, player);
     EXPECT_EQ(capture.events.front().target, quest_giver);
+}
+
+TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersMerchantOverQuestGiverDialogueChestAndRest) {
+    entt::registry registry;
+    engine::spatial::SpatialIndexManager spatial;
+    constexpr glm::ivec2 MAP_SIZE(4, 4);
+    constexpr glm::ivec2 TILE_SIZE(16, 16);
+    spatial.initialize(registry,
+                       MAP_SIZE,
+                       TILE_SIZE,
+                       glm::vec2(0.0f, 0.0f),
+                       glm::vec2(64.0f, 64.0f),
+                       glm::vec2(16.0f, 16.0f));
+
+    game::world::WorldState world_state;
+    const entt::id_type map_id = world_state.ensureExternalMap("merchant_priority_test_map");
+    world_state.setCurrentMap(map_id);
+    if (auto* map_state = world_state.getMapStateMutable(map_id)) {
+        map_state->info.size_px = glm::ivec2(64, 64);
+    }
+
+    auto input = engine::input::InputManager::create(dispatcher_.get(), game_state_.get(), config_path_.string());
+    ASSERT_NE(input, nullptr);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2(16.0f, 16.0f));
+    auto& state = registry.emplace<game::component::StateComponent>(player);
+    state.direction_ = game::component::Direction::Right;
+    registry.emplace<game::component::MapId>(player, map_id);
+
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2(32.0f, 16.0f));
+    registry.emplace<engine::component::CircleCollider>(merchant, 6.0f, glm::vec2(0.0f));
+    registry.emplace<engine::component::SpatialIndexTag>(merchant);
+    registry.emplace<game::component::MapId>(merchant, map_id);
+    registry.emplace<game::component::MerchantComponent>(
+        merchant,
+        game::component::MerchantComponent{
+            .shop_id_ = "shop.village.general",
+            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
+    registry.emplace<game::component::DialogueComponent>(
+        merchant,
+        game::component::DialogueComponent{entt::hashed_string{"friend_intro"}.value()});
+    spatial.updateColliderEntity(merchant);
+
+    const entt::entity quest_giver = registry.create();
+    registry.emplace<engine::component::TransformComponent>(quest_giver, glm::vec2(34.0f, 16.0f));
+    registry.emplace<engine::component::CircleCollider>(quest_giver, 6.0f, glm::vec2(0.0f));
+    registry.emplace<engine::component::SpatialIndexTag>(quest_giver);
+    registry.emplace<game::component::MapId>(quest_giver, map_id);
+    registry.emplace<game::component::QuestGiverComponent>(
+        quest_giver,
+        game::component::QuestGiverComponent{
+            .quest_id_ = std::string(QUEST_ID),
+            .quest_id_hash_ = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value()});
+    spatial.updateColliderEntity(quest_giver);
+
+    const entt::entity npc = registry.create();
+    registry.emplace<engine::component::TransformComponent>(npc, glm::vec2(36.0f, 16.0f));
+    registry.emplace<engine::component::CircleCollider>(npc, 6.0f, glm::vec2(0.0f));
+    registry.emplace<engine::component::SpatialIndexTag>(npc);
+    registry.emplace<game::component::MapId>(npc, map_id);
+    registry.emplace<game::component::DialogueComponent>(npc, game::component::DialogueComponent{"friend_intro"_hs});
+    spatial.updateColliderEntity(npc);
+
+    const entt::entity chest = registry.create();
+    registry.emplace<engine::component::TransformComponent>(chest, glm::vec2(38.0f, 16.0f));
+    registry.emplace<engine::component::CircleCollider>(chest, 6.0f, glm::vec2(0.0f));
+    registry.emplace<engine::component::SpatialIndexTag>(chest);
+    registry.emplace<game::component::MapId>(chest, map_id);
+    registry.emplace<game::component::ChestComponent>(chest);
+    spatial.updateColliderEntity(chest);
+
+    const entt::entity rest_area = registry.create();
+    registry.emplace<game::component::MapId>(rest_area, map_id);
+    registry.emplace<game::component::RestArea>(rest_area, engine::utils::Rect{glm::vec2(32.0f, 16.0f), glm::vec2(TILE_SIZE)});
+    spatial.addTileEntity(glm::ivec2(2, 1), rest_area, game::defs::spatial_layer::REST);
+
+    InteractCapture capture{};
+    dispatcher_->sink<game::defs::InteractCommand>().connect<&InteractCapture::onEvent>(&capture);
+
+    InteractionSystem system(registry, *dispatcher_, *input, spatial, world_state);
+
+    SDL_Event key_down{};
+    key_down.type = SDL_EVENT_KEY_DOWN;
+    key_down.key.scancode = SDL_SCANCODE_F;
+    key_down.key.down = true;
+    key_down.key.repeat = false;
+    ASSERT_EQ(SDL_PushEvent(&key_down), true);
+
+    input->update();
+    system.update();
+
+    ASSERT_EQ(capture.events.size(), 1u);
+    EXPECT_EQ(capture.events.front().player, player);
+    EXPECT_EQ(capture.events.front().target, merchant);
 }
 
 } // namespace game::system

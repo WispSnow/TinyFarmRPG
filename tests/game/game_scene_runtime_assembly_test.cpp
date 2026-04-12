@@ -56,6 +56,7 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     EXPECT_NE(assembler_source.find("AppearanceSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("QuestInteractionSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("QuestTurnInService"), std::string::npos);
+    EXPECT_NE(assembler_source.find("ShopInteractionSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("ShopTransactionService"), std::string::npos);
 }
 

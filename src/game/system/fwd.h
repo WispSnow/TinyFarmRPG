@@ -27,5 +27,6 @@ class TimeOfDayLightSystem;
 class PickupSystem;
 class RestSystem;
 class AppearanceSystem;
+class ShopInteractionSystem;
 
 } // namespace game::system

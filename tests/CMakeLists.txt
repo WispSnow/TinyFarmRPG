@@ -154,6 +154,7 @@ set(GAME_TEST_SOURCES
     game/inventory_hotbar_consistency_test.cpp
     game/inventory_move_hotbar_follow_test.cpp
     game/interaction_command_pipeline_test.cpp
+    game/entity_builder_merchant_source_test.cpp
     game/quest_battle_progress_resolver_test.cpp
     game/quest_debug_panel_helpers_test.cpp
     game/quest_debug_panel_registration_test.cpp
@@ -161,6 +162,7 @@ set(GAME_TEST_SOURCES
     game/quest_tab_content_test.cpp
     game/quest_turn_in_service_test.cpp
     game/shop_transaction_service_test.cpp
+    game/shop_interaction_system_test.cpp
     game/quest_save_roundtrip_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
@@ -197,6 +199,7 @@ set(GAME_TEST_SOURCES
     game/rmlui_architecture_regression_test.cpp
     game/time_advance_sleep_test.cpp
     game/rest_area_interaction_test.cpp
+    game/shop_menu_scene_smoke_test.cpp
     game/time_of_day_light_system_test.cpp
     game/item_use_system_test.cpp
     game/npc_animal_parallel_domain_test.cpp

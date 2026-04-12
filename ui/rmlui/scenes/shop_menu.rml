@@ -1,0 +1,23 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="shop_menu.rcss"/>
+</head>
+<body class="tf-screen-root" data-model="shop_menu">
+    <div id="shop-overlay" class="tf-modal-overlay"></div>
+
+    <div id="shop-panel" class="tf-modal-panel">
+        <div id="shop-header">
+            <div id="shop-title">{{ shop_title }}</div>
+            <button id="shop-close-button" class="tf-button-secondary shop-menu-close" data-event-click="close">Close</button>
+        </div>
+
+        <p id="shop-greeting">{{ shop_greeting }}</p>
+        <p id="shop-placeholder">Buy / Sell coming soon.</p>
+        <p id="shop-hint">Press Esc to close.</p>
+    </div>
+</body>
+</rml>
