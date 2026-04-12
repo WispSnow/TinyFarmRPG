@@ -1,0 +1,34 @@
+{
+    "schema_version": 1,
+    "shops": [
+        {
+            "id": "shop.village.general",
+            "title": "Village General Store",
+            "greeting": "Take a look.",
+            "buy_entries": [
+                {
+                    "item_id": "potion",
+                    "buy_price": 30
+                },
+                {
+                    "item_id": "strawberry_seed",
+                    "buy_price": 12
+                }
+            ]
+        }
+    ],
+    "sell_rules": [
+        {
+            "item_id": "potion",
+            "sell_price": 15
+        },
+        {
+            "item_id": "material_timber",
+            "sell_price": 5
+        },
+        {
+            "item_id": "strawberry_item",
+            "sell_price": 4
+        }
+    ]
+}

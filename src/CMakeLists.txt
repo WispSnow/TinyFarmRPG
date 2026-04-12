@@ -172,6 +172,7 @@ target_sources(game PRIVATE
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
     game/data/quest_catalog.cpp
+    game/data/shop_catalog.cpp
     # Battle
     game/battle/battle_action_resolver.cpp
     game/battle/battle_ai_planner.cpp
@@ -185,6 +186,7 @@ target_sources(game PRIVATE
     game/domain/quest_battle_progress_resolver.cpp
     game/domain/quest_log_ops.cpp
     game/domain/quest_turn_in_service.cpp
+    game/domain/shop_transaction_service.cpp
     # Debug helpers
     game/debug/quest_debug_panel_helpers.cpp
     # Save

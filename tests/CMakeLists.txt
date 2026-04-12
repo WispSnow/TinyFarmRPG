@@ -137,6 +137,7 @@ set(GAME_TEST_SOURCES
     game/rpg_catalog_test.cpp
     game/item_catalog_test.cpp
     game/quest_catalog_test.cpp
+    game/shop_catalog_test.cpp
     game/battle/turn_core_test.cpp
     game/battle/battle_unit_factory_test.cpp
     game/battle/battle_formula_evaluator_test.cpp
@@ -159,6 +160,7 @@ set(GAME_TEST_SOURCES
     game/quest_interaction_system_test.cpp
     game/quest_tab_content_test.cpp
     game/quest_turn_in_service_test.cpp
+    game/shop_transaction_service_test.cpp
     game/quest_save_roundtrip_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp

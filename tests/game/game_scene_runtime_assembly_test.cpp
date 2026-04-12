@@ -49,11 +49,14 @@ TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerSourceExists) {
     EXPECT_NE(assembler_source.find("ensureAppearanceCatalog"), std::string::npos);
     EXPECT_NE(assembler_source.find("ensureRpgCatalog"), std::string::npos);
     EXPECT_NE(assembler_source.find("ensureQuestCatalog"), std::string::npos);
+    EXPECT_NE(assembler_source.find("ensureShopCatalog"), std::string::npos);
     EXPECT_NE(assembler_source.find("if (!ensureRpgCatalog(params.services))"), std::string::npos);
     EXPECT_NE(assembler_source.find("if (!ensureQuestCatalog(params.services))"), std::string::npos);
+    EXPECT_NE(assembler_source.find("if (!ensureShopCatalog(params.services))"), std::string::npos);
     EXPECT_NE(assembler_source.find("AppearanceSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("QuestInteractionSystem"), std::string::npos);
     EXPECT_NE(assembler_source.find("QuestTurnInService"), std::string::npos);
+    EXPECT_NE(assembler_source.find("ShopTransactionService"), std::string::npos);
 }
 
 TEST(GameSceneRuntimeAssemblyTest, CleanResetsCameraInterpolationState) {
