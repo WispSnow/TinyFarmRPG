@@ -23,10 +23,12 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/shop_menu.rml";
 constexpr std::string_view MODEL_NAME = "shop_menu";
-constexpr std::string_view DEFAULT_BUY_READY_STATUS = "Confirm to buy. Left / Right changes quantity.";
-constexpr std::string_view DEFAULT_SELL_READY_STATUS = "Confirm to sell. Left / Right changes quantity.";
 
 using ShopMenuMode = game::scene::ShopMenuScene::ShopMenuMode;
+using ShopMenuFocusArea = game::ui::ShopMenuFocusArea;
+using ShopMenuNavigationDecision = game::ui::ShopMenuNavigationDecision;
+using ShopMenuNavigationInput = game::ui::ShopMenuNavigationInput;
+using ShopMenuNavigationState = game::ui::ShopMenuNavigationState;
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 using namespace entt::literals;
@@ -68,21 +70,40 @@ void updateBoolBinding(engine::ui::rmlui::RmlDocumentController& controller,
     return "x" + std::to_string(std::max(0, quantity));
 }
 
-[[nodiscard]] std::string_view defaultReadyStatus(const ShopMenuMode mode) {
-    return mode == ShopMenuMode::Buy ? DEFAULT_BUY_READY_STATUS : DEFAULT_SELL_READY_STATUS;
-}
-
 [[nodiscard]] std::string_view defaultEmptyText(const ShopMenuMode mode) {
     return mode == ShopMenuMode::Buy ? "This shop has no goods available." : "You have nothing to sell.";
 }
 
-[[nodiscard]] std::string formatFailureText(const ShopMenuMode mode,
-                                            const game::domain::ShopTradeFailureReason failure_reason) {
+[[nodiscard]] std::string formatFocusStatus(const ShopMenuMode mode,
+                                            const ShopMenuFocusArea focus_area,
+                                            const bool quantity_adjustable) {
+    switch (focus_area) {
+        case ShopMenuFocusArea::ModeToggle:
+            return "Left / Right switches Buy and Sell. Down enters the list.";
+        case ShopMenuFocusArea::EntryList:
+            return mode == ShopMenuMode::Buy ? "Up / Down selects. Right opens quantity. Confirm goes to Buy."
+                                             : "Up / Down selects. Right opens quantity. Confirm goes to Sell.";
+        case ShopMenuFocusArea::Quantity:
+            if (!quantity_adjustable) {
+                return mode == ShopMenuMode::Buy ? "Quantity is fixed at x1. Down or Confirm goes to Buy."
+                                                 : "Quantity is fixed at x1. Down or Confirm goes to Sell.";
+            }
+            return mode == ShopMenuMode::Buy ? "Left / Right changes quantity. Down or Confirm goes to Buy."
+                                             : "Left / Right changes quantity. Down or Confirm goes to Sell.";
+        case ShopMenuFocusArea::PrimaryAction:
+            return mode == ShopMenuMode::Buy ? "Confirm to buy. Left returns to the list."
+                                             : "Confirm to sell. Left returns to the list.";
+    }
+
+    return mode == ShopMenuMode::Buy ? "Confirm to buy." : "Confirm to sell.";
+}
+
+[[nodiscard]] std::string formatFailureText(const ShopMenuMode mode, const game::domain::ShopTradeFailureReason failure_reason) {
     using game::domain::ShopTradeFailureReason;
 
     switch (failure_reason) {
         case ShopTradeFailureReason::None:
-            return std::string{defaultReadyStatus(mode)};
+            break;
         case ShopTradeFailureReason::InsufficientGold:
             return "Not enough gold.";
         case ShopTradeFailureReason::InventoryFull:
@@ -260,6 +281,10 @@ bool ShopMenuScene::initUI() {
         !constructor.Bind("detail_owned_text", &detail_owned_text_) ||
         !constructor.Bind("is_buy_mode", &is_buy_mode_) ||
         !constructor.Bind("is_sell_mode", &is_sell_mode_) ||
+        !constructor.Bind("is_mode_toggle_focused", &is_mode_toggle_focused_) ||
+        !constructor.Bind("is_entry_list_focused", &is_entry_list_focused_) ||
+        !constructor.Bind("is_quantity_focused", &is_quantity_focused_) ||
+        !constructor.Bind("is_primary_action_focused", &is_primary_action_focused_) ||
         !constructor.Bind("has_buy_entries", &has_buy_entries_) ||
         !constructor.Bind("has_sell_entries", &has_sell_entries_) ||
         !constructor.Bind("buy_enabled", &buy_enabled_) ||
@@ -370,11 +395,41 @@ void ShopMenuScene::syncModeBindings() {
         detail_owned_label_,
         is_buy_mode ? "Owned" : "In Slot");
     updateStringBinding(document_controller_, "primary_action_text", primary_action_text_, is_buy_mode ? "Buy" : "Sell");
+    // This mirrors the active mode's preview validity instead of introducing a third independent action state.
     updateBoolBinding(
         document_controller_,
         "primary_action_enabled",
         primary_action_enabled_,
         is_buy_mode ? buy_enabled_ : sell_enabled_);
+}
+
+void ShopMenuScene::syncFocusBindings() {
+    updateBoolBinding(
+        document_controller_,
+        "is_mode_toggle_focused",
+        is_mode_toggle_focused_,
+        current_focus_area_ == ShopMenuFocusArea::ModeToggle);
+    updateBoolBinding(
+        document_controller_,
+        "is_entry_list_focused",
+        is_entry_list_focused_,
+        current_focus_area_ == ShopMenuFocusArea::EntryList);
+    updateBoolBinding(
+        document_controller_,
+        "is_quantity_focused",
+        is_quantity_focused_,
+        current_focus_area_ == ShopMenuFocusArea::Quantity);
+    updateBoolBinding(
+        document_controller_,
+        "is_primary_action_focused",
+        is_primary_action_focused_,
+        current_focus_area_ == ShopMenuFocusArea::PrimaryAction);
+}
+
+void ShopMenuScene::normalizeFocusArea() {
+    if (!hasCurrentEntries()) {
+        current_focus_area_ = game::ui::resolvePreferredShopMenuFocus(false);
+    }
 }
 
 void ShopMenuScene::markTradeListsDirty() {
@@ -658,6 +713,15 @@ void ShopMenuScene::refreshStatusText() {
 
     const auto failure_reason =
         current_mode_ == ShopMenuMode::Buy ? active_buy_preview_.failure_reason : active_sell_preview_.failure_reason;
+    if (failure_reason == game::domain::ShopTradeFailureReason::None) {
+        updateStringBinding(
+            document_controller_,
+            "status_text",
+            status_text_,
+            formatFocusStatus(current_mode_, current_focus_area_, isCurrentQuantityAdjustable()));
+        return;
+    }
+
     updateStringBinding(document_controller_, "status_text", status_text_, formatFailureText(current_mode_, failure_reason));
 }
 
@@ -670,6 +734,8 @@ void ShopMenuScene::refreshAll() {
         rebuildSellEntries();
     }
 
+    normalizeFocusArea();
+
     if (current_mode_ == ShopMenuMode::Buy) {
         refreshSelectedBuyEntry();
         refreshBuyPreview();
@@ -679,6 +745,7 @@ void ShopMenuScene::refreshAll() {
     }
 
     syncModeBindings();
+    syncFocusBindings();
     refreshStatusText();
 }
 
@@ -776,6 +843,66 @@ int ShopMenuScene::currentQuantityUiMax() const {
     return 1;
 }
 
+bool ShopMenuScene::isCurrentQuantityAdjustable() const {
+    return hasCurrentEntries() && currentQuantityUiMax() > 1;
+}
+
+ShopMenuNavigationState ShopMenuScene::makeNavigationState() const {
+    return ShopMenuNavigationState{
+        .is_buy_mode = current_mode_ == ShopMenuMode::Buy,
+        .focus_area = current_focus_area_,
+        .has_buy_entries = has_buy_entries_,
+        .has_sell_entries = has_sell_entries_,
+        .quantity_adjustable = isCurrentQuantityAdjustable()};
+}
+
+void ShopMenuScene::applyFocusArea(const ShopMenuFocusArea next_focus_area) {
+    if (current_focus_area_ == next_focus_area) {
+        return;
+    }
+
+    current_focus_area_ = next_focus_area;
+    syncFocusBindings();
+    refreshStatusText();
+}
+
+void ShopMenuScene::applyNavigationDecision(const ShopMenuNavigationDecision& decision) {
+    const bool mode_changed = decision.switch_mode &&
+                              ((decision.next_is_buy_mode && current_mode_ != ShopMenuMode::Buy) ||
+                               (!decision.next_is_buy_mode && current_mode_ != ShopMenuMode::Sell));
+    const bool selection_changed = decision.entry_delta != 0 && hasCurrentEntries();
+    const bool quantity_changed = decision.quantity_delta != 0 && hasCurrentEntries();
+    if (mode_changed || decision.next_focus_area != current_focus_area_ || selection_changed || quantity_changed) {
+        clearStatusOverride();
+    }
+
+    if (mode_changed) {
+        switchMode(decision.next_is_buy_mode ? ShopMenuMode::Buy : ShopMenuMode::Sell);
+    }
+
+    if (selection_changed) {
+        if (current_mode_ == ShopMenuMode::Buy) {
+            const int entry_count = static_cast<int>(buy_entries_.size());
+            selectBuyEntry((selected_buy_index_ + entry_count + decision.entry_delta) % entry_count);
+        } else {
+            const int entry_count = static_cast<int>(sell_entries_.size());
+            selectSellEntry((selected_sell_index_ + entry_count + decision.entry_delta) % entry_count);
+        }
+    }
+
+    if (quantity_changed) {
+        adjustQuantity(decision.quantity_delta);
+    }
+
+    if (decision.next_focus_area != current_focus_area_) {
+        applyFocusArea(decision.next_focus_area);
+    }
+
+    if (decision.confirm_trade) {
+        current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell();
+    }
+}
+
 void ShopMenuScene::selectBuyEntry(const int index) {
     if (!has_buy_entries_ || index < 0 || index >= static_cast<int>(buy_entries_.size()) || index == selected_buy_index_) {
         return;
@@ -846,6 +973,9 @@ void ShopMenuScene::switchMode(const ShopMenuMode next_mode) {
     }
 
     current_mode_ = next_mode;
+    if (current_focus_area_ != ShopMenuFocusArea::ModeToggle) {
+        current_focus_area_ = game::ui::resolvePreferredShopMenuFocus(hasCurrentEntries());
+    }
     clearStatusOverride();
     refreshAll();
 }
@@ -873,6 +1003,7 @@ void ShopMenuScene::confirmBuy() {
         buy_entry->item_id_hash_,
         requested_buy_quantity_);
     if (result.completed()) {
+        requested_buy_quantity_ = 1;
         status_override_ = formatSuccessText(ShopMenuMode::Buy, item_name, result.resolved_quantity);
     } else {
         status_override_ = formatFailureText(ShopMenuMode::Buy, result.failure_reason);
@@ -906,6 +1037,7 @@ void ShopMenuScene::confirmSell() {
         requested_sell_quantity_,
         slot_index);
     if (result.completed()) {
+        requested_sell_quantity_ = 1;
         status_override_ = formatSuccessText(ShopMenuMode::Sell, item_name, result.resolved_quantity);
     } else {
         status_override_ = formatFailureText(ShopMenuMode::Sell, result.failure_reason);
@@ -916,49 +1048,27 @@ void ShopMenuScene::confirmSell() {
 }
 
 bool ShopMenuScene::onMenuUpPressed() {
-    if (!hasCurrentEntries()) {
-        return true;
-    }
-
-    if (current_mode_ == ShopMenuMode::Buy) {
-        const int entry_count = static_cast<int>(buy_entries_.size());
-        selectBuyEntry((selected_buy_index_ + entry_count - 1) % entry_count);
-        return true;
-    }
-
-    const int entry_count = static_cast<int>(sell_entries_.size());
-    selectSellEntry((selected_sell_index_ + entry_count - 1) % entry_count);
+    applyNavigationDecision(game::ui::resolveShopMenuNavigation(makeNavigationState(), ShopMenuNavigationInput::Up));
     return true;
 }
 
 bool ShopMenuScene::onMenuDownPressed() {
-    if (!hasCurrentEntries()) {
-        return true;
-    }
-
-    if (current_mode_ == ShopMenuMode::Buy) {
-        const int entry_count = static_cast<int>(buy_entries_.size());
-        selectBuyEntry((selected_buy_index_ + 1) % entry_count);
-        return true;
-    }
-
-    const int entry_count = static_cast<int>(sell_entries_.size());
-    selectSellEntry((selected_sell_index_ + 1) % entry_count);
+    applyNavigationDecision(game::ui::resolveShopMenuNavigation(makeNavigationState(), ShopMenuNavigationInput::Down));
     return true;
 }
 
 bool ShopMenuScene::onMenuLeftPressed() {
-    adjustQuantity(-1);
+    applyNavigationDecision(game::ui::resolveShopMenuNavigation(makeNavigationState(), ShopMenuNavigationInput::Left));
     return true;
 }
 
 bool ShopMenuScene::onMenuRightPressed() {
-    adjustQuantity(1);
+    applyNavigationDecision(game::ui::resolveShopMenuNavigation(makeNavigationState(), ShopMenuNavigationInput::Right));
     return true;
 }
 
 bool ShopMenuScene::onMenuConfirmPressed() {
-    current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell();
+    applyNavigationDecision(game::ui::resolveShopMenuNavigation(makeNavigationState(), ShopMenuNavigationInput::Confirm));
     return true;
 }
 

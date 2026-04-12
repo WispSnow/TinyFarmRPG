@@ -266,6 +266,10 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 ### Stage 5: UI 收尾、文档与测试补强
 
+当前状态：
+
+- 已完成。Milestone D 现已形成 `merchant -> shop scene -> buy/sell -> save roundtrip` 的最小稳定闭环。
+
 目标：
 
 - 让商店系统达到“结果可见、行为稳定、后续可继续扩展”的状态
@@ -301,6 +305,8 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 - 稳定的商店 UI 呈现
 - 商店关键路径回归测试
 - 与现有文档一致的实现边界
+- 纯键盘 / 手柄下可完成 `切 Buy/Sell -> 选条目 -> 调数量 -> 提交 -> 离开`
+- 不新增商店专用 save schema 的 buy / sell roundtrip 回归
 
 建议后续细化文档：
 
@@ -355,6 +361,13 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 完成 Stage 5 细化计划，统一测试策略、文档更新与 UI 收尾范围。
 
+Milestone D 当前实现结论：
+
+- `ShopMenuScene` 已支持 `ModeToggle / EntryList / Quantity / PrimaryAction` 四区输入焦点
+- `ShopInteractionSystem` 已验证 merchant 推入的 `ShopMenuScene` 仍可关闭 / pop
+- `shop_save_roundtrip_test.cpp` 已验证交易结果可被现有 save capture/apply 保留
+- 当前建议把商店视为“已封版的最小 JRPG Demo 闭环”，后续主线重心可转回战斗可玩化与技能接入
+
 当前索引计划的推荐结论是：
 
 - 先立 `ShopCatalog + ShopTransactionService`，再做 merchant 入口和 UI
@@ -373,6 +386,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 - [x] Stage 3: 细化 `ShopMenuScene`、Buy 列表与数量确认 → `plans/jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
 - [x] Stage 4: 细化 Sell 流程、slot 语义与 hotbar 同步边界 → `plans/jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
 - [x] Stage 5: 细化 UI 收尾、测试补强与文档更新 → `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
+- [x] Milestone D: 完成 `merchant -> buy/sell -> save roundtrip` 最小商店闭环
 
 ## 备注
 

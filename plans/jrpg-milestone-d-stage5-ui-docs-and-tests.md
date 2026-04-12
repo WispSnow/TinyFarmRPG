@@ -192,15 +192,31 @@
   - save roundtrip 相关
 - 若后续 Milestone E / 战斗系统改动触碰 inventory、scene stack、input context，这组清单可以直接作为商店回归入口继续复用。
 
+## 完成情况
+
+- Stage 5 已按推荐方案完成，没有回退到“只补最小 mode switch”的 fallback。
+- `ShopMenuScene` 现已具备 `ModeToggle / EntryList / Quantity / PrimaryAction` 四区 focus/substate，`menu_up/down/left/right/confirm/cancel` 可完整走完 `切 Buy/Sell -> 选条目 -> 调数量 -> 提交 -> 离开`。
+- 输入分派已下沉为 `shop_menu_support.h/.cpp` 中的纯 helper，并由 `shop_menu_navigation_test.cpp` 锁定状态转移与 action 输出。
+- `shop_save_roundtrip_test.cpp` 已验证 buy / sell 后的 `wallet + inventory` 变化可通过现有 save capture/apply 正确保留，未新增商店专用 save schema。
+- `ShopInteractionSystemTest` 已补到“merchant 推入的 `ShopMenuScene` 仍可关闭 / pop”，`GameSceneRuntimeAssemblyTest` 也补强了 shop runtime service 注入断言。
+- neutral naming 已再次核查：
+  - runtime / UI / test 源码中不再残留 `buy_confirm`、`shop-buy-button`、`shop-buy-entry-*` 这类一名多义命名
+  - `buy_entry_select / sell_entry_select` 继续保留，作为各自 mode 的局部事件名
+
+## 封版回归
+
+- `cmake --build build -j4 --target game_tests`
+- `./build/tests/game_tests --gtest_filter='ShopMenuSupportTest.*:ShopMenuSellSupportTest.*:ShopMenuSceneSmokeTest.*:ShopMenuBuyFlowSourceTest.*:ShopMenuSellFlowSourceTest.*:ShopMenuNavigationTest.*:ShopMenuNavigationSourceTest.*:ShopSaveRoundtripTest.*:ShopInteractionSystemTest.*:GameSceneRuntimeAssemblyTest.*:ShopTransactionServiceTest.*:InventoryHotbarConsistencyTest.*'`
+
 ## ToDo
 
-- [ ] 锁定 Stage 5 的 Milestone D 验收口径，并确认命名残余是否已清空
-- [ ] 给 `ShopMenuScene` 增加纯键盘 / 手柄可达的 focus/substate，并写死最小转移表
-- [ ] 将输入分派决策抽成可测试 helper，并新增 `shop_menu_navigation_test.cpp`
-- [ ] 新增 `shop_save_roundtrip_test.cpp`，用现有 roundtrip fixture 模式验证商店交易后的存档闭环
-- [ ] 在现有 `ShopInteractionSystemTest` / runtime assembly 测试上补强 scene 入口与装配 invariant
-- [ ] 更新 `jrpg-milestone-d-shop-index.md`、`jrpg-milestones.md` 与 `docs/overview.md`
-- [ ] 整理 Milestone D 的最终回归清单
+- [x] 锁定 Stage 5 的 Milestone D 验收口径，并确认命名残余是否已清空
+- [x] 给 `ShopMenuScene` 增加纯键盘 / 手柄可达的 focus/substate，并写死最小转移表
+- [x] 将输入分派决策抽成可测试 helper，并新增 `shop_menu_navigation_test.cpp`
+- [x] 新增 `shop_save_roundtrip_test.cpp`，用现有 roundtrip fixture 模式验证商店交易后的存档闭环
+- [x] 在现有 `ShopInteractionSystemTest` / runtime assembly 测试上补强 scene 入口与装配 invariant
+- [x] 更新 `jrpg-milestone-d-shop-index.md`、`jrpg-milestones.md` 与 `docs/overview.md`
+- [x] 整理 Milestone D 的最终回归清单
 
 ## 疑问
 

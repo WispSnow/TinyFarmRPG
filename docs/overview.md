@@ -4,6 +4,14 @@
 
 TinyFarm 是一款受经典游戏《星露谷物语》启发的2D农场经营模拟游戏的技术演示项目。本项目的核心目的并非创造一个完整的商业游戏，而是以教学为导向，系统性地展示如何使用现代C++技术栈和实体组件系统（ECS）架构来构建一个功能模块化、数据驱动、易于扩展的游戏。
 
+## 当前玩法扩展状态
+
+- 农场、背包、快捷栏、地图切换、Lua 脚本和粒子特效仍是项目当前的基础能力。
+- Quest MVP 已落地：支持 `QuestCatalog`、地图实例 `quest_offer_id`、接任务、战斗计数推进、回 NPC 交付，以及现有存档链路下的 quest roundtrip。
+- Shop MVP 已落地：支持 `ShopCatalog`、地图实例 `shop_id` merchant、`ShopTransactionService` 原子交易、`ShopMenuScene` 的 buy / sell 双模式、`InventoryChanged -> HotbarSystem` 同步，以及不新增商店专用 schema 的 save roundtrip。
+- 商店 UI 当前采用覆盖式 scene + 显式输入状态机方案；玩家只用现有 `menu_up/down/left/right/confirm/cancel` 就能完成 `切 Buy/Sell -> 选条目 -> 调数量 -> 提交 -> 离开`。
+- 战斗系统已经具备较完整的领域层和 scene 骨架，但下一阶段的主要工作仍是把战斗菜单从硬编码升级为真实的 `Skill / Item / Target` 选择闭环。
+
 ## 技术栈
 
 - **构建系统**: CMake 3.13+

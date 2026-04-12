@@ -83,6 +83,14 @@ body, div, h1, h2, h3, h4, p, hr {
     justify-content: space-between;
 }
 
+#shop-mode-toggle.focused,
+#shop-buy-list.focused,
+#shop-sell-list.focused,
+#shop-quantity-controls.focused {
+    border: 1dp #fce97f66;
+    background-color: #15212a99;
+}
+
 .shop-mode-button {
     width: 88dp;
     height: 26dp;
@@ -255,4 +263,9 @@ body, div, h1, h2, h3, h4, p, hr {
 .shop-action-button {
     width: 96dp;
     margin-right: 10dp;
+}
+
+.shop-action-button.focused {
+    color: #fce97fff;
+    transform: translateY(-1dp);
 }
