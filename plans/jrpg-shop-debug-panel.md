@@ -190,18 +190,18 @@
 
 ## ToDo
 
-- [ ] 新增独立 `ShopDebugPanel`
-- [ ] 让面板自动绑定当前玩家的 `InventoryComponent + PlayerWalletComponent`
-- [ ] 抽取 `shop_debug_panel_helpers`，统一纯数据逻辑：row 构建、quantity clamp、sellable 判定与 failure 文案
-- [ ] 将 `draw()` 粘合逻辑中的 shop/sell 选择同步继续保留在 panel `.cpp`
-- [ ] 接入 `ShopCatalog` 驱动的 shop picker
-- [ ] 实现 `Buy` tab 的实时 preview 与 `commitBuy()` 调试入口
-- [ ] 实现 `Sell` tab 的 exact-slot preview 与 `commitSell()` 调试入口
-- [ ] 为 `Sell` tab 加入 `show_unsellable_slots_` 开关
-- [ ] 补一个最小 `Debug Wallet Seed` 区块
-- [ ] 在 `GameScene::registerDebugPanels()` 中把面板注册到 `PanelCategory::Game`
-- [ ] 补齐 `shop_debug_panel_registration_test.cpp`
-- [ ] 补齐 `shop_debug_panel_helpers_test.cpp`
+- [x] 新增独立 `ShopDebugPanel`
+- [x] 让面板自动绑定当前玩家的 `InventoryComponent + PlayerWalletComponent`
+- [x] 抽取 `shop_debug_panel_helpers`，统一纯数据逻辑：row 构建、quantity clamp、sellable 判定与 failure 文案
+- [x] 将 `draw()` 粘合逻辑中的 shop/sell 选择同步继续保留在 panel `.cpp`
+- [x] 接入 `ShopCatalog` 驱动的 shop picker
+- [x] 实现 `Buy` tab 的实时 preview 与 `commitBuy()` 调试入口
+- [x] 实现 `Sell` tab 的 exact-slot preview 与 `commitSell()` 调试入口
+- [x] 为 `Sell` tab 加入 `show_unsellable_slots_` 开关
+- [x] 补一个最小 `Debug Wallet Seed` 区块
+- [x] 在 `GameScene::registerDebugPanels()` 中把面板注册到 `PanelCategory::Game`
+- [x] 补齐 `shop_debug_panel_registration_test.cpp`
+- [x] 补齐 `shop_debug_panel_helpers_test.cpp`
 
 ## 疑问
 
