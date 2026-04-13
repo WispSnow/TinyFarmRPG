@@ -28,6 +28,7 @@ TEST(ShopDebugPanelRegistrationTest, GameSceneRegistersShopDebugPanelWithShopSer
     EXPECT_NE(source.find("#include \"game/debug/shop_debug_panel.h\""), std::string::npos);
     EXPECT_NE(register_block.find("if (services_->shop_catalog && services_->shop_transaction_service)"), std::string::npos);
     EXPECT_NE(register_block.find("std::make_unique<game::debug::ShopDebugPanel>"), std::string::npos);
+    EXPECT_NE(register_block.find("context_"), std::string::npos);
     EXPECT_NE(register_block.find("services_->shop_catalog.get()"), std::string::npos);
     EXPECT_NE(register_block.find("services_->item_catalog.get()"), std::string::npos);
     EXPECT_NE(register_block.find("services_->shop_transaction_service.get()"), std::string::npos);
@@ -66,6 +67,22 @@ TEST(ShopDebugPanelRegistrationTest, ShopDebugPanelComputesPreviewInsideActiveTa
     EXPECT_GT(buy_preview_pos, buy_tab_pos);
     EXPECT_GT(sell_preview_pos, sell_tab_pos);
     EXPECT_EQ(source.find("ImGuiTabItemFlags_SetSelected"), std::string::npos);
+}
+
+TEST(ShopDebugPanelRegistrationTest, ShopDebugPanelCanLaunchRealShopSceneFromSelectedShop) {
+    const std::filesystem::path panel_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/debug/shop_debug_panel.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(panel_source_path)) << panel_source_path;
+
+    const std::string source = test_source_utils::readTextFile(panel_source_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << panel_source_path;
+
+    EXPECT_NE(source.find("#include \"game/scene/shop_menu_scene.h\""), std::string::npos);
+    EXPECT_NE(source.find("if (ImGui::Button(\"Open Shop Scene\"))"), std::string::npos);
+    EXPECT_NE(source.find("std::make_unique<game::scene::ShopMenuScene>("), std::string::npos);
+    EXPECT_NE(source.find("context_.getDispatcher().trigger<engine::utils::PushSceneEvent>"), std::string::npos);
+    EXPECT_NE(source.find("context_.getGameState().isPaused()"), std::string::npos);
+    EXPECT_NE(source.find("is_open = false;"), std::string::npos);
 }
 
 } // namespace

@@ -8,12 +8,19 @@
 #include "game/data/shop_data.h"
 #include "game/debug/shop_debug_panel_helpers.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/scene/shop_menu_scene.h"
 #include "game/ui/shop_menu_support.h"
 
+#include "engine/core/context.h"
+#include "engine/core/game_state.h"
+#include "engine/utils/events.h"
+
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -115,11 +122,13 @@ void syncSelectedShopId(std::string& selected_shop_id, const std::vector<const g
 
 namespace game::debug {
 
-ShopDebugPanel::ShopDebugPanel(entt::registry& registry,
+ShopDebugPanel::ShopDebugPanel(engine::core::Context& context,
+                               entt::registry& registry,
                                const game::data::ShopCatalog* shop_catalog,
-                               const game::data::ItemCatalog* item_catalog,
+                               game::data::ItemCatalog* item_catalog,
                                game::domain::ShopTransactionService* shop_transaction_service)
-    : registry_(registry),
+    : context_(context),
+      registry_(registry),
       shop_catalog_(shop_catalog),
       item_catalog_(item_catalog),
       shop_transaction_service_(shop_transaction_service) {
@@ -175,6 +184,7 @@ void ShopDebugPanel::draw(bool& is_open) {
     const auto shops = collectSortedShops(*shop_catalog_);
     syncSelectedShopId(selected_shop_id_, shops);
     const game::data::ShopData* selected_shop = shop_catalog_->findShop(selected_shop_id_);
+    const bool scene_launch_blocked = context_.getGameState().isPaused();
 
     std::vector<ShopDebugBuyRow> buy_rows{};
     if (selected_shop != nullptr) {
@@ -252,6 +262,31 @@ void ShopDebugPanel::draw(bool& is_open) {
     if (ImGui::Button("Set Gold")) {
         wallet->gold_ = std::max(0, gold_seed_step_);
         status_ = "Set gold to " + std::to_string(wallet->gold_) + ".";
+    }
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(selected_shop == nullptr || scene_launch_blocked);
+    if (ImGui::Button("Open Shop Scene")) {
+        auto scene = std::make_unique<game::scene::ShopMenuScene>(
+            "ShopMenu",
+            context_,
+            registry_,
+            player,
+            selected_shop->id_,
+            shop_catalog_,
+            item_catalog_,
+            shop_transaction_service_);
+        context_.getDispatcher().trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(scene)});
+        status_ = "Opened shop scene: " + selected_shop->title_ + ".";
+        is_open = false;
+    }
+    ImGui::EndDisabled();
+    if (selected_shop == nullptr) {
+        ImGui::TextDisabled("Select a shop to open the in-game shop scene.");
+    } else if (scene_launch_blocked) {
+        ImGui::TextDisabled("Gameplay is paused; close the current overlay before opening another shop scene.");
+    } else {
+        ImGui::TextDisabled("Launches the real ShopMenuScene for this shop.");
     }
 
     ImGui::Separator();
