@@ -1,271 +1,296 @@
+/* ===========================================
+ * Shop Menu — RCSS
+ * Classic RPG shop: item list (left) + detail panel (right)
+ * Logical screen: 640×360dp
+ * =========================================== */
+
 body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
+/* ===== Panel ===== */
+
 #shop-panel {
-    left: 48dp;
-    top: 34dp;
-    width: 544dp;
-    height: 292dp;
-    padding: 16dp 18dp 16dp 18dp;
+    left: 30dp;
+    top: 26dp;
+    width: 580dp;
+    height: 308dp;
+    padding: 10dp;
 }
+
+/* ===== Header ===== */
 
 #shop-header {
     width: 100%;
-    height: 48dp;
+    height: 18dp;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: flex-start;
-}
-
-#shop-header-copy {
-    width: 404dp;
-    height: 48dp;
+    align-items: center;
 }
 
 #shop-title {
-    width: 100%;
-    height: 22dp;
-    line-height: 22dp;
     color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#shop-gold {
+    color: #fce97fff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #shop-greeting {
-    margin-top: 6dp;
-    width: 100%;
-    color: #d8e3e6ff;
+    margin-top: 2dp;
+    height: 14dp;
+    line-height: 14dp;
+    color: #9fb0baff;
 }
+
+/* ===== Body: two columns ===== */
 
 #shop-body {
-    margin-top: 12dp;
+    margin-top: 4dp;
     width: 100%;
-    height: 212dp;
+    height: 232dp;
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
 }
 
-#shop-list-column {
-    width: 190dp;
-    height: 212dp;
+/* ===== Left column: item list ===== */
+
+#shop-list-col {
+    width: 260dp;
+    height: 232dp;
+    flex-shrink: 0;
 }
 
-#shop-detail-column {
-    width: 312dp;
-    height: 212dp;
-}
-
-.shop-section-title {
-    width: 100%;
-    height: 20dp;
-    line-height: 20dp;
-    color: #fce97fff;
-    font-effect: shadow(1dp 1dp #000000cc);
-}
-
-#shop-list-header {
-    width: 100%;
-    height: 54dp;
-}
-
-#shop-list-title {
-    width: 100%;
-}
+/* Mode tabs (Buy / Sell) */
 
 #shop-mode-toggle {
-    margin-top: 8dp;
-    width: 100%;
+    width: 258dp;
     height: 26dp;
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    gap: 4dp;
+    align-items: center;
+    border: 1dp transparent;
 }
 
-#shop-mode-toggle.focused,
-#shop-buy-list.focused,
-#shop-sell-list.focused,
-#shop-quantity-controls.focused {
-    border: 1dp #fce97f66;
-    background-color: #15212a99;
+#shop-mode-toggle.focused {
+    border-color: #fce97f44;
+    background-color: #15212a66;
 }
 
-.shop-mode-button {
-    width: 88dp;
-    height: 26dp;
-    line-height: 26dp;
+.shop-tab-btn {
+    width: 95dp;
+    height: 24dp;
+    line-height: 24dp;
 }
 
-.shop-mode-button.selected {
+.shop-tab-btn.selected {
     color: #fce97fff;
     transform: translateY(-1dp);
 }
 
+/* Empty text */
+
 .shop-empty-text {
-    margin-top: 10dp;
+    margin-top: 8dp;
     width: 100%;
-    color: #d8e3e6ff;
+    color: #9fb0baff;
 }
+
+/* Scrollable item list */
 
 #shop-buy-list,
 #shop-sell-list {
-    margin-top: 8dp;
-    width: 100%;
-    height: 150dp;
+    margin-top: 4dp;
+    width: 258dp;
+    height: 196dp;
     overflow-y: auto;
+    border: 1dp transparent;
 }
 
-.shop-buy-entry,
-.shop-sell-entry {
+#shop-buy-list.focused,
+#shop-sell-list.focused {
+    border-color: #fce97f44;
+    background-color: #15212a33;
+}
+
+/* Single entry row — flat style, no ninepatch */
+
+.shop-entry {
     width: 100%;
-    height: 48dp;
-    margin-bottom: 8dp;
-    padding: 8dp 10dp 8dp 10dp;
+    height: 24dp;
+    margin-bottom: 2dp;
     text-align: left;
     display: flex;
     flex-direction: row;
     align-items: center;
+    decorator: none;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    transition: background-color 0.06s cubic-out;
 }
 
-.shop-buy-entry.selected,
-.shop-sell-entry.selected {
+.shop-entry:hover {
+    background-color: #24283b88;
+}
+
+.shop-entry.selected {
+    background-color: #24283bcc;
     color: #fce97fff;
-    transform: translateY(-1dp);
+}
+
+.shop-entry.disabled,
+.shop-entry:disabled {
+    color: #666666ff;
+    opacity: 0.6;
 }
 
 .shop-entry-icon {
-    width: 28dp;
-    height: 28dp;
-}
-
-.shop-entry-copy {
-    margin-left: 8dp;
-    width: 92dp;
-    height: 32dp;
+    width: 16dp;
+    height: 16dp;
+    flex-shrink: 0;
+    margin-left: 4dp;
 }
 
 .shop-entry-name {
-    width: 100%;
-    height: 18dp;
-    line-height: 18dp;
-    color: #ffffffff;
-}
-
-.shop-entry-meta {
-    margin-top: 2dp;
-    width: 100%;
-    height: 14dp;
-    line-height: 14dp;
-    color: #b9c9d0ff;
-    font-size: 14dp;
+    flex-grow: 1;
+    flex-shrink: 1;
+    height: 24dp;
+    line-height: 24dp;
+    margin: 0 4dp;
+    overflow: hidden;
 }
 
 .shop-entry-price {
-    width: 56dp;
-    height: 18dp;
-    line-height: 18dp;
+    width: 50dp;
+    flex-shrink: 0;
+    height: 24dp;
+    line-height: 24dp;
     text-align: right;
     color: #fce97fff;
+    margin-right: 4dp;
 }
 
-#shop-gold-label {
-    margin-top: 10dp;
-    width: 100%;
-    color: #ffffffff;
-}
+/* ===== Right column: detail panel ===== */
 
-#shop-detail-card {
-    margin-top: 8dp;
-    width: 100%;
-    height: 118dp;
-    padding: 10dp 12dp 10dp 12dp;
-    border: 1dp #7c91a8cc;
-    background-color: #15212af0;
+#shop-detail-col {
+    margin-left: 10dp;
+    width: 290dp;
+    height: 232dp;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
 #shop-detail-name {
     width: 100%;
-    height: 20dp;
-    line-height: 20dp;
+    height: 18dp;
+    line-height: 18dp;
+    text-align: right;
     color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
-#shop-detail-description {
-    margin-top: 6dp;
+#shop-detail-desc {
     width: 100%;
-    height: 36dp;
-    color: #cdd8dcff;
-}
-
-.shop-detail-row {
     margin-top: 4dp;
+    height: 34dp;
+    text-align: right;
+    color: #b9c9d0ff;
+    overflow: hidden;
+}
+
+#shop-detail-divider {
     width: 100%;
+    margin-top: 6dp;
+    height: 1dp;
+    background-color: #565f8966;
+}
+
+/* Detail info rows (Price / Owned / Total / After) */
+
+#shop-detail-info {
+    margin-top: 6dp;
+}
+
+.shop-info-row {
+    width: 280dp;
     height: 16dp;
+    margin-bottom: 2dp;
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
     align-items: center;
 }
 
-.shop-detail-label {
+.shop-info-label {
     width: 80dp;
     color: #9fb0baff;
 }
 
-#shop-detail-price,
-#shop-detail-quantity,
-#shop-detail-owned,
-#shop-detail-total,
-#shop-detail-after {
-    width: 124dp;
+.shop-info-value {
+    width: 190dp;
     text-align: right;
     color: #ffffffff;
 }
 
-#shop-quantity-controls {
+/* Quantity controls */
+
+#shop-qty-controls {
     margin-top: 10dp;
     width: 160dp;
-    height: 32dp;
+    height: 28dp;
     display: flex;
     flex-direction: row;
     align-items: center;
+    border: 1dp transparent;
 }
 
-#shop-quantity-readout {
+#shop-qty-controls.focused {
+    border-color: #fce97f44;
+    background-color: #15212a66;
+}
+
+.shop-qty-btn {
+    width: 26dp;
+    height: 26dp;
+}
+
+#shop-qty-readout {
     width: 80dp;
-    height: 32dp;
-    line-height: 32dp;
+    height: 28dp;
+    line-height: 28dp;
     text-align: center;
     color: #ffffffff;
 }
 
-.shop-qty-button {
-    width: 32dp;
-}
-
-#shop-status {
-    margin-top: 10dp;
-    width: 100%;
-    height: 34dp;
-    color: #fff4b3ff;
-}
+/* Action buttons (Buy/Sell + Leave) */
 
 #shop-actions {
-    margin-top: 8dp;
-    width: 100%;
-    height: 32dp;
+    margin-top: 10dp;
     display: flex;
     flex-direction: row;
-    justify-content: flex-start;
+    gap: 8dp;
 }
 
-.shop-action-button {
-    width: 96dp;
-    margin-right: 10dp;
+.shop-action-btn {
+    width: 100dp;
 }
 
-.shop-action-button.focused {
+.shop-action-btn.focused {
     color: #fce97fff;
     transform: translateY(-1dp);
+}
+
+/* ===== Status bar ===== */
+
+#shop-status {
+    margin-top: 4dp;
+    height: 14dp;
+    line-height: 14dp;
+    color: #b9c9d0ff;
 }

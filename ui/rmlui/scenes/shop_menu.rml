@@ -12,128 +12,112 @@
     <div id="shop-overlay" class="tf-modal-overlay"></div>
 
     <div id="shop-panel" class="tf-modal-panel">
+        <!-- Header -->
         <div id="shop-header">
-            <div id="shop-header-copy">
-                <div id="shop-title">{{ shop_title }}</div>
-                <div id="shop-greeting">{{ shop_greeting }}</div>
-            </div>
-            <button id="shop-close-button" class="tf-button-secondary shop-action-button" data-event-click="close">Close</button>
+            <div id="shop-title">{{ shop_title }}</div>
+            <div id="shop-gold">{{ gold_label }}</div>
         </div>
+        <div id="shop-greeting">{{ shop_greeting }}</div>
 
+        <!-- Body: two columns -->
         <div id="shop-body">
-            <div id="shop-list-column">
-                <div id="shop-list-header">
-                    <div id="shop-list-title" class="shop-section-title">{{ list_title_text }}</div>
-                    <div id="shop-mode-toggle" data-class-focused="is_mode_toggle_focused">
-                        <button id="shop-mode-buy"
-                                class="tf-button-secondary shop-mode-button"
-                                data-class-selected="is_buy_mode"
-                                data-event-click="switch_mode_buy">Buy</button>
-                        <button id="shop-mode-sell"
-                                class="tf-button-secondary shop-mode-button"
-                                data-class-selected="is_sell_mode"
-                                data-event-click="switch_mode_sell">Sell</button>
-                    </div>
+            <!-- Left: mode toggle + item list -->
+            <div id="shop-list-col">
+                <div id="shop-mode-toggle" data-class-focused="is_mode_toggle_focused">
+                    <button id="shop-mode-buy"
+                            class="tf-button-secondary shop-tab-btn"
+                            data-class-selected="is_buy_mode"
+                            data-event-click="switch_mode_buy">Buy</button>
+                    <button id="shop-mode-sell"
+                            class="tf-button-secondary shop-tab-btn"
+                            data-class-selected="is_sell_mode"
+                            data-event-click="switch_mode_sell">Sell</button>
                 </div>
 
                 <div class="shop-empty-text" data-if="is_buy_mode &amp;&amp; !has_buy_entries">{{ empty_text }}</div>
                 <div class="shop-empty-text" data-if="is_sell_mode &amp;&amp; !has_sell_entries">{{ empty_text }}</div>
 
                 <div id="shop-buy-list" data-if="is_buy_mode &amp;&amp; has_buy_entries" data-class-focused="is_entry_list_focused">
-                    <button class="tf-button-secondary shop-buy-entry"
+                    <button class="shop-entry"
                             data-for="entry : buy_entries"
-                            id="shop-buy-entry-{{ entry.index }}"
                             data-class-selected="entry.is_selected"
                             data-class-disabled="entry.is_disabled"
                             data-attrif-disabled="entry.is_disabled"
                             data-event-click="buy_entry_select(entry.index)">
                         <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
-                        <div class="shop-entry-copy">
-                            <div class="shop-entry-name">{{ entry.item_name }}</div>
-                            <div class="shop-entry-meta">{{ entry.owned_text }}</div>
-                        </div>
+                        <div class="shop-entry-name">{{ entry.item_name }}</div>
                         <div class="shop-entry-price">{{ entry.price_text }}</div>
                     </button>
                 </div>
 
                 <div id="shop-sell-list" data-if="is_sell_mode &amp;&amp; has_sell_entries" data-class-focused="is_entry_list_focused">
-                    <button class="tf-button-secondary shop-sell-entry"
+                    <button class="shop-entry"
                             data-for="entry : sell_entries"
-                            id="shop-sell-entry-{{ entry.slot_index }}"
                             data-class-selected="entry.is_selected"
                             data-class-disabled="entry.is_disabled"
                             data-event-click="sell_entry_select(entry.index)">
                         <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
-                        <div class="shop-entry-copy">
-                            <div class="shop-entry-name">{{ entry.item_name }}</div>
-                            <div class="shop-entry-meta">{{ entry.count_text }}</div>
-                        </div>
+                        <div class="shop-entry-name">{{ entry.item_name }}</div>
                         <div class="shop-entry-price">{{ entry.price_text }}</div>
                     </button>
                 </div>
             </div>
 
-            <div id="shop-detail-column">
-                <div class="shop-section-title">Details</div>
-                <div id="shop-gold-label">{{ gold_label }}</div>
+            <!-- Right: detail + actions -->
+            <div id="shop-detail-col">
+                <div id="shop-detail-name">{{ detail_name }}</div>
+                <div id="shop-detail-desc">{{ detail_description }}</div>
 
-                <div id="shop-detail-card">
-                    <div id="shop-detail-name">{{ detail_name }}</div>
-                    <div id="shop-detail-description">{{ detail_description }}</div>
+                <div id="shop-detail-divider"></div>
 
-                    <div class="shop-detail-row">
-                        <div class="shop-detail-label">Price</div>
-                        <div id="shop-detail-price">{{ detail_price_text }}</div>
+                <div id="shop-detail-info">
+                    <div class="shop-info-row">
+                        <div class="shop-info-label">Price</div>
+                        <div class="shop-info-value">{{ detail_price_text }}</div>
                     </div>
-
-                    <div class="shop-detail-row">
-                        <div class="shop-detail-label">Qty</div>
-                        <div id="shop-detail-quantity">{{ detail_quantity_text }}</div>
+                    <div class="shop-info-row">
+                        <div class="shop-info-label">{{ detail_owned_label }}</div>
+                        <div class="shop-info-value">{{ detail_owned_text }}</div>
                     </div>
-
-                    <div class="shop-detail-row">
-                        <div class="shop-detail-label">{{ detail_owned_label }}</div>
-                        <div id="shop-detail-owned">{{ detail_owned_text }}</div>
+                    <div class="shop-info-row">
+                        <div class="shop-info-label">Total</div>
+                        <div class="shop-info-value">{{ detail_total_text }}</div>
                     </div>
-
-                    <div class="shop-detail-row">
-                        <div class="shop-detail-label">Total</div>
-                        <div id="shop-detail-total">{{ detail_total_text }}</div>
-                    </div>
-
-                    <div class="shop-detail-row">
-                        <div class="shop-detail-label">After</div>
-                        <div id="shop-detail-after">{{ detail_after_gold_text }}</div>
+                    <div class="shop-info-row">
+                        <div class="shop-info-label">After</div>
+                        <div class="shop-info-value">{{ detail_after_gold_text }}</div>
                     </div>
                 </div>
 
-                <div id="shop-quantity-controls" data-class-focused="is_quantity_focused">
+                <div id="shop-qty-controls" data-class-focused="is_quantity_focused">
                     <button id="shop-qty-down"
-                            class="tf-icon-button icon-arrow-left shop-qty-button"
+                            class="tf-icon-button icon-arrow-left shop-qty-btn"
                             data-class-disabled="!quantity_decrease_enabled"
                             data-attrif-disabled="!quantity_decrease_enabled"
                             data-event-click="adjust_quantity(-1)"></button>
-                    <div id="shop-quantity-readout">{{ detail_quantity_text }}</div>
+                    <div id="shop-qty-readout">{{ detail_quantity_text }}</div>
                     <button id="shop-qty-up"
-                            class="tf-icon-button icon-arrow-right shop-qty-button"
+                            class="tf-icon-button icon-arrow-right shop-qty-btn"
                             data-class-disabled="!quantity_increase_enabled"
                             data-attrif-disabled="!quantity_increase_enabled"
                             data-event-click="adjust_quantity(1)"></button>
                 </div>
 
-                <div id="shop-status">{{ status_text }}</div>
-
                 <div id="shop-actions">
                     <button id="shop-primary-action-button"
-                            class="tf-button-primary shop-action-button"
+                            class="tf-button-primary shop-action-btn"
                             data-class-focused="is_primary_action_focused"
                             data-class-disabled="!primary_action_enabled"
                             data-attrif-disabled="!primary_action_enabled"
                             data-event-click="confirm_trade">{{ primary_action_text }}</button>
-                    <button id="shop-close-footer" class="tf-button-secondary shop-action-button" data-event-click="close">Leave</button>
+                    <button class="tf-button-secondary shop-action-btn"
+                            data-event-click="close">Leave</button>
                 </div>
             </div>
         </div>
+
+        <!-- Status bar -->
+        <div id="shop-status">{{ status_text }}</div>
     </div>
 </body>
 </rml>
