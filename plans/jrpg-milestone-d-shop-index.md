@@ -312,6 +312,49 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 - `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
 
+### Debug Tooling: Shop 调试入口
+
+当前状态：
+
+- 已完成。Milestone D 现已额外具备一个 `Game Debug Panels -> Shops` 的独立商店调试入口，用于加速 buy / sell / scene routing 的人工验证。
+
+目标：
+
+- 在不依赖地图 merchant 的前提下，快速验证指定 shop 的交易规则与正式商店 scene
+
+本阶段聚焦：
+
+- 新增独立 `ShopDebugPanel`
+- 面板直接读取真实 runtime truth：`PlayerWalletComponent / InventoryComponent / ShopCatalog / ShopTransactionService`
+- 可从 `ShopCatalog::listShops()` 选择任意商店
+- 可在 ImGui 面板内直接执行 `previewBuy / commitBuy` 与 `previewSell / commitSell`
+- `Sell` 继续锚定真实 `slot_index`，不引入脱离正式逻辑的聚合库存真相
+- 提供最小 `Debug Wallet Seed` 区块，方便打通 buy success path
+- 支持从调试面板直接打开正式 `ShopMenuScene`，用于游戏内商店 UI 与输入流测试
+
+推荐最小方案：
+
+- 调试面板只作为人工验证入口，不替代现有 `ShopMenuScene`、`ShopInteractionSystem` 与存档回归测试
+- buy / sell preview 始终复用正式 `ShopTransactionService`
+- 打开正式商店 scene 时继续走 `PushSceneEvent + ShopMenuScene` 正式链路，而不是做一套 debug-only scene
+- 若游戏当前已经处于 `Paused` 状态，则禁用“Open Shop Scene”，避免从 debug UI 重复叠加 overlay scene
+
+原因：
+
+- 当前 Milestone D 已有较好的自动化覆盖，但仍需要一个高频人工验证入口来测试数据配置、数量边界与 UI 表现
+- 直接选 shop 比“先找地图 merchant 再交互”更适合开发期反复回归
+- 能从 debug panel 打开真实 `ShopMenuScene`，可以让“交易核心调试”和“正式商店 UI 测试”共用同一入口
+
+阶段交付物：
+
+- `Game` 分类下的独立 `ShopDebugPanel`
+- 面向交易核心的 buy / sell / wallet seed 调试能力
+- 从调试面板启动正式 `ShopMenuScene` 的验证入口
+
+建议后续细化文档：
+
+- `plans/jrpg-shop-debug-panel.md`
+
 ## 需要新增的文件
 
 以下为推荐新增文件，是否最终拆分为独立文件，可在各阶段细化时再确认：
@@ -377,6 +420,7 @@ Milestone D 当前实现结论：
 - Milestone D 默认采用“静态无限库存”，不在本阶段新增商店库存存档
 - Sell 资格应走显式规则表，不靠 item category 猜测
 - 在 Stage 1 锁定交易语义后，Stage 2 和 Stage 3 可以并行细化；Stage 4 依赖前两者稳定后再落地更合适
+- 调试验证入口建议同时保留两条路径：`ShopDebugPanel` 负责高频数据/交易验证，`ShopMenuScene` 负责正式 UI / 输入流验证
 
 ## ToDo
 
@@ -387,6 +431,8 @@ Milestone D 当前实现结论：
 - [x] Stage 4: 细化 Sell 流程、slot 语义与 hotbar 同步边界 → `plans/jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
 - [x] Stage 5: 细化 UI 收尾、测试补强与文档更新 → `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
 - [x] Milestone D: 完成 `merchant -> buy/sell -> save roundtrip` 最小商店闭环
+- [x] Debug Tooling: 完成独立 `ShopDebugPanel` 集成与文档 → `plans/jrpg-shop-debug-panel.md`
+- [x] Debug Tooling: 支持从 `ShopDebugPanel` 直接打开正式 `ShopMenuScene`
 
 ## 备注
 
@@ -410,5 +456,6 @@ Milestone D 当前实现结论：
 - 不推荐把“全局 sell rule”误当成最终形态；它只是 Milestone D 的范围收敛，后续仍可扩为 per-shop sell rule
 - 若特殊交互类型继续增长，不推荐继续在线性 `best_xxx` 变量上无止境叠分支；但这属于交互系统后续重构题，不在本里程碑中处理
 - 若 Stage 1 没有先锁定交易原子性和 sell rule 表，后续 Buy/Sell UI 很容易变成一堆临时特判
+- 不推荐让 `ShopDebugPanel` 自己维护第二套交易规则或虚构库存；它应始终复用正式 `ShopTransactionService` 与真实 inventory slot 语义
 
 这样可以保证 Milestone D 形成一个真正可持续扩展的“merchant 入口 + buy/sell 规则 + 商店 UI”闭环。
