@@ -6,6 +6,10 @@
 
 #include <entt/entity/fwd.hpp>
 
+namespace engine::core {
+class Context;
+}
+
 namespace game::data {
 class ItemCatalog;
 class ShopCatalog;
@@ -18,9 +22,10 @@ class ShopTransactionService;
 namespace game::debug {
 
 class ShopDebugPanel final : public engine::debug::DebugPanel {
+    engine::core::Context& context_;
     entt::registry& registry_;
     const game::data::ShopCatalog* shop_catalog_{nullptr};
-    const game::data::ItemCatalog* item_catalog_{nullptr};
+    game::data::ItemCatalog* item_catalog_{nullptr};
     game::domain::ShopTransactionService* shop_transaction_service_{nullptr};
 
     std::string selected_shop_id_{};
@@ -33,9 +38,10 @@ class ShopDebugPanel final : public engine::debug::DebugPanel {
     std::string status_{};
 
 public:
-    ShopDebugPanel(entt::registry& registry,
+    ShopDebugPanel(engine::core::Context& context,
+                   entt::registry& registry,
                    const game::data::ShopCatalog* shop_catalog,
-                   const game::data::ItemCatalog* item_catalog,
+                   game::data::ItemCatalog* item_catalog,
                    game::domain::ShopTransactionService* shop_transaction_service);
 
     std::string_view name() const override;

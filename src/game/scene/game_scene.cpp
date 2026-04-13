@@ -388,6 +388,7 @@ bool GameScene::registerDebugPanels() {
     if (services_->shop_catalog && services_->shop_transaction_service) {
         debug_ui_manager.registerPanel(
             std::make_unique<game::debug::ShopDebugPanel>(
+                context_,
                 registry_,
                 services_->shop_catalog.get(),
                 services_->item_catalog.get(),
