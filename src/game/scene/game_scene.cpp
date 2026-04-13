@@ -51,6 +51,7 @@
 #include "game/debug/scheduler_debug_panel.h"
 #include "game/debug/scheduler_profiler.h"
 #include "game/debug/save_load_debug_panel.h"
+#include "game/debug/shop_debug_panel.h"
 #endif
 
 #include <entt/core/hashed_string.hpp>
@@ -380,6 +381,17 @@ bool GameScene::registerDebugPanels() {
                 services_->quest_catalog.get(),
                 services_->item_catalog.get(),
                 services_->quest_turn_in_service.get()),
+            false,
+            engine::debug::PanelCategory::Game);
+    }
+
+    if (services_->shop_catalog && services_->shop_transaction_service) {
+        debug_ui_manager.registerPanel(
+            std::make_unique<game::debug::ShopDebugPanel>(
+                registry_,
+                services_->shop_catalog.get(),
+                services_->item_catalog.get(),
+                services_->shop_transaction_service.get()),
             false,
             engine::debug::PanelCategory::Game);
     }
