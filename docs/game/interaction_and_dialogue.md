@@ -9,14 +9,18 @@ flowchart TD
     F["Input: interact / F"] --> IS["InteractionSystem<br/>chooseFacingTarget"]
     IS -->|dispatcher.trigger| IR["InteractCommand{player,target}"]
 
-    IR --> DS["DialogueSystem<br/>需要 DialogueComponent"]
+    IR --> SIS["ShopInteractionSystem<br/>需要 MerchantComponent"]
+    IR --> QIS["QuestInteractionSystem<br/>需要 QuestGiverComponent<br/>(跳过 MerchantComponent 实体)"]
+    IR --> DS["DialogueSystem<br/>需要 DialogueComponent<br/>(跳过 Merchant / QuestGiver 实体)"]
     IR --> CS["ChestSystem<br/>需要 ChestComponent"]
     IR --> RS["RestSystem<br/>需要 RestArea"]
 
+    SIS -->|PushSceneEvent| Shop["Scene Stack<br/>(ShopMenuScene)"]
     DS -->|DialogueShow/Move/Hide<br/>channel=0| DBC["DialogueBubbleController"]
     CS -->|DialogueShow/Move/Hide<br/>channel=1| DBC
     IU["ItemUseSystem<br/>UseItemCommand"] -->|DialogueShow/Move/Hide<br/>channel=2| DBC
 
+    QIS -->|DialogueShow/Move/Hide<br/>channel=1| DBC
     DBC --> DB0["DialogueBubbleView #0"]
     DBC --> DB1["DialogueBubbleView #1"]
     DBC --> DB2["DialogueBubbleView #2"]
@@ -39,6 +43,14 @@ flowchart TD
 这样做的收益是：
 - `InteractionSystem` 保持稳定，不会随着玩法增加而越改越大
 - 新交互等于新增订阅者，代码耦合更低
+
+当前已有订阅者及目标优先级（`chooseFacingTarget` 中锁定）：
+
+```
+Merchant > QuestGiver > Dialogue NPC > Chest > Rest
+```
+
+**交互独占规则**：带 `QuestGiverComponent` 的 NPC 由 `QuestInteractionSystem` 独占处理任务交互；`DialogueSystem` 检测到目标带 `QuestGiverComponent` 时会显式跳过，保证同一次 `InteractCommand` 不被两个系统重复响应。同理，带 `MerchantComponent` 的实体由 `ShopSystem` 独占，`DialogueSystem` 和 `QuestInteractionSystem` 均跳过。
 
 ## 3) DialogueBubble 的运行时结构
 
