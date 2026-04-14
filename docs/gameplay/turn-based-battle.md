@@ -198,6 +198,34 @@ flowchart TD
 | `SkillList` / `ItemList` | 回到 `MainMenu` |
 | `MainMenu` | 吃掉输入，不退出战斗 |
 
+## 敌方 AI 行动规划
+
+敌方回合由 `BattleAiPlanner` 完成，`BattleScene` 在 `FlowState::NextTurn` 阶段根据当前行动者阵营分支：玩家方进入 `WaitingForInput`，敌方直接调用 planner 并将结果送入提交流程。
+
+### 选技算法
+
+`planEnemyAction()` 遍历 `EnemyData::actions_` 选出最高 `rating_` 且当前可执行的技能：
+
+1. 跳过 `skill_id` 为空或 `RpgCatalog` 中不存在的条目
+2. 跳过 MP 不足的技能
+3. 针对该技能的 scope 生成目标，若没有合法目标则跳过
+4. 在所有可生成动作的候选中取 `rating_` 最高者
+5. 若无任何可用技能，调用 `planFallbackAction()`：Attack 指向最低 HP% 存活对手，若无存活对手则 EndTurn
+
+### 目标选择规则（按 scope）
+
+| scope | 目标策略 |
+|---|---|
+| `OneEnemy` | 对手中 HP 百分比最低的存活单位；同比例时优先绝对值更低者，再按 id 稳定 |
+| `AllEnemies` | 无需选单体，要求对手侧至少有存活单位 |
+| `OneAlly` | 恢复类技能选"资源缺口最大的友军"；其他技能选 HP% 最低的友军 |
+| `AllAllies` | 恢复类技能额外要求友军侧至少有资源缺口，避免对满血/满 MP 全体浪费 |
+| `Self` | 恢复类技能要求行动者自身存在资源缺口，否则跳过 |
+
+### 恢复意图检测
+
+AI 在选 `OneAlly` / `AllAllies` / `Self` 技能时会通过 `detectRecoveryIntent()` 检查技能是否具有 HP/MP 恢复效果（`DamageType::HpRecover` / `MpRecover`，或 `effects_` 中含 `RecoverHp` / `RecoverMp`），确保恢复技能不浪费在满血/满 MP 目标上。
+
 ## 动作执行链路
 
 当前动作提交流程如下：
@@ -247,6 +275,13 @@ sequenceDiagram
 - Item：HP 恢复 / MP 恢复，或 `"Item used"`
 - Escape：成功 / 失败
 - Guard / EndTurn：短文本反馈
+
+### 战斗结算通知反馈
+
+战斗结束后，`game_scene_reward_feedback` 模块负责将写回结果格式化为可见文本：
+
+- `formatRewardFeedback()`：将金币与掉落写回结果转成单段文本（逐条列出掉落物、金币；如有 `rejected` 量则追加提示）
+- `formatBattleSettlementFeedback()`：将奖励写回结果与任务推进摘要（`QuestBattleProgressSummary`）合并为一条完整的战斗结算通知文本，通过现有 `DialogueShowEvent` 渠道显示给玩家
 
 ## 战斗库存与结算协议
 
@@ -326,7 +361,11 @@ sequenceDiagram
 
 | 类型 | 当前职责 |
 |---|---|
-| `BattleRewardSummary` | 胜利后的 `gold_total / item_drops / exp_total` 聚合结果 |
+| `BattleRuntimeState` | 单次 `BattleSession` 拥有的运行时可变状态：`item_stocks`、单位防御/状态剩余回合、逃跑尝试计数。刻意与快照类型分离，不出现在命令/事件负载中 |
+| `BattleRewardItemDrop` | 奖励掉落聚合条目：`item_id`（原始字符串 id）、`item_id_hash`（库存写回用稳定 hash）、`count`（聚合数量） |
+| `BattleRewardSummary` | 胜利后的 `gold_total / exp_total / item_drops` 聚合结果；`empty()` 可快速判断是否有奖励 |
+| `BattleRewardWritebackItemResult` | 单个掉落条目的实际写回结果：原始 `drop`、`accepted`（成功入包数量）、`rejected`（背包满等原因拒绝数量） |
+| `BattleRewardWritebackResult` | 完整写回摘要：`gold_written_back` + `item_results` 列表；`empty()` 可判断是否有任何写回 |
 | `PlayerWalletComponent` | 探索态金币真相 |
 
 ### 命令与事件
@@ -413,7 +452,9 @@ sequenceDiagram
 
 | 文件 | 层 | 职责 |
 |---|---|---|
-| `src/game/battle/battle_types.h` | 领域 | 战斗数据类型定义 |
+| `src/game/battle/battle_types.h` | 领域 | 战斗数据类型定义（`BattleUnit` / `BattleAction` / `BattleActionResult` / `BattleSnapshot` 等） |
+| `src/game/battle/battle_runtime_types.h` | 领域 | 单次会话运行时可变状态（`BattleRuntimeState`，含 `item_stocks` / 单位防御标记 / 状态回合计数） |
+| `src/game/battle/battle_formula_evaluator.h/.cpp` | 执行 | Lua 战斗公式求值器，将 `a`/`b` 绑定为施法者/目标属性表并返回整型计算结果 |
 | `src/game/battle/turn_core.h/.cpp` | 领域 | 回合顺序与胜负判定 |
 | `src/game/battle/battle_ai_planner.h/.cpp` | 领域 | 敌方最小自动行动规划 |
 | `src/game/battle/battle_action_resolver.h/.cpp` | 执行 | 技能、物品、防御、逃跑等动作结算 |
@@ -424,8 +465,8 @@ sequenceDiagram
 | `ui/rmlui/scenes/battle.rml` | UI | 战斗菜单 RML 结构 |
 | `ui/rmlui/scenes/battle.rcss` | UI | 战斗菜单样式与 target/list 状态表现 |
 | `src/game/scene/game_scene.h/.cpp` | 表现 | 战斗入口、push/pop 与战后结算入口 |
-| `src/game/scene/game_scene_battle_settlement.h/.cpp` | 表现 | 战斗库存与 Victory 奖励写回编排 |
-| `src/game/scene/game_scene_reward_feedback.h/.cpp` | 表现 | 最小奖励反馈文本格式化 |
+| `src/game/scene/game_scene_battle_settlement.h/.cpp` | 表现 | 战斗结束统一入口：物品库存写回 → Victory 奖励写回 → 任务推进 → 触发通知 |
+| `src/game/scene/game_scene_reward_feedback.h/.cpp` | 表现 | 奖励写回结果格式化（`BattleRewardWritebackResult`）与战斗结算合并通知（含任务推进摘要） |
 | `src/game/component/player_wallet_component.h` | 探索态 | 金币真相 |
 | `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表 |
 | `src/game/data/item_catalog.*` | 数据 | `battle_use` 物品效果查表 |
