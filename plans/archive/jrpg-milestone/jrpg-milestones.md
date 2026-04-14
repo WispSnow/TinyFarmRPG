@@ -1,11 +1,5 @@
 # 拓展JRPG开发顺序
 
-当前状态补充
-
-- Milestone C 已完成：最小任务闭环已支持 `接任务 / 杀怪计数 / 回 NPC 交付 / 存档恢复`。
-- Milestone D 已完成：最小商店闭环已支持 `merchant 交互 / buy / sell / 热键栏同步 / 键盘手柄导航 / save roundtrip`，详见 `plans/jrpg-milestone-d-shop-index.md`。
-- 当前推荐的下一阶段主线回到战斗可玩化与技能接入，也就是原先的 Milestone A / B 方向。
-
 - 1. 战斗可玩化 + 技能接入，作为下一阶段主目标。
   现在这条线基础最好，已经有完整领域层、场景层、文档和测试骨架，见 turn-based-battle.md、
   battle_scene.cpp:28。真正缺的是把临时硬编码替换成玩家可选的 Skill / Item / Target UI，因为当前仍写死了
@@ -16,8 +10,7 @@
   标推进 + 对话触发/提交。
 - 3. 商店，放在任务之后。
   现在金币、掉落、任务奖励与背包显示都已经接通，商店的前置条件基本具备。下一步的重点不再是“先补货币来源”，
-  而是锁定 merchant 入口、shop 目录、交易原子性和 buy/sell UI，详见
-  `plans/jrpg-milestone-d-shop-index.md`。
+  而是锁定 merchant 入口、shop 目录、交易原子性和 buy/sell UI。
 - 4. 技能系统不要单独立项，而应并入战斗阶段。
   技能数据加载、查表、战斗解析其实已经有不少基础，见 rpg_catalog.cpp:291。更合理的目标不是先做“完整技能
   树”，而是先完成“角色已学技能 -> 战斗菜单可选 -> 消耗 MP -> 结算效果 -> 存档恢复”这条闭环。
@@ -31,10 +24,10 @@
 
 我会推荐的下一个具体里程碑
 
-- Milestone A: 战斗菜单从硬编码按钮升级为真实 Skill / Item / Target 选择。
-- Milestone B: 敌人 AI + 战斗奖励 + 金币/掉落入包。
-- Milestone C: 最小任务系统，先支持“接任务 / 杀怪计数 / 交付完成”。
-- Milestone D: 商店 UI 和买卖规则，已完成最小闭环，见 `plans/jrpg-milestone-d-shop-index.md`。
+- Milestone A: 战斗菜单从硬编码按钮升级为真实 Skill / Item / Target 选择。已完成，见 `./jrpg-milestone-a-battle-menu-index.md`
+- Milestone B: 敌人 AI + 战斗奖励 + 金币/掉落入包。已完成，见 `./jrpg-milestone-b-battle-rewards-ai-index.md`
+- Milestone C: 最小任务系统，先支持“接任务 / 杀怪计数 / 交付完成”。 见 `./jrpg-milestone-c-quest-mvp-index.md`
+- Milestone D: 商店 UI 和买卖规则，已完成最小闭环，见 `./jrpg-milestone-d-shop-index.md`。
 
 Milestone A 执行约束
 

@@ -138,7 +138,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
+- `./jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
 
 ### Stage 2: Merchant 入口与 Scene 路由
 
@@ -179,7 +179,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
+- `./jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
 
 ### Stage 3: Shop Scene 骨架与 Buy 闭环
 
@@ -221,7 +221,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
+- `./jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
 
 ### Stage 4: Sell 流程与背包同步
 
@@ -262,7 +262,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
+- `./jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
 
 ### Stage 5: UI 收尾、文档与测试补强
 
@@ -310,7 +310,7 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
+- `./jrpg-milestone-d-stage5-ui-docs-and-tests.md`
 
 ### Debug Tooling: Shop 调试入口
 
@@ -353,17 +353,17 @@ Milestone D 不适合直接在 `ItemCatalog` 上追加 `buy_price / sell_price`�
 
 建议后续细化文档：
 
-- `plans/jrpg-shop-debug-panel.md`
+- `./jrpg-shop-debug-panel.md`
 
 ## 需要新增的文件
 
 以下为推荐新增文件，是否最终拆分为独立文件，可在各阶段细化时再确认：
 
-- `plans/jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
-- `plans/jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
-- `plans/jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
-- `plans/jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
-- `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
+- `./jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
+- `./jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
+- `./jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
+- `./jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
+- `./jrpg-milestone-d-stage5-ui-docs-and-tests.md`
 
 若按推荐方案实施，代码层后续大概率会新增：
 
@@ -424,14 +424,14 @@ Milestone D 当前实现结论：
 
 ## ToDo
 
-- [x] Stage 1: 细化 shop 目录、sell rule 与交易原子性方案 → `plans/jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
+- [x] Stage 1: 细化 shop 目录、sell rule 与交易原子性方案 → `./jrpg-milestone-d-stage1-shop-catalog-and-transaction-core.md`
 - [x] Stage 1: 锁定 preview 返回结构、价格告警策略与 `removeItem(slot_index)` 的交易语义
-- [x] Stage 2: 细化 merchant 入口、交互 owner 与 Scene 路由 → `plans/jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
-- [x] Stage 3: 细化 `ShopMenuScene`、Buy 列表与数量确认 → `plans/jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
-- [x] Stage 4: 细化 Sell 流程、slot 语义与 hotbar 同步边界 → `plans/jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
-- [x] Stage 5: 细化 UI 收尾、测试补强与文档更新 → `plans/jrpg-milestone-d-stage5-ui-docs-and-tests.md`
+- [x] Stage 2: 细化 merchant 入口、交互 owner 与 Scene 路由 → `./jrpg-milestone-d-stage2-merchant-interaction-and-scene-routing.md`
+- [x] Stage 3: 细化 `ShopMenuScene`、Buy 列表与数量确认 → `./jrpg-milestone-d-stage3-shop-scene-and-buy-flow.md`
+- [x] Stage 4: 细化 Sell 流程、slot 语义与 hotbar 同步边界 → `./jrpg-milestone-d-stage4-sell-flow-and-inventory-sync.md`
+- [x] Stage 5: 细化 UI 收尾、测试补强与文档更新 → `./jrpg-milestone-d-stage5-ui-docs-and-tests.md`
 - [x] Milestone D: 完成 `merchant -> buy/sell -> save roundtrip` 最小商店闭环
-- [x] Debug Tooling: 完成独立 `ShopDebugPanel` 集成与文档 → `plans/jrpg-shop-debug-panel.md`
+- [x] Debug Tooling: 完成独立 `ShopDebugPanel` 集成与文档 → `./jrpg-shop-debug-panel.md`
 - [x] Debug Tooling: 支持从 `ShopDebugPanel` 直接打开正式 `ShopMenuScene`
 
 ## 备注

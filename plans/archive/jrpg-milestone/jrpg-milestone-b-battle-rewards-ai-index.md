@@ -108,7 +108,7 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-b-stage1-battle-provenance.md`
+- `./jrpg-milestone-b-stage1-battle-provenance.md`
 
 ### Stage 2: 敌方 AI 最小行动规划
 
@@ -150,7 +150,7 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-b-stage2-enemy-ai.md`
+- `./jrpg-milestone-b-stage2-enemy-ai.md`
 
 ### Stage 3: 战斗奖励汇总与掉落解析
 
@@ -189,7 +189,7 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-b-stage3-battle-reward-summary.md`
+- `./jrpg-milestone-b-stage3-battle-reward-summary.md`
 
 ### Stage 4: GameScene 写回与最小奖励反馈
 
@@ -237,7 +237,7 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
+- `./jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
 
 ### Stage 5: UI/存档与测试补强
 
@@ -261,17 +261,17 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-b-stage5-ui-save-and-tests.md`
+- `./jrpg-milestone-b-stage5-ui-save-and-tests.md`
 
 ## 需要新增的文件
 
 以下为推荐新增文件，是否最终拆分为独立文件，可在各阶段细化时再确认：
 
-- `plans/jrpg-milestone-b-stage1-battle-provenance.md`
-- `plans/jrpg-milestone-b-stage2-enemy-ai.md`
-- `plans/jrpg-milestone-b-stage3-battle-reward-summary.md`
-- `plans/jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
-- `plans/jrpg-milestone-b-stage5-ui-save-and-tests.md`
+- `./jrpg-milestone-b-stage1-battle-provenance.md`
+- `./jrpg-milestone-b-stage2-enemy-ai.md`
+- `./jrpg-milestone-b-stage3-battle-reward-summary.md`
+- `./jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
+- `./jrpg-milestone-b-stage5-ui-save-and-tests.md`
 
 若按推荐方案实施，代码层后续大概率会新增：
 
@@ -312,11 +312,11 @@ Milestone B 不适合直接按“先做 AI，再做奖励”线性推进。
 
 ## ToDo
 
-- [x] Stage 1: 细化 battle unit 来源信息与金币真相方案 → `plans/jrpg-milestone-b-stage1-battle-provenance.md`
-- [x] Stage 2: 细化敌方 AI 动作规划与目标选择规则 → `plans/jrpg-milestone-b-stage2-enemy-ai.md`
-- [x] Stage 3: 细化奖励汇总、掉落随机与 Victory 结算边界 → `plans/jrpg-milestone-b-stage3-battle-reward-summary.md`
-- [x] Stage 4: 细化 `GameScene` 奖励写回与最小反馈方案 → `plans/jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
-- [x] Stage 5: 细化金币 UI、存档与测试补强方案 → `plans/jrpg-milestone-b-stage5-ui-save-and-tests.md`
+- [x] Stage 1: 细化 battle unit 来源信息与金币真相方案 → `./jrpg-milestone-b-stage1-battle-provenance.md`
+- [x] Stage 2: 细化敌方 AI 动作规划与目标选择规则 → `./jrpg-milestone-b-stage2-enemy-ai.md`
+- [x] Stage 3: 细化奖励汇总、掉落随机与 Victory 结算边界 → `./jrpg-milestone-b-stage3-battle-reward-summary.md`
+- [x] Stage 4: 细化 `GameScene` 奖励写回与最小反馈方案 → `./jrpg-milestone-b-stage4-reward-writeback-and-feedback.md`
+- [x] Stage 5: 细化金币 UI、存档与测试补强方案 → `./jrpg-milestone-b-stage5-ui-save-and-tests.md`
 
 ## 备注
 

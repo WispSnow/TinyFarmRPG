@@ -122,7 +122,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
+- `./jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
 
 ### Stage 2: 任务领取与交付入口
 
@@ -170,7 +170,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-c-stage2-quest-giver-interaction.md`
+- `./jrpg-milestone-c-stage2-quest-giver-interaction.md`
 
 ### Stage 3: 战斗击败计数推进
 
@@ -211,7 +211,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-c-stage3-battle-progress.md`
+- `./jrpg-milestone-c-stage3-battle-progress.md`
 
 ### Stage 4: 交付完成与最小奖励写回
 
@@ -249,7 +249,7 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-c-stage4-turn-in-and-rewards.md`
+- `./jrpg-milestone-c-stage4-turn-in-and-rewards.md`
 
 ### Stage 5: Quest UI、存档与测试补强
 
@@ -286,18 +286,18 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 建议后续细化文档：
 
-- `plans/jrpg-milestone-c-stage5-ui-save-and-tests.md`
+- `./jrpg-milestone-c-stage5-ui-save-and-tests.md`
 
 ## 需要新增的文件
 
 以下为推荐新增文件，是否最终拆分为独立文件，可在各阶段细化时再确认：
 
-- `plans/jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
-- `plans/jrpg-milestone-c-stage2-quest-giver-interaction.md`
-- `plans/jrpg-milestone-c-stage3-battle-progress.md`
-- `plans/jrpg-milestone-c-stage4-turn-in-and-rewards.md`
-- `plans/jrpg-milestone-c-stage5-ui-save-and-tests.md`
-- `plans/jrpg-quest-debug-panel.md`
+- `./jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
+- `./jrpg-milestone-c-stage2-quest-giver-interaction.md`
+- `./jrpg-milestone-c-stage3-battle-progress.md`
+- `./jrpg-milestone-c-stage4-turn-in-and-rewards.md`
+- `./jrpg-milestone-c-stage5-ui-save-and-tests.md`
+- `./jrpg-quest-debug-panel.md`
 
 若按推荐方案实施，代码层后续大概率会新增：
 
@@ -351,12 +351,12 @@ Milestone C 不适合把任务逻辑分别塞进 `DialogueSystem`、`BattleScene
 
 ## ToDo
 
-- [x] Stage 1: 细化 quest 目录、objective key 与 runtime truth 方案 → `plans/jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
+- [x] Stage 1: 细化 quest 目录、objective key 与 runtime truth 方案 → `./jrpg-milestone-c-stage1-quest-catalog-and-runtime.md`
 - [x] Stage 2: 细化 quest giver 入口与任务交互状态机
 - [x] Stage 3: 细化 Victory kill count 推进与 battle 接缝
 - [x] Stage 4: 细化 turn-in、completed 状态迁移与可选 reward 写回
 - [x] Stage 5: 细化 quest UI、存档与测试补强方案
-- [x] 补充 Quest / Battle 调试面板与对应回归 → `plans/jrpg-quest-debug-panel.md`
+- [x] 补充 Quest / Battle 调试面板与对应回归 → `./jrpg-quest-debug-panel.md`
 
 ## 备注
 
@@ -383,6 +383,6 @@ Milestone C 完成后的调试工具补充：
 
 - 已新增独立 `QuestDebugPanel`，用于直接验证 Accept / Progress / Fill / Turn In / Clear quest state 闭环
 - 已新增独立 `BattleDebugPanel`，用于选择指定 `troop_id` 后发起战斗，便于验证 `troop.goblin_pair -> quest.village.goblin_cleanup` 这类链路
-- 对应计划文档：`plans/jrpg-quest-debug-panel.md`
+- 对应计划文档：`./jrpg-quest-debug-panel.md`
 
 这样可以保证 Milestone C 形成一个真正可持续扩展的“接任务 + 杀怪计数 + 交付完成”闭环。
