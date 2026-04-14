@@ -196,13 +196,19 @@ QuestTurnInResult turnIn(entt::entity player,
 执行顺序：
 
 1. 检查 `isQuestReadyToTurnIn()`，未满足则返回 `NotReady`
-2. 若 quest 有 gold 奖励，写入 `PlayerWalletComponent`
-3. 若 quest 有 item 奖励，通过 `InventoryDomainService::addItem()` 写入
-4. 调用 `completeQuest()` → 移出 active，加入 completed
-5. 调用 `eraseQuestProgress()` → 清理 progress map
-6. 返回 `QuestTurnInResult{status, gold_reward, item_rewards}`
+2. 对奖励做 preflight：
+   检查是否缺少 `PlayerWalletComponent` / `InventoryComponent`
+   若存在 item reward，则先复制一份背包槽位并执行 `simulateAdd()`，确认整笔奖励都能放下
+3. 若 preflight 通过，再写入 `PlayerWalletComponent`
+4. 若存在 item reward，通过 `InventoryDomainService::addItem()` 写入
+5. 调用 `completeQuest()` → 移出 active，加入 completed
+6. 调用 `eraseQuestProgress()` → 清理 progress map
+7. 返回 `QuestTurnInResult{status, gold_reward, item_rewards}`
 
-奖励写回失败（背包满等）时不允许静默丢失，会在 `failure_message` 中提示。
+当前约束：
+
+- 背包满、缺少钱包、缺少背包组件这类 **preflight 失败** 会直接返回 `failure_message`
+- 若 preflight 通过后仍出现异常的部分写入，当前实现会写 `warn log`，但不会回滚已完成的交付
 
 ## 交互流程
 
@@ -235,7 +241,13 @@ stateDiagram-v2
 
 ### QuestGiverComponent 配置
 
-Quest giver 通过地图对象属性（`quest_offer_id`）实例级配置，不写死到全局 actor blueprint。加载时由 `EntityFactory` 或等价路径将 `quest_offer_id` 附加为 `QuestGiverComponent`。
+Quest giver 通过地图对象属性（`quest_offer_id`）实例级配置，不写死到全局 actor blueprint。当前实现由 `EntityBuilder` 在地图 actor 实例构建时附加 `QuestGiverComponent`。
+
+若同一 actor object 同时声明了 `quest_offer_id` 与 `shop_id`：
+
+- loader 会给出 warn
+- 本阶段按 **merchant 优先** 处理
+- 该实体最终不会挂上 `QuestGiverComponent`
 
 ## 战斗结算集成
 
@@ -260,6 +272,15 @@ sequenceDiagram
 ```
 
 若同一场 Victory 既有奖励反馈又有任务推进反馈，两者合并为同一条通知文本，避免同帧覆盖 channel 1。
+
+### 当前项目配置
+
+当前项目自带一条最小任务配置（`assets/data/quests.json`）：
+
+- quest id：`quest.village.goblin_cleanup`
+- objective：击败 `enemy.goblin` 3 次
+- reward：`50 gold + potion x2`
+- giver text：已配置 `offer / progress / ready_to_turn_in / completed` 四组文本
 
 ## 存档与恢复
 
@@ -300,7 +321,7 @@ struct QuestTabViewState {
 ```
 
 - 激活标签页（`onActivated()`）时调用 `syncViewState()` 刷新数据
-- active quest 展示 `title + progress_summary + status_label`
+- active quest 展示 `title + description + progress_summary + status_label`
 - completed quest 展示 `title + status_label`
 
 ## 调试面板（QuestDebugPanel）
