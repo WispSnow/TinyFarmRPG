@@ -51,6 +51,71 @@
 - **必需字段**：`type="actor"` + `point=true` + `name="<actor-id>"`
 - **语义**：创建角色实体；其中 `name="player"` 会触发“复用玩家实体”的分支（如果启用该策略）。
 
+##### `actor` 的 JRPG 扩展实例属性
+
+当前已经预留了两个 actor 实例级字符串属性，用于把同一个 NPC 蓝图在不同地图实例上挂成不同玩法入口：
+
+| property | 类型 | 作用 | 数据来源 |
+| --- | --- | --- | --- |
+| `shop_id` | string | 把该 actor 实例挂成商人，交互时打开 `ShopMenuScene` | `assets/data/shops.json` |
+| `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
+
+运行时行为：
+
+- `shop_id` 会让 loader 给该实体附加 `MerchantComponent`
+- `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
+- 若两者同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
+
+推荐直接避免在同一个 actor object 上同时配置这两个属性。
+
+##### 在 Tiled 中配置商店 NPC
+
+1. 在 object layer 放一个 **point object**
+2. 设置 `type="actor"`
+3. 设置 `name="<actor blueprint key>"`，例如现有地图中的 `player`、`friend`
+4. 给该 object 新增一个 **string property**：`shop_id`
+5. `shop_id` 的值填写 `ShopCatalog` 里的商店 id，例如 `shop.village.general`
+
+最小示例：
+
+```json
+{
+  "point": true,
+  "type": "actor",
+  "name": "friend",
+  "properties": [
+    { "name": "shop_id", "type": "string", "value": "shop.village.general" }
+  ]
+}
+```
+
+##### 在 Tiled 中配置任务 NPC
+
+1. 在 object layer 放一个 **point object**
+2. 设置 `type="actor"`
+3. 设置 `name="<actor blueprint key>"`
+4. 给该 object 新增一个 **string property**：`quest_offer_id`
+5. `quest_offer_id` 的值填写 `QuestCatalog` 里的任务 id，例如 `quest.village.goblin_cleanup`
+
+最小示例：
+
+```json
+{
+  "point": true,
+  "type": "actor",
+  "name": "friend",
+  "properties": [
+    { "name": "quest_offer_id", "type": "string", "value": "quest.village.goblin_cleanup" }
+  ]
+}
+```
+
+落地后的交互效果：
+
+- `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店
+- `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
+- 交互优先级当前固定为 `Merchant > QuestGiver > Dialogue NPC > Chest > Rest`
+
 #### `animal`（point object）
 - **必需字段**：`type="animal"` + `point=true` + `name="<animal-id>"`
 - **语义**：创建动物实体（细节由 `EntityFactory` 负责）。
@@ -87,6 +152,25 @@
 - `assets/maps/town.tmj`
   - `light(spot)`：object `id=23`（`night_only=true`, `spot={radius:64, inner_deg:25, outer_deg:45, direction_deg:90}`）
   - `map_trigger`：object `id=26`（`target_map="school"`, `start_offset="bottom"`）
+
+### 4.3 当前未预留：地图战斗触发
+
+目前 **没有** 面向 Tiled 的战斗触发接口，具体表现为：
+
+- `src/game/loader/tiled_conventions.h` 里还没有 `battle_trigger` 一类 object type
+- actor 实例属性目前只预留了 `shop_id / quest_offer_id`
+- `GameScene` 虽然已经支持接收 `EnterBattleCommand{ troop_id / actor_ids / player_units / enemy_units }`
+- 但当前唯一现成入口是 `BattleDebugPanel`，而不是地图对象或地图触发器
+
+也就是说：
+
+- 你现在可以在数据层配置 `troop`
+- 也可以在运行时通过代码或调试面板发起战斗
+- 但**还不能**在 Tiled 里直接放一个“战斗区域”或“战斗 NPC”让地图自行触发战斗
+
+如果要补这条能力，已单独整理计划：
+
+- [地图战斗触发功能计划](/Users/ziyu/Workspace/GameDev/TEST/TinyFarmRPG-feature/plans/deferred/地图战斗触发功能计划.md)
 
 ## 5) 可观测与排错
 

@@ -263,8 +263,18 @@ sequenceDiagram
 `BattleScene` 会尽量在 UI 层阻止无效选择，但 `BattleActionResolver` 仍保留最终保护：
 
 - `OneEnemy` / `OneAlly` 在脚本或测试直接提交时，resolver 仍会校验 target
-- 若 target 缺失，resolver 仍保留 fallback 语义
+- `Skill` / `Item` 在 `OneEnemy` / `OneAlly` scope 下若缺少 target，resolver 仍保留 fallback 语义
+- `Attack` 仍要求显式 target；缺少 target 会直接 rejected
 - 若 MP、库存、目标状态在提交瞬间失效，resolver 会拒绝并返回失败原因
+
+### 公式与效果来源
+
+`BattleActionResolver` 当前已经是数据驱动结算，而不是纯硬编码分支：
+
+- 普通攻击也会走 `BattleFormulaEvaluator`，当前默认公式是 `a.atk`；若 Lua 公式求值失败，则回退到 `actor.attack`
+- Skill 主效果由 `SkillData::damage_` 驱动，支持 `HpDamage / MpDamage / HpRecover / MpRecover / HpDrain / MpDrain / None`
+- Skill 附加效果当前支持 `RecoverHp / RecoverMp / AddState / RemoveState`
+- Battle item 目前只支持 `battle_use.effects` 中的 `RecoverHp / RecoverMp`；没有 `battle_use` 或 `scope == None` 的物品会在列表中被禁用或在 resolver 中被拒绝
 
 ### 结果反馈
 
@@ -282,6 +292,7 @@ sequenceDiagram
 
 - `formatRewardFeedback()`：将金币与掉落写回结果转成单段文本（逐条列出掉落物、金币；如有 `rejected` 量则追加提示）
 - `formatBattleSettlementFeedback()`：将奖励写回结果与任务推进摘要（`QuestBattleProgressSummary`）合并为一条完整的战斗结算通知文本，通过现有 `DialogueShowEvent` 渠道显示给玩家
+- 若本场 Victory 没有金币、掉落或任务推进，反馈会回退为单行 `战斗胜利`
 
 ## 战斗库存与结算协议
 

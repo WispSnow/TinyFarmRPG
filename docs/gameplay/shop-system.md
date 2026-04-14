@@ -67,6 +67,12 @@ graph TD
 
 **关键区别**：`buy_entries_` 属于单个 `ShopData`（每家店卖什么、卖多少钱各自独立），`ShopSellRuleData` 是全局规则（存在 `ShopCatalog` 的独立 map 里），与具体商店无关——只要物品在 sell_rules 中有记录，进入任何商店都可以卖出。
 
+关于 `stock_` 的当前状态：
+
+- `ShopCatalog` 会解析并保留 `ShopBuyEntryData::stock_`
+- 但当前 `ShopTransactionService` 和 `ShopMenuScene` **还不会消费、扣减或持久化 merchant stock**
+- 因此本阶段运行时语义仍是“静态无限库存”；`stock_` 更接近为后续限量库存功能预留的 schema 字段
+
 ## ShopCatalog
 
 `ShopCatalog` 是商店静态目录，从 `assets/data/shops.json` 加载。
@@ -97,6 +103,15 @@ graph TD
 
 `sell_rules` 是顶层数组，不挂在任何一家商店下面。
 
+### 当前项目配置
+
+当前项目自带一份最小可玩的商店配置：
+
+- 商店：`shop.village.general`
+- greeting：`Take a look.`
+- buy entries：`potion (30G)`、`strawberry_seed (12G)`
+- sell rules：`potion (15G)`、`material_timber (5G)`、`strawberry_item (4G)`
+
 ### 主要 API
 
 ```cpp
@@ -119,6 +134,8 @@ struct MerchantComponent {
 ```
 
 `shop_id` 对应 `ShopCatalog` 中的某个商店定义。同一个 blueprint NPC 在不同地图实例上可以绑定不同的 `shop_id`，实现同类 NPC 卖不同商品。
+
+实际挂载路径在地图 actor 实例构建阶段（`EntityBuilder`）。若同一 actor object 同时声明了 `shop_id` 与 `quest_offer_id`，loader 会给出 warn，并按 **merchant 优先** 处理，只附加 `MerchantComponent`。
 
 ## 交互流程
 
@@ -216,7 +233,7 @@ ShopMenuMode:   Buy  /  Sell
 
 ShopMenuFocusArea:
   ModeToggle    — Buy / Sell 切换控件
-  EntryList     — 商品列表（买入条目或可卖背包槽）
+  EntryList     — 商品列表（买入条目或背包槽位）
   Quantity      — 数量调节区
   PrimaryAction — 确认买入 / 卖出按钮
 ```
@@ -246,7 +263,13 @@ flowchart TD
 
 ### Sell 模式操作流
 
-Sell 列表来源是**真实背包**中所有在 `sell_rules` 里有记录的槽位（无记录的物品显示为 disabled 或不列出）。操作流与 Buy 模式完全对称，commit 时调用 `commitSell(player, item_id, qty, slot_index)`。
+Sell 列表来源是**真实背包**中的所有非空槽位：
+
+- 若某槽位物品在 `sell_rules` 中有记录，则该条目可卖
+- 若没有 sell rule，则该条目仍会显示在列表中，但会以 disabled 状态呈现，价格显示为 `--`
+- commit 时使用 `slot_index` 精确回写，调用 `commitSell(player, item_id, qty, slot_index)`
+
+操作流与 Buy 模式整体对称，但当前实现不会把不可卖物品从主商店列表中过滤掉。
 
 ### 导航状态提示
 
@@ -259,6 +282,12 @@ Sell 列表来源是**真实背包**中所有在 `sell_rules` 里有记录的槽
 | `PrimaryAction` | "Confirm to buy/sell. Left returns to the list." |
 
 `menu_cancel` 在任意焦点区域均触发 `onClose()`，pop 回探索场景。
+
+数量输入还有一个当前实现细节：
+
+- Buy 模式的 UI 上限只根据物品 `stack_limit_`（并夹到 `1..99`）决定
+- 它**不会**提前根据金币、背包空间或 `stock_` 缩小数量上限
+- 真正能否提交仍以 `previewBuy()` / `commitBuy()` 的结果为准
 
 ### ViewModel 结构
 

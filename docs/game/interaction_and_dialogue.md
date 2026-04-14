@@ -52,6 +52,12 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 
 **交互独占规则**：带 `QuestGiverComponent` 的 NPC 由 `QuestInteractionSystem` 独占处理任务交互；`DialogueSystem` 检测到目标带 `QuestGiverComponent` 时会显式跳过，保证同一次 `InteractCommand` 不被两个系统重复响应。同理，带 `MerchantComponent` 的实体由 `ShopSystem` 独占，`DialogueSystem` 和 `QuestInteractionSystem` 均跳过。
 
+当前地图侧接线方式：
+
+- `MerchantComponent` 来自 Tiled actor point object 的 `shop_id` string property
+- `QuestGiverComponent` 来自 Tiled actor point object 的 `quest_offer_id` string property
+- 目前还没有对应的 `BattleStarterComponent` 或 Tiled 战斗触发器；战斗仍主要通过 `EnterBattleCommand` / `BattleDebugPanel` 进入
+
 ## 3) DialogueBubble 的运行时结构
 
 当前不是每个系统自己直接操作一个气泡实例，而是：
