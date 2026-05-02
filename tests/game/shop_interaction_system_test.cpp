@@ -8,11 +8,14 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
+#include "engine/component/name_component.h"
+#include "engine/component/transform_component.h"
 #include "engine/audio/audio_player.h"
 #include "engine/async/main_thread_command_queue.h"
 #include "engine/core/context.h"
@@ -32,9 +35,12 @@
 #include "engine/utils/events.h"
 
 #include "game/component/merchant_component.h"
+#include "game/component/npc_component.h"
+#include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/shop_transaction_service.h"
 #include "game/scene/shop_menu_scene.h"
@@ -91,6 +97,19 @@ struct PopSceneCapture {
 
     void onEvent(engine::utils::PopSceneEvent&) {
         ++count;
+    }
+};
+
+struct DialogueCapture {
+    std::vector<game::defs::DialogueShowEvent> shows{};
+    int hides{0};
+
+    void onShow(const game::defs::DialogueShowEvent& event) {
+        shows.push_back(event);
+    }
+
+    void onHide(const game::defs::DialogueHideEvent&) {
+        ++hides;
     }
 };
 
@@ -267,7 +286,7 @@ protected:
 
 namespace game::system {
 
-TEST_F(ShopInteractionSystemTest, ValidMerchantPushesShopMenuScene) {
+TEST_F(ShopInteractionSystemTest, ValidMerchantShowsGreetingBeforePushingShopMenuScene) {
     entt::registry registry;
     auto item_catalog = loadProjectItemCatalog();
     auto shop_catalog = loadProjectShopCatalog();
@@ -280,15 +299,34 @@ TEST_F(ShopInteractionSystemTest, ValidMerchantPushesShopMenuScene) {
     ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
 
     const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
     const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2{0.0F, 0.0F});
     registry.emplace<game::component::MerchantComponent>(
         merchant,
         game::component::MerchantComponent{
             .shop_id_ = "shop.village.general",
             .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
+    registry.emplace<engine::component::NameComponent>(
+        merchant,
+        engine::component::NameComponent{entt::hashed_string{"merchant"}.value(), "Josh"});
 
     PushSceneCapture capture{};
+    DialogueCapture dialogue_capture{};
     dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
+    dispatcher_.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&dialogue_capture);
+    dispatcher_.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&dialogue_capture);
+
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+
+    EXPECT_EQ(capture.count, 0);
+    ASSERT_EQ(dialogue_capture.shows.size(), 1U);
+    EXPECT_EQ(dialogue_capture.shows.front().speaker, "Josh");
+    EXPECT_EQ(dialogue_capture.shows.front().text, "Welcome to the shop");
+
+    auto& dialogue = registry.get<game::component::DialogueComponent>(merchant);
+    EXPECT_TRUE(dialogue.active_);
+    dialogue.cooldown_timer_ = 0.0F;
 
     dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
 
@@ -296,6 +334,90 @@ TEST_F(ShopInteractionSystemTest, ValidMerchantPushesShopMenuScene) {
     EXPECT_EQ(capture.scene_name, "ShopMenu");
     EXPECT_TRUE(capture.saw_shop_menu_scene);
     ASSERT_NE(capture.captured_scene, nullptr);
+    EXPECT_FALSE(dialogue.active_);
+    EXPECT_EQ(dialogue_capture.hides, 1);
+}
+
+TEST_F(ShopInteractionSystemTest, ActiveMerchantGreetingClosesWhenPlayerLeavesRange) {
+    entt::registry registry;
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
+
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2{0.0F, 0.0F});
+    registry.emplace<game::component::MerchantComponent>(
+        merchant,
+        game::component::MerchantComponent{
+            .shop_id_ = "shop.village.general",
+            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
+
+    PushSceneCapture capture{};
+    DialogueCapture dialogue_capture{};
+    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
+    dispatcher_.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&dialogue_capture);
+
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+    auto& dialogue = registry.get<game::component::DialogueComponent>(merchant);
+    ASSERT_TRUE(dialogue.active_);
+
+    registry.get<engine::component::TransformComponent>(player).position_ = {96.0F, 0.0F};
+    system.update(0.016F);
+
+    EXPECT_FALSE(dialogue.active_);
+    EXPECT_EQ(dialogue_capture.hides, 1);
+    EXPECT_EQ(capture.count, 0);
+}
+
+TEST_F(ShopInteractionSystemTest, ActiveMerchantInteractOutOfRangeClosesGreetingInsteadOfOpeningShop) {
+    entt::registry registry;
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
+
+    const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
+
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2{0.0F, 0.0F});
+    registry.emplace<game::component::MerchantComponent>(
+        merchant,
+        game::component::MerchantComponent{
+            .shop_id_ = "shop.village.general",
+            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
+
+    PushSceneCapture capture{};
+    DialogueCapture dialogue_capture{};
+    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
+    dispatcher_.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&dialogue_capture);
+
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+    auto& dialogue = registry.get<game::component::DialogueComponent>(merchant);
+    ASSERT_TRUE(dialogue.active_);
+    dialogue.cooldown_timer_ = 0.0F;
+    registry.get<engine::component::TransformComponent>(player).position_ = {96.0F, 0.0F};
+
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+
+    EXPECT_FALSE(dialogue.active_);
+    EXPECT_EQ(dialogue_capture.hides, 1);
+    EXPECT_EQ(capture.count, 0);
 }
 
 TEST_F(ShopInteractionSystemTest, PushedShopMenuSceneRemainsClosableAfterMerchantInteraction) {
@@ -311,7 +433,9 @@ TEST_F(ShopInteractionSystemTest, PushedShopMenuSceneRemainsClosableAfterMerchan
     ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
 
     const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
     const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2{0.0F, 0.0F});
     registry.emplace<game::component::MerchantComponent>(
         merchant,
         game::component::MerchantComponent{
@@ -323,6 +447,8 @@ TEST_F(ShopInteractionSystemTest, PushedShopMenuSceneRemainsClosableAfterMerchan
     dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
     dispatcher_.sink<engine::utils::PopSceneEvent>().connect<&PopSceneCapture::onEvent>(&pop_capture);
 
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+    registry.get<game::component::DialogueComponent>(merchant).cooldown_timer_ = 0.0F;
     dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
 
     ASSERT_NE(capture.captured_scene, nullptr);

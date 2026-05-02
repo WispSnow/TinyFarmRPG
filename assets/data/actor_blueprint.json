@@ -145,5 +145,38 @@
             }
         },
         "speed": 20.0
+    },
+    "merchant": {
+        "name": "Josh",
+        "description": "Josh runs the village general store.",
+        "sprite": {
+            "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Josh/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Josh/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Josh/Walk.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 20.0
     }
 }

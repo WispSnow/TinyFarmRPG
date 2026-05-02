@@ -40,6 +40,7 @@
 #include "game/system/pickup_system.h"
 #include "game/system/player_control_system.h"
 #include "game/system/quest_interaction_system.h"
+#include "game/system/shop_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_system.h"
 
@@ -217,6 +218,9 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
         case SchedulerStage::QuestInteraction:
             if (systems.quest_interaction_system) {
                 systems.quest_interaction_system->update(delta_time);
+            }
+            if (systems.shop_interaction_system) {
+                systems.shop_interaction_system->update(delta_time);
             }
             break;
         case SchedulerStage::ActionSound:
