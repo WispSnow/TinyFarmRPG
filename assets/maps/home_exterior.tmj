@@ -265,17 +265,19 @@
                  "height":112,
                  "id":1,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                }, 
+                },
                 {
                  "height":0,
                  "id":2,
                  "name":"player",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"actor",
@@ -283,12 +285,13 @@
                  "width":0,
                  "x":311,
                  "y":167.862478777589
-                }, 
+                },
                 {
                  "gid":2840,
                  "height":48,
                  "id":11,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -301,6 +304,7 @@
                  "height":48,
                  "id":12,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -313,6 +317,7 @@
                  "height":48,
                  "id":13,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -325,6 +330,7 @@
                  "height":48,
                  "id":14,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -337,6 +343,7 @@
                  "height":48,
                  "id":15,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -349,6 +356,7 @@
                  "height":48,
                  "id":16,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -361,6 +369,7 @@
                  "height":48,
                  "id":17,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -373,6 +382,7 @@
                  "height":48,
                  "id":18,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -385,6 +395,7 @@
                  "height":48,
                  "id":19,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -397,6 +408,7 @@
                  "height":48,
                  "id":20,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -409,6 +421,7 @@
                  "height":48,
                  "id":21,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -421,6 +434,7 @@
                  "height":48,
                  "id":22,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -433,6 +447,7 @@
                  "height":48,
                  "id":23,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -445,6 +460,7 @@
                  "height":48,
                  "id":24,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -457,6 +473,7 @@
                  "height":48,
                  "id":25,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -469,6 +486,7 @@
                  "height":48,
                  "id":27,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -481,6 +499,7 @@
                  "height":128,
                  "id":28,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -493,6 +512,7 @@
                  "height":96,
                  "id":29,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -504,6 +524,7 @@
                  "height":0,
                  "id":30,
                  "name":"cow",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"animal",
@@ -516,6 +537,7 @@
                  "height":0,
                  "id":31,
                  "name":"sheep",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"animal",
@@ -528,6 +550,7 @@
                  "height":0,
                  "id":32,
                  "name":"friend",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"actor",
@@ -541,6 +564,7 @@
                  "height":16,
                  "id":50,
                  "name":"",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"potato_seed",
@@ -558,6 +582,25 @@
                  "width":16,
                  "x":208,
                  "y":144
+                },
+                {
+                 "height":0,
+                 "id":51,
+                 "name":"merchant",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"shop_id",
+                         "type":"string",
+                         "value":"shop.village.general"
+                        }],
+                 "point":true,
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":372,
+                 "y":199.5
                 }],
          "opacity":1,
          "properties":[
@@ -580,6 +623,7 @@
                  "height":2,
                  "id":38,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -597,6 +641,7 @@
                  "height":2,
                  "id":39,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -614,6 +659,7 @@
                  "height":2,
                  "id":40,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -631,6 +677,7 @@
                  "height":2,
                  "id":41,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"intensity",
@@ -653,6 +700,7 @@
                  "height":2,
                  "id":42,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -670,6 +718,7 @@
                  "height":2,
                  "id":43,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -687,6 +736,7 @@
                  "height":2,
                  "id":44,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -704,6 +754,7 @@
                  "height":2,
                  "id":45,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -721,6 +772,7 @@
                  "height":2,
                  "id":46,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -738,6 +790,7 @@
                  "height":2,
                  "id":47,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -755,6 +808,7 @@
                  "height":2,
                  "id":48,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -772,6 +826,7 @@
                  "height":2,
                  "id":49,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"night_only",
@@ -800,6 +855,7 @@
                  "height":10.9999666666667,
                  "id":36,
                  "name":"",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"self_id",
@@ -835,10 +891,10 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":51,
+ "nextobjectid":52,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.11.2",
+ "tiledversion":"1.12.1",
  "tileheight":16,
  "tilesets":[
         {

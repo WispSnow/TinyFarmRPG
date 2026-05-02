@@ -4,7 +4,7 @@
         {
             "id": "shop.village.general",
             "title": "Village General Store",
-            "greeting": "Take a look.",
+            "greeting": "Welcome to the shop",
             "buy_entries": [
                 {
                     "item_id": "potion",
