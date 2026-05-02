@@ -298,7 +298,7 @@
                  "width":32,
                  "x":21,
                  "y":202.333333333333
-                }, 
+                },
                 {
                  "gid":2840,
                  "height":48,
@@ -311,7 +311,7 @@
                  "width":32,
                  "x":55.3333333333333,
                  "y":360.333333333333
-                }, 
+                },
                 {
                  "gid":2840,
                  "height":48,
@@ -588,19 +588,38 @@
                  "id":51,
                  "name":"merchant",
                  "opacity":1,
+                 "point":true,
                  "properties":[
                         {
                          "name":"shop_id",
                          "type":"string",
                          "value":"shop.village.general"
                         }],
-                 "point":true,
                  "rotation":0,
                  "type":"actor",
                  "visible":true,
                  "width":0,
-                 "x":372,
-                 "y":199.5
+                 "x":370,
+                 "y":197
+                },
+                {
+                 "height":0,
+                 "id":52,
+                 "name":"quest",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"quest_offer_id",
+                         "type":"string",
+                         "value":"quest.village.goblin_cleanup"
+                        }],
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":503,
+                 "y":175.5
                 }],
          "opacity":1,
          "properties":[
@@ -613,7 +632,7 @@
          "visible":true,
          "x":0,
          "y":0
-        }, 
+        },
         {
          "draworder":"topdown",
          "id":11,
@@ -891,7 +910,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":52,
+ "nextobjectid":53,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",
