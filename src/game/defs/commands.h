@@ -76,6 +76,13 @@ struct InteractCommand {
     entt::entity target{entt::null};
 };
 
+struct AcceptQuestCommand {
+    entt::entity player{entt::null};
+    entt::entity giver{entt::null};
+    entt::id_type quest_id_hash{entt::null};
+    std::string quest_id{};
+};
+
 /// @brief 请求从探索流程进入一场回合制战斗。
 ///
 /// 命令可以直接携带已构造好的 BattleUnit，也可以只携带 actor/troop id，

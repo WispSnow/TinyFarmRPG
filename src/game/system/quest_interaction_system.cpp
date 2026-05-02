@@ -6,6 +6,7 @@
 #include "game/component/quest_log_component.h"
 #include "game/data/quest_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/events.h"
 #include "game/domain/quest_log_ops.h"
 #include "game/domain/quest_turn_in_service.h"
 
@@ -100,6 +101,7 @@ QuestInteractionSystem::QuestInteractionSystem(entt::registry& registry,
       quest_catalog_(quest_catalog),
       quest_turn_in_service_(quest_turn_in_service) {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&QuestInteractionSystem::onInteractCommand>(this);
+    dispatcher_.sink<game::defs::AcceptQuestCommand>().connect<&QuestInteractionSystem::onAcceptQuestCommand>(this);
 }
 
 QuestInteractionSystem::~QuestInteractionSystem() {
@@ -179,10 +181,11 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
     const InteractionState state = resolveState(*quest_log, *quest);
     switch (state) {
         case InteractionState::Offerable:
-            if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
-                return;
-            }
-            showQuestText(event.target, *quest, state);
+            dispatcher_.trigger(game::defs::QuestOfferRequestedEvent{
+                .player = player,
+                .giver = event.target,
+                .quest_id_hash = quest->id_hash_,
+                .quest_id = quest->id_});
             return;
         case InteractionState::ReadyToTurnIn: {
             const auto turn_in_result = quest_turn_in_service_.turnIn(player, *quest, *quest_log);
@@ -198,6 +201,48 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
             showQuestText(event.target, *quest, state);
             return;
     }
+}
+
+void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestCommand& command) {
+    const entt::entity player = helpers::getPlayerEntity(registry_);
+    if (player == entt::null || command.player != player) {
+        return;
+    }
+    if (command.giver == entt::null || !registry_.valid(command.giver)) {
+        return;
+    }
+    if (registry_.all_of<game::component::MerchantComponent>(command.giver)) {
+        return;
+    }
+
+    const auto* giver = registry_.try_get<game::component::QuestGiverComponent>(command.giver);
+    if (!giver || giver->quest_id_hash_ == entt::null) {
+        return;
+    }
+    if (command.quest_id_hash != entt::null && command.quest_id_hash != giver->quest_id_hash_) {
+        return;
+    }
+
+    auto* quest_log = registry_.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        spdlog::warn("QuestInteractionSystem: 玩家缺少 QuestLogComponent，忽略任务接受。");
+        return;
+    }
+
+    const auto* quest = quest_catalog_.findQuest(giver->quest_id_hash_);
+    if (!quest) {
+        spdlog::warn("QuestInteractionSystem: giver quest_id='{}' 未在 QuestCatalog 中找到。", giver->quest_id_);
+        return;
+    }
+
+    if (resolveState(*quest_log, *quest) != InteractionState::Offerable) {
+        return;
+    }
+
+    if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
+        return;
+    }
+    showQuestText(command.giver, *quest, InteractionState::Offerable);
 }
 
 } // namespace game::system

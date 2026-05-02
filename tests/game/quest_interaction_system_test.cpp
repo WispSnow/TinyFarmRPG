@@ -83,6 +83,14 @@ struct DialogueCapture {
     }
 };
 
+struct QuestOfferCapture {
+    std::vector<game::defs::QuestOfferRequestedEvent> requests{};
+
+    void onRequest(const game::defs::QuestOfferRequestedEvent& evt) {
+        requests.push_back(evt);
+    }
+};
+
 [[nodiscard]] entt::entity createPlayer(entt::registry& registry) {
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
@@ -190,7 +198,41 @@ struct InteractCapture {
 
 namespace game::system {
 
-TEST(QuestInteractionSystemTest, OfferableInteractionAcceptsQuestAndInitializesProgressKeys) {
+TEST(QuestInteractionSystemTest, OfferableInteractionRequestsQuestOfferWithoutMutatingQuestLog) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    auto catalog = loadQuestCatalog();
+    ASSERT_NE(catalog.findQuest(QUEST_ID), nullptr);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
+
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+    QuestOfferCapture offer_capture{};
+    dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&QuestOfferCapture::onRequest>(&offer_capture);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity giver = createQuestGiver(registry);
+
+    dispatcher.trigger(game::defs::InteractCommand{player, giver});
+
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    EXPECT_TRUE(quest_log.active_quests.empty());
+    EXPECT_TRUE(quest_log.completed_quests.empty());
+    EXPECT_TRUE(quest_log.objective_progress.empty());
+
+    EXPECT_TRUE(capture.shows.empty());
+    ASSERT_EQ(offer_capture.requests.size(), 1u);
+    EXPECT_EQ(offer_capture.requests.front().player, player);
+    EXPECT_EQ(offer_capture.requests.front().giver, giver);
+    EXPECT_EQ(offer_capture.requests.front().quest_id, QUEST_ID);
+    const entt::id_type quest_id_hash = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value();
+    EXPECT_EQ(offer_capture.requests.front().quest_id_hash, quest_id_hash);
+}
+
+TEST(QuestInteractionSystemTest, AcceptQuestCommandAcceptsQuestAndInitializesProgressKeys) {
     entt::registry registry;
     entt::dispatcher dispatcher;
     auto item_catalog = loadItemCatalog();
@@ -206,7 +248,11 @@ TEST(QuestInteractionSystemTest, OfferableInteractionAcceptsQuestAndInitializesP
     const entt::entity player = createPlayer(registry);
     const entt::entity giver = createQuestGiver(registry);
 
-    dispatcher.trigger(game::defs::InteractCommand{player, giver});
+    dispatcher.trigger(game::defs::AcceptQuestCommand{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value(),
+        .quest_id = std::string(QUEST_ID)});
 
     auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
     ASSERT_EQ(quest_log.active_quests.size(), 1u);
@@ -219,6 +265,36 @@ TEST(QuestInteractionSystemTest, OfferableInteractionAcceptsQuestAndInitializesP
     EXPECT_EQ(capture.shows.front().target, giver);
     EXPECT_EQ(capture.shows.front().channel, 1);
     EXPECT_EQ(capture.shows.front().text, "Take this hunt.");
+}
+
+TEST(QuestInteractionSystemTest, AcceptQuestCommandRevalidatesOfferableState) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
+
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity giver = createQuestGiver(registry);
+
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    quest_log.active_quests.push_back(std::string(QUEST_ID));
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "slime_hunt")] = 1;
+
+    dispatcher.trigger(game::defs::AcceptQuestCommand{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value(),
+        .quest_id = std::string(QUEST_ID)});
+
+    EXPECT_EQ(std::count(quest_log.active_quests.begin(), quest_log.active_quests.end(), QUEST_ID), 1);
+    EXPECT_EQ(quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "slime_hunt")], 1);
+    EXPECT_TRUE(capture.shows.empty());
 }
 
 TEST(QuestInteractionSystemTest, ActiveQuestShowsProgressTextWithoutDuplicatingQuestEntry) {

@@ -8,6 +8,7 @@
 #include "game_scene_battle_settlement.h"
 #include "inventory_menu_scene.h"
 #include "pause_menu_scene.h"
+#include "quest_offer_scene.h"
 #include "title_scene.h"
 #include "engine/audio/audio_player.h"
 #include "engine/component/transform_component.h"
@@ -22,6 +23,7 @@
 #include "game/component/inventory_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/audio_ids.h"
 #include "game/defs/commands.h"
@@ -116,6 +118,7 @@ GameScene::~GameScene() noexcept {
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
+    context_.getDispatcher().sink<game::defs::QuestOfferRequestedEvent>().disconnect<&GameScene::onQuestOfferRequested>(this);
 }
 
 bool GameScene::init() {
@@ -155,6 +158,7 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::HotbarSlotChanged>().connect<&GameScene::onHotbarSlotChanged>(this);
     dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
     dispatcher.sink<game::defs::BattleEndedEvent>().connect<&GameScene::onBattleEnded>(this);
+    dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&GameScene::onQuestOfferRequested>(this);
 
     if (load_slot_) {
         std::string load_error;
@@ -599,6 +603,34 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         context_,
         std::move(units),
         std::move(session_options)));
+}
+
+void GameScene::onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt) {
+    if (context_.getGameState().isPaused()) {
+        return;
+    }
+    if (systems_ && systems_->map_transition_system && systems_->map_transition_system->isTransitionActive()) {
+        return;
+    }
+    if (!services_ || !services_->quest_catalog) {
+        spdlog::warn("GameScene: QuestOfferRequestedEvent 收到后 QuestCatalog 不可用。");
+        return;
+    }
+
+    const auto* quest = services_->quest_catalog->findQuest(evt.quest_id_hash);
+    if (!quest) {
+        spdlog::warn("GameScene: QuestOfferRequestedEvent quest_id='{}' 未在 QuestCatalog 中找到。", evt.quest_id);
+        return;
+    }
+
+    requestPushScene(std::make_unique<game::scene::QuestOfferScene>(
+        "QuestOfferScene",
+        context_,
+        registry_,
+        evt.player,
+        evt.giver,
+        *quest,
+        services_->item_catalog.get()));
 }
 
 void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
