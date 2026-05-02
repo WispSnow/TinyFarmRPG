@@ -170,7 +170,7 @@
 
 如果要补这条能力，已单独整理计划：
 
-- [地图战斗触发功能计划](/Users/ziyu/Workspace/GameDev/TEST/TinyFarmRPG-feature/plans/deferred/地图战斗触发功能计划.md)
+- [地图敌人接触战斗功能计划](/Users/ziyu/Workspace/GameDev/TEST/TinyFarmRPG-feature/plans/地图战斗触发功能计划.md)
 
 ## 5) 可观测与排错
 
