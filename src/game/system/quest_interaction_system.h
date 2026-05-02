@@ -21,6 +21,7 @@ struct QuestTurnInResult;
 }
 
 namespace game::defs {
+struct AcceptQuestCommand;
 struct InteractCommand;
 }
 
@@ -51,6 +52,7 @@ private:
     game::system::helpers::NotificationTimer notification_{};
 
     void onInteractCommand(const game::defs::InteractCommand& event);
+    void onAcceptQuestCommand(const game::defs::AcceptQuestCommand& command);
     [[nodiscard]] InteractionState resolveState(const game::component::QuestLogComponent& quest_log,
                                                 const game::data::QuestData& quest) const;
     void showText(entt::entity giver, std::string text);

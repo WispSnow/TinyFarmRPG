@@ -20,6 +20,7 @@ namespace game::data {
 namespace game::defs {
     struct EnterBattleCommand;
     struct BattleEndedEvent;
+    struct QuestOfferRequestedEvent;
 }
 
 namespace game::ui {
@@ -96,6 +97,7 @@ private:
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
+    void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
 };
 
 } // namespace game::scene

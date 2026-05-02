@@ -102,6 +102,13 @@ struct DialogueHideEvent {
     std::uint8_t channel{0};   ///< 0=对话，1=通知，2=物品提示
 };
 
+struct QuestOfferRequestedEvent {
+    entt::entity player{entt::null};
+    entt::entity giver{entt::null};
+    entt::id_type quest_id_hash{entt::null};
+    std::string quest_id{};
+};
+
 struct AdvanceTimeRequest {
     int hours{0};
 };

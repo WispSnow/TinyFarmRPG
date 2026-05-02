@@ -1,0 +1,42 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="quest_offer.rcss"/>
+</head>
+<body class="tf-screen-root" data-model="quest_offer">
+    <div id="quest-offer-overlay" class="tf-modal-overlay"></div>
+
+    <div id="quest-offer-panel" class="tf-modal-panel-strong">
+        <div id="quest-offer-speaker">{{ speaker_text }}</div>
+        <div id="quest-offer-line">{{ offer_text }}</div>
+
+        <div id="quest-offer-card">
+            <div id="quest-offer-title">{{ quest_title }}</div>
+            <div id="quest-offer-description">{{ quest_description }}</div>
+
+            <div class="quest-offer-section">
+                <div class="quest-offer-label">Objective</div>
+                <div class="quest-offer-value">{{ objectives_text }}</div>
+            </div>
+
+            <div class="quest-offer-section">
+                <div class="quest-offer-label">Reward</div>
+                <div class="quest-offer-value">{{ rewards_text }}</div>
+            </div>
+        </div>
+
+        <div id="quest-offer-actions">
+            <button id="quest-offer-accept-button"
+                    class="tf-button-primary quest-offer-action-button"
+                    data-event-click="accept">Accept</button>
+            <button id="quest-offer-decline-button"
+                    class="tf-button-secondary quest-offer-action-button"
+                    data-event-click="decline">Decline</button>
+        </div>
+    </div>
+</body>
+</rml>

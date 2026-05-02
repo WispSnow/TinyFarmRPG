@@ -358,6 +358,7 @@ TEST(InputContextSceneSourceHookTest, ModalAndGameplayScenesPairPushAndPopHooks)
     expectSceneContextHooks("src/game/scene/pause_menu_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/save_slot_select_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/rest_dialog_scene.cpp", "Dialogue");
+    expectSceneContextHooks("src/game/scene/quest_offer_scene.cpp", "Dialogue");
     expectSceneContextHooks("src/game/scene/battle_scene.cpp", "Battle");
 }
 

@@ -1,0 +1,88 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+#quest-offer-panel {
+    left: 112dp;
+    top: 44dp;
+    width: 384dp;
+    height: 250dp;
+    padding: 16dp;
+}
+
+#quest-offer-speaker {
+    width: 100%;
+    height: 18dp;
+    line-height: 18dp;
+    color: #fce97fff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#quest-offer-line {
+    margin-top: 6dp;
+    width: 100%;
+    height: 34dp;
+    line-height: 17dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#quest-offer-card {
+    margin-top: 10dp;
+    width: 352dp;
+    height: 134dp;
+    padding: 10dp;
+    background-color: #1b2430dd;
+}
+
+#quest-offer-title {
+    width: 100%;
+    height: 20dp;
+    line-height: 20dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#quest-offer-description {
+    margin-top: 4dp;
+    width: 100%;
+    height: 34dp;
+    line-height: 17dp;
+    color: #d8dee9ff;
+}
+
+.quest-offer-section {
+    margin-top: 8dp;
+    width: 100%;
+    height: 22dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.quest-offer-label {
+    width: 82dp;
+    height: 20dp;
+    line-height: 20dp;
+    color: #8fbcbbff;
+}
+
+.quest-offer-value {
+    width: 246dp;
+    height: 20dp;
+    line-height: 20dp;
+    color: #eceff4ff;
+}
+
+#quest-offer-actions {
+    margin-top: 14dp;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12dp;
+}
+
+.quest-offer-action-button {
+    width: 128dp;
+}
