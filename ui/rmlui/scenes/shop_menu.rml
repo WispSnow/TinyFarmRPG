@@ -25,11 +25,11 @@
             <div id="shop-list-col">
                 <div id="shop-mode-toggle" data-class-focused="is_mode_toggle_focused">
                     <button id="shop-mode-buy"
-                            class="tf-button-secondary shop-tab-btn"
+                            class="tf-button-secondary shop-tab-btn shop-mode-button"
                             data-class-selected="is_buy_mode"
                             data-event-click="switch_mode_buy">Buy</button>
                     <button id="shop-mode-sell"
-                            class="tf-button-secondary shop-tab-btn"
+                            class="tf-button-secondary shop-tab-btn shop-mode-button"
                             data-class-selected="is_sell_mode"
                             data-event-click="switch_mode_sell">Sell</button>
                 </div>
@@ -38,7 +38,7 @@
                 <div class="shop-empty-text" data-if="is_sell_mode &amp;&amp; !has_sell_entries">{{ empty_text }}</div>
 
                 <div id="shop-buy-list" data-if="is_buy_mode &amp;&amp; has_buy_entries" data-class-focused="is_entry_list_focused">
-                    <button class="shop-entry"
+                    <button class="shop-entry shop-buy-entry"
                             data-for="entry : buy_entries"
                             data-class-selected="entry.is_selected"
                             data-class-disabled="entry.is_disabled"
@@ -51,7 +51,8 @@
                 </div>
 
                 <div id="shop-sell-list" data-if="is_sell_mode &amp;&amp; has_sell_entries" data-class-focused="is_entry_list_focused">
-                    <button class="shop-entry"
+                    <button id="shop-sell-entry-{{ entry.slot_index }}"
+                            class="shop-entry shop-sell-entry"
                             data-for="entry : sell_entries"
                             data-class-selected="entry.is_selected"
                             data-class-disabled="entry.is_disabled"
@@ -89,15 +90,15 @@
                     </div>
                 </div>
 
-                <div id="shop-qty-controls" data-class-focused="is_quantity_focused">
+                <div id="shop-quantity-controls" data-class-focused="is_quantity_focused">
                     <button id="shop-qty-down"
-                            class="tf-icon-button icon-arrow-left shop-qty-btn"
+                            class="tf-icon-button icon-arrow-left shop-qty-btn shop-qty-button"
                             data-class-disabled="!quantity_decrease_enabled"
                             data-attrif-disabled="!quantity_decrease_enabled"
                             data-event-click="adjust_quantity(-1)"></button>
                     <div id="shop-qty-readout">{{ detail_quantity_text }}</div>
                     <button id="shop-qty-up"
-                            class="tf-icon-button icon-arrow-right shop-qty-btn"
+                            class="tf-icon-button icon-arrow-right shop-qty-btn shop-qty-button"
                             data-class-disabled="!quantity_increase_enabled"
                             data-attrif-disabled="!quantity_increase_enabled"
                             data-event-click="adjust_quantity(1)"></button>
@@ -105,12 +106,12 @@
 
                 <div id="shop-actions">
                     <button id="shop-primary-action-button"
-                            class="tf-button-primary shop-action-btn"
+                            class="tf-button-primary shop-action-btn shop-action-button"
                             data-class-focused="is_primary_action_focused"
                             data-class-disabled="!primary_action_enabled"
                             data-attrif-disabled="!primary_action_enabled"
                             data-event-click="confirm_trade">{{ primary_action_text }}</button>
-                    <button class="tf-button-secondary shop-action-btn"
+                    <button class="tf-button-secondary shop-action-btn shop-action-button"
                             data-event-click="close">Leave</button>
                 </div>
             </div>

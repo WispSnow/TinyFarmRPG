@@ -81,13 +81,15 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #15212a66;
 }
 
-.shop-tab-btn {
+.shop-tab-btn,
+.shop-mode-button {
     width: 95dp;
     height: 24dp;
     line-height: 24dp;
 }
 
-.shop-tab-btn.selected {
+.shop-tab-btn.selected,
+.shop-mode-button.selected {
     color: #fce97fff;
     transform: translateY(-1dp);
 }
@@ -138,7 +140,9 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #24283b88;
 }
 
-.shop-entry.selected {
+.shop-entry.selected,
+.shop-buy-entry.selected,
+.shop-sell-entry.selected {
     background-color: #24283bcc;
     color: #fce97fff;
 }
@@ -240,6 +244,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 /* Quantity controls */
 
+#shop-quantity-controls,
 #shop-qty-controls {
     margin-top: 10dp;
     width: 160dp;
@@ -250,12 +255,14 @@ body, div, h1, h2, h3, h4, p, hr {
     border: 1dp transparent;
 }
 
+#shop-quantity-controls.focused,
 #shop-qty-controls.focused {
     border-color: #fce97f44;
     background-color: #15212a66;
 }
 
-.shop-qty-btn {
+.shop-qty-btn,
+.shop-qty-button {
     width: 26dp;
     height: 26dp;
 }
@@ -277,11 +284,13 @@ body, div, h1, h2, h3, h4, p, hr {
     gap: 8dp;
 }
 
-.shop-action-btn {
+.shop-action-btn,
+.shop-action-button {
     width: 100dp;
 }
 
-.shop-action-btn.focused {
+.shop-action-btn.focused,
+.shop-action-button.focused {
     color: #fce97fff;
     transform: translateY(-1dp);
 }
