@@ -265,6 +265,7 @@
                  "height":64,
                  "id":1,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -277,6 +278,7 @@
                  "height":96,
                  "id":2,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -289,6 +291,7 @@
                  "height":128,
                  "id":3,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -301,6 +304,7 @@
                  "height":48,
                  "id":4,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -313,6 +317,7 @@
                  "height":48,
                  "id":5,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -325,6 +330,7 @@
                  "height":48,
                  "id":6,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -337,6 +343,7 @@
                  "height":48,
                  "id":7,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -349,6 +356,7 @@
                  "height":48,
                  "id":8,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -361,6 +369,7 @@
                  "height":48,
                  "id":9,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -373,6 +382,7 @@
                  "height":48,
                  "id":10,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -385,6 +395,7 @@
                  "height":48,
                  "id":11,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -397,6 +408,7 @@
                  "height":48,
                  "id":12,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -409,6 +421,7 @@
                  "height":48,
                  "id":13,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -421,6 +434,7 @@
                  "height":48,
                  "id":14,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -432,6 +446,7 @@
                  "height":0,
                  "id":24,
                  "name":"cow",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"animal",
@@ -444,6 +459,7 @@
                  "height":0,
                  "id":25,
                  "name":"sheep",
+                 "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"animal",
@@ -473,6 +489,7 @@
                  "height":0,
                  "id":22,
                  "name":"point",
+                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -496,6 +513,7 @@
                  "height":0,
                  "id":23,
                  "name":"spot",
+                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -521,6 +539,40 @@
                  "width":0,
                  "x":244.580019609979,
                  "y":282.165813269419
+                }, 
+                {
+                 "height":0,
+                 "id":27,
+                 "name":"slime",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"battle_troop_id",
+                         "type":"string",
+                         "value":"troop.slime"
+                        }, 
+                        {
+                         "name":"encounter_id",
+                         "type":"int",
+                         "value":1001
+                        }, 
+                        {
+                         "name":"encounter_once",
+                         "type":"bool",
+                         "value":true
+                        }, 
+                        {
+                         "name":"wander_radius_override",
+                         "type":"float",
+                         "value":48
+                        }],
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":508,
+                 "y":296
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -537,6 +589,7 @@
                  "height":11,
                  "id":26,
                  "name":"",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"self_id",
@@ -572,10 +625,10 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":27,
+ "nextobjectid":28,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.11.2",
+ "tiledversion":"1.12.1",
  "tileheight":16,
  "tilesets":[
         {

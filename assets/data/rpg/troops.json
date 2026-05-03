@@ -31,6 +31,22 @@
                     "y": 436.0
                 }
             ]
+        },
+        {
+            "id": "troop.slime",
+            "display_name": "Slime",
+            "members": [
+                {
+                    "enemy_id": "enemy.slime",
+                    "x": 337.0,
+                    "y": 436.0
+                },
+                {
+                    "enemy_id": "enemy.slime",
+                    "x": 480.0,
+                    "y": 436.0
+                }
+            ]
         }
     ]
 }
