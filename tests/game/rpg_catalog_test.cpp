@@ -228,6 +228,33 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     ASSERT_EQ(troop->members_.size(), 2U);
 }
 
+TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
+    const std::filesystem::path rpg_root =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg").lexically_normal();
+    RpgCatalog catalog;
+
+    ASSERT_TRUE(catalog.loadManifest((rpg_root / "manifest.json").string()));
+    ASSERT_TRUE(catalog.loadClasses((rpg_root / "classes.json").string()));
+    ASSERT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
+    ASSERT_TRUE(catalog.loadSkills((rpg_root / "skills.json").string()));
+    ASSERT_TRUE(catalog.loadStates((rpg_root / "states.json").string()));
+    ASSERT_TRUE(catalog.loadEnemies((rpg_root / "enemies.json").string()));
+    ASSERT_TRUE(catalog.loadTroops((rpg_root / "troops.json").string()));
+
+    std::string error{};
+    ASSERT_TRUE(catalog.validateReferences(error)) << error;
+
+    const auto* enemy = catalog.findEnemy("enemy.slime");
+    ASSERT_NE(enemy, nullptr);
+    EXPECT_EQ(enemy->display_name_, "Slime");
+    EXPECT_EQ(enemy->actions_.front().skill_id_, "skill.attack");
+
+    const auto* troop = catalog.findTroop("troop.slime");
+    ASSERT_NE(troop, nullptr);
+    ASSERT_EQ(troop->members_.size(), 1U);
+    EXPECT_EQ(troop->members_[0].enemy_id_, "enemy.slime");
+}
+
 TEST(RpgCatalogTest, ValidateFailsOnMissingSkillReference) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(

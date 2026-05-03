@@ -19,6 +19,14 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
 
     ASSERT_TRUE(manager.loadActorBlueprints(path));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"player"}.value()));
+    EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"slime"}.value()));
+
+    const auto& slime = manager.getActorBlueprint(entt::hashed_string{"slime"}.value());
+    EXPECT_EQ(slime.name_, "Slime");
+    EXPECT_EQ(slime.sprite_.path_, "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png");
+    EXPECT_FLOAT_EQ(slime.wander_radius_, 48.0f);
+    EXPECT_TRUE(slime.animations_.contains(entt::hashed_string{"idle_down"}.value()));
+    EXPECT_TRUE(slime.animations_.contains(entt::hashed_string{"walk_down"}.value()));
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {

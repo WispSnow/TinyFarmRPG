@@ -135,7 +135,7 @@
   "type": "actor",
   "name": "slime",
   "properties": [
-    { "name": "battle_troop_id", "type": "string", "value": "troop.slime_pair" },
+    { "name": "battle_troop_id", "type": "string", "value": "troop.slime" },
     { "name": "encounter_id", "type": "int", "value": 1001 },
     { "name": "encounter_once", "type": "bool", "value": true },
     { "name": "wander_radius_override", "type": "float", "value": 48.0 }

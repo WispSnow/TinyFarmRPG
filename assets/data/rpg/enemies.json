@@ -58,6 +58,33 @@
                     "rating": 3
                 }
             ]
+        },
+        {
+            "id": "enemy.slime",
+            "display_name": "Slime",
+            "params": [
+                120,
+                0,
+                18,
+                14,
+                10,
+                10,
+                14,
+                10
+            ],
+            "exp": 6,
+            "gold": 3,
+            "drops": [],
+            "actions": [
+                {
+                    "skill_id": "skill.attack",
+                    "rating": 5
+                },
+                {
+                    "skill_id": "skill.bash",
+                    "rating": 3
+                }
+            ]
         }
     ]
 }
