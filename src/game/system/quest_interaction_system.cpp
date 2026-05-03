@@ -219,7 +219,7 @@ void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestC
     if (!giver || giver->quest_id_hash_ == entt::null) {
         return;
     }
-    if (command.quest_id_hash != entt::null && command.quest_id_hash != giver->quest_id_hash_) {
+    if (command.quest_id_hash == entt::null || command.quest_id_hash != giver->quest_id_hash_) {
         return;
     }
 
