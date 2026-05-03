@@ -12,6 +12,8 @@
 #include "title_scene.h"
 #include "engine/audio/audio_player.h"
 #include "engine/component/transform_component.h"
+#include "engine/component/velocity_component.h"
+#include "engine/component/tags.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
@@ -21,6 +23,9 @@
 #include "engine/system/render_system.h"
 #include "engine/system/ysort_system.h"
 #include "game/component/inventory_component.h"
+#include "game/component/enemy_encounter_component.h"
+#include "game/component/map_component.h"
+#include "game/component/npc_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_catalog.h"
@@ -38,6 +43,7 @@
 #include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
 #include "game/world/map_manager.h"
+#include "game/world/world_state.h"
 #include "engine/vfx/vfx_service.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -563,6 +569,13 @@ void GameScene::onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt) {
 }
 
 void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) {
+    if (cmd.encounter_context && active_encounter_context_) {
+        spdlog::warn("GameScene: 收到地图遭遇战斗请求，但已有未结算遭遇 encounter_id={}。",
+                     active_encounter_context_->encounter_id);
+        releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+        return;
+    }
+
     std::vector<game::battle::BattleUnit> units{};
     units.reserve(cmd.player_units.size() + cmd.enemy_units.size());
     units.insert(units.end(), cmd.player_units.begin(), cmd.player_units.end());
@@ -580,6 +593,9 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     if (units.empty()) {
         if (!services_ || !services_->rpg_catalog) {
             spdlog::warn("GameScene: EnterBattleCommand 未提供单位，且 RPG catalog 不可用。");
+            if (cmd.encounter_context) {
+                releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+            }
             return;
         }
 
@@ -591,12 +607,16 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         std::string build_error{};
         if (!game::battle::buildBattleUnitsFromCatalog(*services_->rpg_catalog, build_options, units, build_error)) {
             spdlog::warn("GameScene: 无法从 RPG catalog 构造战斗单位: {}", build_error);
+            if (cmd.encounter_context) {
+                releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+            }
             return;
         }
     }
 
     active_battle_initial_item_stocks_ = initial_item_stocks;
     has_active_battle_item_stocks_ = true;
+    active_encounter_context_ = cmd.encounter_context;
 
     requestPushScene(std::make_unique<game::scene::BattleScene>(
         "BattleScene",
@@ -637,6 +657,7 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
     spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
+    resolveActiveEnemyEncounter(evt);
     game::scene::processBattleEndedForGameScene(
         registry_,
         context_.getDispatcher(),
@@ -645,6 +666,78 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
         has_active_battle_item_stocks_,
         battle_reward_notification_,
         evt);
+}
+
+void GameScene::releaseEnemyEncounterEntryFailure(const game::defs::EnemyEncounterBattleContext& context) {
+    if (context.source_entity == entt::null || !registry_.valid(context.source_entity)) {
+        return;
+    }
+
+    auto* encounter = registry_.try_get<game::component::EnemyEncounterComponent>(context.source_entity);
+    if (!encounter || encounter->encounter_id_ != context.encounter_id) {
+        return;
+    }
+
+    encounter->engaged_ = false;
+    encounter->cooldown_timer_ = std::max(encounter->cooldown_timer_, encounter->cooldown_seconds_);
+}
+
+void GameScene::resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& evt) {
+    if (!active_encounter_context_) {
+        return;
+    }
+
+    const auto context = *active_encounter_context_;
+    active_encounter_context_.reset();
+    const bool victory = evt.outcome == game::battle::BattleOutcome::Victory;
+
+    if (victory && context.once && services_ && services_->world_state) {
+        if (auto* map_state = services_->world_state->getMapStateMutable(context.map_id)) {
+            map_state->persistent.defeated_encounters.insert(context.encounter_id);
+        }
+    }
+
+    if (context.source_entity == entt::null || !registry_.valid(context.source_entity)) {
+        return;
+    }
+
+    auto* encounter = registry_.try_get<game::component::EnemyEncounterComponent>(context.source_entity);
+    if (!encounter || encounter->encounter_id_ != context.encounter_id) {
+        return;
+    }
+
+    if (victory && context.once) {
+        encounter->defeated_ = true;
+        if (context_.getSpatialIndexManager().isInitialized()) {
+            context_.getSpatialIndexManager().removeColliderEntity(context.source_entity);
+        }
+        registry_.emplace_or_replace<engine::component::NeedRemoveTag>(context.source_entity);
+        return;
+    }
+
+    encounter->engaged_ = false;
+    encounter->cooldown_timer_ = std::max(encounter->cooldown_timer_, encounter->cooldown_seconds_);
+
+    if (auto* transform = registry_.try_get<engine::component::TransformComponent>(context.source_entity)) {
+        transform->position_ = context.home_position;
+        registry_.emplace_or_replace<engine::component::TransformDirtyTag>(context.source_entity);
+    }
+
+    if (auto* velocity = registry_.try_get<engine::component::VelocityComponent>(context.source_entity)) {
+        velocity->velocity_ = glm::vec2{0.0F, 0.0F};
+    }
+
+    if (auto* wander = registry_.try_get<game::component::WanderComponent>(context.source_entity)) {
+        wander->home_position_ = context.home_position;
+        wander->target_ = context.home_position;
+        wander->phase_ = game::component::WanderPhase::Waiting;
+        wander->wait_timer_ = encounter->cooldown_timer_;
+        wander->stuck_timer_ = 0.0F;
+    }
+
+    if (context_.getSpatialIndexManager().isInitialized()) {
+        context_.getSpatialIndexManager().updateColliderEntity(context.source_entity);
+    }
 }
 
 void GameScene::updateBattleRewardNotification(const float delta_time) {

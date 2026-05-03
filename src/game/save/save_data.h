@@ -34,6 +34,7 @@ inline constexpr std::string_view TROOP_ID = "troop_id";
 inline constexpr std::string_view ACTOR_IDS = "actor_ids";
 inline constexpr std::string_view ITEM_STOCKS = "item_stocks";
 inline constexpr std::string_view ESCAPE_ATTEMPT_COUNT = "escape_attempt_count";
+inline constexpr std::string_view DEFEATED_ENCOUNTERS = "defeated_encounters";
 } // namespace json_keys
 
 struct Vec2f {
@@ -103,6 +104,7 @@ struct MapSaveData {
     std::string map_name{};
     std::uint32_t last_updated_day{0};
     std::vector<int> opened_chests{};   // 已打开的宝箱（chest_id）
+    std::vector<int> defeated_encounters{}; // 已击败的一次性遭遇（encounter_id）
     std::vector<Vec2i> tilled_tiles{};
     std::vector<Vec2i> wet_tiles{};
     std::vector<CropSaveData> crops{};

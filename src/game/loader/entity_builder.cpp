@@ -5,7 +5,9 @@
 #include "game/component/map_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/chest_component.h"
+#include "game/component/enemy_encounter_component.h"
 #include "game/component/merchant_component.h"
+#include "game/component/npc_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
@@ -28,6 +30,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
 #include <cmath>
+#include <cstdint>
 #include <optional>
 #include <utility>
 
@@ -90,6 +93,99 @@ struct TimeVisibilityFlags {
             return std::nullopt;
         }
         return value;
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<int> findObjectIntProperty(const nlohmann::json* object_json,
+                                                       const std::string_view property_name) {
+    if (!object_json) {
+        return std::nullopt;
+    }
+
+    const auto properties_it = object_json->find("properties");
+    if (properties_it == object_json->end() || !properties_it->is_array()) {
+        return std::nullopt;
+    }
+
+    for (const auto& property : *properties_it) {
+        if (!property.is_object()) {
+            continue;
+        }
+
+        const auto name_it = property.find("name");
+        if (name_it == property.end() || !name_it->is_string() || name_it->get_ref<const std::string&>() != property_name) {
+            continue;
+        }
+
+        const auto value_it = property.find("value");
+        if (value_it == property.end() || !value_it->is_number()) {
+            return std::nullopt;
+        }
+        return value_it->get<int>();
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<bool> findObjectBoolProperty(const nlohmann::json* object_json,
+                                                        const std::string_view property_name) {
+    if (!object_json) {
+        return std::nullopt;
+    }
+
+    const auto properties_it = object_json->find("properties");
+    if (properties_it == object_json->end() || !properties_it->is_array()) {
+        return std::nullopt;
+    }
+
+    for (const auto& property : *properties_it) {
+        if (!property.is_object()) {
+            continue;
+        }
+
+        const auto name_it = property.find("name");
+        if (name_it == property.end() || !name_it->is_string() || name_it->get_ref<const std::string&>() != property_name) {
+            continue;
+        }
+
+        const auto value_it = property.find("value");
+        if (value_it == property.end() || !value_it->is_boolean()) {
+            return std::nullopt;
+        }
+        return value_it->get<bool>();
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<float> findObjectFloatProperty(const nlohmann::json* object_json,
+                                                          const std::string_view property_name) {
+    if (!object_json) {
+        return std::nullopt;
+    }
+
+    const auto properties_it = object_json->find("properties");
+    if (properties_it == object_json->end() || !properties_it->is_array()) {
+        return std::nullopt;
+    }
+
+    for (const auto& property : *properties_it) {
+        if (!property.is_object()) {
+            continue;
+        }
+
+        const auto name_it = property.find("name");
+        if (name_it == property.end() || !name_it->is_string() || name_it->get_ref<const std::string&>() != property_name) {
+            continue;
+        }
+
+        const auto value_it = property.find("value");
+        if (value_it == property.end() || !value_it->is_number()) {
+            return std::nullopt;
+        }
+        return value_it->get<float>();
     }
 
     return std::nullopt;
@@ -254,6 +350,13 @@ void EntityBuilder::decorateExternalEntity(entt::entity entity) {
 void EntityBuilder::buildActor(entt::id_type name_id) {
     auto position = glm::vec2(object_json_->value("x", 0.0f), object_json_->value("y", 0.0f));
 
+    const auto shop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_SHOP_ID);
+    const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
+    const auto battle_troop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_TROOP_ID);
+    const auto encounter_id = findObjectIntProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ID);
+    const bool encounter_once = findObjectBoolProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ONCE).value_or(false);
+    const auto wander_radius_override = findObjectFloatProperty(object_json_, tiled::ACTOR_PROP_WANDER_RADIUS_OVERRIDE);
+
     if (reuse_player_if_exists_ && name_id == "player"_hs) {
         auto view = registry_.view<game::component::PlayerTag, engine::component::TransformComponent>();
         if (view.begin() != view.end()) {
@@ -265,13 +368,30 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
         }
     }
 
+    bool should_attach_encounter = false;
+    if (battle_troop_id) {
+        if (shop_id || quest_offer_id) {
+            spdlog::warn("EntityBuilder: actor 同时声明 battle_troop_id='{}' 与 shop_id/quest_offer_id，本阶段忽略战斗入口。",
+                         *battle_troop_id);
+        } else if (!encounter_id || *encounter_id <= 0) {
+            spdlog::warn("EntityBuilder: actor 声明 battle_troop_id='{}' 但缺少合法 encounter_id，忽略战斗入口。",
+                         *battle_troop_id);
+        } else if (encounter_once && isEncounterDefeated(*encounter_id)) {
+            entity_id_ = entt::null;
+            return;
+        } else if (!seen_encounter_ids_.insert(*encounter_id).second) {
+            spdlog::warn("EntityBuilder: map_id={} 内重复声明 encounter_id={}，后续重复项将作为普通 actor 生成。",
+                         static_cast<std::uint64_t>(map_id_),
+                         *encounter_id);
+        } else {
+            should_attach_encounter = true;
+        }
+    }
+
     entity_id_ = entity_factory_.createActor(name_id, position);
     if (entity_id_ == entt::null) {
         return;
     }
-
-    const auto shop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_SHOP_ID);
-    const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
 
     if (shop_id) {
         if (quest_offer_id) {
@@ -291,6 +411,45 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
                 .quest_id_ = *quest_offer_id,
                 .quest_id_hash_ = entt::hashed_string{quest_offer_id->c_str()}.value()});
     }
+
+    if (wander_radius_override) {
+        auto& wander = registry_.get_or_emplace<game::component::WanderComponent>(entity_id_);
+        wander.home_position_ = position;
+        wander.target_ = position;
+        wander.radius_ = std::max(0.0F, *wander_radius_override);
+        wander.phase_ = game::component::WanderPhase::Waiting;
+        wander.wait_timer_ = 0.0F;
+    }
+
+    if (should_attach_encounter && battle_troop_id && encounter_id) {
+        registry_.emplace_or_replace<game::component::EnemyEncounterComponent>(
+            entity_id_,
+            game::component::EnemyEncounterComponent{
+                .troop_id_ = *battle_troop_id,
+                .troop_id_hash_ = entt::hashed_string{battle_troop_id->c_str()}.value(),
+                .encounter_id_ = *encounter_id,
+                .once_ = encounter_once,
+                .defeated_ = false,
+                .home_position_ = position});
+    }
+}
+
+bool EntityBuilder::isEncounterDefeated(int encounter_id) const {
+    if (map_id_ == entt::null || encounter_id <= 0) {
+        return false;
+    }
+
+    auto** world_state_ptr = registry_.ctx().find<game::world::WorldState*>();
+    if (!world_state_ptr || !*world_state_ptr) {
+        return false;
+    }
+
+    const auto* map_state = (*world_state_ptr)->getMapState(map_id_);
+    if (!map_state) {
+        return false;
+    }
+
+    return map_state->persistent.defeated_encounters.contains(encounter_id);
 }
 
 void EntityBuilder::buildAnimal(entt::id_type name_id) {

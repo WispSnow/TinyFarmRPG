@@ -30,6 +30,7 @@
 #include "game/system/npc_wander_system.h"
 #include "game/system/animal_behavior_system.h"
 #include "game/system/dialogue_system.h"
+#include "game/system/enemy_encounter_system.h"
 #include "game/system/quest_interaction_system.h"
 #include "game/system/shop_interaction_system.h"
 #include "game/system/chest_system.h"

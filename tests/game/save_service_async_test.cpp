@@ -520,6 +520,28 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresQuestLogState) {
         2);
 }
 
+TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresDefeatedEncounters) {
+    const entt::id_type map_id = map_manager_->currentMapId();
+    auto* map_state = world_state_.getMapStateMutable(map_id);
+    ASSERT_NE(map_state, nullptr);
+    map_state->persistent.defeated_encounters = {1001, 1002};
+
+    const auto file_path = tempFilePath("save_defeated_encounters_restore.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    map_state->persistent.defeated_encounters.clear();
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    map_state = world_state_.getMapStateMutable(map_id);
+    ASSERT_NE(map_state, nullptr);
+    EXPECT_TRUE(map_state->persistent.defeated_encounters.contains(1001));
+    EXPECT_TRUE(map_state->persistent.defeated_encounters.contains(1002));
+    EXPECT_EQ(map_state->persistent.defeated_encounters.size(), 2U);
+}
+
 TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileFailsWhenPlayerMissingQuestLogComponent) {
     auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
     ASSERT_NE(player_view.begin(), player_view.end());

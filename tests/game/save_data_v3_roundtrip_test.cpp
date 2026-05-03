@@ -66,6 +66,7 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     map.map_name = "farm";
     map.last_updated_day = 6;
     map.opened_chests = {2, 3};
+    map.defeated_encounters = {1001, 1002};
     map.tilled_tiles = {Vec2i{1, 2}, Vec2i{3, 4}};
     map.wet_tiles = {Vec2i{5, 6}};
     map.crops = {
@@ -141,6 +142,7 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_EQ(output.maps[0].map_name, map.map_name);
     EXPECT_EQ(output.maps[0].last_updated_day, map.last_updated_day);
     EXPECT_EQ(output.maps[0].opened_chests.size(), map.opened_chests.size());
+    EXPECT_EQ(output.maps[0].defeated_encounters, map.defeated_encounters);
     EXPECT_EQ(output.maps[0].tilled_tiles.size(), map.tilled_tiles.size());
     EXPECT_EQ(output.maps[0].wet_tiles.size(), map.wet_tiles.size());
     EXPECT_EQ(output.maps[0].crops.size(), map.crops.size());

@@ -240,6 +240,7 @@ target_sources(game PRIVATE
     game/system/dialogue_system.cpp
     game/system/quest_interaction_system.cpp
     game/system/shop_interaction_system.cpp
+    game/system/enemy_encounter_system.cpp
     game/system/chest_system.cpp
     game/system/interaction_system.cpp
     game/system/map_transition_system.cpp
