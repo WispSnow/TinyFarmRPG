@@ -53,20 +53,27 @@
 
 ##### `actor` 的 JRPG 扩展实例属性
 
-当前已经预留了两个 actor 实例级字符串属性，用于把同一个 NPC 蓝图在不同地图实例上挂成不同玩法入口：
+当前已经预留了 actor 实例级属性，用于把同一个 NPC 蓝图在不同地图实例上挂成不同玩法入口：
 
 | property | 类型 | 作用 | 数据来源 |
 | --- | --- | --- | --- |
 | `shop_id` | string | 把该 actor 实例挂成商人，交互时打开 `ShopMenuScene` | `assets/data/shops.json` |
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
+| `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
+| `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
+| `encounter_once` | bool | 是否一次性遭遇；胜利后写入存档并不再生成 | 地图存档 |
+| `wander_radius_override` | float | 覆盖该 actor 实例的漫游半径 | 地图实例 |
 
 运行时行为：
 
 - `shop_id` 会让 loader 给该实体附加 `MerchantComponent`
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
-- 若两者同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
+- `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
+- 若 `shop_id` 与 `quest_offer_id` 同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
+- `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` 共存；共存时会 `warn`，并忽略战斗入口
+- `encounter_once=true` 且该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
 
-推荐直接避免在同一个 actor object 上同时配置这两个属性。
+推荐直接避免在同一个 actor object 上同时配置多个玩法入口。
 
 ##### 在 Tiled 中配置商店 NPC
 
@@ -110,10 +117,37 @@
 }
 ```
 
+##### 在 Tiled 中配置接触战斗敌人
+
+1. 在 object layer 放一个 **point object**
+2. 设置 `type="actor"`
+3. 设置 `name="<actor blueprint key>"`
+4. 新增 **string property**：`battle_troop_id`
+5. 新增 **int property**：`encounter_id`，同一地图内保持唯一
+6. 可选新增 **bool property**：`encounter_once`
+7. 可选新增 **float property**：`wander_radius_override`
+
+最小示例：
+
+```json
+{
+  "point": true,
+  "type": "actor",
+  "name": "slime",
+  "properties": [
+    { "name": "battle_troop_id", "type": "string", "value": "troop.slime_pair" },
+    { "name": "encounter_id", "type": "int", "value": 1001 },
+    { "name": "encounter_once", "type": "bool", "value": true },
+    { "name": "wander_radius_override", "type": "float", "value": 48.0 }
+  ]
+}
+```
+
 落地后的交互效果：
 
 - `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店
 - `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
+- `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利的一次性遭遇会写入 `defeated_encounters`
 - 交互优先级当前固定为 `Merchant > QuestGiver > Dialogue NPC > Chest > Rest`
 
 #### `animal`（point object）
@@ -153,24 +187,18 @@
   - `light(spot)`：object `id=23`（`night_only=true`, `spot={radius:64, inner_deg:25, outer_deg:45, direction_deg:90}`）
   - `map_trigger`：object `id=26`（`target_map="school"`, `start_offset="bottom"`）
 
-### 4.3 当前未预留：地图战斗触发
+### 4.3 地图战斗触发
 
-目前 **没有** 面向 Tiled 的战斗触发接口，具体表现为：
+当前已支持 **actor 接触战斗**：
 
-- `src/game/loader/tiled_conventions.h` 里还没有 `battle_trigger` 一类 object type
-- actor 实例属性目前只预留了 `shop_id / quest_offer_id`
-- `GameScene` 虽然已经支持接收 `EnterBattleCommand{ troop_id / actor_ids / player_units / enemy_units }`
-- 但当前唯一现成入口是 `BattleDebugPanel`，而不是地图对象或地图触发器
+- 在 Tiled 中用 `type="actor"` 的 point object 放置敌人
+- 用 `battle_troop_id` 指向 RPG troop 数据
+- 用 `encounter_id` 标识该地图中的遭遇实例
+- `EnemyEncounterSystem` 在空间索引更新后检测玩家与敌人的接触，并发布 `EnterBattleCommand`
+- `GameScene` 会携带遭遇上下文进入战斗，并在 `BattleEndedEvent` 到达时先结算遭遇状态
+- `encounter_once=true` 的遭遇胜利后写入 `MapPersistentState::defeated_encounters`，并通过 `SaveData::MapSaveData::defeated_encounters` 进入 JSON 存档
 
-也就是说：
-
-- 你现在可以在数据层配置 `troop`
-- 也可以在运行时通过代码或调试面板发起战斗
-- 但**还不能**在 Tiled 里直接放一个“战斗区域”或“战斗 NPC”让地图自行触发战斗
-
-如果要补这条能力，已单独整理计划：
-
-- [地图敌人接触战斗功能计划](/Users/ziyu/Workspace/GameDev/TEST/TinyFarmRPG-feature/plans/地图战斗触发功能计划.md)
+暂未支持独立的矩形 `battle_trigger` 区域；当前推荐使用可见 actor 敌人作为地图战斗入口。
 
 ## 5) 可观测与排错
 

@@ -90,6 +90,7 @@ struct MapPersistentState {
     std::uint32_t last_updated_day{0};   // 记录快照更新的游戏天数
     std::optional<std::vector<ResourceNodeState>> pending_resource_nodes{};
     std::unordered_set<int> opened_chests{};   // 记录已打开的宝箱（chest_id）
+    std::unordered_set<int> defeated_encounters{}; // 记录已击败的一次性遭遇（encounter_id）
 };
 
 struct MapState {

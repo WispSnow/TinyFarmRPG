@@ -113,6 +113,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::DialogueSystem> dialogue_system;
     std::unique_ptr<game::system::QuestInteractionSystem> quest_interaction_system;
     std::unique_ptr<game::system::ShopInteractionSystem> shop_interaction_system;
+    std::unique_ptr<game::system::EnemyEncounterSystem> enemy_encounter_system;
     std::unique_ptr<game::system::ChestSystem> chest_system;
     std::unique_ptr<game::system::InteractionSystem> interaction_system;
     std::unique_ptr<game::system::RestSystem> rest_system;

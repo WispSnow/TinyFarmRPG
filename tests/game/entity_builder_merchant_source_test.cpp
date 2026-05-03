@@ -28,6 +28,8 @@ TEST(EntityBuilderMerchantSourceTest, BuildActorReadsShopIdAndKeepsMerchantPrior
 
     EXPECT_NE(conventions.find("ACTOR_PROP_SHOP_ID"), std::string::npos);
     EXPECT_NE(conventions.find("\"shop_id\""), std::string::npos);
+    EXPECT_NE(conventions.find("ACTOR_PROP_BATTLE_TROOP_ID"), std::string::npos);
+    EXPECT_NE(conventions.find("\"battle_troop_id\""), std::string::npos);
 
     const std::string build_actor_block = test_source_utils::extractFunctionBlock(builder, "void EntityBuilder::buildActor(entt::id_type name_id)");
     ASSERT_FALSE(build_actor_block.empty());
@@ -35,6 +37,10 @@ TEST(EntityBuilderMerchantSourceTest, BuildActorReadsShopIdAndKeepsMerchantPrior
     EXPECT_NE(build_actor_block.find("ACTOR_PROP_SHOP_ID"), std::string::npos);
     EXPECT_NE(build_actor_block.find("else if (quest_offer_id)"), std::string::npos);
     EXPECT_NE(build_actor_block.find("merchant 优先处理"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("ACTOR_PROP_BATTLE_TROOP_ID"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("EnemyEncounterComponent"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("isEncounterDefeated(*encounter_id)"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("本阶段忽略战斗入口"), std::string::npos);
 
     const auto shop_pos = build_actor_block.find("ACTOR_PROP_SHOP_ID");
     const auto quest_pos = build_actor_block.find("ACTOR_PROP_QUEST_OFFER_ID");

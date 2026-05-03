@@ -65,6 +65,18 @@ TEST(SystemSchedulerProfileTest, ExplorationKeepsQuestInteractionBetweenDialogue
     EXPECT_LT(quest_interaction, auto_tile);
 }
 
+TEST(SystemSchedulerProfileTest, ExplorationRunsEnemyEncounterAfterSpatialBeforeInteraction) {
+    const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
+    ASSERT_FALSE(stages.empty());
+
+    const size_t spatial_index = indexOf(stages, SchedulerStage::SpatialIndex);
+    const size_t enemy_encounter = indexOf(stages, SchedulerStage::EnemyEncounter);
+    const size_t interaction = indexOf(stages, SchedulerStage::Interaction);
+
+    EXPECT_LT(spatial_index, enemy_encounter);
+    EXPECT_LT(enemy_encounter, interaction);
+}
+
 TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransition) {
     entt::registry registry;
     entt::dispatcher dispatcher;

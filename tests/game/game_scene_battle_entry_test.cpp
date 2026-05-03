@@ -77,6 +77,24 @@ TEST(GameSceneBattleEntryTest, SupportsTroopAndActorSelectionInBattleCommand) {
     EXPECT_NE(source.find("cmd.actor_ids"), std::string::npos);
 }
 
+TEST(GameSceneBattleEntryTest, ResolvesEnemyEncounterBeforeBattleRewardSettlement) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    const auto resolve_pos = source.find("resolveActiveEnemyEncounter(evt);");
+    const auto settlement_pos = source.find("processBattleEndedForGameScene(");
+    ASSERT_NE(resolve_pos, std::string::npos);
+    ASSERT_NE(settlement_pos, std::string::npos);
+    EXPECT_LT(resolve_pos, settlement_pos);
+    EXPECT_NE(source.find("active_encounter_context_ = cmd.encounter_context;"), std::string::npos);
+    EXPECT_NE(source.find("defeated_encounters.insert(context.encounter_id);"), std::string::npos);
+    EXPECT_NE(source.find("NeedRemoveTag"), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

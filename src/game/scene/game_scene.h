@@ -3,6 +3,7 @@
 #include "game_scene_battle_settlement.h"
 #include "engine/scene/scene.h"
 #include "game/runtime/game_mode.h"
+#include "game/defs/commands.h"
 #include "game/defs/events.h"
 
 #include <glm/vec2.hpp>
@@ -62,6 +63,7 @@ class GameScene : public engine::scene::Scene {
     bool has_previous_camera_position_{false};
     std::unordered_map<entt::id_type, int> active_battle_initial_item_stocks_{};
     bool has_active_battle_item_stocks_{false};
+    std::optional<game::defs::EnemyEncounterBattleContext> active_encounter_context_{};
     game::system::helpers::NotificationTimer battle_reward_notification_{};
 
 public:
@@ -98,6 +100,8 @@ private:
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
     void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
+    void releaseEnemyEncounterEntryFailure(const game::defs::EnemyEncounterBattleContext& context);
+    void resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& evt);
 };
 
 } // namespace game::scene

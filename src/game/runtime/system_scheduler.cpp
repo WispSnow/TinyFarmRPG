@@ -32,6 +32,7 @@
 #include "game/system/chest_system.h"
 #include "game/system/day_night_system.h"
 #include "game/system/dialogue_system.h"
+#include "game/system/enemy_encounter_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/item_use_system.h"
 #include "game/system/light_toggle_system.h"
@@ -99,6 +100,7 @@ const std::vector<SchedulerStage>& exploration_profile() {
         SchedulerStage::SpatialIndex,
         SchedulerStage::CameraFollow,
         SchedulerStage::Animation,
+        SchedulerStage::EnemyEncounter,
         SchedulerStage::Pickup,
         SchedulerStage::Interaction
     };
@@ -248,6 +250,11 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
                 engine::system::DeferredCommands deferred;
                 systems.spatial_index_system->update(registry, deferred);
                 deferred.drain(registry);
+            }
+            break;
+        case SchedulerStage::EnemyEncounter:
+            if (systems.enemy_encounter_system) {
+                systems.enemy_encounter_system->update(delta_time);
             }
             break;
         case SchedulerStage::Pickup:
@@ -421,6 +428,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
         execute_stage_main_thread(params, SchedulerStage::CameraFollow, result);
         execute_stage_main_thread(params, SchedulerStage::Animation, result);
         clearParallelIslandContext();
+        execute_stage_main_thread(params, SchedulerStage::EnemyEncounter, result);
         execute_stage_main_thread(params, SchedulerStage::Pickup, result);
         execute_stage_main_thread(params, SchedulerStage::Interaction, result);
         return result;
@@ -438,6 +446,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
         trace_stage(result, SchedulerStage::Animation, elapsed[2]);
     }
 
+    execute_stage_main_thread(params, SchedulerStage::EnemyEncounter, result);
     execute_stage_main_thread(params, SchedulerStage::Pickup, result);
     execute_stage_main_thread(params, SchedulerStage::Interaction, result);
     return result;
@@ -690,6 +699,8 @@ const char* toString(const SchedulerStage stage) {
             return "LightTogglePost";
         case SchedulerStage::SpatialIndex:
             return "SpatialIndex";
+        case SchedulerStage::EnemyEncounter:
+            return "EnemyEncounter";
         case SchedulerStage::Pickup:
             return "Pickup";
         case SchedulerStage::Interaction:

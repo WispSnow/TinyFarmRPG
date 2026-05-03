@@ -154,6 +154,7 @@ set(GAME_TEST_SOURCES
     game/inventory_hotbar_consistency_test.cpp
     game/inventory_move_hotbar_follow_test.cpp
     game/interaction_command_pipeline_test.cpp
+    game/enemy_encounter_system_test.cpp
     game/entity_builder_merchant_source_test.cpp
     game/quest_battle_progress_resolver_test.cpp
     game/quest_debug_panel_helpers_test.cpp

@@ -56,6 +56,7 @@ constexpr std::string_view KEY_INVENTORY_SLOT_INDICES = "inventory_slot_indices"
 
 constexpr std::string_view KEY_LAST_UPDATED_DAY = "last_updated_day";
 constexpr std::string_view KEY_OPENED_CHESTS = "opened_chests";
+constexpr std::string_view KEY_DEFEATED_ENCOUNTERS = json_keys::DEFEATED_ENCOUNTERS;
 constexpr std::string_view KEY_TILLED_TILES = "tilled_tiles";
 constexpr std::string_view KEY_WET_TILES = "wet_tiles";
 constexpr std::string_view KEY_CROPS = "crops";
@@ -220,6 +221,7 @@ nlohmann::json serialize(const SaveData& data) {
         map_json[KEY_MAP_NAME] = map.map_name;
         map_json[KEY_LAST_UPDATED_DAY] = map.last_updated_day;
         map_json[KEY_OPENED_CHESTS] = map.opened_chests;
+        map_json[KEY_DEFEATED_ENCOUNTERS] = map.defeated_encounters;
 
         map_json[KEY_TILLED_TILES] = nlohmann::json::array();
         for (const auto& tile : map.tilled_tiles) {
@@ -379,6 +381,14 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                 for (const auto& id_json : map_json[KEY_OPENED_CHESTS]) {
                     if (id_json.is_number_integer()) {
                         map.opened_chests.push_back(id_json.get<int>());
+                    }
+                }
+            }
+
+            if (map_json.contains(KEY_DEFEATED_ENCOUNTERS) && map_json[KEY_DEFEATED_ENCOUNTERS].is_array()) {
+                for (const auto& id_json : map_json[KEY_DEFEATED_ENCOUNTERS]) {
+                    if (id_json.is_number_integer()) {
+                        map.defeated_encounters.push_back(id_json.get<int>());
                     }
                 }
             }

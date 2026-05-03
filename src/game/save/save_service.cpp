@@ -473,6 +473,8 @@ SaveData SaveService::capture(std::string& out_error) const {
         map.last_updated_day = state.persistent.last_updated_day;
         map.opened_chests.assign(state.persistent.opened_chests.begin(), state.persistent.opened_chests.end());
         std::sort(map.opened_chests.begin(), map.opened_chests.end());
+        map.defeated_encounters.assign(state.persistent.defeated_encounters.begin(), state.persistent.defeated_encounters.end());
+        std::sort(map.defeated_encounters.begin(), map.defeated_encounters.end());
 
         if (state.persistent.snapshot.valid) {
             entt::registry temp;
@@ -559,6 +561,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         state.persistent.last_updated_day = 0;
         state.persistent.pending_resource_nodes.reset();
         state.persistent.opened_chests.clear();
+        state.persistent.defeated_encounters.clear();
     }
 
     const auto& auto_tile_library = context_.getAutoTileLibrary();
@@ -578,6 +581,10 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         map_state->persistent.opened_chests.clear();
         for (const int chest_id : map_save.opened_chests) {
             map_state->persistent.opened_chests.insert(chest_id);
+        }
+        map_state->persistent.defeated_encounters.clear();
+        for (const int encounter_id : map_save.defeated_encounters) {
+            map_state->persistent.defeated_encounters.insert(encounter_id);
         }
 
         if (map_save.resource_nodes) {

@@ -52,6 +52,7 @@
 #include "game/system/crop_system.h"
 #include "game/system/day_night_system.h"
 #include "game/system/dialogue_system.h"
+#include "game/system/enemy_encounter_system.h"
 #include "game/system/farm_system.h"
 #include "game/system/hotbar_system.h"
 #include "game/system/interaction_system.h"
@@ -823,6 +824,12 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         *services.shop_catalog,
         *services.item_catalog,
         *services.shop_transaction_service);
+    systems.enemy_encounter_system = std::make_unique<game::system::EnemyEncounterSystem>(
+        params.registry,
+        dispatcher,
+        spatial_index_manager,
+        *services.world_state,
+        services.rpg_catalog.get());
 
     systems.chest_system = std::make_unique<game::system::ChestSystem>(
         params.registry,
