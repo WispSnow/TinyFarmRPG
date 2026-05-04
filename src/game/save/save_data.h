@@ -22,6 +22,7 @@ inline constexpr std::string_view DAY = "day";
 inline constexpr std::string_view QUEST_STATE = "quest_state";
 inline constexpr std::string_view SKILL_STATE = "skill_state";
 inline constexpr std::string_view APPEARANCE_STATE = "appearance_state";
+inline constexpr std::string_view PARTY_STATE = "party_state";
 inline constexpr std::string_view COMBAT_STATE = "combat_state";
 inline constexpr std::string_view ACTIVE_QUESTS = "active_quests";
 inline constexpr std::string_view COMPLETED_QUESTS = "completed_quests";
@@ -32,6 +33,8 @@ inline constexpr std::string_view SKILL_COOLDOWNS = "skill_cooldowns";
 inline constexpr std::string_view PENDING_BATTLE = "pending_battle";
 inline constexpr std::string_view TROOP_ID = "troop_id";
 inline constexpr std::string_view ACTOR_IDS = "actor_ids";
+inline constexpr std::string_view RECRUITED_ACTOR_IDS = "recruited_actor_ids";
+inline constexpr std::string_view ACTIVE_ACTOR_IDS = "active_actor_ids";
 inline constexpr std::string_view ITEM_STOCKS = "item_stocks";
 inline constexpr std::string_view ESCAPE_ATTEMPT_COUNT = "escape_attempt_count";
 inline constexpr std::string_view DEFEATED_ENCOUNTERS = "defeated_encounters";
@@ -128,6 +131,11 @@ struct AppearanceStateSaveData {
     std::unordered_map<std::string, std::string> slots{};
 };
 
+struct PartyStateSaveData {
+    std::vector<std::string> recruited_actor_ids{"actor.player"};
+    std::vector<std::string> active_actor_ids{"actor.player"};
+};
+
 struct CombatStateSaveData {
     bool pending_battle{false};
     std::string troop_id{};
@@ -147,6 +155,7 @@ struct SaveData {
     QuestStateSaveData quest_state{};
     SkillStateSaveData skill_state{};
     AppearanceStateSaveData appearance_state{};
+    PartyStateSaveData party_state{};
     CombatStateSaveData combat_state{};
 };
 

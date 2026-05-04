@@ -4,6 +4,7 @@
 #include "game/data/item_catalog.h"
 
 #include <entt/core/hashed_string.hpp>
+#include <entt/entity/entity.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -149,6 +150,25 @@ using Json = nlohmann::json;
     return true;
 }
 
+[[nodiscard]] bool parsePortraitRef(const Json& node, PortraitRefData& out_portrait) {
+    out_portrait = {};
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    out_portrait.path_ = node.value("path", std::string{});
+    out_portrait.path_hash_ = out_portrait.path_.empty() ? entt::null : RpgCatalog::hashId(out_portrait.path_);
+    out_portrait.x_ = node.value("x", 0);
+    out_portrait.y_ = node.value("y", 0);
+    out_portrait.width_ = node.value("width", 0);
+    out_portrait.height_ = node.value("height", 0);
+
+    return out_portrait.path_.empty() || out_portrait.valid();
+}
+
 } // namespace
 
 entt::id_type RpgCatalog::hashId(const std::string_view id) {
@@ -291,6 +311,8 @@ bool RpgCatalog::loadActors(const std::string_view file_path) {
         actor.class_id_ = actor_node.value("class_id", std::string{});
         actor.initial_level_ = std::max(1, actor_node.value("initial_level", 1));
         actor.max_level_ = std::max(actor.initial_level_, actor_node.value("max_level", actor.initial_level_));
+        actor.map_actor_id_ = actor_node.value("map_actor_id", std::string{});
+        actor.map_actor_id_hash_ = actor.map_actor_id_.empty() ? entt::null : RpgCatalog::hashId(actor.map_actor_id_);
 
         if (actor.class_id_.empty()) {
             spdlog::error("RpgCatalog: actor '{}' 缺少 class_id", actor.id_);
@@ -300,6 +322,12 @@ bool RpgCatalog::loadActors(const std::string_view file_path) {
         if (const auto skills_it = actor_node.find("skill_ids");
             skills_it != actor_node.end() && !parseStringList(*skills_it, actor.skill_ids_)) {
             spdlog::error("RpgCatalog: actor '{}' skill_ids 必须是 string 数组", actor.id_);
+            return false;
+        }
+
+        if (const auto portrait_it = actor_node.find("portrait");
+            portrait_it != actor_node.end() && !parsePortraitRef(*portrait_it, actor.portrait_)) {
+            spdlog::error("RpgCatalog: actor '{}' portrait 配置非法", actor.id_);
             return false;
         }
 

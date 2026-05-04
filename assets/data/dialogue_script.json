@@ -1,6 +1,10 @@
 {
-    "friend_intro": [
+    "lyria_intro": [
         "Hey there! Welcome to the valley.",
-        "Let me know if you need anything."
+        "I can help if you are heading into danger."
+    ],
+    "tori_intro": [
+        "The road out there looks rough.",
+        "Let me join you. I can hold my own."
     ]
 }

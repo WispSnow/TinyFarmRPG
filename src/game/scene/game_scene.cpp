@@ -9,6 +9,7 @@
 #include "inventory_menu_scene.h"
 #include "pause_menu_scene.h"
 #include "quest_offer_scene.h"
+#include "recruit_offer_scene.h"
 #include "title_scene.h"
 #include "engine/audio/audio_player.h"
 #include "engine/component/transform_component.h"
@@ -26,6 +27,7 @@
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/map_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/party_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_catalog.h"
@@ -66,6 +68,7 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -75,6 +78,7 @@ using namespace entt::literals;
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
 constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
+constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -94,6 +98,29 @@ constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
     }
 
     return stocks;
+}
+
+[[nodiscard]] entt::entity findPlayer(entt::registry& registry) {
+    auto players = registry.view<game::component::PlayerTag>();
+    return players.begin() == players.end() ? entt::null : *players.begin();
+}
+
+[[nodiscard]] std::vector<std::string> resolveBattleActorIds(entt::registry& registry,
+                                                             const std::vector<std::string>& explicit_actor_ids) {
+    if (!explicit_actor_ids.empty()) {
+        return explicit_actor_ids;
+    }
+
+    const entt::entity player = findPlayer(registry);
+    if (player != entt::null) {
+        if (const auto* party = registry.try_get<game::component::PartyComponent>(player);
+            party && !party->active_actor_ids_.empty()) {
+            return party->active_actor_ids_;
+        }
+    }
+
+    spdlog::warn("GameScene: 未找到有效 PartyComponent，战斗队伍回退为 actor.player。");
+    return {std::string(DEFAULT_PARTY_ACTOR_ID)};
 }
 
 }
@@ -125,6 +152,7 @@ GameScene::~GameScene() noexcept {
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
     context_.getDispatcher().sink<game::defs::QuestOfferRequestedEvent>().disconnect<&GameScene::onQuestOfferRequested>(this);
+    context_.getDispatcher().sink<game::defs::RecruitOfferRequestedEvent>().disconnect<&GameScene::onRecruitOfferRequested>(this);
 }
 
 bool GameScene::init() {
@@ -165,6 +193,7 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
     dispatcher.sink<game::defs::BattleEndedEvent>().connect<&GameScene::onBattleEnded>(this);
     dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&GameScene::onQuestOfferRequested>(this);
+    dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&GameScene::onRecruitOfferRequested>(this);
 
     if (load_slot_) {
         std::string load_error;
@@ -602,7 +631,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         // GameScene 负责将 command 适配为 battle factory 的输入结构，
         // 保持 battle 层不依赖 defs::EnterBattleCommand。
         game::battle::BattleUnitBuildOptions build_options{};
-        build_options.actor_ids = cmd.actor_ids;
+        build_options.actor_ids = resolveBattleActorIds(registry_, cmd.actor_ids);
         build_options.troop_id = cmd.troop_id;
         std::string build_error{};
         if (!game::battle::buildBattleUnitsFromCatalog(*services_->rpg_catalog, build_options, units, build_error)) {
@@ -651,6 +680,33 @@ void GameScene::onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent
         evt.giver,
         *quest,
         services_->item_catalog.get()));
+}
+
+void GameScene::onRecruitOfferRequested(const game::defs::RecruitOfferRequestedEvent& evt) {
+    if (context_.getGameState().isPaused()) {
+        return;
+    }
+    if (systems_ && systems_->map_transition_system && systems_->map_transition_system->isTransitionActive()) {
+        return;
+    }
+    if (!services_ || !services_->rpg_catalog) {
+        spdlog::warn("GameScene: RecruitOfferRequestedEvent 收到后 RpgCatalog 不可用。");
+        return;
+    }
+
+    const auto* actor = services_->rpg_catalog->findActor(evt.actor_id_hash);
+    if (!actor) {
+        spdlog::warn("GameScene: RecruitOfferRequestedEvent actor_id='{}' 未在 RpgCatalog 中找到。", evt.actor_id);
+        return;
+    }
+
+    requestPushScene(std::make_unique<game::scene::RecruitOfferScene>(
+        "RecruitOfferScene",
+        context_,
+        registry_,
+        evt.player,
+        evt.recruiter,
+        *actor));
 }
 
 void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {

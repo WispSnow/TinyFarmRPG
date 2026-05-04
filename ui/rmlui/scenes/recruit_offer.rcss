@@ -1,0 +1,96 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+@spritesheet recruit-portrait-player {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
+    portrait-player: 0px 0px 64px 64px;
+}
+
+@spritesheet recruit-portrait-lyria {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
+    portrait-lyria: 0px 0px 64px 64px;
+}
+
+@spritesheet recruit-portrait-tori {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
+    portrait-tori: 0px 0px 64px 64px;
+}
+
+#recruit-offer-panel {
+    left: 128dp;
+    top: 58dp;
+    width: 352dp;
+    height: 214dp;
+    padding: 16dp;
+}
+
+#recruit-offer-speaker {
+    width: 100%;
+    height: 18dp;
+    line-height: 18dp;
+    color: #fce97fff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#recruit-offer-card {
+    margin-top: 10dp;
+    width: 320dp;
+    height: 100dp;
+    padding: 10dp;
+    display: flex;
+    flex-direction: row;
+    background-color: #1b2430dd;
+}
+
+#recruit-offer-portrait {
+    width: 64dp;
+    height: 64dp;
+    decorator: image(portrait-player);
+}
+
+#recruit-offer-portrait.portrait-player {
+    decorator: image(portrait-player);
+}
+
+#recruit-offer-portrait.portrait-lyria {
+    decorator: image(portrait-lyria);
+}
+
+#recruit-offer-portrait.portrait-tori {
+    decorator: image(portrait-tori);
+}
+
+#recruit-offer-copy {
+    margin-left: 12dp;
+    width: 222dp;
+}
+
+#recruit-offer-name {
+    width: 100%;
+    height: 22dp;
+    line-height: 22dp;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#recruit-offer-line {
+    margin-top: 8dp;
+    width: 100%;
+    height: 42dp;
+    line-height: 18dp;
+    color: #d8dee9ff;
+}
+
+#recruit-offer-actions {
+    margin-top: 18dp;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 12dp;
+}
+
+.recruit-offer-action-button {
+    width: 116dp;
+}

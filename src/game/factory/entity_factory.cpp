@@ -11,6 +11,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/pickup_component.h"
 #include "game/component/player_wallet_component.h"
+#include "game/component/party_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
@@ -129,6 +130,7 @@ entt::entity EntityFactory::createActor(const entt::id_type actor_name_id, const
         auto& inventory = registry_.emplace<game::component::InventoryComponent>(entity);
         auto& hotbar = registry_.emplace<game::component::HotbarComponent>(entity);
         registry_.emplace<game::component::PlayerWalletComponent>(entity);
+        registry_.emplace<game::component::PartyComponent>(entity);
         registry_.emplace<game::component::QuestLogComponent>(entity);
 
         if (appearance_catalog_) {

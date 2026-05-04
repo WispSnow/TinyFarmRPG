@@ -50,7 +50,14 @@ struct FixturePaths {
       "class_id": "class.swordsman",
       "initial_level": 1,
       "max_level": 99,
-      "skill_ids": ["skill.attack", "skill.cleave"]
+      "skill_ids": ["skill.attack", "skill.cleave"],
+      "portrait": {
+        "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      }
     },
     {
       "id": "actor.mage",
@@ -58,7 +65,14 @@ struct FixturePaths {
       "class_id": "class.mage",
       "initial_level": 1,
       "max_level": 99,
-      "skill_ids": ["skill.fire"]
+      "skill_ids": ["skill.fire"],
+      "portrait": {
+        "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      }
     }
   ]
 })json");
@@ -150,6 +164,10 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     ASSERT_TRUE(units[0].source_actor_id.has_value());
     EXPECT_EQ(*units[0].source_actor_id, "actor.hero");
     EXPECT_FALSE(units[0].source_enemy_id.has_value());
+    ASSERT_TRUE(units[0].portrait.valid());
+    EXPECT_EQ(units[0].portrait.path, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
+    EXPECT_EQ(units[0].portrait.width, 64);
+    EXPECT_EQ(units[0].portrait.height, 64);
 
     EXPECT_EQ(units[1].name, "Mage");
     EXPECT_EQ(units[1].max_hp, 80);
@@ -165,6 +183,8 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     ASSERT_TRUE(units[1].source_actor_id.has_value());
     EXPECT_EQ(*units[1].source_actor_id, "actor.mage");
     EXPECT_FALSE(units[1].source_enemy_id.has_value());
+    ASSERT_TRUE(units[1].portrait.valid());
+    EXPECT_EQ(units[1].portrait.path, "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png");
 
     EXPECT_EQ(units[2].side, BattleSide::Enemy);
     EXPECT_EQ(units[2].name, "Goblin");

@@ -63,7 +63,9 @@
 #include "game/system/npc_wander_system.h"
 #include "game/system/player_control_system.h"
 #include "game/system/pickup_system.h"
+#include "game/system/party_recruitment_system.h"
 #include "game/system/quest_interaction_system.h"
+#include "game/system/recruitment_interaction_system.h"
 #include "game/system/shop_interaction_system.h"
 #include "game/system/render_target_system.h"
 #include "game/system/rest_system.h"
@@ -818,6 +820,19 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         dispatcher,
         *services.quest_catalog,
         *services.quest_turn_in_service);
+    systems.recruitment_interaction_system = std::make_unique<game::system::RecruitmentInteractionSystem>(
+        params.registry,
+        dispatcher,
+        *services.rpg_catalog);
+    const bool recruitment_dialogue_loaded =
+        systems.recruitment_interaction_system->loadDialogueFile("assets/data/dialogue_script.json");
+    if (!recruitment_dialogue_loaded) {
+        spdlog::warn("GameRuntimeAssembler: 招募对话脚本加载失败，将使用兜底招募文案。");
+    }
+    systems.party_recruitment_system = std::make_unique<game::system::PartyRecruitmentSystem>(
+        params.registry,
+        dispatcher,
+        *services.rpg_catalog);
     systems.shop_interaction_system = std::make_unique<game::system::ShopInteractionSystem>(
         params.registry,
         params.context,

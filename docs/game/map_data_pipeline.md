@@ -59,6 +59,7 @@
 | --- | --- | --- | --- |
 | `shop_id` | string | 把该 actor 实例挂成商人，交互时打开 `ShopMenuScene` | `assets/data/shops.json` |
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
+| `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色，对话结束后弹出入队确认框 | `assets/data/rpg/actors.json` |
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
 | `encounter_once` | bool | 是否一次性遭遇；胜利后写入存档并不再生成 | 地图存档 |
@@ -68,9 +69,11 @@
 
 - `shop_id` 会让 loader 给该实体附加 `MerchantComponent`
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
+- `recruit_actor_id` 会让 loader 给该实体附加 `RecruitableComponent`
 - `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
 - 若 `shop_id` 与 `quest_offer_id` 同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
-- `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` 共存；共存时会 `warn`，并忽略战斗入口
+- `recruit_actor_id` 不能与 `shop_id` / `quest_offer_id` / `battle_troop_id` 共存；共存时会 `warn`，并忽略招募入口
+- `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` / `recruit_actor_id` 共存；共存时会 `warn`，并忽略战斗入口
 - `encounter_once=true` 且该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
 
 推荐直接避免在同一个 actor object 上同时配置多个玩法入口。
@@ -79,7 +82,7 @@
 
 1. 在 object layer 放一个 **point object**
 2. 设置 `type="actor"`
-3. 设置 `name="<actor blueprint key>"`，例如现有地图中的 `player`、`friend`
+3. 设置 `name="<actor blueprint key>"`，例如现有地图中的 `player`、`lyria`
 4. 给该 object 新增一个 **string property**：`shop_id`
 5. `shop_id` 的值填写 `ShopCatalog` 里的商店 id，例如 `shop.village.general`
 
@@ -89,7 +92,7 @@
 {
   "point": true,
   "type": "actor",
-  "name": "friend",
+  "name": "merchant",
   "properties": [
     { "name": "shop_id", "type": "string", "value": "shop.village.general" }
   ]
@@ -110,9 +113,30 @@
 {
   "point": true,
   "type": "actor",
-  "name": "friend",
+  "name": "quest",
   "properties": [
     { "name": "quest_offer_id", "type": "string", "value": "quest.village.goblin_cleanup" }
+  ]
+}
+```
+
+##### 在 Tiled 中配置可入队 NPC
+
+1. 在 object layer 放一个 **point object**
+2. 设置 `type="actor"`
+3. 设置 `name="<actor blueprint key>"`，例如 `lyria` 或 `tori`
+4. 给该 object 新增一个 **string property**：`recruit_actor_id`
+5. `recruit_actor_id` 的值填写 `RpgCatalog` 里的 actor id，例如 `actor.lyria`
+
+最小示例：
+
+```json
+{
+  "point": true,
+  "type": "actor",
+  "name": "tori",
+  "properties": [
+    { "name": "recruit_actor_id", "type": "string", "value": "actor.tori" }
   ]
 }
 ```
@@ -147,8 +171,9 @@
 
 - `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店
 - `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
+- `recruit_actor_id`：玩家面向该 NPC 按 `F`，会由 `RecruitmentInteractionSystem` 展示对话；对话结束后弹出入队确认框
 - `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利的一次性遭遇会写入 `defeated_encounters`
-- 交互优先级当前固定为 `Merchant > QuestGiver > Dialogue NPC > Chest > Rest`
+- 交互优先级当前固定为 `Merchant > QuestGiver > Recruitable > Dialogue NPC > Chest > Rest`
 
 #### `animal`（point object）
 - **必需字段**：`type="animal"` + `point=true` + `name="<animal-id>"`

@@ -110,10 +110,10 @@
             }
         }
     },
-    "friend": {
+    "lyria": {
         "name": "Lyria",
         "description": "Lyria is a friend of the player",
-        "dialogue_id": "friend_intro",
+        "dialogue_id": "lyria_intro",
         "wander_radius": 48.0,
         "interact_distance": 64.0,
         "sprite": {
@@ -135,6 +135,42 @@
             },
             "walk": {
                 "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Lyria/Walk.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3, 4, 5],
+                "duration": 100,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 20.0
+    },
+    "tori": {
+        "name": "Tori",
+        "description": "Tori is ready to join the party.",
+        "dialogue_id": "tori_intro",
+        "wander_radius": 48.0,
+        "interact_distance": 64.0,
+        "sprite": {
+            "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            },
+            "walk": {
+                "path": "assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Walk.png",
                 "position": {"x": 0, "y": 0},
                 "src_size": {"width": 32, "height": 32},
                 "dst_size": {"width": 32, "height": 32},

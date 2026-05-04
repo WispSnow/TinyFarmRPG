@@ -75,6 +75,8 @@ TEST(GameSceneBattleEntryTest, SupportsTroopAndActorSelectionInBattleCommand) {
 
     EXPECT_NE(source.find("cmd.troop_id"), std::string::npos);
     EXPECT_NE(source.find("cmd.actor_ids"), std::string::npos);
+    EXPECT_NE(source.find("resolveBattleActorIds"), std::string::npos);
+    EXPECT_NE(source.find("PartyComponent"), std::string::npos);
 }
 
 TEST(GameSceneBattleEntryTest, ResolvesEnemyEncounterBeforeBattleRewardSettlement) {

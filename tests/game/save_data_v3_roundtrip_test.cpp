@@ -53,9 +53,11 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     input.skill_state.skill_cooldowns = {
         {"skill.fire", 2},
     };
+    input.party_state.recruited_actor_ids = {"actor.player", "actor.lyria", "actor.tori"};
+    input.party_state.active_actor_ids = {"actor.player", "actor.lyria"};
     input.combat_state.pending_battle = true;
     input.combat_state.troop_id = "troop.goblin_pair";
-    input.combat_state.actor_ids = {"actor.reed", "actor.priscilla"};
+    input.combat_state.actor_ids = {"actor.player", "actor.lyria"};
     input.combat_state.item_stocks = {
         {"strawberry_item", 4},
         {"material_stone", 8},
@@ -87,6 +89,10 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_TRUE(json.contains(json_keys::COMBAT_STATE.data()));
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].is_object());
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].contains(json_keys::PENDING_BATTLE.data()));
+    EXPECT_TRUE(json.contains(json_keys::PARTY_STATE.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::RECRUITED_ACTOR_IDS.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::ACTIVE_ACTOR_IDS.data()));
     ASSERT_TRUE(json.contains("player"));
     ASSERT_TRUE(json["player"].contains("inventory"));
     EXPECT_FALSE(json["player"]["inventory"].contains("active_page"));
@@ -132,6 +138,8 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_EQ(output.skill_state.learned_skills, input.skill_state.learned_skills);
     EXPECT_EQ(output.skill_state.skill_levels, input.skill_state.skill_levels);
     EXPECT_EQ(output.skill_state.skill_cooldowns, input.skill_state.skill_cooldowns);
+    EXPECT_EQ(output.party_state.recruited_actor_ids, input.party_state.recruited_actor_ids);
+    EXPECT_EQ(output.party_state.active_actor_ids, input.party_state.active_actor_ids);
     EXPECT_EQ(output.combat_state.pending_battle, input.combat_state.pending_battle);
     EXPECT_EQ(output.combat_state.troop_id, input.combat_state.troop_id);
     EXPECT_EQ(output.combat_state.actor_ids, input.combat_state.actor_ids);

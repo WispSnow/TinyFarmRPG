@@ -32,6 +32,8 @@
 #include "game/system/dialogue_system.h"
 #include "game/system/enemy_encounter_system.h"
 #include "game/system/quest_interaction_system.h"
+#include "game/system/recruitment_interaction_system.h"
+#include "game/system/party_recruitment_system.h"
 #include "game/system/shop_interaction_system.h"
 #include "game/system/chest_system.h"
 #include "game/system/interaction_system.h"
