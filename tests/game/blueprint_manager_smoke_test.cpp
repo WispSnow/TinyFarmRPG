@@ -24,9 +24,29 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
     const auto& slime = manager.getActorBlueprint(entt::hashed_string{"slime"}.value());
     EXPECT_EQ(slime.name_, "Slime");
     EXPECT_EQ(slime.sprite_.path_, "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png");
+    EXPECT_FLOAT_EQ(slime.sprite_.src_rect_.pos.y, 32.0f);
     EXPECT_FLOAT_EQ(slime.wander_radius_, 48.0f);
-    EXPECT_TRUE(slime.animations_.contains(entt::hashed_string{"idle_down"}.value()));
-    EXPECT_TRUE(slime.animations_.contains(entt::hashed_string{"walk_down"}.value()));
+
+    const auto findAnimation = [&slime](const char* name) -> const AnimationBlueprint* {
+        const auto it = slime.animations_.find(entt::hashed_string{name}.value());
+        return it == slime.animations_.end() ? nullptr : &it->second;
+    };
+    const auto* idle_left = findAnimation("idle_left");
+    const auto* idle_down = findAnimation("idle_down");
+    const auto* idle_up = findAnimation("idle_up");
+    const auto* idle_right = findAnimation("idle_right");
+    const auto* walk_down = findAnimation("walk_down");
+    ASSERT_NE(idle_left, nullptr);
+    ASSERT_NE(idle_down, nullptr);
+    ASSERT_NE(idle_up, nullptr);
+    ASSERT_NE(idle_right, nullptr);
+    ASSERT_NE(walk_down, nullptr);
+    EXPECT_FLOAT_EQ(idle_left->position_.y, 0.0f);
+    EXPECT_FLOAT_EQ(idle_down->position_.y, 32.0f);
+    EXPECT_FLOAT_EQ(idle_up->position_.y, 64.0f);
+    EXPECT_FLOAT_EQ(idle_right->position_.y, 0.0f);
+    EXPECT_TRUE(idle_right->flip_horizontal_);
+    EXPECT_FLOAT_EQ(walk_down->position_.y, 32.0f);
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {

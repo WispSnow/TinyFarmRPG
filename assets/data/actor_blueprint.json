@@ -218,6 +218,7 @@
         "wander_radius": 48.0,
         "sprite": {
             "path": "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png",
+            "position": {"x": 0, "y": 32},
             "src_size": {"width": 32, "height": 32},
             "dst_size": {"width": 32, "height": 32},
             "pivot": {"x": 0.5, "y": 0.75}
@@ -231,7 +232,7 @@
                 "pivot": {"x": 0.5, "y": 0.75},
                 "frames": [0, 1, 2, 3],
                 "duration": 200,
-                "direction": ["down", "up", "right"]
+                "direction": ["left", "down", "up"]
             },
             "walk": {
                 "path": "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Walk.png",
@@ -241,7 +242,7 @@
                 "pivot": {"x": 0.5, "y": 0.75},
                 "frames": [0, 1, 2, 3],
                 "duration": 120,
-                "direction": ["down", "up", "right"]
+                "direction": ["left", "down", "up"]
             }
         },
         "speed": 35.0
