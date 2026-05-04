@@ -86,7 +86,15 @@ FixturePaths createValidRpgFixture() {
       "class_id": "class.adventurer",
       "initial_level": 1,
       "max_level": 99,
-      "skill_ids": ["skill.attack"]
+      "skill_ids": ["skill.attack"],
+      "map_actor_id": "hero",
+      "portrait": {
+        "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64
+      }
     }
   ]
 })json");
@@ -208,8 +216,13 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* actor = catalog.findActor("actor.hero");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->class_id_, "class.adventurer");
+    EXPECT_EQ(actor->map_actor_id_, "hero");
     ASSERT_EQ(actor->skill_ids_.size(), 1U);
     EXPECT_EQ(actor->skill_ids_[0], "skill.attack");
+    ASSERT_TRUE(actor->portrait_.valid());
+    EXPECT_EQ(actor->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
+    EXPECT_EQ(actor->portrait_.width_, 64);
+    EXPECT_EQ(actor->portrait_.height_, 64);
 
     const auto* skill = catalog.findSkill("skill.attack");
     ASSERT_NE(skill, nullptr);
@@ -251,8 +264,30 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
 
     const auto* troop = catalog.findTroop("troop.slime");
     ASSERT_NE(troop, nullptr);
-    ASSERT_EQ(troop->members_.size(), 1U);
+    ASSERT_EQ(troop->members_.size(), 2U);
     EXPECT_EQ(troop->members_[0].enemy_id_, "enemy.slime");
+    EXPECT_EQ(troop->members_[1].enemy_id_, "enemy.slime");
+
+    const auto* player = catalog.findActor("actor.player");
+    ASSERT_NE(player, nullptr);
+    EXPECT_EQ(player->display_name_, "Alex");
+    EXPECT_EQ(player->map_actor_id_, "player");
+    ASSERT_TRUE(player->portrait_.valid());
+    EXPECT_EQ(player->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
+    EXPECT_EQ(player->portrait_.width_, 64);
+    EXPECT_EQ(player->portrait_.height_, 64);
+
+    const auto* lyria = catalog.findActor("actor.lyria");
+    ASSERT_NE(lyria, nullptr);
+    EXPECT_EQ(lyria->map_actor_id_, "lyria");
+    ASSERT_TRUE(lyria->portrait_.valid());
+    EXPECT_EQ(lyria->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png");
+
+    const auto* tori = catalog.findActor("actor.tori");
+    ASSERT_NE(tori, nullptr);
+    EXPECT_EQ(tori->map_actor_id_, "tori");
+    ASSERT_TRUE(tori->portrait_.valid());
+    EXPECT_EQ(tori->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png");
 }
 
 TEST(RpgCatalogTest, ValidateFailsOnMissingSkillReference) {

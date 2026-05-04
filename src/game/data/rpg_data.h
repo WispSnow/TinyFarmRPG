@@ -53,6 +53,17 @@ struct ClassData {
     ParamArray base_params_{};
 };
 
+struct PortraitRefData {
+    std::string path_{};
+    entt::id_type path_hash_{};
+    int x_{0};
+    int y_{0};
+    int width_{0};
+    int height_{0};
+
+    [[nodiscard]] bool valid() const { return !path_.empty() && width_ > 0 && height_ > 0; }
+};
+
 struct ActorData {
     std::string id_{};
     entt::id_type id_hash_{};
@@ -61,6 +72,9 @@ struct ActorData {
     int initial_level_{1};
     int max_level_{99};
     std::vector<std::string> skill_ids_{};
+    std::string map_actor_id_{};
+    entt::id_type map_actor_id_hash_{};
+    PortraitRefData portrait_{};
 };
 
 struct StateData {

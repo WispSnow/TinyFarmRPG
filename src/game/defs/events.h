@@ -109,6 +109,13 @@ struct QuestOfferRequestedEvent {
     std::string quest_id{};
 };
 
+struct RecruitOfferRequestedEvent {
+    entt::entity player{entt::null};
+    entt::entity recruiter{entt::null};
+    entt::id_type actor_id_hash{entt::null};
+    std::string actor_id{};
+};
+
 struct AdvanceTimeRequest {
     int hours{0};
 };

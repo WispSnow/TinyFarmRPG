@@ -15,6 +15,7 @@ constexpr std::string_view KEY_GAME_TIME = json_keys::GAME_TIME;
 constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
 constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
 constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
+constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
@@ -25,6 +26,8 @@ constexpr std::string_view KEY_SKILL_COOLDOWNS = json_keys::SKILL_COOLDOWNS;
 constexpr std::string_view KEY_PENDING_BATTLE = json_keys::PENDING_BATTLE;
 constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
+constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
+constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 constexpr std::string_view KEY_PLAYER = "player";
@@ -274,6 +277,10 @@ nlohmann::json serialize(const SaveData& data) {
         {KEY_GENDER, data.appearance_state.gender},
         {KEY_SLOTS, data.appearance_state.slots},
     };
+    root[KEY_PARTY_STATE] = nlohmann::json{
+        {KEY_RECRUITED_ACTOR_IDS, data.party_state.recruited_actor_ids},
+        {KEY_ACTIVE_ACTOR_IDS, data.party_state.active_actor_ids},
+    };
     root[KEY_COMBAT_STATE] = nlohmann::json{
         {KEY_PENDING_BATTLE, data.combat_state.pending_battle},
         {KEY_TROOP_ID, data.combat_state.troop_id},
@@ -504,6 +511,18 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                     out.appearance_state.slots.emplace(slot, variant.get<std::string>());
                 }
             }
+        }
+    }
+    if (!readPlaceholderObject(json, KEY_PARTY_STATE, out_error)) {
+        return false;
+    }
+    if (json.contains(KEY_PARTY_STATE)) {
+        const auto& party_state = json[KEY_PARTY_STATE];
+        if (!readStringArrayField(party_state, KEY_RECRUITED_ACTOR_IDS, out.party_state.recruited_actor_ids, out_error)) {
+            return false;
+        }
+        if (!readStringArrayField(party_state, KEY_ACTIVE_ACTOR_IDS, out.party_state.active_actor_ids, out_error)) {
+            return false;
         }
     }
     if (!readPlaceholderObject(json, KEY_COMBAT_STATE, out_error)) {

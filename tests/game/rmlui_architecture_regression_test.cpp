@@ -68,6 +68,7 @@ TEST(RmlUiArchitectureRegressionTest, ProductionRmlUsesDataEventAndSharedThemeFi
             normalized.ends_with("/scenes/title.rml") ||
             normalized.ends_with("/scenes/pause_menu.rml") ||
             normalized.ends_with("/scenes/rest_dialog.rml") ||
+            normalized.ends_with("/scenes/recruit_offer.rml") ||
             normalized.ends_with("/scenes/save_slot_select.rml") ||
             normalized.ends_with("/scenes/battle.rml") ||
             normalized.ends_with("/scenes/inventory_menu.rml") ||

@@ -1,35 +1,60 @@
 {
     "actors": [
         {
-            "id": "actor.reed",
-            "display_name": "里德",
+            "id": "actor.player",
+            "display_name": "Alex",
             "class_id": "class.swordsman",
             "initial_level": 1,
             "max_level": 99,
             "skill_ids": [
                 "skill.attack",
                 "skill.bash"
-            ]
+            ],
+            "map_actor_id": "player",
+            "portrait": {
+                "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
+                "x": 0,
+                "y": 0,
+                "width": 64,
+                "height": 64
+            }
         },
         {
-            "id": "actor.priscilla",
-            "display_name": "普丽西拉",
+            "id": "actor.lyria",
+            "display_name": "Lyria",
             "class_id": "class.swordsman",
             "initial_level": 1,
             "max_level": 99,
             "skill_ids": [
-                "skill.attack"
-            ]
+                "skill.attack",
+                "skill.bash"
+            ],
+            "map_actor_id": "lyria",
+            "portrait": {
+                "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png",
+                "x": 0,
+                "y": 0,
+                "width": 64,
+                "height": 64
+            }
         },
         {
-            "id": "actor.gale",
-            "display_name": "盖尔",
+            "id": "actor.tori",
+            "display_name": "Tori",
             "class_id": "class.monk",
             "initial_level": 1,
             "max_level": 99,
             "skill_ids": [
                 "skill.attack"
-            ]
+            ],
+            "map_actor_id": "tori",
+            "portrait": {
+                "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png",
+                "x": 0,
+                "y": 0,
+                "width": 64,
+                "height": 64
+            }
         }
     ]
 }

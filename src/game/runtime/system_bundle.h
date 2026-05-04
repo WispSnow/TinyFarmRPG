@@ -112,6 +112,8 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::AnimalBehaviorSystem> animal_behavior_system;
     std::unique_ptr<game::system::DialogueSystem> dialogue_system;
     std::unique_ptr<game::system::QuestInteractionSystem> quest_interaction_system;
+    std::unique_ptr<game::system::RecruitmentInteractionSystem> recruitment_interaction_system;
+    std::unique_ptr<game::system::PartyRecruitmentSystem> party_recruitment_system;
     std::unique_ptr<game::system::ShopInteractionSystem> shop_interaction_system;
     std::unique_ptr<game::system::EnemyEncounterSystem> enemy_encounter_system;
     std::unique_ptr<game::system::ChestSystem> chest_system;

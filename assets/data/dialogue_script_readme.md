@@ -16,7 +16,7 @@ assets/data/dialogue_script.json
 
 ```json
 {
-  "friend_intro": [
+  "lyria_intro": [
     "Hey there! Welcome to the valley.",
     "Let me know if you need anything."
   ]
@@ -30,8 +30,8 @@ NPC 的 `DialogueComponent.dialogue_id_` 来自 actor blueprint 的 `dialogue_id
 例如 `assets/data/actor_blueprint.json`：
 
 ```json
-"friend": {
-  "dialogue_id": "friend_intro"
+"lyria": {
+  "dialogue_id": "lyria_intro"
 }
 ```
 
@@ -46,5 +46,5 @@ NPC 的 `DialogueComponent.dialogue_id_` 来自 actor blueprint 的 `dialogue_id
 
 - 按 `F` 触发交互：显示第 1 行
 - 再按 `F`：推进到下一行；到末尾自动关闭
+- 若该 NPC 同时拥有 `recruit_actor_id`，普通对话结束后会进入入队确认框
 - key 不存在 / 数组为空：会打印 warning，并忽略这次对话触发
-

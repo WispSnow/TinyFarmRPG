@@ -1,0 +1,37 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="recruit_offer.rcss"/>
+</head>
+<body class="tf-screen-root" data-model="recruit_offer">
+    <div id="recruit-offer-overlay" class="tf-modal-overlay"></div>
+
+    <div id="recruit-offer-panel" class="tf-modal-panel-strong">
+        <div id="recruit-offer-speaker">{{ speaker_text }}</div>
+
+        <div id="recruit-offer-card">
+            <div id="recruit-offer-portrait"
+                 data-class-portrait-player="portrait_player"
+                 data-class-portrait-lyria="portrait_lyria"
+                 data-class-portrait-tori="portrait_tori"></div>
+            <div id="recruit-offer-copy">
+                <div id="recruit-offer-name">{{ actor_name }}</div>
+                <div id="recruit-offer-line">{{ offer_text }}</div>
+            </div>
+        </div>
+
+        <div id="recruit-offer-actions">
+            <button id="recruit-offer-accept-button"
+                    class="tf-button-primary recruit-offer-action-button"
+                    data-event-click="accept">Join</button>
+            <button id="recruit-offer-decline-button"
+                    class="tf-button-secondary recruit-offer-action-button"
+                    data-event-click="decline">Not now</button>
+        </div>
+    </div>
+</body>
+</rml>

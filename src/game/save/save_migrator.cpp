@@ -14,6 +14,7 @@ constexpr std::string_view KEY_SCHEMA_VERSION = json_keys::SCHEMA_VERSION;
 constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
 constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
 constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
+constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
@@ -24,6 +25,8 @@ constexpr std::string_view KEY_SKILL_COOLDOWNS = json_keys::SKILL_COOLDOWNS;
 constexpr std::string_view KEY_PENDING_BATTLE = json_keys::PENDING_BATTLE;
 constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
+constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
+constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 
@@ -132,6 +135,16 @@ bool normalizeCombatState(nlohmann::json& combat_state, std::string& out_error) 
     return true;
 }
 
+bool normalizePartyState(nlohmann::json& party_state, std::string& out_error) {
+    if (!ensureArrayField(party_state, KEY_RECRUITED_ACTOR_IDS, out_error)) {
+        return false;
+    }
+    if (!ensureArrayField(party_state, KEY_ACTIVE_ACTOR_IDS, out_error)) {
+        return false;
+    }
+    return true;
+}
+
 bool migrateV2ToV3(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_QUEST_STATE, out_error)) {
         return false;
@@ -145,6 +158,9 @@ bool migrateV2ToV3(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_COMBAT_STATE, out_error)) {
         return false;
     }
+    if (!ensureObjectField(json, KEY_PARTY_STATE, out_error)) {
+        return false;
+    }
     if (!normalizeQuestState(json[KEY_QUEST_STATE], out_error)) {
         return false;
     }
@@ -152,6 +168,9 @@ bool migrateV2ToV3(nlohmann::json& json, std::string& out_error) {
         return false;
     }
     if (!normalizeCombatState(json[KEY_COMBAT_STATE], out_error)) {
+        return false;
+    }
+    if (!normalizePartyState(json[KEY_PARTY_STATE], out_error)) {
         return false;
     }
 
@@ -172,6 +191,9 @@ bool normalizeV3(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_COMBAT_STATE, out_error)) {
         return false;
     }
+    if (!ensureObjectField(json, KEY_PARTY_STATE, out_error)) {
+        return false;
+    }
     if (!normalizeQuestState(json[KEY_QUEST_STATE], out_error)) {
         return false;
     }
@@ -179,6 +201,9 @@ bool normalizeV3(nlohmann::json& json, std::string& out_error) {
         return false;
     }
     if (!normalizeCombatState(json[KEY_COMBAT_STATE], out_error)) {
+        return false;
+    }
+    if (!normalizePartyState(json[KEY_PARTY_STATE], out_error)) {
         return false;
     }
 

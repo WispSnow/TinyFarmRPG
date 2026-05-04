@@ -272,7 +272,7 @@
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                },
+                }, 
                 {
                  "height":0,
                  "id":2,
@@ -285,7 +285,7 @@
                  "width":0,
                  "x":311,
                  "y":167.862478777589
-                },
+                }, 
                 {
                  "gid":2840,
                  "height":48,
@@ -298,7 +298,7 @@
                  "width":32,
                  "x":21,
                  "y":202.333333333333
-                },
+                }, 
                 {
                  "gid":2840,
                  "height":48,
@@ -311,7 +311,7 @@
                  "width":32,
                  "x":55.3333333333333,
                  "y":360.333333333333
-                },
+                }, 
                 {
                  "gid":2840,
                  "height":48,
@@ -549,9 +549,15 @@
                 {
                  "height":0,
                  "id":32,
-                 "name":"friend",
+                 "name":"lyria",
                  "opacity":1,
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"recruit_actor_id",
+                         "type":"string",
+                         "value":"actor.lyria"
+                        }],
                  "rotation":0,
                  "type":"actor",
                  "visible":true,
@@ -582,7 +588,7 @@
                  "width":16,
                  "x":208,
                  "y":144
-                },
+                }, 
                 {
                  "height":0,
                  "id":51,
@@ -601,7 +607,7 @@
                  "width":0,
                  "x":370,
                  "y":197
-                },
+                }, 
                 {
                  "height":0,
                  "id":52,
@@ -620,6 +626,25 @@
                  "width":0,
                  "x":503,
                  "y":175.5
+                }, 
+                {
+                 "height":0,
+                 "id":53,
+                 "name":"tori",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"recruit_actor_id",
+                         "type":"string",
+                         "value":"actor.tori"
+                        }],
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":238.25,
+                 "y":359
                 }],
          "opacity":1,
          "properties":[
@@ -632,7 +657,7 @@
          "visible":true,
          "x":0,
          "y":0
-        },
+        }, 
         {
          "draworder":"topdown",
          "id":11,
@@ -910,7 +935,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":53,
+ "nextobjectid":54,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

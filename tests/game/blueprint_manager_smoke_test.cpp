@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "game/component/party_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
@@ -19,7 +20,23 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
 
     ASSERT_TRUE(manager.loadActorBlueprints(path));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"player"}.value()));
+    EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"lyria"}.value()));
+    EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"tori"}.value()));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"slime"}.value()));
+
+    const auto& tori = manager.getActorBlueprint(entt::hashed_string{"tori"}.value());
+    EXPECT_EQ(tori.name_, "Tori");
+    EXPECT_EQ(tori.sprite_.path_, "assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Idle.png");
+    EXPECT_FLOAT_EQ(tori.wander_radius_, 48.0f);
+
+    const auto findToriAnimation = [&tori](const char* name) -> const AnimationBlueprint* {
+        const auto it = tori.animations_.find(entt::hashed_string{name}.value());
+        return it == tori.animations_.end() ? nullptr : &it->second;
+    };
+    ASSERT_NE(findToriAnimation("idle_down"), nullptr);
+    ASSERT_NE(findToriAnimation("idle_up"), nullptr);
+    ASSERT_NE(findToriAnimation("idle_right"), nullptr);
+    ASSERT_NE(findToriAnimation("walk_down"), nullptr);
 
     const auto& slime = manager.getActorBlueprint(entt::hashed_string{"slime"}.value());
     EXPECT_EQ(slime.name_, "Slime");
@@ -132,6 +149,7 @@ TEST(EntityFactoryTest, CreateActor_PlayerGetsQuestLogComponent) {
 
     ASSERT_NE(entity, entt::entity{entt::null});
     EXPECT_TRUE(registry.all_of<game::component::QuestLogComponent>(entity));
+    EXPECT_TRUE(registry.all_of<game::component::PartyComponent>(entity));
 }
 
 } // namespace game::factory

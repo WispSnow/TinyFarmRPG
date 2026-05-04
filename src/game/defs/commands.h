@@ -84,6 +84,13 @@ struct AcceptQuestCommand {
     std::string quest_id{};
 };
 
+struct RecruitPartyMemberCommand {
+    entt::entity player{entt::null};
+    entt::entity recruiter{entt::null};
+    entt::id_type actor_id_hash{entt::null};
+    std::string actor_id{};
+};
+
 struct EnemyEncounterBattleContext {
     entt::entity source_entity{entt::null};
     entt::id_type map_id{entt::null};

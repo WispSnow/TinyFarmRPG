@@ -10,6 +10,7 @@
 #include "game/component/crop_component.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/party_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/resource_node_component.h"
@@ -46,6 +47,7 @@
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 
@@ -57,6 +59,7 @@ namespace {
 
 constexpr entt::id_type RULE_SOIL_TILLED = game::defs::auto_tile_rule::SOIL_TILLED;
 constexpr entt::id_type RULE_SOIL_WET    = game::defs::auto_tile_rule::SOIL_WET;
+constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 
 constexpr std::array<Vec2i, 8> NEIGHBOR_OFFSETS{{
     {0, -1},  // up
@@ -87,6 +90,46 @@ Vec2i worldToTile(glm::vec2 world_pos) {
         static_cast<int>(std::floor(world_pos.x / game::defs::TILE_SIZE)),
         static_cast<int>(std::floor(world_pos.y / game::defs::TILE_SIZE)),
     };
+}
+
+[[nodiscard]] bool containsString(const std::vector<std::string>& values, std::string_view value) {
+    return std::any_of(values.begin(), values.end(), [value](const std::string& current) {
+        return current == value;
+    });
+}
+
+void ensureDefaultPartyActor(std::vector<std::string>& actor_ids) {
+    if (!containsString(actor_ids, DEFAULT_PARTY_ACTOR_ID)) {
+        actor_ids.insert(actor_ids.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
+}
+
+void normalizeParty(game::component::PartyComponent& party) {
+    ensureDefaultPartyActor(party.recruited_actor_ids_);
+    if (party.active_actor_ids_.empty()) {
+        party.active_actor_ids_.push_back(std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
+    ensureDefaultPartyActor(party.active_actor_ids_);
+
+    std::vector<std::string> filtered_active{};
+    filtered_active.reserve(party.active_actor_ids_.size());
+    for (const auto& actor_id : party.active_actor_ids_) {
+        if (!containsString(party.recruited_actor_ids_, actor_id)) {
+            continue;
+        }
+        if (containsString(filtered_active, actor_id)) {
+            continue;
+        }
+        if (filtered_active.size() >= party.max_active_members_) {
+            break;
+        }
+        filtered_active.push_back(actor_id);
+    }
+
+    party.active_actor_ids_ = std::move(filtered_active);
+    if (party.active_actor_ids_.empty()) {
+        party.active_actor_ids_.push_back(std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
 }
 
 glm::vec2 tileToWorld(Vec2i tile) {
@@ -463,6 +506,15 @@ SaveData SaveService::capture(std::string& out_error) const {
         out.appearance_state.slots = appearance->slot_variants_;
     }
 
+    if (auto* party = registry_.try_get<game::component::PartyComponent>(player)) {
+        normalizeParty(*party);
+        out.party_state.recruited_actor_ids = party->recruited_actor_ids_;
+        out.party_state.active_actor_ids = party->active_actor_ids_;
+    } else {
+        spdlog::warn("SaveService: 玩家缺少 PartyComponent，队伍存档将只包含 actor.player。");
+        out.party_state = PartyStateSaveData{};
+    }
+
     out.maps.clear();
     out.maps.reserve(world_state_.maps().size());
 
@@ -771,6 +823,13 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             .active_quests = data.quest_state.active_quests,
             .completed_quests = data.quest_state.completed_quests,
             .objective_progress = data.quest_state.objective_progress});
+
+    auto& party = registry_.emplace_or_replace<game::component::PartyComponent>(
+        player,
+        game::component::PartyComponent{
+            .recruited_actor_ids_ = data.party_state.recruited_actor_ids,
+            .active_actor_ids_ = data.party_state.active_actor_ids});
+    normalizeParty(party);
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         if (!data.appearance_state.gender.empty()) {

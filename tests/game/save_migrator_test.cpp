@@ -53,6 +53,12 @@ TEST(SaveMigratorTest, V2ToV3FillsNewStateFields) {
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()][json_keys::ITEM_STOCKS.data()].is_object());
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].contains(json_keys::ESCAPE_ATTEMPT_COUNT.data()));
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()][json_keys::ESCAPE_ATTEMPT_COUNT.data()].is_number_unsigned());
+    EXPECT_TRUE(json.contains(json_keys::PARTY_STATE.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::RECRUITED_ACTOR_IDS.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()][json_keys::RECRUITED_ACTOR_IDS.data()].is_array());
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::ACTIVE_ACTOR_IDS.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_STATE.data()][json_keys::ACTIVE_ACTOR_IDS.data()].is_array());
 
     EXPECT_EQ(json[json_keys::GAME_TIME.data()][json_keys::DAY.data()], 5);
     EXPECT_EQ(json["player"]["map_name"], "farm");

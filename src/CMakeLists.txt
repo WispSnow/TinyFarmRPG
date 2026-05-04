@@ -239,6 +239,8 @@ target_sources(game PRIVATE
     game/system/wander_runtime.cpp
     game/system/dialogue_system.cpp
     game/system/quest_interaction_system.cpp
+    game/system/recruitment_interaction_system.cpp
+    game/system/party_recruitment_system.cpp
     game/system/shop_interaction_system.cpp
     game/system/enemy_encounter_system.cpp
     game/system/chest_system.cpp
@@ -261,6 +263,7 @@ target_sources(game PRIVATE
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
     game/scene/quest_offer_scene.cpp
+    game/scene/recruit_offer_scene.cpp
     game/scene/shop_menu_scene.cpp
     game/scene/battle_scene.cpp
     game/scene/inventory_menu_character_panel.cpp

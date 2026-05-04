@@ -45,6 +45,19 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
     return skill_ids;
 }
 
+[[nodiscard]] BattlePortrait toBattlePortrait(const game::data::PortraitRefData& portrait) {
+    if (!portrait.valid()) {
+        return {};
+    }
+    return BattlePortrait{
+        .path = portrait.path_,
+        .x = portrait.x_,
+        .y = portrait.y_,
+        .width = portrait.width_,
+        .height = portrait.height_,
+    };
+}
+
 } // namespace
 
 bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
@@ -99,7 +112,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
             .speed = agi,
             .luck = luk,
             .skill_ids = actor->skill_ids_,
-            .source_actor_id = actor->id_
+            .source_actor_id = actor->id_,
+            .portrait = toBattlePortrait(actor->portrait_)
         });
     }
 

@@ -9,6 +9,7 @@
 #include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/quest_giver_component.h"
+#include "game/component/recruitable_component.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
 #include "game/data/game_time.h"
@@ -352,6 +353,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
 
     const auto shop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_SHOP_ID);
     const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
+    const auto recruit_actor_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_RECRUIT_ACTOR_ID);
     const auto battle_troop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_TROOP_ID);
     const auto encounter_id = findObjectIntProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ID);
     const bool encounter_once = findObjectBoolProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ONCE).value_or(false);
@@ -370,8 +372,8 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
 
     bool should_attach_encounter = false;
     if (battle_troop_id) {
-        if (shop_id || quest_offer_id) {
-            spdlog::warn("EntityBuilder: actor 同时声明 battle_troop_id='{}' 与 shop_id/quest_offer_id，本阶段忽略战斗入口。",
+        if (shop_id || quest_offer_id || recruit_actor_id) {
+            spdlog::warn("EntityBuilder: actor 同时声明 battle_troop_id='{}' 与 shop_id/quest_offer_id/recruit_actor_id，本阶段忽略战斗入口。",
                          *battle_troop_id);
         } else if (!encounter_id || *encounter_id <= 0) {
             spdlog::warn("EntityBuilder: actor 声明 battle_troop_id='{}' 但缺少合法 encounter_id，忽略战斗入口。",
@@ -385,6 +387,16 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
                          *encounter_id);
         } else {
             should_attach_encounter = true;
+        }
+    }
+
+    bool should_attach_recruitable = false;
+    if (recruit_actor_id) {
+        if (shop_id || quest_offer_id || battle_troop_id) {
+            spdlog::warn("EntityBuilder: actor 同时声明 recruit_actor_id='{}' 与 shop_id/quest_offer_id/battle_troop_id，本阶段忽略招募入口。",
+                         *recruit_actor_id);
+        } else {
+            should_attach_recruitable = true;
         }
     }
 
@@ -410,6 +422,12 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
             game::component::QuestGiverComponent{
                 .quest_id_ = *quest_offer_id,
                 .quest_id_hash_ = entt::hashed_string{quest_offer_id->c_str()}.value()});
+    } else if (should_attach_recruitable && recruit_actor_id) {
+        registry_.emplace_or_replace<game::component::RecruitableComponent>(
+            entity_id_,
+            game::component::RecruitableComponent{
+                .actor_id_ = *recruit_actor_id,
+                .actor_id_hash_ = entt::hashed_string{recruit_actor_id->c_str()}.value()});
     }
 
     if (wander_radius_override) {

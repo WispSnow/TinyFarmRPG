@@ -35,6 +35,7 @@
 #include "engine/spatial/spatial_index_manager.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/party_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/state_component.h"
@@ -318,6 +319,11 @@ protected:
                  "quest.village.goblin_cleanup",
                  "kill_goblins"),
              2}};
+        registry.emplace<game::component::PartyComponent>(
+            player,
+            game::component::PartyComponent{
+                .recruited_actor_ids_ = {"actor.player", "actor.lyria"},
+                .active_actor_ids_ = {"actor.player", "actor.lyria"}});
         registry.emplace<game::component::StateComponent>(player);
 
         const entt::id_type initial_map_id = entt::hashed_string{"home_exterior"}.value();
@@ -463,6 +469,17 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContaine
     EXPECT_TRUE(combat_state.at("item_stocks").is_object());
     EXPECT_TRUE(combat_state.contains("escape_attempt_count"));
     EXPECT_TRUE(combat_state.at("escape_attempt_count").is_number_unsigned());
+
+    ASSERT_TRUE(json.contains("party_state"));
+    ASSERT_TRUE(json.at("party_state").is_object());
+    const auto& party_state = json.at("party_state");
+    EXPECT_TRUE(party_state.contains("recruited_actor_ids"));
+    EXPECT_TRUE(party_state.at("recruited_actor_ids").is_array());
+    EXPECT_TRUE(party_state.contains("active_actor_ids"));
+    EXPECT_TRUE(party_state.at("active_actor_ids").is_array());
+    ASSERT_EQ(party_state.at("active_actor_ids").size(), 2U);
+    EXPECT_EQ(party_state.at("active_actor_ids").at(0).get<std::string>(), "actor.player");
+    EXPECT_EQ(party_state.at("active_actor_ids").at(1).get<std::string>(), "actor.lyria");
     ASSERT_TRUE(json.contains("player"));
     EXPECT_TRUE(json.at("player").contains("gold"));
     EXPECT_EQ(json.at("player").at("gold").get<int>(), 345);
@@ -518,6 +535,29 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresQuestLogState) {
                 "quest.village.goblin_cleanup",
                 "kill_goblins")),
         2);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
+    const auto file_path = tempFilePath("save_party_restore.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PartyComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+    auto& party = player_view.get<game::component::PartyComponent>(player);
+    party.recruited_actor_ids_ = {"actor.player"};
+    party.active_actor_ids_ = {"actor.player"};
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PartyComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity loaded_player = *player_view.begin();
+    const auto& loaded_party = player_view.get<game::component::PartyComponent>(loaded_player);
+    EXPECT_EQ(loaded_party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_EQ(loaded_party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresDefeatedEncounters) {

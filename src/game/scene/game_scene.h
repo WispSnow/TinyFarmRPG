@@ -22,6 +22,7 @@ namespace game::defs {
     struct EnterBattleCommand;
     struct BattleEndedEvent;
     struct QuestOfferRequestedEvent;
+    struct RecruitOfferRequestedEvent;
 }
 
 namespace game::ui {
@@ -100,6 +101,7 @@ private:
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
     void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
+    void onRecruitOfferRequested(const game::defs::RecruitOfferRequestedEvent& evt);
     void releaseEnemyEncounterEntryFailure(const game::defs::EnemyEncounterBattleContext& context);
     void resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& evt);
 };

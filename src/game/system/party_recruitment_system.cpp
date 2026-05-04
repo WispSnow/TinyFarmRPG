@@ -1,0 +1,125 @@
+#include "party_recruitment_system.h"
+
+#include "game/component/party_component.h"
+#include "game/component/recruitable_component.h"
+#include "game/component/tags.h"
+#include "game/data/rpg_catalog.h"
+#include "game/defs/commands.h"
+
+#include "engine/component/name_component.h"
+
+#include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
+#include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace {
+
+constexpr std::uint8_t NOTIFICATION_CHANNEL = 1;
+constexpr float NOTIFICATION_SECONDS = 2.0f;
+constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
+
+[[nodiscard]] bool containsString(const std::vector<std::string>& values, std::string_view value) {
+    return std::any_of(values.begin(), values.end(), [value](const std::string& current) {
+        return current == value;
+    });
+}
+
+void ensureDefaultPartyActor(game::component::PartyComponent& party) {
+    if (!containsString(party.recruited_actor_ids_, DEFAULT_PARTY_ACTOR_ID)) {
+        party.recruited_actor_ids_.insert(party.recruited_actor_ids_.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
+    if (!containsString(party.active_actor_ids_, DEFAULT_PARTY_ACTOR_ID)) {
+        party.active_actor_ids_.insert(party.active_actor_ids_.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
+}
+
+[[nodiscard]] std::string findSpeakerName(entt::registry& registry, const entt::entity entity) {
+    if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
+        return name->name_;
+    }
+    return {};
+}
+
+} // namespace
+
+namespace game::system {
+
+PartyRecruitmentSystem::PartyRecruitmentSystem(entt::registry& registry,
+                                               entt::dispatcher& dispatcher,
+                                               const game::data::RpgCatalog& rpg_catalog)
+    : registry_(registry),
+      dispatcher_(dispatcher),
+      rpg_catalog_(rpg_catalog) {
+    dispatcher_.sink<game::defs::RecruitPartyMemberCommand>()
+        .connect<&PartyRecruitmentSystem::onRecruitPartyMemberCommand>(this);
+}
+
+PartyRecruitmentSystem::~PartyRecruitmentSystem() {
+    dispatcher_.disconnect(this);
+}
+
+void PartyRecruitmentSystem::update(const float delta_time) {
+    helpers::updateTimedNotification(registry_, dispatcher_, NOTIFICATION_CHANNEL, notification_, delta_time);
+}
+
+void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::RecruitPartyMemberCommand& command) {
+    const entt::entity player = helpers::getPlayerEntity(registry_);
+    if (player == entt::null || command.player != player) {
+        return;
+    }
+    if (command.actor_id.empty() || command.actor_id_hash == entt::null) {
+        return;
+    }
+
+    if (command.recruiter != entt::null && registry_.valid(command.recruiter)) {
+        const auto* recruitable = registry_.try_get<game::component::RecruitableComponent>(command.recruiter);
+        if (!recruitable || recruitable->actor_id_hash_ != command.actor_id_hash) {
+            return;
+        }
+    }
+
+    const auto* actor = rpg_catalog_.findActor(command.actor_id_hash);
+    if (!actor) {
+        spdlog::warn("PartyRecruitmentSystem: actor_id='{}' 未在 RpgCatalog 中找到。", command.actor_id);
+        return;
+    }
+
+    auto& party = registry_.get_or_emplace<game::component::PartyComponent>(player);
+    ensureDefaultPartyActor(party);
+
+    const std::string display_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+    if (containsString(party.recruited_actor_ids_, actor->id_)) {
+        showNotification(command.recruiter, display_name + " is already in the party.");
+        return;
+    }
+
+    party.recruited_actor_ids_.push_back(actor->id_);
+    if (!containsString(party.active_actor_ids_, actor->id_) &&
+        party.active_actor_ids_.size() < party.max_active_members_) {
+        party.active_actor_ids_.push_back(actor->id_);
+    }
+
+    showNotification(command.recruiter, display_name + " joined the party.");
+}
+
+void PartyRecruitmentSystem::showNotification(entt::entity target, std::string text) {
+    if (target == entt::null || !registry_.valid(target)) {
+        target = helpers::getPlayerEntity(registry_);
+    }
+    helpers::showTimedNotification(
+        registry_,
+        dispatcher_,
+        NOTIFICATION_CHANNEL,
+        notification_,
+        target,
+        findSpeakerName(registry_, target),
+        std::move(text),
+        NOTIFICATION_SECONDS);
+}
+
+} // namespace game::system

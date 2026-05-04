@@ -21,6 +21,8 @@ class AnimalBehaviorSystem;
 class DialogueSystem;
 class EnemyEncounterSystem;
 class QuestInteractionSystem;
+class RecruitmentInteractionSystem;
+class PartyRecruitmentSystem;
 class ChestSystem;
 class InteractionSystem;
 class MapTransitionSystem;

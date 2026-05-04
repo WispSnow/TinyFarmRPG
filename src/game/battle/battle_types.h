@@ -68,6 +68,16 @@ enum class BattleActionStatus {
     Rejected    ///< 行动被拒绝，原因见 BattleActionResult::failure_reason。
 };
 
+struct BattlePortrait {
+    std::string path{};
+    int x{0};
+    int y{0};
+    int width{0};
+    int height{0};
+
+    [[nodiscard]] bool valid() const { return !path.empty() && width > 0 && height > 0; }
+};
+
 /// @brief 回合制战斗领域使用的战斗单位运行时副本。
 ///
 /// BattleUnit 有意不区分玩家/敌人的具体子类型，让双方可以复用同一套回合排序、
@@ -89,6 +99,7 @@ struct BattleUnit {
     std::vector<std::string> skill_ids{};       ///< 该单位可在战斗菜单中使用的技能 ID 列表。
     std::optional<std::string> source_actor_id{};   ///< 对应 RPG catalog actor id；无来源时为空。
     std::optional<std::string> source_enemy_id{};   ///< 对应 RPG catalog enemy id；无来源时为空。
+    BattlePortrait portrait{};                  ///< 玩家方角色肖像；敌人或缺失资源时可为空。
 
     [[nodiscard]] bool isAlive() const { return hp > 0; }
 };

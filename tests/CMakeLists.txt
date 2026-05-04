@@ -160,6 +160,7 @@ set(GAME_TEST_SOURCES
     game/quest_debug_panel_helpers_test.cpp
     game/quest_debug_panel_registration_test.cpp
     game/quest_offer_scene_smoke_test.cpp
+    game/recruit_offer_scene_smoke_test.cpp
     game/shop_debug_panel_helpers_test.cpp
     game/shop_debug_panel_registration_test.cpp
     game/quest_interaction_system_test.cpp
@@ -167,6 +168,8 @@ set(GAME_TEST_SOURCES
     game/quest_turn_in_service_test.cpp
     game/shop_transaction_service_test.cpp
     game/shop_interaction_system_test.cpp
+    game/recruitment_interaction_system_test.cpp
+    game/party_recruitment_system_test.cpp
     game/quest_save_roundtrip_test.cpp
     game/player_control_system_targeting_test.cpp
     game/state_system_dirty_tag_test.cpp
