@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <entt/core/hashed_string.hpp>
+#include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <nlohmann/json.hpp>
 
@@ -12,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -38,6 +40,7 @@
 #include "game/component/party_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
+#include "game/component/recruitable_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
@@ -64,6 +67,17 @@ namespace {
     std::ifstream file(path);
     EXPECT_TRUE(file.is_open()) << path;
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+}
+
+[[nodiscard]] bool hasRecruitableActor(entt::registry& registry, const std::string_view actor_id) {
+    auto view = registry.view<game::component::RecruitableComponent>();
+    for (const auto entity : view) {
+        const auto& recruitable = view.get<game::component::RecruitableComponent>(entity);
+        if (recruitable.actor_id_ == actor_id) {
+            return true;
+        }
+    }
+    return false;
 }
 
 class TestScene final : public engine::scene::Scene {
@@ -538,6 +552,8 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresQuestLogState) {
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
+    EXPECT_FALSE(hasRecruitableActor(scene_->getRegistry(), "actor.lyria"));
+
     const auto file_path = tempFilePath("save_party_restore.json");
     std::string save_error;
     ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
@@ -558,6 +574,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
     const auto& loaded_party = player_view.get<game::component::PartyComponent>(loaded_player);
     EXPECT_EQ(loaded_party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_EQ(loaded_party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_FALSE(hasRecruitableActor(scene_->getRegistry(), "actor.lyria"));
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresDefeatedEncounters) {

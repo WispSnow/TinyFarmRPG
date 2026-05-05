@@ -13,6 +13,7 @@
 #include "game/component/party_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
+#include "game/component/recruitable_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
@@ -32,6 +33,7 @@
 #include "engine/core/context.h"
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/spatial/spatial_index_manager.h"
 
 #include "game/factory/blueprint_manager.h"
 
@@ -50,6 +52,7 @@
 #include <string_view>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 using namespace entt::literals;
 
@@ -129,6 +132,29 @@ void normalizeParty(game::component::PartyComponent& party) {
     party.active_actor_ids_ = std::move(filtered_active);
     if (party.active_actor_ids_.empty()) {
         party.active_actor_ids_.push_back(std::string(DEFAULT_PARTY_ACTOR_ID));
+    }
+}
+
+void removeRecruitedRecruitableActors(entt::registry& registry,
+                                      engine::spatial::SpatialIndexManager& spatial_index,
+                                      const game::component::PartyComponent& party) {
+    auto view = registry.view<game::component::RecruitableComponent>();
+    std::vector<entt::entity> to_destroy;
+    for (const auto entity : view) {
+        const auto& recruitable = view.get<game::component::RecruitableComponent>(entity);
+        if (containsString(party.recruited_actor_ids_, recruitable.actor_id_)) {
+            to_destroy.push_back(entity);
+        }
+    }
+
+    for (const auto entity : to_destroy) {
+        if (!registry.valid(entity)) {
+            continue;
+        }
+        if (spatial_index.isInitialized()) {
+            spatial_index.removeColliderEntity(entity);
+        }
+        registry.destroy(entity);
     }
 }
 
@@ -830,6 +856,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             .recruited_actor_ids_ = data.party_state.recruited_actor_ids,
             .active_actor_ids_ = data.party_state.active_actor_ids});
     normalizeParty(party);
+    removeRecruitedRecruitableActors(registry_, context_.getSpatialIndexManager(), party);
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         if (!data.appearance_state.gender.empty()) {

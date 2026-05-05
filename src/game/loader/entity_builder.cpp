@@ -8,6 +8,7 @@
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/party_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/defs/spatial_layers.h"
@@ -30,9 +31,11 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 using namespace entt::literals;
@@ -190,6 +193,20 @@ struct TimeVisibilityFlags {
     }
 
     return std::nullopt;
+}
+
+[[nodiscard]] bool isActorAlreadyRecruited(entt::registry& registry, const std::string_view actor_id) {
+    auto players = registry.view<game::component::PlayerTag, game::component::PartyComponent>();
+    for (const auto player : players) {
+        const auto& party = players.get<game::component::PartyComponent>(player);
+        if (std::any_of(party.recruited_actor_ids_.begin(), party.recruited_actor_ids_.end(),
+                        [actor_id](const std::string& current) {
+                            return current == actor_id;
+                        })) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void applyTimeVisibilityTags(entt::registry& registry, entt::entity entity, bool night_only, bool day_only, const char* label) {
@@ -398,6 +415,10 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
         } else {
             should_attach_recruitable = true;
         }
+    }
+    if (should_attach_recruitable && recruit_actor_id && isActorAlreadyRecruited(registry_, *recruit_actor_id)) {
+        entity_id_ = entt::null;
+        return;
     }
 
     entity_id_ = entity_factory_.createActor(name_id, position);
