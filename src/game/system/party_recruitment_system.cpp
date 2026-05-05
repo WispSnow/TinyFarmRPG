@@ -7,6 +7,7 @@
 #include "game/defs/commands.h"
 
 #include "engine/component/name_component.h"
+#include "engine/spatial/spatial_index_manager.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -51,10 +52,12 @@ namespace game::system {
 
 PartyRecruitmentSystem::PartyRecruitmentSystem(entt::registry& registry,
                                                entt::dispatcher& dispatcher,
-                                               const game::data::RpgCatalog& rpg_catalog)
+                                               const game::data::RpgCatalog& rpg_catalog,
+                                               engine::spatial::SpatialIndexManager* spatial_index_manager)
     : registry_(registry),
       dispatcher_(dispatcher),
-      rpg_catalog_(rpg_catalog) {
+      rpg_catalog_(rpg_catalog),
+      spatial_index_manager_(spatial_index_manager) {
     dispatcher_.sink<game::defs::RecruitPartyMemberCommand>()
         .connect<&PartyRecruitmentSystem::onRecruitPartyMemberCommand>(this);
 }
@@ -104,7 +107,24 @@ void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::Recru
         party.active_actor_ids_.push_back(actor->id_);
     }
 
-    showNotification(command.recruiter, display_name + " joined the party.");
+    showNotification(player, display_name + " joined the party.");
+    removeRecruiterFromMap(command.recruiter);
+}
+
+void PartyRecruitmentSystem::removeRecruiterFromMap(const entt::entity recruiter) {
+    if (recruiter == entt::null || !registry_.valid(recruiter)) {
+        return;
+    }
+    if (!registry_.all_of<game::component::RecruitableComponent>(recruiter)) {
+        return;
+    }
+
+    helpers::emitDialogueBubbleHide(dispatcher_, 0, recruiter);
+    helpers::emitDialogueBubbleHide(dispatcher_, NOTIFICATION_CHANNEL, recruiter);
+    if (spatial_index_manager_ && spatial_index_manager_->isInitialized()) {
+        spatial_index_manager_->removeColliderEntity(recruiter);
+    }
+    registry_.destroy(recruiter);
 }
 
 void PartyRecruitmentSystem::showNotification(entt::entity target, std::string text) {

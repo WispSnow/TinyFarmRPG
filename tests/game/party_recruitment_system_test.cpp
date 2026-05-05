@@ -69,6 +69,7 @@ TEST(PartyRecruitmentSystemTest, AddsRecruitToRecruitedAndActiveParty) {
     const auto& party = registry.get<game::component::PartyComponent>(player);
     EXPECT_EQ(party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_EQ(party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_FALSE(registry.valid(recruiter));
 }
 
 TEST(PartyRecruitmentSystemTest, IgnoresMismatchedRecruiterComponent) {
@@ -88,6 +89,7 @@ TEST(PartyRecruitmentSystemTest, IgnoresMismatchedRecruiterComponent) {
     const auto& party = registry.get<game::component::PartyComponent>(player);
     EXPECT_EQ(party.recruited_actor_ids_, std::vector<std::string>({"actor.player"}));
     EXPECT_EQ(party.active_actor_ids_, std::vector<std::string>({"actor.player"}));
+    EXPECT_TRUE(registry.valid(recruiter));
 }
 
 } // namespace

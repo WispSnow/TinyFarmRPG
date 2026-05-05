@@ -832,7 +832,8 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
     systems.party_recruitment_system = std::make_unique<game::system::PartyRecruitmentSystem>(
         params.registry,
         dispatcher,
-        *services.rpg_catalog);
+        *services.rpg_catalog,
+        &spatial_index_manager);
     systems.shop_interaction_system = std::make_unique<game::system::ShopInteractionSystem>(
         params.registry,
         params.context,
