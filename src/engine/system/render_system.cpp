@@ -14,6 +14,11 @@
 namespace engine::system {
 
 void RenderSystem::render(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha) {
+    renderer.beginFrame(camera);
+    renderPrepared(registry, renderer, interpolation_alpha);
+}
+
+void RenderSystem::renderPrepared(entt::registry& registry, render::Renderer& renderer, float interpolation_alpha) {
     const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
     auto view = registry.view<component::RenderComponent, component::TransformComponent, component::SpriteComponent>(
         entt::exclude<component::InvisibleTag>
@@ -30,8 +35,6 @@ void RenderSystem::render(entt::registry& registry, render::Renderer& renderer, 
             break;
         }
     }
-
-    renderer.beginFrame(camera);
 
     // 快路径：无分层角色时维持原实现（按 RenderComponent 排序后直接绘制，避免额外容器开销）
     if (!has_active_layered_entities) {

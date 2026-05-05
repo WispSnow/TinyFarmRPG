@@ -1,0 +1,26 @@
+@spritesheet portrait-player-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
+    portrait-player: 0px 0px 64px 64px;
+}
+
+@spritesheet portrait-lyria-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
+    portrait-lyria: 0px 0px 64px 64px;
+}
+
+@spritesheet portrait-tori-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
+    portrait-tori: 0px 0px 64px 64px;
+}
+
+.portrait-player {
+    decorator: image(portrait-player);
+}
+
+.portrait-lyria {
+    decorator: image(portrait-lyria);
+}
+
+.portrait-tori {
+    decorator: image(portrait-tori);
+}

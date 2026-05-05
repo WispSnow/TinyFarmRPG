@@ -2,21 +2,6 @@ body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
-@spritesheet recruit-portrait-player {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
-    portrait-player: 0px 0px 64px 64px;
-}
-
-@spritesheet recruit-portrait-lyria {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
-    portrait-lyria: 0px 0px 64px 64px;
-}
-
-@spritesheet recruit-portrait-tori {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
-    portrait-tori: 0px 0px 64px 64px;
-}
-
 #recruit-offer-panel {
     left: 128dp;
     top: 58dp;

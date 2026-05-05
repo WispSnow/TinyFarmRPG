@@ -220,6 +220,7 @@ target_sources(game PRIVATE
     # System
     game/system/state_system.cpp
     game/system/action_sound_system.cpp
+    game/system/appearance_layer_cache_builder.cpp
     game/system/appearance_system.cpp
     game/system/player_control_system.cpp
     game/system/camera_follow_system.cpp

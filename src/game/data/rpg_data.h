@@ -97,6 +97,15 @@ struct EnemyActionData {
     int rating_{0};
 };
 
+struct BattleVisualData {
+    std::string sprite_blueprint_id_{};
+    entt::id_type sprite_blueprint_id_hash_{};
+    std::string idle_animation_{"idle_right"};
+    float scale_{1.0F};
+
+    [[nodiscard]] bool valid() const { return !sprite_blueprint_id_.empty(); }
+};
+
 struct EnemyData {
     std::string id_{};
     entt::id_type id_hash_{};
@@ -106,6 +115,7 @@ struct EnemyData {
     int gold_reward_{0};
     std::vector<EnemyDropData> drops_{};
     std::vector<EnemyActionData> actions_{};
+    BattleVisualData battle_visual_{};
 };
 
 struct TroopMemberData {

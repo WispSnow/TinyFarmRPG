@@ -22,19 +22,24 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/recruit_offer.rml").lexically_normal();
     const std::filesystem::path rcss_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/recruit_offer.rcss").lexically_normal();
+    const std::filesystem::path portrait_rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/portrait.rcss").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
     ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
     ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+    ASSERT_TRUE(std::filesystem::exists(portrait_rcss_path)) << portrait_rcss_path;
 
     const std::string header = test_source_utils::readTextFile(header_path);
     const std::string source = test_source_utils::readTextFile(source_path);
     const std::string rml = test_source_utils::readTextFile(rml_path);
     const std::string rcss = test_source_utils::readTextFile(rcss_path);
+    const std::string portrait_rcss = test_source_utils::readTextFile(portrait_rcss_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
     ASSERT_FALSE(rml.empty());
     ASSERT_FALSE(rcss.empty());
+    ASSERT_FALSE(portrait_rcss.empty());
 
     EXPECT_NE(header.find("class RecruitOfferScene final"), std::string::npos);
     EXPECT_NE(header.find("RmlDocumentController document_controller_"), std::string::npos);
@@ -69,6 +74,7 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(rml.find("{{ speaker_text }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ offer_text }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ actor_name }}"), std::string::npos);
+    EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(rml.find("id=\"recruit-offer-accept-button\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"accept\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"recruit-offer-decline-button\""), std::string::npos);
@@ -77,9 +83,12 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(rml.find("data-class-portrait-tori"), std::string::npos);
 
     EXPECT_NE(rcss.find("display: block;"), std::string::npos);
-    EXPECT_NE(rcss.find("@spritesheet recruit-portrait-player"), std::string::npos);
+    EXPECT_EQ(rcss.find("@spritesheet recruit-portrait-player"), std::string::npos);
     EXPECT_NE(rcss.find("#recruit-offer-panel"), std::string::npos);
     EXPECT_NE(rcss.find(".recruit-offer-action-button"), std::string::npos);
+    EXPECT_NE(portrait_rcss.find("@spritesheet portrait-player-sheet"), std::string::npos);
+    EXPECT_NE(portrait_rcss.find("portrait-lyria"), std::string::npos);
+    EXPECT_NE(portrait_rcss.find("portrait-tori"), std::string::npos);
 }
 
 TEST(RecruitOfferSceneSmokeTest, GameScenePushesRecruitOfferSceneFromRequestEvent) {

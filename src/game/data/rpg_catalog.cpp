@@ -169,6 +169,28 @@ using Json = nlohmann::json;
     return out_portrait.path_.empty() || out_portrait.valid();
 }
 
+[[nodiscard]] bool parseBattleVisual(const Json& node, BattleVisualData& out_visual) {
+    out_visual = {};
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    out_visual.sprite_blueprint_id_ = node.value("sprite_blueprint_id", std::string{});
+    out_visual.idle_animation_ = node.value("idle_animation", std::string{"idle_right"});
+    out_visual.scale_ = node.value("scale", 1.0F);
+    if (out_visual.scale_ <= 0.0F) {
+        return false;
+    }
+
+    out_visual.sprite_blueprint_id_hash_ = out_visual.sprite_blueprint_id_.empty()
+        ? entt::null
+        : RpgCatalog::hashId(out_visual.sprite_blueprint_id_);
+    return out_visual.sprite_blueprint_id_.empty() || !out_visual.idle_animation_.empty();
+}
+
 } // namespace
 
 entt::id_type RpgCatalog::hashId(const std::string_view id) {
@@ -511,6 +533,12 @@ bool RpgCatalog::loadEnemies(const std::string_view file_path) {
 
         enemy.exp_reward_ = enemy_node.value("exp", 0);
         enemy.gold_reward_ = enemy_node.value("gold", 0);
+
+        if (const auto visual_it = enemy_node.find("battle_visual");
+            visual_it != enemy_node.end() && !parseBattleVisual(*visual_it, enemy.battle_visual_)) {
+            spdlog::error("RpgCatalog: enemy '{}' battle_visual 配置非法", enemy.id_);
+            return false;
+        }
 
         if (const auto drops_it = enemy_node.find("drops"); drops_it != enemy_node.end()) {
             if (!drops_it->is_array()) {

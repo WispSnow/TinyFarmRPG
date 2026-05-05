@@ -2,20 +2,35 @@
 <head>
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
-    <link type="text/rcss" href="../theme/modal.rcss"/>
     <link type="text/rcss" href="../theme/nav.rcss"/>
-    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
-    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="battle.rcss"/>
 </head>
 <body class="tf-screen-root tf-nav-root" data-model="battle_scene">
-    <div id="battle-overlay" class="tf-modal-overlay"></div>
+    <div id="battle-hud">
+        <div id="battle-party-panel">
+            <div class="battle-party-card"
+                 data-for="member : party_status"
+                 data-class-active-party-member="member.active"
+                 data-class-ko-party-member="member.ko">
+                <div class="battle-portrait"
+                     data-class-portrait-player="member.portrait_player"
+                     data-class-portrait-lyria="member.portrait_lyria"
+                     data-class-portrait-tori="member.portrait_tori"></div>
+                <div class="battle-party-name">{{ member.name }}</div>
+                <div class="battle-stat-label battle-hp-label">HP {{ member.hp_text }}</div>
+                <div class="battle-stat-bar battle-hp-bar">
+                    <div class="battle-stat-fill battle-hp-fill" data-style-width="member.hp_ratio_percent"></div>
+                </div>
+                <div class="battle-stat-label battle-mp-label">MP {{ member.mp_text }}</div>
+                <div class="battle-stat-bar battle-mp-bar">
+                    <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>
+                </div>
+            </div>
+        </div>
 
-    <div id="battle-panel" class="tf-modal-panel">
-        <div id="battle-content">
-            <div id="battle-title">Battle</div>
+        <div id="battle-command-panel">
             <div id="battle-turn">{{ turn_text }}</div>
-            <div id="battle-units">{{ units_text }}</div>
             <div id="battle-result">{{ result_text }}</div>
 
             <div id="battle-actions" data-if="actions_enabled">
@@ -23,7 +38,7 @@
                 <div id="battle-menu-hint">{{ menu_hint }}</div>
 
                 <div id="battle-main-actions" data-if="main_menu_visible">
-                    <button class="tf-button-secondary tf-nav-auto battle-action-button"
+                    <button class="battle-text-button tf-nav-auto battle-action-button"
                             data-for="action : main_actions"
                             id="battle-main-action-{{ action.entry_index }}"
                             data-class-disabled="!action.enabled"
@@ -33,7 +48,7 @@
 
                 <div id="battle-list-menu" data-if="list_menu_visible">
                     <div id="battle-list-empty" data-if="list_empty">{{ list_empty_text }}</div>
-                    <button class="tf-button-secondary tf-nav-auto battle-list-entry"
+                    <button class="battle-text-button tf-nav-auto battle-list-entry"
                             data-for="entry : list_entries"
                             id="battle-list-entry-{{ entry.entry_index }}"
                             data-class-disabled="!entry.enabled"
@@ -46,7 +61,7 @@
 
                 <div id="battle-target-menu" data-if="target_menu_visible">
                     <div id="battle-target-empty" data-if="target_empty">{{ target_empty_text }}</div>
-                    <button class="tf-button-secondary tf-nav-auto battle-target-entry"
+                    <button class="battle-text-button tf-nav-auto battle-target-entry"
                             data-for="target : target_entries"
                             id="battle-target-entry-{{ target.entry_index }}"
                             data-class-disabled="!target.enabled"

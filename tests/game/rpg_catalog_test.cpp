@@ -158,6 +158,11 @@ FixturePaths createValidRpgFixture() {
       },
       "exp": 10,
       "gold": 5,
+      "battle_visual": {
+        "sprite_blueprint_id": "slime",
+        "idle_animation": "idle_right",
+        "scale": 1.8
+      },
       "drops": [
         { "item_id": "item.slime_gel", "chance": 0.5 }
       ],
@@ -235,6 +240,9 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* enemy = catalog.findEnemy("enemy.slime");
     ASSERT_NE(enemy, nullptr);
     EXPECT_EQ(enemy->exp_reward_, 10);
+    EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
+    EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 1.8F);
 
     const auto* troop = catalog.findTroop("troop.slime_pair");
     ASSERT_NE(troop, nullptr);
@@ -261,6 +269,19 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     ASSERT_NE(enemy, nullptr);
     EXPECT_EQ(enemy->display_name_, "Slime");
     EXPECT_EQ(enemy->actions_.front().skill_id_, "skill.attack");
+    EXPECT_TRUE(enemy->battle_visual_.valid());
+    EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
+    EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
+
+    const auto* goblin = catalog.findEnemy("enemy.goblin");
+    ASSERT_NE(goblin, nullptr);
+    EXPECT_TRUE(goblin->battle_visual_.valid());
+    EXPECT_EQ(goblin->battle_visual_.sprite_blueprint_id_, "goblin");
+
+    const auto* gnome = catalog.findEnemy("enemy.gnome");
+    ASSERT_NE(gnome, nullptr);
+    EXPECT_TRUE(gnome->battle_visual_.valid());
+    EXPECT_EQ(gnome->battle_visual_.sprite_blueprint_id_, "gnome");
 
     const auto* troop = catalog.findTroop("troop.slime");
     ASSERT_NE(troop, nullptr);

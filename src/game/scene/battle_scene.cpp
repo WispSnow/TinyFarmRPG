@@ -1,15 +1,26 @@
 #include "battle_scene.h"
 
-#include "game/battle/battle_ai_planner.h"
-#include "game/defs/events.h"
-
+#include "engine/component/animation_component.h"
+#include "engine/component/layered_sprite_component.h"
+#include "engine/component/render_component.h"
+#include "engine/component/sprite_component.h"
+#include "engine/component/transform_component.h"
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
+#include "engine/render/camera.h"
+#include "engine/render/renderer.h"
+#include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "game/battle/battle_ai_planner.h"
+#include "game/component/appearance_component.h"
+#include "game/defs/events.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/data/rpg_types.h"
+#include "game/factory/blueprint.h"
+#include "game/factory/blueprint_manager.h"
+#include "game/system/appearance_layer_cache_builder.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -20,11 +31,15 @@
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <glm/common.hpp>
+#include <glm/vec3.hpp>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <sstream>
+#include <cmath>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -34,6 +49,8 @@ constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
 constexpr int MAIN_ACTION_COLUMNS = 3;
+constexpr float BATTLEFIELD_HEIGHT = 230.0f;
+constexpr int BATTLE_RENDER_LAYER = 40;
 
 enum class MainActionId : int {
     Attack = 1,
@@ -44,24 +61,22 @@ enum class MainActionId : int {
     EndTurn = 6
 };
 
-[[nodiscard]] std::string formatUnitsLine(const std::vector<game::battle::BattleUnit>& units) {
-    std::ostringstream stream;
-    stream << "Units: ";
+struct BattleSpriteComponent {
+    game::battle::BattleUnitId unit_id{0};
+    game::battle::BattleSide side{game::battle::BattleSide::Player};
+    glm::vec2 screen_position{0.0f};
+    float scale{1.0f};
 
-    for (std::size_t i = 0; i < units.size(); ++i) {
-        const auto& unit = units[i];
-        if (i > 0) {
-            stream << " | ";
-        }
-
-        stream << unit.name << " " << unit.hp << "/" << unit.max_hp;
-        if (!unit.isAlive()) {
-            stream << " (KO)";
-        }
-    }
-
-    return stream.str();
-}
+    BattleSpriteComponent() = default;
+    BattleSpriteComponent(game::battle::BattleUnitId unit_id,
+                          game::battle::BattleSide side,
+                          glm::vec2 screen_position,
+                          float scale)
+        : unit_id(unit_id),
+          side(side),
+          screen_position(screen_position),
+          scale(scale) {}
+};
 
 [[nodiscard]] std::string formatRecoveryText(const game::battle::BattleActionResult& result) {
     std::string text;
@@ -155,6 +170,118 @@ using namespace entt::literals;
     return Rml::String{value.data(), value.size()};
 }
 
+[[nodiscard]] entt::id_type hashString(std::string_view value) {
+    return entt::hashed_string{value.data(), value.size()}.value();
+}
+
+[[nodiscard]] engine::component::Animation toRuntimeAnimation(const game::factory::AnimationBlueprint& blueprint,
+                                                              bool loop = true) {
+    std::vector<engine::component::AnimationFrame> frames;
+    frames.reserve(blueprint.frames_.size());
+    for (const int frame_index : blueprint.frames_) {
+        engine::utils::Rect source_rect{blueprint.position_, blueprint.src_size_};
+        source_rect.pos.x += static_cast<float>(frame_index) * blueprint.src_size_.x;
+        frames.emplace_back(source_rect, blueprint.ms_per_frame_);
+    }
+
+    engine::component::Animation animation{};
+    animation.name_ = blueprint.name_;
+    animation.texture_id_ = blueprint.texture_id_;
+    animation.pivot_ = blueprint.pivot_;
+    animation.dst_size_ = blueprint.dst_size_;
+    animation.frames_ = std::move(frames);
+    animation.events_ = blueprint.events_;
+    animation.loop_ = loop;
+    animation.flip_horizontal_ = blueprint.flip_horizontal_;
+    return animation;
+}
+
+[[nodiscard]] std::unordered_map<entt::id_type, engine::component::Animation>
+toRuntimeAnimations(const std::unordered_map<entt::id_type, game::factory::AnimationBlueprint>& blueprints) {
+    std::unordered_map<entt::id_type, engine::component::Animation> animations;
+    animations.reserve(blueprints.size());
+    for (const auto& [animation_id, blueprint] : blueprints) {
+        animations.emplace(animation_id, toRuntimeAnimation(blueprint));
+    }
+    return animations;
+}
+
+void applyAnimationFrame(engine::component::AnimationComponent& animation,
+                         engine::component::SpriteComponent& sprite) {
+    const auto animation_it = animation.animations_.find(animation.current_animation_id_);
+    if (animation_it == animation.animations_.end()) {
+        return;
+    }
+
+    const auto& current_animation = animation_it->second;
+    if (current_animation.frames_.empty()) {
+        return;
+    }
+
+    animation.current_frame_index_ = std::min(animation.current_frame_index_, current_animation.frames_.size() - 1);
+    const auto& frame = current_animation.frames_[animation.current_frame_index_];
+    sprite.sprite_.texture_id_ = current_animation.texture_id_;
+    sprite.sprite_.src_rect_ = frame.src_rect_;
+    sprite.sprite_.is_flipped_ = current_animation.flip_horizontal_;
+    if (current_animation.dst_size_.x > 0.0f && current_animation.dst_size_.y > 0.0f) {
+        sprite.size_ = current_animation.dst_size_;
+    }
+    sprite.pivot_ = current_animation.pivot_;
+}
+
+void advanceAnimation(engine::component::AnimationComponent& animation,
+                      engine::component::SpriteComponent& sprite,
+                      float delta_time) {
+    const auto animation_it = animation.animations_.find(animation.current_animation_id_);
+    if (animation_it == animation.animations_.end()) {
+        return;
+    }
+
+    const auto& current_animation = animation_it->second;
+    if (current_animation.frames_.empty()) {
+        return;
+    }
+
+    animation.current_time_ms_ += delta_time * 1000.0f * animation.speed_;
+    while (animation.current_frame_index_ < current_animation.frames_.size()) {
+        const float duration_ms = std::max(1.0f, current_animation.frames_[animation.current_frame_index_].duration_ms_);
+        if (animation.current_time_ms_ < duration_ms) {
+            break;
+        }
+
+        animation.current_time_ms_ -= duration_ms;
+        ++animation.current_frame_index_;
+        if (animation.current_frame_index_ < current_animation.frames_.size()) {
+            continue;
+        }
+
+        if (current_animation.loop_) {
+            animation.current_frame_index_ = 0;
+        } else {
+            animation.current_frame_index_ = current_animation.frames_.size() - 1;
+            animation.current_time_ms_ = 0.0f;
+            break;
+        }
+    }
+
+    applyAnimationFrame(animation, sprite);
+}
+
+[[nodiscard]] Rml::String ratioPercentString(int value, int max_value) {
+    const float ratio = max_value > 0
+        ? std::clamp(static_cast<float>(value) / static_cast<float>(max_value), 0.0f, 1.0f)
+        : 0.0f;
+    return std::to_string(static_cast<int>(std::round(ratio * 100.0f))) + "%";
+}
+
+[[nodiscard]] engine::utils::Rect screenRectToWorldRect(const engine::render::Camera& camera,
+                                                        const glm::vec2& position,
+                                                        const glm::vec2& size) {
+    const glm::vec2 top_left = camera.screenToWorld(position);
+    const glm::vec2 bottom_right = camera.screenToWorld(position + size);
+    return engine::utils::Rect{top_left, bottom_right - top_left};
+}
+
 } // namespace
 
 namespace game::scene {
@@ -162,11 +289,15 @@ namespace game::scene {
 BattleScene::BattleScene(std::string_view name,
                          engine::core::Context& context,
                          std::vector<game::battle::BattleUnit> units,
-                         game::battle::BattleSessionOptions session_options)
+                         game::battle::BattleSessionOptions session_options,
+                         BattleScenePresentationOptions presentation_options)
     : engine::scene::Scene(name, context),
       rpg_catalog_(session_options.rpg_catalog),
       item_catalog_(session_options.item_catalog),
-      session_(std::move(units), std::move(session_options)) {
+      blueprint_manager_(presentation_options.blueprint_manager),
+      appearance_catalog_(presentation_options.appearance_catalog),
+      session_(std::move(units), std::move(session_options)),
+      presentation_options_(std::move(presentation_options)) {
 }
 
 BattleScene::~BattleScene() {
@@ -179,6 +310,13 @@ bool BattleScene::init() {
     context_pushed_ = true;
 
     if (!initUI()) {
+        context_.getInputManager().popContext();
+        context_pushed_ = false;
+        return false;
+    }
+
+    if (!initPresentation()) {
+        shutdownUI();
         context_.getInputManager().popContext();
         context_pushed_ = false;
         return false;
@@ -205,8 +343,17 @@ bool BattleScene::init() {
 
 void BattleScene::update(float delta_time) {
     Scene::update(delta_time);
+    updatePresentation(delta_time);
     runStateMachine(delta_time);
     refreshView();
+}
+
+void BattleScene::render(float interpolation_alpha) {
+    Scene::render(interpolation_alpha);
+    renderBattlefieldBackground();
+    refreshPresentation();
+    syncPresentationTransforms();
+    battle_render_system_.renderPrepared(battle_registry_, context_.getRenderer(), interpolation_alpha);
 }
 
 void BattleScene::prepareUi(float interpolation_alpha) {
@@ -247,7 +394,6 @@ bool BattleScene::initUI() {
     populateMainActions();
 
     if (!constructor.Bind("turn_text", &turn_text_) ||
-        !constructor.Bind("units_text", &units_text_) ||
         !constructor.Bind("result_text", &result_text_) ||
         !constructor.Bind("actions_enabled", &actions_enabled_) ||
         !constructor.Bind("menu_title", &menu_title_) ||
@@ -260,6 +406,7 @@ bool BattleScene::initUI() {
         !constructor.Bind("target_menu_visible", &target_menu_visible_) ||
         !constructor.Bind("list_empty", &list_empty_) ||
         !constructor.Bind("target_empty", &target_empty_) ||
+        !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("main_actions", &main_actions_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
         !constructor.Bind("target_entries", &target_entries_)) {
@@ -341,9 +488,26 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto party_handle = constructor.RegisterStruct<PartyStatusViewModel>()) {
+        party_handle.RegisterMember("unit_id", &PartyStatusViewModel::unit_id);
+        party_handle.RegisterMember("name", &PartyStatusViewModel::name);
+        party_handle.RegisterMember("hp_text", &PartyStatusViewModel::hp_text);
+        party_handle.RegisterMember("mp_text", &PartyStatusViewModel::mp_text);
+        party_handle.RegisterMember("hp_ratio_percent", &PartyStatusViewModel::hp_ratio_percent);
+        party_handle.RegisterMember("mp_ratio_percent", &PartyStatusViewModel::mp_ratio_percent);
+        party_handle.RegisterMember("active", &PartyStatusViewModel::active);
+        party_handle.RegisterMember("ko", &PartyStatusViewModel::ko);
+        party_handle.RegisterMember("portrait_player", &PartyStatusViewModel::portrait_player);
+        party_handle.RegisterMember("portrait_lyria", &PartyStatusViewModel::portrait_lyria);
+        party_handle.RegisterMember("portrait_tori", &PartyStatusViewModel::portrait_tori);
+    } else {
+        return false;
+    }
+
     if (!constructor.RegisterArray<decltype(main_actions_)>() ||
         !constructor.RegisterArray<decltype(list_entries_)>() ||
-        !constructor.RegisterArray<decltype(target_entries_)>()) {
+        !constructor.RegisterArray<decltype(target_entries_)>() ||
+        !constructor.RegisterArray<decltype(party_status_)>()) {
         return false;
     }
 
@@ -496,7 +660,6 @@ game::battle::BattleAction BattleScene::buildEnemyAction(const game::battle::Bat
 
 void BattleScene::refreshView() {
     const auto current_actor_id = session_.currentActorId();
-    const auto& units = session_.units();
 
     std::string turn_text = "Turn: -";
     if (current_actor_id) {
@@ -508,10 +671,7 @@ void BattleScene::refreshView() {
         document_controller_.markDirty("turn_text");
     }
 
-    const std::string units_text = formatUnitsLine(units);
-    if (updateBoundString(units_text_, units_text)) {
-        document_controller_.markDirty("units_text");
-    }
+    rebuildPartyStatusView();
 
     std::string result_text = "Result: Choose action";
     if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
@@ -538,6 +698,53 @@ void BattleScene::refreshView() {
         leaveInputMenu();
     } else if (can_submit_action && menu_state_ == MenuState::None) {
         enterInputMenu();
+    }
+}
+
+void BattleScene::rebuildPartyStatusView() {
+    const auto current_actor_id = session_.currentActorId();
+    std::vector<PartyStatusViewModel> next_party_status;
+
+    for (const auto& unit : session_.units()) {
+        if (unit.side != game::battle::BattleSide::Player) {
+            continue;
+        }
+
+        const std::string source_actor_id = unit.source_actor_id.value_or("");
+        next_party_status.push_back(PartyStatusViewModel{
+            .unit_id = static_cast<int>(unit.id),
+            .name = makeRmlString(unit.name),
+            .hp_text = makeRmlString(std::to_string(std::max(0, unit.hp)) + " / " + std::to_string(std::max(0, unit.max_hp))),
+            .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + " / " + std::to_string(std::max(0, unit.max_mp))),
+            .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
+            .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),
+            .active = current_actor_id.has_value() && *current_actor_id == unit.id,
+            .ko = !unit.isAlive(),
+            .portrait_player = source_actor_id == "actor.player",
+            .portrait_lyria = source_actor_id == "actor.lyria",
+            .portrait_tori = source_actor_id == "actor.tori"
+        });
+    }
+
+    if (party_status_.size() != next_party_status.size() ||
+        !std::equal(party_status_.begin(),
+                    party_status_.end(),
+                    next_party_status.begin(),
+                    [](const PartyStatusViewModel& lhs, const PartyStatusViewModel& rhs) {
+                        return lhs.unit_id == rhs.unit_id &&
+                            lhs.name == rhs.name &&
+                            lhs.hp_text == rhs.hp_text &&
+                            lhs.mp_text == rhs.mp_text &&
+                            lhs.hp_ratio_percent == rhs.hp_ratio_percent &&
+                            lhs.mp_ratio_percent == rhs.mp_ratio_percent &&
+                            lhs.active == rhs.active &&
+                            lhs.ko == rhs.ko &&
+                            lhs.portrait_player == rhs.portrait_player &&
+                            lhs.portrait_lyria == rhs.portrait_lyria &&
+                            lhs.portrait_tori == rhs.portrait_tori;
+                    })) {
+        party_status_ = std::move(next_party_status);
+        document_controller_.markDirty("party_status");
     }
 }
 
@@ -1378,6 +1585,245 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
 
     out_actor_id = *actor_id;
     return actor;
+}
+
+bool BattleScene::initPresentation() {
+    auto& resource_manager = context_.getResourceManager();
+    if (auto* resource_ptr = battle_registry_.ctx().find<engine::resource::ResourceManager*>()) {
+        *resource_ptr = &resource_manager;
+    } else {
+        battle_registry_.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
+    }
+
+    if (!blueprint_manager_) {
+        spdlog::warn("BattleScene: 缺少 BlueprintManager，战斗角色表现将不绘制。");
+        return true;
+    }
+
+    std::size_t player_count = 0;
+    std::size_t enemy_count = 0;
+    for (const auto& unit : session_.units()) {
+        if (unit.side == game::battle::BattleSide::Player) {
+            ++player_count;
+        } else {
+            ++enemy_count;
+        }
+    }
+
+    std::size_t player_index = 0;
+    std::size_t enemy_index = 0;
+    for (const auto& unit : session_.units()) {
+        std::string blueprint_id;
+        std::string idle_animation = unit.side == game::battle::BattleSide::Player ? "idle_left" : "idle_right";
+        float scale = unit.side == game::battle::BattleSide::Player ? 2.0F : 1.8F;
+        std::optional<AppearanceSnapshot> appearance_snapshot{};
+
+        const auto seed_it = std::find_if(
+            presentation_options_.sprite_seeds.begin(),
+            presentation_options_.sprite_seeds.end(),
+            [&unit](const BattleSpriteSeed& seed) {
+                return seed.unit_id == unit.id;
+            });
+        if (seed_it != presentation_options_.sprite_seeds.end()) {
+            appearance_snapshot = seed_it->appearance;
+        }
+
+        if (unit.side == game::battle::BattleSide::Player) {
+            if (rpg_catalog_ && unit.source_actor_id) {
+                if (const auto* actor = rpg_catalog_->findActor(*unit.source_actor_id)) {
+                    blueprint_id = actor->map_actor_id_;
+                }
+            }
+            if (blueprint_id.empty() && unit.source_actor_id) {
+                constexpr std::string_view prefix = "actor.";
+                blueprint_id = unit.source_actor_id->starts_with(prefix)
+                    ? unit.source_actor_id->substr(prefix.size())
+                    : *unit.source_actor_id;
+            }
+        } else if (rpg_catalog_ && unit.source_enemy_id) {
+            if (const auto* enemy = rpg_catalog_->findEnemy(*unit.source_enemy_id)) {
+                if (enemy->battle_visual_.valid()) {
+                    blueprint_id = enemy->battle_visual_.sprite_blueprint_id_;
+                    idle_animation = enemy->battle_visual_.idle_animation_;
+                    scale = enemy->battle_visual_.scale_;
+                } else {
+                    spdlog::warn("BattleScene: enemy '{}' 缺少 battle_visual，已跳过战斗精灵。", enemy->id_);
+                }
+            }
+        }
+
+        if (blueprint_id.empty()) {
+            spdlog::warn("BattleScene: unit '{}' 无法解析战斗精灵蓝图。", unit.name);
+            continue;
+        }
+
+        const entt::id_type blueprint_hash = hashString(blueprint_id);
+        if (!blueprint_manager_->hasActorBlueprint(blueprint_hash)) {
+            spdlog::warn("BattleScene: 战斗精灵蓝图 '{}' 不存在。", blueprint_id);
+            continue;
+        }
+
+        const auto& blueprint = blueprint_manager_->getActorBlueprint(blueprint_hash);
+        if (!resource_manager.findLoadedTexture(blueprint.sprite_.id_)) {
+            resource_manager.loadTexture(blueprint.sprite_.id_, blueprint.sprite_.path_);
+        }
+        for (const auto& [_, animation] : blueprint.animations_) {
+            if (!resource_manager.findLoadedTexture(animation.texture_id_)) {
+                resource_manager.loadTexture(animation.texture_id_, animation.texture_path_);
+            }
+        }
+
+        const std::size_t side_index = unit.side == game::battle::BattleSide::Player ? player_index++ : enemy_index++;
+        const std::size_t side_count = unit.side == game::battle::BattleSide::Player ? player_count : enemy_count;
+        const float center_y = 126.0F;
+        const float spacing_y = 34.0F;
+        const float y = center_y + (static_cast<float>(side_index) - (static_cast<float>(side_count) - 1.0F) * 0.5F) * spacing_y;
+        const float x = unit.side == game::battle::BattleSide::Player ? 454.0F : 186.0F;
+
+        auto animations = toRuntimeAnimations(blueprint.animations_);
+        entt::id_type idle_animation_id = hashString(idle_animation);
+        if (!animations.contains(idle_animation_id)) {
+            spdlog::warn("BattleScene: 蓝图 '{}' 缺少动画 '{}'，回退到首个动画。", blueprint_id, idle_animation);
+            if (animations.empty()) {
+                continue;
+            }
+            idle_animation_id = animations.begin()->first;
+        }
+
+        const entt::entity entity = battle_registry_.create();
+        battle_registry_.emplace<engine::component::TransformComponent>(entity);
+        auto& sprite = battle_registry_.emplace<engine::component::SpriteComponent>(
+            entity,
+            engine::component::Sprite{blueprint.sprite_.id_, blueprint.sprite_.src_rect_, blueprint.sprite_.flip_horizontal_},
+            blueprint.sprite_.dst_size_,
+            blueprint.sprite_.pivot_);
+        auto& animation = battle_registry_.emplace<engine::component::AnimationComponent>(
+            entity,
+            std::move(animations),
+            idle_animation_id);
+        applyAnimationFrame(animation, sprite);
+        battle_registry_.emplace<engine::component::RenderComponent>(entity, BATTLE_RENDER_LAYER, y);
+        battle_registry_.emplace<BattleSpriteComponent>(entity, unit.id, unit.side, glm::vec2{x, y}, scale);
+
+        if (appearance_snapshot && appearance_snapshot->valid && appearance_catalog_) {
+            game::component::AppearanceComponent appearance{};
+            appearance.profile_id_ = appearance_snapshot->profile_id;
+            appearance.gender_ = appearance_snapshot->gender.empty() ? std::string{"male"} : appearance_snapshot->gender;
+            appearance.slot_variants_ = appearance_snapshot->slot_variants;
+            appearance.dirty_ = true;
+            battle_registry_.emplace<game::component::AppearanceComponent>(entity, std::move(appearance));
+            battle_registry_.emplace<engine::component::LayeredSpriteComponent>(entity);
+            game::system::AppearanceLayerCacheBuilder::rebuild(
+                battle_registry_,
+                entity,
+                *appearance_catalog_,
+                &resource_manager);
+        }
+    }
+
+    syncPresentationTransforms();
+    refreshPresentation();
+    return true;
+}
+
+void BattleScene::updatePresentation(float delta_time) {
+    auto view = battle_registry_.view<engine::component::AnimationComponent, engine::component::SpriteComponent>();
+    for (auto entity : view) {
+        auto& animation = view.get<engine::component::AnimationComponent>(entity);
+        auto& sprite = view.get<engine::component::SpriteComponent>(entity);
+        advanceAnimation(animation, sprite, delta_time);
+    }
+}
+
+void BattleScene::refreshPresentation() {
+    std::optional<game::battle::BattleUnitId> target_id{};
+    if (menu_state_ == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
+            target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
+        }
+    } else {
+        target_id = action_draft_.selected_target_id;
+    }
+
+    const auto current_actor_id = session_.currentActorId();
+    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::RenderComponent>();
+    for (auto entity : view) {
+        const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        auto& render = view.get<engine::component::RenderComponent>(entity);
+
+        const auto* unit = session_.findUnit(sprite.unit_id);
+        render.color_ = engine::utils::FColor::white();
+        if (!unit || !unit->isAlive()) {
+            render.color_ = engine::utils::FColor{0.45F, 0.48F, 0.55F, 0.65F};
+        } else if (target_id && *target_id == sprite.unit_id) {
+            render.color_ = engine::utils::FColor{1.0F, 0.82F, 0.42F, 1.0F};
+        } else if (current_actor_id && *current_actor_id == sprite.unit_id) {
+            render.color_ = engine::utils::FColor{1.0F, 0.95F, 0.72F, 1.0F};
+        }
+        render.depth_ = sprite.screen_position.y;
+    }
+}
+
+void BattleScene::syncPresentationTransforms() {
+    const auto& camera = context_.getCamera();
+    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::TransformComponent>();
+    for (auto entity : view) {
+        const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        auto& transform = view.get<engine::component::TransformComponent>(entity);
+        const glm::vec2 position = camera.screenToWorld(sprite.screen_position);
+        transform.position_ = position;
+        transform.previous_position_ = position;
+        transform.scale_ = glm::vec2{sprite.scale, sprite.scale};
+    }
+}
+
+void BattleScene::renderBattlefieldBackground() {
+    auto& renderer = context_.getRenderer();
+    const auto& camera = context_.getCamera();
+    const glm::vec2 logical_size = camera.getLogicalSize();
+    renderer.setAmbient(glm::vec3{1.0F, 1.0F, 1.0F});
+
+    engine::utils::ColorOptions color{};
+    color.use_gradient = false;
+
+    color.start_color = engine::utils::FColor{0.06F, 0.08F, 0.12F, 1.0F};
+    color.end_color = color.start_color;
+    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, 0.0F}, logical_size), &color);
+
+    color.start_color = engine::utils::FColor{0.10F, 0.14F, 0.18F, 1.0F};
+    color.end_color = color.start_color;
+    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, BATTLEFIELD_HEIGHT - 4.0F}, glm::vec2{logical_size.x, 4.0F}), &color);
+
+    color.start_color = engine::utils::FColor{0.22F, 0.30F, 0.36F, 1.0F};
+    color.end_color = color.start_color;
+    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{60.0F, 194.0F}, glm::vec2{220.0F, 3.0F}), &color);
+    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{360.0F, 194.0F}, glm::vec2{220.0F, 3.0F}), &color);
+
+    const auto current_actor_id = session_.currentActorId();
+    std::optional<game::battle::BattleUnitId> target_id{};
+    if (menu_state_ == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
+            target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
+        }
+    }
+
+    auto view = battle_registry_.view<BattleSpriteComponent>();
+    for (auto entity : view) {
+        const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        if ((!current_actor_id || *current_actor_id != sprite.unit_id) && (!target_id || *target_id != sprite.unit_id)) {
+            continue;
+        }
+
+        color.start_color = target_id && *target_id == sprite.unit_id
+            ? engine::utils::FColor{1.0F, 0.68F, 0.30F, 0.72F}
+            : engine::utils::FColor{0.95F, 0.86F, 0.42F, 0.55F};
+        color.end_color = color.start_color;
+        renderer.drawFilledRect(
+            screenRectToWorldRect(camera,
+                                  sprite.screen_position + glm::vec2{-28.0F, 13.0F},
+                                  glm::vec2{56.0F, 4.0F}),
+            &color);
+    }
 }
 
 void BattleScene::requestBattleEnd() {
