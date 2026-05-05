@@ -22,6 +22,8 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"player"}.value()));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"lyria"}.value()));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"tori"}.value()));
+    EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"goblin"}.value()));
+    EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"gnome"}.value()));
     EXPECT_TRUE(manager.hasActorBlueprint(entt::hashed_string{"slime"}.value()));
 
     const auto& tori = manager.getActorBlueprint(entt::hashed_string{"tori"}.value());
@@ -64,6 +66,16 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
     EXPECT_FLOAT_EQ(idle_right->position_.y, 0.0f);
     EXPECT_TRUE(idle_right->flip_horizontal_);
     EXPECT_FLOAT_EQ(walk_down->position_.y, 32.0f);
+
+    const auto& goblin = manager.getActorBlueprint(entt::hashed_string{"goblin"}.value());
+    EXPECT_EQ(goblin.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png");
+    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_right"}.value()), goblin.animations_.end());
+    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_left"}.value()), goblin.animations_.end());
+
+    const auto& gnome = manager.getActorBlueprint(entt::hashed_string{"gnome"}.value());
+    EXPECT_EQ(gnome.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png");
+    EXPECT_NE(gnome.animations_.find(entt::hashed_string{"idle_right"}.value()), gnome.animations_.end());
+    EXPECT_NE(gnome.animations_.find(entt::hashed_string{"idle_left"}.value()), gnome.animations_.end());
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {

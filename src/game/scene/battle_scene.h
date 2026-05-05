@@ -1,11 +1,14 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/battle/battle_session.h"
+#include "game/scene/battle_scene_types.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
+#include <entt/entity/registry.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -101,9 +104,29 @@ class BattleScene final : public engine::scene::Scene {
         bool is_dead{false};
     };
 
+    /// @brief 下方 HUD 中单个队友状态条目的视图模型。
+    struct PartyStatusViewModel {
+        int unit_id{0};
+        Rml::String name{};
+        Rml::String hp_text{};
+        Rml::String mp_text{};
+        Rml::String hp_ratio_percent{"0%"};
+        Rml::String mp_ratio_percent{"0%"};
+        bool active{false};
+        bool ko{false};
+        bool portrait_player{false};
+        bool portrait_lyria{false};
+        bool portrait_tori{false};
+    };
+
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::factory::BlueprintManager* blueprint_manager_{nullptr};
+    const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
     game::battle::BattleSession session_;
+    BattleScenePresentationOptions presentation_options_{};
+    entt::registry battle_registry_{};
+    engine::system::RenderSystem battle_render_system_{};
     FlowState state_{FlowState::WaitingForInput};
     MenuState menu_state_{MenuState::MainMenu};
     ActionDraft action_draft_{};
@@ -120,7 +143,6 @@ class BattleScene final : public engine::scene::Scene {
     bool data_types_registered_{false};
 
     Rml::String turn_text_{"Turn: -"};
-    Rml::String units_text_{"Units: -"};
     Rml::String result_text_{"Result: Choose action"};
     bool actions_enabled_{false};
     Rml::String menu_title_{"Actions"};
@@ -133,6 +155,7 @@ class BattleScene final : public engine::scene::Scene {
     bool target_menu_visible_{false};
     bool list_empty_{true};
     bool target_empty_{true};
+    std::vector<PartyStatusViewModel> party_status_{};
     std::vector<MainActionViewModel> main_actions_{};
     std::vector<ListEntryViewModel> list_entries_{};
     std::vector<TargetEntryViewModel> target_entries_{};
@@ -149,11 +172,13 @@ public:
     BattleScene(std::string_view name,
                 engine::core::Context& context,
                 std::vector<game::battle::BattleUnit> units,
-                game::battle::BattleSessionOptions session_options = {});
+                game::battle::BattleSessionOptions session_options = {},
+                BattleScenePresentationOptions presentation_options = {});
     ~BattleScene() override;
 
     bool init() override;
     void update(float delta_time) override;
+    void render(float interpolation_alpha) override;
     void prepareUi(float interpolation_alpha) override;
     void clean() override;
 
@@ -173,6 +198,7 @@ private:
 
     /// @brief 根据 BattleSession 快照刷新 UI 文本和按钮状态。
     void refreshView();
+    void rebuildPartyStatusView();
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
     void enterInputMenu();
@@ -232,6 +258,12 @@ private:
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
 
     void requestBattleEnd();
+
+    [[nodiscard]] bool initPresentation();
+    void updatePresentation(float delta_time);
+    void refreshPresentation();
+    void syncPresentationTransforms();
+    void renderBattlefieldBackground();
 };
 
 } // namespace game::scene

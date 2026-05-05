@@ -46,6 +46,9 @@ public:
      * @param camera Camera 的引用
      */
     void render(entt::registry& registry, render::Renderer& renderer, const render::Camera& camera, float interpolation_alpha);
+
+    /// @brief 使用 Renderer 当前相机绘制，供叠加场景在同一帧内追加世界绘制请求。
+    void renderPrepared(entt::registry& registry, render::Renderer& renderer, float interpolation_alpha);
 };
 
 } // namespace engine::system 

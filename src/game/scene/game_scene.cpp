@@ -23,6 +23,7 @@
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
 #include "engine/system/ysort_system.h"
+#include "game/component/appearance_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/map_component.h"
@@ -68,6 +69,7 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <glm/common.hpp>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
@@ -103,6 +105,45 @@ constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 [[nodiscard]] entt::entity findPlayer(entt::registry& registry) {
     auto players = registry.view<game::component::PlayerTag>();
     return players.begin() == players.end() ? entt::null : *players.begin();
+}
+
+[[nodiscard]] std::optional<game::scene::AppearanceSnapshot> capturePlayerAppearanceSnapshot(entt::registry& registry) {
+    const entt::entity player = findPlayer(registry);
+    if (player == entt::null) {
+        return std::nullopt;
+    }
+
+    const auto* appearance = registry.try_get<game::component::AppearanceComponent>(player);
+    if (!appearance) {
+        return std::nullopt;
+    }
+
+    game::scene::AppearanceSnapshot snapshot{};
+    snapshot.profile_id = appearance->profile_id_;
+    snapshot.gender = appearance->gender_;
+    snapshot.slot_variants = appearance->slot_variants_;
+    snapshot.valid = true;
+    return snapshot;
+}
+
+[[nodiscard]] std::vector<game::scene::BattleSpriteSeed>
+buildBattleSpriteSeeds(entt::registry& registry, const std::vector<game::battle::BattleUnit>& units) {
+    std::vector<game::scene::BattleSpriteSeed> seeds;
+    seeds.reserve(units.size());
+
+    const auto player_appearance = capturePlayerAppearanceSnapshot(registry);
+    for (const auto& unit : units) {
+        game::scene::BattleSpriteSeed seed{};
+        seed.unit_id = unit.id;
+        seed.source_actor_id = unit.source_actor_id;
+        seed.source_enemy_id = unit.source_enemy_id;
+        if (unit.source_actor_id && *unit.source_actor_id == DEFAULT_PARTY_ACTOR_ID && player_appearance) {
+            seed.appearance = *player_appearance;
+        }
+        seeds.push_back(std::move(seed));
+    }
+
+    return seeds;
 }
 
 [[nodiscard]] std::vector<std::string> resolveBattleActorIds(entt::registry& registry,
@@ -647,11 +688,19 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     has_active_battle_item_stocks_ = true;
     active_encounter_context_ = cmd.encounter_context;
 
+    game::scene::BattleScenePresentationOptions presentation_options{};
+    presentation_options.sprite_seeds = buildBattleSpriteSeeds(registry_, units);
+    if (services_) {
+        presentation_options.blueprint_manager = services_->blueprint_manager.get();
+        presentation_options.appearance_catalog = services_->appearance_catalog.get();
+    }
+
     requestPushScene(std::make_unique<game::scene::BattleScene>(
         "BattleScene",
         context_,
         std::move(units),
-        std::move(session_options)));
+        std::move(session_options),
+        std::move(presentation_options)));
 }
 
 void GameScene::onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt) {

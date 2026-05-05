@@ -248,6 +248,52 @@
         },
         "speed": 20.0
     },
+    "goblin": {
+        "name": "Goblin",
+        "description": "A small archer goblin.",
+        "sprite": {
+            "path": "assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 35.0
+    },
+    "gnome": {
+        "name": "Gnome",
+        "description": "A spear-wielding goblin used by the gnome enemy entry.",
+        "sprite": {
+            "path": "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png",
+            "src_size": {"width": 32, "height": 32},
+            "dst_size": {"width": 32, "height": 32},
+            "pivot": {"x": 0.5, "y": 0.75}
+        },
+        "animations": {
+            "idle": {
+                "path": "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png",
+                "position": {"x": 0, "y": 0},
+                "src_size": {"width": 32, "height": 32},
+                "dst_size": {"width": 32, "height": 32},
+                "pivot": {"x": 0.5, "y": 0.75},
+                "frames": [0, 1, 2, 3],
+                "duration": 200,
+                "direction": ["down", "up", "right"]
+            }
+        },
+        "speed": 35.0
+    },
     "slime": {
         "name": "Slime",
         "description": "A wandering blue slime.",

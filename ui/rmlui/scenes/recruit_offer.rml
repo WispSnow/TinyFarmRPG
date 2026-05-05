@@ -4,6 +4,7 @@
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/modal.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="recruit_offer.rcss"/>
 </head>

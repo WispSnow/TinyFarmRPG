@@ -5,6 +5,7 @@
 回合制战斗系统会把游戏从“实时探索”切换到“策略回合”模式，玩家与敌方单位按速度顺序交替行动，直到一方全灭或玩家成功逃跑。当前实现已经不再是最初的 Attack 原型，而是具备完整战斗菜单闭环的最小 JRPG 战斗骨架：
 
 - `BattleScene` 负责 RmlUi 菜单、输入和表现层状态机
+- `BattleScene` 同时拥有战斗专用 ECS registry，用 Side View idle 动画绘制双方战斗精灵
 - `BattleAiPlanner` 负责敌方回合的最小自动行动规划
 - `BattleSession` 负责接收行动并返回全量结果快照
 - `BattleActionResolver` 负责技能、物品、防御、逃跑等具体结算
@@ -16,6 +17,7 @@
 
 - **领域逻辑与表现分离**：`TurnCore` / `BattleSession` / `BattleActionResolver` 不依赖 ECS UI。
 - **场景栈切换**：战斗通过 push/pop 叠加在探索场景之上，结束后直接恢复探索。
+- **表现快照独立于领域数据**：角色外观快照通过 `BattleSpriteSeed` 传给战斗表现层，不写入 `BattleUnit` / `BattleSessionOptions`。
 - **子状态机驱动菜单**：`BattleScene` 在 `FlowState::WaitingForInput` 内部再维护 `MenuState`。
 - **目录驱动动作**：技能从 `RpgCatalog` 读取，战斗物品从 `ItemCatalog::battle_use` 读取。
 
@@ -25,6 +27,8 @@
 graph TD
     subgraph "表现层 — BattleScene"
         UI["RmlUi 菜单与结果文本"]
+        HUD["队伍 HP / MP / 头像 HUD"]
+        SPRITE["Side View idle sprites"]
         FSM["FlowState + MenuState"]
         INPUT["menu_up/down/confirm/cancel"]
         AI["BattleAiPlanner"]
@@ -58,6 +62,8 @@ graph TD
 
     INPUT --> FSM
     UI --> FSM
+    HUD --> FSM
+    SPRITE --> FSM
     AI --> FSM
     FSM --> SESSION
     SESSION --> STOCKS
@@ -197,6 +203,25 @@ flowchart TD
 | `TargetSelect` | 回到动作来源菜单，并保留技能/物品列表 |
 | `SkillList` / `ItemList` | 回到 `MainMenu` |
 | `MainMenu` | 吃掉输入，不退出战斗 |
+
+## Side View 表现与 HUD
+
+当前战斗场景已经从居中原型面板改为 RPG Maker 风格的 Side View：
+
+- `BattleScene::render()` 会先绘制全屏战斗底色和站位地面线，遮住底层探索地图，避免场景栈透出。
+- 玩家方站在右侧，默认播放 `idle_left`；玩家角色蓝图只有 `idle_right` 资源时，`BlueprintManager` 会自动镜像生成 `idle_left`。
+- 敌方站在左侧，使用 `EnemyData::battle_visual_` 指定 actor blueprint、idle 动画与缩放；默认资源中的 `enemy.goblin` / `enemy.gnome` / `enemy.slime` 都有显式配置。
+- `BattleScene` 为战斗表现维护独立 `battle_registry_`，并通过 `RenderSystem::renderPrepared()` 在不重置 GameScene 相机的前提下追加战斗精灵绘制。
+- 战斗中 SceneManager 只更新栈顶 scene，因此底层 `GameScene` 的探索 update 会冻结；`GameScene` 在 push `BattleScene` 前同步采集玩家外观快照。
+
+HUD 位于屏幕下方 130dp：
+
+- 左侧为队伍状态卡，显示头像、姓名、HP / MP 文本和纯 RCSS div 血条/魔法条。
+- 右侧为行动菜单、技能/物品列表、目标列表和结果文本。
+- 按钮使用朴素文字按钮 `.battle-text-button`，不引用 `tf-button-primary` / `tf-button-secondary`，也不使用九宫格按钮图片。
+- HP / MP 条使用嵌套 div + `data-style-width`，不使用 `<progress>` 依赖。
+
+玩家外观层复用 `AppearanceLayerCacheBuilder` 这个无状态构建器；战斗场景不会实例化第二套 `AppearanceSystem`，因此不会重复订阅全局 dispatcher。
 
 ## 敌方 AI 行动规划
 
@@ -367,6 +392,7 @@ sequenceDiagram
 | `BattleActionResult` | `status / action_type / damage / hp_recovered / mp_recovered / mp_spent / missed / critical / target_guarded / target_defeated / escape_succeeded / states_added / states_removed / failure_reason / outcome_after / snapshot` |
 | `BattleSnapshot` | `units / current_actor_id / round_index / outcome` |
 | `BattleSessionOptions` | `rpg_catalog / item_catalog / item_stocks` |
+| `BattleScenePresentationOptions` | `sprite_seeds / blueprint_manager / appearance_catalog` |
 
 ### 关键辅助类型
 
@@ -377,6 +403,8 @@ sequenceDiagram
 | `BattleRewardSummary` | 胜利后的 `gold_total / exp_total / item_drops` 聚合结果；`empty()` 可快速判断是否有奖励 |
 | `BattleRewardWritebackItemResult` | 单个掉落条目的实际写回结果：原始 `drop`、`accepted`（成功入包数量）、`rejected`（背包满等原因拒绝数量） |
 | `BattleRewardWritebackResult` | 完整写回摘要：`gold_written_back` + `item_results` 列表；`empty()` 可判断是否有任何写回 |
+| `BattleVisualData` | 敌方战斗精灵配置：`sprite_blueprint_id / idle_animation / scale`，属于表现数据，不参与战斗结算 |
+| `BattleSpriteSeed` | `GameScene` 进入战斗前生成的表现种子，携带 unit id、来源 id 和可选玩家外观快照 |
 | `PlayerWalletComponent` | 探索态金币真相 |
 
 ### 命令与事件
@@ -436,6 +464,7 @@ sequenceDiagram
 | 全体 / 自身动作 | 已通过 scope 直接提交支持 | 后续可补更丰富的结果展示 |
 | 目标 UI | 已支持单体敌/友选择 | 后续可补头像、弱点、预览、复活目标规则 |
 | 战斗日志 | 当前只有简短 `result_text` | 后续可拆独立 log/popup 系统 |
+| 战斗动作表现 | 当前播放 Side View idle，并用高亮标识当前行动者/目标 | 后续可扩展攻击位移、受击闪烁、施法特效 |
 | 奖励结算 | 已完成 Victory 金币/掉落写回 | 后续可扩经验消费方、任务推进、独立结算界面 |
 
 ## 测试策略
@@ -451,6 +480,8 @@ sequenceDiagram
 | `tests/game/battle/battle_reward_resolver_test.cpp` | Victory 奖励汇总、掉落合并、非 Victory 空摘要 |
 | `tests/game/battle/battle_session_test.cpp` | 会话级提交、快照、回合推进 |
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
+| `tests/game/rmlui_architecture_regression_test.cpp` | Battle RML 不引用素材按钮 class、不使用 `<progress>` |
+| `tests/game/blueprint_manager_smoke_test.cpp` | Side View 所需 goblin / gnome / slime 蓝图与镜像方向 |
 | `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback |
 | `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存与奖励写回 |
 | `tests/game/save_service_async_test.cpp` | 钱包金币写出与 roundtrip 恢复 |
@@ -472,14 +503,17 @@ sequenceDiagram
 | `src/game/battle/battle_reward_resolver.h/.cpp` | 应用 | Victory 奖励汇总 |
 | `src/game/battle/battle_session.h/.cpp` | 应用 | 组织 resolver、runtime_state 与 snapshot |
 | `src/game/battle/battle_unit_factory.cpp` | 应用 | 由 actor/troop/catalog 构建战斗单位 |
-| `src/game/scene/battle_scene.h/.cpp` | 表现 | RmlUi 菜单、输入、FlowState / MenuState 编排 |
+| `src/game/scene/battle_scene.h/.cpp` | 表现 | RmlUi 菜单、输入、Side View 战斗精灵、FlowState / MenuState 编排 |
+| `src/game/scene/battle_scene_types.h` | 表现 | 战斗表现选项、sprite seed 与外观快照结构 |
+| `src/game/system/appearance_layer_cache_builder.h/.cpp` | 表现 | 无状态构建分层外观缓存，供 `AppearanceSystem` 与战斗表现复用 |
 | `ui/rmlui/scenes/battle.rml` | UI | 战斗菜单 RML 结构 |
 | `ui/rmlui/scenes/battle.rcss` | UI | 战斗菜单样式与 target/list 状态表现 |
+| `ui/rmlui/theme/portrait.rcss` | UI | Battle / Recruit 共享头像 spritesheet 和 portrait class |
 | `src/game/scene/game_scene.h/.cpp` | 表现 | 战斗入口、push/pop 与战后结算入口 |
 | `src/game/scene/game_scene_battle_settlement.h/.cpp` | 表现 | 战斗结束统一入口：物品库存写回 → Victory 奖励写回 → 任务推进 → 触发通知 |
 | `src/game/scene/game_scene_reward_feedback.h/.cpp` | 表现 | 奖励写回结果格式化（`BattleRewardWritebackResult`）与战斗结算合并通知（含任务推进摘要） |
 | `src/game/component/player_wallet_component.h` | 探索态 | 金币真相 |
-| `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表 |
+| `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表；解析敌人 `battle_visual` |
 | `src/game/data/item_catalog.*` | 数据 | `battle_use` 物品效果查表 |
 | `src/game/defs/commands.h` | 契约 | `EnterBattleCommand` / `SubmitBattleActionCommand` |
 | `src/game/defs/events.h` | 契约 | `BattleEndedEvent` |

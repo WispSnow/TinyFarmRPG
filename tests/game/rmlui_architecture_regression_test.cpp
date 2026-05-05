@@ -113,6 +113,27 @@ TEST(RmlUiArchitectureRegressionTest, RuntimeSourceDoesNotDependOnRemovedEventBr
     }
 }
 
+TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {
+    const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal();
+    const std::filesystem::path battle_rml_path = (project_root / "ui/rmlui/scenes/battle.rml").lexically_normal();
+    const std::filesystem::path battle_rcss_path = (project_root / "ui/rmlui/scenes/battle.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(battle_rml_path)) << battle_rml_path;
+    ASSERT_TRUE(std::filesystem::exists(battle_rcss_path)) << battle_rcss_path;
+
+    const std::string rml = test_source_utils::readTextFile(battle_rml_path);
+    const std::string rcss = test_source_utils::readTextFile(battle_rcss_path);
+    ASSERT_FALSE(rml.empty());
+    ASSERT_FALSE(rcss.empty());
+
+    EXPECT_EQ(rml.find("tf-button-primary"), std::string::npos);
+    EXPECT_EQ(rml.find("tf-button-secondary"), std::string::npos);
+    EXPECT_EQ(rml.find("<progress"), std::string::npos);
+    EXPECT_NE(rml.find("battle-text-button"), std::string::npos);
+    EXPECT_NE(rml.find("data-style-width=\"member.hp_ratio_percent\""), std::string::npos);
+    EXPECT_NE(rml.find("data-style-width=\"member.mp_ratio_percent\""), std::string::npos);
+    EXPECT_EQ(rcss.find("ninepatch"), std::string::npos);
+}
+
 } // namespace
 } // namespace game::ui
 // NOLINTEND
