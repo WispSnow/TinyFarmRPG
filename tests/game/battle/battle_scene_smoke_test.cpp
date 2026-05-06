@@ -217,6 +217,10 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("BattleSpriteComponent"), std::string::npos);
     EXPECT_NE(source.find("battle_render_system_.renderPrepared"), std::string::npos);
     EXPECT_NE(source.find("battleFormationSlot"), std::string::npos);
+    EXPECT_NE(source.find("constexpr float BATTLEFIELD_HEIGHT = 256.0f;"), std::string::npos);
+    EXPECT_NE(source.find("BATTLE_SPRITE_SCALE_MULTIPLIER"), std::string::npos);
+    EXPECT_NE(source.find("glm::vec2{18.0F, 28.0F}"), std::string::npos);
+    EXPECT_NE(source.find("glm::vec2{-18.0F, 30.0F}"), std::string::npos);
     EXPECT_NE(source.find("shadow_size"), std::string::npos);
     EXPECT_NE(source.find("idle_left"), std::string::npos);
     EXPECT_NE(source.find("enemy->battle_visual_"), std::string::npos);
@@ -241,7 +245,11 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_EQ(rml.find("tf-button-primary"), std::string::npos);
     EXPECT_EQ(rml.find("<progress"), std::string::npos);
     EXPECT_GE(countOccurrences(rml, "tf-nav-auto"), 3U);
+    EXPECT_NE(rml.find("id=\"battle-top-status\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-turn\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-result\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"member : party_status\""), std::string::npos);
+    EXPECT_NE(rml.find("battle-party-identity"), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.hp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.mp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("battle-party-main"), std::string::npos);
@@ -250,6 +258,8 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_EQ(rml.find("member.portrait_player"), std::string::npos);
     EXPECT_EQ(rml.find("member.portrait_lyria"), std::string::npos);
     EXPECT_EQ(rml.find("member.portrait_tori"), std::string::npos);
+    EXPECT_EQ(rml.find("battle-menu-title"), std::string::npos);
+    EXPECT_EQ(rml.find("battle-menu-hint"), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"action : main_actions\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"main_action_select(action.entry_index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"list_menu_visible\""), std::string::npos);
@@ -270,9 +280,13 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     const std::string rcss = readTextFile(rcss_path);
     ASSERT_FALSE(rcss.empty());
 
-    EXPECT_NE(rcss.find("left: 448dp;"), std::string::npos);
-    EXPECT_NE(rcss.find("width: 184dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("top: 256dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("height: 104dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("left: 464dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("width: 168dp;"), std::string::npos);
     EXPECT_EQ(rcss.find("width: 302dp"), std::string::npos);
+    EXPECT_EQ(rcss.find("#battle-menu-title"), std::string::npos);
+    EXPECT_EQ(rcss.find("#battle-menu-hint"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-list-entry.disabled"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-text-button"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-hp-fill"), std::string::npos);
