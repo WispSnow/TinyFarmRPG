@@ -60,6 +60,7 @@ public:
     void hideDocument(Rml::ElementDocument* doc);
 
     void setActiveScene(uint64_t scene_id);
+    void setVisibleSceneOwners(std::vector<uint64_t> scene_owner_ids);
     [[nodiscard]] uint64_t getActiveSceneId() const { return active_scene_id_; }
 
     [[nodiscard]] bool reloadLastDocument();
@@ -88,17 +89,22 @@ private:
                             RenderInterface_GL3_STB& render_interface,
                             const RmlUiViewport& viewport);
 
-    void applyContextDimensions();
-    void adjustEventForViewport(SDL_Event& event) const;
-    void applyInteractionPolicy();
-    void applyInputModeClass(Rml::ElementDocument* doc);
-    void applyInputModeClasses();
-
     struct DocumentEntry {
         Rml::ElementDocument* doc{nullptr};
         uint64_t owner{0};
         std::string path;
+        bool requested_visible{true};
+        bool currently_visible{false};
     };
+
+    void applyContextDimensions();
+    void adjustEventForViewport(SDL_Event& event) const;
+    void applyInteractionPolicy();
+    void applyVisibilityPolicy();
+    void applyDocumentVisibility(DocumentEntry& entry);
+    [[nodiscard]] bool isOwnerVisible(uint64_t owner_scene_id) const;
+    void applyInputModeClass(Rml::ElementDocument* doc);
+    void applyInputModeClasses();
 
     [[nodiscard]] bool ensureDebuggerInitialized();
 
@@ -114,6 +120,7 @@ private:
     bool debugger_initialized_{false};
 
     std::vector<DocumentEntry> documents_;
+    std::vector<uint64_t> visible_scene_owners_;
     uint64_t active_scene_id_{0};
     InputMode input_mode_{InputMode::Mouse};
 };

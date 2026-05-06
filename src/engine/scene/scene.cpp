@@ -55,6 +55,10 @@ void Scene::clean() {
     spdlog::trace("场景 '{}' 清理完成。", scene_name_);
 }
 
+SceneUiCoverage Scene::uiCoverage() const {
+    return SceneUiCoverage::Overlay;
+}
+
 void Scene::requestPopScene()
 {
     context_.getDispatcher().trigger<engine::utils::PopSceneEvent>();

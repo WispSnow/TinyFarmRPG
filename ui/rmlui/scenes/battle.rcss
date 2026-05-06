@@ -15,19 +15,19 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #battle-party-panel {
     position: absolute;
-    left: 12dp;
-    top: 12dp;
-    width: 302dp;
-    height: 106dp;
+    left: 8dp;
+    top: 8dp;
+    width: 432dp;
+    height: 114dp;
     display: flex;
     flex-direction: row;
-    gap: 6dp;
+    gap: 4dp;
 }
 
 .battle-party-card {
-    width: 94dp;
-    height: 106dp;
-    padding: 5dp;
+    width: 102dp;
+    height: 114dp;
+    padding: 4dp;
     background-color: #182333ee;
     border-width: 1dp;
     border-color: #405067ff;
@@ -44,58 +44,50 @@ body, div, h1, h2, h3, h4, p, hr {
     border-color: #303844ff;
 }
 
+.battle-party-main {
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+    width: 92dp;
+    height: 104dp;
+}
+
 .battle-portrait {
-    position: absolute;
-    left: 5dp;
-    top: 5dp;
     width: 32dp;
     height: 32dp;
-    decorator: image(portrait-player);
+    margin-top: 2dp;
+    background-color: #0d1320ff;
+    border-width: 1dp;
+    border-color: #2d3a4fff;
+    decorator: none;
 }
 
-.battle-portrait.portrait-player {
-    decorator: image(portrait-player);
-}
-
-.battle-portrait.portrait-lyria {
-    decorator: image(portrait-lyria);
-}
-
-.battle-portrait.portrait-tori {
-    decorator: image(portrait-tori);
+.battle-party-stats {
+    width: 56dp;
+    height: 104dp;
 }
 
 .battle-party-name {
-    position: absolute;
-    left: 42dp;
-    top: 5dp;
-    width: 45dp;
-    height: 16dp;
-    line-height: 16dp;
+    width: 56dp;
+    height: 15dp;
+    line-height: 15dp;
     color: #ffffffff;
     font-effect: shadow(1dp 1dp #000000cc);
     overflow: hidden;
 }
 
 .battle-stat-label {
-    width: 82dp;
-    height: 13dp;
-    line-height: 13dp;
+    width: 56dp;
+    height: 12dp;
+    line-height: 12dp;
+    margin-top: 3dp;
     color: #d8dee9ff;
-    font-size: 10dp;
+    font-size: 9dp;
     overflow: hidden;
 }
 
-.battle-party-card .battle-stat-label {
-    margin-top: 4dp;
-}
-
-.battle-hp-label {
-    margin-top: 42dp;
-}
-
 .battle-stat-bar {
-    width: 82dp;
+    width: 56dp;
     height: 7dp;
     background-color: #090c12ff;
     border-width: 1dp;
@@ -116,10 +108,10 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #battle-command-panel {
     position: absolute;
-    left: 326dp;
-    top: 10dp;
-    width: 302dp;
-    height: 110dp;
+    left: 448dp;
+    top: 8dp;
+    width: 184dp;
+    height: 114dp;
 }
 
 #battle-turn,
@@ -135,22 +127,17 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #battle-turn {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 122dp;
-    height: 16dp;
-    line-height: 16dp;
+    width: 184dp;
+    height: 14dp;
+    line-height: 14dp;
     overflow: hidden;
 }
 
 #battle-result {
-    position: absolute;
-    left: 130dp;
-    top: 0;
-    width: 172dp;
-    height: 32dp;
-    line-height: 15dp;
+    width: 184dp;
+    height: 26dp;
+    line-height: 13dp;
+    margin-top: 1dp;
     white-space: normal;
     word-break: break-word;
     overflow: hidden;
@@ -158,30 +145,25 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #battle-actions {
-    position: absolute;
-    left: 0;
-    top: 34dp;
-    width: 302dp;
-    height: 76dp;
+    position: relative;
+    width: 184dp;
+    height: 72dp;
+    margin-top: 1dp;
 }
 
 #battle-menu-title {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 66dp;
-    height: 14dp;
-    line-height: 14dp;
+    display: inline-block;
+    width: 56dp;
+    height: 13dp;
+    line-height: 13dp;
     color: #fce97fff;
 }
 
 #battle-menu-hint {
-    position: absolute;
-    left: 72dp;
-    top: 0;
-    width: 230dp;
-    height: 14dp;
-    line-height: 14dp;
+    display: inline-block;
+    width: 124dp;
+    height: 13dp;
+    line-height: 13dp;
     color: #abb6c9ff;
     overflow: hidden;
 }
@@ -191,12 +173,12 @@ body, div, h1, h2, h3, h4, p, hr {
 #battle-target-menu {
     position: absolute;
     left: 0;
-    top: 18dp;
-    width: 302dp;
-    height: 44dp;
+    top: 15dp;
+    width: 184dp;
 }
 
 #battle-main-actions {
+    height: 56dp;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -213,13 +195,14 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-action-button {
-    width: 98dp;
-    height: 20dp;
-    line-height: 18dp;
+    width: 88dp;
+    height: 16dp;
+    line-height: 14dp;
 }
 
 #battle-list-menu,
 #battle-target-menu {
+    height: 40dp;
     display: flex;
     flex-direction: column;
     gap: 3dp;
@@ -227,26 +210,26 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-list-entry,
 .battle-target-entry {
-    width: 302dp;
-    height: 20dp;
-    line-height: 18dp;
+    width: 184dp;
+    height: 16dp;
+    line-height: 14dp;
     text-align: left;
-    padding-left: 6dp;
-    padding-right: 6dp;
+    padding-left: 5dp;
+    padding-right: 5dp;
 }
 
 .battle-entry-label,
 .battle-entry-sublabel {
     display: inline-block;
-    line-height: 18dp;
+    line-height: 14dp;
 }
 
 .battle-entry-label {
-    width: 156dp;
+    width: 92dp;
 }
 
 .battle-entry-sublabel {
-    width: 126dp;
+    width: 76dp;
     color: #abb6c9ff;
     text-align: right;
 }
@@ -301,18 +284,18 @@ body, div, h1, h2, h3, h4, p, hr {
 #battle-back-hint {
     position: absolute;
     left: 0;
-    top: 62dp;
-    width: 302dp;
-    height: 14dp;
-    line-height: 14dp;
+    top: 58dp;
+    width: 184dp;
+    height: 13dp;
+    line-height: 13dp;
     color: #abb6c9ff;
 }
 
 #battle-list-empty,
 #battle-target-empty {
-    width: 302dp;
-    height: 20dp;
-    line-height: 18dp;
+    width: 184dp;
+    height: 16dp;
+    line-height: 14dp;
     color: #abb6c9ff;
     text-align: center;
 }

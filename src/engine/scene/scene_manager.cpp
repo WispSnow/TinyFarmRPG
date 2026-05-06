@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <entt/signal/dispatcher.hpp>
 #include <string_view>
+#include <utility>
 
 namespace engine::scene {
 
@@ -142,6 +143,26 @@ void SceneManager::syncRmlActiveScene() {
     if (auto* layer = context_.getRmlUi()) {
         const auto* top = getCurrentScene();
         layer->setActiveScene(top ? top->instanceId() : 0);
+
+        std::vector<uint64_t> visible_scene_owners;
+        if (!scene_stack_.empty()) {
+            size_t first_visible_index = 0;
+            for (size_t i = scene_stack_.size(); i > 0; --i) {
+                const auto& scene = scene_stack_[i - 1];
+                if (scene && scene->uiCoverage() == SceneUiCoverage::HideUnderlyingSceneUi) {
+                    first_visible_index = i - 1;
+                    break;
+                }
+            }
+
+            visible_scene_owners.reserve(scene_stack_.size() - first_visible_index);
+            for (size_t i = first_visible_index; i < scene_stack_.size(); ++i) {
+                if (scene_stack_[i]) {
+                    visible_scene_owners.push_back(scene_stack_[i]->instanceId());
+                }
+            }
+        }
+        layer->setVisibleSceneOwners(std::move(visible_scene_owners));
     }
 }
 
