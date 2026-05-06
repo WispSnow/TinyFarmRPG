@@ -49,7 +49,8 @@ constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
 constexpr int MAIN_ACTION_COLUMNS = 2;
-constexpr float BATTLEFIELD_HEIGHT = 230.0f;
+constexpr float BATTLEFIELD_HEIGHT = 256.0f;
+constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
 
 enum class MainActionId : int {
@@ -293,12 +294,12 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
                                                       float visual_scale) {
     const float centered = static_cast<float>(side_index) - (static_cast<float>(side_count) - 1.0F) * 0.5F;
     const bool is_player = side == game::battle::BattleSide::Player;
-    const glm::vec2 base = is_player ? glm::vec2{478.0F, 126.0F} : glm::vec2{166.0F, 126.0F};
-    const glm::vec2 step = is_player ? glm::vec2{-18.0F, 28.0F} : glm::vec2{18.0F, 30.0F};
+    const glm::vec2 base = is_player ? glm::vec2{480.0F, 140.0F} : glm::vec2{160.0F, 140.0F};
+    const glm::vec2 step = is_player ? glm::vec2{18.0F, 28.0F} : glm::vec2{-18.0F, 30.0F};
     glm::vec2 position = base + centered * step;
-    position.y = std::clamp(position.y, 54.0F, BATTLEFIELD_HEIGHT - 36.0F);
+    position.y = std::clamp(position.y, 58.0F, BATTLEFIELD_HEIGHT - 38.0F);
 
-    const float shadow_width = std::clamp(34.0F * visual_scale, 42.0F, 72.0F);
+    const float shadow_width = std::clamp(30.0F * visual_scale, 34.0F, 58.0F);
     return BattleFormationSlot{
         .screen_position = position,
         .scale = visual_scale,
@@ -461,8 +462,6 @@ bool BattleScene::initUI() {
     if (!constructor.Bind("turn_text", &turn_text_) ||
         !constructor.Bind("result_text", &result_text_) ||
         !constructor.Bind("actions_enabled", &actions_enabled_) ||
-        !constructor.Bind("menu_title", &menu_title_) ||
-        !constructor.Bind("menu_hint", &menu_hint_) ||
         !constructor.Bind("back_hint", &back_hint_) ||
         !constructor.Bind("list_empty_text", &list_empty_text_) ||
         !constructor.Bind("target_empty_text", &target_empty_text_) ||
@@ -736,7 +735,7 @@ void BattleScene::refreshView() {
 
     rebuildPartyStatusView();
 
-    std::string result_text = "Result: Choose action";
+    std::string result_text = "Result: " + menu_status_text_;
     if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
     } else if (last_action_result_) {
@@ -776,8 +775,8 @@ void BattleScene::rebuildPartyStatusView() {
         next_party_status.push_back(PartyStatusViewModel{
             .unit_id = static_cast<int>(unit.id),
             .name = makeRmlString(unit.name),
-            .hp_text = makeRmlString(std::to_string(std::max(0, unit.hp)) + " / " + std::to_string(std::max(0, unit.max_hp))),
-            .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + " / " + std::to_string(std::max(0, unit.max_mp))),
+            .hp_text = makeRmlString(std::to_string(std::max(0, unit.hp)) + "/" + std::to_string(std::max(0, unit.max_hp))),
+            .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + "/" + std::to_string(std::max(0, unit.max_mp))),
             .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
             .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),
             .portrait_decorator = portraitDecoratorForUnit(unit),
@@ -824,8 +823,7 @@ void BattleScene::refreshMenuEnabledState(bool enabled) {
 }
 
 void BattleScene::markMenuDirty() {
-    document_controller_.markDirty("menu_title");
-    document_controller_.markDirty("menu_hint");
+    document_controller_.markDirty("result_text");
     document_controller_.markDirty("back_hint");
     document_controller_.markDirty("list_empty_text");
     document_controller_.markDirty("target_empty_text");
@@ -859,35 +857,30 @@ void BattleScene::setMenuState(MenuState next_state) {
 
     switch (next_state) {
         case MenuState::None:
-            menu_title_ = "";
-            menu_hint_ = "";
+            menu_status_text_ = "Choose action";
             back_hint_ = "";
             break;
         case MenuState::MainMenu:
-            menu_title_ = "Actions";
-            menu_hint_ = "Choose an action.";
+            menu_status_text_ = "Choose action";
             back_hint_ = "";
             main_action_cursor_ = main_actions_.empty()
                 ? -1
                 : std::clamp(main_action_cursor_, 0, static_cast<int>(main_actions_.size()) - 1);
             break;
         case MenuState::SkillList:
-            menu_title_ = "Skills";
-            menu_hint_ = "Choose a skill.";
+            menu_status_text_ = "Choose a skill";
             back_hint_ = "Cancel: Back";
             list_empty_text_ = "No skills available";
             list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
             break;
         case MenuState::ItemList:
-            menu_title_ = "Items";
-            menu_hint_ = "Choose an item.";
+            menu_status_text_ = "Choose an item";
             back_hint_ = "Cancel: Back";
             list_empty_text_ = "No battle items available";
             list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
             break;
         case MenuState::TargetSelect:
-            menu_title_ = "Targets";
-            menu_hint_ = "Choose a target.";
+            menu_status_text_ = "Choose a target";
             back_hint_ = "Cancel: Back";
             target_empty_text_ = "No targets available";
             target_entry_cursor_ = target_entries_.empty() ? -1 : std::clamp(target_entry_cursor_, 0, static_cast<int>(target_entries_.size()) - 1);
@@ -1187,8 +1180,8 @@ BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
 }
 
 void BattleScene::setMenuHint(std::string_view text) {
-    menu_hint_ = makeRmlString(text);
-    document_controller_.markDirty("menu_hint");
+    menu_status_text_ = std::string{text};
+    document_controller_.markDirty("result_text");
 }
 
 void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor) {
@@ -1733,6 +1726,7 @@ bool BattleScene::initPresentation() {
 
         const std::size_t side_index = unit.side == game::battle::BattleSide::Player ? player_index++ : enemy_index++;
         const std::size_t side_count = unit.side == game::battle::BattleSide::Player ? player_count : enemy_count;
+        scale = std::clamp(scale * BATTLE_SPRITE_SCALE_MULTIPLIER, 0.95F, 1.45F);
         const BattleFormationSlot formation_slot = battleFormationSlot(unit.side, side_index, side_count, scale);
 
         auto animations = toRuntimeAnimations(blueprint.animations_);

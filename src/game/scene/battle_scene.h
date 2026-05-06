@@ -143,8 +143,7 @@ class BattleScene final : public engine::scene::Scene {
     Rml::String turn_text_{"Turn: -"};
     Rml::String result_text_{"Result: Choose action"};
     bool actions_enabled_{false};
-    Rml::String menu_title_{"Actions"};
-    Rml::String menu_hint_{"Choose an action."};
+    std::string menu_status_text_{"Choose action"};
     Rml::String back_hint_{};
     Rml::String list_empty_text_{"No entries available"};
     Rml::String target_empty_text_{"No targets available"};

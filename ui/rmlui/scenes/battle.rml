@@ -7,6 +7,11 @@
     <link type="text/rcss" href="battle.rcss"/>
 </head>
 <body class="tf-screen-root tf-nav-root" data-model="battle_scene">
+    <div id="battle-top-status">
+        <div id="battle-turn">{{ turn_text }}</div>
+        <div id="battle-result">{{ result_text }}</div>
+    </div>
+
     <div id="battle-hud">
         <div id="battle-party-panel">
             <div class="battle-party-card"
@@ -14,14 +19,20 @@
                  data-class-active-party-member="member.active"
                  data-class-ko-party-member="member.ko">
                 <div class="battle-party-main">
-                    <div class="battle-portrait" data-style-decorator="member.portrait_decorator"></div>
-                    <div class="battle-party-stats">
+                    <div class="battle-party-identity">
                         <div class="battle-party-name">{{ member.name }}</div>
-                        <div class="battle-stat-label">HP {{ member.hp_text }}</div>
+                        <div class="battle-portrait" data-style-decorator="member.portrait_decorator"></div>
+                    </div>
+                    <div class="battle-party-stats">
+                        <div class="battle-stat-label battle-hp-label">
+                            <span class="battle-stat-kind">HP</span><span class="battle-stat-value">{{ member.hp_text }}</span>
+                        </div>
                         <div class="battle-stat-bar battle-hp-bar">
                             <div class="battle-stat-fill battle-hp-fill" data-style-width="member.hp_ratio_percent"></div>
                         </div>
-                        <div class="battle-stat-label">MP {{ member.mp_text }}</div>
+                        <div class="battle-stat-label battle-mp-label">
+                            <span class="battle-stat-kind">MP</span><span class="battle-stat-value">{{ member.mp_text }}</span>
+                        </div>
                         <div class="battle-stat-bar battle-mp-bar">
                             <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>
                         </div>
@@ -31,13 +42,7 @@
         </div>
 
         <div id="battle-command-panel">
-            <div id="battle-turn">{{ turn_text }}</div>
-            <div id="battle-result">{{ result_text }}</div>
-
             <div id="battle-actions" data-if="actions_enabled">
-                <div id="battle-menu-title">{{ menu_title }}</div>
-                <div id="battle-menu-hint">{{ menu_hint }}</div>
-
                 <div id="battle-main-actions" data-if="main_menu_visible">
                     <button class="battle-text-button tf-nav-auto battle-action-button"
                             data-for="action : main_actions"
