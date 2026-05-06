@@ -40,6 +40,7 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_turn_in_service.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/rpg_catalog_loader.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/script/tinyfarm_script_module.h"
@@ -313,66 +314,11 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     }
 
     services.rpg_catalog = std::make_shared<game::data::RpgCatalog>();
-    constexpr std::string_view kRpgRoot = "assets/data/rpg/";
-    constexpr std::string_view kManifestPath = "assets/data/rpg/manifest.json";
-    if (!services.rpg_catalog->loadManifest(kManifestPath)) {
-        spdlog::error("加载 RPG manifest 失败: {}", kManifestPath);
-        return false;
-    }
-
-    const auto* manifest = services.rpg_catalog->manifest();
-    if (!manifest) {
-        spdlog::error("RPG manifest 未加载。");
-        return false;
-    }
-
-    const auto resolve_file_path = [manifest, kRpgRoot](const std::string_view key) -> std::optional<std::string> {
-        const auto it = manifest->files_.find(std::string(key));
-        if (it == manifest->files_.end() || it->second.empty()) {
-            return std::nullopt;
-        }
-        return std::string(kRpgRoot) + it->second;
-    };
-
-    const auto classes_path = resolve_file_path("classes");
-    const auto actors_path = resolve_file_path("actors");
-    const auto skills_path = resolve_file_path("skills");
-    const auto states_path = resolve_file_path("states");
-    const auto enemies_path = resolve_file_path("enemies");
-    const auto troops_path = resolve_file_path("troops");
-    if (!classes_path || !actors_path || !skills_path || !states_path || !enemies_path || !troops_path) {
-        spdlog::error("RPG manifest 缺少 classes/actors/skills/states/enemies/troops 文件映射。");
-        return false;
-    }
-
-    if (!services.rpg_catalog->loadClasses(*classes_path)) {
-        spdlog::error("加载 RPG classes 失败: {}", *classes_path);
-        return false;
-    }
-    if (!services.rpg_catalog->loadActors(*actors_path)) {
-        spdlog::error("加载 RPG actors 失败: {}", *actors_path);
-        return false;
-    }
-    if (!services.rpg_catalog->loadSkills(*skills_path)) {
-        spdlog::error("加载 RPG skills 失败: {}", *skills_path);
-        return false;
-    }
-    if (!services.rpg_catalog->loadStates(*states_path)) {
-        spdlog::error("加载 RPG states 失败: {}", *states_path);
-        return false;
-    }
-    if (!services.rpg_catalog->loadEnemies(*enemies_path)) {
-        spdlog::error("加载 RPG enemies 失败: {}", *enemies_path);
-        return false;
-    }
-    if (!services.rpg_catalog->loadTroops(*troops_path)) {
-        spdlog::error("加载 RPG troops 失败: {}", *troops_path);
-        return false;
-    }
-
-    std::string reference_error{};
-    if (!services.rpg_catalog->validateReferences(reference_error, services.item_catalog.get())) {
-        spdlog::error("RPG 引用校验失败: {}", reference_error);
+    game::runtime::RpgCatalogLoadOptions options{};
+    options.item_catalog = services.item_catalog.get();
+    std::string load_error{};
+    if (!game::runtime::loadRpgCatalogFromManifest(*services.rpg_catalog, options, load_error)) {
+        spdlog::error("{}", load_error);
         return false;
     }
 

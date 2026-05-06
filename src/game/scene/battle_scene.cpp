@@ -412,6 +412,7 @@ void BattleScene::update(float delta_time) {
 
 void BattleScene::render(float interpolation_alpha) {
     Scene::render(interpolation_alpha);
+    context_.getRenderer().beginFrame(context_.getCamera());
     renderBattlefieldBackground();
     refreshPresentation();
     syncPresentationTransforms();

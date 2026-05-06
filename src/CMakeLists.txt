@@ -203,6 +203,7 @@ target_sources(game PRIVATE
     # Runtime
     game/runtime/system_bundle.cpp
     game/runtime/game_runtime_assembler.cpp
+    game/runtime/rpg_catalog_loader.cpp
     game/runtime/system_scheduler.cpp
     # UI
     game/ui/time_clock_hud.cpp

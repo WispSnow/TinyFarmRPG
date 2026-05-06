@@ -46,6 +46,29 @@ if(BUILD_RMLUI_TESTER)
     setup_windows_dll_copy(rmlui_tester)
 endif()
 
+add_executable(battle_tester
+    battle_tester/main.cpp
+    battle_tester/battle_tester_scene.cpp
+)
+
+target_link_libraries(battle_tester
+    PRIVATE
+        game
+)
+
+target_include_directories(battle_tester
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/battle_tester
+)
+
+setup_compiler_options(battle_tester)
+setup_asset_copy(battle_tester)
+setup_ui_copy(battle_tester)
+setup_script_copy(battle_tester)
+setup_config_copy(battle_tester)
+setup_windows_dll_copy(battle_tester)
+
 add_executable(scheduler_dot_dump
     scheduler_dot_dump/main.cpp
 )
