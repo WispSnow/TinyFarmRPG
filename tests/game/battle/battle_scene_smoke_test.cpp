@@ -214,6 +214,7 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(header.find("void render(float interpolation_alpha) override"), std::string::npos);
     EXPECT_NE(source.find("renderBattlefieldBackground"), std::string::npos);
     EXPECT_NE(source.find("drawFilledRect"), std::string::npos);
+    EXPECT_NE(source.find("context_.getRenderer().beginFrame(context_.getCamera())"), std::string::npos);
     EXPECT_NE(source.find("BattleSpriteComponent"), std::string::npos);
     EXPECT_NE(source.find("battle_render_system_.renderPrepared"), std::string::npos);
     EXPECT_NE(source.find("battleFormationSlot"), std::string::npos);
