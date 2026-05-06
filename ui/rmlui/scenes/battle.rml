@@ -13,18 +13,19 @@
                  data-for="member : party_status"
                  data-class-active-party-member="member.active"
                  data-class-ko-party-member="member.ko">
-                <div class="battle-portrait"
-                     data-class-portrait-player="member.portrait_player"
-                     data-class-portrait-lyria="member.portrait_lyria"
-                     data-class-portrait-tori="member.portrait_tori"></div>
-                <div class="battle-party-name">{{ member.name }}</div>
-                <div class="battle-stat-label battle-hp-label">HP {{ member.hp_text }}</div>
-                <div class="battle-stat-bar battle-hp-bar">
-                    <div class="battle-stat-fill battle-hp-fill" data-style-width="member.hp_ratio_percent"></div>
-                </div>
-                <div class="battle-stat-label battle-mp-label">MP {{ member.mp_text }}</div>
-                <div class="battle-stat-bar battle-mp-bar">
-                    <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>
+                <div class="battle-party-main">
+                    <div class="battle-portrait" data-style-decorator="member.portrait_decorator"></div>
+                    <div class="battle-party-stats">
+                        <div class="battle-party-name">{{ member.name }}</div>
+                        <div class="battle-stat-label">HP {{ member.hp_text }}</div>
+                        <div class="battle-stat-bar battle-hp-bar">
+                            <div class="battle-stat-fill battle-hp-fill" data-style-width="member.hp_ratio_percent"></div>
+                        </div>
+                        <div class="battle-stat-label">MP {{ member.mp_text }}</div>
+                        <div class="battle-stat-bar battle-mp-bar">
+                            <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

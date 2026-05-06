@@ -16,6 +16,12 @@ class ElementDocument;
 namespace engine::scene {
     class SceneManager;
 
+/// @brief 场景 UI 覆盖策略，供 SceneManager 决定后台 RmlUi 文档是否继续显示。
+enum class SceneUiCoverage : std::uint8_t {
+    Overlay,               ///< 覆盖式场景，保留底层场景 UI 可见。
+    HideUnderlyingSceneUi  ///< 全屏场景，隐藏底层场景 UI。
+};
+
 /**
  * @brief 场景基类，负责管理场景中的游戏对象和场景生命周期。
  *
@@ -57,6 +63,7 @@ public:
     virtual void prepareUi(float interpolation_alpha); ///< @brief 在 RmlUi::Update 前准备 retained UI 组合数据。
     virtual void render(float interpolation_alpha); ///< @brief 渲染场景（interpolation_alpha 为渲染插值系数）。
     virtual void clean();                       ///< @brief 清理场景。
+    [[nodiscard]] virtual SceneUiCoverage uiCoverage() const; ///< @brief 获取该场景对底层 RmlUi 文档的覆盖策略。
 
     /// @brief 请求弹出当前场景。
     void requestPopScene();

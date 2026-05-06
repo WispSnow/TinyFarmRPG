@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace engine::ui::rmlui {
 
@@ -98,6 +99,7 @@ void RmlUiRuntime::clean() {
         }
     }
     documents_.clear();
+    visible_scene_owners_.clear();
     active_scene_id_ = 0;
     input_mode_ = InputMode::Mouse;
 
@@ -260,8 +262,15 @@ Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path,
     }
 
     doc->Show();
-    documents_.push_back({doc, owner_scene_id, std::string(document_path)});
+    documents_.push_back({
+        .doc = doc,
+        .owner = owner_scene_id,
+        .path = std::string(document_path),
+        .requested_visible = true,
+        .currently_visible = true,
+    });
     applyInputModeClass(doc);
+    applyDocumentVisibility(documents_.back());
 
     if (active_scene_id_ != 0) {
         applyInteractionPolicy();
@@ -304,15 +313,37 @@ void RmlUiRuntime::unloadDocumentsByOwner(uint64_t owner_scene_id) {
 }
 
 void RmlUiRuntime::showDocument(Rml::ElementDocument* doc) {
-    if (doc) {
-        doc->Show();
+    if (!doc) {
+        return;
     }
+
+    auto it = std::find_if(documents_.begin(), documents_.end(), [doc](const DocumentEntry& entry) {
+        return entry.doc == doc;
+    });
+    if (it != documents_.end()) {
+        it->requested_visible = true;
+        applyDocumentVisibility(*it);
+        return;
+    }
+
+    doc->Show();
 }
 
 void RmlUiRuntime::hideDocument(Rml::ElementDocument* doc) {
-    if (doc) {
-        doc->Hide();
+    if (!doc) {
+        return;
     }
+
+    auto it = std::find_if(documents_.begin(), documents_.end(), [doc](const DocumentEntry& entry) {
+        return entry.doc == doc;
+    });
+    if (it != documents_.end()) {
+        it->requested_visible = false;
+        applyDocumentVisibility(*it);
+        return;
+    }
+
+    doc->Hide();
 }
 
 void RmlUiRuntime::setActiveScene(uint64_t scene_id) {
@@ -321,6 +352,15 @@ void RmlUiRuntime::setActiveScene(uint64_t scene_id) {
     }
     active_scene_id_ = scene_id;
     applyInteractionPolicy();
+}
+
+void RmlUiRuntime::setVisibleSceneOwners(std::vector<uint64_t> scene_owner_ids) {
+    if (visible_scene_owners_ == scene_owner_ids) {
+        return;
+    }
+
+    visible_scene_owners_ = std::move(scene_owner_ids);
+    applyVisibilityPolicy();
 }
 
 bool RmlUiRuntime::reloadLastDocument() {
@@ -419,6 +459,38 @@ void RmlUiRuntime::applyInteractionPolicy() {
         } else {
             entry.doc->SetProperty("pointer-events", "none");
         }
+    }
+}
+
+bool RmlUiRuntime::isOwnerVisible(uint64_t owner_scene_id) const {
+    if (owner_scene_id == 0 || visible_scene_owners_.empty()) {
+        return true;
+    }
+
+    return std::find(visible_scene_owners_.begin(), visible_scene_owners_.end(), owner_scene_id) != visible_scene_owners_.end();
+}
+
+void RmlUiRuntime::applyDocumentVisibility(DocumentEntry& entry) {
+    if (!entry.doc) {
+        return;
+    }
+
+    const bool should_be_visible = entry.requested_visible && isOwnerVisible(entry.owner);
+    if (should_be_visible == entry.currently_visible) {
+        return;
+    }
+
+    if (should_be_visible) {
+        entry.doc->Show();
+    } else {
+        entry.doc->Hide();
+    }
+    entry.currently_visible = should_be_visible;
+}
+
+void RmlUiRuntime::applyVisibilityPolicy() {
+    for (auto& entry : documents_) {
+        applyDocumentVisibility(entry);
     }
 }
 

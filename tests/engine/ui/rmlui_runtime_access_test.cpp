@@ -82,6 +82,27 @@ TEST(RmlUiRuntimeAccessTest, RuntimeHeaderAndSourceExposeInputModeClassSync) {
               std::string::npos);
 }
 
+TEST(RmlUiRuntimeAccessTest, RuntimeTracksRequestedVisibilitySeparatelyFromSceneVisibility) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(header.find("void setVisibleSceneOwners(std::vector<uint64_t> scene_owner_ids);"), std::string::npos);
+    EXPECT_NE(header.find("bool requested_visible{true};"), std::string::npos);
+    EXPECT_NE(header.find("bool currently_visible{false};"), std::string::npos);
+    EXPECT_NE(source.find("applyVisibilityPolicy"), std::string::npos);
+    EXPECT_NE(source.find("entry.requested_visible && isOwnerVisible(entry.owner)"), std::string::npos);
+    EXPECT_NE(source.find("visible_scene_owners_ = std::move(scene_owner_ids);"), std::string::npos);
+}
+
 } // namespace
 } // namespace engine::core
 

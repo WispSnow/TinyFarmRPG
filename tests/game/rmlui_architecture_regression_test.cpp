@@ -129,6 +129,7 @@ TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {
     EXPECT_EQ(rml.find("tf-button-secondary"), std::string::npos);
     EXPECT_EQ(rml.find("<progress"), std::string::npos);
     EXPECT_NE(rml.find("battle-text-button"), std::string::npos);
+    EXPECT_NE(rml.find("data-style-decorator=\"member.portrait_decorator\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.hp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.mp_ratio_percent\""), std::string::npos);
     EXPECT_EQ(rcss.find("ninepatch"), std::string::npos);

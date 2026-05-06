@@ -48,7 +48,7 @@ namespace {
 constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
-constexpr int MAIN_ACTION_COLUMNS = 3;
+constexpr int MAIN_ACTION_COLUMNS = 2;
 constexpr float BATTLEFIELD_HEIGHT = 230.0f;
 constexpr int BATTLE_RENDER_LAYER = 40;
 
@@ -66,16 +66,29 @@ struct BattleSpriteComponent {
     game::battle::BattleSide side{game::battle::BattleSide::Player};
     glm::vec2 screen_position{0.0f};
     float scale{1.0f};
+    float depth{0.0f};
+    glm::vec2 shadow_size{56.0f, 4.0f};
 
     BattleSpriteComponent() = default;
     BattleSpriteComponent(game::battle::BattleUnitId unit_id,
                           game::battle::BattleSide side,
                           glm::vec2 screen_position,
-                          float scale)
+                          float scale,
+                          float depth,
+                          glm::vec2 shadow_size)
         : unit_id(unit_id),
           side(side),
           screen_position(screen_position),
-          scale(scale) {}
+          scale(scale),
+          depth(depth),
+          shadow_size(shadow_size) {}
+};
+
+struct BattleFormationSlot {
+    glm::vec2 screen_position{0.0F};
+    float scale{1.0F};
+    float depth{0.0F};
+    glm::vec2 shadow_size{56.0F, 4.0F};
 };
 
 [[nodiscard]] std::string formatRecoveryText(const game::battle::BattleActionResult& result) {
@@ -274,6 +287,54 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return std::to_string(static_cast<int>(std::round(ratio * 100.0f))) + "%";
 }
 
+[[nodiscard]] BattleFormationSlot battleFormationSlot(game::battle::BattleSide side,
+                                                      std::size_t side_index,
+                                                      std::size_t side_count,
+                                                      float visual_scale) {
+    const float centered = static_cast<float>(side_index) - (static_cast<float>(side_count) - 1.0F) * 0.5F;
+    const bool is_player = side == game::battle::BattleSide::Player;
+    const glm::vec2 base = is_player ? glm::vec2{478.0F, 126.0F} : glm::vec2{166.0F, 126.0F};
+    const glm::vec2 step = is_player ? glm::vec2{-18.0F, 28.0F} : glm::vec2{18.0F, 30.0F};
+    glm::vec2 position = base + centered * step;
+    position.y = std::clamp(position.y, 54.0F, BATTLEFIELD_HEIGHT - 36.0F);
+
+    const float shadow_width = std::clamp(34.0F * visual_scale, 42.0F, 72.0F);
+    return BattleFormationSlot{
+        .screen_position = position,
+        .scale = visual_scale,
+        .depth = position.y,
+        .shadow_size = glm::vec2{shadow_width, 4.0F}
+    };
+}
+
+[[nodiscard]] Rml::String portraitDecoratorForUnit(const game::battle::BattleUnit& unit) {
+    if (unit.source_actor_id) {
+        if (*unit.source_actor_id == "actor.player") {
+            return "image(portrait-player)";
+        }
+        if (*unit.source_actor_id == "actor.lyria") {
+            return "image(portrait-lyria)";
+        }
+        if (*unit.source_actor_id == "actor.tori") {
+            return "image(portrait-tori)";
+        }
+    }
+
+    if (unit.portrait.valid()) {
+        if (unit.portrait.path.ends_with("/1.png")) {
+            return "image(portrait-player)";
+        }
+        if (unit.portrait.path.ends_with("/9.png")) {
+            return "image(portrait-lyria)";
+        }
+        if (unit.portrait.path.ends_with("/2.png")) {
+            return "image(portrait-tori)";
+        }
+    }
+
+    return "none";
+}
+
 [[nodiscard]] engine::utils::Rect screenRectToWorldRect(const engine::render::Camera& camera,
                                                         const glm::vec2& position,
                                                         const glm::vec2& size) {
@@ -369,6 +430,10 @@ void BattleScene::clean() {
         context_pushed_ = false;
     }
     Scene::clean();
+}
+
+engine::scene::SceneUiCoverage BattleScene::uiCoverage() const {
+    return engine::scene::SceneUiCoverage::HideUnderlyingSceneUi;
 }
 
 bool BattleScene::initUI() {
@@ -495,11 +560,9 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         party_handle.RegisterMember("mp_text", &PartyStatusViewModel::mp_text);
         party_handle.RegisterMember("hp_ratio_percent", &PartyStatusViewModel::hp_ratio_percent);
         party_handle.RegisterMember("mp_ratio_percent", &PartyStatusViewModel::mp_ratio_percent);
+        party_handle.RegisterMember("portrait_decorator", &PartyStatusViewModel::portrait_decorator);
         party_handle.RegisterMember("active", &PartyStatusViewModel::active);
         party_handle.RegisterMember("ko", &PartyStatusViewModel::ko);
-        party_handle.RegisterMember("portrait_player", &PartyStatusViewModel::portrait_player);
-        party_handle.RegisterMember("portrait_lyria", &PartyStatusViewModel::portrait_lyria);
-        party_handle.RegisterMember("portrait_tori", &PartyStatusViewModel::portrait_tori);
     } else {
         return false;
     }
@@ -710,7 +773,6 @@ void BattleScene::rebuildPartyStatusView() {
             continue;
         }
 
-        const std::string source_actor_id = unit.source_actor_id.value_or("");
         next_party_status.push_back(PartyStatusViewModel{
             .unit_id = static_cast<int>(unit.id),
             .name = makeRmlString(unit.name),
@@ -718,11 +780,9 @@ void BattleScene::rebuildPartyStatusView() {
             .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + " / " + std::to_string(std::max(0, unit.max_mp))),
             .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
             .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),
+            .portrait_decorator = portraitDecoratorForUnit(unit),
             .active = current_actor_id.has_value() && *current_actor_id == unit.id,
-            .ko = !unit.isAlive(),
-            .portrait_player = source_actor_id == "actor.player",
-            .portrait_lyria = source_actor_id == "actor.lyria",
-            .portrait_tori = source_actor_id == "actor.tori"
+            .ko = !unit.isAlive()
         });
     }
 
@@ -737,11 +797,9 @@ void BattleScene::rebuildPartyStatusView() {
                             lhs.mp_text == rhs.mp_text &&
                             lhs.hp_ratio_percent == rhs.hp_ratio_percent &&
                             lhs.mp_ratio_percent == rhs.mp_ratio_percent &&
+                            lhs.portrait_decorator == rhs.portrait_decorator &&
                             lhs.active == rhs.active &&
-                            lhs.ko == rhs.ko &&
-                            lhs.portrait_player == rhs.portrait_player &&
-                            lhs.portrait_lyria == rhs.portrait_lyria &&
-                            lhs.portrait_tori == rhs.portrait_tori;
+                            lhs.ko == rhs.ko;
                     })) {
         party_status_ = std::move(next_party_status);
         document_controller_.markDirty("party_status");
@@ -1675,10 +1733,7 @@ bool BattleScene::initPresentation() {
 
         const std::size_t side_index = unit.side == game::battle::BattleSide::Player ? player_index++ : enemy_index++;
         const std::size_t side_count = unit.side == game::battle::BattleSide::Player ? player_count : enemy_count;
-        const float center_y = 126.0F;
-        const float spacing_y = 34.0F;
-        const float y = center_y + (static_cast<float>(side_index) - (static_cast<float>(side_count) - 1.0F) * 0.5F) * spacing_y;
-        const float x = unit.side == game::battle::BattleSide::Player ? 454.0F : 186.0F;
+        const BattleFormationSlot formation_slot = battleFormationSlot(unit.side, side_index, side_count, scale);
 
         auto animations = toRuntimeAnimations(blueprint.animations_);
         entt::id_type idle_animation_id = hashString(idle_animation);
@@ -1702,8 +1757,15 @@ bool BattleScene::initPresentation() {
             std::move(animations),
             idle_animation_id);
         applyAnimationFrame(animation, sprite);
-        battle_registry_.emplace<engine::component::RenderComponent>(entity, BATTLE_RENDER_LAYER, y);
-        battle_registry_.emplace<BattleSpriteComponent>(entity, unit.id, unit.side, glm::vec2{x, y}, scale);
+        battle_registry_.emplace<engine::component::RenderComponent>(entity, BATTLE_RENDER_LAYER, formation_slot.depth);
+        battle_registry_.emplace<BattleSpriteComponent>(
+            entity,
+            unit.id,
+            unit.side,
+            formation_slot.screen_position,
+            formation_slot.scale,
+            formation_slot.depth,
+            formation_slot.shadow_size);
 
         if (appearance_snapshot && appearance_snapshot->valid && appearance_catalog_) {
             game::component::AppearanceComponent appearance{};
@@ -1760,7 +1822,7 @@ void BattleScene::refreshPresentation() {
         } else if (current_actor_id && *current_actor_id == sprite.unit_id) {
             render.color_ = engine::utils::FColor{1.0F, 0.95F, 0.72F, 1.0F};
         }
-        render.depth_ = sprite.screen_position.y;
+        render.depth_ = sprite.depth;
     }
 }
 
@@ -1794,11 +1856,6 @@ void BattleScene::renderBattlefieldBackground() {
     color.end_color = color.start_color;
     renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, BATTLEFIELD_HEIGHT - 4.0F}, glm::vec2{logical_size.x, 4.0F}), &color);
 
-    color.start_color = engine::utils::FColor{0.22F, 0.30F, 0.36F, 1.0F};
-    color.end_color = color.start_color;
-    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{60.0F, 194.0F}, glm::vec2{220.0F, 3.0F}), &color);
-    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{360.0F, 194.0F}, glm::vec2{220.0F, 3.0F}), &color);
-
     const auto current_actor_id = session_.currentActorId();
     std::optional<game::battle::BattleUnitId> target_id{};
     if (menu_state_ == MenuState::TargetSelect) {
@@ -1810,6 +1867,17 @@ void BattleScene::renderBattlefieldBackground() {
     auto view = battle_registry_.view<BattleSpriteComponent>();
     for (auto entity : view) {
         const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        const auto* unit = session_.findUnit(sprite.unit_id);
+        if (unit && unit->isAlive()) {
+            color.start_color = engine::utils::FColor{0.03F, 0.05F, 0.08F, 0.55F};
+            color.end_color = color.start_color;
+            renderer.drawFilledRect(
+                screenRectToWorldRect(camera,
+                                      sprite.screen_position + glm::vec2{-sprite.shadow_size.x * 0.5F, 13.0F},
+                                      sprite.shadow_size),
+                &color);
+        }
+
         if ((!current_actor_id || *current_actor_id != sprite.unit_id) && (!target_id || *target_id != sprite.unit_id)) {
             continue;
         }
@@ -1820,8 +1888,8 @@ void BattleScene::renderBattlefieldBackground() {
         color.end_color = color.start_color;
         renderer.drawFilledRect(
             screenRectToWorldRect(camera,
-                                  sprite.screen_position + glm::vec2{-28.0F, 13.0F},
-                                  glm::vec2{56.0F, 4.0F}),
+                                  sprite.screen_position + glm::vec2{-sprite.shadow_size.x * 0.5F, 13.0F},
+                                  glm::vec2{sprite.shadow_size.x, 4.0F}),
             &color);
     }
 }

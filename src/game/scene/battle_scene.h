@@ -112,11 +112,9 @@ class BattleScene final : public engine::scene::Scene {
         Rml::String mp_text{};
         Rml::String hp_ratio_percent{"0%"};
         Rml::String mp_ratio_percent{"0%"};
+        Rml::String portrait_decorator{"none"};
         bool active{false};
         bool ko{false};
-        bool portrait_player{false};
-        bool portrait_lyria{false};
-        bool portrait_tori{false};
     };
 
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
@@ -181,6 +179,7 @@ public:
     void render(float interpolation_alpha) override;
     void prepareUi(float interpolation_alpha) override;
     void clean() override;
+    [[nodiscard]] engine::scene::SceneUiCoverage uiCoverage() const override;
 
 private:
     [[nodiscard]] bool initUI();
