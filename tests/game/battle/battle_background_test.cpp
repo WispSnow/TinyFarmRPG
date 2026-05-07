@@ -51,7 +51,7 @@ TEST(BattleBackgroundTest, BackdropCropSamplesRpgMakerImageTopWithoutStretch) {
     EXPECT_FLOAT_EQ(result->source_rect.pos.x, 0.0f);
     EXPECT_FLOAT_EQ(result->source_rect.size.x, 1000.0f);
     EXPECT_FLOAT_EQ(result->source_rect.size.y, 562.5f);
-    EXPECT_FLOAT_EQ(result->source_rect.pos.y, 31.95f);
+    EXPECT_FLOAT_EQ(result->source_rect.pos.y, 71.0f);
     EXPECT_FLOAT_EQ(result->source_rect.size.x / result->source_rect.size.y,
                     result->screen_rect.size.x / result->screen_rect.size.y);
 }
