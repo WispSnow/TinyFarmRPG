@@ -9,6 +9,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/renderer.h"
+#include "engine/resource/default_resource_ids.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 #include "game/battle/battle_ai_planner.h"
@@ -54,7 +55,9 @@ constexpr int BATTLE_RENDER_LAYER = 40;
 constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F};
 constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F;
 constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -10.0F;
-constexpr float BATTLE_SHADOW_ALPHA = 0.26F;
+constexpr float BATTLE_SHADOW_ALPHA = 0.4F;
+constexpr float BATTLE_SHADOW_DEPTH_OFFSET = -0.10F;
+constexpr float BATTLE_TARGET_SHADOW_DEPTH_OFFSET = -0.05F;
 
 enum class MainActionId : int {
     Attack = 1,
@@ -71,7 +74,9 @@ struct BattleSpriteComponent {
     glm::vec2 screen_position{0.0f};
     float scale{1.0f};
     float depth{0.0f};
-    glm::vec2 shadow_size{56.0f, 4.0f};
+    glm::vec2 shadow_size{32.0f, 16.0f};
+    entt::entity shadow_entity{entt::null};
+    entt::entity target_shadow_entity{entt::null};
 
     BattleSpriteComponent() = default;
     BattleSpriteComponent(game::battle::BattleUnitId unit_id,
@@ -86,6 +91,11 @@ struct BattleSpriteComponent {
           scale(scale),
           depth(depth),
           shadow_size(shadow_size) {}
+};
+
+struct BattleShadowComponent {
+    game::battle::BattleUnitId owner_unit_id{0};
+    bool target_highlight{false};
 };
 
 struct BattleFormationSlot {
@@ -302,12 +312,12 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     glm::vec2 position = base + centered * step;
     position.y = std::clamp(position.y, 96.0F, BATTLEFIELD_HEIGHT - 30.0F);
 
-    const float shadow_width = std::clamp(22.0F * visual_scale, 24.0F, 42.0F);
+    const float shadow_width = std::clamp(16.0F * visual_scale, 12.0F, 42.0F);
     return BattleFormationSlot{
         .screen_position = position,
         .scale = visual_scale,
         .depth = position.y,
-        .shadow_size = glm::vec2{shadow_width, std::clamp(3.0F * visual_scale, 3.0F, 5.0F)}
+        .shadow_size = glm::vec2{shadow_width, std::clamp(6.0F * visual_scale, 3.0F, 24.0F)}
     };
 }
 
@@ -354,6 +364,13 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     const glm::vec2 top_left = camera.screenToWorld(position);
     const glm::vec2 bottom_right = camera.screenToWorld(position + size);
     return engine::utils::Rect{top_left, bottom_right - top_left};
+}
+
+[[nodiscard]] glm::vec2 battleShadowScreenPosition(const BattleSpriteComponent& sprite,
+                                                   const engine::component::SpriteComponent& visual) {
+    const glm::vec2 visual_size = visual.size_ * sprite.scale;
+    const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y + BATTLE_SHADOW_VERTICAL_PADDING;
+    return sprite.screen_position + glm::vec2{0.0F, foot_y};
 }
 
 } // namespace
@@ -429,6 +446,7 @@ void BattleScene::render(float interpolation_alpha) {
     renderBattlefieldBackground();
     refreshPresentation();
     syncPresentationTransforms();
+    syncPresentationShadows();
     battle_render_system_.renderPrepared(battle_registry_, context_.getRenderer(), interpolation_alpha);
 }
 
@@ -1741,6 +1759,11 @@ bool BattleScene::initPresentation() {
         battle_background_.load(presentation_options_.battle_background_id, resource_manager);
     }
 
+    if (!resource_manager.findLoadedTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID)) {
+        resource_manager.loadTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID,
+                                     engine::resource::defaults::CIRCLE_TEXTURE_PATH);
+    }
+
     if (!blueprint_manager_) {
         spdlog::warn("BattleScene: 缺少 BlueprintManager，战斗角色表现将不绘制。");
         return true;
@@ -1846,8 +1869,40 @@ bool BattleScene::initPresentation() {
             std::move(animations),
             idle_animation_id);
         applyAnimationFrame(animation, sprite);
+        const entt::entity shadow_entity = battle_registry_.create();
+        battle_registry_.emplace<BattleShadowComponent>(shadow_entity, unit.id, false);
+        battle_registry_.emplace<engine::component::TransformComponent>(shadow_entity);
+        battle_registry_.emplace<engine::component::SpriteComponent>(
+            shadow_entity,
+            engine::component::Sprite{
+                engine::resource::defaults::CIRCLE_TEXTURE_ID,
+                engine::utils::Rect{0.0F, 0.0F, 960.0F, 960.0F}},
+            glm::vec2{1.0F, 1.0F},
+            glm::vec2{0.5F, 0.5F});
+        battle_registry_.emplace<engine::component::RenderComponent>(
+            shadow_entity,
+            BATTLE_RENDER_LAYER,
+            formation_slot.depth + BATTLE_SHADOW_DEPTH_OFFSET,
+            engine::utils::FColor{0.03F, 0.05F, 0.08F, BATTLE_SHADOW_ALPHA});
+
+        const entt::entity target_shadow_entity = battle_registry_.create();
+        battle_registry_.emplace<BattleShadowComponent>(target_shadow_entity, unit.id, true);
+        battle_registry_.emplace<engine::component::TransformComponent>(target_shadow_entity);
+        battle_registry_.emplace<engine::component::SpriteComponent>(
+            target_shadow_entity,
+            engine::component::Sprite{
+                engine::resource::defaults::CIRCLE_TEXTURE_ID,
+                engine::utils::Rect{0.0F, 0.0F, 960.0F, 960.0F}},
+            glm::vec2{1.0F, 1.0F},
+            glm::vec2{0.5F, 0.5F});
+        battle_registry_.emplace<engine::component::RenderComponent>(
+            target_shadow_entity,
+            BATTLE_RENDER_LAYER,
+            formation_slot.depth + BATTLE_TARGET_SHADOW_DEPTH_OFFSET,
+            engine::utils::FColor{0.0F, 0.0F, 0.0F, 0.0F});
+
         battle_registry_.emplace<engine::component::RenderComponent>(entity, BATTLE_RENDER_LAYER, formation_slot.depth);
-        battle_registry_.emplace<BattleSpriteComponent>(
+        auto& battle_sprite = battle_registry_.emplace<BattleSpriteComponent>(
             entity,
             unit.id,
             unit.side,
@@ -1855,6 +1910,8 @@ bool BattleScene::initPresentation() {
             formation_slot.scale,
             formation_slot.depth,
             formation_slot.shadow_size);
+        battle_sprite.shadow_entity = shadow_entity;
+        battle_sprite.target_shadow_entity = target_shadow_entity;
 
         if (appearance_snapshot && appearance_snapshot->valid && appearance_catalog_) {
             game::component::AppearanceComponent appearance{};
@@ -1873,6 +1930,7 @@ bool BattleScene::initPresentation() {
     }
 
     syncPresentationTransforms();
+    syncPresentationShadows();
     refreshPresentation();
     return true;
 }
@@ -1921,7 +1979,7 @@ void BattleScene::refreshPresentation() {
         }
         if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
             render.color_ = multiplyColor(render.color_, pose->color_multiplier);
-            render.depth_ = sprite.screen_position.y + pose->offset.y;
+            render.depth_ = sprite.depth + pose->offset.y;
         } else {
             render.depth_ = sprite.depth;
         }
@@ -1951,6 +2009,63 @@ void BattleScene::syncPresentationTransforms() {
     }
 }
 
+void BattleScene::syncPresentationShadows() {
+    const auto& camera = context_.getCamera();
+    std::optional<game::battle::BattleUnitId> target_id{};
+    if (menu_state_ == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
+            target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
+        }
+    }
+
+    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::SpriteComponent>();
+    for (auto entity : view) {
+        const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        const auto& visual = view.get<engine::component::SpriteComponent>(entity);
+        const auto* unit = session_.findUnit(sprite.unit_id);
+
+        glm::vec2 screen_position = battleShadowScreenPosition(sprite, visual);
+        float pose_depth_offset = 0.0F;
+        if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
+            screen_position += pose->offset;
+            pose_depth_offset = pose->offset.y;
+        }
+        const glm::vec2 world_position = camera.screenToWorld(screen_position);
+
+        if (auto* shadow_transform = battle_registry_.try_get<engine::component::TransformComponent>(sprite.shadow_entity);
+            shadow_transform) {
+            shadow_transform->position_ = world_position;
+            shadow_transform->previous_position_ = world_position;
+            shadow_transform->scale_ = glm::vec2{sprite.shadow_size.x, sprite.shadow_size.y};
+            shadow_transform->rotation_ = 0.0F;
+        }
+        if (auto* shadow_render = battle_registry_.try_get<engine::component::RenderComponent>(sprite.shadow_entity);
+            shadow_render) {
+            shadow_render->color_ = unit && unit->isAlive()
+                ? engine::utils::FColor{0.03F, 0.05F, 0.08F, BATTLE_SHADOW_ALPHA}
+                : engine::utils::FColor{0.0F, 0.0F, 0.0F, 0.0F};
+            shadow_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_SHADOW_DEPTH_OFFSET;
+        }
+
+        const bool target_highlight = target_id && *target_id == sprite.unit_id && unit && unit->isAlive();
+        if (auto* target_transform =
+                battle_registry_.try_get<engine::component::TransformComponent>(sprite.target_shadow_entity);
+            target_transform) {
+            target_transform->position_ = world_position;
+            target_transform->previous_position_ = world_position;
+            target_transform->scale_ = glm::vec2{sprite.shadow_size.x * 1.16F, sprite.shadow_size.y * 1.2F};
+            target_transform->rotation_ = 0.0F;
+        }
+        if (auto* target_render = battle_registry_.try_get<engine::component::RenderComponent>(sprite.target_shadow_entity);
+            target_render) {
+            target_render->color_ = target_highlight
+                ? engine::utils::FColor{1.0F, 0.68F, 0.30F, 0.64F}
+                : engine::utils::FColor{0.0F, 0.0F, 0.0F, 0.0F};
+            target_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_TARGET_SHADOW_DEPTH_OFFSET;
+        }
+    }
+}
+
 void BattleScene::renderBattlefieldBackground() {
     auto& renderer = context_.getRenderer();
     const auto& camera = context_.getCamera();
@@ -1965,52 +2080,6 @@ void BattleScene::renderBattlefieldBackground() {
     renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, 0.0F}, logical_size), &color);
 
     battle_background_.render(renderer, camera);
-
-    std::optional<game::battle::BattleUnitId> target_id{};
-    if (menu_state_ == MenuState::TargetSelect) {
-        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
-            target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
-        }
-    }
-
-    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::SpriteComponent>();
-    for (auto entity : view) {
-        const auto& sprite = view.get<BattleSpriteComponent>(entity);
-        const auto& visual = view.get<engine::component::SpriteComponent>(entity);
-        const auto* unit = session_.findUnit(sprite.unit_id);
-        glm::vec2 screen_position = sprite.screen_position;
-        if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
-            screen_position += pose->offset;
-        }
-        const glm::vec2 visual_size = visual.size_ * sprite.scale;
-        const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y + BATTLE_SHADOW_VERTICAL_PADDING;
-
-        if (unit && unit->isAlive()) {
-            color.start_color = engine::utils::FColor{0.03F, 0.05F, 0.08F, BATTLE_SHADOW_ALPHA};
-            color.end_color = color.start_color;
-            const glm::vec2 shadow_center = camera.screenToWorld(
-                screen_position + glm::vec2{0.0F, foot_y});
-            const glm::vec2 shadow_edge = camera.screenToWorld(
-                screen_position + glm::vec2{sprite.shadow_size.x * 0.5F, foot_y + sprite.shadow_size.y});
-            renderer.drawFilledEllipse(shadow_center,
-                                       glm::abs(shadow_edge - shadow_center),
-                                       &color);
-        }
-
-        if (!target_id || *target_id != sprite.unit_id) {
-            continue;
-        }
-
-        color.start_color = engine::utils::FColor{1.0F, 0.68F, 0.30F, 0.64F};
-        color.end_color = color.start_color;
-        const glm::vec2 focus_center = camera.screenToWorld(
-            screen_position + glm::vec2{0.0F, foot_y});
-        const glm::vec2 focus_edge = camera.screenToWorld(
-            screen_position + glm::vec2{sprite.shadow_size.x * 0.58F, foot_y + sprite.shadow_size.y * 1.2F});
-        renderer.drawFilledEllipse(focus_center,
-                                   glm::abs(focus_edge - focus_center),
-                                   &color);
-    }
 }
 
 void BattleScene::requestBattleEnd() {

@@ -272,6 +272,7 @@ private:
     void updatePresentation(float delta_time);
     void refreshPresentation();
     void syncPresentationTransforms();
+    void syncPresentationShadows();
     void renderBattlefieldBackground();
 };
 
