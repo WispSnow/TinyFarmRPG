@@ -1,6 +1,7 @@
 #include "game/data/rpg_catalog.h"
 
 #include "engine/utils/json_file_loader.h"
+#include "game/data/battle_background_id.h"
 #include "game/data/item_catalog.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -619,6 +620,7 @@ bool RpgCatalog::loadTroops(const std::string_view file_path) {
         }
         troop.id_hash_ = RpgCatalog::hashId(troop.id_);
         troop.display_name_ = troop_node.value("display_name", troop.id_);
+        troop.battle_background_id_ = troop_node.value("battle_background_id", std::string{});
 
         const auto members_it = troop_node.find("members");
         if (members_it == troop_node.end() || !members_it->is_array()) {
@@ -679,6 +681,13 @@ bool RpgCatalog::validateReferences(std::string& out_error, const ItemCatalog* i
 
     for (const auto& [troop_id, troop] : troops_) {
         (void)troop_id;
+        if (!troop.battle_background_id_.empty() &&
+            !game::data::isValidBattleBackgroundId(troop.battle_background_id_)) {
+            out_error = "Troop '" + troop.id_ + "' has invalid battle_background_id '" +
+                        troop.battle_background_id_ + "'";
+            return false;
+        }
+
         for (const auto& member : troop.members_) {
             const entt::id_type enemy_id_hash = RpgCatalog::hashId(member.enemy_id_);
             if (!enemies_.contains(enemy_id_hash)) {

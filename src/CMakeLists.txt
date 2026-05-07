@@ -267,6 +267,7 @@ target_sources(game PRIVATE
     game/scene/quest_offer_scene.cpp
     game/scene/recruit_offer_scene.cpp
     game/scene/shop_menu_scene.cpp
+    game/scene/battle_background.cpp
     game/scene/battle_scene.cpp
     game/scene/inventory_menu_character_panel.cpp
     game/scene/inventory_menu_scene.cpp

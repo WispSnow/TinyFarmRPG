@@ -3,6 +3,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_app.h"
 #include "engine/utils/events.h"
+#include "game/data/battle_background_id.h"
 
 #include <SDL3/SDL_main.h>
 #include <entt/signal/dispatcher.hpp>
@@ -39,12 +40,12 @@ void initializeEnvironment() {
 
 void printUsage() {
     std::puts("Usage:");
-    std::puts("  battle_tester [--actors actor.player,actor.lyria,actor.tori] [--troop troop.goblin_pair] [--potion-count 5]");
+    std::puts("  battle_tester [--actors actor.player,actor.lyria,actor.tori] [--troop troop.goblin_pair] [--battle-background Grassland] [--potion-count 5]");
     std::puts("");
     std::puts("Examples:");
     std::puts("  battle_tester");
     std::puts("  battle_tester --troop troop.slime");
-    std::puts("  battle_tester --actors actor.player,actor.lyria,actor.tori --troop troop.gnome_pair");
+    std::puts("  battle_tester --actors actor.player,actor.lyria,actor.tori --troop troop.gnome_pair --battle-background Grassland");
 }
 
 [[nodiscard]] std::string_view trim(std::string_view value) {
@@ -132,6 +133,26 @@ void printUsage() {
                 return result;
             }
             result.config.troop_id = std::string{value};
+            continue;
+        }
+
+        if (arg == "--battle-background") {
+            if (!nextValue(argc, argv, i, arg, value)) {
+                result.valid = false;
+                return result;
+            }
+            value = trim(value);
+            if (value.empty()) {
+                spdlog::error("BattleTester: --battle-background must not be empty.");
+                result.valid = false;
+                return result;
+            }
+            if (!game::data::isValidBattleBackgroundId(value)) {
+                spdlog::error("BattleTester: --battle-background id '{}' invalid; expected [A-Za-z0-9_].", value);
+                result.valid = false;
+                return result;
+            }
+            result.config.battle_background_id = std::string{value};
             continue;
         }
 

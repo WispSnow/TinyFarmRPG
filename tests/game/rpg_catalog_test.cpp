@@ -180,6 +180,7 @@ FixturePaths createValidRpgFixture() {
     {
       "id": "troop.slime_pair",
       "display_name": "Slime Pair",
+      "battle_background_id": "Grassland",
       "members": [
         { "enemy_id": "enemy.slime", "x": 320.0, "y": 280.0 },
         { "enemy_id": "enemy.slime", "x": 420.0, "y": 300.0 }
@@ -246,7 +247,38 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
 
     const auto* troop = catalog.findTroop("troop.slime_pair");
     ASSERT_NE(troop, nullptr);
+    EXPECT_EQ(troop->battle_background_id_, "Grassland");
     ASSERT_EQ(troop->members_.size(), 2U);
+}
+
+TEST(RpgCatalogTest, RejectsInvalidTroopBattleBackgroundId) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.troops,
+        R"json({
+  "troops": [
+    {
+      "id": "troop.slime_pair",
+      "display_name": "Slime Pair",
+      "battle_background_id": "../Grassland",
+      "members": [
+        { "enemy_id": "enemy.slime", "x": 320.0, "y": 280.0 }
+      ]
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
+    ASSERT_TRUE(catalog.loadStates(paths.states.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    std::string error{};
+    EXPECT_FALSE(catalog.validateReferences(error));
+    EXPECT_NE(error.find("invalid battle_background_id"), std::string::npos);
 }
 
 TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {

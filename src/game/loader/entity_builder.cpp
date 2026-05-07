@@ -11,6 +11,7 @@
 #include "game/component/party_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/data/battle_background_id.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
 #include "game/data/game_time.h"
@@ -372,9 +373,15 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
     const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
     const auto recruit_actor_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_RECRUIT_ACTOR_ID);
     const auto battle_troop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_TROOP_ID);
+    auto battle_background_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_BACKGROUND_ID);
     const auto encounter_id = findObjectIntProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ID);
     const bool encounter_once = findObjectBoolProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ONCE).value_or(false);
     const auto wander_radius_override = findObjectFloatProperty(object_json_, tiled::ACTOR_PROP_WANDER_RADIUS_OVERRIDE);
+
+    if (battle_background_id && !game::data::isValidBattleBackgroundId(*battle_background_id)) {
+        spdlog::warn("EntityBuilder: actor 声明 battle_background_id='{}' 非法，已忽略。", *battle_background_id);
+        battle_background_id.reset();
+    }
 
     if (reuse_player_if_exists_ && name_id == "player"_hs) {
         auto view = registry_.view<game::component::PlayerTag, engine::component::TransformComponent>();
@@ -466,6 +473,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
             game::component::EnemyEncounterComponent{
                 .troop_id_ = *battle_troop_id,
                 .troop_id_hash_ = entt::hashed_string{battle_troop_id->c_str()}.value(),
+                .battle_background_id_ = battle_background_id.value_or(std::string{}),
                 .encounter_id_ = *encounter_id,
                 .once_ = encounter_once,
                 .defeated_ = false,

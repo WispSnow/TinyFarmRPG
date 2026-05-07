@@ -68,6 +68,7 @@ entt::entity createEnemy(entt::registry& registry,
         game::component::EnemyEncounterComponent{
             .troop_id_ = troop_id,
             .troop_id_hash_ = entt::hashed_string{troop_id.c_str()}.value(),
+            .battle_background_id_ = "Grassland",
             .encounter_id_ = encounter_id,
             .once_ = true,
             .home_position_ = position});
@@ -95,6 +96,7 @@ TEST(EnemyEncounterSystemTest, TouchingEnemyTriggersEnterBattleCommand) {
 
     ASSERT_EQ(collector.commands.size(), 1U);
     EXPECT_EQ(collector.commands[0].troop_id, "troop.slime");
+    EXPECT_EQ(collector.commands[0].battle_background_id, "Grassland");
     ASSERT_TRUE(collector.commands[0].encounter_context.has_value());
     EXPECT_EQ(collector.commands[0].encounter_context->source_entity, enemy);
     EXPECT_EQ(collector.commands[0].encounter_context->encounter_id, 1001);

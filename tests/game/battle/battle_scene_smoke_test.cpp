@@ -220,6 +220,9 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("battleFormationSlot"), std::string::npos);
     EXPECT_NE(source.find("constexpr float BATTLEFIELD_HEIGHT = 256.0f;"), std::string::npos);
     EXPECT_NE(source.find("BATTLE_SPRITE_SCALE_MULTIPLIER"), std::string::npos);
+    EXPECT_NE(source.find("glm::vec2{480.0F, 172.0F}"), std::string::npos);
+    EXPECT_NE(source.find("glm::vec2{160.0F, 172.0F}"), std::string::npos);
+    EXPECT_NE(source.find("std::clamp(position.y, 96.0F, BATTLEFIELD_HEIGHT - 30.0F)"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{18.0F, 28.0F}"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{-18.0F, 30.0F}"), std::string::npos);
     EXPECT_NE(source.find("shadow_size"), std::string::npos);
@@ -228,6 +231,40 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("AppearanceLayerCacheBuilder::rebuild"), std::string::npos);
     EXPECT_EQ(source.find("AppearanceSystem"), std::string::npos);
     EXPECT_EQ(source.find("unit.side == game::battle::BattleSide::Player ? 454.0F : 186.0F"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, BattleBackgroundDrawsGroundThenAlphaBackdrop) {
+    const std::filesystem::path background_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_background.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(background_source_path)) << background_source_path;
+
+    const std::string background_source = readTextFile(background_source_path);
+    ASSERT_FALSE(background_source.empty());
+
+    const std::string render_snippet = snippetFrom(background_source, "void BattleBackgroundRenderer::render", 1400U);
+    ASSERT_FALSE(render_snippet.empty());
+    const std::size_t ground_pos = render_snippet.find("if (ground_.valid)");
+    const std::size_t backdrop_pos = render_snippet.find("if (backdrop_.valid)");
+    ASSERT_NE(ground_pos, std::string::npos);
+    ASSERT_NE(backdrop_pos, std::string::npos);
+    EXPECT_LT(ground_pos, backdrop_pos);
+    EXPECT_NE(render_snippet.find("const engine::utils::Rect screen_rect{glm::vec2{0.0f, 0.0f}, logical_size}"),
+              std::string::npos);
+    EXPECT_NE(render_snippet.find("computeBottomAnchoredCropDrawRect(ground_.texture_size, screen_rect)"),
+              std::string::npos);
+    EXPECT_NE(render_snippet.find("computeTopAnchoredCropDrawRect(backdrop_.texture_size, screen_rect)"),
+              std::string::npos);
+    EXPECT_EQ(render_snippet.find("BATTLEFIELD_HEIGHT"), std::string::npos);
+
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+
+    const std::string scene_source = readTextFile(scene_source_path);
+    const std::string battlefield_snippet = snippetFrom(scene_source, "void BattleScene::renderBattlefieldBackground", 1200U);
+    ASSERT_FALSE(battlefield_snippet.empty());
+    EXPECT_NE(battlefield_snippet.find("battle_background_.render(renderer, camera)"), std::string::npos);
+    EXPECT_EQ(battlefield_snippet.find("BATTLEFIELD_HEIGHT - 4.0F"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {

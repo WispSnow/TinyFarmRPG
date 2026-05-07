@@ -31,9 +31,15 @@ inline constexpr std::string_view ACTOR_PROP_QUEST_OFFER_ID = "quest_offer_id";
 inline constexpr std::string_view ACTOR_PROP_SHOP_ID = "shop_id";
 inline constexpr std::string_view ACTOR_PROP_RECRUIT_ACTOR_ID = "recruit_actor_id";
 inline constexpr std::string_view ACTOR_PROP_BATTLE_TROOP_ID = "battle_troop_id";
+inline constexpr std::string_view ACTOR_PROP_BATTLE_BACKGROUND_ID = "battle_background_id";
 inline constexpr std::string_view ACTOR_PROP_ENCOUNTER_ID = "encounter_id";
 inline constexpr std::string_view ACTOR_PROP_ENCOUNTER_ONCE = "encounter_once";
 inline constexpr std::string_view ACTOR_PROP_WANDER_RADIUS_OVERRIDE = "wander_radius_override";
+
+// ----------------------------
+// Map properties
+// ----------------------------
+inline constexpr std::string_view MAP_PROP_BATTLE_BACKGROUND_ID = "battle_background_id";
 
 // ----------------------------
 // Tile properties: obj_type values

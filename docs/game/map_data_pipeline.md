@@ -43,6 +43,7 @@
 | object layer（`.tmj`）rect object | `type="rest"` | `game::component::RestArea` + 进 `SpatialIndex` | 休息交互 | `EntityBuilder::buildRestArea` |
 | object layer（`.tmj`）light | `type="light" + name="point/spot/emissive"` | `PointLight/SpotLight/EmissiveRect` 组件 | 光照系统 | `EntityBuilder::buildPointLight/buildSpotLight/buildEmissiveRect` |
 | map properties（`.tmj`） | `ambient={red,green,blue}` | `WorldState::MapInfo.ambient_override` | 室内环境光覆盖 | `MapManager::loadMap` → `loadAmbientOverride` |
+| map properties（`.tmj`） | `battle_background_id="Grassland"` | `WorldState::MapInfo.battle_background_id` | 战斗场景默认背景 | `MapManager::loadMap` → `loadBattleBackgroundId` |
 | tile properties（`.tsj`） | `obj_type="crop/tree/rock/chest"` | 生成对应组件（`CropComponent`/`ResourceNodeComponent` 等）与空间层语义 | 作物/资源点/宝箱等 | `EntityBuilder::buildFarmTag` |
 
 ### 4.1 Object Types 速查（`EntityBuilder` 扩展点）
@@ -61,6 +62,7 @@
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
 | `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色，对话结束后弹出入队确认框 | `assets/data/rpg/actors.json` |
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
+| `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
 | `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
 | `encounter_once` | bool | 是否一次性遭遇；胜利后写入存档并不再生成 | 地图存档 |
 | `wander_radius_override` | float | 覆盖该 actor 实例的漫游半径 | 地图实例 |
@@ -71,6 +73,7 @@
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
 - `recruit_actor_id` 会让 loader 给该实体附加 `RecruitableComponent`
 - `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
+- `battle_background_id` 只允许 `[A-Za-z0-9_]+`，例如 `Grassland`；实际资源路径按 `BattleBg/battlebacks1/<id>.png` 与 `BattleBg/battlebacks2/<id>.png` 解析
 - 若 `shop_id` 与 `quest_offer_id` 同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
 - `recruit_actor_id` 不能与 `shop_id` / `quest_offer_id` / `battle_troop_id` 共存；共存时会 `warn`，并忽略招募入口
 - `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` / `recruit_actor_id` 共存；共存时会 `warn`，并忽略战斗入口
@@ -149,7 +152,8 @@
 4. 新增 **string property**：`battle_troop_id`
 5. 新增 **int property**：`encounter_id`，同一地图内保持唯一
 6. 可选新增 **bool property**：`encounter_once`
-7. 可选新增 **float property**：`wander_radius_override`
+7. 可选新增 **string property**：`battle_background_id`
+8. 可选新增 **float property**：`wander_radius_override`
 
 最小示例：
 
@@ -160,6 +164,7 @@
   "name": "slime",
   "properties": [
     { "name": "battle_troop_id", "type": "string", "value": "troop.slime" },
+    { "name": "battle_background_id", "type": "string", "value": "Grassland" },
     { "name": "encounter_id", "type": "int", "value": 1001 },
     { "name": "encounter_once", "type": "bool", "value": true },
     { "name": "wander_radius_override", "type": "float", "value": 48.0 }
