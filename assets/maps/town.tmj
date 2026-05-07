@@ -670,5 +670,11 @@
  "tilewidth":16,
  "type":"map",
  "version":"1.11",
- "width":35
+ "width":35,
+ "properties":[
+        {
+         "name":"battle_background_id",
+         "type":"string",
+         "value":"Grassland"
+        }]
 }

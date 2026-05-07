@@ -77,6 +77,7 @@ struct MapInfo {
     NeighborInfo neighbors{};
     bool in_world{true};             // 是否属于 world 布局
     std::optional<glm::vec3> ambient_override{}; // 地图属性覆盖的环境光（仅室内使用）
+    std::optional<std::string> battle_background_id{}; // 地图默认战斗背景 id
 };
 
 struct ResourceNodeState {

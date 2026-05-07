@@ -54,9 +54,10 @@ bool BattleTesterScene::init() {
     }
 
     launch_requested_ = true;
-    spdlog::info("BattleTester: initialized with {} actor(s), troop='{}', potion_count={}.",
+    spdlog::info("BattleTester: initialized with {} actor(s), troop='{}', battle_background='{}', potion_count={}.",
                  config_.actor_ids.size(),
                  config_.troop_id,
+                 config_.battle_background_id,
                  config_.potion_count);
     return true;
 }
@@ -151,6 +152,7 @@ std::unique_ptr<engine::scene::Scene> BattleTesterScene::createBattleScene() {
     game::scene::BattleScenePresentationOptions presentation_options{};
     presentation_options.blueprint_manager = &blueprint_manager_;
     presentation_options.appearance_catalog = &appearance_catalog_;
+    presentation_options.battle_background_id = config_.battle_background_id;
     presentation_options.sprite_seeds.reserve(units.size());
     for (const auto& unit : units) {
         game::scene::BattleSpriteSeed seed{};

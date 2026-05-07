@@ -30,6 +30,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/party_component.h"
 #include "game/component/tags.h"
+#include "game/data/battle_background_id.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
@@ -162,6 +163,79 @@ buildBattleSpriteSeeds(entt::registry& registry, const std::vector<game::battle:
 
     spdlog::warn("GameScene: 未找到有效 PartyComponent，战斗队伍回退为 actor.player。");
     return {std::string(DEFAULT_PARTY_ACTOR_ID)};
+}
+
+[[nodiscard]] std::string sanitizeBattleBackgroundId(std::string_view id, std::string_view source_label) {
+    if (id.empty()) {
+        return {};
+    }
+    if (game::data::isValidBattleBackgroundId(id)) {
+        return std::string{id};
+    }
+
+    spdlog::warn("GameScene: {} battle_background_id='{}' 非法，已忽略。", source_label, id);
+    return {};
+}
+
+[[nodiscard]] const game::data::TroopData* findTroopForBattleBackground(
+    const game::data::RpgCatalog* rpg_catalog,
+    const std::string& troop_id,
+    const std::vector<game::battle::BattleUnit>& units) {
+    if (!rpg_catalog) {
+        return nullptr;
+    }
+
+    if (!troop_id.empty()) {
+        return rpg_catalog->findTroop(troop_id);
+    }
+
+    // Prebuilt-unit debug entries may omit troop_id. Enemy-id reverse lookup is best-effort:
+    // if multiple troops share an enemy, the first matching troop supplies only a presentation fallback.
+    for (const auto& unit : units) {
+        if (unit.side == game::battle::BattleSide::Enemy && unit.source_enemy_id) {
+            for (const auto* troop : rpg_catalog->listTroops()) {
+                if (std::ranges::any_of(troop->members_, [&unit](const game::data::TroopMemberData& member) {
+                        return unit.source_enemy_id && member.enemy_id_ == *unit.source_enemy_id;
+                    })) {
+                    return troop;
+                }
+            }
+            break;
+        }
+    }
+
+    return nullptr;
+}
+
+[[nodiscard]] std::string resolveBattleBackgroundId(const game::defs::EnterBattleCommand& cmd,
+                                                    const game::runtime::GameRuntimeServices* services,
+                                                    const std::vector<game::battle::BattleUnit>& units) {
+    if (auto resolved = sanitizeBattleBackgroundId(cmd.battle_background_id, "command"); !resolved.empty()) {
+        return resolved;
+    }
+
+    if (cmd.encounter_context && services && services->world_state) {
+        if (const auto* map_state = services->world_state->getMapState(cmd.encounter_context->map_id)) {
+            if (map_state->info.battle_background_id) {
+                if (auto resolved = sanitizeBattleBackgroundId(*map_state->info.battle_background_id, "map");
+                    !resolved.empty()) {
+                    return resolved;
+                }
+            }
+        }
+    }
+
+    const auto* troop = findTroopForBattleBackground(
+        services && services->rpg_catalog ? services->rpg_catalog.get() : nullptr,
+        cmd.troop_id,
+        units);
+    if (troop) {
+        if (auto resolved = sanitizeBattleBackgroundId(troop->battle_background_id_, "troop"); !resolved.empty()) {
+            return resolved;
+        }
+    }
+
+    return std::string{game::data::DEFAULT_BATTLE_BACKGROUND_ID};
 }
 
 }
@@ -690,6 +764,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
 
     game::scene::BattleScenePresentationOptions presentation_options{};
     presentation_options.sprite_seeds = buildBattleSpriteSeeds(registry_, units);
+    presentation_options.battle_background_id = resolveBattleBackgroundId(cmd, services_.get(), units);
     if (services_) {
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
         presentation_options.appearance_catalog = services_->appearance_catalog.get();

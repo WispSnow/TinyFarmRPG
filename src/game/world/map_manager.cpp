@@ -22,6 +22,7 @@
 #include "game/component/resource_node_component.h"
 #include "game/component/chest_component.h"
 #include "game/component/tags.h"
+#include "game/data/battle_background_id.h"
 #include "engine/component/auto_tile_component.h"
 #include "engine/component/render_component.h"
 #include "engine/component/sprite_component.h"
@@ -32,6 +33,7 @@
 #include "game/defs/constants.h"
 #include "engine/utils/events.h"
 #include "engine/utils/scoped_timer.h"
+#include "game/loader/tiled_conventions.h"
 #include <algorithm>
 #include <chrono>
 #include <optional>
@@ -218,6 +220,38 @@ namespace {
                 engine::loader::tiled::jsonFloatOr(*value, "blue", 1.0f),
             };
         }
+        return std::nullopt;
+    }
+
+    [[nodiscard]] std::optional<std::string> loadBattleBackgroundId(std::string_view map_path) {
+        const auto json_ptr = engine::loader::tiled::getOrLoadLevelJson(map_path);
+        if (!json_ptr) {
+            return std::nullopt;
+        }
+        const auto& json = *json_ptr;
+
+        const auto* properties = engine::loader::tiled::findMember(json, "properties");
+        if (!properties || !properties->is_array()) {
+            return std::nullopt;
+        }
+
+        for (const auto& prop : *properties) {
+            const auto* name = engine::loader::tiled::findStringMember(prop, "name");
+            if (!name || *name != game::loader::tiled::MAP_PROP_BATTLE_BACKGROUND_ID) {
+                continue;
+            }
+
+            const auto* value = engine::loader::tiled::findStringMember(prop, "value");
+            if (!value || value->empty()) {
+                return std::nullopt;
+            }
+            if (!game::data::isValidBattleBackgroundId(*value)) {
+                spdlog::warn("MapManager: map '{}' battle_background_id='{}' 非法，已忽略。", map_path, *value);
+                return std::nullopt;
+            }
+            return *value;
+        }
+
         return std::nullopt;
     }
 
@@ -478,9 +512,11 @@ bool MapManager::loadMap(entt::id_type map_id) {
     if (auto* mutable_state = world_state_.getMapStateMutable(map_id)) {
         mutable_state->triggers.clear();
         mutable_state->info.ambient_override.reset();
+        mutable_state->info.battle_background_id.reset();
         if (!mutable_state->info.in_world) {
             mutable_state->info.ambient_override = loadAmbientOverride(mutable_state->info.file_path);
         }
+        mutable_state->info.battle_background_id = loadBattleBackgroundId(mutable_state->info.file_path);
     }
 
     {

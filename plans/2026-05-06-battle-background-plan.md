@@ -42,7 +42,7 @@ flowchart TD
     E --> D
     D --> G["BattleScenePresentationOptions"]
     G --> H["BattleBackgroundRenderer<br/>load once and warn once"]
-    H --> I["BattleScene<br/>draw battlebacks2 then battlebacks1"]
+    H --> I["BattleScene<br/>draw battlebacks1 then battlebacks2"]
     I --> J["Renderer<br/>draw before shadows and units"]
 ```
 
@@ -54,9 +54,12 @@ flowchart TD
 - `MapInfo::battle_background_id` 使用 `std::optional<std::string>`，表达“地图是否覆盖默认背景”；`EnterBattleCommand::battle_background_id` 和 `TroopData::battle_background_id_` 继续使用空字符串约定。
 - `battle_background_id` 只允许 `[A-Za-z0-9_]+`。空值表示未配置；非空非法值直接 warn 并忽略，拒绝 `/`、`\`、`.` 和 `..` 上跳。
 - 纹理 id 必须区分双层，例如用 `battlebg1:<id>` 和 `battlebg2:<id>` 作为 hash key，避免同名 `Grassland` 撞到同一个 `TextureHandle`。
-- 背景只画战场区域，不画 HUD 区域：
-  - `battlebacks2` cover 到 `[0, 0, logical_size.x, BATTLEFIELD_HEIGHT]`。
-  - `battlebacks1` 底边对齐 `y = BATTLEFIELD_HEIGHT`，按宽度 cover 后向上展开，不能穿过 HUD。
+- 背景画满逻辑屏幕，HUD 区域由 UI 后绘制覆盖；这样未来 HUD 半透明时下方仍有连续背景：
+  - `battlebacks1` 作为地面层，从源图底部按目标比例裁样，先铺满 `[0, 0, logical_size.x, logical_size.y]`，下边对齐屏幕底边。
+  - `battlebacks2` 从源图顶部附近按目标比例裁样，再铺满同一区域；利用素材自带 alpha 渐变覆盖在近景上。
+  - 两层都保持等比裁切，不做非等比拉伸。
+  - 阵型站位保持在近景地面区域内，避免角色脚底落在远景山脉/天空层。
+  - C++ 背景绘制流程不再额外绘制 `BATTLEFIELD_HEIGHT` 边界线；HUD 分隔只由 RmlUi 面板样式负责。
 - 背景加载在 `initPresentation()` 或等价初始化阶段完成；缺资源只 warn once，render 阶段只检查 cached valid flag，不每帧重新 load 或刷日志。
 - `BattleScene` 当前 `renderer.setAmbient(1, 1, 1)` 保持不变；第一阶段不让战斗背景受探索地图 ambient / 昼夜色调影响。
 
@@ -174,9 +177,9 @@ flowchart TD
 
 7. 修改 `BattleScene` 渲染
    - 先画当前纯色底作为 fallback。
-   - 在 `[0, 0, logical_size.x, BATTLEFIELD_HEIGHT]` 内绘制 `battlebacks2`。
-   - 绘制底边锚定到 `BATTLEFIELD_HEIGHT` 的 `battlebacks1`。
-   - 在背景之后绘制战场底部线、角色阴影、选中条和战斗精灵。
+   - 先在 `[0, 0, logical_size.x, logical_size.y]` 内绘制底部裁样的 `battlebacks1`。
+   - 再在同一区域绘制顶部裁样的 `battlebacks2`，让远景层 alpha 自然过渡到近景层。
+   - 在背景之后绘制角色阴影、选中条和战斗精灵；不在战场/HUD 交界处额外画分隔条。
 
 8. 更新测试数据
    - `town.tmj` 添加 map 默认 `battle_background_id: "Grassland"`。
@@ -192,24 +195,24 @@ flowchart TD
 
 ## 待办清单
 
-- [ ] 字段名统一为 `battle_background_id`。
-- [ ] `EnterBattleCommand` 增加背景字段。
-- [ ] `TroopData` 与 `RpgCatalog::loadTroops()` 支持 troop 默认背景。
-- [ ] 背景 id 校验限定为 `[A-Za-z0-9_]+`。
-- [ ] `MapInfo` 使用 `std::optional<std::string> battle_background_id`。
-- [ ] `MapManager` 支持 TMJ map 默认背景。
-- [ ] game 层 Tiled conventions 增加 map / actor 背景属性常量。
-- [ ] `EnemyEncounterComponent`、`EntityBuilder`、`EnemyEncounterSystem` 支持 encounter 实例背景。
-- [ ] `GameScene::onEnterBattleCommand()` 实现最终背景优先级解析。
-- [ ] 新增 `BattleBackgroundRenderer`，封装双层路径、纹理 id、加载状态和绘制矩形。
-- [ ] `BattleScene` 在战场区域内绘制 `battlebacks2` 和底部锚定的 `battlebacks1`。
-- [ ] 背景缺资源时 warn once，render 阶段静默回退。
-- [ ] `town.tmj` 添加 `Grassland` 测试配置。
-- [ ] `troops.json` 添加可选 troop fallback 测试配置。
-- [ ] `battle_tester` 支持默认背景或 CLI 覆盖。
-- [ ] 补充 tests / smoke，覆盖背景数据流接线。
-- [ ] 更新 `docs/game/map_data_pipeline.md`。
-- [ ] 执行 `ninja -C build game_tests`。
+- [x] 字段名统一为 `battle_background_id`。
+- [x] `EnterBattleCommand` 增加背景字段。
+- [x] `TroopData` 与 `RpgCatalog::loadTroops()` 支持 troop 默认背景。
+- [x] 背景 id 校验限定为 `[A-Za-z0-9_]+`。
+- [x] `MapInfo` 使用 `std::optional<std::string> battle_background_id`。
+- [x] `MapManager` 支持 TMJ map 默认背景。
+- [x] game 层 Tiled conventions 增加 map / actor 背景属性常量。
+- [x] `EnemyEncounterComponent`、`EntityBuilder`、`EnemyEncounterSystem` 支持 encounter 实例背景。
+- [x] `GameScene::onEnterBattleCommand()` 实现最终背景优先级解析。
+- [x] 新增 `BattleBackgroundRenderer`，封装双层路径、纹理 id、加载状态和绘制矩形。
+- [x] `BattleScene` 在完整逻辑屏幕内先绘制地面层 `battlebacks1`，再绘制带 alpha 的远景层 `battlebacks2`。
+- [x] 背景缺资源时 warn once，render 阶段静默回退。
+- [x] `town.tmj` 添加 `Grassland` 测试配置。
+- [x] `troops.json` 添加可选 troop fallback 测试配置。
+- [x] `battle_tester` 支持默认背景或 CLI 覆盖。
+- [x] 补充 tests / smoke，覆盖背景数据流接线。
+- [x] 更新 `docs/game/map_data_pipeline.md`。
+- [x] 执行 `ninja -C build game_tests`。
 - [ ] 人工截图确认正常背景与缺失背景两个 case。
 
 ## 风险与边界

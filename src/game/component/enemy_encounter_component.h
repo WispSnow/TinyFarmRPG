@@ -10,6 +10,7 @@ namespace game::component {
 struct EnemyEncounterComponent {
     std::string troop_id_{};
     entt::id_type troop_id_hash_{entt::null};
+    std::string battle_background_id_{};
     int encounter_id_{0};
     bool once_{false};
     bool defeated_{false};

@@ -3,6 +3,7 @@
         {
             "id": "troop.goblin_pair",
             "display_name": "哥布林*2",
+            "battle_background_id": "Grassland",
             "members": [
                 {
                     "enemy_id": "enemy.goblin",
@@ -19,6 +20,7 @@
         {
             "id": "troop.gnome_pair",
             "display_name": "侏儒*2",
+            "battle_background_id": "Grassland",
             "members": [
                 {
                     "enemy_id": "enemy.gnome",
@@ -35,6 +37,7 @@
         {
             "id": "troop.slime",
             "display_name": "Slime",
+            "battle_background_id": "Grassland",
             "members": [
                 {
                     "enemy_id": "enemy.slime",

@@ -98,6 +98,7 @@ void EnemyEncounterSystem::update(float delta_time) {
 
         game::defs::EnterBattleCommand command{};
         command.troop_id = encounter.troop_id_;
+        command.battle_background_id = encounter.battle_background_id_;
         command.encounter_context = game::defs::EnemyEncounterBattleContext{
             candidate,
             current_map,

@@ -3,6 +3,7 @@
 #include "engine/scene/scene.h"
 #include "game/battle/battle_types.h"
 #include "game/data/appearance_catalog.h"
+#include "game/data/battle_background_id.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/factory/blueprint_manager.h"
@@ -22,6 +23,7 @@ namespace tools::battle_tester {
 struct BattleTesterConfig {
     std::vector<std::string> actor_ids{"actor.player", "actor.lyria", "actor.tori"};
     std::string troop_id{"troop.goblin_pair"};
+    std::string battle_background_id{game::data::DEFAULT_BATTLE_BACKGROUND_ID};
     int potion_count{5};
 };
 

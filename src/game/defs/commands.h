@@ -108,6 +108,7 @@ struct EnterBattleCommand {
     // TODO(FND-010): 若战斗命令继续膨胀，拆分到 commands_battle.h 以收敛全局头文件依赖。
     std::vector<std::string> actor_ids{};                         ///< 需要加入玩家方的 actor id；为空时由工厂选择默认玩家队伍。
     std::string troop_id{};                                       ///< 要加载的敌方 troop id；为空时由工厂选择默认敌群。
+    std::string battle_background_id{};                           ///< 可选战斗背景逻辑 id；为空时由地图/troop/default 解析。
     std::vector<game::battle::BattleUnit> player_units{};         ///< 已预构建的玩家方战斗单位；非空时可绕过 actor/class 装配。
     std::vector<game::battle::BattleUnit> enemy_units{};          ///< 已预构建的敌方战斗单位；非空时可绕过 troop/enemy 装配。
     std::optional<EnemyEncounterBattleContext> encounter_context{};///< 地图触发遭遇的结算上下文；手动战斗入口为空。

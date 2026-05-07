@@ -35,6 +35,7 @@ struct BattleScenePresentationOptions {
     std::vector<BattleSpriteSeed> sprite_seeds{};
     const game::factory::BlueprintManager* blueprint_manager{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog{nullptr};
+    std::string battle_background_id{};
 };
 
 } // namespace game::scene

@@ -128,6 +128,7 @@ struct TroopData {
     std::string id_{};
     entt::id_type id_hash_{};
     std::string display_name_{};
+    std::string battle_background_id_{};
     std::vector<TroopMemberData> members_{};
 };
 

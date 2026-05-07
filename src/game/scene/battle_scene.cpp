@@ -294,10 +294,10 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
                                                       float visual_scale) {
     const float centered = static_cast<float>(side_index) - (static_cast<float>(side_count) - 1.0F) * 0.5F;
     const bool is_player = side == game::battle::BattleSide::Player;
-    const glm::vec2 base = is_player ? glm::vec2{480.0F, 140.0F} : glm::vec2{160.0F, 140.0F};
+    const glm::vec2 base = is_player ? glm::vec2{480.0F, 172.0F} : glm::vec2{160.0F, 172.0F};
     const glm::vec2 step = is_player ? glm::vec2{18.0F, 28.0F} : glm::vec2{-18.0F, 30.0F};
     glm::vec2 position = base + centered * step;
-    position.y = std::clamp(position.y, 58.0F, BATTLEFIELD_HEIGHT - 38.0F);
+    position.y = std::clamp(position.y, 96.0F, BATTLEFIELD_HEIGHT - 30.0F);
 
     const float shadow_width = std::clamp(30.0F * visual_scale, 34.0F, 58.0F);
     return BattleFormationSlot{
@@ -1647,6 +1647,10 @@ bool BattleScene::initPresentation() {
         battle_registry_.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
     }
 
+    if (!presentation_options_.battle_background_id.empty()) {
+        battle_background_.load(presentation_options_.battle_background_id, resource_manager);
+    }
+
     if (!blueprint_manager_) {
         spdlog::warn("BattleScene: 缺少 BlueprintManager，战斗角色表现将不绘制。");
         return true;
@@ -1847,9 +1851,7 @@ void BattleScene::renderBattlefieldBackground() {
     color.end_color = color.start_color;
     renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, 0.0F}, logical_size), &color);
 
-    color.start_color = engine::utils::FColor{0.10F, 0.14F, 0.18F, 1.0F};
-    color.end_color = color.start_color;
-    renderer.drawFilledRect(screenRectToWorldRect(camera, glm::vec2{0.0F, BATTLEFIELD_HEIGHT - 4.0F}, glm::vec2{logical_size.x, 4.0F}), &color);
+    battle_background_.render(renderer, camera);
 
     const auto current_actor_id = session_.currentActorId();
     std::optional<game::battle::BattleUnitId> target_id{};

@@ -4,6 +4,7 @@
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/battle/battle_session.h"
+#include "game/scene/battle_background.h"
 #include "game/scene/battle_scene_types.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -123,6 +124,7 @@ class BattleScene final : public engine::scene::Scene {
     const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
     game::battle::BattleSession session_;
     BattleScenePresentationOptions presentation_options_{};
+    BattleBackgroundRenderer battle_background_{};
     entt::registry battle_registry_{};
     engine::system::RenderSystem battle_render_system_{};
     FlowState state_{FlowState::WaitingForInput};
