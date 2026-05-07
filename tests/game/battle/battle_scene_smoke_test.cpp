@@ -226,7 +226,7 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("glm::vec2{18.0F, 28.0F}"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{-18.0F, 30.0F}"), std::string::npos);
     EXPECT_NE(source.find("shadow_size"), std::string::npos);
-    EXPECT_NE(source.find("std::clamp(22.0F * visual_scale, 24.0F, 42.0F)"), std::string::npos);
+    EXPECT_NE(source.find("std::clamp(16.0F * visual_scale, 12.0F, 42.0F)"), std::string::npos);
     EXPECT_NE(source.find("BattleShadowComponent"), std::string::npos);
     EXPECT_NE(source.find("syncPresentationShadows"), std::string::npos);
     EXPECT_NE(source.find("BATTLE_SHADOW_VERTICAL_PADDING"), std::string::npos);
@@ -286,13 +286,13 @@ TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
 
     EXPECT_NE(header.find("#include \"game/scene/battle_animation_director.h\""), std::string::npos);
     EXPECT_NE(header.find("BattleAnimationDirector battle_animation_director_{}"), std::string::npos);
-    EXPECT_NE(header.find("collectBattleAnimationSprites"), std::string::npos);
+    EXPECT_NE(header.find("collectBattlePresentationUnitAnchors"), std::string::npos);
     EXPECT_EQ(header.find("animation_timer_"), std::string::npos);
 
     const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 520U);
     ASSERT_FALSE(executing_snippet.empty());
-    EXPECT_NE(executing_snippet.find("collectBattleAnimationSprites()"), std::string::npos);
-    EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, animation_sprites)"),
+    EXPECT_NE(executing_snippet.find("collectBattlePresentationUnitAnchors()"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors)"),
               std::string::npos);
 
     const std::string animating_snippet = snippetFrom(source, "case FlowState::AnimatingResult:", 360U);
@@ -305,6 +305,42 @@ TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
     EXPECT_NE(source.find("pose->color_multiplier"), std::string::npos);
     EXPECT_EQ(source.find("RESULT_HOLD_SECONDS"), std::string::npos);
     EXPECT_EQ(source.find("animation_timer_"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("#include \"game/scene/battle_damage_popup_controller.h\""), std::string::npos);
+    EXPECT_NE(header.find("BattleDamagePopupController battle_damage_popup_controller_{}"), std::string::npos);
+    EXPECT_NE(header.find("collectBattlePresentationUnitAnchors"), std::string::npos);
+    EXPECT_NE(header.find("renderDamagePopups"), std::string::npos);
+
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 720U);
+    ASSERT_FALSE(executing_snippet.empty());
+    EXPECT_NE(executing_snippet.find("collectBattlePresentationUnitAnchors()"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors)"),
+              std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors)"),
+              std::string::npos);
+
+    EXPECT_NE(source.find("battle_damage_popup_controller_.update(delta_time)"), std::string::npos);
+    EXPECT_NE(source.find("battle_damage_popup_controller_.clear()"), std::string::npos);
+    EXPECT_NE(source.find("renderDamagePopups()"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::renderDamagePopups()"), std::string::npos);
+    EXPECT_NE(source.find("DAMAGE_POPUP_FONT_SIZE_PX = 20"), std::string::npos);
+    EXPECT_NE(source.find("resource_manager.loadFont(engine::resource::defaults::UI_DEFAULT_FONT_ID"), std::string::npos);
+    EXPECT_NE(source.find("battleDamagePopupColor(popup.kind, popup.alpha)"), std::string::npos);
+    EXPECT_NE(source.find("text_renderer.drawText"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, CurrentPlayerActorUsesCommandFocusPoseWhileWaitingForInput) {

@@ -166,28 +166,29 @@ Controller 不持有 `entt::registry`、`Context`、`TextRenderer` 或 `Camera`�
    - 治疗技能 / 道具出现绿色 `+N`。
    - MP 恢复出现蓝色 `+N`。
    - Miss / Critical 测试数据能显示对应文字。
+   - 确认 `Critical!` 黄字在当前 bloom / 合成设置下不溢出、不发糊。
    - 确认 popup 在角色和背景之上、HUD 之下，不遮挡菜单操作。
 
 ## 待办清单
 
-- [ ] 新增 `BattleDamagePopupController` 头 / 源文件。
-- [ ] 新增 `BattleDamagePopupKind`、`BattleDamagePopup`、`BattleDamagePopupLayoutConfig`、`BattleDamagePopupTimingConfig`。
-- [ ] 抽出共享 `BattlePresentationUnitAnchor`，并让 animation director / damage popup 复用。
-- [ ] 实现 `spawnFromResult()` 的 HP 伤害 / HP 恢复 / MP 恢复 / Miss / Critical 生成规则。
-- [ ] 实现 `delay_seconds`，默认与 1.2 impact frame 对齐。
-- [ ] 实现 Critical 与伤害数字的 stagger delay。
-- [ ] 实现无明确 target 时的 actor 聚合 popup 降级策略。
-- [ ] 实现 popup update、ease-out 上飘、alpha 衰减、过期清理。
-- [ ] `BattleScene` 持有 popup controller。
-- [ ] `BattleScene` 在 action 结算后生成 popup。
-- [ ] `BattleScene` 每帧更新 popup。
-- [ ] `BattleScene::renderDamagePopups()` 使用 `TextRenderer` 绘制 popup。
-- [ ] `initPresentation()` 同步预加载 popup 字号字体，`clean()` 不主动卸载。
-- [ ] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
-- [ ] 新增 controller 单测。
-- [ ] 更新 `BattleSceneSmokeTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] 新增 `BattleDamagePopupController` 头 / 源文件。
+- [x] 新增 `BattleDamagePopupKind`、`BattleDamagePopup`、`BattleDamagePopupLayoutConfig`、`BattleDamagePopupTimingConfig`。
+- [x] 抽出共享 `BattlePresentationUnitAnchor`，并让 animation director / damage popup 复用。
+- [x] 实现 `spawnFromResult()` 的 HP 伤害 / HP 恢复 / MP 恢复 / Miss / Critical 生成规则。
+- [x] 实现 `delay_seconds`，默认与 1.2 impact frame 对齐。
+- [x] 实现 Critical 与伤害数字的 stagger delay。
+- [x] 实现无明确 target 时的 actor 聚合 popup 降级策略。
+- [x] 实现 popup update、ease-out 上飘、alpha 衰减、过期清理。
+- [x] `BattleScene` 持有 popup controller。
+- [x] `BattleScene` 在 action 结算后生成 popup。
+- [x] `BattleScene` 每帧更新 popup。
+- [x] `BattleScene::renderDamagePopups()` 使用 `TextRenderer` 绘制 popup。
+- [x] `initPresentation()` 同步预加载 popup 字号字体，`clean()` 不主动卸载。
+- [x] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
+- [x] 新增 controller 单测。
+- [x] 更新 `BattleSceneSmokeTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动截图或录屏确认伤害 / 恢复 / Miss / Critical 飘字效果。
 
 ## 风险与边界

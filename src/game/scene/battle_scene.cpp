@@ -9,6 +9,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
 #include "engine/render/renderer.h"
+#include "engine/render/text_renderer.h"
 #include "engine/resource/default_resource_ids.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
@@ -58,6 +59,7 @@ constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -10.0F;
 constexpr float BATTLE_SHADOW_ALPHA = 0.4F;
 constexpr float BATTLE_SHADOW_DEPTH_OFFSET = -0.10F;
 constexpr float BATTLE_TARGET_SHADOW_DEPTH_OFFSET = -0.05F;
+constexpr int DAMAGE_POPUP_FONT_SIZE_PX = 20;
 
 enum class MainActionId : int {
     Attack = 1,
@@ -435,6 +437,7 @@ bool BattleScene::init() {
 void BattleScene::update(float delta_time) {
     Scene::update(delta_time);
     updatePresentation(delta_time);
+    battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
     updateCommandFocus(delta_time);
     refreshView();
@@ -448,6 +451,7 @@ void BattleScene::render(float interpolation_alpha) {
     syncPresentationTransforms();
     syncPresentationShadows();
     battle_render_system_.renderPrepared(battle_registry_, context_.getRenderer(), interpolation_alpha);
+    renderDamagePopups();
 }
 
 void BattleScene::prepareUi(float interpolation_alpha) {
@@ -459,6 +463,7 @@ void BattleScene::clean() {
     disconnectInputListeners();
     shutdownUI();
     battle_animation_director_.reset();
+    battle_damage_popup_controller_.clear();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -656,8 +661,9 @@ void BattleScene::runStateMachine(float delta_time) {
                 }
 
                 last_action_result_ = session_.submitAction(*pending_action_);
-                const auto animation_sprites = collectBattleAnimationSprites();
-                battle_animation_director_.begin(*last_action_result_, animation_sprites);
+                const auto unit_anchors = collectBattlePresentationUnitAnchors();
+                battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
+                battle_animation_director_.begin(*last_action_result_, unit_anchors);
                 pending_action_.reset();
                 leaveInputMenu();
                 state_ = FlowState::AnimatingResult;
@@ -1672,20 +1678,20 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
     return actor;
 }
 
-std::vector<BattleAnimationSpriteSnapshot> BattleScene::collectBattleAnimationSprites() const {
-    std::vector<BattleAnimationSpriteSnapshot> sprites;
+std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentationUnitAnchors() const {
+    std::vector<BattlePresentationUnitAnchor> anchors;
     const auto view = battle_registry_.view<BattleSpriteComponent>();
     for (auto entity : view) {
         const auto& sprite = view.get<BattleSpriteComponent>(entity);
         const auto* unit = session_.findUnit(sprite.unit_id);
-        sprites.push_back(BattleAnimationSpriteSnapshot{
+        anchors.push_back(BattlePresentationUnitAnchor{
             .unit_id = sprite.unit_id,
             .side = sprite.side,
             .base_screen_position = sprite.screen_position,
             .alive_after = unit ? unit->isAlive() : false
         });
     }
-    return sprites;
+    return anchors;
 }
 
 void BattleScene::updateCommandFocus(const float delta_time) {
@@ -1763,6 +1769,9 @@ bool BattleScene::initPresentation() {
         resource_manager.loadTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID,
                                      engine::resource::defaults::CIRCLE_TEXTURE_PATH);
     }
+    resource_manager.loadFont(engine::resource::defaults::UI_DEFAULT_FONT_ID,
+                              DAMAGE_POPUP_FONT_SIZE_PX,
+                              engine::resource::defaults::UI_DEFAULT_FONT_PATH);
 
     if (!blueprint_manager_) {
         spdlog::warn("BattleScene: 缺少 BlueprintManager，战斗角色表现将不绘制。");
@@ -2063,6 +2072,45 @@ void BattleScene::syncPresentationShadows() {
                 : engine::utils::FColor{0.0F, 0.0F, 0.0F, 0.0F};
             target_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_TARGET_SHADOW_DEPTH_OFFSET;
         }
+    }
+}
+
+void BattleScene::renderDamagePopups() {
+    const auto& popups = battle_damage_popup_controller_.activePopups();
+    if (popups.empty()) {
+        return;
+    }
+
+    auto& text_renderer = context_.getTextRenderer();
+    const auto& camera = context_.getCamera();
+    for (const auto& popup : popups) {
+        if (!popup.visible || popup.alpha <= 0.0F || popup.text.empty()) {
+            continue;
+        }
+
+        engine::utils::LayoutOptions layout{};
+        layout.glyph_scale = glm::vec2{popup.scale, popup.scale};
+        const glm::vec2 text_size = text_renderer.getTextSize(popup.text,
+                                                              engine::resource::defaults::UI_DEFAULT_FONT_ID,
+                                                              DAMAGE_POPUP_FONT_SIZE_PX,
+                                                              &layout);
+        glm::vec2 screen_position = popup.screenPosition();
+        screen_position.x -= text_size.x * 0.5F;
+        screen_position.y -= text_size.y * 0.5F;
+
+        engine::utils::TextRenderOverrides overrides{};
+        overrides.color = battleDamagePopupColor(popup.kind, popup.alpha);
+        overrides.shadow_enabled = true;
+        overrides.shadow_offset = glm::vec2{1.0F, 1.0F};
+        overrides.shadow_color = engine::utils::FColor{0.02F, 0.02F, 0.03F, std::min(popup.alpha, 0.78F)};
+        overrides.glyph_scale = layout.glyph_scale;
+
+        text_renderer.drawText(popup.text,
+                               engine::resource::defaults::UI_DEFAULT_FONT_ID,
+                               DAMAGE_POPUP_FONT_SIZE_PX,
+                               camera.screenToWorld(screen_position),
+                               text_renderer.getDefaultWorldStyleId(),
+                               &overrides);
     }
 }
 
