@@ -227,7 +227,8 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("glm::vec2{-18.0F, 30.0F}"), std::string::npos);
     EXPECT_NE(source.find("shadow_size"), std::string::npos);
     EXPECT_NE(source.find("std::clamp(22.0F * visual_scale, 24.0F, 42.0F)"), std::string::npos);
-    EXPECT_NE(source.find("drawFilledEllipse"), std::string::npos);
+    EXPECT_NE(source.find("BattleShadowComponent"), std::string::npos);
+    EXPECT_NE(source.find("syncPresentationShadows"), std::string::npos);
     EXPECT_NE(source.find("BATTLE_SHADOW_VERTICAL_PADDING"), std::string::npos);
     EXPECT_NE(source.find("idle_left"), std::string::npos);
     EXPECT_NE(source.find("enemy->battle_visual_"), std::string::npos);
@@ -333,32 +334,24 @@ TEST(BattleSceneSmokeTest, CurrentPlayerActorUsesCommandFocusPoseWhileWaitingFor
     EXPECT_NE(source.find("return commandFocusPoseFor(unit_id, side)"), std::string::npos);
 }
 
-TEST(BattleSceneSmokeTest, BattlePresentationFreezesKoAnimationAndUsesEllipseShadows) {
-    const std::filesystem::path renderer_header_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/renderer.h").lexically_normal();
-    const std::filesystem::path renderer_source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/renderer.cpp").lexically_normal();
+TEST(BattleSceneSmokeTest, BattlePresentationFreezesKoAnimationAndSortsShadowEntities) {
     const std::filesystem::path scene_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
-    ASSERT_TRUE(std::filesystem::exists(renderer_header_path)) << renderer_header_path;
-    ASSERT_TRUE(std::filesystem::exists(renderer_source_path)) << renderer_source_path;
     ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
 
-    const std::string renderer_header = readTextFile(renderer_header_path);
-    const std::string renderer_source = readTextFile(renderer_source_path);
     const std::string scene_source = readTextFile(scene_source_path);
-    ASSERT_FALSE(renderer_header.empty());
-    ASSERT_FALSE(renderer_source.empty());
     ASSERT_FALSE(scene_source.empty());
 
-    EXPECT_NE(renderer_header.find("drawFilledEllipse"), std::string::npos);
-    EXPECT_NE(renderer_source.find("void Renderer::drawFilledEllipse"), std::string::npos);
-    EXPECT_NE(renderer_source.find("center - radius"), std::string::npos);
+    EXPECT_NE(scene_source.find("struct BattleShadowComponent"), std::string::npos);
     EXPECT_NE(scene_source.find("if (!unit || !unit->isAlive())"), std::string::npos);
     EXPECT_NE(scene_source.find("continue;\n        }\n\n        auto& animation"), std::string::npos);
-    EXPECT_NE(scene_source.find("renderer.drawFilledEllipse"), std::string::npos);
-    EXPECT_NE(scene_source.find("const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y"), std::string::npos);
-    EXPECT_NE(scene_source.find("if (!target_id || *target_id != sprite.unit_id)"), std::string::npos);
+    EXPECT_NE(scene_source.find("battle_registry_.emplace<BattleShadowComponent>(shadow_entity"), std::string::npos);
+    EXPECT_NE(scene_source.find("syncPresentationShadows()"), std::string::npos);
+    EXPECT_NE(scene_source.find("shadow_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_SHADOW_DEPTH_OFFSET"),
+              std::string::npos);
+    EXPECT_NE(scene_source.find("target_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_TARGET_SHADOW_DEPTH_OFFSET"),
+              std::string::npos);
+    EXPECT_EQ(scene_source.find("renderer.drawFilledEllipse"), std::string::npos);
     EXPECT_EQ(scene_source.find("glm::vec2{sprite.shadow_size.x, 4.0F}"), std::string::npos);
 }
 
