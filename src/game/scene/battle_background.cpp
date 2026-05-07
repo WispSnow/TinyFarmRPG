@@ -18,9 +18,10 @@ namespace game::scene {
 namespace {
 
 constexpr std::string_view BATTLE_BACKGROUND_ROOT = "assets/textures/BattleBg";
-/// @brief RPG Maker 1000x740 远景顶部通常有云层留白；略向下采样可让山脉/地平线在 640x256 战场中更自然。
+/// @brief RPG Maker 1000x740 远景顶部通常有云层留白；向下采样可让山脉/地平线在 640x360 全屏背景中上移。
+/// @details 0.40 是配合 Grassland battlebacks2 的经验值，避免远景草地过渡压到角色脚下，同时保持等比裁切。
 /// @note 调整该经验值时需同步更新 BattleBackgroundTest.BackdropCropSamplesRpgMakerImageTopWithoutStretch。
-constexpr float BACKDROP_VERTICAL_SAMPLE_OFFSET_RATIO = 0.18f;
+constexpr float BACKDROP_VERTICAL_SAMPLE_OFFSET_RATIO = 0.40f;
 
 [[nodiscard]] const char* layerDirectory(const BattleBackgroundLayerKind kind) {
     switch (kind) {

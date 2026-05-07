@@ -56,7 +56,7 @@ flowchart TD
 - 纹理 id 必须区分双层，例如用 `battlebg1:<id>` 和 `battlebg2:<id>` 作为 hash key，避免同名 `Grassland` 撞到同一个 `TextureHandle`。
 - 背景画满逻辑屏幕，HUD 区域由 UI 后绘制覆盖；这样未来 HUD 半透明时下方仍有连续背景：
   - `battlebacks1` 作为地面层，从源图底部按目标比例裁样，先铺满 `[0, 0, logical_size.x, logical_size.y]`，下边对齐屏幕底边。
-  - `battlebacks2` 从源图顶部附近按目标比例裁样，再铺满同一区域；利用素材自带 alpha 渐变覆盖在近景上。
+  - `battlebacks2` 从源图中偏上的区域按目标比例裁样，再铺满同一区域；利用素材自带 alpha 渐变覆盖在近景上，同时把远景/近景过渡线保持在角色脚底上方。
   - 两层都保持等比裁切，不做非等比拉伸。
   - 阵型站位保持在近景地面区域内，避免角色脚底落在远景山脉/天空层。
   - C++ 背景绘制流程不再额外绘制 `BATTLEFIELD_HEIGHT` 边界线；HUD 分隔只由 RmlUi 面板样式负责。
@@ -178,7 +178,7 @@ flowchart TD
 7. 修改 `BattleScene` 渲染
    - 先画当前纯色底作为 fallback。
    - 先在 `[0, 0, logical_size.x, logical_size.y]` 内绘制底部裁样的 `battlebacks1`。
-   - 再在同一区域绘制顶部裁样的 `battlebacks2`，让远景层 alpha 自然过渡到近景层。
+   - 再在同一区域绘制偏上区域裁样的 `battlebacks2`，让远景层 alpha 自然过渡到近景层，并避免角色踩到远近景衔接处。
    - 在背景之后绘制角色阴影、选中条和战斗精灵；不在战场/HUD 交界处额外画分隔条。
 
 8. 更新测试数据
