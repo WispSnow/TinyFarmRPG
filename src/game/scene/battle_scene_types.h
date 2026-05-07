@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/scene/battle_enemy_hp_bar_controller.h"
 
 #include <optional>
 #include <string>
@@ -36,6 +37,7 @@ struct BattleScenePresentationOptions {
     const game::factory::BlueprintManager* blueprint_manager{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog{nullptr};
     std::string battle_background_id{};
+    BattleEnemyHpBarConfig enemy_hp_bar_config{};
 };
 
 } // namespace game::scene

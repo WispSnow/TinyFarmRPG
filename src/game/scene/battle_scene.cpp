@@ -60,6 +60,8 @@ constexpr float BATTLE_SHADOW_ALPHA = 0.4F;
 constexpr float BATTLE_SHADOW_DEPTH_OFFSET = -0.10F;
 constexpr float BATTLE_TARGET_SHADOW_DEPTH_OFFSET = -0.05F;
 constexpr int DAMAGE_POPUP_FONT_SIZE_PX = 20;
+constexpr float HP_BAR_WARNING_RATIO = 0.50F;
+constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 
 enum class MainActionId : int {
     Attack = 1,
@@ -375,6 +377,28 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return sprite.screen_position + glm::vec2{0.0F, foot_y};
 }
 
+[[nodiscard]] engine::utils::FColor enemyHpBarFillColor(const float ratio, const float alpha) {
+    const float clamped_alpha = std::clamp(alpha, 0.0F, 1.0F);
+    if (ratio <= HP_BAR_DANGER_RATIO) {
+        return engine::utils::FColor{0.95F, 0.18F, 0.14F, clamped_alpha};
+    }
+    if (ratio <= HP_BAR_WARNING_RATIO) {
+        return engine::utils::FColor{0.98F, 0.78F, 0.22F, clamped_alpha};
+    }
+    return engine::utils::FColor{0.22F, 0.86F, 0.32F, clamped_alpha};
+}
+
+[[nodiscard]] glm::vec2 enemyHpBarScreenTopLeft(const BattleSpriteComponent& battle_sprite,
+                                                const engine::component::SpriteComponent& visual,
+                                                const game::scene::BattleEnemyHpBarConfig& config) {
+    const glm::vec2 visual_size = visual.size_ * battle_sprite.scale;
+    const float sprite_top_y = battle_sprite.screen_position.y - visual.pivot_.y * visual_size.y;
+    const glm::vec2 center{
+        battle_sprite.screen_position.x,
+        sprite_top_y - config.above_sprite_margin - config.size.y * 0.5F};
+    return center - config.size * 0.5F;
+}
+
 } // namespace
 
 namespace game::scene {
@@ -390,7 +414,8 @@ BattleScene::BattleScene(std::string_view name,
       blueprint_manager_(presentation_options.blueprint_manager),
       appearance_catalog_(presentation_options.appearance_catalog),
       session_(std::move(units), std::move(session_options)),
-      presentation_options_(std::move(presentation_options)) {
+      presentation_options_(std::move(presentation_options)),
+      battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config) {
 }
 
 BattleScene::~BattleScene() {
@@ -437,6 +462,7 @@ bool BattleScene::init() {
 void BattleScene::update(float delta_time) {
     Scene::update(delta_time);
     updatePresentation(delta_time);
+    battle_enemy_hp_bar_controller_.update(delta_time);
     battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
     updateCommandFocus(delta_time);
@@ -451,6 +477,7 @@ void BattleScene::render(float interpolation_alpha) {
     syncPresentationTransforms();
     syncPresentationShadows();
     battle_render_system_.renderPrepared(battle_registry_, context_.getRenderer(), interpolation_alpha);
+    renderEnemyHpBars();
     renderDamagePopups();
 }
 
@@ -464,6 +491,7 @@ void BattleScene::clean() {
     shutdownUI();
     battle_animation_director_.reset();
     battle_damage_popup_controller_.clear();
+    battle_enemy_hp_bar_controller_.clear();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -661,6 +689,8 @@ void BattleScene::runStateMachine(float delta_time) {
                 }
 
                 last_action_result_ = session_.submitAction(*pending_action_);
+                battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot);
+                battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
                 battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
                 battle_animation_director_.begin(*last_action_result_, unit_anchors);
@@ -929,6 +959,7 @@ void BattleScene::setMenuState(MenuState next_state) {
 
     markMenuDirty();
     menu_focus_dirty_ = true;
+    syncEnemyHpBarHighlight();
 }
 
 void BattleScene::syncMenuFocus() {
@@ -1482,6 +1513,7 @@ bool BattleScene::moveMenuCursor(int delta) {
                 return false;
             }
             menu_focus_dirty_ = true;
+            syncEnemyHpBarHighlight();
             syncMenuFocus();
             return true;
         }
@@ -1941,6 +1973,7 @@ bool BattleScene::initPresentation() {
     syncPresentationTransforms();
     syncPresentationShadows();
     refreshPresentation();
+    battle_enemy_hp_bar_controller_.syncFromSnapshot(session_.snapshot());
     return true;
 }
 
@@ -2072,6 +2105,79 @@ void BattleScene::syncPresentationShadows() {
                 : engine::utils::FColor{0.0F, 0.0F, 0.0F, 0.0F};
             target_render->depth_ = sprite.depth + pose_depth_offset + BATTLE_TARGET_SHADOW_DEPTH_OFFSET;
         }
+    }
+}
+
+void BattleScene::syncEnemyHpBarHighlight() {
+    std::optional<game::battle::BattleUnitId> target_id{};
+    if (menu_state_ == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(target_entry_cursor_);
+            entry && entry->enabled && !entry->is_ally) {
+            target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
+        }
+    }
+
+    battle_enemy_hp_bar_controller_.setHighlightedTarget(target_id);
+}
+
+void BattleScene::renderEnemyHpBars() {
+    const auto& bars = battle_enemy_hp_bar_controller_.activeBars();
+    if (bars.empty()) {
+        return;
+    }
+
+    auto& renderer = context_.getRenderer();
+    const auto& camera = context_.getCamera();
+    const auto& config = battle_enemy_hp_bar_controller_.config();
+    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::SpriteComponent>();
+    for (auto entity : view) {
+        const auto& battle_sprite = view.get<BattleSpriteComponent>(entity);
+        if (battle_sprite.side != game::battle::BattleSide::Enemy) {
+            continue;
+        }
+
+        const auto* bar = battle_enemy_hp_bar_controller_.findBar(battle_sprite.unit_id);
+        if (!bar || !bar->visible || bar->alpha <= 0.0F || config.size.x <= 0.0F || config.size.y <= 0.0F) {
+            continue;
+        }
+
+        const auto& visual = view.get<engine::component::SpriteComponent>(entity);
+        const glm::vec2 top_left = enemyHpBarScreenTopLeft(battle_sprite, visual, config);
+        const glm::vec2 size = config.size;
+        const float border = std::clamp(config.border_thickness, 0.0F, std::min(size.x, size.y) * 0.5F);
+        const float alpha = std::clamp(bar->alpha, 0.0F, 1.0F);
+
+        engine::utils::ColorOptions border_color{};
+        border_color.use_gradient = false;
+        border_color.start_color = bar->highlighted
+            ? engine::utils::FColor{1.0F, 0.92F, 0.48F, alpha}
+            : engine::utils::FColor{0.02F, 0.03F, 0.04F, alpha * 0.85F};
+        border_color.end_color = border_color.start_color;
+        renderer.drawFilledRect(screenRectToWorldRect(camera, top_left, size), &border_color);
+
+        const glm::vec2 inner_top_left = top_left + glm::vec2{border, border};
+        const glm::vec2 inner_size = glm::max(size - glm::vec2{border * 2.0F, border * 2.0F}, glm::vec2{0.0F});
+        if (inner_size.x <= 0.0F || inner_size.y <= 0.0F) {
+            continue;
+        }
+
+        engine::utils::ColorOptions background_color{};
+        background_color.use_gradient = false;
+        background_color.start_color = engine::utils::FColor{0.02F, 0.025F, 0.03F, alpha * 0.62F};
+        background_color.end_color = background_color.start_color;
+        renderer.drawFilledRect(screenRectToWorldRect(camera, inner_top_left, inner_size), &background_color);
+
+        const float fill_width = inner_size.x * std::clamp(bar->display_ratio, 0.0F, 1.0F);
+        if (fill_width <= 0.0F) {
+            continue;
+        }
+
+        engine::utils::ColorOptions fill_color{};
+        fill_color.use_gradient = false;
+        fill_color.start_color = enemyHpBarFillColor(bar->display_ratio, alpha);
+        fill_color.end_color = fill_color.start_color;
+        renderer.drawFilledRect(screenRectToWorldRect(camera, inner_top_left, glm::vec2{fill_width, inner_size.y}),
+                                &fill_color);
     }
 }
 

@@ -343,6 +343,55 @@ TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
     EXPECT_NE(source.find("text_renderer.drawText"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, UsesEnemyHpBarControllerForEnemyHealthOverlay) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path types_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_types.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(types_path)) << types_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    const std::string types = readTextFile(types_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(types.empty());
+
+    EXPECT_NE(types.find("#include \"game/scene/battle_enemy_hp_bar_controller.h\""), std::string::npos);
+    EXPECT_NE(types.find("BattleEnemyHpBarConfig enemy_hp_bar_config{}"), std::string::npos);
+    EXPECT_NE(header.find("BattleEnemyHpBarController battle_enemy_hp_bar_controller_{}"), std::string::npos);
+    EXPECT_NE(header.find("syncEnemyHpBarHighlight"), std::string::npos);
+    EXPECT_NE(header.find("renderEnemyHpBars"), std::string::npos);
+
+    const std::string constructor_snippet = snippetFrom(source, "BattleScene::BattleScene", 1100U);
+    ASSERT_FALSE(constructor_snippet.empty());
+    EXPECT_NE(constructor_snippet.find("battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config)"),
+              std::string::npos);
+
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 720U);
+    ASSERT_FALSE(executing_snippet.empty());
+    EXPECT_NE(executing_snippet.find("battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot)"),
+              std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_)"),
+              std::string::npos);
+
+    EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.syncFromSnapshot(session_.snapshot())"),
+              std::string::npos);
+
+    EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.update(delta_time)"), std::string::npos);
+    EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.clear()"), std::string::npos);
+    EXPECT_NE(source.find("syncEnemyHpBarHighlight()"), std::string::npos);
+    EXPECT_NE(source.find("renderEnemyHpBars()"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::renderEnemyHpBars()"), std::string::npos);
+    EXPECT_NE(source.find("HP_BAR_WARNING_RATIO = 0.50F"), std::string::npos);
+    EXPECT_NE(source.find("HP_BAR_DANGER_RATIO = 0.25F"), std::string::npos);
+    EXPECT_NE(source.find("enemyHpBarScreenTopLeft"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, CurrentPlayerActorUsesCommandFocusPoseWhileWaitingForInput) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();

@@ -209,27 +209,27 @@ HP 条不使用 RmlUi 动态 DOM：
 
 ## 待办清单
 
-- [ ] 新增 `BattleEnemyHpBarController` 头 / 源文件。
-- [ ] 定义 `BattleEnemyHpBarState` 与 `BattleEnemyHpBarConfig`，补 Doxygen 注释。
-- [ ] 将 `BattleEnemyHpBarConfig` 挂到 `BattleScenePresentationOptions`。
-- [ ] 实现 `syncFromSnapshot()`，只跟踪敌方单位，并处理首次同步不平滑。
-- [ ] 实现 `change_delay_seconds`，让血条比例变化对齐命中帧。
-- [ ] 实现 `revealFromResult()`，根据行动结果触发显示并刷新倒计时。
-- [ ] 实现 `setHighlightedTarget()`，支持目标选择阶段强制显示和离开后淡出。
-- [ ] 实现 `update()` 的倒计时、淡出和 HP 比例平滑，并后台推进所有敌人。
-- [ ] `BattleScene` 持有 enemy HP bar controller。
-- [ ] `BattleScene::initPresentation()` 末尾同步初始 snapshot。
-- [ ] `BattleScene` 在行动结算后同步 snapshot 并 reveal。
-- [ ] `BattleScene` 在目标选择变化时更新 highlighted target。
-- [ ] `BattleScene::renderEnemyHpBars()` 基于精灵尺寸动态计算锚点，并绘制背景、fill、外框。
-- [ ] 将 HP 条绘制顺序放在角色之后、伤害飘字之前。
-- [ ] `clean()` / 新战斗重置时清空 controller。
-- [ ] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
-- [ ] 新增 controller 单测。
-- [ ] 更新 `BattleSceneSmokeTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行 `./build/tests/game_tests` 或相关过滤测试。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] 新增 `BattleEnemyHpBarController` 头 / 源文件。
+- [x] 定义 `BattleEnemyHpBarState` 与 `BattleEnemyHpBarConfig`，补 Doxygen 注释。
+- [x] 将 `BattleEnemyHpBarConfig` 挂到 `BattleScenePresentationOptions`。
+- [x] 实现 `syncFromSnapshot()`，只跟踪敌方单位，并处理首次同步不平滑。
+- [x] 实现 `change_delay_seconds`，让血条比例变化对齐命中帧。
+- [x] 实现 `revealFromResult()`，根据行动结果触发显示并刷新倒计时。
+- [x] 实现 `setHighlightedTarget()`，支持目标选择阶段强制显示和离开后淡出。
+- [x] 实现 `update()` 的倒计时、淡出和 HP 比例平滑，并后台推进所有敌人。
+- [x] `BattleScene` 持有 enemy HP bar controller。
+- [x] `BattleScene::initPresentation()` 末尾同步初始 snapshot。
+- [x] `BattleScene` 在行动结算后同步 snapshot 并 reveal。
+- [x] `BattleScene` 在目标选择变化时更新 highlighted target。
+- [x] `BattleScene::renderEnemyHpBars()` 基于精灵尺寸动态计算锚点，并绘制背景、fill、外框。
+- [x] 将 HP 条绘制顺序放在角色之后、伤害飘字之前。
+- [x] `clean()` / 新战斗重置时清空 controller。
+- [x] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
+- [x] 新增 controller 单测。
+- [x] 更新 `BattleSceneSmokeTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行 `./build/tests/game_tests` 或相关过滤测试。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动截图或录屏确认敌方 HP 条效果。
 
 ## 风险与边界

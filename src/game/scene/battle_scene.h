@@ -126,6 +126,7 @@ class BattleScene final : public engine::scene::Scene {
     const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
     game::battle::BattleSession session_;
     BattleScenePresentationOptions presentation_options_{};
+    BattleEnemyHpBarController battle_enemy_hp_bar_controller_{};
     BattleBackgroundRenderer battle_background_{};
     entt::registry battle_registry_{};
     engine::system::RenderSystem battle_render_system_{};
@@ -275,6 +276,8 @@ private:
     void refreshPresentation();
     void syncPresentationTransforms();
     void syncPresentationShadows();
+    void syncEnemyHpBarHighlight();
+    void renderEnemyHpBars();
     void renderDamagePopups();
     void renderBattlefieldBackground();
 };

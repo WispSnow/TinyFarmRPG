@@ -147,6 +147,7 @@ set(GAME_TEST_SOURCES
     game/battle/battle_session_test.cpp
     game/battle/battle_animation_director_test.cpp
     game/battle/battle_damage_popup_controller_test.cpp
+    game/battle/battle_enemy_hp_bar_controller_test.cpp
     game/battle/battle_background_test.cpp
     game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp
