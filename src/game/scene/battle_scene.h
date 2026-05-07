@@ -6,6 +6,7 @@
 #include "game/battle/battle_session.h"
 #include "game/scene/battle_animation_director.h"
 #include "game/scene/battle_background.h"
+#include "game/scene/battle_damage_popup_controller.h"
 #include "game/scene/battle_scene_types.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -134,6 +135,7 @@ class BattleScene final : public engine::scene::Scene {
     std::optional<game::battle::BattleAction> pending_action_{};
     std::optional<game::battle::BattleActionResult> last_action_result_{};
     BattleAnimationDirector battle_animation_director_{};
+    BattleDamagePopupController battle_damage_popup_controller_{};
     std::optional<game::battle::BattleUnitId> command_focus_actor_id_{};
     float command_focus_elapsed_seconds_{0.0f};
     bool end_requested_{false};
@@ -259,7 +261,7 @@ private:
     /// @brief 获取当前行动者并写出 actor id。
     /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
-    [[nodiscard]] std::vector<BattleAnimationSpriteSnapshot> collectBattleAnimationSprites() const;
+    [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
     void updateCommandFocus(float delta_time);
     [[nodiscard]] std::optional<BattleAnimationPose> commandFocusPoseFor(game::battle::BattleUnitId unit_id,
                                                                          game::battle::BattleSide side) const;
@@ -273,6 +275,7 @@ private:
     void refreshPresentation();
     void syncPresentationTransforms();
     void syncPresentationShadows();
+    void renderDamagePopups();
     void renderBattlefieldBackground();
 };
 

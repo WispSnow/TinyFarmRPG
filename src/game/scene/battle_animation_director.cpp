@@ -69,14 +69,14 @@ void BattleAnimationDirector::reset() {
 }
 
 void BattleAnimationDirector::begin(const game::battle::BattleActionResult& result,
-                                    const std::vector<BattleAnimationSpriteSnapshot>& sprites,
+                                    const std::vector<BattlePresentationUnitAnchor>& unit_anchors,
                                     const BattleAnimationTimelineConfig& config) {
     clearTransient();
     config_ = config;
     timeline_.result = result;
-    timeline_.sprites.reserve(sprites.size());
-    for (const auto& sprite : sprites) {
-        timeline_.sprites.emplace(sprite.unit_id, sprite);
+    timeline_.unit_anchors.reserve(unit_anchors.size());
+    for (const auto& anchor : unit_anchors) {
+        timeline_.unit_anchors.emplace(anchor.unit_id, anchor);
     }
     timeline_.duration_seconds = usesForwardActionPose()
         ? safeDuration(config_.attack_duration_seconds)
@@ -213,8 +213,8 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::simpleActionPoseFor(
         pose.offset.y = 3.0f * pulse;
         pose.color_multiplier = engine::utils::FColor{0.84f, 0.92f, 1.15f, 1.0f};
     } else if (timeline_.result.action_type == game::battle::BattleActionType::Escape) {
-        const auto actor_it = timeline_.sprites.find(unit_id);
-        const float direction = actor_it != timeline_.sprites.end() &&
+        const auto actor_it = timeline_.unit_anchors.find(unit_id);
+        const float direction = actor_it != timeline_.unit_anchors.end() &&
                 actor_it->second.side == game::battle::BattleSide::Player
             ? 1.0f
             : -1.0f;
@@ -270,13 +270,13 @@ bool BattleAnimationDirector::usesForwardActionPose() const {
         return false;
     }
 
-    const auto actor_it = timeline_.sprites.find(timeline_.result.actor_id);
-    if (!timeline_.result.target_id || actor_it == timeline_.sprites.end()) {
+    const auto actor_it = timeline_.unit_anchors.find(timeline_.result.actor_id);
+    if (!timeline_.result.target_id || actor_it == timeline_.unit_anchors.end()) {
         return false;
     }
 
-    const auto target_it = timeline_.sprites.find(*timeline_.result.target_id);
-    return target_it != timeline_.sprites.end() && actor_it->second.side != target_it->second.side;
+    const auto target_it = timeline_.unit_anchors.find(*timeline_.result.target_id);
+    return target_it != timeline_.unit_anchors.end() && actor_it->second.side != target_it->second.side;
 }
 
 glm::vec2 BattleAnimationDirector::forwardStepOffset() const {
@@ -284,9 +284,9 @@ glm::vec2 BattleAnimationDirector::forwardStepOffset() const {
         return glm::vec2{0.0f, 0.0f};
     }
 
-    const auto actor_it = timeline_.sprites.find(timeline_.result.actor_id);
-    const auto target_it = timeline_.sprites.find(*timeline_.result.target_id);
-    if (actor_it == timeline_.sprites.end() || target_it == timeline_.sprites.end()) {
+    const auto actor_it = timeline_.unit_anchors.find(timeline_.result.actor_id);
+    const auto target_it = timeline_.unit_anchors.find(*timeline_.result.target_id);
+    if (actor_it == timeline_.unit_anchors.end() || target_it == timeline_.unit_anchors.end()) {
         return glm::vec2{0.0f, 0.0f};
     }
     if (actor_it->first == target_it->first) {

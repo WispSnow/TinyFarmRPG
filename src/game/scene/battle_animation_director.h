@@ -2,6 +2,7 @@
 
 #include "engine/utils/math.h"
 #include "game/battle/battle_types.h"
+#include "game/scene/battle_presentation_unit_anchor.h"
 
 #include <glm/vec2.hpp>
 
@@ -10,13 +11,6 @@
 #include <vector>
 
 namespace game::scene {
-
-struct BattleAnimationSpriteSnapshot {
-    game::battle::BattleUnitId unit_id{0};
-    game::battle::BattleSide side{game::battle::BattleSide::Player};
-    glm::vec2 base_screen_position{0.0f, 0.0f};
-    bool alive_after{true};
-};
 
 struct BattleAnimationPose {
     glm::vec2 offset{0.0f, 0.0f};
@@ -34,7 +28,7 @@ class BattleAnimationDirector final {
 public:
     void reset();
     void begin(const game::battle::BattleActionResult& result,
-               const std::vector<BattleAnimationSpriteSnapshot>& sprites,
+               const std::vector<BattlePresentationUnitAnchor>& unit_anchors,
                const BattleAnimationTimelineConfig& config = {});
     void update(float delta_time_seconds);
 
@@ -46,7 +40,7 @@ public:
 private:
     struct Timeline {
         game::battle::BattleActionResult result{};
-        std::unordered_map<game::battle::BattleUnitId, BattleAnimationSpriteSnapshot> sprites{};
+        std::unordered_map<game::battle::BattleUnitId, BattlePresentationUnitAnchor> unit_anchors{};
         float elapsed_seconds{0.0f};
         float duration_seconds{0.0f};
         bool active{false};

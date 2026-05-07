@@ -269,6 +269,7 @@ target_sources(game PRIVATE
     game/scene/shop_menu_scene.cpp
     game/scene/battle_animation_director.cpp
     game/scene/battle_background.cpp
+    game/scene/battle_damage_popup_controller.cpp
     game/scene/battle_scene.cpp
     game/scene/inventory_menu_character_panel.cpp
     game/scene/inventory_menu_scene.cpp

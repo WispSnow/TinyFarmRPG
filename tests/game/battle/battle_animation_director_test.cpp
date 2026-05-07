@@ -36,14 +36,14 @@ namespace {
     return result;
 }
 
-[[nodiscard]] std::vector<BattleAnimationSpriteSnapshot> makeSnapshots() {
+[[nodiscard]] std::vector<BattlePresentationUnitAnchor> makeAnchors() {
     return {
-        BattleAnimationSpriteSnapshot{
+        BattlePresentationUnitAnchor{
             .unit_id = 1,
             .side = game::battle::BattleSide::Player,
             .base_screen_position = glm::vec2{480.0f, 172.0f},
             .alive_after = true},
-        BattleAnimationSpriteSnapshot{
+        BattlePresentationUnitAnchor{
             .unit_id = 2,
             .side = game::battle::BattleSide::Enemy,
             .base_screen_position = glm::vec2{160.0f, 172.0f},
@@ -59,7 +59,7 @@ void advanceUntilFinished(BattleAnimationDirector& director) {
 
 TEST(BattleAnimationDirectorTest, AttackStepsForwardThenReturnsToBase) {
     BattleAnimationDirector director;
-    director.begin(makeAttackResult(), makeSnapshots());
+    director.begin(makeAttackResult(), makeAnchors());
 
     director.update(0.16f);
     const auto lunge_pose = director.poseFor(1);
@@ -79,7 +79,7 @@ TEST(BattleAnimationDirectorTest, AttackStepsForwardThenReturnsToBase) {
 
 TEST(BattleAnimationDirectorTest, EnemyDamageSkillStepsTowardPlayerTarget) {
     BattleAnimationDirector director;
-    director.begin(makeEnemySkillResult(), makeSnapshots());
+    director.begin(makeEnemySkillResult(), makeAnchors());
 
     director.update(0.16f);
     const auto lunge_pose = director.poseFor(2);
@@ -90,7 +90,7 @@ TEST(BattleAnimationDirectorTest, EnemyDamageSkillStepsTowardPlayerTarget) {
 
 TEST(BattleAnimationDirectorTest, EnemyAttackStepsTowardPlayerTarget) {
     BattleAnimationDirector director;
-    director.begin(makeEnemyAttackResult(), makeSnapshots());
+    director.begin(makeEnemyAttackResult(), makeAnchors());
 
     director.update(0.16f);
     const auto lunge_pose = director.poseFor(2);
@@ -100,7 +100,7 @@ TEST(BattleAnimationDirectorTest, EnemyAttackStepsTowardPlayerTarget) {
 
 TEST(BattleAnimationDirectorTest, HitFeedbackAppearsAfterImpactAndDecays) {
     BattleAnimationDirector director;
-    director.begin(makeAttackResult(), makeSnapshots());
+    director.begin(makeAttackResult(), makeAnchors());
 
     director.update(0.23f);
     const auto impact_pose = director.poseFor(2);
@@ -120,7 +120,7 @@ TEST(BattleAnimationDirectorTest, DefeatedTargetKeepsPersistentKoPoseUntilReset)
     result.target_defeated = true;
 
     BattleAnimationDirector director;
-    director.begin(result, makeSnapshots());
+    director.begin(result, makeAnchors());
     advanceUntilFinished(director);
 
     EXPECT_TRUE(director.finished());
@@ -138,7 +138,7 @@ TEST(BattleAnimationDirectorTest, DefeatedTargetKeepsKoPoseThroughTimelineTail) 
     result.target_defeated = true;
 
     BattleAnimationDirector director;
-    director.begin(result, makeSnapshots());
+    director.begin(result, makeAnchors());
     director.update(0.25f);
     director.update(0.25f);
     director.update(0.10f);
@@ -155,17 +155,17 @@ TEST(BattleAnimationDirectorTest, BeginKeepsPersistentKoPoseWithinSameBattle) {
     result.target_defeated = true;
 
     BattleAnimationDirector director;
-    director.begin(result, makeSnapshots());
+    director.begin(result, makeAnchors());
     advanceUntilFinished(director);
     ASSERT_TRUE(director.persistentPoseFor(2).has_value());
 
-    director.begin(makeAttackResult(2), makeSnapshots());
+    director.begin(makeAttackResult(2), makeAnchors());
     EXPECT_TRUE(director.persistentPoseFor(2).has_value());
 }
 
 TEST(BattleAnimationDirectorTest, MissingSingleTargetAttackAvoidsNaN) {
     BattleAnimationDirector director;
-    director.begin(makeAttackResult(std::nullopt), makeSnapshots());
+    director.begin(makeAttackResult(std::nullopt), makeAnchors());
 
     director.update(0.16f);
     const auto pose = director.poseFor(1);
