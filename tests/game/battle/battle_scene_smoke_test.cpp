@@ -226,6 +226,9 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("glm::vec2{18.0F, 28.0F}"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{-18.0F, 30.0F}"), std::string::npos);
     EXPECT_NE(source.find("shadow_size"), std::string::npos);
+    EXPECT_NE(source.find("std::clamp(22.0F * visual_scale, 24.0F, 42.0F)"), std::string::npos);
+    EXPECT_NE(source.find("drawFilledEllipse"), std::string::npos);
+    EXPECT_NE(source.find("BATTLE_SHADOW_VERTICAL_PADDING"), std::string::npos);
     EXPECT_NE(source.find("idle_left"), std::string::npos);
     EXPECT_NE(source.find("enemy->battle_visual_"), std::string::npos);
     EXPECT_NE(source.find("AppearanceLayerCacheBuilder::rebuild"), std::string::npos);
@@ -265,6 +268,98 @@ TEST(BattleSceneSmokeTest, BattleBackgroundDrawsGroundThenAlphaBackdrop) {
     ASSERT_FALSE(battlefield_snippet.empty());
     EXPECT_NE(battlefield_snippet.find("battle_background_.render(renderer, camera)"), std::string::npos);
     EXPECT_EQ(battlefield_snippet.find("BATTLEFIELD_HEIGHT - 4.0F"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("#include \"game/scene/battle_animation_director.h\""), std::string::npos);
+    EXPECT_NE(header.find("BattleAnimationDirector battle_animation_director_{}"), std::string::npos);
+    EXPECT_NE(header.find("collectBattleAnimationSprites"), std::string::npos);
+    EXPECT_EQ(header.find("animation_timer_"), std::string::npos);
+
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 520U);
+    ASSERT_FALSE(executing_snippet.empty());
+    EXPECT_NE(executing_snippet.find("collectBattleAnimationSprites()"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, animation_sprites)"),
+              std::string::npos);
+
+    const std::string animating_snippet = snippetFrom(source, "case FlowState::AnimatingResult:", 360U);
+    ASSERT_FALSE(animating_snippet.empty());
+    EXPECT_NE(animating_snippet.find("battle_animation_director_.update(delta_time)"), std::string::npos);
+    EXPECT_NE(animating_snippet.find("battle_animation_director_.finished()"), std::string::npos);
+
+    EXPECT_NE(source.find("previous_position_ = position"), std::string::npos);
+    EXPECT_NE(source.find("pose->rotation_radians"), std::string::npos);
+    EXPECT_NE(source.find("pose->color_multiplier"), std::string::npos);
+    EXPECT_EQ(source.find("RESULT_HOLD_SECONDS"), std::string::npos);
+    EXPECT_EQ(source.find("animation_timer_"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, CurrentPlayerActorUsesCommandFocusPoseWhileWaitingForInput) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("commandFocusPoseFor"), std::string::npos);
+    EXPECT_NE(header.find("presentationPoseFor"), std::string::npos);
+    EXPECT_NE(header.find("command_focus_actor_id_"), std::string::npos);
+    EXPECT_NE(header.find("command_focus_elapsed_seconds_"), std::string::npos);
+    EXPECT_NE(source.find("constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F}"), std::string::npos);
+    EXPECT_NE(source.find("constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F"), std::string::npos);
+    EXPECT_NE(source.find("updateCommandFocus(delta_time)"), std::string::npos);
+    EXPECT_NE(source.find("state_ != FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_NE(source.find("battle_animation_director_.active()"), std::string::npos);
+    EXPECT_NE(source.find("side != game::battle::BattleSide::Player"), std::string::npos);
+    EXPECT_NE(source.find("pose.offset = COMMAND_FOCUS_PLAYER_OFFSET * eased"), std::string::npos);
+    EXPECT_NE(source.find("return commandFocusPoseFor(unit_id, side)"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, BattlePresentationFreezesKoAnimationAndUsesEllipseShadows) {
+    const std::filesystem::path renderer_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/renderer.h").lexically_normal();
+    const std::filesystem::path renderer_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/render/renderer.cpp").lexically_normal();
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(renderer_header_path)) << renderer_header_path;
+    ASSERT_TRUE(std::filesystem::exists(renderer_source_path)) << renderer_source_path;
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+
+    const std::string renderer_header = readTextFile(renderer_header_path);
+    const std::string renderer_source = readTextFile(renderer_source_path);
+    const std::string scene_source = readTextFile(scene_source_path);
+    ASSERT_FALSE(renderer_header.empty());
+    ASSERT_FALSE(renderer_source.empty());
+    ASSERT_FALSE(scene_source.empty());
+
+    EXPECT_NE(renderer_header.find("drawFilledEllipse"), std::string::npos);
+    EXPECT_NE(renderer_source.find("void Renderer::drawFilledEllipse"), std::string::npos);
+    EXPECT_NE(renderer_source.find("center - radius"), std::string::npos);
+    EXPECT_NE(scene_source.find("if (!unit || !unit->isAlive())"), std::string::npos);
+    EXPECT_NE(scene_source.find("continue;\n        }\n\n        auto& animation"), std::string::npos);
+    EXPECT_NE(scene_source.find("renderer.drawFilledEllipse"), std::string::npos);
+    EXPECT_NE(scene_source.find("const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y"), std::string::npos);
+    EXPECT_NE(scene_source.find("if (!target_id || *target_id != sprite.unit_id)"), std::string::npos);
+    EXPECT_EQ(scene_source.find("glm::vec2{sprite.shadow_size.x, 4.0F}"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {

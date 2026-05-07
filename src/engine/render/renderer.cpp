@@ -195,6 +195,41 @@ void Renderer::drawFilledCircle(const glm::vec2& position,
                               &resolved_transform);
 }
 
+void Renderer::drawFilledEllipse(const glm::vec2& center,
+                                 const glm::vec2& radius,
+                                 const engine::utils::ColorOptions* color_options,
+                                 const engine::utils::TransformOptions* transform_options) {
+    if (radius.x <= 0.0f || radius.y <= 0.0f) {
+        return;
+    }
+
+    const engine::utils::Rect bounds{
+        center - radius,
+        radius * 2.0f
+    };
+    if (shouldCullRect(bounds)) {
+        return;
+    }
+
+    auto circle_texture_handle = resource_manager_->getTexture(engine::resource::defaults::CIRCLE_TEXTURE_ID);
+    if (!circle_texture_handle) {
+        spdlog::error("无法获取引擎自带的圆形纹理。");
+        return;
+    }
+
+    const glm::vec4 dest_rect = {bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y};
+    const glm::vec4 uv_rect = {0.0f, 0.0f, 1.0f, 1.0f};
+    engine::utils::TransformOptions resolved_transform = transform_options
+        ? *transform_options
+        : gl_renderer_->getSceneDefaultTransformOptions();
+
+    gl_renderer_->drawTexture(circle_texture_handle->texture,
+                              dest_rect,
+                              uv_rect,
+                              color_options,
+                              &resolved_transform);
+}
+
 void Renderer::drawFilledRect(const utils::Rect& rect,
                               const engine::utils::ColorOptions* color_options,
                               const engine::utils::TransformOptions* transform_options) {

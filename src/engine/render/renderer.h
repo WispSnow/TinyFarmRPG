@@ -116,6 +116,20 @@ public:
                           const engine::utils::TransformOptions* transform_options = nullptr);
 
     /**
+     * @brief 绘制填充椭圆。
+     * @note 依赖默认圆形纹理资源ID: `engine/texture/circle`
+     *
+     * @param center 椭圆中心位置。
+     * @param radius 椭圆 x/y 半径。
+     * @param color_options 可选颜色/渐变设置。
+     * @param transform_options 可选旋转/锚点设置。
+     */
+    void drawFilledEllipse(const glm::vec2& center,
+                           const glm::vec2& radius,
+                           const engine::utils::ColorOptions* color_options = nullptr,
+                           const engine::utils::TransformOptions* transform_options = nullptr);
+
+    /**
      * @brief 绘制填充矩形
      * 
      * @param rect 矩形区域
