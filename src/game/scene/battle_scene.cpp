@@ -45,13 +45,16 @@
 
 namespace {
 
-constexpr float RESULT_HOLD_SECONDS = 0.20f;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
 constexpr int MAIN_ACTION_COLUMNS = 2;
 constexpr float BATTLEFIELD_HEIGHT = 256.0f;
 constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
+constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F};
+constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F;
+constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -10.0F;
+constexpr float BATTLE_SHADOW_ALPHA = 0.26F;
 
 enum class MainActionId : int {
     Attack = 1,
@@ -299,12 +302,12 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     glm::vec2 position = base + centered * step;
     position.y = std::clamp(position.y, 96.0F, BATTLEFIELD_HEIGHT - 30.0F);
 
-    const float shadow_width = std::clamp(30.0F * visual_scale, 34.0F, 58.0F);
+    const float shadow_width = std::clamp(22.0F * visual_scale, 24.0F, 42.0F);
     return BattleFormationSlot{
         .screen_position = position,
         .scale = visual_scale,
         .depth = position.y,
-        .shadow_size = glm::vec2{shadow_width, 4.0F}
+        .shadow_size = glm::vec2{shadow_width, std::clamp(3.0F * visual_scale, 3.0F, 5.0F)}
     };
 }
 
@@ -334,6 +337,15 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     }
 
     return "none";
+}
+
+[[nodiscard]] engine::utils::FColor multiplyColor(const engine::utils::FColor& lhs,
+                                                  const engine::utils::FColor& rhs) {
+    return engine::utils::FColor{
+        std::clamp(lhs.r * rhs.r, 0.0F, 1.6F),
+        std::clamp(lhs.g * rhs.g, 0.0F, 1.6F),
+        std::clamp(lhs.b * rhs.b, 0.0F, 1.6F),
+        std::clamp(lhs.a * rhs.a, 0.0F, 1.0F)};
 }
 
 [[nodiscard]] engine::utils::Rect screenRectToWorldRect(const engine::render::Camera& camera,
@@ -407,6 +419,7 @@ void BattleScene::update(float delta_time) {
     Scene::update(delta_time);
     updatePresentation(delta_time);
     runStateMachine(delta_time);
+    updateCommandFocus(delta_time);
     refreshView();
 }
 
@@ -427,6 +440,7 @@ void BattleScene::prepareUi(float interpolation_alpha) {
 void BattleScene::clean() {
     disconnectInputListeners();
     shutdownUI();
+    battle_animation_director_.reset();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -624,16 +638,17 @@ void BattleScene::runStateMachine(float delta_time) {
                 }
 
                 last_action_result_ = session_.submitAction(*pending_action_);
+                const auto animation_sprites = collectBattleAnimationSprites();
+                battle_animation_director_.begin(*last_action_result_, animation_sprites);
                 pending_action_.reset();
-                animation_timer_ = RESULT_HOLD_SECONDS;
                 leaveInputMenu();
                 state_ = FlowState::AnimatingResult;
                 keep_running = true;
                 break;
             }
             case FlowState::AnimatingResult: {
-                animation_timer_ -= delta_time;
-                if (animation_timer_ <= 0.0f) {
+                battle_animation_director_.update(delta_time);
+                if (battle_animation_director_.finished()) {
                     state_ = FlowState::CheckVictory;
                     keep_running = true;
                 }
@@ -1639,6 +1654,81 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
     return actor;
 }
 
+std::vector<BattleAnimationSpriteSnapshot> BattleScene::collectBattleAnimationSprites() const {
+    std::vector<BattleAnimationSpriteSnapshot> sprites;
+    const auto view = battle_registry_.view<BattleSpriteComponent>();
+    for (auto entity : view) {
+        const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        const auto* unit = session_.findUnit(sprite.unit_id);
+        sprites.push_back(BattleAnimationSpriteSnapshot{
+            .unit_id = sprite.unit_id,
+            .side = sprite.side,
+            .base_screen_position = sprite.screen_position,
+            .alive_after = unit ? unit->isAlive() : false
+        });
+    }
+    return sprites;
+}
+
+void BattleScene::updateCommandFocus(const float delta_time) {
+    std::optional<game::battle::BattleUnitId> next_actor_id{};
+    if (state_ == FlowState::WaitingForInput && !battle_animation_director_.active()) {
+        if (const auto current_actor_id = session_.currentActorId()) {
+            if (const auto* unit = session_.findUnit(*current_actor_id);
+                unit && unit->side == game::battle::BattleSide::Player && unit->isAlive()) {
+                next_actor_id = *current_actor_id;
+            }
+        }
+    }
+
+    if (next_actor_id != command_focus_actor_id_) {
+        command_focus_actor_id_ = next_actor_id;
+        command_focus_elapsed_seconds_ = 0.0F;
+        return;
+    }
+
+    if (command_focus_actor_id_) {
+        command_focus_elapsed_seconds_ = std::min(command_focus_elapsed_seconds_ + delta_time,
+                                                  COMMAND_FOCUS_EASE_SECONDS);
+    } else {
+        command_focus_elapsed_seconds_ = 0.0F;
+    }
+}
+
+std::optional<BattleAnimationPose> BattleScene::commandFocusPoseFor(
+    const game::battle::BattleUnitId unit_id,
+    const game::battle::BattleSide side) const {
+    if (state_ != FlowState::WaitingForInput || battle_animation_director_.active() ||
+        side != game::battle::BattleSide::Player) {
+        return std::nullopt;
+    }
+
+    if (!command_focus_actor_id_ || *command_focus_actor_id_ != unit_id) {
+        return std::nullopt;
+    }
+
+    const auto* unit = session_.findUnit(unit_id);
+    if (!unit || !unit->isAlive()) {
+        return std::nullopt;
+    }
+
+    BattleAnimationPose pose{};
+    const float t = std::clamp(command_focus_elapsed_seconds_ / COMMAND_FOCUS_EASE_SECONDS, 0.0F, 1.0F);
+    const float eased = 1.0F - (1.0F - t) * (1.0F - t);
+    pose.offset = COMMAND_FOCUS_PLAYER_OFFSET * eased;
+    pose.color_multiplier = engine::utils::FColor{1.06F, 1.04F, 0.88F, 1.0F};
+    return pose;
+}
+
+std::optional<BattleAnimationPose> BattleScene::presentationPoseFor(
+    const game::battle::BattleUnitId unit_id,
+    const game::battle::BattleSide side) const {
+    if (const auto pose = battle_animation_director_.poseFor(unit_id)) {
+        return pose;
+    }
+    return commandFocusPoseFor(unit_id, side);
+}
+
 bool BattleScene::initPresentation() {
     auto& resource_manager = context_.getResourceManager();
     if (auto* resource_ptr = battle_registry_.ctx().find<engine::resource::ResourceManager*>()) {
@@ -1788,8 +1878,16 @@ bool BattleScene::initPresentation() {
 }
 
 void BattleScene::updatePresentation(float delta_time) {
-    auto view = battle_registry_.view<engine::component::AnimationComponent, engine::component::SpriteComponent>();
+    auto view = battle_registry_.view<BattleSpriteComponent,
+                                      engine::component::AnimationComponent,
+                                      engine::component::SpriteComponent>();
     for (auto entity : view) {
+        const auto& battle_sprite = view.get<BattleSpriteComponent>(entity);
+        const auto* unit = session_.findUnit(battle_sprite.unit_id);
+        if (!unit || !unit->isAlive()) {
+            continue;
+        }
+
         auto& animation = view.get<engine::component::AnimationComponent>(entity);
         auto& sprite = view.get<engine::component::SpriteComponent>(entity);
         advanceAnimation(animation, sprite, delta_time);
@@ -1821,7 +1919,12 @@ void BattleScene::refreshPresentation() {
         } else if (current_actor_id && *current_actor_id == sprite.unit_id) {
             render.color_ = engine::utils::FColor{1.0F, 0.95F, 0.72F, 1.0F};
         }
-        render.depth_ = sprite.depth;
+        if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
+            render.color_ = multiplyColor(render.color_, pose->color_multiplier);
+            render.depth_ = sprite.screen_position.y + pose->offset.y;
+        } else {
+            render.depth_ = sprite.depth;
+        }
     }
 }
 
@@ -1831,10 +1934,20 @@ void BattleScene::syncPresentationTransforms() {
     for (auto entity : view) {
         const auto& sprite = view.get<BattleSpriteComponent>(entity);
         auto& transform = view.get<engine::component::TransformComponent>(entity);
-        const glm::vec2 position = camera.screenToWorld(sprite.screen_position);
+        glm::vec2 screen_position = sprite.screen_position;
+        float scale_multiplier = 1.0F;
+        float rotation = 0.0F;
+        if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
+            screen_position += pose->offset;
+            scale_multiplier = pose->scale_multiplier;
+            rotation = pose->rotation_radians;
+        }
+
+        const glm::vec2 position = camera.screenToWorld(screen_position);
         transform.position_ = position;
         transform.previous_position_ = position;
-        transform.scale_ = glm::vec2{sprite.scale, sprite.scale};
+        transform.scale_ = glm::vec2{sprite.scale * scale_multiplier, sprite.scale * scale_multiplier};
+        transform.rotation_ = rotation;
     }
 }
 
@@ -1853,7 +1966,6 @@ void BattleScene::renderBattlefieldBackground() {
 
     battle_background_.render(renderer, camera);
 
-    const auto current_actor_id = session_.currentActorId();
     std::optional<game::battle::BattleUnitId> target_id{};
     if (menu_state_ == MenuState::TargetSelect) {
         if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
@@ -1861,33 +1973,43 @@ void BattleScene::renderBattlefieldBackground() {
         }
     }
 
-    auto view = battle_registry_.view<BattleSpriteComponent>();
+    auto view = battle_registry_.view<BattleSpriteComponent, engine::component::SpriteComponent>();
     for (auto entity : view) {
         const auto& sprite = view.get<BattleSpriteComponent>(entity);
+        const auto& visual = view.get<engine::component::SpriteComponent>(entity);
         const auto* unit = session_.findUnit(sprite.unit_id);
+        glm::vec2 screen_position = sprite.screen_position;
+        if (const auto pose = presentationPoseFor(sprite.unit_id, sprite.side)) {
+            screen_position += pose->offset;
+        }
+        const glm::vec2 visual_size = visual.size_ * sprite.scale;
+        const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y + BATTLE_SHADOW_VERTICAL_PADDING;
+
         if (unit && unit->isAlive()) {
-            color.start_color = engine::utils::FColor{0.03F, 0.05F, 0.08F, 0.55F};
+            color.start_color = engine::utils::FColor{0.03F, 0.05F, 0.08F, BATTLE_SHADOW_ALPHA};
             color.end_color = color.start_color;
-            renderer.drawFilledRect(
-                screenRectToWorldRect(camera,
-                                      sprite.screen_position + glm::vec2{-sprite.shadow_size.x * 0.5F, 13.0F},
-                                      sprite.shadow_size),
-                &color);
+            const glm::vec2 shadow_center = camera.screenToWorld(
+                screen_position + glm::vec2{0.0F, foot_y});
+            const glm::vec2 shadow_edge = camera.screenToWorld(
+                screen_position + glm::vec2{sprite.shadow_size.x * 0.5F, foot_y + sprite.shadow_size.y});
+            renderer.drawFilledEllipse(shadow_center,
+                                       glm::abs(shadow_edge - shadow_center),
+                                       &color);
         }
 
-        if ((!current_actor_id || *current_actor_id != sprite.unit_id) && (!target_id || *target_id != sprite.unit_id)) {
+        if (!target_id || *target_id != sprite.unit_id) {
             continue;
         }
 
-        color.start_color = target_id && *target_id == sprite.unit_id
-            ? engine::utils::FColor{1.0F, 0.68F, 0.30F, 0.72F}
-            : engine::utils::FColor{0.95F, 0.86F, 0.42F, 0.55F};
+        color.start_color = engine::utils::FColor{1.0F, 0.68F, 0.30F, 0.64F};
         color.end_color = color.start_color;
-        renderer.drawFilledRect(
-            screenRectToWorldRect(camera,
-                                  sprite.screen_position + glm::vec2{-sprite.shadow_size.x * 0.5F, 13.0F},
-                                  glm::vec2{sprite.shadow_size.x, 4.0F}),
-            &color);
+        const glm::vec2 focus_center = camera.screenToWorld(
+            screen_position + glm::vec2{0.0F, foot_y});
+        const glm::vec2 focus_edge = camera.screenToWorld(
+            screen_position + glm::vec2{sprite.shadow_size.x * 0.58F, foot_y + sprite.shadow_size.y * 1.2F});
+        renderer.drawFilledEllipse(focus_center,
+                                   glm::abs(focus_edge - focus_center),
+                                   &color);
     }
 }
 

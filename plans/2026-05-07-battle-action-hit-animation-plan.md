@@ -134,23 +134,23 @@ flowchart TD
 
 ## 待办清单
 
-- [ ] 新增 `BattleAnimationDirector` 头 / 源文件。
-- [ ] 新增 director 时间轴单测。
-- [ ] Director `reset()` 清空 persistent KO pose，`begin()` 只清空 transient 演出。
-- [ ] `BattleScene` 持有并启动 director。
-- [ ] `AnimatingResult` 改为等待 director 完成。
-- [ ] 删除 `animation_timer_` / `RESULT_HOLD_SECONDS` 固定占位。
-- [ ] `syncPresentationTransforms()` 应用 per-unit offset / rotation / scale。
-- [ ] `refreshPresentation()` 应用 flash / tint / alpha。
-- [ ] 普通攻击实现前踏、hop、返回。
-- [ ] 受击实现红闪和横向 shake。
-- [ ] KO 实现倒下、下沉和淡出，并保持持久姿态。
-- [ ] AllEnemies / AllAllies 等无单目标 result 第一阶段降级为 caster pulse。
-- [ ] Guard / Escape / EndTurn 实现最小 pulse / hold。
-- [ ] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
-- [ ] 更新 `BattleSceneSmokeTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] 新增 `BattleAnimationDirector` 头 / 源文件。
+- [x] 新增 director 时间轴单测。
+- [x] Director `reset()` 清空 persistent KO pose，`begin()` 只清空 transient 演出。
+- [x] `BattleScene` 持有并启动 director。
+- [x] `AnimatingResult` 改为等待 director 完成。
+- [x] 删除 `animation_timer_` / `RESULT_HOLD_SECONDS` 固定占位。
+- [x] `syncPresentationTransforms()` 应用 per-unit offset / rotation / scale。
+- [x] `refreshPresentation()` 应用 flash / tint / alpha。
+- [x] 普通攻击实现前踏、hop、返回。
+- [x] 受击实现红闪和横向 shake。
+- [x] KO 实现倒下、下沉和淡出，并保持持久姿态。
+- [x] AllEnemies / AllAllies 等无单目标 result 第一阶段降级为 caster pulse。
+- [x] Guard / Escape / EndTurn 实现最小 pulse / hold。
+- [x] 更新 `src/CMakeLists.txt` 与 `tests/CMakeLists.txt`。
+- [x] 更新 `BattleSceneSmokeTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动截图或录屏确认攻击 / 受击 / KO 演出。
 
 ## 风险与边界
