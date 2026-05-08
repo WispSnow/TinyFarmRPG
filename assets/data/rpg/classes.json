@@ -15,6 +15,20 @@
             }
         },
         {
+            "id": "class.mage",
+            "display_name": "魔法师",
+            "base_params": {
+                "mhp": 420,
+                "mmp": 82,
+                "atk": 11,
+                "def": 12,
+                "mat": 30,
+                "mdf": 24,
+                "agi": 27,
+                "luk": 30
+            }
+        },
+        {
             "id": "class.monk",
             "display_name": "武术家",
             "base_params": {
