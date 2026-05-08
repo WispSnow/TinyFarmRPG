@@ -5,8 +5,10 @@
 #include "game/data/rpg_types.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <random>
 
 namespace game::battle {
 namespace {
@@ -154,6 +156,31 @@ struct ResourceMetric {
     return best ? std::optional<BattleUnitId>{best->id} : std::nullopt;
 }
 
+[[nodiscard]] std::optional<BattleUnitId> chooseRandomTarget(const std::vector<BattleUnit>& units,
+                                                              const BattleSide side,
+                                                              std::mt19937& generator) {
+    std::vector<BattleUnitId> candidates{};
+    candidates.reserve(units.size());
+    for (const auto& unit : units) {
+        if (unit.side == side && unit.isAlive()) {
+            candidates.push_back(unit.id);
+        }
+    }
+
+    if (candidates.empty()) {
+        return std::nullopt;
+    }
+
+    // 单体敌方目标随机抽取存活对手，避免总是命中列表首位。
+    std::uniform_int_distribution<std::size_t> distribution(0, candidates.size() - 1);
+    return candidates[distribution(generator)];
+}
+
+[[nodiscard]] std::mt19937& defaultRandomEngine() {
+    static thread_local std::mt19937 generator{std::random_device{}()};
+    return generator;
+}
+
 [[nodiscard]] std::optional<BattleUnitId> chooseRecoveryTarget(const std::vector<BattleUnit>& units,
                                                                const BattleSide side,
                                                                const RecoveryIntent& intent) {
@@ -185,11 +212,12 @@ struct ResourceMetric {
 
 [[nodiscard]] std::optional<BattleAction> buildSkillAction(const BattleUnit& actor,
                                                            const game::data::SkillData& skill,
-                                                           const std::vector<BattleUnit>& units) {
+                                                           const std::vector<BattleUnit>& units,
+                                                           std::mt19937& rng) {
     const RecoveryIntent recovery_intent = detectRecoveryIntent(skill);
     switch (skill.scope_) {
         case game::data::Scope::OneEnemy: {
-            const auto target_id = chooseLowestHpTarget(units, opposingSide(actor.side));
+            const auto target_id = chooseRandomTarget(units, opposingSide(actor.side), rng);
             if (!target_id.has_value()) {
                 return std::nullopt;
             }
@@ -257,10 +285,12 @@ struct ResourceMetric {
 BattleAction BattleAiPlanner::planEnemyAction(const BattleUnit& actor,
                                               const game::data::EnemyData& enemy,
                                               const std::vector<BattleUnit>& units,
-                                              const game::data::RpgCatalog& rpg_catalog) {
+                                              const game::data::RpgCatalog& rpg_catalog,
+                                              std::mt19937* random_engine) {
     const game::data::EnemyActionData* best_action = nullptr;
     std::optional<BattleAction> best_planned_action{};
     int best_rating = 0;
+    auto& rng = random_engine ? *random_engine : defaultRandomEngine();
 
     for (const auto& enemy_action : enemy.actions_) {
         if (enemy_action.skill_id_.empty()) {
@@ -272,7 +302,7 @@ BattleAction BattleAiPlanner::planEnemyAction(const BattleUnit& actor,
             continue;
         }
 
-        const auto planned_action = buildSkillAction(actor, *skill, units);
+        const auto planned_action = buildSkillAction(actor, *skill, units, rng);
         if (!planned_action.has_value()) {
             continue;
         }
@@ -288,11 +318,14 @@ BattleAction BattleAiPlanner::planEnemyAction(const BattleUnit& actor,
         return *best_planned_action;
     }
 
-    return planFallbackAction(actor, units);
+    return planFallbackAction(actor, units, random_engine);
 }
 
-BattleAction BattleAiPlanner::planFallbackAction(const BattleUnit& actor, const std::vector<BattleUnit>& units) {
-    const auto target_id = chooseLowestHpTarget(units, opposingSide(actor.side));
+BattleAction BattleAiPlanner::planFallbackAction(const BattleUnit& actor,
+                                                 const std::vector<BattleUnit>& units,
+                                                 std::mt19937* random_engine) {
+    auto& rng = random_engine ? *random_engine : defaultRandomEngine();
+    const auto target_id = chooseRandomTarget(units, opposingSide(actor.side), rng);
     if (!target_id.has_value()) {
         return BattleAction{
             .type = BattleActionType::EndTurn,

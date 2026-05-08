@@ -6,6 +6,7 @@
 #include "game/data/rpg_catalog.h"
 
 #include <filesystem>
+#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -43,14 +44,14 @@ namespace {
     return skills_path;
 }
 
-TEST(BattleAiPlannerTest, ChoosesHighestRatedExecutableSkillAndTargetsLowestHpEnemy) {
+TEST(BattleAiPlannerTest, ChoosesHighestRatedExecutableSkillAndRandomAliveEnemy) {
     const auto fixture = testdata::createCatalogFixture("battle_ai_highest_rating");
     game::data::RpgCatalog catalog;
     ASSERT_TRUE(catalog.loadSkills(fixture.skills.string()));
 
     const std::vector<BattleUnit> units{
         makeUnit(1, "Hero", BattleSide::Player, 80, 100),
-        makeUnit(2, "Mage", BattleSide::Player, 10, 50),
+        makeUnit(2, "Mage", BattleSide::Player, 80, 100),
         makeUnit(101, "Goblin Mage", BattleSide::Enemy, 60, 60, 0, 10)};
 
     game::data::EnemyData enemy{};
@@ -59,7 +60,32 @@ TEST(BattleAiPlannerTest, ChoosesHighestRatedExecutableSkillAndTargetsLowestHpEn
         game::data::EnemyActionData{.skill_id_ = "skill.fire", .rating_ = 90},
         game::data::EnemyActionData{.skill_id_ = "skill.none_scope", .rating_ = 80}};
 
-    const BattleAction action = BattleAiPlanner::planEnemyAction(units[2], enemy, units, catalog);
+    std::mt19937 rng{1};
+    const BattleAction action = BattleAiPlanner::planEnemyAction(units[2], enemy, units, catalog, &rng);
+
+    EXPECT_EQ(action.type, BattleActionType::Skill);
+    EXPECT_EQ(action.actor_id, 101);
+    EXPECT_EQ(action.skill_id, "skill.fire");
+    EXPECT_EQ(action.target_id, std::optional<BattleUnitId>{2});
+}
+
+TEST(BattleAiPlannerTest, OneEnemySkillRandomizesTargetAmongAliveOpponents) {
+    const auto fixture = testdata::createCatalogFixture("battle_ai_random_enemy_target");
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(fixture.skills.string()));
+
+    const std::vector<BattleUnit> units{
+        makeUnit(1, "Hero A", BattleSide::Player, 80, 100),
+        makeUnit(2, "Hero B", BattleSide::Player, 80, 100),
+        makeUnit(3, "Hero C", BattleSide::Player, 80, 100),
+        makeUnit(101, "Goblin Mage", BattleSide::Enemy, 60, 60, 0, 10)};
+
+    game::data::EnemyData enemy{};
+    enemy.actions_ = {
+        game::data::EnemyActionData{.skill_id_ = "skill.fire", .rating_ = 100}};
+
+    std::mt19937 rng{1};
+    const BattleAction action = BattleAiPlanner::planEnemyAction(units[3], enemy, units, catalog, &rng);
 
     EXPECT_EQ(action.type, BattleActionType::Skill);
     EXPECT_EQ(action.actor_id, 101);
@@ -107,6 +133,21 @@ TEST(BattleAiPlannerTest, SelfRecoveryFromDamageTypeFallsBackWhenAlreadyFull) {
     EXPECT_EQ(action.type, BattleActionType::Attack);
     EXPECT_EQ(action.actor_id, 101);
     EXPECT_EQ(action.target_id, std::optional<BattleUnitId>{1});
+}
+
+TEST(BattleAiPlannerTest, FallbackAttackRandomizesTargetAmongAliveOpponents) {
+    const std::vector<BattleUnit> units{
+        makeUnit(1, "Hero A", BattleSide::Player, 80, 100),
+        makeUnit(2, "Hero B", BattleSide::Player, 80, 100),
+        makeUnit(3, "Hero C", BattleSide::Player, 80, 100),
+        makeUnit(101, "Goblin", BattleSide::Enemy, 40, 40)};
+
+    std::mt19937 rng{1};
+    const BattleAction action = BattleAiPlanner::planFallbackAction(units[3], units, &rng);
+
+    EXPECT_EQ(action.type, BattleActionType::Attack);
+    EXPECT_EQ(action.actor_id, 101);
+    EXPECT_EQ(action.target_id, std::optional<BattleUnitId>{2});
 }
 
 TEST(BattleAiPlannerTest, SelfRecoveryFromEffectListFallsBackWhenAlreadyFull) {
