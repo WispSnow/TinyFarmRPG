@@ -376,6 +376,13 @@ private:
     void finishVictoryFlow();
     void playVictoryAudioCue();
     [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
+
+    /// @brief 根据已应用、未 miss 的单体技能结果，在目标锚点触发技能目标特效。
+    ///
+    /// 该函数只处理配置了 `SkillData::target_vfx_id_hash_` 的技能，并使用 Overlay 通道，
+    /// 因为战斗表现锚点是屏幕逻辑坐标，不应受探索世界相机影响。
+    void spawnSkillTargetVfx(const game::battle::BattleActionResult& result,
+                             const std::vector<BattlePresentationUnitAnchor>& unit_anchors) const;
     void updateCommandFocus(float delta_time);
     [[nodiscard]] std::optional<BattleAnimationPose> commandFocusPoseFor(game::battle::BattleUnitId unit_id,
                                                                          game::battle::BattleSide side) const;

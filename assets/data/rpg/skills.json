@@ -6,6 +6,7 @@
             "description": "",
             "scope": "one_enemy",
             "hit_type": "physical",
+            "mp_cost": 0,
             "success_rate": 100,
             "repeats": 1,
             "damage": {
@@ -22,6 +23,7 @@
             "description": "对敌方单体造成伤害并使其失去平衡。",
             "scope": "one_enemy",
             "hit_type": "physical",
+            "mp_cost": 0,
             "success_rate": 100,
             "repeats": 1,
             "damage": {
@@ -40,11 +42,69 @@
             ]
         },
         {
+            "id": "skill.fire_1",
+            "display_name": "初级火焰",
+            "description": "对敌方单体释放小型火焰。",
+            "scope": "one_enemy",
+            "hit_type": "magical",
+            "mp_cost": 4,
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.mat * 3 - b.mdf * 2",
+                "variance": 10,
+                "critical": false
+            },
+            "effects": [],
+            "target_vfx_id": "battle.fire_one_1",
+            "target_vfx_scale": 1.0
+        },
+        {
+            "id": "skill.thunder_1",
+            "display_name": "初级闪电",
+            "description": "对敌方单体释放一道闪电。",
+            "scope": "one_enemy",
+            "hit_type": "magical",
+            "mp_cost": 5,
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_damage",
+                "formula": "a.mat * 3 + 8 - b.mdf * 2",
+                "variance": 10,
+                "critical": false
+            },
+            "effects": [],
+            "target_vfx_id": "battle.thunder_one_1",
+            "target_vfx_scale": 1.0
+        },
+        {
+            "id": "skill.heal_1",
+            "display_name": "初级治疗",
+            "description": "恢复一名存活队友的 HP。",
+            "scope": "one_ally",
+            "hit_type": "certain",
+            "mp_cost": 4,
+            "success_rate": 100,
+            "repeats": 1,
+            "damage": {
+                "type": "hp_recover",
+                "formula": "a.mat * 2 + 40",
+                "variance": 10,
+                "critical": false
+            },
+            "effects": [],
+            "target_vfx_id": "battle.heal_one_1",
+            "target_vfx_scale": 1.0
+        },
+        {
             "id": "skill.poison_spit",
             "display_name": "毒液",
             "description": "对敌方单体喷洒毒液，并使其陷入中毒状态。",
             "scope": "one_enemy",
             "hit_type": "certain",
+            "mp_cost": 0,
             "success_rate": 100,
             "repeats": 1,
             "damage": {

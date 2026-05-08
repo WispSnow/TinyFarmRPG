@@ -437,6 +437,16 @@ bool RpgCatalog::loadSkills(const std::string_view file_path) {
             return false;
         }
 
+        skill.target_vfx_id_ = skill_node.value("target_vfx_id", std::string{});
+        skill.target_vfx_id_hash_ = skill.target_vfx_id_.empty()
+            ? entt::id_type{}
+            : RpgCatalog::hashId(skill.target_vfx_id_);
+        skill.target_vfx_scale_ = skill_node.value("target_vfx_scale", 1.0F);
+        if (skill.target_vfx_scale_ <= 0.0F) {
+            spdlog::error("RpgCatalog: skill '{}' target_vfx_scale 必须 > 0", skill.id_);
+            return false;
+        }
+
         if (skills_.contains(skill.id_hash_)) {
             spdlog::error("RpgCatalog: skills 文件 '{}' 存在重复 id '{}'", file_path, skill.id_);
             return false;

@@ -173,7 +173,7 @@ sequenceDiagram
 
 3. 接入 BattleScene 表现层
    - `battle_scene.cpp` include `engine/vfx/vfx_types.h`。
-   - 新增私有 helper：`spawnSkillHitVfx(...)`、`findUnitAnchor(...)`、`skillHitVfxPosition(...)`。
+   - 新增私有 helper：`spawnSkillTargetVfx(...)`、`findUnitAnchor(...)`、`skillTargetVfxPosition(...)`。
    - 在 `ExecutingAction` 结算后、`BattleAnimationDirector::begin()` 附近触发 VFX，确保特效与伤害飘字 / impact 时间接近。
    - 记录即时播放的已知限制；短期跟进用 `BattleVisualEvent` 或表现层队列把触发移动到 impact frame。
 
@@ -203,16 +203,17 @@ ninja -C build battle_tester
 ## 待办清单
 
 - [x] 新增 `class.mage` 并将 Lyria 调整为魔法师职业。
-- [ ] 增加 `target_vfx_id` / `target_vfx_scale` 技能表现字段。
-- [ ] 新增火焰、闪电、治疗技能数据。
-- [ ] 更新 Alex / Lyria / Tori 的 `skill_ids`。
-- [ ] 给现有技能补显式 `mp_cost: 0`。
-- [ ] 更新 `assets/data/vfx_catalog.json`。
-- [ ] 在 `BattleScene` 根据技能结果触发 `PlayVfxCommand`。
-- [ ] 补充 catalog、真实资源加载与 BattleScene 回归测试。
+- [x] 增加 `target_vfx_id` / `target_vfx_scale` 技能表现字段。
+- [x] 新增火焰、闪电、治疗技能数据。
+- [x] 更新 Alex / Lyria / Tori 的 `skill_ids`。
+- [x] 给现有技能补显式 `mp_cost: 0`。
+- [x] 更新 `assets/data/vfx_catalog.json`。
+- [x] 在 `BattleScene` 根据技能结果触发 `PlayVfxCommand`。
+- [x] 补充 catalog、真实资源加载与 BattleScene 回归测试。
 - [ ] 短期跟进 impact-frame VFX 派发，避免即时播放与动作峰值错位。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行 `ninja -C build battle_tester` 并手动验证特效位置。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行 `ninja -C build battle_tester`。
+- [ ] 手动验证特效位置。
 
 ## 后续扩展
 

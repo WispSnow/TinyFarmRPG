@@ -531,6 +531,51 @@ TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
     EXPECT_NE(source.find("text_renderer.drawText"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, TriggersSkillTargetVfxFromAppliedSingleTargetSkillResults) {
+    // 源码级回归：验证 guard 与调用顺序，运行时分支覆盖见后续单元测试。
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("#include \"engine/vfx/vfx_types.h\""), std::string::npos);
+    EXPECT_NE(header.find("spawnSkillTargetVfx"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::spawnSkillTargetVfx"), std::string::npos);
+
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1400U);
+    ASSERT_FALSE(executing_snippet.empty());
+    EXPECT_NE(executing_snippet.find("const auto unit_anchors = collectBattlePresentationUnitAnchors()"),
+              std::string::npos);
+    EXPECT_NE(executing_snippet.find("spawnSkillTargetVfx(*last_action_result_, unit_anchors)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors)"),
+              std::string::npos);
+    EXPECT_LT(executing_snippet.find("spawnSkillTargetVfx(*last_action_result_, unit_anchors)"),
+              executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors)"));
+
+    const std::string vfx_snippet = snippetFrom(source, "void BattleScene::spawnSkillTargetVfx", 1800U);
+    ASSERT_FALSE(vfx_snippet.empty());
+    EXPECT_NE(vfx_snippet.find("result.status != game::battle::BattleActionStatus::Applied"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("result.action_type != game::battle::BattleActionType::Skill"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("result.missed"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("!result.target_id"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("findUnitAnchor(unit_anchors, *result.target_id)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(result.skill_id)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("engine::vfx::PlayVfxCommand command{}"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.effect_id = skill->target_vfx_id_hash_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.world_position = skillTargetVfxPosition(*target_anchor)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.scale = skill->target_vfx_scale_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.channel = engine::vfx::VfxChannel::Overlay"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("context_.getDispatcher().trigger(command)"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, UsesEnemyHpBarControllerForEnemyHealthOverlay) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();

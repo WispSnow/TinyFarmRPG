@@ -44,6 +44,12 @@ struct SkillData {
     int repeats_{1};
     DamageFormulaData damage_{};
     std::vector<EffectData> effects_{};
+    /// @brief 目标位置播放的 VFX 语义 ID；为空时技能不触发目标特效。
+    std::string target_vfx_id_{};
+    /// @brief target_vfx_id_ 的哈希值，供 BattleScene 直接提交 PlayVfxCommand。
+    entt::id_type target_vfx_id_hash_{};
+    /// @brief 目标特效缩放倍率，默认使用 Effekseer 资源原始尺寸。
+    float target_vfx_scale_{1.0F};
 };
 
 struct ClassData {

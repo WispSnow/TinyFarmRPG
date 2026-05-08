@@ -235,6 +235,9 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* skill = catalog.findSkill("skill.attack");
     ASSERT_NE(skill, nullptr);
     EXPECT_EQ(skill->display_name_, "Attack");
+    EXPECT_TRUE(skill->target_vfx_id_.empty());
+    EXPECT_EQ(skill->target_vfx_id_hash_, entt::id_type{});
+    EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.0F);
 
     const auto* state = catalog.findState("state.poison");
     ASSERT_NE(state, nullptr);
@@ -534,6 +537,59 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnNegativeMpCost) {
       "success_rate": 100,
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "1", "variance": 0, "critical": false }
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
+}
+
+TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.skills,
+        R"json({
+  "skills": [
+    {
+      "id": "skill.fire",
+      "scope": "one_enemy",
+      "hit_type": "magical",
+      "mp_cost": 4,
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
+      "target_vfx_id": "battle.fire_one_1",
+      "target_vfx_scale": 1.25
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
+
+    const auto* skill = catalog.findSkill("skill.fire");
+    ASSERT_NE(skill, nullptr);
+    EXPECT_EQ(skill->target_vfx_id_, "battle.fire_one_1");
+    EXPECT_EQ(skill->target_vfx_id_hash_, RpgCatalog::hashId("battle.fire_one_1"));
+    EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.25F);
+}
+
+TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.skills,
+        R"json({
+  "skills": [
+    {
+      "id": "skill.bad_vfx_scale",
+      "scope": "one_enemy",
+      "hit_type": "magical",
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
+      "target_vfx_id": "battle.fire_one_1",
+      "target_vfx_scale": 0.0
     }
   ]
 })json");
