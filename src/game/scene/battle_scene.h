@@ -126,6 +126,7 @@ class BattleScene final : public engine::scene::Scene {
         int entry_index{0};
         Rml::String name{};
         Rml::String short_label{};
+        Rml::String badge_label{};
         Rml::String portrait_decorator{"none"};
         bool current{false};
         bool acted{false};

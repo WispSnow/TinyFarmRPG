@@ -38,6 +38,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <string>
@@ -108,6 +109,12 @@ struct BattleFormationSlot {
     float scale{1.0F};
     float depth{0.0F};
     glm::vec2 shadow_size{56.0F, 4.0F};
+};
+
+/// @brief 行动顺序条敌方图标解析结果；不可用时调用方回退到文本编号。
+struct BattleEnemyIconDescriptor {
+    Rml::String decorator{"none"};
+    bool available{false};
 };
 
 [[nodiscard]] std::string formatRecoveryText(const game::battle::BattleActionResult& result) {
@@ -204,6 +211,85 @@ using namespace entt::literals;
 
 [[nodiscard]] entt::id_type hashString(std::string_view value) {
     return entt::hashed_string{value.data(), value.size()}.value();
+}
+
+/// @brief 把敌方 sprite blueprint id 规范化为 RmlUi spritesheet 中的 sprite 名称。
+[[nodiscard]] std::string battleEnemyIconSpriteName(std::string_view sprite_blueprint_id) {
+    std::string normalized;
+    bool previous_was_separator = true;
+
+    for (const unsigned char character : sprite_blueprint_id) {
+        if (std::isalnum(character) != 0) {
+            normalized.push_back(static_cast<char>(std::tolower(character)));
+            previous_was_separator = false;
+            continue;
+        }
+
+        if (!previous_was_separator) {
+            normalized.push_back('-');
+            previous_was_separator = true;
+        }
+    }
+
+    while (!normalized.empty() && normalized.back() == '-') {
+        normalized.pop_back();
+    }
+
+    return normalized.empty() ? std::string{} : "battle-enemy-icon-" + normalized;
+}
+
+/// @brief 查找行动顺序条头像使用的朝下 idle 动画；简单蓝图可回退到 bare idle。
+[[nodiscard]] const game::factory::AnimationBlueprint*
+findEnemyIdleDownAnimation(const game::factory::ActorBlueprint& blueprint) {
+    if (const auto down_it = blueprint.animations_.find("idle_down"_hs);
+        down_it != blueprint.animations_.end()) {
+        return &down_it->second;
+    }
+
+    if (const auto idle_it = blueprint.animations_.find("idle"_hs);
+        idle_it != blueprint.animations_.end()) {
+        return &idle_it->second;
+    }
+
+    return nullptr;
+}
+
+/// @brief 为敌方行动顺序条解析 RmlUi image decorator，失败时返回不可用结果。
+[[nodiscard]] BattleEnemyIconDescriptor enemyTurnOrderIconDecorator(
+    const game::battle::BattleUnit& unit,
+    const game::data::RpgCatalog* rpg_catalog,
+    const game::factory::BlueprintManager* blueprint_manager) {
+    if (!unit.source_enemy_id.has_value() ||
+        !rpg_catalog ||
+        !blueprint_manager) {
+        return {};
+    }
+
+    const auto* enemy = rpg_catalog->findEnemy(*unit.source_enemy_id);
+    if (!enemy || !enemy->battle_visual_.valid()) {
+        return {};
+    }
+
+    const entt::id_type blueprint_hash = enemy->battle_visual_.sprite_blueprint_id_hash_;
+    if (!blueprint_manager->hasActorBlueprint(blueprint_hash)) {
+        return {};
+    }
+
+    const auto& blueprint = blueprint_manager->getActorBlueprint(blueprint_hash);
+    const auto* idle_down_animation = findEnemyIdleDownAnimation(blueprint);
+    if (!idle_down_animation || idle_down_animation->frames_.empty()) {
+        return {};
+    }
+
+    const std::string sprite_name = battleEnemyIconSpriteName(enemy->battle_visual_.sprite_blueprint_id_);
+    if (sprite_name.empty()) {
+        return {};
+    }
+
+    return BattleEnemyIconDescriptor{
+        .decorator = makeRmlString("image(" + sprite_name + ")"),
+        .available = true
+    };
 }
 
 [[nodiscard]] engine::component::Animation toRuntimeAnimation(const game::factory::AnimationBlueprint& blueprint,
@@ -644,6 +730,7 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
         turn_order_handle.RegisterMember("name", &TurnOrderEntryViewModel::name);
         turn_order_handle.RegisterMember("short_label", &TurnOrderEntryViewModel::short_label);
+        turn_order_handle.RegisterMember("badge_label", &TurnOrderEntryViewModel::badge_label);
         turn_order_handle.RegisterMember("portrait_decorator", &TurnOrderEntryViewModel::portrait_decorator);
         turn_order_handle.RegisterMember("current", &TurnOrderEntryViewModel::current);
         turn_order_handle.RegisterMember("acted", &TurnOrderEntryViewModel::acted);
@@ -882,7 +969,16 @@ void BattleScene::rebuildTurnOrderView() {
         const auto& unit = *unit_ptr;
         const bool enemy = unit.side == game::battle::BattleSide::Enemy;
         const std::size_t side_index = enemy ? enemy_index++ : player_index++;
-        const Rml::String portrait_decorator = portraitDecoratorForUnit(unit);
+        Rml::String portrait_decorator = portraitDecoratorForUnit(unit);
+        Rml::String badge_label{};
+        if (enemy) {
+            const BattleEnemyIconDescriptor icon =
+                enemyTurnOrderIconDecorator(unit, rpg_catalog_, blueprint_manager_);
+            if (icon.available) {
+                portrait_decorator = icon.decorator;
+                badge_label = std::to_string(side_index + 1U);
+            }
+        }
         const bool ko = !unit.isAlive();
         const bool current = !ko && current_actor_id.has_value() && *current_actor_id == unit.id;
         const bool acted = !ko && !current && has_current_order_index && order_index < current_order_index;
@@ -895,6 +991,7 @@ void BattleScene::rebuildTurnOrderView() {
             .entry_index = static_cast<int>(next_turn_order_entries.size()),
             .name = makeRmlString(unit.name),
             .short_label = fallback_label,
+            .badge_label = badge_label,
             .portrait_decorator = portrait_decorator,
             .current = current,
             .acted = acted,

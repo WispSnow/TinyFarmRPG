@@ -34,6 +34,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-turn-order-entry {
+    position: relative;
     width: 28dp;
     height: 30dp;
     padding: 2dp;
@@ -72,6 +73,8 @@ body, div, h1, h2, h3, h4, p, hr {
     border-width: 1dp;
     border-color: #2d3a4fff;
     decorator: none;
+    overflow: hidden;
+    image-color: #ffffffff;
 }
 
 .battle-turn-order-entry.enemy-turn-entry .battle-turn-order-portrait {
@@ -86,6 +89,14 @@ body, div, h1, h2, h3, h4, p, hr {
 .battle-turn-order-entry.acted-turn-entry .battle-turn-order-portrait,
 .battle-turn-order-entry.ko-turn-entry .battle-turn-order-portrait {
     border-color: #2c3440ff;
+}
+
+.battle-turn-order-entry.acted-turn-entry .battle-turn-order-portrait {
+    image-color: #ffffff77;
+}
+
+.battle-turn-order-entry.ko-turn-entry .battle-turn-order-portrait {
+    image-color: #ffffff44;
 }
 
 .battle-turn-order-label {
@@ -106,6 +117,34 @@ body, div, h1, h2, h3, h4, p, hr {
 .battle-turn-order-entry.acted-turn-entry .battle-turn-order-label,
 .battle-turn-order-entry.ko-turn-entry .battle-turn-order-label {
     color: #747d8dff;
+}
+
+.battle-turn-order-badge {
+    position: absolute;
+    left: 18dp;
+    top: 19dp;
+    width: 9dp;
+    height: 9dp;
+    line-height: 9dp;
+    color: #ffffffff;
+    background-color: #05070bcc;
+    border-width: 1dp;
+    border-color: #f4d475ee;
+    font-size: 6dp;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000dd);
+}
+
+.battle-turn-order-entry.acted-turn-entry .battle-turn-order-badge {
+    color: #c5cbd7dd;
+    border-color: #77808ccc;
+    background-color: #05070baa;
+}
+
+.battle-turn-order-entry.ko-turn-entry .battle-turn-order-badge {
+    color: #7d8491cc;
+    border-color: #444b56bb;
+    background-color: #05070b88;
 }
 
 #battle-party-panel {

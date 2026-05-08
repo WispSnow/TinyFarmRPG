@@ -1,0 +1,14 @@
+@spritesheet battle-enemy-goblin-icons {
+    src: ../../../assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png;
+    battle-enemy-icon-goblin: 0px 0px 32px 32px;
+}
+
+@spritesheet battle-enemy-gnome-icons {
+    src: ../../../assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png;
+    battle-enemy-icon-gnome: 0px 0px 32px 32px;
+}
+
+@spritesheet battle-enemy-slime-icons {
+    src: ../../../assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png;
+    battle-enemy-icon-slime: 0px 32px 32px 32px;
+}
