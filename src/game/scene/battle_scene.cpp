@@ -65,6 +65,8 @@ constexpr float BATTLE_TARGET_SHADOW_DEPTH_OFFSET = -0.05F;
 constexpr int DAMAGE_POPUP_FONT_SIZE_PX = 20;
 constexpr float HP_BAR_WARNING_RATIO = 0.50F;
 constexpr float HP_BAR_DANGER_RATIO = 0.25F;
+constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
+constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -120,76 +122,6 @@ struct BattleEnemyIconDescriptor {
     Rml::String decorator{"none"};
     bool available{false};
 };
-
-[[nodiscard]] std::string formatRecoveryText(const game::battle::BattleActionResult& result) {
-    std::string text;
-    if (result.hp_recovered > 0) {
-        text = "recovered " + std::to_string(result.hp_recovered) + " HP";
-    }
-    if (result.mp_recovered > 0) {
-        if (!text.empty()) {
-            text += ", ";
-            text += std::to_string(result.mp_recovered) + " MP";
-        } else {
-            text = "recovered " + std::to_string(result.mp_recovered) + " MP";
-        }
-    }
-    return text;
-}
-
-[[nodiscard]] std::string formatActionResultText(const game::battle::BattleActionResult& result) {
-    if (result.status == game::battle::BattleActionStatus::Rejected) {
-        return result.failure_reason.empty() ? "Result: Action rejected" : "Result: " + result.failure_reason;
-    }
-
-    const std::string recovery_text = formatRecoveryText(result);
-    switch (result.action_type) {
-        case game::battle::BattleActionType::Attack: {
-            std::string result_text = "Result: Attack dealt " + std::to_string(result.damage) + " dmg";
-            if (result.target_defeated) {
-                result_text += " (KO)";
-            }
-            return result_text;
-        }
-        case game::battle::BattleActionType::Skill: {
-            std::string result_text = "Result: Skill";
-            if (result.missed) {
-                result_text += " missed";
-                return result_text;
-            }
-
-            bool has_effect = false;
-            if (result.damage > 0) {
-                result_text += " dealt " + std::to_string(result.damage) + " dmg";
-                has_effect = true;
-            }
-            if (!recovery_text.empty()) {
-                result_text += has_effect ? ", " : " ";
-                result_text += recovery_text;
-                has_effect = true;
-            }
-            if (!result.states_added.empty()) {
-                result_text += has_effect ? " " : " applied ";
-                result_text += "+" + result.states_added.front();
-                has_effect = true;
-            }
-            if (!has_effect) {
-                result_text += " applied";
-            }
-            return result_text;
-        }
-        case game::battle::BattleActionType::Item:
-            return recovery_text.empty() ? "Result: Item used" : "Result: Item " + recovery_text;
-        case game::battle::BattleActionType::Guard:
-            return "Result: Guarding";
-        case game::battle::BattleActionType::Escape:
-            return result.escape_succeeded ? "Result: Escaped" : "Result: Escape failed";
-        case game::battle::BattleActionType::EndTurn:
-            return "Result: Turn ended";
-    }
-
-    return "Result: Action applied";
-}
 
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
@@ -643,6 +575,8 @@ void BattleScene::clean() {
     battle_animation_director_.reset();
     battle_damage_popup_controller_.clear();
     battle_enemy_hp_bar_controller_.clear();
+    battle_log_history_.clear();
+    battle_log_entries_.clear();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -692,6 +626,7 @@ bool BattleScene::initUI() {
         !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("party_state_icons", &party_state_icons_) ||
         !constructor.Bind("state_tooltip", &state_tooltip_) ||
+        !constructor.Bind("battle_log_entries", &battle_log_entries_) ||
         !constructor.Bind("party_commands", &party_commands_) ||
         !constructor.Bind("actor_commands", &actor_commands_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
@@ -836,6 +771,13 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto battle_log_handle = constructor.RegisterStruct<BattleLogEntryViewModel>()) {
+        battle_log_handle.RegisterMember("text", &BattleLogEntryViewModel::text);
+        battle_log_handle.RegisterMember("tone_class", &BattleLogEntryViewModel::tone_class);
+    } else {
+        return false;
+    }
+
     if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
         turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
         turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
@@ -856,7 +798,8 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         !constructor.RegisterArray<decltype(target_entries_)>() ||
         !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
         !constructor.RegisterArray<decltype(party_status_)>() ||
-        !constructor.RegisterArray<decltype(party_state_icons_)>()) {
+        !constructor.RegisterArray<decltype(party_state_icons_)>() ||
+        !constructor.RegisterArray<decltype(battle_log_entries_)>()) {
         return false;
     }
 
@@ -910,6 +853,12 @@ void BattleScene::runStateMachine(float delta_time) {
                 }
 
                 last_action_result_ = session_.submitAction(*pending_action_);
+                appendBattleLogLines(game::battle::formatBattleLogLines(
+                    *last_action_result_,
+                    game::battle::BattleLogFormatterContext{
+                        .rpg_catalog = rpg_catalog_,
+                        .item_catalog = item_catalog_
+                    }));
                 battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot);
                 battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
@@ -1030,8 +979,6 @@ void BattleScene::refreshView() {
     std::string result_text = "Result: " + menu_status_text_;
     if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
-    } else if (last_action_result_) {
-        result_text = formatActionResultText(*last_action_result_);
     }
     if (updateBoundString(result_text_, result_text)) {
         document_controller_.markDirty("result_text");
@@ -1223,6 +1170,57 @@ void BattleScene::hideStateTooltip() {
         state_tooltip_entry_index_ = -1;
         document_controller_.markDirty("state_tooltip");
     }
+}
+
+void BattleScene::appendBattleLogLines(const std::vector<game::battle::BattleLogLine>& lines) {
+    if (lines.empty()) {
+        return;
+    }
+
+    battle_log_history_.insert(battle_log_history_.end(), lines.begin(), lines.end());
+    if (battle_log_history_.size() > BATTLE_LOG_HISTORY_LIMIT) {
+        const auto erase_count = static_cast<std::ptrdiff_t>(battle_log_history_.size() - BATTLE_LOG_HISTORY_LIMIT);
+        battle_log_history_.erase(battle_log_history_.begin(), battle_log_history_.begin() + erase_count);
+    }
+    rebuildBattleLogView();
+}
+
+void BattleScene::rebuildBattleLogView() {
+    std::vector<BattleLogEntryViewModel> next_entries;
+    const std::size_t visible_count = std::min(BATTLE_LOG_VISIBLE_LIMIT, battle_log_history_.size());
+    next_entries.reserve(visible_count);
+
+    const auto begin_it = battle_log_history_.end() - static_cast<std::ptrdiff_t>(visible_count);
+    for (auto it = begin_it; it != battle_log_history_.end(); ++it) {
+        next_entries.push_back(BattleLogEntryViewModel{
+            .text = makeRmlString(it->text),
+            .tone_class = battleLogToneClass(it->tone)
+        });
+    }
+
+    if (battle_log_entries_ != next_entries) {
+        battle_log_entries_ = std::move(next_entries);
+        document_controller_.markDirty("battle_log_entries");
+    }
+}
+
+Rml::String BattleScene::battleLogToneClass(const game::battle::BattleLogTone tone) const {
+    switch (tone) {
+        case game::battle::BattleLogTone::Normal:
+            return "normal";
+        case game::battle::BattleLogTone::Damage:
+            return "damage";
+        case game::battle::BattleLogTone::Recovery:
+            return "recovery";
+        case game::battle::BattleLogTone::State:
+            return "state";
+        case game::battle::BattleLogTone::System:
+            return "system";
+        case game::battle::BattleLogTone::Error:
+            return "error";
+    }
+
+    return "normal";
 }
 
 void BattleScene::refreshMenuEnabledState(bool enabled) {

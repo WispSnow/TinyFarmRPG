@@ -17,12 +17,14 @@ namespace {
 
 constexpr int kEscapeSuccessChancePercent = 50;
 
-BattleActionResult makeRejectedResult(const BattleAction& action) {
+BattleActionResult makeInitialResult(const BattleAction& action) {
     BattleActionResult result{};
     result.status = BattleActionStatus::Rejected;
     result.action_type = action.type;
     result.actor_id = action.actor_id;
     result.target_id = action.target_id;
+    result.skill_id = action.skill_id;
+    result.item_id = action.item_id;
     result.damage = 0;
     result.target_defeated = false;
     return result;
@@ -305,7 +307,7 @@ void BattleActionResolver::applyBattleItemEffects(const game::data::BattleItemUs
 BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                                                  TurnCore& turn_core,
                                                  BattleRuntimeState& runtime_state) {
-    BattleActionResult result = makeRejectedResult(action);
+    BattleActionResult result = makeInitialResult(action);
 
     // 公共前置校验：战斗必须仍在进行，且提交者必须是当前回合的存活行动者。
     if (turn_core.outcome() != BattleOutcome::Ongoing) {

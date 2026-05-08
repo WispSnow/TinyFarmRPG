@@ -3,6 +3,7 @@
 #include "engine/scene/scene.h"
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "game/battle/battle_log_formatter.h"
 #include "game/battle/battle_session.h"
 #include "game/scene/battle_animation_director.h"
 #include "game/scene/battle_background.h"
@@ -149,6 +150,14 @@ class BattleScene final : public engine::scene::Scene {
         friend bool operator==(const StateTooltipViewModel& lhs, const StateTooltipViewModel& rhs) = default;
     };
 
+    /// @brief 滚动战斗日志中单行的 RmlUi 表现层视图模型。
+    struct BattleLogEntryViewModel {
+        Rml::String text{};
+        Rml::String tone_class{};
+
+        friend bool operator==(const BattleLogEntryViewModel& lhs, const BattleLogEntryViewModel& rhs) = default;
+    };
+
     /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
     struct TurnOrderEntryViewModel {
         int unit_id{0};
@@ -212,6 +221,8 @@ class BattleScene final : public engine::scene::Scene {
     std::vector<StateIconViewModel> party_state_icons_{};
     StateTooltipViewModel state_tooltip_{};
     int state_tooltip_entry_index_{-1};
+    std::vector<game::battle::BattleLogLine> battle_log_history_{};
+    std::vector<BattleLogEntryViewModel> battle_log_entries_{};
     std::vector<CommandViewModel> party_commands_{};
     std::vector<CommandViewModel> actor_commands_{};
     std::vector<ListEntryViewModel> list_entries_{};
@@ -260,6 +271,9 @@ private:
     void rebuildTurnOrderView();
     void rebuildPartyStatusView();
     void hideStateTooltip();
+    void appendBattleLogLines(const std::vector<game::battle::BattleLogLine>& lines);
+    void rebuildBattleLogView();
+    [[nodiscard]] Rml::String battleLogToneClass(game::battle::BattleLogTone tone) const;
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
     void enterInputMenu();

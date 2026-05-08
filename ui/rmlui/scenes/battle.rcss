@@ -21,6 +21,52 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 34dp;
 }
 
+#battle-log-panel {
+    position: absolute;
+    left: 318dp;
+    top: 42dp;
+    width: 314dp;
+    height: 45dp;
+    padding: 0;
+    background-color: #00000000;
+    border-width: 0dp;
+    border-color: #00000000;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.battle-log-entry {
+    width: 314dp;
+    height: 15dp;
+    line-height: 15dp;
+    color: #d8dee9ff;
+    font-size: 8dp;
+    text-align: right;
+    font-effect: shadow(1dp 1dp #000000cc);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.battle-log-entry.log-damage {
+    color: #ff9a9aff;
+}
+
+.battle-log-entry.log-recovery {
+    color: #93e0a5ff;
+}
+
+.battle-log-entry.log-state {
+    color: #d7bcffff;
+}
+
+.battle-log-entry.log-system {
+    color: #fce97fff;
+}
+
+.battle-log-entry.log-error {
+    color: #ff7373ff;
+}
+
 #battle-turn-order-bar {
     position: absolute;
     left: 6dp;
