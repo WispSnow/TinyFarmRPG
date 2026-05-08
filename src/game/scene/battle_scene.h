@@ -4,11 +4,13 @@
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
 #include "game/battle/battle_log_formatter.h"
+#include "game/battle/battle_reward_resolver.h"
 #include "game/battle/battle_session.h"
 #include "game/scene/battle_animation_director.h"
 #include "game/scene/battle_background.h"
 #include "game/scene/battle_damage_popup_controller.h"
 #include "game/scene/battle_scene_types.h"
+#include "game/scene/battle_victory_flow_controller.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
@@ -47,6 +49,7 @@ class BattleScene final : public engine::scene::Scene {
         ExecutingAction,    ///< 将 pending_action_ 提交给 BattleSession。
         AnimatingResult,    ///< 展示动作结果；当前以短计时占位。
         CheckVictory,       ///< 根据 BattleActionResult::outcome_after 判断是否结束战斗。
+        VictoryFlow,        ///< 展示 Victory 结算流程，等待玩家确认后退出。
         NextTurn,           ///< 刷新到下一个行动者并路由到玩家输入或敌方自动行动。
         BattleEnd           ///< 发送结算事件并请求弹出场景。
     };
@@ -158,6 +161,16 @@ class BattleScene final : public engine::scene::Scene {
         friend bool operator==(const BattleLogEntryViewModel& lhs, const BattleLogEntryViewModel& rhs) = default;
     };
 
+    /// @brief Victory overlay 中单个掉落条目的视图模型。
+    struct VictoryRewardItemViewModel {
+        int entry_index{0};
+        Rml::String label{};
+        Rml::String count_text{};
+        Rml::String icon_decorator{"none"};
+
+        friend bool operator==(const VictoryRewardItemViewModel& lhs, const VictoryRewardItemViewModel& rhs) = default;
+    };
+
     /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
     struct TurnOrderEntryViewModel {
         int unit_id{0};
@@ -191,6 +204,8 @@ class BattleScene final : public engine::scene::Scene {
     std::optional<game::battle::BattleActionResult> last_action_result_{};
     BattleAnimationDirector battle_animation_director_{};
     BattleDamagePopupController battle_damage_popup_controller_{};
+    BattleVictoryFlowController victory_flow_controller_{};
+    std::optional<game::battle::BattleRewardSummary> victory_reward_summary_{};
     std::optional<game::battle::BattleUnitId> command_focus_actor_id_{};
     float command_focus_elapsed_seconds_{0.0f};
     std::optional<std::uint32_t> party_command_accepted_round_{}; ///< 当前轮已通过 PartyCommand 时记录轮次，用于同轮后续玩家行动者跳过 Fight/Escape 询问。
@@ -223,6 +238,7 @@ class BattleScene final : public engine::scene::Scene {
     int state_tooltip_entry_index_{-1};
     std::vector<game::battle::BattleLogLine> battle_log_history_{};
     std::vector<BattleLogEntryViewModel> battle_log_entries_{};
+    std::vector<VictoryRewardItemViewModel> victory_reward_items_{};
     std::vector<CommandViewModel> party_commands_{};
     std::vector<CommandViewModel> actor_commands_{};
     std::vector<ListEntryViewModel> list_entries_{};
@@ -231,6 +247,14 @@ class BattleScene final : public engine::scene::Scene {
     int actor_command_cursor_{0};
     int list_entry_cursor_{-1};
     int target_entry_cursor_{-1};
+    bool victory_overlay_visible_{false};
+    bool victory_continue_enabled_{false};
+    bool victory_continue_focus_dirty_{false};
+    bool victory_items_empty_{true};
+    Rml::String victory_title_{"Victory!"};
+    Rml::String victory_gold_text_{"0"};
+    Rml::String victory_item_empty_text_{"No drops"};
+    Rml::String victory_prompt_text_{"Confirm"};
 
 public:
     /// @brief 构造战斗场景。
@@ -270,6 +294,7 @@ private:
     void refreshView();
     void rebuildTurnOrderView();
     void rebuildPartyStatusView();
+    void rebuildVictoryView();
     void hideStateTooltip();
     void appendBattleLogLines(const std::vector<game::battle::BattleLogLine>& lines);
     void rebuildBattleLogView();
@@ -280,6 +305,7 @@ private:
     void leaveInputMenu();
     void setMenuState(MenuState next_state);
     void syncMenuFocus();
+    void syncVictoryContinueFocus();
     [[nodiscard]] bool focusElementById(std::string_view element_id);
 
     /// @brief 当前玩家行动机会是否应先显示队伍命令层。
@@ -345,6 +371,10 @@ private:
     /// @brief 获取当前行动者并写出 actor id。
     /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
+    void beginVictoryFlow();
+    [[nodiscard]] game::battle::BattleRewardSummary resolveVictoryRewards();
+    void finishVictoryFlow();
+    void playVictoryAudioCue();
     [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
     void updateCommandFocus(float delta_time);
     [[nodiscard]] std::optional<BattleAnimationPose> commandFocusPoseFor(game::battle::BattleUnitId unit_id,

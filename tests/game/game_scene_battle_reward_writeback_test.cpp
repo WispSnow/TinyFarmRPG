@@ -193,6 +193,20 @@ protected:
         return total;
     }
 
+    [[nodiscard]] game::battle::BattleRewardSummary slimeRewardSummary() const {
+        return game::battle::BattleRewardSummary{
+            .gold_total = 4,
+            .exp_total = 0,
+            .item_drops = {
+                game::battle::BattleRewardItemDrop{
+                    .item_id = "item.herb",
+                    .item_id_hash = game::data::RpgCatalog::hashId("item.herb"),
+                    .count = 1
+                }
+            }
+        };
+    }
+
     void SetUp() override {
         loadCatalogs();
     }
@@ -214,6 +228,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotif
     evt.final_units = {
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = slimeRewardSummary();
 
     game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
@@ -258,6 +273,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryNotificationMovesAndAutoHidesA
     evt.final_units = {
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = slimeRewardSummary();
 
     game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
@@ -385,6 +401,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInvent
     evt.final_units = {
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = slimeRewardSummary();
 
     game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(
@@ -421,6 +438,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryCombinesRewardAndQuestProgress
     evt.final_units = {
         makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
         makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = slimeRewardSummary();
 
     game::system::helpers::NotificationTimer notification_state{};
     processBattleEndedForGameScene(

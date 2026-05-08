@@ -52,6 +52,7 @@ TEST(BattleSceneSmokeTest, ContainsStateMachineStages) {
     EXPECT_NE(source.find("FlowState::ExecutingAction"), std::string::npos);
     EXPECT_NE(source.find("FlowState::AnimatingResult"), std::string::npos);
     EXPECT_NE(source.find("FlowState::CheckVictory"), std::string::npos);
+    EXPECT_NE(source.find("FlowState::VictoryFlow"), std::string::npos);
     EXPECT_NE(source.find("FlowState::NextTurn"), std::string::npos);
     EXPECT_NE(source.find("FlowState::BattleEnd"), std::string::npos);
 }
@@ -66,6 +67,55 @@ TEST(BattleSceneSmokeTest, EmitsBattleEndedEventAndRequestsPop) {
 
     EXPECT_NE(source.find("BattleEndedEvent"), std::string::npos);
     EXPECT_NE(source.find("requestPopScene()"), std::string::npos);
+    EXPECT_NE(source.find("event.reward_summary"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("#include \"game/scene/battle_victory_flow_controller.h\""), std::string::npos);
+    EXPECT_NE(header.find("BattleVictoryFlowController victory_flow_controller_{}"), std::string::npos);
+    EXPECT_NE(header.find("std::optional<game::battle::BattleRewardSummary> victory_reward_summary_{}"), std::string::npos);
+    EXPECT_NE(header.find("beginVictoryFlow"), std::string::npos);
+    EXPECT_NE(header.find("finishVictoryFlow"), std::string::npos);
+
+    const std::string check_block = snippetFrom(source, "case FlowState::CheckVictory:", 900U);
+    ASSERT_FALSE(check_block.empty());
+    EXPECT_NE(check_block.find("beginVictoryFlow();"), std::string::npos);
+    EXPECT_NE(check_block.find("state_ = FlowState::BattleEnd"), std::string::npos);
+    EXPECT_LT(check_block.find("beginVictoryFlow();"), check_block.find("state_ = FlowState::BattleEnd"));
+
+    const std::string victory_block = snippetFrom(source, "case FlowState::VictoryFlow:", 360U);
+    ASSERT_FALSE(victory_block.empty());
+    EXPECT_NE(victory_block.find("victory_flow_controller_.update(delta_time)"), std::string::npos);
+    EXPECT_NE(victory_block.find("finishVictoryFlow();"), std::string::npos);
+    EXPECT_EQ(victory_block.find("requestBattleEnd()"), std::string::npos);
+
+    const std::string confirm_block = snippetFrom(source, "bool BattleScene::onMenuConfirmPressed()", 600U);
+    ASSERT_FALSE(confirm_block.empty());
+    EXPECT_NE(confirm_block.find("state_ == FlowState::VictoryFlow"), std::string::npos);
+    EXPECT_NE(confirm_block.find("victory_flow_controller_.confirm();"), std::string::npos);
+
+    const std::string cancel_block = snippetFrom(source, "bool BattleScene::onMenuCancelPressed()", 260U);
+    ASSERT_FALSE(cancel_block.empty());
+    EXPECT_NE(cancel_block.find("state_ == FlowState::VictoryFlow"), std::string::npos);
+    EXPECT_EQ(cancel_block.find("victory_flow_controller_.confirm();"), std::string::npos);
+
+    const std::string finish_block = snippetFrom(source, "void BattleScene::finishVictoryFlow()", 260U);
+    ASSERT_FALSE(finish_block.empty());
+    EXPECT_NE(finish_block.find("victory_flow_controller_.reset();"), std::string::npos);
+    EXPECT_NE(finish_block.find("state_ = FlowState::BattleEnd;"), std::string::npos);
+    EXPECT_EQ(finish_block.find("requestBattleEnd()"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
@@ -86,12 +136,15 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("RegisterStruct<BattleLogEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"text\", &BattleLogEntryViewModel::text)"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"tone_class\", &BattleLogEntryViewModel::tone_class)"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<VictoryRewardItemViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TurnOrderEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"badge_label\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_status\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_state_icons\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"state_tooltip\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"battle_log_entries\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"victory_overlay_visible\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"victory_reward_items\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_enter"), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_exit"), std::string::npos);
@@ -102,6 +155,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
+    EXPECT_NE(source.find("focusElementById(\"battle-victory-continue\")"), std::string::npos);
     EXPECT_NE(source.find("constexpr int PARTY_COMMAND_COLUMNS = 1;"), std::string::npos);
     EXPECT_NE(source.find("constexpr int ACTOR_COMMAND_COLUMNS = 2;"), std::string::npos);
     EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
@@ -123,6 +177,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_EQ(countOccurrences(source, "RegisterArray<decltype(party_commands_)>()"), 1U);
     EXPECT_EQ(source.find("RegisterArray<decltype(actor_commands_)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(battle_log_entries_)>()"), std::string::npos);
+    EXPECT_NE(source.find("RegisterArray<decltype(victory_reward_items_)>()"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, WiresStage2SkillListToDraftSelection) {
@@ -582,6 +637,7 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     ASSERT_FALSE(rml.empty());
 
     EXPECT_NE(rml.find("../theme/nav.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("../theme/spritesheet.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/battle_enemy_icons.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/battle_state_icons.rcss"), std::string::npos);
@@ -594,6 +650,14 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("id=\"battle-top-status\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-turn-order-bar\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-log-panel\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-victory-overlay\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"victory_overlay_visible\""), std::string::npos);
+    EXPECT_NE(rml.find("{{ victory_gold_text }}"), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"victory_items_empty\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"item : victory_reward_items\""), std::string::npos);
+    EXPECT_NE(rml.find("data-style-decorator=\"item.icon_decorator\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-victory-continue\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"victory_continue\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : battle_log_entries\""), std::string::npos);
     EXPECT_NE(rml.find("{{ entry.text }}"), std::string::npos);
     EXPECT_NE(rml.find("data-class-log-damage=\"entry.tone_class == 'damage'\""), std::string::npos);
@@ -665,6 +729,11 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
 
     EXPECT_NE(rcss.find("top: 256dp;"), std::string::npos);
     EXPECT_NE(rcss.find("#battle-log-panel"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-victory-overlay"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-victory-panel"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-victory-continue"), std::string::npos);
+    EXPECT_NE(rcss.find("tab-index: auto;"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-victory-item-icon"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-damage"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-recovery"), std::string::npos);

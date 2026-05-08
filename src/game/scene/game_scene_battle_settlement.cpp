@@ -1,6 +1,5 @@
 #include "game/scene/game_scene_battle_settlement.h"
 
-#include "game/battle/battle_reward_resolver.h"
 #include "game/component/inventory_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
@@ -14,6 +13,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cassert>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -121,8 +121,14 @@ void applyBattleItemStockDelta(entt::registry& registry,
         return writeback_result;
     }
 
-    if (!services || !services->rpg_catalog) {
-        spdlog::warn("GameScene: RPG catalog 不可用，跳过战斗奖励写回。");
+    if (!services) {
+        spdlog::warn("GameScene: runtime services 不可用，跳过战斗奖励写回。");
+        return writeback_result;
+    }
+
+    assert(evt.reward_summary.has_value() && "Victory BattleEndedEvent must carry reward_summary");
+    if (!evt.reward_summary.has_value()) {
+        spdlog::warn("GameScene: Victory BattleEndedEvent 缺少 reward_summary，跳过战斗奖励写回。");
         return writeback_result;
     }
 
@@ -132,9 +138,7 @@ void applyBattleItemStockDelta(entt::registry& registry,
         return writeback_result;
     }
 
-    game::battle::BattleRewardResolver resolver{};
-    const game::battle::BattleRewardSummary reward_summary =
-        resolver.resolve(evt.outcome, evt.final_units, *services->rpg_catalog);
+    const game::battle::BattleRewardSummary& reward_summary = *evt.reward_summary;
 
     if (reward_summary.gold_total > 0) {
         if (auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {

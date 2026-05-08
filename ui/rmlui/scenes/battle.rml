@@ -3,6 +3,7 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/nav.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="../theme/battle_enemy_icons.rcss"/>
     <link type="text/rcss" href="../theme/battle_state_icons.rcss"/>
@@ -36,6 +37,31 @@
              data-class-log-state="entry.tone_class == 'state'"
              data-class-log-system="entry.tone_class == 'system'"
              data-class-log-error="entry.tone_class == 'error'">{{ entry.text }}</div>
+    </div>
+
+    <div id="battle-victory-overlay" data-if="victory_overlay_visible">
+        <div id="battle-victory-panel">
+            <div id="battle-victory-title">{{ victory_title }}</div>
+            <div id="battle-victory-rewards">
+                <div class="battle-victory-row">
+                    <span class="battle-victory-label">Gold</span>
+                    <span class="battle-victory-value">{{ victory_gold_text }}</span>
+                </div>
+                <div id="battle-victory-item-list">
+                    <div class="battle-victory-empty" data-if="victory_items_empty">{{ victory_item_empty_text }}</div>
+                    <div class="battle-victory-item" data-for="item : victory_reward_items">
+                        <div class="battle-victory-item-icon" data-style-decorator="item.icon_decorator"></div>
+                        <span class="battle-victory-item-label">{{ item.label }}</span>
+                        <span class="battle-victory-item-count">{{ item.count_text }}</span>
+                    </div>
+                </div>
+            </div>
+            <button id="battle-victory-continue"
+                    class="battle-text-button tf-nav-auto"
+                    data-class-disabled="!victory_continue_enabled"
+                    data-attrif-disabled="!victory_continue_enabled"
+                    data-event-click="victory_continue">{{ victory_prompt_text }}</button>
+        </div>
     </div>
 
     <div id="battle-hud">
