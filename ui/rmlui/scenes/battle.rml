@@ -77,13 +77,22 @@
 
         <div id="battle-command-panel">
             <div id="battle-actions" data-if="actions_enabled">
-                <div id="battle-main-actions" data-if="main_menu_visible">
-                    <button class="battle-text-button tf-nav-auto battle-action-button"
-                            data-for="action : main_actions"
-                            id="battle-main-action-{{ action.entry_index }}"
-                            data-class-disabled="!action.enabled"
-                            data-attrif-disabled="!action.enabled"
-                            data-event-click="main_action_select(action.entry_index)">{{ action.label }}</button>
+                <div id="battle-party-command" data-if="party_command_visible">
+                    <button class="battle-text-button tf-nav-auto battle-party-command-button"
+                            data-for="command : party_commands"
+                            id="battle-party-command-{{ command.entry_index }}"
+                            data-class-disabled="!command.enabled"
+                            data-attrif-disabled="!command.enabled"
+                            data-event-click="party_command_select(command.entry_index)">{{ command.label }}</button>
+                </div>
+
+                <div id="battle-actor-command" data-if="actor_command_visible">
+                    <button class="battle-text-button tf-nav-auto battle-actor-command-button"
+                            data-for="command : actor_commands"
+                            id="battle-actor-command-{{ command.entry_index }}"
+                            data-class-disabled="!command.enabled"
+                            data-attrif-disabled="!command.enabled"
+                            data-event-click="actor_command_select(command.entry_index)">{{ command.label }}</button>
                 </div>
 
                 <div id="battle-list-menu" data-if="list_menu_visible">
@@ -110,8 +119,6 @@
                             data-class-is-dead="target.is_dead"
                             data-event-click="target_entry_select(target.entry_index)">{{ target.label }}</button>
                 </div>
-
-                <div id="battle-back-hint">{{ back_hint }}</div>
             </div>
         </div>
     </div>

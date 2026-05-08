@@ -7,6 +7,7 @@
 
 #include <entt/core/fwd.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -50,6 +51,9 @@ public:
     /// @brief 返回当前行动者；战斗结束时为 nullopt。
     [[nodiscard]] std::optional<BattleUnitId> currentActorId() const { return turn_core_.currentActorId(); }
     [[nodiscard]] BattleOutcome outcome() const { return turn_core_.outcome(); }
+
+    /// @brief 返回当前战斗轮次索引；首个可行动单位存在后从 1 开始。
+    [[nodiscard]] std::uint32_t roundIndex() const { return turn_core_.roundIndex(); }
 
     /// @brief 返回战斗内剩余道具库存；该库存是进入战斗时复制出的运行时副本。
     [[nodiscard]] const std::unordered_map<entt::id_type, int>& itemStocks() const { return runtime_state_.item_stocks; }

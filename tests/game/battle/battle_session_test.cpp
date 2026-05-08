@@ -124,6 +124,37 @@ TEST(BattleSessionTest, SnapshotIncludesStableTurnOrder) {
     EXPECT_EQ(snapshot.current_actor_id, std::optional<BattleUnitId>{1});
 }
 
+TEST(BattleSessionTest, ExposesRoundIndexForPresentationLayerGates) {
+    BattleSession session(makeSessionUnits());
+    EXPECT_EQ(session.roundIndex(), 1U);
+
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 1
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.roundIndex(), 1U);
+
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 2
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 101
+              }).status,
+              BattleActionStatus::Applied);
+    EXPECT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 102
+              }).status,
+              BattleActionStatus::Applied);
+
+    EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+    EXPECT_EQ(session.roundIndex(), 2U);
+}
+
 TEST(BattleSessionTest, SnapshotTurnOrderRemainsStableWhenDefeatedActorIsSkipped) {
     auto units = makeSessionUnits();
     units[0].attack = 90;

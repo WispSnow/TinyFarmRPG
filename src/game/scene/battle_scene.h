@@ -53,7 +53,8 @@ class BattleScene final : public engine::scene::Scene {
     /// @brief 当前菜单上下文，用于区分主菜单、技能列表、道具列表和目标选择等不同输入语义。
     enum class MenuState {
         None,
-        MainMenu,
+        PartyCommand,
+        ActorCommand,
         SkillList,
         ItemList,
         TargetSelect
@@ -71,15 +72,17 @@ class BattleScene final : public engine::scene::Scene {
         bool requires_target_selection{false};
     };
 
-    /// @brief 主动作菜单单项的表现层视图模型。
+    /// @brief 战斗命令单项的表现层视图模型。
     ///
-    /// 该结构体只服务于 RmlUi 数据绑定，用于描述 Attack/Skill/Item 等顶层菜单项
+    /// 该结构体只服务于 RmlUi 数据绑定，用于描述 PartyCommand / ActorCommand 条目
     /// 的文本、顺序与可选状态。
-    struct MainActionViewModel {
-        int action_id{0};
+    struct CommandViewModel {
+        int command_id{0};
         int entry_index{0};
         Rml::String label{};
         bool enabled{false};
+
+        friend bool operator==(const CommandViewModel& lhs, const CommandViewModel& rhs) = default;
     };
 
     /// @brief 技能列表或道具列表共用的条目视图模型。
@@ -173,7 +176,7 @@ class BattleScene final : public engine::scene::Scene {
     entt::registry battle_registry_{};
     engine::system::RenderSystem battle_render_system_{};
     FlowState state_{FlowState::WaitingForInput};
-    MenuState menu_state_{MenuState::MainMenu};
+    MenuState menu_state_{MenuState::None};
     ActionDraft action_draft_{};
     std::optional<game::battle::BattleAction> pending_action_{};
     std::optional<game::battle::BattleActionResult> last_action_result_{};
@@ -181,6 +184,8 @@ class BattleScene final : public engine::scene::Scene {
     BattleDamagePopupController battle_damage_popup_controller_{};
     std::optional<game::battle::BattleUnitId> command_focus_actor_id_{};
     float command_focus_elapsed_seconds_{0.0f};
+    std::optional<std::uint32_t> party_command_accepted_round_{}; ///< 当前轮已通过 PartyCommand 时记录轮次，用于同轮后续玩家行动者跳过 Fight/Escape 询问。
+    bool actor_command_entered_via_fight_this_step_{false};       ///< 仅表示当前 ActorCommand 由 Fight 直入且尚未选择角色命令，控制取消是否回退到 PartyCommand。
     bool end_requested_{false};
     bool context_pushed_{false};
     bool input_listeners_connected_{false};
@@ -194,10 +199,10 @@ class BattleScene final : public engine::scene::Scene {
     Rml::String result_text_{"Result: Choose action"};
     bool actions_enabled_{false};
     std::string menu_status_text_{"Choose action"};
-    Rml::String back_hint_{};
     Rml::String list_empty_text_{"No entries available"};
     Rml::String target_empty_text_{"No targets available"};
-    bool main_menu_visible_{true};
+    bool party_command_visible_{false};
+    bool actor_command_visible_{false};
     bool list_menu_visible_{false};
     bool target_menu_visible_{false};
     bool list_empty_{true};
@@ -207,10 +212,12 @@ class BattleScene final : public engine::scene::Scene {
     std::vector<StateIconViewModel> party_state_icons_{};
     StateTooltipViewModel state_tooltip_{};
     int state_tooltip_entry_index_{-1};
-    std::vector<MainActionViewModel> main_actions_{};
+    std::vector<CommandViewModel> party_commands_{};
+    std::vector<CommandViewModel> actor_commands_{};
     std::vector<ListEntryViewModel> list_entries_{};
     std::vector<TargetEntryViewModel> target_entries_{};
-    int main_action_cursor_{0};
+    int party_command_cursor_{0};
+    int actor_command_cursor_{0};
     int list_entry_cursor_{-1};
     int target_entry_cursor_{-1};
 
@@ -260,10 +267,22 @@ private:
     void setMenuState(MenuState next_state);
     void syncMenuFocus();
     [[nodiscard]] bool focusElementById(std::string_view element_id);
-    void populateMainActions();
+
+    /// @brief 当前玩家行动机会是否应先显示队伍命令层。
+    [[nodiscard]] bool shouldOpenPartyCommand() const;
+
+    /// @brief 重建 Fight / Escape 队伍命令条目。
+    void populatePartyCommands();
+
+    /// @brief 重建 Attack / Skill / Guard / Item 角色命令条目。
+    void populateActorCommands();
     void populateSkillEntries(const game::battle::BattleUnit& actor);
     void populateItemEntries();
+    [[nodiscard]] const CommandViewModel* findPartyCommand(int entry_index) const;
+    [[nodiscard]] const CommandViewModel* findActorCommand(int entry_index) const;
     [[nodiscard]] const ListEntryViewModel* findListEntry(int entry_index) const;
+    [[nodiscard]] int firstEnabledPartyCommandIndex() const;
+    [[nodiscard]] int firstEnabledActorCommandIndex() const;
     [[nodiscard]] bool isSkillEntryEnabled(const game::battle::BattleUnit& actor,
                                            const game::data::SkillData& skill) const;
     [[nodiscard]] Rml::String skillSubtitle(const game::battle::BattleUnit& actor,
@@ -281,7 +300,8 @@ private:
     [[nodiscard]] MenuState menuStateForActionDraftSource() const;
     void setMenuHint(std::string_view text);
     void continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor);
-    void handleMainAction(int entry_index);
+    void handlePartyCommand(int entry_index);
+    void handleActorCommand(int entry_index);
     void handleListEntry(int entry_index);
     void handleSkillEntry(const ListEntryViewModel& entry);
     void handleItemEntry(const ListEntryViewModel& entry);
@@ -307,7 +327,6 @@ private:
     void queueItemAction();
     void queueGuardAction();
     void queueEscapeAction();
-    void queueEndTurnAction();
 
     /// @brief 获取当前行动者并写出 actor id。
     /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。

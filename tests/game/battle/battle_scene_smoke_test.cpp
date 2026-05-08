@@ -77,7 +77,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     ASSERT_FALSE(source.empty());
 
     EXPECT_NE(source.find("createModel(MODEL_NAME, &type_register_)"), std::string::npos);
-    EXPECT_NE(source.find("RegisterStruct<MainActionViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<CommandViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<ListEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TargetEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<PartyStatusViewModel>"), std::string::npos);
@@ -98,14 +98,16 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
-    EXPECT_NE(source.find("constexpr int MAIN_ACTION_COLUMNS = 2;"), std::string::npos);
+    EXPECT_NE(source.find("constexpr int PARTY_COMMAND_COLUMNS = 1;"), std::string::npos);
+    EXPECT_NE(source.find("constexpr int ACTOR_COMMAND_COLUMNS = 2;"), std::string::npos);
     EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
     EXPECT_NE(source.find("item_catalog_(session_options.item_catalog)"), std::string::npos);
     EXPECT_NE(source.find("populateSkillEntries"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::SkillList)"), std::string::npos);
     EXPECT_NE(source.find("populateItemEntries"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::ItemList)"), std::string::npos);
-    EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(MenuState::PartyCommand)"), std::string::npos);
+    EXPECT_NE(source.find("setMenuState(MenuState::ActorCommand)"), std::string::npos);
     EXPECT_NE(source.find("enemyTurnOrderIconDecorator"), std::string::npos);
     EXPECT_NE(source.find("battleEnemyIconSpriteName"), std::string::npos);
     EXPECT_NE(source.find("findEnemyIdleDownAnimation"), std::string::npos);
@@ -113,6 +115,9 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("sprite_blueprint_id_hash_"), std::string::npos);
     EXPECT_NE(source.find("turnOrderFallbackLabel(unit.side, side_index)"), std::string::npos);
     EXPECT_EQ(source.find("units_text"), std::string::npos);
+    EXPECT_EQ(source.find("RegisterStruct<MainActionViewModel>"), std::string::npos);
+    EXPECT_EQ(countOccurrences(source, "RegisterArray<decltype(party_commands_)>()"), 1U);
+    EXPECT_EQ(source.find("RegisterArray<decltype(actor_commands_)>()"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, WiresStage2SkillListToDraftSelection) {
@@ -171,6 +176,80 @@ TEST(BattleSceneSmokeTest, WiresStage4TargetSelectionAndDraftSubmit) {
     EXPECT_EQ(source.find("selectDefaultTarget("), std::string::npos);
     EXPECT_EQ(source.find("Target selection coming in Stage 4"), std::string::npos);
     EXPECT_EQ(source.find("enterTargetPlaceholder"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path session_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/battle/battle_session.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(session_header_path)) << session_header_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    const std::string session_header = readTextFile(session_header_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(session_header.empty());
+
+    EXPECT_NE(header.find("PartyCommand"), std::string::npos);
+    EXPECT_NE(header.find("ActorCommand"), std::string::npos);
+    EXPECT_NE(header.find("party_command_accepted_round_"), std::string::npos);
+    EXPECT_NE(header.find("actor_command_entered_via_fight_this_step_"), std::string::npos);
+    EXPECT_NE(session_header.find("roundIndex() const"), std::string::npos);
+    EXPECT_NE(source.find("enum class PartyCommandId"), std::string::npos);
+    EXPECT_NE(source.find("enum class ActorCommandId"), std::string::npos);
+    EXPECT_NE(source.find("populatePartyCommands"), std::string::npos);
+    EXPECT_NE(source.find("populateActorCommands"), std::string::npos);
+    EXPECT_NE(source.find("shouldOpenPartyCommand"), std::string::npos);
+    EXPECT_NE(source.find("party_command_accepted_round_ != session_.roundIndex()"), std::string::npos);
+
+    const std::string party_block = snippetFrom(source, "void BattleScene::populatePartyCommands()", 800U);
+    ASSERT_FALSE(party_block.empty());
+    EXPECT_NE(party_block.find("PartyCommandId::Fight"), std::string::npos);
+    EXPECT_NE(party_block.find("PartyCommandId::Escape"), std::string::npos);
+
+    const std::string actor_block = snippetFrom(source, "void BattleScene::populateActorCommands()", 900U);
+    ASSERT_FALSE(actor_block.empty());
+    EXPECT_NE(actor_block.find("ActorCommandId::Attack"), std::string::npos);
+    EXPECT_NE(actor_block.find("ActorCommandId::Skill"), std::string::npos);
+    EXPECT_NE(actor_block.find("ActorCommandId::Guard"), std::string::npos);
+    EXPECT_NE(actor_block.find("ActorCommandId::Item"), std::string::npos);
+    EXPECT_EQ(actor_block.find("Escape"), std::string::npos);
+    EXPECT_EQ(actor_block.find("EndTurn"), std::string::npos);
+
+    const std::string fight_case = snippetFrom(source, "case PartyCommandId::Fight:");
+    ASSERT_FALSE(fight_case.empty());
+    EXPECT_NE(fight_case.find("party_command_accepted_round_ = session_.roundIndex();"), std::string::npos);
+    EXPECT_NE(fight_case.find("actor_command_entered_via_fight_this_step_ = true;"), std::string::npos);
+    EXPECT_NE(fight_case.find("setMenuState(MenuState::ActorCommand)"), std::string::npos);
+
+    const std::string escape_case = snippetFrom(source, "case PartyCommandId::Escape:");
+    ASSERT_FALSE(escape_case.empty());
+    EXPECT_NE(escape_case.find("queueEscapeAction();"), std::string::npos);
+    EXPECT_EQ(escape_case.find("party_command_accepted_round_ ="), std::string::npos);
+
+    const std::string cancel_block = snippetFrom(source, "bool BattleScene::onMenuCancelPressed()", 1400U);
+    ASSERT_FALSE(cancel_block.empty());
+    EXPECT_NE(cancel_block.find("case MenuState::SkillList:"), std::string::npos);
+    EXPECT_NE(cancel_block.find("case MenuState::ItemList:"), std::string::npos);
+    EXPECT_NE(cancel_block.find("actor_command_entered_via_fight_this_step_ = false;"), std::string::npos);
+    EXPECT_NE(cancel_block.find("setMenuState(MenuState::ActorCommand)"), std::string::npos);
+    EXPECT_NE(cancel_block.find("case MenuState::ActorCommand:"), std::string::npos);
+    EXPECT_NE(cancel_block.find("if (actor_command_entered_via_fight_this_step_)"), std::string::npos);
+    EXPECT_NE(cancel_block.find("party_command_accepted_round_.reset();"), std::string::npos);
+    EXPECT_NE(cancel_block.find("setMenuState(MenuState::PartyCommand)"), std::string::npos);
+    EXPECT_EQ(source.find("MenuState::MainMenu"), std::string::npos);
+    EXPECT_EQ(source.find("queueEndTurnAction"), std::string::npos);
+
+    EXPECT_EQ(source.find("back_hint_"), std::string::npos);
+    EXPECT_EQ(source.find("Cancel: Stay"), std::string::npos);
+    EXPECT_EQ(source.find("Cancel: Party"), std::string::npos);
+    EXPECT_EQ(source.find("Cancel: Back"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RoutesEnemyTurnsWithoutFallingBackToPlayerMenu) {
@@ -507,8 +586,16 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_EQ(rml.find("member.portrait_tori"), std::string::npos);
     EXPECT_EQ(rml.find("battle-menu-title"), std::string::npos);
     EXPECT_EQ(rml.find("battle-menu-hint"), std::string::npos);
-    EXPECT_NE(rml.find("data-for=\"action : main_actions\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"main_action_select(action.entry_index)\""), std::string::npos);
+    EXPECT_EQ(rml.find("battle-back-hint"), std::string::npos);
+    EXPECT_EQ(rml.find("back_hint"), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-party-command\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"party_command_visible\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"command : party_commands\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"party_command_select(command.entry_index)\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-actor-command\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"actor_command_visible\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"command : actor_commands\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"actor_command_select(command.entry_index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"list_menu_visible\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : list_entries\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"target_menu_visible\""), std::string::npos);
@@ -517,6 +604,8 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("data-class-is-ally=\"target.is_ally\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-is-dead=\"target.is_dead\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-disabled=\"!target.enabled\""), std::string::npos);
+    EXPECT_EQ(rml.find("data-for=\"action : main_actions\""), std::string::npos);
+    EXPECT_EQ(rml.find("data-event-click=\"main_action_select(action.entry_index)\""), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
@@ -563,8 +652,15 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_EQ(rcss.find("width: 302dp"), std::string::npos);
     EXPECT_EQ(rcss.find("#battle-menu-title"), std::string::npos);
     EXPECT_EQ(rcss.find("#battle-menu-hint"), std::string::npos);
+    EXPECT_EQ(rcss.find("#battle-back-hint"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-list-entry.disabled"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-text-button"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-party-command"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-actor-command"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-party-command-button"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-actor-command-button"), std::string::npos);
+    EXPECT_EQ(rcss.find("#battle-main-actions"), std::string::npos);
+    EXPECT_EQ(rcss.find(".battle-action-button"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-hp-fill"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-mp-fill"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-state-icon-row"), std::string::npos);

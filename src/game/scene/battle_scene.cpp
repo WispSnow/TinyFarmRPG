@@ -51,7 +51,8 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
-constexpr int MAIN_ACTION_COLUMNS = 2;
+constexpr int PARTY_COMMAND_COLUMNS = 1;
+constexpr int ACTOR_COMMAND_COLUMNS = 2;
 constexpr float BATTLEFIELD_HEIGHT = 256.0f;
 constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
@@ -65,13 +66,16 @@ constexpr int DAMAGE_POPUP_FONT_SIZE_PX = 20;
 constexpr float HP_BAR_WARNING_RATIO = 0.50F;
 constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 
-enum class MainActionId : int {
+enum class PartyCommandId : int {
+    Fight = 1,
+    Escape = 2
+};
+
+enum class ActorCommandId : int {
     Attack = 1,
     Skill = 2,
-    Item = 3,
-    Guard = 4,
-    Escape = 5,
-    EndTurn = 6
+    Guard = 3,
+    Item = 4
 };
 
 struct BattleSpriteComponent {
@@ -670,15 +674,16 @@ bool BattleScene::initUI() {
         return false;
     }
 
-    populateMainActions();
+    populatePartyCommands();
+    populateActorCommands();
 
     if (!constructor.Bind("turn_text", &turn_text_) ||
         !constructor.Bind("result_text", &result_text_) ||
         !constructor.Bind("actions_enabled", &actions_enabled_) ||
-        !constructor.Bind("back_hint", &back_hint_) ||
         !constructor.Bind("list_empty_text", &list_empty_text_) ||
         !constructor.Bind("target_empty_text", &target_empty_text_) ||
-        !constructor.Bind("main_menu_visible", &main_menu_visible_) ||
+        !constructor.Bind("party_command_visible", &party_command_visible_) ||
+        !constructor.Bind("actor_command_visible", &actor_command_visible_) ||
         !constructor.Bind("list_menu_visible", &list_menu_visible_) ||
         !constructor.Bind("target_menu_visible", &target_menu_visible_) ||
         !constructor.Bind("list_empty", &list_empty_) ||
@@ -687,7 +692,8 @@ bool BattleScene::initUI() {
         !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("party_state_icons", &party_state_icons_) ||
         !constructor.Bind("state_tooltip", &state_tooltip_) ||
-        !constructor.Bind("main_actions", &main_actions_) ||
+        !constructor.Bind("party_commands", &party_commands_) ||
+        !constructor.Bind("actor_commands", &actor_commands_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
         !constructor.Bind("target_entries", &target_entries_)) {
         spdlog::error("BattleScene: 绑定 data model 变量失败。");
@@ -697,9 +703,15 @@ bool BattleScene::initUI() {
 
     if (!document_controller_.bindEvent(
             constructor,
-            "main_action_select",
+            "party_command_select",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
-                handleMainAction(getSingleIntArgument(arguments));
+                handlePartyCommand(getSingleIntArgument(arguments));
+            }) ||
+        !document_controller_.bindEvent(
+            constructor,
+            "actor_command_select",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
+                handleActorCommand(getSingleIntArgument(arguments));
             }) ||
         !document_controller_.bindEvent(
             constructor,
@@ -756,11 +768,11 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return true;
     }
 
-    if (auto action_handle = constructor.RegisterStruct<MainActionViewModel>()) {
-        action_handle.RegisterMember("action_id", &MainActionViewModel::action_id);
-        action_handle.RegisterMember("entry_index", &MainActionViewModel::entry_index);
-        action_handle.RegisterMember("label", &MainActionViewModel::label);
-        action_handle.RegisterMember("enabled", &MainActionViewModel::enabled);
+    if (auto command_handle = constructor.RegisterStruct<CommandViewModel>()) {
+        command_handle.RegisterMember("command_id", &CommandViewModel::command_id);
+        command_handle.RegisterMember("entry_index", &CommandViewModel::entry_index);
+        command_handle.RegisterMember("label", &CommandViewModel::label);
+        command_handle.RegisterMember("enabled", &CommandViewModel::enabled);
     } else {
         return false;
     }
@@ -839,7 +851,7 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
-    if (!constructor.RegisterArray<decltype(main_actions_)>() ||
+    if (!constructor.RegisterArray<decltype(party_commands_)>() ||
         !constructor.RegisterArray<decltype(list_entries_)>() ||
         !constructor.RegisterArray<decltype(target_entries_)>() ||
         !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
@@ -1215,49 +1227,61 @@ void BattleScene::hideStateTooltip() {
 
 void BattleScene::refreshMenuEnabledState(bool enabled) {
     bool changed = false;
-    for (auto& action : main_actions_) {
-        if (action.enabled == enabled) {
-            continue;
+    for (auto& command : party_commands_) {
+        if (command.enabled != enabled) {
+            command.enabled = enabled;
+            changed = true;
         }
-
-        action.enabled = enabled;
-        changed = true;
+    }
+    for (auto& command : actor_commands_) {
+        if (command.enabled != enabled) {
+            command.enabled = enabled;
+            changed = true;
+        }
     }
 
     if (changed) {
-        document_controller_.markDirty("main_actions");
+        document_controller_.markDirty("party_commands");
+        document_controller_.markDirty("actor_commands");
         menu_focus_dirty_ = true;
     }
 }
 
 void BattleScene::markMenuDirty() {
     document_controller_.markDirty("result_text");
-    document_controller_.markDirty("back_hint");
     document_controller_.markDirty("list_empty_text");
     document_controller_.markDirty("target_empty_text");
-    document_controller_.markDirty("main_menu_visible");
+    document_controller_.markDirty("party_command_visible");
+    document_controller_.markDirty("actor_command_visible");
     document_controller_.markDirty("list_menu_visible");
     document_controller_.markDirty("target_menu_visible");
     document_controller_.markDirty("list_empty");
     document_controller_.markDirty("target_empty");
-    document_controller_.markDirty("main_actions");
+    document_controller_.markDirty("party_commands");
+    document_controller_.markDirty("actor_commands");
     document_controller_.markDirty("list_entries");
     document_controller_.markDirty("target_entries");
 }
 
 void BattleScene::enterInputMenu() {
     action_draft_ = {};
-    setMenuState(MenuState::MainMenu);
+    if (shouldOpenPartyCommand()) {
+        setMenuState(MenuState::PartyCommand);
+    } else {
+        setMenuState(MenuState::ActorCommand);
+    }
 }
 
 void BattleScene::leaveInputMenu() {
     action_draft_ = {};
+    actor_command_entered_via_fight_this_step_ = false;
     setMenuState(MenuState::None);
 }
 
 void BattleScene::setMenuState(MenuState next_state) {
     menu_state_ = next_state;
-    main_menu_visible_ = next_state == MenuState::MainMenu;
+    party_command_visible_ = next_state == MenuState::PartyCommand;
+    actor_command_visible_ = next_state == MenuState::ActorCommand;
     list_menu_visible_ = next_state == MenuState::SkillList || next_state == MenuState::ItemList;
     target_menu_visible_ = next_state == MenuState::TargetSelect;
     list_empty_ = list_entries_.empty();
@@ -1266,30 +1290,31 @@ void BattleScene::setMenuState(MenuState next_state) {
     switch (next_state) {
         case MenuState::None:
             menu_status_text_ = "Choose action";
-            back_hint_ = "";
             break;
-        case MenuState::MainMenu:
+        case MenuState::PartyCommand:
             menu_status_text_ = "Choose action";
-            back_hint_ = "";
-            main_action_cursor_ = main_actions_.empty()
+            party_command_cursor_ = party_commands_.empty()
                 ? -1
-                : std::clamp(main_action_cursor_, 0, static_cast<int>(main_actions_.size()) - 1);
+                : std::clamp(party_command_cursor_, 0, static_cast<int>(party_commands_.size()) - 1);
+            break;
+        case MenuState::ActorCommand:
+            menu_status_text_ = "Choose action";
+            actor_command_cursor_ = actor_commands_.empty()
+                ? -1
+                : std::clamp(actor_command_cursor_, 0, static_cast<int>(actor_commands_.size()) - 1);
             break;
         case MenuState::SkillList:
             menu_status_text_ = "Choose a skill";
-            back_hint_ = "Cancel: Back";
             list_empty_text_ = "No skills available";
             list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
             break;
         case MenuState::ItemList:
             menu_status_text_ = "Choose an item";
-            back_hint_ = "Cancel: Back";
             list_empty_text_ = "No battle items available";
             list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
             break;
         case MenuState::TargetSelect:
             menu_status_text_ = "Choose a target";
-            back_hint_ = "Cancel: Back";
             target_empty_text_ = "No targets available";
             target_entry_cursor_ = target_entries_.empty() ? -1 : std::clamp(target_entry_cursor_, 0, static_cast<int>(target_entries_.size()) - 1);
             break;
@@ -1312,9 +1337,13 @@ void BattleScene::syncMenuFocus() {
         case MenuState::None:
             menu_focus_dirty_ = false;
             return;
-        case MenuState::MainMenu:
-            cursor = main_action_cursor_;
-            prefix = "battle-main-action-";
+        case MenuState::PartyCommand:
+            cursor = party_command_cursor_;
+            prefix = "battle-party-command-";
+            break;
+        case MenuState::ActorCommand:
+            cursor = actor_command_cursor_;
+            prefix = "battle-actor-command-";
             break;
         case MenuState::SkillList:
         case MenuState::ItemList:
@@ -1350,16 +1379,24 @@ bool BattleScene::focusElementById(std::string_view element_id) {
     return true;
 }
 
-void BattleScene::populateMainActions() {
+void BattleScene::populatePartyCommands() {
     const bool enabled = actions_enabled_;
-    main_actions_ = {
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::Attack), .entry_index = 0, .label = "Attack", .enabled = enabled},
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::Skill), .entry_index = 1, .label = "Skill", .enabled = enabled},
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::Item), .entry_index = 2, .label = "Item", .enabled = enabled},
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::Guard), .entry_index = 3, .label = "Guard", .enabled = enabled},
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::Escape), .entry_index = 4, .label = "Escape", .enabled = enabled},
-        MainActionViewModel{.action_id = static_cast<int>(MainActionId::EndTurn), .entry_index = 5, .label = "End Turn", .enabled = enabled},
+    party_commands_ = {
+        CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Fight), .entry_index = 0, .label = "Fight", .enabled = enabled},
+        CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Escape), .entry_index = 1, .label = "Escape", .enabled = enabled},
     };
+    party_command_cursor_ = firstEnabledPartyCommandIndex();
+}
+
+void BattleScene::populateActorCommands() {
+    const bool enabled = actions_enabled_;
+    actor_commands_ = {
+        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Attack), .entry_index = 0, .label = "Attack", .enabled = enabled},
+        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Skill), .entry_index = 1, .label = "Skill", .enabled = enabled},
+        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Guard), .entry_index = 2, .label = "Guard", .enabled = enabled},
+        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Item), .entry_index = 3, .label = "Item", .enabled = enabled},
+    };
+    actor_command_cursor_ = firstEnabledActorCommandIndex();
 }
 
 void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
@@ -1583,9 +1620,9 @@ BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
         case game::battle::BattleActionType::Guard:
         case game::battle::BattleActionType::Escape:
         case game::battle::BattleActionType::EndTurn:
-            return MenuState::MainMenu;
+            return MenuState::ActorCommand;
     }
-    return MenuState::MainMenu;
+    return MenuState::ActorCommand;
 }
 
 void BattleScene::setMenuHint(std::string_view text) {
@@ -1614,37 +1651,122 @@ void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const
     }
 }
 
-void BattleScene::handleMainAction(int entry_index) {
-    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(main_actions_.size())) {
+bool BattleScene::shouldOpenPartyCommand() const {
+    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+        return false;
+    }
+
+    const auto actor_id = session_.currentActorId();
+    if (!actor_id) {
+        return false;
+    }
+
+    const auto* actor = session_.findUnit(*actor_id);
+    if (!actor || actor->side != game::battle::BattleSide::Player || !actor->isAlive()) {
+        return false;
+    }
+
+    return party_command_accepted_round_ != session_.roundIndex();
+}
+
+const BattleScene::CommandViewModel* BattleScene::findPartyCommand(int entry_index) const {
+    const auto it = std::find_if(
+        party_commands_.begin(),
+        party_commands_.end(),
+        [entry_index](const CommandViewModel& command) {
+            return command.entry_index == entry_index;
+        });
+    return it == party_commands_.end() ? nullptr : &*it;
+}
+
+const BattleScene::CommandViewModel* BattleScene::findActorCommand(int entry_index) const {
+    const auto it = std::find_if(
+        actor_commands_.begin(),
+        actor_commands_.end(),
+        [entry_index](const CommandViewModel& command) {
+            return command.entry_index == entry_index;
+        });
+    return it == actor_commands_.end() ? nullptr : &*it;
+}
+
+int BattleScene::firstEnabledPartyCommandIndex() const {
+    for (const auto& command : party_commands_) {
+        if (command.enabled) {
+            return command.entry_index;
+        }
+    }
+    return party_commands_.empty() ? -1 : party_commands_.front().entry_index;
+}
+
+int BattleScene::firstEnabledActorCommandIndex() const {
+    for (const auto& command : actor_commands_) {
+        if (command.enabled) {
+            return command.entry_index;
+        }
+    }
+    return actor_commands_.empty() ? -1 : actor_commands_.front().entry_index;
+}
+
+void BattleScene::handlePartyCommand(int entry_index) {
+    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(party_commands_.size())) {
         return;
     }
 
-    main_action_cursor_ = entry_index;
+    const auto* command = findPartyCommand(entry_index);
+    if (!command) {
+        return;
+    }
+
+    party_command_cursor_ = command->entry_index;
     menu_focus_dirty_ = true;
-    const auto& action = main_actions_[entry_index];
-    if (!action.enabled) {
+    if (!command->enabled) {
         return;
     }
 
-    switch (static_cast<MainActionId>(action.action_id)) {
-        case MainActionId::Attack:
-            queueAttackAction();
-            break;
-        case MainActionId::Skill:
-            queueSkillAction();
-            break;
-        case MainActionId::Item:
-            queueItemAction();
-            break;
-        case MainActionId::Guard:
-            queueGuardAction();
-            break;
-        case MainActionId::Escape:
+    switch (static_cast<PartyCommandId>(command->command_id)) {
+        case PartyCommandId::Fight:
+            party_command_accepted_round_ = session_.roundIndex();
+            actor_command_entered_via_fight_this_step_ = true;
+            setMenuState(MenuState::ActorCommand);
+            return;
+        case PartyCommandId::Escape:
+            actor_command_entered_via_fight_this_step_ = false;
             queueEscapeAction();
-            break;
-        case MainActionId::EndTurn:
-            queueEndTurnAction();
-            break;
+            return;
+    }
+}
+
+void BattleScene::handleActorCommand(int entry_index) {
+    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(actor_commands_.size())) {
+        return;
+    }
+
+    const auto* command = findActorCommand(entry_index);
+    if (!command) {
+        return;
+    }
+
+    actor_command_cursor_ = command->entry_index;
+    menu_focus_dirty_ = true;
+    if (!command->enabled) {
+        return;
+    }
+
+    actor_command_entered_via_fight_this_step_ = false;
+
+    switch (static_cast<ActorCommandId>(command->command_id)) {
+        case ActorCommandId::Attack:
+            queueAttackAction();
+            return;
+        case ActorCommandId::Skill:
+            queueSkillAction();
+            return;
+        case ActorCommandId::Guard:
+            queueGuardAction();
+            return;
+        case ActorCommandId::Item:
+            queueItemAction();
+            return;
     }
 }
 
@@ -1664,6 +1786,7 @@ void BattleScene::handleListEntry(int entry_index) {
         return;
     }
 
+    actor_command_entered_via_fight_this_step_ = false;
     if (menu_state_ == MenuState::SkillList) {
         handleSkillEntry(*entry);
     } else if (menu_state_ == MenuState::ItemList) {
@@ -1730,6 +1853,7 @@ void BattleScene::handleTargetEntry(int entry_index) {
         return;
     }
 
+    actor_command_entered_via_fight_this_step_ = false;
     action_draft_.selected_target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
     (void)submitDraftAction();
 }
@@ -1776,6 +1900,8 @@ bool BattleScene::submitDraftAction() {
         setMenuHint("Action is no longer available.");
         return false;
     }
+
+    actor_command_entered_via_fight_this_step_ = false;
 
     if (action_draft_.requires_target_selection && !action_draft_.selected_target_id) {
         setMenuHint("Choose a target.");
@@ -1847,14 +1973,28 @@ bool BattleScene::moveMenuCursor(int delta) {
     }
 
     switch (menu_state_) {
-        case MenuState::MainMenu: {
+        case MenuState::PartyCommand: {
             std::vector<bool> enabled_entries;
-            enabled_entries.reserve(main_actions_.size());
-            for (const auto& action : main_actions_) {
-                enabled_entries.push_back(action.enabled);
+            enabled_entries.reserve(party_commands_.size());
+            for (const auto& command : party_commands_) {
+                enabled_entries.push_back(command.enabled);
             }
 
-            if (!moveCursorInEntries(main_action_cursor_, static_cast<int>(main_actions_.size()), delta, enabled_entries)) {
+            if (!moveCursorInEntries(party_command_cursor_, static_cast<int>(party_commands_.size()), delta, enabled_entries)) {
+                return false;
+            }
+            menu_focus_dirty_ = true;
+            syncMenuFocus();
+            return true;
+        }
+        case MenuState::ActorCommand: {
+            std::vector<bool> enabled_entries;
+            enabled_entries.reserve(actor_commands_.size());
+            for (const auto& command : actor_commands_) {
+                enabled_entries.push_back(command.enabled);
+            }
+
+            if (!moveCursorInEntries(actor_command_cursor_, static_cast<int>(actor_commands_.size()), delta, enabled_entries)) {
                 return false;
             }
             menu_focus_dirty_ = true;
@@ -1921,12 +2061,16 @@ bool BattleScene::moveCursorInEntries(int& cursor, int count, int step, const st
 }
 
 bool BattleScene::onMenuUpPressed() {
-    const bool moved = moveMenuCursor(menu_state_ == MenuState::MainMenu ? -MAIN_ACTION_COLUMNS : -1);
+    const bool moved =
+        moveMenuCursor(menu_state_ == MenuState::ActorCommand ? -ACTOR_COMMAND_COLUMNS :
+                       menu_state_ == MenuState::PartyCommand ? -PARTY_COMMAND_COLUMNS : -1);
     return moved || menu_state_ != MenuState::None;
 }
 
 bool BattleScene::onMenuDownPressed() {
-    const bool moved = moveMenuCursor(menu_state_ == MenuState::MainMenu ? MAIN_ACTION_COLUMNS : 1);
+    const bool moved =
+        moveMenuCursor(menu_state_ == MenuState::ActorCommand ? ACTOR_COMMAND_COLUMNS :
+                       menu_state_ == MenuState::PartyCommand ? PARTY_COMMAND_COLUMNS : 1);
     return moved || menu_state_ != MenuState::None;
 }
 
@@ -1946,8 +2090,11 @@ bool BattleScene::onMenuConfirmPressed() {
     }
 
     switch (menu_state_) {
-        case MenuState::MainMenu:
-            handleMainAction(main_action_cursor_);
+        case MenuState::PartyCommand:
+            handlePartyCommand(party_command_cursor_);
+            return true;
+        case MenuState::ActorCommand:
+            handleActorCommand(actor_command_cursor_);
             return true;
         case MenuState::SkillList:
         case MenuState::ItemList:
@@ -1974,9 +2121,17 @@ bool BattleScene::onMenuCancelPressed() {
         case MenuState::SkillList:
         case MenuState::ItemList:
             action_draft_ = {};
-            setMenuState(MenuState::MainMenu);
+            actor_command_entered_via_fight_this_step_ = false;
+            setMenuState(MenuState::ActorCommand);
             return true;
-        case MenuState::MainMenu:
+        case MenuState::ActorCommand:
+            if (actor_command_entered_via_fight_this_step_) {
+                actor_command_entered_via_fight_this_step_ = false;
+                party_command_accepted_round_.reset();
+                setMenuState(MenuState::PartyCommand);
+            }
+            return true;
+        case MenuState::PartyCommand:
             return true;
         case MenuState::None:
             return false;
@@ -2047,19 +2202,6 @@ void BattleScene::queueEscapeAction() {
 
     submitAction(game::battle::BattleAction{
         .type = game::battle::BattleActionType::Escape,
-        .actor_id = actor_id,
-        .target_id = std::nullopt
-    });
-}
-
-void BattleScene::queueEndTurnAction() {
-    game::battle::BattleUnitId actor_id = 0;
-    if (!prepareActionActor(actor_id)) {
-        return;
-    }
-
-    submitAction(game::battle::BattleAction{
-        .type = game::battle::BattleActionType::EndTurn,
         .actor_id = actor_id,
         .target_id = std::nullopt
     });

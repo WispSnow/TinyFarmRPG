@@ -205,7 +205,7 @@ bool actor_command_entered_via_fight_this_step_{false};
 
 - PartyCommand button：`168dp x 22dp`，纵向 `gap: 4dp`。
 - ActorCommand button：`82dp x 18dp`，两列 `gap: 4dp`。
-- `#battle-back-hint` 继续放底部，PartyCommand 下为空，ActorCommand 可在可返回队伍命令时显示 `Cancel: Party`。
+- 不在命令窗内显示 `Cancel: Back / Party` 之类的帮助文字；取消/返回沿用 RPG Maker 式约定输入，把有限高度留给命令和列表项。
 
 ## 输入规则
 
@@ -324,37 +324,37 @@ bool actor_command_entered_via_fight_this_step_{false};
 
 ## 待办清单
 
-- [ ] `BattleSession` 增加 `roundIndex()` const 访问器。
-- [ ] `BattleScene::MenuState` 拆分为 `PartyCommand` 和 `ActorCommand`。
-- [ ] 新增 `PartyCommandId` 和 `ActorCommandId`。
-- [ ] 新增或重命名为 `CommandViewModel`。
-- [ ] 新增 `party_commands_ / actor_commands_`。
-- [ ] 新增 `party_command_cursor_ / actor_command_cursor_`。
-- [ ] 新增 `party_command_accepted_round_`。
-- [ ] 新增 `actor_command_entered_via_fight_this_step_`。
-- [ ] 实现 `shouldOpenPartyCommand()`。
-- [ ] 实现 `populatePartyCommands()`。
-- [ ] 实现 `populateActorCommands()`。
-- [ ] 将 `enterInputMenu()` 改为选择 PartyCommand 或 ActorCommand。
-- [ ] 拆分 `handleMainAction()` 为 `handlePartyCommand()` 和 `handleActorCommand()`。
-- [ ] `handlePartyCommand(Escape)` 不设置 `party_command_accepted_round_`。
-- [ ] `handleActorCommand()` 在进入具体动作分支前清除 `actor_command_entered_via_fight_this_step_`。
-- [ ] 确保 `queueEscapeAction()` 只从 PartyCommand 调用。
-- [ ] 从玩家命令 UI 删除 `End Turn`。
-- [ ] grep `BattleActionType::EndTurn`，确认领域层 fallback / 测试 / 调试路径仍闭合。
-- [ ] 更新 `menuStateForActionDraftSource()` 返回 `ActorCommand`。
-- [ ] 更新 `onMenuCancelPressed()` 的返回链路。
-- [ ] 更新 `moveMenuCursor()` 的 PartyCommand 一维导航和 ActorCommand 二维导航。
-- [ ] 更新 `syncMenuFocus()` 的 element id prefix。
-- [ ] 更新 RmlUi data model 注册和绑定。
-- [ ] 更新 `battle.rml` 的命令容器。
-- [ ] 更新 `battle.rcss` 的 PartyCommand / ActorCommand 布局。
-- [ ] 确保新增命令按钮带 `tf-nav-auto`。
-- [ ] 更新 `BattleSceneSmokeTest`。
-- [ ] 更新 `BattleSessionTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行相关 gtest filter。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] `BattleSession` 增加 `roundIndex()` const 访问器。
+- [x] `BattleScene::MenuState` 拆分为 `PartyCommand` 和 `ActorCommand`。
+- [x] 新增 `PartyCommandId` 和 `ActorCommandId`。
+- [x] 新增或重命名为 `CommandViewModel`。
+- [x] 新增 `party_commands_ / actor_commands_`。
+- [x] 新增 `party_command_cursor_ / actor_command_cursor_`。
+- [x] 新增 `party_command_accepted_round_`。
+- [x] 新增 `actor_command_entered_via_fight_this_step_`。
+- [x] 实现 `shouldOpenPartyCommand()`。
+- [x] 实现 `populatePartyCommands()`。
+- [x] 实现 `populateActorCommands()`。
+- [x] 将 `enterInputMenu()` 改为选择 PartyCommand 或 ActorCommand。
+- [x] 拆分 `handleMainAction()` 为 `handlePartyCommand()` 和 `handleActorCommand()`。
+- [x] `handlePartyCommand(Escape)` 不设置 `party_command_accepted_round_`。
+- [x] `handleActorCommand()` 在进入具体动作分支前清除 `actor_command_entered_via_fight_this_step_`。
+- [x] 确保 `queueEscapeAction()` 只从 PartyCommand 调用。
+- [x] 从玩家命令 UI 删除 `End Turn`。
+- [x] grep `BattleActionType::EndTurn`，确认领域层 fallback / 测试 / 调试路径仍闭合。
+- [x] 更新 `menuStateForActionDraftSource()` 返回 `ActorCommand`。
+- [x] 更新 `onMenuCancelPressed()` 的返回链路。
+- [x] 更新 `moveMenuCursor()` 的 PartyCommand 一维导航和 ActorCommand 二维导航。
+- [x] 更新 `syncMenuFocus()` 的 element id prefix。
+- [x] 更新 RmlUi data model 注册和绑定。
+- [x] 更新 `battle.rml` 的命令容器。
+- [x] 更新 `battle.rcss` 的 PartyCommand / ActorCommand 布局。
+- [x] 确保新增命令按钮带 `tf-nav-auto`。
+- [x] 更新 `BattleSceneSmokeTest`。
+- [x] 更新 `BattleSessionTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行相关 gtest filter。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动验证 battle tester 命令层级和取消链路。
 
 ## 风险与边界
