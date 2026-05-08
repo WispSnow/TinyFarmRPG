@@ -34,6 +34,7 @@ class BattleSession final {
     TurnCore turn_core_;                         ///< 纯领域回合核心，负责行动顺序与胜负判定。
     BattleActionResolver resolver_{};            ///< 动作结算器，负责具体行动校验、公式和目录数据应用。
     BattleRuntimeState runtime_state_{};         ///< 战斗会话内的临时运行时状态。
+    std::vector<BattleUnitStateSnapshot> active_unit_states_{}; ///< 缓存后的存活单位状态快照。
 
 public:
     /// @brief 构造战斗会话。
@@ -53,6 +54,9 @@ public:
     /// @brief 返回战斗内剩余道具库存；该库存是进入战斗时复制出的运行时副本。
     [[nodiscard]] const std::unordered_map<entt::id_type, int>& itemStocks() const { return runtime_state_.item_stocks; }
 
+    /// @brief 返回缓存后的存活单位状态列表，仅在行动提交后重建。
+    [[nodiscard]] const std::vector<BattleUnitStateSnapshot>& activeUnitStates() const { return active_unit_states_; }
+
     /// @brief 生成当前完整战斗快照。
     [[nodiscard]] BattleSnapshot snapshot() const;
 
@@ -62,6 +66,9 @@ public:
     [[nodiscard]] BattleActionResult submitAction(const BattleAction& action);
 
 private:
+    /// @brief 根据当前 runtime state 重建状态 HUD 使用的缓存。
+    void rebuildActiveUnitStates();
+
     /// @brief 将最新快照和结果写回 BattleActionResult。
     void fillSnapshot(BattleActionResult& result) const;
 };

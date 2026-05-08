@@ -273,6 +273,111 @@ TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
 }
 
+TEST(BattleSessionTest, SnapshotIncludesActiveStatesSortedByPriority) {
+    const auto fixture = testdata::createCatalogFixture("battle_session_state_snapshot_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+    ASSERT_TRUE(rpg_catalog.loadStates(fixture.states.string()));
+
+    BattleSessionOptions options{};
+    options.rpg_catalog = &rpg_catalog;
+    BattleSession session(makeSessionUnits(), std::move(options));
+
+    const BattleActionResult result = session.submitAction(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .target_id = 101,
+        .skill_id = "skill.multi_state"
+    });
+    ASSERT_EQ(result.status, BattleActionStatus::Applied);
+
+    const BattleSnapshot& snapshot = result.snapshot;
+    ASSERT_EQ(snapshot.unit_states.size(), 1U);
+    EXPECT_EQ(snapshot.unit_states[0].unit_id, BattleUnitId{101});
+    ASSERT_EQ(snapshot.unit_states[0].states.size(), 3U);
+    EXPECT_EQ(snapshot.unit_states[0].states[0].state_id, "state.stun");
+    EXPECT_EQ(snapshot.unit_states[0].states[0].turns_left, 1);
+    EXPECT_EQ(snapshot.unit_states[0].states[1].state_id, "state.bleed");
+    EXPECT_EQ(snapshot.unit_states[0].states[1].turns_left, 3);
+    EXPECT_EQ(snapshot.unit_states[0].states[2].state_id, "state.burn");
+    EXPECT_EQ(snapshot.unit_states[0].states[2].turns_left, 2);
+}
+
+TEST(BattleSessionTest, SnapshotActiveStatesDecrementAndExpireAcrossRounds) {
+    const auto fixture = testdata::createCatalogFixture("battle_session_state_expire_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+    ASSERT_TRUE(rpg_catalog.loadStates(fixture.states.string()));
+
+    BattleSessionOptions options{};
+    options.rpg_catalog = &rpg_catalog;
+    BattleSession session(makeSessionUnits(), std::move(options));
+
+    ASSERT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::Skill,
+                  .actor_id = 1,
+                  .target_id = 101,
+                  .skill_id = "skill.multi_state"
+              }).status,
+              BattleActionStatus::Applied);
+    ASSERT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 2
+              }).status,
+              BattleActionStatus::Applied);
+    ASSERT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::EndTurn,
+                  .actor_id = 101
+              }).status,
+              BattleActionStatus::Applied);
+    const BattleActionResult round_end = session.submitAction(BattleAction{
+        .type = BattleActionType::EndTurn,
+        .actor_id = 102
+    });
+    ASSERT_EQ(round_end.status, BattleActionStatus::Applied);
+
+    ASSERT_EQ(round_end.snapshot.unit_states.size(), 1U);
+    EXPECT_EQ(round_end.snapshot.unit_states[0].unit_id, BattleUnitId{101});
+    ASSERT_EQ(round_end.snapshot.unit_states[0].states.size(), 2U);
+    EXPECT_EQ(round_end.snapshot.unit_states[0].states[0].state_id, "state.bleed");
+    EXPECT_EQ(round_end.snapshot.unit_states[0].states[0].turns_left, 2);
+    EXPECT_EQ(round_end.snapshot.unit_states[0].states[1].state_id, "state.burn");
+    EXPECT_EQ(round_end.snapshot.unit_states[0].states[1].turns_left, 1);
+}
+
+TEST(BattleSessionTest, SnapshotSkipsStatesForDefeatedUnits) {
+    const auto fixture = testdata::createCatalogFixture("battle_session_ko_state_snapshot_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+    ASSERT_TRUE(rpg_catalog.loadStates(fixture.states.string()));
+
+    BattleSessionOptions options{};
+    options.rpg_catalog = &rpg_catalog;
+    auto units = makeSessionUnits();
+    units[1].attack = 90;
+    BattleSession session(std::move(units), std::move(options));
+
+    ASSERT_EQ(session.submitAction(BattleAction{
+                  .type = BattleActionType::Skill,
+                  .actor_id = 1,
+                  .target_id = 101,
+                  .skill_id = "skill.multi_state"
+              }).status,
+              BattleActionStatus::Applied);
+
+    const BattleActionResult defeat_result = session.submitAction(BattleAction{
+        .type = BattleActionType::Attack,
+        .actor_id = 2,
+        .target_id = 101
+    });
+    EXPECT_EQ(defeat_result.status, BattleActionStatus::Applied);
+    EXPECT_TRUE(defeat_result.target_defeated);
+    EXPECT_TRUE(defeat_result.snapshot.unit_states.empty());
+}
+
 TEST(BattleSessionTest, GuardActionCanReduceIncomingDamage) {
     BattleSession session(makeSessionUnits());
     ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});

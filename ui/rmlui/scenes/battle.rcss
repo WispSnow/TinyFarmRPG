@@ -148,6 +148,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-party-card {
+    position: relative;
     width: 110dp;
     height: 92dp;
     padding: 4dp;
@@ -250,6 +251,117 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-stat-fill {
     height: 4dp;
+}
+
+.battle-state-icon-row {
+    width: 60dp;
+    height: 12dp;
+    margin-top: 5dp;
+    display: flex;
+    flex-direction: row;
+    gap: 2dp;
+    overflow: hidden;
+}
+
+.battle-party-card.ko-party-member .battle-state-icon-row {
+    display: none;
+}
+
+.battle-state-icon {
+    position: relative;
+    width: 11dp;
+    height: 11dp;
+}
+
+.battle-state-icon-image {
+    width: 9dp;
+    height: 9dp;
+    background-color: #0b1019ee;
+    border-width: 1dp;
+    border-color: #56657aff;
+    decorator: none;
+    image-color: #ffffffff;
+    overflow: hidden;
+}
+
+.battle-state-icon.unknown-state-icon .battle-state-icon-image {
+    border-color: #69717dcc;
+    image-color: #ffffffaa;
+}
+
+.tf-input-mouse .battle-state-icon:hover .battle-state-icon-image {
+    border-color: #fce97fff;
+}
+
+.battle-state-icon-label {
+    display: block;
+    width: 7dp;
+    height: 7dp;
+    line-height: 7dp;
+    color: #ffffffff;
+    font-size: 6dp;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.battle-state-turns {
+    position: absolute;
+    left: 5dp;
+    top: 5dp;
+    width: 6dp;
+    height: 6dp;
+    line-height: 6dp;
+    color: #ffffffff;
+    background-color: #05070bcc;
+    border-width: 1dp;
+    border-color: #f4d475ee;
+    font-size: 5dp;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000dd);
+}
+
+.battle-state-tooltip {
+    position: absolute;
+    left: 0;
+    top: -48dp;
+    width: 110dp;
+    min-height: 42dp;
+    padding: 4dp;
+    background-color: #0d1320f6;
+    border-width: 1dp;
+    border-color: #697b95ff;
+    color: #ffffffff;
+}
+
+.battle-state-tooltip-title,
+.battle-state-tooltip-turns,
+.battle-state-tooltip-description {
+    width: 100dp;
+    font-effect: shadow(1dp 1dp #000000cc);
+    overflow: hidden;
+}
+
+.battle-state-tooltip-title {
+    height: 11dp;
+    line-height: 11dp;
+    color: #fce97fff;
+    font-size: 8dp;
+}
+
+.battle-state-tooltip-turns {
+    height: 9dp;
+    line-height: 9dp;
+    color: #abb6c9ff;
+    font-size: 7dp;
+}
+
+.battle-state-tooltip-description {
+    min-height: 12dp;
+    line-height: 9dp;
+    color: #d8dee9ff;
+    font-size: 7dp;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .battle-hp-fill {

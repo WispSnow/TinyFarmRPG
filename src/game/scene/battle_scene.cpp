@@ -445,6 +445,61 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return Rml::String{1, prefix} + std::to_string(side_index + 1U);
 }
 
+[[nodiscard]] std::string battleStateIconKeyFromId(std::string_view state_id) {
+    constexpr std::string_view STATE_PREFIX = "state.";
+    if (state_id.rfind(STATE_PREFIX, 0) == 0) {
+        state_id.remove_prefix(STATE_PREFIX.size());
+    }
+
+    std::string normalized;
+    bool previous_was_separator = true;
+    for (const unsigned char character : state_id) {
+        if (std::isalnum(character) != 0) {
+            normalized.push_back(static_cast<char>(std::tolower(character)));
+            previous_was_separator = false;
+            continue;
+        }
+        if (!previous_was_separator) {
+            normalized.push_back('-');
+            previous_was_separator = true;
+        }
+    }
+    while (!normalized.empty() && normalized.back() == '-') {
+        normalized.pop_back();
+    }
+    return normalized;
+}
+
+[[nodiscard]] Rml::String battleStateIconDecorator(const game::data::StateData* state) {
+    if (!state) {
+        return "none";
+    }
+
+    std::string icon_key = state->icon_key_.empty()
+        ? battleStateIconKeyFromId(state->id_)
+        : state->icon_key_;
+    if (icon_key.empty()) {
+        return "none";
+    }
+
+    return makeRmlString("image(battle-state-icon-" + icon_key + ")");
+}
+
+[[nodiscard]] Rml::String battleStateShortLabel(std::string_view state_id) {
+    constexpr std::string_view STATE_PREFIX = "state.";
+    if (state_id.rfind(STATE_PREFIX, 0) == 0) {
+        state_id.remove_prefix(STATE_PREFIX.size());
+    }
+
+    for (const unsigned char character : state_id) {
+        if (std::isalpha(character) != 0) {
+            return Rml::String{1, static_cast<char>(std::toupper(character))};
+        }
+    }
+
+    return "?";
+}
+
 [[nodiscard]] engine::utils::FColor multiplyColor(const engine::utils::FColor& lhs,
                                                   const engine::utils::FColor& rhs) {
     return engine::utils::FColor{
@@ -630,6 +685,8 @@ bool BattleScene::initUI() {
         !constructor.Bind("target_empty", &target_empty_) ||
         !constructor.Bind("turn_order_entries", &turn_order_entries_) ||
         !constructor.Bind("party_status", &party_status_) ||
+        !constructor.Bind("party_state_icons", &party_state_icons_) ||
+        !constructor.Bind("state_tooltip", &state_tooltip_) ||
         !constructor.Bind("main_actions", &main_actions_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
         !constructor.Bind("target_entries", &target_entries_)) {
@@ -655,6 +712,24 @@ bool BattleScene::initUI() {
             "target_entry_select",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
                 handleTargetEntry(getSingleIntArgument(arguments));
+            }) ||
+        !document_controller_.bindEvent(
+            constructor,
+            "state_icon_hover_enter",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
+                if (arguments.size() != 2) {
+                    return;
+                }
+                handleStateIconHoverEnter(arguments[0].Get<int>(-1), arguments[1].Get<int>(-1));
+            }) ||
+        !document_controller_.bindEvent(
+            constructor,
+            "state_icon_hover_exit",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
+                if (arguments.size() != 2) {
+                    return;
+                }
+                handleStateIconHoverExit(arguments[0].Get<int>(-1), arguments[1].Get<int>(-1));
             })) {
         spdlog::error("BattleScene: 绑定 data event 回调失败。");
         document_controller_.unload();
@@ -725,6 +800,30 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto state_icon_handle = constructor.RegisterStruct<StateIconViewModel>()) {
+        state_icon_handle.RegisterMember("unit_id", &StateIconViewModel::unit_id);
+        state_icon_handle.RegisterMember("entry_index", &StateIconViewModel::entry_index);
+        state_icon_handle.RegisterMember("state_id", &StateIconViewModel::state_id);
+        state_icon_handle.RegisterMember("display_name", &StateIconViewModel::display_name);
+        state_icon_handle.RegisterMember("description", &StateIconViewModel::description);
+        state_icon_handle.RegisterMember("turns_text", &StateIconViewModel::turns_text);
+        state_icon_handle.RegisterMember("short_label", &StateIconViewModel::short_label);
+        state_icon_handle.RegisterMember("icon_decorator", &StateIconViewModel::icon_decorator);
+        state_icon_handle.RegisterMember("known", &StateIconViewModel::known);
+    } else {
+        return false;
+    }
+
+    if (auto state_tooltip_handle = constructor.RegisterStruct<StateTooltipViewModel>()) {
+        state_tooltip_handle.RegisterMember("active_unit_id", &StateTooltipViewModel::active_unit_id);
+        state_tooltip_handle.RegisterMember("title", &StateTooltipViewModel::title);
+        state_tooltip_handle.RegisterMember("turns", &StateTooltipViewModel::turns);
+        state_tooltip_handle.RegisterMember("description", &StateTooltipViewModel::description);
+        state_tooltip_handle.RegisterMember("visible", &StateTooltipViewModel::visible);
+    } else {
+        return false;
+    }
+
     if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
         turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
         turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
@@ -744,7 +843,8 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         !constructor.RegisterArray<decltype(list_entries_)>() ||
         !constructor.RegisterArray<decltype(target_entries_)>() ||
         !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
-        !constructor.RegisterArray<decltype(party_status_)>()) {
+        !constructor.RegisterArray<decltype(party_status_)>() ||
+        !constructor.RegisterArray<decltype(party_state_icons_)>()) {
         return false;
     }
 
@@ -1008,7 +1108,9 @@ void BattleScene::rebuildTurnOrderView() {
 
 void BattleScene::rebuildPartyStatusView() {
     const auto current_actor_id = session_.currentActorId();
+    const auto& active_unit_states = session_.activeUnitStates();
     std::vector<PartyStatusViewModel> next_party_status;
+    std::vector<StateIconViewModel> next_party_state_icons;
 
     for (const auto& unit : session_.units()) {
         if (unit.side != game::battle::BattleSide::Player) {
@@ -1026,6 +1128,42 @@ void BattleScene::rebuildPartyStatusView() {
             .active = current_actor_id.has_value() && *current_actor_id == unit.id,
             .ko = !unit.isAlive()
         });
+
+        if (!unit.isAlive()) {
+            continue;
+        }
+
+        const auto states_it = std::find_if(
+            active_unit_states.begin(),
+            active_unit_states.end(),
+            [&unit](const game::battle::BattleUnitStateSnapshot& state_snapshot) {
+                return state_snapshot.unit_id == unit.id;
+            });
+        if (states_it == active_unit_states.end()) {
+            continue;
+        }
+
+        int state_entry_index = 0;
+        for (const auto& state_snapshot : states_it->states) {
+            const auto* state = rpg_catalog_ ? rpg_catalog_->findState(state_snapshot.state_id) : nullptr;
+            const Rml::String display_name = state ? makeRmlString(state->display_name_) : makeRmlString(state_snapshot.state_id);
+            const Rml::String description = state && !state->description_.empty()
+                ? makeRmlString(state->description_)
+                : Rml::String{"暂无说明"};
+            const Rml::String icon_decorator = battleStateIconDecorator(state);
+            next_party_state_icons.push_back(StateIconViewModel{
+                .unit_id = static_cast<int>(unit.id),
+                .entry_index = state_entry_index,
+                .state_id = makeRmlString(state_snapshot.state_id),
+                .display_name = display_name,
+                .description = description,
+                .turns_text = makeRmlString(std::to_string(state_snapshot.turns_left)),
+                .short_label = icon_decorator == "none" ? battleStateShortLabel(state_snapshot.state_id) : Rml::String{},
+                .icon_decorator = icon_decorator,
+                .known = state != nullptr
+            });
+            ++state_entry_index;
+        }
     }
 
     if (party_status_.size() != next_party_status.size() ||
@@ -1045,6 +1183,33 @@ void BattleScene::rebuildPartyStatusView() {
                     })) {
         party_status_ = std::move(next_party_status);
         document_controller_.markDirty("party_status");
+    }
+
+    if (party_state_icons_ != next_party_state_icons) {
+        party_state_icons_ = std::move(next_party_state_icons);
+        document_controller_.markDirty("party_state_icons");
+    }
+
+    if (state_tooltip_.visible) {
+        const bool tooltip_target_exists = std::any_of(
+            party_state_icons_.begin(),
+            party_state_icons_.end(),
+            [this](const StateIconViewModel& icon) {
+                return icon.unit_id == state_tooltip_.active_unit_id &&
+                    icon.entry_index == state_tooltip_entry_index_;
+            });
+        if (!tooltip_target_exists) {
+            hideStateTooltip();
+        }
+    }
+}
+
+void BattleScene::hideStateTooltip() {
+    const StateTooltipViewModel next_tooltip{};
+    if (state_tooltip_ != next_tooltip || state_tooltip_entry_index_ != -1) {
+        state_tooltip_ = next_tooltip;
+        state_tooltip_entry_index_ = -1;
+        document_controller_.markDirty("state_tooltip");
     }
 }
 
@@ -1567,6 +1732,42 @@ void BattleScene::handleTargetEntry(int entry_index) {
 
     action_draft_.selected_target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
     (void)submitDraftAction();
+}
+
+void BattleScene::handleStateIconHoverEnter(int unit_id, int entry_index) {
+    const auto icon_it = std::find_if(
+        party_state_icons_.begin(),
+        party_state_icons_.end(),
+        [unit_id, entry_index](const StateIconViewModel& icon) {
+            return icon.unit_id == unit_id && icon.entry_index == entry_index;
+        });
+    if (icon_it == party_state_icons_.end()) {
+        hideStateTooltip();
+        return;
+    }
+
+    const StateTooltipViewModel next_tooltip{
+        .active_unit_id = icon_it->unit_id,
+        .title = icon_it->display_name,
+        .turns = icon_it->turns_text + " 回合",
+        .description = icon_it->description,
+        .visible = true
+    };
+    if (state_tooltip_ != next_tooltip || state_tooltip_entry_index_ != entry_index) {
+        state_tooltip_ = next_tooltip;
+        state_tooltip_entry_index_ = entry_index;
+        document_controller_.markDirty("state_tooltip");
+    }
+}
+
+void BattleScene::handleStateIconHoverExit(int unit_id, int entry_index) {
+    if (!state_tooltip_.visible ||
+        state_tooltip_.active_unit_id != unit_id ||
+        state_tooltip_entry_index_ != entry_index) {
+        return;
+    }
+
+    hideStateTooltip();
 }
 
 bool BattleScene::submitDraftAction() {

@@ -81,10 +81,16 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("RegisterStruct<ListEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TargetEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<PartyStatusViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<StateIconViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<StateTooltipViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TurnOrderEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"badge_label\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_status\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"party_state_icons\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"state_tooltip\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
+    EXPECT_NE(source.find("state_icon_hover_enter"), std::string::npos);
+    EXPECT_NE(source.find("state_icon_hover_exit"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_down\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_left\"_hs)"), std::string::npos);
@@ -460,6 +466,7 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("../theme/nav.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/battle_enemy_icons.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("../theme/battle_state_icons.rcss"), std::string::npos);
     EXPECT_NE(rml.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_EQ(rml.find("Battle Prototype"), std::string::npos);
     EXPECT_EQ(rml.find("tf-button-secondary"), std::string::npos);
@@ -481,6 +488,14 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("id=\"battle-turn\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-result\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"member : party_status\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"icon : party_state_icons\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"icon.unit_id == member.unit_id\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-mouseover=\"state_icon_hover_enter(icon.unit_id, icon.entry_index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-mouseout=\"state_icon_hover_exit(icon.unit_id, icon.entry_index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-style-decorator=\"icon.icon_decorator\""), std::string::npos);
+    EXPECT_NE(rml.find("{{ icon.turns_text }}"), std::string::npos);
+    EXPECT_NE(rml.find("battle-state-tooltip"), std::string::npos);
+    EXPECT_NE(rml.find("state_tooltip.active_unit_id == member.unit_id"), std::string::npos);
     EXPECT_NE(rml.find("battle-party-identity"), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.hp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.mp_ratio_percent\""), std::string::npos);
@@ -552,6 +567,11 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find(".battle-text-button"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-hp-fill"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-mp-fill"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-state-icon-row"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-state-icon-image"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-state-turns"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-state-tooltip"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-party-card.ko-party-member .battle-state-icon-row"), std::string::npos);
     EXPECT_NE(rcss.find("#battle-hud"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-list-entry.disabled .battle-entry-sublabel"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-target-entry.is-ally"), std::string::npos);
@@ -562,6 +582,22 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_EQ(rcss.find("solid"), std::string::npos);
     EXPECT_EQ(rcss.find("font-style: italic"), std::string::npos);
     EXPECT_EQ(rcss.find("ninepatch"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, StateIconSpritesheetDefinesProjectStateFrames) {
+    const std::filesystem::path icon_rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/battle_state_icons.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(icon_rcss_path)) << icon_rcss_path;
+
+    const std::string icon_rcss = readTextFile(icon_rcss_path);
+    ASSERT_FALSE(icon_rcss.empty());
+
+    EXPECT_NE(icon_rcss.find("@spritesheet battle-state-icons-potions"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("@spritesheet battle-state-icons-materials"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-state-icon-poison"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-state-icon-stun"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-state-icon-burn"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-state-icon-fallback"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, EnemyIconSpritesheetDefinesProjectEnemyFrames) {

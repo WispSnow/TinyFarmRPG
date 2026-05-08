@@ -4,7 +4,7 @@
 
 为战斗场景补充队伍 HUD 状态图标条，让玩家能在战斗中看见角色当前受到的状态效果，并能通过鼠标 hover 查看状态名称、剩余回合和说明。
 
-第一阶段只做玩家方状态卡显示，不改变状态结算规则、不新增状态持续伤害/回合钩子、不扩展敌方头顶 UI。状态数据从 `BattleSession` 的运行时状态进入 `BattleSnapshot`，`BattleScene` 只消费快照，不直接读取或修改 `BattleRuntimeState`。
+第一阶段只做玩家方状态卡显示，不改变状态结算规则、不新增状态持续伤害/回合钩子、不扩展敌方头顶 UI。状态数据由 `BattleSession` 从运行时状态重建成只读缓存，`BattleScene` 通过 `activeUnitStates()` 消费 const ref；`BattleSnapshot` 只在动作结果和测试断言中拷贝该缓存。
 
 - 玩家状态卡的 HP/MP 区域下方显示小图标条。
 - 状态按 `StateData::priority_` 降序展示，优先级相同时按状态 ID 稳定排序。
@@ -16,7 +16,7 @@
 
 - `BattleRuntimeState::UnitRuntimeState::state_turns_left` 已按 `BattleUnitId -> state_id -> turns_left` 记录当前状态。
 - `BattleActionResult::states_added / states_removed` 只描述本次行动变化，不足以重建 HUD 当前状态。
-- `BattleSession::snapshot()` 当前只暴露 `units / turn_order / current_actor_id / round_index / outcome`，没有暴露 active states。
+- `BattleSession` 当前暴露 `units / turn_order / current_actor_id / round_index / outcome`；状态 UI 需要新增 active states 只读入口，并保持热路径零拷贝。
 - `StateData` 当前包含 `id / display_name / priority / min_turns / max_turns / traits`，没有 `description` 或 `icon_key` 字段。
 - `BattleScene` 已有 RmlUi data model，`PartyStatusViewModel` 当前负责下方队伍卡基础信息；状态图标会新增独立扁平 view model。
 - `ui/rmlui/scenes/battle.rml` 的 party card 当前只有 name、portrait、HP/MP 文本和条，需要在固定尺寸内加一行图标而不挤压命令面板。
@@ -27,14 +27,16 @@
 ```mermaid
 flowchart TD
     A["Skill or Item effect<br/>AddState RemoveState"] --> B["BattleRuntimeState<br/>state_turns_left"]
-    B --> C["BattleSession::snapshot"]
-    C --> D["BattleSnapshot<br/>unit_states"]
-    D --> E["BattleScene::rebuildPartyStatusView"]
-    E --> F["party_status_<br/>member cards"]
-    E --> G["party_state_icons_<br/>flat icon view model"]
-    F --> H["battle.rml<br/>party status icon row"]
-    G --> H
-    H --> I["BattleScene hover events<br/>state tooltip"]
+    B --> C["BattleSession<br/>active_unit_states_"]
+    C --> D["BattleSession::activeUnitStates<br/>const ref"]
+    C --> E["BattleSnapshot<br/>unit_states copy"]
+    D --> F["BattleScene::rebuildPartyStatusView"]
+    E --> J["BattleActionResult<br/>tests and action feedback"]
+    F --> G["party_status_<br/>member cards"]
+    F --> H["party_state_icons_<br/>flat icon view model"]
+    G --> I["battle.rml<br/>party status icon row"]
+    H --> I
+    I --> K["BattleScene hover events<br/>state tooltip"]
 ```
 
 ## 数据契约
@@ -59,7 +61,7 @@ struct BattleUnitStateSnapshot {
 std::vector<BattleUnitStateSnapshot> unit_states{};
 ```
 
-`BattleSession::snapshot()` 负责从 `runtime_state_.units` 拷贝状态，并做清洗：
+`BattleSession` 负责从 `runtime_state_.units` 重建状态缓存，并做清洗：
 
 - `turns_left <= 0` 的状态不进入快照。
 - `!unit.isAlive()` 的 KO 单位不输出状态；本项目当前没有“死亡状态”概念，KO 卡片第一阶段直接隐藏状态图标条。
@@ -67,7 +69,7 @@ std::vector<BattleUnitStateSnapshot> unit_states{};
 - `unit_states` 以 `BattleSnapshot::units` 顺序遍历输出；只为存活且存在有效状态的单位追加条目，避免 UI 因 unordered_map 顺序产生抖动。
 - 每个单位内部状态先查 `RpgCatalog::findState()` 取 `priority_`，定义缺失时 priority 视为 0；排序为 priority 降序、state_id 升序。
 
-`BattleSession` 当前没有直接保存 `RpgCatalog` 指针；若要在 snapshot 层按 priority 排序，需要在 `BattleSession` 中保留 `const RpgCatalog* rpg_catalog_`，由 `BattleSessionOptions::rpg_catalog` 初始化。不要让 `BattleScene` 重新排序，否则 snapshot 的稳定性契约会被表现层隐式补齐。
+状态列表通过 `BattleSession::activeUnitStates()` 暴露为 const ref，缓存只在构造和 `submitAction()` 后重建；若行动推进到新回合，round begin 状态衰减发生在 resolver 内部，随后同一次 `submitAction()` 统一重建缓存。`BattleSnapshot::unit_states` 从该缓存拷贝，供 action result 和测试使用；`BattleScene` 热路径不应每帧调用完整 `snapshot()`。
 
 不建议把 active states 直接写进 `BattleUnit`。`BattleUnit` 是基础战斗单位数据；状态持续回合属于单场会话运行时数据，放在 `BattleSnapshot::unit_states` 更清楚，也避免未来把状态属性和单位静态属性混在一起。
 
@@ -100,7 +102,7 @@ JSON 字段建议：
 - `description` 可选，缺省为空字符串。
 - `icon_key` 可选，缺省由 `state_id` 规范化得到，例如 `state.poison -> poison`。
 - icon decorator 由表现层 helper 生成：`image(battle-state-icon-poison)`。
-- 若 `icon_key` 缺失，RML 显示 `short_label` fallback。配置过的 key 必须在 `battle_state_icons.rcss` 中有对应 spritesheet 定义，通过 smoke test 覆盖。
+- 若 `icon_key` 缺失，表现层从 `state_id` 规范化生成默认 key；配置过的 key 必须在 `battle_state_icons.rcss` 中有对应 spritesheet 定义，通过 smoke test 覆盖。状态定义缺失或 decorator 不可用时，RML 才显示 `short_label` fallback。
 
 更新现有 `assets/data/rpg/states.json` 时只补 `description` 与 `icon_key`，不改变已有 `priority / min_turns / max_turns` 语义，例如 `state.poison` 继续保持 `priority: 50`。
 
@@ -190,7 +192,7 @@ RCSS 约束：
 - `battle.rml` 在每张 party card 内增加 `.battle-state-tooltip`，通过 data model 控制 `visible`、`active_unit_id`、`title`、`turns`、`description`。
 - `BattleScene` 增加 `StateTooltipViewModel` 和 hover event handlers。
 - tooltip 挂在每张 party card 内部，通过 `data-if="state_tooltip.visible && state_tooltip.active_unit_id == member.unit_id"` 只在当前 hover 的角色卡上显示。
-- tooltip 使用 `position: absolute; top: -44dp; left: 0; width: 110dp;` 相对 party card 定位，不读取鼠标坐标，避免引入额外 viewport/鼠标定位逻辑。
+- tooltip 使用 `position: absolute; top: -48dp; left: 0; width: 110dp; min-height: 42dp;` 相对 party card 定位，不读取鼠标坐标，避免引入额外 viewport/鼠标定位逻辑。
 - 鼠标移出当前 hover 图标时隐藏；刷新状态后若 hover 的状态不存在，也隐藏。
 
 建议字段：
@@ -218,9 +220,11 @@ struct StateTooltipViewModel {
 2. 扩展战斗快照
    - 在 `battle_types.h` 增加 `BattleStateSnapshot` 和 `BattleUnitStateSnapshot`。
    - 在 `BattleSnapshot` 增加 `unit_states`。
-   - 在 `BattleSession` 保存 `BattleSessionOptions::rpg_catalog` 指针，供 snapshot 状态排序读取 priority。
-   - 在 `BattleSession::snapshot()` 中从 `runtime_state_` 输出状态列表。
-   - `BattleSession::snapshot()` 跳过 KO 单位和已过期状态。
+   - 在 `BattleActionResolver` 暴露 `rpgCatalog()` 只读访问器，避免 `BattleSession` 重复保存 catalog 指针。
+   - 在 `BattleSession` 增加 `active_unit_states_` 缓存和 `activeUnitStates()` const ref 访问器。
+   - 在构造和 `submitAction()` 后重建 `active_unit_states_`；round begin 衰减由同一次行动提交后的统一重建覆盖。
+   - `BattleSession::snapshot()` 从 `active_unit_states_` 拷贝 `unit_states`。
+   - 状态缓存跳过 KO 单位和已过期状态。
    - 保持 `BattleActionResult::states_added / states_removed` 作为动作变化事件，不用于 HUD 当前态。
 
 3. 补充状态图标 helper
@@ -235,7 +239,7 @@ struct StateTooltipViewModel {
    - 在 `initUI()` 绑定 `party_state_icons`、tooltip 数据和 hover event。
 
 5. 刷新 party status
-   - `rebuildPartyStatusView()` 统一从 `session_.snapshot()` 获取状态。
+   - `rebuildPartyStatusView()` 统一从 `session_.units()` 和 `session_.activeUnitStates()` 获取状态，避免每帧完整 snapshot 拷贝。
    - 将玩家方存活单位状态写入扁平 `party_state_icons_`。
    - `party_status_` 和 `party_state_icons_` 分别做完整相等比较，只有内容变化时 mark dirty。
    - 若当前 tooltip 锚定的状态消失，隐藏 tooltip 并 dirty tooltip 字段。
@@ -243,7 +247,7 @@ struct StateTooltipViewModel {
 6. 编写 RML
    - 引入 `<link type="text/rcss" href="../theme/battle_state_icons.rcss"/>`。
    - 在 `.battle-party-stats` 内加入状态图标条，使用 `data-for="icon : party_state_icons"` 和 `data-if="icon.unit_id == member.unit_id"`。
-   - 在每张 party card 内加入 `#battle-state-tooltip` 等价结构；实际 id 需要避免重复，可使用 class，例如 `.battle-state-tooltip`。
+   - 在每张 party card 内加入 `.battle-state-tooltip`，避免重复 id。
    - 不给状态图标加 `tf-nav-auto`，避免抢焦点。
 
 7. 编写 RCSS
@@ -268,34 +272,36 @@ struct StateTooltipViewModel {
 
 ## 待办清单
 
-- [ ] `StateData` 增加 `description_`。
-- [ ] `StateData` 增加 `icon_key_`。
-- [ ] `RpgCatalog::loadStates()` 解析 `description` 和 `icon_key`。
-- [ ] 更新 `assets/data/rpg/states.json` 状态说明与图标 key。
-- [ ] 新增 `BattleStateSnapshot`。
-- [ ] 新增 `BattleUnitStateSnapshot`。
-- [ ] `BattleSnapshot` 增加 `unit_states`。
-- [ ] `BattleSession::snapshot()` 输出 active states。
-- [ ] `BattleSession::snapshot()` 跳过 KO 单位状态。
-- [ ] active states 按单位顺序和状态优先级稳定排序。
-- [ ] 新增状态图标 decorator / fallback label helper。
-- [ ] `BattleScene` 新增 `StateIconViewModel`。
-- [ ] `BattleScene` 新增扁平 `party_state_icons_`。
-- [ ] 注册并绑定 `party_state_icons` RmlUi data model。
-- [ ] `rebuildPartyStatusView()` 从 snapshot 构建玩家方状态图标。
-- [ ] 新增状态 tooltip view model。
-- [ ] 绑定状态图标 hover enter/exit 事件。
-- [ ] `battle.rml` 引入 `battle_state_icons.rcss`。
-- [ ] `battle.rml` 新增状态图标条。
-- [ ] `battle.rml` 新增状态 tooltip。
-- [ ] `battle.rcss` 新增状态图标条与 tooltip 样式。
-- [ ] `battle_state_icons.rcss` 定义 poison / stun / burn / fallback。
-- [ ] 补充 `RpgCatalogTest`。
-- [ ] 补充 `BattleSessionTest` 状态快照测试。
-- [ ] 补充 `BattleSceneSmokeTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行相关过滤测试。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] `StateData` 增加 `description_`。
+- [x] `StateData` 增加 `icon_key_`。
+- [x] `RpgCatalog::loadStates()` 解析 `description` 和 `icon_key`。
+- [x] 更新 `assets/data/rpg/states.json` 状态说明与图标 key。
+- [x] 新增 `BattleStateSnapshot`。
+- [x] 新增 `BattleUnitStateSnapshot`。
+- [x] `BattleSnapshot` 增加 `unit_states`。
+- [x] `BattleSession` 新增 `active_unit_states_` 缓存。
+- [x] `BattleSession` 新增 `activeUnitStates()` const ref 访问器。
+- [x] `BattleSession::snapshot()` 从缓存输出 active states。
+- [x] `BattleSession::snapshot()` 跳过 KO 单位状态。
+- [x] active states 按单位顺序和状态优先级稳定排序。
+- [x] 新增状态图标 decorator / fallback label helper。
+- [x] `BattleScene` 新增 `StateIconViewModel`。
+- [x] `BattleScene` 新增扁平 `party_state_icons_`。
+- [x] 注册并绑定 `party_state_icons` RmlUi data model。
+- [x] `rebuildPartyStatusView()` 从 `session_.units()` 和 `session_.activeUnitStates()` 构建玩家方状态图标。
+- [x] 新增状态 tooltip view model。
+- [x] 绑定状态图标 hover enter/exit 事件。
+- [x] `battle.rml` 引入 `battle_state_icons.rcss`。
+- [x] `battle.rml` 新增状态图标条。
+- [x] `battle.rml` 新增状态 tooltip。
+- [x] `battle.rcss` 新增状态图标条与 tooltip 样式。
+- [x] `battle_state_icons.rcss` 定义 poison / stun / burn / fallback。
+- [x] 补充 `RpgCatalogTest`。
+- [x] 补充 `BattleSessionTest` 状态快照测试。
+- [x] 补充 `BattleSceneSmokeTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行相关过滤测试。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动确认图标、回合角标和 hover tooltip。
 
 ## 风险与边界

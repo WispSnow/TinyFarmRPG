@@ -120,6 +120,32 @@ class BattleScene final : public engine::scene::Scene {
         bool ko{false};
     };
 
+    /// @brief 下方 HUD 中单个状态图标的扁平视图模型。
+    struct StateIconViewModel {
+        int unit_id{0};
+        int entry_index{0};
+        Rml::String state_id{};
+        Rml::String display_name{};
+        Rml::String description{};
+        Rml::String turns_text{};
+        Rml::String short_label{};
+        Rml::String icon_decorator{"none"};
+        bool known{false};
+
+        friend bool operator==(const StateIconViewModel& lhs, const StateIconViewModel& rhs) = default;
+    };
+
+    /// @brief 状态图标 hover tooltip 的轻量视图模型。
+    struct StateTooltipViewModel {
+        int active_unit_id{0};
+        Rml::String title{};
+        Rml::String turns{};
+        Rml::String description{};
+        bool visible{false};
+
+        friend bool operator==(const StateTooltipViewModel& lhs, const StateTooltipViewModel& rhs) = default;
+    };
+
     /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
     struct TurnOrderEntryViewModel {
         int unit_id{0};
@@ -178,6 +204,9 @@ class BattleScene final : public engine::scene::Scene {
     bool target_empty_{true};
     std::vector<TurnOrderEntryViewModel> turn_order_entries_{};
     std::vector<PartyStatusViewModel> party_status_{};
+    std::vector<StateIconViewModel> party_state_icons_{};
+    StateTooltipViewModel state_tooltip_{};
+    int state_tooltip_entry_index_{-1};
     std::vector<MainActionViewModel> main_actions_{};
     std::vector<ListEntryViewModel> list_entries_{};
     std::vector<TargetEntryViewModel> target_entries_{};
@@ -223,6 +252,7 @@ private:
     void refreshView();
     void rebuildTurnOrderView();
     void rebuildPartyStatusView();
+    void hideStateTooltip();
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
     void enterInputMenu();
@@ -256,6 +286,8 @@ private:
     void handleSkillEntry(const ListEntryViewModel& entry);
     void handleItemEntry(const ListEntryViewModel& entry);
     void handleTargetEntry(int entry_index);
+    void handleStateIconHoverEnter(int unit_id, int entry_index);
+    void handleStateIconHoverExit(int unit_id, int entry_index);
     [[nodiscard]] bool submitDraftAction();
     void submitAction(game::battle::BattleAction action);
     [[nodiscard]] bool isWaitingForActionInput() const;

@@ -1,0 +1,12 @@
+@spritesheet battle-state-icons-potions {
+    src: ../../../assets/farm-rpg/Icons/Weapons/Books and Potions/Potions.png;
+    battle-state-icon-poison: 32px 96px 16px 16px;
+    battle-state-icon-burn: 16px 96px 16px 16px;
+    battle-state-icon-fallback: 0px 96px 16px 16px;
+}
+
+@spritesheet battle-state-icons-materials {
+    src: ../../../assets/farm-rpg/Icons/Weapons/14.png;
+    battle-state-icon-stun: 0px 16px 16px 16px;
+    battle-state-icon-bleed: 16px 16px 16px 16px;
+}
