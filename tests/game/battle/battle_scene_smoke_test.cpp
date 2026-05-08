@@ -81,7 +81,9 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("RegisterStruct<ListEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TargetEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<PartyStatusViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<TurnOrderEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_status\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_down\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_left\"_hs)"), std::string::npos);
@@ -457,6 +459,14 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_EQ(rml.find("<progress"), std::string::npos);
     EXPECT_GE(countOccurrences(rml, "tf-nav-auto"), 3U);
     EXPECT_NE(rml.find("id=\"battle-top-status\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"battle-turn-order-bar\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"entry : turn_order_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-current-turn-entry=\"entry.current\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-acted-turn-entry=\"entry.acted\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-ko-turn-entry=\"entry.ko\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-enemy-turn-entry=\"entry.enemy\""), std::string::npos);
+    EXPECT_NE(rml.find("data-style-decorator=\"entry.portrait_decorator\""), std::string::npos);
+    EXPECT_NE(rml.find("{{ entry.short_label }}"), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-turn\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-result\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"member : party_status\""), std::string::npos);
@@ -492,6 +502,15 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     ASSERT_FALSE(rcss.empty());
 
     EXPECT_NE(rcss.find("top: 256dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-turn-order-bar"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-entry.current-turn-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-entry.acted-turn-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-entry.ko-turn-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-entry.enemy-turn-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-label"), std::string::npos);
+    EXPECT_NE(rcss.find("font-effect: shadow(1dp 1dp #000000cc);"), std::string::npos);
+    EXPECT_NE(rcss.find("overflow: hidden;"), std::string::npos);
     EXPECT_NE(rcss.find("height: 104dp;"), std::string::npos);
     EXPECT_NE(rcss.find("left: 464dp;"), std::string::npos);
     EXPECT_NE(rcss.find("width: 168dp;"), std::string::npos);

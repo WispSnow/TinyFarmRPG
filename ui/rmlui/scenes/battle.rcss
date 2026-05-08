@@ -21,6 +21,93 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 34dp;
 }
 
+#battle-turn-order-bar {
+    position: absolute;
+    left: 6dp;
+    top: 6dp;
+    width: 304dp;
+    height: 34dp;
+    display: flex;
+    flex-direction: row;
+    gap: 3dp;
+    overflow: hidden;
+}
+
+.battle-turn-order-entry {
+    width: 28dp;
+    height: 30dp;
+    padding: 2dp;
+    background-color: #121a25dd;
+    border-width: 1dp;
+    border-color: #405067ee;
+}
+
+.battle-turn-order-entry.enemy-turn-entry {
+    border-color: #6d4f5fee;
+    background-color: #211823dd;
+}
+
+.battle-turn-order-entry.acted-turn-entry {
+    color: #8993a5ff;
+    background-color: #111722bb;
+    border-color: #303946dd;
+}
+
+.battle-turn-order-entry.ko-turn-entry {
+    color: #5f6672ff;
+    background-color: #111318aa;
+    border-color: #272d36cc;
+}
+
+.battle-turn-order-entry.current-turn-entry {
+    margin-top: -2dp;
+    background-color: #21314aee;
+    border-color: #fce97fff;
+}
+
+.battle-turn-order-portrait {
+    width: 22dp;
+    height: 22dp;
+    background-color: #0d1320ee;
+    border-width: 1dp;
+    border-color: #2d3a4fff;
+    decorator: none;
+}
+
+.battle-turn-order-entry.enemy-turn-entry .battle-turn-order-portrait {
+    background-color: #1f1420ee;
+    border-color: #533948ff;
+}
+
+.battle-turn-order-entry.current-turn-entry .battle-turn-order-portrait {
+    border-color: #fce97fff;
+}
+
+.battle-turn-order-entry.acted-turn-entry .battle-turn-order-portrait,
+.battle-turn-order-entry.ko-turn-entry .battle-turn-order-portrait {
+    border-color: #2c3440ff;
+}
+
+.battle-turn-order-label {
+    display: block;
+    width: 20dp;
+    height: 20dp;
+    line-height: 20dp;
+    color: #ffffffff;
+    font-size: 8dp;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.battle-turn-order-entry.enemy-turn-entry .battle-turn-order-label {
+    color: #ffc2d5ff;
+}
+
+.battle-turn-order-entry.acted-turn-entry .battle-turn-order-label,
+.battle-turn-order-entry.ko-turn-entry .battle-turn-order-label {
+    color: #747d8dff;
+}
+
 #battle-party-panel {
     position: absolute;
     left: 6dp;

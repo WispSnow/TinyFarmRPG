@@ -156,23 +156,23 @@ std::vector<BattleUnitId> turn_order{};
 
 ## 待办清单
 
-- [ ] `BattleSnapshot` 增加 `turn_order` 字段。
-- [ ] `BattleSession::snapshot()` 填充行动顺序。
-- [ ] `BattleScene` 增加 `TurnOrderEntryViewModel`。
-- [ ] `TurnOrderEntryViewModel` 增加默认相等比较或完整字段比较 helper。
-- [ ] 注册并绑定 `turn_order_entries` RmlUi data model。
-- [ ] 实现 `BattleScene::rebuildTurnOrderView()`。
-- [ ] `rebuildTurnOrderView()` 使用 `P{n}` / `E{n}` 生成 fallback label。
-- [ ] `rebuildTurnOrderView()` 清洗 `current/acted/ko` 为互斥状态。
-- [ ] `refreshView()` 接入行动顺序条刷新。
-- [ ] `battle.rml` 新增顶部行动顺序条结构。
-- [ ] `battle.rcss` 新增 current / acted / ko / enemy 状态样式和 fallback label shadow。
-- [ ] 补充 `BattleSessionTest`。
-- [ ] `BattleSessionTest` 覆盖死亡单位跳过但 `turn_order` 不变的场景。
-- [ ] 补充 `BattleSceneSmokeTest`。
-- [ ] 运行 `ninja -C build game_tests`。
-- [ ] 运行相关 game tests。
-- [ ] 运行 `ninja -C build battle_tester`。
+- [x] `BattleSnapshot` 增加 `turn_order` 字段。
+- [x] `BattleSession::snapshot()` 填充行动顺序。
+- [x] `BattleScene` 增加 `TurnOrderEntryViewModel`。
+- [x] `TurnOrderEntryViewModel` 增加默认相等比较或完整字段比较 helper。
+- [x] 注册并绑定 `turn_order_entries` RmlUi data model。
+- [x] 实现 `BattleScene::rebuildTurnOrderView()`。
+- [x] `rebuildTurnOrderView()` 使用 `P{n}` / `E{n}` 生成 fallback label。
+- [x] `rebuildTurnOrderView()` 清洗 `current/acted/ko` 为互斥状态。
+- [x] `refreshView()` 接入行动顺序条刷新。
+- [x] `battle.rml` 新增顶部行动顺序条结构。
+- [x] `battle.rcss` 新增 current / acted / ko / enemy 状态样式和 fallback label shadow。
+- [x] 补充 `BattleSessionTest`。
+- [x] `BattleSessionTest` 覆盖死亡单位跳过但 `turn_order` 不变的场景。
+- [x] 补充 `BattleSceneSmokeTest`。
+- [x] 运行 `ninja -C build game_tests`。
+- [x] 运行相关 game tests。
+- [x] 运行 `ninja -C build battle_tester`。
 - [ ] 手动截图或录屏确认行动顺序条表现。
 
 ## 风险与边界

@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -353,6 +354,11 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return "none";
 }
 
+[[nodiscard]] Rml::String turnOrderFallbackLabel(const game::battle::BattleSide side, const std::size_t side_index) {
+    const char prefix = side == game::battle::BattleSide::Player ? 'P' : 'E';
+    return Rml::String{1, prefix} + std::to_string(side_index + 1U);
+}
+
 [[nodiscard]] engine::utils::FColor multiplyColor(const engine::utils::FColor& lhs,
                                                   const engine::utils::FColor& rhs) {
     return engine::utils::FColor{
@@ -536,6 +542,7 @@ bool BattleScene::initUI() {
         !constructor.Bind("target_menu_visible", &target_menu_visible_) ||
         !constructor.Bind("list_empty", &list_empty_) ||
         !constructor.Bind("target_empty", &target_empty_) ||
+        !constructor.Bind("turn_order_entries", &turn_order_entries_) ||
         !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("main_actions", &main_actions_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
@@ -632,9 +639,24 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
+        turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
+        turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
+        turn_order_handle.RegisterMember("name", &TurnOrderEntryViewModel::name);
+        turn_order_handle.RegisterMember("short_label", &TurnOrderEntryViewModel::short_label);
+        turn_order_handle.RegisterMember("portrait_decorator", &TurnOrderEntryViewModel::portrait_decorator);
+        turn_order_handle.RegisterMember("current", &TurnOrderEntryViewModel::current);
+        turn_order_handle.RegisterMember("acted", &TurnOrderEntryViewModel::acted);
+        turn_order_handle.RegisterMember("ko", &TurnOrderEntryViewModel::ko);
+        turn_order_handle.RegisterMember("enemy", &TurnOrderEntryViewModel::enemy);
+    } else {
+        return false;
+    }
+
     if (!constructor.RegisterArray<decltype(main_actions_)>() ||
         !constructor.RegisterArray<decltype(list_entries_)>() ||
         !constructor.RegisterArray<decltype(target_entries_)>() ||
+        !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
         !constructor.RegisterArray<decltype(party_status_)>()) {
         return false;
     }
@@ -803,6 +825,7 @@ void BattleScene::refreshView() {
         document_controller_.markDirty("turn_text");
     }
 
+    rebuildTurnOrderView();
     rebuildPartyStatusView();
 
     std::string result_text = "Result: " + menu_status_text_;
@@ -830,6 +853,59 @@ void BattleScene::refreshView() {
         leaveInputMenu();
     } else if (can_submit_action && menu_state_ == MenuState::None) {
         enterInputMenu();
+    }
+}
+
+void BattleScene::rebuildTurnOrderView() {
+    const auto& turn_order = session_.turnOrder();
+    const auto current_actor_id = session_.currentActorId();
+    const auto current_order_it = current_actor_id
+        ? std::find(turn_order.begin(), turn_order.end(), *current_actor_id)
+        : turn_order.end();
+    const bool has_current_order_index = current_order_it != turn_order.end();
+    const std::size_t current_order_index = has_current_order_index
+        ? static_cast<std::size_t>(std::distance(turn_order.begin(), current_order_it))
+        : 0U;
+
+    std::size_t player_index = 0U;
+    std::size_t enemy_index = 0U;
+    std::vector<TurnOrderEntryViewModel> next_turn_order_entries;
+    next_turn_order_entries.reserve(turn_order.size());
+
+    for (std::size_t order_index = 0U; order_index < turn_order.size(); ++order_index) {
+        const game::battle::BattleUnitId unit_id = turn_order[order_index];
+        const auto* unit_ptr = session_.findUnit(unit_id);
+        if (!unit_ptr) {
+            continue;
+        }
+
+        const auto& unit = *unit_ptr;
+        const bool enemy = unit.side == game::battle::BattleSide::Enemy;
+        const std::size_t side_index = enemy ? enemy_index++ : player_index++;
+        const Rml::String portrait_decorator = portraitDecoratorForUnit(unit);
+        const bool ko = !unit.isAlive();
+        const bool current = !ko && current_actor_id.has_value() && *current_actor_id == unit.id;
+        const bool acted = !ko && !current && has_current_order_index && order_index < current_order_index;
+        const Rml::String fallback_label = portrait_decorator == "none"
+            ? turnOrderFallbackLabel(unit.side, side_index)
+            : Rml::String{};
+
+        next_turn_order_entries.push_back(TurnOrderEntryViewModel{
+            .unit_id = static_cast<int>(unit.id),
+            .entry_index = static_cast<int>(next_turn_order_entries.size()),
+            .name = makeRmlString(unit.name),
+            .short_label = fallback_label,
+            .portrait_decorator = portrait_decorator,
+            .current = current,
+            .acted = acted,
+            .ko = ko,
+            .enemy = enemy
+        });
+    }
+
+    if (turn_order_entries_ != next_turn_order_entries) {
+        turn_order_entries_ = std::move(next_turn_order_entries);
+        document_controller_.markDirty("turn_order_entries");
     }
 }
 

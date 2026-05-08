@@ -120,6 +120,21 @@ class BattleScene final : public engine::scene::Scene {
         bool ko{false};
     };
 
+    /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
+    struct TurnOrderEntryViewModel {
+        int unit_id{0};
+        int entry_index{0};
+        Rml::String name{};
+        Rml::String short_label{};
+        Rml::String portrait_decorator{"none"};
+        bool current{false};
+        bool acted{false};
+        bool ko{false};
+        bool enemy{false};
+
+        friend bool operator==(const TurnOrderEntryViewModel& lhs, const TurnOrderEntryViewModel& rhs) = default;
+    };
+
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::ItemCatalog* item_catalog_{nullptr};
     const game::factory::BlueprintManager* blueprint_manager_{nullptr};
@@ -160,6 +175,7 @@ class BattleScene final : public engine::scene::Scene {
     bool target_menu_visible_{false};
     bool list_empty_{true};
     bool target_empty_{true};
+    std::vector<TurnOrderEntryViewModel> turn_order_entries_{};
     std::vector<PartyStatusViewModel> party_status_{};
     std::vector<MainActionViewModel> main_actions_{};
     std::vector<ListEntryViewModel> list_entries_{};
@@ -204,6 +220,7 @@ private:
 
     /// @brief 根据 BattleSession 快照刷新 UI 文本和按钮状态。
     void refreshView();
+    void rebuildTurnOrderView();
     void rebuildPartyStatusView();
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
