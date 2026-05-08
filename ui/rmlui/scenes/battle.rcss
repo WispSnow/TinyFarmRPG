@@ -382,7 +382,6 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #battle-turn,
 #battle-result,
-#battle-back-hint,
 #battle-list-empty,
 #battle-target-empty {
     color: #ffffffff;
@@ -415,7 +414,8 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 92dp;
 }
 
-#battle-main-actions,
+#battle-party-command,
+#battle-actor-command,
 #battle-list-menu,
 #battle-target-menu {
     position: absolute;
@@ -424,7 +424,14 @@ body, div, h1, h2, h3, h4, p, hr {
     width: 168dp;
 }
 
-#battle-main-actions {
+#battle-party-command {
+    height: 48dp;
+    display: flex;
+    flex-direction: column;
+    gap: 4dp;
+}
+
+#battle-actor-command {
     height: 62dp;
     display: flex;
     flex-direction: row;
@@ -441,7 +448,13 @@ body, div, h1, h2, h3, h4, p, hr {
     font-effect: shadow(1dp 1dp #000000aa);
 }
 
-.battle-action-button {
+.battle-party-command-button {
+    width: 168dp;
+    height: 22dp;
+    line-height: 20dp;
+}
+
+.battle-actor-command-button {
     width: 82dp;
     height: 18dp;
     line-height: 16dp;
@@ -499,8 +512,10 @@ body, div, h1, h2, h3, h4, p, hr {
 .battle-target-entry.disabled,
 .battle-list-entry:disabled,
 .battle-target-entry:disabled,
-.battle-action-button.disabled,
-.battle-action-button:disabled {
+.battle-party-command-button.disabled,
+.battle-party-command-button:disabled,
+.battle-actor-command-button.disabled,
+.battle-actor-command-button:disabled {
     color: #6e7480ff;
     background-color: #111820ff;
     border-color: #2d3540ff;
@@ -526,16 +541,6 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-target-entry.is-dead {
     color: #6e7480ff;
-}
-
-#battle-back-hint {
-    position: absolute;
-    left: 0;
-    top: 76dp;
-    width: 168dp;
-    height: 14dp;
-    line-height: 14dp;
-    color: #abb6c9ff;
 }
 
 #battle-list-empty,
