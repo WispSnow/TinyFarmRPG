@@ -14,6 +14,7 @@
 #include "engine/resource/default_resource_ids.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_ai_planner.h"
 #include "game/component/appearance_component.h"
 #include "game/defs/events.h"
@@ -74,6 +75,8 @@ constexpr float HP_BAR_WARNING_RATIO = 0.50F;
 constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
+/// @brief 目标特效默认锚到角色上半身，而非脚底阵型点。
+constexpr float SKILL_TARGET_VFX_VERTICAL_OFFSET = -36.0F;
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -489,6 +492,24 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return center - config.size * 0.5F;
 }
 
+/// @brief 在当前战斗表现锚点列表中查找指定单位。
+[[nodiscard]] const game::scene::BattlePresentationUnitAnchor* findUnitAnchor(
+    const std::vector<game::scene::BattlePresentationUnitAnchor>& unit_anchors,
+    const game::battle::BattleUnitId unit_id) {
+    const auto it = std::find_if(
+        unit_anchors.begin(),
+        unit_anchors.end(),
+        [unit_id](const game::scene::BattlePresentationUnitAnchor& anchor) {
+            return anchor.unit_id == unit_id;
+        });
+    return it != unit_anchors.end() ? &*it : nullptr;
+}
+
+/// @brief 将阵型脚底锚点转换为单体技能目标特效播放位置。
+[[nodiscard]] glm::vec2 skillTargetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor) {
+    return target_anchor.base_screen_position + glm::vec2{0.0F, SKILL_TARGET_VFX_VERTICAL_OFFSET};
+}
+
 } // namespace
 
 namespace game::scene {
@@ -898,6 +919,7 @@ void BattleScene::runStateMachine(float delta_time) {
                 battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot);
                 battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
+                spawnSkillTargetVfx(*last_action_result_, unit_anchors);
                 battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
                 battle_animation_director_.begin(*last_action_result_, unit_anchors);
                 pending_action_.reset();
@@ -2402,6 +2424,37 @@ std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentation
         });
     }
     return anchors;
+}
+
+void BattleScene::spawnSkillTargetVfx(
+    const game::battle::BattleActionResult& result,
+    const std::vector<BattlePresentationUnitAnchor>& unit_anchors) const {
+    if (!rpg_catalog_ ||
+        result.status != game::battle::BattleActionStatus::Applied ||
+        result.action_type != game::battle::BattleActionType::Skill ||
+        result.missed ||
+        !result.target_id) {
+        return;
+    }
+
+    const auto* target_anchor = findUnitAnchor(unit_anchors, *result.target_id);
+    if (!target_anchor) {
+        return;
+    }
+
+    const auto* skill = rpg_catalog_->findSkill(result.skill_id);
+    if (!skill || skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId) {
+        return;
+    }
+
+    engine::vfx::PlayVfxCommand command{};
+    command.effect_id = skill->target_vfx_id_hash_;
+    command.world_position = skillTargetVfxPosition(*target_anchor);
+    command.z = 0.0F;
+    command.scale = skill->target_vfx_scale_;
+    command.loop = false;
+    command.channel = engine::vfx::VfxChannel::Overlay;
+    context_.getDispatcher().trigger(command);
 }
 
 void BattleScene::updateCommandFocus(const float delta_time) {

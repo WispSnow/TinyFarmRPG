@@ -27,7 +27,8 @@
             "max_level": 99,
             "skill_ids": [
                 "skill.attack",
-                "skill.bash"
+                "skill.fire_1",
+                "skill.thunder_1"
             ],
             "map_actor_id": "lyria",
             "portrait": {
@@ -45,7 +46,8 @@
             "initial_level": 1,
             "max_level": 99,
             "skill_ids": [
-                "skill.attack"
+                "skill.attack",
+                "skill.heal_1"
             ],
             "map_actor_id": "tori",
             "portrait": {
