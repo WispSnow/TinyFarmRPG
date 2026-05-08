@@ -22,7 +22,7 @@
         {
             "id": "actor.lyria",
             "display_name": "Lyria",
-            "class_id": "class.swordsman",
+            "class_id": "class.mage",
             "initial_level": 1,
             "max_level": 99,
             "skill_ids": [
