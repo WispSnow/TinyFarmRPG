@@ -81,6 +81,8 @@ struct StateData {
     std::string id_{};
     entt::id_type id_hash_{};
     std::string display_name_{};
+    std::string description_{};
+    std::string icon_key_{};
     int priority_{50};
     int min_turns_{1};
     int max_turns_{1};

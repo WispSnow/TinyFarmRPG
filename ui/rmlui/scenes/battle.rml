@@ -5,6 +5,7 @@
     <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="../theme/battle_enemy_icons.rcss"/>
+    <link type="text/rcss" href="../theme/battle_state_icons.rcss"/>
     <link type="text/rcss" href="battle.rcss"/>
 </head>
 <body class="tf-screen-root tf-nav-root" data-model="battle_scene">
@@ -51,7 +52,25 @@
                         <div class="battle-stat-bar battle-mp-bar">
                             <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>
                         </div>
+                        <div class="battle-state-icon-row">
+                            <div class="battle-state-icon"
+                                 data-for="icon : party_state_icons"
+                                 data-if="icon.unit_id == member.unit_id"
+                                 data-class-unknown-state-icon="!icon.known"
+                                 data-event-mouseover="state_icon_hover_enter(icon.unit_id, icon.entry_index)"
+                                 data-event-mouseout="state_icon_hover_exit(icon.unit_id, icon.entry_index)">
+                                <div class="battle-state-icon-image" data-style-decorator="icon.icon_decorator">
+                                    <span class="battle-state-icon-label" data-if="icon.short_label != ''">{{ icon.short_label }}</span>
+                                </div>
+                                <span class="battle-state-turns">{{ icon.turns_text }}</span>
+                            </div>
+                        </div>
                     </div>
+                </div>
+                <div class="battle-state-tooltip" data-if="state_tooltip.visible && state_tooltip.active_unit_id == member.unit_id">
+                    <div class="battle-state-tooltip-title">{{ state_tooltip.title }}</div>
+                    <div class="battle-state-tooltip-turns">{{ state_tooltip.turns }}</div>
+                    <div class="battle-state-tooltip-description">{{ state_tooltip.description }}</div>
                 </div>
             </div>
         </div>

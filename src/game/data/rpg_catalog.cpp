@@ -474,6 +474,8 @@ bool RpgCatalog::loadStates(const std::string_view file_path) {
         }
         state.id_hash_ = RpgCatalog::hashId(state.id_);
         state.display_name_ = state_node.value("display_name", state.id_);
+        state.description_ = state_node.value("description", std::string{});
+        state.icon_key_ = state_node.value("icon_key", std::string{});
         state.priority_ = state_node.value("priority", 50);
         state.min_turns_ = state_node.value("min_turns", 1);
         state.max_turns_ = state_node.value("max_turns", 1);

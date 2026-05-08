@@ -105,6 +105,21 @@ inline CatalogFixturePaths createCatalogFixture(std::string_view prefix) {
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "10", "variance": 0, "critical": false },
       "effects": []
+    },
+    {
+      "id": "skill.multi_state",
+      "display_name": "Multi State",
+      "scope": "one_enemy",
+      "hit_type": "certain",
+      "mp_cost": 0,
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "none", "formula": "0", "variance": 0, "critical": false },
+      "effects": [
+        { "type": "add_state", "target_id": "state.burn", "value1": 1.0 },
+        { "type": "add_state", "target_id": "state.stun", "value1": 1.0 },
+        { "type": "add_state", "target_id": "state.bleed", "value1": 1.0 }
+      ]
     }
   ]
 })json");
@@ -113,7 +128,36 @@ inline CatalogFixturePaths createCatalogFixture(std::string_view prefix) {
         data_root / "states.json",
         R"json({
   "states": [
-    { "id": "state.burn", "display_name": "Burn", "priority": 50, "min_turns": 2, "max_turns": 2, "traits": [] }
+    {
+      "id": "state.burn",
+      "display_name": "Burn",
+      "description": "Takes lingering fire damage.",
+      "icon_key": "burn",
+      "priority": 50,
+      "min_turns": 2,
+      "max_turns": 2,
+      "traits": []
+    },
+    {
+      "id": "state.stun",
+      "display_name": "Stun",
+      "description": "Cannot act briefly.",
+      "icon_key": "stun",
+      "priority": 90,
+      "min_turns": 1,
+      "max_turns": 1,
+      "traits": []
+    },
+    {
+      "id": "state.bleed",
+      "display_name": "Bleed",
+      "description": "Loses strength over time.",
+      "icon_key": "bleed",
+      "priority": 50,
+      "min_turns": 3,
+      "max_turns": 3,
+      "traits": []
+    }
   ]
 })json");
 

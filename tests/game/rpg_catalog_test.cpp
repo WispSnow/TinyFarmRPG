@@ -129,6 +129,8 @@ FixturePaths createValidRpgFixture() {
     {
       "id": "state.poison",
       "display_name": "Poison",
+      "description": "Weakens physical attacks.",
+      "icon_key": "poison",
       "priority": 40,
       "min_turns": 2,
       "max_turns": 4,
@@ -237,6 +239,8 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* state = catalog.findState("state.poison");
     ASSERT_NE(state, nullptr);
     EXPECT_EQ(state->min_turns_, 2);
+    EXPECT_EQ(state->description_, "Weakens physical attacks.");
+    EXPECT_EQ(state->icon_key_, "poison");
 
     const auto* enemy = catalog.findEnemy("enemy.slime");
     ASSERT_NE(enemy, nullptr);

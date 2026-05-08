@@ -58,6 +58,9 @@ public:
     /// @param escape_roll_override 返回 1..100 百分比投掷值的可选回调。
     explicit BattleActionResolver(Dependencies dependencies, EscapeRollFunc escape_roll_override = {});
 
+    /// @brief 返回当前结算器使用的 RPG 数据目录。
+    [[nodiscard]] const game::data::RpgCatalog* rpgCatalog() const { return dependencies_.rpg_catalog; }
+
     /// @brief 校验并应用一个战斗行动。
     /// @param action 待处理的行动意图。
     /// @param turn_core 要读取并修改的回合核心。

@@ -116,12 +116,25 @@ struct BattleAction {
     std::string item_id{};                                ///< type == BattleActionType::Item 时使用的物品目录 ID。
 };
 
+/// @brief 单个状态在战斗快照中的只读表现。
+struct BattleStateSnapshot {
+    std::string state_id{};                               ///< RPG catalog 中的状态 ID。
+    int turns_left{0};                                    ///< 状态剩余回合数；必须大于 0。
+};
+
+/// @brief 单个单位当前拥有的状态列表。
+struct BattleUnitStateSnapshot {
+    BattleUnitId unit_id{0};                              ///< 状态所属单位。
+    std::vector<BattleStateSnapshot> states{};            ///< 已按优先级和 ID 稳定排序的状态列表。
+};
+
 /// @brief 每次行动后返回给表现层的完整状态视图。
 ///
-/// BattleScene 将快照作为唯一数据源，而不是维护领域状态的并行副本；
+/// BattleSnapshot 是行动结果、测试断言和需要完整战斗视图的表现层入口。
 struct BattleSnapshot {
     std::vector<BattleUnit> units{};                         ///< 最近一次领域状态迁移后的完整单位状态。
     std::vector<BattleUnitId> turn_order{};                  ///< 按速度排序得到的稳定行动顺序，供表现层推导本轮队列。
+    std::vector<BattleUnitStateSnapshot> unit_states{};      ///< 存活单位当前拥有的状态列表，供 HUD 显示。
     std::optional<BattleUnitId> current_actor_id{};           ///< 当前行动者；战斗不再进行时为 nullopt。
     std::uint32_t round_index{0};                             ///< 从 1 开始的轮次计数；0 表示没有可用的存活行动者。
     BattleOutcome outcome{BattleOutcome::Ongoing};            ///< 基于当前单位状态判定出的战斗结果。

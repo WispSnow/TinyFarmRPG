@@ -1,8 +1,26 @@
 #include "battle_session.h"
 
+#include "game/data/rpg_catalog.h"
+
 #include <entt/entity/entity.hpp>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 namespace game::battle {
+namespace {
+
+[[nodiscard]] int statePriority(const game::data::RpgCatalog* rpg_catalog, const std::string& state_id) {
+    if (!rpg_catalog) {
+        return 0;
+    }
+
+    const auto* state = rpg_catalog->findState(state_id);
+    return state ? state->priority_ : 0;
+}
+
+} // namespace
 
 BattleSession::BattleSession(std::vector<BattleUnit> units, BattleSessionOptions options)
     : turn_core_(std::move(units)),
@@ -34,12 +52,14 @@ BattleSession::BattleSession(std::vector<BattleUnit> units, BattleSessionOptions
             }
         },
         {});
+    rebuildActiveUnitStates();
 }
 
 BattleSnapshot BattleSession::snapshot() const {
     BattleSnapshot snapshot{};
     snapshot.units = turn_core_.units();
     snapshot.turn_order = turn_core_.turnOrder();
+    snapshot.unit_states = active_unit_states_;
     snapshot.current_actor_id = turn_core_.currentActorId();
     snapshot.round_index = turn_core_.roundIndex();
     snapshot.outcome = turn_core_.outcome();
@@ -49,8 +69,54 @@ BattleSnapshot BattleSession::snapshot() const {
 BattleActionResult BattleSession::submitAction(const BattleAction& action) {
     BattleActionResult result = resolver_.resolve(action, turn_core_, runtime_state_);
 
+    rebuildActiveUnitStates();
     fillSnapshot(result);
     return result;
+}
+
+void BattleSession::rebuildActiveUnitStates() {
+    active_unit_states_.clear();
+
+    for (const auto& unit : turn_core_.units()) {
+        if (!unit.isAlive()) {
+            continue;
+        }
+
+        const auto runtime_it = runtime_state_.units.find(unit.id);
+        if (runtime_it == runtime_state_.units.end()) {
+            continue;
+        }
+
+        std::vector<BattleStateSnapshot> states;
+        states.reserve(runtime_it->second.state_turns_left.size());
+        for (const auto& [state_id, turns_left] : runtime_it->second.state_turns_left) {
+            if (turns_left <= 0) {
+                continue;
+            }
+            states.push_back(BattleStateSnapshot{
+                .state_id = state_id,
+                .turns_left = turns_left
+            });
+        }
+
+        if (states.empty()) {
+            continue;
+        }
+
+        std::sort(states.begin(), states.end(), [this](const BattleStateSnapshot& lhs, const BattleStateSnapshot& rhs) {
+            const int lhs_priority = statePriority(resolver_.rpgCatalog(), lhs.state_id);
+            const int rhs_priority = statePriority(resolver_.rpgCatalog(), rhs.state_id);
+            if (lhs_priority != rhs_priority) {
+                return lhs_priority > rhs_priority;
+            }
+            return lhs.state_id < rhs.state_id;
+        });
+
+        active_unit_states_.push_back(BattleUnitStateSnapshot{
+            .unit_id = unit.id,
+            .states = std::move(states)
+        });
+    }
 }
 
 void BattleSession::fillSnapshot(BattleActionResult& result) const {
