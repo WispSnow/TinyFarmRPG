@@ -9,6 +9,7 @@
     "pop": "assets/audio/pop.mp3",
     "ui_hover": "assets/audio/Fantasy_UI (1).wav",
     "ui_click": "assets/audio/Fantasy_UI (10).wav",
+    "battle-victory": "assets/audio/UI_button11.wav",
     "cow_moo": "assets/audio/calf-and-cow.wav",
     "sheep_baa": "assets/audio/sheep-baaing-3.wav"
   },

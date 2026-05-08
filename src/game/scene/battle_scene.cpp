@@ -5,6 +5,7 @@
 #include "engine/component/render_component.h"
 #include "engine/component/sprite_component.h"
 #include "engine/component/transform_component.h"
+#include "engine/audio/audio_player.h"
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
 #include "engine/render/camera.h"
@@ -20,9 +21,11 @@
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/data/rpg_types.h"
+#include "game/defs/audio_ids.h"
 #include "game/factory/blueprint.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/system/appearance_layer_cache_builder.h"
+#include "game/ui/rml_item_icon_helpers.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -58,6 +61,10 @@ constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
 constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F};
 constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F;
+constexpr glm::vec2 VICTORY_POSE_PLAYER_BASE_OFFSET{-8.0F, -2.0F};
+constexpr float VICTORY_POSE_BOB_TAU = 6.28318530717958647692F;
+constexpr float VICTORY_POSE_BOB_RATE = 1.2F;
+constexpr float VICTORY_POSE_BOB_PIXELS = 2.0F;
 constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -10.0F;
 constexpr float BATTLE_SHADOW_ALPHA = 0.4F;
 constexpr float BATTLE_SHADOW_DEPTH_OFFSET = -0.10F;
@@ -532,7 +539,9 @@ bool BattleScene::init() {
 
     connectInputListeners();
 
-    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+    if (session_.outcome() == game::battle::BattleOutcome::Victory) {
+        beginVictoryFlow();
+    } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         state_ = FlowState::BattleEnd;
         leaveInputMenu();
     } else {
@@ -567,6 +576,7 @@ void BattleScene::render(float interpolation_alpha) {
 void BattleScene::prepareUi(float interpolation_alpha) {
     Scene::prepareUi(interpolation_alpha);
     syncMenuFocus();
+    syncVictoryContinueFocus();
 }
 
 void BattleScene::clean() {
@@ -614,6 +624,13 @@ bool BattleScene::initUI() {
     if (!constructor.Bind("turn_text", &turn_text_) ||
         !constructor.Bind("result_text", &result_text_) ||
         !constructor.Bind("actions_enabled", &actions_enabled_) ||
+        !constructor.Bind("victory_overlay_visible", &victory_overlay_visible_) ||
+        !constructor.Bind("victory_continue_enabled", &victory_continue_enabled_) ||
+        !constructor.Bind("victory_items_empty", &victory_items_empty_) ||
+        !constructor.Bind("victory_title", &victory_title_) ||
+        !constructor.Bind("victory_gold_text", &victory_gold_text_) ||
+        !constructor.Bind("victory_item_empty_text", &victory_item_empty_text_) ||
+        !constructor.Bind("victory_prompt_text", &victory_prompt_text_) ||
         !constructor.Bind("list_empty_text", &list_empty_text_) ||
         !constructor.Bind("target_empty_text", &target_empty_text_) ||
         !constructor.Bind("party_command_visible", &party_command_visible_) ||
@@ -627,6 +644,7 @@ bool BattleScene::initUI() {
         !constructor.Bind("party_state_icons", &party_state_icons_) ||
         !constructor.Bind("state_tooltip", &state_tooltip_) ||
         !constructor.Bind("battle_log_entries", &battle_log_entries_) ||
+        !constructor.Bind("victory_reward_items", &victory_reward_items_) ||
         !constructor.Bind("party_commands", &party_commands_) ||
         !constructor.Bind("actor_commands", &actor_commands_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
@@ -637,6 +655,14 @@ bool BattleScene::initUI() {
     }
 
     if (!document_controller_.bindEvent(
+            constructor,
+            "victory_continue",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
+                if (state_ == FlowState::VictoryFlow) {
+                    victory_flow_controller_.confirm();
+                }
+            }) ||
+        !document_controller_.bindEvent(
             constructor,
             "party_command_select",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
@@ -778,6 +804,15 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto victory_item_handle = constructor.RegisterStruct<VictoryRewardItemViewModel>()) {
+        victory_item_handle.RegisterMember("entry_index", &VictoryRewardItemViewModel::entry_index);
+        victory_item_handle.RegisterMember("label", &VictoryRewardItemViewModel::label);
+        victory_item_handle.RegisterMember("count_text", &VictoryRewardItemViewModel::count_text);
+        victory_item_handle.RegisterMember("icon_decorator", &VictoryRewardItemViewModel::icon_decorator);
+    } else {
+        return false;
+    }
+
     if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
         turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
         turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
@@ -799,7 +834,8 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
         !constructor.RegisterArray<decltype(party_status_)>() ||
         !constructor.RegisterArray<decltype(party_state_icons_)>() ||
-        !constructor.RegisterArray<decltype(battle_log_entries_)>()) {
+        !constructor.RegisterArray<decltype(battle_log_entries_)>() ||
+        !constructor.RegisterArray<decltype(victory_reward_items_)>()) {
         return false;
     }
 
@@ -879,10 +915,21 @@ void BattleScene::runStateMachine(float delta_time) {
                 break;
             }
             case FlowState::CheckVictory:
-                state_ = (session_.outcome() == game::battle::BattleOutcome::Ongoing)
-                    ? FlowState::NextTurn
-                    : FlowState::BattleEnd;
+                if (session_.outcome() == game::battle::BattleOutcome::Ongoing) {
+                    state_ = FlowState::NextTurn;
+                } else if (session_.outcome() == game::battle::BattleOutcome::Victory) {
+                    beginVictoryFlow();
+                } else {
+                    state_ = FlowState::BattleEnd;
+                }
                 keep_running = true;
+                break;
+            case FlowState::VictoryFlow:
+                victory_flow_controller_.update(delta_time);
+                if (victory_flow_controller_.finished()) {
+                    finishVictoryFlow();
+                    keep_running = true;
+                }
                 break;
             case FlowState::NextTurn:
                 beginCurrentTurnFlow();
@@ -975,9 +1022,12 @@ void BattleScene::refreshView() {
 
     rebuildTurnOrderView();
     rebuildPartyStatusView();
+    rebuildVictoryView();
 
     std::string result_text = "Result: " + menu_status_text_;
-    if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+    if (state_ == FlowState::VictoryFlow) {
+        result_text = "Result: Victory";
+    } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
     }
     if (updateBoundString(result_text_, result_text)) {
@@ -999,6 +1049,70 @@ void BattleScene::refreshView() {
         leaveInputMenu();
     } else if (can_submit_action && menu_state_ == MenuState::None) {
         enterInputMenu();
+    }
+}
+
+void BattleScene::rebuildVictoryView() {
+    const BattleVictoryFlowSnapshot snapshot = victory_flow_controller_.snapshot();
+    const bool overlay_visible = state_ == FlowState::VictoryFlow && victory_flow_controller_.active();
+    if (updateBoundBool(victory_overlay_visible_, overlay_visible)) {
+        document_controller_.markDirty("victory_overlay_visible");
+    }
+
+    const bool continue_enabled = overlay_visible && snapshot.waiting_for_confirm;
+    if (updateBoundBool(victory_continue_enabled_, continue_enabled)) {
+        document_controller_.markDirty("victory_continue_enabled");
+        if (continue_enabled) {
+            victory_continue_focus_dirty_ = true;
+        }
+    }
+
+    const std::string gold_text = std::to_string(std::max(0, snapshot.gold.display));
+    if (updateBoundString(victory_gold_text_, gold_text)) {
+        document_controller_.markDirty("victory_gold_text");
+    }
+
+    const std::string prompt_text = snapshot.waiting_for_confirm ? "Continue" : "Confirm";
+    if (updateBoundString(victory_prompt_text_, prompt_text)) {
+        document_controller_.markDirty("victory_prompt_text");
+    }
+
+    std::vector<VictoryRewardItemViewModel> next_items;
+    next_items.reserve(snapshot.item_drops.size());
+    int entry_index = 0;
+    for (const auto& drop : snapshot.item_drops) {
+        if (drop.count <= 0) {
+            continue;
+        }
+
+        Rml::String label = makeRmlString(drop.item_id);
+        if (item_catalog_) {
+            if (const auto* item = item_catalog_->findItem(drop.item_id_hash);
+                item && !item->display_name_.empty()) {
+                label = makeRmlString(item->display_name_);
+            }
+        }
+
+        next_items.push_back(VictoryRewardItemViewModel{
+            .entry_index = entry_index++,
+            .label = label,
+            .count_text = makeRmlString("x" + std::to_string(drop.count)),
+            .icon_decorator = makeRmlString(game::ui::buildItemIconDecorator(item_catalog_, drop.item_id_hash))
+        });
+    }
+
+    if (victory_reward_items_ != next_items) {
+        victory_reward_items_ = std::move(next_items);
+        document_controller_.markDirty("victory_reward_items");
+    }
+
+    if (updateBoundBool(victory_items_empty_, victory_reward_items_.empty())) {
+        document_controller_.markDirty("victory_items_empty");
+    }
+
+    const std::string empty_text = snapshot.waiting_for_confirm ? "No drops" : "Resolving...";
+    if (updateBoundString(victory_item_empty_text_, empty_text)) {
+        document_controller_.markDirty("victory_item_empty_text");
     }
 }
 
@@ -1359,6 +1473,17 @@ void BattleScene::syncMenuFocus() {
     // cursor >= 0 但元素尚未生成（data-if 子树未展开）: 保持脏标记，下帧重试。
     if (cursor < 0 || focusElementById(makeElementId(prefix, cursor))) {
         menu_focus_dirty_ = false;
+    }
+}
+
+void BattleScene::syncVictoryContinueFocus() {
+    if (!victory_continue_focus_dirty_) {
+        return;
+    }
+
+    // focus 可能早于 RmlUi disabled 属性同步；失败时保留脏标记，下帧重试。
+    if (!victory_continue_enabled_ || focusElementById("battle-victory-continue")) {
+        victory_continue_focus_dirty_ = false;
     }
 }
 
@@ -2083,6 +2208,11 @@ bool BattleScene::onMenuRightPressed() {
 }
 
 bool BattleScene::onMenuConfirmPressed() {
+    if (state_ == FlowState::VictoryFlow) {
+        victory_flow_controller_.confirm();
+        return true;
+    }
+
     if (!isWaitingForActionInput()) {
         return menu_state_ != MenuState::None;
     }
@@ -2107,6 +2237,10 @@ bool BattleScene::onMenuConfirmPressed() {
 }
 
 bool BattleScene::onMenuCancelPressed() {
+    if (state_ == FlowState::VictoryFlow) {
+        return true;
+    }
+
     if (!isWaitingForActionInput()) {
         return menu_state_ != MenuState::None;
     }
@@ -2224,6 +2358,36 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
     return actor;
 }
 
+void BattleScene::beginVictoryFlow() {
+    leaveInputMenu();
+    state_ = FlowState::VictoryFlow;
+    victory_reward_summary_ = resolveVictoryRewards();
+    victory_flow_controller_.begin(*victory_reward_summary_);
+    victory_continue_focus_dirty_ = false;
+    battle_enemy_hp_bar_controller_.setHighlightedTarget(std::nullopt);
+    playVictoryAudioCue();
+}
+
+game::battle::BattleRewardSummary BattleScene::resolveVictoryRewards() {
+    if (!rpg_catalog_) {
+        spdlog::warn("BattleScene: RPG catalog 不可用，Victory 奖励摘要为空。");
+        return {};
+    }
+
+    game::battle::BattleRewardResolver resolver{};
+    return resolver.resolve(game::battle::BattleOutcome::Victory, session_.units(), *rpg_catalog_);
+}
+
+void BattleScene::finishVictoryFlow() {
+    victory_flow_controller_.reset();
+    state_ = FlowState::BattleEnd;
+}
+
+void BattleScene::playVictoryAudioCue() {
+    // 占位 Victory ME；后续替换为专用 fanfare 资源。
+    static_cast<void>(context_.getAudioPlayer().playSound(game::defs::audio::BATTLE_VICTORY_ID.value()));
+}
+
 std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentationUnitAnchors() const {
     std::vector<BattlePresentationUnitAnchor> anchors;
     const auto view = battle_registry_.view<BattleSpriteComponent>();
@@ -2295,6 +2459,18 @@ std::optional<BattleAnimationPose> BattleScene::presentationPoseFor(
     const game::battle::BattleSide side) const {
     if (const auto pose = battle_animation_director_.poseFor(unit_id)) {
         return pose;
+    }
+    if (state_ == FlowState::VictoryFlow && side == game::battle::BattleSide::Player) {
+        const auto* unit = session_.findUnit(unit_id);
+        if (unit && unit->isAlive()) {
+            const BattleVictoryFlowSnapshot victory_snapshot = victory_flow_controller_.snapshot();
+            const float bob = std::sin(victory_snapshot.elapsed_seconds * VICTORY_POSE_BOB_TAU * VICTORY_POSE_BOB_RATE) *
+                VICTORY_POSE_BOB_PIXELS;
+            BattleAnimationPose pose{};
+            pose.offset = VICTORY_POSE_PLAYER_BASE_OFFSET + glm::vec2{0.0F, bob};
+            pose.color_multiplier = engine::utils::FColor{1.10F, 1.08F, 0.90F, 1.0F};
+            return pose;
+        }
     }
     return commandFocusPoseFor(unit_id, side);
 }
@@ -2761,6 +2937,7 @@ void BattleScene::requestBattleEnd() {
     event.outcome = session_.outcome();
     event.final_units = session_.units();
     event.remaining_item_stocks = session_.itemStocks();
+    event.reward_summary = victory_reward_summary_;
     context_.getDispatcher().trigger(event);
 
     requestPopScene();

@@ -35,6 +35,142 @@ body, div, h1, h2, h3, h4, p, hr {
     pointer-events: none;
 }
 
+#battle-victory-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 640dp;
+    height: 256dp;
+    background-color: #03070fcc;
+}
+
+#battle-victory-panel {
+    position: absolute;
+    left: 170dp;
+    top: 34dp;
+    width: 300dp;
+    height: 178dp;
+    padding: 10dp;
+    background-color: #111822f2;
+    border-width: 1dp;
+    border-color: #f0d77eff;
+}
+
+#battle-victory-title {
+    width: 280dp;
+    height: 34dp;
+    line-height: 34dp;
+    color: #fff2a6ff;
+    font-size: 24dp;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000dd);
+}
+
+#battle-victory-rewards {
+    width: 280dp;
+    height: 88dp;
+    margin-top: 6dp;
+}
+
+.battle-victory-row {
+    width: 280dp;
+    height: 20dp;
+    display: flex;
+    flex-direction: row;
+    background-color: #1a2535ee;
+    border-width: 1dp;
+    border-color: #46546aff;
+}
+
+.battle-victory-label {
+    width: 148dp;
+    height: 18dp;
+    line-height: 18dp;
+    padding-left: 6dp;
+    color: #d8dee9ff;
+    font-size: 10dp;
+}
+
+.battle-victory-value {
+    width: 116dp;
+    height: 18dp;
+    line-height: 18dp;
+    padding-right: 6dp;
+    color: #fce97fff;
+    font-size: 10dp;
+    text-align: right;
+}
+
+#battle-victory-item-list {
+    width: 280dp;
+    height: 62dp;
+    margin-top: 4dp;
+    overflow: hidden;
+}
+
+.battle-victory-empty {
+    width: 280dp;
+    height: 20dp;
+    line-height: 20dp;
+    color: #8b95a7ff;
+    font-size: 9dp;
+    text-align: center;
+}
+
+.battle-victory-item {
+    width: 280dp;
+    height: 20dp;
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 1dp;
+    background-color: #101722cc;
+}
+
+.battle-victory-item-icon {
+    width: 18dp;
+    height: 18dp;
+    margin-left: 2dp;
+    decorator: none;
+}
+
+.battle-victory-item-label {
+    width: 194dp;
+    height: 20dp;
+    line-height: 20dp;
+    padding-left: 5dp;
+    color: #e8eef8ff;
+    font-size: 9dp;
+    overflow: hidden;
+}
+
+.battle-victory-item-count {
+    width: 52dp;
+    height: 20dp;
+    line-height: 20dp;
+    padding-right: 6dp;
+    color: #fce97fff;
+    font-size: 9dp;
+    text-align: right;
+}
+
+#battle-victory-continue {
+    width: 108dp;
+    height: 24dp;
+    margin-left: 86dp;
+    margin-top: 8dp;
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+#battle-victory-continue.disabled {
+    color: #7e8796ff;
+    border-color: #394454ff;
+    background-color: #161e2add;
+}
+
 .battle-log-entry {
     width: 314dp;
     height: 15dp;

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/battle/battle_reward_resolver.h"
 #include "constants.h"
 #include "crop_defs.h"
 #include <glm/vec2.hpp>
 #include <string>
 #include <cstdint>
 #include <entt/entity/entity.hpp>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -137,6 +139,7 @@ struct BattleEndedEvent {
     game::battle::BattleOutcome outcome{game::battle::BattleOutcome::Ongoing};    ///< 战斗最终结果。
     std::vector<game::battle::BattleUnit> final_units{};                          ///< 战斗结束时的完整单位状态副本。
     std::unordered_map<entt::id_type, int> remaining_item_stocks{};                ///< 战斗结束时剩余的战斗内道具库存。
+    std::optional<game::battle::BattleRewardSummary> reward_summary{};             ///< Victory 时由 BattleScene 结算出的奖励摘要，避免写回阶段重复 roll 掉落。
 };
 
 } // namespace game::defs
