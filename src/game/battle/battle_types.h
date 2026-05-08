@@ -148,6 +148,8 @@ struct BattleActionResult {
     BattleActionType action_type{BattleActionType::EndTurn};
     BattleUnitId actor_id{0};
     std::optional<BattleUnitId> target_id{};                     ///< NOTE: 目前仅支持单目标；未来考虑扩展
+    std::string skill_id{};                                      ///< type == Skill 时保留提交行动的技能 ID，供日志和表现层查名。
+    std::string item_id{};                                       ///< type == Item 时保留提交行动的道具 ID，供日志和表现层查名。
     int damage{0};
     int hp_recovered{0};
     int mp_recovered{0};

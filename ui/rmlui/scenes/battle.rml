@@ -28,6 +28,16 @@
         <div id="battle-result">{{ result_text }}</div>
     </div>
 
+    <div id="battle-log-panel">
+        <div class="battle-log-entry"
+             data-for="entry : battle_log_entries"
+             data-class-log-damage="entry.tone_class == 'damage'"
+             data-class-log-recovery="entry.tone_class == 'recovery'"
+             data-class-log-state="entry.tone_class == 'state'"
+             data-class-log-system="entry.tone_class == 'system'"
+             data-class-log-error="entry.tone_class == 'error'">{{ entry.text }}</div>
+    </div>
+
     <div id="battle-hud">
         <div id="battle-party-panel">
             <div class="battle-party-card"

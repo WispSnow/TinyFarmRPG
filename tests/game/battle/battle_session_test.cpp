@@ -268,6 +268,7 @@ TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
         .skill_id = "skill.fire"
     });
     EXPECT_EQ(skill_result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(skill_result.skill_id, "skill.fire");
     EXPECT_EQ(skill_result.damage, 20);
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
 
@@ -296,6 +297,7 @@ TEST(BattleSessionTest, SkillAndItemActionsApplyWhenCatalogsAreProvided) {
         .item_id = "item.potion"
     });
     EXPECT_EQ(item_result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(item_result.item_id, "item.potion");
     EXPECT_EQ(item_result.hp_recovered, 50);
     EXPECT_EQ(item_result.outcome_after, BattleOutcome::Ongoing);
     ASSERT_NE(session.findUnit(2), nullptr);
