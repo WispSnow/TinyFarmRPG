@@ -82,6 +82,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("RegisterStruct<TargetEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<PartyStatusViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TurnOrderEntryViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterMember(\"badge_label\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_status\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
     EXPECT_NE(source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
@@ -99,6 +100,12 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("populateItemEntries"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::ItemList)"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::MainMenu)"), std::string::npos);
+    EXPECT_NE(source.find("enemyTurnOrderIconDecorator"), std::string::npos);
+    EXPECT_NE(source.find("battleEnemyIconSpriteName"), std::string::npos);
+    EXPECT_NE(source.find("findEnemyIdleDownAnimation"), std::string::npos);
+    EXPECT_NE(source.find("\"idle_down\"_hs"), std::string::npos);
+    EXPECT_NE(source.find("sprite_blueprint_id_hash_"), std::string::npos);
+    EXPECT_NE(source.find("turnOrderFallbackLabel(unit.side, side_index)"), std::string::npos);
     EXPECT_EQ(source.find("units_text"), std::string::npos);
 }
 
@@ -452,6 +459,7 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
 
     EXPECT_NE(rml.find("../theme/nav.rcss"), std::string::npos);
     EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("../theme/battle_enemy_icons.rcss"), std::string::npos);
     EXPECT_NE(rml.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_EQ(rml.find("Battle Prototype"), std::string::npos);
     EXPECT_EQ(rml.find("tf-button-secondary"), std::string::npos);
@@ -467,6 +475,9 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("data-class-enemy-turn-entry=\"entry.enemy\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-decorator=\"entry.portrait_decorator\""), std::string::npos);
     EXPECT_NE(rml.find("{{ entry.short_label }}"), std::string::npos);
+    EXPECT_NE(rml.find("battle-turn-order-badge"), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"entry.badge_label != ''\""), std::string::npos);
+    EXPECT_NE(rml.find("{{ entry.badge_label }}"), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-turn\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-result\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"member : party_status\""), std::string::npos);
@@ -509,6 +520,10 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find(".battle-turn-order-entry.ko-turn-entry"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-turn-order-entry.enemy-turn-entry"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-turn-order-label"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-turn-order-badge"), std::string::npos);
+    EXPECT_NE(rcss.find("image-color: #ffffffff;"), std::string::npos);
+    EXPECT_NE(rcss.find("image-color: #ffffff77;"), std::string::npos);
+    EXPECT_NE(rcss.find("image-color: #ffffff44;"), std::string::npos);
     EXPECT_NE(rcss.find("font-effect: shadow(1dp 1dp #000000cc);"), std::string::npos);
     EXPECT_NE(rcss.find("overflow: hidden;"), std::string::npos);
     EXPECT_NE(rcss.find("height: 104dp;"), std::string::npos);
@@ -531,6 +546,22 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_EQ(rcss.find("solid"), std::string::npos);
     EXPECT_EQ(rcss.find("font-style: italic"), std::string::npos);
     EXPECT_EQ(rcss.find("ninepatch"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, EnemyIconSpritesheetDefinesProjectEnemyFrames) {
+    const std::filesystem::path icon_rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/battle_enemy_icons.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(icon_rcss_path)) << icon_rcss_path;
+
+    const std::string icon_rcss = readTextFile(icon_rcss_path);
+    ASSERT_FALSE(icon_rcss.empty());
+
+    EXPECT_NE(icon_rcss.find("@spritesheet battle-enemy-goblin-icons"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("@spritesheet battle-enemy-gnome-icons"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("@spritesheet battle-enemy-slime-icons"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-enemy-icon-goblin: 0px 0px 32px 32px;"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-enemy-icon-gnome: 0px 0px 32px 32px;"), std::string::npos);
+    EXPECT_NE(icon_rcss.find("battle-enemy-icon-slime: 0px 32px 32px 32px;"), std::string::npos);
 }
 
 } // namespace

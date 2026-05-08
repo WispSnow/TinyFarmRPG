@@ -2,17 +2,54 @@
 
 #include "game/component/party_component.h"
 #include "game/component/quest_log_component.h"
+#include "game/data/rpg_catalog.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
+#include <cctype>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <glm/vec2.hpp>
-#include <chrono>
+#include <nlohmann/json.hpp>
 
 namespace game::factory {
+namespace {
+
+[[nodiscard]] std::string readTextFile(const std::filesystem::path& path) {
+    std::ifstream file(path);
+    EXPECT_TRUE(file.is_open()) << path;
+    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+}
+
+// Keep this normalization in sync with the battle_scene.cpp helper of the same name.
+[[nodiscard]] std::string battleEnemyIconSpriteName(std::string_view sprite_blueprint_id) {
+    std::string normalized;
+    bool previous_was_separator = true;
+
+    for (const unsigned char character : sprite_blueprint_id) {
+        if (std::isalnum(character) != 0) {
+            normalized.push_back(static_cast<char>(std::tolower(character)));
+            previous_was_separator = false;
+            continue;
+        }
+
+        if (!previous_was_separator) {
+            normalized.push_back('-');
+            previous_was_separator = true;
+        }
+    }
+
+    while (!normalized.empty() && normalized.back() == '-') {
+        normalized.pop_back();
+    }
+
+    return normalized.empty() ? std::string{} : "battle-enemy-icon-" + normalized;
+}
+
+} // namespace
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
     BlueprintManager manager;
@@ -69,13 +106,64 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
 
     const auto& goblin = manager.getActorBlueprint(entt::hashed_string{"goblin"}.value());
     EXPECT_EQ(goblin.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png");
+    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_down"}.value()), goblin.animations_.end());
     EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_right"}.value()), goblin.animations_.end());
     EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_left"}.value()), goblin.animations_.end());
 
     const auto& gnome = manager.getActorBlueprint(entt::hashed_string{"gnome"}.value());
     EXPECT_EQ(gnome.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png");
+    EXPECT_NE(gnome.animations_.find(entt::hashed_string{"idle_down"}.value()), gnome.animations_.end());
     EXPECT_NE(gnome.animations_.find(entt::hashed_string{"idle_right"}.value()), gnome.animations_.end());
     EXPECT_NE(gnome.animations_.find(entt::hashed_string{"idle_left"}.value()), gnome.animations_.end());
+}
+
+TEST(BlueprintManagerTest, ProjectBattleEnemiesExposeTurnOrderIdleDownIcons) {
+    const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR};
+    const std::filesystem::path enemy_path = (project_root / "assets/data/rpg/enemies.json").lexically_normal();
+    const std::filesystem::path actor_blueprint_path = (project_root / "assets/data/actor_blueprint.json").lexically_normal();
+    const std::filesystem::path icon_rcss_path = (project_root / "ui/rmlui/theme/battle_enemy_icons.rcss").lexically_normal();
+
+    BlueprintManager manager;
+    ASSERT_TRUE(manager.loadActorBlueprints(actor_blueprint_path.string()));
+
+    const std::string icon_rcss = readTextFile(icon_rcss_path);
+    ASSERT_FALSE(icon_rcss.empty());
+
+    std::ifstream enemy_file(enemy_path);
+    ASSERT_TRUE(enemy_file.is_open()) << enemy_path;
+    const nlohmann::json root = nlohmann::json::parse(enemy_file, nullptr, false);
+    ASSERT_FALSE(root.is_discarded()) << enemy_path;
+    ASSERT_TRUE(root.contains("enemies"));
+    ASSERT_TRUE(root["enemies"].is_array());
+
+    std::size_t checked_enemy_count = 0;
+    for (const auto& enemy_node : root["enemies"]) {
+        ASSERT_TRUE(enemy_node.is_object());
+        const auto visual_it = enemy_node.find("battle_visual");
+        if (visual_it == enemy_node.end() || !visual_it->is_object()) {
+            continue;
+        }
+
+        const std::string sprite_blueprint_id = visual_it->value("sprite_blueprint_id", std::string{});
+        if (sprite_blueprint_id.empty()) {
+            continue;
+        }
+
+        const entt::id_type blueprint_id = game::data::RpgCatalog::hashId(sprite_blueprint_id);
+        ASSERT_TRUE(manager.hasActorBlueprint(blueprint_id)) << sprite_blueprint_id;
+
+        const auto& blueprint = manager.getActorBlueprint(blueprint_id);
+        const auto idle_down_it = blueprint.animations_.find(game::data::RpgCatalog::hashId("idle_down"));
+        ASSERT_NE(idle_down_it, blueprint.animations_.end()) << sprite_blueprint_id;
+        EXPECT_FALSE(idle_down_it->second.frames_.empty()) << sprite_blueprint_id;
+
+        const std::string sprite_name = battleEnemyIconSpriteName(sprite_blueprint_id);
+        ASSERT_FALSE(sprite_name.empty()) << sprite_blueprint_id;
+        EXPECT_NE(icon_rcss.find(sprite_name), std::string::npos) << sprite_name;
+        ++checked_enemy_count;
+    }
+
+    EXPECT_GT(checked_enemy_count, 0U);
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {

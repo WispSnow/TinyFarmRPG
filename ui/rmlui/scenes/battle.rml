@@ -4,6 +4,7 @@
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/portrait.rcss"/>
+    <link type="text/rcss" href="../theme/battle_enemy_icons.rcss"/>
     <link type="text/rcss" href="battle.rcss"/>
 </head>
 <body class="tf-screen-root tf-nav-root" data-model="battle_scene">
@@ -17,6 +18,7 @@
             <div class="battle-turn-order-portrait" data-style-decorator="entry.portrait_decorator">
                 <span class="battle-turn-order-label" data-if="entry.short_label != ''">{{ entry.short_label }}</span>
             </div>
+            <span class="battle-turn-order-badge" data-if="entry.badge_label != ''">{{ entry.badge_label }}</span>
         </div>
     </div>
 
