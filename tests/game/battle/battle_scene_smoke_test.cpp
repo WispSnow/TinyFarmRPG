@@ -521,6 +521,22 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find(".battle-turn-order-entry.enemy-turn-entry"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-turn-order-label"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-turn-order-badge"), std::string::npos);
+    const std::string turn_entry_block = snippetFrom(rcss, ".battle-turn-order-entry {");
+    ASSERT_FALSE(turn_entry_block.empty());
+    EXPECT_NE(turn_entry_block.find("width: 30dp;"), std::string::npos);
+    EXPECT_NE(turn_entry_block.find("height: 30dp;"), std::string::npos);
+    EXPECT_NE(turn_entry_block.find("padding: 0;"), std::string::npos);
+    EXPECT_NE(turn_entry_block.find("border-width: 0dp;"), std::string::npos);
+
+    const std::string turn_portrait_block = snippetFrom(rcss, ".battle-turn-order-portrait {");
+    ASSERT_FALSE(turn_portrait_block.empty());
+    EXPECT_NE(turn_portrait_block.find("width: 28dp;"), std::string::npos);
+    EXPECT_NE(turn_portrait_block.find("height: 28dp;"), std::string::npos);
+
+    const std::string turn_badge_block = snippetFrom(rcss, ".battle-turn-order-badge {");
+    ASSERT_FALSE(turn_badge_block.empty());
+    EXPECT_NE(turn_badge_block.find("left: 20dp;"), std::string::npos);
+    EXPECT_NE(turn_badge_block.find("top: 20dp;"), std::string::npos);
     EXPECT_NE(rcss.find("image-color: #ffffffff;"), std::string::npos);
     EXPECT_NE(rcss.find("image-color: #ffffff77;"), std::string::npos);
     EXPECT_NE(rcss.find("image-color: #ffffff44;"), std::string::npos);
