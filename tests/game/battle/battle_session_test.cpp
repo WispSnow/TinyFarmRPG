@@ -7,6 +7,7 @@
 #include "game/data/rpg_catalog.h"
 
 #include <array>
+#include <algorithm>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -111,6 +112,44 @@ TEST(BattleSessionTest, EndTurnMovesToNextAliveActor) {
     EXPECT_EQ(result.status, BattleActionStatus::Applied);
     EXPECT_EQ(result.outcome_after, BattleOutcome::Ongoing);
     EXPECT_EQ(session.currentActorId(), std::optional<BattleUnitId>{2});
+}
+
+TEST(BattleSessionTest, SnapshotIncludesStableTurnOrder) {
+    BattleSession session(makeSessionUnits());
+
+    const BattleSnapshot snapshot = session.snapshot();
+
+    const std::vector<BattleUnitId> expected_order{1, 2, 101, 102};
+    EXPECT_EQ(snapshot.turn_order, expected_order);
+    EXPECT_EQ(snapshot.current_actor_id, std::optional<BattleUnitId>{1});
+}
+
+TEST(BattleSessionTest, SnapshotTurnOrderRemainsStableWhenDefeatedActorIsSkipped) {
+    auto units = makeSessionUnits();
+    units[0].attack = 90;
+    BattleSession session(std::move(units));
+    ASSERT_EQ(session.currentActorId(), std::optional<BattleUnitId>{1});
+
+    const BattleActionResult result = session.submitAction(BattleAction{
+        .type = BattleActionType::Attack,
+        .actor_id = 1,
+        .target_id = 101
+    });
+
+    const std::vector<BattleUnitId> expected_order{1, 2, 101, 102};
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_TRUE(result.target_defeated);
+    EXPECT_EQ(result.snapshot.turn_order, expected_order);
+    EXPECT_EQ(result.snapshot.current_actor_id, std::optional<BattleUnitId>{2});
+
+    const auto current_position =
+        std::find(result.snapshot.turn_order.begin(), result.snapshot.turn_order.end(), *result.snapshot.current_actor_id);
+    ASSERT_NE(current_position, result.snapshot.turn_order.end());
+    EXPECT_EQ(static_cast<std::size_t>(std::distance(result.snapshot.turn_order.begin(), current_position)), 1U);
+
+    const auto defeated_position = std::find(result.snapshot.turn_order.begin(), result.snapshot.turn_order.end(), BattleUnitId{101});
+    ASSERT_NE(defeated_position, result.snapshot.turn_order.end());
+    EXPECT_EQ(static_cast<std::size_t>(std::distance(result.snapshot.turn_order.begin(), defeated_position)), 2U);
 }
 
 TEST(BattleSessionTest, RejectsActionFromNonCurrentActor) {

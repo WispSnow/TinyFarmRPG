@@ -43,6 +43,9 @@ public:
     [[nodiscard]] const std::vector<BattleUnit>& units() const { return turn_core_.units(); }
     [[nodiscard]] const BattleUnit* findUnit(BattleUnitId id) const { return turn_core_.findUnit(id); }
 
+    /// @brief 返回按速度稳定排序的本轮行动顺序，仅供表现层只读消费。
+    [[nodiscard]] const std::vector<BattleUnitId>& turnOrder() const { return turn_core_.turnOrder(); }
+
     /// @brief 返回当前行动者；战斗结束时为 nullopt。
     [[nodiscard]] std::optional<BattleUnitId> currentActorId() const { return turn_core_.currentActorId(); }
     [[nodiscard]] BattleOutcome outcome() const { return turn_core_.outcome(); }

@@ -7,6 +7,19 @@
     <link type="text/rcss" href="battle.rcss"/>
 </head>
 <body class="tf-screen-root tf-nav-root" data-model="battle_scene">
+    <div id="battle-turn-order-bar">
+        <div class="battle-turn-order-entry"
+             data-for="entry : turn_order_entries"
+             data-class-current-turn-entry="entry.current"
+             data-class-acted-turn-entry="entry.acted"
+             data-class-ko-turn-entry="entry.ko"
+             data-class-enemy-turn-entry="entry.enemy">
+            <div class="battle-turn-order-portrait" data-style-decorator="entry.portrait_decorator">
+                <span class="battle-turn-order-label" data-if="entry.short_label != ''">{{ entry.short_label }}</span>
+            </div>
+        </div>
+    </div>
+
     <div id="battle-top-status">
         <div id="battle-turn">{{ turn_text }}</div>
         <div id="battle-result">{{ result_text }}</div>

@@ -121,6 +121,7 @@ struct BattleAction {
 /// BattleScene 将快照作为唯一数据源，而不是维护领域状态的并行副本；
 struct BattleSnapshot {
     std::vector<BattleUnit> units{};                         ///< 最近一次领域状态迁移后的完整单位状态。
+    std::vector<BattleUnitId> turn_order{};                  ///< 按速度排序得到的稳定行动顺序，供表现层推导本轮队列。
     std::optional<BattleUnitId> current_actor_id{};           ///< 当前行动者；战斗不再进行时为 nullopt。
     std::uint32_t round_index{0};                             ///< 从 1 开始的轮次计数；0 表示没有可用的存活行动者。
     BattleOutcome outcome{BattleOutcome::Ongoing};            ///< 基于当前单位状态判定出的战斗结果。

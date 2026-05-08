@@ -39,6 +39,7 @@ BattleSession::BattleSession(std::vector<BattleUnit> units, BattleSessionOptions
 BattleSnapshot BattleSession::snapshot() const {
     BattleSnapshot snapshot{};
     snapshot.units = turn_core_.units();
+    snapshot.turn_order = turn_core_.turnOrder();
     snapshot.current_actor_id = turn_core_.currentActorId();
     snapshot.round_index = turn_core_.roundIndex();
     snapshot.outcome = turn_core_.outcome();
