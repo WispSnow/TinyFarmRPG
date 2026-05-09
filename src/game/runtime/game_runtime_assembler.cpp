@@ -40,6 +40,7 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_turn_in_service.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/gameplay_camera_defaults.h"
 #include "game/runtime/rpg_catalog_loader.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
@@ -523,7 +524,7 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
 
 void configureCamera(engine::core::Context& context) {
     auto& camera = context.getCamera();
-    camera.setZoom(2.0f);
+    game::runtime::applyGameplayCameraDefaultZoom(camera);
 }
 
 void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeServices& services) {

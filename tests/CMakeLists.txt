@@ -152,6 +152,7 @@ set(GAME_TEST_SOURCES
     game/battle/battle_enemy_hp_bar_controller_test.cpp
     game/battle/battle_victory_flow_controller_test.cpp
     game/battle/battle_background_test.cpp
+    game/battle/battle_scene_entry_test.cpp
     game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp
     game/farm_system_hoe_blocking_test.cpp

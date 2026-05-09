@@ -17,6 +17,7 @@
 #include "game/factory/entity_factory.h"
 #include "game/defs/crop_defs.h"
 #include "game/defs/spatial_layers.h"
+#include "game/runtime/gameplay_camera_defaults.h"
 #include "game/component/crop_component.h"
 #include "game/component/farmland_component.h"
 #include "game/component/resource_node_component.h"
@@ -608,8 +609,7 @@ void MapManager::snapCameraTo(const glm::vec2& world_pos) {
 void MapManager::configureCamera(glm::vec2 map_pixel_size) {
     auto& camera = context_.getCamera();
     camera.setLimitBounds(engine::utils::Rect{glm::vec2(0.0f), map_pixel_size});
-    camera.setMaxZoom(3.0f);
-    camera.setMinZoom(1.6f);
+    game::runtime::applyGameplayCameraZoomLimits(camera);
     if (map_pixel_size != glm::vec2(0.0f)) {
         camera.setPosition(map_pixel_size / 2.0f);
     }

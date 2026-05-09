@@ -23,7 +23,6 @@
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
 #include "engine/system/ysort_system.h"
-#include "game/component/appearance_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/map_component.h"
@@ -39,6 +38,7 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
+#include "game/scene/battle_scene_entry.h"
 #include "game/system/camera_follow_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/map_transition_system.h"
@@ -81,7 +81,6 @@ using namespace entt::literals;
 namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
 constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
-constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -108,45 +107,6 @@ constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
     return players.begin() == players.end() ? entt::null : *players.begin();
 }
 
-[[nodiscard]] std::optional<game::scene::AppearanceSnapshot> capturePlayerAppearanceSnapshot(entt::registry& registry) {
-    const entt::entity player = findPlayer(registry);
-    if (player == entt::null) {
-        return std::nullopt;
-    }
-
-    const auto* appearance = registry.try_get<game::component::AppearanceComponent>(player);
-    if (!appearance) {
-        return std::nullopt;
-    }
-
-    game::scene::AppearanceSnapshot snapshot{};
-    snapshot.profile_id = appearance->profile_id_;
-    snapshot.gender = appearance->gender_;
-    snapshot.slot_variants = appearance->slot_variants_;
-    snapshot.valid = true;
-    return snapshot;
-}
-
-[[nodiscard]] std::vector<game::scene::BattleSpriteSeed>
-buildBattleSpriteSeeds(entt::registry& registry, const std::vector<game::battle::BattleUnit>& units) {
-    std::vector<game::scene::BattleSpriteSeed> seeds;
-    seeds.reserve(units.size());
-
-    const auto player_appearance = capturePlayerAppearanceSnapshot(registry);
-    for (const auto& unit : units) {
-        game::scene::BattleSpriteSeed seed{};
-        seed.unit_id = unit.id;
-        seed.source_actor_id = unit.source_actor_id;
-        seed.source_enemy_id = unit.source_enemy_id;
-        if (unit.source_actor_id && *unit.source_actor_id == DEFAULT_PARTY_ACTOR_ID && player_appearance) {
-            seed.appearance = *player_appearance;
-        }
-        seeds.push_back(std::move(seed));
-    }
-
-    return seeds;
-}
-
 [[nodiscard]] std::vector<std::string> resolveBattleActorIds(entt::registry& registry,
                                                              const std::vector<std::string>& explicit_actor_ids) {
     if (!explicit_actor_ids.empty()) {
@@ -162,7 +122,7 @@ buildBattleSpriteSeeds(entt::registry& registry, const std::vector<game::battle:
     }
 
     spdlog::warn("GameScene: 未找到有效 PartyComponent，战斗队伍回退为 actor.player。");
-    return {std::string(DEFAULT_PARTY_ACTOR_ID)};
+    return {std::string(game::scene::DEFAULT_BATTLE_PLAYER_ACTOR_ID)};
 }
 
 [[nodiscard]] std::string sanitizeBattleBackgroundId(std::string_view id, std::string_view source_label) {
@@ -763,7 +723,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     active_encounter_context_ = cmd.encounter_context;
 
     game::scene::BattleScenePresentationOptions presentation_options{};
-    presentation_options.sprite_seeds = buildBattleSpriteSeeds(registry_, units);
+    presentation_options.sprite_seeds = buildBattleSpriteSeeds(units, capturePlayerBattleAppearance(registry_));
     presentation_options.battle_background_id = resolveBattleBackgroundId(cmd, services_.get(), units);
     if (services_) {
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
