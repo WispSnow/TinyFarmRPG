@@ -66,10 +66,10 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
 
     const auto* heal = catalog.findSkill("skill.heal_1");
     ASSERT_NE(heal, nullptr);
-    EXPECT_EQ(heal->target_vfx_id_, "battle.heal_one_1");
+    EXPECT_EQ(heal->target_vfx_id_, "battle.heal_all_1");
     const auto* heal_path = vfx_catalog.findEffectPath(heal->target_vfx_id_hash_);
     ASSERT_NE(heal_path, nullptr);
-    EXPECT_EQ(*heal_path, "assets/vfx/effects/HealOne1.efkefc");
+    EXPECT_EQ(*heal_path, "assets/vfx/effects/HealAll1.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *heal_path));
 }
 

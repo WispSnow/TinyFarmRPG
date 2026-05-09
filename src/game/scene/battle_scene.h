@@ -3,6 +3,7 @@
 #include "engine/scene/scene.h"
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "engine/utils/math.h"
 #include "game/battle/battle_log_formatter.h"
 #include "game/battle/battle_reward_resolver.h"
 #include "game/battle/battle_session.h"
@@ -15,6 +16,7 @@
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/Types.h>
 #include <entt/entity/registry.hpp>
+#include <glm/vec2.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -74,6 +76,16 @@ class BattleScene final : public engine::scene::Scene {
         std::optional<std::string> selected_item_id{};
         std::optional<game::battle::BattleUnitId> selected_target_id{};
         bool requires_target_selection{false};
+    };
+
+    /// @brief 进入战斗前的相机状态，BattleScene 退出时恢复探索态相机。
+    struct CameraStateSnapshot {
+        glm::vec2 position{0.0F};
+        float zoom{1.0F};
+        float rotation{0.0F};
+        float min_zoom{0.1F};
+        float max_zoom{10.0F};
+        std::optional<engine::utils::Rect> limit_bounds{};
     };
 
     /// @brief 战斗命令单项的表现层视图模型。
@@ -215,6 +227,7 @@ class BattleScene final : public engine::scene::Scene {
     bool context_pushed_{false};
     bool input_listeners_connected_{false};
     bool menu_focus_dirty_{true};
+    std::optional<CameraStateSnapshot> saved_camera_state_{};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
@@ -284,6 +297,8 @@ private:
 
     void connectInputListeners();
     void disconnectInputListeners();
+    void enterBattleCamera();
+    void restoreBattleCamera();
 
     /// @brief 运行同步战斗流程状态机，直到进入需要等待的状态。
     void runStateMachine(float delta_time);

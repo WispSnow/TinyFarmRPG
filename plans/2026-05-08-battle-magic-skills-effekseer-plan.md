@@ -64,7 +64,7 @@
 {
   "effects": {
     "battle.fire_one_1": "assets/vfx/effects/FireOne1.efkefc",
-    "battle.heal_one_1": "assets/vfx/effects/HealOne1.efkefc",
+    "battle.heal_all_1": "assets/vfx/effects/HealAll1.efkefc",
     "battle.thunder_one_1": "assets/vfx/effects/ThunderOne1.efkefc",
     "laser01": "assets/vfx/00_Basic/Laser01.efkefc"
   }

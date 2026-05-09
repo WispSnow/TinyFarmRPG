@@ -58,6 +58,7 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
 constexpr int PARTY_COMMAND_COLUMNS = 1;
 constexpr int ACTOR_COMMAND_COLUMNS = 2;
+constexpr float BATTLE_CAMERA_ZOOM = 1.0F;
 constexpr float BATTLEFIELD_HEIGHT = 256.0f;
 constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
@@ -540,15 +541,18 @@ BattleScene::BattleScene(std::string_view name,
 BattleScene::~BattleScene() {
     disconnectInputListeners();
     shutdownUI();
+    restoreBattleCamera();
 }
 
 bool BattleScene::init() {
+    enterBattleCamera();
     context_.getInputManager().pushContext(engine::input::InputContextId::Battle);
     context_pushed_ = true;
 
     if (!initUI()) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
+        restoreBattleCamera();
         return false;
     }
 
@@ -556,6 +560,7 @@ bool BattleScene::init() {
         shutdownUI();
         context_.getInputManager().popContext();
         context_pushed_ = false;
+        restoreBattleCamera();
         return false;
     }
 
@@ -563,6 +568,7 @@ bool BattleScene::init() {
         shutdownUI();
         context_.getInputManager().popContext();
         context_pushed_ = false;
+        restoreBattleCamera();
         return false;
     }
 
@@ -623,6 +629,7 @@ void BattleScene::clean() {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
+    restoreBattleCamera();
     Scene::clean();
 }
 
@@ -903,6 +910,47 @@ void BattleScene::disconnectInputListeners() {
     input_manager.onAction("menu_confirm"_hs).disconnect<&BattleScene::onMenuConfirmPressed>(this);
     input_manager.onAction("menu_cancel"_hs).disconnect<&BattleScene::onMenuCancelPressed>(this);
     input_listeners_connected_ = false;
+}
+
+void BattleScene::enterBattleCamera() {
+    if (saved_camera_state_) {
+        return;
+    }
+
+    auto& camera = context_.getCamera();
+    saved_camera_state_ = CameraStateSnapshot{
+        .position = camera.getPosition(),
+        .zoom = camera.getZoom(),
+        .rotation = camera.getRotation(),
+        .min_zoom = camera.getMinZoom(),
+        .max_zoom = camera.getMaxZoom(),
+        .limit_bounds = camera.getLimitBounds(),
+    };
+
+    camera.setLimitBounds(std::nullopt);
+    camera.setRotation(0.0F);
+    camera.setMinZoom(BATTLE_CAMERA_ZOOM);
+    camera.setMaxZoom(BATTLE_CAMERA_ZOOM);
+    camera.setPosition(camera.getLogicalSize() * 0.5F);
+    camera.setZoom(BATTLE_CAMERA_ZOOM);
+}
+
+void BattleScene::restoreBattleCamera() {
+    if (!saved_camera_state_) {
+        return;
+    }
+
+    auto& camera = context_.getCamera();
+    const CameraStateSnapshot snapshot = *saved_camera_state_;
+    saved_camera_state_.reset();
+
+    camera.setLimitBounds(std::nullopt);
+    camera.setMaxZoom(snapshot.max_zoom);
+    camera.setMinZoom(snapshot.min_zoom);
+    camera.setRotation(snapshot.rotation);
+    camera.setZoom(snapshot.zoom);
+    camera.setLimitBounds(snapshot.limit_bounds);
+    camera.setPosition(snapshot.position);
 }
 
 void BattleScene::runStateMachine(float delta_time) {

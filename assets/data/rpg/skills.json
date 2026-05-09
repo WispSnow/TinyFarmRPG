@@ -95,8 +95,8 @@
                 "critical": false
             },
             "effects": [],
-            "target_vfx_id": "battle.heal_one_1",
-            "target_vfx_scale": 6.0
+            "target_vfx_id": "battle.heal_all_1",
+            "target_vfx_scale": 2.0
         },
         {
             "id": "skill.poison_spit",
