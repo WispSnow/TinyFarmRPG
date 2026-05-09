@@ -443,6 +443,30 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_EQ(source.find("unit.side == game::battle::BattleSide::Player ? 454.0F : 186.0F"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, OwnsBattleCameraZoomAndRestoresPreviousCamera) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("struct CameraStateSnapshot"), std::string::npos);
+    EXPECT_NE(header.find("std::optional<CameraStateSnapshot> saved_camera_state_"), std::string::npos);
+    EXPECT_NE(source.find("constexpr float BATTLE_CAMERA_ZOOM = 1.0F;"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::enterBattleCamera()"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::restoreBattleCamera()"), std::string::npos);
+    EXPECT_NE(source.find("camera.setLimitBounds(std::nullopt);"), std::string::npos);
+    EXPECT_NE(source.find("camera.setMinZoom(BATTLE_CAMERA_ZOOM);"), std::string::npos);
+    EXPECT_NE(source.find("camera.setMaxZoom(BATTLE_CAMERA_ZOOM);"), std::string::npos);
+    EXPECT_NE(source.find("restoreBattleCamera();\n    Scene::clean();"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, BattleBackgroundDrawsGroundThenAlphaBackdrop) {
     const std::filesystem::path background_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_background.cpp").lexically_normal();
