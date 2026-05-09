@@ -3,6 +3,7 @@
 #include "game/data/rpg_types.h"
 
 #include <entt/core/fwd.hpp>
+#include <glm/vec2.hpp>
 
 #include <cstdint>
 #include <string>
@@ -50,6 +51,8 @@ struct SkillData {
     entt::id_type target_vfx_id_hash_{};
     /// @brief 目标特效缩放倍率，默认使用 Effekseer 资源原始尺寸。
     float target_vfx_scale_{1.0F};
+    /// @brief 目标特效相对战斗单位脚底锚点的屏幕逻辑坐标偏移。
+    glm::vec2 target_vfx_offset_{0.0F, 0.0F};
 };
 
 struct ClassData {

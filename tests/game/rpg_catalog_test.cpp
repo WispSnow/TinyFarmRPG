@@ -238,6 +238,8 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     EXPECT_TRUE(skill->target_vfx_id_.empty());
     EXPECT_EQ(skill->target_vfx_id_hash_, entt::id_type{});
     EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.0F);
+    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 0.0F);
+    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, 0.0F);
 
     const auto* state = catalog.findState("state.poison");
     ASSERT_NE(state, nullptr);
@@ -560,7 +562,8 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
       "target_vfx_id": "battle.fire_one_1",
-      "target_vfx_scale": 1.25
+      "target_vfx_scale": 1.25,
+      "target_vfx_offset": { "x": 4.0, "y": -28.0 }
     }
   ]
 })json");
@@ -573,6 +576,8 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
     EXPECT_EQ(skill->target_vfx_id_, "battle.fire_one_1");
     EXPECT_EQ(skill->target_vfx_id_hash_, RpgCatalog::hashId("battle.fire_one_1"));
     EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.25F);
+    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 4.0F);
+    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, -28.0F);
 }
 
 TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
@@ -590,6 +595,30 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
       "target_vfx_id": "battle.fire_one_1",
       "target_vfx_scale": 0.0
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
+}
+
+TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxOffset) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.skills,
+        R"json({
+  "skills": [
+    {
+      "id": "skill.bad_vfx_offset",
+      "scope": "one_enemy",
+      "hit_type": "magical",
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
+      "target_vfx_id": "battle.fire_one_1",
+      "target_vfx_scale": 1.0,
+      "target_vfx_offset": { "x": "bad", "y": -12.0 }
     }
   ]
 })json");

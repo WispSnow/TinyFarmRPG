@@ -17,7 +17,8 @@
             },
             "effects": [],
             "target_vfx_id": "battle.hit_physical",
-            "target_vfx_scale": 4.0
+            "target_vfx_scale": 4.0,
+            "target_vfx_offset": {"x": 0.0, "y": -18.0}
         },
         {
             "id": "skill.bash",
@@ -60,7 +61,8 @@
             },
             "effects": [],
             "target_vfx_id": "battle.fire_one_1",
-            "target_vfx_scale": 6.0
+            "target_vfx_scale": 6.0,
+            "target_vfx_offset": {"x": 0.0, "y": -36.0}
         },
         {
             "id": "skill.thunder_1",
@@ -79,7 +81,8 @@
             },
             "effects": [],
             "target_vfx_id": "battle.thunder_one_1",
-            "target_vfx_scale": 6.0
+            "target_vfx_scale": 6.0,
+            "target_vfx_offset": {"x": 0.0, "y": -36.0}
         },
         {
             "id": "skill.heal_1",
@@ -98,7 +101,8 @@
             },
             "effects": [],
             "target_vfx_id": "battle.heal_all_1",
-            "target_vfx_scale": 2.0
+            "target_vfx_scale": 2.0,
+            "target_vfx_offset": {"x": 0.0, "y": -18.0}
         },
         {
             "id": "skill.poison_spit",

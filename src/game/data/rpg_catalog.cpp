@@ -6,6 +6,7 @@
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/entity.hpp>
+#include <glm/vec2.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -129,6 +130,33 @@ using Json = nlohmann::json;
     out_damage.formula = node.value("formula", std::string{});
     out_damage.variance = node.value("variance", 0);
     out_damage.critical = node.value("critical", false);
+    return true;
+}
+
+[[nodiscard]] bool parseVec2(const Json& node, glm::vec2& out_value) {
+    out_value = glm::vec2{0.0F, 0.0F};
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    const auto x_it = node.find("x");
+    if (x_it != node.end()) {
+        if (!x_it->is_number()) {
+            return false;
+        }
+        out_value.x = x_it->get<float>();
+    }
+
+    const auto y_it = node.find("y");
+    if (y_it != node.end()) {
+        if (!y_it->is_number()) {
+            return false;
+        }
+        out_value.y = y_it->get<float>();
+    }
     return true;
 }
 
@@ -444,6 +472,12 @@ bool RpgCatalog::loadSkills(const std::string_view file_path) {
         skill.target_vfx_scale_ = skill_node.value("target_vfx_scale", 1.0F);
         if (skill.target_vfx_scale_ <= 0.0F) {
             spdlog::error("RpgCatalog: skill '{}' target_vfx_scale 必须 > 0", skill.id_);
+            return false;
+        }
+        const auto target_vfx_offset_it = skill_node.find("target_vfx_offset");
+        if (target_vfx_offset_it != skill_node.end() &&
+            !parseVec2(*target_vfx_offset_it, skill.target_vfx_offset_)) {
+            spdlog::error("RpgCatalog: skill '{}' target_vfx_offset 必须是 object，x/y 如存在必须是 number", skill.id_);
             return false;
         }
 
