@@ -36,6 +36,15 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     EXPECT_EQ(alex->skill_ids_[0], "skill.attack");
     EXPECT_EQ(alex->skill_ids_[1], "skill.bash");
 
+    const auto* attack = catalog.findSkill("skill.attack");
+    ASSERT_NE(attack, nullptr);
+    EXPECT_EQ(attack->target_vfx_id_, "battle.hit_physical");
+    EXPECT_FLOAT_EQ(attack->target_vfx_scale_, 2.0F);
+    const auto* attack_hit_path = vfx_catalog.findEffectPath(attack->target_vfx_id_hash_);
+    ASSERT_NE(attack_hit_path, nullptr);
+    EXPECT_EQ(*attack_hit_path, "assets/vfx/effects/HitEffect.efkefc");
+    EXPECT_TRUE(std::filesystem::exists(project_root / *attack_hit_path));
+
     const auto* lyria = catalog.findActor("actor.lyria");
     ASSERT_NE(lyria, nullptr);
     EXPECT_EQ(lyria->class_id_, "class.mage");
@@ -75,10 +84,7 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     EXPECT_TRUE(std::filesystem::exists(project_root / *heal_path));
 
     const entt::id_type physical_hit_id = entt::hashed_string{"battle.hit_physical"}.value();
-    const auto* physical_hit_path = vfx_catalog.findEffectPath(physical_hit_id);
-    ASSERT_NE(physical_hit_path, nullptr);
-    EXPECT_EQ(*physical_hit_path, "assets/vfx/effects/HitEffect.efkefc");
-    EXPECT_TRUE(std::filesystem::exists(project_root / *physical_hit_path));
+    EXPECT_EQ(attack->target_vfx_id_hash_, physical_hit_id);
 }
 
 } // namespace
