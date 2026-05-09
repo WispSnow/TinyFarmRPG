@@ -12,6 +12,10 @@ namespace game::data {
 class AppearanceCatalog;
 }
 
+namespace engine::vfx {
+class VfxService;
+}
+
 namespace game::factory {
 class BlueprintManager;
 }
@@ -36,6 +40,7 @@ struct BattleScenePresentationOptions {
     std::vector<BattleSpriteSeed> sprite_seeds{};
     const game::factory::BlueprintManager* blueprint_manager{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog{nullptr};
+    engine::vfx::VfxService* vfx_service{nullptr};
     std::string battle_background_id{};
     BattleEnemyHpBarConfig enemy_hp_bar_config{};
 };

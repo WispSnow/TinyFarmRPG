@@ -625,6 +625,41 @@ TEST(BattleSceneSmokeTest, TriggersSkillTargetVfxFromAppliedSingleTargetSkillRes
     EXPECT_NE(vfx_snippet.find("context_.getDispatcher().trigger(command)"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, AdvancesVfxServiceWhileBattleSceneIsTop) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path types_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_types.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(types_path)) << types_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    const std::string types = readTextFile(types_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(types.empty());
+
+    EXPECT_NE(types.find("class VfxService;"), std::string::npos);
+    EXPECT_NE(types.find("engine::vfx::VfxService* vfx_service{nullptr}"), std::string::npos);
+    EXPECT_NE(header.find("engine::vfx::VfxService* vfx_service_{nullptr}"), std::string::npos);
+    EXPECT_NE(source.find("#include \"engine/vfx/vfx_service.h\""), std::string::npos);
+
+    const std::string constructor_snippet = snippetFrom(source, "BattleScene::BattleScene", 1200U);
+    ASSERT_FALSE(constructor_snippet.empty());
+    EXPECT_NE(constructor_snippet.find("vfx_service_(presentation_options.vfx_service)"), std::string::npos);
+
+    const std::string update_snippet = snippetFrom(source, "void BattleScene::update(float delta_time)", 700U);
+    ASSERT_FALSE(update_snippet.empty());
+    EXPECT_NE(update_snippet.find("runStateMachine(delta_time)"), std::string::npos);
+    EXPECT_NE(update_snippet.find("vfx_service_->update(delta_time)"), std::string::npos);
+    EXPECT_LT(update_snippet.find("runStateMachine(delta_time)"),
+              update_snippet.find("vfx_service_->update(delta_time)"));
+}
+
 TEST(BattleSceneSmokeTest, UsesEnemyHpBarControllerForEnemyHealthOverlay) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();

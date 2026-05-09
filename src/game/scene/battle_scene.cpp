@@ -14,6 +14,7 @@
 #include "engine/resource/default_resource_ids.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
+#include "engine/vfx/vfx_service.h"
 #include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_ai_planner.h"
 #include "game/component/appearance_component.h"
@@ -530,6 +531,7 @@ BattleScene::BattleScene(std::string_view name,
       item_catalog_(session_options.item_catalog),
       blueprint_manager_(presentation_options.blueprint_manager),
       appearance_catalog_(presentation_options.appearance_catalog),
+      vfx_service_(presentation_options.vfx_service),
       session_(std::move(units), std::move(session_options)),
       presentation_options_(std::move(presentation_options)),
       battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config) {
@@ -584,6 +586,9 @@ void BattleScene::update(float delta_time) {
     battle_enemy_hp_bar_controller_.update(delta_time);
     battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
+    if (vfx_service_) {
+        vfx_service_->update(delta_time);
+    }
     updateCommandFocus(delta_time);
     refreshView();
 }

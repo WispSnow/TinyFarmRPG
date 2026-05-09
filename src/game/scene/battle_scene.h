@@ -191,6 +191,7 @@ class BattleScene final : public engine::scene::Scene {
     const game::data::ItemCatalog* item_catalog_{nullptr};
     const game::factory::BlueprintManager* blueprint_manager_{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
+    engine::vfx::VfxService* vfx_service_{nullptr};
     game::battle::BattleSession session_;
     BattleScenePresentationOptions presentation_options_{};
     BattleEnemyHpBarController battle_enemy_hp_bar_controller_{};

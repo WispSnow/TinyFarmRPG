@@ -768,6 +768,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     if (services_) {
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
         presentation_options.appearance_catalog = services_->appearance_catalog.get();
+        presentation_options.vfx_service = services_->vfx_service.get();
     }
 
     requestPushScene(std::make_unique<game::scene::BattleScene>(
