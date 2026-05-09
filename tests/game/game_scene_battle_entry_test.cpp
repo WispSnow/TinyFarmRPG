@@ -52,6 +52,18 @@ TEST(GameSceneBattleEntryTest, PushesBattleSceneOnEnterBattleCommand) {
               std::string::npos);
 }
 
+TEST(GameSceneBattleEntryTest, PassesVfxServiceToBattleScenePresentationOptions) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("presentation_options.vfx_service = services_->vfx_service.get();"),
+              std::string::npos);
+}
+
 TEST(GameSceneBattleEntryTest, SupportsCatalogFallbackWhenCommandUnitsAreEmpty) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
