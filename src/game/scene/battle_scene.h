@@ -376,6 +376,11 @@ private:
     void finishVictoryFlow();
     void playVictoryAudioCue();
     [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
+    [[nodiscard]] BattleAnimationTimelineConfig animationConfigForResult(
+        const game::battle::BattleActionResult& result) const;
+    [[nodiscard]] BattleActionMotionStyle actionMotionStyleForResult(
+        const game::battle::BattleActionResult& result) const;
+    [[nodiscard]] glm::vec2 actionStartOffsetFor(game::battle::BattleUnitId actor_id) const;
 
     /// @brief 根据已应用、未 miss 的单体技能结果，在目标锚点触发技能目标特效。
     ///

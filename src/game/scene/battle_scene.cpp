@@ -925,9 +925,10 @@ void BattleScene::runStateMachine(float delta_time) {
                 battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot);
                 battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
+                const BattleAnimationTimelineConfig animation_config = animationConfigForResult(*last_action_result_);
                 spawnSkillTargetVfx(*last_action_result_, unit_anchors);
                 battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
-                battle_animation_director_.begin(*last_action_result_, unit_anchors);
+                battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
                 pending_action_.reset();
                 leaveInputMenu();
                 state_ = FlowState::AnimatingResult;
@@ -2434,6 +2435,55 @@ std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentation
         });
     }
     return anchors;
+}
+
+BattleAnimationTimelineConfig BattleScene::animationConfigForResult(
+    const game::battle::BattleActionResult& result) const {
+    BattleAnimationTimelineConfig config{};
+    config.motion_style = actionMotionStyleForResult(result);
+    config.actor_start_offset = actionStartOffsetFor(result.actor_id);
+    return config;
+}
+
+BattleActionMotionStyle BattleScene::actionMotionStyleForResult(
+    const game::battle::BattleActionResult& result) const {
+    switch (result.action_type) {
+        case game::battle::BattleActionType::Attack:
+            return BattleActionMotionStyle::WeaponAttack;
+        case game::battle::BattleActionType::Guard:
+            return BattleActionMotionStyle::Cast;
+        case game::battle::BattleActionType::Escape:
+            return BattleActionMotionStyle::Escape;
+        case game::battle::BattleActionType::Skill: {
+            const auto* skill = rpg_catalog_ ? rpg_catalog_->findSkill(result.skill_id) : nullptr;
+            if (skill && skill->hit_type_ == game::data::HitType::Physical &&
+                skill->damage_.type != game::data::DamageType::HpRecover &&
+                skill->damage_.type != game::data::DamageType::MpRecover) {
+                return BattleActionMotionStyle::WeaponAttack;
+            }
+            return BattleActionMotionStyle::Cast;
+        }
+        case game::battle::BattleActionType::Item:
+        case game::battle::BattleActionType::EndTurn:
+            return BattleActionMotionStyle::Simple;
+    }
+
+    return BattleActionMotionStyle::Simple;
+}
+
+glm::vec2 BattleScene::actionStartOffsetFor(const game::battle::BattleUnitId actor_id) const {
+    if (!command_focus_actor_id_ || *command_focus_actor_id_ != actor_id) {
+        return glm::vec2{0.0F, 0.0F};
+    }
+
+    const auto* unit = session_.findUnit(actor_id);
+    if (!unit || unit->side != game::battle::BattleSide::Player || !unit->isAlive()) {
+        return glm::vec2{0.0F, 0.0F};
+    }
+
+    const float t = std::clamp(command_focus_elapsed_seconds_ / COMMAND_FOCUS_EASE_SECONDS, 0.0F, 1.0F);
+    const float eased = 1.0F - (1.0F - t) * (1.0F - t);
+    return COMMAND_FOCUS_PLAYER_OFFSET * eased;
 }
 
 void BattleScene::spawnSkillTargetVfx(

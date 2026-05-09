@@ -19,9 +19,21 @@ struct BattleAnimationPose {
     engine::utils::FColor color_multiplier{engine::utils::FColor::white()};
 };
 
+enum class BattleActionMotionStyle {
+    Auto,
+    WeaponAttack,
+    Cast,
+    Guard,
+    Escape,
+    Simple
+};
+
 struct BattleAnimationTimelineConfig {
     float attack_duration_seconds{0.72f};
     float action_hold_seconds{0.34f};
+    float cast_duration_seconds{0.46f};
+    glm::vec2 actor_start_offset{0.0f, 0.0f};
+    BattleActionMotionStyle motion_style{BattleActionMotionStyle::Auto};
 };
 
 class BattleAnimationDirector final {
@@ -48,10 +60,12 @@ private:
 
     [[nodiscard]] std::optional<BattleAnimationPose> transientPoseFor(game::battle::BattleUnitId unit_id) const;
     [[nodiscard]] std::optional<BattleAnimationPose> attackPoseFor(game::battle::BattleUnitId unit_id) const;
+    [[nodiscard]] std::optional<BattleAnimationPose> castPoseFor(game::battle::BattleUnitId unit_id) const;
     [[nodiscard]] std::optional<BattleAnimationPose> simpleActionPoseFor(game::battle::BattleUnitId unit_id) const;
     [[nodiscard]] std::optional<BattleAnimationPose> hitPoseFor(game::battle::BattleUnitId unit_id) const;
-    [[nodiscard]] bool usesForwardActionPose() const;
+    [[nodiscard]] BattleActionMotionStyle resolvedMotionStyle() const;
     [[nodiscard]] glm::vec2 forwardStepOffset() const;
+    [[nodiscard]] glm::vec2 castForwardOffset() const;
     [[nodiscard]] bool hasValidSingleTarget() const;
 
     void clearTransient();

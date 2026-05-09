@@ -36,6 +36,26 @@ namespace {
     return result;
 }
 
+[[nodiscard]] game::battle::BattleActionResult makePlayerMagicSkillResult() {
+    game::battle::BattleActionResult result{};
+    result.status = game::battle::BattleActionStatus::Applied;
+    result.action_type = game::battle::BattleActionType::Skill;
+    result.actor_id = 1;
+    result.target_id = game::battle::BattleUnitId{2};
+    result.damage = 18;
+    return result;
+}
+
+[[nodiscard]] game::battle::BattleActionResult makeRecoverySkillResult() {
+    game::battle::BattleActionResult result{};
+    result.status = game::battle::BattleActionStatus::Applied;
+    result.action_type = game::battle::BattleActionType::Skill;
+    result.actor_id = 1;
+    result.target_id = game::battle::BattleUnitId{2};
+    result.hp_recovered = 18;
+    return result;
+}
+
 [[nodiscard]] std::vector<BattlePresentationUnitAnchor> makeAnchors() {
     return {
         BattlePresentationUnitAnchor{
@@ -96,6 +116,37 @@ TEST(BattleAnimationDirectorTest, EnemyAttackStepsTowardPlayerTarget) {
     const auto lunge_pose = director.poseFor(2);
     ASSERT_TRUE(lunge_pose.has_value());
     EXPECT_GT(lunge_pose->offset.x, 1.0f);
+}
+
+TEST(BattleAnimationDirectorTest, CastSkillStartsFromActorOffsetAndOnlyStepsSlightlyForward) {
+    BattleAnimationTimelineConfig config{};
+    config.motion_style = BattleActionMotionStyle::Cast;
+    config.actor_start_offset = glm::vec2{-12.0f, -2.0f};
+
+    BattleAnimationDirector director;
+    director.begin(makePlayerMagicSkillResult(), makeAnchors(), config);
+
+    const auto start_pose = director.poseFor(1);
+    ASSERT_TRUE(start_pose.has_value());
+    EXPECT_NEAR(start_pose->offset.x, -12.0f, 0.001f);
+    EXPECT_NEAR(start_pose->offset.y, -2.0f, 0.001f);
+
+    director.update(0.16f);
+    const auto cast_pose = director.poseFor(1);
+    ASSERT_TRUE(cast_pose.has_value());
+    EXPECT_LT(cast_pose->offset.x, start_pose->offset.x - 1.0f);
+    EXPECT_GT(cast_pose->offset.x, -32.0f);
+}
+
+TEST(BattleAnimationDirectorTest, RecoveryTargetDoesNotUseHitShakePose) {
+    BattleAnimationTimelineConfig config{};
+    config.motion_style = BattleActionMotionStyle::Cast;
+
+    BattleAnimationDirector director;
+    director.begin(makeRecoverySkillResult(), makeAnchors(), config);
+
+    director.update(0.24f);
+    EXPECT_FALSE(director.poseFor(2).has_value());
 }
 
 TEST(BattleAnimationDirectorTest, HitFeedbackAppearsAfterImpactAndDecays) {

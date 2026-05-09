@@ -20,6 +20,7 @@ constexpr float KO_ALPHA = 0.38f;
 constexpr float KO_ROTATION_RADIANS = PI * 0.5f;
 constexpr float MAX_ATTACK_STEP = 64.0f;
 constexpr float MIN_ATTACK_STEP = 18.0f;
+constexpr float CAST_FORWARD_STEP = 14.0f;
 constexpr float SELF_TARGET_EPSILON = 0.001f;
 
 [[nodiscard]] float clamp01(float value) {
@@ -37,7 +38,7 @@ constexpr float SELF_TARGET_EPSILON = 0.001f;
 
 [[nodiscard]] bool hasTargetFeedback(const game::battle::BattleActionResult& result) {
     return result.target_id.has_value() &&
-        (result.damage > 0 || result.hp_recovered > 0 || result.mp_recovered > 0 || !result.states_added.empty());
+        (result.damage > 0 || !result.states_added.empty());
 }
 
 [[nodiscard]] engine::utils::FColor multiplyColor(const engine::utils::FColor& lhs,
@@ -78,9 +79,20 @@ void BattleAnimationDirector::begin(const game::battle::BattleActionResult& resu
     for (const auto& anchor : unit_anchors) {
         timeline_.unit_anchors.emplace(anchor.unit_id, anchor);
     }
-    timeline_.duration_seconds = usesForwardActionPose()
-        ? safeDuration(config_.attack_duration_seconds)
-        : safeDuration(config_.action_hold_seconds);
+    switch (resolvedMotionStyle()) {
+        case BattleActionMotionStyle::WeaponAttack:
+            timeline_.duration_seconds = safeDuration(config_.attack_duration_seconds);
+            break;
+        case BattleActionMotionStyle::Cast:
+            timeline_.duration_seconds = safeDuration(config_.cast_duration_seconds);
+            break;
+        case BattleActionMotionStyle::Guard:
+        case BattleActionMotionStyle::Escape:
+        case BattleActionMotionStyle::Simple:
+        case BattleActionMotionStyle::Auto:
+            timeline_.duration_seconds = safeDuration(config_.action_hold_seconds);
+            break;
+    }
     if (result.target_defeated) {
         timeline_.duration_seconds = std::max(timeline_.duration_seconds, safeDuration(config_.attack_duration_seconds));
         timeline_.duration_seconds = std::max(timeline_.duration_seconds, KO_START + 0.16f);
@@ -149,9 +161,29 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::transientPoseFor(
 
     BattleAnimationPose result{};
     bool has_pose = false;
-    if (const auto action_pose = usesForwardActionPose()
-            ? attackPoseFor(unit_id)
-            : simpleActionPoseFor(unit_id)) {
+    if (timeline_.result.actor_id == unit_id &&
+        (std::abs(config_.actor_start_offset.x) > SELF_TARGET_EPSILON ||
+         std::abs(config_.actor_start_offset.y) > SELF_TARGET_EPSILON)) {
+        result.offset += config_.actor_start_offset;
+        has_pose = true;
+    }
+
+    std::optional<BattleAnimationPose> action_pose{};
+    switch (resolvedMotionStyle()) {
+        case BattleActionMotionStyle::WeaponAttack:
+            action_pose = attackPoseFor(unit_id);
+            break;
+        case BattleActionMotionStyle::Cast:
+            action_pose = castPoseFor(unit_id);
+            break;
+        case BattleActionMotionStyle::Guard:
+        case BattleActionMotionStyle::Escape:
+        case BattleActionMotionStyle::Simple:
+        case BattleActionMotionStyle::Auto:
+            action_pose = simpleActionPoseFor(unit_id);
+            break;
+    }
+    if (action_pose) {
         result = mergePose(result, *action_pose);
         has_pose = true;
     }
@@ -198,6 +230,31 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::attackPoseFor(
     return std::nullopt;
 }
 
+std::optional<BattleAnimationPose> BattleAnimationDirector::castPoseFor(
+    const game::battle::BattleUnitId unit_id) const {
+    if (timeline_.result.actor_id != unit_id) {
+        return std::nullopt;
+    }
+
+    const float t = clamp01(timeline_.elapsed_seconds / safeDuration(timeline_.duration_seconds));
+    float forward_amount = 0.0f;
+    if (t <= 0.30f) {
+        forward_amount = smoothstep01(t / 0.30f);
+    } else if (t <= 0.76f) {
+        forward_amount = 1.0f;
+    } else {
+        forward_amount = 1.0f - smoothstep01((t - 0.76f) / 0.24f);
+    }
+
+    const float pulse = std::sin(t * PI);
+    BattleAnimationPose pose{};
+    pose.offset = castForwardOffset() * forward_amount;
+    pose.offset.y -= 2.0f * pulse;
+    pose.scale_multiplier = 1.0f + 0.018f * pulse;
+    pose.color_multiplier = engine::utils::FColor{1.08f, 1.05f, 1.18f, 1.0f};
+    return pose;
+}
+
 std::optional<BattleAnimationPose> BattleAnimationDirector::simpleActionPoseFor(
     const game::battle::BattleUnitId unit_id) const {
     if (timeline_.result.actor_id != unit_id) {
@@ -233,8 +290,7 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::hitPoseFor(
     if (timeline_.elapsed_seconds < ATTACK_LUNGE_END) {
         return std::nullopt;
     }
-    const bool has_feedback = timeline_.result.damage > 0 || timeline_.result.hp_recovered > 0 ||
-        timeline_.result.mp_recovered > 0 || !timeline_.result.states_added.empty();
+    const bool has_feedback = timeline_.result.damage > 0 || !timeline_.result.states_added.empty();
     if (!has_feedback && !timeline_.result.target_defeated) {
         return std::nullopt;
     }
@@ -245,11 +301,7 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::hitPoseFor(
         const float decay = 1.0f - t;
         const float shake_direction = std::sin(t * PI * 10.0f) >= 0.0f ? 1.0f : -1.0f;
         pose.offset.x = shake_direction * decay * 7.0f;
-        if (timeline_.result.hp_recovered > 0 || timeline_.result.mp_recovered > 0) {
-            pose.color_multiplier = engine::utils::FColor{0.72f, 1.16f, 0.78f, 1.0f};
-        } else {
-            pose.color_multiplier = engine::utils::FColor{1.32f, 0.52f, 0.52f, 1.0f};
-        }
+        pose.color_multiplier = engine::utils::FColor{1.32f, 0.52f, 0.52f, 1.0f};
     }
 
     if (timeline_.result.target_defeated && timeline_.elapsed_seconds >= KO_START) {
@@ -262,21 +314,39 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::hitPoseFor(
     return pose;
 }
 
-bool BattleAnimationDirector::usesForwardActionPose() const {
-    if (timeline_.result.action_type == game::battle::BattleActionType::Attack) {
-        return true;
-    }
-    if (timeline_.result.action_type != game::battle::BattleActionType::Skill || timeline_.result.damage <= 0) {
-        return false;
+BattleActionMotionStyle BattleAnimationDirector::resolvedMotionStyle() const {
+    if (config_.motion_style != BattleActionMotionStyle::Auto) {
+        return config_.motion_style;
     }
 
-    const auto actor_it = timeline_.unit_anchors.find(timeline_.result.actor_id);
-    if (!timeline_.result.target_id || actor_it == timeline_.unit_anchors.end()) {
-        return false;
-    }
+    switch (timeline_.result.action_type) {
+        case game::battle::BattleActionType::Attack:
+            return BattleActionMotionStyle::WeaponAttack;
+        case game::battle::BattleActionType::Guard:
+            return BattleActionMotionStyle::Guard;
+        case game::battle::BattleActionType::Escape:
+            return BattleActionMotionStyle::Escape;
+        case game::battle::BattleActionType::Skill: {
+            if (timeline_.result.damage <= 0) {
+                return BattleActionMotionStyle::Simple;
+            }
 
-    const auto target_it = timeline_.unit_anchors.find(*timeline_.result.target_id);
-    return target_it != timeline_.unit_anchors.end() && actor_it->second.side != target_it->second.side;
+            const auto actor_it = timeline_.unit_anchors.find(timeline_.result.actor_id);
+            if (!timeline_.result.target_id || actor_it == timeline_.unit_anchors.end()) {
+                return BattleActionMotionStyle::Simple;
+            }
+
+            const auto target_it = timeline_.unit_anchors.find(*timeline_.result.target_id);
+            if (target_it != timeline_.unit_anchors.end() && actor_it->second.side != target_it->second.side) {
+                return BattleActionMotionStyle::WeaponAttack;
+            }
+            return BattleActionMotionStyle::Simple;
+        }
+        case game::battle::BattleActionType::Item:
+        case game::battle::BattleActionType::EndTurn:
+            return BattleActionMotionStyle::Simple;
+    }
+    return BattleActionMotionStyle::Simple;
 }
 
 glm::vec2 BattleAnimationDirector::forwardStepOffset() const {
@@ -305,6 +375,29 @@ glm::vec2 BattleAnimationDirector::forwardStepOffset() const {
 
     const float step = std::clamp(distance * 0.34f, MIN_ATTACK_STEP, MAX_ATTACK_STEP);
     return delta / distance * step;
+}
+
+glm::vec2 BattleAnimationDirector::castForwardOffset() const {
+    const auto actor_it = timeline_.unit_anchors.find(timeline_.result.actor_id);
+    if (actor_it == timeline_.unit_anchors.end()) {
+        return glm::vec2{0.0f, 0.0f};
+    }
+
+    if (timeline_.result.target_id && *timeline_.result.target_id != timeline_.result.actor_id) {
+        const auto target_it = timeline_.unit_anchors.find(*timeline_.result.target_id);
+        if (target_it != timeline_.unit_anchors.end()) {
+            const glm::vec2 delta = target_it->second.base_screen_position - actor_it->second.base_screen_position;
+            if (isFinite(delta)) {
+                const float distance = glm::length(delta);
+                if (distance > SELF_TARGET_EPSILON) {
+                    return delta / distance * CAST_FORWARD_STEP;
+                }
+            }
+        }
+    }
+
+    const float direction = actor_it->second.side == game::battle::BattleSide::Player ? -1.0f : 1.0f;
+    return glm::vec2{direction * CAST_FORWARD_STEP, 0.0f};
 }
 
 bool BattleAnimationDirector::hasValidSingleTarget() const {
