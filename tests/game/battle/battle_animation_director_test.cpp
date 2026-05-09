@@ -149,6 +149,25 @@ TEST(BattleAnimationDirectorTest, RecoveryTargetDoesNotUseHitShakePose) {
     EXPECT_FALSE(director.poseFor(2).has_value());
 }
 
+TEST(BattleAnimationDirectorTest, MinimumDurationExtendsTimelineForTargetVfx) {
+    BattleAnimationTimelineConfig config{};
+    config.motion_style = BattleActionMotionStyle::Cast;
+    config.minimum_duration_seconds = 1.05f;
+
+    BattleAnimationDirector director;
+    director.begin(makePlayerMagicSkillResult(), makeAnchors(), config);
+
+    for (int i = 0; i < 5; ++i) {
+        director.update(0.12f);
+    }
+    EXPECT_FALSE(director.finished());
+
+    for (int i = 0; i < 5; ++i) {
+        director.update(0.12f);
+    }
+    EXPECT_TRUE(director.finished());
+}
+
 TEST(BattleAnimationDirectorTest, HitFeedbackAppearsAfterImpactAndDecays) {
     BattleAnimationDirector director;
     director.begin(makeAttackResult(), makeAnchors());

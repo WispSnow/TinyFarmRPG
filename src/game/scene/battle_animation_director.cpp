@@ -93,6 +93,7 @@ void BattleAnimationDirector::begin(const game::battle::BattleActionResult& resu
             timeline_.duration_seconds = safeDuration(config_.action_hold_seconds);
             break;
     }
+    timeline_.duration_seconds = std::max(timeline_.duration_seconds, config_.minimum_duration_seconds);
     if (result.target_defeated) {
         timeline_.duration_seconds = std::max(timeline_.duration_seconds, safeDuration(config_.attack_duration_seconds));
         timeline_.duration_seconds = std::max(timeline_.duration_seconds, KO_START + 0.16f);

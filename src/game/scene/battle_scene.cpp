@@ -79,7 +79,14 @@ constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
 /// @brief 目标特效默认锚到角色上半身，而非脚底阵型点。
 constexpr float SKILL_TARGET_VFX_VERTICAL_OFFSET = -36.0F;
+constexpr float RECOVERY_TARGET_VFX_VERTICAL_OFFSET = -18.0F;
+constexpr float PHYSICAL_HIT_VFX_VERTICAL_OFFSET = -24.0F;
+constexpr float CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS = 1.05F;
+constexpr float PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS = 0.72F;
+constexpr float PHYSICAL_HIT_VFX_DELAY_SECONDS = 0.18F;
+constexpr float PHYSICAL_HIT_VFX_SCALE = 2.0F;
 constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
+constexpr std::string_view PHYSICAL_HIT_VFX_ID = "battle.hit_physical";
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -160,6 +167,45 @@ using namespace entt::literals;
 
 [[nodiscard]] entt::id_type hashString(std::string_view value) {
     return entt::hashed_string{value.data(), value.size()}.value();
+}
+
+[[nodiscard]] bool isRecoveryDamageType(const game::data::DamageType type) {
+    return type == game::data::DamageType::HpRecover ||
+        type == game::data::DamageType::MpRecover;
+}
+
+[[nodiscard]] bool isRecoverySkill(const game::data::SkillData& skill) {
+    return isRecoveryDamageType(skill.damage_.type);
+}
+
+[[nodiscard]] bool isAppliedSingleTargetHit(const game::battle::BattleActionResult& result) {
+    return result.status == game::battle::BattleActionStatus::Applied &&
+        !result.missed &&
+        result.target_id.has_value();
+}
+
+[[nodiscard]] bool hasConfiguredSkillTargetVfx(const game::battle::BattleActionResult& result,
+                                               const game::data::SkillData* skill) {
+    return result.action_type == game::battle::BattleActionType::Skill &&
+        skill &&
+        skill->target_vfx_id_hash_ != engine::vfx::kInvalidVfxEffectId;
+}
+
+[[nodiscard]] bool shouldUsePhysicalHitVfx(const game::battle::BattleActionResult& result,
+                                           const game::data::SkillData* skill) {
+    if (!isAppliedSingleTargetHit(result) || result.damage <= 0) {
+        return false;
+    }
+
+    if (result.action_type == game::battle::BattleActionType::Attack) {
+        return true;
+    }
+
+    return result.action_type == game::battle::BattleActionType::Skill &&
+        skill &&
+        skill->hit_type_ == game::data::HitType::Physical &&
+        !isRecoverySkill(*skill) &&
+        skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId;
 }
 
 /// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
@@ -513,9 +559,21 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
     return it != unit_anchors.end() ? &*it : nullptr;
 }
 
-/// @brief 将阵型脚底锚点转换为单体技能目标特效播放位置。
-[[nodiscard]] glm::vec2 skillTargetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor) {
-    return target_anchor.base_screen_position + glm::vec2{0.0F, SKILL_TARGET_VFX_VERTICAL_OFFSET};
+/// @brief 将阵型脚底锚点转换为目标特效播放位置。
+[[nodiscard]] glm::vec2 targetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor,
+                                          const float vertical_offset) {
+    return target_anchor.base_screen_position + glm::vec2{0.0F, vertical_offset};
+}
+
+[[nodiscard]] glm::vec2 skillTargetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor,
+                                               const game::data::SkillData& skill) {
+    return targetVfxPosition(target_anchor,
+                             isRecoverySkill(skill) ? RECOVERY_TARGET_VFX_VERTICAL_OFFSET
+                                                    : SKILL_TARGET_VFX_VERTICAL_OFFSET);
+}
+
+[[nodiscard]] glm::vec2 physicalHitVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor) {
+    return targetVfxPosition(target_anchor, PHYSICAL_HIT_VFX_VERTICAL_OFFSET);
 }
 
 } // namespace
@@ -592,6 +650,7 @@ void BattleScene::update(float delta_time) {
     battle_enemy_hp_bar_controller_.update(delta_time);
     battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
+    updateScheduledVfx(delta_time);
     if (vfx_service_) {
         vfx_service_->update(delta_time);
     }
@@ -623,6 +682,7 @@ void BattleScene::clean() {
     battle_animation_director_.reset();
     battle_damage_popup_controller_.clear();
     battle_enemy_hp_bar_controller_.clear();
+    scheduled_vfx_commands_.clear();
     battle_log_history_.clear();
     battle_log_entries_.clear();
     if (context_pushed_) {
@@ -979,7 +1039,7 @@ void BattleScene::runStateMachine(float delta_time) {
                 battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
                 const BattleAnimationTimelineConfig animation_config = animationConfigForResult(*last_action_result_);
-                spawnSkillTargetVfx(*last_action_result_, unit_anchors);
+                spawnActionTargetVfx(*last_action_result_, unit_anchors);
                 battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
                 battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
                 pending_action_.reset();
@@ -2495,6 +2555,15 @@ BattleAnimationTimelineConfig BattleScene::animationConfigForResult(
     BattleAnimationTimelineConfig config{};
     config.motion_style = actionMotionStyleForResult(result);
     config.actor_start_offset = actionStartOffsetFor(result.actor_id);
+
+    const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
+        ? rpg_catalog_->findSkill(result.skill_id)
+        : nullptr;
+    if (isAppliedSingleTargetHit(result) && hasConfiguredSkillTargetVfx(result, skill)) {
+        config.minimum_duration_seconds = CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS;
+    } else if (shouldUsePhysicalHitVfx(result, skill)) {
+        config.minimum_duration_seconds = PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS;
+    }
     return config;
 }
 
@@ -2539,14 +2608,10 @@ glm::vec2 BattleScene::actionStartOffsetFor(const game::battle::BattleUnitId act
     return COMMAND_FOCUS_PLAYER_OFFSET * eased;
 }
 
-void BattleScene::spawnSkillTargetVfx(
+void BattleScene::spawnActionTargetVfx(
     const game::battle::BattleActionResult& result,
-    const std::vector<BattlePresentationUnitAnchor>& unit_anchors) const {
-    if (!rpg_catalog_ ||
-        result.status != game::battle::BattleActionStatus::Applied ||
-        result.action_type != game::battle::BattleActionType::Skill ||
-        result.missed ||
-        !result.target_id) {
+    const std::vector<BattlePresentationUnitAnchor>& unit_anchors) {
+    if (!isAppliedSingleTargetHit(result)) {
         return;
     }
 
@@ -2555,19 +2620,57 @@ void BattleScene::spawnSkillTargetVfx(
         return;
     }
 
-    const auto* skill = rpg_catalog_->findSkill(result.skill_id);
-    if (!skill || skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId) {
+    const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
+        ? rpg_catalog_->findSkill(result.skill_id)
+        : nullptr;
+
+    if (hasConfiguredSkillTargetVfx(result, skill)) {
+        engine::vfx::PlayVfxCommand command{};
+        command.effect_id = skill->target_vfx_id_hash_;
+        command.world_position = skillTargetVfxPosition(*target_anchor, *skill);
+        command.z = 0.0F;
+        command.scale = skill->target_vfx_scale_;
+        command.loop = false;
+        command.channel = engine::vfx::VfxChannel::Overlay;
+        scheduleVfxCommand(command, 0.0F);
         return;
     }
 
-    engine::vfx::PlayVfxCommand command{};
-    command.effect_id = skill->target_vfx_id_hash_;
-    command.world_position = skillTargetVfxPosition(*target_anchor);
-    command.z = 0.0F;
-    command.scale = skill->target_vfx_scale_;
-    command.loop = false;
-    command.channel = engine::vfx::VfxChannel::Overlay;
-    context_.getDispatcher().trigger(command);
+    if (shouldUsePhysicalHitVfx(result, skill)) {
+        engine::vfx::PlayVfxCommand command{};
+        command.effect_id = hashString(PHYSICAL_HIT_VFX_ID);
+        command.world_position = physicalHitVfxPosition(*target_anchor);
+        command.z = 0.0F;
+        command.scale = PHYSICAL_HIT_VFX_SCALE;
+        command.loop = false;
+        command.channel = engine::vfx::VfxChannel::Overlay;
+        scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS);
+    }
+}
+
+void BattleScene::scheduleVfxCommand(engine::vfx::PlayVfxCommand command, const float delay_seconds) {
+    scheduled_vfx_commands_.push_back(ScheduledVfxCommand{
+        .command = std::move(command),
+        .remaining_seconds = std::max(0.0F, delay_seconds),
+    });
+}
+
+void BattleScene::updateScheduledVfx(const float delta_time) {
+    if (scheduled_vfx_commands_.empty()) {
+        return;
+    }
+
+    const float delta = std::clamp(delta_time, 0.0F, 0.25F);
+    for (auto it = scheduled_vfx_commands_.begin(); it != scheduled_vfx_commands_.end();) {
+        it->remaining_seconds -= delta;
+        if (it->remaining_seconds > 0.0F) {
+            ++it;
+            continue;
+        }
+
+        context_.getDispatcher().trigger(it->command);
+        it = scheduled_vfx_commands_.erase(it);
+    }
 }
 
 void BattleScene::updateCommandFocus(const float delta_time) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/vfx/vfx_catalog.h"
 #include "game/battle/battle_types.h"
 #include "game/data/appearance_catalog.h"
 #include "game/data/battle_background_id.h"
@@ -17,6 +18,11 @@
 namespace game::defs {
 struct BattleEndedEvent;
 }
+
+namespace engine::vfx {
+class VfxBridgeSystem;
+class VfxService;
+} // namespace engine::vfx
 
 namespace tools::battle_tester {
 
@@ -51,6 +57,9 @@ private:
     game::data::RpgCatalog rpg_catalog_{};
     game::factory::BlueprintManager blueprint_manager_{};
     game::data::AppearanceCatalog appearance_catalog_{};
+    engine::vfx::VfxCatalog vfx_catalog_{};
+    std::unique_ptr<engine::vfx::VfxService> vfx_service_{};
+    std::unique_ptr<engine::vfx::VfxBridgeSystem> vfx_bridge_system_{};
     std::optional<game::battle::BattleOutcome> last_outcome_{};
     bool battle_active_{false};
     bool launch_requested_{false};

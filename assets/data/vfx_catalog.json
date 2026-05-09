@@ -2,6 +2,7 @@
   "effects": {
     "battle.fire_one_1": "assets/vfx/effects/FireOne1.efkefc",
     "battle.heal_all_1": "assets/vfx/effects/HealAll1.efkefc",
+    "battle.hit_physical": "assets/vfx/effects/HitEffect.efkefc",
     "battle.thunder_one_1": "assets/vfx/effects/ThunderOne1.efkefc",
     "laser01": "assets/vfx/00_Basic/Laser01.efkefc"
   }
