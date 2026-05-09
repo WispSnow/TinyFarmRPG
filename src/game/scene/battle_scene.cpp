@@ -84,9 +84,9 @@ constexpr float PHYSICAL_HIT_VFX_VERTICAL_OFFSET = -24.0F;
 constexpr float CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS = 1.05F;
 constexpr float PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS = 0.72F;
 constexpr float PHYSICAL_HIT_VFX_DELAY_SECONDS = 0.18F;
-constexpr float PHYSICAL_HIT_VFX_SCALE = 2.0F;
+constexpr float PHYSICAL_HIT_DEFAULT_VFX_SCALE = 2.0F;
 constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
-constexpr std::string_view PHYSICAL_HIT_VFX_ID = "battle.hit_physical";
+constexpr std::string_view PHYSICAL_HIT_DEFAULT_VFX_ID = "battle.hit_physical";
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -135,6 +135,11 @@ struct BattleFormationSlot {
     float scale{1.0F};
     float depth{0.0F};
     glm::vec2 shadow_size{56.0F, 4.0F};
+};
+
+struct PhysicalHitVfxPresentation {
+    entt::id_type effect_id{engine::vfx::kInvalidVfxEffectId};
+    float scale{1.0F};
 };
 
 /// @brief 行动顺序条敌方图标解析结果；不可用时调用方回退到文本编号。
@@ -206,6 +211,21 @@ using namespace entt::literals;
         skill->hit_type_ == game::data::HitType::Physical &&
         !isRecoverySkill(*skill) &&
         skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId;
+}
+
+[[nodiscard]] PhysicalHitVfxPresentation physicalHitVfxPresentation(const game::data::SkillData* default_hit_skill) {
+    if (default_hit_skill &&
+        default_hit_skill->target_vfx_id_hash_ != engine::vfx::kInvalidVfxEffectId) {
+        return PhysicalHitVfxPresentation{
+            .effect_id = default_hit_skill->target_vfx_id_hash_,
+            .scale = default_hit_skill->target_vfx_scale_,
+        };
+    }
+
+    return PhysicalHitVfxPresentation{
+        .effect_id = hashString(PHYSICAL_HIT_DEFAULT_VFX_ID),
+        .scale = PHYSICAL_HIT_DEFAULT_VFX_SCALE,
+    };
 }
 
 /// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
@@ -2623,6 +2643,7 @@ void BattleScene::spawnActionTargetVfx(
     const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
         ? rpg_catalog_->findSkill(result.skill_id)
         : nullptr;
+    const auto* default_hit_skill = rpg_catalog_ ? rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID) : nullptr;
 
     if (hasConfiguredSkillTargetVfx(result, skill)) {
         engine::vfx::PlayVfxCommand command{};
@@ -2637,11 +2658,12 @@ void BattleScene::spawnActionTargetVfx(
     }
 
     if (shouldUsePhysicalHitVfx(result, skill)) {
+        const PhysicalHitVfxPresentation hit_vfx = physicalHitVfxPresentation(default_hit_skill);
         engine::vfx::PlayVfxCommand command{};
-        command.effect_id = hashString(PHYSICAL_HIT_VFX_ID);
+        command.effect_id = hit_vfx.effect_id;
         command.world_position = physicalHitVfxPosition(*target_anchor);
         command.z = 0.0F;
-        command.scale = PHYSICAL_HIT_VFX_SCALE;
+        command.scale = hit_vfx.scale;
         command.loop = false;
         command.channel = engine::vfx::VfxChannel::Overlay;
         scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS);

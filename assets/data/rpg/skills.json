@@ -15,7 +15,9 @@
                 "variance": 20,
                 "critical": true
             },
-            "effects": []
+            "effects": [],
+            "target_vfx_id": "battle.hit_physical",
+            "target_vfx_scale": 4.0
         },
         {
             "id": "skill.bash",

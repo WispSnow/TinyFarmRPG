@@ -649,9 +649,11 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
     EXPECT_NE(vfx_snippet.find("command.channel = engine::vfx::VfxChannel::Overlay"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, 0.0F)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("shouldUsePhysicalHitVfx(result, skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.effect_id = hashString(PHYSICAL_HIT_VFX_ID)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("physicalHitVfxPresentation(default_hit_skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.effect_id = hit_vfx.effect_id"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.world_position = physicalHitVfxPosition(*target_anchor)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.scale = PHYSICAL_HIT_VFX_SCALE"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.scale = hit_vfx.scale"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
 
     const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForResult", 1000U);
