@@ -77,16 +77,13 @@ constexpr float HP_BAR_WARNING_RATIO = 0.50F;
 constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
-/// @brief 目标特效默认锚到角色上半身，而非脚底阵型点。
-constexpr float SKILL_TARGET_VFX_VERTICAL_OFFSET = -36.0F;
-constexpr float RECOVERY_TARGET_VFX_VERTICAL_OFFSET = -18.0F;
-constexpr float PHYSICAL_HIT_VFX_VERTICAL_OFFSET = -24.0F;
 constexpr float CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS = 1.05F;
 constexpr float PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS = 0.72F;
 constexpr float PHYSICAL_HIT_VFX_DELAY_SECONDS = 0.18F;
 constexpr float PHYSICAL_HIT_DEFAULT_VFX_SCALE = 2.0F;
 constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
 constexpr std::string_view PHYSICAL_HIT_DEFAULT_VFX_ID = "battle.hit_physical";
+const glm::vec2 PHYSICAL_HIT_DEFAULT_VFX_OFFSET{0.0F, -18.0F};
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -140,6 +137,7 @@ struct BattleFormationSlot {
 struct PhysicalHitVfxPresentation {
     entt::id_type effect_id{engine::vfx::kInvalidVfxEffectId};
     float scale{1.0F};
+    glm::vec2 offset{0.0F, 0.0F};
 };
 
 /// @brief 行动顺序条敌方图标解析结果；不可用时调用方回退到文本编号。
@@ -219,12 +217,14 @@ using namespace entt::literals;
         return PhysicalHitVfxPresentation{
             .effect_id = default_hit_skill->target_vfx_id_hash_,
             .scale = default_hit_skill->target_vfx_scale_,
+            .offset = default_hit_skill->target_vfx_offset_,
         };
     }
 
     return PhysicalHitVfxPresentation{
         .effect_id = hashString(PHYSICAL_HIT_DEFAULT_VFX_ID),
         .scale = PHYSICAL_HIT_DEFAULT_VFX_SCALE,
+        .offset = PHYSICAL_HIT_DEFAULT_VFX_OFFSET,
     };
 }
 
@@ -581,19 +581,8 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
 
 /// @brief 将阵型脚底锚点转换为目标特效播放位置。
 [[nodiscard]] glm::vec2 targetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor,
-                                          const float vertical_offset) {
-    return target_anchor.base_screen_position + glm::vec2{0.0F, vertical_offset};
-}
-
-[[nodiscard]] glm::vec2 skillTargetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor,
-                                               const game::data::SkillData& skill) {
-    return targetVfxPosition(target_anchor,
-                             isRecoverySkill(skill) ? RECOVERY_TARGET_VFX_VERTICAL_OFFSET
-                                                    : SKILL_TARGET_VFX_VERTICAL_OFFSET);
-}
-
-[[nodiscard]] glm::vec2 physicalHitVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor) {
-    return targetVfxPosition(target_anchor, PHYSICAL_HIT_VFX_VERTICAL_OFFSET);
+                                          const glm::vec2 offset) {
+    return target_anchor.base_screen_position + offset;
 }
 
 } // namespace
@@ -2648,7 +2637,7 @@ void BattleScene::spawnActionTargetVfx(
     if (hasConfiguredSkillTargetVfx(result, skill)) {
         engine::vfx::PlayVfxCommand command{};
         command.effect_id = skill->target_vfx_id_hash_;
-        command.world_position = skillTargetVfxPosition(*target_anchor, *skill);
+        command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_);
         command.z = 0.0F;
         command.scale = skill->target_vfx_scale_;
         command.loop = false;
@@ -2661,7 +2650,7 @@ void BattleScene::spawnActionTargetVfx(
         const PhysicalHitVfxPresentation hit_vfx = physicalHitVfxPresentation(default_hit_skill);
         engine::vfx::PlayVfxCommand command{};
         command.effect_id = hit_vfx.effect_id;
-        command.world_position = physicalHitVfxPosition(*target_anchor);
+        command.world_position = targetVfxPosition(*target_anchor, hit_vfx.offset);
         command.z = 0.0F;
         command.scale = hit_vfx.scale;
         command.loop = false;

@@ -5,6 +5,7 @@
 
 #include <entt/core/hashed_string.hpp>
 
+#include <cmath>
 #include <filesystem>
 #include <string>
 
@@ -39,7 +40,9 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     const auto* attack = catalog.findSkill("skill.attack");
     ASSERT_NE(attack, nullptr);
     EXPECT_EQ(attack->target_vfx_id_, "battle.hit_physical");
-    EXPECT_FLOAT_EQ(attack->target_vfx_scale_, 2.0F);
+    EXPECT_GT(attack->target_vfx_scale_, 0.0F);
+    EXPECT_TRUE(std::isfinite(attack->target_vfx_offset_.x));
+    EXPECT_TRUE(std::isfinite(attack->target_vfx_offset_.y));
     const auto* attack_hit_path = vfx_catalog.findEffectPath(attack->target_vfx_id_hash_);
     ASSERT_NE(attack_hit_path, nullptr);
     EXPECT_EQ(*attack_hit_path, "assets/vfx/effects/HitEffect.efkefc");

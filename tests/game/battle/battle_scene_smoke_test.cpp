@@ -644,7 +644,8 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
     EXPECT_NE(vfx_snippet.find("hasConfiguredSkillTargetVfx(result, skill)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("engine::vfx::PlayVfxCommand command{}"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.effect_id = skill->target_vfx_id_hash_"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.world_position = skillTargetVfxPosition(*target_anchor, *skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_)"),
+              std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.scale = skill->target_vfx_scale_"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.channel = engine::vfx::VfxChannel::Overlay"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, 0.0F)"), std::string::npos);
@@ -652,7 +653,8 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
     EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("physicalHitVfxPresentation(default_hit_skill)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.effect_id = hit_vfx.effect_id"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.world_position = physicalHitVfxPosition(*target_anchor)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, hit_vfx.offset)"),
+              std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.scale = hit_vfx.scale"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
 
@@ -660,7 +662,7 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
     ASSERT_FALSE(config_snippet.empty());
     EXPECT_NE(config_snippet.find("CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS"), std::string::npos);
     EXPECT_NE(config_snippet.find("PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS"), std::string::npos);
-    EXPECT_NE(source.find("RECOVERY_TARGET_VFX_VERTICAL_OFFSET"), std::string::npos);
+    EXPECT_NE(source.find("target_vfx_offset_"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, AdvancesVfxServiceWhileBattleSceneIsTop) {
