@@ -32,6 +32,7 @@ struct BattleAnimationTimelineConfig {
     float attack_duration_seconds{0.72f};
     float action_hold_seconds{0.34f};
     float cast_duration_seconds{0.46f};
+    float minimum_duration_seconds{0.0f};
     glm::vec2 actor_start_offset{0.0f, 0.0f};
     BattleActionMotionStyle motion_style{BattleActionMotionStyle::Auto};
 };

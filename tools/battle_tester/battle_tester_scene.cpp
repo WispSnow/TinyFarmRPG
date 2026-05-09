@@ -3,6 +3,10 @@
 #include "engine/core/context.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/render/renderer.h"
+#include "engine/vfx/effekseer_backend_factory.h"
+#include "engine/vfx/null_vfx_backend.h"
+#include "engine/vfx/vfx_bridge_system.h"
+#include "engine/vfx/vfx_service.h"
 #include "game/battle/battle_session.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/defs/events.h"
@@ -26,6 +30,7 @@ constexpr std::string_view kIconConfigPath{"assets/data/icon_config.json"};
 constexpr std::string_view kItemConfigPath{"assets/data/item_config.json"};
 constexpr std::string_view kActorBlueprintPath{"assets/data/actor_blueprint.json"};
 constexpr std::string_view kAppearanceCatalogPath{"assets/data/appearance_catalog.json"};
+constexpr std::string_view kVfxCatalogPath{"assets/data/vfx_catalog.json"};
 constexpr std::string_view kBattleItemPotion{"potion"};
 
 [[nodiscard]] entt::id_type hashId(std::string_view id) {
@@ -81,6 +86,9 @@ void BattleTesterScene::update(float delta_time) {
 
 void BattleTesterScene::clean() {
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&BattleTesterScene::onBattleEnded>(this);
+    vfx_bridge_system_.reset();
+    context_.getGLRenderer().setVfxBackend(nullptr);
+    vfx_service_.reset();
     battle_active_ = false;
     launch_requested_ = false;
     Scene::clean();
@@ -113,6 +121,23 @@ bool BattleTesterScene::loadResources() {
         spdlog::error("BattleTester: failed to load appearance catalog '{}'.", kAppearanceCatalogPath);
         return false;
     }
+
+    if (!vfx_catalog_.loadFromFile(kVfxCatalogPath)) {
+        spdlog::error("BattleTester: failed to load VFX catalog '{}'.", kVfxCatalogPath);
+        return false;
+    }
+
+    std::unique_ptr<engine::vfx::VfxBackend> backend = engine::vfx::createEffekseerBackend();
+    if (!backend) {
+        spdlog::warn("BattleTester: EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
+        backend = std::make_unique<engine::vfx::NullVfxBackend>();
+    }
+    vfx_service_ = std::make_unique<engine::vfx::VfxService>(std::move(backend));
+    context_.getGLRenderer().setVfxBackend(vfx_service_->backend());
+    vfx_bridge_system_ = std::make_unique<engine::vfx::VfxBridgeSystem>(
+        context_.getDispatcher(),
+        *vfx_service_,
+        &vfx_catalog_);
 
     return true;
 }
@@ -155,6 +180,7 @@ std::unique_ptr<engine::scene::Scene> BattleTesterScene::createBattleScene() {
     game::scene::BattleScenePresentationOptions presentation_options{};
     presentation_options.blueprint_manager = &blueprint_manager_;
     presentation_options.appearance_catalog = &appearance_catalog_;
+    presentation_options.vfx_service = vfx_service_.get();
     presentation_options.battle_background_id = config_.battle_background_id;
     presentation_options.sprite_seeds = game::scene::buildBattleSpriteSeeds(
         units,

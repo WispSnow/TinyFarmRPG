@@ -3,6 +3,8 @@
 #include "engine/vfx/vfx_catalog.h"
 #include "game/data/rpg_catalog.h"
 
+#include <entt/core/hashed_string.hpp>
+
 #include <filesystem>
 #include <string>
 
@@ -71,6 +73,12 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     ASSERT_NE(heal_path, nullptr);
     EXPECT_EQ(*heal_path, "assets/vfx/effects/HealAll1.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *heal_path));
+
+    const entt::id_type physical_hit_id = entt::hashed_string{"battle.hit_physical"}.value();
+    const auto* physical_hit_path = vfx_catalog.findEffectPath(physical_hit_id);
+    ASSERT_NE(physical_hit_path, nullptr);
+    EXPECT_EQ(*physical_hit_path, "assets/vfx/effects/HitEffect.efkefc");
+    EXPECT_TRUE(std::filesystem::exists(project_root / *physical_hit_path));
 }
 
 } // namespace

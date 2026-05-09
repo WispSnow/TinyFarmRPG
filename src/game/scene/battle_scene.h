@@ -4,6 +4,7 @@
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
 #include "engine/utils/math.h"
+#include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_log_formatter.h"
 #include "game/battle/battle_reward_resolver.h"
 #include "game/battle/battle_session.h"
@@ -86,6 +87,11 @@ class BattleScene final : public engine::scene::Scene {
         float min_zoom{0.1F};
         float max_zoom{10.0F};
         std::optional<engine::utils::Rect> limit_bounds{};
+    };
+
+    struct ScheduledVfxCommand {
+        engine::vfx::PlayVfxCommand command{};
+        float remaining_seconds{0.0F};
     };
 
     /// @brief 战斗命令单项的表现层视图模型。
@@ -228,6 +234,7 @@ class BattleScene final : public engine::scene::Scene {
     bool input_listeners_connected_{false};
     bool menu_focus_dirty_{true};
     std::optional<CameraStateSnapshot> saved_camera_state_{};
+    std::vector<ScheduledVfxCommand> scheduled_vfx_commands_{};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
@@ -398,12 +405,13 @@ private:
         const game::battle::BattleActionResult& result) const;
     [[nodiscard]] glm::vec2 actionStartOffsetFor(game::battle::BattleUnitId actor_id) const;
 
-    /// @brief 根据已应用、未 miss 的单体技能结果，在目标锚点触发技能目标特效。
+    /// @brief 根据已应用、未 miss 的单体行动结果，在目标锚点触发目标特效。
     ///
-    /// 该函数只处理配置了 `SkillData::target_vfx_id_hash_` 的技能，并使用 Overlay 通道，
-    /// 因为战斗表现锚点是屏幕逻辑坐标，不应受探索世界相机影响。
-    void spawnSkillTargetVfx(const game::battle::BattleActionResult& result,
-                             const std::vector<BattlePresentationUnitAnchor>& unit_anchors) const;
+    /// 该函数处理技能配置的 target_vfx 和普通攻击 / 物理技能的通用命中特效。
+    void spawnActionTargetVfx(const game::battle::BattleActionResult& result,
+                              const std::vector<BattlePresentationUnitAnchor>& unit_anchors);
+    void scheduleVfxCommand(engine::vfx::PlayVfxCommand command, float delay_seconds);
+    void updateScheduledVfx(float delta_time);
     void updateCommandFocus(float delta_time);
     [[nodiscard]] std::optional<BattleAnimationPose> commandFocusPoseFor(game::battle::BattleUnitId unit_id,
                                                                          game::battle::BattleSide side) const;
