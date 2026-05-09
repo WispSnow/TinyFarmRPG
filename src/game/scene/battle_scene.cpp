@@ -77,6 +77,7 @@ constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
 /// @brief 目标特效默认锚到角色上半身，而非脚底阵型点。
 constexpr float SKILL_TARGET_VFX_VERTICAL_OFFSET = -36.0F;
+constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -157,6 +158,11 @@ using namespace entt::literals;
 
 [[nodiscard]] entt::id_type hashString(std::string_view value) {
     return entt::hashed_string{value.data(), value.size()}.value();
+}
+
+/// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
+[[nodiscard]] bool isActorSkillMenuEntry(std::string_view skill_id) {
+    return skill_id != BASIC_ATTACK_SKILL_ID;
 }
 
 /// @brief 把敌方 sprite blueprint id 规范化为 RmlUi spritesheet 中的 sprite 名称。
@@ -1556,6 +1562,10 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
 
     int entry_index = 0;
     for (const auto& skill_id : actor.skill_ids) {
+        if (!isActorSkillMenuEntry(skill_id)) {
+            continue;
+        }
+
         const auto* skill = rpg_catalog_->findSkill(skill_id);
         if (!skill) {
             spdlog::warn("BattleScene: skill '{}' 不存在于 RPG catalog，已跳过。", skill_id);

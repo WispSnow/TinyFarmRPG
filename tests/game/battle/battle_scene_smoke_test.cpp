@@ -197,6 +197,24 @@ TEST(BattleSceneSmokeTest, WiresStage2SkillListToDraftSelection) {
     EXPECT_EQ(source.find("enterListMenu(MenuState::SkillList)"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, SkillListFiltersBasicAttackCommandSkill) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("constexpr std::string_view BASIC_ATTACK_SKILL_ID = \"skill.attack\""), std::string::npos);
+    EXPECT_NE(source.find("bool isActorSkillMenuEntry(std::string_view skill_id)"), std::string::npos);
+
+    const std::string skill_list_block = snippetFrom(source, "void BattleScene::populateSkillEntries", 1200U);
+    ASSERT_FALSE(skill_list_block.empty());
+    EXPECT_NE(skill_list_block.find("if (!isActorSkillMenuEntry(skill_id))"), std::string::npos);
+    EXPECT_LT(skill_list_block.find("if (!isActorSkillMenuEntry(skill_id))"),
+              skill_list_block.find("findSkill(skill_id)"));
+}
+
 TEST(BattleSceneSmokeTest, WiresStage3ItemListToDraftSelection) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
