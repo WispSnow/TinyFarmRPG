@@ -6,8 +6,10 @@
 #include "game/battle/battle_session.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/defs/events.h"
+#include "game/runtime/gameplay_camera_defaults.h"
 #include "game/runtime/rpg_catalog_loader.h"
 #include "game/scene/battle_scene.h"
+#include "game/scene/battle_scene_entry.h"
 
 #include <SDL3/SDL.h>
 #include <entt/core/hashed_string.hpp>
@@ -46,6 +48,7 @@ bool BattleTesterScene::init() {
     }
 
     context_.getGLRenderer().setDebugUIEnabled(false);
+    game::runtime::applyGameplayCameraDefaults(context_.getCamera());
     context_.getRenderer().setClearColorFloat(engine::utils::FColor{0.06F, 0.08F, 0.12F, 1.0F});
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().connect<&BattleTesterScene::onBattleEnded>(this);
 
@@ -153,14 +156,9 @@ std::unique_ptr<engine::scene::Scene> BattleTesterScene::createBattleScene() {
     presentation_options.blueprint_manager = &blueprint_manager_;
     presentation_options.appearance_catalog = &appearance_catalog_;
     presentation_options.battle_background_id = config_.battle_background_id;
-    presentation_options.sprite_seeds.reserve(units.size());
-    for (const auto& unit : units) {
-        game::scene::BattleSpriteSeed seed{};
-        seed.unit_id = unit.id;
-        seed.source_actor_id = unit.source_actor_id;
-        seed.source_enemy_id = unit.source_enemy_id;
-        presentation_options.sprite_seeds.push_back(std::move(seed));
-    }
+    presentation_options.sprite_seeds = game::scene::buildBattleSpriteSeeds(
+        units,
+        game::scene::defaultBattleAppearanceSnapshot(appearance_catalog_));
 
     spdlog::info("BattleTester: launching battle with {} unit(s), troop='{}'.", units.size(), config_.troop_id);
     return std::make_unique<game::scene::BattleScene>(

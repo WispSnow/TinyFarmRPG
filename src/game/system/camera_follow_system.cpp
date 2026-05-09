@@ -3,6 +3,7 @@
 #include "engine/component/transform_component.h"
 #include "engine/render/camera.h"
 #include "engine/input/input_manager.h"
+#include "game/runtime/gameplay_camera_defaults.h"
 #include <entt/core/hashed_string.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/common.hpp>
@@ -17,7 +18,6 @@ using namespace entt::literals;
 
 namespace {
 
-constexpr float DEFAULT_CAMERA_ZOOM = 2.0f;
 constexpr float CAMERA_ZOOM_STEP_PER_WHEEL_TICK = 0.15f;
 constexpr entt::id_type ACTION_CAMERA_RESET_ZOOM = "camera_reset_zoom"_hs;
 
@@ -65,7 +65,7 @@ void CameraFollowSystem::update(float delta_time) {
 void CameraFollowSystem::updateMouseWheel(float /* delta_time */) {
 
     if (input_manager_.isActionPressed(ACTION_CAMERA_RESET_ZOOM)) {
-        camera_.setZoom(DEFAULT_CAMERA_ZOOM);
+        game::runtime::applyGameplayCameraDefaultZoom(camera_);
     }
 
     auto mouse_wheel_delta = input_manager_.getMouseWheelDelta();
