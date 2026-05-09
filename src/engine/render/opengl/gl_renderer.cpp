@@ -396,7 +396,9 @@ void GLRenderer::clear() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, static_cast<int>(std::round(window_size.x)), static_cast<int>(std::round(window_size.y)));
     glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearDepth(1.0);
+    glDepthMask(GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // 清空场景FBO中的颜色附件
     scene_pass_->clear(clear_color_);
     // 同时清空光照/发光缓冲
