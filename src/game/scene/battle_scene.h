@@ -127,6 +127,7 @@ class BattleScene final : public engine::scene::Scene {
         int entry_index{0};
         int unit_id{0};
         Rml::String label{};
+        Rml::String sublabel{};
         bool enabled{false};
         bool is_ally{false};
         bool is_dead{false};
@@ -360,6 +361,7 @@ private:
     [[nodiscard]] const TargetEntryViewModel* findTargetEntry(int entry_index) const;
     [[nodiscard]] int firstEnabledTargetEntryIndex() const;
     [[nodiscard]] Rml::String targetLabel(const game::battle::BattleUnit& unit) const;
+    [[nodiscard]] Rml::String targetSublabel(const game::battle::BattleUnit& unit) const;
     [[nodiscard]] MenuState menuStateForActionDraftSource() const;
     void setMenuHint(std::string_view text);
     void continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor);
