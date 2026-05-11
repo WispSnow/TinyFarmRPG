@@ -860,6 +860,7 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         target_handle.RegisterMember("entry_index", &TargetEntryViewModel::entry_index);
         target_handle.RegisterMember("unit_id", &TargetEntryViewModel::unit_id);
         target_handle.RegisterMember("label", &TargetEntryViewModel::label);
+        target_handle.RegisterMember("sublabel", &TargetEntryViewModel::sublabel);
         target_handle.RegisterMember("enabled", &TargetEntryViewModel::enabled);
         target_handle.RegisterMember("is_ally", &TargetEntryViewModel::is_ally);
         target_handle.RegisterMember("is_dead", &TargetEntryViewModel::is_dead);
@@ -1852,6 +1853,7 @@ void BattleScene::populateTargetEntries(game::data::Scope scope, const game::bat
             .entry_index = entry_index++,
             .unit_id = static_cast<int>(unit.id),
             .label = targetLabel(unit),
+            .sublabel = targetSublabel(unit),
             .enabled = unit.isAlive(),
             .is_ally = unit.side == actor.side,
             .is_dead = !unit.isAlive()
@@ -1881,11 +1883,14 @@ int BattleScene::firstEnabledTargetEntryIndex() const {
 }
 
 Rml::String BattleScene::targetLabel(const game::battle::BattleUnit& unit) const {
-    std::string label = unit.name + " HP " + std::to_string(unit.hp) + "/" + std::to_string(unit.max_hp);
+    return unit.name;
+}
+
+Rml::String BattleScene::targetSublabel(const game::battle::BattleUnit& unit) const {
     if (!unit.isAlive()) {
-        label += " (KO)";
+        return "(KO)";
     }
-    return label;
+    return std::to_string(unit.hp) + "/" + std::to_string(unit.max_hp);
 }
 
 BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {

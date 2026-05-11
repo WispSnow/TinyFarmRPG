@@ -119,7 +119,7 @@
                             id="battle-party-command-{{ command.entry_index }}"
                             data-class-disabled="!command.enabled"
                             data-attrif-disabled="!command.enabled"
-                            data-event-click="party_command_select(command.entry_index)">{{ command.label }}</button>
+                            data-event-click="party_command_select(command.entry_index)"><span class="battle-cursor">&gt;</span>{{ command.label }}</button>
                 </div>
 
                 <div id="battle-actor-command" data-if="actor_command_visible">
@@ -128,7 +128,7 @@
                             id="battle-actor-command-{{ command.entry_index }}"
                             data-class-disabled="!command.enabled"
                             data-attrif-disabled="!command.enabled"
-                            data-event-click="actor_command_select(command.entry_index)">{{ command.label }}</button>
+                            data-event-click="actor_command_select(command.entry_index)"><span class="battle-cursor">&gt;</span>{{ command.label }}</button>
                 </div>
 
                 <div id="battle-list-menu" data-if="list_menu_visible">
@@ -138,10 +138,7 @@
                             id="battle-list-entry-{{ entry.entry_index }}"
                             data-class-disabled="!entry.enabled"
                             data-attrif-disabled="!entry.enabled"
-                            data-event-click="list_entry_select(entry.entry_index)">
-                        <span class="battle-entry-label">{{ entry.label }}</span>
-                        <span class="battle-entry-sublabel">{{ entry.sublabel }}</span>
-                    </button>
+                            data-event-click="list_entry_select(entry.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ entry.label }}</span><span class="battle-entry-sublabel">{{ entry.sublabel }}</span></button>
                 </div>
 
                 <div id="battle-target-menu" data-if="target_menu_visible">
@@ -153,7 +150,7 @@
                             data-attrif-disabled="!target.enabled"
                             data-class-is-ally="target.is_ally"
                             data-class-is-dead="target.is_dead"
-                            data-event-click="target_entry_select(target.entry_index)">{{ target.label }}</button>
+                            data-event-click="target_entry_select(target.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ target.label }}</span><span class="battle-entry-sublabel">{{ target.sublabel }}</span></button>
                 </div>
             </div>
         </div>
