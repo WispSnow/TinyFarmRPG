@@ -655,6 +655,28 @@ body, div, h1, h2, h3, h4, p, hr {
     display: flex;
     flex-direction: column;
     gap: 2dp;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#battle-list-menu scrollbarvertical,
+#battle-target-menu scrollbarvertical {
+    width: 4dp;
+    scrollbar-margin: 0dp;
+}
+
+#battle-list-menu scrollbarvertical slidertrack,
+#battle-target-menu scrollbarvertical slidertrack {
+    background-color: #0b1019aa;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
+#battle-list-menu scrollbarvertical sliderbar,
+#battle-target-menu scrollbarvertical sliderbar {
+    background-color: #697b95dd;
+    border-width: 0dp;
+    border-color: #00000000;
 }
 
 .battle-text-button {
@@ -678,7 +700,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-list-entry,
 .battle-target-entry {
-    width: 108dp;
+    width: 100%;
     height: 16dp;
     line-height: 16dp;
     padding-left: 4dp;
@@ -686,6 +708,7 @@ body, div, h1, h2, h3, h4, p, hr {
     font-size: 10dp;
     white-space: nowrap;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .battle-entry-label,

@@ -1570,6 +1570,12 @@ bool BattleScene::focusElementById(std::string_view element_id) {
     }
 
     element->Focus(true);
+    element->ScrollIntoView(Rml::ScrollIntoViewOptions{
+        Rml::ScrollAlignment::Nearest,
+        Rml::ScrollAlignment::Nearest,
+        Rml::ScrollBehavior::Instant,
+        Rml::ScrollParentage::Closest
+    });
     return true;
 }
 
