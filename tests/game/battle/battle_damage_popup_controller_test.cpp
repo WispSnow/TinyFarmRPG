@@ -65,6 +65,21 @@ TEST(BattleDamagePopupControllerTest, DelayHoldsPopupBeforeRiseAndFadeAnimationS
     EXPECT_LT(popup.offset.y, 0.0f);
 }
 
+TEST(BattleDamagePopupControllerTest, CustomImpactTimeControlsPopupDelay) {
+    BattleDamagePopupController controller;
+    controller.spawnFromResult(makeResult(), makeAnchors(), 0.46f);
+
+    ASSERT_EQ(controller.activePopups().size(), 1U);
+    EXPECT_NEAR(controller.activePopups().front().delay_seconds, 0.46f, 0.001f);
+
+    controller.update(0.25f);
+    controller.update(0.20f);
+    EXPECT_FALSE(controller.activePopups().front().visible);
+
+    controller.update(0.02f);
+    EXPECT_TRUE(controller.activePopups().front().visible);
+}
+
 TEST(BattleDamagePopupControllerTest, RecoveryAndMpPopupsUseSignedTextAndKinds) {
     auto result = makeResult();
     result.damage = 0;

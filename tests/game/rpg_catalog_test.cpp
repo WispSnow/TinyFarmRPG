@@ -235,13 +235,14 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* skill = catalog.findSkill("skill.attack");
     ASSERT_NE(skill, nullptr);
     EXPECT_EQ(skill->display_name_, "Attack");
-    EXPECT_TRUE(skill->target_vfx_id_.empty());
-    EXPECT_EQ(skill->target_vfx_id_hash_, entt::id_type{});
-    EXPECT_TRUE(skill->target_sfx_id_.empty());
-    EXPECT_EQ(skill->target_sfx_id_hash_, entt::id_type{});
-    EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.0F);
-    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 0.0F);
-    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, 0.0F);
+    EXPECT_FALSE(skill->presentation_.configured_);
+    EXPECT_TRUE(skill->presentation_.target_vfx_id_.empty());
+    EXPECT_EQ(skill->presentation_.target_vfx_id_hash_, entt::id_type{});
+    EXPECT_TRUE(skill->presentation_.target_sfx_id_.empty());
+    EXPECT_EQ(skill->presentation_.target_sfx_id_hash_, entt::id_type{});
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_scale_, 1.0F);
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_offset_.x, 0.0F);
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_offset_.y, 0.0F);
 
     const auto* state = catalog.findState("state.poison");
     ASSERT_NE(state, nullptr);
@@ -549,7 +550,7 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnNegativeMpCost) {
     EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
 }
 
-TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
+TEST(RpgCatalogTest, LoadSkillsParsesPresentationFields) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(
         paths.skills,
@@ -563,10 +564,17 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
       "success_rate": 100,
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
-      "target_vfx_id": "battle.fire_one_1",
-      "target_sfx_id": "sfx.battle.fire_1",
-      "target_vfx_scale": 1.25,
-      "target_vfx_offset": { "x": 4.0, "y": -28.0 }
+      "presentation": {
+        "motion_style": "cast",
+        "duration": 0.92,
+        "impact_time": 0.46,
+        "recovery_duration": 0.30,
+        "target_vfx_tail": 0.45,
+        "target_vfx_id": "battle.fire_one_1",
+        "target_sfx_id": "sfx.battle.fire_1",
+        "target_vfx_scale": 1.25,
+        "target_vfx_offset": { "x": 4.0, "y": -28.0 }
+      }
     }
   ]
 })json");
@@ -576,16 +584,22 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
 
     const auto* skill = catalog.findSkill("skill.fire");
     ASSERT_NE(skill, nullptr);
-    EXPECT_EQ(skill->target_vfx_id_, "battle.fire_one_1");
-    EXPECT_EQ(skill->target_vfx_id_hash_, RpgCatalog::hashId("battle.fire_one_1"));
-    EXPECT_EQ(skill->target_sfx_id_, "sfx.battle.fire_1");
-    EXPECT_EQ(skill->target_sfx_id_hash_, RpgCatalog::hashId("sfx.battle.fire_1"));
-    EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.25F);
-    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 4.0F);
-    EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, -28.0F);
+    EXPECT_TRUE(skill->presentation_.configured_);
+    EXPECT_EQ(skill->presentation_.motion_style_, SkillMotionStyle::Cast);
+    EXPECT_FLOAT_EQ(skill->presentation_.duration_seconds_, 0.92F);
+    EXPECT_FLOAT_EQ(skill->presentation_.impact_time_seconds_, 0.46F);
+    EXPECT_FLOAT_EQ(skill->presentation_.recovery_duration_seconds_, 0.30F);
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_tail_seconds_, 0.45F);
+    EXPECT_EQ(skill->presentation_.target_vfx_id_, "battle.fire_one_1");
+    EXPECT_EQ(skill->presentation_.target_vfx_id_hash_, RpgCatalog::hashId("battle.fire_one_1"));
+    EXPECT_EQ(skill->presentation_.target_sfx_id_, "sfx.battle.fire_1");
+    EXPECT_EQ(skill->presentation_.target_sfx_id_hash_, RpgCatalog::hashId("sfx.battle.fire_1"));
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_scale_, 1.25F);
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_offset_.x, 4.0F);
+    EXPECT_FLOAT_EQ(skill->presentation_.target_vfx_offset_.y, -28.0F);
 }
 
-TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
+TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidPresentationTargetVfxScale) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(
         paths.skills,
@@ -598,8 +612,12 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
       "success_rate": 100,
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
-      "target_vfx_id": "battle.fire_one_1",
-      "target_vfx_scale": 0.0
+      "presentation": {
+        "duration": 0.92,
+        "impact_time": 0.46,
+        "target_vfx_id": "battle.fire_one_1",
+        "target_vfx_scale": 0.0
+      }
     }
   ]
 })json");
@@ -608,7 +626,7 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxScale) {
     EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
 }
 
-TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxOffset) {
+TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidPresentationTargetVfxOffset) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(
         paths.skills,
@@ -621,9 +639,40 @@ TEST(RpgCatalogTest, LoadSkillsFailsOnInvalidTargetVfxOffset) {
       "success_rate": 100,
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
-      "target_vfx_id": "battle.fire_one_1",
-      "target_vfx_scale": 1.0,
-      "target_vfx_offset": { "x": "bad", "y": -12.0 }
+      "presentation": {
+        "duration": 0.92,
+        "impact_time": 0.46,
+        "target_vfx_id": "battle.fire_one_1",
+        "target_vfx_scale": 1.0,
+        "target_vfx_offset": { "x": "bad", "y": -12.0 }
+      }
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadSkills(paths.skills.string()));
+}
+
+TEST(RpgCatalogTest, LoadSkillsFailsWhenPresentationDurationDoesNotCoverTail) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.skills,
+        R"json({
+  "skills": [
+    {
+      "id": "skill.bad_duration",
+      "scope": "one_enemy",
+      "hit_type": "magical",
+      "success_rate": 100,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
+      "presentation": {
+        "duration": 0.70,
+        "impact_time": 0.46,
+        "recovery_duration": 0.30,
+        "target_vfx_tail": 0.45
+      }
     }
   ]
 })json");

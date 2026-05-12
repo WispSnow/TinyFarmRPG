@@ -48,6 +48,8 @@ public:
     /// @brief 根据行动结果决定是否显示目标敌方 HP 条。
     /// @param result 已结算的战斗行动结果。
     void revealFromResult(const game::battle::BattleActionResult& result);
+    void stageSnapshot(const game::battle::BattleSnapshot& snapshot);
+    void applyStagedSnapshotAndReveal(const game::battle::BattleActionResult& result);
 
     /// @brief 设置目标选择阶段高亮的敌方单位。
     /// @param unit_id 当前高亮目标；为空时取消所有高亮。
@@ -75,6 +77,7 @@ private:
 
     BattleEnemyHpBarConfig config_{};
     std::vector<BattleEnemyHpBarState> bars_{};
+    std::optional<game::battle::BattleSnapshot> staged_snapshot_{};
 };
 
 } // namespace game::scene

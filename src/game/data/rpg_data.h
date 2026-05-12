@@ -33,18 +33,12 @@ struct DamageFormulaData {
     bool critical{false};
 };
 
-struct SkillData {
-    std::string id_{};
-    entt::id_type id_hash_{};
-    std::string display_name_{};
-    std::string description_{};
-    Scope scope_{Scope::None};
-    HitType hit_type_{HitType::Certain};
-    int mp_cost_{0};
-    int success_rate_{100};
-    int repeats_{1};
-    DamageFormulaData damage_{};
-    std::vector<EffectData> effects_{};
+struct SkillPresentationData {
+    SkillMotionStyle motion_style_{SkillMotionStyle::Auto};
+    float duration_seconds_{0.0F};
+    float impact_time_seconds_{0.0F};
+    float recovery_duration_seconds_{0.0F};
+    float target_vfx_tail_seconds_{0.0F};
     /// @brief 目标位置播放的 VFX 语义 ID；为空时技能不触发目标特效。
     std::string target_vfx_id_{};
     /// @brief target_vfx_id_ 的哈希值，供 BattleScene 直接提交 PlayVfxCommand。
@@ -57,6 +51,22 @@ struct SkillData {
     float target_vfx_scale_{1.0F};
     /// @brief 目标特效相对战斗单位脚底锚点的屏幕逻辑坐标偏移。
     glm::vec2 target_vfx_offset_{0.0F, 0.0F};
+    bool configured_{false};
+};
+
+struct SkillData {
+    std::string id_{};
+    entt::id_type id_hash_{};
+    std::string display_name_{};
+    std::string description_{};
+    Scope scope_{Scope::None};
+    HitType hit_type_{HitType::Certain};
+    int mp_cost_{0};
+    int success_rate_{100};
+    int repeats_{1};
+    DamageFormulaData damage_{};
+    std::vector<EffectData> effects_{};
+    SkillPresentationData presentation_{};
 };
 
 struct ClassData {

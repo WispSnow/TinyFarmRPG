@@ -131,6 +131,13 @@ BattleDamagePopupController::BattleDamagePopupController(BattleDamagePopupLayout
 void BattleDamagePopupController::spawnFromResult(
     const game::battle::BattleActionResult& result,
     const std::vector<BattlePresentationUnitAnchor>& unit_anchors) {
+    spawnFromResult(result, unit_anchors, timing_.impact_delay_seconds);
+}
+
+void BattleDamagePopupController::spawnFromResult(
+    const game::battle::BattleActionResult& result,
+    const std::vector<BattlePresentationUnitAnchor>& unit_anchors,
+    const float impact_time_seconds) {
     if (result.status == game::battle::BattleActionStatus::Rejected) {
         return;
     }
@@ -147,7 +154,7 @@ void BattleDamagePopupController::spawnFromResult(
 
     const glm::vec2 anchor_position = popup_anchor->base_screen_position +
         (target_anchor ? layout_.target_anchor_offset : layout_.actor_anchor_offset);
-    const float impact_delay = std::max(timing_.impact_delay_seconds, 0.0f);
+    const float impact_delay = std::max(impact_time_seconds, 0.0f);
 
     if (result.missed) {
         if (target_anchor) {

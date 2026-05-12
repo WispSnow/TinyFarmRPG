@@ -51,6 +51,16 @@ enum class HitType : std::uint8_t {
     Magical
 };
 
+/// @brief 技能在战斗表现层使用的动作风格。
+enum class SkillMotionStyle : std::uint8_t {
+    Auto = 0,
+    WeaponAttack,
+    Cast,
+    Guard,
+    Escape,
+    Simple
+};
+
 /// @brief 特性类型，例如参数倍率、元素倍率、状态倍率或状态免疫。
 enum class TraitType : std::uint8_t {
     ParamRate = 0,
@@ -74,6 +84,7 @@ enum class EffectType : std::uint8_t {
 [[nodiscard]] const char* toString(Scope value);
 [[nodiscard]] const char* toString(DamageType value);
 [[nodiscard]] const char* toString(HitType value);
+[[nodiscard]] const char* toString(SkillMotionStyle value);
 [[nodiscard]] const char* toString(TraitType value);
 [[nodiscard]] const char* toString(EffectType value);
 
@@ -81,6 +92,7 @@ enum class EffectType : std::uint8_t {
 [[nodiscard]] std::optional<Scope> scopeFromString(std::string_view value);
 [[nodiscard]] std::optional<DamageType> damageTypeFromString(std::string_view value);
 [[nodiscard]] std::optional<HitType> hitTypeFromString(std::string_view value);
+[[nodiscard]] std::optional<SkillMotionStyle> skillMotionStyleFromString(std::string_view value);
 [[nodiscard]] std::optional<TraitType> traitTypeFromString(std::string_view value);
 [[nodiscard]] std::optional<EffectType> effectTypeFromString(std::string_view value);
 

@@ -160,6 +160,62 @@ using Json = nlohmann::json;
     return true;
 }
 
+[[nodiscard]] bool parseSkillPresentation(const Json& node, SkillPresentationData& out_presentation) {
+    out_presentation = {};
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    out_presentation.configured_ = true;
+
+    const auto motion_style = skillMotionStyleFromString(node.value("motion_style", std::string{"auto"}));
+    if (!motion_style.has_value()) {
+        return false;
+    }
+    out_presentation.motion_style_ = *motion_style;
+
+    out_presentation.duration_seconds_ = node.value("duration", 0.0F);
+    out_presentation.impact_time_seconds_ = node.value("impact_time", 0.0F);
+    out_presentation.recovery_duration_seconds_ = node.value("recovery_duration", 0.0F);
+    out_presentation.target_vfx_tail_seconds_ = node.value("target_vfx_tail", 0.0F);
+
+    if (out_presentation.duration_seconds_ <= 0.0F ||
+        out_presentation.impact_time_seconds_ < 0.0F ||
+        out_presentation.impact_time_seconds_ > out_presentation.duration_seconds_ ||
+        out_presentation.recovery_duration_seconds_ < 0.0F ||
+        out_presentation.target_vfx_tail_seconds_ < 0.0F ||
+        out_presentation.duration_seconds_ <
+            out_presentation.impact_time_seconds_ + out_presentation.recovery_duration_seconds_ ||
+        out_presentation.duration_seconds_ <
+            out_presentation.impact_time_seconds_ + out_presentation.target_vfx_tail_seconds_) {
+        return false;
+    }
+
+    out_presentation.target_vfx_id_ = node.value("target_vfx_id", std::string{});
+    out_presentation.target_vfx_id_hash_ = out_presentation.target_vfx_id_.empty()
+        ? entt::id_type{}
+        : RpgCatalog::hashId(out_presentation.target_vfx_id_);
+    out_presentation.target_sfx_id_ = node.value("target_sfx_id", std::string{});
+    out_presentation.target_sfx_id_hash_ = out_presentation.target_sfx_id_.empty()
+        ? entt::id_type{}
+        : RpgCatalog::hashId(out_presentation.target_sfx_id_);
+    out_presentation.target_vfx_scale_ = node.value("target_vfx_scale", 1.0F);
+    if (out_presentation.target_vfx_scale_ <= 0.0F) {
+        return false;
+    }
+
+    const auto target_vfx_offset_it = node.find("target_vfx_offset");
+    if (target_vfx_offset_it != node.end() &&
+        !parseVec2(*target_vfx_offset_it, out_presentation.target_vfx_offset_)) {
+        return false;
+    }
+
+    return true;
+}
+
 [[nodiscard]] bool parseStringList(const Json& node, std::vector<std::string>& out_values) {
     out_values.clear();
     if (node.is_null()) {
@@ -465,23 +521,13 @@ bool RpgCatalog::loadSkills(const std::string_view file_path) {
             return false;
         }
 
-        skill.target_vfx_id_ = skill_node.value("target_vfx_id", std::string{});
-        skill.target_vfx_id_hash_ = skill.target_vfx_id_.empty()
-            ? entt::id_type{}
-            : RpgCatalog::hashId(skill.target_vfx_id_);
-        skill.target_sfx_id_ = skill_node.value("target_sfx_id", std::string{});
-        skill.target_sfx_id_hash_ = skill.target_sfx_id_.empty()
-            ? entt::id_type{}
-            : RpgCatalog::hashId(skill.target_sfx_id_);
-        skill.target_vfx_scale_ = skill_node.value("target_vfx_scale", 1.0F);
-        if (skill.target_vfx_scale_ <= 0.0F) {
-            spdlog::error("RpgCatalog: skill '{}' target_vfx_scale 必须 > 0", skill.id_);
-            return false;
-        }
-        const auto target_vfx_offset_it = skill_node.find("target_vfx_offset");
-        if (target_vfx_offset_it != skill_node.end() &&
-            !parseVec2(*target_vfx_offset_it, skill.target_vfx_offset_)) {
-            spdlog::error("RpgCatalog: skill '{}' target_vfx_offset 必须是 object，x/y 如存在必须是 number", skill.id_);
+        if (const auto presentation_it = skill_node.find("presentation");
+            presentation_it != skill_node.end() &&
+            !parseSkillPresentation(*presentation_it, skill.presentation_)) {
+            spdlog::error(
+                "RpgCatalog: skill '{}' presentation 非法，需满足 duration > 0, 0 <= impact_time <= duration, "
+                "duration 覆盖 recovery_duration / target_vfx_tail，且 target_vfx_scale > 0",
+                skill.id_);
             return false;
         }
 

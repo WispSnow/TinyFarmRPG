@@ -148,6 +148,7 @@ set(GAME_TEST_SOURCES
     game/battle/battle_log_formatter_test.cpp
     game/battle/battle_reward_resolver_test.cpp
     game/battle/battle_session_test.cpp
+    game/battle/battle_action_presentation_plan_test.cpp
     game/battle/battle_animation_director_test.cpp
     game/battle/battle_damage_popup_controller_test.cpp
     game/battle/battle_enemy_hp_bar_controller_test.cpp
