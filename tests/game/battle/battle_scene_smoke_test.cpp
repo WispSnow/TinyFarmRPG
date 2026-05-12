@@ -256,6 +256,38 @@ TEST(BattleSceneSmokeTest, WiresStage4TargetSelectionAndDraftSubmit) {
     EXPECT_EQ(source.find("enterTargetPlaceholder"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, LongSubmenusAreScrollableAndFocusedEntryStaysVisible) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+
+    const std::string source = readTextFile(source_path);
+    const std::string rcss = readTextFile(rcss_path);
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(rcss.empty());
+
+    const std::string list_menu_block = snippetFrom(rcss, "#battle-list-menu,\n#battle-target-menu {\n    height: 80dp;", 260U);
+    ASSERT_FALSE(list_menu_block.empty());
+    EXPECT_NE(list_menu_block.find("overflow-y: auto;"), std::string::npos);
+    EXPECT_NE(list_menu_block.find("overflow-x: hidden;"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-list-menu scrollbarvertical"), std::string::npos);
+    EXPECT_NE(rcss.find("#battle-target-menu scrollbarvertical sliderbar"), std::string::npos);
+
+    const std::string entry_block = snippetFrom(rcss, ".battle-list-entry,\n.battle-target-entry {", 260U);
+    ASSERT_FALSE(entry_block.empty());
+    EXPECT_NE(entry_block.find("width: 100%;"), std::string::npos);
+    EXPECT_NE(entry_block.find("flex-shrink: 0;"), std::string::npos);
+
+    const std::string focus_block = snippetFrom(source, "bool BattleScene::focusElementById", 700U);
+    ASSERT_FALSE(focus_block.empty());
+    EXPECT_NE(focus_block.find("ScrollIntoView"), std::string::npos);
+    EXPECT_NE(focus_block.find("Rml::ScrollAlignment::Nearest"), std::string::npos);
+    EXPECT_NE(focus_block.find("Rml::ScrollParentage::Closest"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
