@@ -49,6 +49,10 @@ struct SkillData {
     std::string target_vfx_id_{};
     /// @brief target_vfx_id_ 的哈希值，供 BattleScene 直接提交 PlayVfxCommand。
     entt::id_type target_vfx_id_hash_{};
+    /// @brief 目标命中时播放的全局音效语义 ID；为空时不触发配置音效。
+    std::string target_sfx_id_{};
+    /// @brief target_sfx_id_ 的哈希值，供 BattleScene 提交 PlaySoundEvent。
+    entt::id_type target_sfx_id_hash_{};
     /// @brief 目标特效缩放倍率，默认使用 Effekseer 资源原始尺寸。
     float target_vfx_scale_{1.0F};
     /// @brief 目标特效相对战斗单位脚底锚点的屏幕逻辑坐标偏移。

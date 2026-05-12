@@ -134,6 +134,7 @@ endif()
 set(GAME_TEST_SOURCES
     game/blueprint_manager_smoke_test.cpp
     game/battle_debug_panel_registration_test.cpp
+    game/audio_cue_catalog_test.cpp
     game/rpg_catalog_test.cpp
     game/rpg_assets_catalog_test.cpp
     game/item_catalog_test.cpp
@@ -195,6 +196,7 @@ set(GAME_TEST_SOURCES
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
     game/game_scene_battle_entry_test.cpp
+    game/game_scene_battle_audio_test.cpp
     game/game_scene_battle_reward_writeback_test.cpp
     game/game_scene_reward_feedback_test.cpp
     game/game_scene_runtime_assembly_test.cpp

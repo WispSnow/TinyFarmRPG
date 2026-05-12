@@ -17,6 +17,7 @@
             },
             "effects": [],
             "target_vfx_id": "battle.hit_physical",
+            "target_sfx_id": "sfx.battle.physical_hit",
             "target_vfx_scale": 4.0,
             "target_vfx_offset": {"x": 0.0, "y": -18.0}
         },
@@ -61,6 +62,7 @@
             },
             "effects": [],
             "target_vfx_id": "battle.fire_one_1",
+            "target_sfx_id": "sfx.battle.fire_1",
             "target_vfx_scale": 6.0,
             "target_vfx_offset": {"x": 0.0, "y": -36.0}
         },
@@ -81,6 +83,7 @@
             },
             "effects": [],
             "target_vfx_id": "battle.thunder_one_1",
+            "target_sfx_id": "sfx.battle.thunder_1",
             "target_vfx_scale": 6.0,
             "target_vfx_offset": {"x": 0.0, "y": -36.0}
         },
@@ -101,6 +104,7 @@
             },
             "effects": [],
             "target_vfx_id": "battle.heal_all_1",
+            "target_sfx_id": "sfx.battle.heal_1",
             "target_vfx_scale": 2.0,
             "target_vfx_offset": {"x": 0.0, "y": -18.0}
         },

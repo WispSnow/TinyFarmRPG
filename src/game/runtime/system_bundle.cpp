@@ -50,6 +50,7 @@
 #include "game/data/appearance_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/shop_catalog.h"
+#include "game/data/audio_cue_catalog.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/save/save_service.h"
 #include "game/world/world_state.h"

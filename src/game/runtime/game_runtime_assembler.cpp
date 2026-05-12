@@ -34,6 +34,7 @@
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/shop_catalog.h"
+#include "game/data/audio_cue_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
@@ -381,6 +382,33 @@ void collectWorldMapAssets(const game::world::WorldState& world_state, engine::r
     return true;
 }
 
+void ensureAudioCueCatalog(game::runtime::GameRuntimeServices& services,
+                           const engine::resource::AssetRegistry& asset_registry) {
+    if (services.audio_cue_catalog) {
+        std::string reference_error{};
+        if (!services.audio_cue_catalog->validateReferences(asset_registry, reference_error)) {
+            spdlog::error("AudioCueCatalog 引用校验失败: {}", reference_error);
+            services.audio_cue_catalog.reset();
+        }
+        return;
+    }
+
+    auto catalog = std::make_shared<game::data::AudioCueCatalog>();
+    constexpr std::string_view kAudioCueCatalogPath = "assets/data/audio_cues.json";
+    if (!catalog->loadFromFile(kAudioCueCatalogPath)) {
+        spdlog::error("加载 AudioCueCatalog 失败: {}", kAudioCueCatalogPath);
+        return;
+    }
+
+    std::string reference_error{};
+    if (!catalog->validateReferences(asset_registry, reference_error)) {
+        spdlog::error("AudioCueCatalog 引用校验失败: {}", reference_error);
+        return;
+    }
+
+    services.audio_cue_catalog = std::move(catalog);
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig("assets/data/game_time_config.json");
@@ -615,6 +643,7 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
     if (!ensureShopCatalog(params.services)) {
         return false;
     }
+    ensureAudioCueCatalog(params.services, asset_registry);
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(
         params.registry,

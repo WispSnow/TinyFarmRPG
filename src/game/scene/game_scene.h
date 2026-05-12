@@ -16,6 +16,7 @@
 
 namespace game::data {
     struct GameTime;
+    struct MusicCueData;
 }
 
 namespace game::defs {
@@ -102,6 +103,9 @@ private:
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
     void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
     void onRecruitOfferRequested(const game::defs::RecruitOfferRequestedEvent& evt);
+    void playGameplayMusicCue();
+    void playBattleMusicCue();
+    void playMusicCue(const game::data::MusicCueData& cue);
     void releaseEnemyEncounterEntryFailure(const game::defs::EnemyEncounterBattleContext& context);
     void resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& evt);
 };
