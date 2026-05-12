@@ -169,6 +169,7 @@ target_sources(game PRIVATE
     game/data/game_time.cpp
     game/data/rpg_types.cpp
     game/data/rpg_catalog.cpp
+    game/data/audio_cue_catalog.cpp
     game/data/appearance_catalog.cpp
     game/data/item_catalog.cpp
     game/data/quest_catalog.cpp

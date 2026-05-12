@@ -132,6 +132,23 @@ TEST_F(AudioPlayerTest, PlayMusicCanStopAndReplay) {
     EXPECT_TRUE(audio_player_->playMusic(music_id, false, 0));
 }
 
+TEST_F(AudioPlayerTest, PlayMusicAcceptsCueVolumeScale) {
+    ASSERT_NE(audio_player_, nullptr);
+    ASSERT_NE(resource_manager_, nullptr);
+
+    const std::filesystem::path music_path = resolveAsset("assets/audio/01_spring_journey.ogg");
+    if (!std::filesystem::exists(music_path)) {
+        GTEST_SKIP() << "测试音乐文件缺失: " << music_path;
+    }
+
+    const std::string music_path_str = music_path.string();
+    const entt::id_type music_id = makeResourceId(music_path_str);
+    ASSERT_TRUE(resource_manager_->loadMusic(music_id, music_path_str));
+
+    ASSERT_TRUE(audio_player_->playMusic(music_id, true, 0, 0.35F));
+    EXPECT_TRUE(audio_player_->playMusic(music_id, true, 0, 0.75F));
+}
+
 TEST_F(AudioPlayerTest, SoundVolumeClampsIntoRange) {
     ASSERT_NE(audio_player_, nullptr);
 

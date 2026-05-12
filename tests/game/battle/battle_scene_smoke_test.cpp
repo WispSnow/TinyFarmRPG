@@ -604,7 +604,7 @@ TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
     EXPECT_NE(source.find("text_renderer.drawText"), std::string::npos);
 }
 
-TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
+TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetPresentationEvents) {
     // 源码级回归：验证 guard 与调用顺序，运行时分支覆盖见后续单元测试。
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
@@ -619,44 +619,52 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetVfx) {
     ASSERT_FALSE(source.empty());
 
     EXPECT_NE(source.find("#include \"engine/vfx/vfx_types.h\""), std::string::npos);
-    EXPECT_NE(header.find("spawnActionTargetVfx"), std::string::npos);
-    EXPECT_NE(header.find("ScheduledVfxCommand"), std::string::npos);
-    EXPECT_NE(source.find("void BattleScene::spawnActionTargetVfx"), std::string::npos);
-    EXPECT_NE(source.find("void BattleScene::scheduleVfxCommand"), std::string::npos);
-    EXPECT_NE(source.find("void BattleScene::updateScheduledVfx"), std::string::npos);
+    EXPECT_NE(header.find("spawnActionTargetPresentationEvents"), std::string::npos);
+    EXPECT_NE(header.find("ScheduledPresentationEvent"), std::string::npos);
+    EXPECT_NE(header.find("std::variant<engine::vfx::PlayVfxCommand, engine::utils::PlaySoundEvent>"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::spawnActionTargetPresentationEvents"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::schedulePresentationEvent"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::updateScheduledPresentationEvents"), std::string::npos);
+    EXPECT_EQ(header.find("scheduled_vfx_commands_"), std::string::npos);
 
     const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1400U);
     ASSERT_FALSE(executing_snippet.empty());
     EXPECT_NE(executing_snippet.find("const auto unit_anchors = collectBattlePresentationUnitAnchors()"),
               std::string::npos);
-    EXPECT_NE(executing_snippet.find("spawnActionTargetVfx(*last_action_result_, unit_anchors)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors)"), std::string::npos);
     EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors)"),
               std::string::npos);
-    EXPECT_LT(executing_snippet.find("spawnActionTargetVfx(*last_action_result_, unit_anchors)"),
+    EXPECT_LT(executing_snippet.find("spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors)"),
               executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"));
     EXPECT_NE(executing_snippet.find("animationConfigForResult(*last_action_result_)"), std::string::npos);
 
-    const std::string vfx_snippet = snippetFrom(source, "void BattleScene::spawnActionTargetVfx", 2600U);
+    const std::string vfx_snippet = snippetFrom(source, "void BattleScene::spawnActionTargetPresentationEvents", 3600U);
     ASSERT_FALSE(vfx_snippet.empty());
     EXPECT_NE(vfx_snippet.find("!isAppliedSingleTargetHit(result)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("findUnitAnchor(unit_anchors, *result.target_id)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(result.skill_id)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("hasConfiguredSkillTargetVfx(result, skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("hasConfiguredSkillTargetSfx(result, skill)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("engine::vfx::PlayVfxCommand command{}"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.effect_id = skill->target_vfx_id_hash_"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_)"),
               std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.scale = skill->target_vfx_scale_"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.channel = engine::vfx::VfxChannel::Overlay"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, 0.0F)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("shouldUsePhysicalHitVfx(result, skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(command, kConfiguredTargetPresentationDelaySeconds)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("engine::utils::PlaySoundEvent event{}"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("event.entity_ = entt::null"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("event.sound_id_ = skill->target_sfx_id_hash_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("shouldUsePhysicalHitPresentation(result, skill)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("physicalHitVfxPresentation(default_hit_skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("physicalHitSfxId(default_hit_skill)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.effect_id = hit_vfx.effect_id"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, hit_vfx.offset)"),
               std::string::npos);
     EXPECT_NE(vfx_snippet.find("command.scale = hit_vfx.scale"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(command, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(event, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
 
     const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForResult", 1000U);
     ASSERT_FALSE(config_snippet.empty());

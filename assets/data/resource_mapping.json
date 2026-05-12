@@ -10,12 +10,17 @@
     "ui_hover": "assets/audio/Fantasy_UI (1).wav",
     "ui_click": "assets/audio/Fantasy_UI (10).wav",
     "battle-victory": "assets/audio/UI_button11.wav",
+    "sfx.battle.physical_hit": "assets/audio/Damage1.ogg",
+    "sfx.battle.fire_1": "assets/audio/Fire1.ogg",
+    "sfx.battle.heal_1": "assets/audio/Heal1.ogg",
+    "sfx.battle.thunder_1": "assets/audio/Thunder1.ogg",
     "cow_moo": "assets/audio/calf-and-cow.wav",
     "sheep_baa": "assets/audio/sheep-baaing-3.wav"
   },
   "music": {
     "title-bg-music": "assets/audio/02_spring_fairy_tale.ogg",
-    "scene-bg-music": "assets/audio/01_spring_journey.ogg"
+    "scene-bg-music": "assets/audio/01_spring_journey.ogg",
+    "music.battle.boss_2": "assets/audio/BATTLE BOSS 2.mp3"
   },
   "texture": {
     "engine/texture/circle": "assets/textures/UI/circle.png",

@@ -48,8 +48,10 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace {
@@ -194,8 +196,15 @@ using namespace entt::literals;
         skill->target_vfx_id_hash_ != engine::vfx::kInvalidVfxEffectId;
 }
 
-[[nodiscard]] bool shouldUsePhysicalHitVfx(const game::battle::BattleActionResult& result,
-                                           const game::data::SkillData* skill) {
+[[nodiscard]] bool hasConfiguredSkillTargetSfx(const game::battle::BattleActionResult& result,
+                                               const game::data::SkillData* skill) {
+    return result.action_type == game::battle::BattleActionType::Skill &&
+        skill &&
+        skill->target_sfx_id_hash_ != entt::id_type{};
+}
+
+[[nodiscard]] bool shouldUsePhysicalHitPresentation(const game::battle::BattleActionResult& result,
+                                                    const game::data::SkillData* skill) {
     if (!isAppliedSingleTargetHit(result) || result.damage <= 0) {
         return false;
     }
@@ -226,6 +235,13 @@ using namespace entt::literals;
         .scale = PHYSICAL_HIT_DEFAULT_VFX_SCALE,
         .offset = PHYSICAL_HIT_DEFAULT_VFX_OFFSET,
     };
+}
+
+[[nodiscard]] entt::id_type physicalHitSfxId(const game::data::SkillData* default_hit_skill) {
+    if (default_hit_skill && default_hit_skill->target_sfx_id_hash_ != entt::id_type{}) {
+        return default_hit_skill->target_sfx_id_hash_;
+    }
+    return entt::id_type{};
 }
 
 /// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
@@ -659,7 +675,7 @@ void BattleScene::update(float delta_time) {
     battle_enemy_hp_bar_controller_.update(delta_time);
     battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
-    updateScheduledVfx(delta_time);
+    updateScheduledPresentationEvents(delta_time);
     if (vfx_service_) {
         vfx_service_->update(delta_time);
     }
@@ -691,7 +707,7 @@ void BattleScene::clean() {
     battle_animation_director_.reset();
     battle_damage_popup_controller_.clear();
     battle_enemy_hp_bar_controller_.clear();
-    scheduled_vfx_commands_.clear();
+    scheduled_presentation_events_.clear();
     battle_log_history_.clear();
     battle_log_entries_.clear();
     if (context_pushed_) {
@@ -1049,7 +1065,7 @@ void BattleScene::runStateMachine(float delta_time) {
                 battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
                 const BattleAnimationTimelineConfig animation_config = animationConfigForResult(*last_action_result_);
-                spawnActionTargetVfx(*last_action_result_, unit_anchors);
+                spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors);
                 battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
                 battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
                 pending_action_.reset();
@@ -2575,7 +2591,7 @@ BattleAnimationTimelineConfig BattleScene::animationConfigForResult(
         : nullptr;
     if (isAppliedSingleTargetHit(result) && hasConfiguredSkillTargetVfx(result, skill)) {
         config.minimum_duration_seconds = CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS;
-    } else if (shouldUsePhysicalHitVfx(result, skill)) {
+    } else if (shouldUsePhysicalHitPresentation(result, skill)) {
         config.minimum_duration_seconds = PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS;
     }
     return config;
@@ -2622,7 +2638,7 @@ glm::vec2 BattleScene::actionStartOffsetFor(const game::battle::BattleUnitId act
     return COMMAND_FOCUS_PLAYER_OFFSET * eased;
 }
 
-void BattleScene::spawnActionTargetVfx(
+void BattleScene::spawnActionTargetPresentationEvents(
     const game::battle::BattleActionResult& result,
     const std::vector<BattlePresentationUnitAnchor>& unit_anchors) {
     if (!isAppliedSingleTargetHit(result)) {
@@ -2639,19 +2655,29 @@ void BattleScene::spawnActionTargetVfx(
         : nullptr;
     const auto* default_hit_skill = rpg_catalog_ ? rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID) : nullptr;
 
-    if (hasConfiguredSkillTargetVfx(result, skill)) {
-        engine::vfx::PlayVfxCommand command{};
-        command.effect_id = skill->target_vfx_id_hash_;
-        command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_);
-        command.z = 0.0F;
-        command.scale = skill->target_vfx_scale_;
-        command.loop = false;
-        command.channel = engine::vfx::VfxChannel::Overlay;
-        scheduleVfxCommand(command, 0.0F);
+    if (hasConfiguredSkillTargetVfx(result, skill) || hasConfiguredSkillTargetSfx(result, skill)) {
+        constexpr float kConfiguredTargetPresentationDelaySeconds = 0.0F;
+        if (hasConfiguredSkillTargetVfx(result, skill)) {
+            engine::vfx::PlayVfxCommand command{};
+            command.effect_id = skill->target_vfx_id_hash_;
+            command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_);
+            command.z = 0.0F;
+            command.scale = skill->target_vfx_scale_;
+            command.loop = false;
+            command.channel = engine::vfx::VfxChannel::Overlay;
+            schedulePresentationEvent(command, kConfiguredTargetPresentationDelaySeconds);
+        }
+
+        if (hasConfiguredSkillTargetSfx(result, skill)) {
+            engine::utils::PlaySoundEvent event{};
+            event.entity_ = entt::null;
+            event.sound_id_ = skill->target_sfx_id_hash_;
+            schedulePresentationEvent(event, kConfiguredTargetPresentationDelaySeconds);
+        }
         return;
     }
 
-    if (shouldUsePhysicalHitVfx(result, skill)) {
+    if (shouldUsePhysicalHitPresentation(result, skill)) {
         const PhysicalHitVfxPresentation hit_vfx = physicalHitVfxPresentation(default_hit_skill);
         engine::vfx::PlayVfxCommand command{};
         command.effect_id = hit_vfx.effect_id;
@@ -2660,32 +2686,50 @@ void BattleScene::spawnActionTargetVfx(
         command.scale = hit_vfx.scale;
         command.loop = false;
         command.channel = engine::vfx::VfxChannel::Overlay;
-        scheduleVfxCommand(command, PHYSICAL_HIT_VFX_DELAY_SECONDS);
+        schedulePresentationEvent(command, PHYSICAL_HIT_VFX_DELAY_SECONDS);
+
+        if (const entt::id_type sound_id = physicalHitSfxId(default_hit_skill); sound_id != entt::id_type{}) {
+            engine::utils::PlaySoundEvent event{};
+            event.entity_ = entt::null;
+            event.sound_id_ = sound_id;
+            schedulePresentationEvent(event, PHYSICAL_HIT_VFX_DELAY_SECONDS);
+        }
     }
 }
 
-void BattleScene::scheduleVfxCommand(engine::vfx::PlayVfxCommand command, const float delay_seconds) {
-    scheduled_vfx_commands_.push_back(ScheduledVfxCommand{
-        .command = std::move(command),
+void BattleScene::schedulePresentationEvent(engine::vfx::PlayVfxCommand command, const float delay_seconds) {
+    scheduled_presentation_events_.push_back(ScheduledPresentationEvent{
+        .payload = std::move(command),
         .remaining_seconds = std::max(0.0F, delay_seconds),
     });
 }
 
-void BattleScene::updateScheduledVfx(const float delta_time) {
-    if (scheduled_vfx_commands_.empty()) {
+void BattleScene::schedulePresentationEvent(engine::utils::PlaySoundEvent event, const float delay_seconds) {
+    scheduled_presentation_events_.push_back(ScheduledPresentationEvent{
+        .payload = std::move(event),
+        .remaining_seconds = std::max(0.0F, delay_seconds),
+    });
+}
+
+void BattleScene::updateScheduledPresentationEvents(const float delta_time) {
+    if (scheduled_presentation_events_.empty()) {
         return;
     }
 
     const float delta = std::clamp(delta_time, 0.0F, 0.25F);
-    for (auto it = scheduled_vfx_commands_.begin(); it != scheduled_vfx_commands_.end();) {
+    for (auto it = scheduled_presentation_events_.begin(); it != scheduled_presentation_events_.end();) {
         it->remaining_seconds -= delta;
         if (it->remaining_seconds > 0.0F) {
             ++it;
             continue;
         }
 
-        context_.getDispatcher().trigger(it->command);
-        it = scheduled_vfx_commands_.erase(it);
+        std::visit([this](auto& payload) {
+            using Payload = std::decay_t<decltype(payload)>;
+            auto event = Payload{payload};
+            context_.getDispatcher().trigger<Payload>(std::move(event));
+        }, it->payload);
+        it = scheduled_presentation_events_.erase(it);
     }
 }
 

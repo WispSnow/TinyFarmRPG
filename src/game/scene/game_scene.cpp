@@ -29,11 +29,11 @@
 #include "game/component/npc_component.h"
 #include "game/component/party_component.h"
 #include "game/component/tags.h"
+#include "game/data/audio_cue_catalog.h"
 #include "game/data/battle_background_id.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
-#include "game/defs/audio_ids.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/save/save_service.h"
@@ -79,7 +79,6 @@
 using namespace entt::literals;
 
 namespace {
-constexpr int MUSIC_FADE_IN_MS = 200;
 constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
@@ -298,7 +297,7 @@ bool GameScene::init() {
         return false;
     }
 
-    context_.getAudioPlayer().playMusic(game::defs::audio::SCENE_BG_MUSIC_ID.value(), true, MUSIC_FADE_IN_MS);
+    playGameplayMusicCue();
     return true;
 }
 
@@ -731,6 +730,8 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         presentation_options.vfx_service = services_->vfx_service.get();
     }
 
+    playBattleMusicCue();
+
     requestPushScene(std::make_unique<game::scene::BattleScene>(
         "BattleScene",
         context_,
@@ -807,6 +808,51 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
         has_active_battle_item_stocks_,
         battle_reward_notification_,
         evt);
+
+    switch (evt.outcome) {
+        case game::battle::BattleOutcome::Victory:
+        case game::battle::BattleOutcome::Escaped:
+            playGameplayMusicCue();
+            break;
+        case game::battle::BattleOutcome::Defeat:
+            // TODO: 接入 GameOver / Defeat scene 后改为对应 defeat cue 或停止音乐。
+            playGameplayMusicCue();
+            break;
+        case game::battle::BattleOutcome::Ongoing:
+            break;
+    }
+}
+
+void GameScene::playGameplayMusicCue() {
+    if (!services_ || !services_->audio_cue_catalog) {
+        return;
+    }
+
+    const auto* cue = services_->audio_cue_catalog->defaultMusicCue(game::data::SceneAudioContext::Gameplay);
+    if (!cue) {
+        spdlog::warn("GameScene: gameplay 默认音乐 cue 不可用。");
+        return;
+    }
+    playMusicCue(*cue);
+}
+
+void GameScene::playBattleMusicCue() {
+    if (!services_ || !services_->audio_cue_catalog) {
+        return;
+    }
+
+    const auto* cue = services_->audio_cue_catalog->defaultMusicCue(game::data::SceneAudioContext::Battle);
+    if (!cue) {
+        spdlog::warn("GameScene: battle 默认音乐 cue 不可用。");
+        return;
+    }
+    playMusicCue(*cue);
+}
+
+void GameScene::playMusicCue(const game::data::MusicCueData& cue) {
+    if (!context_.getAudioPlayer().playMusic(cue.music_id_hash_, cue.loop_, cue.fade_in_ms_, cue.volume_scale_)) {
+        spdlog::warn("GameScene: 播放音乐 cue '{}' 失败，music_id='{}'。", cue.id_, cue.music_id_);
+    }
 }
 
 void GameScene::releaseEnemyEncounterEntryFailure(const game::defs::EnemyEncounterBattleContext& context) {

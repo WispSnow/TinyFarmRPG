@@ -70,6 +70,7 @@ struct AudioPlayer::Impl {
     SoundPtr music_sound_;
     std::vector<SoundPtr> fading_music_sounds_;
     entt::id_type current_music_id_{};
+    float current_music_volume_scale_{1.0f};
     bool music_paused_{false};
 
     Impl() = default;
@@ -243,11 +244,17 @@ struct AudioPlayer::Impl {
         }
 
         current_music_id_ = {};
+        current_music_volume_scale_ = 1.0f;
         music_paused_ = false;
     }
 
-    [[nodiscard]] bool playMusicInternal(const AudioBufferHandle& buffer, entt::id_type id, bool loop, int fade_in_ms) {
+    [[nodiscard]] bool playMusicInternal(const AudioBufferHandle& buffer,
+                                         entt::id_type id,
+                                         bool loop,
+                                         int fade_in_ms,
+                                         float volume_scale) {
         cleanupFinishedSounds();
+        const float base_volume = clamp01(volume_scale);
 
         // 如果有正在播放的音乐，则按淡入时长对旧音乐做淡出（实现"切歌可淡出"的稳定语义）
         if (music_sound_) {
@@ -263,7 +270,7 @@ struct AudioPlayer::Impl {
             ma_sound_set_looping(&music->handle, MA_TRUE);
         }
 
-        ma_sound_set_volume(&music->handle, music_volume_);
+        ma_sound_set_volume(&music->handle, base_volume * music_volume_);
 
         if (ma_sound_start(&music->handle) != MA_SUCCESS) {
             spdlog::error("AudioPlayer: 播放音乐失败，音频引擎返回错误。");
@@ -271,18 +278,30 @@ struct AudioPlayer::Impl {
         }
 
         if (fade_in_ms > 0) {
-            ma_sound_set_fade_in_milliseconds(&music->handle, 0.0f, 1.0f, static_cast<ma_uint64>(fade_in_ms));
+            ma_sound_set_fade_in_milliseconds(
+                &music->handle,
+                0.0f,
+                base_volume * music_volume_,
+                static_cast<ma_uint64>(fade_in_ms));
         }
 
-        music->base_volume = 1.0f;
+        music->base_volume = base_volume;
         current_music_id_ = id;
+        current_music_volume_scale_ = base_volume;
         music_paused_ = false;
         music_sound_ = std::move(music);
         return true;
     }
 
-    [[nodiscard]] bool playMusic(entt::id_type id, bool loop, int fade_in_ms) {
+    [[nodiscard]] bool playMusic(entt::id_type id, bool loop, int fade_in_ms, float volume_scale) {
+        const float base_volume = clamp01(volume_scale);
         if (id == current_music_id_ && music_sound_ && ma_sound_is_playing(&music_sound_->handle) == MA_TRUE) {
+            ma_sound_set_looping(&music_sound_->handle, loop ? MA_TRUE : MA_FALSE);
+            if (base_volume != current_music_volume_scale_) {
+                music_sound_->base_volume = base_volume;
+                current_music_volume_scale_ = base_volume;
+                ma_sound_set_volume(&music_sound_->handle, music_sound_->base_volume * music_volume_);
+            }
             return true;
         }
 
@@ -292,7 +311,7 @@ struct AudioPlayer::Impl {
             return false;
         }
 
-        return playMusicInternal(buffer, id, loop, fade_in_ms);
+        return playMusicInternal(buffer, id, loop, fade_in_ms, base_volume);
     }
 
     void stopMusic(int fade_out_ms) {
@@ -311,6 +330,7 @@ struct AudioPlayer::Impl {
 
         music_sound_.reset();
         current_music_id_ = {};
+        current_music_volume_scale_ = 1.0f;
         music_paused_ = false;
         spdlog::trace("AudioPlayer: 停止音乐");
     }
@@ -414,8 +434,8 @@ bool AudioPlayer::playSound2D(entt::id_type sound_id, const glm::vec2& source, c
     return impl_->playSound2D(sound_id, source, listener);
 }
 
-bool AudioPlayer::playMusic(entt::id_type music_id, bool loop, int fade_in_ms) {
-    return impl_->playMusic(music_id, loop, fade_in_ms);
+bool AudioPlayer::playMusic(entt::id_type music_id, bool loop, int fade_in_ms, float volume_scale) {
+    return impl_->playMusic(music_id, loop, fade_in_ms, volume_scale);
 }
 
 void AudioPlayer::stopMusic(int fade_out_ms) {

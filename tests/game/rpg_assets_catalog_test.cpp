@@ -1,18 +1,40 @@
 #include <gtest/gtest.h>
 
+#include "engine/resource/asset_registry.h"
+#include "engine/utils/json_file_loader.h"
 #include "engine/vfx/vfx_catalog.h"
+#include "game/data/audio_cue_catalog.h"
 #include "game/data/rpg_catalog.h"
 
 #include <entt/core/hashed_string.hpp>
+#include <nlohmann/json.hpp>
 
 #include <cmath>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 namespace game::data {
 namespace {
 
-TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReferences) {
+using Json = nlohmann::json;
+
+void expectSkillTargetSfx(const Json& sound_mapping,
+                          const std::filesystem::path& project_root,
+                          const SkillData& skill,
+                          std::string_view expected_sfx_id,
+                          std::string_view expected_path) {
+    EXPECT_EQ(skill.target_sfx_id_, std::string{expected_sfx_id});
+    EXPECT_EQ(skill.target_sfx_id_hash_, RpgCatalog::hashId(expected_sfx_id));
+
+    const auto sfx_it = sound_mapping.find(std::string{expected_sfx_id});
+    ASSERT_NE(sfx_it, sound_mapping.end()) << expected_sfx_id;
+    ASSERT_TRUE(sfx_it->is_string()) << expected_sfx_id;
+    EXPECT_EQ(sfx_it->get<std::string>(), std::string{expected_path});
+    EXPECT_TRUE(std::filesystem::exists(project_root / sfx_it->get<std::string>()));
+}
+
+TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveBattlePresentationReferences) {
     const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal();
     const std::filesystem::path rpg_root = project_root / "assets/data/rpg";
 
@@ -31,6 +53,32 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     engine::vfx::VfxCatalog vfx_catalog;
     ASSERT_TRUE(vfx_catalog.loadFromFile((project_root / "assets/data/vfx_catalog.json").string()));
 
+    Json resource_mapping{};
+    ASSERT_TRUE(engine::utils::loadJsonObjectFile(
+        (project_root / "assets/data/resource_mapping.json").string(),
+        resource_mapping,
+        "RpgAssetsCatalogTest"));
+    const auto sound_mapping_it = resource_mapping.find("sound");
+    ASSERT_NE(sound_mapping_it, resource_mapping.end());
+    ASSERT_TRUE(sound_mapping_it->is_object());
+    const auto music_mapping_it = resource_mapping.find("music");
+    ASSERT_NE(music_mapping_it, resource_mapping.end());
+    ASSERT_TRUE(music_mapping_it->is_object());
+
+    AudioCueCatalog audio_cue_catalog;
+    ASSERT_TRUE(audio_cue_catalog.loadFromFile((project_root / "assets/data/audio_cues.json").string()));
+    engine::resource::AssetRegistry asset_registry;
+    for (const auto& [music_id, music_path] : music_mapping_it->items()) {
+        ASSERT_TRUE(music_path.is_string()) << music_id;
+        asset_registry.registerMusic(AudioCueCatalog::hashId(music_id), music_path.get<std::string>());
+        EXPECT_TRUE(std::filesystem::exists(project_root / music_path.get<std::string>())) << music_path.get<std::string>();
+    }
+    std::string audio_reference_error{};
+    EXPECT_TRUE(audio_cue_catalog.validateReferences(asset_registry, audio_reference_error)) << audio_reference_error;
+    const auto* battle_music = audio_cue_catalog.defaultMusicCue(SceneAudioContext::Battle);
+    ASSERT_NE(battle_music, nullptr);
+    EXPECT_EQ(battle_music->music_id_, "music.battle.boss_2");
+
     const auto* alex = catalog.findActor("actor.player");
     ASSERT_NE(alex, nullptr);
     ASSERT_EQ(alex->skill_ids_.size(), 2U);
@@ -47,6 +95,7 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     ASSERT_NE(attack_hit_path, nullptr);
     EXPECT_EQ(*attack_hit_path, "assets/vfx/effects/HitEffect.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *attack_hit_path));
+    expectSkillTargetSfx(*sound_mapping_it, project_root, *attack, "sfx.battle.physical_hit", "assets/audio/Damage1.ogg");
 
     const auto* lyria = catalog.findActor("actor.lyria");
     ASSERT_NE(lyria, nullptr);
@@ -65,6 +114,7 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     const auto* fire = catalog.findSkill("skill.fire_1");
     ASSERT_NE(fire, nullptr);
     EXPECT_EQ(fire->target_vfx_id_, "battle.fire_one_1");
+    expectSkillTargetSfx(*sound_mapping_it, project_root, *fire, "sfx.battle.fire_1", "assets/audio/Fire1.ogg");
     const auto* fire_path = vfx_catalog.findEffectPath(fire->target_vfx_id_hash_);
     ASSERT_NE(fire_path, nullptr);
     EXPECT_EQ(*fire_path, "assets/vfx/effects/FireOne1.efkefc");
@@ -73,6 +123,7 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     const auto* thunder = catalog.findSkill("skill.thunder_1");
     ASSERT_NE(thunder, nullptr);
     EXPECT_EQ(thunder->target_vfx_id_, "battle.thunder_one_1");
+    expectSkillTargetSfx(*sound_mapping_it, project_root, *thunder, "sfx.battle.thunder_1", "assets/audio/Thunder1.ogg");
     const auto* thunder_path = vfx_catalog.findEffectPath(thunder->target_vfx_id_hash_);
     ASSERT_NE(thunder_path, nullptr);
     EXPECT_EQ(*thunder_path, "assets/vfx/effects/ThunderOne1.efkefc");
@@ -81,6 +132,7 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveSkillTargetVfxReference
     const auto* heal = catalog.findSkill("skill.heal_1");
     ASSERT_NE(heal, nullptr);
     EXPECT_EQ(heal->target_vfx_id_, "battle.heal_all_1");
+    expectSkillTargetSfx(*sound_mapping_it, project_root, *heal, "sfx.battle.heal_1", "assets/audio/Heal1.ogg");
     const auto* heal_path = vfx_catalog.findEffectPath(heal->target_vfx_id_hash_);
     ASSERT_NE(heal_path, nullptr);
     EXPECT_EQ(*heal_path, "assets/vfx/effects/HealAll1.efkefc");

@@ -237,6 +237,8 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     EXPECT_EQ(skill->display_name_, "Attack");
     EXPECT_TRUE(skill->target_vfx_id_.empty());
     EXPECT_EQ(skill->target_vfx_id_hash_, entt::id_type{});
+    EXPECT_TRUE(skill->target_sfx_id_.empty());
+    EXPECT_EQ(skill->target_sfx_id_hash_, entt::id_type{});
     EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.0F);
     EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 0.0F);
     EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, 0.0F);
@@ -562,6 +564,7 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
       "repeats": 1,
       "damage": { "type": "hp_damage", "formula": "12", "variance": 0, "critical": false },
       "target_vfx_id": "battle.fire_one_1",
+      "target_sfx_id": "sfx.battle.fire_1",
       "target_vfx_scale": 1.25,
       "target_vfx_offset": { "x": 4.0, "y": -28.0 }
     }
@@ -575,6 +578,8 @@ TEST(RpgCatalogTest, LoadSkillsParsesTargetVfxPresentationFields) {
     ASSERT_NE(skill, nullptr);
     EXPECT_EQ(skill->target_vfx_id_, "battle.fire_one_1");
     EXPECT_EQ(skill->target_vfx_id_hash_, RpgCatalog::hashId("battle.fire_one_1"));
+    EXPECT_EQ(skill->target_sfx_id_, "sfx.battle.fire_1");
+    EXPECT_EQ(skill->target_sfx_id_hash_, RpgCatalog::hashId("sfx.battle.fire_1"));
     EXPECT_FLOAT_EQ(skill->target_vfx_scale_, 1.25F);
     EXPECT_FLOAT_EQ(skill->target_vfx_offset_.x, 4.0F);
     EXPECT_FLOAT_EQ(skill->target_vfx_offset_.y, -28.0F);

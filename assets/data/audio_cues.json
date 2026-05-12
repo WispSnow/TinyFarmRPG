@@ -1,0 +1,22 @@
+{
+    "schema_version": 1,
+    "music_cues": {
+        "cue.music.gameplay.default": {
+            "music_id": "scene-bg-music",
+            "loop": true,
+            "fade_in_ms": 200,
+            "volume_scale": 1.0
+        },
+        "cue.music.battle.default": {
+            "music_id": "music.battle.boss_2",
+            "loop": true,
+            "fade_in_ms": 250,
+            "volume_scale": 1.0
+        }
+    },
+    "sfx_cues": {},
+    "scene_defaults": {
+        "gameplay": "cue.music.gameplay.default",
+        "battle": "cue.music.battle.default"
+    }
+}

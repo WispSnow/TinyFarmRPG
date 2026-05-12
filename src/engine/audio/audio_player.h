@@ -57,9 +57,10 @@ public:
      * @param music_id 音乐ID。
      * @param loop 是否循环播放。
      * @param fade_in_ms 音乐淡入的时间（毫秒）（0 表示不淡入）。默认为 0。
+     * @param volume_scale 当前曲目的局部音量倍率（0.0-1.0），最终仍受全局音乐音量控制。
      * @return 成功返回 true，出错返回 false。
      */
-    bool playMusic(entt::id_type music_id, bool loop = true, int fade_in_ms = 0);
+    bool playMusic(entt::id_type music_id, bool loop = true, int fade_in_ms = 0, float volume_scale = 1.0F);
 
     /**
      * @brief 停止当前正在播放的背景音乐。

@@ -3,6 +3,7 @@
 #include "engine/scene/scene.h"
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "engine/utils/events.h"
 #include "engine/utils/math.h"
 #include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_log_formatter.h"
@@ -23,6 +24,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 namespace Rml {
@@ -89,8 +91,8 @@ class BattleScene final : public engine::scene::Scene {
         std::optional<engine::utils::Rect> limit_bounds{};
     };
 
-    struct ScheduledVfxCommand {
-        engine::vfx::PlayVfxCommand command{};
+    struct ScheduledPresentationEvent {
+        std::variant<engine::vfx::PlayVfxCommand, engine::utils::PlaySoundEvent> payload{};
         float remaining_seconds{0.0F};
     };
 
@@ -235,7 +237,7 @@ class BattleScene final : public engine::scene::Scene {
     bool input_listeners_connected_{false};
     bool menu_focus_dirty_{true};
     std::optional<CameraStateSnapshot> saved_camera_state_{};
-    std::vector<ScheduledVfxCommand> scheduled_vfx_commands_{};
+    std::vector<ScheduledPresentationEvent> scheduled_presentation_events_{};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
@@ -407,13 +409,14 @@ private:
         const game::battle::BattleActionResult& result) const;
     [[nodiscard]] glm::vec2 actionStartOffsetFor(game::battle::BattleUnitId actor_id) const;
 
-    /// @brief 根据已应用、未 miss 的单体行动结果，在目标锚点触发目标特效。
+    /// @brief 根据已应用、未 miss 的单体行动结果，在目标锚点触发表现事件。
     ///
-    /// 该函数处理技能配置的 target_vfx 和普通攻击 / 物理技能的通用命中特效。
-    void spawnActionTargetVfx(const game::battle::BattleActionResult& result,
-                              const std::vector<BattlePresentationUnitAnchor>& unit_anchors);
-    void scheduleVfxCommand(engine::vfx::PlayVfxCommand command, float delay_seconds);
-    void updateScheduledVfx(float delta_time);
+    /// 该函数处理技能配置的 target_vfx / target_sfx，以及普通攻击 / 物理技能的通用命中反馈。
+    void spawnActionTargetPresentationEvents(const game::battle::BattleActionResult& result,
+                                             const std::vector<BattlePresentationUnitAnchor>& unit_anchors);
+    void schedulePresentationEvent(engine::vfx::PlayVfxCommand command, float delay_seconds);
+    void schedulePresentationEvent(engine::utils::PlaySoundEvent event, float delay_seconds);
+    void updateScheduledPresentationEvents(float delta_time);
     void updateCommandFocus(float delta_time);
     [[nodiscard]] std::optional<BattleAnimationPose> commandFocusPoseFor(game::battle::BattleUnitId unit_id,
                                                                          game::battle::BattleSide side) const;
