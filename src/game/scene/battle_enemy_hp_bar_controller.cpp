@@ -104,6 +104,19 @@ void BattleEnemyHpBarController::revealFromResult(const game::battle::BattleActi
     bar->visible = true;
 }
 
+void BattleEnemyHpBarController::stageSnapshot(const game::battle::BattleSnapshot& snapshot) {
+    staged_snapshot_ = snapshot;
+}
+
+void BattleEnemyHpBarController::applyStagedSnapshotAndReveal(const game::battle::BattleActionResult& result) {
+    if (staged_snapshot_) {
+        const game::battle::BattleSnapshot snapshot = *staged_snapshot_;
+        staged_snapshot_.reset();
+        syncFromSnapshot(snapshot);
+    }
+    revealFromResult(result);
+}
+
 void BattleEnemyHpBarController::setHighlightedTarget(const std::optional<game::battle::BattleUnitId> unit_id) {
     for (auto& bar : bars_) {
         bar.highlighted = unit_id.has_value() && bar.unit_id == *unit_id;
@@ -131,6 +144,7 @@ void BattleEnemyHpBarController::update(const float delta_time_seconds) {
 
 void BattleEnemyHpBarController::clear() {
     bars_.clear();
+    staged_snapshot_.reset();
 }
 
 const BattleEnemyHpBarState* BattleEnemyHpBarController::findBar(

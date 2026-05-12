@@ -112,6 +112,29 @@ TEST(BattleEnemyHpBarControllerTest, ChangeDelayHoldsDisplayRatioUntilImpactFram
     EXPECT_GT(controller.findBar(2)->display_ratio, 0.5f);
 }
 
+TEST(BattleEnemyHpBarControllerTest, StagedSnapshotDoesNotChangeBarUntilReveal) {
+    BattleEnemyHpBarConfig config{};
+    config.change_delay_seconds = 0.0f;
+    config.ratio_lerp_speed = 10.0f;
+    BattleEnemyHpBarController controller{config};
+    controller.syncFromSnapshot(makeSnapshot({makeUnit(2, game::battle::BattleSide::Enemy, 100)}));
+
+    auto result = makeDamageResult(2);
+    result.snapshot = makeSnapshot({makeUnit(2, game::battle::BattleSide::Enemy, 50)});
+    controller.stageSnapshot(result.snapshot);
+
+    ASSERT_NE(controller.findBar(2), nullptr);
+    EXPECT_FLOAT_EQ(controller.findBar(2)->target_ratio, 1.0f);
+    EXPECT_FLOAT_EQ(controller.findBar(2)->display_ratio, 1.0f);
+
+    controller.applyStagedSnapshotAndReveal(result);
+    controller.update(0.10f);
+
+    EXPECT_FLOAT_EQ(controller.findBar(2)->target_ratio, 0.5f);
+    EXPECT_TRUE(controller.findBar(2)->visible);
+    EXPECT_LT(controller.findBar(2)->display_ratio, 1.0f);
+}
+
 TEST(BattleEnemyHpBarControllerTest, HiddenEnemiesStillTrackRatioAfterSnapshotChange) {
     BattleEnemyHpBarConfig config{};
     config.change_delay_seconds = 0.0f;

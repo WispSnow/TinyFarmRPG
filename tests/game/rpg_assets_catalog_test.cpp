@@ -24,8 +24,8 @@ void expectSkillTargetSfx(const Json& sound_mapping,
                           const SkillData& skill,
                           std::string_view expected_sfx_id,
                           std::string_view expected_path) {
-    EXPECT_EQ(skill.target_sfx_id_, std::string{expected_sfx_id});
-    EXPECT_EQ(skill.target_sfx_id_hash_, RpgCatalog::hashId(expected_sfx_id));
+    EXPECT_EQ(skill.presentation_.target_sfx_id_, std::string{expected_sfx_id});
+    EXPECT_EQ(skill.presentation_.target_sfx_id_hash_, RpgCatalog::hashId(expected_sfx_id));
 
     const auto sfx_it = sound_mapping.find(std::string{expected_sfx_id});
     ASSERT_NE(sfx_it, sound_mapping.end()) << expected_sfx_id;
@@ -87,11 +87,14 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveBattlePresentationRefer
 
     const auto* attack = catalog.findSkill("skill.attack");
     ASSERT_NE(attack, nullptr);
-    EXPECT_EQ(attack->target_vfx_id_, "battle.hit_physical");
-    EXPECT_GT(attack->target_vfx_scale_, 0.0F);
-    EXPECT_TRUE(std::isfinite(attack->target_vfx_offset_.x));
-    EXPECT_TRUE(std::isfinite(attack->target_vfx_offset_.y));
-    const auto* attack_hit_path = vfx_catalog.findEffectPath(attack->target_vfx_id_hash_);
+    EXPECT_EQ(attack->presentation_.target_vfx_id_, "battle.hit_physical");
+    EXPECT_GT(attack->presentation_.target_vfx_scale_, 0.0F);
+    EXPECT_TRUE(std::isfinite(attack->presentation_.target_vfx_offset_.x));
+    EXPECT_TRUE(std::isfinite(attack->presentation_.target_vfx_offset_.y));
+    EXPECT_GT(attack->presentation_.impact_time_seconds_, 0.0F);
+    EXPECT_GE(attack->presentation_.duration_seconds_,
+              attack->presentation_.impact_time_seconds_ + attack->presentation_.target_vfx_tail_seconds_);
+    const auto* attack_hit_path = vfx_catalog.findEffectPath(attack->presentation_.target_vfx_id_hash_);
     ASSERT_NE(attack_hit_path, nullptr);
     EXPECT_EQ(*attack_hit_path, "assets/vfx/effects/HitEffect.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *attack_hit_path));
@@ -113,33 +116,33 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveBattlePresentationRefer
 
     const auto* fire = catalog.findSkill("skill.fire_1");
     ASSERT_NE(fire, nullptr);
-    EXPECT_EQ(fire->target_vfx_id_, "battle.fire_one_1");
+    EXPECT_EQ(fire->presentation_.target_vfx_id_, "battle.fire_one_1");
     expectSkillTargetSfx(*sound_mapping_it, project_root, *fire, "sfx.battle.fire_1", "assets/audio/Fire1.ogg");
-    const auto* fire_path = vfx_catalog.findEffectPath(fire->target_vfx_id_hash_);
+    const auto* fire_path = vfx_catalog.findEffectPath(fire->presentation_.target_vfx_id_hash_);
     ASSERT_NE(fire_path, nullptr);
     EXPECT_EQ(*fire_path, "assets/vfx/effects/FireOne1.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *fire_path));
 
     const auto* thunder = catalog.findSkill("skill.thunder_1");
     ASSERT_NE(thunder, nullptr);
-    EXPECT_EQ(thunder->target_vfx_id_, "battle.thunder_one_1");
+    EXPECT_EQ(thunder->presentation_.target_vfx_id_, "battle.thunder_one_1");
     expectSkillTargetSfx(*sound_mapping_it, project_root, *thunder, "sfx.battle.thunder_1", "assets/audio/Thunder1.ogg");
-    const auto* thunder_path = vfx_catalog.findEffectPath(thunder->target_vfx_id_hash_);
+    const auto* thunder_path = vfx_catalog.findEffectPath(thunder->presentation_.target_vfx_id_hash_);
     ASSERT_NE(thunder_path, nullptr);
     EXPECT_EQ(*thunder_path, "assets/vfx/effects/ThunderOne1.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *thunder_path));
 
     const auto* heal = catalog.findSkill("skill.heal_1");
     ASSERT_NE(heal, nullptr);
-    EXPECT_EQ(heal->target_vfx_id_, "battle.heal_all_1");
+    EXPECT_EQ(heal->presentation_.target_vfx_id_, "battle.heal_all_1");
     expectSkillTargetSfx(*sound_mapping_it, project_root, *heal, "sfx.battle.heal_1", "assets/audio/Heal1.ogg");
-    const auto* heal_path = vfx_catalog.findEffectPath(heal->target_vfx_id_hash_);
+    const auto* heal_path = vfx_catalog.findEffectPath(heal->presentation_.target_vfx_id_hash_);
     ASSERT_NE(heal_path, nullptr);
     EXPECT_EQ(*heal_path, "assets/vfx/effects/HealAll1.efkefc");
     EXPECT_TRUE(std::filesystem::exists(project_root / *heal_path));
 
     const entt::id_type physical_hit_id = entt::hashed_string{"battle.hit_physical"}.value();
-    EXPECT_EQ(attack->target_vfx_id_hash_, physical_hit_id);
+    EXPECT_EQ(attack->presentation_.target_vfx_id_hash_, physical_hit_id);
 }
 
 } // namespace

@@ -16,10 +16,17 @@
                 "critical": true
             },
             "effects": [],
-            "target_vfx_id": "battle.hit_physical",
-            "target_sfx_id": "sfx.battle.physical_hit",
-            "target_vfx_scale": 4.0,
-            "target_vfx_offset": {"x": 0.0, "y": -18.0}
+            "presentation": {
+                "motion_style": "weapon_attack",
+                "duration": 0.72,
+                "impact_time": 0.22,
+                "recovery_duration": 0.30,
+                "target_vfx_tail": 0.45,
+                "target_vfx_id": "battle.hit_physical",
+                "target_sfx_id": "sfx.battle.physical_hit",
+                "target_vfx_scale": 4.0,
+                "target_vfx_offset": {"x": 0.0, "y": -18.0}
+            }
         },
         {
             "id": "skill.bash",
@@ -61,10 +68,17 @@
                 "critical": false
             },
             "effects": [],
-            "target_vfx_id": "battle.fire_one_1",
-            "target_sfx_id": "sfx.battle.fire_1",
-            "target_vfx_scale": 6.0,
-            "target_vfx_offset": {"x": 0.0, "y": -36.0}
+            "presentation": {
+                "motion_style": "cast",
+                "duration": 0.92,
+                "impact_time": 0.46,
+                "recovery_duration": 0.30,
+                "target_vfx_tail": 0.45,
+                "target_vfx_id": "battle.fire_one_1",
+                "target_sfx_id": "sfx.battle.fire_1",
+                "target_vfx_scale": 6.0,
+                "target_vfx_offset": {"x": 0.0, "y": -36.0}
+            }
         },
         {
             "id": "skill.thunder_1",
@@ -82,10 +96,17 @@
                 "critical": false
             },
             "effects": [],
-            "target_vfx_id": "battle.thunder_one_1",
-            "target_sfx_id": "sfx.battle.thunder_1",
-            "target_vfx_scale": 6.0,
-            "target_vfx_offset": {"x": 0.0, "y": -36.0}
+            "presentation": {
+                "motion_style": "cast",
+                "duration": 0.92,
+                "impact_time": 0.46,
+                "recovery_duration": 0.30,
+                "target_vfx_tail": 0.45,
+                "target_vfx_id": "battle.thunder_one_1",
+                "target_sfx_id": "sfx.battle.thunder_1",
+                "target_vfx_scale": 6.0,
+                "target_vfx_offset": {"x": 0.0, "y": -36.0}
+            }
         },
         {
             "id": "skill.heal_1",
@@ -103,10 +124,17 @@
                 "critical": false
             },
             "effects": [],
-            "target_vfx_id": "battle.heal_all_1",
-            "target_sfx_id": "sfx.battle.heal_1",
-            "target_vfx_scale": 2.0,
-            "target_vfx_offset": {"x": 0.0, "y": -18.0}
+            "presentation": {
+                "motion_style": "cast",
+                "duration": 0.84,
+                "impact_time": 0.42,
+                "recovery_duration": 0.30,
+                "target_vfx_tail": 0.42,
+                "target_vfx_id": "battle.heal_all_1",
+                "target_sfx_id": "sfx.battle.heal_1",
+                "target_vfx_scale": 2.0,
+                "target_vfx_offset": {"x": 0.0, "y": -18.0}
+            }
         },
         {
             "id": "skill.poison_spit",

@@ -185,6 +185,26 @@ TEST(BattleAnimationDirectorTest, HitFeedbackAppearsAfterImpactAndDecays) {
     EXPECT_LT(std::abs(decay_pose->offset.x), std::abs(impact_pose->offset.x));
 }
 
+TEST(BattleAnimationDirectorTest, ConfiguredImpactTimeDelaysHitFeedback) {
+    BattleAnimationTimelineConfig config{};
+    config.motion_style = BattleActionMotionStyle::WeaponAttack;
+    config.duration_seconds = 1.10f;
+    config.impact_time_seconds = 0.60f;
+    config.hit_feedback_duration_seconds = 0.30f;
+
+    BattleAnimationDirector director;
+    director.begin(makeAttackResult(), makeAnchors(), config);
+
+    director.update(0.25f);
+    director.update(0.24f);
+    EXPECT_FALSE(director.poseFor(2).has_value());
+
+    director.update(0.12f);
+    const auto impact_pose = director.poseFor(2);
+    ASSERT_TRUE(impact_pose.has_value());
+    EXPECT_GT(impact_pose->color_multiplier.r, 1.0f);
+}
+
 TEST(BattleAnimationDirectorTest, DefeatedTargetKeepsPersistentKoPoseUntilReset) {
     auto result = makeAttackResult();
     result.target_defeated = true;

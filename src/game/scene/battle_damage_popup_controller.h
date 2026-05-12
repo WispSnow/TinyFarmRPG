@@ -69,6 +69,9 @@ public:
     /// @param unit_anchors 当前战斗表现层单位锚点；无 target 时会降级使用 actor 锚点显示聚合数值。
     void spawnFromResult(const game::battle::BattleActionResult& result,
                          const std::vector<BattlePresentationUnitAnchor>& unit_anchors);
+    void spawnFromResult(const game::battle::BattleActionResult& result,
+                         const std::vector<BattlePresentationUnitAnchor>& unit_anchors,
+                         float impact_time_seconds);
 
     /// @brief 推进所有 popup 的延迟、位移、缩放和透明度，并清理过期项。
     /// @param delta_time_seconds 本帧逻辑时间。

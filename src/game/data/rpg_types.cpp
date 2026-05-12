@@ -76,6 +76,24 @@ const char* toString(const HitType value) {
     return "certain";
 }
 
+const char* toString(const SkillMotionStyle value) {
+    switch (value) {
+        case SkillMotionStyle::Auto:
+            return "auto";
+        case SkillMotionStyle::WeaponAttack:
+            return "weapon_attack";
+        case SkillMotionStyle::Cast:
+            return "cast";
+        case SkillMotionStyle::Guard:
+            return "guard";
+        case SkillMotionStyle::Escape:
+            return "escape";
+        case SkillMotionStyle::Simple:
+            return "simple";
+    }
+    return "auto";
+}
+
 const char* toString(const TraitType value) {
     switch (value) {
         case TraitType::ParamRate:
@@ -194,6 +212,28 @@ std::optional<HitType> hitTypeFromString(const std::string_view value) {
     }
     if (value == "magical") {
         return HitType::Magical;
+    }
+    return std::nullopt;
+}
+
+std::optional<SkillMotionStyle> skillMotionStyleFromString(const std::string_view value) {
+    if (value == "auto") {
+        return SkillMotionStyle::Auto;
+    }
+    if (value == "weapon_attack") {
+        return SkillMotionStyle::WeaponAttack;
+    }
+    if (value == "cast") {
+        return SkillMotionStyle::Cast;
+    }
+    if (value == "guard") {
+        return SkillMotionStyle::Guard;
+    }
+    if (value == "escape") {
+        return SkillMotionStyle::Escape;
+    }
+    if (value == "simple") {
+        return SkillMotionStyle::Simple;
     }
     return std::nullopt;
 }

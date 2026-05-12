@@ -269,6 +269,7 @@ target_sources(game PRIVATE
     game/scene/quest_offer_scene.cpp
     game/scene/recruit_offer_scene.cpp
     game/scene/shop_menu_scene.cpp
+    game/scene/battle_action_presentation_plan.cpp
     game/scene/battle_animation_director.cpp
     game/scene/battle_background.cpp
     game/scene/battle_damage_popup_controller.cpp

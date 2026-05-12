@@ -391,7 +391,7 @@ TEST(BattleSceneSmokeTest, AppendsBattleLogBeforeClearingPendingAction) {
     EXPECT_NE(header.find("rebuildBattleLogView"), std::string::npos);
     EXPECT_NE(header.find("battleLogToneClass"), std::string::npos);
 
-    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1200U);
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
     ASSERT_FALSE(executing_snippet.empty());
     const std::size_t append_pos = executing_snippet.find("appendBattleLogLines(game::battle::formatBattleLogLines");
     const std::size_t reset_pos = executing_snippet.find("pending_action_.reset()");
@@ -519,10 +519,11 @@ TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
     EXPECT_NE(header.find("collectBattlePresentationUnitAnchors"), std::string::npos);
     EXPECT_EQ(header.find("animation_timer_"), std::string::npos);
 
-    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1200U);
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
     ASSERT_FALSE(executing_snippet.empty());
     EXPECT_NE(executing_snippet.find("collectBattlePresentationUnitAnchors()"), std::string::npos);
-    EXPECT_NE(executing_snippet.find("animationConfigForResult(*last_action_result_)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("presentationPlanForResult(*last_action_result_, unit_anchors)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("animationConfigForPlan(presentation_plan)"), std::string::npos);
     EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"),
               std::string::npos);
 
@@ -543,29 +544,37 @@ TEST(BattleSceneSmokeTest, ChoosesCastMotionForMagicSkillsAndGuard) {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path plan_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_action_presentation_plan.cpp")
+            .lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(plan_source_path)) << plan_source_path;
 
     const std::string header = readTextFile(header_path);
     const std::string source = readTextFile(source_path);
+    const std::string plan_source = readTextFile(plan_source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(plan_source.empty());
 
-    EXPECT_NE(header.find("animationConfigForResult"), std::string::npos);
-    EXPECT_NE(header.find("actionMotionStyleForResult"), std::string::npos);
+    EXPECT_NE(header.find("animationConfigForPlan"), std::string::npos);
+    EXPECT_NE(header.find("presentationPlanForResult"), std::string::npos);
     EXPECT_NE(header.find("actionStartOffsetFor"), std::string::npos);
 
-    const std::string style_snippet = snippetFrom(source, "BattleActionMotionStyle BattleScene::actionMotionStyleForResult", 1300U);
+    const std::string style_snippet = snippetFrom(plan_source, "BattleActionMotionStyle defaultMotionStyle", 1800U);
     ASSERT_FALSE(style_snippet.empty());
     EXPECT_NE(style_snippet.find("BattleActionType::Guard"), std::string::npos);
     EXPECT_NE(style_snippet.find("return BattleActionMotionStyle::Cast"), std::string::npos);
+    EXPECT_NE(style_snippet.find("skill->presentation_.motion_style_"), std::string::npos);
     EXPECT_NE(style_snippet.find("skill->hit_type_ == game::data::HitType::Physical"), std::string::npos);
     EXPECT_NE(style_snippet.find("return BattleActionMotionStyle::WeaponAttack"), std::string::npos);
 
-    const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForResult", 500U);
+    const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForPlan", 600U);
     ASSERT_FALSE(config_snippet.empty());
-    EXPECT_NE(config_snippet.find("config.motion_style = actionMotionStyleForResult(result)"), std::string::npos);
-    EXPECT_NE(config_snippet.find("config.actor_start_offset = actionStartOffsetFor(result.actor_id)"), std::string::npos);
+    EXPECT_NE(config_snippet.find("config.motion_style = plan.motion_style"), std::string::npos);
+    EXPECT_NE(config_snippet.find("config.actor_start_offset = plan.actor_start_offset"), std::string::npos);
+    EXPECT_NE(config_snippet.find("config.impact_time_seconds = plan.impact_time_seconds"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
@@ -586,11 +595,11 @@ TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
     EXPECT_NE(header.find("collectBattlePresentationUnitAnchors"), std::string::npos);
     EXPECT_NE(header.find("renderDamagePopups"), std::string::npos);
 
-    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1200U);
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
     ASSERT_FALSE(executing_snippet.empty());
     EXPECT_NE(executing_snippet.find("collectBattlePresentationUnitAnchors()"), std::string::npos);
-    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors)"),
-              std::string::npos);
+    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult("), std::string::npos);
+    EXPECT_NE(executing_snippet.find("presentation_plan.impact_time_seconds"), std::string::npos);
     EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"),
               std::string::npos);
 
@@ -610,67 +619,74 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetPresentationE
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path plan_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_action_presentation_plan.h")
+            .lexically_normal();
+    const std::filesystem::path plan_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_action_presentation_plan.cpp")
+            .lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(plan_header_path)) << plan_header_path;
+    ASSERT_TRUE(std::filesystem::exists(plan_source_path)) << plan_source_path;
 
     const std::string header = readTextFile(header_path);
     const std::string source = readTextFile(source_path);
+    const std::string plan_header = readTextFile(plan_header_path);
+    const std::string plan_source = readTextFile(plan_source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(plan_header.empty());
+    ASSERT_FALSE(plan_source.empty());
 
     EXPECT_NE(source.find("#include \"engine/vfx/vfx_types.h\""), std::string::npos);
-    EXPECT_NE(header.find("spawnActionTargetPresentationEvents"), std::string::npos);
+    EXPECT_NE(header.find("presentationPlanForResult"), std::string::npos);
+    EXPECT_NE(header.find("schedulePresentationPlanEvents"), std::string::npos);
     EXPECT_NE(header.find("ScheduledPresentationEvent"), std::string::npos);
-    EXPECT_NE(header.find("std::variant<engine::vfx::PlayVfxCommand, engine::utils::PlaySoundEvent>"), std::string::npos);
-    EXPECT_NE(source.find("void BattleScene::spawnActionTargetPresentationEvents"), std::string::npos);
+    EXPECT_NE(header.find("std::variant<engine::vfx::PlayVfxCommand, engine::utils::PlaySoundEvent, game::battle::BattleActionResult>"),
+              std::string::npos);
+    EXPECT_NE(plan_header.find("struct BattleActionPresentationPlan"), std::string::npos);
+    EXPECT_NE(plan_header.find("BattlePresentationMarkerType::TargetVfx"), std::string::npos);
+    EXPECT_NE(plan_header.find("TargetSfx"), std::string::npos);
+    EXPECT_NE(plan_header.find("EnemyHpReveal"), std::string::npos);
     EXPECT_NE(source.find("void BattleScene::schedulePresentationEvent"), std::string::npos);
+    EXPECT_NE(source.find("void BattleScene::schedulePresentationPlanEvents"), std::string::npos);
     EXPECT_NE(source.find("void BattleScene::updateScheduledPresentationEvents"), std::string::npos);
     EXPECT_EQ(header.find("scheduled_vfx_commands_"), std::string::npos);
 
-    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1400U);
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
     ASSERT_FALSE(executing_snippet.empty());
     EXPECT_NE(executing_snippet.find("const auto unit_anchors = collectBattlePresentationUnitAnchors()"),
               std::string::npos);
-    EXPECT_NE(executing_snippet.find("spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors)"), std::string::npos);
-    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors)"),
+    EXPECT_NE(executing_snippet.find("presentationPlanForResult(*last_action_result_, unit_anchors)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("schedulePresentationPlanEvents(presentation_plan, *last_action_result_)"),
               std::string::npos);
-    EXPECT_LT(executing_snippet.find("spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors)"),
+    EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult("), std::string::npos);
+    EXPECT_LT(executing_snippet.find("schedulePresentationPlanEvents(presentation_plan, *last_action_result_)"),
               executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"));
-    EXPECT_NE(executing_snippet.find("animationConfigForResult(*last_action_result_)"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("animationConfigForPlan(presentation_plan)"), std::string::npos);
 
-    const std::string vfx_snippet = snippetFrom(source, "void BattleScene::spawnActionTargetPresentationEvents", 3600U);
+    const std::string vfx_snippet = snippetFrom(plan_source, "BattleActionPresentationPlan buildBattleActionPresentationPlan", 5200U);
     ASSERT_FALSE(vfx_snippet.empty());
-    EXPECT_NE(vfx_snippet.find("!isAppliedSingleTargetHit(result)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("findUnitAnchor(unit_anchors, *result.target_id)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(result.skill_id)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("hasConfiguredSkillTargetVfx(result, skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("hasConfiguredSkillTargetSfx(result, skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("engine::vfx::PlayVfxCommand command{}"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.effect_id = skill->target_vfx_id_hash_"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_)"),
+    EXPECT_NE(vfx_snippet.find("presentation->target_vfx_id_hash_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("presentation->target_sfx_id_hash_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("plan.impact_time_seconds"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("base_position + presentation->target_vfx_offset_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("presentation->target_vfx_scale_"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("BattlePresentationMarkerType::TargetVfx"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("BattlePresentationMarkerType::TargetSfx"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("usesPhysicalHitFallback(result, skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("request.default_attack_skill"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("PHYSICAL_HIT_DEFAULT_VFX_ID"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("makeTargetVfxCommand(vfx_id, base_position + offset, scale)"), std::string::npos);
+    EXPECT_NE(plan_source.find("plan.duration_seconds = std::max(plan.duration_seconds, plan.impact_time_seconds + plan.visual_tail_seconds)"),
               std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.scale = skill->target_vfx_scale_"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.channel = engine::vfx::VfxChannel::Overlay"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(command, kConfiguredTargetPresentationDelaySeconds)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("engine::utils::PlaySoundEvent event{}"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("event.entity_ = entt::null"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("event.sound_id_ = skill->target_sfx_id_hash_"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("shouldUsePhysicalHitPresentation(result, skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("physicalHitVfxPresentation(default_hit_skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("physicalHitSfxId(default_hit_skill)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.effect_id = hit_vfx.effect_id"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.world_position = targetVfxPosition(*target_anchor, hit_vfx.offset)"),
-              std::string::npos);
-    EXPECT_NE(vfx_snippet.find("command.scale = hit_vfx.scale"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(command, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("schedulePresentationEvent(event, PHYSICAL_HIT_VFX_DELAY_SECONDS)"), std::string::npos);
 
-    const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForResult", 1000U);
+    const std::string config_snippet = snippetFrom(source, "BattleAnimationTimelineConfig BattleScene::animationConfigForPlan", 1000U);
     ASSERT_FALSE(config_snippet.empty());
-    EXPECT_NE(config_snippet.find("CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS"), std::string::npos);
-    EXPECT_NE(config_snippet.find("PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS"), std::string::npos);
-    EXPECT_NE(source.find("target_vfx_offset_"), std::string::npos);
+    EXPECT_NE(config_snippet.find("config.duration_seconds = plan.duration_seconds"), std::string::npos);
+    EXPECT_NE(config_snippet.find("config.impact_time_seconds = plan.impact_time_seconds"), std::string::npos);
+    EXPECT_NE(plan_source.find("target_vfx_offset_"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, AdvancesVfxServiceWhileBattleSceneIsTop) {
@@ -737,14 +753,16 @@ TEST(BattleSceneSmokeTest, UsesEnemyHpBarControllerForEnemyHealthOverlay) {
     EXPECT_NE(constructor_snippet.find("battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config)"),
               std::string::npos);
 
-    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 720U);
+    const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1400U);
     ASSERT_FALSE(executing_snippet.empty());
-    EXPECT_NE(executing_snippet.find("battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot)"),
+    EXPECT_NE(executing_snippet.find("battle_enemy_hp_bar_controller_.stageSnapshot(last_action_result_->snapshot)"),
               std::string::npos);
-    EXPECT_NE(executing_snippet.find("battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_)"),
+    EXPECT_NE(executing_snippet.find("schedulePresentationPlanEvents(presentation_plan, *last_action_result_)"),
               std::string::npos);
 
     EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.syncFromSnapshot(session_.snapshot())"),
+              std::string::npos);
+    EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.applyStagedSnapshotAndReveal(payload)"),
               std::string::npos);
 
     EXPECT_NE(source.find("battle_enemy_hp_bar_controller_.update(delta_time)"), std::string::npos);
@@ -960,8 +978,8 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find("font-effect: shadow(1dp 1dp #000000cc);"), std::string::npos);
     EXPECT_NE(rcss.find("overflow: hidden;"), std::string::npos);
     EXPECT_NE(rcss.find("height: 104dp;"), std::string::npos);
-    EXPECT_NE(rcss.find("left: 464dp;"), std::string::npos);
-    EXPECT_NE(rcss.find("width: 168dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("left: 516dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("width: 120dp;"), std::string::npos);
     EXPECT_EQ(rcss.find("width: 302dp"), std::string::npos);
     EXPECT_EQ(rcss.find("#battle-menu-title"), std::string::npos);
     EXPECT_EQ(rcss.find("#battle-menu-hint"), std::string::npos);

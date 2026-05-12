@@ -79,13 +79,7 @@ constexpr float HP_BAR_WARNING_RATIO = 0.50F;
 constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
-constexpr float CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS = 1.05F;
-constexpr float PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS = 0.72F;
-constexpr float PHYSICAL_HIT_VFX_DELAY_SECONDS = 0.18F;
-constexpr float PHYSICAL_HIT_DEFAULT_VFX_SCALE = 2.0F;
 constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
-constexpr std::string_view PHYSICAL_HIT_DEFAULT_VFX_ID = "battle.hit_physical";
-const glm::vec2 PHYSICAL_HIT_DEFAULT_VFX_OFFSET{0.0F, -18.0F};
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -136,12 +130,6 @@ struct BattleFormationSlot {
     glm::vec2 shadow_size{56.0F, 4.0F};
 };
 
-struct PhysicalHitVfxPresentation {
-    entt::id_type effect_id{engine::vfx::kInvalidVfxEffectId};
-    float scale{1.0F};
-    glm::vec2 offset{0.0F, 0.0F};
-};
-
 /// @brief 行动顺序条敌方图标解析结果；不可用时调用方回退到文本编号。
 struct BattleEnemyIconDescriptor {
     Rml::String decorator{"none"};
@@ -172,76 +160,6 @@ using namespace entt::literals;
 
 [[nodiscard]] entt::id_type hashString(std::string_view value) {
     return entt::hashed_string{value.data(), value.size()}.value();
-}
-
-[[nodiscard]] bool isRecoveryDamageType(const game::data::DamageType type) {
-    return type == game::data::DamageType::HpRecover ||
-        type == game::data::DamageType::MpRecover;
-}
-
-[[nodiscard]] bool isRecoverySkill(const game::data::SkillData& skill) {
-    return isRecoveryDamageType(skill.damage_.type);
-}
-
-[[nodiscard]] bool isAppliedSingleTargetHit(const game::battle::BattleActionResult& result) {
-    return result.status == game::battle::BattleActionStatus::Applied &&
-        !result.missed &&
-        result.target_id.has_value();
-}
-
-[[nodiscard]] bool hasConfiguredSkillTargetVfx(const game::battle::BattleActionResult& result,
-                                               const game::data::SkillData* skill) {
-    return result.action_type == game::battle::BattleActionType::Skill &&
-        skill &&
-        skill->target_vfx_id_hash_ != engine::vfx::kInvalidVfxEffectId;
-}
-
-[[nodiscard]] bool hasConfiguredSkillTargetSfx(const game::battle::BattleActionResult& result,
-                                               const game::data::SkillData* skill) {
-    return result.action_type == game::battle::BattleActionType::Skill &&
-        skill &&
-        skill->target_sfx_id_hash_ != entt::id_type{};
-}
-
-[[nodiscard]] bool shouldUsePhysicalHitPresentation(const game::battle::BattleActionResult& result,
-                                                    const game::data::SkillData* skill) {
-    if (!isAppliedSingleTargetHit(result) || result.damage <= 0) {
-        return false;
-    }
-
-    if (result.action_type == game::battle::BattleActionType::Attack) {
-        return true;
-    }
-
-    return result.action_type == game::battle::BattleActionType::Skill &&
-        skill &&
-        skill->hit_type_ == game::data::HitType::Physical &&
-        !isRecoverySkill(*skill) &&
-        skill->target_vfx_id_hash_ == engine::vfx::kInvalidVfxEffectId;
-}
-
-[[nodiscard]] PhysicalHitVfxPresentation physicalHitVfxPresentation(const game::data::SkillData* default_hit_skill) {
-    if (default_hit_skill &&
-        default_hit_skill->target_vfx_id_hash_ != engine::vfx::kInvalidVfxEffectId) {
-        return PhysicalHitVfxPresentation{
-            .effect_id = default_hit_skill->target_vfx_id_hash_,
-            .scale = default_hit_skill->target_vfx_scale_,
-            .offset = default_hit_skill->target_vfx_offset_,
-        };
-    }
-
-    return PhysicalHitVfxPresentation{
-        .effect_id = hashString(PHYSICAL_HIT_DEFAULT_VFX_ID),
-        .scale = PHYSICAL_HIT_DEFAULT_VFX_SCALE,
-        .offset = PHYSICAL_HIT_DEFAULT_VFX_OFFSET,
-    };
-}
-
-[[nodiscard]] entt::id_type physicalHitSfxId(const game::data::SkillData* default_hit_skill) {
-    if (default_hit_skill && default_hit_skill->target_sfx_id_hash_ != entt::id_type{}) {
-        return default_hit_skill->target_sfx_id_hash_;
-    }
-    return entt::id_type{};
 }
 
 /// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
@@ -580,25 +498,6 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
         battle_sprite.screen_position.x,
         sprite_top_y - config.above_sprite_margin - config.size.y * 0.5F};
     return center - config.size * 0.5F;
-}
-
-/// @brief 在当前战斗表现锚点列表中查找指定单位。
-[[nodiscard]] const game::scene::BattlePresentationUnitAnchor* findUnitAnchor(
-    const std::vector<game::scene::BattlePresentationUnitAnchor>& unit_anchors,
-    const game::battle::BattleUnitId unit_id) {
-    const auto it = std::find_if(
-        unit_anchors.begin(),
-        unit_anchors.end(),
-        [unit_id](const game::scene::BattlePresentationUnitAnchor& anchor) {
-            return anchor.unit_id == unit_id;
-        });
-    return it != unit_anchors.end() ? &*it : nullptr;
-}
-
-/// @brief 将阵型脚底锚点转换为目标特效播放位置。
-[[nodiscard]] glm::vec2 targetVfxPosition(const game::scene::BattlePresentationUnitAnchor& target_anchor,
-                                          const glm::vec2 offset) {
-    return target_anchor.base_screen_position + offset;
 }
 
 } // namespace
@@ -1061,12 +960,16 @@ void BattleScene::runStateMachine(float delta_time) {
                         .rpg_catalog = rpg_catalog_,
                         .item_catalog = item_catalog_
                     }));
-                battle_enemy_hp_bar_controller_.syncFromSnapshot(last_action_result_->snapshot);
-                battle_enemy_hp_bar_controller_.revealFromResult(*last_action_result_);
                 const auto unit_anchors = collectBattlePresentationUnitAnchors();
-                const BattleAnimationTimelineConfig animation_config = animationConfigForResult(*last_action_result_);
-                spawnActionTargetPresentationEvents(*last_action_result_, unit_anchors);
-                battle_damage_popup_controller_.spawnFromResult(*last_action_result_, unit_anchors);
+                const BattleActionPresentationPlan presentation_plan =
+                    presentationPlanForResult(*last_action_result_, unit_anchors);
+                const BattleAnimationTimelineConfig animation_config = animationConfigForPlan(presentation_plan);
+                battle_enemy_hp_bar_controller_.stageSnapshot(last_action_result_->snapshot);
+                schedulePresentationPlanEvents(presentation_plan, *last_action_result_);
+                battle_damage_popup_controller_.spawnFromResult(
+                    *last_action_result_,
+                    unit_anchors,
+                    presentation_plan.impact_time_seconds);
                 battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
                 pending_action_.reset();
                 leaveInputMenu();
@@ -2580,47 +2483,31 @@ std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentation
     return anchors;
 }
 
-BattleAnimationTimelineConfig BattleScene::animationConfigForResult(
-    const game::battle::BattleActionResult& result) const {
+BattleAnimationTimelineConfig BattleScene::animationConfigForPlan(
+    const BattleActionPresentationPlan& plan) const {
     BattleAnimationTimelineConfig config{};
-    config.motion_style = actionMotionStyleForResult(result);
-    config.actor_start_offset = actionStartOffsetFor(result.actor_id);
-
-    const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
-        ? rpg_catalog_->findSkill(result.skill_id)
-        : nullptr;
-    if (isAppliedSingleTargetHit(result) && hasConfiguredSkillTargetVfx(result, skill)) {
-        config.minimum_duration_seconds = CONFIGURED_TARGET_VFX_MIN_DURATION_SECONDS;
-    } else if (shouldUsePhysicalHitPresentation(result, skill)) {
-        config.minimum_duration_seconds = PHYSICAL_HIT_VFX_MIN_DURATION_SECONDS;
-    }
+    config.motion_style = plan.motion_style;
+    config.actor_start_offset = plan.actor_start_offset;
+    config.duration_seconds = plan.duration_seconds;
+    config.impact_time_seconds = plan.impact_time_seconds;
+    config.hit_feedback_duration_seconds = plan.recovery_time_seconds;
     return config;
 }
 
-BattleActionMotionStyle BattleScene::actionMotionStyleForResult(
-    const game::battle::BattleActionResult& result) const {
-    switch (result.action_type) {
-        case game::battle::BattleActionType::Attack:
-            return BattleActionMotionStyle::WeaponAttack;
-        case game::battle::BattleActionType::Guard:
-            return BattleActionMotionStyle::Cast;
-        case game::battle::BattleActionType::Escape:
-            return BattleActionMotionStyle::Escape;
-        case game::battle::BattleActionType::Skill: {
-            const auto* skill = rpg_catalog_ ? rpg_catalog_->findSkill(result.skill_id) : nullptr;
-            if (skill && skill->hit_type_ == game::data::HitType::Physical &&
-                skill->damage_.type != game::data::DamageType::HpRecover &&
-                skill->damage_.type != game::data::DamageType::MpRecover) {
-                return BattleActionMotionStyle::WeaponAttack;
-            }
-            return BattleActionMotionStyle::Cast;
-        }
-        case game::battle::BattleActionType::Item:
-        case game::battle::BattleActionType::EndTurn:
-            return BattleActionMotionStyle::Simple;
-    }
-
-    return BattleActionMotionStyle::Simple;
+BattleActionPresentationPlan BattleScene::presentationPlanForResult(
+    const game::battle::BattleActionResult& result,
+    const std::vector<BattlePresentationUnitAnchor>& unit_anchors) const {
+    const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
+        ? rpg_catalog_->findSkill(result.skill_id)
+        : nullptr;
+    const auto* default_hit_skill = rpg_catalog_ ? rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID) : nullptr;
+    return buildBattleActionPresentationPlan(BattleActionPresentationPlanRequest{
+        .result = &result,
+        .skill = skill,
+        .default_attack_skill = default_hit_skill,
+        .unit_anchors = &unit_anchors,
+        .actor_start_offset = actionStartOffsetFor(result.actor_id)
+    });
 }
 
 glm::vec2 BattleScene::actionStartOffsetFor(const game::battle::BattleUnitId actor_id) const {
@@ -2638,76 +2525,43 @@ glm::vec2 BattleScene::actionStartOffsetFor(const game::battle::BattleUnitId act
     return COMMAND_FOCUS_PLAYER_OFFSET * eased;
 }
 
-void BattleScene::spawnActionTargetPresentationEvents(
-    const game::battle::BattleActionResult& result,
-    const std::vector<BattlePresentationUnitAnchor>& unit_anchors) {
-    if (!isAppliedSingleTargetHit(result)) {
-        return;
-    }
-
-    const auto* target_anchor = findUnitAnchor(unit_anchors, *result.target_id);
-    if (!target_anchor) {
-        return;
-    }
-
-    const auto* skill = result.action_type == game::battle::BattleActionType::Skill && rpg_catalog_
-        ? rpg_catalog_->findSkill(result.skill_id)
-        : nullptr;
-    const auto* default_hit_skill = rpg_catalog_ ? rpg_catalog_->findSkill(BASIC_ATTACK_SKILL_ID) : nullptr;
-
-    if (hasConfiguredSkillTargetVfx(result, skill) || hasConfiguredSkillTargetSfx(result, skill)) {
-        constexpr float kConfiguredTargetPresentationDelaySeconds = 0.0F;
-        if (hasConfiguredSkillTargetVfx(result, skill)) {
-            engine::vfx::PlayVfxCommand command{};
-            command.effect_id = skill->target_vfx_id_hash_;
-            command.world_position = targetVfxPosition(*target_anchor, skill->target_vfx_offset_);
-            command.z = 0.0F;
-            command.scale = skill->target_vfx_scale_;
-            command.loop = false;
-            command.channel = engine::vfx::VfxChannel::Overlay;
-            schedulePresentationEvent(command, kConfiguredTargetPresentationDelaySeconds);
-        }
-
-        if (hasConfiguredSkillTargetSfx(result, skill)) {
-            engine::utils::PlaySoundEvent event{};
-            event.entity_ = entt::null;
-            event.sound_id_ = skill->target_sfx_id_hash_;
-            schedulePresentationEvent(event, kConfiguredTargetPresentationDelaySeconds);
-        }
-        return;
-    }
-
-    if (shouldUsePhysicalHitPresentation(result, skill)) {
-        const PhysicalHitVfxPresentation hit_vfx = physicalHitVfxPresentation(default_hit_skill);
-        engine::vfx::PlayVfxCommand command{};
-        command.effect_id = hit_vfx.effect_id;
-        command.world_position = targetVfxPosition(*target_anchor, hit_vfx.offset);
-        command.z = 0.0F;
-        command.scale = hit_vfx.scale;
-        command.loop = false;
-        command.channel = engine::vfx::VfxChannel::Overlay;
-        schedulePresentationEvent(command, PHYSICAL_HIT_VFX_DELAY_SECONDS);
-
-        if (const entt::id_type sound_id = physicalHitSfxId(default_hit_skill); sound_id != entt::id_type{}) {
-            engine::utils::PlaySoundEvent event{};
-            event.entity_ = entt::null;
-            event.sound_id_ = sound_id;
-            schedulePresentationEvent(event, PHYSICAL_HIT_VFX_DELAY_SECONDS);
+void BattleScene::schedulePresentationPlanEvents(
+    const BattleActionPresentationPlan& plan,
+    const game::battle::BattleActionResult& result) {
+    scheduled_presentation_events_.clear();
+    for (const auto& marker : plan.markers) {
+        switch (marker.type) {
+            case BattlePresentationMarkerType::TargetVfx:
+                schedulePresentationEvent(marker.vfx_command, marker.time_seconds);
+                break;
+            case BattlePresentationMarkerType::TargetSfx:
+                schedulePresentationEvent(marker.sound_event, marker.time_seconds);
+                break;
+            case BattlePresentationMarkerType::EnemyHpReveal:
+                scheduleEnemyHpRevealEvent(result, marker.time_seconds);
+                break;
         }
     }
 }
 
-void BattleScene::schedulePresentationEvent(engine::vfx::PlayVfxCommand command, const float delay_seconds) {
+void BattleScene::schedulePresentationEvent(engine::vfx::PlayVfxCommand command, const float fire_time_seconds) {
     scheduled_presentation_events_.push_back(ScheduledPresentationEvent{
         .payload = std::move(command),
-        .remaining_seconds = std::max(0.0F, delay_seconds),
+        .remaining_seconds = std::max(0.0F, fire_time_seconds),
     });
 }
 
-void BattleScene::schedulePresentationEvent(engine::utils::PlaySoundEvent event, const float delay_seconds) {
+void BattleScene::schedulePresentationEvent(engine::utils::PlaySoundEvent event, const float fire_time_seconds) {
     scheduled_presentation_events_.push_back(ScheduledPresentationEvent{
         .payload = std::move(event),
-        .remaining_seconds = std::max(0.0F, delay_seconds),
+        .remaining_seconds = std::max(0.0F, fire_time_seconds),
+    });
+}
+
+void BattleScene::scheduleEnemyHpRevealEvent(game::battle::BattleActionResult result, const float fire_time_seconds) {
+    scheduled_presentation_events_.push_back(ScheduledPresentationEvent{
+        .payload = std::move(result),
+        .remaining_seconds = std::max(0.0F, fire_time_seconds),
     });
 }
 
@@ -2726,6 +2580,10 @@ void BattleScene::updateScheduledPresentationEvents(const float delta_time) {
 
         std::visit([this](auto& payload) {
             using Payload = std::decay_t<decltype(payload)>;
+            if constexpr (std::is_same_v<Payload, game::battle::BattleActionResult>) {
+                battle_enemy_hp_bar_controller_.applyStagedSnapshotAndReveal(payload);
+                return;
+            }
             auto event = Payload{payload};
             context_.getDispatcher().trigger<Payload>(std::move(event));
         }, it->payload);

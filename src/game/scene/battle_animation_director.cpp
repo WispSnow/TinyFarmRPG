@@ -11,10 +11,6 @@ namespace game::scene {
 namespace {
 
 constexpr float PI = 3.14159265358979323846f;
-constexpr float ATTACK_WINDUP_END = 0.08f;
-constexpr float ATTACK_LUNGE_END = 0.22f;
-constexpr float ATTACK_RETURN_END = 0.42f;
-constexpr float HIT_FEEDBACK_END = 0.52f;
 constexpr float KO_START = 0.36f;
 constexpr float KO_ALPHA = 0.38f;
 constexpr float KO_ROTATION_RADIANS = PI * 0.5f;
@@ -34,6 +30,14 @@ constexpr float SELF_TARGET_EPSILON = 0.001f;
 
 [[nodiscard]] float safeDuration(float duration) {
     return std::max(duration, 0.001f);
+}
+
+[[nodiscard]] float safeImpactTime(const BattleAnimationTimelineConfig& config) {
+    return std::max(0.0f, config.impact_time_seconds);
+}
+
+[[nodiscard]] float hitFeedbackEndTime(const BattleAnimationTimelineConfig& config) {
+    return safeImpactTime(config) + std::max(config.hit_feedback_duration_seconds, 0.001f);
 }
 
 [[nodiscard]] bool hasTargetFeedback(const game::battle::BattleActionResult& result) {
@@ -93,12 +97,15 @@ void BattleAnimationDirector::begin(const game::battle::BattleActionResult& resu
             timeline_.duration_seconds = safeDuration(config_.action_hold_seconds);
             break;
     }
+    if (config_.duration_seconds > 0.0f) {
+        timeline_.duration_seconds = safeDuration(config_.duration_seconds);
+    }
     timeline_.duration_seconds = std::max(timeline_.duration_seconds, config_.minimum_duration_seconds);
     if (result.target_defeated) {
         timeline_.duration_seconds = std::max(timeline_.duration_seconds, safeDuration(config_.attack_duration_seconds));
-        timeline_.duration_seconds = std::max(timeline_.duration_seconds, KO_START + 0.16f);
+        timeline_.duration_seconds = std::max(timeline_.duration_seconds, safeImpactTime(config_) + 0.30f);
     } else if (hasTargetFeedback(result)) {
-        timeline_.duration_seconds = std::max(timeline_.duration_seconds, HIT_FEEDBACK_END);
+        timeline_.duration_seconds = std::max(timeline_.duration_seconds, hitFeedbackEndTime(config_));
     }
     timeline_.active = true;
     active_ = true;
@@ -207,23 +214,31 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::attackPoseFor(
     const glm::vec2 forward = forwardStepOffset();
     BattleAnimationPose pose{};
     const float elapsed = timeline_.elapsed_seconds;
-    if (elapsed <= ATTACK_WINDUP_END) {
-        const float t = smoothstep01(elapsed / ATTACK_WINDUP_END);
+
+    const float impact_time = safeImpactTime(config_);
+    const float windup_duration = std::min(std::max(config_.weapon_windup_seconds, 0.0f), impact_time * 0.5f);
+    const float lunge_duration = std::min(std::max(config_.weapon_lunge_seconds, 0.001f),
+                                          std::max(impact_time - windup_duration, 0.001f));
+    const float windup_end = std::max(0.0f, impact_time - lunge_duration);
+    const float return_end = impact_time + std::max(config_.weapon_return_seconds, 0.001f);
+
+    if (elapsed <= windup_end) {
+        const float t = windup_end > 0.001f ? smoothstep01(elapsed / windup_end) : 1.0f;
         pose.offset = -forward * (0.20f * t);
         pose.scale_multiplier = 1.0f + 0.015f * t;
         return pose;
     }
 
-    if (elapsed <= ATTACK_LUNGE_END) {
-        const float t = smoothstep01((elapsed - ATTACK_WINDUP_END) / (ATTACK_LUNGE_END - ATTACK_WINDUP_END));
+    if (elapsed <= impact_time) {
+        const float t = smoothstep01((elapsed - windup_end) / safeDuration(impact_time - windup_end));
         pose.offset = glm::mix(-forward * 0.20f, forward, t);
         pose.offset.y -= std::sin(t * PI) * 8.0f;
         pose.scale_multiplier = 1.0f + 0.03f * std::sin(t * PI);
         return pose;
     }
 
-    if (elapsed <= ATTACK_RETURN_END) {
-        const float t = smoothstep01((elapsed - ATTACK_LUNGE_END) / (ATTACK_RETURN_END - ATTACK_LUNGE_END));
+    if (elapsed <= return_end) {
+        const float t = smoothstep01((elapsed - impact_time) / safeDuration(return_end - impact_time));
         pose.offset = glm::mix(forward, glm::vec2{0.0f, 0.0f}, t);
         return pose;
     }
@@ -288,7 +303,9 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::hitPoseFor(
     if (!timeline_.result.target_id || *timeline_.result.target_id != unit_id) {
         return std::nullopt;
     }
-    if (timeline_.elapsed_seconds < ATTACK_LUNGE_END) {
+    const float impact_time = safeImpactTime(config_);
+    const float feedback_end = hitFeedbackEndTime(config_);
+    if (timeline_.elapsed_seconds < impact_time) {
         return std::nullopt;
     }
     const bool has_feedback = timeline_.result.damage > 0 || !timeline_.result.states_added.empty();
@@ -297,17 +314,18 @@ std::optional<BattleAnimationPose> BattleAnimationDirector::hitPoseFor(
     }
 
     BattleAnimationPose pose{};
-    if (has_feedback && timeline_.elapsed_seconds <= HIT_FEEDBACK_END) {
-        const float t = clamp01((timeline_.elapsed_seconds - ATTACK_LUNGE_END) / (HIT_FEEDBACK_END - ATTACK_LUNGE_END));
+    if (has_feedback && timeline_.elapsed_seconds <= feedback_end) {
+        const float t = clamp01((timeline_.elapsed_seconds - impact_time) / safeDuration(feedback_end - impact_time));
         const float decay = 1.0f - t;
         const float shake_direction = std::sin(t * PI * 10.0f) >= 0.0f ? 1.0f : -1.0f;
         pose.offset.x = shake_direction * decay * 7.0f;
         pose.color_multiplier = engine::utils::FColor{1.32f, 0.52f, 0.52f, 1.0f};
     }
 
-    if (timeline_.result.target_defeated && timeline_.elapsed_seconds >= KO_START) {
-        const float ko_t = smoothstep01((timeline_.elapsed_seconds - KO_START) /
-                                        (timeline_.duration_seconds - KO_START));
+    const float ko_start = std::max(KO_START, impact_time);
+    if (timeline_.result.target_defeated && timeline_.elapsed_seconds >= ko_start) {
+        const float ko_t = smoothstep01((timeline_.elapsed_seconds - ko_start) /
+                                        safeDuration(timeline_.duration_seconds - ko_start));
         pose.offset.y += 10.0f * ko_t;
         pose.rotation_radians += KO_ROTATION_RADIANS * ko_t;
         pose.color_multiplier.a *= 1.0f - (1.0f - KO_ALPHA) * ko_t;
