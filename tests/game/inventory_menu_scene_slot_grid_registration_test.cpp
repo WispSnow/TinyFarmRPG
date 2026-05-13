@@ -125,8 +125,13 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_EQ(source.find("active_tab_id =="), std::string::npos);
     EXPECT_EQ(source.find("class=\"menu-separator\""), std::string::npos);
     EXPECT_EQ(source.find(">Sort</button>"), std::string::npos);
+    EXPECT_EQ(source.find(">Unequip</button>"), std::string::npos);
     EXPECT_NE(style.find("sort-icon:     368px 32px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("sort-icon-pressed: 368px 48px 16px 16px;"), std::string::npos);
+    EXPECT_NE(style.find("menu-equipment-slot-bg:        71px 41px 18px 18px;"), std::string::npos);
+    EXPECT_NE(style.find("menu-equipment-slot-bg-inner:  74px 44px 12px 12px;"), std::string::npos);
+    EXPECT_NE(style.find("unequip-icon:  272px 64px 16px 16px;"), std::string::npos);
+    EXPECT_NE(style.find("unequip-icon-pressed: 272px 80px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg:       67px  3px 42px 42px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg-inner: 76px 12px 24px 24px;"), std::string::npos);
 

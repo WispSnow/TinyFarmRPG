@@ -117,10 +117,6 @@
                                         data-class-has-item="eqslot.has_item"
                                         data-event-click="equipment_slot_click(eqslot.slot_index)">
                                     <div class="equipment-slot-icon" data-style-decorator="eqslot.icon_decorator"></div>
-                                    <div class="equipment-slot-text">
-                                        <div class="equipment-slot-label">{{ eqslot.label }}</div>
-                                        <div class="equipment-slot-item">{{ eqslot.item_name }}</div>
-                                    </div>
                                 </button>
                             </div>
 
@@ -146,7 +142,8 @@
                             <div id="equipment-detail-description">{{ equipment_detail_description }}</div>
                             <button id="equipment-unequip-btn"
                                     class="tf-nav-auto tf-focus-ring-danger"
-                                    data-event-click="equipment_unequip">Unequip</button>
+                                    title="Unequip"
+                                    data-event-click="equipment_unequip"></button>
                         </div>
                     </div>
                 </panel>
