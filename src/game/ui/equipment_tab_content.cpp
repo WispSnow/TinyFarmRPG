@@ -38,14 +38,15 @@ using EquipmentCandidateViewModels = std::vector<EquipmentCandidateViewModel>;
 struct EquipmentSlotDef {
     game::data::EquipmentSlotId id{game::data::EquipmentSlotId::Unknown};
     std::string_view label{};
+    std::string_view placeholder_decorator{};
 };
 
 constexpr std::array<EquipmentSlotDef, 5> kEquipmentSlots{{
-    {game::data::EquipmentSlotId::Weapon, "Weapon"},
-    {game::data::EquipmentSlotId::Offhand, "Offhand"},
-    {game::data::EquipmentSlotId::Head, "Head"},
-    {game::data::EquipmentSlotId::Body, "Body"},
-    {game::data::EquipmentSlotId::Accessory, "Accessory"},
+    {game::data::EquipmentSlotId::Weapon, "Weapon", "image(equipment-slot-weapon-hint)"},
+    {game::data::EquipmentSlotId::Head, "Head", "image(equipment-slot-head-hint)"},
+    {game::data::EquipmentSlotId::Body, "Body", "image(equipment-slot-body-hint)"},
+    {game::data::EquipmentSlotId::Boot, "Boot", "image(equipment-slot-boot-hint)"},
+    {game::data::EquipmentSlotId::Accessory, "Accessory", "image(equipment-slot-accessory-hint)"},
 }};
 
 constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
@@ -161,6 +162,7 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
         handle.RegisterMember("slot_index", &EquipmentSlotViewModel::slot_index);
         handle.RegisterMember("label", &EquipmentSlotViewModel::label);
         handle.RegisterMember("item_name", &EquipmentSlotViewModel::item_name);
+        handle.RegisterMember("placeholder_decorator", &EquipmentSlotViewModel::placeholder_decorator);
         handle.RegisterMember("icon_decorator", &EquipmentSlotViewModel::icon_decorator);
         handle.RegisterMember("has_item", &EquipmentSlotViewModel::has_item);
         handle.RegisterMember("is_selected", &EquipmentSlotViewModel::is_selected);
@@ -313,6 +315,7 @@ void EquipmentTabContent::syncSlots() {
         vm.slot_index = static_cast<int>(i);
         vm.label = Rml::String{def.label.data(), def.label.size()};
         vm.item_name = "Empty";
+        vm.placeholder_decorator = Rml::String{def.placeholder_decorator.data(), def.placeholder_decorator.size()};
         vm.icon_decorator = std::string{kNoDecorator};
         vm.has_item = false;
         vm.is_selected = (selected_slot_ == def.id);

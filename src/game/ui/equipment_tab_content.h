@@ -37,6 +37,7 @@ struct EquipmentSlotViewModel {
     int slot_index{0};
     Rml::String label{};
     Rml::String item_name{};
+    Rml::String placeholder_decorator{"none"};
     Rml::String icon_decorator{"none"};
     bool has_item{false};
     bool is_selected{false};

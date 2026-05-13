@@ -116,7 +116,10 @@
                                         data-class-equipment-slot-selected="eqslot.is_selected"
                                         data-class-has-item="eqslot.has_item"
                                         data-event-click="equipment_slot_click(eqslot.slot_index)">
-                                    <div class="equipment-slot-icon" data-style-decorator="eqslot.icon_decorator"></div>
+                                    <div class="equipment-slot-placeholder" data-style-decorator="eqslot.placeholder_decorator"></div>
+                                    <div class="equipment-slot-icon"
+                                         data-if="eqslot.has_item"
+                                         data-style-decorator="eqslot.icon_decorator"></div>
                                 </button>
                             </div>
 

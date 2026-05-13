@@ -32,6 +32,11 @@
     equip-boots:    136px 40px 16px 16px;
     equip-necklace: 168px 40px 16px 16px;
     equip-ring:     200px 40px 16px 16px;
+    equipment-slot-weapon-hint:    106px 41px 14px 15px;
+    equipment-slot-head-hint:       11px 41px 12px 12px;
+    equipment-slot-body-hint:       41px 42px 16px 11px;
+    equipment-slot-boot-hint:      137px 41px 14px 14px;
+    equipment-slot-accessory-hint: 170px 42px 12px 11px;
 }
 
 @spritesheet menu-hud {
@@ -365,6 +370,7 @@
 
 .equipment-slot-entry {
     display: block;
+    position: relative;
     width: 28dp;
     height: 28dp;
     decorator: ninepatch(menu-equipment-slot-bg, menu-equipment-slot-bg-inner, 1.0);
@@ -387,11 +393,21 @@
     box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
-.equipment-slot-icon {
+.equipment-slot-placeholder {
+    position: absolute;
+    left: 6dp;
+    top: 6dp;
     width: 16dp;
     height: 16dp;
-    margin-left: 6dp;
-    margin-top: 6dp;
+    opacity: 0.3;
+}
+
+.equipment-slot-icon {
+    position: absolute;
+    left: 6dp;
+    top: 6dp;
+    width: 16dp;
+    height: 16dp;
 }
 
 #equipment-candidate-panel {

@@ -138,6 +138,8 @@ const char* toString(const EquipmentSlotId value) {
             return "head";
         case EquipmentSlotId::Body:
             return "body";
+        case EquipmentSlotId::Boot:
+            return "boot";
         case EquipmentSlotId::Accessory:
             return "accessory";
         case EquipmentSlotId::Unknown:
@@ -303,6 +305,9 @@ std::optional<EquipmentSlotId> equipmentSlotIdFromString(const std::string_view 
     }
     if (value == "body") {
         return EquipmentSlotId::Body;
+    }
+    if (value == "boot") {
+        return EquipmentSlotId::Boot;
     }
     if (value == "accessory") {
         return EquipmentSlotId::Accessory;

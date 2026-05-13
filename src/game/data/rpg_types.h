@@ -86,6 +86,7 @@ enum class EquipmentSlotId : std::uint8_t {
     Offhand,
     Head,
     Body,
+    Boot,
     Accessory,
     Unknown
 };
