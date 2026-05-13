@@ -4,11 +4,13 @@
 #include "engine/utils/json_file_loader.h"
 #include "engine/vfx/vfx_catalog.h"
 #include "game/data/audio_cue_catalog.h"
+#include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <nlohmann/json.hpp>
 
+#include <array>
 #include <cmath>
 #include <filesystem>
 #include <string>
@@ -44,11 +46,51 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveBattlePresentationRefer
     ASSERT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
     ASSERT_TRUE(catalog.loadSkills((rpg_root / "skills.json").string()));
     ASSERT_TRUE(catalog.loadStates((rpg_root / "states.json").string()));
+    ASSERT_TRUE(catalog.loadEquipment((rpg_root / "equipment.json").string()));
     ASSERT_TRUE(catalog.loadEnemies((rpg_root / "enemies.json").string()));
     ASSERT_TRUE(catalog.loadTroops((rpg_root / "troops.json").string()));
 
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadIconConfig((project_root / "assets/data/icon_config.json").string()));
+    ASSERT_TRUE(item_catalog.loadItemConfig((project_root / "assets/data/item_config.json").string()));
+
     std::string error{};
-    ASSERT_TRUE(catalog.validateReferences(error)) << error;
+    ASSERT_TRUE(catalog.validateReferences(error, &item_catalog)) << error;
+
+    struct ExpectedEquipmentEntry {
+        std::string_view item_id{};
+        EquipmentSlotId slot{EquipmentSlotId::Unknown};
+        std::string_view icon_key{};
+    };
+    constexpr std::array<ExpectedEquipmentEntry, 12> kExpectedEquipment{{
+        {"equip_wooden_sword", EquipmentSlotId::Weapon, "equipment/wooden_sword"},
+        {"equip_wooden_staff", EquipmentSlotId::Weapon, "equipment/wooden_staff"},
+        {"equip_wooden_helmet", EquipmentSlotId::Head, "equipment/wooden_helmet"},
+        {"equip_wooden_armor", EquipmentSlotId::Body, "equipment/wooden_armor"},
+        {"equip_wooden_boots", EquipmentSlotId::Boot, "equipment/wooden_boots"},
+        {"equip_wooden_accessory", EquipmentSlotId::Accessory, "equipment/wooden_accessory"},
+        {"equip_iron_sword", EquipmentSlotId::Weapon, "equipment/iron_sword"},
+        {"equip_iron_staff", EquipmentSlotId::Weapon, "equipment/iron_staff"},
+        {"equip_iron_helmet", EquipmentSlotId::Head, "equipment/iron_helmet"},
+        {"equip_iron_armor", EquipmentSlotId::Body, "equipment/iron_armor"},
+        {"equip_iron_boots", EquipmentSlotId::Boot, "equipment/iron_boots"},
+        {"equip_iron_accessory", EquipmentSlotId::Accessory, "equipment/iron_accessory"},
+    }};
+    for (const auto& expected : kExpectedEquipment) {
+        const auto* equipment = catalog.findEquipmentByItem(expected.item_id);
+        ASSERT_NE(equipment, nullptr) << expected.item_id;
+        EXPECT_EQ(equipment->slot_, expected.slot) << expected.item_id;
+
+        const auto* item = item_catalog.findItem(RpgCatalog::hashId(expected.item_id));
+        ASSERT_NE(item, nullptr) << expected.item_id;
+        const auto* icon_key = item_catalog.findIconKey(item->icon_id_);
+        ASSERT_NE(icon_key, nullptr) << expected.item_id;
+        EXPECT_EQ(*icon_key, expected.icon_key) << expected.item_id;
+    }
+    for (const auto* equipment : catalog.listEquipment()) {
+        ASSERT_NE(equipment, nullptr);
+        EXPECT_NE(equipment->slot_, EquipmentSlotId::Offhand) << equipment->item_id_;
+    }
 
     engine::vfx::VfxCatalog vfx_catalog;
     ASSERT_TRUE(vfx_catalog.loadFromFile((project_root / "assets/data/vfx_catalog.json").string()));

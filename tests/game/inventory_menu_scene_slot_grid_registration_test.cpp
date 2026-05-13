@@ -101,13 +101,18 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rml").lexically_normal();
     const std::filesystem::path rcss_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rcss").lexically_normal();
+    const std::filesystem::path theme_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/spritesheet.rcss").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
     ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+    ASSERT_TRUE(std::filesystem::exists(theme_path)) << theme_path;
 
     const std::string source = test_source_utils::readTextFile(rml_path);
     const std::string style = test_source_utils::readTextFile(rcss_path);
+    const std::string theme = test_source_utils::readTextFile(theme_path);
     ASSERT_FALSE(source.empty()) << "无法读取: " << rml_path;
     ASSERT_FALSE(style.empty()) << "无法读取: " << rcss_path;
+    ASSERT_FALSE(theme.empty()) << "无法读取: " << theme_path;
 
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
@@ -140,6 +145,18 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("opacity: 0.3;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon:  272px 64px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon-pressed: 272px 80px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-sword:     192px  0px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-staff:     176px 16px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-helmet:    160px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-armor:     176px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-boots:     208px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-wooden-accessory: 288px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-sword:     192px  0px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-staff:     176px 16px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-helmet:    160px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-armor:     176px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-boots:     208px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(theme.find("item-equipment-iron-accessory: 288px 32px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg:       67px  3px 42px 42px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg-inner: 76px 12px 24px 24px;"), std::string::npos);
 
