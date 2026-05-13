@@ -474,6 +474,13 @@ TEST(RpgCatalogTest, EquipmentItemStackLimitIsClampedToOneBeforeValidation) {
     EXPECT_TRUE(catalog.validateReferences(error, &item_catalog)) << error;
 }
 
+TEST(RpgCatalogTest, EquipmentSlotIdParsesBootSlot) {
+    const auto boot_slot = equipmentSlotIdFromString("boot");
+    ASSERT_TRUE(boot_slot.has_value());
+    EXPECT_EQ(*boot_slot, EquipmentSlotId::Boot);
+    EXPECT_STREQ(toString(EquipmentSlotId::Boot), "boot");
+}
+
 TEST(RpgCatalogTest, ValidateFailsOnMissingEnemyReference) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(
