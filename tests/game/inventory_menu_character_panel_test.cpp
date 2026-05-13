@@ -59,7 +59,7 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
     ASSERT_EQ(data.party_members.size(), 4U);
     EXPECT_EQ(data.party_members[0].actor_id, "actor.player");
     EXPECT_EQ(data.party_members[0].display_name, "Alex");
-    EXPECT_EQ(data.party_members[0].class_label, "剑客");
+    EXPECT_EQ(data.party_members[0].class_label, "Warrior");
     EXPECT_EQ(data.party_members[0].hp_text, "HP 544/544");
     EXPECT_EQ(data.party_members[0].portrait_decorator, "image(portrait-default)");
     EXPECT_TRUE(data.party_members[0].selected);

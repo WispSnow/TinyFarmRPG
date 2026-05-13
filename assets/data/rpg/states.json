@@ -2,8 +2,8 @@
     "states": [
         {
             "id": "state.stun",
-            "display_name": "眩晕",
-            "description": "短暂失去行动能力。",
+            "display_name": "Stun",
+            "description": "Briefly unable to act.",
             "icon_key": "stun",
             "priority": 90,
             "min_turns": 1,
@@ -12,8 +12,8 @@
         },
         {
             "id": "state.poison",
-            "display_name": "中毒",
-            "description": "持续受到毒素影响。",
+            "display_name": "Poison",
+            "description": "Takes poison damage over time.",
             "icon_key": "poison",
             "priority": 50,
             "min_turns": 1,

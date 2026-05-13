@@ -316,7 +316,7 @@ bool GameScene::init() {
     if (load_slot_) {
         std::string load_error;
         if (!services_->save_service->loadFromFile(game::save::SaveService::slotPath(*load_slot_), load_error)) {
-            const std::string message = "读档失败: " + load_error;
+            const std::string message = "Load failed: " + load_error;
             spdlog::error("GameScene: 读档失败 (slot {}): {}", *load_slot_, load_error);
             requestReplaceScene(std::make_unique<game::scene::TitleScene>("TitleScene", context_, message));
             abort_to_title_ = true;

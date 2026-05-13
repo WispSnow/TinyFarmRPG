@@ -157,7 +157,7 @@ TEST(QuestTurnInServiceTest, FullInventoryBlocksTurnInWithoutMutatingQuestOrRewa
 
     EXPECT_FALSE(result.completed());
     EXPECT_EQ(result.status, QuestTurnInStatus::InventoryFull);
-    EXPECT_EQ(result.failure_message, "背包空间不足");
+    EXPECT_EQ(result.failure_message, "Inventory full");
     EXPECT_EQ(wallet.gold_, 10);
     EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"dummy_full"}.value());
     EXPECT_EQ(inventory.slot(0).count_, 1);
@@ -188,7 +188,7 @@ TEST(QuestTurnInServiceTest, MissingWalletFailsBeforeMutatingQuestState) {
 
     EXPECT_FALSE(result.completed());
     EXPECT_EQ(result.status, QuestTurnInStatus::MissingWallet);
-    EXPECT_EQ(result.failure_message, "缺少钱包组件");
+    EXPECT_EQ(result.failure_message, "Missing wallet component");
     ASSERT_EQ(quest_log.active_quests.size(), 1u);
     EXPECT_TRUE(quest_log.completed_quests.empty());
 }
@@ -214,7 +214,7 @@ TEST(QuestTurnInServiceTest, MissingInventoryFailsBeforeMutatingQuestState) {
 
     EXPECT_FALSE(result.completed());
     EXPECT_EQ(result.status, QuestTurnInStatus::MissingInventory);
-    EXPECT_EQ(result.failure_message, "缺少背包组件");
+    EXPECT_EQ(result.failure_message, "Missing inventory component");
     ASSERT_EQ(quest_log.active_quests.size(), 1u);
     EXPECT_TRUE(quest_log.completed_quests.empty());
 }

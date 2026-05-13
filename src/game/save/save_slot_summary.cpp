@@ -13,34 +13,34 @@ std::optional<SlotSummary> tryReadSlotSummary(const std::filesystem::path& path,
 
     std::ifstream in(path);
     if (!in.is_open()) {
-        out_error = "无法打开存档文件";
+        out_error = "Could not open save file";
         return std::nullopt;
     }
 
     const auto json = nlohmann::json::parse(in, nullptr, false);
     if (json.is_discarded()) {
-        out_error = "解析 JSON 失败";
+        out_error = "Failed to parse JSON";
         return std::nullopt;
     }
 
     if (!json.is_object()) {
-        out_error = "存档根节点不是对象";
+        out_error = "Save root is not an object";
         return std::nullopt;
     }
 
     const std::uint32_t schema_version = json.value<std::uint32_t>(json_keys::SCHEMA_VERSION.data(), 0u);
     if (schema_version == 0u) {
-        out_error = "存档缺少 schema_version";
+        out_error = "Save is missing schema_version";
         return std::nullopt;
     }
     if (schema_version > SAVE_SCHEMA_VERSION) {
-        out_error = "存档 schema_version 不支持";
+        out_error = "Unsupported save schema_version";
         return std::nullopt;
     }
 
     SlotSummary out{};
     if (!json.contains(json_keys::GAME_TIME.data()) || !json[json_keys::GAME_TIME.data()].is_object()) {
-        out_error = "存档缺少 game_time";
+        out_error = "Save is missing game_time";
         return std::nullopt;
     }
 

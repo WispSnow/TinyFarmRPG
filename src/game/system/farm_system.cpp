@@ -386,7 +386,7 @@ bool FarmSystem::harvestCrop(const glm::vec2& world_pos) {
                                            NOTIFICATION_CHANNEL,
                                            player,
                                            std::string{},
-                                           "背包空间不足，无法收获",
+                                           "Inventory full, cannot harvest",
                                            helpers::computeHeadPosition(registry_, player));
             return false;
         }
@@ -473,9 +473,9 @@ bool FarmSystem::hitRock(const glm::vec2& world_pos) {
     return hitResourceNode(
         rock_entity, world_pos,
         "pickaxe"_hs, ANIM_PICKAXE,
-        "该位置没有石头可敲击",
-        "石头实体缺少 ResourceNodeComponent，无法敲击",
-        "石头已被敲碎并移除",
+        "No rock to mine here",
+        "Rock is missing ResourceNodeComponent",
+        "Rock broke and was removed",
         [this](entt::entity entity, const glm::vec2& pos) {
             spatial_index_.removeTileEntityAtWorldPos(pos, entity);
             auto tile_coord = spatial_index_.getTileCoordAtWorldPos(pos);
@@ -510,9 +510,9 @@ bool FarmSystem::hitTree(const glm::vec2& world_pos) {
     return hitResourceNode(
         tree_entity, world_pos,
         "axe"_hs, ANIM_AXE,
-        "该位置没有树可砍伐",
-        "树木实体缺少 ResourceNodeComponent，无法砍伐",
-        "树木已被砍倒并移除",
+        "No tree to chop here",
+        "Tree is missing ResourceNodeComponent",
+        "Tree was chopped down and removed",
         [this](entt::entity entity, const glm::vec2& pos) {
             spatial_index_.removeColliderEntity(entity);
             spatial_index_.removeTileEntityAtWorldPos(pos, entity);

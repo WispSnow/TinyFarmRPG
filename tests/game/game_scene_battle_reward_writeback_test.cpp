@@ -249,7 +249,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotif
 
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].target, player);
-    EXPECT_EQ(capture.shows[0].text, "获得金币 4\n获得 Herb x1");
+    EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nGained Herb x1");
     EXPECT_FLOAT_EQ(capture.shows[0].world_position.x, 128.0F);
     EXPECT_FLOAT_EQ(capture.shows[0].world_position.y, 48.0F);
     EXPECT_EQ(capture.shows[0].channel, 1);
@@ -418,7 +418,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInvent
     EXPECT_EQ(countItem(player, game::data::RpgCatalog::hashId("item.herb")), 99);
 
     ASSERT_EQ(capture.shows.size(), 1U);
-    EXPECT_EQ(capture.shows[0].text, "获得金币 4\n背包已满，未获得 Herb x1");
+    EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nInventory full, missed Herb x1");
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }
@@ -454,7 +454,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryCombinesRewardAndQuestProgress
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].target, player);
     EXPECT_EQ(capture.shows[0].channel, 1);
-    EXPECT_EQ(capture.shows[0].text, "获得金币 4\n获得 Herb x1\n可交付：Slime Hunt");
+    EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nGained Herb x1\nReady: Slime Hunt");
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }

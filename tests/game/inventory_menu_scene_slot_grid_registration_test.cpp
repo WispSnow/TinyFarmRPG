@@ -99,10 +99,15 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SceneUsesDocumentControllerForU
 TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationRootAndNativeTabset) {
     const std::filesystem::path rml_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rml").lexically_normal();
+    const std::filesystem::path rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rcss").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+    ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
 
     const std::string source = test_source_utils::readTextFile(rml_path);
+    const std::string style = test_source_utils::readTextFile(rcss_path);
     ASSERT_FALSE(source.empty()) << "无法读取: " << rml_path;
+    ASSERT_FALSE(style.empty()) << "无法读取: " << rcss_path;
 
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
@@ -119,6 +124,19 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_EQ(source.find("data-class-tab-active"), std::string::npos);
     EXPECT_EQ(source.find("active_tab_id =="), std::string::npos);
     EXPECT_EQ(source.find("class=\"menu-separator\""), std::string::npos);
+    EXPECT_EQ(source.find(">Sort</button>"), std::string::npos);
+    EXPECT_NE(style.find("sort-icon:     368px 32px 16px 16px;"), std::string::npos);
+    EXPECT_NE(style.find("sort-icon-pressed: 368px 48px 16px 16px;"), std::string::npos);
+    EXPECT_NE(style.find("menu-party-card-bg:       67px  3px 42px 42px;"), std::string::npos);
+    EXPECT_NE(style.find("menu-party-card-bg-inner: 76px 12px 24px 24px;"), std::string::npos);
+
+    const auto footer_block = style.find("#menu-footer");
+    ASSERT_NE(footer_block, std::string::npos);
+    const auto footer_block_end = style.find('}', footer_block);
+    ASSERT_NE(footer_block_end, std::string::npos);
+    const auto footer_width = style.find("width: 218dp;", footer_block);
+    ASSERT_NE(footer_width, std::string::npos);
+    EXPECT_LT(footer_width, footer_block_end);
 
     const auto tabset_end = source.find("</tabset>");
     const auto party_col = source.find("id=\"party-col\"");

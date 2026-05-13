@@ -17,6 +17,12 @@
     menu-eq-slot-selected:  49px 81px 14px 14px;
 }
 
+@spritesheet menu-banner {
+    src: ../../../assets/farm-rpg/UI/Inventory/Banner.png;
+    menu-party-card-bg:       67px  3px 42px 42px;
+    menu-party-card-bg-inner: 76px 12px 24px 24px;
+}
+
 @spritesheet menu-armor {
     src: ../../../assets/farm-rpg/UI/Inventory/Slot Armor.png;
     equip-hat:        8px 40px 16px 16px;
@@ -35,6 +41,8 @@
     tab-quests:    112px 32px 16px 16px;
     tab-map:        64px 32px 16px 16px;
     tab-options:   144px  0px 16px 16px;
+    sort-icon:     368px 32px 16px 16px;
+    sort-icon-pressed: 368px 48px 16px 16px;
     trash-closed:   64px  0px 16px 16px;
     trash-open:     80px  0px 16px 16px;
 }
@@ -254,7 +262,7 @@
     position: absolute;
     right: 0;
     top: 0;
-    width: 62dp;
+    width: 46dp;
     height: 20dp;
     display: flex;
     flex-direction: row;
@@ -263,20 +271,26 @@
 }
 
 #sort-btn {
-    width: 36dp;
+    width: 20dp;
     height: 20dp;
-    padding: 2dp 6dp;
-    background-color: #2e3440cc;
-    border: 1dp #7aa2f7;
-    color: #f7f7f7;
-    font-size: 9dp;
-    text-align: center;
-    vertical-align: middle;
+    padding: 2dp;
+    decorator: image(sort-icon);
+    image-color: #d8dee9d0;
+    filter: saturate(0.8) brightness(0.95);
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
 }
 
 .tf-input-mouse #sort-btn:hover,
 .tf-input-nav #sort-btn:focus {
-    background-color: #3b4252;
+    filter: saturate(1.2) brightness(1.08);
+}
+
+.tf-input-mouse #sort-btn:hover:active,
+.tf-input-nav #sort-btn:focus:active,
+#sort-btn:active {
+    decorator: image(sort-icon-pressed);
+    filter: saturate(1.0) brightness(0.85);
 }
 
 #trash-btn {
@@ -637,10 +651,10 @@
     display: flex;
     flex-direction: row;
     width: 108dp;
-    height: 46dp;
-    padding: 3dp;
-    background-color: #1f2335cc;
-    border: 1dp #414868;
+    height: 48dp;
+    padding: 4dp;
+    decorator: ninepatch(menu-party-card-bg, menu-party-card-bg-inner, 1.0);
+    border: 1dp #00000000;
     color: #f7f7f7;
 }
 
@@ -650,7 +664,6 @@
 
 .party-selected {
     border: 1dp #7aa2f7;
-    background-color: #2d334dcc;
 }
 
 .party-targetable {
@@ -663,35 +676,44 @@
 
 .tf-input-mouse .party-card:hover,
 .tf-input-nav .party-card:focus {
-    background-color: #414868;
+    border: 1dp #e0af68;
+}
+
+.tf-input-mouse .party-card:hover:active,
+.tf-input-nav .party-card:focus:active,
+.party-card:active {
+    border: 1dp #fce97f;
 }
 
 .party-portrait {
-    width: 32dp;
-    height: 32dp;
-    margin-top: 3dp;
+    width: 40dp;
+    height: 40dp;
+    margin-top: 0;
 }
 
 .party-copy {
-    margin-left: 5dp;
-    width: 64dp;
+    margin-left: 4dp;
+    width: 56dp;
 }
 
 .party-name {
-    font-size: 9dp;
+    font-size: 10dp;
+    line-height: 10dp;
     color: #ffffff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 .party-meta {
     margin-top: 1dp;
-    font-size: 7dp;
+    font-size: 8dp;
+    line-height: 8dp;
     color: #a9b1d6;
 }
 
 .party-resource {
     margin-top: 1dp;
-    font-size: 7dp;
+    font-size: 8dp;
+    line-height: 8dp;
     color: #c0caf5;
 }
 
@@ -701,7 +723,7 @@
     position: absolute;
     left: 10dp;
     top: 216dp;
-    width: 340dp;
+    width: 218dp;
     height: 14dp;
     display: flex;
     flex-direction: row;

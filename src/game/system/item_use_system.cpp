@@ -150,7 +150,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 notification_,
                 evt.target,
                 std::string{},
-                "使用成功",
+                "Used",
                 NOTIFICATION_SECONDS);
         }
         return;
@@ -199,7 +199,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 notification_,
                 evt.target,
                 std::string{},
-                "背包空间不足",
+                "Inventory full",
                 NOTIFICATION_SECONDS);
         }
         return;
@@ -230,9 +230,9 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 oss << "\n";
             }
             first = false;
-            oss << "获得 " << name << " x" << add_total;
+            oss << "Gained " << name << " x" << add_total;
         }
-        const std::string text = first ? "使用成功" : oss.str();
+        const std::string text = first ? "Used" : oss.str();
 
         helpers::showTimedNotification(
             registry_,

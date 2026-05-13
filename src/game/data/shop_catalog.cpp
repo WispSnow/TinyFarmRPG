@@ -254,14 +254,14 @@ bool ShopCatalog::loadFromFile(const std::string_view file_path) {
 bool ShopCatalog::validateReferences(const ItemCatalog* item_catalog, std::string& out_error) const {
     out_error.clear();
     if (item_catalog == nullptr) {
-        out_error = "ShopCatalog 依赖 ItemCatalog";
+        out_error = "ShopCatalog requires ItemCatalog";
         return false;
     }
 
     for (const auto& [_, shop] : shops_) {
         for (const auto& entry : shop.buy_entries_) {
             if (!item_catalog->hasItem(entry.item_id_hash_)) {
-                out_error = "shop '" + shop.id_ + "' 引用了不存在的 item '" + entry.item_id_ + "'";
+                out_error = "shop '" + shop.id_ + "' references missing item '" + entry.item_id_ + "'";
                 return false;
             }
         }
@@ -269,7 +269,7 @@ bool ShopCatalog::validateReferences(const ItemCatalog* item_catalog, std::strin
 
     for (const auto& [_, rule] : sell_rules_) {
         if (!item_catalog->hasItem(rule.item_id_hash_)) {
-            out_error = "sell rule 引用了不存在的 item '" + rule.item_id_ + "'";
+            out_error = "sell rule references missing item '" + rule.item_id_ + "'";
             return false;
         }
     }

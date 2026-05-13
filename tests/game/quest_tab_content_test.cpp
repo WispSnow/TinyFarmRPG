@@ -108,14 +108,14 @@ TEST(QuestTabContentTest, BuildQuestTabViewStateMapsActiveAndCompletedEntries) {
     const auto& active = state.active_quest_entries.front();
     EXPECT_EQ(active.title, "Hunter Trial");
     EXPECT_EQ(active.description, "Defeat slimes and bats for the village.");
-    EXPECT_EQ(active.status_label, "进行中");
+    EXPECT_EQ(active.status_label, "In Progress");
     EXPECT_TRUE(active.has_description);
     EXPECT_TRUE(active.has_progress_summary);
     EXPECT_EQ(active.progress_summary, "Slime 1/2\nBat 0/1");
 
     const auto& completed = state.completed_quest_entries.front();
     EXPECT_EQ(completed.title, "Village Thanks");
-    EXPECT_EQ(completed.status_label, "已完成");
+    EXPECT_EQ(completed.status_label, "Completed");
     EXPECT_FALSE(completed.has_description);
     EXPECT_FALSE(completed.has_progress_summary);
     EXPECT_TRUE(completed.progress_summary.empty());
@@ -134,7 +134,7 @@ TEST(QuestTabContentTest, ReadyQuestUsesReadyLabelAndClampsProgressSummary) {
 
     ASSERT_EQ(state.active_quest_entries.size(), 1u);
     const auto& active = state.active_quest_entries.front();
-    EXPECT_EQ(active.status_label, "可交付");
+    EXPECT_EQ(active.status_label, "Ready");
     EXPECT_EQ(active.progress_summary, "Slime 2/2\nBat 1/1");
 }
 

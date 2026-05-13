@@ -77,7 +77,7 @@ void appendSummaryLine(std::string& summary, const std::string& line) {
     entry.title = quest.title_;
     entry.description = quest.description_;
     entry.progress_summary = progress_summary;
-    entry.status_label = game::domain::quest_log_ops::isQuestReadyToTurnIn(quest_log, quest) ? "可交付" : "进行中";
+    entry.status_label = game::domain::quest_log_ops::isQuestReadyToTurnIn(quest_log, quest) ? "Ready" : "In Progress";
     entry.has_description = !entry.description.empty();
     entry.has_progress_summary = !entry.progress_summary.empty();
     return entry;
@@ -86,7 +86,7 @@ void appendSummaryLine(std::string& summary, const std::string& line) {
 [[nodiscard]] QuestEntryViewModel makeCompletedQuestEntry(const game::data::QuestData& quest) {
     QuestEntryViewModel entry{};
     entry.title = quest.title_;
-    entry.status_label = "已完成";
+    entry.status_label = "Completed";
     return entry;
 }
 

@@ -55,14 +55,14 @@ TEST(GameSceneRewardFeedbackTest, FormatsGoldAcceptedAndRejectedItems) {
     const std::string feedback = formatRewardFeedback(15, item_results, &catalog);
 
     EXPECT_EQ(feedback,
-              "获得金币 15\n"
-              "获得 Herb x2\n"
-              "背包已满，未获得 Herb x1\n"
-              "获得 item.mystery x1");
+              "Gained Gold 15\n"
+              "Gained Herb x2\n"
+              "Inventory full, missed Herb x1\n"
+              "Gained item.mystery x1");
 }
 
 TEST(GameSceneRewardFeedbackTest, ReturnsVictoryTextWhenNothingWasWrittenBack) {
-    EXPECT_EQ(formatRewardFeedback(0, {}, nullptr), "战斗胜利");
+    EXPECT_EQ(formatRewardFeedback(0, {}, nullptr), "Victory");
 }
 
 TEST(GameSceneRewardFeedbackTest, FormatsBattleSettlementFeedbackWithQuestLines) {
@@ -86,9 +86,9 @@ TEST(GameSceneRewardFeedbackTest, FormatsBattleSettlementFeedbackWithQuestLines)
     const std::string feedback = formatBattleSettlementFeedback(reward_result, quest_summary, nullptr);
 
     EXPECT_EQ(feedback,
-              "获得金币 4\n"
-              "任务更新：Alpha\n"
-              "可交付：Beta");
+              "Gained Gold 4\n"
+              "Quest Updated: Alpha\n"
+              "Ready: Beta");
 }
 
 TEST(GameSceneRewardFeedbackTest, FormatsQuestOnlyFeedbackWithoutVictoryFallbackPrefix) {
@@ -101,7 +101,7 @@ TEST(GameSceneRewardFeedbackTest, FormatsQuestOnlyFeedbackWithoutVictoryFallback
 
     const std::string feedback = formatBattleSettlementFeedback(reward_result, quest_summary, nullptr);
 
-    EXPECT_EQ(feedback, "可交付：Beta");
+    EXPECT_EQ(feedback, "Ready: Beta");
 }
 
 } // namespace

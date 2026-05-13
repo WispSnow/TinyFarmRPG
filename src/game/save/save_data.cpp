@@ -117,7 +117,7 @@ bool readPlaceholderObject(const nlohmann::json& json, std::string_view key, std
         return true;
     }
     if (!json[key].is_object()) {
-        out_error = "SaveData: " + std::string(key) + " 不是 object";
+        out_error = "SaveData: " + std::string(key) + " is not an object";
         return false;
     }
     return true;
@@ -140,13 +140,13 @@ bool readStringArrayField(const nlohmann::json& json,
         return true;
     }
     if (!json[key].is_array()) {
-        out_error = "SaveData: " + std::string(key) + " 不是 array";
+        out_error = "SaveData: " + std::string(key) + " is not an array";
         return false;
     }
 
     for (const auto& value : json[key]) {
         if (!value.is_string()) {
-            out_error = "SaveData: " + std::string(key) + " 存在非 string 条目";
+            out_error = "SaveData: " + std::string(key) + " contains a non-string entry";
             return false;
         }
         out_values.push_back(value.get<std::string>());
@@ -163,13 +163,13 @@ bool readStringIntMapField(const nlohmann::json& json,
         return true;
     }
     if (!json[key].is_object()) {
-        out_error = "SaveData: " + std::string(key) + " 不是 object";
+        out_error = "SaveData: " + std::string(key) + " is not an object";
         return false;
     }
 
     for (const auto& [name, value] : json[key].items()) {
         if (!value.is_number_integer()) {
-            out_error = "SaveData: " + std::string(key) + "." + name + " 不是 int";
+            out_error = "SaveData: " + std::string(key) + "." + name + " is not an int";
             return false;
         }
         out_values.insert_or_assign(name, value.get<int>());
@@ -185,19 +185,19 @@ bool readEquipmentLoadouts(const nlohmann::json& json,
         return true;
     }
     if (!json[KEY_LOADOUTS].is_object()) {
-        out_error = "SaveData: equipment_state.loadouts 不是 object";
+        out_error = "SaveData: equipment_state.loadouts is not an object";
         return false;
     }
 
     for (const auto& [actor_id, loadout_json] : json[KEY_LOADOUTS].items()) {
         if (!loadout_json.is_object()) {
-            out_error = "SaveData: equipment_state.loadouts." + actor_id + " 不是 object";
+            out_error = "SaveData: equipment_state.loadouts." + actor_id + " is not an object";
             return false;
         }
         ActorEquipmentSaveData loadout{};
         for (const auto& [slot, item_id_json] : loadout_json.items()) {
             if (!item_id_json.is_number_unsigned()) {
-                out_error = "SaveData: equipment_state.loadouts." + actor_id + "." + slot + " 不是 unsigned int";
+                out_error = "SaveData: equipment_state.loadouts." + actor_id + "." + slot + " is not an unsigned int";
                 return false;
             }
             const auto item_id = item_id_json.get<std::uint64_t>();
@@ -218,13 +218,13 @@ bool readPartyRuntimeState(const nlohmann::json& json,
         return true;
     }
     if (!json[KEY_ACTOR_STATES].is_object()) {
-        out_error = "SaveData: party_runtime_state.actor_states 不是 object";
+        out_error = "SaveData: party_runtime_state.actor_states is not an object";
         return false;
     }
 
     for (const auto& [actor_id, state_json] : json[KEY_ACTOR_STATES].items()) {
         if (!state_json.is_object()) {
-            out_error = "SaveData: party_runtime_state.actor_states." + actor_id + " 不是 object";
+            out_error = "SaveData: party_runtime_state.actor_states." + actor_id + " is not an object";
             return false;
         }
         ActorRuntimeStateSaveData state{};
@@ -379,18 +379,18 @@ nlohmann::json serialize(const SaveData& data) {
 
 bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_error) {
     if (!json.is_object()) {
-        out_error = "SaveData: 根节点不是 object";
+        out_error = "SaveData: root is not an object";
         return false;
     }
 
     out = SaveData{};
     out.schema_version = json.value<std::uint32_t>(KEY_SCHEMA_VERSION.data(), 0u);
     if (out.schema_version == 0u) {
-        out_error = "SaveData: 缺少 schema_version";
+        out_error = "SaveData: missing schema_version";
         return false;
     }
     if (out.schema_version > SAVE_SCHEMA_VERSION) {
-        out_error = "SaveData: schema_version 不支持";
+        out_error = "SaveData: unsupported schema_version";
         return false;
     }
 
@@ -402,7 +402,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
 
     if (!json.contains(KEY_GAME_TIME) || !json[KEY_GAME_TIME].is_object()) {
-        out_error = "SaveData: 缺少 game_time";
+        out_error = "SaveData: missing game_time";
         return false;
     }
     {
@@ -415,14 +415,14 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
 
     if (!json.contains(KEY_PLAYER) || !json[KEY_PLAYER].is_object()) {
-        out_error = "SaveData: 缺少 player";
+        out_error = "SaveData: missing player";
         return false;
     }
     {
         const auto& player = json[KEY_PLAYER];
         out.player.map_name = player.value<std::string>(KEY_MAP_NAME.data(), "");
         if (!player.contains(KEY_POSITION) || !readVec2f(player[KEY_POSITION], out.player.position)) {
-            out_error = "SaveData: player.position 无效";
+            out_error = "SaveData: invalid player.position";
             return false;
         }
         out.player.hp = player.value<int>(KEY_HP.data(), 100);
@@ -522,7 +522,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
 
             if (map_json.contains(KEY_RESOURCE_NODES)) {
                 if (!map_json[KEY_RESOURCE_NODES].is_array()) {
-                    out_error = "SaveData: maps[].resource_nodes 不是 array";
+                    out_error = "SaveData: maps[].resource_nodes is not an array";
                     return false;
                 }
                 std::vector<ResourceNodeSaveData> nodes;
@@ -588,7 +588,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
         out.appearance_state.slots.clear();
         if (appearance.contains(KEY_SLOTS)) {
             if (!appearance[KEY_SLOTS].is_object()) {
-                out_error = "SaveData: appearance_state.slots 不是 object";
+                out_error = "SaveData: appearance_state.slots is not an object";
                 return false;
             }
             for (const auto& [slot, variant] : appearance[KEY_SLOTS].items()) {

@@ -9,9 +9,9 @@
 namespace {
 
 [[nodiscard]] std::string makeLoadError(std::string_view label, const std::string& path) {
-    std::string message{"加载 RPG "};
+    std::string message{"Failed to load RPG "};
     message += label;
-    message += " 失败: ";
+    message += ": ";
     message += path;
     return message;
 }
@@ -42,21 +42,21 @@ bool loadRpgCatalogFromManifest(game::data::RpgCatalog& catalog,
     out_error.clear();
 
     if (options.manifest_path.empty()) {
-        out_error = "RPG manifest 路径为空。";
+        out_error = "RPG manifest path is empty.";
         return false;
     }
     if (options.root_path.empty()) {
-        out_error = "RPG root 路径为空。";
+        out_error = "RPG root path is empty.";
         return false;
     }
 
     if (!catalog.loadManifest(options.manifest_path)) {
-        out_error = "加载 RPG manifest 失败: " + options.manifest_path;
+        out_error = "Failed to load RPG manifest: " + options.manifest_path;
         return false;
     }
 
     if (!catalog.manifest()) {
-        out_error = "RPG manifest 未加载。";
+        out_error = "RPG manifest was not loaded.";
         return false;
     }
 
@@ -70,7 +70,7 @@ bool loadRpgCatalogFromManifest(game::data::RpgCatalog& catalog,
     const auto troops_path = resolveRpgFilePath(catalog, root_path, "troops");
 
     if (!classes_path || !actors_path || !skills_path || !states_path || !equipment_path || !enemies_path || !troops_path) {
-        out_error = "RPG manifest 缺少 classes/actors/skills/states/equipment/enemies/troops 文件映射。";
+        out_error = "RPG manifest is missing classes/actors/skills/states/equipment/enemies/troops file mappings.";
         return false;
     }
 
@@ -105,7 +105,7 @@ bool loadRpgCatalogFromManifest(game::data::RpgCatalog& catalog,
 
     std::string reference_error{};
     if (!catalog.validateReferences(reference_error, options.item_catalog)) {
-        out_error = "RPG 引用校验失败: " + reference_error;
+        out_error = "RPG reference validation failed: " + reference_error;
         return false;
     }
 
