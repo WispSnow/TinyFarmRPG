@@ -16,6 +16,8 @@ constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
 constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
 constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
 constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
+constexpr std::string_view KEY_EQUIPMENT_STATE = json_keys::EQUIPMENT_STATE;
+constexpr std::string_view KEY_PARTY_RUNTIME_STATE = json_keys::PARTY_RUNTIME_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
@@ -28,6 +30,10 @@ constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
 constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
 constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
+constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
+constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
+constexpr std::string_view KEY_CURRENT_HP = json_keys::CURRENT_HP;
+constexpr std::string_view KEY_CURRENT_MP = json_keys::CURRENT_MP;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 constexpr std::string_view KEY_PLAYER = "player";
@@ -171,6 +177,64 @@ bool readStringIntMapField(const nlohmann::json& json,
     return true;
 }
 
+bool readEquipmentLoadouts(const nlohmann::json& json,
+                           EquipmentStateSaveData& out_state,
+                           std::string& out_error) {
+    out_state.loadouts.clear();
+    if (!json.contains(KEY_LOADOUTS)) {
+        return true;
+    }
+    if (!json[KEY_LOADOUTS].is_object()) {
+        out_error = "SaveData: equipment_state.loadouts 不是 object";
+        return false;
+    }
+
+    for (const auto& [actor_id, loadout_json] : json[KEY_LOADOUTS].items()) {
+        if (!loadout_json.is_object()) {
+            out_error = "SaveData: equipment_state.loadouts." + actor_id + " 不是 object";
+            return false;
+        }
+        ActorEquipmentSaveData loadout{};
+        for (const auto& [slot, item_id_json] : loadout_json.items()) {
+            if (!item_id_json.is_number_unsigned()) {
+                out_error = "SaveData: equipment_state.loadouts." + actor_id + "." + slot + " 不是 unsigned int";
+                return false;
+            }
+            const auto item_id = item_id_json.get<std::uint64_t>();
+            if (item_id != 0U) {
+                loadout.slots.emplace(slot, item_id);
+            }
+        }
+        out_state.loadouts.emplace(actor_id, std::move(loadout));
+    }
+    return true;
+}
+
+bool readPartyRuntimeState(const nlohmann::json& json,
+                           PartyRuntimeStateSaveData& out_state,
+                           std::string& out_error) {
+    out_state.actor_states.clear();
+    if (!json.contains(KEY_ACTOR_STATES)) {
+        return true;
+    }
+    if (!json[KEY_ACTOR_STATES].is_object()) {
+        out_error = "SaveData: party_runtime_state.actor_states 不是 object";
+        return false;
+    }
+
+    for (const auto& [actor_id, state_json] : json[KEY_ACTOR_STATES].items()) {
+        if (!state_json.is_object()) {
+            out_error = "SaveData: party_runtime_state.actor_states." + actor_id + " 不是 object";
+            return false;
+        }
+        ActorRuntimeStateSaveData state{};
+        state.current_hp = state_json.value<int>(KEY_CURRENT_HP.data(), 0);
+        state.current_mp = state_json.value<int>(KEY_CURRENT_MP.data(), 0);
+        out_state.actor_states.emplace(actor_id, state);
+    }
+    return true;
+}
+
 } // namespace
 
 nlohmann::json serialize(const SaveData& data) {
@@ -281,6 +345,27 @@ nlohmann::json serialize(const SaveData& data) {
         {KEY_RECRUITED_ACTOR_IDS, data.party_state.recruited_actor_ids},
         {KEY_ACTIVE_ACTOR_IDS, data.party_state.active_actor_ids},
     };
+    {
+        nlohmann::json loadouts = nlohmann::json::object();
+        for (const auto& [actor_id, loadout] : data.equipment_state.loadouts) {
+            nlohmann::json slots = nlohmann::json::object();
+            for (const auto& [slot, item_id] : loadout.slots) {
+                slots[slot] = item_id;
+            }
+            loadouts[actor_id] = std::move(slots);
+        }
+        root[KEY_EQUIPMENT_STATE] = nlohmann::json{{KEY_LOADOUTS, std::move(loadouts)}};
+    }
+    {
+        nlohmann::json actor_states = nlohmann::json::object();
+        for (const auto& [actor_id, state] : data.party_runtime_state.actor_states) {
+            actor_states[actor_id] = nlohmann::json{
+                {KEY_CURRENT_HP, state.current_hp},
+                {KEY_CURRENT_MP, state.current_mp},
+            };
+        }
+        root[KEY_PARTY_RUNTIME_STATE] = nlohmann::json{{KEY_ACTOR_STATES, std::move(actor_states)}};
+    }
     root[KEY_COMBAT_STATE] = nlohmann::json{
         {KEY_PENDING_BATTLE, data.combat_state.pending_battle},
         {KEY_TROOP_ID, data.combat_state.troop_id},
@@ -524,6 +609,20 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
         if (!readStringArrayField(party_state, KEY_ACTIVE_ACTOR_IDS, out.party_state.active_actor_ids, out_error)) {
             return false;
         }
+    }
+    if (!readPlaceholderObject(json, KEY_EQUIPMENT_STATE, out_error)) {
+        return false;
+    }
+    if (json.contains(KEY_EQUIPMENT_STATE) &&
+        !readEquipmentLoadouts(json[KEY_EQUIPMENT_STATE], out.equipment_state, out_error)) {
+        return false;
+    }
+    if (!readPlaceholderObject(json, KEY_PARTY_RUNTIME_STATE, out_error)) {
+        return false;
+    }
+    if (json.contains(KEY_PARTY_RUNTIME_STATE) &&
+        !readPartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out.party_runtime_state, out_error)) {
+        return false;
     }
     if (!readPlaceholderObject(json, KEY_COMBAT_STATE, out_error)) {
         return false;

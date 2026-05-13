@@ -1,0 +1,44 @@
+{
+    "equipment": [
+        {
+            "item_id": "equip_bronze_sword",
+            "slot": "weapon",
+            "param_bonuses": {
+                "atk": 4
+            },
+            "allowed_classes": [
+                "class.swordsman"
+            ]
+        },
+        {
+            "item_id": "equip_wooden_shield",
+            "slot": "offhand",
+            "param_bonuses": {
+                "def": 3
+            },
+            "allowed_classes": [
+                "class.swordsman",
+                "class.monk"
+            ]
+        },
+        {
+            "item_id": "equip_cloth_robe",
+            "slot": "body",
+            "param_bonuses": {
+                "mmp": 8,
+                "mdf": 3
+            },
+            "allowed_classes": [
+                "class.mage"
+            ]
+        },
+        {
+            "item_id": "equip_travel_charm",
+            "slot": "accessory",
+            "param_bonuses": {
+                "luk": 4,
+                "agi": 1
+            }
+        }
+    ]
+}

@@ -14,6 +14,7 @@ namespace {
 struct FixturePaths {
     std::filesystem::path classes{};
     std::filesystem::path actors{};
+    std::filesystem::path equipment{};
     std::filesystem::path enemies{};
     std::filesystem::path troops{};
 };
@@ -128,9 +129,26 @@ struct FixturePaths {
   ]
 })json");
 
+    game::test::writeTextFile(
+        data_root / "equipment.json",
+        R"json({
+  "equipment": [
+    {
+      "item_id": "equip.hero_sword",
+      "slot": "weapon",
+      "param_bonuses": {
+        "atk": 7,
+        "def": 1
+      },
+      "allowed_actors": ["actor.hero"]
+    }
+  ]
+})json");
+
     return FixturePaths{
         .classes = data_root / "classes.json",
         .actors = data_root / "actors.json",
+        .equipment = data_root / "equipment.json",
         .enemies = data_root / "enemies.json",
         .troops = data_root / "troops.json"};
 }
@@ -256,6 +274,29 @@ TEST(BattleUnitFactoryTest, FailsWhenRequestedActorIsMissing) {
     std::string error{};
     EXPECT_FALSE(buildBattleUnitsFromCatalog(catalog, options, units, error));
     EXPECT_NE(error.find("actor.missing"), std::string::npos);
+}
+
+TEST(BattleUnitFactoryTest, AppliesActorEquipmentBonusesWhenBuildingPlayerUnits) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEquipment(paths.equipment.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    options.actor_ids = {"actor.hero"};
+    options.actor_equipment["actor.hero"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
+        game::data::RpgCatalog::hashId("equip.hero_sword");
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    ASSERT_TRUE(buildBattleUnitsFromCatalog(catalog, options, units, error)) << error;
+
+    ASSERT_FALSE(units.empty());
+    EXPECT_EQ(units[0].attack, 35);
+    EXPECT_EQ(units[0].defense, 21);
 }
 
 TEST(BattleUnitFactoryTest, FailsWhenRequestedTroopIsMissing) {

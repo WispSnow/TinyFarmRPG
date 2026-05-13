@@ -25,6 +25,7 @@ class AudioCueCatalog;
 
 namespace game::domain {
 class InventoryDomainService;
+class EquipmentDomainService;
 class QuestTurnInService;
 class ShopTransactionService;
 }
@@ -65,6 +66,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::factory::EntityFactory> entity_factory;
     std::unique_ptr<game::world::MapManager> map_manager;
     std::unique_ptr<game::domain::InventoryDomainService> inventory_domain_service;
+    std::unique_ptr<game::domain::EquipmentDomainService> equipment_domain_service;
     std::unique_ptr<game::domain::QuestTurnInService> quest_turn_in_service;
     std::unique_ptr<game::domain::ShopTransactionService> shop_transaction_service;
     std::unique_ptr<game::save::SaveService> save_service;
@@ -108,6 +110,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::DayNightSystem> day_night_system;
     std::unique_ptr<game::system::CropSystem> crop_system;
     std::unique_ptr<game::system::InventorySystem> inventory_system;
+    std::unique_ptr<game::system::EquipmentSystem> equipment_system;
     std::unique_ptr<game::system::HotbarSystem> hotbar_system;
     std::unique_ptr<game::system::ItemUseSystem> item_use_system;
     std::unique_ptr<game::system::NPCWanderSystem> npc_wander_system;

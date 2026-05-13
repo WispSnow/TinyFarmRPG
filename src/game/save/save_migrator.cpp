@@ -15,6 +15,8 @@ constexpr std::string_view KEY_QUEST_STATE = json_keys::QUEST_STATE;
 constexpr std::string_view KEY_SKILL_STATE = json_keys::SKILL_STATE;
 constexpr std::string_view KEY_APPEARANCE_STATE = json_keys::APPEARANCE_STATE;
 constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
+constexpr std::string_view KEY_EQUIPMENT_STATE = json_keys::EQUIPMENT_STATE;
+constexpr std::string_view KEY_PARTY_RUNTIME_STATE = json_keys::PARTY_RUNTIME_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
@@ -27,6 +29,8 @@ constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
 constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
 constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
+constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
+constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 
@@ -145,40 +149,21 @@ bool normalizePartyState(nlohmann::json& party_state, std::string& out_error) {
     return true;
 }
 
-bool migrateV2ToV3(nlohmann::json& json, std::string& out_error) {
-    if (!ensureObjectField(json, KEY_QUEST_STATE, out_error)) {
+bool normalizeEquipmentState(nlohmann::json& equipment_state, std::string& out_error) {
+    if (!ensureObjectField(equipment_state, KEY_LOADOUTS, out_error)) {
         return false;
     }
-    if (!ensureObjectField(json, KEY_SKILL_STATE, out_error)) {
-        return false;
-    }
-    if (!ensureObjectField(json, KEY_APPEARANCE_STATE, out_error)) {
-        return false;
-    }
-    if (!ensureObjectField(json, KEY_COMBAT_STATE, out_error)) {
-        return false;
-    }
-    if (!ensureObjectField(json, KEY_PARTY_STATE, out_error)) {
-        return false;
-    }
-    if (!normalizeQuestState(json[KEY_QUEST_STATE], out_error)) {
-        return false;
-    }
-    if (!normalizeSkillState(json[KEY_SKILL_STATE], out_error)) {
-        return false;
-    }
-    if (!normalizeCombatState(json[KEY_COMBAT_STATE], out_error)) {
-        return false;
-    }
-    if (!normalizePartyState(json[KEY_PARTY_STATE], out_error)) {
-        return false;
-    }
-
-    json[KEY_SCHEMA_VERSION] = SAVE_SCHEMA_VERSION;
     return true;
 }
 
-bool normalizeV3(nlohmann::json& json, std::string& out_error) {
+bool normalizePartyRuntimeState(nlohmann::json& runtime_state, std::string& out_error) {
+    if (!ensureObjectField(runtime_state, KEY_ACTOR_STATES, out_error)) {
+        return false;
+    }
+    return true;
+}
+
+bool normalizeLatest(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_QUEST_STATE, out_error)) {
         return false;
     }
@@ -194,6 +179,12 @@ bool normalizeV3(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_PARTY_STATE, out_error)) {
         return false;
     }
+    if (!ensureObjectField(json, KEY_EQUIPMENT_STATE, out_error)) {
+        return false;
+    }
+    if (!ensureObjectField(json, KEY_PARTY_RUNTIME_STATE, out_error)) {
+        return false;
+    }
     if (!normalizeQuestState(json[KEY_QUEST_STATE], out_error)) {
         return false;
     }
@@ -204,6 +195,12 @@ bool normalizeV3(nlohmann::json& json, std::string& out_error) {
         return false;
     }
     if (!normalizePartyState(json[KEY_PARTY_STATE], out_error)) {
+        return false;
+    }
+    if (!normalizeEquipmentState(json[KEY_EQUIPMENT_STATE], out_error)) {
+        return false;
+    }
+    if (!normalizePartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out_error)) {
         return false;
     }
 
@@ -231,11 +228,8 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
         return false;
     }
 
-    if (schema_version == SAVE_SCHEMA_VERSION) {
-        return normalizeV3(json, out_error);
-    }
-    if (schema_version == 2u) {
-        return migrateV2ToV3(json, out_error);
+    if (schema_version >= 2u && schema_version <= SAVE_SCHEMA_VERSION) {
+        return normalizeLatest(json, out_error);
     }
 
     out_error = "SaveMigrator: schema_version 不支持";

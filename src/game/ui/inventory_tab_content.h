@@ -8,6 +8,7 @@
 #include <entt/entity/entity.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -59,6 +60,10 @@ class ItemTooltipUI;
  * `onDeactivated()` 时断开并清理所有瞬态 UI 状态。
  */
 class InventoryTabContent final : public IMenuTabContent {
+public:
+    using ActorTargetRequestHandler = std::function<void(int inventory_slot_index)>;
+
+private:
     /// 上下文操作菜单中单条操作的视图数据。
     struct ActionEntryViewModel {
         int action_id{0};
@@ -98,6 +103,7 @@ class InventoryTabContent final : public IMenuTabContent {
     Rml::String action_menu_title_{};
     bool action_menu_visible_{false};
     bool listeners_connected_{false}; ///< 防止重复连接 ECS 事件监听器。
+    ActorTargetRequestHandler actor_target_request_handler_{};
 
 public:
     InventoryTabContent(engine::core::Context& context,
@@ -117,6 +123,7 @@ public:
     void update(float delta_time) override;
     /// 若操作菜单开启则关闭并消费取消事件，否则返回 false 交由上层处理。
     [[nodiscard]] bool onCancel() override;
+    void setActorTargetRequestHandler(ActorTargetRequestHandler handler);
 
 private:
     // --- 槽位索引校验 / 数据查询 ---

@@ -2,6 +2,7 @@
 
 #include "engine/scene/scene.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/menu_tab_content.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -13,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace engine::core {
 enum class State;
@@ -21,6 +23,11 @@ enum class State;
 namespace game::data {
 class ItemCatalog;
 class QuestCatalog;
+class RpgCatalog;
+}
+
+namespace game::ui {
+class EquipmentTabContent;
 }
 
 namespace game::scene {
@@ -35,6 +42,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::QuestCatalog* quest_catalog_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
@@ -45,10 +53,13 @@ class InventoryMenuScene final : public engine::scene::Scene {
 
     std::unordered_map<game::ui::MenuTabId, std::unique_ptr<game::ui::IMenuTabContent>, MenuTabIdHash> tabs_{};
     game::ui::MenuTabId active_tab_id_{game::ui::MenuTabId::Inventory};
+    game::ui::EquipmentTabContent* equipment_tab_{nullptr};
 
-    // Character panel
-    Rml::String char_name_{"Player"};
-    Rml::String char_title_{"Lv.1 Farmer"};
+    // Party panel
+    std::vector<PartyMemberPanelViewModel> party_members_{};
+    std::string selected_actor_id_{};
+    bool actor_target_mode_{false};
+    int pending_actor_target_inventory_slot_{-1};
     Rml::String gold_label_{"Gold: 0"};
     Rml::String farm_label_{"TinyFarm"};
 
@@ -58,6 +69,7 @@ public:
                        entt::registry& game_registry,
                        entt::entity player,
                        game::data::ItemCatalog* item_catalog,
+                       const game::data::RpgCatalog* rpg_catalog,
                        const game::data::QuestCatalog* quest_catalog);
     ~InventoryMenuScene() override;
 
@@ -69,7 +81,10 @@ private:
     [[nodiscard]] bool initUI();
     void shutdownUI();
     void disconnectRuntimeListeners();
-    void syncCharacterPanel();
+    void syncPartyPanel();
+    void beginActorTargetSelection(int inventory_slot_index);
+    void cancelActorTargetSelection();
+    void onPartyMemberClick(int party_slot_index);
     void switchTab(game::ui::MenuTabId new_tab);
     void switchTabFromTabsetIndex(int tab_index);
     [[nodiscard]] game::ui::IMenuTabContent* activeTab();

@@ -59,6 +59,25 @@ using Json = nlohmann::json;
     return true;
 }
 
+[[nodiscard]] bool parseParamBonusArray(const Json& node, ParamArray& out_params) {
+    out_params.fill(0);
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    for (const auto& [key, value] : node.items()) {
+        const auto index = paramIndexFromString(key);
+        if (!index.has_value() || !value.is_number_integer()) {
+            return false;
+        }
+        out_params[static_cast<std::size_t>(*index)] = value.get<int>();
+    }
+    return true;
+}
+
 [[nodiscard]] bool parseTraitList(const Json& node, std::vector<TraitData>& out_traits) {
     out_traits.clear();
     if (node.is_null()) {
@@ -246,6 +265,7 @@ using Json = nlohmann::json;
 
     out_portrait.path_ = node.value("path", std::string{});
     out_portrait.path_hash_ = out_portrait.path_.empty() ? entt::null : RpgCatalog::hashId(out_portrait.path_);
+    out_portrait.decorator_ = node.value("decorator", std::string{});
     out_portrait.x_ = node.value("x", 0);
     out_portrait.y_ = node.value("y", 0);
     out_portrait.width_ = node.value("width", 0);
@@ -594,6 +614,68 @@ bool RpgCatalog::loadStates(const std::string_view file_path) {
     return true;
 }
 
+bool RpgCatalog::loadEquipment(const std::string_view file_path) {
+    Json root{};
+    if (!engine::utils::loadJsonObjectFile(file_path, root, "RpgCatalogEquipment", spdlog::level::err)) {
+        return false;
+    }
+
+    const auto equipment_it = root.find("equipment");
+    if (equipment_it == root.end() || !equipment_it->is_array()) {
+        spdlog::error("RpgCatalog: equipment 文件 '{}' 缺少 equipment 数组", file_path);
+        return false;
+    }
+
+    equipment_.clear();
+    for (const auto& equipment_node : *equipment_it) {
+        if (!equipment_node.is_object()) {
+            spdlog::error("RpgCatalog: equipment 文件 '{}' 存在非 object 条目", file_path);
+            return false;
+        }
+
+        EquipmentData equipment{};
+        equipment.item_id_ = equipment_node.value("item_id", std::string{});
+        if (equipment.item_id_.empty()) {
+            spdlog::error("RpgCatalog: equipment 文件 '{}' 存在空 item_id 条目", file_path);
+            return false;
+        }
+        equipment.item_id_hash_ = RpgCatalog::hashId(equipment.item_id_);
+
+        const auto slot = equipmentSlotIdFromString(equipment_node.value("slot", std::string{}));
+        if (!slot.has_value()) {
+            spdlog::error("RpgCatalog: equipment '{}' slot 非法", equipment.item_id_);
+            return false;
+        }
+        equipment.slot_ = *slot;
+
+        if (const auto bonuses_it = equipment_node.find("param_bonuses");
+            bonuses_it != equipment_node.end() && !parseParamBonusArray(*bonuses_it, equipment.param_bonuses_)) {
+            spdlog::error("RpgCatalog: equipment '{}' param_bonuses 配置非法", equipment.item_id_);
+            return false;
+        }
+
+        if (const auto classes_it = equipment_node.find("allowed_classes");
+            classes_it != equipment_node.end() && !parseStringList(*classes_it, equipment.allowed_classes_)) {
+            spdlog::error("RpgCatalog: equipment '{}' allowed_classes 必须是 string 数组", equipment.item_id_);
+            return false;
+        }
+
+        if (const auto actors_it = equipment_node.find("allowed_actors");
+            actors_it != equipment_node.end() && !parseStringList(*actors_it, equipment.allowed_actors_)) {
+            spdlog::error("RpgCatalog: equipment '{}' allowed_actors 必须是 string 数组", equipment.item_id_);
+            return false;
+        }
+
+        if (equipment_.contains(equipment.item_id_hash_)) {
+            spdlog::error("RpgCatalog: equipment 文件 '{}' 存在重复 item_id '{}'", file_path, equipment.item_id_);
+            return false;
+        }
+        equipment_.insert_or_assign(equipment.item_id_hash_, std::move(equipment));
+    }
+
+    return true;
+}
+
 bool RpgCatalog::loadEnemies(const std::string_view file_path) {
     Json root{};
     if (!engine::utils::loadJsonObjectFile(file_path, root, "RpgCatalogEnemies", spdlog::level::err)) {
@@ -828,6 +910,47 @@ bool RpgCatalog::validateReferences(std::string& out_error, const ItemCatalog* i
         }
     }
 
+    for (const auto& [item_id, equipment] : equipment_) {
+        (void)item_id;
+        if (item_catalog) {
+            const auto* item = item_catalog->findItem(equipment.item_id_hash_);
+            if (!item) {
+                out_error = "Equipment '" + equipment.item_id_ + "' references missing item";
+                return false;
+            }
+            if (item->category_ != ItemCategory::Equipment) {
+                out_error = "Equipment '" + equipment.item_id_ + "' item category is not equipment";
+                return false;
+            }
+            if (item->stack_limit_ != 1) {
+                out_error = "Equipment '" + equipment.item_id_ + "' item stack_limit must be 1";
+                return false;
+            }
+            if (item->on_use_.has_value() || item->battle_use_.has_value()) {
+                out_error = "Equipment '" + equipment.item_id_ + "' item must not define on_use or battle_use";
+                return false;
+            }
+        }
+
+        if (equipment.slot_ == EquipmentSlotId::Unknown) {
+            out_error = "Equipment '" + equipment.item_id_ + "' has invalid slot";
+            return false;
+        }
+
+        for (const auto& class_id : equipment.allowed_classes_) {
+            if (!classes_.contains(RpgCatalog::hashId(class_id))) {
+                out_error = "Equipment '" + equipment.item_id_ + "' references missing class '" + class_id + "'";
+                return false;
+            }
+        }
+        for (const auto& actor_id : equipment.allowed_actors_) {
+            if (!actors_.contains(RpgCatalog::hashId(actor_id))) {
+                out_error = "Equipment '" + equipment.item_id_ + "' references missing actor '" + actor_id + "'";
+                return false;
+            }
+        }
+    }
+
     // TODO: 当 trait target 收敛为强类型 ID 后，补充 TraitData::target 的语义校验。
 
     out_error.clear();
@@ -878,6 +1001,17 @@ const StateData* RpgCatalog::findState(const std::string_view id) const {
     return findState(RpgCatalog::hashId(id));
 }
 
+const EquipmentData* RpgCatalog::findEquipmentByItem(const entt::id_type item_id_hash) const {
+    if (const auto it = equipment_.find(item_id_hash); it != equipment_.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+const EquipmentData* RpgCatalog::findEquipmentByItem(const std::string_view item_id) const {
+    return findEquipmentByItem(RpgCatalog::hashId(item_id));
+}
+
 const EnemyData* RpgCatalog::findEnemy(const entt::id_type id_hash) const {
     if (const auto it = enemies_.find(id_hash); it != enemies_.end()) {
         return &it->second;
@@ -909,6 +1043,19 @@ std::vector<const ActorData*> RpgCatalog::listActors() const {
     }
     std::sort(result.begin(), result.end(), [](const ActorData* lhs, const ActorData* rhs) {
         return lhs->id_ < rhs->id_;
+    });
+    return result;
+}
+
+std::vector<const EquipmentData*> RpgCatalog::listEquipment() const {
+    std::vector<const EquipmentData*> result{};
+    result.reserve(equipment_.size());
+    for (const auto& [id, equipment] : equipment_) {
+        (void)id;
+        result.push_back(&equipment);
+    }
+    std::sort(result.begin(), result.end(), [](const EquipmentData* lhs, const EquipmentData* rhs) {
+        return lhs->item_id_ < rhs->item_id_;
     });
     return result;
 }

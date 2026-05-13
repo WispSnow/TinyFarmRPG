@@ -373,7 +373,7 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbar
         registry.emplace<game::component::InventoryComponent>(player);
         registry.emplace<game::component::HotbarComponent>(player);
 
-        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr);
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr, nullptr);
         ASSERT_TRUE(menu.init());
 
         runtime->update();
@@ -449,7 +449,7 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneDisplaysWalletGoldAndFallbackT
             player,
             game::component::PlayerWalletComponent{.gold_ = 345});
 
-        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr);
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr, nullptr);
         ASSERT_TRUE(menu.init());
 
         runtime->update();
@@ -470,7 +470,7 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneDisplaysWalletGoldAndFallbackT
         registry.emplace<game::component::InventoryComponent>(player);
         registry.emplace<game::component::HotbarComponent>(player);
 
-        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr);
+        game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr, nullptr);
         ASSERT_TRUE(menu.init());
 
         runtime->update();
@@ -566,7 +566,7 @@ TEST_F(UILayoutIntegrationTest, EmptySlotBindingsUseNoneDecoratorInsteadOfEmptyI
     registry.emplace<game::component::InventoryComponent>(player);
     registry.emplace<game::component::HotbarComponent>(player);
 
-    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr);
+    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr, nullptr);
     ASSERT_TRUE(menu.init());
     runtime->update();
 
@@ -628,7 +628,7 @@ TEST_F(UILayoutIntegrationTest, InventoryActionMenuAnchorsToSlotGeometryAndStays
         .count_ = 3,
     };
 
-    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr);
+    game::scene::InventoryMenuScene menu("InventoryMenu", *context_, registry, player, nullptr, nullptr, nullptr);
     ASSERT_TRUE(menu.init());
     runtime->update();
 

@@ -79,6 +79,7 @@ struct ClassData {
 struct PortraitRefData {
     std::string path_{};
     entt::id_type path_hash_{};
+    std::string decorator_{};
     int x_{0};
     int y_{0};
     int width_{0};
@@ -98,6 +99,15 @@ struct ActorData {
     std::string map_actor_id_{};
     entt::id_type map_actor_id_hash_{};
     PortraitRefData portrait_{};
+};
+
+struct EquipmentData {
+    std::string item_id_{};
+    entt::id_type item_id_hash_{};
+    EquipmentSlotId slot_{EquipmentSlotId::Unknown};
+    ParamArray param_bonuses_{};
+    std::vector<std::string> allowed_classes_{};
+    std::vector<std::string> allowed_actors_{};
 };
 
 struct StateData {

@@ -39,6 +39,7 @@
 #include "engine/vfx/vfx_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/equipment_domain_service.h"
 #include "game/domain/quest_turn_in_service.h"
 #include "game/domain/shop_transaction_service.h"
 #include "game/runtime/gameplay_camera_defaults.h"
@@ -60,6 +61,7 @@
 #include "game/system/hotbar_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/inventory_system.h"
+#include "game/system/equipment_system.h"
 #include "game/system/item_use_system.h"
 #include "game/system/light_toggle_system.h"
 #include "game/system/map_transition_system.h"
@@ -517,7 +519,8 @@ void ensureAudioCueCatalog(game::runtime::GameRuntimeServices& services,
         registry,
         *services.world_state,
         *services.map_manager,
-        *services.blueprint_manager);
+        *services.blueprint_manager,
+        services.rpg_catalog.get());
 
     return true;
 }
@@ -710,6 +713,14 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
             dispatcher,
             *services.item_catalog);
     }
+    if (!services.equipment_domain_service) {
+        services.equipment_domain_service = std::make_unique<game::domain::EquipmentDomainService>(
+            params.registry,
+            dispatcher,
+            *services.rpg_catalog,
+            *services.item_catalog,
+            *services.inventory_domain_service);
+    }
     if (!services.quest_turn_in_service) {
         services.quest_turn_in_service = std::make_unique<game::domain::QuestTurnInService>(
             params.registry,
@@ -842,12 +853,19 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         dispatcher,
         *services.item_catalog,
         *services.inventory_domain_service);
-    systems.hotbar_system = std::make_unique<game::system::HotbarSystem>(params.registry, dispatcher);
+    systems.equipment_system = std::make_unique<game::system::EquipmentSystem>(
+        dispatcher,
+        *services.equipment_domain_service);
+    systems.hotbar_system = std::make_unique<game::system::HotbarSystem>(
+        params.registry,
+        dispatcher,
+        services.item_catalog.get());
     systems.item_use_system = std::make_unique<game::system::ItemUseSystem>(
         params.registry,
         dispatcher,
         *services.item_catalog,
-        *services.inventory_domain_service);
+        *services.inventory_domain_service,
+        services.rpg_catalog.get());
 
     if (!systems.day_night_system->loadConfig("assets/data/light_config.json")) {
         spdlog::warn("光照配置加载失败，将使用默认配置");

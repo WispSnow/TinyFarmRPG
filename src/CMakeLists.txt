@@ -176,6 +176,7 @@ target_sources(game PRIVATE
     game/data/shop_catalog.cpp
     # Battle
     game/battle/battle_action_resolver.cpp
+    game/battle/actor_stats_resolver.cpp
     game/battle/battle_ai_planner.cpp
     game/battle/battle_log_formatter.cpp
     game/battle/battle_reward_resolver.cpp
@@ -185,6 +186,7 @@ target_sources(game PRIVATE
     game/battle/battle_session.cpp
     # Domain
     game/domain/inventory_domain_service.cpp
+    game/domain/equipment_domain_service.cpp
     game/domain/quest_battle_progress_resolver.cpp
     game/domain/quest_log_ops.cpp
     game/domain/quest_turn_in_service.cpp
@@ -215,6 +217,7 @@ target_sources(game PRIVATE
     game/ui/slot_grid_support.cpp
     game/ui/shop_menu_support.cpp
     game/ui/inventory_tab_content.cpp
+    game/ui/equipment_tab_content.cpp
     game/ui/quest_tab_content.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp
@@ -236,6 +239,7 @@ target_sources(game PRIVATE
     game/system/light_toggle_system.cpp
     game/system/crop_system.cpp
     game/system/inventory_system.cpp
+    game/system/equipment_system.cpp
     game/system/hotbar_system.cpp
     game/system/item_use_system.cpp
     game/system/npc_wander_system.cpp

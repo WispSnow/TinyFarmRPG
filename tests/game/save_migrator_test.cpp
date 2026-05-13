@@ -86,6 +86,38 @@ TEST(SaveMigratorTest, RejectsInvalidQuestStateFieldTypeInV3) {
     EXPECT_FALSE(error.empty());
 }
 
+TEST(SaveMigratorTest, V3ToV4FillsEquipmentAndRuntimeStateContainers) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 3,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {},
+        "party_state": {},
+        "combat_state": {}
+    })");
+
+    std::string error;
+    ASSERT_TRUE(migrateToLatest(json, error)) << error;
+
+    EXPECT_EQ(json[json_keys::SCHEMA_VERSION.data()], SAVE_SCHEMA_VERSION);
+    ASSERT_TRUE(json.contains(json_keys::EQUIPMENT_STATE.data()));
+    ASSERT_TRUE(json[json_keys::EQUIPMENT_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::EQUIPMENT_STATE.data()].contains(json_keys::LOADOUTS.data()));
+    EXPECT_TRUE(json[json_keys::EQUIPMENT_STATE.data()][json_keys::LOADOUTS.data()].is_object());
+    EXPECT_TRUE(json[json_keys::EQUIPMENT_STATE.data()][json_keys::LOADOUTS.data()].empty());
+    ASSERT_TRUE(json.contains(json_keys::PARTY_RUNTIME_STATE.data()));
+    ASSERT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()].contains(json_keys::ACTOR_STATES.data()));
+    EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()][json_keys::ACTOR_STATES.data()].is_object());
+    EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()][json_keys::ACTOR_STATES.data()].empty());
+}
+
 TEST(SaveMigratorTest, RejectsMissingOrInvalidSchemaVersion) {
     auto expect_reject = [](nlohmann::json json) {
         std::string error;

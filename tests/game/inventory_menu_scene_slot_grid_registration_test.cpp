@@ -121,10 +121,10 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_EQ(source.find("class=\"menu-separator\""), std::string::npos);
 
     const auto tabset_end = source.find("</tabset>");
-    const auto char_col = source.find("id=\"char-col\"");
+    const auto party_col = source.find("id=\"party-col\"");
     ASSERT_NE(tabset_end, std::string::npos);
-    ASSERT_NE(char_col, std::string::npos);
-    EXPECT_LT(tabset_end, char_col) << "char-col must stay outside tabset so it remains visible for every tab.";
+    ASSERT_NE(party_col, std::string::npos);
+    EXPECT_LT(tabset_end, party_col) << "party-col must stay outside tabset so it remains visible for every tab.";
 }
 
 TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameScenePassQuestCatalogIntoQuestTab) {

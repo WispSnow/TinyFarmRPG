@@ -19,6 +19,7 @@ ItemCategory categoryFromString(std::string_view value) {
     if (value == "seed") return ItemCategory::Seed;
     if (value == "material") return ItemCategory::Material;
     if (value == "consumable") return ItemCategory::Consumable;
+    if (value == "equipment") return ItemCategory::Equipment;
     return ItemCategory::Unknown;
 }
 
@@ -43,7 +44,7 @@ BattleItemEffectType battleItemEffectTypeFromString(std::string_view value) {
 }
 
 int defaultStackLimit(ItemCategory category) {
-    return category == ItemCategory::Tool ? TOOL_STACK_LIMIT : DEFAULT_STACK_LIMIT;
+    return (category == ItemCategory::Tool || category == ItemCategory::Equipment) ? TOOL_STACK_LIMIT : DEFAULT_STACK_LIMIT;
 }
 
 entt::id_type makeId(std::string_view value) {
@@ -224,6 +225,8 @@ bool ItemCatalog::loadItemConfig(std::string_view file_path) {
         if (data.category_ == ItemCategory::Tool) {
             data.stack_limit_ = TOOL_STACK_LIMIT;  // 工具一律不可堆叠
             data.tool_type_ = toolFromString(item_obj.value("tool", ""));
+        } else if (data.category_ == ItemCategory::Equipment) {
+            data.stack_limit_ = TOOL_STACK_LIMIT;
         }
         else if (data.category_ == ItemCategory::Crop || data.category_ == ItemCategory::Seed) {
             data.crop_type_ = game::defs::cropTypeFromString(item_obj.value("crop_type", ""));

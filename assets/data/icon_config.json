@@ -47,6 +47,26 @@
             "source": [32, 96, 16, 16]
         }
     },
+    "weapons":{
+        "bronze_sword": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [32, 0, 16, 16]
+        },
+        "wooden_shield": {
+            "path": "assets/farm-rpg/Icons/Weapons/RPG/5.png",
+            "source": [64, 16, 16, 16]
+        }
+    },
+    "armor":{
+        "cloth_robe": {
+            "path": "assets/farm-rpg/Icons/Weapons/14.png",
+            "source": [32, 0, 16, 16]
+        },
+        "travel_charm": {
+            "path": "assets/farm-rpg/Icons/Weapons/14.png",
+            "source": [48, 0, 16, 16]
+        }
+    },
     "materials":{
         "timber": {
             "path": "assets/farm-rpg/Icons/Weapons/14.png",

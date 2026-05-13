@@ -28,6 +28,8 @@
 #include "game/component/map_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/party_component.h"
+#include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/tags.h"
 #include "game/data/audio_cue_catalog.h"
 #include "game/data/battle_background_id.h"
@@ -122,6 +124,48 @@ constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
 
     spdlog::warn("GameScene: 未找到有效 PartyComponent，战斗队伍回退为 actor.player。");
     return {std::string(game::scene::DEFAULT_BATTLE_PLAYER_ACTOR_ID)};
+}
+
+void populateBattlePartyState(entt::registry& registry,
+                              game::battle::BattleUnitBuildOptions& build_options) {
+    const entt::entity player = findPlayer(registry);
+    if (player == entt::null) {
+        return;
+    }
+
+    if (const auto* equipment = registry.try_get<game::component::PartyEquipmentComponent>(player)) {
+        build_options.actor_equipment = equipment->loadouts_by_actor_id_;
+    }
+    if (const auto* runtime_stats = registry.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
+        build_options.actor_runtime_states = runtime_stats->states_by_actor_id_;
+    }
+}
+
+void writeBackBattleRuntimeStats(entt::registry& registry,
+                                 const std::vector<game::battle::BattleUnit>& final_units) {
+    const entt::entity player = findPlayer(registry);
+    if (player == entt::null) {
+        return;
+    }
+
+    auto& runtime_stats = registry.get_or_emplace<game::component::PartyRuntimeStatsComponent>(player);
+    bool changed = false;
+    for (const auto& unit : final_units) {
+        if (unit.side != game::battle::BattleSide::Player || !unit.source_actor_id) {
+            continue;
+        }
+        auto& state = runtime_stats.states_by_actor_id_[*unit.source_actor_id];
+        const int next_hp = std::clamp(unit.hp, 0, std::max(1, unit.max_hp));
+        const int next_mp = std::clamp(unit.mp, 0, std::max(1, unit.max_mp));
+        if (state.current_hp != next_hp || state.current_mp != next_mp) {
+            state.current_hp = next_hp;
+            state.current_mp = next_mp;
+            changed = true;
+        }
+    }
+    if (changed) {
+        ++runtime_stats.revision_;
+    }
 }
 
 [[nodiscard]] std::string sanitizeBattleBackgroundId(std::string_view id, std::string_view source_label) {
@@ -611,6 +655,7 @@ bool GameScene::onInventoryToggle() {
         registry_,
         player,
         services_->item_catalog.get(),
+        services_->rpg_catalog.get(),
         services_->quest_catalog.get()));
     return true;
 }
@@ -707,6 +752,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         game::battle::BattleUnitBuildOptions build_options{};
         build_options.actor_ids = resolveBattleActorIds(registry_, cmd.actor_ids);
         build_options.troop_id = cmd.troop_id;
+        populateBattlePartyState(registry_, build_options);
         std::string build_error{};
         if (!game::battle::buildBattleUnitsFromCatalog(*services_->rpg_catalog, build_options, units, build_error)) {
             spdlog::warn("GameScene: 无法从 RPG catalog 构造战斗单位: {}", build_error);
@@ -799,6 +845,7 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
     spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
+    writeBackBattleRuntimeStats(registry_, evt.final_units);
     resolveActiveEnemyEncounter(evt);
     game::scene::processBattleEndedForGameScene(
         registry_,

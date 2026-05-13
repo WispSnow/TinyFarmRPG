@@ -21,6 +21,7 @@ enum class ItemCategory {
     Seed,
     Material,
     Consumable,
+    Equipment,
     Unknown
 };
 
