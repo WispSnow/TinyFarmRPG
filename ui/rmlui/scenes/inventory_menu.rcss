@@ -13,8 +13,8 @@
     menu-slot-selected-inner: 9px 43px 14px 14px;
     menu-panel-bg:           0px 64px 48px 48px;
     menu-panel-bg-inner:    10px 74px 28px 28px;
-    menu-eq-slot-bg:        49px 65px 14px 14px;
-    menu-eq-slot-selected:  49px 81px 14px 14px;
+    menu-equipment-slot-bg:        71px 41px 18px 18px;
+    menu-equipment-slot-bg-inner:  74px 44px 12px 12px;
 }
 
 @spritesheet menu-banner {
@@ -43,6 +43,8 @@
     tab-options:   144px  0px 16px 16px;
     sort-icon:     368px 32px 16px 16px;
     sort-icon-pressed: 368px 48px 16px 16px;
+    unequip-icon:  272px 64px 16px 16px;
+    unequip-icon-pressed: 272px 80px 16px 16px;
     trash-closed:   64px  0px 16px 16px;
     trash-open:     80px  0px 16px 16px;
 }
@@ -349,73 +351,64 @@
 }
 
 #equipment-main-row {
-    display: flex;
-    flex-direction: row;
-    gap: 4dp;
+    display: block;
     margin-top: 5dp;
-    height: 82dp;
+    height: 84dp;
 }
 
 #equipment-slot-list {
-    width: 112dp;
+    display: flex;
+    flex-direction: row;
+    width: 174dp;
+    height: 28dp;
 }
 
 .equipment-slot-entry {
-    display: flex;
-    flex-direction: row;
-    width: 112dp;
-    height: 14dp;
-    padding: 1dp 2dp;
-    background-color: #24283bcc;
-    border: 1dp #414868;
+    display: block;
+    width: 28dp;
+    height: 28dp;
+    decorator: ninepatch(menu-equipment-slot-bg, menu-equipment-slot-bg-inner, 1.0);
+    border: 1dp #00000000;
     color: #f7f7f7;
+    opacity: 0.78;
 }
 
 .equipment-slot-entry + .equipment-slot-entry {
-    margin-top: 2dp;
+    margin-left: 4dp;
+}
+
+.equipment-slot-entry.has-item {
+    opacity: 1;
 }
 
 .equipment-slot-selected {
+    decorator: ninepatch(menu-equipment-slot-bg, menu-equipment-slot-bg-inner, 1.0);
     border: 1dp #7aa2f7;
-    background-color: #2d334dcc;
+    box-shadow: #7aa2f7cc 0dp 0dp 0dp 1dp;
 }
 
 .equipment-slot-icon {
-    width: 12dp;
-    height: 12dp;
-    margin-top: 0dp;
-}
-
-.equipment-slot-text {
-    margin-left: 3dp;
-    width: 90dp;
-}
-
-.equipment-slot-label {
-    font-size: 7dp;
-    color: #a9b1d6;
-}
-
-.equipment-slot-item {
-    margin-top: -1dp;
-    font-size: 8dp;
-    color: #ffffff;
+    width: 16dp;
+    height: 16dp;
+    margin-left: 6dp;
+    margin-top: 6dp;
 }
 
 #equipment-candidate-panel {
-    width: 102dp;
-    height: 82dp;
+    width: 218dp;
+    height: 48dp;
+    margin-top: 6dp;
     overflow-y: auto;
 }
 
 .equipment-candidate-entry {
     display: flex;
     flex-direction: row;
-    width: 96dp;
+    width: 210dp;
     min-height: 20dp;
     padding: 2dp;
-    background-color: #1f2335cc;
-    border: 1dp #414868;
+    background-color: #00000000;
+    border: 1dp #d9a88a66;
     color: #f7f7f7;
 }
 
@@ -427,7 +420,7 @@
 .tf-input-nav .equipment-candidate-entry:focus,
 .tf-input-mouse .equipment-slot-entry:hover,
 .tf-input-nav .equipment-slot-entry:focus {
-    background-color: #414868;
+    border: 1dp #e0af68;
 }
 
 .equipment-candidate-icon {
@@ -438,7 +431,7 @@
 
 .equipment-candidate-text {
     margin-left: 4dp;
-    width: 72dp;
+    width: 184dp;
 }
 
 .equipment-candidate-name {
@@ -453,14 +446,14 @@
 }
 
 #equipment-candidate-empty {
-    margin-top: 18dp;
+    margin-top: 14dp;
     text-align: center;
     color: #a9b1d6;
     font-size: 9dp;
 }
 
 #equipment-detail {
-    margin-top: 6dp;
+    margin-top: 5dp;
     height: 52dp;
     border-width: 1dp 0 0 0;
     border-color: #d9a88a44;
@@ -487,17 +480,29 @@
 
 #equipment-unequip-btn {
     position: absolute;
-    left: 156dp;
-    top: 138dp;
-    width: 62dp;
-    height: 18dp;
-    padding: 2dp 5dp;
-    background-color: #2e3440cc;
+    left: 198dp;
+    top: 33dp;
+    width: 20dp;
+    height: 20dp;
+    padding: 2dp;
+    decorator: image(unequip-icon);
+    image-color: #d8dee9d0;
+    border: 1dp #00000000;
+    filter: saturate(0.8) brightness(0.95);
+    transition: image-color 0.08s cubic-out, filter 0.08s cubic-out;
+}
+
+.tf-input-mouse #equipment-unequip-btn:hover,
+.tf-input-nav #equipment-unequip-btn:focus {
     border: 1dp #f7768e;
-    color: #f7f7f7;
-    font-size: 8dp;
-    text-align: center;
-    vertical-align: middle;
+    filter: saturate(1.2) brightness(1.08);
+}
+
+.tf-input-mouse #equipment-unequip-btn:hover:active,
+.tf-input-nav #equipment-unequip-btn:focus:active,
+#equipment-unequip-btn:active {
+    decorator: image(unequip-icon-pressed);
+    filter: saturate(1.0) brightness(0.85);
 }
 
 /* --- Quest Panel --- */
