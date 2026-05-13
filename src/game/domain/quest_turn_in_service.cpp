@@ -17,9 +17,9 @@
 namespace game::domain {
 namespace {
 
-constexpr const char* kInventoryFullMessage = "背包空间不足";
-constexpr const char* kMissingWalletMessage = "缺少钱包组件";
-constexpr const char* kMissingInventoryMessage = "缺少背包组件";
+constexpr const char* kInventoryFullMessage = "Inventory full";
+constexpr const char* kMissingWalletMessage = "Missing wallet component";
+constexpr const char* kMissingInventoryMessage = "Missing inventory component";
 
 [[nodiscard]] bool questNeedsWallet(const game::data::QuestData& quest) {
     return quest.rewards_.gold_ > 0;

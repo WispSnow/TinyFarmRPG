@@ -105,7 +105,7 @@ TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAnd
 
     ASSERT_FALSE(dialogue.shows.empty());
     EXPECT_EQ(dialogue.shows.back().target, player);
-    EXPECT_NE(dialogue.shows.back().text.find("背包"), std::string::npos);
+    EXPECT_NE(dialogue.shows.back().text.find("Inventory full"), std::string::npos);
 }
 
 } // namespace game::system

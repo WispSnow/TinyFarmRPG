@@ -40,7 +40,7 @@ bool ensureObjectField(nlohmann::json& json, std::string_view key, std::string& 
         return true;
     }
     if (!json[key].is_object()) {
-        out_error = "SaveMigrator: 字段 '" + std::string(key) + "' 不是 object";
+        out_error = "SaveMigrator: field '" + std::string(key) + "' is not an object";
         return false;
     }
     return true;
@@ -52,7 +52,7 @@ bool ensureArrayField(nlohmann::json& json, std::string_view key, std::string& o
         return true;
     }
     if (!json[key].is_array()) {
-        out_error = "SaveMigrator: 字段 '" + std::string(key) + "' 不是 array";
+        out_error = "SaveMigrator: field '" + std::string(key) + "' is not an array";
         return false;
     }
     return true;
@@ -64,7 +64,7 @@ bool ensureUIntField(nlohmann::json& json, std::string_view key, std::uint32_t d
         return true;
     }
     if (!json[key].is_number_unsigned()) {
-        out_error = "SaveMigrator: 字段 '" + std::string(key) + "' 不是 unsigned int";
+        out_error = "SaveMigrator: field '" + std::string(key) + "' is not an unsigned int";
         return false;
     }
     return true;
@@ -76,7 +76,7 @@ bool ensureBoolField(nlohmann::json& json, std::string_view key, bool default_va
         return true;
     }
     if (!json[key].is_boolean()) {
-        out_error = "SaveMigrator: 字段 '" + std::string(key) + "' 不是 boolean";
+        out_error = "SaveMigrator: field '" + std::string(key) + "' is not a boolean";
         return false;
     }
     return true;
@@ -88,7 +88,7 @@ bool ensureStringField(nlohmann::json& json, std::string_view key, std::string_v
         return true;
     }
     if (!json[key].is_string()) {
-        out_error = "SaveMigrator: 字段 '" + std::string(key) + "' 不是 string";
+        out_error = "SaveMigrator: field '" + std::string(key) + "' is not a string";
         return false;
     }
     return true;
@@ -214,17 +214,17 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
     out_error.clear();
 
     if (!json.is_object()) {
-        out_error = "SaveMigrator: 根节点不是 object";
+        out_error = "SaveMigrator: root is not an object";
         return false;
     }
 
     const std::uint32_t schema_version = json.value<std::uint32_t>(KEY_SCHEMA_VERSION.data(), 0u);
     if (schema_version == 0u) {
-        out_error = "SaveMigrator: 缺少 schema_version";
+        out_error = "SaveMigrator: missing schema_version";
         return false;
     }
     if (schema_version > SAVE_SCHEMA_VERSION) {
-        out_error = "SaveMigrator: schema_version 不支持";
+        out_error = "SaveMigrator: unsupported schema_version";
         return false;
     }
 
@@ -232,7 +232,7 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
         return normalizeLatest(json, out_error);
     }
 
-    out_error = "SaveMigrator: schema_version 不支持";
+    out_error = "SaveMigrator: unsupported schema_version";
     return false;
 }
 

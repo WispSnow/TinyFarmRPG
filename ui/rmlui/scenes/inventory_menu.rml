@@ -23,7 +23,7 @@
                     <div id="inventory-actions">
                         <button class="tf-nav-auto tf-focus-ring-blue"
                                 id="sort-btn"
-                                data-event-click="sort">Sort</button>
+                                data-event-click="sort"></button>
                         <button class="tf-nav-auto tf-focus-ring-danger"
                                 id="trash-btn"
                                 data-event-click="trash"></button>
@@ -155,8 +155,8 @@
                 <panel id="panel-quests">
                     <div id="quests-content">
                         <div class="quest-section">
-                            <div class="quest-section-title">进行中的任务</div>
-                            <div class="quest-empty" data-if="!has_active_quests">暂无进行中的任务</div>
+                            <div class="quest-section-title">Active Quests</div>
+                            <div class="quest-empty" data-if="!has_active_quests">No active quests</div>
                             <div class="quest-list" data-if="has_active_quests">
                                 <div class="quest-entry" data-for="quest : active_quest_entries">
                                     <div class="quest-entry-header">
@@ -170,8 +170,8 @@
                         </div>
 
                         <div class="quest-section quest-section-completed">
-                            <div class="quest-section-title">已完成的任务</div>
-                            <div class="quest-empty" data-if="!has_completed_quests">暂无已完成的任务</div>
+                            <div class="quest-section-title">Completed Quests</div>
+                            <div class="quest-empty" data-if="!has_completed_quests">No completed quests</div>
                             <div class="quest-list" data-if="has_completed_quests">
                                 <div class="quest-entry quest-entry-completed" data-for="quest : completed_quest_entries">
                                     <div class="quest-entry-header">

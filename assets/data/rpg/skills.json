@@ -2,7 +2,7 @@
     "skills": [
         {
             "id": "skill.attack",
-            "display_name": "攻击",
+            "display_name": "Attack",
             "description": "",
             "scope": "one_enemy",
             "hit_type": "physical",
@@ -30,8 +30,8 @@
         },
         {
             "id": "skill.bash",
-            "display_name": "撞击",
-            "description": "对敌方单体造成伤害并使其失去平衡。",
+            "display_name": "Bash",
+            "description": "Deals damage to one enemy and knocks it off balance.",
             "scope": "one_enemy",
             "hit_type": "physical",
             "mp_cost": 0,
@@ -54,8 +54,8 @@
         },
         {
             "id": "skill.fire_1",
-            "display_name": "初级火焰",
-            "description": "对敌方单体释放小型火焰。",
+            "display_name": "Fire",
+            "description": "Deals fire damage to one enemy.",
             "scope": "one_enemy",
             "hit_type": "magical",
             "mp_cost": 4,
@@ -82,8 +82,8 @@
         },
         {
             "id": "skill.thunder_1",
-            "display_name": "初级闪电",
-            "description": "对敌方单体释放一道闪电。",
+            "display_name": "Thunder",
+            "description": "Deals lightning damage to one enemy.",
             "scope": "one_enemy",
             "hit_type": "magical",
             "mp_cost": 5,
@@ -110,8 +110,8 @@
         },
         {
             "id": "skill.heal_1",
-            "display_name": "初级治疗",
-            "description": "恢复一名存活队友的 HP。",
+            "display_name": "Heal",
+            "description": "Restores HP to one living ally.",
             "scope": "one_ally",
             "hit_type": "certain",
             "mp_cost": 4,
@@ -138,8 +138,8 @@
         },
         {
             "id": "skill.poison_spit",
-            "display_name": "毒液",
-            "description": "对敌方单体喷洒毒液，并使其陷入中毒状态。",
+            "display_name": "Poison Spit",
+            "description": "Poisons one enemy.",
             "scope": "one_enemy",
             "hit_type": "certain",
             "mp_cost": 0,

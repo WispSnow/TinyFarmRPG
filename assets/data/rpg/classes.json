@@ -2,7 +2,7 @@
     "classes": [
         {
             "id": "class.swordsman",
-            "display_name": "剑客",
+            "display_name": "Warrior",
             "base_params": {
                 "mhp": 544,
                 "mmp": 41,
@@ -16,7 +16,7 @@
         },
         {
             "id": "class.mage",
-            "display_name": "魔法师",
+            "display_name": "Mage",
             "base_params": {
                 "mhp": 420,
                 "mmp": 82,
@@ -30,7 +30,7 @@
         },
         {
             "id": "class.monk",
-            "display_name": "武术家",
+            "display_name": "Monk",
             "base_params": {
                 "mhp": 639,
                 "mmp": 44,

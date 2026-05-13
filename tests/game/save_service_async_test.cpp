@@ -683,7 +683,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileFailsWhenPlayerMissingQuestLogCom
     const auto file_path = tempFilePath("save_missing_quest_log.json");
     std::string save_error;
     EXPECT_FALSE(save_service_->saveToFile(file_path, save_error));
-    EXPECT_EQ(save_error, "玩家缺少 QuestLogComponent");
+    EXPECT_EQ(save_error, "Player is missing QuestLogComponent");
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, AsyncSaveReportsWriteFailureForInvalidPath) {

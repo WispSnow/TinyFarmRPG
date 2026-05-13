@@ -358,7 +358,7 @@ TEST(QuestInteractionSystemTest, ReadyToTurnInCompletesQuestAndShowsRewardSummar
     EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"strawberry_seed"}.value());
     EXPECT_EQ(inventory.slot(0).count_, 2);
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.\n获得金币 4\n获得 Strawberry Seed x2");
+    EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.\nGained Gold 4\nGained Strawberry Seed x2");
 }
 
 TEST(QuestInteractionSystemTest, ReadyToTurnInFailureKeepsQuestReadyAndShowsFailureMessage) {
@@ -394,7 +394,7 @@ TEST(QuestInteractionSystemTest, ReadyToTurnInFailureKeepsQuestReadyAndShowsFail
     EXPECT_TRUE(quest_log.completed_quests.empty());
     EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 0);
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows.front().text, "背包空间不足");
+    EXPECT_EQ(capture.shows.front().text, "Inventory full");
 }
 
 TEST(QuestInteractionSystemTest, CompletedQuestShowsCompletedText) {

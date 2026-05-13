@@ -11,7 +11,7 @@
 namespace game::scene {
 namespace {
 
-constexpr std::string_view kVictoryText = "战斗胜利";
+constexpr std::string_view kVictoryText = "Victory";
 
 void appendLine(std::string& text, const std::string& line) {
     if (line.empty()) {
@@ -48,11 +48,11 @@ void appendQuestProgressLines(std::string& text, const game::domain::QuestBattle
         if (quest.quest_id_hash != entt::null && ready_quests.contains(quest.quest_id_hash)) {
             continue;
         }
-        appendLine(text, fmt::format("任务更新：{}", quest.quest_title));
+        appendLine(text, fmt::format("Quest Updated: {}", quest.quest_title));
     }
 
     for (const auto& quest : quest_progress_summary.became_ready_to_turn_in_quests) {
-        appendLine(text, fmt::format("可交付：{}", quest.quest_title));
+        appendLine(text, fmt::format("Ready: {}", quest.quest_title));
     }
 }
 
@@ -64,16 +64,16 @@ std::string formatRewardFeedback(const int gold_written_back,
     std::string text{};
 
     if (gold_written_back > 0) {
-        appendLine(text, fmt::format("获得金币 {}", gold_written_back));
+        appendLine(text, fmt::format("Gained Gold {}", gold_written_back));
     }
 
     for (const auto& item_result : item_results) {
         const std::string item_name = resolveItemName(item_result, item_catalog);
         if (item_result.accepted > 0) {
-            appendLine(text, fmt::format("获得 {} x{}", item_name, item_result.accepted));
+            appendLine(text, fmt::format("Gained {} x{}", item_name, item_result.accepted));
         }
         if (item_result.rejected > 0) {
-            appendLine(text, fmt::format("背包已满，未获得 {} x{}", item_name, item_result.rejected));
+            appendLine(text, fmt::format("Inventory full, missed {} x{}", item_name, item_result.rejected));
         }
     }
 

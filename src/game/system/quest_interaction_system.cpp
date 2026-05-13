@@ -51,13 +51,13 @@ constexpr float NOTIFICATION_SECONDS = 2.0f;
                                                 const QuestInteractionSystem::InteractionState state) {
     switch (state) {
         case QuestInteractionSystem::InteractionState::Offerable:
-            return "接取任务：" + quest.title_;
+            return "Accept Quest: " + quest.title_;
         case QuestInteractionSystem::InteractionState::InProgress:
-            return "任务进行中：" + quest.title_;
+            return "Quest In Progress: " + quest.title_;
         case QuestInteractionSystem::InteractionState::ReadyToTurnIn:
-            return "可以交付任务：" + quest.title_;
+            return "Ready to Turn In: " + quest.title_;
         case QuestInteractionSystem::InteractionState::Completed:
-            return "任务已完成：" + quest.title_;
+            return "Quest Completed: " + quest.title_;
     }
 
     return quest.title_;
@@ -81,10 +81,10 @@ void appendLine(std::string& text, const std::string& line) {
     }
 
     if (result.gold_reward > 0) {
-        appendLine(text, fmt::format("获得金币 {}", result.gold_reward));
+        appendLine(text, fmt::format("Gained Gold {}", result.gold_reward));
     }
     for (const auto& item_reward : result.item_rewards) {
-        appendLine(text, fmt::format("获得 {} x{}", item_reward.item_name, item_reward.count));
+        appendLine(text, fmt::format("Gained {} x{}", item_reward.item_name, item_reward.count));
     }
 
     return text;

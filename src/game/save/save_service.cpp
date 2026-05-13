@@ -247,7 +247,7 @@ bool parseJsonFileNoExceptions(const std::filesystem::path& file_path,
                                std::string& out_error) {
     std::ifstream in(file_path, std::ios::binary);
     if (!in.is_open()) {
-        out_error = "无法打开存档文件: " + file_path.string();
+        out_error = "Could not open save file: " + file_path.string();
         return false;
     }
 
@@ -256,18 +256,18 @@ bool parseJsonFileNoExceptions(const std::filesystem::path& file_path,
         std::istreambuf_iterator<char>()
     };
     if (in.bad()) {
-        out_error = "读取存档文件失败: " + file_path.string();
+        out_error = "Failed to read save file: " + file_path.string();
         return false;
     }
 
     out_json = nlohmann::json::parse(content, nullptr, false);
     if (out_json.is_discarded()) {
-        out_error = "解析存档 JSON 失败: " + file_path.string();
+        out_error = "Failed to parse save JSON: " + file_path.string();
         return false;
     }
 
     if (!out_json.is_object()) {
-        out_error = "存档 JSON 根节点不是对象: " + file_path.string();
+        out_error = "Save JSON root is not an object: " + file_path.string();
         return false;
     }
 
@@ -306,7 +306,7 @@ bool SaveService::writeSaveFile(const SaveData& data,
     if (!dir.empty()) {
         std::filesystem::create_directories(dir, ec);
         if (ec) {
-            out_error = "创建存档目录失败: " + ec.message();
+            out_error = "Failed to create save directory: " + ec.message();
             return false;
         }
     }
@@ -316,13 +316,13 @@ bool SaveService::writeSaveFile(const SaveData& data,
     {
         std::ofstream out(tmp_path, std::ios::binary | std::ios::trunc);
         if (!out.is_open()) {
-            out_error = "无法写入临时存档文件: " + tmp_path.string();
+            out_error = "Could not write temporary save file: " + tmp_path.string();
             return false;
         }
         out << json.dump(2);
         out.flush();
         if (!out.good()) {
-            out_error = "写入临时存档文件失败: " + tmp_path.string();
+            out_error = "Failed to write temporary save file: " + tmp_path.string();
             return false;
         }
     }
@@ -334,7 +334,7 @@ bool SaveService::writeSaveFile(const SaveData& data,
         ec.clear();
         std::filesystem::rename(tmp_path, file_path, ec);
         if (ec) {
-            out_error = "替换存档文件失败: " + ec.message();
+            out_error = "Failed to replace save file: " + ec.message();
             return false;
         }
     }
@@ -359,7 +359,7 @@ bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string
     out_error.clear();
     cleanupCompletedSaveThread();
     if (isSaving()) {
-        out_error = "保存进行中，请稍后再试。";
+        out_error = "Save in progress, please try again later.";
         return false;
     }
 
@@ -379,7 +379,7 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
 
     bool expected = false;
     if (!save_in_progress_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
-        out_error = "保存进行中，请稍后再试。";
+        out_error = "Save in progress, please try again later.";
         return false;
     }
 
@@ -418,7 +418,7 @@ bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::stri
     out_error.clear();
     cleanupCompletedSaveThread();
     if (isSaving()) {
-        out_error = "保存进行中，请稍后再试。";
+        out_error = "Save in progress, please try again later.";
         return false;
     }
 
@@ -429,7 +429,7 @@ bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::stri
 
     std::string migrate_error;
     if (!migrateToLatest(json, migrate_error)) {
-        out_error = "存档迁移失败: " + migrate_error;
+        out_error = "Save migration failed: " + migrate_error;
         return false;
     }
 
@@ -454,7 +454,7 @@ SaveData SaveService::capture(std::string& out_error) const {
 
     const auto* game_time = registry_.ctx().find<game::data::GameTime>();
     if (!game_time) {
-        out_error = "registry.ctx() 缺少 GameTime";
+        out_error = "registry.ctx() is missing GameTime";
         return out;
     }
     out.game_time.day = game_time->day_;
@@ -465,21 +465,21 @@ SaveData SaveService::capture(std::string& out_error) const {
 
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (player_view.empty()) {
-        out_error = "未找到玩家实体";
+        out_error = "Player entity not found";
         return out;
     }
     const entt::entity player = *player_view.begin();
 
     const auto* transform = registry_.try_get<engine::component::TransformComponent>(player);
     if (!transform) {
-        out_error = "玩家缺少 TransformComponent";
+        out_error = "Player is missing TransformComponent";
         return out;
     }
 
     const entt::id_type current_map = map_manager_.currentMapId();
     const auto* map_state = world_state_.getMapState(current_map);
     if (!map_state) {
-        out_error = "无法获取当前地图信息";
+        out_error = "Could not resolve current map info";
         return out;
     }
 
@@ -501,7 +501,7 @@ SaveData SaveService::capture(std::string& out_error) const {
             });
         }
     } else {
-        out_error = "玩家缺少 InventoryComponent";
+        out_error = "Player is missing InventoryComponent";
         return out;
     }
 
@@ -513,7 +513,7 @@ SaveData SaveService::capture(std::string& out_error) const {
             out.player.hotbar.inventory_slot_indices.push_back(slot.inventory_slot_index_);
         }
     } else {
-        out_error = "玩家缺少 HotbarComponent";
+        out_error = "Player is missing HotbarComponent";
         return out;
     }
 
@@ -529,7 +529,7 @@ SaveData SaveService::capture(std::string& out_error) const {
         out.quest_state.completed_quests = quest_log->completed_quests;
         out.quest_state.objective_progress = quest_log->objective_progress;
     } else {
-        out_error = "玩家缺少 QuestLogComponent";
+        out_error = "Player is missing QuestLogComponent";
         return out;
     }
 
@@ -591,7 +591,7 @@ SaveData SaveService::capture(std::string& out_error) const {
             auto snapshot_copy = state.persistent.snapshot;
             game::world::DynamicSnapshotFlags read_flags{};
             if (!game::world::readDynamicSnapshot(temp, snapshot_copy, &read_flags)) {
-                out_error = "读取地图快照失败: " + state.info.name;
+                out_error = "Failed to read map snapshot: " + state.info.name;
                 return out;
             }
 
@@ -653,7 +653,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
 
     auto* game_time = registry_.ctx().find<game::data::GameTime>();
     if (!game_time) {
-        out_error = "registry.ctx() 缺少 GameTime";
+        out_error = "registry.ctx() is missing GameTime";
         return false;
     }
     game_time->day_ = data.game_time.day;
@@ -735,7 +735,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             const auto mask = computeAutoTileMask(tilled_set, tile);
             engine::component::SpriteComponent sprite{};
             if (!buildAutoTileSprite(auto_tile_library, RULE_SOIL_TILLED, mask, sprite)) {
-                out_error = "AutoTileLibrary 缺少 soil_tilled 规则";
+                out_error = "AutoTileLibrary is missing soil_tilled rule";
                 return false;
             }
 
@@ -751,7 +751,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             const auto mask = computeAutoTileMask(wet_set, tile);
             engine::component::SpriteComponent sprite{};
             if (!buildAutoTileSprite(auto_tile_library, RULE_SOIL_WET, mask, sprite)) {
-                out_error = "AutoTileLibrary 缺少 soil_wet 规则";
+                out_error = "AutoTileLibrary is missing soil_wet rule";
                 return false;
             }
 
@@ -812,13 +812,13 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     }
 
     if (!map_manager_.loadMap(data.player.map_name)) {
-        out_error = "加载存档地图失败: " + data.player.map_name;
+        out_error = "Failed to load saved map: " + data.player.map_name;
         return false;
     }
 
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (player_view.empty()) {
-        out_error = "加载地图后未找到玩家实体";
+        out_error = "Player entity not found after loading map";
         return false;
     }
     const entt::entity player = *player_view.begin();
@@ -852,7 +852,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     auto* inv = registry_.try_get<game::component::InventoryComponent>(player);
     auto* hotbar = registry_.try_get<game::component::HotbarComponent>(player);
     if (!inv || !hotbar) {
-        out_error = "玩家缺少 InventoryComponent/HotbarComponent";
+        out_error = "Player is missing InventoryComponent/HotbarComponent";
         return false;
     }
 

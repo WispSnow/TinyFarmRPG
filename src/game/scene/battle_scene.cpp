@@ -1293,7 +1293,7 @@ void BattleScene::rebuildPartyStatusView() {
             const Rml::String display_name = state ? makeRmlString(state->display_name_) : makeRmlString(state_snapshot.state_id);
             const Rml::String description = state && !state->description_.empty()
                 ? makeRmlString(state->description_)
-                : Rml::String{"暂无说明"};
+                : Rml::String{"No description"};
             const Rml::String icon_decorator = battleStateIconDecorator(state);
             next_party_state_icons.push_back(StateIconViewModel{
                 .unit_id = static_cast<int>(unit.id),
@@ -2081,7 +2081,7 @@ void BattleScene::handleStateIconHoverEnter(int unit_id, int entry_index) {
     const StateTooltipViewModel next_tooltip{
         .active_unit_id = icon_it->unit_id,
         .title = icon_it->display_name,
-        .turns = icon_it->turns_text + " 回合",
+        .turns = icon_it->turns_text + " Turns",
         .description = icon_it->description,
         .visible = true
     };
