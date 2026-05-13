@@ -11,6 +11,8 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/party_component.h"
+#include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
@@ -18,6 +20,8 @@
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/data/rpg_catalog.h"
+#include "game/data/rpg_types.h"
 #include "game/defs/constants.h"
 #include "game/defs/commands.h"
 #include "game/defs/render_layers.h"
@@ -276,12 +280,14 @@ SaveService::SaveService(engine::core::Context& context,
                          entt::registry& registry,
                          game::world::WorldState& world_state,
                          game::world::MapManager& map_manager,
-                         game::factory::BlueprintManager& blueprint_manager)
+                         game::factory::BlueprintManager& blueprint_manager,
+                         const game::data::RpgCatalog* rpg_catalog)
     : context_(context),
       registry_(registry),
       world_state_(world_state),
       map_manager_(map_manager),
-      blueprint_manager_(blueprint_manager) {
+      blueprint_manager_(blueprint_manager),
+      rpg_catalog_(rpg_catalog) {
 }
 
 std::filesystem::path SaveService::slotPath(int slot) {
@@ -539,6 +545,32 @@ SaveData SaveService::capture(std::string& out_error) const {
     } else {
         spdlog::warn("SaveService: 玩家缺少 PartyComponent，队伍存档将只包含 actor.player。");
         out.party_state = PartyStateSaveData{};
+    }
+
+    if (const auto* equipment = registry_.try_get<game::component::PartyEquipmentComponent>(player)) {
+        out.equipment_state.loadouts.clear();
+        for (const auto& [actor_id, loadout] : equipment->loadouts_by_actor_id_) {
+            ActorEquipmentSaveData save_loadout{};
+            for (const auto& [slot, item_id] : loadout.equipped_item_ids_) {
+                if (item_id != entt::null) {
+                    save_loadout.slots[std::string(game::data::toString(slot))] =
+                        static_cast<std::uint64_t>(item_id);
+                }
+            }
+            out.equipment_state.loadouts.emplace(actor_id, std::move(save_loadout));
+        }
+    }
+
+    if (const auto* runtime_stats = registry_.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
+        out.party_runtime_state.actor_states.clear();
+        for (const auto& [actor_id, state] : runtime_stats->states_by_actor_id_) {
+            out.party_runtime_state.actor_states.emplace(
+                actor_id,
+                ActorRuntimeStateSaveData{
+                    .current_hp = state.current_hp,
+                    .current_mp = state.current_mp,
+                });
+        }
     }
 
     out.maps.clear();
@@ -857,6 +889,52 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             .active_actor_ids_ = data.party_state.active_actor_ids});
     normalizeParty(party);
     removeRecruitedRecruitableActors(registry_, context_.getSpatialIndexManager(), party);
+
+    game::component::PartyEquipmentComponent equipment_component{};
+    for (const auto& [actor_id, saved_loadout] : data.equipment_state.loadouts) {
+        if (actor_id.empty()) {
+            continue;
+        }
+        game::component::ActorEquipmentLoadout loadout{};
+        for (const auto& [slot_name, item_id] : saved_loadout.slots) {
+            const auto slot = game::data::equipmentSlotIdFromString(slot_name);
+            if (!slot || item_id == 0U) {
+                continue;
+            }
+            const auto item_id_hash = static_cast<entt::id_type>(item_id);
+            if (rpg_catalog_ && !rpg_catalog_->findEquipmentByItem(item_id_hash)) {
+                spdlog::warn(
+                    "SaveService: actor '{}' slot '{}' references missing equipment item id {}, dropping entry.",
+                    actor_id,
+                    slot_name,
+                    item_id);
+                continue;
+            }
+            loadout.equipped_item_ids_[*slot] = item_id_hash;
+        }
+        if (!loadout.equipped_item_ids_.empty()) {
+            equipment_component.loadouts_by_actor_id_.emplace(actor_id, std::move(loadout));
+        }
+    }
+    registry_.emplace_or_replace<game::component::PartyEquipmentComponent>(
+        player,
+        std::move(equipment_component));
+
+    game::component::PartyRuntimeStatsComponent runtime_stats{};
+    for (const auto& [actor_id, saved_state] : data.party_runtime_state.actor_states) {
+        if (actor_id.empty()) {
+            continue;
+        }
+        runtime_stats.states_by_actor_id_.emplace(
+            actor_id,
+            game::component::ActorRuntimeState{
+                .current_hp = std::max(0, saved_state.current_hp),
+                .current_mp = std::max(0, saved_state.current_mp),
+            });
+    }
+    registry_.emplace_or_replace<game::component::PartyRuntimeStatsComponent>(
+        player,
+        std::move(runtime_stats));
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
         if (!data.appearance_state.gender.empty()) {

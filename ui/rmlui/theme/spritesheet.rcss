@@ -71,6 +71,8 @@
     item-tools-axe:          48px 0px 16px 16px;
     item-tools-hoe:          96px 0px 16px 16px;
     item-tools-sickle:      128px 0px 16px 16px;
+    item-weapons-bronze-sword: 32px 0px 16px 16px;
+    item-weapons-wooden-shield: 64px 16px 16px 16px;
 }
 
 /* --- 物品图标 (Icons/Crops.png) --- */
@@ -93,6 +95,8 @@
     src: ../../../assets/farm-rpg/Icons/Weapons/14.png;
     item-materials-timber: 0px 0px 16px 16px;
     item-materials-stone:  0px 16px 16px 16px;
+    item-armor-cloth-robe: 32px 0px 16px 16px;
+    item-armor-travel-charm: 48px 0px 16px 16px;
 }
 
 /* --- HUD 图集 (HUD.png) --- */

@@ -45,11 +45,40 @@ TEST(SaveDataPhase4Test, DeserializeSupportsDefaultExtendedStateFields) {
     EXPECT_TRUE(data.skill_state.learned_skills.empty());
     EXPECT_TRUE(data.skill_state.skill_levels.empty());
     EXPECT_TRUE(data.skill_state.skill_cooldowns.empty());
+    EXPECT_TRUE(data.equipment_state.loadouts.empty());
+    EXPECT_TRUE(data.party_runtime_state.actor_states.empty());
     EXPECT_FALSE(data.combat_state.pending_battle);
     EXPECT_TRUE(data.combat_state.troop_id.empty());
     EXPECT_TRUE(data.combat_state.actor_ids.empty());
     EXPECT_TRUE(data.combat_state.item_stocks.empty());
     EXPECT_EQ(data.combat_state.escape_attempt_count, 0u);
+}
+
+TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
+    SaveData source{};
+    source.equipment_state.loadouts["actor.player"].slots["weapon"] = 1234U;
+    source.equipment_state.loadouts["actor.lyria"].slots["body"] = 5678U;
+    source.party_runtime_state.actor_states["actor.player"] = ActorRuntimeStateSaveData{
+        .current_hp = 321,
+        .current_mp = 12,
+    };
+    source.party_runtime_state.actor_states["actor.lyria"] = ActorRuntimeStateSaveData{
+        .current_hp = 42,
+        .current_mp = 77,
+    };
+
+    const nlohmann::json json = serialize(source);
+
+    SaveData loaded{};
+    std::string error{};
+    ASSERT_TRUE(deserialize(json, loaded, error)) << error;
+
+    EXPECT_EQ(loaded.equipment_state.loadouts.at("actor.player").slots.at("weapon"), 1234U);
+    EXPECT_EQ(loaded.equipment_state.loadouts.at("actor.lyria").slots.at("body"), 5678U);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").current_hp, 321);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").current_mp, 12);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").current_hp, 42);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").current_mp, 77);
 }
 
 TEST(SaveDataPhase4Test, DeserializeRejectsInvalidQuestStateFieldType) {

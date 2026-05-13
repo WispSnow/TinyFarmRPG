@@ -128,6 +128,24 @@ const char* toString(const EffectType value) {
     return "unknown";
 }
 
+const char* toString(const EquipmentSlotId value) {
+    switch (value) {
+        case EquipmentSlotId::Weapon:
+            return "weapon";
+        case EquipmentSlotId::Offhand:
+            return "offhand";
+        case EquipmentSlotId::Head:
+            return "head";
+        case EquipmentSlotId::Body:
+            return "body";
+        case EquipmentSlotId::Accessory:
+            return "accessory";
+        case EquipmentSlotId::Unknown:
+            return "unknown";
+    }
+    return "unknown";
+}
+
 std::optional<ParamIndex> paramIndexFromString(const std::string_view value) {
     if (value == "mhp") {
         return ParamIndex::Mhp;
@@ -269,6 +287,25 @@ std::optional<EffectType> effectTypeFromString(const std::string_view value) {
     }
     if (value == "add_item") {
         return EffectType::AddItem;
+    }
+    return std::nullopt;
+}
+
+std::optional<EquipmentSlotId> equipmentSlotIdFromString(const std::string_view value) {
+    if (value == "weapon") {
+        return EquipmentSlotId::Weapon;
+    }
+    if (value == "offhand") {
+        return EquipmentSlotId::Offhand;
+    }
+    if (value == "head") {
+        return EquipmentSlotId::Head;
+    }
+    if (value == "body") {
+        return EquipmentSlotId::Body;
+    }
+    if (value == "accessory") {
+        return EquipmentSlotId::Accessory;
     }
     return std::nullopt;
 }

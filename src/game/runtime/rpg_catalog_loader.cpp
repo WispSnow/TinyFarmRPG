@@ -65,11 +65,12 @@ bool loadRpgCatalogFromManifest(game::data::RpgCatalog& catalog,
     const auto actors_path = resolveRpgFilePath(catalog, root_path, "actors");
     const auto skills_path = resolveRpgFilePath(catalog, root_path, "skills");
     const auto states_path = resolveRpgFilePath(catalog, root_path, "states");
+    const auto equipment_path = resolveRpgFilePath(catalog, root_path, "equipment");
     const auto enemies_path = resolveRpgFilePath(catalog, root_path, "enemies");
     const auto troops_path = resolveRpgFilePath(catalog, root_path, "troops");
 
-    if (!classes_path || !actors_path || !skills_path || !states_path || !enemies_path || !troops_path) {
-        out_error = "RPG manifest 缺少 classes/actors/skills/states/enemies/troops 文件映射。";
+    if (!classes_path || !actors_path || !skills_path || !states_path || !equipment_path || !enemies_path || !troops_path) {
+        out_error = "RPG manifest 缺少 classes/actors/skills/states/equipment/enemies/troops 文件映射。";
         return false;
     }
 
@@ -87,6 +88,10 @@ bool loadRpgCatalogFromManifest(game::data::RpgCatalog& catalog,
     }
     if (!catalog.loadStates(*states_path)) {
         out_error = makeLoadError("states", *states_path);
+        return false;
+    }
+    if (!catalog.loadEquipment(*equipment_path)) {
+        out_error = makeLoadError("equipment", *equipment_path);
         return false;
     }
     if (!catalog.loadEnemies(*enemies_path)) {

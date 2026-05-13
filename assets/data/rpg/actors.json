@@ -13,6 +13,7 @@
             "map_actor_id": "player",
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
+                "decorator": "portrait-default",
                 "x": 0,
                 "y": 0,
                 "width": 64,
@@ -33,6 +34,7 @@
             "map_actor_id": "lyria",
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png",
+                "decorator": "portrait-lyria",
                 "x": 0,
                 "y": 0,
                 "width": 64,
@@ -52,6 +54,7 @@
             "map_actor_id": "tori",
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png",
+                "decorator": "portrait-tori",
                 "x": 0,
                 "y": 0,
                 "width": 64,

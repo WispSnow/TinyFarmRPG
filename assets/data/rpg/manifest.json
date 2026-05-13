@@ -5,6 +5,7 @@
         "classes": 1,
         "skills": 1,
         "states": 1,
+        "equipment": 1,
         "enemies": 1,
         "troops": 1
     },
@@ -17,6 +18,7 @@
         "classes": "classes.json",
         "skills": "skills.json",
         "states": "states.json",
+        "equipment": "equipment.json",
         "enemies": "enemies.json",
         "troops": "troops.json"
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/data/rpg_types.h"
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
@@ -30,6 +31,7 @@ struct UseItemCommand {
     int inventory_slot_index{-1};
     int count{1};
     bool show_prompt{false};   ///< @brief 是否需要弹出提示（物品栏=true，快捷栏=false）
+    std::optional<std::string> actor_target_id{}; ///< @brief 菜单中对队友使用战斗道具时的目标 actor id。
 };
 
 struct InventorySyncCommand {
@@ -45,6 +47,20 @@ struct InventoryMoveCommand {
 
 struct InventorySortCommand {
     entt::entity target{entt::null};
+};
+
+struct EquipItemCommand {
+    entt::entity player{entt::null};
+    std::string actor_id{};
+    int inventory_slot_index{-1};
+    game::data::EquipmentSlotId target_slot{game::data::EquipmentSlotId::Unknown};
+};
+
+struct UnequipItemCommand {
+    entt::entity player{entt::null};
+    std::string actor_id{};
+    game::data::EquipmentSlotId slot{game::data::EquipmentSlotId::Unknown};
+    int preferred_inventory_slot{-1};
 };
 
 struct HotbarBindCommand {

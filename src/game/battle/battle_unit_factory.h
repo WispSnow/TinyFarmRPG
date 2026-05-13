@@ -1,8 +1,11 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace game::data {
@@ -18,6 +21,8 @@ namespace game::battle {
 struct BattleUnitBuildOptions {
     std::vector<std::string> actor_ids{};    ///< 指定要加入玩家方的 actor id；为空时使用目录中的全部 actor。
     std::string troop_id{};                  ///< 指定敌方 troop id；为空时选择第一个有成员的 troop。
+    std::unordered_map<std::string, game::component::ActorEquipmentLoadout> actor_equipment{};
+    std::unordered_map<std::string, game::component::ActorRuntimeState> actor_runtime_states{};
 };
 
 /// @brief 根据 RPG 目录中的 actor/class/enemy/troop 数据构建 BattleUnit 列表。

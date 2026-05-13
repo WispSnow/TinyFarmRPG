@@ -22,6 +22,7 @@ public:
     [[nodiscard]] bool loadActors(std::string_view file_path);
     [[nodiscard]] bool loadSkills(std::string_view file_path);
     [[nodiscard]] bool loadStates(std::string_view file_path);
+    [[nodiscard]] bool loadEquipment(std::string_view file_path);
     [[nodiscard]] bool loadEnemies(std::string_view file_path);
     [[nodiscard]] bool loadTroops(std::string_view file_path);
 
@@ -36,12 +37,15 @@ public:
     [[nodiscard]] const SkillData* findSkill(std::string_view id) const;
     [[nodiscard]] const StateData* findState(entt::id_type id_hash) const;
     [[nodiscard]] const StateData* findState(std::string_view id) const;
+    [[nodiscard]] const EquipmentData* findEquipmentByItem(entt::id_type item_id_hash) const;
+    [[nodiscard]] const EquipmentData* findEquipmentByItem(std::string_view item_id) const;
     [[nodiscard]] const EnemyData* findEnemy(entt::id_type id_hash) const;
     [[nodiscard]] const EnemyData* findEnemy(std::string_view id) const;
     [[nodiscard]] const TroopData* findTroop(entt::id_type id_hash) const;
     [[nodiscard]] const TroopData* findTroop(std::string_view id) const;
 
     [[nodiscard]] std::vector<const ActorData*> listActors() const;
+    [[nodiscard]] std::vector<const EquipmentData*> listEquipment() const;
     [[nodiscard]] std::vector<const TroopData*> listTroops() const;
 
 private:
@@ -51,6 +55,7 @@ private:
     std::unordered_map<entt::id_type, ActorData> actors_{};
     std::unordered_map<entt::id_type, SkillData> skills_{};
     std::unordered_map<entt::id_type, StateData> states_{};
+    std::unordered_map<entt::id_type, EquipmentData> equipment_{};
     std::unordered_map<entt::id_type, EnemyData> enemies_{};
     std::unordered_map<entt::id_type, TroopData> troops_{};
 };

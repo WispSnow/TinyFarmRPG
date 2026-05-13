@@ -80,6 +80,16 @@ enum class EffectType : std::uint8_t {
     Unknown
 };
 
+/// @brief MVP 装备槽位。后续可在不改变存档语义的前提下追加新槽。
+enum class EquipmentSlotId : std::uint8_t {
+    Weapon = 0,
+    Offhand,
+    Head,
+    Body,
+    Accessory,
+    Unknown
+};
+
 [[nodiscard]] const char* toString(ParamIndex value);
 [[nodiscard]] const char* toString(Scope value);
 [[nodiscard]] const char* toString(DamageType value);
@@ -87,6 +97,7 @@ enum class EffectType : std::uint8_t {
 [[nodiscard]] const char* toString(SkillMotionStyle value);
 [[nodiscard]] const char* toString(TraitType value);
 [[nodiscard]] const char* toString(EffectType value);
+[[nodiscard]] const char* toString(EquipmentSlotId value);
 
 [[nodiscard]] std::optional<ParamIndex> paramIndexFromString(std::string_view value);
 [[nodiscard]] std::optional<Scope> scopeFromString(std::string_view value);
@@ -95,5 +106,6 @@ enum class EffectType : std::uint8_t {
 [[nodiscard]] std::optional<SkillMotionStyle> skillMotionStyleFromString(std::string_view value);
 [[nodiscard]] std::optional<TraitType> traitTypeFromString(std::string_view value);
 [[nodiscard]] std::optional<EffectType> effectTypeFromString(std::string_view value);
+[[nodiscard]] std::optional<EquipmentSlotId> equipmentSlotIdFromString(std::string_view value);
 
 } // namespace game::data

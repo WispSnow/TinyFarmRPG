@@ -86,7 +86,16 @@ findItemAtInventorySlot(const entt::registry& registry,
                                                 const game::data::ItemCatalog* catalog,
                                                 int slot_index) {
     const auto* item = findItemAtInventorySlot(registry, player, catalog, slot_index);
-    return item && item->on_use_.has_value();
+    return item && (item->on_use_.has_value() || item->battle_use_.has_value());
+}
+
+[[nodiscard]] bool requiresActorTargetAtInventorySlot(const entt::registry& registry,
+                                                      entt::entity player,
+                                                      const game::data::ItemCatalog* catalog,
+                                                      int slot_index) {
+    const auto* item = findItemAtInventorySlot(registry, player, catalog, slot_index);
+    return item && item->battle_use_.has_value() &&
+           item->battle_use_->scope == game::data::Scope::OneAlly;
 }
 
 } // namespace
@@ -213,6 +222,10 @@ bool InventoryTabContent::onCancel() {
     }
 
     return false;
+}
+
+void InventoryTabContent::setActorTargetRequestHandler(ActorTargetRequestHandler handler) {
+    actor_target_request_handler_ = std::move(handler);
 }
 
 bool InventoryTabContent::isValidPanelIndex(MenuPanelKind kind, int slot_index) const {
@@ -705,7 +718,12 @@ void InventoryTabContent::executeAction(int action_id) {
 
             closeActionMenu();
             if (inventory_slot >= 0) {
-                context_.getDispatcher().trigger(game::defs::UseItemCommand{player_, inventory_slot, 1, false});
+                if (requiresActorTargetAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot) &&
+                    actor_target_request_handler_) {
+                    actor_target_request_handler_(inventory_slot);
+                } else {
+                    context_.getDispatcher().trigger(game::defs::UseItemCommand{player_, inventory_slot, 1, false});
+                }
             }
             break;
         }

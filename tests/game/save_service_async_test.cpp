@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -38,6 +39,8 @@
 #include "game/component/hotbar_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/party_component.h"
+#include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
@@ -45,6 +48,8 @@
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_data.h"
+#include "game/data/rpg_catalog.h"
+#include "game/data/rpg_types.h"
 #include "game/defs/events.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
@@ -117,6 +122,7 @@ protected:
     std::unique_ptr<TestScene> scene_{};
     game::world::WorldState world_state_{};
     game::factory::BlueprintManager blueprint_manager_{};
+    game::data::RpgCatalog rpg_catalog_{};
     std::unique_ptr<game::factory::EntityFactory> entity_factory_{};
     std::unique_ptr<game::world::MapManager> map_manager_{};
     std::unique_ptr<SaveService> save_service_{};
@@ -352,9 +358,10 @@ protected:
         settings.async_preload_enabled = false;
         map_manager_->setLoadingSettings(settings);
         ASSERT_TRUE(map_manager_->loadMap(initial_map_id));
+        ASSERT_TRUE(rpg_catalog_.loadEquipment("assets/data/rpg/equipment.json"));
 
         save_service_ = std::make_unique<SaveService>(
-            *context_, registry, world_state_, *map_manager_, blueprint_manager_);
+            *context_, registry, world_state_, *map_manager_, blueprint_manager_, &rpg_catalog_);
     }
 
     void TearDown() override {
@@ -575,6 +582,73 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
     EXPECT_EQ(loaded_party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_EQ(loaded_party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_FALSE(hasRecruitableActor(scene_->getRegistry(), "actor.lyria"));
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeState) {
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+
+    auto& equipment = scene_->getRegistry().emplace_or_replace<game::component::PartyEquipmentComponent>(player);
+    equipment.loadouts_by_actor_id_["actor.player"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
+        game::data::RpgCatalog::hashId("equip_bronze_sword");
+    auto& runtime_stats = scene_->getRegistry().emplace_or_replace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 222,
+        .current_mp = 17,
+    };
+
+    const auto file_path = tempFilePath("save_equipment_runtime_restore.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    scene_->getRegistry().remove<game::component::PartyEquipmentComponent>(player);
+    scene_->getRegistry().remove<game::component::PartyRuntimeStatsComponent>(player);
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    auto loaded_player_view =
+        scene_->getRegistry().view<game::component::PlayerTag, game::component::PartyEquipmentComponent, game::component::PartyRuntimeStatsComponent>();
+    ASSERT_NE(loaded_player_view.begin(), loaded_player_view.end());
+    const entt::entity loaded_player = *loaded_player_view.begin();
+    const auto& loaded_equipment = loaded_player_view.get<game::component::PartyEquipmentComponent>(loaded_player);
+    EXPECT_EQ(
+        loaded_equipment.loadouts_by_actor_id_.at("actor.player").equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon),
+        game::data::RpgCatalog::hashId("equip_bronze_sword"));
+    const auto& loaded_runtime = loaded_player_view.get<game::component::PartyRuntimeStatsComponent>(loaded_player);
+    EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_hp, 222);
+    EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_mp, 17);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileDropsMissingEquipmentReferences) {
+    const auto file_path = tempFilePath("save_missing_equipment_reference.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    nlohmann::json json = nlohmann::json::parse(readTextFile(file_path));
+    json["equipment_state"]["loadouts"]["actor.player"]["weapon"] =
+        static_cast<std::uint64_t>(game::data::RpgCatalog::hashId("equip.deleted_sword"));
+    json["equipment_state"]["loadouts"]["actor.player"]["accessory"] =
+        static_cast<std::uint64_t>(game::data::RpgCatalog::hashId("equip_travel_charm"));
+    {
+        std::ofstream out(file_path, std::ios::binary | std::ios::trunc);
+        ASSERT_TRUE(out.is_open());
+        out << json.dump(2);
+    }
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PartyEquipmentComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity loaded_player = *player_view.begin();
+    const auto& loaded_equipment = player_view.get<game::component::PartyEquipmentComponent>(loaded_player);
+    const auto& loadout = loaded_equipment.loadouts_by_actor_id_.at("actor.player");
+    EXPECT_FALSE(loadout.equipped_item_ids_.contains(game::data::EquipmentSlotId::Weapon));
+    EXPECT_EQ(
+        loadout.equipped_item_ids_.at(game::data::EquipmentSlotId::Accessory),
+        game::data::RpgCatalog::hashId("equip_travel_charm"));
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresDefeatedEncounters) {

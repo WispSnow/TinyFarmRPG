@@ -14,6 +14,7 @@ class LightToggleSystem;
 class DayNightSystem;
 class CropSystem;
 class InventorySystem;
+class EquipmentSystem;
 class HotbarSystem;
 class ItemUseSystem;
 class NPCWanderSystem;

@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "game/component/inventory_component.h"
+#include "game/component/party_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/data/item_catalog.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
@@ -21,6 +24,18 @@ struct DialogueCapture {
 
 std::string testItemConfigPath() {
     return std::string(PROJECT_SOURCE_DIR) + "/tests/data/item_use_items.json";
+}
+
+std::string projectItemConfigPath() {
+    return std::string(PROJECT_SOURCE_DIR) + "/assets/data/item_config.json";
+}
+
+game::data::RpgCatalog loadProjectActorCatalog() {
+    const std::string rpg_root = std::string(PROJECT_SOURCE_DIR) + "/assets/data/rpg";
+    game::data::RpgCatalog catalog;
+    EXPECT_TRUE(catalog.loadClasses(rpg_root + "/classes.json"));
+    EXPECT_TRUE(catalog.loadActors(rpg_root + "/actors.json"));
+    return catalog;
 }
 
 } // namespace
@@ -134,6 +149,50 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
 
     ASSERT_EQ(capture.shows.size(), 1u);
     EXPECT_EQ(capture.shows[0].channel, 2);
+}
+
+TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto rpg_catalog = loadProjectActorCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service, &rpg_catalog);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    inv.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inv.slot(0).count_ = 2;
+
+    registry.emplace<game::component::PartyComponent>(
+        player,
+        game::component::PartyComponent{
+            .recruited_actor_ids_ = {"actor.player"},
+            .active_actor_ids_ = {"actor.player"},
+            .max_active_members_ = 4,
+        });
+    auto& runtime_stats = registry.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 0,
+        .current_mp = 10,
+    };
+
+    dispatcher.trigger(game::defs::UseItemCommand{
+        .target = player,
+        .inventory_slot_index = 0,
+        .count = 1,
+        .show_prompt = false,
+        .actor_target_id = "actor.player",
+    });
+
+    EXPECT_EQ(inv.slot(0).item_id_, entt::hashed_string{"potion"}.value());
+    EXPECT_EQ(inv.slot(0).count_, 1);
+    EXPECT_EQ(runtime_stats.states_by_actor_id_.at("actor.player").current_hp, 50);
+    EXPECT_EQ(runtime_stats.states_by_actor_id_.at("actor.player").current_mp, 10);
 }
 
 } // namespace game::system

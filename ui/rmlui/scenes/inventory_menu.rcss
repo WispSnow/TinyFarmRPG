@@ -44,6 +44,16 @@
     portrait-default: 0px 0px 64px 64px;
 }
 
+@spritesheet menu-portrait-lyria {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
+    portrait-lyria: 0px 0px 64px 64px;
+}
+
+@spritesheet menu-portrait-tori {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
+    portrait-tori: 0px 0px 64px 64px;
+}
+
 /* --- Overlay --- */
 
 #menu-overlay {
@@ -62,7 +72,7 @@
     left: 140dp;
     top: 68dp;
     width: 360dp;
-    height: 224dp;
+    height: 238dp;
     decorator: ninepatch(menu-panel-bg, menu-panel-bg-inner, 1.0);
     padding: 10dp;
 }
@@ -136,10 +146,12 @@
     display: flex;
     flex-direction: row;
     gap: 14dp;
+    height: 204dp;
 }
 
-#char-col {
+#party-col {
     width: 108dp;
+    height: 204dp;
 }
 
 #slot-region {
@@ -296,6 +308,184 @@
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
+/* --- Equipment Panel --- */
+
+#equipment-content {
+    position: relative;
+    width: 218dp;
+    height: 172dp;
+}
+
+#equipment-header {
+    height: 24dp;
+    border-width: 0 0 1dp 0;
+    border-color: #d9a88a44;
+}
+
+#equipment-actor-name {
+    font-size: 11dp;
+    color: #ffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#equipment-actor-summary {
+    margin-top: 2dp;
+    font-size: 8dp;
+    color: #a9b1d6;
+}
+
+#equipment-main-row {
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+    margin-top: 5dp;
+    height: 82dp;
+}
+
+#equipment-slot-list {
+    width: 112dp;
+}
+
+.equipment-slot-entry {
+    display: flex;
+    flex-direction: row;
+    width: 112dp;
+    height: 14dp;
+    padding: 1dp 2dp;
+    background-color: #24283bcc;
+    border: 1dp #414868;
+    color: #f7f7f7;
+}
+
+.equipment-slot-entry + .equipment-slot-entry {
+    margin-top: 2dp;
+}
+
+.equipment-slot-selected {
+    border: 1dp #7aa2f7;
+    background-color: #2d334dcc;
+}
+
+.equipment-slot-icon {
+    width: 12dp;
+    height: 12dp;
+    margin-top: 0dp;
+}
+
+.equipment-slot-text {
+    margin-left: 3dp;
+    width: 90dp;
+}
+
+.equipment-slot-label {
+    font-size: 7dp;
+    color: #a9b1d6;
+}
+
+.equipment-slot-item {
+    margin-top: -1dp;
+    font-size: 8dp;
+    color: #ffffff;
+}
+
+#equipment-candidate-panel {
+    width: 102dp;
+    height: 82dp;
+    overflow-y: auto;
+}
+
+.equipment-candidate-entry {
+    display: flex;
+    flex-direction: row;
+    width: 96dp;
+    min-height: 20dp;
+    padding: 2dp;
+    background-color: #1f2335cc;
+    border: 1dp #414868;
+    color: #f7f7f7;
+}
+
+.equipment-candidate-entry + .equipment-candidate-entry {
+    margin-top: 2dp;
+}
+
+.tf-input-mouse .equipment-candidate-entry:hover,
+.tf-input-nav .equipment-candidate-entry:focus,
+.tf-input-mouse .equipment-slot-entry:hover,
+.tf-input-nav .equipment-slot-entry:focus {
+    background-color: #414868;
+}
+
+.equipment-candidate-icon {
+    width: 16dp;
+    height: 16dp;
+    margin-top: 1dp;
+}
+
+.equipment-candidate-text {
+    margin-left: 4dp;
+    width: 72dp;
+}
+
+.equipment-candidate-name {
+    font-size: 8dp;
+    color: #ffffff;
+}
+
+.equipment-candidate-delta {
+    margin-top: 1dp;
+    font-size: 7dp;
+    color: #9ece6a;
+}
+
+#equipment-candidate-empty {
+    margin-top: 18dp;
+    text-align: center;
+    color: #a9b1d6;
+    font-size: 9dp;
+}
+
+#equipment-detail {
+    margin-top: 6dp;
+    height: 52dp;
+    border-width: 1dp 0 0 0;
+    border-color: #d9a88a44;
+    padding-top: 4dp;
+}
+
+#equipment-detail-title {
+    font-size: 10dp;
+    color: #ffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#equipment-detail-category {
+    font-size: 8dp;
+    color: #a9b1d6;
+}
+
+#equipment-detail-description {
+    margin-top: 1dp;
+    width: 148dp;
+    font-size: 8dp;
+    color: #c0caf5;
+}
+
+#equipment-unequip-btn {
+    position: absolute;
+    left: 156dp;
+    top: 138dp;
+    width: 62dp;
+    height: 18dp;
+    padding: 2dp 5dp;
+    background-color: #2e3440cc;
+    border: 1dp #f7768e;
+    color: #f7f7f7;
+    font-size: 8dp;
+    text-align: center;
+    vertical-align: middle;
+}
+
 /* --- Quest Panel --- */
 
 #quests-content {
@@ -441,74 +631,84 @@
     margin-top: 2dp;
 }
 
-/* --- Character Column --- */
+/* --- Party Column --- */
 
-#char-portrait {
-    width: 64dp;
-    height: 64dp;
-    margin: 0 auto;
-    decorator: image(portrait-default);
+.party-card {
+    display: flex;
+    flex-direction: row;
+    width: 108dp;
+    height: 46dp;
+    padding: 3dp;
+    background-color: #1f2335cc;
+    border: 1dp #414868;
+    color: #f7f7f7;
 }
 
-#char-info {
-    text-align: center;
+.party-card + .party-card {
     margin-top: 4dp;
 }
 
-#char-name {
-    font-size: 12dp;
+.party-selected {
+    border: 1dp #7aa2f7;
+    background-color: #2d334dcc;
+}
+
+.party-targetable {
+    border: 1dp #9ece6a;
+}
+
+.party-empty {
+    opacity: 0.45;
+}
+
+.tf-input-mouse .party-card:hover,
+.tf-input-nav .party-card:focus {
+    background-color: #414868;
+}
+
+.party-portrait {
+    width: 32dp;
+    height: 32dp;
+    margin-top: 3dp;
+}
+
+.party-copy {
+    margin-left: 5dp;
+    width: 64dp;
+}
+
+.party-name {
+    font-size: 9dp;
     color: #ffffff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
-#char-title {
-    font-size: 10dp;
+.party-meta {
+    margin-top: 1dp;
+    font-size: 7dp;
     color: #a9b1d6;
-    margin-top: 2dp;
 }
 
-/* Equipment Grid (4 col × 2 row) */
+.party-resource {
+    margin-top: 1dp;
+    font-size: 7dp;
+    color: #c0caf5;
+}
 
-#equip-grid {
+/* --- Footer --- */
+
+#menu-footer {
+    position: absolute;
+    left: 10dp;
+    top: 216dp;
+    width: 340dp;
+    height: 14dp;
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    width: 86dp;
-    gap: 2dp;
-    margin: 8dp auto 0 auto;
-}
-
-.eq-slot {
-    width: 20dp;
-    height: 20dp;
-    position: relative;
-    decorator: ninepatch(menu-slot-bg, menu-slot-bg-inner, 1.0);
-    opacity: 0.6;
-}
-
-.eq-placeholder {
-    position: absolute;
-    left: 2dp;
-    top: 2dp;
-    width: 16dp;
-    height: 16dp;
-    opacity: 0.4;
-}
-
-#eq-hat    .eq-placeholder { decorator: image(equip-hat); }
-#eq-shirt  .eq-placeholder { decorator: image(equip-shirt); }
-#eq-pants  .eq-placeholder { decorator: image(equip-pants); }
-#eq-boots  .eq-placeholder { decorator: image(equip-boots); }
-#eq-neck   .eq-placeholder { decorator: image(equip-necklace); }
-#eq-gloves .eq-placeholder { decorator: image(equip-gloves); }
-#eq-ring1  .eq-placeholder { decorator: image(equip-ring); }
-#eq-ring2  .eq-placeholder { decorator: image(equip-ring); }
-
-/* Stats / Gold */
-
-#char-stats {
-    text-align: center;
-    margin-top: 8dp;
+    justify-content: space-between;
+    border-width: 1dp 0 0 0;
+    border-color: #d9a88a44;
+    padding-top: 3dp;
 }
 
 #gold-label {
@@ -520,5 +720,5 @@
 #farm-label {
     font-size: 10dp;
     color: #a9b1d6;
-    margin-top: 2dp;
+    text-align: right;
 }

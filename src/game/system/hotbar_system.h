@@ -8,14 +8,21 @@
 #include <entt/signal/dispatcher.hpp>
 #include <vector>
 
+namespace game::data {
+class ItemCatalog;
+}
+
 namespace game::system {
 
 class HotbarSystem final {
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
+    const game::data::ItemCatalog* item_catalog_{nullptr};
 
 public:
-    HotbarSystem(entt::registry& registry, entt::dispatcher& dispatcher);
+    HotbarSystem(entt::registry& registry,
+                 entt::dispatcher& dispatcher,
+                 const game::data::ItemCatalog* item_catalog = nullptr);
     ~HotbarSystem();
 
     void subscribe();

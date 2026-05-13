@@ -339,6 +339,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     EXPECT_EQ(player->map_actor_id_, "player");
     ASSERT_TRUE(player->portrait_.valid());
     EXPECT_EQ(player->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
+    EXPECT_EQ(player->portrait_.decorator_, "portrait-default");
     EXPECT_EQ(player->portrait_.width_, 64);
     EXPECT_EQ(player->portrait_.height_, 64);
 
@@ -347,12 +348,14 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     EXPECT_EQ(lyria->map_actor_id_, "lyria");
     ASSERT_TRUE(lyria->portrait_.valid());
     EXPECT_EQ(lyria->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png");
+    EXPECT_EQ(lyria->portrait_.decorator_, "portrait-lyria");
 
     const auto* tori = catalog.findActor("actor.tori");
     ASSERT_NE(tori, nullptr);
     EXPECT_EQ(tori->map_actor_id_, "tori");
     ASSERT_TRUE(tori->portrait_.valid());
     EXPECT_EQ(tori->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png");
+    EXPECT_EQ(tori->portrait_.decorator_, "portrait-tori");
 }
 
 TEST(RpgCatalogTest, ValidateFailsOnMissingSkillReference) {
@@ -430,6 +433,45 @@ TEST(RpgCatalogTest, LoadActorsFailsWhenSkillIdsContainsNonStringEntry) {
 
     RpgCatalog catalog;
     EXPECT_FALSE(catalog.loadActors(paths.actors.string()));
+}
+
+TEST(RpgCatalogTest, EquipmentItemStackLimitIsClampedToOneBeforeValidation) {
+    const auto temp_root = game::test::createUniqueTempDir("rpg_catalog_equipment_stack_limit");
+    const auto items_path = temp_root / "items.json";
+    const auto equipment_path = temp_root / "equipment.json";
+    game::test::writeTextFile(
+        items_path,
+        R"json({
+  "items": [
+    {
+      "id": "equip.stackable_sword",
+      "display_name": "Stackable Sword",
+      "category": "equipment",
+      "stack_limit": 2
+    }
+  ]
+})json");
+    game::test::writeTextFile(
+        equipment_path,
+        R"json({
+  "equipment": [
+    {
+      "item_id": "equip.stackable_sword",
+      "slot": "weapon"
+    }
+  ]
+})json");
+
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(items_path.string()));
+    const auto* item = item_catalog.findItem(RpgCatalog::hashId("equip.stackable_sword"));
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->stack_limit_, 1);
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadEquipment(equipment_path.string()));
+
+    std::string error{};
+    EXPECT_TRUE(catalog.validateReferences(error, &item_catalog)) << error;
 }
 
 TEST(RpgCatalogTest, ValidateFailsOnMissingEnemyReference) {

@@ -120,6 +120,38 @@
             "description": "Restores a small amount of HP in battle"
         },
         {
+            "id": "equip_bronze_sword",
+            "category": "equipment",
+            "icon_id": "weapons/bronze_sword",
+            "stack_limit": 1,
+            "display_name": "Bronze Sword",
+            "description": "A simple blade suited for a new swordsman."
+        },
+        {
+            "id": "equip_wooden_shield",
+            "category": "equipment",
+            "icon_id": "weapons/wooden_shield",
+            "stack_limit": 1,
+            "display_name": "Wooden Shield",
+            "description": "Light protection for front-line allies."
+        },
+        {
+            "id": "equip_cloth_robe",
+            "category": "equipment",
+            "icon_id": "armor/cloth_robe",
+            "stack_limit": 1,
+            "display_name": "Cloth Robe",
+            "description": "A simple robe that helps focus magic."
+        },
+        {
+            "id": "equip_travel_charm",
+            "category": "equipment",
+            "icon_id": "armor/travel_charm",
+            "stack_limit": 1,
+            "display_name": "Travel Charm",
+            "description": "A small charm carried by wandering adventurers."
+        },
+        {
             "id": "material_timber",
             "category": "material",
             "icon_id": "materials/timber",

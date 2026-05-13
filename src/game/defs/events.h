@@ -2,6 +2,7 @@
 
 #include "game/battle/battle_types.h"
 #include "game/battle/battle_reward_resolver.h"
+#include "game/data/rpg_types.h"
 #include "constants.h"
 #include "crop_defs.h"
 #include <glm/vec2.hpp>
@@ -83,6 +84,25 @@ struct HotbarChanged {
     std::vector<HotbarSlotUpdate> slots{};
     bool full_sync{false};
     int active_slot{0};
+};
+
+struct EquipmentSlotUpdate {
+    std::string actor_id{};
+    game::data::EquipmentSlotId slot{game::data::EquipmentSlotId::Unknown};
+    entt::id_type item_id{entt::null};
+};
+
+struct EquipmentChanged {
+    entt::entity player{entt::null};
+    std::string actor_id{};
+    std::vector<EquipmentSlotUpdate> slots{};
+    bool full_sync{false};
+};
+
+struct PartyRuntimeStatsChanged {
+    entt::entity player{entt::null};
+    std::string actor_id{};
+    bool full_sync{false};
 };
 
 struct DialogueShowEvent {

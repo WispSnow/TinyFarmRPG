@@ -134,6 +134,29 @@ TEST(InventoryHotbarConsistencyTest, HotbarSync_ClearsOutOfRangeMappings) {
     EXPECT_EQ(hotbar.slot(2).inventory_slot_index_, 3);
 }
 
+TEST(InventoryHotbarConsistencyTest, EquipmentItemsCannotStayPinnedToHotbar) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    HotbarSystem hotbar_system(registry, dispatcher, &catalog);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
+
+    inv.slot(0).item_id_ = entt::hashed_string{"equip_bronze_sword"}.value();
+    inv.slot(0).count_ = 1;
+
+    dispatcher.trigger(game::defs::HotbarBindCommand{player, 0, 0});
+    EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, -1);
+
+    hotbar.slot(0).inventory_slot_index_ = 0;
+    dispatcher.trigger(game::defs::HotbarSyncCommand{player, true});
+    EXPECT_EQ(hotbar.slot(0).inventory_slot_index_, -1);
+}
+
 TEST(InventoryHotbarConsistencyTest, MergePartial_KeepsHotbarMappingsUnchanged) {
     entt::registry registry;
     entt::dispatcher dispatcher;

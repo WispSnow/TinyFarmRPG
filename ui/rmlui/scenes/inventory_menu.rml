@@ -101,9 +101,54 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-equipment"></tab>
-                <panel id="panel-equipment" class="placeholder-panel">
-                    <div class="placeholder-title">Equipment</div>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-equipment"></tab>
+                <panel id="panel-equipment">
+                    <div id="equipment-content">
+                        <div id="equipment-header">
+                            <div id="equipment-actor-name">{{ equipment_actor_name }}</div>
+                            <div id="equipment-actor-summary">{{ equipment_actor_summary }}</div>
+                        </div>
+
+                        <div id="equipment-main-row">
+                            <div id="equipment-slot-list">
+                                <button class="equipment-slot-entry tf-nav-auto tf-focus-ring-blue"
+                                        data-for="eqslot : equipment_slots"
+                                        data-class-equipment-slot-selected="eqslot.is_selected"
+                                        data-class-has-item="eqslot.has_item"
+                                        data-event-click="equipment_slot_click(eqslot.slot_index)">
+                                    <div class="equipment-slot-icon" data-style-decorator="eqslot.icon_decorator"></div>
+                                    <div class="equipment-slot-text">
+                                        <div class="equipment-slot-label">{{ eqslot.label }}</div>
+                                        <div class="equipment-slot-item">{{ eqslot.item_name }}</div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div id="equipment-candidate-panel">
+                                <div id="equipment-candidate-list" data-if="has_equipment_candidates">
+                                    <button class="equipment-candidate-entry tf-nav-auto tf-focus-ring-blue"
+                                            data-for="candidate : equipment_candidates"
+                                            data-event-click="equipment_candidate_click(candidate.inventory_slot_index)">
+                                        <div class="equipment-candidate-icon" data-style-decorator="candidate.icon_decorator"></div>
+                                        <div class="equipment-candidate-text">
+                                            <div class="equipment-candidate-name">{{ candidate.item_name }}</div>
+                                            <div class="equipment-candidate-delta" data-if="candidate.has_delta">{{ candidate.delta_text }}</div>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div id="equipment-candidate-empty" data-if="!has_equipment_candidates">No candidates</div>
+                            </div>
+                        </div>
+
+                        <div id="equipment-detail" data-if="has_equipment_detail">
+                            <div id="equipment-detail-title">{{ equipment_detail_name }}</div>
+                            <div id="equipment-detail-category">{{ equipment_detail_category }}</div>
+                            <div id="equipment-detail-description">{{ equipment_detail_description }}</div>
+                            <button id="equipment-unequip-btn"
+                                    class="tf-nav-auto tf-focus-ring-danger"
+                                    data-event-click="equipment_unequip">Unequip</button>
+                        </div>
+                    </div>
                 </panel>
 
                 <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-quests"></tab>
@@ -150,29 +195,30 @@
                 </panel>
             </tabset>
 
-            <!-- Right: Character -->
-            <div id="char-col">
-                <div id="char-portrait"></div>
-                <div id="char-info">
-                    <div id="char-name">{{ char_name }}</div>
-                    <div id="char-title">{{ char_title }}</div>
-                </div>
-                <div id="equip-grid">
-                    <div class="eq-slot" id="eq-hat"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-shirt"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-pants"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-boots"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-neck"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-gloves"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-ring1"><div class="eq-placeholder"></div></div>
-                    <div class="eq-slot" id="eq-ring2"><div class="eq-placeholder"></div></div>
-                </div>
-                <div id="char-stats">
-                    <div id="gold-label">{{ gold_label }}</div>
-                    <div id="farm-label">{{ farm_label }}</div>
-                </div>
+            <!-- Right: Party -->
+            <div id="party-col">
+                <button class="party-card tf-nav-auto tf-focus-ring-blue"
+                        data-for="member : party_members"
+                        data-class-party-empty="member.empty"
+                        data-class-party-selected="member.selected"
+                        data-class-party-targetable="member.targetable"
+                        data-attrif-disabled="member.empty"
+                        data-event-click="party_member_click(member.slot_index)">
+                    <div class="party-portrait" data-style-decorator="member.portrait_decorator"></div>
+                    <div class="party-copy">
+                        <div class="party-name">{{ member.display_name }}</div>
+                        <div class="party-meta">{{ member.level_label }} {{ member.class_label }}</div>
+                        <div class="party-resource">{{ member.hp_text }}</div>
+                        <div class="party-resource">{{ member.mp_text }}</div>
+                    </div>
+                </button>
             </div>
 
+        </div>
+
+        <div id="menu-footer">
+            <div id="gold-label">{{ gold_label }}</div>
+            <div id="farm-label">{{ farm_label }}</div>
         </div>
     </div>
 </body>

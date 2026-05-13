@@ -18,6 +18,10 @@ namespace game::factory {
 class BlueprintManager;
 }
 
+namespace game::data {
+class RpgCatalog;
+}
+
 namespace game::world {
 class WorldState;
 class MapManager;
@@ -32,6 +36,7 @@ private:
     game::world::WorldState& world_state_;
     game::world::MapManager& map_manager_;
     game::factory::BlueprintManager& blueprint_manager_;
+    const game::data::RpgCatalog* rpg_catalog_{nullptr};
     std::atomic<bool> save_in_progress_{false};
     std::optional<std::jthread> async_save_thread_{};
 
@@ -40,7 +45,8 @@ public:
                 entt::registry& registry,
                 game::world::WorldState& world_state,
                 game::world::MapManager& map_manager,
-                game::factory::BlueprintManager& blueprint_manager);
+                game::factory::BlueprintManager& blueprint_manager,
+                const game::data::RpgCatalog* rpg_catalog = nullptr);
     ~SaveService() = default;
 
     [[nodiscard]] bool saveToFile(const std::filesystem::path& file_path, std::string& out_error);
