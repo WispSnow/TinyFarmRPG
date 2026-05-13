@@ -71,8 +71,28 @@
     item-tools-axe:          48px 0px 16px 16px;
     item-tools-hoe:          96px 0px 16px 16px;
     item-tools-sickle:      128px 0px 16px 16px;
-    item-weapons-bronze-sword: 32px 0px 16px 16px;
-    item-weapons-wooden-shield: 64px 16px 16px 16px;
+}
+
+/* --- 木制装备图标 (Weapons/RPG/1.png) --- */
+@spritesheet ui-items-equipment-wooden {
+    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/1.png;
+    item-equipment-wooden-sword:     192px  0px 16px 16px;
+    item-equipment-wooden-staff:     176px 16px 16px 16px;
+    item-equipment-wooden-helmet:    160px 32px 16px 16px;
+    item-equipment-wooden-armor:     176px 32px 16px 16px;
+    item-equipment-wooden-boots:     208px 32px 16px 16px;
+    item-equipment-wooden-accessory: 288px 32px 16px 16px;
+}
+
+/* --- 铁制装备图标 (Weapons/RPG/5.png) --- */
+@spritesheet ui-items-equipment-iron {
+    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/5.png;
+    item-equipment-iron-sword:     192px  0px 16px 16px;
+    item-equipment-iron-staff:     176px 16px 16px 16px;
+    item-equipment-iron-helmet:    160px 32px 16px 16px;
+    item-equipment-iron-armor:     176px 32px 16px 16px;
+    item-equipment-iron-boots:     208px 32px 16px 16px;
+    item-equipment-iron-accessory: 288px 32px 16px 16px;
 }
 
 /* --- 物品图标 (Icons/Crops.png) --- */
@@ -95,8 +115,6 @@
     src: ../../../assets/farm-rpg/Icons/Weapons/14.png;
     item-materials-timber: 0px 0px 16px 16px;
     item-materials-stone:  0px 16px 16px 16px;
-    item-armor-cloth-robe: 32px 0px 16px 16px;
-    item-armor-travel-charm: 48px 0px 16px 16px;
 }
 
 /* --- HUD 图集 (HUD.png) --- */

@@ -1,20 +1,10 @@
 {
     "equipment": [
         {
-            "item_id": "equip_bronze_sword",
+            "item_id": "equip_wooden_sword",
             "slot": "weapon",
             "param_bonuses": {
-                "atk": 4
-            },
-            "allowed_classes": [
-                "class.swordsman"
-            ]
-        },
-        {
-            "item_id": "equip_wooden_shield",
-            "slot": "offhand",
-            "param_bonuses": {
-                "def": 3
+                "atk": 2
             },
             "allowed_classes": [
                 "class.swordsman",
@@ -22,21 +12,95 @@
             ]
         },
         {
-            "item_id": "equip_cloth_robe",
-            "slot": "body",
+            "item_id": "equip_wooden_staff",
+            "slot": "weapon",
             "param_bonuses": {
-                "mmp": 8,
-                "mdf": 3
+                "mmp": 4,
+                "mat": 2
             },
             "allowed_classes": [
                 "class.mage"
             ]
         },
         {
-            "item_id": "equip_travel_charm",
+            "item_id": "equip_wooden_helmet",
+            "slot": "head",
+            "param_bonuses": {
+                "def": 1
+            }
+        },
+        {
+            "item_id": "equip_wooden_armor",
+            "slot": "body",
+            "param_bonuses": {
+                "def": 2
+            }
+        },
+        {
+            "item_id": "equip_wooden_boots",
+            "slot": "boot",
+            "param_bonuses": {
+                "agi": 1
+            }
+        },
+        {
+            "item_id": "equip_wooden_accessory",
             "slot": "accessory",
             "param_bonuses": {
-                "luk": 4,
+                "luk": 1
+            }
+        },
+        {
+            "item_id": "equip_iron_sword",
+            "slot": "weapon",
+            "param_bonuses": {
+                "atk": 5
+            },
+            "allowed_classes": [
+                "class.swordsman",
+                "class.monk"
+            ]
+        },
+        {
+            "item_id": "equip_iron_staff",
+            "slot": "weapon",
+            "param_bonuses": {
+                "mmp": 8,
+                "mat": 5
+            },
+            "allowed_classes": [
+                "class.mage"
+            ]
+        },
+        {
+            "item_id": "equip_iron_helmet",
+            "slot": "head",
+            "param_bonuses": {
+                "def": 3,
+                "mdf": 1
+            }
+        },
+        {
+            "item_id": "equip_iron_armor",
+            "slot": "body",
+            "param_bonuses": {
+                "def": 5,
+                "mdf": 2
+            }
+        },
+        {
+            "item_id": "equip_iron_boots",
+            "slot": "boot",
+            "param_bonuses": {
+                "def": 1,
+                "agi": 3
+            }
+        },
+        {
+            "item_id": "equip_iron_accessory",
+            "slot": "accessory",
+            "param_bonuses": {
+                "luk": 3,
                 "agi": 1
             }
         }

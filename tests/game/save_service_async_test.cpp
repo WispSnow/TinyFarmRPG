@@ -591,7 +591,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeSt
 
     auto& equipment = scene_->getRegistry().emplace_or_replace<game::component::PartyEquipmentComponent>(player);
     equipment.loadouts_by_actor_id_["actor.player"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
-        game::data::RpgCatalog::hashId("equip_bronze_sword");
+        game::data::RpgCatalog::hashId("equip_iron_sword");
     auto& runtime_stats = scene_->getRegistry().emplace_or_replace<game::component::PartyRuntimeStatsComponent>(player);
     runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
         .current_hp = 222,
@@ -615,7 +615,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeSt
     const auto& loaded_equipment = loaded_player_view.get<game::component::PartyEquipmentComponent>(loaded_player);
     EXPECT_EQ(
         loaded_equipment.loadouts_by_actor_id_.at("actor.player").equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon),
-        game::data::RpgCatalog::hashId("equip_bronze_sword"));
+        game::data::RpgCatalog::hashId("equip_iron_sword"));
     const auto& loaded_runtime = loaded_player_view.get<game::component::PartyRuntimeStatsComponent>(loaded_player);
     EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_hp, 222);
     EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_mp, 17);
@@ -630,7 +630,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileDropsMissingEquipmentReferences
     json["equipment_state"]["loadouts"]["actor.player"]["weapon"] =
         static_cast<std::uint64_t>(game::data::RpgCatalog::hashId("equip.deleted_sword"));
     json["equipment_state"]["loadouts"]["actor.player"]["accessory"] =
-        static_cast<std::uint64_t>(game::data::RpgCatalog::hashId("equip_travel_charm"));
+        static_cast<std::uint64_t>(game::data::RpgCatalog::hashId("equip_iron_accessory"));
     {
         std::ofstream out(file_path, std::ios::binary | std::ios::trunc);
         ASSERT_TRUE(out.is_open());
@@ -648,7 +648,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileDropsMissingEquipmentReferences
     EXPECT_FALSE(loadout.equipped_item_ids_.contains(game::data::EquipmentSlotId::Weapon));
     EXPECT_EQ(
         loadout.equipped_item_ids_.at(game::data::EquipmentSlotId::Accessory),
-        game::data::RpgCatalog::hashId("equip_travel_charm"));
+        game::data::RpgCatalog::hashId("equip_iron_accessory"));
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresDefeatedEncounters) {

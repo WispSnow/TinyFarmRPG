@@ -120,36 +120,100 @@
             "description": "Restores a small amount of HP in battle"
         },
         {
-            "id": "equip_bronze_sword",
+            "id": "equip_wooden_sword",
             "category": "equipment",
-            "icon_id": "weapons/bronze_sword",
+            "icon_id": "equipment/wooden_sword",
             "stack_limit": 1,
-            "display_name": "Bronze Sword",
-            "description": "A simple blade suited for a new swordsman."
+            "display_name": "Wooden Sword",
+            "description": "A light practice sword for front-line allies."
         },
         {
-            "id": "equip_wooden_shield",
+            "id": "equip_wooden_staff",
             "category": "equipment",
-            "icon_id": "weapons/wooden_shield",
+            "icon_id": "equipment/wooden_staff",
             "stack_limit": 1,
-            "display_name": "Wooden Shield",
-            "description": "Light protection for front-line allies."
+            "display_name": "Wooden Staff",
+            "description": "A simple staff that helps focus basic magic."
         },
         {
-            "id": "equip_cloth_robe",
+            "id": "equip_wooden_helmet",
             "category": "equipment",
-            "icon_id": "armor/cloth_robe",
+            "icon_id": "equipment/wooden_helmet",
             "stack_limit": 1,
-            "display_name": "Cloth Robe",
-            "description": "A simple robe that helps focus magic."
+            "display_name": "Wooden Helmet",
+            "description": "Basic head protection made from light wood."
         },
         {
-            "id": "equip_travel_charm",
+            "id": "equip_wooden_armor",
             "category": "equipment",
-            "icon_id": "armor/travel_charm",
+            "icon_id": "equipment/wooden_armor",
             "stack_limit": 1,
-            "display_name": "Travel Charm",
-            "description": "A small charm carried by wandering adventurers."
+            "display_name": "Wooden Armor",
+            "description": "Light armor assembled from reinforced boards."
+        },
+        {
+            "id": "equip_wooden_boots",
+            "category": "equipment",
+            "icon_id": "equipment/wooden_boots",
+            "stack_limit": 1,
+            "display_name": "Wooden Boots",
+            "description": "Sturdy boots for rough farm roads."
+        },
+        {
+            "id": "equip_wooden_accessory",
+            "category": "equipment",
+            "icon_id": "equipment/wooden_accessory",
+            "stack_limit": 1,
+            "display_name": "Wooden Charm",
+            "description": "A small charm carved from polished wood."
+        },
+        {
+            "id": "equip_iron_sword",
+            "category": "equipment",
+            "icon_id": "equipment/iron_sword",
+            "stack_limit": 1,
+            "display_name": "Iron Sword",
+            "description": "A reliable iron blade for front-line allies."
+        },
+        {
+            "id": "equip_iron_staff",
+            "category": "equipment",
+            "icon_id": "equipment/iron_staff",
+            "stack_limit": 1,
+            "display_name": "Iron Staff",
+            "description": "A reinforced staff that channels stronger magic."
+        },
+        {
+            "id": "equip_iron_helmet",
+            "category": "equipment",
+            "icon_id": "equipment/iron_helmet",
+            "stack_limit": 1,
+            "display_name": "Iron Helmet",
+            "description": "A sturdy helmet with dependable protection."
+        },
+        {
+            "id": "equip_iron_armor",
+            "category": "equipment",
+            "icon_id": "equipment/iron_armor",
+            "stack_limit": 1,
+            "display_name": "Iron Armor",
+            "description": "Solid armor for dangerous field work."
+        },
+        {
+            "id": "equip_iron_boots",
+            "category": "equipment",
+            "icon_id": "equipment/iron_boots",
+            "stack_limit": 1,
+            "display_name": "Iron Boots",
+            "description": "Heavy boots that keep footing steady."
+        },
+        {
+            "id": "equip_iron_accessory",
+            "category": "equipment",
+            "icon_id": "equipment/iron_accessory",
+            "stack_limit": 1,
+            "display_name": "Iron Charm",
+            "description": "A small iron charm carried for good fortune."
         },
         {
             "id": "material_timber",

@@ -146,7 +146,7 @@ TEST(InventoryHotbarConsistencyTest, EquipmentItemsCannotStayPinnedToHotbar) {
     auto& inv = registry.emplace<game::component::InventoryComponent>(player);
     auto& hotbar = registry.emplace<game::component::HotbarComponent>(player);
 
-    inv.slot(0).item_id_ = entt::hashed_string{"equip_bronze_sword"}.value();
+    inv.slot(0).item_id_ = entt::hashed_string{"equip_iron_sword"}.value();
     inv.slot(0).count_ = 1;
 
     dispatcher.trigger(game::defs::HotbarBindCommand{player, 0, 0});
