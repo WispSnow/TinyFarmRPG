@@ -145,6 +145,12 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("opacity: 0.3;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon:  272px 64px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon-pressed: 272px 80px 16px 16px;"), std::string::npos);
+    EXPECT_NE(source.find("data-event-click=\"equipment_candidate_click(candidate.inventory_slot_index)\""),
+              std::string::npos);
+    EXPECT_NE(style.find("#equipment-candidate-panel scrollbarvertical"), std::string::npos);
+    EXPECT_NE(style.find("overflow-x: hidden;"), std::string::npos);
+    EXPECT_NE(style.find("width: 4dp;\n    scrollbar-margin: 0dp;"), std::string::npos);
+    EXPECT_NE(style.find("width: 204dp;\n    min-height: 20dp;"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-sword:     192px  0px 16px 16px;"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-staff:     176px 16px 16px 16px;"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-helmet:    160px 32px 16px 16px;"), std::string::npos);
