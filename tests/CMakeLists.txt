@@ -84,6 +84,7 @@ set(TEST_SOURCES
     engine/ui/rml_mouse_buttons_test.cpp
     engine/ui/rml_document_controller_source_test.cpp
     engine/ui/rml_element_helpers_source_test.cpp
+    engine/ui/rml_generated_image_registry_test.cpp
     engine/ui/rml_screen_fade_transition_source_test.cpp
     engine/ui/rmlui_transition_behavior_test.cpp
     engine/ui/ui_types_source_test.cpp
@@ -175,6 +176,9 @@ set(GAME_TEST_SOURCES
     game/shop_debug_panel_helpers_test.cpp
     game/shop_debug_panel_registration_test.cpp
     game/quest_interaction_system_test.cpp
+    game/map_coordinate_mapper_test.cpp
+    game/map_preview_builder_test.cpp
+    game/map_tab_content_test.cpp
     game/quest_tab_content_test.cpp
     game/quest_turn_in_service_test.cpp
     game/shop_transaction_service_test.cpp

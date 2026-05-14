@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/ui/rmlui/rml_generated_image_registry.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
 
 #include <SDL3/SDL.h>
@@ -75,6 +76,8 @@ public:
     [[nodiscard]] Rml::Context* getContext() const { return context_; }
     [[nodiscard]] const RmlUiViewport& getViewport() const { return viewport_; }
     [[nodiscard]] size_t getDocumentCount() const { return documents_.size(); }
+    [[nodiscard]] RmlGeneratedImageRegistry& generatedImages() { return generated_images_; }
+    [[nodiscard]] const RmlGeneratedImageRegistry& generatedImages() const { return generated_images_; }
 
     template<typename Fn>
     void forEachDocument(Fn&& fn) const {
@@ -113,6 +116,7 @@ private:
     RenderInterface_GL3_STB* render_interface_{nullptr};
     Rml::Context* context_{nullptr};
     RmlUiViewport viewport_{};
+    RmlGeneratedImageRegistry generated_images_{};
     int logical_width_{0};
     int logical_height_{0};
     bool initialized_{false};

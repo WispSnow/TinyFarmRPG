@@ -1,6 +1,7 @@
 #include "engine/ui/rmlui/render_interface_gl3_stb.h"
 
 #include "engine/resource/stb_image_mutex.h"
+#include "engine/ui/rmlui/rml_generated_image_registry.h"
 
 #include <glad/glad.h>
 #include <RmlUi/Core/Core.h>
@@ -128,6 +129,25 @@ void RenderInterface_GL3_STB::applyTextureFilter(Rml::TextureHandle texture_hand
 }
 
 Rml::TextureHandle RenderInterface_GL3_STB::LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source) {
+    if (RmlGeneratedImageRegistry::isGeneratedSource(source)) {
+        if (!generated_image_registry_) {
+            Rml::Log::Message(Rml::Log::LT_ERROR, "Generated image registry is null for texture: %s", source.c_str());
+            return {};
+        }
+
+        const engine::resource::DecodedImage* image = generated_image_registry_->find(source);
+        if (!image || image->channels != 4 || !image->valid()) {
+            Rml::Log::Message(Rml::Log::LT_ERROR, "Generated texture not found or invalid: %s", source.c_str());
+            return {};
+        }
+
+        std::vector<std::uint8_t> pixels = image->pixels;
+        premultiplyAlpha(pixels.data(), image->width, image->height);
+
+        texture_dimensions = {image->width, image->height};
+        return this->GenerateTexture({pixels.data(), pixels.size()}, texture_dimensions);
+    }
+
     std::vector<std::uint8_t> file_buffer;
     if (!readFileToBuffer(source, file_buffer)) {
         return {};

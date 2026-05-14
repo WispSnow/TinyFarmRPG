@@ -60,6 +60,7 @@ bool RmlUiRuntime::init(SDL_Window* window,
 
     window_ = window;
     render_interface_ = &render_interface;
+    render_interface_->setGeneratedImageRegistry(&generated_images_);
     viewport_ = sanitizeViewport(viewport);
     system_interface_ = std::make_unique<SystemInterface_SDL>();
 
@@ -122,6 +123,9 @@ void RmlUiRuntime::clean() {
         initialized_ = false;
     }
 
+    if (render_interface_) {
+        render_interface_->setGeneratedImageRegistry(nullptr);
+    }
     Rml::SetRenderInterface(nullptr);
     Rml::SetSystemInterface(nullptr);
 
