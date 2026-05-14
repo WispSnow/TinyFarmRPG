@@ -128,7 +128,7 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
         if (!text.empty()) {
             text.append("  ");
         }
-        text += fmt::format("{}{} {}", delta > 0 ? "+" : "", delta, kParamLabels[i]);
+        text += fmt::format("{}{}{}", delta > 0 ? "+" : "", delta, kParamLabels[i]);
     }
     return text;
 }
