@@ -9,6 +9,7 @@
 #include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
+#include <algorithm>
 #include <string>
 
 namespace game::debug {
@@ -86,6 +87,18 @@ void InventoryDebugPanel::draw(bool& is_open) {
     ImGui::SameLine();
     if (ImGui::Button("Remove Item")) {
         dispatcher_.trigger(game::defs::RemoveItemCommand{player, selected_item_id_, std::max(1, remove_count_)});
+    }
+
+    if (ImGui::Button("Add All Equipment +2")) {
+        int equipment_count = 0;
+        for (const auto* item : items) {
+            if (!item || item->category_ != data::ItemCategory::Equipment) {
+                continue;
+            }
+            dispatcher_.trigger(game::defs::AddItemCommand{player, item->id_, 2});
+            ++equipment_count;
+        }
+        spdlog::info("InventoryDebugPanel added +2 for {} equipment item types", equipment_count);
     }
 
     ImGui::Separator();
