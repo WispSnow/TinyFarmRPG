@@ -140,6 +140,7 @@ target_sources(engine PRIVATE
     engine/ui/rmlui/rml_ui_render_backend_gl.cpp
     engine/ui/rmlui/rml_data_bridge.cpp
     engine/ui/rmlui/rml_document_controller.cpp
+    engine/ui/rmlui/rml_generated_image_registry.cpp
     engine/ui/rmlui/rml_screen_fade.cpp
     engine/ui/rmlui/render_interface_gl3_stb.cpp
 )
@@ -218,6 +219,9 @@ target_sources(game PRIVATE
     game/ui/shop_menu_support.cpp
     game/ui/inventory_tab_content.cpp
     game/ui/equipment_tab_content.cpp
+    game/ui/map_coordinate_mapper.cpp
+    game/ui/map_preview_builder.cpp
+    game/ui/map_tab_content.cpp
     game/ui/quest_tab_content.cpp
     game/ui/dialogue_bubble_view.cpp
     game/ui/dialogue_bubble_controller.cpp

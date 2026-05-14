@@ -16,14 +16,14 @@ Phase 1 只解决“当前 map 长什么样、玩家在哪里”。数据来源�
 
 - 当前 map id 来自 `WorldState::getCurrentMap()`。
 - map 尺寸与文件路径来自 `WorldState::MapState::info`。
-- 玩家世界坐标来自玩家实体的 `TransformComponent`，再通过 `local_px = world_px - MapInfo::world_pos_px` 转为 map-local 坐标。
-- 缩略图运行时从 `.tmj` tile layer 与 tileset 图像生成。
+- 玩家位置直接来自玩家实体的 `TransformComponent::position_`；运行时坐标是当前 map-local 像素坐标，越界时 clamp 到当前 map 尺寸。
+- 缩略图运行时从 `.tmj` 的静态 tile layer 与静态 tile object 生成。
 
 ```mermaid
 flowchart LR
   InventoryMenuScene["InventoryMenuScene"] --> MapTabContent["MapTabContent"]
   MapTabContent --> WorldState["WorldState<br/>current map"]
-  MapTabContent --> PlayerTransform["Player Transform<br/>world to local position"]
+  MapTabContent --> PlayerTransform["Player Transform<br/>map-local position"]
   MapTabContent --> PreviewBuilder["MapPreviewBuilder<br/>runtime thumbnail"]
   PreviewBuilder --> TiledMap["TMJ + TSJ<br/>tile layers"]
   PreviewBuilder --> RmlGeneratedImage["Rml Generated Image<br/>preview source"]
@@ -44,8 +44,8 @@ RmlUi 当前图片加载路径主要走 `RenderInterface_GL3_STB::LoadTexture(so
 
 - `RmlGeneratedImageRegistry` 持有 `source_uri -> DecodedImage`。
 - `RenderInterface_GL3_STB::LoadTexture()` 遇到 `generated://...` 时从 registry 取 RGBA 像素并调用 `GenerateTexture()`。
-- `MapPreviewBuilder` 生成当前 map 缩略图后注册为 `generated://map-preview/<map-name>/<gen-seq>`。
-- source URI 使用 map name 便于调试，并带 generation sequence；每次重生成时换 URI，避免 RmlUi 复用旧 source 的 GL texture。
+- `MapPreviewBuilder` 生成当前 map 缩略图后注册为 `generated://map-preview/<map-name>`。
+- source URI 使用稳定 map name，避免反复激活 tab 时累积新的 RmlUi GL texture；只有未来确实需要替换同一 map 的 CPU image 时才引入 generation sequence。
 - registry 由 `RmlUiRuntime` 持有，生命周期必须长于 `InventoryMenuScene`；document reload 或重新解析 image source 时，RmlUi 仍可能再次请求 CPU 侧 generated image。
 - 注册句柄使用 RAII，释放时只 unregister CPU 侧 `DecodedImage`，不尝试回收 GL texture；GL texture 生命周期由 RmlUi 管理。
 
@@ -56,8 +56,8 @@ RmlUi 当前图片加载路径主要走 `RenderInterface_GL3_STB::LoadTexture(so
 - 使用 `ImageDecodeService::decodeRGBA()` 解码 tileset 图片。
 - Phase 1 对 Tiled GID flip flag 只 strip flag，不做实际翻转；小地图预览可接受该轻微视觉差异。
 - 假设单张 map 内 tile size 一致；若发现不一致，输出 warn 并跳过异常 tile。
-- 第一次打开菜单时同步生成缩略图可以接受；同一 map 的 `DecodedImage` 在 `MapPreviewBuilder` 的进程级缓存中按 `map_name` 保存，菜单关闭后也可复用。
-- object layer、动态实体、autotile 动画和粒子不进入 Phase 1 缩略图。
+- 第一次打开菜单时同步生成缩略图可以接受；同一 `MapPreviewBuilder` 实例按 `map_name` 缓存已生成的 `DecodedImage`，菜单关闭时随 `MapTabContent` 一起释放。
+- object layer 只渲染静态 tile object（带 `gid` 的对象，例如房屋、树和装饰）；非 tile object（trigger、collider、light 等）、动态实体、autotile 动画和粒子不进入 Phase 1 缩略图。
 
 ## UI 结构
 
@@ -113,7 +113,7 @@ Phase 1 玩家 marker 使用纯 CSS 圆点。`ui-map-icons` 与 `landmark / exit
 - `RmlUiRuntime` 持有 registry，并暴露受控访问入口。
 - `RenderInterface_GL3_STB` 在 `LoadTexture()` 中优先解析 `generated://` source。
 - registry 不拥有 GL texture，只拥有 CPU 侧 `DecodedImage`；GL texture 仍由 RmlUi render interface 生成和释放。
-- 每次重生成 preview 时使用新的 `generated://map-preview/<map-name>/<gen-seq>` URI。
+- preview URI 使用稳定的 `generated://map-preview/<map-name>`。同一 map 已注册时跳过重复生成和重复注册。
 
 ### Step 2: Tilemap thumbnail builder
 
@@ -124,7 +124,8 @@ Phase 1 玩家 marker 使用纯 CSS 圆点。`ui-map-icons` 与 `landmark / exit
 - 遍历 visible、`opacity > 0` 且未标记 `properties.invisible` 的 tile layers，把 tile 像素合成到 RGBA buffer。
 - 支持地图 background color fallback。
 - strip Tiled GID flip flags，但 Phase 1 不执行翻转绘制。
-- 按 `map_name` 缓存已生成的 `DecodedImage`，缓存独立于 `InventoryMenuScene` 生命周期，Phase 1 可用容量 1 或小型 LRU。
+- 按 `map_name` 在 `MapPreviewBuilder` 实例内缓存已生成的 `DecodedImage`，Phase 1 可用容量 1 或小型 LRU。
+- 渲染静态 object layer tile object，支持 Tiled image collection tileset；跳过没有 `gid` 的对象。
 - 对缺失 tileset / tile image 输出 warn，并生成可见 fallback 图片。
 
 ### Step 3: 坐标映射 helper
@@ -133,7 +134,7 @@ Phase 1 玩家 marker 使用纯 CSS 圆点。`ui-map-icons` 与 `landmark / exit
 
 - 输入：map pixel size、preview frame size、map-local pixel position。
 - 输出：content rect、scale、offset、marker left/top。
-- caller 负责把玩家 world position 转为 map-local position：`world_px - MapInfo::world_pos_px`。
+- 玩家 transform 已经是当前 map-local 像素坐标，caller 只做 bounds clamp 后传入 helper。
 - 对 map size 为空、玩家位置越界做 clamp。
 - 使用同一套 scale / offset 驱动 preview image 和 player marker。
 
@@ -144,7 +145,7 @@ Phase 1 玩家 marker 使用纯 CSS 圆点。`ui-map-icons` 与 `landmark / exit
 - 注册 `MapTabViewModel` / 必要 struct。
 - 绑定 `map_title`、`map_preview_src`、`has_map_preview`、`player_marker_*`、`map_status_text`。
 - `onActivated()` 从 `WorldState::getCurrentMap()` 取当前 map id，并调用参数化的 view state builder。
-- `onActivated()` 同时读取玩家 transform，转换为 map-local position 后计算 marker 坐标。
+- `onActivated()` 同时读取玩家 transform，clamp 到当前 map bounds 后计算 marker 坐标。
 - `update()` Phase 1 留空。菜单打开时游戏已暂停，玩家不会移动。
 - `onCancel()` 返回 `false`，仍交给菜单关闭逻辑。
 
@@ -187,16 +188,16 @@ Phase 1 玩家 marker 使用纯 CSS 圆点。`ui-map-icons` 与 `landmark / exit
 
 ## Todo
 
-- [ ] 新增 `RmlGeneratedImageRegistry` 并接入 `RmlUiRuntime`。
-- [ ] 扩展 `RenderInterface_GL3_STB::LoadTexture()` 支持 `generated://` source。
-- [ ] 实现 `MapPreviewBuilder` 的 TMJ / TSJ 解析与静态 tile layer 合成。
-- [ ] 实现 `MapCoordinateMapper` 并覆盖多尺寸测试。
-- [ ] 实现 `MapTabContent` view model、data type registration 和 dirty 标记。
-- [ ] 修改 `InventoryMenuScene` / `GameScene`，传入 `WorldState` 并创建真实 Map tab。
-- [ ] 替换 `panel-map` RML placeholder。
-- [ ] 编写 Map tab RCSS，包括 preview frame 和 player marker。
-- [ ] 补齐 Map tab、preview builder、坐标映射、generated image registry 测试。
-- [ ] 运行 `ninja -C build tests/game_tests` 与相关 ctest 过滤。
+- [x] 新增 `RmlGeneratedImageRegistry` 并接入 `RmlUiRuntime`。
+- [x] 扩展 `RenderInterface_GL3_STB::LoadTexture()` 支持 `generated://` source。
+- [x] 实现 `MapPreviewBuilder` 的 TMJ / TSJ 解析与静态 tile layer / tile object 合成。
+- [x] 实现 `MapCoordinateMapper` 并覆盖多尺寸测试。
+- [x] 实现 `MapTabContent` view model、data type registration 和 dirty 标记。
+- [x] 修改 `InventoryMenuScene` / `GameScene`，传入 `WorldState` 并创建真实 Map tab。
+- [x] 替换 `panel-map` RML placeholder。
+- [x] 编写 Map tab RCSS，包括 preview frame 和 player marker。
+- [x] 补齐 Map tab、preview builder、坐标映射、generated image registry 测试。
+- [x] 运行 `ninja -C build engine_tests game_tests`、相关 ctest 过滤与完整 ctest 回归。
 
 ## Implementation Notes
 

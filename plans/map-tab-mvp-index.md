@@ -52,7 +52,7 @@ flowchart LR
 - Phase 1 只显示当前 map。默认 map id 来自 `WorldState::getCurrentMap()`。
 - `MapTabContent` 的数据入口按 `map_id` 参数化，而不是在 view model 内硬编码“当前地图”。Phase 4 若加入区域切换，只替换 map id 来源。
 - 地图预览以 tilemap 为源，并在运行时生成。source of truth 仍是 Tiled map，避免地图改动后手工同步预览图。
-- 坐标映射在 Phase 1 就要锁定：以 Tiled/world 像素坐标为输入，左上角为原点，按当前 map 像素尺寸等比缩放到预览区域；若预览区域和 map 比例不同，使用居中 letterbox offset，marker 坐标必须应用同一个 scale 与 offset。
+- 坐标映射在 Phase 1 就要锁定：以当前 map-local 像素坐标为输入，左上角为原点，按当前 map 像素尺寸等比缩放到预览区域；若预览区域和 map 比例不同，使用居中 letterbox offset，marker 坐标必须应用同一个 scale 与 offset。
 - marker 视觉尺寸以 8dp 为基线，重要/选中状态可放大到 10dp。点击命中区域按视觉 icon 大小设定，不额外扩大隐形热区。
 - Phase 1 的玩家 marker 先使用纯 CSS 圆点，避免卡美术资产；Phase 2 引入新增 `ui-map-icons` 专用 spritesheet，不混入 HUD、item 或 inventory sheet。初始图标范围为 `player / landmark / exit / quest`，Phase 3 再补 quest 状态变体。
 - 数据刷新策略沿用菜单 tab 模式：打开菜单或切换到 Map tab 时构建一次 snapshot；Phase 3 接入任务后，任务状态变化需要使 Map tab view model 失效并重建。
@@ -77,7 +77,7 @@ flowchart LR
 - 显示玩家当前位置 marker。
 - 显示当前区域名称。
 - 建立 `map_id -> preview metadata` 的数据入口。
-- 锁定世界像素坐标到小地图 UI 坐标的换算规则。
+- 锁定 map-local 像素坐标到小地图 UI 坐标的换算规则。
 
 交付判断：
 

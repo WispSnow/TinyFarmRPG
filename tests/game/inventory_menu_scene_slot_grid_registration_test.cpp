@@ -37,6 +37,8 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SharedSlotVectorTypeIsRegistere
         << "InventoryMenuScene should register the shared SlotGrid vector array type exactly once.";
     EXPECT_EQ(test_source_utils::countOccurrences(init_ui_block, "registerQuestTabDataTypes(constructor)"), 1U)
         << "Quest tab data types should also be registered once in the scene-level guarded block.";
+    EXPECT_EQ(test_source_utils::countOccurrences(init_ui_block, "registerMapTabDataTypes(constructor)"), 1U)
+        << "Map tab data types should also be registered once in the scene-level guarded block.";
     EXPECT_EQ(test_source_utils::countOccurrences(init_ui_block, "RegisterArray<decltype(hotbar_slots_)>()"), 0U)
         << "Hotbar slots reuse the same vector<SlotGridViewModel> array type and should not register it again.";
     EXPECT_NE(bind_model_block.find("Bind(\"backpack_slots\", &backpack_slots_)"), std::string::npos);
@@ -130,6 +132,11 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(source.find("data-if=\"!has_active_quests\""), std::string::npos);
     EXPECT_NE(source.find("data-if=\"!has_completed_quests\""), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-map\""), std::string::npos);
+    EXPECT_NE(source.find("id=\"map-content\""), std::string::npos);
+    EXPECT_NE(source.find("data-attr-src=\"map_preview_src\""), std::string::npos);
+    EXPECT_NE(source.find("data-style-left=\"map_preview_left\""), std::string::npos);
+    EXPECT_NE(source.find("data-style-left=\"player_marker_left\""), std::string::npos);
+    EXPECT_NE(source.find(">No map data</div>"), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-options\""), std::string::npos);
     EXPECT_EQ(source.find("data-class-tab-active"), std::string::npos);
     EXPECT_EQ(source.find("active_tab_id =="), std::string::npos);
@@ -167,6 +174,10 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("font-size: 10dp;\n    color: #ffffff;\n    text-align: left;"), std::string::npos);
     EXPECT_NE(style.find("font-size: 9dp;\n    color: #9ece6a;\n    text-align: right;\n    white-space: normal;\n    word-break: normal;"),
               std::string::npos);
+    EXPECT_NE(style.find("#map-preview-frame"), std::string::npos);
+    EXPECT_NE(style.find("width: 218dp;\n    height: 126dp;"), std::string::npos);
+    EXPECT_NE(style.find("#map-player-marker"), std::string::npos);
+    EXPECT_NE(style.find("background-color: #f7768e;"), std::string::npos);
     EXPECT_NE(tab_source.find("fmt::format(\"{}{}{}\""), std::string::npos);
     EXPECT_EQ(tab_source.find("RegisterArray<EquipmentCandidateDeltaViewModels>()"), std::string::npos);
     EXPECT_EQ(tab_source.find("handle.RegisterMember(\"param_deltas\""), std::string::npos);
@@ -217,7 +228,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_LT(tabset_end, party_col) << "party-col must stay outside tabset so it remains visible for every tab.";
 }
 
-TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameScenePassQuestCatalogIntoQuestTab) {
+TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameScenePassCatalogsAndWorldStateIntoTabs) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/inventory_menu_scene.h").lexically_normal();
     const std::filesystem::path source_path =
@@ -236,13 +247,17 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameSceneP
     ASSERT_FALSE(game_scene_source.empty()) << "无法读取: " << game_scene_path;
 
     EXPECT_NE(header.find("const game::data::QuestCatalog* quest_catalog_{nullptr};"), std::string::npos);
+    EXPECT_NE(header.find("const game::world::WorldState* world_state_{nullptr};"), std::string::npos);
     EXPECT_NE(header.find("const game::data::QuestCatalog* quest_catalog"), std::string::npos);
+    EXPECT_NE(header.find("const game::world::WorldState* world_state"), std::string::npos);
     EXPECT_NE(source.find("quest_catalog_(quest_catalog)"), std::string::npos);
+    EXPECT_NE(source.find("world_state_(world_state)"), std::string::npos);
 
     const std::string inventory_toggle_block =
         test_source_utils::extractFunctionBlock(game_scene_source, "bool GameScene::onInventoryToggle()");
     ASSERT_FALSE(inventory_toggle_block.empty());
     EXPECT_NE(inventory_toggle_block.find("services_->quest_catalog.get()"), std::string::npos);
+    EXPECT_NE(inventory_toggle_block.find("services_->world_state.get()"), std::string::npos);
 }
 
 TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEntriesInSameUiTick) {

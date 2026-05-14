@@ -11,6 +11,7 @@
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
 #include "game/ui/inventory_tab_content.h"
+#include "game/ui/map_tab_content.h"
 #include "game/ui/quest_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -94,13 +95,15 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
                                        entt::entity player,
                                        game::data::ItemCatalog* item_catalog,
                                        const game::data::RpgCatalog* rpg_catalog,
-                                       const game::data::QuestCatalog* quest_catalog)
+                                       const game::data::QuestCatalog* quest_catalog,
+                                       const game::world::WorldState* world_state)
     : engine::scene::Scene(name, context),
       game_registry_(game_registry),
       player_(player),
       item_catalog_(item_catalog),
       rpg_catalog_(rpg_catalog),
       quest_catalog_(quest_catalog),
+      world_state_(world_state),
       previous_state_(context.getGameState().getCurrentState()) {}
 
 InventoryMenuScene::~InventoryMenuScene() {
@@ -198,6 +201,12 @@ bool InventoryMenuScene::initUI() {
             return false;
         }
 
+        if (!game::ui::registerMapTabDataTypes(constructor)) {
+            spdlog::error("InventoryMenuScene: MapTabContent data types 注册失败。");
+            document_controller_.unload();
+            return false;
+        }
+
         data_types_registered_ = true;
     }
 
@@ -260,7 +269,18 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
     tabs_.emplace(game::ui::MenuTabId::Quests, std::move(quest_tab));
-    tabs_.emplace(game::ui::MenuTabId::Map, std::make_unique<PlaceholderTabContent>());
+    auto map_tab = std::make_unique<game::ui::MapTabContent>(
+        document_controller_,
+        game_registry_,
+        player_,
+        world_state_,
+        &runtime->generatedImages());
+    if (!map_tab->bindModel(constructor)) {
+        spdlog::error("InventoryMenuScene: MapTabContent 绑定失败。");
+        document_controller_.unload();
+        return false;
+    }
+    tabs_.emplace(game::ui::MenuTabId::Map, std::move(map_tab));
     tabs_.emplace(game::ui::MenuTabId::Options, std::make_unique<PlaceholderTabContent>());
 
     if (!document_controller_.load(DOCUMENT_PATH)) {

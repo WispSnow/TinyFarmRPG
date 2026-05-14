@@ -26,6 +26,10 @@ class QuestCatalog;
 class RpgCatalog;
 }
 
+namespace game::world {
+class WorldState;
+}
+
 namespace game::ui {
 class EquipmentTabContent;
 }
@@ -44,6 +48,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     game::data::ItemCatalog* item_catalog_{nullptr};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::QuestCatalog* quest_catalog_{nullptr};
+    const game::world::WorldState* world_state_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
 
@@ -70,7 +75,8 @@ public:
                        entt::entity player,
                        game::data::ItemCatalog* item_catalog,
                        const game::data::RpgCatalog* rpg_catalog,
-                       const game::data::QuestCatalog* quest_catalog);
+                       const game::data::QuestCatalog* quest_catalog,
+                       const game::world::WorldState* world_state);
     ~InventoryMenuScene() override;
 
     bool init() override;

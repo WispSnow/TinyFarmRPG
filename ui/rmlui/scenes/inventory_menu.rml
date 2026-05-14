@@ -194,9 +194,26 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-map"></tab>
-                <panel id="panel-map" class="placeholder-panel">
-                    <div class="placeholder-title">Map</div>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-map"></tab>
+                <panel id="panel-map">
+                    <div id="map-content">
+                        <div id="map-title">{{ map_title }}</div>
+                        <div id="map-preview-frame">
+                            <img id="map-preview-image"
+                                 data-if="has_map_preview"
+                                 data-attr-src="map_preview_src"
+                                 data-style-left="map_preview_left"
+                                 data-style-top="map_preview_top"
+                                 data-style-width="map_preview_width"
+                                 data-style-height="map_preview_height"/>
+                            <div id="map-player-marker"
+                                 data-if="has_player_marker"
+                                 data-style-left="player_marker_left"
+                                 data-style-top="player_marker_top"></div>
+                            <div id="map-empty-label" data-if="!has_map_preview">No map data</div>
+                        </div>
+                        <div id="map-status">{{ map_status_text }}</div>
+                    </div>
                 </panel>
 
                 <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-options"></tab>

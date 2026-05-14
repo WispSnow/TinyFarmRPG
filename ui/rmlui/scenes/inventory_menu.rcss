@@ -648,6 +648,66 @@
     color: #7dcfff;
 }
 
+/* --- Map Panel --- */
+
+#map-content {
+    position: relative;
+    width: 218dp;
+    height: 172dp;
+}
+
+#map-title {
+    height: 13dp;
+    font-size: 11dp;
+    color: #ffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#map-preview-frame {
+    position: absolute;
+    left: 0;
+    top: 19dp;
+    width: 218dp;
+    height: 126dp;
+    overflow: hidden;
+    background-color: #24283b99;
+    border: 1dp #d9a88a66;
+}
+
+#map-preview-image {
+    display: block;
+    position: absolute;
+}
+
+#map-player-marker {
+    position: absolute;
+    width: 8dp;
+    height: 8dp;
+    background-color: #f7768e;
+    border: 1dp #ffffff;
+    border-radius: 4dp;
+    box-shadow: #000000aa 0dp 1dp 0dp 1dp;
+    z-index: 3;
+}
+
+#map-empty-label {
+    margin-top: 54dp;
+    text-align: center;
+    color: #a9b1d6;
+    font-size: 10dp;
+}
+
+#map-status {
+    position: absolute;
+    left: 0;
+    top: 151dp;
+    width: 218dp;
+    height: 14dp;
+    font-size: 9dp;
+    color: #c0caf5;
+    text-align: center;
+}
+
 /* --- Action Menu --- */
 
 #action-menu {
