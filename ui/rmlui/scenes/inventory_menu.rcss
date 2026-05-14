@@ -409,10 +409,10 @@
 
 .equipment-slot-icon {
     position: absolute;
-    left: 6dp;
-    top: 6dp;
-    width: 16dp;
-    height: 16dp;
+    left: 2dp;
+    top: 2dp;
+    width: 24dp;
+    height: 24dp;
 }
 
 #equipment-candidate-panel {
@@ -530,7 +530,7 @@
 #equipment-detail-category {
     width: 80dp;
     font-size: 8dp;
-    color: #a9b1d6;
+    color: #6f78a8;
     text-align: right;
 }
 
@@ -538,7 +538,7 @@
     margin-top: 1dp;
     width: 218dp;
     font-size: 8dp;
-    color: #c0caf5;
+    color: #5c6aa0;
 }
 
 #equipment-unequip-btn {
