@@ -137,6 +137,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_EQ(source.find(">Sort</button>"), std::string::npos);
     EXPECT_EQ(source.find(">Unequip</button>"), std::string::npos);
     EXPECT_NE(source.find("equipment-slot-placeholder"), std::string::npos);
+    EXPECT_NE(source.find("data-if=\"!eqslot.has_item\""), std::string::npos);
     EXPECT_NE(source.find("data-style-decorator=\"eqslot.placeholder_decorator\""), std::string::npos);
     EXPECT_NE(style.find("sort-icon:     368px 32px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("sort-icon-pressed: 368px 48px 16px 16px;"), std::string::npos);
@@ -148,6 +149,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("equipment-slot-boot-hint:      137px 41px 14px 14px;"), std::string::npos);
     EXPECT_NE(style.find("equipment-slot-accessory-hint: 170px 42px 12px 11px;"), std::string::npos);
     EXPECT_NE(style.find("opacity: 0.3;"), std::string::npos);
+    EXPECT_NE(style.find("left: 2dp;\n    top: 2dp;\n    width: 24dp;\n    height: 24dp;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon:  272px 64px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("unequip-icon-pressed: 272px 80px 16px 16px;"), std::string::npos);
     EXPECT_NE(source.find("data-event-click=\"equipment_candidate_click(candidate.inventory_slot_index)\""),
