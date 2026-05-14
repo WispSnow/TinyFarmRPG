@@ -76,6 +76,15 @@ public:
     Rml::String last_property{};
 };
 
+class CountingEventListener final : public Rml::EventListener {
+public:
+    void ProcessEvent(Rml::Event&) override {
+        ++count;
+    }
+
+    int count{0};
+};
+
 class RmlUiTransitionBehaviorTest : public ::testing::Test {
 protected:
     static constexpr const char* kDocument = R"(
@@ -215,6 +224,87 @@ TEST_F(RmlUiTransitionBehaviorTest, ValidLinearInOutTweenKeywordFiresTransitione
     EXPECT_EQ(listener.last_property, "opacity");
 
     overlay->RemoveEventListener("transitionend", &listener);
+}
+
+TEST_F(RmlUiTransitionBehaviorTest, ScrollableButtonListWithNarrowScrollbarReceivesClicks) {
+    static constexpr const char* kScrollableDocument = R"(
+<rml>
+<head>
+    <style>
+        body, div, button { display: block; }
+        body {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 240px;
+            height: 120px;
+            margin: 0;
+        }
+        #candidate-panel {
+            width: 218px;
+            height: 48px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        #candidate-panel scrollbarvertical {
+            width: 4px;
+            scrollbar-margin: 0px;
+        }
+        .candidate-entry {
+            width: 204px;
+            height: 20px;
+            margin-bottom: 2px;
+            background-color: #1f2335ff;
+            border-width: 0px;
+        }
+    </style>
+</head>
+<body>
+    <div id="candidate-panel">
+        <button class="candidate-entry" id="candidate-0"></button>
+        <button class="candidate-entry" id="candidate-1"></button>
+        <button class="candidate-entry" id="candidate-2"></button>
+        <button class="candidate-entry" id="candidate-3"></button>
+    </div>
+</body>
+</rml>
+)";
+
+    std::unique_ptr<Rml::ElementDocument, void (*)(Rml::ElementDocument*)> document(
+        context_->LoadDocumentFromMemory(kScrollableDocument, "."),
+        [](Rml::ElementDocument* doc) {
+            if (doc) {
+                doc->Close();
+            }
+        });
+    ASSERT_NE(document.get(), nullptr);
+    document->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
+    context_->Update();
+
+    auto* panel = document->GetElementById("candidate-panel");
+    auto* first_candidate = document->GetElementById("candidate-0");
+    ASSERT_NE(panel, nullptr);
+    ASSERT_NE(first_candidate, nullptr);
+    EXPECT_GT(panel->GetScrollHeight(), panel->GetClientHeight());
+    EXPECT_LT(panel->GetClientWidth(), panel->GetOffsetWidth());
+
+    CountingEventListener listener{};
+    first_candidate->AddEventListener(Rml::EventId::Click, &listener);
+
+    const int target_x =
+        static_cast<int>(first_candidate->GetAbsoluteLeft() + first_candidate->GetOffsetWidth() * 0.5F);
+    const int target_y =
+        static_cast<int>(first_candidate->GetAbsoluteTop() + first_candidate->GetOffsetHeight() * 0.5F);
+    (void)context_->ProcessMouseMove(target_x, target_y, 0);
+    context_->Update();
+    (void)context_->ProcessMouseButtonDown(0, 0);
+    context_->Update();
+    (void)context_->ProcessMouseButtonUp(0, 0);
+    context_->Update();
+
+    EXPECT_EQ(listener.count, 1);
+
+    first_candidate->RemoveEventListener(Rml::EventId::Click, &listener);
 }
 
 } // namespace

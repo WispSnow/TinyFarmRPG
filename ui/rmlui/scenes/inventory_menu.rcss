@@ -415,12 +415,30 @@
     height: 48dp;
     margin-top: 6dp;
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#equipment-candidate-panel scrollbarvertical {
+    width: 4dp;
+    scrollbar-margin: 0dp;
+}
+
+#equipment-candidate-panel scrollbarvertical slidertrack {
+    background-color: #d9a88a33;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
+#equipment-candidate-panel scrollbarvertical sliderbar {
+    background-color: #b56f5ddd;
+    border-width: 0dp;
+    border-color: #00000000;
 }
 
 .equipment-candidate-entry {
     display: flex;
     flex-direction: row;
-    width: 210dp;
+    width: 204dp;
     min-height: 20dp;
     padding: 2dp;
     background-color: #00000000;
@@ -447,7 +465,7 @@
 
 .equipment-candidate-text {
     margin-left: 4dp;
-    width: 184dp;
+    width: 178dp;
 }
 
 .equipment-candidate-name {
