@@ -156,6 +156,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("#equipment-candidate-panel scrollbarvertical"), std::string::npos);
     EXPECT_NE(style.find("overflow-x: hidden;"), std::string::npos);
     EXPECT_NE(style.find("width: 4dp;\n    scrollbar-margin: 0dp;"), std::string::npos);
+    EXPECT_NE(style.find("height: 108dp;\n    margin-top: 6dp;\n    overflow-y: auto;"), std::string::npos);
     EXPECT_NE(style.find("width: 206dp;\n    min-height: 22dp;"), std::string::npos);
     EXPECT_NE(style.find("display: flex;\n    flex-direction: row;\n    align-items: center;\n    justify-content: space-between;\n    margin-left: 6dp;\n    width: 182dp;\n    gap: 4dp;"),
               std::string::npos);
@@ -190,6 +191,22 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     const auto footer_width = style.find("width: 218dp;", footer_block);
     ASSERT_NE(footer_width, std::string::npos);
     EXPECT_LT(footer_width, footer_block_end);
+
+    const auto inventory_panel = source.find("<panel id=\"panel-inventory\"");
+    const auto equipment_tab = source.find("<tab class=\"tab-icon tf-nav-auto tf-focus-ring-gold\" id=\"tab-equipment\"");
+    const auto footer = source.find("id=\"menu-footer\"");
+    ASSERT_NE(inventory_panel, std::string::npos);
+    ASSERT_NE(equipment_tab, std::string::npos);
+    ASSERT_NE(footer, std::string::npos);
+    EXPECT_LT(inventory_panel, footer);
+    EXPECT_LT(footer, equipment_tab) << "Gold footer should belong only to the inventory tab.";
+
+    const auto equipment_content = source.find("id=\"equipment-content\"");
+    const auto equipment_detail = source.find("id=\"equipment-detail\"");
+    ASSERT_NE(equipment_content, std::string::npos);
+    ASSERT_NE(equipment_detail, std::string::npos);
+    EXPECT_LT(equipment_content, equipment_detail)
+        << "Equipment detail should live in the bottom footer area after the expanded candidate region.";
 
     const auto tabset_end = source.find("</tabset>");
     const auto party_col = source.find("id=\"party-col\"");

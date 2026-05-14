@@ -118,6 +118,11 @@
     width: 218dp;
 }
 
+#panel-inventory,
+#panel-equipment {
+    position: relative;
+}
+
 #menu-tabset tab {
     display: block;
 }
@@ -358,7 +363,7 @@
 #equipment-main-row {
     display: block;
     margin-top: 5dp;
-    height: 84dp;
+    height: 142dp;
 }
 
 #equipment-slot-list {
@@ -412,7 +417,7 @@
 
 #equipment-candidate-panel {
     width: 218dp;
-    height: 48dp;
+    height: 108dp;
     margin-top: 6dp;
     overflow-y: auto;
     overflow-x: hidden;
@@ -490,34 +495,48 @@
 }
 
 #equipment-candidate-empty {
-    margin-top: 14dp;
+    margin-top: 44dp;
     text-align: center;
     color: #a9b1d6;
     font-size: 9dp;
 }
 
 #equipment-detail {
-    margin-top: 5dp;
-    height: 52dp;
+    position: absolute;
+    left: 0;
+    top: 172dp;
+    width: 218dp;
+    height: 24dp;
     border-width: 1dp 0 0 0;
     border-color: #d9a88a44;
-    padding-top: 4dp;
+    padding-top: 3dp;
+}
+
+#equipment-detail-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 218dp;
+    height: 9dp;
 }
 
 #equipment-detail-title {
-    font-size: 10dp;
+    width: 126dp;
+    font-size: 9dp;
     color: #ffffff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #equipment-detail-category {
+    width: 80dp;
     font-size: 8dp;
     color: #a9b1d6;
+    text-align: right;
 }
 
 #equipment-detail-description {
     margin-top: 1dp;
-    width: 148dp;
+    width: 218dp;
     font-size: 8dp;
     color: #c0caf5;
 }
@@ -770,8 +789,8 @@
 
 #menu-footer {
     position: absolute;
-    left: 10dp;
-    top: 216dp;
+    left: 0;
+    top: 172dp;
     width: 218dp;
     height: 14dp;
     display: flex;
