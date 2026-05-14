@@ -438,8 +438,9 @@
 .equipment-candidate-entry {
     display: flex;
     flex-direction: row;
-    width: 204dp;
-    min-height: 20dp;
+    align-items: center;
+    width: 206dp;
+    min-height: 22dp;
     padding: 2dp;
     background-color: #00000000;
     border: 1dp #d9a88a66;
@@ -460,23 +461,32 @@
 .equipment-candidate-icon {
     width: 16dp;
     height: 16dp;
-    margin-top: 1dp;
 }
 
 .equipment-candidate-text {
-    margin-left: 4dp;
-    width: 178dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 6dp;
+    width: 182dp;
+    gap: 4dp;
 }
 
 .equipment-candidate-name {
-    font-size: 8dp;
+    width: 82dp;
+    font-size: 10dp;
     color: #ffffff;
+    text-align: left;
 }
 
 .equipment-candidate-delta {
-    margin-top: 1dp;
-    font-size: 7dp;
+    width: 96dp;
+    font-size: 9dp;
     color: #9ece6a;
+    text-align: right;
+    white-space: normal;
+    word-break: normal;
 }
 
 #equipment-candidate-empty {

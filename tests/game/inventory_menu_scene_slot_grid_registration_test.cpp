@@ -103,16 +103,21 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rcss").lexically_normal();
     const std::filesystem::path theme_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/theme/spritesheet.rcss").lexically_normal();
+    const std::filesystem::path equipment_tab_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/equipment_tab_content.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
     ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
     ASSERT_TRUE(std::filesystem::exists(theme_path)) << theme_path;
+    ASSERT_TRUE(std::filesystem::exists(equipment_tab_source_path)) << equipment_tab_source_path;
 
     const std::string source = test_source_utils::readTextFile(rml_path);
     const std::string style = test_source_utils::readTextFile(rcss_path);
     const std::string theme = test_source_utils::readTextFile(theme_path);
+    const std::string tab_source = test_source_utils::readTextFile(equipment_tab_source_path);
     ASSERT_FALSE(source.empty()) << "无法读取: " << rml_path;
     ASSERT_FALSE(style.empty()) << "无法读取: " << rcss_path;
     ASSERT_FALSE(theme.empty()) << "无法读取: " << theme_path;
+    ASSERT_FALSE(tab_source.empty()) << "无法读取: " << equipment_tab_source_path;
 
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
@@ -147,10 +152,22 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("unequip-icon-pressed: 272px 80px 16px 16px;"), std::string::npos);
     EXPECT_NE(source.find("data-event-click=\"equipment_candidate_click(candidate.inventory_slot_index)\""),
               std::string::npos);
+    EXPECT_NE(source.find("{{ candidate.delta_text }}"), std::string::npos);
     EXPECT_NE(style.find("#equipment-candidate-panel scrollbarvertical"), std::string::npos);
     EXPECT_NE(style.find("overflow-x: hidden;"), std::string::npos);
     EXPECT_NE(style.find("width: 4dp;\n    scrollbar-margin: 0dp;"), std::string::npos);
-    EXPECT_NE(style.find("width: 204dp;\n    min-height: 20dp;"), std::string::npos);
+    EXPECT_NE(style.find("width: 206dp;\n    min-height: 22dp;"), std::string::npos);
+    EXPECT_NE(style.find("display: flex;\n    flex-direction: row;\n    align-items: center;\n    justify-content: space-between;\n    margin-left: 6dp;\n    width: 182dp;\n    gap: 4dp;"),
+              std::string::npos);
+    EXPECT_NE(style.find("width: 82dp;\n    font-size: 10dp;"), std::string::npos);
+    EXPECT_NE(style.find("width: 96dp;\n    font-size: 9dp;"), std::string::npos);
+    EXPECT_NE(style.find("font-size: 10dp;\n    color: #ffffff;\n    text-align: left;"), std::string::npos);
+    EXPECT_NE(style.find("font-size: 9dp;\n    color: #9ece6a;\n    text-align: right;\n    white-space: normal;\n    word-break: normal;"),
+              std::string::npos);
+    EXPECT_NE(tab_source.find("fmt::format(\"{}{}{}\""), std::string::npos);
+    EXPECT_EQ(tab_source.find("RegisterArray<EquipmentCandidateDeltaViewModels>()"), std::string::npos);
+    EXPECT_EQ(tab_source.find("handle.RegisterMember(\"param_deltas\""), std::string::npos);
+    EXPECT_EQ(tab_source.find("\\u00A0"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-sword:     192px  0px 16px 16px;"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-staff:     176px 16px 16px 16px;"), std::string::npos);
     EXPECT_NE(theme.find("item-equipment-wooden-helmet:    160px 32px 16px 16px;"), std::string::npos);
