@@ -99,6 +99,11 @@
                         <div id="detail-category">{{ detail_category }}</div>
                         <div id="detail-description">{{ detail_description }}</div>
                     </div>
+
+                    <div id="menu-footer">
+                        <div id="gold-label">{{ gold_label }}</div>
+                        <div id="farm-label">{{ farm_label }}</div>
+                    </div>
                 </panel>
 
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-equipment"></tab>
@@ -139,15 +144,18 @@
                             </div>
                         </div>
 
-                        <div id="equipment-detail" data-if="has_equipment_detail">
+                        <button id="equipment-unequip-btn"
+                                class="tf-nav-auto tf-focus-ring-danger"
+                                title="Unequip"
+                                data-event-click="equipment_unequip"></button>
+                    </div>
+
+                    <div id="equipment-detail" data-if="has_equipment_detail">
+                        <div id="equipment-detail-header">
                             <div id="equipment-detail-title">{{ equipment_detail_name }}</div>
                             <div id="equipment-detail-category">{{ equipment_detail_category }}</div>
-                            <div id="equipment-detail-description">{{ equipment_detail_description }}</div>
-                            <button id="equipment-unequip-btn"
-                                    class="tf-nav-auto tf-focus-ring-danger"
-                                    title="Unequip"
-                                    data-event-click="equipment_unequip"></button>
                         </div>
+                        <div id="equipment-detail-description">{{ equipment_detail_description }}</div>
                     </div>
                 </panel>
 
@@ -214,11 +222,6 @@
                 </button>
             </div>
 
-        </div>
-
-        <div id="menu-footer">
-            <div id="gold-label">{{ gold_label }}</div>
-            <div id="farm-label">{{ farm_label }}</div>
         </div>
     </div>
 </body>
