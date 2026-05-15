@@ -320,17 +320,17 @@ Phase 2 已把 selection-only 路径和 rebuild 路径拆开，Phase 3 要继续
 
 ## Todo
 
-- [ ] 扩展 `QuestObjectiveData`，加入可选 marker 数据结构。
-- [ ] 扩展 `QuestCatalog` objective marker 解析与校验测试。
-- [ ] 为 demo quest 增加 objective marker 配置。
-- [ ] 调整 `MapMarkerProvider`，拆分 `static_place_markers` 与 `quest_giver_markers` 输出契约，并继续遵守 runtime actor 优先级。
-- [ ] 新增 `QuestMapMarkerResolver`，派生当前 map 的 runtime quest markers。
-- [ ] 更新 `MapTabContent`，用 runtime quest markers 替换 Phase 2 静态 quest markers。
-- [ ] 增加 `MapTabContent::invalidateQuestMarkers()` 显式失效 hook。
-- [ ] 更新 quest marker 的详情文案、排序与 z-index。
-- [ ] 更新 `inventory_menu.rcss`，增加三类 quest 状态样式。
-- [ ] 补齐 resolver、MapTabContent、QuestCatalog、RML / RCSS 结构测试。
-- [ ] 运行 `ninja -C build engine_tests game_tests`、相关 ctest 过滤与完整 ctest 回归。
+- [x] 扩展 `QuestObjectiveData`，加入可选 marker 数据结构。
+- [x] 扩展 `QuestCatalog` objective marker 解析与校验测试。
+- [x] 为 demo quest 增加 objective marker 配置。
+- [x] 调整 `MapMarkerProvider`，拆分 `static_place_markers` 与 `quest_giver_markers` 输出契约，并继续遵守 runtime actor 优先级。
+- [x] 新增 `QuestMapMarkerResolver`，派生当前 map 的 runtime quest markers。
+- [x] 更新 `MapTabContent`，用 runtime quest markers 替换 Phase 2 静态 quest markers。
+- [x] 增加 `MapTabContent::invalidateQuestMarkers()` 显式失效 hook。
+- [x] 更新 quest marker 的详情文案、排序与 z-index。
+- [x] 更新 `inventory_menu.rcss`，增加三类 quest 状态样式。
+- [x] 补齐 resolver、MapTabContent、QuestCatalog、RML / RCSS 结构测试。
+- [x] 运行 `ninja -C build engine_tests game_tests`、相关 ctest 过滤与完整 ctest 回归。
 
 ## Implementation Notes
 
@@ -338,4 +338,5 @@ Phase 2 已把 selection-only 路径和 rebuild 路径拆开，Phase 3 要继续
 - resolver 不持有也不接收 `WorldState*`；`MapTabContent` 负责从 `WorldState` 解出 `current_map_id` 并传入 resolver。
 - objective marker 的 `map` 使用地图名字符串并在解析期预先 hash，hash 算法必须与 `WorldState` 保持一致：`entt::hashed_string(map_name).value()`。
 - 任务页和地图页的 objective progress 语义必须一致：resolver 必须使用 `objective_progress.find()`，缺少 progress key 视为 0，显示值 clamp 到 `0..required_count`；禁止在 resolver 中使用 `try_emplace` 或写入 quest log。
+- 同一 quest 若在同一 map 存在多个纯 `quest_offer_id` giver object，本阶段按 Tiled object 各自生成 marker，不去重。
 - Phase 3 继续只做当前 map quick map。跨区域任务提示、world map、路径箭头和 discovered state 留到后续 phase。

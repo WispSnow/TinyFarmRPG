@@ -1,14 +1,15 @@
 #include "game/ui/map_tab_content.h"
 
 #include "engine/component/transform_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/data/quest_catalog.h"
-#include "game/data/quest_data.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/data/shop_data.h"
 #include "game/ui/map_coordinate_mapper.h"
 #include "game/ui/slot_grid_support.h"
+#include "game/ui/text_utils.h"
 #include "game/world/world_state.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -19,8 +20,8 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstdio>
+#include <map>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -37,43 +38,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
         return "0dp";
     }
     return std::string{buffer.data(), static_cast<std::size_t>(std::min(count, static_cast<int>(buffer.size() - 1U)))};
-}
-
-[[nodiscard]] std::string titleCaseLabel(std::string_view value,
-                                         const char* fallback,
-                                         const bool strip_path_prefix) {
-    if (strip_path_prefix) {
-        const std::size_t separator = value.find_last_of(".:/");
-        if (separator != std::string_view::npos) {
-            value = value.substr(separator + 1U);
-        }
-    }
-
-    std::string label{value};
-    std::replace(label.begin(), label.end(), '_', ' ');
-    std::replace(label.begin(), label.end(), '-', ' ');
-
-    bool capitalize = true;
-    for (char& ch : label) {
-        const unsigned char uch = static_cast<unsigned char>(ch);
-        if (std::isspace(uch)) {
-            capitalize = true;
-            continue;
-        }
-        if (capitalize && std::isalpha(uch)) {
-            ch = static_cast<char>(std::toupper(uch));
-        }
-        capitalize = false;
-    }
-    return label.empty() ? fallback : label;
-}
-
-[[nodiscard]] std::string humanizeMapName(std::string_view map_name) {
-    return titleCaseLabel(map_name, "Map", false);
-}
-
-[[nodiscard]] std::string humanizeId(std::string_view id) {
-    return titleCaseLabel(id, "Place", true);
 }
 
 [[nodiscard]] const game::world::MapInfo* findMapInfo(const game::world::WorldState* world_state,
@@ -106,8 +70,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
 
 [[nodiscard]] const char* markerKindString(const MapObjectMarkerKind kind) {
     switch (kind) {
-        case MapObjectMarkerKind::Quest:
-            return "quest";
         case MapObjectMarkerKind::Shop:
             return "shop";
         case MapObjectMarkerKind::Rest:
@@ -120,8 +82,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
 
 [[nodiscard]] const char* markerKindTypeLabel(const MapObjectMarkerKind kind) {
     switch (kind) {
-        case MapObjectMarkerKind::Quest:
-            return "Quest";
         case MapObjectMarkerKind::Shop:
             return "Shop";
         case MapObjectMarkerKind::Rest:
@@ -134,8 +94,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
 
 [[nodiscard]] const char* markerDecorator(const MapObjectMarkerKind kind) {
     switch (kind) {
-        case MapObjectMarkerKind::Quest:
-            return "image(map-marker-quest)";
         case MapObjectMarkerKind::Shop:
             return "image(map-marker-shop)";
         case MapObjectMarkerKind::Rest:
@@ -148,8 +106,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
 
 [[nodiscard]] int markerBaseZIndex(const MapObjectMarkerKind kind) {
     switch (kind) {
-        case MapObjectMarkerKind::Quest:
-            return 40;
         case MapObjectMarkerKind::Shop:
             return 30;
         case MapObjectMarkerKind::Rest:
@@ -158,22 +114,6 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
             return 10;
     }
     return 10;
-}
-
-void populateQuestDetail(MapMarkerViewModel& marker,
-                         const MapObjectMarker& source,
-                         const game::data::QuestCatalog* quest_catalog) {
-    const auto* quest = quest_catalog && !source.quest_id.empty() ? quest_catalog->findQuest(source.quest_id) : nullptr;
-    if (quest) {
-        marker.title = quest->title_.empty() ? source.quest_id : quest->title_;
-        marker.description = quest->description_.empty() ? "Quest giver" : quest->description_;
-        return;
-    }
-    marker.title = !source.object_name.empty() ? humanizeId(source.object_name) : humanizeId(source.quest_id);
-    marker.description = "Quest giver";
-    if (!source.quest_id.empty()) {
-        spdlog::warn("MapTabContent: quest marker references missing quest_id='{}'.", source.quest_id);
-    }
 }
 
 void populateShopDetail(MapMarkerViewModel& marker,
@@ -211,14 +151,10 @@ void populateNpcDetail(MapMarkerViewModel& marker,
 
 void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                 const MapObjectMarker& source,
-                                const game::data::QuestCatalog* quest_catalog,
                                 const game::data::ShopCatalog* shop_catalog,
                                 const game::data::RpgCatalog* rpg_catalog) {
     marker.type_label = markerKindTypeLabel(source.kind);
     switch (source.kind) {
-        case MapObjectMarkerKind::Quest:
-            populateQuestDetail(marker, source, quest_catalog);
-            break;
         case MapObjectMarkerKind::Shop:
             populateShopDetail(marker, source, shop_catalog);
             break;
@@ -275,7 +211,6 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                                            const MapObjectMarker& source,
                                                            const MapPreviewLayout& layout,
                                                            const bool selected,
-                                                           const game::data::QuestCatalog* quest_catalog,
                                                            const game::data::ShopCatalog* shop_catalog,
                                                            const game::data::RpgCatalog* rpg_catalog) {
     const float marker_size = selected ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
@@ -306,7 +241,98 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
         glm::vec2{MAP_TAB_MARKER_SELECTED_SIZE, MAP_TAB_MARKER_SELECTED_SIZE});
     marker.normal_z_index = markerBaseZIndex(source.kind);
     marker.is_selected = selected;
-    populateObjectMarkerDetail(marker, source, quest_catalog, shop_catalog, rpg_catalog);
+    populateObjectMarkerDetail(marker, source, shop_catalog, rpg_catalog);
+    return marker;
+}
+
+[[nodiscard]] const char* questMarkerKindString(const QuestRuntimeMarkerKind kind) {
+    switch (kind) {
+        case QuestRuntimeMarkerKind::Offer:
+            return "quest_offer";
+        case QuestRuntimeMarkerKind::Objective:
+            return "quest_objective";
+        case QuestRuntimeMarkerKind::TurnIn:
+            return "quest_turn_in";
+    }
+    return "quest_offer";
+}
+
+[[nodiscard]] int questMarkerBaseZIndex(const QuestRuntimeMarkerKind kind) {
+    switch (kind) {
+        case QuestRuntimeMarkerKind::TurnIn:
+            return 45;
+        case QuestRuntimeMarkerKind::Objective:
+            return 42;
+        case QuestRuntimeMarkerKind::Offer:
+            return 40;
+    }
+    return 40;
+}
+
+[[nodiscard]] glm::vec2 offsetMarkerTopLeft(const glm::vec2 top_left,
+                                            const glm::vec2 marker_size,
+                                            const int same_position_offset_index) {
+    const float offset = static_cast<float>(same_position_offset_index) * 2.0F;
+    return glm::vec2{
+        std::clamp(top_left.x + offset, 0.0F, std::max(0.0F, MAP_TAB_PREVIEW_FRAME_WIDTH - marker_size.x)),
+        top_left.y,
+    };
+}
+
+struct MarkerPositionKey {
+    float x{0.0F};
+    float y{0.0F};
+};
+
+[[nodiscard]] bool operator<(const MarkerPositionKey lhs, const MarkerPositionKey rhs) {
+    if (lhs.x != rhs.x) {
+        return lhs.x < rhs.x;
+    }
+    return lhs.y < rhs.y;
+}
+
+[[nodiscard]] MapMarkerViewModel makeQuestMarkerViewModel(const int marker_index,
+                                                          const QuestRuntimeMarker& source,
+                                                          const MapPreviewLayout& layout,
+                                                          const bool selected,
+                                                          const int same_position_offset_index) {
+    const float marker_size = selected ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
+    const glm::vec2 selected_size{MAP_TAB_MARKER_SELECTED_SIZE, MAP_TAB_MARKER_SELECTED_SIZE};
+    const glm::vec2 normal_size{MAP_TAB_MARKER_SIZE, MAP_TAB_MARKER_SIZE};
+    const glm::vec2 normal_top_left = offsetMarkerTopLeft(
+        mapMarkerBottomCenterTopLeft(
+            source.map_position,
+            layout,
+            glm::vec2{MAP_TAB_PREVIEW_FRAME_WIDTH, MAP_TAB_PREVIEW_FRAME_HEIGHT},
+            normal_size),
+        normal_size,
+        same_position_offset_index);
+    const glm::vec2 selected_top_left = offsetMarkerTopLeft(
+        mapMarkerBottomCenterTopLeft(
+            source.map_position,
+            layout,
+            glm::vec2{MAP_TAB_PREVIEW_FRAME_WIDTH, MAP_TAB_PREVIEW_FRAME_HEIGHT},
+            selected_size),
+        selected_size,
+        same_position_offset_index);
+    const glm::vec2 top_left = selected ? selected_top_left : normal_top_left;
+
+    MapMarkerViewModel marker{};
+    marker.marker_index = marker_index;
+    marker.kind = questMarkerKindString(source.kind);
+    marker.icon_decorator = "image(map-marker-quest)";
+    marker.left = formatDp(top_left.x);
+    marker.top = formatDp(top_left.y);
+    marker.width = formatDp(marker_size);
+    marker.height = formatDp(marker_size);
+    marker.z_index = selected ? 100 : questMarkerBaseZIndex(source.kind);
+    marker.normal_top_left = normal_top_left;
+    marker.selected_top_left = selected_top_left;
+    marker.normal_z_index = questMarkerBaseZIndex(source.kind);
+    marker.title = source.title;
+    marker.type_label = source.type_label;
+    marker.description = source.description;
+    marker.is_selected = selected;
     return marker;
 }
 
@@ -381,8 +407,8 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
                                      const game::world::WorldState* world_state,
                                      const entt::id_type map_id,
                                      const MapTabPreviewInput& preview,
-                                     const std::vector<MapObjectMarker>& object_markers,
-                                     const game::data::QuestCatalog* quest_catalog,
+                                     const std::vector<MapObjectMarker>& static_place_markers,
+                                     const std::vector<QuestRuntimeMarker>& quest_markers,
                                      const game::data::ShopCatalog* shop_catalog,
                                      const game::data::RpgCatalog* rpg_catalog,
                                      const int selected_marker_index) {
@@ -412,7 +438,26 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
         }
     }
 
-    for (const MapObjectMarker& object_marker : object_markers) {
+    std::map<MarkerPositionKey, int> quest_position_counts{};
+    for (const QuestRuntimeMarker& quest_marker : quest_markers) {
+        QuestRuntimeMarker clamped_marker = quest_marker;
+        clamped_marker.map_position = glm::clamp(
+            clamped_marker.map_position,
+            glm::vec2{0.0F, 0.0F},
+            glm::vec2{static_cast<float>(preview.width), static_cast<float>(preview.height)});
+        const MarkerPositionKey position_key{clamped_marker.map_position.x, clamped_marker.map_position.y};
+        const int same_position_offset_index = quest_position_counts[position_key]++;
+
+        state.map_markers.push_back(makeQuestMarkerViewModel(
+            marker_index,
+            clamped_marker,
+            layout,
+            marker_index == selected_marker_index,
+            same_position_offset_index));
+        ++marker_index;
+    }
+
+    for (const MapObjectMarker& object_marker : static_place_markers) {
         MapObjectMarker clamped_marker = object_marker;
         clamped_marker.map_position = glm::clamp(
             object_marker.map_position,
@@ -423,14 +468,13 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
             clamped_marker,
             layout,
             marker_index == selected_marker_index,
-            quest_catalog,
             shop_catalog,
             rpg_catalog));
         ++marker_index;
     }
 
     state.has_map_markers = !state.map_markers.empty();
-    state.has_place_markers = !object_markers.empty();
+    state.has_place_markers = !quest_markers.empty() || !static_place_markers.empty();
     syncDetailFromSelection(state, selected_marker_index);
     return state;
 }
@@ -508,6 +552,11 @@ bool MapTabContent::onCancel() {
     return false;
 }
 
+void MapTabContent::invalidateQuestMarkers() {
+    selected_marker_index_ = -1;
+    syncViewState();
+}
+
 MapTabPreviewInput MapTabContent::buildPreviewInput(const entt::id_type map_id) {
     MapTabPreviewInput input{};
     const game::world::MapInfo* map_info = findMapInfo(world_state_, map_id);
@@ -543,9 +592,20 @@ void MapTabContent::syncViewState() {
     const entt::id_type map_id = world_state_ ? world_state_->getCurrentMap() : entt::null;
     const game::world::MapInfo* map_info = findMapInfo(world_state_, map_id);
     const MapTabPreviewInput preview = buildPreviewInput(map_id);
-    std::vector<MapObjectMarker> object_markers{};
+    MapMarkerSnapshot marker_snapshot{};
+    std::vector<QuestRuntimeMarker> quest_markers{};
     if (map_info && !map_info->file_path.empty() && preview.width > 0 && preview.height > 0) {
-        object_markers = marker_provider_.markersForMap(map_info->file_path);
+        marker_snapshot = marker_provider_.snapshotForMap(map_info->file_path);
+        const auto* quest_log = player_ != entt::null && game_registry_.valid(player_)
+                                    ? game_registry_.try_get<game::component::QuestLogComponent>(player_)
+                                    : nullptr;
+        if (quest_log && quest_catalog_) {
+            quest_markers = resolveQuestMapMarkers(
+                map_id,
+                *quest_log,
+                *quest_catalog_,
+                marker_snapshot.quest_giver_markers);
+        }
     }
 
     const bool rebuilt_for_new_map = current_marker_map_id_ != map_id;
@@ -557,9 +617,10 @@ void MapTabContent::syncViewState() {
     const bool has_preview = !preview.source_uri.empty() && preview.width > 0 && preview.height > 0;
     const bool has_player_marker = has_preview && player_ != entt::null && game_registry_.valid(player_) &&
                                    game_registry_.try_get<engine::component::TransformComponent>(player_) != nullptr;
-    const int marker_count = static_cast<int>(object_markers.size()) + (has_player_marker ? 1 : 0);
+    const std::size_t place_marker_count = quest_markers.size() + marker_snapshot.static_place_markers.size();
+    const int marker_count = static_cast<int>(place_marker_count) + (has_player_marker ? 1 : 0);
     if (selected_marker_index_ < 0 || selected_marker_index_ >= marker_count) {
-        selected_marker_index_ = defaultMapMarkerSelection(has_player_marker, object_markers.size());
+        selected_marker_index_ = defaultMapMarkerSelection(has_player_marker, place_marker_count);
     }
 
     MapTabViewState state = buildMapTabViewState(
@@ -568,8 +629,8 @@ void MapTabContent::syncViewState() {
         world_state_,
         map_id,
         preview,
-        object_markers,
-        quest_catalog_,
+        marker_snapshot.static_place_markers,
+        quest_markers,
         shop_catalog_,
         rpg_catalog_,
         selected_marker_index_);

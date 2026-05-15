@@ -136,6 +136,11 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(source.find("data-attr-src=\"map_preview_src\""), std::string::npos);
     EXPECT_NE(source.find("data-style-left=\"map_preview_left\""), std::string::npos);
     EXPECT_NE(source.find("data-for=\"marker : map_markers\""), std::string::npos);
+    EXPECT_NE(source.find("data-class-map-marker-quest-offer=\"marker.kind == 'quest_offer'\""), std::string::npos);
+    EXPECT_NE(source.find("data-class-map-marker-quest-objective=\"marker.kind == 'quest_objective'\""),
+              std::string::npos);
+    EXPECT_NE(source.find("data-class-map-marker-quest-turn-in=\"marker.kind == 'quest_turn_in'\""),
+              std::string::npos);
     EXPECT_NE(source.find("data-style-decorator=\"marker.icon_decorator\""), std::string::npos);
     EXPECT_NE(source.find("data-event-focus=\"map_marker_focus(marker.marker_index)\""), std::string::npos);
     EXPECT_NE(source.find("data-event-mouseover=\"map_marker_hover(marker.marker_index)\""), std::string::npos);
@@ -183,6 +188,9 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("#map-preview-frame"), std::string::npos);
     EXPECT_NE(style.find("width: 218dp;\n    height: 126dp;"), std::string::npos);
     EXPECT_NE(style.find(".map-marker"), std::string::npos);
+    EXPECT_NE(style.find(".map-marker-quest-offer"), std::string::npos);
+    EXPECT_NE(style.find(".map-marker-quest-objective"), std::string::npos);
+    EXPECT_NE(style.find(".map-marker-quest-turn-in"), std::string::npos);
     EXPECT_NE(style.find(".map-marker-selected"), std::string::npos);
     EXPECT_NE(style.find("#map-detail-panel"), std::string::npos);
     EXPECT_NE(tab_source.find("fmt::format(\"{}{}{}\""), std::string::npos);

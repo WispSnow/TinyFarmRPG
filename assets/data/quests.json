@@ -10,7 +10,12 @@
           "id": "kill_goblins",
           "kind": "defeat_enemy_count",
           "enemy_id": "enemy.goblin",
-          "required_count": 3
+          "required_count": 3,
+          "marker": {
+            "map": "town",
+            "position": [532, 296],
+            "label": "Goblin Target"
+          }
         }
       ],
       "rewards": {

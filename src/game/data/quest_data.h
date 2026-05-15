@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -8,6 +9,7 @@
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
+#include <glm/vec2.hpp>
 
 namespace game::data {
 
@@ -31,12 +33,20 @@ enum class QuestObjectiveKind : std::uint8_t {
     DefeatEnemyCount = 0
 };
 
+struct QuestObjectiveMarkerData {
+    std::string map_name_{};
+    entt::id_type map_id_hash_{entt::null};
+    glm::vec2 position_{};
+    std::string label_{};
+};
+
 struct QuestObjectiveData {
     std::string id_{};
     QuestObjectiveKind kind_{QuestObjectiveKind::DefeatEnemyCount};
     std::string enemy_id_{};
     entt::id_type enemy_id_hash_{entt::null};
     int required_count_{0};
+    std::optional<QuestObjectiveMarkerData> marker_{};
 };
 
 struct QuestRewardItemData {

@@ -176,6 +176,7 @@ set(GAME_TEST_SOURCES
     game/shop_debug_panel_helpers_test.cpp
     game/shop_debug_panel_registration_test.cpp
     game/quest_interaction_system_test.cpp
+    game/quest_map_marker_resolver_test.cpp
     game/map_coordinate_mapper_test.cpp
     game/map_marker_provider_test.cpp
     game/map_preview_builder_test.cpp

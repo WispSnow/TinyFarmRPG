@@ -93,21 +93,23 @@ TEST(MapMarkerProviderTest, ScansSupportedInteractiveObjectsAndSortsBySelectionO
 })json");
 
     MapMarkerProvider provider;
-    const std::vector<MapObjectMarker> markers = provider.markersForMap(map_path.string());
+    const MapMarkerSnapshot snapshot = provider.snapshotForMap(map_path.string());
+    const std::vector<MapObjectMarker>& markers = snapshot.static_place_markers;
+    const std::vector<QuestGiverLocation>& quest_givers = snapshot.quest_giver_markers;
 
-    ASSERT_EQ(markers.size(), 4U);
-    EXPECT_EQ(markers[0].kind, MapObjectMarkerKind::Quest);
-    EXPECT_EQ(markers[0].object_id, 1);
-    EXPECT_EQ(markers[0].quest_id, "quest.test");
-    EXPECT_EQ(markers[1].kind, MapObjectMarkerKind::Shop);
-    EXPECT_EQ(markers[1].object_id, 3);
-    EXPECT_EQ(markers[1].shop_id, "shop.test");
-    EXPECT_EQ(markers[2].kind, MapObjectMarkerKind::Rest);
-    EXPECT_EQ(markers[2].object_id, 5);
-    EXPECT_EQ(markers[2].map_position.x, 90.0F);
-    EXPECT_EQ(markers[2].map_position.y, 100.0F);
-    EXPECT_EQ(markers[3].kind, MapObjectMarkerKind::Npc);
-    EXPECT_EQ(markers[3].recruit_actor_id, "actor.test");
+    ASSERT_EQ(markers.size(), 3U);
+    ASSERT_EQ(quest_givers.size(), 1U);
+    EXPECT_EQ(quest_givers[0].object_id, 1);
+    EXPECT_EQ(quest_givers[0].quest_id, "quest.test");
+    EXPECT_EQ(markers[0].kind, MapObjectMarkerKind::Shop);
+    EXPECT_EQ(markers[0].object_id, 3);
+    EXPECT_EQ(markers[0].shop_id, "shop.test");
+    EXPECT_EQ(markers[1].kind, MapObjectMarkerKind::Rest);
+    EXPECT_EQ(markers[1].object_id, 5);
+    EXPECT_EQ(markers[1].map_position.x, 90.0F);
+    EXPECT_EQ(markers[1].map_position.y, 100.0F);
+    EXPECT_EQ(markers[2].kind, MapObjectMarkerKind::Npc);
+    EXPECT_EQ(markers[2].recruit_actor_id, "actor.test");
 
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
@@ -150,12 +152,13 @@ TEST(MapMarkerProviderTest, UsesShopMarkerWhenActorHasShopAndQuestToMatchRuntime
 })json");
 
     MapMarkerProvider provider;
-    const std::vector<MapObjectMarker> markers = provider.markersForMap(map_path.string());
+    const MapMarkerSnapshot snapshot = provider.snapshotForMap(map_path.string());
+    const std::vector<MapObjectMarker>& markers = snapshot.static_place_markers;
 
     ASSERT_EQ(markers.size(), 1U);
+    EXPECT_TRUE(snapshot.quest_giver_markers.empty());
     EXPECT_EQ(markers[0].kind, MapObjectMarkerKind::Shop);
     EXPECT_EQ(markers[0].shop_id, "shop.hybrid");
-    EXPECT_EQ(markers[0].quest_id, "quest.hybrid");
     EXPECT_EQ(markers[0].recruit_actor_id, "actor.hybrid");
 
     std::error_code ec;
@@ -220,7 +223,7 @@ TEST(MapMarkerProviderTest, HandlesEllipsePolygonAndInvisibleObjects) {
 })json");
 
     MapMarkerProvider provider;
-    const std::vector<MapObjectMarker> markers = provider.markersForMap(map_path.string());
+    const std::vector<MapObjectMarker> markers = provider.snapshotForMap(map_path.string()).static_place_markers;
 
     ASSERT_EQ(markers.size(), 2U);
     EXPECT_EQ(markers[0].object_id, 1);

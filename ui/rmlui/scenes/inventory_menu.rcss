@@ -687,15 +687,24 @@
     background-color: transparent;
     image-color: #ffffffff;
     filter: saturate(0.95) brightness(0.98);
-    transition: filter 0.08s cubic-out, image-color 0.08s cubic-out;
+    transition: filter 0.08s cubic-out, image-color 0.08s cubic-out, box-shadow 0.08s cubic-out;
 }
 
 .map-marker-player {
     image-color: #ffffffff;
 }
 
-.map-marker-quest {
+.map-marker-quest-offer {
     image-color: #fce97fff;
+}
+
+.map-marker-quest-objective {
+    image-color: #7dcfffff;
+}
+
+.map-marker-quest-turn-in {
+    image-color: #ffd166ff;
+    box-shadow: #ffd16666 0dp 0dp 0dp 1dp;
 }
 
 .map-marker-shop {
