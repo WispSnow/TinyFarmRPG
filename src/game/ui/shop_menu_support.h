@@ -11,6 +11,7 @@ class DataModelConstructor;
 
 namespace game::data {
 class ItemCatalog;
+enum class ItemCategory;
 struct ItemData;
 struct ShopBuyEntryData;
 struct ShopSellRuleData;
@@ -18,8 +19,14 @@ struct ShopSellRuleData;
 
 namespace game::ui {
 
+enum class ShopMenuCategory {
+    Consumable,
+    Equipment
+};
+
 enum class ShopMenuFocusArea {
     ModeToggle,
+    CategoryTabs,
     EntryList,
     Quantity,
     PrimaryAction
@@ -36,13 +43,14 @@ enum class ShopMenuNavigationInput {
 /// @brief 纯输入导航 helper 的最小状态快照。
 struct ShopMenuNavigationState {
     bool is_buy_mode{true};
+    ShopMenuCategory current_category{ShopMenuCategory::Consumable};
     ShopMenuFocusArea focus_area{ShopMenuFocusArea::EntryList};
-    bool has_buy_entries{false};
-    bool has_sell_entries{false};
+    bool has_consumable_entries{false};
+    bool has_equipment_entries{false};
     bool quantity_adjustable{false};
 
     [[nodiscard]] bool hasCurrentEntries() const {
-        return is_buy_mode ? has_buy_entries : has_sell_entries;
+        return current_category == ShopMenuCategory::Consumable ? has_consumable_entries : has_equipment_entries;
     }
 };
 
@@ -51,6 +59,8 @@ struct ShopMenuNavigationDecision {
     ShopMenuFocusArea next_focus_area{ShopMenuFocusArea::EntryList};
     bool switch_mode{false};
     bool next_is_buy_mode{true};
+    bool switch_category{false};
+    ShopMenuCategory next_category{ShopMenuCategory::Consumable};
     int entry_delta{0};
     int quantity_delta{0};
     bool confirm_trade{false};
@@ -93,9 +103,15 @@ struct ShopSellEntryViewModel {
 /// @brief 根据当前 mode 是否有条目，选择合适的默认焦点区域。
 [[nodiscard]] ShopMenuFocusArea resolvePreferredShopMenuFocus(bool has_current_entries);
 
+/// @brief 商店分类的默认值。
+[[nodiscard]] ShopMenuCategory resolveShopMenuCategoryDefault();
+
 /// @brief 根据当前焦点区域与菜单输入计算下一步商店导航决策。
 [[nodiscard]] ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationState& state,
                                                                    ShopMenuNavigationInput input);
+
+/// @brief 判断物品类别是否应出现在指定商店分类 tab 中。
+[[nodiscard]] bool isItemInCategoryTab(ShopMenuCategory category, game::data::ItemCategory item_category);
 
 /// @brief 解析 Buy UI 允许调整到的最大数量。
 [[nodiscard]] int resolveBuyQuantityUiMax(const game::data::ItemData& item);

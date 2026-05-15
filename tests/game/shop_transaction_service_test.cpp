@@ -33,6 +33,11 @@ using namespace entt::literals;
     return catalog.loadItemConfig((root / "assets/data/item_config.json").string());
 }
 
+[[nodiscard]] bool loadProjectShopCatalog(game::data::ShopCatalog& catalog) {
+    const auto root = std::filesystem::path{PROJECT_SOURCE_DIR};
+    return catalog.loadFromFile((root / "assets/data/shops.json").string());
+}
+
 [[nodiscard]] game::data::ShopCatalog loadShopCatalog(std::string_view body, std::string_view prefix) {
     const auto path = writeShopConfig(prefix, body);
     game::data::ShopCatalog catalog;
@@ -47,7 +52,7 @@ using namespace entt::literals;
     return player;
 }
 
-[[nodiscard]] constexpr std::string_view kShopConfig = R"json({
+constexpr std::string_view kShopConfig = R"json({
   "schema_version": 1,
   "shops": [
     {
@@ -322,6 +327,53 @@ TEST(ShopTransactionServiceTest, SellCommitFailsWhenStateChangesAfterPreview) {
     EXPECT_FALSE(result.completed());
     EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InsufficientItemCount);
     EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 10);
+}
+
+TEST(ShopTransactionServiceTest, BuyCommitWritesEquipmentInventoryAndGoldFromProjectShopData) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    game::data::ShopCatalog shop_catalog;
+    ASSERT_TRUE(loadProjectShopCatalog(shop_catalog));
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, 300);
+    const auto result = service.commitBuy(player, "shop.village.general", "equip_wooden_sword"_hs, 1);
+
+    EXPECT_TRUE(result.completed());
+    EXPECT_EQ(result.total_price, 60);
+    EXPECT_EQ(result.final_gold_after, 240);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 240);
+
+    const auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    EXPECT_EQ(inventory.slot(0).item_id_, "equip_wooden_sword"_hs);
+    EXPECT_EQ(inventory.slot(0).count_, 1);
+}
+
+TEST(ShopTransactionServiceTest, SellCommitWritesEquipmentInventoryAndGoldFromProjectShopData) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    game::data::ShopCatalog shop_catalog;
+    ASSERT_TRUE(loadProjectShopCatalog(shop_catalog));
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, 10);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = "equip_wooden_sword"_hs;
+    inventory.slot(0).count_ = 1;
+
+    const auto result = service.commitSell(player, "equip_wooden_sword"_hs, 1, 0);
+
+    EXPECT_TRUE(result.completed());
+    EXPECT_EQ(result.total_price, 24);
+    EXPECT_EQ(result.final_gold_after, 34);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 34);
+    EXPECT_TRUE(inventory.slot(0).empty());
 }
 
 } // namespace

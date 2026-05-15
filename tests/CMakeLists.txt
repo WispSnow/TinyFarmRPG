@@ -226,6 +226,7 @@ set(GAME_TEST_SOURCES
     game/rest_area_interaction_test.cpp
     game/shop_menu_scene_smoke_test.cpp
     game/shop_menu_buy_flow_test.cpp
+    game/shop_menu_category_filter_test.cpp
     game/shop_menu_navigation_test.cpp
     game/shop_menu_sell_flow_test.cpp
     game/shop_save_roundtrip_test.cpp

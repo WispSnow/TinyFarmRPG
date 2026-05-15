@@ -101,16 +101,24 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuSceneWiresSellPreviewModeSwitchAndExact
     ASSERT_FALSE(confirm_sell_block.empty());
 
     EXPECT_NE(header.find("enum class ShopMenuMode"), std::string::npos);
+    EXPECT_NE(header.find("ShopMenuCategory current_category_"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->previewSell"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->commitSell"), std::string::npos);
+    EXPECT_NE(source.find("isItemInCategoryTab"), std::string::npos);
+    EXPECT_NE(source.find("hasEntriesForCategory"), std::string::npos);
+    EXPECT_NE(source.find("switchCategory"), std::string::npos);
+    EXPECT_NE(source.find("\"has_equipment_entries\""), std::string::npos);
+    EXPECT_NE(source.find("\"has_consumable_entries\""), std::string::npos);
     EXPECT_NE(source.find("current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell()"), std::string::npos);
     EXPECT_NE(source.find("formatFailureText(const ShopMenuMode mode"), std::string::npos);
-    EXPECT_NE(source.find("defaultEmptyText(current_mode_)"), std::string::npos);
+    EXPECT_NE(source.find("defaultEmptyText(current_mode_, current_category_)"), std::string::npos);
     EXPECT_NE(source.find("detail_owned_label_"), std::string::npos);
     EXPECT_NE(source.find("primary_action_text_"), std::string::npos);
     EXPECT_NE(init_ui_block.find("\"sell_entry_select\""), std::string::npos);
     EXPECT_NE(init_ui_block.find("\"switch_mode_buy\""), std::string::npos);
     EXPECT_NE(init_ui_block.find("\"switch_mode_sell\""), std::string::npos);
+    EXPECT_NE(init_ui_block.find("\"switch_category_consumable\""), std::string::npos);
+    EXPECT_NE(init_ui_block.find("\"switch_category_equipment\""), std::string::npos);
     EXPECT_NE(init_ui_block.find("RegisterArray<decltype(sell_entries_)>()"), std::string::npos);
     EXPECT_NE(sell_preview_block.find("currentSellItemId()"), std::string::npos);
     EXPECT_NE(sell_preview_block.find("sell_entry->slot_index"), std::string::npos);
@@ -131,13 +139,21 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuRmlBindsModeToggleAndSellList) {
 
     EXPECT_NE(rml.find("data-event-click=\"switch_mode_buy\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"switch_mode_sell\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"switch_category_consumable\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"switch_category_equipment\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-focused=\"is_category_tabs_focused\""), std::string::npos);
+    EXPECT_NE(rml.find("<div class=\"shop-entry-row\" data-for=\"entry : sell_entries\">"), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : sell_entries\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"shop-sell-entry-{{ entry.slot_index }}\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"sell_entry_select(entry.index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-attr-data-shop-index=\"entry.index\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"sell_entry_select\""), std::string::npos);
+    EXPECT_NE(rml.find("data-rml=\"entry.item_name\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-disabled=\"entry.is_disabled\""), std::string::npos);
     EXPECT_NE(rml.find("{{ detail_owned_label }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ primary_action_text }}"), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"is_sell_mode"), std::string::npos);
+    EXPECT_EQ(rml.find("class=\"shop-entry shop-sell-entry\"\n                            data-for=\"entry : sell_entries\""), std::string::npos);
+    EXPECT_EQ(rml.find("data-event-click=\"sell_entry_select(entry.index)\""), std::string::npos);
 }
 
 } // namespace

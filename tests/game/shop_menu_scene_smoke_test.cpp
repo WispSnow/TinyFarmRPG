@@ -111,8 +111,10 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(rml.find("data-if=\"is_sell_mode"), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : buy_entries\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : sell_entries\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"buy_entry_select(entry.index)\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"sell_entry_select(entry.index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-attr-data-shop-index=\"entry.index\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"buy_entry_select\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"sell_entry_select\""), std::string::npos);
+    EXPECT_NE(rml.find("data-rml=\"entry.item_name\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(-1)\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(1)\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"shop-primary-action-button\""), std::string::npos);

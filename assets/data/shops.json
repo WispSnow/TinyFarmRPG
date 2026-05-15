@@ -13,6 +13,54 @@
                 {
                     "item_id": "strawberry_seed",
                     "buy_price": 12
+                },
+                {
+                    "item_id": "equip_wooden_sword",
+                    "buy_price": 60
+                },
+                {
+                    "item_id": "equip_wooden_staff",
+                    "buy_price": 60
+                },
+                {
+                    "item_id": "equip_wooden_helmet",
+                    "buy_price": 50
+                },
+                {
+                    "item_id": "equip_wooden_armor",
+                    "buy_price": 80
+                },
+                {
+                    "item_id": "equip_wooden_boots",
+                    "buy_price": 50
+                },
+                {
+                    "item_id": "equip_wooden_accessory",
+                    "buy_price": 70
+                },
+                {
+                    "item_id": "equip_iron_sword",
+                    "buy_price": 200
+                },
+                {
+                    "item_id": "equip_iron_staff",
+                    "buy_price": 200
+                },
+                {
+                    "item_id": "equip_iron_helmet",
+                    "buy_price": 180
+                },
+                {
+                    "item_id": "equip_iron_armor",
+                    "buy_price": 260
+                },
+                {
+                    "item_id": "equip_iron_boots",
+                    "buy_price": 180
+                },
+                {
+                    "item_id": "equip_iron_accessory",
+                    "buy_price": 240
                 }
             ]
         }
@@ -29,6 +77,54 @@
         {
             "item_id": "strawberry_item",
             "sell_price": 4
+        },
+        {
+            "item_id": "equip_wooden_sword",
+            "sell_price": 24
+        },
+        {
+            "item_id": "equip_wooden_staff",
+            "sell_price": 24
+        },
+        {
+            "item_id": "equip_wooden_helmet",
+            "sell_price": 20
+        },
+        {
+            "item_id": "equip_wooden_armor",
+            "sell_price": 32
+        },
+        {
+            "item_id": "equip_wooden_boots",
+            "sell_price": 20
+        },
+        {
+            "item_id": "equip_wooden_accessory",
+            "sell_price": 28
+        },
+        {
+            "item_id": "equip_iron_sword",
+            "sell_price": 80
+        },
+        {
+            "item_id": "equip_iron_staff",
+            "sell_price": 80
+        },
+        {
+            "item_id": "equip_iron_helmet",
+            "sell_price": 72
+        },
+        {
+            "item_id": "equip_iron_armor",
+            "sell_price": 104
+        },
+        {
+            "item_id": "equip_iron_boots",
+            "sell_price": 72
+        },
+        {
+            "item_id": "equip_iron_accessory",
+            "sell_price": 96
         }
     ]
 }

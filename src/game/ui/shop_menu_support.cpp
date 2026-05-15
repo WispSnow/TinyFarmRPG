@@ -13,7 +13,11 @@
 namespace game::ui {
 
 ShopMenuFocusArea resolvePreferredShopMenuFocus(const bool has_current_entries) {
-    return has_current_entries ? ShopMenuFocusArea::EntryList : ShopMenuFocusArea::ModeToggle;
+    return has_current_entries ? ShopMenuFocusArea::EntryList : ShopMenuFocusArea::CategoryTabs;
+}
+
+ShopMenuCategory resolveShopMenuCategoryDefault() {
+    return ShopMenuCategory::Consumable;
 }
 
 ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationState& state,
@@ -21,6 +25,7 @@ ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationSta
     ShopMenuNavigationDecision decision{};
     decision.next_focus_area = state.focus_area;
     decision.next_is_buy_mode = state.is_buy_mode;
+    decision.next_category = state.current_category;
 
     const bool has_current_entries = state.hasCurrentEntries();
     switch (state.focus_area) {
@@ -32,14 +37,30 @@ ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationSta
                 decision.switch_mode = true;
                 decision.next_is_buy_mode = false;
             } else if (input == ShopMenuNavigationInput::Down || input == ShopMenuNavigationInput::Confirm) {
-                decision.next_focus_area = resolvePreferredShopMenuFocus(has_current_entries);
+                decision.next_focus_area = ShopMenuFocusArea::CategoryTabs;
+            }
+            break;
+
+        case ShopMenuFocusArea::CategoryTabs:
+            if (input == ShopMenuNavigationInput::Left && state.current_category == ShopMenuCategory::Equipment) {
+                decision.switch_category = true;
+                decision.next_category = ShopMenuCategory::Consumable;
+            } else if (input == ShopMenuNavigationInput::Right &&
+                       state.current_category == ShopMenuCategory::Consumable) {
+                decision.switch_category = true;
+                decision.next_category = ShopMenuCategory::Equipment;
+            } else if (input == ShopMenuNavigationInput::Up) {
+                decision.next_focus_area = ShopMenuFocusArea::ModeToggle;
+            } else if ((input == ShopMenuNavigationInput::Down || input == ShopMenuNavigationInput::Confirm) &&
+                       has_current_entries) {
+                decision.next_focus_area = ShopMenuFocusArea::EntryList;
             }
             break;
 
         case ShopMenuFocusArea::EntryList:
             if (!has_current_entries) {
                 if (input == ShopMenuNavigationInput::Left) {
-                    decision.next_focus_area = ShopMenuFocusArea::ModeToggle;
+                    decision.next_focus_area = ShopMenuFocusArea::CategoryTabs;
                 }
                 break;
             }
@@ -52,7 +73,7 @@ ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationSta
                     decision.entry_delta = 1;
                     break;
                 case ShopMenuNavigationInput::Left:
-                    decision.next_focus_area = ShopMenuFocusArea::ModeToggle;
+                    decision.next_focus_area = ShopMenuFocusArea::CategoryTabs;
                     break;
                 case ShopMenuNavigationInput::Right:
                     decision.next_focus_area = ShopMenuFocusArea::Quantity;
@@ -119,6 +140,14 @@ ShopMenuNavigationDecision resolveShopMenuNavigation(const ShopMenuNavigationSta
     }
 
     return decision;
+}
+
+bool isItemInCategoryTab(const ShopMenuCategory category, const game::data::ItemCategory item_category) {
+    if (category == ShopMenuCategory::Equipment) {
+        return item_category == game::data::ItemCategory::Equipment;
+    }
+
+    return item_category != game::data::ItemCategory::Equipment;
 }
 
 bool registerShopBuyEntryViewModelType(Rml::DataModelConstructor& constructor) {
