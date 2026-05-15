@@ -238,9 +238,44 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-options"></tab>
-                <panel id="panel-options" class="placeholder-panel">
-                    <div class="placeholder-title">Options</div>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-options"></tab>
+                <panel id="panel-options">
+                    <div id="options-content">
+                        <div class="options-row">
+                            <div class="options-row-label">Battle Speed</div>
+                            <button class="options-stepper-btn tf-nav-auto tf-focus-ring-blue"
+                                    data-event-click="options_battle_speed_prev">&lt;</button>
+                            <div class="options-row-value">{{ options_battle_speed_text }}</div>
+                            <button class="options-stepper-btn tf-nav-auto tf-focus-ring-blue"
+                                    data-event-click="options_battle_speed_next">&gt;</button>
+                        </div>
+                        <div class="options-row">
+                            <div class="options-row-label">Damage Popups</div>
+                            <button class="options-toggle tf-nav-auto tf-focus-ring-blue"
+                                    data-class-on="options_show_damage_popup"
+                                    data-event-click="options_toggle_damage_popup">{{ options_damage_popup_text }}</button>
+                        </div>
+                        <div class="options-row">
+                            <div class="options-row-label">Enemy HP Bar</div>
+                            <button class="options-toggle tf-nav-auto tf-focus-ring-blue"
+                                    data-class-on="options_show_enemy_hp_bar"
+                                    data-event-click="options_toggle_enemy_hp_bar">{{ options_enemy_hp_bar_text }}</button>
+                        </div>
+                        <div class="options-row">
+                            <div class="options-row-label">Cursor Memory</div>
+                            <button class="options-toggle tf-nav-auto tf-focus-ring-blue"
+                                    data-class-on="options_cursor_memory"
+                                    data-event-click="options_toggle_cursor_memory">{{ options_cursor_memory_text }}</button>
+                        </div>
+                        <div class="options-row">
+                            <div class="options-row-label">UI Font Size</div>
+                            <button class="options-stepper-btn tf-nav-auto tf-focus-ring-blue"
+                                    data-event-click="options_font_scale_prev">&lt;</button>
+                            <div class="options-row-value">{{ options_font_scale_text }}</div>
+                            <button class="options-stepper-btn tf-nav-auto tf-focus-ring-blue"
+                                    data-event-click="options_font_scale_next">&gt;</button>
+                        </div>
+                    </div>
                 </panel>
             </tabset>
 

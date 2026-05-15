@@ -4,7 +4,7 @@
 - 任务ID：`INV-OPTIONS-001`
 - 任务标题：`InventoryMenu 中实现 Options 标签页：游戏体验与呈现偏好设置`
 - 优先级：`P2`
-- 状态：`Planned`
+- 状态：`Implemented`（自动化测试 800/800 通过；游戏内手动验收待执行）
 - 计划时间：`2026-05-15` 起
 - 依赖任务：`无`
 - 设计原则：与 `PauseMenuScene` **职能分层**（PauseMenu = 系统级控制；Options = 游戏体验偏好）；引入轻量级 `UserSettingsService`（**game 层**）作为偏好设置的唯一真源；不入存档 schema；不修改 engine 层接口，遵守 `game → engine` 单向依赖（见 `CMakeLists.txt:111-117`，game 依赖 engine，反向禁止）。
@@ -401,13 +401,13 @@ flowchart LR
 
 ## Todo
 
-- [ ] Phase 1: 新建 `src/game/runtime/user_settings.h` 与 `user_settings_service.{h,cpp}`；接入 `GameRuntimeAssembler`；不动 engine Context。
-- [ ] Phase 1: 新建 `src/game/defs/options_events.h`（5 个 ChangedEvent 结构）。
-- [ ] Phase 1: 新建 `config/user_settings.default.json` 出厂模板；`.gitignore` 追加 `config/user_settings.json`。
-- [ ] Phase 1: `src/CMakeLists.txt` 的 `target_sources(game PRIVATE ...)` 追加新 cpp 文件；`tests/CMakeLists.txt` 的 `GAME_TEST_SOURCES` 追加新测试。
-- [ ] Phase 1: PauseMenu 构造参数 + adjust* 改走 service；`clean()` 调 `flushIfDirty`；新增 service 单测（含 fallback 到 `.default.json` 与 CopyConfig 不覆盖回归）。
-- [ ] Phase 2: `BattleDamagePopupController` / `BattleEnemyHpBarController` 增加 `setEnabled`；BattleScene 接入 + 动画速度缩放（建议把缩放抽成 `scaleAnimationTimeline` helper 以便单测）；新增控制器单测与 animation speed 测试，并注册到 CMake。
-- [ ] Phase 3: `OptionsTabContent.{h,cpp}` + Inventory 菜单接入；RML / RCSS 五行表单；source-test 覆盖；CMake `target_sources` 与测试源注册更新。
-- [ ] Phase 4: `.rcss` 字号 `dp → rem` 机械迁移（清单见"修改的 UI 文件"）；`RmlUiRuntime::applyBodyFontScaleClassToAllDocuments` 接口与 resolver 注入；`RmlDocumentController::load()` 自动注入 class；service 派发事件并 apply。
-- [ ] Phase 4: BattleScene Cursor Memory 字段与 helper 抽取；`battle_cursor_memory_test.cpp` 单测；CMake 注册。
-- [ ] Phase 5: 全量 `ninja -C build engine_tests game_tests` + ctest 回归；手动验收清单（含 CopyConfig 不覆盖回归与字号联动跨 Scene 验证）；`docs/gameplay/options.md` 文档；`docs/overview.md` 更新一行。
+- [x] Phase 1: 新建 `src/game/runtime/user_settings.{h,cpp}` 与 `user_settings_service.{h,cpp}`；接入 `GameRuntimeAssembler`；不动 engine Context。**Codex review 后**：service 绑定 `registry.ctx<GameTime>()` 而非临时 shared_ptr；PauseMenu `loadFromFile` 成功后立即 `applyAll()`，防止存档值覆盖偏好。
+- [x] Phase 1: 新建 `src/game/defs/options_events.h`（5 个 ChangedEvent 结构）。
+- [x] Phase 1: 新建 `config/user_settings.default.json` 出厂模板；`.gitignore` 追加 `config/user_settings.json`。
+- [x] Phase 1: `src/CMakeLists.txt` 的 `target_sources(game PRIVATE ...)` 追加 `user_settings.cpp` / `user_settings_service.cpp`；`tests/CMakeLists.txt` 的 `GAME_TEST_SOURCES` 追加 `user_settings_test.cpp`。
+- [x] Phase 1: PauseMenu 构造参数 + `adjust*` 改走 service；`clean()` 调 `flushIfDirty`；service 单测 9 项覆盖默认值 / roundtrip / 缺字段 fallback / 越界 clamp / 非法 JSON / 字号互转 / class 名一致性等。
+- [x] Phase 2: `BattleDamagePopupController` / `BattleEnemyHpBarController` 增加 `setEnabled`；BattleScene 接入 + 动画速度缩放（`scaleAnimationTimeline` 自由函数）；新增 4 项动画速度 + 2 项 popup + 3 项 HP 条单测（含 Codex review 后补的 highlight-clear 行为测试）；CMake 注册。**Codex review 后**：`setEnabled(false)` 立即清 reveal/highlight，`updateVisibility` 在 disabled 分支无条件 fade，避免残留 alpha=1。
+- [x] Phase 3: `OptionsTabContent.{h,cpp}` + Inventory 菜单接入；`inventory_menu.rml` 五行表单（Battle Speed / Damage Popups / Enemy HP Bar / Cursor Memory / UI Font Size）+ `inventory_menu.rcss` 样式；source-test 4 项；CMake `target_sources` 与 `GAME_TEST_SOURCES` 注册更新。
+- [x] Phase 4: `.rcss` 字号 `dp → rem` 机械迁移（9 个核心文件，learn/tests 子目录排除）；`base.rcss` 追加 `body.tf-font-{small,normal,large}` 三档规则；`RmlUiRuntime::applyBodyFontScaleClassToAllDocuments` 接口；`RmlUiRuntime::loadDocument` 自动应用当前 class。**Codex review 后**：移除 resolver lambda 模式（GameScene 销毁时 lambda 捕获的 service 指针会悬空），改为 runtime 直接持有 `std::string body_font_scale_class_`，service `setUiFontScale` 通过同一接口更新该字符串。
+- [x] Phase 4: BattleScene Cursor Memory 完整接入（actor command / skill / item / target 四类记忆）；`battle_cursor_memory.h` 的 `resolveCursorMemoryDefaultIndex` 纯函数 + 5 项 helper 单测；CMake 注册。**Codex review 后**：补齐了 skill / item / target 三类记忆映射与写回路径，原先只接了 actor command。
+- [x] Phase 5: 全量 `ninja -C build` + ctest 回归：**800/800 PASS、0 FAIL、9 项 pre-existing skip**；新增 `docs/options-and-user-settings.md`（含 mermaid 流程图）；`docs/overview.md` 增加一行偏好设置已落地的说明。**手动验收（CopyConfig 不覆盖回归 + 字号跨 Scene 联动 + 战斗光标记忆）仍需在实际游戏内执行**——自动化测试已覆盖纯逻辑层，但 in-game 视觉/体感验证未做。

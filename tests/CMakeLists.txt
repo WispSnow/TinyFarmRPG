@@ -151,6 +151,8 @@ set(GAME_TEST_SOURCES
     game/battle/battle_session_test.cpp
     game/battle/battle_action_presentation_plan_test.cpp
     game/battle/battle_animation_director_test.cpp
+    game/battle/battle_animation_speed_test.cpp
+    game/battle/battle_cursor_memory_test.cpp
     game/battle/battle_damage_popup_controller_test.cpp
     game/battle/battle_enemy_hp_bar_controller_test.cpp
     game/battle/battle_victory_flow_controller_test.cpp
@@ -241,6 +243,8 @@ set(GAME_TEST_SOURCES
     game/rml_menu_navigation_style_test.cpp
     game/game_scene_ui_controller_smoke_test.cpp
     game/ui_layout_integration_test.cpp
+    game/user_settings_test.cpp
+    game/options_tab_content_test.cpp
 )
 
 list(APPEND GAME_TEST_SOURCES

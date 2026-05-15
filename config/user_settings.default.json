@@ -1,0 +1,18 @@
+{
+  "audio": {
+    "music_volume": 0.5,
+    "sound_volume": 0.3
+  },
+  "time": {
+    "global_scale": 1.0
+  },
+  "battle": {
+    "animation_speed": 1.0,
+    "show_damage_popup": true,
+    "show_enemy_hp_bar": true,
+    "cursor_memory": true
+  },
+  "ui": {
+    "font_scale": "normal"
+  }
+}

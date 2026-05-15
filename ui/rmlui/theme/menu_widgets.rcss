@@ -6,7 +6,7 @@ button {
     border-color: transparent;
     color: #ffffffff;
     font-family: "VonwaonBitmap 16px";
-    font-size: 16dp;
+    font-size: 1rem;
     text-align: center;
     cursor: pointer;
     font-effect: shadow(1dp 1dp #000000cc);

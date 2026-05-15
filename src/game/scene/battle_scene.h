@@ -25,6 +25,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -40,6 +41,13 @@ struct ItemData;
 struct SkillData;
 enum class Scope : std::uint8_t;
 } // namespace game::data
+
+namespace game::defs {
+struct BattleAnimationSpeedChangedEvent;
+struct DamagePopupVisibilityChangedEvent;
+struct EnemyHpBarVisibilityChangedEvent;
+struct CursorMemoryChangedEvent;
+} // namespace game::defs
 
 namespace game::scene {
 
@@ -240,6 +248,20 @@ class BattleScene final : public engine::scene::Scene {
     std::optional<CameraStateSnapshot> saved_camera_state_{};
     std::vector<ScheduledPresentationEvent> scheduled_presentation_events_{};
 
+    /// @brief 玩家偏好的战斗动画速度（来自 UserSettingsService）；用于 animationConfigForPlan 中缩放 *_seconds。
+    float battle_animation_speed_{1.0f};
+
+    /// @brief 是否启用光标记忆。
+    bool cursor_memory_enabled_{true};
+    /// @brief 每个行动者上次选择的 ActorCommand 下标（按 BattleUnitId 键存储）。战斗结束清空。
+    std::unordered_map<game::battle::BattleUnitId, int> last_actor_command_index_per_actor_{};
+    /// @brief 每个行动者上次选中的 skill id（list_entries_.entry_id）。
+    std::unordered_map<game::battle::BattleUnitId, std::string> last_skill_id_per_actor_{};
+    /// @brief 每个行动者上次选中的 item id（list_entries_.entry_id）。
+    std::unordered_map<game::battle::BattleUnitId, std::string> last_item_id_per_actor_{};
+    /// @brief 每个行动者上次选中的 target unit id。
+    std::unordered_map<game::battle::BattleUnitId, game::battle::BattleUnitId> last_target_unit_id_per_actor_{};
+
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
     bool data_types_registered_{false};
@@ -434,6 +456,15 @@ private:
     void renderEnemyHpBars();
     void renderDamagePopups();
     void renderBattlefieldBackground();
+
+    /// @brief 从 UserSettingsService 同步当前偏好到本地缓存与子控制器。
+    void syncUserSettingsState();
+    void connectUserSettingsListeners();
+    void disconnectUserSettingsListeners();
+    void onBattleAnimationSpeedChanged(const game::defs::BattleAnimationSpeedChangedEvent& evt);
+    void onDamagePopupVisibilityChanged(const game::defs::DamagePopupVisibilityChangedEvent& evt);
+    void onEnemyHpBarVisibilityChanged(const game::defs::EnemyHpBarVisibilityChangedEvent& evt);
+    void onCursorMemoryChanged(const game::defs::CursorMemoryChangedEvent& evt);
 };
 
 } // namespace game::scene

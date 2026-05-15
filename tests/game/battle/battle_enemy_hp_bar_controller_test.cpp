@@ -215,6 +215,59 @@ TEST(BattleEnemyHpBarControllerTest, LeavingTargetSelectFadesOutNonHitEnemiesImm
     EXPECT_FLOAT_EQ(controller.findBar(3)->alpha, 0.0f);
 }
 
+TEST(BattleEnemyHpBarControllerTest, DisabledControllerDoesNotRevealOnHit) {
+    BattleEnemyHpBarConfig config{};
+    BattleEnemyHpBarController controller{config};
+    controller.setEnabled(false);
+    EXPECT_FALSE(controller.isEnabled());
+
+    controller.syncFromSnapshot(makeSnapshot());
+    controller.revealFromResult(makeDamageResult(2));
+
+    const auto* bar = controller.findBar(2);
+    ASSERT_NE(bar, nullptr);
+    EXPECT_FLOAT_EQ(bar->visible_seconds_remaining, 0.0f);
+    EXPECT_FLOAT_EQ(bar->alpha, 0.0f);
+    EXPECT_FALSE(bar->visible);
+}
+
+TEST(BattleEnemyHpBarControllerTest, DisablingClearsHighlightSoHighlightedBarAlsoFades) {
+    BattleEnemyHpBarConfig config{};
+    config.fade_seconds = 0.10f;
+    BattleEnemyHpBarController controller{config};
+    controller.syncFromSnapshot(makeSnapshot());
+    controller.setHighlightedTarget(2);
+    controller.update(0.05f);
+    ASSERT_TRUE(controller.findBar(2)->highlighted);
+    EXPECT_FLOAT_EQ(controller.findBar(2)->alpha, 1.0f);
+
+    // 关闭后 highlight 应当被立即清掉，alpha 在 fade_seconds 内淡到 0。
+    controller.setEnabled(false);
+    EXPECT_FALSE(controller.findBar(2)->highlighted);
+    controller.update(0.20f);  // 越过 fade_seconds
+    EXPECT_FLOAT_EQ(controller.findBar(2)->alpha, 0.0f);
+    EXPECT_FALSE(controller.findBar(2)->visible);
+}
+
+TEST(BattleEnemyHpBarControllerTest, DisablingMidFlightFadesExistingBarsToZero) {
+    BattleEnemyHpBarConfig config{};
+    config.reveal_seconds = 0.20f;
+    config.fade_seconds = 0.10f;
+    BattleEnemyHpBarController controller{config};
+    controller.syncFromSnapshot(makeSnapshot());
+    controller.revealFromResult(makeDamageResult(2));
+
+    ASSERT_TRUE(controller.findBar(2)->visible);
+    EXPECT_FLOAT_EQ(controller.findBar(2)->alpha, 1.0f);
+
+    controller.setEnabled(false);
+    // 已显示的血条立刻被新 spawn 拒绝（已有的不清空）；但 reveal 计时器走完 + 一次 update 后进入 fade 分支。
+    controller.update(0.30f);  // 越过 reveal_seconds (0.20f)
+    controller.update(0.20f);  // 越过 fade_seconds (0.10f)
+    EXPECT_FLOAT_EQ(controller.findBar(2)->alpha, 0.0f);
+    EXPECT_FALSE(controller.findBar(2)->visible);
+}
+
 TEST(BattleEnemyHpBarControllerTest, KoEnemySyncsToEmptyBarAndCanBeRevealed) {
     BattleEnemyHpBarConfig config{};
     config.change_delay_seconds = 0.0f;

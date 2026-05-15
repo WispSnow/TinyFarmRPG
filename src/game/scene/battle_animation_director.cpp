@@ -8,6 +8,24 @@
 #include <cmath>
 
 namespace game::scene {
+
+void scaleAnimationTimeline(BattleAnimationTimelineConfig& config, float speed) noexcept {
+    if (!std::isfinite(speed) || speed <= 0.0f || speed == 1.0f) {
+        return;
+    }
+    const float inv = 1.0f / speed;
+    config.attack_duration_seconds *= inv;
+    config.action_hold_seconds *= inv;
+    config.cast_duration_seconds *= inv;
+    config.minimum_duration_seconds *= inv;
+    config.duration_seconds *= inv;
+    config.impact_time_seconds *= inv;
+    config.hit_feedback_duration_seconds *= inv;
+    config.weapon_windup_seconds *= inv;
+    config.weapon_lunge_seconds *= inv;
+    config.weapon_return_seconds *= inv;
+}
+
 namespace {
 
 constexpr float PI = 3.14159265358979323846f;

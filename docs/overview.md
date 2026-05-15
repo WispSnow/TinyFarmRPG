@@ -17,6 +17,7 @@ TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的
 - 队伍与招募已落地：`PartyComponent` 记录已招募和参战成员；地图实例 `recruit_actor_id` 会进入 `RecruitOfferScene` 并由 `PartyRecruitmentSystem` 写入队伍。
 - 装备 MVP 已落地：`ItemCategory::Equipment`、`assets/data/rpg/equipment.json`、`PartyEquipmentComponent`、`EquipmentDomainService`、`EquipmentSystem` 与 `EquipmentTabContent` 已接通；战斗单位构建会读取装备加成。
 - 回合制战斗已不再是原型骨架：`BattleScene` 已具备 RmlUi 菜单、队伍指令、`Attack / Skill / Item / Guard / Escape / End Turn`、`SkillList / ItemList / TargetSelect`、敌方 AI、Side View 战斗精灵、伤害弹字、敌方 HP 条、胜利奖励与战斗物品写回。
+- 玩家偏好已落地：`UserSettingsService` 统一管理 5 项偏好（战斗动画速度、伤害飘字、敌方 HP 条、光标记忆、UI 字号），PauseMenu 与 Inventory 菜单 Options 标签共用同一真源；持久化到 `config/user_settings.json`（不进 source repo）。
 - 存档当前 schema 为 v4：除基础世界状态外，还包含 `quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state` 与 `combat_state`。
 - 下一阶段更适合聚焦在内容和规则深度：等级/经验/成长曲线、状态/技能效果扩展、装备词条与限制深化、商店限量库存、更多任务目标类型，以及战斗表现打磨。
 

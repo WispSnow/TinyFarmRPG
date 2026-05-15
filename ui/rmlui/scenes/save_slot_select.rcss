@@ -20,7 +20,7 @@
 
 .save-slot-button {
     width: 160dp;
-    font-size: 12dp;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
 }

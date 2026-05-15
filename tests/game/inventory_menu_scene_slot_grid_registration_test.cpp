@@ -86,9 +86,9 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SceneUsesDocumentControllerForU
     EXPECT_NE(init_ui_block.find("InventoryTabContent"), std::string::npos);
     EXPECT_NE(init_ui_block.find("QuestTabContent"), std::string::npos);
     EXPECT_EQ(init_ui_block.find("Bind(\"active_tab_id\""), std::string::npos);
-    EXPECT_NE(init_ui_block.find("PlaceholderTabContent"), std::string::npos);
-    EXPECT_EQ(init_ui_block.find("tabs_.emplace(game::ui::MenuTabId::Quests, std::make_unique<PlaceholderTabContent>())"),
-              std::string::npos);
+    // Options 标签从 placeholder 替换为真实 OptionsTabContent（Phase 3）；其它非 placeholder tab 也通过 bindModel 走真实流程。
+    EXPECT_NE(init_ui_block.find("OptionsTabContent"), std::string::npos);
+    EXPECT_EQ(init_ui_block.find("PlaceholderTabContent"), std::string::npos);
     EXPECT_NE(init_ui_block.find("switchTabFromTabsetIndex"), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.markAllDirty()"), std::string::npos);
     EXPECT_EQ(init_ui_block.find("document_controller_.queueFocusFirstEnabledElementByClass(\"hb-slot\")"),
@@ -180,10 +180,11 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(style.find("width: 206dp;\n    min-height: 22dp;"), std::string::npos);
     EXPECT_NE(style.find("display: flex;\n    flex-direction: row;\n    align-items: center;\n    justify-content: space-between;\n    margin-left: 6dp;\n    width: 182dp;\n    gap: 4dp;"),
               std::string::npos);
-    EXPECT_NE(style.find("width: 82dp;\n    font-size: 10dp;"), std::string::npos);
-    EXPECT_NE(style.find("width: 96dp;\n    font-size: 9dp;"), std::string::npos);
-    EXPECT_NE(style.find("font-size: 10dp;\n    color: #ffffff;\n    text-align: left;"), std::string::npos);
-    EXPECT_NE(style.find("font-size: 9dp;\n    color: #9ece6a;\n    text-align: right;\n    white-space: normal;\n    word-break: normal;"),
+    // 字号 dp→rem 迁移后（Phase 4，1rem = 16dp 默认 body）：10dp→0.625rem、9dp→0.5625rem。
+    EXPECT_NE(style.find("width: 82dp;\n    font-size: 0.625rem;"), std::string::npos);
+    EXPECT_NE(style.find("width: 96dp;\n    font-size: 0.5625rem;"), std::string::npos);
+    EXPECT_NE(style.find("font-size: 0.625rem;\n    color: #ffffff;\n    text-align: left;"), std::string::npos);
+    EXPECT_NE(style.find("font-size: 0.5625rem;\n    color: #9ece6a;\n    text-align: right;\n    white-space: normal;\n    word-break: normal;"),
               std::string::npos);
     EXPECT_NE(style.find("#map-preview-frame"), std::string::npos);
     EXPECT_NE(style.find("width: 218dp;\n    height: 126dp;"), std::string::npos);

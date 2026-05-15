@@ -5,6 +5,7 @@
 
 #include "game/data/game_time.h"
 #include "game/defs/events.h"
+#include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
 
 #include "engine/audio/audio_player.h"
@@ -58,10 +59,12 @@ namespace game::scene {
 PauseMenuScene::PauseMenuScene(std::string_view name,
                                engine::core::Context& context,
                                game::save::SaveService* save_service,
-                               game::data::GameTime* game_time)
+                               game::data::GameTime* game_time,
+                               game::runtime::UserSettingsService* user_settings_service)
     : engine::scene::Scene(name, context),
       save_service_(save_service),
       game_time_(game_time),
+      user_settings_service_(user_settings_service),
       previous_state_(context.getGameState().getCurrentState()) {
 }
 
@@ -104,6 +107,9 @@ void PauseMenuScene::update(float delta_time) {
 }
 
 void PauseMenuScene::clean() {
+    if (user_settings_service_) {
+        (void)user_settings_service_->flushIfDirty();
+    }
     shutdownUI();
     disconnectRuntimeListeners();
     context_.getGameState().setState(previous_state_);
@@ -298,6 +304,12 @@ void PauseMenuScene::onLoadClicked() {
             return;
         }
 
+        // SaveService::apply 会把 ctx GameTime::time_scale_ 覆写为存档值；
+        // 用户偏好是 global 概念，不应被存档覆盖，所以这里立即把当前偏好重新 apply 一次。
+        if (user_settings_service_) {
+            user_settings_service_->applyAll();
+        }
+
         setMessage("Loaded", false);
         requestPopScene();
         close_after_load_ = true;
@@ -319,14 +331,22 @@ void PauseMenuScene::onBackToTitleClicked() {
 void PauseMenuScene::adjustMusicVolume(int step) {
     auto& audio = context_.getAudioPlayer();
     const float next = clamp01(audio.getMusicVolume() + static_cast<float>(step) * VOLUME_STEP);
-    audio.setMusicVolume(next);
+    if (user_settings_service_) {
+        user_settings_service_->setMusicVolume(next);
+    } else {
+        audio.setMusicVolume(next);
+    }
     refreshVolumeLabels();
 }
 
 void PauseMenuScene::adjustSoundVolume(int step) {
     auto& audio = context_.getAudioPlayer();
     const float next = clamp01(audio.getSoundVolume() + static_cast<float>(step) * VOLUME_STEP);
-    audio.setSoundVolume(next);
+    if (user_settings_service_) {
+        user_settings_service_->setSoundVolume(next);
+    } else {
+        audio.setSoundVolume(next);
+    }
     refreshVolumeLabels();
 }
 
@@ -348,7 +368,11 @@ void PauseMenuScene::adjustTimeScale(int step) {
     }
     scale = std::clamp(scale, TIME_SCALE_MIN, TIME_SCALE_MAX);
 
-    game_time_->time_scale_ = scale;
+    if (user_settings_service_) {
+        user_settings_service_->setGlobalTimeScale(scale);
+    } else {
+        game_time_->time_scale_ = scale;
+    }
     refreshTimeScaleLabel();
 }
 

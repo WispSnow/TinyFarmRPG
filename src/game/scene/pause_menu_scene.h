@@ -24,12 +24,17 @@ namespace game::defs {
 struct AsyncSaveCompletedEvent;
 }
 
+namespace game::runtime {
+class UserSettingsService;
+}
+
 namespace game::scene {
 
 class PauseMenuScene final : public engine::scene::Scene {
 private:
     game::save::SaveService* save_service_{nullptr};
     game::data::GameTime* game_time_{nullptr};
+    game::runtime::UserSettingsService* user_settings_service_{nullptr};
     engine::core::State previous_state_{};
     bool close_after_load_{false};
     bool context_pushed_{false};
@@ -50,7 +55,8 @@ public:
     PauseMenuScene(std::string_view name,
                    engine::core::Context& context,
                    game::save::SaveService* save_service,
-                   game::data::GameTime* game_time);
+                   game::data::GameTime* game_time,
+                   game::runtime::UserSettingsService* user_settings_service);
     ~PauseMenuScene() override;
 
     bool init() override;

@@ -43,6 +43,10 @@ struct BattleAnimationTimelineConfig {
     BattleActionMotionStyle motion_style{BattleActionMotionStyle::Auto};
 };
 
+/// @brief 按用户偏好的 battle_animation_speed 缩放时间轴配置中的所有 *_seconds 字段。
+///        speed > 0 时各字段除以 speed；speed == 1 等价于 no-op；非位移 / 枚举字段不变。
+void scaleAnimationTimeline(BattleAnimationTimelineConfig& config, float speed) noexcept;
+
 class BattleAnimationDirector final {
 public:
     void reset();

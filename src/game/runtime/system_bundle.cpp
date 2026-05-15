@@ -59,6 +59,7 @@
 #include "game/world/map_manager.h"
 #include "engine/vfx/vfx_service.h"
 #include "engine/script/script_host.h"
+#include "game/runtime/user_settings_service.h"
 
 namespace game::runtime {
 

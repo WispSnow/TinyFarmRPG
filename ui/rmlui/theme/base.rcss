@@ -10,6 +10,11 @@ body {
     color: #ffffffee;
 }
 
+/* --- UI 字号联动（受 UserSettingsService::setUiFontScale 控制） --- */
+body.tf-font-small  { font-size: 14dp; }
+body.tf-font-normal { font-size: 16dp; }
+body.tf-font-large  { font-size: 18dp; }
+
 /* --- 颜色变量 (通过 class 语义化引用) --- */
 
 .color-primary   { color: #7aa2f7; }

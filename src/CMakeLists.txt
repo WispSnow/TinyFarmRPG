@@ -210,6 +210,8 @@ target_sources(game PRIVATE
     game/runtime/game_runtime_assembler.cpp
     game/runtime/rpg_catalog_loader.cpp
     game/runtime/system_scheduler.cpp
+    game/runtime/user_settings.cpp
+    game/runtime/user_settings_service.cpp
     # UI
     game/ui/time_clock_hud.cpp
     game/ui/game_overlay.cpp
@@ -220,6 +222,7 @@ target_sources(game PRIVATE
     game/ui/text_utils.cpp
     game/ui/inventory_tab_content.cpp
     game/ui/equipment_tab_content.cpp
+    game/ui/options_tab_content.cpp
     game/ui/map_coordinate_mapper.cpp
     game/ui/map_marker_provider.cpp
     game/ui/map_preview_builder.cpp

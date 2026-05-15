@@ -27,7 +27,7 @@ body {
 }
 
 #item-tooltip-name {
-    font-size: 16dp;
+    font-size: 1rem;
     line-height: 16dp;
     font-effect: shadow(1dp 1dp #ffffffcc);
     margin-bottom: 3dp;
@@ -35,12 +35,12 @@ body {
 
 #item-tooltip-category {
     color: #333333ff;
-    font-size: 14dp;
+    font-size: 0.875rem;
     line-height: 14dp;
     margin-bottom: 3dp;
 }
 
 #item-tooltip-description {
-    font-size: 16dp;
+    font-size: 1rem;
     line-height: 16dp;
 }
