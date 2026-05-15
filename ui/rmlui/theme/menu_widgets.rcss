@@ -14,6 +14,7 @@ button {
 
 .tf-button-primary,
 .tf-button-secondary,
+.tf-button-light,
 .tf-icon-button {
     tab-index: auto;
     nav-up: auto;
@@ -26,7 +27,8 @@ button {
 }
 
 .tf-button-primary,
-.tf-button-secondary {
+.tf-button-secondary,
+.tf-button-light {
     height: 32dp;
     line-height: 32dp;
 }
@@ -77,6 +79,35 @@ button {
 .tf-button-secondary:disabled {
     color: #666666ff;
     opacity: 0.75;
+    transform: translateY(0);
+}
+
+.tf-button-light {
+    decorator: ninepatch(light-button, light-button-inner, 1.0);
+    color: #2a1f17ff;
+    font-effect: shadow(1dp 1dp #ffffff66);
+}
+
+.tf-input-mouse .tf-button-light:hover,
+.tf-input-nav .tf-button-light:focus {
+    transform: translateY(-1dp);
+    color: #8b4f1aff;
+}
+
+.tf-input-mouse .tf-button-light:hover:active,
+.tf-input-nav .tf-button-light:focus:active,
+.tf-input-mouse .tf-button-light:active,
+.tf-input-nav .tf-button-light:active,
+.tf-button-light:active {
+    decorator: ninepatch(light-button-pressed, light-button-pressed-inner, 1.0);
+    transform: translateY(1dp);
+    color: #6b5544ff;
+}
+
+.tf-button-light.disabled,
+.tf-button-light:disabled {
+    color: #85705a99;
+    opacity: 0.7;
     transform: translateY(0);
 }
 
@@ -142,6 +173,22 @@ button {
 
 .tf-icon-button.icon-arrow-right:active {
     decorator: image(arrow-right-icon-pressed);
+}
+
+.tf-icon-button.icon-arrow-left-light {
+    decorator: image(arrow-left-light-icon);
+}
+
+.tf-icon-button.icon-arrow-left-light:active {
+    decorator: image(arrow-left-light-icon-pressed);
+}
+
+.tf-icon-button.icon-arrow-right-light {
+    decorator: image(arrow-right-light-icon);
+}
+
+.tf-icon-button.icon-arrow-right-light:active {
+    decorator: image(arrow-right-light-icon-pressed);
 }
 
 .tf-icon-button.icon-page-left {

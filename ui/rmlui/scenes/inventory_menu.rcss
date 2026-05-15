@@ -640,7 +640,7 @@
 .quest-progress {
     margin-top: 4dp;
     font-size: 9dp;
-    color: #c0caf5;
+    color: #7888bd;
     white-space: pre-wrap;
 }
 
@@ -779,7 +779,7 @@
     margin-top: 1dp;
     font-size: 8dp;
     line-height: 9dp;
-    color: #c0caf5;
+    color: #7888bd;
     white-space: normal;
     word-break: normal;
 }
@@ -791,7 +791,7 @@
     width: 218dp;
     height: 14dp;
     font-size: 9dp;
-    color: #c0caf5;
+    color: #7888bd;
     text-align: center;
 }
 
@@ -808,7 +808,7 @@
 
 #action-menu-title {
     font-size: 9dp;
-    color: #c0caf5;
+    color: #7888bd;
     margin-bottom: 3dp;
     font-effect: shadow(1dp 1dp #000000cc);
 }
@@ -856,7 +856,7 @@
 
 #detail-description {
     font-size: 10dp;
-    color: #c0caf5;
+    color: #7888bd;
     margin-top: 2dp;
 }
 
@@ -929,7 +929,7 @@
     margin-top: 1dp;
     font-size: 8dp;
     line-height: 8dp;
-    color: #c0caf5;
+    color: #7888bd;
 }
 
 /* --- Footer --- */
