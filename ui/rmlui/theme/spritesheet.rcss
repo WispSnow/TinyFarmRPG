@@ -20,6 +20,11 @@
     secondary-button-pressed: 0px 80px 48px 16px;
     secondary-button-pressed-inner: 3px 85px 42px 6px;
 
+    light-button:                 0px 112px 48px 16px;
+    light-button-inner:           3px 117px 42px 6px;
+    light-button-pressed:         0px 128px 48px 16px;
+    light-button-pressed-inner:   3px 133px 42px 6px;
+
     menu-icon:         432px 208px 16px 16px;
     menu-icon-pressed: 432px 224px 16px 16px;
 
@@ -32,6 +37,11 @@
     arrow-left-icon-pressed: 384px 32px 16px 16px;
     arrow-right-icon:         368px 16px 16px 16px;
     arrow-right-icon-pressed: 368px 32px 16px 16px;
+
+    arrow-left-light-icon:          384px 112px 16px 16px;
+    arrow-left-light-icon-pressed:  384px 128px 16px 16px;
+    arrow-right-light-icon:         368px 112px 16px 16px;
+    arrow-right-light-icon-pressed: 368px 128px 16px 16px;
 }
 
 /* --- 物品栏槽位图集 (Slots.png) --- */

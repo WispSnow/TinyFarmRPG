@@ -11,11 +11,14 @@ body, div, h1, h2, h3, h4, p, hr {
 /* ===== Panel ===== */
 
 #shop-panel {
+    position: absolute;
     left: 30dp;
     top: 26dp;
     width: 580dp;
     height: 308dp;
     padding: 10dp;
+    decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
+    pointer-events: auto;
 }
 
 /* ===== Header ===== */
@@ -35,7 +38,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #shop-gold {
-    color: #fce97fff;
+    color: #e0af68ff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
@@ -43,7 +46,7 @@ body, div, h1, h2, h3, h4, p, hr {
     margin-top: 2dp;
     height: 14dp;
     line-height: 14dp;
-    color: #9fb0baff;
+    color: #a9b1d6ff;
 }
 
 /* ===== Body: two columns ===== */
@@ -64,40 +67,49 @@ body, div, h1, h2, h3, h4, p, hr {
     flex-shrink: 0;
 }
 
-/* Mode tabs (Buy / Sell) */
+/* Mode tabs (Buy / Sell) and category tabs (Consumable / Equipment) */
 
 #shop-mode-toggle,
 #shop-category-tabs {
     width: 258dp;
-    height: 26dp;
+    height: 22dp;
     display: flex;
     flex-direction: row;
-    gap: 4dp;
+    gap: 6dp;
     align-items: center;
-    border: 1dp transparent;
+    border-width: 0 0 1dp 0;
+    border-color: #d9a88a66;
+    padding-bottom: 2dp;
 }
 
 #shop-category-tabs {
-    margin-top: 4dp;
+    margin-top: 6dp;
 }
 
 #shop-mode-toggle.focused,
 #shop-category-tabs.focused {
-    border-color: #fce97f44;
-    background-color: #15212a66;
+    border-color: #fce97fcc;
 }
 
 .shop-tab-btn,
-.shop-mode-button {
+.shop-mode-button,
+.shop-category-button {
     width: 95dp;
-    height: 24dp;
-    line-height: 24dp;
+    height: 18dp;
+    line-height: 18dp;
+    color: #d8dee9d0;
+    background-color: transparent;
+    border-width: 0 0 2dp 0;
+    border-color: transparent;
+    font-effect: shadow(1dp 1dp #000000cc);
+    transition: color 0.08s cubic-out, border-color 0.08s cubic-out;
 }
 
 .shop-tab-btn.selected,
-.shop-mode-button.selected {
+.shop-mode-button.selected,
+.shop-category-button.selected {
     color: #fce97fff;
-    transform: translateY(-1dp);
+    border-color: #7aa2f7;
 }
 
 /* Empty text */
@@ -105,7 +117,7 @@ body, div, h1, h2, h3, h4, p, hr {
 .shop-empty-text {
     margin-top: 8dp;
     width: 100%;
-    color: #9fb0baff;
+    color: #a9b1d6ff;
 }
 
 /* Scrollable item list */
@@ -122,8 +134,8 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #shop-buy-list.focused,
 #shop-sell-list.focused {
-    border-color: #fce97f44;
-    background-color: #15212a33;
+    border-color: #d9a88a66;
+    background-color: #24283b33;
 }
 
 #shop-buy-list scrollbarvertical,
@@ -134,14 +146,14 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #shop-buy-list scrollbarvertical slidertrack,
 #shop-sell-list scrollbarvertical slidertrack {
-    background-color: #0b1019aa;
+    background-color: #d9a88a33;
     border-width: 0dp;
     border-color: #00000000;
 }
 
 #shop-buy-list scrollbarvertical sliderbar,
 #shop-sell-list scrollbarvertical sliderbar {
-    background-color: #697b95dd;
+    background-color: #b56f5ddd;
     border-width: 0dp;
     border-color: #00000000;
 }
@@ -165,11 +177,13 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: transparent;
     border-width: 0;
     padding: 0;
+    color: #f7f7f7ff;
+    font-effect: shadow(1dp 1dp #000000cc);
     transition: background-color 0.06s cubic-out;
 }
 
 .shop-entry:hover {
-    background-color: #24283b88;
+    background-color: #41486888;
 }
 
 .shop-entry.selected,
@@ -207,7 +221,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 24dp;
     line-height: 24dp;
     text-align: right;
-    color: #fce97fff;
+    color: #e0af68ff;
     margin-right: 4dp;
 }
 
@@ -237,7 +251,7 @@ body, div, h1, h2, h3, h4, p, hr {
     margin-top: 4dp;
     height: 34dp;
     text-align: right;
-    color: #b9c9d0ff;
+    color: #7888bdff;
     overflow: hidden;
 }
 
@@ -245,7 +259,7 @@ body, div, h1, h2, h3, h4, p, hr {
     width: 100%;
     margin-top: 6dp;
     height: 1dp;
-    background-color: #565f8966;
+    background-color: #d9a88a66;
 }
 
 /* Detail info rows (Price / Owned / Total / After) */
@@ -265,13 +279,14 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .shop-info-label {
     width: 80dp;
-    color: #9fb0baff;
+    color: #a9b1d6ff;
 }
 
 .shop-info-value {
     width: 190dp;
     text-align: right;
     color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 /* Quantity controls */
@@ -289,8 +304,8 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #shop-quantity-controls.focused,
 #shop-qty-controls.focused {
-    border-color: #fce97f44;
-    background-color: #15212a66;
+    border-color: #d9a88a66;
+    background-color: #24283b66;
 }
 
 .shop-qty-btn,
@@ -305,6 +320,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 28dp;
     text-align: center;
     color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 /* Action buttons (Buy/Sell + Leave) */
@@ -323,7 +339,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .shop-action-btn.focused,
 .shop-action-button.focused {
-    color: #fce97fff;
+    color: #8b4f1aff;
     transform: translateY(-1dp);
 }
 
@@ -333,5 +349,5 @@ body, div, h1, h2, h3, h4, p, hr {
     margin-top: 4dp;
     height: 14dp;
     line-height: 14dp;
-    color: #b9c9d0ff;
+    color: #7888bdff;
 }

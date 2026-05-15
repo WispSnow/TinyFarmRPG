@@ -11,7 +11,7 @@
 <body class="tf-screen-root tf-nav-root" data-model="shop_menu">
     <div id="shop-overlay" class="tf-modal-overlay"></div>
 
-    <div id="shop-panel" class="tf-modal-panel">
+    <div id="shop-panel">
         <!-- Header -->
         <div id="shop-header">
             <div id="shop-title">{{ shop_title }}</div>
@@ -25,22 +25,22 @@
             <div id="shop-list-col">
                 <div id="shop-mode-toggle" data-class-focused="is_mode_toggle_focused">
                     <button id="shop-mode-buy"
-                            class="tf-button-secondary shop-tab-btn shop-mode-button"
+                            class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-mode-button"
                             data-class-selected="is_buy_mode"
                             data-event-click="switch_mode_buy">Buy</button>
                     <button id="shop-mode-sell"
-                            class="tf-button-secondary shop-tab-btn shop-mode-button"
+                            class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-mode-button"
                             data-class-selected="is_sell_mode"
                             data-event-click="switch_mode_sell">Sell</button>
                 </div>
 
                 <div id="shop-category-tabs" data-class-focused="is_category_tabs_focused">
                     <button id="shop-category-consumable"
-                            class="tf-button-secondary shop-tab-btn shop-category-button"
+                            class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-category-button"
                             data-class-selected="is_consumable_category"
                             data-event-click="switch_category_consumable">Consumable</button>
                     <button id="shop-category-equipment"
-                            class="tf-button-secondary shop-tab-btn shop-category-button"
+                            class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-category-button"
                             data-class-selected="is_equipment_category"
                             data-event-click="switch_category_equipment">Equipment</button>
                 </div>
@@ -107,13 +107,13 @@
 
                 <div id="shop-quantity-controls" data-class-focused="is_quantity_focused">
                     <button id="shop-qty-down"
-                            class="tf-icon-button icon-arrow-left shop-qty-btn shop-qty-button"
+                            class="tf-icon-button icon-arrow-left-light shop-qty-btn shop-qty-button"
                             data-class-disabled="!quantity_decrease_enabled"
                             data-attrif-disabled="!quantity_decrease_enabled"
                             data-event-click="adjust_quantity(-1)"></button>
                     <div id="shop-qty-readout">{{ detail_quantity_text }}</div>
                     <button id="shop-qty-up"
-                            class="tf-icon-button icon-arrow-right shop-qty-btn shop-qty-button"
+                            class="tf-icon-button icon-arrow-right-light shop-qty-btn shop-qty-button"
                             data-class-disabled="!quantity_increase_enabled"
                             data-attrif-disabled="!quantity_increase_enabled"
                             data-event-click="adjust_quantity(1)"></button>
@@ -121,12 +121,12 @@
 
                 <div id="shop-actions">
                     <button id="shop-primary-action-button"
-                            class="tf-button-primary shop-action-btn shop-action-button"
+                            class="tf-button-light shop-action-btn shop-action-button"
                             data-class-focused="is_primary_action_focused"
                             data-class-disabled="!primary_action_enabled"
                             data-attrif-disabled="!primary_action_enabled"
                             data-event-click="confirm_trade">{{ primary_action_text }}</button>
-                    <button class="tf-button-secondary shop-action-btn shop-action-button"
+                    <button class="tf-button-light shop-action-btn shop-action-button"
                             data-event-click="close">Leave</button>
                 </div>
             </div>
