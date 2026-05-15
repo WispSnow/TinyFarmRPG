@@ -34,33 +34,48 @@
                             data-event-click="switch_mode_sell">Sell</button>
                 </div>
 
+                <div id="shop-category-tabs" data-class-focused="is_category_tabs_focused">
+                    <button id="shop-category-consumable"
+                            class="tf-button-secondary shop-tab-btn shop-category-button"
+                            data-class-selected="is_consumable_category"
+                            data-event-click="switch_category_consumable">Consumable</button>
+                    <button id="shop-category-equipment"
+                            class="tf-button-secondary shop-tab-btn shop-category-button"
+                            data-class-selected="is_equipment_category"
+                            data-event-click="switch_category_equipment">Equipment</button>
+                </div>
+
                 <div class="shop-empty-text" data-if="is_buy_mode &amp;&amp; !has_buy_entries">{{ empty_text }}</div>
                 <div class="shop-empty-text" data-if="is_sell_mode &amp;&amp; !has_sell_entries">{{ empty_text }}</div>
 
                 <div id="shop-buy-list" data-if="is_buy_mode &amp;&amp; has_buy_entries" data-class-focused="is_entry_list_focused">
-                    <button class="shop-entry shop-buy-entry"
-                            data-for="entry : buy_entries"
-                            data-class-selected="entry.is_selected"
-                            data-class-disabled="entry.is_disabled"
-                            data-attrif-disabled="entry.is_disabled"
-                            data-event-click="buy_entry_select(entry.index)">
-                        <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
-                        <div class="shop-entry-name">{{ entry.item_name }}</div>
-                        <div class="shop-entry-price">{{ entry.price_text }}</div>
-                    </button>
+                    <div class="shop-entry-row" data-for="entry : buy_entries">
+                        <button class="shop-entry shop-buy-entry"
+                                data-attr-data-shop-index="entry.index"
+                                data-class-selected="entry.is_selected"
+                                data-class-disabled="entry.is_disabled"
+                                data-attrif-disabled="entry.is_disabled"
+                                data-event-click="buy_entry_select">
+                            <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
+                            <div class="shop-entry-name" data-rml="entry.item_name"></div>
+                            <div class="shop-entry-price">{{ entry.price_text }}</div>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="shop-sell-list" data-if="is_sell_mode &amp;&amp; has_sell_entries" data-class-focused="is_entry_list_focused">
-                    <button id="shop-sell-entry-{{ entry.slot_index }}"
-                            class="shop-entry shop-sell-entry"
-                            data-for="entry : sell_entries"
-                            data-class-selected="entry.is_selected"
-                            data-class-disabled="entry.is_disabled"
-                            data-event-click="sell_entry_select(entry.index)">
-                        <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
-                        <div class="shop-entry-name">{{ entry.item_name }}</div>
-                        <div class="shop-entry-price">{{ entry.price_text }}</div>
-                    </button>
+                    <div class="shop-entry-row" data-for="entry : sell_entries">
+                        <button id="shop-sell-entry-{{ entry.slot_index }}"
+                                class="shop-entry shop-sell-entry"
+                                data-attr-data-shop-index="entry.index"
+                                data-class-selected="entry.is_selected"
+                                data-class-disabled="entry.is_disabled"
+                                data-event-click="sell_entry_select">
+                            <div class="shop-entry-icon" data-style-decorator="entry.icon_decorator"></div>
+                            <div class="shop-entry-name" data-rml="entry.item_name"></div>
+                            <div class="shop-entry-price">{{ entry.price_text }}</div>
+                        </button>
+                    </div>
                 </div>
             </div>
 

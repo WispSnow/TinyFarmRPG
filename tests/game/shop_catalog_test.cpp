@@ -5,6 +5,8 @@
 #include "game/data/item_catalog.h"
 #include "game/data/shop_catalog.h"
 
+#include <algorithm>
+#include <array>
 #include <filesystem>
 #include <string_view>
 
@@ -32,7 +34,7 @@ TEST(ShopCatalogTest, LoadsProjectShopAssetAndValidatesReferences) {
     const auto* shop = catalog.findShop("shop.village.general");
     ASSERT_NE(shop, nullptr);
     EXPECT_EQ(shop->title_, "Village General Store");
-    ASSERT_EQ(shop->buy_entries_.size(), 2U);
+    ASSERT_EQ(shop->buy_entries_.size(), 14U);
     EXPECT_EQ(shop->buy_entries_[0].item_id_, "potion");
     EXPECT_EQ(shop->buy_entries_[0].buy_price_, 30);
 
@@ -45,6 +47,34 @@ TEST(ShopCatalogTest, LoadsProjectShopAssetAndValidatesReferences) {
 
     std::string error{};
     EXPECT_TRUE(catalog.validateReferences(&item_catalog, error)) << error;
+
+    constexpr std::array equipment_ids{
+        "equip_wooden_sword",
+        "equip_wooden_staff",
+        "equip_wooden_helmet",
+        "equip_wooden_armor",
+        "equip_wooden_boots",
+        "equip_wooden_accessory",
+        "equip_iron_sword",
+        "equip_iron_staff",
+        "equip_iron_helmet",
+        "equip_iron_armor",
+        "equip_iron_boots",
+        "equip_iron_accessory",
+    };
+
+    for (const std::string_view equipment_id : equipment_ids) {
+        const auto buy_entry_it = std::ranges::find_if(
+            shop->buy_entries_,
+            [equipment_id](const ShopBuyEntryData& entry) {
+                return entry.item_id_ == equipment_id;
+            });
+        ASSERT_NE(buy_entry_it, shop->buy_entries_.end()) << equipment_id;
+
+        const auto* equipment_sell_rule = catalog.findSellRule(equipment_id);
+        ASSERT_NE(equipment_sell_rule, nullptr) << equipment_id;
+        EXPECT_LT(equipment_sell_rule->sell_price_, buy_entry_it->buy_price_) << equipment_id;
+    }
 }
 
 TEST(ShopCatalogTest, RejectsDuplicateShopId) {

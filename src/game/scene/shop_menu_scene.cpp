@@ -12,6 +12,7 @@
 #include "engine/input/input_manager.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
+#include <RmlUi/Core/Element.h>
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
 
@@ -25,6 +26,7 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/shop_menu.rml";
 constexpr std::string_view MODEL_NAME = "shop_menu";
 
 using ShopMenuMode = game::scene::ShopMenuScene::ShopMenuMode;
+using ShopMenuCategory = game::ui::ShopMenuCategory;
 using ShopMenuFocusArea = game::ui::ShopMenuFocusArea;
 using ShopMenuNavigationDecision = game::ui::ShopMenuNavigationDecision;
 using ShopMenuNavigationInput = game::ui::ShopMenuNavigationInput;
@@ -70,8 +72,12 @@ void updateBoolBinding(engine::ui::rmlui::RmlDocumentController& controller,
     return "x" + std::to_string(std::max(0, quantity));
 }
 
-[[nodiscard]] std::string_view defaultEmptyText(const ShopMenuMode mode) {
-    return mode == ShopMenuMode::Buy ? "This shop has no goods available." : "You have nothing to sell.";
+[[nodiscard]] std::string_view defaultEmptyText(const ShopMenuMode mode, const ShopMenuCategory category) {
+    if (mode == ShopMenuMode::Buy) {
+        return category == ShopMenuCategory::Equipment ? "No equipment for sale." : "No consumables available.";
+    }
+
+    return category == ShopMenuCategory::Equipment ? "No equipment to sell." : "No items to sell.";
 }
 
 [[nodiscard]] std::string formatFocusStatus(const ShopMenuMode mode,
@@ -79,7 +85,9 @@ void updateBoolBinding(engine::ui::rmlui::RmlDocumentController& controller,
                                             const bool quantity_adjustable) {
     switch (focus_area) {
         case ShopMenuFocusArea::ModeToggle:
-            return "Left / Right switches Buy and Sell. Down enters the list.";
+            return "Left / Right switches Buy and Sell. Down enters category tabs.";
+        case ShopMenuFocusArea::CategoryTabs:
+            return "Left / Right switches category. Down enters the list.";
         case ShopMenuFocusArea::EntryList:
             return mode == ShopMenuMode::Buy ? "Up / Down selects. Right opens quantity. Confirm goes to Buy."
                                              : "Up / Down selects. Right opens quantity. Confirm goes to Sell.";
@@ -281,12 +289,17 @@ bool ShopMenuScene::initUI() {
         !constructor.Bind("detail_owned_text", &detail_owned_text_) ||
         !constructor.Bind("is_buy_mode", &is_buy_mode_) ||
         !constructor.Bind("is_sell_mode", &is_sell_mode_) ||
+        !constructor.Bind("is_consumable_category", &is_consumable_category_) ||
+        !constructor.Bind("is_equipment_category", &is_equipment_category_) ||
         !constructor.Bind("is_mode_toggle_focused", &is_mode_toggle_focused_) ||
+        !constructor.Bind("is_category_tabs_focused", &is_category_tabs_focused_) ||
         !constructor.Bind("is_entry_list_focused", &is_entry_list_focused_) ||
         !constructor.Bind("is_quantity_focused", &is_quantity_focused_) ||
         !constructor.Bind("is_primary_action_focused", &is_primary_action_focused_) ||
         !constructor.Bind("has_buy_entries", &has_buy_entries_) ||
         !constructor.Bind("has_sell_entries", &has_sell_entries_) ||
+        !constructor.Bind("has_consumable_entries", &has_consumable_entries_) ||
+        !constructor.Bind("has_equipment_entries", &has_equipment_entries_) ||
         !constructor.Bind("buy_enabled", &buy_enabled_) ||
         !constructor.Bind("sell_enabled", &sell_enabled_) ||
         !constructor.Bind("primary_action_enabled", &primary_action_enabled_) ||
@@ -303,14 +316,14 @@ bool ShopMenuScene::initUI() {
     if (!document_controller_.bindEvent(
             constructor,
             "buy_entry_select",
-            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
-                selectBuyEntry(game::ui::getSingleIntArgument(arguments));
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) {
+                selectBuyEntry(resolveClickedEntryIndex(event));
             }) ||
         !document_controller_.bindEvent(
             constructor,
             "sell_entry_select",
-            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
-                selectSellEntry(game::ui::getSingleIntArgument(arguments));
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) {
+                selectSellEntry(resolveClickedEntryIndex(event));
             }) ||
         !document_controller_.bindEvent(
             constructor,
@@ -320,6 +333,14 @@ bool ShopMenuScene::initUI() {
             }) ||
         !document_controller_.bindSimpleEvent(constructor, "switch_mode_buy", [this] { switchMode(ShopMenuMode::Buy); }) ||
         !document_controller_.bindSimpleEvent(constructor, "switch_mode_sell", [this] { switchMode(ShopMenuMode::Sell); }) ||
+        !document_controller_.bindSimpleEvent(
+            constructor,
+            "switch_category_consumable",
+            [this] { switchCategory(ShopMenuCategory::Consumable); }) ||
+        !document_controller_.bindSimpleEvent(
+            constructor,
+            "switch_category_equipment",
+            [this] { switchCategory(ShopMenuCategory::Equipment); }) ||
         !document_controller_.bindSimpleEvent(
             constructor,
             "confirm_trade",
@@ -386,11 +407,6 @@ void ShopMenuScene::syncModeBindings() {
     updateStringBinding(document_controller_, "list_title_text", list_title_text_, is_buy_mode ? "Buy" : "Sell");
     updateStringBinding(
         document_controller_,
-        "empty_text",
-        empty_text_,
-        is_buy_mode ? defaultEmptyText(ShopMenuMode::Buy) : defaultEmptyText(ShopMenuMode::Sell));
-    updateStringBinding(
-        document_controller_,
         "detail_owned_label",
         detail_owned_label_,
         is_buy_mode ? "Owned" : "In Slot");
@@ -403,12 +419,45 @@ void ShopMenuScene::syncModeBindings() {
         is_buy_mode ? buy_enabled_ : sell_enabled_);
 }
 
+void ShopMenuScene::syncCategoryBindings() {
+    updateBoolBinding(
+        document_controller_,
+        "is_consumable_category",
+        is_consumable_category_,
+        current_category_ == ShopMenuCategory::Consumable);
+    updateBoolBinding(
+        document_controller_,
+        "is_equipment_category",
+        is_equipment_category_,
+        current_category_ == ShopMenuCategory::Equipment);
+    updateBoolBinding(
+        document_controller_,
+        "has_consumable_entries",
+        has_consumable_entries_,
+        hasEntriesForCategory(current_mode_, ShopMenuCategory::Consumable));
+    updateBoolBinding(
+        document_controller_,
+        "has_equipment_entries",
+        has_equipment_entries_,
+        hasEntriesForCategory(current_mode_, ShopMenuCategory::Equipment));
+    updateStringBinding(
+        document_controller_,
+        "empty_text",
+        empty_text_,
+        defaultEmptyText(current_mode_, current_category_));
+}
+
 void ShopMenuScene::syncFocusBindings() {
     updateBoolBinding(
         document_controller_,
         "is_mode_toggle_focused",
         is_mode_toggle_focused_,
         current_focus_area_ == ShopMenuFocusArea::ModeToggle);
+    updateBoolBinding(
+        document_controller_,
+        "is_category_tabs_focused",
+        is_category_tabs_focused_,
+        current_focus_area_ == ShopMenuFocusArea::CategoryTabs);
     updateBoolBinding(
         document_controller_,
         "is_entry_list_focused",
@@ -460,6 +509,9 @@ void ShopMenuScene::rebuildBuyEntries() {
                           buy_entry.item_id_);
             continue;
         }
+        if (!game::ui::isItemInCategoryTab(current_category_, item->category_)) {
+            continue;
+        }
 
         const int owned_count = inventory ? game::ui::countOwnedItems(*inventory, buy_entry.item_id_hash_) : 0;
         game::ui::ShopBuyEntryViewModel view_model{};
@@ -503,6 +555,13 @@ void ShopMenuScene::rebuildSellEntries() {
             continue;
         }
 
+        const auto* item = item_catalog_->findItem(stack.item_id_);
+        const game::data::ItemCategory item_category =
+            item ? item->category_ : game::data::ItemCategory::Unknown;
+        if (!game::ui::isItemInCategoryTab(current_category_, item_category)) {
+            continue;
+        }
+
         game::ui::ShopSellEntryViewModel view_model{};
         game::ui::populateShopSellEntryViewModel(
             view_model,
@@ -530,8 +589,16 @@ void ShopMenuScene::refreshSelectedBuyEntry() {
     const auto* item = currentBuyItemData();
     if (!buy_entry || !item) {
         requested_buy_quantity_ = 1;
-        updateStringBinding(document_controller_, "detail_name", detail_name_, "No goods available");
-        updateStringBinding(document_controller_, "detail_description", detail_description_, "This shop has no purchasable goods.");
+        updateStringBinding(
+            document_controller_,
+            "detail_name",
+            detail_name_,
+            defaultEmptyText(ShopMenuMode::Buy, current_category_));
+        updateStringBinding(
+            document_controller_,
+            "detail_description",
+            detail_description_,
+            "This shop has no purchasable goods in this category.");
         updateStringBinding(document_controller_, "detail_quantity_text", detail_quantity_text_, "x0");
         updateStringBinding(document_controller_, "detail_owned_text", detail_owned_text_, "0");
         updateBoolBinding(document_controller_, "quantity_decrease_enabled", quantity_decrease_enabled_, false);
@@ -576,8 +643,12 @@ void ShopMenuScene::refreshSelectedSellEntry() {
     const auto* item = currentSellItemData();
     if (!sell_entry || !item) {
         requested_sell_quantity_ = 1;
-        updateStringBinding(document_controller_, "detail_name", detail_name_, "No items available");
-        updateStringBinding(document_controller_, "detail_description", detail_description_, "You have nothing to sell.");
+        updateStringBinding(
+            document_controller_,
+            "detail_name",
+            detail_name_,
+            defaultEmptyText(ShopMenuMode::Sell, current_category_));
+        updateStringBinding(document_controller_, "detail_description", detail_description_, "You have nothing to sell in this category.");
         updateStringBinding(document_controller_, "detail_quantity_text", detail_quantity_text_, "x0");
         updateStringBinding(document_controller_, "detail_owned_text", detail_owned_text_, "0");
         updateBoolBinding(document_controller_, "quantity_decrease_enabled", quantity_decrease_enabled_, false);
@@ -707,7 +778,7 @@ void ShopMenuScene::refreshStatusText() {
     }
 
     if (!hasCurrentEntries()) {
-        updateStringBinding(document_controller_, "status_text", status_text_, defaultEmptyText(current_mode_));
+        updateStringBinding(document_controller_, "status_text", status_text_, defaultEmptyText(current_mode_, current_category_));
         return;
     }
 
@@ -745,6 +816,7 @@ void ShopMenuScene::refreshAll() {
     }
 
     syncModeBindings();
+    syncCategoryBindings();
     syncFocusBindings();
     refreshStatusText();
 }
@@ -826,6 +898,39 @@ bool ShopMenuScene::hasCurrentEntries() const {
     return current_mode_ == ShopMenuMode::Buy ? has_buy_entries_ : has_sell_entries_;
 }
 
+bool ShopMenuScene::hasEntriesForCategory(const ShopMenuMode mode, const ShopMenuCategory category) const {
+    if (mode == ShopMenuMode::Buy) {
+        if (!shop_data_ || !item_catalog_) {
+            return false;
+        }
+
+        return std::ranges::any_of(shop_data_->buy_entries_, [this, category](const auto& entry) {
+            const auto* item = item_catalog_->findItem(entry.item_id_hash_);
+            return item != nullptr && game::ui::isItemInCategoryTab(category, item->category_);
+        });
+    }
+
+    const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
+    if (!inventory || !item_catalog_) {
+        return false;
+    }
+
+    for (const auto& slot : inventory->slots_) {
+        if (slot.empty()) {
+            continue;
+        }
+
+        const auto* item = item_catalog_->findItem(slot.item_id_);
+        const game::data::ItemCategory item_category =
+            item ? item->category_ : game::data::ItemCategory::Unknown;
+        if (game::ui::isItemInCategoryTab(category, item_category)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int ShopMenuScene::currentQuantityUiMax() const {
     if (current_mode_ == ShopMenuMode::Sell) {
         const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
@@ -850,9 +955,10 @@ bool ShopMenuScene::isCurrentQuantityAdjustable() const {
 ShopMenuNavigationState ShopMenuScene::makeNavigationState() const {
     return ShopMenuNavigationState{
         .is_buy_mode = current_mode_ == ShopMenuMode::Buy,
+        .current_category = current_category_,
         .focus_area = current_focus_area_,
-        .has_buy_entries = has_buy_entries_,
-        .has_sell_entries = has_sell_entries_,
+        .has_consumable_entries = has_consumable_entries_,
+        .has_equipment_entries = has_equipment_entries_,
         .quantity_adjustable = isCurrentQuantityAdjustable()};
 }
 
@@ -870,14 +976,20 @@ void ShopMenuScene::applyNavigationDecision(const ShopMenuNavigationDecision& de
     const bool mode_changed = decision.switch_mode &&
                               ((decision.next_is_buy_mode && current_mode_ != ShopMenuMode::Buy) ||
                                (!decision.next_is_buy_mode && current_mode_ != ShopMenuMode::Sell));
+    const bool category_changed = decision.switch_category && decision.next_category != current_category_;
     const bool selection_changed = decision.entry_delta != 0 && hasCurrentEntries();
     const bool quantity_changed = decision.quantity_delta != 0 && hasCurrentEntries();
-    if (mode_changed || decision.next_focus_area != current_focus_area_ || selection_changed || quantity_changed) {
+    if (mode_changed || category_changed || decision.next_focus_area != current_focus_area_ || selection_changed ||
+        quantity_changed) {
         clearStatusOverride();
     }
 
     if (mode_changed) {
         switchMode(decision.next_is_buy_mode ? ShopMenuMode::Buy : ShopMenuMode::Sell);
+    }
+
+    if (category_changed) {
+        switchCategory(decision.next_category);
     }
 
     if (selection_changed) {
@@ -901,6 +1013,15 @@ void ShopMenuScene::applyNavigationDecision(const ShopMenuNavigationDecision& de
     if (decision.confirm_trade) {
         current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell();
     }
+}
+
+int ShopMenuScene::resolveClickedEntryIndex(const Rml::Event& event) const {
+    const Rml::Element* element = event.GetCurrentElement();
+    if (!element) {
+        element = event.GetTargetElement();
+    }
+
+    return element ? element->GetAttribute<int>("data-shop-index", -1) : -1;
 }
 
 void ShopMenuScene::selectBuyEntry(const int index) {
@@ -973,9 +1094,34 @@ void ShopMenuScene::switchMode(const ShopMenuMode next_mode) {
     }
 
     current_mode_ = next_mode;
-    if (current_focus_area_ != ShopMenuFocusArea::ModeToggle) {
-        current_focus_area_ = game::ui::resolvePreferredShopMenuFocus(hasCurrentEntries());
+    if (current_mode_ == ShopMenuMode::Buy) {
+        buy_entries_dirty_ = true;
+    } else {
+        sell_entries_dirty_ = true;
     }
+    if (current_focus_area_ != ShopMenuFocusArea::ModeToggle) {
+        current_focus_area_ =
+            game::ui::resolvePreferredShopMenuFocus(hasEntriesForCategory(current_mode_, current_category_));
+    }
+    clearStatusOverride();
+    refreshAll();
+}
+
+void ShopMenuScene::switchCategory(const ShopMenuCategory next_category) {
+    if (current_category_ == next_category) {
+        return;
+    }
+
+    current_category_ = next_category;
+    if (current_mode_ == ShopMenuMode::Buy) {
+        selected_buy_index_ = 0;
+        requested_buy_quantity_ = 1;
+    } else {
+        selected_sell_index_ = 0;
+        requested_sell_quantity_ = 1;
+    }
+
+    markTradeListsDirty();
     clearStatusOverride();
     refreshAll();
 }

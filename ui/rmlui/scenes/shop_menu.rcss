@@ -66,7 +66,8 @@ body, div, h1, h2, h3, h4, p, hr {
 
 /* Mode tabs (Buy / Sell) */
 
-#shop-mode-toggle {
+#shop-mode-toggle,
+#shop-category-tabs {
     width: 258dp;
     height: 26dp;
     display: flex;
@@ -76,7 +77,12 @@ body, div, h1, h2, h3, h4, p, hr {
     border: 1dp transparent;
 }
 
-#shop-mode-toggle.focused {
+#shop-category-tabs {
+    margin-top: 4dp;
+}
+
+#shop-mode-toggle.focused,
+#shop-category-tabs.focused {
     border-color: #fce97f44;
     background-color: #15212a66;
 }
@@ -108,8 +114,9 @@ body, div, h1, h2, h3, h4, p, hr {
 #shop-sell-list {
     margin-top: 4dp;
     width: 258dp;
-    height: 196dp;
+    height: 170dp;
     overflow-y: auto;
+    overflow-x: hidden;
     border: 1dp transparent;
 }
 
@@ -119,7 +126,32 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #15212a33;
 }
 
+#shop-buy-list scrollbarvertical,
+#shop-sell-list scrollbarvertical {
+    width: 4dp;
+    scrollbar-margin: 0dp;
+}
+
+#shop-buy-list scrollbarvertical slidertrack,
+#shop-sell-list scrollbarvertical slidertrack {
+    background-color: #0b1019aa;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
+#shop-buy-list scrollbarvertical sliderbar,
+#shop-sell-list scrollbarvertical sliderbar {
+    background-color: #697b95dd;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
 /* Single entry row — flat style, no ninepatch */
+
+.shop-entry-row {
+    width: 100%;
+    height: 26dp;
+}
 
 .shop-entry {
     width: 100%;
@@ -161,8 +193,8 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .shop-entry-name {
-    flex-grow: 1;
-    flex-shrink: 1;
+    width: 172dp;
+    flex-shrink: 0;
     height: 24dp;
     line-height: 24dp;
     margin: 0 4dp;

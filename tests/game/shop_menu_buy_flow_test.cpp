@@ -99,6 +99,12 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh)
 
     EXPECT_NE(source.find("shop_transaction_service_->previewBuy"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->commitBuy"), std::string::npos);
+    EXPECT_NE(source.find("isItemInCategoryTab"), std::string::npos);
+    EXPECT_NE(source.find("switch_category_consumable"), std::string::npos);
+    EXPECT_NE(source.find("switch_category_equipment"), std::string::npos);
+    EXPECT_NE(source.find("\"is_consumable_category\""), std::string::npos);
+    EXPECT_NE(source.find("\"is_equipment_category\""), std::string::npos);
+    EXPECT_NE(source.find("current_category_"), std::string::npos);
     EXPECT_NE(source.find("clearStatusOverride();"), std::string::npos);
     EXPECT_NE(source.find("formatFailureText"), std::string::npos);
     EXPECT_NE(source.find("formatSuccessText"), std::string::npos);
@@ -131,17 +137,33 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuRmlBindsBuyListAndQuantityControls) {
     ASSERT_FALSE(rml.empty());
     ASSERT_FALSE(rcss.empty());
 
+    EXPECT_NE(rml.find("<div class=\"shop-entry-row\" data-for=\"entry : buy_entries\">"), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : buy_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"shop-category-tabs\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"switch_category_consumable\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"switch_category_equipment\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-selected=\"is_consumable_category\""), std::string::npos);
+    EXPECT_NE(rml.find("data-class-selected=\"is_equipment_category\""), std::string::npos);
+    EXPECT_NE(rml.find("data-attr-data-shop-index=\"entry.index\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-selected=\"entry.is_selected\""), std::string::npos);
-    EXPECT_NE(rml.find("data-event-click=\"buy_entry_select(entry.index)\""), std::string::npos);
+    EXPECT_NE(rml.find("data-event-click=\"buy_entry_select\""), std::string::npos);
+    EXPECT_NE(rml.find("data-rml=\"entry.item_name\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(-1)\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"adjust_quantity(1)\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"shop-primary-action-button\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"confirm_trade\""), std::string::npos);
     EXPECT_NE(rml.find("{{ detail_after_gold_text }}"), std::string::npos);
     EXPECT_NE(rml.find("{{ status_text }}"), std::string::npos);
+    EXPECT_EQ(rml.find("class=\"shop-entry shop-buy-entry\"\n                            data-for=\"entry : buy_entries\""), std::string::npos);
+    EXPECT_EQ(rml.find("data-event-click=\"buy_entry_select(entry.index)\""), std::string::npos);
 
     EXPECT_NE(rcss.find(".shop-buy-entry.selected"), std::string::npos);
+    EXPECT_NE(rcss.find(".shop-entry-row"), std::string::npos);
+    EXPECT_NE(rcss.find("width: 172dp"), std::string::npos);
+    EXPECT_NE(rcss.find("#shop-category-tabs"), std::string::npos);
+    EXPECT_NE(rcss.find("overflow-x: hidden"), std::string::npos);
+    EXPECT_NE(rcss.find("#shop-buy-list scrollbarvertical"), std::string::npos);
+    EXPECT_NE(rcss.find("#shop-sell-list scrollbarvertical sliderbar"), std::string::npos);
     EXPECT_NE(rcss.find("#shop-quantity-controls"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-qty-button"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-action-button"), std::string::npos);
