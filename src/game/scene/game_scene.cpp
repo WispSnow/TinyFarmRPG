@@ -658,7 +658,8 @@ bool GameScene::onInventoryToggle() {
         services_->rpg_catalog.get(),
         services_->quest_catalog.get(),
         services_->shop_catalog.get(),
-        services_->world_state.get()));
+        services_->world_state.get(),
+        services_->user_settings_service.get()));
     return true;
 }
 
@@ -692,7 +693,8 @@ bool GameScene::onPauseToggle() {
         "PauseMenu",
         context_,
         services_->save_service.get(),
-        game_time);
+        game_time,
+        services_->user_settings_service.get());
     requestPushScene(std::move(menu));
     return true;
 }
@@ -776,6 +778,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
         presentation_options.appearance_catalog = services_->appearance_catalog.get();
         presentation_options.vfx_service = services_->vfx_service.get();
+        presentation_options.user_settings_service = services_->user_settings_service.get();
     }
 
     playBattleMusicCue();

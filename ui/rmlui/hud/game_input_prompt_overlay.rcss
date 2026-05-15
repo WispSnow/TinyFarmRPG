@@ -33,10 +33,10 @@ body {
 .game-prompt-label {
     color: #8eb7daff;
     margin-bottom: 1dp;
-    font-size: 10dp;
+    font-size: 0.625rem;
 }
 
 .game-prompt-value {
     color: #f6f3e8ff;
-    font-size: 12dp;
+    font-size: 0.75rem;
 }

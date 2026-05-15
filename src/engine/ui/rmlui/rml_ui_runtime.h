@@ -56,6 +56,11 @@ public:
     [[nodiscard]] Rml::ElementDocument* loadDocument(std::string_view document_path,
                                                      uint64_t owner_scene_id = 0);
     void unloadDocument(Rml::ElementDocument* doc);
+
+    /// @brief 把指定 class 互斥地写到所有已加载文档的 <body>（移除其它两个 tf-font-* class）。
+    ///        同时记录为"默认字号 class"，新加载的文档会自动应用该 class，无需对单一服务句柄
+    ///        保留任何引用（避免外部 service 销毁后产生悬空 lambda）。
+    void applyBodyFontScaleClassToAllDocuments(std::string_view next_class);
     void unloadDocumentsByOwner(uint64_t owner_scene_id);
     void showDocument(Rml::ElementDocument* doc);
     void hideDocument(Rml::ElementDocument* doc);
@@ -108,6 +113,7 @@ private:
     [[nodiscard]] bool isOwnerVisible(uint64_t owner_scene_id) const;
     void applyInputModeClass(Rml::ElementDocument* doc);
     void applyInputModeClasses();
+    void applyFontScaleClassToBody(Rml::ElementDocument* doc, std::string_view next_class);
 
     [[nodiscard]] bool ensureDebuggerInitialized();
 
@@ -127,6 +133,7 @@ private:
     std::vector<uint64_t> visible_scene_owners_;
     uint64_t active_scene_id_{0};
     InputMode input_mode_{InputMode::Mouse};
+    std::string body_font_scale_class_{"tf-font-normal"};
 };
 
 } // namespace engine::ui::rmlui

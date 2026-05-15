@@ -138,6 +138,9 @@ void BattleDamagePopupController::spawnFromResult(
     const game::battle::BattleActionResult& result,
     const std::vector<BattlePresentationUnitAnchor>& unit_anchors,
     const float impact_time_seconds) {
+    if (!enabled_) {
+        return;
+    }
     if (result.status == game::battle::BattleActionStatus::Rejected) {
         return;
     }

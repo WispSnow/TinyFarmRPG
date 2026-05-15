@@ -62,6 +62,13 @@ public:
     /// @brief 清空所有 HP 条状态。
     void clear();
 
+    /// @brief 启用 / 禁用敌方 HP 条显示。禁用时 reveal/highlight 不抬高 alpha，
+    ///        `update()` 将已显示的 HP 条按 fade_seconds 节奏淡出至消失。
+    /// @note 切换到 disabled 时立即清空 reveal 计时器与 highlight，
+    ///       否则 update() 会因 `had_reveal_time` / `highlighted` 把 alpha 维持在 1。
+    void setEnabled(bool enabled);
+    [[nodiscard]] bool isEnabled() const { return enabled_; }
+
     /// @brief 返回所有已跟踪敌方 HP 条状态。
     [[nodiscard]] const std::vector<BattleEnemyHpBarState>& activeBars() const { return bars_; }
 
@@ -78,6 +85,7 @@ private:
     BattleEnemyHpBarConfig config_{};
     std::vector<BattleEnemyHpBarState> bars_{};
     std::optional<game::battle::BattleSnapshot> staged_snapshot_{};
+    bool enabled_{true};
 };
 
 } // namespace game::scene

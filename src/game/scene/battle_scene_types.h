@@ -20,6 +20,10 @@ namespace game::factory {
 class BlueprintManager;
 }
 
+namespace game::runtime {
+class UserSettingsService;
+}
+
 namespace game::scene {
 
 struct AppearanceSnapshot {
@@ -43,6 +47,7 @@ struct BattleScenePresentationOptions {
     engine::vfx::VfxService* vfx_service{nullptr};
     std::string battle_background_id{};
     BattleEnemyHpBarConfig enemy_hp_bar_config{};
+    game::runtime::UserSettingsService* user_settings_service{nullptr};
 };
 
 } // namespace game::scene

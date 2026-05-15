@@ -125,7 +125,8 @@ void TitleScene::onLoadClicked() {
 }
 
 void TitleScene::onMenuClicked() {
-    auto menu = std::make_unique<game::scene::PauseMenuScene>("PauseMenu", context_, nullptr, title_game_time_.get());
+    auto menu = std::make_unique<game::scene::PauseMenuScene>(
+        "PauseMenu", context_, nullptr, title_game_time_.get(), nullptr);
     requestPushScene(std::move(menu));
 }
 

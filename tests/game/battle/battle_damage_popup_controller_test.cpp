@@ -198,6 +198,34 @@ TEST(BattleDamagePopupControllerTest, RejectedAndStateOnlyResultsDoNotSpawnPopup
     EXPECT_TRUE(controller.activePopups().empty());
 }
 
+TEST(BattleDamagePopupControllerTest, DisabledControllerDoesNotSpawnNewPopups) {
+    BattleDamagePopupController controller;
+    controller.setEnabled(false);
+    EXPECT_FALSE(controller.isEnabled());
+
+    controller.spawnFromResult(makeResult(), makeAnchors());
+    EXPECT_TRUE(controller.activePopups().empty());
+}
+
+TEST(BattleDamagePopupControllerTest, DisablingMidFlightPreservesExistingPopupsUntilAnimationCompletes) {
+    BattleDamagePopupController controller;
+    controller.spawnFromResult(makeResult(), makeAnchors());
+    ASSERT_EQ(controller.activePopups().size(), 1U);
+
+    controller.setEnabled(false);
+    // 已在列的 popup 不被清空：update 推进延迟与时间轴，但下一次 spawn 仍被拒绝。
+    EXPECT_EQ(controller.activePopups().size(), 1U);
+    controller.update(0.05f);
+    EXPECT_EQ(controller.activePopups().size(), 1U);
+
+    controller.spawnFromResult(makeResult(), makeAnchors());
+    EXPECT_EQ(controller.activePopups().size(), 1U);
+
+    controller.setEnabled(true);
+    controller.spawnFromResult(makeResult(), makeAnchors());
+    EXPECT_EQ(controller.activePopups().size(), 2U);
+}
+
 TEST(BattleDamagePopupControllerTest, ColorMappingAppliesAlpha) {
     const auto damage = battleDamagePopupColor(BattleDamagePopupKind::HpDamage, 0.4f);
     EXPECT_GT(damage.r, damage.g);

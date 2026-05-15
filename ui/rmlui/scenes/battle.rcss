@@ -61,7 +61,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 34dp;
     line-height: 34dp;
     color: #fff2a6ff;
-    font-size: 24dp;
+    font-size: 1.5rem;
     text-align: center;
     font-effect: shadow(1dp 1dp #000000dd);
 }
@@ -88,7 +88,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 18dp;
     padding-left: 6dp;
     color: #d8dee9ff;
-    font-size: 10dp;
+    font-size: 0.625rem;
 }
 
 .battle-victory-value {
@@ -97,7 +97,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 18dp;
     padding-right: 6dp;
     color: #fce97fff;
-    font-size: 10dp;
+    font-size: 0.625rem;
     text-align: right;
 }
 
@@ -113,7 +113,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 20dp;
     line-height: 20dp;
     color: #8b95a7ff;
-    font-size: 9dp;
+    font-size: 0.5625rem;
     text-align: center;
 }
 
@@ -139,7 +139,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 20dp;
     padding-left: 5dp;
     color: #e8eef8ff;
-    font-size: 9dp;
+    font-size: 0.5625rem;
     overflow: hidden;
 }
 
@@ -149,7 +149,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 20dp;
     padding-right: 6dp;
     color: #fce97fff;
-    font-size: 9dp;
+    font-size: 0.5625rem;
     text-align: right;
 }
 
@@ -204,7 +204,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 15dp;
     line-height: 15dp;
     color: #d8dee9ff;
-    font-size: 8dp;
+    font-size: 0.5rem;
     text-align: right;
     font-effect: shadow(1dp 1dp #000000cc);
     overflow: hidden;
@@ -304,7 +304,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 26dp;
     line-height: 26dp;
     color: #ffffffff;
-    font-size: 9dp;
+    font-size: 0.5625rem;
     text-align: center;
     font-effect: shadow(1dp 1dp #000000cc);
 }
@@ -329,7 +329,7 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #05070bcc;
     border-width: 1dp;
     border-color: #f4d475ee;
-    font-size: 6dp;
+    font-size: 0.375rem;
     text-align: center;
     font-effect: shadow(1dp 1dp #000000dd);
 }
@@ -422,7 +422,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 11dp;
     line-height: 11dp;
     color: #d8dee9ff;
-    font-size: 8dp;
+    font-size: 0.5rem;
     overflow: hidden;
 }
 
@@ -440,7 +440,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-stat-value {
     width: 61dp;
-    font-size: 7dp;
+    font-size: 0.4375rem;
     text-align: right;
 }
 
@@ -510,7 +510,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 7dp;
     line-height: 7dp;
     color: #ffffffff;
-    font-size: 6dp;
+    font-size: 0.375rem;
     text-align: center;
     font-effect: shadow(1dp 1dp #000000cc);
 }
@@ -526,7 +526,7 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #05070bcc;
     border-width: 1dp;
     border-color: #f4d475ee;
-    font-size: 5dp;
+    font-size: 0.3125rem;
     text-align: center;
     font-effect: shadow(1dp 1dp #000000dd);
 }
@@ -557,21 +557,21 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 11dp;
     line-height: 11dp;
     color: #fce97fff;
-    font-size: 8dp;
+    font-size: 0.5rem;
 }
 
 .battle-state-tooltip-turns {
     height: 9dp;
     line-height: 9dp;
     color: #abb6c9ff;
-    font-size: 7dp;
+    font-size: 0.4375rem;
 }
 
 .battle-state-tooltip-description {
     min-height: 12dp;
     line-height: 9dp;
     color: #d8dee9ff;
-    font-size: 7dp;
+    font-size: 0.4375rem;
     white-space: normal;
     word-break: break-word;
 }
@@ -705,7 +705,7 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 16dp;
     padding-left: 4dp;
     padding-right: 4dp;
-    font-size: 10dp;
+    font-size: 0.625rem;
     white-space: nowrap;
     overflow: hidden;
     flex-shrink: 0;

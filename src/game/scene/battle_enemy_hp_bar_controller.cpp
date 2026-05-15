@@ -47,20 +47,25 @@ void approachRatio(BattleEnemyHpBarState& bar, const float delta_seconds, const 
     bar.display_ratio = clamp01(bar.display_ratio);
 }
 
-void updateVisibility(BattleEnemyHpBarState& bar, const BattleEnemyHpBarConfig& config, const float delta) {
+void updateVisibility(BattleEnemyHpBarState& bar,
+                      const BattleEnemyHpBarConfig& config,
+                      const float delta,
+                      const bool enabled) {
     const bool had_reveal_time = bar.visible_seconds_remaining > 0.0f;
     if (bar.visible_seconds_remaining > 0.0f) {
         bar.visible_seconds_remaining = std::max(0.0f, bar.visible_seconds_remaining - delta);
     }
 
-    if (bar.highlighted || had_reveal_time || bar.visible_seconds_remaining > 0.0f) {
+    if (enabled && (bar.highlighted || had_reveal_time || bar.visible_seconds_remaining > 0.0f)) {
         bar.alpha = 1.0f;
     } else {
+        // disabled 时无条件淡出，忽略残留的 reveal 倒计时与 highlight 状态。
         const float fade_seconds = std::max(config.fade_seconds, 0.001f);
         bar.alpha = std::max(0.0f, bar.alpha - delta / fade_seconds);
     }
 
-    bar.visible = bar.highlighted || bar.visible_seconds_remaining > 0.0f || bar.alpha > VISIBLE_ALPHA_EPSILON;
+    bar.visible = enabled && (bar.highlighted || bar.visible_seconds_remaining > 0.0f)
+                  || bar.alpha > VISIBLE_ALPHA_EPSILON;
 }
 
 } // namespace
@@ -89,6 +94,9 @@ void BattleEnemyHpBarController::syncFromSnapshot(const game::battle::BattleSnap
 }
 
 void BattleEnemyHpBarController::revealFromResult(const game::battle::BattleActionResult& result) {
+    if (!enabled_) {
+        return;
+    }
     if (result.status == game::battle::BattleActionStatus::Rejected || !result.target_id ||
         !hasVisibleEnemyFeedback(result)) {
         return;
@@ -119,7 +127,7 @@ void BattleEnemyHpBarController::applyStagedSnapshotAndReveal(const game::battle
 
 void BattleEnemyHpBarController::setHighlightedTarget(const std::optional<game::battle::BattleUnitId> unit_id) {
     for (auto& bar : bars_) {
-        bar.highlighted = unit_id.has_value() && bar.unit_id == *unit_id;
+        bar.highlighted = enabled_ && unit_id.has_value() && bar.unit_id == *unit_id;
         if (bar.highlighted) {
             bar.alpha = 1.0f;
             bar.visible = true;
@@ -138,7 +146,21 @@ void BattleEnemyHpBarController::update(const float delta_time_seconds) {
         }
 
         approachRatio(bar, ratio_delta, config_.ratio_lerp_speed);
-        updateVisibility(bar, config_, delta);
+        updateVisibility(bar, config_, delta, enabled_);
+    }
+}
+
+void BattleEnemyHpBarController::setEnabled(bool enabled) {
+    if (enabled_ == enabled) {
+        return;
+    }
+    enabled_ = enabled;
+    if (!enabled_) {
+        // 立即清空 reveal/highlight，让 update() 的 fade 分支可以从下一帧开始把 alpha 推向 0。
+        for (auto& bar : bars_) {
+            bar.visible_seconds_remaining = 0.0f;
+            bar.highlighted = false;
+        }
     }
 }
 

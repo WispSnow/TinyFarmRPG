@@ -19,6 +19,9 @@
 #include "game/battle/battle_ai_planner.h"
 #include "game/component/appearance_component.h"
 #include "game/defs/events.h"
+#include "game/defs/options_events.h"
+#include "game/runtime/user_settings_service.h"
+#include "game/scene/battle_cursor_memory.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
@@ -555,6 +558,8 @@ bool BattleScene::init() {
     }
 
     connectInputListeners();
+    syncUserSettingsState();
+    connectUserSettingsListeners();
 
     if (session_.outcome() == game::battle::BattleOutcome::Victory) {
         beginVictoryFlow();
@@ -601,6 +606,7 @@ void BattleScene::prepareUi(float interpolation_alpha) {
 }
 
 void BattleScene::clean() {
+    disconnectUserSettingsListeners();
     disconnectInputListeners();
     shutdownUI();
     battle_animation_director_.reset();
@@ -609,6 +615,10 @@ void BattleScene::clean() {
     scheduled_presentation_events_.clear();
     battle_log_history_.clear();
     battle_log_entries_.clear();
+    last_actor_command_index_per_actor_.clear();
+    last_skill_id_per_actor_.clear();
+    last_item_id_per_actor_.clear();
+    last_target_unit_id_per_actor_.clear();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -1596,7 +1606,22 @@ void BattleScene::populateActorCommands() {
         CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Guard), .entry_index = 2, .label = "Guard", .enabled = enabled},
         CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Item), .entry_index = 3, .label = "Item", .enabled = enabled},
     };
-    actor_command_cursor_ = firstEnabledActorCommandIndex();
+
+    const int fallback = firstEnabledActorCommandIndex();
+    int remembered = -1;
+    if (const auto* actor = currentActor()) {
+        if (const auto it = last_actor_command_index_per_actor_.find(actor->id);
+            it != last_actor_command_index_per_actor_.end()) {
+            remembered = it->second;
+        }
+    }
+    std::vector<bool> enabled_states;
+    enabled_states.reserve(actor_commands_.size());
+    for (const auto& cmd : actor_commands_) {
+        enabled_states.push_back(cmd.enabled);
+    }
+    actor_command_cursor_ = resolveCursorMemoryDefaultIndex(
+        remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
@@ -1633,7 +1658,25 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
         });
     }
 
-    list_entry_cursor_ = firstEnabledListEntryIndex();
+    const int fallback = firstEnabledListEntryIndex();
+    int remembered = -1;
+    if (cursor_memory_enabled_) {
+        if (const auto it = last_skill_id_per_actor_.find(actor.id); it != last_skill_id_per_actor_.end()) {
+            for (const auto& entry : list_entries_) {
+                if (entry.entry_id == it->second) {
+                    remembered = entry.entry_index;
+                    break;
+                }
+            }
+        }
+    }
+    std::vector<bool> enabled_states;
+    enabled_states.reserve(list_entries_.size());
+    for (const auto& entry : list_entries_) {
+        enabled_states.push_back(entry.enabled);
+    }
+    list_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+        remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 void BattleScene::populateItemEntries() {
@@ -1688,7 +1731,27 @@ void BattleScene::populateItemEntries() {
         });
     }
 
-    list_entry_cursor_ = firstEnabledListEntryIndex();
+    const int fallback = firstEnabledListEntryIndex();
+    int remembered = -1;
+    if (cursor_memory_enabled_) {
+        if (const auto* actor = currentActor()) {
+            if (const auto it = last_item_id_per_actor_.find(actor->id); it != last_item_id_per_actor_.end()) {
+                for (const auto& entry : list_entries_) {
+                    if (entry.entry_id == it->second) {
+                        remembered = entry.entry_index;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    std::vector<bool> enabled_states;
+    enabled_states.reserve(list_entries_.size());
+    for (const auto& entry : list_entries_) {
+        enabled_states.push_back(entry.enabled);
+    }
+    list_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+        remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 const BattleScene::ListEntryViewModel* BattleScene::findListEntry(int entry_index) const {
@@ -1785,7 +1848,25 @@ void BattleScene::populateTargetEntries(game::data::Scope scope, const game::bat
         });
     }
 
-    target_entry_cursor_ = firstEnabledTargetEntryIndex();
+    const int fallback = firstEnabledTargetEntryIndex();
+    int remembered = -1;
+    if (cursor_memory_enabled_) {
+        if (const auto it = last_target_unit_id_per_actor_.find(actor.id); it != last_target_unit_id_per_actor_.end()) {
+            for (const auto& entry : target_entries_) {
+                if (static_cast<game::battle::BattleUnitId>(entry.unit_id) == it->second) {
+                    remembered = entry.entry_index;
+                    break;
+                }
+            }
+        }
+    }
+    std::vector<bool> enabled_states;
+    enabled_states.reserve(target_entries_.size());
+    for (const auto& entry : target_entries_) {
+        enabled_states.push_back(entry.enabled);
+    }
+    target_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+        remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 const BattleScene::TargetEntryViewModel* BattleScene::findTargetEntry(int entry_index) const {
@@ -1962,6 +2043,10 @@ void BattleScene::handleActorCommand(int entry_index) {
 
     actor_command_entered_via_fight_this_step_ = false;
 
+    if (const auto* actor = currentActor()) {
+        last_actor_command_index_per_actor_[actor->id] = entry_index;
+    }
+
     switch (static_cast<ActorCommandId>(command->command_id)) {
         case ActorCommandId::Attack:
             queueAttackAction();
@@ -2014,6 +2099,7 @@ void BattleScene::handleSkillEntry(const ListEntryViewModel& entry) {
         return;
     }
 
+    last_skill_id_per_actor_[actor->id] = skill->id_;
     action_draft_ = ActionDraft{
         .pending_type = game::battle::BattleActionType::Skill,
         .selected_skill_id = skill->id_,
@@ -2036,6 +2122,7 @@ void BattleScene::handleItemEntry(const ListEntryViewModel& entry) {
         return;
     }
 
+    last_item_id_per_actor_[actor->id] = item->id_str_;
     action_draft_ = ActionDraft{
         .pending_type = game::battle::BattleActionType::Item,
         .selected_skill_id = std::nullopt,
@@ -2062,6 +2149,10 @@ void BattleScene::handleTargetEntry(int entry_index) {
     }
 
     actor_command_entered_via_fight_this_step_ = false;
+    if (const auto* actor = currentActor()) {
+        last_target_unit_id_per_actor_[actor->id] =
+            static_cast<game::battle::BattleUnitId>(entry->unit_id);
+    }
     action_draft_.selected_target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
     (void)submitDraftAction();
 }
@@ -2497,6 +2588,7 @@ BattleAnimationTimelineConfig BattleScene::animationConfigForPlan(
     config.duration_seconds = plan.duration_seconds;
     config.impact_time_seconds = plan.impact_time_seconds;
     config.hit_feedback_duration_seconds = plan.recovery_time_seconds;
+    scaleAnimationTimeline(config, battle_animation_speed_);
     return config;
 }
 
@@ -3134,6 +3226,64 @@ void BattleScene::requestBattleEnd() {
     context_.getDispatcher().trigger(event);
 
     requestPopScene();
+}
+
+void BattleScene::syncUserSettingsState() {
+    auto* settings = presentation_options_.user_settings_service;
+    if (!settings) {
+        return;
+    }
+    const auto& snapshot = settings->snapshot();
+    battle_animation_speed_ = snapshot.battle_animation_speed;
+    cursor_memory_enabled_ = snapshot.cursor_memory;
+    battle_damage_popup_controller_.setEnabled(snapshot.show_damage_popup);
+    battle_enemy_hp_bar_controller_.setEnabled(snapshot.show_enemy_hp_bar);
+}
+
+void BattleScene::connectUserSettingsListeners() {
+    auto& dispatcher = context_.getDispatcher();
+    dispatcher.sink<game::defs::BattleAnimationSpeedChangedEvent>()
+        .connect<&BattleScene::onBattleAnimationSpeedChanged>(this);
+    dispatcher.sink<game::defs::DamagePopupVisibilityChangedEvent>()
+        .connect<&BattleScene::onDamagePopupVisibilityChanged>(this);
+    dispatcher.sink<game::defs::EnemyHpBarVisibilityChangedEvent>()
+        .connect<&BattleScene::onEnemyHpBarVisibilityChanged>(this);
+    dispatcher.sink<game::defs::CursorMemoryChangedEvent>()
+        .connect<&BattleScene::onCursorMemoryChanged>(this);
+}
+
+void BattleScene::disconnectUserSettingsListeners() {
+    auto& dispatcher = context_.getDispatcher();
+    dispatcher.sink<game::defs::BattleAnimationSpeedChangedEvent>()
+        .disconnect<&BattleScene::onBattleAnimationSpeedChanged>(this);
+    dispatcher.sink<game::defs::DamagePopupVisibilityChangedEvent>()
+        .disconnect<&BattleScene::onDamagePopupVisibilityChanged>(this);
+    dispatcher.sink<game::defs::EnemyHpBarVisibilityChangedEvent>()
+        .disconnect<&BattleScene::onEnemyHpBarVisibilityChanged>(this);
+    dispatcher.sink<game::defs::CursorMemoryChangedEvent>()
+        .disconnect<&BattleScene::onCursorMemoryChanged>(this);
+}
+
+void BattleScene::onBattleAnimationSpeedChanged(const game::defs::BattleAnimationSpeedChangedEvent& evt) {
+    battle_animation_speed_ = evt.new_speed;
+}
+
+void BattleScene::onDamagePopupVisibilityChanged(const game::defs::DamagePopupVisibilityChangedEvent& evt) {
+    battle_damage_popup_controller_.setEnabled(evt.visible);
+}
+
+void BattleScene::onEnemyHpBarVisibilityChanged(const game::defs::EnemyHpBarVisibilityChangedEvent& evt) {
+    battle_enemy_hp_bar_controller_.setEnabled(evt.visible);
+}
+
+void BattleScene::onCursorMemoryChanged(const game::defs::CursorMemoryChangedEvent& evt) {
+    cursor_memory_enabled_ = evt.enabled;
+    if (!cursor_memory_enabled_) {
+        last_actor_command_index_per_actor_.clear();
+        last_skill_id_per_actor_.clear();
+        last_item_id_per_actor_.clear();
+        last_target_unit_id_per_actor_.clear();
+    }
 }
 
 } // namespace game::scene

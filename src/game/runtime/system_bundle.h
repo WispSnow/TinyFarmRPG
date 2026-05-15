@@ -51,6 +51,8 @@ class VfxBridgeSystem;
 
 namespace game::runtime {
 
+class UserSettingsService;
+
 struct GameRuntimeServices {
     std::shared_ptr<game::factory::BlueprintManager> blueprint_manager;
     std::shared_ptr<game::data::ItemCatalog> item_catalog;
@@ -72,6 +74,7 @@ struct GameRuntimeServices {
     std::unique_ptr<game::save::SaveService> save_service;
     std::unique_ptr<engine::vfx::VfxService> vfx_service;
     std::unique_ptr<engine::script::ScriptHost> script_host;
+    std::unique_ptr<UserSettingsService> user_settings_service;
 
     GameRuntimeServices();
     ~GameRuntimeServices() noexcept;

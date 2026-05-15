@@ -29,6 +29,9 @@ doxygen_*
 lecture_plan/.obsidian/
 .record/
 
+# 玩家偏好（runtime 在 build 目录写入，不进 source repo）
+config/user_settings.json
+
 # prebuilt
 prebuilt/
 

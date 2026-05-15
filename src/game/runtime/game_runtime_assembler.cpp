@@ -44,6 +44,7 @@
 #include "game/domain/shop_transaction_service.h"
 #include "game/runtime/gameplay_camera_defaults.h"
 #include "game/runtime/rpg_catalog_loader.h"
+#include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/script/tinyfarm_script_module.h"
@@ -654,6 +655,23 @@ bool GameRuntimeAssembler::assembleServices(ServiceBuildParams params) {
 
     if (!ensureGameTime(params.registry, params.game_time)) {
         return false;
+    }
+
+    // 在 GameTime 就绪后构造 UserSettingsService，加载偏好并立即 apply。
+    // 重要：绑定的是 registry.ctx() 里的 GameTime，因为 TimeSystem / SaveService 都
+    // 读写这一份；params.game_time 只是 assembler 用来初始化 ctx 的临时容器。
+    auto* rml_runtime = params.context.getRmlUi();
+    auto* ctx_game_time = params.registry.ctx().find<game::data::GameTime>();
+    if (rml_runtime && ctx_game_time) {
+        params.services.user_settings_service = std::make_unique<UserSettingsService>(
+            params.context.getDispatcher(),
+            params.context.getAudioPlayer(),
+            *ctx_game_time,
+            *rml_runtime);
+        params.services.user_settings_service->loadFromFileOrFallback();
+        params.services.user_settings_service->applyAll();
+    } else {
+        spdlog::warn("GameRuntimeAssembler: 缺少 RmlUiRuntime 或 ctx GameTime，UserSettingsService 跳过初始化。");
     }
 
     if (!initWorldState(params.registry, params.services)) {

@@ -9,10 +9,12 @@
 #include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
+#include "game/runtime/user_settings_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
 #include "game/ui/inventory_tab_content.h"
 #include "game/ui/map_tab_content.h"
+#include "game/ui/options_tab_content.h"
 #include "game/ui/quest_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -35,21 +37,6 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
 using SlotGridViewModels = std::vector<game::ui::SlotGridViewModel>;
 using PartyMemberPanelViewModels = std::vector<game::scene::PartyMemberPanelViewModel>;
-
-class PlaceholderTabContent final : public game::ui::IMenuTabContent {
-public:
-    [[nodiscard]] bool bindModel(Rml::DataModelConstructor&) override {
-        return true;
-    }
-
-    void onActivated() override {}
-    void onDeactivated() override {}
-    void update(float /*delta_time*/) override {}
-
-    [[nodiscard]] bool onCancel() override {
-        return false;
-    }
-};
 
 [[nodiscard]] std::optional<game::ui::MenuTabId> toMenuTabId(int tab_index) {
     switch (tab_index) {
@@ -98,7 +85,8 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
                                        const game::data::RpgCatalog* rpg_catalog,
                                        const game::data::QuestCatalog* quest_catalog,
                                        const game::data::ShopCatalog* shop_catalog,
-                                       const game::world::WorldState* world_state)
+                                       const game::world::WorldState* world_state,
+                                       game::runtime::UserSettingsService* user_settings_service)
     : engine::scene::Scene(name, context),
       game_registry_(game_registry),
       player_(player),
@@ -107,6 +95,7 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
       quest_catalog_(quest_catalog),
       shop_catalog_(shop_catalog),
       world_state_(world_state),
+      user_settings_service_(user_settings_service),
       previous_state_(context.getGameState().getCurrentState()) {}
 
 InventoryMenuScene::~InventoryMenuScene() {
@@ -287,7 +276,13 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
     tabs_.emplace(game::ui::MenuTabId::Map, std::move(map_tab));
-    tabs_.emplace(game::ui::MenuTabId::Options, std::make_unique<PlaceholderTabContent>());
+    auto options_tab = std::make_unique<game::ui::OptionsTabContent>(document_controller_, user_settings_service_);
+    if (!options_tab->bindModel(constructor)) {
+        spdlog::error("InventoryMenuScene: OptionsTabContent 绑定失败。");
+        document_controller_.unload();
+        return false;
+    }
+    tabs_.emplace(game::ui::MenuTabId::Options, std::move(options_tab));
 
     if (!document_controller_.load(DOCUMENT_PATH)) {
         tabs_.clear();

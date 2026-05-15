@@ -274,6 +274,7 @@ Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path,
         .currently_visible = true,
     });
     applyInputModeClass(doc);
+    applyFontScaleClassToBody(doc, body_font_scale_class_);
     applyDocumentVisibility(documents_.back());
 
     if (active_scene_id_ != 0) {
@@ -515,6 +516,27 @@ void RmlUiRuntime::applyInputModeClass(Rml::ElementDocument* doc) {
 void RmlUiRuntime::applyInputModeClasses() {
     for (auto& entry : documents_) {
         applyInputModeClass(entry.doc);
+    }
+}
+
+void RmlUiRuntime::applyBodyFontScaleClassToAllDocuments(std::string_view next_class) {
+    body_font_scale_class_.assign(next_class.data(), next_class.size());
+    for (auto& entry : documents_) {
+        applyFontScaleClassToBody(entry.doc, body_font_scale_class_);
+    }
+}
+
+void RmlUiRuntime::applyFontScaleClassToBody(Rml::ElementDocument* doc, std::string_view next_class) {
+    if (!doc) {
+        return;
+    }
+    Rml::Element* root = doc->QuerySelector("body");
+    if (!root) {
+        root = doc;
+    }
+    constexpr std::string_view kAllClasses[] = {"tf-font-small", "tf-font-normal", "tf-font-large"};
+    for (const auto& cls : kAllClasses) {
+        root->SetClass(Rml::String{cls.data(), cls.size()}, cls == next_class);
     }
 }
 

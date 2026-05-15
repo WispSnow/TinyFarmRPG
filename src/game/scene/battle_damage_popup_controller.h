@@ -80,6 +80,11 @@ public:
     /// @brief 清空所有未完成 popup。
     void clear();
 
+    /// @brief 启用 / 禁用伤害飘字。禁用时 `spawnFromResult` 不入列新条目，
+    ///        但已在播的 popup 会按原本时间轴自然消亡（不强行清空）。
+    void setEnabled(bool enabled) { enabled_ = enabled; }
+    [[nodiscard]] bool isEnabled() const { return enabled_; }
+
     /// @brief 获取当前仍在等待或播放的 popup 列表。
     [[nodiscard]] const std::vector<BattleDamagePopup>& activePopups() const { return popups_; }
 
@@ -96,6 +101,7 @@ private:
     BattleDamagePopupLayoutConfig layout_{};
     BattleDamagePopupTimingConfig timing_{};
     std::vector<BattleDamagePopup> popups_{};
+    bool enabled_{true};
 };
 
 /// @brief 返回指定 popup 类型在当前 alpha 下的颜色。
