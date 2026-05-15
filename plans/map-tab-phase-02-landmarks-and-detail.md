@@ -69,7 +69,7 @@ flowchart LR
 
 优先级：
 
-- 同一个 Tiled actor object 若同时满足多类标记，显示优先级为 `quest > shop > npc`。
+- 同一个 Tiled actor object 若同时满足多类标记，显示优先级为 `shop > quest > npc`，保持和 `entity_builder.cpp` 当前 runtime 交互优先级一致。
 - `rest` 来自独立 object type，不参与 actor 合并优先级。
 - 默认选中第一个非 player marker，排序按 `quest > shop > rest > npc` 后按 Tiled object id；这是选择顺序，和 actor 合并优先级互不交叉。
 - 渲染层级通过 `z-index` 显式控制：selected marker 最高，其次 player、quest、shop、rest、npc。
@@ -132,7 +132,7 @@ Phase 2 的 quest marker 是已知的过渡态：它只表示 Tiled 上存在 `q
 - 遍历 visible object layers，跳过 `properties.invisible=true` 的 layer 或 object。
 - 解析 object type 与 `quest_offer_id / shop_id / recruit_actor_id`。
 - 只对带 `quest_offer_id / shop_id / recruit_actor_id` 的 actor object 生成 marker；普通命名 actor 不标注。
-- 对 actor object 应用 `quest > shop > npc` 合并优先级，只产生一个 marker。
+- 对 actor object 应用 `shop > quest > npc` 合并优先级，只产生一个 marker。
 - 对 rest object 产生 `rest` marker。
 - 处理 point / rectangle / ellipse / polygon / polyline 的坐标；未知或异常形状 warn 后跳过。
 - 缓存当前 map 的 object marker snapshot，缓存归 `MapTabContent` 或 provider 实例所有，避免全局可变状态。
@@ -182,7 +182,7 @@ Phase 2 的 quest marker 是已知的过渡态：它只表示 Tiled 上存在 `q
 在 `MapTabContent` 内维护选中 marker。
 
 - 使用 `selected_marker_index_`，`onActivated()`、map 切换或 snapshot 重建时都按默认选择规则重新选择，避免跨 tab 残留旧选中态。
-- hover / focus / click 都可以更新选中 marker，并 mark detail 与 marker array dirty。
+- hover / focus / click 都可以更新选中 marker；selection-only 路径只更新 marker 选中态、z-index、尺寸/位置和详情字段，不重建 preview 或重新扫描 marker source 数据。
 - `onCancel()` 仍返回 `false`，不新增二级关闭态。
 - `update()` Phase 2 仍留空；菜单暂停时玩家位置不会移动。
 
@@ -192,7 +192,7 @@ Phase 2 的 quest marker 是已知的过渡态：它只表示 Tiled 上存在 `q
 
 - `MapMarkerProvider` 测试使用 `tests/fixtures/maps/map_marker_provider_test.tmj` 自包含 fixture，避免依赖真实 demo 地图布局。
 - `MapMarkerProvider` 测试覆盖 quest/shop/npc 优先级、普通命名 actor 不生成 marker、rest rectangle 坐标、ellipse / polygon / 异常 object 不崩溃。
-- `MapTabContent` 测试覆盖 player + object markers、默认选择、hover/focus/click 切换详情、catalog fallback。
+- `MapTabContent` 测试覆盖 player + object markers、默认选择、hover/focus/click 切换详情、catalog fallback；catalog 文案组合规则用 inline fixture 覆盖，避免全部断言依赖项目真实 JSON 名称。
 - `MapCoordinateMapper` 测试覆盖 bottom-center anchor 与选中态尺寸变化不漂移。
 - `MapCoordinateMapper` 测试覆盖靠近 preview frame 顶边时 marker 不会被裁切。
 - RML / RCSS 结构测试确认 marker 使用 button、`data-for`、event callback、显式 width/height、spritesheet 坐标。
@@ -203,7 +203,7 @@ Phase 2 的 quest marker 是已知的过渡态：它只表示 Tiled 上存在 `q
 - `Map` tab 使用 `assets/textures/UI/pixel_style4.png` 显示 player / quest / shop / rest / npc marker。
 - marker 下方中心点对齐到 map-local 坐标，地图 letterbox 下不漂移。
 - 靠近地图顶边或其它边缘的 marker 不会溢出或被 preview frame 裁切。
-- 同一 actor object 多类型时按 `quest > shop > npc` 显示。
+- 同一 actor object 多类型时按 `shop > quest > npc` 显示。
 - 没有 `quest_offer_id / shop_id / recruit_actor_id` 的普通 actor 不显示 marker。
 - 没有对应图标的地图内容不显示 marker。
 - 鼠标、键盘或手柄选中 marker 后，底部详情文本正确更新。
@@ -213,18 +213,18 @@ Phase 2 的 quest marker 是已知的过渡态：它只表示 Tiled 上存在 `q
 
 ## Todo
 
-- [ ] 新增 `MapMarkerViewModel`、marker detail 绑定字段与 Rml data type registration。
-- [ ] 新增 `MapMarkerProvider`，扫描当前 map object layer 并生成 marker candidates。
-- [ ] 接入 `ShopCatalog` / `QuestCatalog` / `RpgCatalog` 以解析 marker 名称与描述。
-- [ ] 扩展坐标 helper，支持 bottom-center marker anchor。
-- [ ] 更新 `MapTabContent`，生成 marker view models 并维护 `selected_marker_index_`。
-- [ ] 更新 `InventoryMenuScene` / `GameScene` 构造参数和透传。
-- [ ] 更新 `inventory_menu.rml`，把 marker 渲染为可聚焦按钮。
-- [ ] 更新 `theme/spritesheet.rcss`，加入 `ui-map-icons` spritesheet。
-- [ ] 更新 `inventory_menu.rcss`，加入 marker 定位、焦点、选中态和 z-index 样式。
-- [ ] 将 `map-status` 改为 marker detail panel。
-- [ ] 补齐 marker provider、MapTabContent、坐标映射、RML 结构测试。
-- [ ] 运行 `ninja -C build engine_tests game_tests`、相关 ctest 过滤与完整 ctest 回归。
+- [x] 新增 `MapMarkerViewModel`、marker detail 绑定字段与 Rml data type registration。
+- [x] 新增 `MapMarkerProvider`，扫描当前 map object layer 并生成 marker candidates。
+- [x] 接入 `ShopCatalog` / `QuestCatalog` / `RpgCatalog` 以解析 marker 名称与描述。
+- [x] 扩展坐标 helper，支持 bottom-center marker anchor。
+- [x] 更新 `MapTabContent`，生成 marker view models 并维护 `selected_marker_index_`。
+- [x] 更新 `InventoryMenuScene` / `GameScene` 构造参数和透传。
+- [x] 更新 `inventory_menu.rml`，把 marker 渲染为可聚焦按钮。
+- [x] 更新 `theme/spritesheet.rcss`，加入 `ui-map-icons` spritesheet。
+- [x] 更新 `inventory_menu.rcss`，加入 marker 定位、焦点、选中态和 z-index 样式。
+- [x] 将 `map-status` 改为 marker detail panel。
+- [x] 补齐 marker provider、MapTabContent、坐标映射、RML 结构测试。
+- [x] 运行 `ninja -C build engine_tests game_tests`、相关 ctest 过滤与完整 ctest 回归。
 
 ## Implementation Notes
 

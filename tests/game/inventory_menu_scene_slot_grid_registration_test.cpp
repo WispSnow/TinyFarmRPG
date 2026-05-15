@@ -135,7 +135,13 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(source.find("id=\"map-content\""), std::string::npos);
     EXPECT_NE(source.find("data-attr-src=\"map_preview_src\""), std::string::npos);
     EXPECT_NE(source.find("data-style-left=\"map_preview_left\""), std::string::npos);
-    EXPECT_NE(source.find("data-style-left=\"player_marker_left\""), std::string::npos);
+    EXPECT_NE(source.find("data-for=\"marker : map_markers\""), std::string::npos);
+    EXPECT_NE(source.find("data-style-decorator=\"marker.icon_decorator\""), std::string::npos);
+    EXPECT_NE(source.find("data-event-focus=\"map_marker_focus(marker.marker_index)\""), std::string::npos);
+    EXPECT_NE(source.find("data-event-mouseover=\"map_marker_hover(marker.marker_index)\""), std::string::npos);
+    EXPECT_NE(source.find("data-event-click=\"map_marker_click(marker.marker_index)\""), std::string::npos);
+    EXPECT_NE(source.find("id=\"map-detail-panel\""), std::string::npos);
+    EXPECT_NE(source.find("{{ map_detail_title }}"), std::string::npos);
     EXPECT_NE(source.find(">No map data</div>"), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-options\""), std::string::npos);
     EXPECT_EQ(source.find("data-class-tab-active"), std::string::npos);
@@ -176,8 +182,9 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
               std::string::npos);
     EXPECT_NE(style.find("#map-preview-frame"), std::string::npos);
     EXPECT_NE(style.find("width: 218dp;\n    height: 126dp;"), std::string::npos);
-    EXPECT_NE(style.find("#map-player-marker"), std::string::npos);
-    EXPECT_NE(style.find("background-color: #f7768e;"), std::string::npos);
+    EXPECT_NE(style.find(".map-marker"), std::string::npos);
+    EXPECT_NE(style.find(".map-marker-selected"), std::string::npos);
+    EXPECT_NE(style.find("#map-detail-panel"), std::string::npos);
     EXPECT_NE(tab_source.find("fmt::format(\"{}{}{}\""), std::string::npos);
     EXPECT_EQ(tab_source.find("RegisterArray<EquipmentCandidateDeltaViewModels>()"), std::string::npos);
     EXPECT_EQ(tab_source.find("handle.RegisterMember(\"param_deltas\""), std::string::npos);
@@ -247,16 +254,20 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameSceneP
     ASSERT_FALSE(game_scene_source.empty()) << "无法读取: " << game_scene_path;
 
     EXPECT_NE(header.find("const game::data::QuestCatalog* quest_catalog_{nullptr};"), std::string::npos);
+    EXPECT_NE(header.find("const game::data::ShopCatalog* shop_catalog_{nullptr};"), std::string::npos);
     EXPECT_NE(header.find("const game::world::WorldState* world_state_{nullptr};"), std::string::npos);
     EXPECT_NE(header.find("const game::data::QuestCatalog* quest_catalog"), std::string::npos);
+    EXPECT_NE(header.find("const game::data::ShopCatalog* shop_catalog"), std::string::npos);
     EXPECT_NE(header.find("const game::world::WorldState* world_state"), std::string::npos);
     EXPECT_NE(source.find("quest_catalog_(quest_catalog)"), std::string::npos);
+    EXPECT_NE(source.find("shop_catalog_(shop_catalog)"), std::string::npos);
     EXPECT_NE(source.find("world_state_(world_state)"), std::string::npos);
 
     const std::string inventory_toggle_block =
         test_source_utils::extractFunctionBlock(game_scene_source, "bool GameScene::onInventoryToggle()");
     ASSERT_FALSE(inventory_toggle_block.empty());
     EXPECT_NE(inventory_toggle_block.find("services_->quest_catalog.get()"), std::string::npos);
+    EXPECT_NE(inventory_toggle_block.find("services_->shop_catalog.get()"), std::string::npos);
     EXPECT_NE(inventory_toggle_block.find("services_->world_state.get()"), std::string::npos);
 }
 

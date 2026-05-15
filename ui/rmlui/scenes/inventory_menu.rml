@@ -206,13 +206,33 @@
                                  data-style-top="map_preview_top"
                                  data-style-width="map_preview_width"
                                  data-style-height="map_preview_height"/>
-                            <div id="map-player-marker"
-                                 data-if="has_player_marker"
-                                 data-style-left="player_marker_left"
-                                 data-style-top="player_marker_top"></div>
+                            <button class="map-marker tf-nav-auto"
+                                    data-for="marker : map_markers"
+                                    data-class-map-marker-selected="marker.is_selected"
+                                    data-class-map-marker-player="marker.kind == 'player'"
+                                    data-class-map-marker-quest="marker.kind == 'quest'"
+                                    data-class-map-marker-shop="marker.kind == 'shop'"
+                                    data-class-map-marker-rest="marker.kind == 'rest'"
+                                    data-class-map-marker-npc="marker.kind == 'npc'"
+                                    data-style-left="marker.left"
+                                    data-style-top="marker.top"
+                                    data-style-width="marker.width"
+                                    data-style-height="marker.height"
+                                    data-style-z-index="marker.z_index"
+                                    data-style-decorator="marker.icon_decorator"
+                                    data-event-focus="map_marker_focus(marker.marker_index)"
+                                    data-event-mouseover="map_marker_hover(marker.marker_index)"
+                                    data-event-click="map_marker_click(marker.marker_index)"></button>
                             <div id="map-empty-label" data-if="!has_map_preview">No map data</div>
                         </div>
-                        <div id="map-status">{{ map_status_text }}</div>
+                        <div id="map-detail-panel" data-if="has_map_detail">
+                            <div id="map-detail-header">
+                                <div id="map-detail-title">{{ map_detail_title }}</div>
+                                <div id="map-detail-type">{{ map_detail_type }}</div>
+                            </div>
+                            <div id="map-detail-description">{{ map_detail_description }}</div>
+                        </div>
+                        <div id="map-status" data-if="!has_map_detail">{{ map_status_text }}</div>
                     </div>
                 </panel>
 

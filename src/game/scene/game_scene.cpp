@@ -657,6 +657,7 @@ bool GameScene::onInventoryToggle() {
         services_->item_catalog.get(),
         services_->rpg_catalog.get(),
         services_->quest_catalog.get(),
+        services_->shop_catalog.get(),
         services_->world_state.get()));
     return true;
 }
