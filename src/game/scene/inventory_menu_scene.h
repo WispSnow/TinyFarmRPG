@@ -24,6 +24,7 @@ namespace game::data {
 class ItemCatalog;
 class QuestCatalog;
 class RpgCatalog;
+class ShopCatalog;
 }
 
 namespace game::world {
@@ -48,6 +49,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     game::data::ItemCatalog* item_catalog_{nullptr};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::QuestCatalog* quest_catalog_{nullptr};
+    const game::data::ShopCatalog* shop_catalog_{nullptr};
     const game::world::WorldState* world_state_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
@@ -76,6 +78,7 @@ public:
                        game::data::ItemCatalog* item_catalog,
                        const game::data::RpgCatalog* rpg_catalog,
                        const game::data::QuestCatalog* quest_catalog,
+                       const game::data::ShopCatalog* shop_catalog,
                        const game::world::WorldState* world_state);
     ~InventoryMenuScene() override;
 

@@ -56,7 +56,7 @@ flowchart LR
 - marker 视觉尺寸使用固定 UI 尺寸，不跟随地图缩放；点击命中区域按视觉 icon 大小设定，不额外扩大隐形热区。
 - marker 理想锚点为图标下方中心点；若靠近 preview frame 边缘导致图标会被裁切，则 clamp 图标 top-left 到 frame 内，优先保证完整可见。
 - Phase 1 的玩家 marker 先使用纯 CSS 圆点，避免卡美术资产；Phase 2 引入新增 `ui-map-icons` 专用 spritesheet，不混入 HUD、item 或 inventory sheet。初始图标范围为 `player / quest / shop / rest / npc`；没有对应图片的地图内容暂不标注。
-- Phase 2 的静态交互 marker 采用视觉优先级：同一 Tiled 对象若同时满足多类标记，显示 `quest > shop > npc`；`npc` 只表示 `recruit_actor_id` 入口，普通命名 actor 不标注；`rest` 来自独立 object type，`player` 独立显示。
+- Phase 2 的静态交互 marker 采用 runtime 一致优先级：同一 Tiled 对象若同时满足多类标记，显示 `shop > quest > npc`；`npc` 只表示 `recruit_actor_id` 入口，普通命名 actor 不标注；`rest` 来自独立 object type，`player` 独立显示。
 - 数据刷新策略沿用菜单 tab 模式：打开菜单或切换到 Map tab 时构建一次 snapshot；Phase 3 接入任务后，任务状态变化需要使 Map tab view model 失效并重建。
 - 当前 demo 不持久化地图 UI 状态。玩家位置来自当前世界状态，地点来自 Tiled / map 配置，任务 marker 来自 quest runtime 与 quest 数据。
 - Phase 3 任务 marker 采用混合数据源：

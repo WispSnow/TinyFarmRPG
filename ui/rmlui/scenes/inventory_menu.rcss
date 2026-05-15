@@ -679,15 +679,45 @@
     position: absolute;
 }
 
-#map-player-marker {
+.map-marker {
     position: absolute;
-    width: 8dp;
-    height: 8dp;
-    background-color: #f7768e;
-    border: 1dp #ffffff;
-    border-radius: 4dp;
-    box-shadow: #000000aa 0dp 1dp 0dp 1dp;
-    z-index: 3;
+    padding: 0;
+    border-width: 0;
+    border-color: transparent;
+    background-color: transparent;
+    image-color: #ffffffff;
+    filter: saturate(0.95) brightness(0.98);
+    transition: filter 0.08s cubic-out, image-color 0.08s cubic-out;
+}
+
+.map-marker-player {
+    image-color: #ffffffff;
+}
+
+.map-marker-quest {
+    image-color: #fce97fff;
+}
+
+.map-marker-shop {
+    image-color: #9ece6aff;
+}
+
+.map-marker-rest {
+    image-color: #7dcfffff;
+}
+
+.map-marker-npc {
+    image-color: #c0caf5ff;
+}
+
+.map-marker-selected {
+    filter: saturate(1.25) brightness(1.2);
+    box-shadow: #fce97fcc 0dp 0dp 0dp 1dp;
+}
+
+.tf-input-mouse .map-marker:hover,
+.tf-input-nav .map-marker:focus {
+    filter: saturate(1.35) brightness(1.25);
 }
 
 #map-empty-label {
@@ -695,6 +725,54 @@
     text-align: center;
     color: #a9b1d6;
     font-size: 10dp;
+}
+
+#map-detail-panel {
+    position: absolute;
+    left: 0;
+    top: 150dp;
+    width: 218dp;
+    height: 32dp;
+}
+
+#map-detail-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 218dp;
+    height: 13dp;
+    gap: 4dp;
+}
+
+#map-detail-title {
+    width: 140dp;
+    font-size: 9dp;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#map-detail-type {
+    width: 74dp;
+    font-size: 8dp;
+    color: #e0af68;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#map-detail-description {
+    width: 218dp;
+    height: 18dp;
+    margin-top: 1dp;
+    font-size: 8dp;
+    line-height: 9dp;
+    color: #c0caf5;
+    white-space: normal;
+    word-break: normal;
 }
 
 #map-status {

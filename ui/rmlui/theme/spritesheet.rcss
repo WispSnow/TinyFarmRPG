@@ -160,6 +160,16 @@
     clock-label-bg-inner:  72px 100px 31px 8px;
 }
 
+/* --- Map marker icons (pixel_style4.png) --- */
+@spritesheet ui-map-icons {
+    src: ../../../assets/textures/UI/pixel_style4.png;
+    map-marker-player: 48px 16px 16px 16px;
+    map-marker-quest: 128px 0px 16px 16px;
+    map-marker-shop: 48px 32px 16px 16px;
+    map-marker-rest: 0px 16px 16px 16px;
+    map-marker-npc: 48px 0px 16px 16px;
+}
+
 /* --- 进度条 (Bars.png) --- */
 @spritesheet ui-bars {
     src: ../../../assets/farm-rpg/UI/Bars.png;

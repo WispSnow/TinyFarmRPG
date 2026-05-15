@@ -220,6 +220,7 @@ target_sources(game PRIVATE
     game/ui/inventory_tab_content.cpp
     game/ui/equipment_tab_content.cpp
     game/ui/map_coordinate_mapper.cpp
+    game/ui/map_marker_provider.cpp
     game/ui/map_preview_builder.cpp
     game/ui/map_tab_content.cpp
     game/ui/quest_tab_content.cpp

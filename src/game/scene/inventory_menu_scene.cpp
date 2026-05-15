@@ -7,6 +7,7 @@
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
@@ -96,6 +97,7 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
                                        game::data::ItemCatalog* item_catalog,
                                        const game::data::RpgCatalog* rpg_catalog,
                                        const game::data::QuestCatalog* quest_catalog,
+                                       const game::data::ShopCatalog* shop_catalog,
                                        const game::world::WorldState* world_state)
     : engine::scene::Scene(name, context),
       game_registry_(game_registry),
@@ -103,6 +105,7 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
       item_catalog_(item_catalog),
       rpg_catalog_(rpg_catalog),
       quest_catalog_(quest_catalog),
+      shop_catalog_(shop_catalog),
       world_state_(world_state),
       previous_state_(context.getGameState().getCurrentState()) {}
 
@@ -274,6 +277,9 @@ bool InventoryMenuScene::initUI() {
         game_registry_,
         player_,
         world_state_,
+        quest_catalog_,
+        shop_catalog_,
+        rpg_catalog_,
         &runtime->generatedImages());
     if (!map_tab->bindModel(constructor)) {
         spdlog::error("InventoryMenuScene: MapTabContent 绑定失败。");
