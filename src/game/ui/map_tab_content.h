@@ -5,6 +5,7 @@
 #include "game/ui/map_marker_provider.h"
 #include "game/ui/map_preview_builder.h"
 #include "game/ui/menu_tab_content.h"
+#include "game/ui/quest_map_marker_resolver.h"
 
 #include <RmlUi/Core/Types.h>
 #include <entt/entity/entity.hpp>
@@ -91,8 +92,8 @@ struct MapTabViewState {
                                                    const game::world::WorldState* world_state,
                                                    entt::id_type map_id,
                                                    const MapTabPreviewInput& preview,
-                                                   const std::vector<MapObjectMarker>& object_markers,
-                                                   const game::data::QuestCatalog* quest_catalog,
+                                                   const std::vector<MapObjectMarker>& static_place_markers,
+                                                   const std::vector<QuestRuntimeMarker>& quest_markers,
                                                    const game::data::ShopCatalog* shop_catalog,
                                                    const game::data::RpgCatalog* rpg_catalog,
                                                    int selected_marker_index);
@@ -115,6 +116,7 @@ public:
     void onDeactivated() override;
     void update(float delta_time) override;
     [[nodiscard]] bool onCancel() override;
+    void invalidateQuestMarkers();
 
 private:
     engine::ui::rmlui::RmlDocumentController& document_controller_;

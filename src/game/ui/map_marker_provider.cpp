@@ -117,44 +117,57 @@ namespace {
     return engine::loader::tiled::jsonIntOr(object, "id", 0);
 }
 
-[[nodiscard]] std::optional<MapObjectMarker> markerForActorObject(const nlohmann::json& object) {
+void appendMarkerForActorObject(const nlohmann::json& object, MapMarkerSnapshot& out_snapshot) {
     const auto position = markerPositionForObject(object);
     if (!position) {
         spdlog::warn("MapMarkerProvider: actor object id={} has unsupported marker shape.", objectId(object));
-        return std::nullopt;
+        return;
     }
 
     const auto quest_id = findStringProperty(object, game::loader::tiled::ACTOR_PROP_QUEST_OFFER_ID);
     const auto shop_id = findStringProperty(object, game::loader::tiled::ACTOR_PROP_SHOP_ID);
     const auto recruit_actor_id = findStringProperty(object, game::loader::tiled::ACTOR_PROP_RECRUIT_ACTOR_ID);
     if (!quest_id && !shop_id && !recruit_actor_id) {
-        return std::nullopt;
+        return;
     }
-
-    MapObjectMarker marker{};
-    marker.object_id = objectId(object);
-    marker.object_name = object.value("name", std::string{});
-    marker.quest_id = quest_id.value_or(std::string{});
-    marker.shop_id = shop_id.value_or(std::string{});
-    marker.recruit_actor_id = recruit_actor_id.value_or(std::string{});
-    marker.map_position = *position;
 
     if (shop_id) {
         if (quest_id) {
             spdlog::warn(
                 "MapMarkerProvider: actor object id={} has both shop_id='{}' and quest_offer_id='{}'; using shop marker to match runtime interaction.",
-                marker.object_id,
+                objectId(object),
                 *shop_id,
                 *quest_id);
         }
+
+        MapObjectMarker marker{};
         marker.kind = MapObjectMarkerKind::Shop;
-    } else if (quest_id) {
-        marker.kind = MapObjectMarkerKind::Quest;
-    } else {
-        marker.kind = MapObjectMarkerKind::Npc;
+        marker.object_id = objectId(object);
+        marker.object_name = object.value("name", std::string{});
+        marker.shop_id = *shop_id;
+        marker.recruit_actor_id = recruit_actor_id.value_or(std::string{});
+        marker.map_position = *position;
+        out_snapshot.static_place_markers.push_back(std::move(marker));
+        return;
     }
 
-    return marker;
+    if (quest_id) {
+        QuestGiverLocation giver{};
+        giver.object_id = objectId(object);
+        giver.object_name = object.value("name", std::string{});
+        giver.quest_id = *quest_id;
+        giver.map_position = *position;
+        out_snapshot.quest_giver_markers.push_back(std::move(giver));
+        return;
+    }
+
+    MapObjectMarker marker{};
+    marker.kind = MapObjectMarkerKind::Npc;
+    marker.object_id = objectId(object);
+    marker.object_name = object.value("name", std::string{});
+    marker.recruit_actor_id = recruit_actor_id.value_or(std::string{});
+    marker.map_position = *position;
+    out_snapshot.static_place_markers.push_back(std::move(marker));
 }
 
 [[nodiscard]] std::optional<MapObjectMarker> markerForRestObject(const nlohmann::json& object) {
@@ -174,19 +187,17 @@ namespace {
 
 [[nodiscard]] int markerSortRank(const MapObjectMarkerKind kind) {
     switch (kind) {
-        case MapObjectMarkerKind::Quest:
-            return 0;
         case MapObjectMarkerKind::Shop:
-            return 1;
+            return 0;
         case MapObjectMarkerKind::Rest:
-            return 2;
+            return 1;
         case MapObjectMarkerKind::Npc:
-            return 3;
+            return 2;
     }
-    return 4;
+    return 3;
 }
 
-void appendMarkersFromLayer(const nlohmann::json& layer, std::vector<MapObjectMarker>& out_markers) {
+void appendMarkersFromLayer(const nlohmann::json& layer, MapMarkerSnapshot& out_snapshot) {
     if (!layer.is_object() || layer.value("type", "") != "objectgroup" || layer.value("visible", true) == false ||
         boolPropertyIsTrue(layer, "invisible")) {
         return;
@@ -203,20 +214,17 @@ void appendMarkersFromLayer(const nlohmann::json& layer, std::vector<MapObjectMa
         }
 
         const std::string type = object.value("type", std::string{});
-        std::optional<MapObjectMarker> marker{};
         if (type == game::loader::tiled::OBJECT_TYPE_ACTOR) {
-            marker = markerForActorObject(object);
+            appendMarkerForActorObject(object, out_snapshot);
         } else if (type == game::loader::tiled::OBJECT_TYPE_REST) {
-            marker = markerForRestObject(object);
-        }
-
-        if (marker) {
-            out_markers.push_back(std::move(*marker));
+            if (std::optional<MapObjectMarker> marker = markerForRestObject(object)) {
+                out_snapshot.static_place_markers.push_back(std::move(*marker));
+            }
         }
     }
 }
 
-void appendMarkersFromLayers(const nlohmann::json& layers, std::vector<MapObjectMarker>& out_markers) {
+void appendMarkersFromLayers(const nlohmann::json& layers, MapMarkerSnapshot& out_snapshot) {
     if (!layers.is_array()) {
         return;
     }
@@ -227,34 +235,34 @@ void appendMarkersFromLayers(const nlohmann::json& layers, std::vector<MapObject
         }
         if (layer.value("type", "") == "group") {
             if (const auto child_layers = layer.find("layers"); child_layers != layer.end()) {
-                appendMarkersFromLayers(*child_layers, out_markers);
+                appendMarkersFromLayers(*child_layers, out_snapshot);
             }
             continue;
         }
-        appendMarkersFromLayer(layer, out_markers);
+        appendMarkersFromLayer(layer, out_snapshot);
     }
 }
 
 } // namespace
 
-std::vector<MapObjectMarker> MapMarkerProvider::markersForMap(const std::string_view tmj_path) {
+MapMarkerSnapshot MapMarkerProvider::snapshotForMap(const std::string_view tmj_path) {
     const std::string cache_key = std::filesystem::path{std::string{tmj_path}}.lexically_normal().string();
     if (const auto it = marker_cache_.find(cache_key); it != marker_cache_.end()) {
         return it->second;
     }
 
-    std::vector<MapObjectMarker> markers{};
+    MapMarkerSnapshot snapshot{};
     const auto map_json = engine::loader::tiled::getOrLoadLevelJson(tmj_path);
     if (!map_json) {
-        marker_cache_.emplace(cache_key, markers);
-        return markers;
+        marker_cache_.emplace(cache_key, snapshot);
+        return snapshot;
     }
 
     if (const auto layers_it = map_json->find("layers"); layers_it != map_json->end()) {
-        appendMarkersFromLayers(*layers_it, markers);
+        appendMarkersFromLayers(*layers_it, snapshot);
     }
 
-    std::sort(markers.begin(), markers.end(), [](const MapObjectMarker& lhs, const MapObjectMarker& rhs) {
+    std::sort(snapshot.static_place_markers.begin(), snapshot.static_place_markers.end(), [](const MapObjectMarker& lhs, const MapObjectMarker& rhs) {
         const int lhs_rank = markerSortRank(lhs.kind);
         const int rhs_rank = markerSortRank(rhs.kind);
         if (lhs_rank != rhs_rank) {
@@ -263,8 +271,15 @@ std::vector<MapObjectMarker> MapMarkerProvider::markersForMap(const std::string_
         return lhs.object_id < rhs.object_id;
     });
 
-    marker_cache_.emplace(cache_key, markers);
-    return markers;
+    std::sort(snapshot.quest_giver_markers.begin(), snapshot.quest_giver_markers.end(), [](const QuestGiverLocation& lhs, const QuestGiverLocation& rhs) {
+        if (lhs.quest_id != rhs.quest_id) {
+            return lhs.quest_id < rhs.quest_id;
+        }
+        return lhs.object_id < rhs.object_id;
+    });
+
+    marker_cache_.emplace(cache_key, snapshot);
+    return snapshot;
 }
 
 void MapMarkerProvider::clearCache() {

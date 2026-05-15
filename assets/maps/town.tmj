@@ -272,7 +272,7 @@
                  "width":48,
                  "x":312.333333333333,
                  "y":213.666666666667
-                }, 
+                },
                 {
                  "gid":1738,
                  "height":96,
@@ -496,7 +496,7 @@
                          "name":"night_only",
                          "type":"bool",
                          "value":true
-                        }, 
+                        },
                         {
                          "name":"radius",
                          "type":"float",
@@ -520,7 +520,7 @@
                          "name":"night_only",
                          "type":"bool",
                          "value":true
-                        }, 
+                        },
                         {
                          "name":"spot",
                          "propertytype":"Spotlight",
@@ -551,7 +551,7 @@
                          "name":"battle_troop_id",
                          "type":"string",
                          "value":"troop.slime"
-                        }, 
+                        },
                         {
                          "name":"encounter_id",
                          "type":"int",
@@ -572,6 +572,40 @@
                  "visible":true,
                  "width":0,
                  "x":508,
+                 "y":296
+                },
+                {
+                 "height":0,
+                 "id":28,
+                 "name":"goblin",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"battle_troop_id",
+                         "type":"string",
+                         "value":"troop.goblin_pair"
+                        },
+                        {
+                         "name":"encounter_id",
+                         "type":"int",
+                         "value":1002
+                        },
+                        {
+                         "name":"encounter_once",
+                         "type":"bool",
+                         "value":false
+                        },
+                        {
+                         "name":"wander_radius_override",
+                         "type":"float",
+                         "value":48
+                        }],
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":532,
                  "y":296
                 }],
          "opacity":1,
@@ -625,7 +659,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":28,
+ "nextobjectid":29,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

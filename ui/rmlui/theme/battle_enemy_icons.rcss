@@ -1,5 +1,5 @@
 @spritesheet battle-enemy-goblin-icons {
-    src: ../../../assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png;
+    src: ../../../assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png;
     battle-enemy-icon-goblin: 0px 0px 32px 32px;
 }
 

@@ -49,6 +49,12 @@ TEST(QuestCatalogTest, LoadsProjectQuestAssetAndValidatesReferences) {
     EXPECT_EQ(quest->objectives_[0].id_, "kill_goblins");
     EXPECT_EQ(quest->objectives_[0].enemy_id_, "enemy.goblin");
     EXPECT_EQ(quest->objectives_[0].required_count_, 3);
+    ASSERT_TRUE(quest->objectives_[0].marker_.has_value());
+    EXPECT_EQ(quest->objectives_[0].marker_->map_name_, "town");
+    EXPECT_EQ(quest->objectives_[0].marker_->map_id_hash_, QuestCatalog::hashId("town"));
+    EXPECT_EQ(quest->objectives_[0].marker_->position_.x, 532.0F);
+    EXPECT_EQ(quest->objectives_[0].marker_->position_.y, 296.0F);
+    EXPECT_EQ(quest->objectives_[0].marker_->label_, "Goblin Target");
 
     ItemCatalog item_catalog;
     ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
@@ -218,6 +224,131 @@ TEST(QuestCatalogTest, RejectsNonStringDescription) {
           "kind": "defeat_enemy_count",
           "enemy_id": "enemy.goblin",
           "required_count": 1
+        }
+      ]
+    }
+  ]
+})json");
+
+    QuestCatalog catalog;
+    EXPECT_FALSE(catalog.loadFromFile(path.string()));
+}
+
+TEST(QuestCatalogTest, LoadsOptionalObjectiveMarker) {
+    const auto path = writeQuestConfig(
+        "quest_catalog_objective_marker",
+        R"json({
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.alpha",
+      "title": "Alpha",
+      "objectives": [
+        {
+          "id": "obj.one",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.goblin",
+          "required_count": 1,
+          "marker": {
+            "map": "town",
+            "position": [12.5, 34],
+            "label": "Goblin Camp"
+          }
+        }
+      ]
+    }
+  ]
+})json");
+
+    QuestCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(path.string()));
+    const auto* quest = catalog.findQuest("quest.alpha");
+    ASSERT_NE(quest, nullptr);
+    ASSERT_EQ(quest->objectives_.size(), 1U);
+    ASSERT_TRUE(quest->objectives_[0].marker_.has_value());
+    EXPECT_EQ(quest->objectives_[0].marker_->map_name_, "town");
+    EXPECT_EQ(quest->objectives_[0].marker_->position_.x, 12.5F);
+    EXPECT_EQ(quest->objectives_[0].marker_->position_.y, 34.0F);
+    EXPECT_EQ(quest->objectives_[0].marker_->label_, "Goblin Camp");
+}
+
+TEST(QuestCatalogTest, RejectsObjectiveMarkerWithoutMap) {
+    const auto path = writeQuestConfig(
+        "quest_catalog_objective_marker_missing_map",
+        R"json({
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.alpha",
+      "title": "Alpha",
+      "objectives": [
+        {
+          "id": "obj.one",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.goblin",
+          "required_count": 1,
+          "marker": {
+            "position": [12, 34]
+          }
+        }
+      ]
+    }
+  ]
+})json");
+
+    QuestCatalog catalog;
+    EXPECT_FALSE(catalog.loadFromFile(path.string()));
+}
+
+TEST(QuestCatalogTest, RejectsObjectiveMarkerWithInvalidPosition) {
+    const auto path = writeQuestConfig(
+        "quest_catalog_objective_marker_invalid_position",
+        R"json({
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.alpha",
+      "title": "Alpha",
+      "objectives": [
+        {
+          "id": "obj.one",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.goblin",
+          "required_count": 1,
+          "marker": {
+            "map": "town",
+            "position": [12, "bad"]
+          }
+        }
+      ]
+    }
+  ]
+})json");
+
+    QuestCatalog catalog;
+    EXPECT_FALSE(catalog.loadFromFile(path.string()));
+}
+
+TEST(QuestCatalogTest, RejectsObjectiveMarkerWithInvalidLabel) {
+    const auto path = writeQuestConfig(
+        "quest_catalog_objective_marker_invalid_label",
+        R"json({
+  "schema_version": 1,
+  "quests": [
+    {
+      "id": "quest.alpha",
+      "title": "Alpha",
+      "objectives": [
+        {
+          "id": "obj.one",
+          "kind": "defeat_enemy_count",
+          "enemy_id": "enemy.goblin",
+          "required_count": 1,
+          "marker": {
+            "map": "town",
+            "position": [12, 34],
+            "label": 10
+          }
         }
       ]
     }

@@ -133,7 +133,7 @@ TEST(MapTabContentTest, BuildsPlayerMarkerFromRuntimeLocalPositionAfterMapSwitch
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/town", .width = 560, .height = 400},
         {},
-        nullptr,
+        {},
         nullptr,
         nullptr,
         0);
@@ -158,7 +158,7 @@ TEST(MapTabContentTest, BuildsPlayerMarkerAndClampsOutOfRangePositionToMapBounds
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/town", .width = 560, .height = 400},
         {},
-        nullptr,
+        {},
         nullptr,
         nullptr,
         0);
@@ -206,55 +206,53 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
     const entt::entity player = registry.create();
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2{280.0F, 200.0F});
     game::world::WorldState world_state = loadWorld();
-    game::data::QuestCatalog quest_catalog;
     game::data::ShopCatalog shop_catalog;
     game::data::RpgCatalog rpg_catalog;
-    ASSERT_TRUE(quest_catalog.loadFromFile(
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/quests.json").lexically_normal().string()));
     ASSERT_TRUE(shop_catalog.loadFromFile(
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/shops.json").lexically_normal().string()));
     ASSERT_TRUE(rpg_catalog.loadActors(
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").lexically_normal().string()));
 
-    const std::vector<MapObjectMarker> object_markers{
+    const std::vector<MapObjectMarker> static_place_markers{
         MapObjectMarker{
             .kind = MapObjectMarkerKind::Shop,
             .object_id = 1,
             .object_name = "merchant",
-            .quest_id = "",
             .shop_id = "shop.village.general",
             .recruit_actor_id = "",
             .map_position = {370.0F, 197.0F},
         },
         MapObjectMarker{
-            .kind = MapObjectMarkerKind::Quest,
-            .object_id = 2,
-            .object_name = "quest",
-            .quest_id = "quest.village.goblin_cleanup",
-            .shop_id = "",
-            .recruit_actor_id = "",
-            .map_position = {503.0F, 175.5F},
-        },
-        MapObjectMarker{
             .kind = MapObjectMarkerKind::Npc,
             .object_id = 3,
             .object_name = "lyria",
-            .quest_id = "",
             .shop_id = "",
             .recruit_actor_id = "actor.lyria",
             .map_position = {95.0F, 274.5F},
         },
     };
+    const std::vector<QuestRuntimeMarker> quest_markers{
+        QuestRuntimeMarker{
+            .kind = QuestRuntimeMarkerKind::Offer,
+            .object_id = 2,
+            .quest_id = "quest.village.goblin_cleanup",
+            .objective_id = "",
+            .map_position = {503.0F, 175.5F},
+            .title = "Goblin Cleanup",
+            .type_label = "Quest Available",
+            .description = "Defeat goblins near the village.",
+        },
+    };
 
-    const int selected = defaultMapMarkerSelection(true, object_markers.size());
+    const int selected = defaultMapMarkerSelection(true, static_place_markers.size() + quest_markers.size());
     const MapTabViewState state = buildMapTabViewState(
         registry,
         player,
         &world_state,
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
-        object_markers,
-        &quest_catalog,
+        static_place_markers,
+        quest_markers,
         &shop_catalog,
         &rpg_catalog,
         selected);
@@ -262,17 +260,18 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
     ASSERT_EQ(state.map_markers.size(), 4U);
     EXPECT_EQ(selected, 1);
     EXPECT_EQ(state.map_markers[0].kind, "player");
-    EXPECT_EQ(state.map_markers[1].kind, "shop");
+    EXPECT_EQ(state.map_markers[1].kind, "quest_offer");
     EXPECT_TRUE(state.map_markers[1].is_selected);
-    EXPECT_EQ(state.map_markers[1].title, "Village General Store");
-    EXPECT_EQ(state.map_markers[1].description, "Welcome to the shop");
-    EXPECT_EQ(state.map_markers[2].title, "Goblin Cleanup");
+    EXPECT_EQ(state.map_markers[1].title, "Goblin Cleanup");
+    EXPECT_EQ(state.map_markers[1].description, "Defeat goblins near the village.");
+    EXPECT_EQ(state.map_markers[2].title, "Village General Store");
+    EXPECT_EQ(state.map_markers[2].description, "Welcome to the shop");
     EXPECT_EQ(state.map_markers[3].title, "Lyria");
     EXPECT_TRUE(state.has_map_markers);
     EXPECT_TRUE(state.has_place_markers);
     EXPECT_TRUE(state.has_map_detail);
-    EXPECT_EQ(state.map_detail_title, "Village General Store");
-    EXPECT_EQ(state.map_detail_type, "Shop");
+    EXPECT_EQ(state.map_detail_title, "Goblin Cleanup");
+    EXPECT_EQ(state.map_detail_type, "Quest Available");
 }
 
 TEST(MapTabContentTest, PlayerOnlyMapShowsNoPlacesMarkedDetailAfterSelectionFallback) {
@@ -289,7 +288,7 @@ TEST(MapTabContentTest, PlayerOnlyMapShowsNoPlacesMarkedDetailAfterSelectionFall
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
         {},
-        nullptr,
+        {},
         nullptr,
         nullptr,
         selected);
@@ -302,6 +301,53 @@ TEST(MapTabContentTest, PlayerOnlyMapShowsNoPlacesMarkedDetailAfterSelectionFall
     EXPECT_EQ(state.map_detail_type, "Player");
 }
 
+TEST(MapTabContentTest, BuildsQuestRuntimeMarkerKindsAndOffsetsSamePositionMarkers) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    game::world::WorldState world_state = loadWorld("town"_hs);
+    const std::vector<QuestRuntimeMarker> quest_markers{
+        QuestRuntimeMarker{
+            .kind = QuestRuntimeMarkerKind::TurnIn,
+            .object_id = 1,
+            .quest_id = "quest.alpha",
+            .objective_id = "",
+            .map_position = {120.0F, 64.0F},
+            .title = "Alpha Quest",
+            .type_label = "Ready to Turn In",
+            .description = "Return to the quest giver.",
+        },
+        QuestRuntimeMarker{
+            .kind = QuestRuntimeMarkerKind::Objective,
+            .object_id = 0,
+            .quest_id = "quest.beta",
+            .objective_id = "find_bats",
+            .map_position = {120.0F, 64.0F},
+            .title = "Find Bats",
+            .type_label = "Quest Objective",
+            .description = "Bat 0/2",
+        },
+    };
+
+    const MapTabViewState state = buildMapTabViewState(
+        registry,
+        player,
+        &world_state,
+        world_state.getCurrentMap(),
+        MapTabPreviewInput{.source_uri = "generated://map-preview/town", .width = 560, .height = 400},
+        {},
+        quest_markers,
+        nullptr,
+        nullptr,
+        0);
+
+    ASSERT_EQ(state.map_markers.size(), 2U);
+    EXPECT_EQ(state.map_markers[0].kind, "quest_turn_in");
+    EXPECT_EQ(state.map_markers[1].kind, "quest_objective");
+    EXPECT_FLOAT_EQ(state.map_markers[1].normal_top_left.x, state.map_markers[0].normal_top_left.x + 2.0F);
+    EXPECT_EQ(state.map_detail_title, "Alpha Quest");
+    EXPECT_EQ(state.map_detail_type, "Ready to Turn In");
+}
+
 TEST(MapTabContentTest, MissingCatalogsKeepMarkersWithStableFallbackText) {
     entt::registry registry;
     const entt::entity player = registry.create();
@@ -310,11 +356,10 @@ TEST(MapTabContentTest, MissingCatalogsKeepMarkersWithStableFallbackText) {
 
     const std::vector<MapObjectMarker> object_markers{
         MapObjectMarker{
-            .kind = MapObjectMarkerKind::Quest,
+            .kind = MapObjectMarkerKind::Shop,
             .object_id = 2,
-            .object_name = "quest_giver",
-            .quest_id = "quest.missing",
-            .shop_id = "",
+            .object_name = "missing_shop",
+            .shop_id = "shop.missing",
             .recruit_actor_id = "",
             .map_position = {503.0F, 175.5F},
         },
@@ -327,15 +372,15 @@ TEST(MapTabContentTest, MissingCatalogsKeepMarkersWithStableFallbackText) {
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
         object_markers,
-        nullptr,
+        {},
         nullptr,
         nullptr,
         1);
 
     ASSERT_EQ(state.map_markers.size(), 2U);
-    EXPECT_EQ(state.map_markers[1].title, "Quest Giver");
-    EXPECT_EQ(state.map_markers[1].description, "Quest giver");
-    EXPECT_EQ(state.map_detail_title, "Quest Giver");
+    EXPECT_EQ(state.map_markers[1].title, "Missing Shop");
+    EXPECT_EQ(state.map_markers[1].description, "Buy and sell supplies.");
+    EXPECT_EQ(state.map_detail_title, "Missing Shop");
 }
 
 TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDataNames) {
@@ -347,19 +392,9 @@ TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDat
 
     const std::vector<MapObjectMarker> object_markers{
         MapObjectMarker{
-            .kind = MapObjectMarkerKind::Quest,
-            .object_id = 1,
-            .object_name = "quest_object",
-            .quest_id = "quest.test.empty_description",
-            .shop_id = "",
-            .recruit_actor_id = "",
-            .map_position = {180.0F, 160.0F},
-        },
-        MapObjectMarker{
             .kind = MapObjectMarkerKind::Shop,
             .object_id = 2,
             .object_name = "shop_object",
-            .quest_id = "",
             .shop_id = "shop.test.empty_greeting",
             .recruit_actor_id = "",
             .map_position = {220.0F, 180.0F},
@@ -368,7 +403,6 @@ TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDat
             .kind = MapObjectMarkerKind::Npc,
             .object_id = 3,
             .object_name = "npc_object",
-            .quest_id = "",
             .shop_id = "",
             .recruit_actor_id = "actor.inline",
             .map_position = {260.0F, 200.0F},
@@ -377,7 +411,6 @@ TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDat
             .kind = MapObjectMarkerKind::Rest,
             .object_id = 4,
             .object_name = "",
-            .quest_id = "",
             .shop_id = "",
             .recruit_actor_id = "",
             .map_position = {300.0F, 220.0F},
@@ -391,22 +424,20 @@ TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDat
         world_state.getCurrentMap(),
         MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
         object_markers,
-        &catalogs.quest_catalog,
+        {},
         &catalogs.shop_catalog,
         &catalogs.rpg_catalog,
         1);
 
-    ASSERT_EQ(state.map_markers.size(), 5U);
-    EXPECT_EQ(state.map_markers[1].title, "Inline Quest");
-    EXPECT_EQ(state.map_markers[1].description, "Quest giver");
-    EXPECT_EQ(state.map_markers[2].title, "Inline Shop");
-    EXPECT_EQ(state.map_markers[2].description, "Buy and sell supplies.");
-    EXPECT_EQ(state.map_markers[3].title, "Inline Actor");
-    EXPECT_EQ(state.map_markers[3].description, "Talk to this person.");
-    EXPECT_EQ(state.map_markers[4].title, "Rest Point");
-    EXPECT_EQ(state.map_markers[4].description, "Recover and pass time.");
-    EXPECT_EQ(state.map_detail_title, "Inline Quest");
-    EXPECT_EQ(state.map_detail_type, "Quest");
+    ASSERT_EQ(state.map_markers.size(), 4U);
+    EXPECT_EQ(state.map_markers[1].title, "Inline Shop");
+    EXPECT_EQ(state.map_markers[1].description, "Buy and sell supplies.");
+    EXPECT_EQ(state.map_markers[2].title, "Inline Actor");
+    EXPECT_EQ(state.map_markers[2].description, "Talk to this person.");
+    EXPECT_EQ(state.map_markers[3].title, "Rest Point");
+    EXPECT_EQ(state.map_markers[3].description, "Recover and pass time.");
+    EXPECT_EQ(state.map_detail_title, "Inline Shop");
+    EXPECT_EQ(state.map_detail_type, "Shop");
 }
 
 } // namespace

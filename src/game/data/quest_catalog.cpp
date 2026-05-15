@@ -89,6 +89,45 @@ using Json = nlohmann::json;
     return label;
 }
 
+[[nodiscard]] bool parseObjectiveMarkerPosition(const Json& node,
+                                                const std::string_view objective_label,
+                                                glm::vec2& out_position) {
+    if (!node.is_array() || node.size() != 2U || !node[0].is_number() || !node[1].is_number()) {
+        spdlog::error("QuestCatalog: {} 的 marker.position 必须是长度为 2 的数值数组", objective_label);
+        return false;
+    }
+
+    out_position = glm::vec2{node[0].get<float>(), node[1].get<float>()};
+    return true;
+}
+
+[[nodiscard]] bool parseObjectiveMarker(const Json& node,
+                                        const std::string_view objective_label,
+                                        QuestObjectiveMarkerData& out_marker) {
+    if (!node.is_object()) {
+        spdlog::error("QuestCatalog: {} 的 marker 必须是 object", objective_label);
+        return false;
+    }
+
+    QuestObjectiveMarkerData marker{};
+    if (!parseRequiredString(node, "map", objective_label, marker.map_name_)) {
+        return false;
+    }
+    marker.map_id_hash_ = entt::hashed_string{marker.map_name_.c_str()}.value();
+
+    const auto position_it = node.find("position");
+    if (position_it == node.end() || !parseObjectiveMarkerPosition(*position_it, objective_label, marker.position_)) {
+        return false;
+    }
+
+    if (!parseOptionalString(node, "label", objective_label, marker.label_)) {
+        return false;
+    }
+
+    out_marker = std::move(marker);
+    return true;
+}
+
 [[nodiscard]] bool parseRewardItems(const Json& node,
                                     const std::string_view quest_id,
                                     std::vector<QuestRewardItemData>& out_items) {
@@ -249,6 +288,14 @@ using Json = nlohmann::json;
                           quest_id,
                           objective.id_);
             return false;
+        }
+
+        if (const auto marker_it = objective_node.find("marker"); marker_it != objective_node.end()) {
+            QuestObjectiveMarkerData marker{};
+            if (!parseObjectiveMarker(*marker_it, objective_label, marker)) {
+                return false;
+            }
+            objective.marker_ = std::move(marker);
         }
 
         out_objectives.push_back(std::move(objective));

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <glm/vec2.hpp>
 #include <nlohmann/json.hpp>
+#include <string>
 
 namespace game::factory {
 namespace {
@@ -105,10 +106,30 @@ TEST(BlueprintManagerTest, LoadActorBlueprints_LoadsProjectAssetFile) {
     EXPECT_FLOAT_EQ(walk_down->position_.y, 32.0f);
 
     const auto& goblin = manager.getActorBlueprint(entt::hashed_string{"goblin"}.value());
-    EXPECT_EQ(goblin.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Archer Goblin/Idle.png");
-    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_down"}.value()), goblin.animations_.end());
-    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_right"}.value()), goblin.animations_.end());
-    EXPECT_NE(goblin.animations_.find(entt::hashed_string{"idle_left"}.value()), goblin.animations_.end());
+    EXPECT_EQ(goblin.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png");
+    const auto findGoblinAnimation = [&goblin](const char* name) -> const AnimationBlueprint* {
+        const auto it = goblin.animations_.find(entt::hashed_string{name}.value());
+        return it == goblin.animations_.end() ? nullptr : &it->second;
+    };
+    const auto* goblin_idle_down = findGoblinAnimation("idle_down");
+    const auto* goblin_idle_up = findGoblinAnimation("idle_up");
+    const auto* goblin_idle_right = findGoblinAnimation("idle_right");
+    const auto* goblin_idle_left = findGoblinAnimation("idle_left");
+    const auto* goblin_walk_down = findGoblinAnimation("walk_down");
+    const auto* goblin_walk_right = findGoblinAnimation("walk_right");
+    ASSERT_NE(goblin_idle_down, nullptr);
+    ASSERT_NE(goblin_idle_up, nullptr);
+    ASSERT_NE(goblin_idle_right, nullptr);
+    ASSERT_NE(goblin_idle_left, nullptr);
+    ASSERT_NE(goblin_walk_down, nullptr);
+    ASSERT_NE(goblin_walk_right, nullptr);
+    EXPECT_EQ(goblin_walk_down->texture_path_, "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Walk.png");
+    EXPECT_FLOAT_EQ(goblin_idle_down->position_.y, 0.0f);
+    EXPECT_FLOAT_EQ(goblin_idle_up->position_.y, 32.0f);
+    EXPECT_FLOAT_EQ(goblin_idle_right->position_.y, 64.0f);
+    EXPECT_FLOAT_EQ(goblin_walk_down->position_.y, 0.0f);
+    EXPECT_FLOAT_EQ(goblin_walk_right->position_.y, 64.0f);
+    EXPECT_TRUE(goblin_idle_left->flip_horizontal_);
 
     const auto& gnome = manager.getActorBlueprint(entt::hashed_string{"gnome"}.value());
     EXPECT_EQ(gnome.sprite_.path_, "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png");
@@ -164,6 +185,57 @@ TEST(BlueprintManagerTest, ProjectBattleEnemiesExposeTurnOrderIdleDownIcons) {
     }
 
     EXPECT_GT(checked_enemy_count, 0U);
+}
+
+TEST(BlueprintManagerTest, ProjectTownKeepsSlimeAndAddsSeparateGoblinEncounter) {
+    const std::filesystem::path town_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/maps/town.tmj").lexically_normal();
+    std::ifstream town_file(town_path);
+    ASSERT_TRUE(town_file.is_open()) << town_path;
+
+    const nlohmann::json root = nlohmann::json::parse(town_file, nullptr, false);
+    ASSERT_FALSE(root.is_discarded()) << town_path;
+
+    bool found_slime = false;
+    bool found_goblin = false;
+    for (const auto& layer : root.value("layers", nlohmann::json::array())) {
+        if (!layer.is_object() || layer.value("type", std::string{}) != "objectgroup") {
+            continue;
+        }
+        for (const auto& object : layer.value("objects", nlohmann::json::array())) {
+            if (!object.is_object() || object.value("type", std::string{}) != "actor") {
+                continue;
+            }
+
+            std::string troop_id{};
+            bool encounter_once = false;
+            for (const auto& property : object.value("properties", nlohmann::json::array())) {
+                if (!property.is_object()) {
+                    continue;
+                }
+                if (property.value("name", std::string{}) == "battle_troop_id") {
+                    troop_id = property.value("value", std::string{});
+                } else if (property.value("name", std::string{}) == "encounter_once") {
+                    encounter_once = property.value("value", false);
+                }
+            }
+
+            if (object.value("name", std::string{}) == "slime" && troop_id == "troop.slime") {
+                found_slime = true;
+                EXPECT_TRUE(encounter_once);
+            }
+            if (object.value("name", std::string{}) == "goblin" && troop_id == "troop.goblin_pair") {
+                found_goblin = true;
+                EXPECT_FALSE(encounter_once);
+                EXPECT_FLOAT_EQ(object.value("x", 0.0F), 532.0F);
+                EXPECT_FLOAT_EQ(object.value("y", 0.0F), 296.0F);
+            }
+        }
+    }
+
+    EXPECT_TRUE(found_slime);
+    EXPECT_TRUE(found_goblin);
+    EXPECT_EQ(root.value("nextobjectid", 0), 29);
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {
