@@ -92,6 +92,30 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithFiveRows) {
     }
 }
 
+TEST(OptionsTabContentSourceTest, RmlOrdersTogglesBeforeSteppersAndUsesShopArrowIcons) {
+    const std::string rml = slurp(projectRoot() / "ui" / "rmlui" / "scenes" / "inventory_menu.rml");
+
+    const auto damage = rml.find("options_toggle_damage_popup");
+    const auto enemy_hp = rml.find("options_toggle_enemy_hp_bar");
+    const auto cursor = rml.find("options_toggle_cursor_memory");
+    const auto battle_speed = rml.find("options_battle_speed_prev");
+    const auto font_scale = rml.find("options_font_scale_prev");
+
+    ASSERT_NE(damage, std::string::npos);
+    ASSERT_NE(enemy_hp, std::string::npos);
+    ASSERT_NE(cursor, std::string::npos);
+    ASSERT_NE(battle_speed, std::string::npos);
+    ASSERT_NE(font_scale, std::string::npos);
+
+    EXPECT_LT(damage, enemy_hp);
+    EXPECT_LT(enemy_hp, cursor);
+    EXPECT_LT(cursor, battle_speed);
+    EXPECT_LT(battle_speed, font_scale);
+
+    EXPECT_NE(rml.find("tf-icon-button icon-arrow-left-light"), std::string::npos);
+    EXPECT_NE(rml.find("tf-icon-button icon-arrow-right-light"), std::string::npos);
+}
+
 TEST(OptionsTabContentSourceTest, InventorySceneInjectsOptionsTabContent) {
     const std::string src = slurp(projectRoot() / "src" / "game" / "scene" / "inventory_menu_scene.cpp");
     EXPECT_NE(src.find("OptionsTabContent"), std::string::npos);
