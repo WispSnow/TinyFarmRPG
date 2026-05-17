@@ -219,6 +219,13 @@ entt::entity InteractionSystem::chooseFacingTarget(entt::entity player, entt::id
 
     if (best_merchant == entt::null && best_quest_giver == entt::null && best_recruitable == entt::null &&
         best_npc == entt::null && best_chest == entt::null) {
+        if (auto closet = spatial_index_manager_.getTileEntityAtWorldPos(probe_world_pos, game::defs::spatial_layer::CLOSET);
+            closet != entt::null && registry_.valid(closet)) {
+            if (auto* map = registry_.try_get<game::component::MapId>(closet); map && map->id_ != current_map) {
+                return entt::null;
+            }
+            return closet;
+        }
         if (auto rest = spatial_index_manager_.getTileEntityAtWorldPos(probe_world_pos, game::defs::spatial_layer::REST);
             rest != entt::null && registry_.valid(rest)) {
             if (auto* map = registry_.try_get<game::component::MapId>(rest); map && map->id_ != current_map) {

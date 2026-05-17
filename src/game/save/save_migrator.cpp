@@ -33,6 +33,9 @@ constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
 constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
+constexpr std::string_view KEY_PROFILE_ID = json_keys::PROFILE_ID;
+constexpr std::string_view KEY_GENDER = "gender";
+constexpr std::string_view KEY_SLOTS = "slots";
 
 bool ensureObjectField(nlohmann::json& json, std::string_view key, std::string& out_error) {
     if (!json.contains(key)) {
@@ -163,7 +166,20 @@ bool normalizePartyRuntimeState(nlohmann::json& runtime_state, std::string& out_
     return true;
 }
 
-bool normalizeLatest(nlohmann::json& json, std::string& out_error) {
+bool normalizeAppearanceState(nlohmann::json& appearance_state, std::string& out_error) {
+    if (!ensureStringField(appearance_state, KEY_PROFILE_ID, "player_default", out_error)) {
+        return false;
+    }
+    if (!ensureStringField(appearance_state, KEY_GENDER, "male", out_error)) {
+        return false;
+    }
+    if (!ensureObjectField(appearance_state, KEY_SLOTS, out_error)) {
+        return false;
+    }
+    return true;
+}
+
+bool normalizeLatestFields(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_QUEST_STATE, out_error)) {
         return false;
     }
@@ -191,6 +207,9 @@ bool normalizeLatest(nlohmann::json& json, std::string& out_error) {
     if (!normalizeSkillState(json[KEY_SKILL_STATE], out_error)) {
         return false;
     }
+    if (!normalizeAppearanceState(json[KEY_APPEARANCE_STATE], out_error)) {
+        return false;
+    }
     if (!normalizeCombatState(json[KEY_COMBAT_STATE], out_error)) {
         return false;
     }
@@ -203,7 +222,16 @@ bool normalizeLatest(nlohmann::json& json, std::string& out_error) {
     if (!normalizePartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out_error)) {
         return false;
     }
+    return true;
+}
 
+bool migrateV4ToV5(nlohmann::json& json, std::string& out_error) {
+    if (!ensureObjectField(json, KEY_APPEARANCE_STATE, out_error)) {
+        return false;
+    }
+    if (!normalizeAppearanceState(json[KEY_APPEARANCE_STATE], out_error)) {
+        return false;
+    }
     json[KEY_SCHEMA_VERSION] = SAVE_SCHEMA_VERSION;
     return true;
 }
@@ -228,8 +256,21 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
         return false;
     }
 
-    if (schema_version >= 2u && schema_version <= SAVE_SCHEMA_VERSION) {
-        return normalizeLatest(json, out_error);
+    if (schema_version >= 2u && schema_version < 4u) {
+        if (!normalizeLatestFields(json, out_error)) {
+            return false;
+        }
+        json[KEY_SCHEMA_VERSION] = 4u;
+    }
+
+    if (json[KEY_SCHEMA_VERSION] == 4u) {
+        if (!migrateV4ToV5(json, out_error)) {
+            return false;
+        }
+    }
+
+    if (json[KEY_SCHEMA_VERSION] == SAVE_SCHEMA_VERSION) {
+        return normalizeLatestFields(json, out_error);
     }
 
     out_error = "SaveMigrator: unsupported schema_version";

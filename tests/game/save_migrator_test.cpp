@@ -8,7 +8,7 @@
 namespace game::save {
 namespace {
 
-TEST(SaveMigratorTest, V2ToV3FillsNewStateFields) {
+TEST(SaveMigratorTest, V2ToLatestFillsNewStateFields) {
     auto json = nlohmann::json::parse(R"({
         "schema_version": 2,
         "game_time": {"day": 5},
@@ -41,6 +41,8 @@ TEST(SaveMigratorTest, V2ToV3FillsNewStateFields) {
     EXPECT_TRUE(json[json_keys::SKILL_STATE.data()][json_keys::SKILL_COOLDOWNS.data()].is_object());
     EXPECT_TRUE(json.contains(json_keys::APPEARANCE_STATE.data()));
     EXPECT_TRUE(json[json_keys::APPEARANCE_STATE.data()].is_object());
+    EXPECT_TRUE(json[json_keys::APPEARANCE_STATE.data()].contains(json_keys::PROFILE_ID.data()));
+    EXPECT_TRUE(json[json_keys::APPEARANCE_STATE.data()][json_keys::PROFILE_ID.data()].is_string());
     EXPECT_TRUE(json.contains(json_keys::COMBAT_STATE.data()));
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].is_object());
     EXPECT_TRUE(json[json_keys::COMBAT_STATE.data()].contains(json_keys::PENDING_BATTLE.data()));
@@ -86,7 +88,7 @@ TEST(SaveMigratorTest, RejectsInvalidQuestStateFieldTypeInV3) {
     EXPECT_FALSE(error.empty());
 }
 
-TEST(SaveMigratorTest, V3ToV4FillsEquipmentAndRuntimeStateContainers) {
+TEST(SaveMigratorTest, V3ToLatestFillsEquipmentAndRuntimeStateContainers) {
     auto json = nlohmann::json::parse(R"({
         "schema_version": 3,
         "game_time": {"day": 5},
@@ -116,6 +118,40 @@ TEST(SaveMigratorTest, V3ToV4FillsEquipmentAndRuntimeStateContainers) {
     EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()].contains(json_keys::ACTOR_STATES.data()));
     EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()][json_keys::ACTOR_STATES.data()].is_object());
     EXPECT_TRUE(json[json_keys::PARTY_RUNTIME_STATE.data()][json_keys::ACTOR_STATES.data()].empty());
+}
+
+TEST(SaveMigratorTest, V4ToV5AddsAppearanceProfileId) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 4,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {
+            "gender": "male",
+            "slots": {
+                "hair": "hair/brown"
+            }
+        },
+        "party_state": {},
+        "equipment_state": {},
+        "party_runtime_state": {},
+        "combat_state": {}
+    })");
+
+    std::string error;
+    ASSERT_TRUE(migrateToLatest(json, error)) << error;
+
+    EXPECT_EQ(json[json_keys::SCHEMA_VERSION.data()], SAVE_SCHEMA_VERSION);
+    ASSERT_TRUE(json.contains(json_keys::APPEARANCE_STATE.data()));
+    const auto& appearance = json[json_keys::APPEARANCE_STATE.data()];
+    EXPECT_EQ(appearance[json_keys::PROFILE_ID.data()], "player_default");
+    EXPECT_EQ(appearance["gender"], "male");
+    EXPECT_EQ(appearance["slots"]["hair"], "hair/brown");
 }
 
 TEST(SaveMigratorTest, RejectsMissingOrInvalidSchemaVersion) {

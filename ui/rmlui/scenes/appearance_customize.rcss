@@ -1,0 +1,174 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+body {
+    overflow: hidden;
+    background-color: transparent;
+}
+
+#appearance-world-scrim {
+    position: absolute;
+    left: 0dp;
+    top: 0dp;
+    width: 640dp;
+    height: 360dp;
+    background-color: #080b1088;
+    pointer-events: none;
+}
+
+#appearance-title {
+    position: absolute;
+    left: 56dp;
+    top: 28dp;
+    width: 220dp;
+    height: 24dp;
+    line-height: 24dp;
+    color: #fce97fff;
+    font-size: 1.125rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#appearance-subtitle {
+    position: absolute;
+    left: 56dp;
+    top: 54dp;
+    width: 220dp;
+    height: 18dp;
+    line-height: 18dp;
+    color: #d8dee9ff;
+    font-size: 0.75rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#appearance-preview-frame {
+    position: absolute;
+    left: 58dp;
+    top: 86dp;
+    width: 212dp;
+    height: 192dp;
+    border: 1dp #fce97faa;
+    background-color: transparent;
+}
+
+#appearance-preview-label {
+    position: absolute;
+    left: 8dp;
+    top: 8dp;
+    width: 80dp;
+    height: 14dp;
+    line-height: 14dp;
+    color: #d8dee9cc;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#appearance-control-panel {
+    position: absolute;
+    left: 308dp;
+    top: 34dp;
+    width: 260dp;
+    height: 282dp;
+    padding: 16dp;
+    background-color: #1b2430ee;
+    border: 1dp #46506acc;
+}
+
+#appearance-slot-list {
+    width: 260dp;
+}
+
+.appearance-slot-row {
+    width: 260dp;
+    height: 36dp;
+    margin-bottom: 8dp;
+    display: flex;
+    flex-direction: row;
+}
+
+.appearance-slot-label {
+    width: 64dp;
+    height: 32dp;
+    line-height: 32dp;
+    color: #ffffffff;
+    font-size: 0.75rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.appearance-step-button {
+    /* Navigation tab-index comes from tf-icon-button; keep this class paired with that base class. */
+    width: 30dp;
+    height: 30dp;
+    line-height: 30dp;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+.appearance-slot-value {
+    width: 126dp;
+    height: 32dp;
+    padding-left: 6dp;
+    padding-right: 6dp;
+}
+
+.appearance-variant-name {
+    width: 126dp;
+    height: 18dp;
+    line-height: 18dp;
+    color: #f3f4f6ff;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.appearance-variant-index {
+    width: 126dp;
+    height: 12dp;
+    line-height: 12dp;
+    color: #a6adbbff;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#appearance-tool-actions {
+    position: absolute;
+    left: 16dp;
+    top: 218dp;
+    width: 260dp;
+    display: flex;
+    flex-direction: row;
+    gap: 12dp;
+}
+
+.appearance-tool-button {
+    /* Navigation tab-index comes from tf-button-secondary. */
+    width: 124dp;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+#appearance-main-actions {
+    position: absolute;
+    left: 16dp;
+    top: 258dp;
+    width: 260dp;
+    display: flex;
+    flex-direction: row;
+    gap: 12dp;
+}
+
+.appearance-main-button {
+    /* Navigation tab-index comes from tf-button-primary/tf-button-secondary. */
+    width: 124dp;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}

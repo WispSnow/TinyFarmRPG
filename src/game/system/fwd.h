@@ -32,5 +32,6 @@ class PickupSystem;
 class RestSystem;
 class AppearanceSystem;
 class ShopInteractionSystem;
+class ClosetInteractionSystem;
 
 } // namespace game::system

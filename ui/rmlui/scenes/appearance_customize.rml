@@ -1,0 +1,54 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="appearance_customize.rcss"/>
+</head>
+<body class="tf-screen-root tf-nav-root" data-model="appearance_customize">
+    <div id="appearance-world-scrim"></div>
+
+    <div id="appearance-title">{{ title_text }}</div>
+    <div id="appearance-subtitle">{{ subtitle_text }}</div>
+
+    <div id="appearance-preview-frame">
+        <div id="appearance-preview-label">Preview</div>
+    </div>
+
+    <div id="appearance-control-panel">
+        <div id="appearance-slot-list">
+            <div class="appearance-slot-row" data-for="slot : slots">
+                <div class="appearance-slot-label">{{ slot.label }}</div>
+                <button class="tf-icon-button icon-arrow-left appearance-step-button"
+                        data-event-click="slot_prev(slot.slot_index)"></button>
+                <div class="appearance-slot-value">
+                    <div class="appearance-variant-name">{{ slot.variant_label }}</div>
+                    <div class="appearance-variant-index">{{ slot.index_label }}</div>
+                </div>
+                <button class="tf-icon-button icon-arrow-right appearance-step-button"
+                        data-event-click="slot_next(slot.slot_index)"></button>
+            </div>
+        </div>
+
+        <div id="appearance-tool-actions">
+            <button id="appearance-random-button"
+                    class="tf-button-secondary appearance-tool-button"
+                    data-event-click="randomize">Random</button>
+            <button id="appearance-reset-button"
+                    class="tf-button-secondary appearance-tool-button"
+                    data-event-click="reset">Reset</button>
+        </div>
+
+        <div id="appearance-main-actions">
+            <button id="appearance-confirm-button"
+                    class="tf-button-primary appearance-main-button"
+                    data-event-click="confirm">Confirm</button>
+            <button id="appearance-cancel-button"
+                    class="tf-button-secondary appearance-main-button"
+                    data-event-click="cancel">Cancel</button>
+        </div>
+    </div>
+</body>
+</rml>

@@ -84,6 +84,7 @@ constexpr std::string_view KEY_DROP_ITEM_ID = "drop_item_id";
 
 constexpr std::string_view KEY_X = "x";
 constexpr std::string_view KEY_Y = "y";
+constexpr std::string_view KEY_PROFILE_ID = json_keys::PROFILE_ID;
 constexpr std::string_view KEY_GENDER = "gender";
 
 nlohmann::json vec2ToJson(Vec2f value) {
@@ -338,6 +339,7 @@ nlohmann::json serialize(const SaveData& data) {
         {KEY_SKILL_COOLDOWNS, stringIntMapToJson(data.skill_state.skill_cooldowns)},
     };
     root[KEY_APPEARANCE_STATE] = nlohmann::json{
+        {KEY_PROFILE_ID, data.appearance_state.profile_id},
         {KEY_GENDER, data.appearance_state.gender},
         {KEY_SLOTS, data.appearance_state.slots},
     };
@@ -584,6 +586,7 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     if (json.contains(KEY_APPEARANCE_STATE)) {
         const auto& appearance = json[KEY_APPEARANCE_STATE];
+        out.appearance_state.profile_id = appearance.value<std::string>(KEY_PROFILE_ID.data(), "player_default");
         out.appearance_state.gender = appearance.value<std::string>(KEY_GENDER.data(), "male");
         out.appearance_state.slots.clear();
         if (appearance.contains(KEY_SLOTS)) {
