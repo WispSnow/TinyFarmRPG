@@ -23,7 +23,7 @@ public:
     void ReleaseTexture(Rml::TextureHandle texture_handle) override;
 
 private:
-    void applyTextureFilter(Rml::TextureHandle texture_handle) const;
+    void applyTextureSampling(Rml::TextureHandle texture_handle) const;
 
     RmlUiTextureFilterMode texture_filter_mode_{RmlUiTextureFilterMode::Nearest};
     RmlGeneratedImageRegistry* generated_image_registry_{nullptr};

@@ -68,7 +68,7 @@ TEST(RmlMenuNavigationStyleTest, MenuWidgetsExposeDirectionalNavigationAndUnifie
     EXPECT_EQ(nav_source.find("box-shadow:"), std::string::npos);
 }
 
-TEST(RmlMenuNavigationStyleTest, InventoryImageButtonsPreferTintAndFilterOverFocusOutline) {
+TEST(RmlMenuNavigationStyleTest, InventoryImageButtonsPreferPixelSafeTintOverFocusOutline) {
     const std::filesystem::path style_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/inventory_menu.rcss").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(style_path)) << style_path;
@@ -79,9 +79,10 @@ TEST(RmlMenuNavigationStyleTest, InventoryImageButtonsPreferTintAndFilterOverFoc
     EXPECT_NE(source.find(".tab-icon"), std::string::npos);
     EXPECT_NE(source.find("#trash-btn"), std::string::npos);
     EXPECT_NE(source.find("image-color: #d8dee9d0;"), std::string::npos);
-    EXPECT_NE(source.find(".tf-input-mouse .tab-icon:hover,\n.tf-input-nav .tab-icon:focus"), std::string::npos);
+    EXPECT_NE(source.find("transition: image-color 0.08s cubic-out;"), std::string::npos);
+    EXPECT_EQ(source.find("transition: transform 0.08s cubic-out, image-color 0.08s cubic-out;"), std::string::npos);
     EXPECT_NE(source.find(".tf-input-mouse #trash-btn:hover,\n.tf-input-nav #trash-btn:focus"), std::string::npos);
-    EXPECT_NE(source.find("filter: saturate(1.12) brightness(1.08);"), std::string::npos);
+    EXPECT_EQ(source.find("filter: saturate(1.12) brightness(1.08);"), std::string::npos);
     EXPECT_NE(source.find("filter: saturate(1.2) brightness(1.08);"), std::string::npos);
 }
 

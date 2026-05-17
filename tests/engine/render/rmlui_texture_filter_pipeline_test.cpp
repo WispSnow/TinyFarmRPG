@@ -29,7 +29,7 @@ TEST(RmlUiTextureFilterPipelineTest, LoadTextureUsesVirtualGenerateTextureDispat
     EXPECT_NE(load_texture_block.find("this->GenerateTexture("), std::string::npos);
 }
 
-TEST(RmlUiTextureFilterPipelineTest, GenerateTextureTracksHandlesAndAppliesConfiguredFilter) {
+TEST(RmlUiTextureFilterPipelineTest, GenerateTextureTracksHandlesAndAppliesConfiguredSampling) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/render_interface_gl3_stb.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -43,7 +43,7 @@ TEST(RmlUiTextureFilterPipelineTest, GenerateTextureTracksHandlesAndAppliesConfi
 
     EXPECT_NE(generate_texture_block.find("RenderInterface_GL3::GenerateTexture(source_data, source_dimensions)"), std::string::npos);
     EXPECT_NE(generate_texture_block.find("tracked_texture_handles_.insert(texture_handle);"), std::string::npos);
-    EXPECT_NE(generate_texture_block.find("applyTextureFilter(texture_handle);"), std::string::npos);
+    EXPECT_NE(generate_texture_block.find("applyTextureSampling(texture_handle);"), std::string::npos);
 
     const std::string set_mode_block =
         test_source_utils::extractFunctionBlock(content, "void RenderInterface_GL3_STB::setTextureFilterMode(");
@@ -52,6 +52,8 @@ TEST(RmlUiTextureFilterPipelineTest, GenerateTextureTracksHandlesAndAppliesConfi
 
     EXPECT_NE(content.find("glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);"), std::string::npos);
     EXPECT_NE(content.find("glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);"), std::string::npos);
+    EXPECT_NE(content.find("glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);"), std::string::npos);
+    EXPECT_NE(content.find("glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);"), std::string::npos);
     EXPECT_NE(content.find("GL_NEAREST"), std::string::npos);
     EXPECT_NE(content.find("GL_LINEAR"), std::string::npos);
 }

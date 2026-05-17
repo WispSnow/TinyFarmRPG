@@ -132,9 +132,9 @@
     height: 20dp;
     padding: 2dp;
     image-color: #d8dee9d0;
-    filter: saturate(0.8) brightness(0.95);
     transform: translateY(0);
-    transition: transform 0.08s cubic-out, image-color 0.08s cubic-out, filter 0.08s cubic-out;
+    /* Keep pixel-art sprites on integer rows; animated Y translation can sample adjacent atlas rows. */
+    transition: image-color 0.08s cubic-out;
 }
 
 #menu-tabset tab:selected {
@@ -146,7 +146,7 @@
    实现完毕后移除此类即可，不影响其他样式。 */
 .tab-placeholder {
     opacity: 0.55;
-    filter: saturate(0.5) brightness(0.85);
+    image-color: #a7adbad0;
 }
 
 #tab-inventory  { decorator: image(tab-inventory); }
@@ -154,11 +154,6 @@
 #tab-quests     { decorator: image(tab-quests); }
 #tab-map        { decorator: image(tab-map); }
 #tab-options    { decorator: image(tab-options); }
-
-.tf-input-mouse .tab-icon:hover,
-.tf-input-nav .tab-icon:focus {
-    filter: saturate(1.12) brightness(1.08);
-}
 
 /* --- Two-Column Content --- */
 
