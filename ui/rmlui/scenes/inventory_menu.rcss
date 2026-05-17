@@ -273,7 +273,7 @@
 #inventory-actions {
     position: absolute;
     right: 0;
-    top: 0;
+    top: -32dp;
     width: 46dp;
     height: 20dp;
     display: flex;
@@ -976,51 +976,37 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    height: 22dp;
-    margin-bottom: 6dp;
+    height: 28dp;
+    margin-bottom: 5dp;
 }
 
 .options-row-label {
     width: 140dp;
+    height: 20dp;
+    line-height: 20dp;
     color: #e0af68;
     font-size: 0.6875rem;
 }
 
 .options-row-value {
     width: 64dp;
+    height: 28dp;
+    line-height: 28dp;
     text-align: center;
     color: #ffffff;
     font-size: 0.6875rem;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 .options-stepper-btn {
-    width: 22dp;
-    height: 20dp;
-    background-color: #2f3650cc;
-    border-width: 1dp;
-    border-color: #7aa2f7;
-    color: #ffffff;
-    text-align: center;
-    font-size: 0.75rem;
-    tab-index: auto;
-    nav-up: auto;
-    nav-down: auto;
-    nav-left: auto;
-    nav-right: auto;
-}
-
-.options-stepper-btn:hover {
-    background-color: #44537b;
-}
-
-.options-stepper-btn:focus {
-    border-color: #7aa2f7;
-    background-color: #44537b;
+    width: 26dp;
+    height: 26dp;
 }
 
 .options-toggle {
-    width: 60dp;
+    width: 72dp;
     height: 20dp;
+    line-height: 20dp;
     background-color: #2f3650cc;
     border-width: 1dp;
     border-color: #565f89;
