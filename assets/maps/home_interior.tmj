@@ -158,6 +158,7 @@
                  "height":16.7386363636363,
                  "id":5,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"collider",
                  "visible":true,
@@ -169,6 +170,7 @@
                  "height":16.1818181818182,
                  "id":6,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"collider",
                  "visible":true,
@@ -180,6 +182,7 @@
                  "height":21.5,
                  "id":7,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"collider",
                  "visible":true,
@@ -191,6 +194,7 @@
                  "height":30.375,
                  "id":8,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"collider",
                  "visible":true,
@@ -213,6 +217,7 @@
                  "height":0,
                  "id":10,
                  "name":"point",
+                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -236,6 +241,7 @@
                  "height":2,
                  "id":11,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -258,6 +264,7 @@
                  "height":2,
                  "id":12,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -280,6 +287,7 @@
                  "height":2,
                  "id":13,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -302,6 +310,7 @@
                  "height":2,
                  "id":14,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -324,6 +333,7 @@
                  "height":2,
                  "id":15,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -346,6 +356,7 @@
                  "height":2,
                  "id":16,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -368,6 +379,7 @@
                  "height":2,
                  "id":17,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -390,6 +402,7 @@
                  "height":2,
                  "id":18,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -412,6 +425,7 @@
                  "height":2,
                  "id":19,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -434,6 +448,7 @@
                  "height":2,
                  "id":20,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -456,6 +471,7 @@
                  "height":2,
                  "id":21,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -478,6 +494,7 @@
                  "height":2,
                  "id":22,
                  "name":"emissive",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"day_only",
@@ -500,6 +517,7 @@
                  "height":0,
                  "id":23,
                  "name":"point",
+                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -534,6 +552,7 @@
                  "height":14,
                  "id":1,
                  "name":"",
+                 "opacity":1,
                  "properties":[
                         {
                          "name":"self_id",
@@ -566,12 +585,25 @@
                  "height":38.25,
                  "id":4,
                  "name":"",
+                 "opacity":1,
                  "rotation":0,
                  "type":"rest",
                  "visible":true,
                  "width":21.5,
                  "x":196.75,
                  "y":181.5
+                }, 
+                {
+                 "height":24.5,
+                 "id":25,
+                 "name":"",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"closet",
+                 "visible":true,
+                 "width":22,
+                 "x":168.75,
+                 "y":47
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -580,7 +612,7 @@
          "y":0
         }],
  "nextlayerid":11,
- "nextobjectid":24,
+ "nextobjectid":26,
  "orientation":"orthogonal",
  "properties":[
         {
@@ -595,7 +627,7 @@
             }
         }],
  "renderorder":"right-down",
- "tiledversion":"1.11.2",
+ "tiledversion":"1.12.1",
  "tileheight":16,
  "tilesets":[
         {
