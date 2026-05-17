@@ -93,7 +93,7 @@ void RenderInterface_GL3_STB::setTextureFilterMode(RmlUiTextureFilterMode mode) 
 
     texture_filter_mode_ = mode;
     for (const Rml::TextureHandle texture_handle : tracked_texture_handles_) {
-        applyTextureFilter(texture_handle);
+        applyTextureSampling(texture_handle);
     }
 }
 
@@ -102,7 +102,7 @@ Rml::TextureHandle RenderInterface_GL3_STB::GenerateTexture(Rml::Span<const Rml:
     const Rml::TextureHandle texture_handle = RenderInterface_GL3::GenerateTexture(source_data, source_dimensions);
     if (texture_handle) {
         tracked_texture_handles_.insert(texture_handle);
-        applyTextureFilter(texture_handle);
+        applyTextureSampling(texture_handle);
     }
     return texture_handle;
 }
@@ -112,7 +112,7 @@ void RenderInterface_GL3_STB::ReleaseTexture(Rml::TextureHandle texture_handle) 
     RenderInterface_GL3::ReleaseTexture(texture_handle);
 }
 
-void RenderInterface_GL3_STB::applyTextureFilter(Rml::TextureHandle texture_handle) const {
+void RenderInterface_GL3_STB::applyTextureSampling(Rml::TextureHandle texture_handle) const {
     const GLuint texture_id = toTextureId(texture_handle);
     if (texture_id == 0) {
         return;
@@ -125,6 +125,8 @@ void RenderInterface_GL3_STB::applyTextureFilter(Rml::TextureHandle texture_hand
     glBindTexture(GL_TEXTURE_2D, texture_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous_texture));
 }
 

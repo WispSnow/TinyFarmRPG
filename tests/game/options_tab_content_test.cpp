@@ -116,6 +116,16 @@ TEST(OptionsTabContentSourceTest, RmlOrdersTogglesBeforeSteppersAndUsesShopArrow
     EXPECT_NE(rml.find("tf-icon-button icon-arrow-right-light"), std::string::npos);
 }
 
+TEST(OptionsTabContentSourceTest, InventoryTabIconsUseHudAtlasDirectly) {
+    const std::string rcss = slurp(projectRoot() / "ui" / "rmlui" / "scenes" / "inventory_menu.rcss");
+
+    EXPECT_EQ(rcss.find("inventory_tab_icons_clean.png"), std::string::npos);
+    EXPECT_EQ(rcss.find("tab-equipment-clean"), std::string::npos);
+    EXPECT_EQ(rcss.find("tab-options-clean"), std::string::npos);
+    EXPECT_NE(rcss.find("#tab-equipment  { decorator: image(tab-equipment); }"), std::string::npos);
+    EXPECT_NE(rcss.find("#tab-options    { decorator: image(tab-options); }"), std::string::npos);
+}
+
 TEST(OptionsTabContentSourceTest, InventorySceneInjectsOptionsTabContent) {
     const std::string src = slurp(projectRoot() / "src" / "game" / "scene" / "inventory_menu_scene.cpp");
     EXPECT_NE(src.find("OptionsTabContent"), std::string::npos);
