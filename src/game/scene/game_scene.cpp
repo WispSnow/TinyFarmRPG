@@ -248,7 +248,7 @@ namespace game::scene {
 GameScene::GameScene(std::string_view name,
                      engine::core::Context& context,
                      std::shared_ptr<game::data::GameTime> game_time,
-                     std::optional<int> load_slot)
+                     GameSceneLaunch launch)
     : engine::scene::Scene(name, context),
       services_(std::make_unique<game::runtime::GameRuntimeServices>()),
       systems_(std::make_unique<game::runtime::GameSystemBundle>()),
@@ -257,7 +257,7 @@ GameScene::GameScene(std::string_view name,
       scheduler_profiler_(std::make_unique<game::debug::SchedulerProfiler>()),
 #endif
       game_time_(std::move(game_time)),
-      load_slot_(load_slot) {
+      launch_(std::move(launch)) {
 }
 
 GameScene::~GameScene() noexcept {
@@ -313,11 +313,11 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&GameScene::onQuestOfferRequested>(this);
     dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&GameScene::onRecruitOfferRequested>(this);
 
-    if (load_slot_) {
+    if (const auto* load_options = std::get_if<LoadGameOptions>(&launch_)) {
         std::string load_error;
-        if (!services_->save_service->loadFromFile(game::save::SaveService::slotPath(*load_slot_), load_error)) {
+        if (!services_->save_service->loadFromFile(game::save::SaveService::slotPath(load_options->slot), load_error)) {
             const std::string message = "Load failed: " + load_error;
-            spdlog::error("GameScene: 读档失败 (slot {}): {}", *load_slot_, load_error);
+            spdlog::error("GameScene: 读档失败 (slot {}): {}", load_options->slot, load_error);
             requestReplaceScene(std::make_unique<game::scene::TitleScene>("TitleScene", context_, message));
             abort_to_title_ = true;
         }
@@ -326,6 +326,10 @@ bool GameScene::init() {
     if (abort_to_title_) {
         (void)Scene::init();
         return true;
+    }
+
+    if (const auto* new_game_options = std::get_if<NewGameOptions>(&launch_)) {
+        applyNewGameAppearance(*new_game_options);
     }
 
     auto player_view = registry_.view<game::component::PlayerTag>();
@@ -632,6 +636,23 @@ bool GameScene::initUI() {
 
     spdlog::debug("GameScene: UI controller 初始化完成。");
     return true;
+}
+
+void GameScene::applyNewGameAppearance(const NewGameOptions& options) {
+    if (!options.initial_appearance) {
+        return;
+    }
+
+    auto player_view = registry_.view<game::component::PlayerTag>();
+    if (player_view.empty()) {
+        spdlog::warn("GameScene: 新游戏外观应用失败，找不到玩家实体。");
+        return;
+    }
+
+    const entt::entity player = *player_view.begin();
+    if (!applySelectionToEntity(registry_, context_.getDispatcher(), player, *options.initial_appearance)) {
+        spdlog::warn("GameScene: 新游戏外观应用失败，玩家缺少 AppearanceComponent。");
+    }
 }
 
 bool GameScene::onInventoryToggle() {

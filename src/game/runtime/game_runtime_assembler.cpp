@@ -54,6 +54,7 @@
 #include "game/system/animation_event_system.h"
 #include "game/system/camera_follow_system.h"
 #include "game/system/chest_system.h"
+#include "game/system/closet_interaction_system.h"
 #include "game/system/crop_system.h"
 #include "game/system/day_night_system.h"
 #include "game/system/dialogue_system.h"
@@ -865,6 +866,10 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         spatial_index_manager,
         *services.world_state);
     systems.rest_system = std::make_unique<game::system::RestSystem>(params.registry, params.context);
+    systems.closet_interaction_system = std::make_unique<game::system::ClosetInteractionSystem>(
+        params.registry,
+        params.context,
+        services.appearance_catalog);
 
     systems.inventory_system = std::make_unique<game::system::InventorySystem>(
         params.registry,

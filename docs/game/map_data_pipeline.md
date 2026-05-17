@@ -41,6 +41,7 @@
 | object layer（`.tmj`）point object | `type="actor" + point=true + name="player"` | 生成角色实体 | 角色/动物出现在地图上 | `EntityBuilder::build` → `buildActor/buildAnimal` |
 | object layer（`.tmj`）rect object | `type="map_trigger" + properties{...}` | `game::component::MapTrigger` + 同步到 `WorldState::MapState::triggers` | 过图/邻接触发 | `EntityBuilder::buildMapTrigger` |
 | object layer（`.tmj`）rect object | `type="rest"` | `game::component::RestArea` + 进 `SpatialIndex` | 休息交互 | `EntityBuilder::buildRestArea` |
+| object layer（`.tmj`）rect object | `type="closet"` | `game::component::ClosetArea` + 进 `SpatialIndex` | 衣柜换装交互 | `EntityBuilder::buildClosetArea` |
 | object layer（`.tmj`）light | `type="light" + name="point/spot/emissive"` | `PointLight/SpotLight/EmissiveRect` 组件 | 光照系统 | `EntityBuilder::buildPointLight/buildSpotLight/buildEmissiveRect` |
 | map properties（`.tmj`） | `ambient={red,green,blue}` | `WorldState::MapInfo.ambient_override` | 室内环境光覆盖 | `MapManager::loadMap` → `loadAmbientOverride` |
 | map properties（`.tmj`） | `battle_background_id="Grassland"` | `WorldState::MapInfo.battle_background_id` | 战斗场景默认背景 | `MapManager::loadMap` → `loadBattleBackgroundId` |
@@ -196,6 +197,11 @@
 #### `rest`（rect object）
 - **必需字段**：`type="rest"` + `width/height > 0`
 - **语义**：创建 `RestArea`，并把覆盖到的瓦片注册为 `INTERACT`（静态网格）。
+
+#### `closet`（rect object）
+- **必需字段**：`type="closet"` + `width/height > 0`
+- **语义**：创建 `ClosetArea`，并把覆盖到的瓦片注册为 `INTERACT`（静态网格）。玩家面向该区域按交互键时打开主角外观自定义界面。
+- **制作注意**：`closet` object 只是交互矩形，地图可视层仍需要摆放衣柜或家具图块，避免玩家对不可见区域交互。
 
 #### `light`（object type 固定为 `light`；具体由 `name` 决定）
 - `name="point"`（point object）

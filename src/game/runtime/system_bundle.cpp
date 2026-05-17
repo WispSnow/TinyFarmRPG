@@ -39,6 +39,7 @@
 #include "game/system/chest_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/rest_system.h"
+#include "game/system/closet_interaction_system.h"
 #include "game/system/map_transition_system.h"
 #include "game/system/appearance_system.h"
 #include "engine/vfx/vfx_bridge_system.h"

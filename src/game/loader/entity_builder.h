@@ -38,6 +38,7 @@ private:
     void buildFarmTag();
     void buildMapTrigger();
     void buildRestArea();
+    void buildClosetArea();
     void attachMapId();
 
     void buildPointLight();

@@ -35,4 +35,8 @@ struct RestArea {
     engine::utils::Rect rect_{};  ///< 休息区域范围（世界坐标）
 };
 
+struct ClosetArea {
+    engine::utils::Rect rect_{};  ///< 衣柜交互区域范围（世界坐标）
+};
+
 } // namespace game::component

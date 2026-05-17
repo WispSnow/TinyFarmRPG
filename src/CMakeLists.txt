@@ -219,6 +219,7 @@ target_sources(game PRIVATE
     game/ui/hotbar_ui.cpp
     game/ui/slot_grid_support.cpp
     game/ui/shop_menu_support.cpp
+    game/ui/appearance_customize_view_model.cpp
     game/ui/text_utils.cpp
     game/ui/inventory_tab_content.cpp
     game/ui/equipment_tab_content.cpp
@@ -262,6 +263,7 @@ target_sources(game PRIVATE
     game/system/shop_interaction_system.cpp
     game/system/enemy_encounter_system.cpp
     game/system/chest_system.cpp
+    game/system/closet_interaction_system.cpp
     game/system/interaction_system.cpp
     game/system/map_transition_system.cpp
     game/system/pickup_system.cpp
@@ -274,6 +276,8 @@ target_sources(game PRIVATE
     game/world/map_snapshot_serializer.cpp
     # Scene
     game/scene/game_scene.cpp
+    game/scene/appearance_customize_types.cpp
+    game/scene/appearance_customize_scene.cpp
     game/scene/game_scene_battle_settlement.cpp
     game/scene/game_scene_reward_feedback.cpp
     game/scene/title_scene.cpp

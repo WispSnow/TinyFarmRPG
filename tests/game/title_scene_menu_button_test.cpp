@@ -43,7 +43,7 @@ TEST(TitleSceneMenuButtonTest, BindsRmlMenuButtonToPauseMenuScene) {
         << "TitleScene should open PauseMenuScene from the menu button.";
 }
 
-TEST(TitleSceneMenuButtonTest, StartUsesTitleGameTime) {
+TEST(TitleSceneMenuButtonTest, StartOpensAppearanceCustomizeBeforeGameScene) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/title_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -51,8 +51,14 @@ TEST(TitleSceneMenuButtonTest, StartUsesTitleGameTime) {
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("GameScene\", context_, title_game_time_"), std::string::npos)
-        << "TitleScene should pass title_game_time_ into GameScene when starting a new game.";
+    EXPECT_NE(source.find("AppearanceCustomizeScene"), std::string::npos)
+        << "TitleScene should open appearance customization when starting a new game.";
+    EXPECT_NE(source.find("requestPushScene(std::move(next))"), std::string::npos)
+        << "TitleScene should push appearance customization so cancel returns to the title scene.";
+    EXPECT_NE(source.find("auto game_time = title_game_time_"), std::string::npos)
+        << "TitleScene should preserve title_game_time_ for the GameScene confirm callback.";
+    EXPECT_NE(source.find("GameSceneLaunch{std::move(options)}"), std::string::npos)
+        << "TitleScene should pass selected new-game options into GameScene.";
 }
 
 } // namespace

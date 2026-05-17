@@ -197,6 +197,7 @@ set(GAME_TEST_SOURCES
     game/save_data_phase4_test.cpp
     game/appearance_catalog_test.cpp
     game/appearance_catalog_layout_test.cpp
+    game/appearance_customize_view_model_test.cpp
     game/appearance_layered_direction_mapping_test.cpp
     game/appearance_system_test.cpp
     game/save_migrator_test.cpp
@@ -225,6 +226,7 @@ set(GAME_TEST_SOURCES
     game/inventory_menu_scene_slot_grid_registration_test.cpp
     game/rmlui_architecture_regression_test.cpp
     game/time_advance_sleep_test.cpp
+    game/closet_area_interaction_test.cpp
     game/rest_area_interaction_test.cpp
     game/shop_menu_scene_smoke_test.cpp
     game/shop_menu_buy_flow_test.cpp

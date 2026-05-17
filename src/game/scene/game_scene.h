@@ -5,6 +5,7 @@
 #include "game/runtime/game_mode.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/scene/game_scene_launch.h"
 
 #include <glm/vec2.hpp>
 
@@ -54,7 +55,7 @@ class GameScene : public engine::scene::Scene {
     game::runtime::GameMode game_mode_{game::runtime::GameMode::Exploration};
 
     std::shared_ptr<game::data::GameTime> game_time_;
-    std::optional<int> load_slot_{};
+    GameSceneLaunch launch_{NewGameOptions{}};
     bool abort_to_title_{false};
     bool context_pushed_{false};
 
@@ -71,7 +72,7 @@ class GameScene : public engine::scene::Scene {
 public:
     GameScene(std::string_view name, engine::core::Context& context,
               std::shared_ptr<game::data::GameTime> game_time = nullptr,
-              std::optional<int> load_slot = std::nullopt);
+              GameSceneLaunch launch = NewGameOptions{});
     ~GameScene() noexcept override;
 
     bool init() override;
@@ -97,6 +98,8 @@ private:
     bool onHotbarToggle();
     bool onPauseToggle();
     bool onTogglePromptBar();
+    /// Applies pre-game appearance selection after the player entity exists and before Playing state.
+    void applyNewGameAppearance(const NewGameOptions& options);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);

@@ -534,6 +534,7 @@ SaveData SaveService::capture(std::string& out_error) const {
     }
 
     if (const auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
+        out.appearance_state.profile_id = appearance->profile_id_;
         out.appearance_state.gender = appearance->gender_;
         out.appearance_state.slots = appearance->slot_variants_;
     }
@@ -937,6 +938,9 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         std::move(runtime_stats));
 
     if (auto* appearance = registry_.try_get<game::component::AppearanceComponent>(player)) {
+        if (!data.appearance_state.profile_id.empty()) {
+            appearance->profile_id_ = data.appearance_state.profile_id;
+        }
         if (!data.appearance_state.gender.empty()) {
             appearance->gender_ = data.appearance_state.gender;
         }

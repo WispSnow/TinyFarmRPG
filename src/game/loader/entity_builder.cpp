@@ -330,6 +330,8 @@ EntityBuilder* EntityBuilder::build() {
             buildMapTrigger();
         } else if (type == tiled::OBJECT_TYPE_REST) {
             buildRestArea();
+        } else if (type == tiled::OBJECT_TYPE_CLOSET) {
+            buildClosetArea();
         } else if (type == tiled::OBJECT_TYPE_LIGHT) {
             if (is_point && name == tiled::LIGHT_NAME_POINT) {
                 buildPointLight();
@@ -685,6 +687,48 @@ void EntityBuilder::buildRestArea() {
                              "RestArea");
 
     spdlog::info("RestArea: 创建完成，pos=({}, {}), size=({}, {})", rect.pos.x, rect.pos.y, rect.size.x, rect.size.y);
+}
+
+void EntityBuilder::buildClosetArea() {
+    if (!object_json_) {
+        return;
+    }
+
+    const glm::vec2 position{
+        object_json_->value("x", 0.0f),
+        object_json_->value("y", 0.0f),
+    };
+    const glm::vec2 size{
+        object_json_->value("width", 0.0f),
+        object_json_->value("height", 0.0f),
+    };
+
+    if (size.x <= 0.0f || size.y <= 0.0f) {
+        spdlog::error("ClosetArea: 创建失败，缺少有效尺寸 width/height: {}, {}", size.x, size.y);
+        return;
+    }
+
+    entity_id_ = registry_.create();
+    if (auto name = object_json_->value("name", ""); !name.empty()) {
+        entt::id_type name_id = entt::hashed_string(name.c_str());
+        registry_.emplace<engine::component::NameComponent>(entity_id_, name_id, name);
+    }
+
+    engine::utils::Rect rect{position, size};
+    registry_.emplace<engine::component::TransformComponent>(entity_id_, position);
+    registry_.emplace<game::component::ClosetArea>(entity_id_, rect);
+
+    auto& spatial_index = context_.getSpatialIndexManager();
+    registerRectToStaticGrid(spatial_index,
+                             level_loader_.getMapSize(),
+                             level_loader_.getTileSize(),
+                             rect,
+                             entity_id_,
+                             game::defs::spatial_layer::CLOSET,
+                             engine::component::TileType::INTERACT,
+                             "ClosetArea");
+
+    spdlog::info("ClosetArea: 创建完成，pos=({}, {}), size=({}, {})", rect.pos.x, rect.pos.y, rect.size.x, rect.size.y);
 }
 
 void EntityBuilder::attachMapId() {

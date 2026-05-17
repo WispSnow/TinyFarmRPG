@@ -1,5 +1,6 @@
 #include "title_scene.h"
 
+#include "appearance_customize_scene.h"
 #include "game_scene.h"
 #include "pause_menu_scene.h"
 #include "save_slot_select_scene.h"
@@ -110,13 +111,32 @@ void TitleScene::shutdownUI() {
 }
 
 void TitleScene::onStartClicked() {
-    auto next = std::make_unique<game::scene::GameScene>("GameScene", context_, title_game_time_);
-    requestReplaceScene(std::move(next));
+    auto* context = &context_;
+    auto game_time = title_game_time_;
+    auto on_confirm = [context, game_time](game::scene::AppearanceSelection selection) mutable
+        -> std::unique_ptr<engine::scene::Scene> {
+        game::scene::NewGameOptions options{};
+        options.initial_appearance = std::move(selection);
+        return std::make_unique<game::scene::GameScene>(
+            "GameScene",
+            *context,
+            game_time,
+            game::scene::GameSceneLaunch{std::move(options)});
+    };
+    auto next = std::make_unique<game::scene::AppearanceCustomizeScene>(
+        "AppearanceCustomize",
+        context_,
+        std::move(on_confirm));
+    requestPushScene(std::move(next));
 }
 
 void TitleScene::onLoadClicked() {
     auto on_select = [this](int slot) {
-        auto next = std::make_unique<game::scene::GameScene>("GameScene", context_, nullptr, slot);
+        auto next = std::make_unique<game::scene::GameScene>(
+            "GameScene",
+            context_,
+            nullptr,
+            game::scene::GameSceneLaunch{game::scene::LoadGameOptions{slot}});
         requestReplaceScene(std::move(next));
     };
 

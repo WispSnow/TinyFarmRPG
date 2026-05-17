@@ -17,6 +17,7 @@ inline constexpr std::string_view OBJECT_TYPE_ACTOR = "actor";
 inline constexpr std::string_view OBJECT_TYPE_ANIMAL = "animal";
 inline constexpr std::string_view OBJECT_TYPE_MAP_TRIGGER = "map_trigger";
 inline constexpr std::string_view OBJECT_TYPE_REST = "rest";
+inline constexpr std::string_view OBJECT_TYPE_CLOSET = "closet";
 inline constexpr std::string_view OBJECT_TYPE_LIGHT = "light";
 
 // Object layer: light "name"

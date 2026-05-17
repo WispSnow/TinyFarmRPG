@@ -13,6 +13,7 @@ inline constexpr entt::id_type WET = "wet"_hs;
 inline constexpr entt::id_type CROP = "crop"_hs;
 inline constexpr entt::id_type ROCK = "rock"_hs;
 inline constexpr entt::id_type REST = "rest"_hs;
+inline constexpr entt::id_type CLOSET = "closet"_hs;
 inline constexpr entt::id_type MAIN = "main"_hs;
 
 } // namespace spatial_layer

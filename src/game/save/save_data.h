@@ -11,7 +11,7 @@
 
 namespace game::save {
 
-constexpr std::uint32_t SAVE_SCHEMA_VERSION = 4;
+constexpr std::uint32_t SAVE_SCHEMA_VERSION = 5;
 
 namespace json_keys {
 inline constexpr std::string_view SCHEMA_VERSION = "schema_version";
@@ -44,6 +44,7 @@ inline constexpr std::string_view CURRENT_MP = "current_mp";
 inline constexpr std::string_view ITEM_STOCKS = "item_stocks";
 inline constexpr std::string_view ESCAPE_ATTEMPT_COUNT = "escape_attempt_count";
 inline constexpr std::string_view DEFEATED_ENCOUNTERS = "defeated_encounters";
+inline constexpr std::string_view PROFILE_ID = "profile_id";
 } // namespace json_keys
 
 struct Vec2f {
@@ -133,6 +134,7 @@ struct SkillStateSaveData {
 };
 
 struct AppearanceStateSaveData {
+    std::string profile_id{"player_default"};
     std::string gender{"male"};
     std::unordered_map<std::string, std::string> slots{};
 };
