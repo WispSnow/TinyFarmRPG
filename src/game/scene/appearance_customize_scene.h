@@ -74,6 +74,8 @@ private:
     entt::entity preview_entity_{entt::null};
     engine::render::Image menu_panel_image_{};
     bool menu_panel_texture_loaded_{false};
+    bool lighting_suspended_{false};
+    bool previous_lighting_enabled_{true};
     std::mt19937 rng_{0xC0FFEEu};
 
 public:
@@ -103,6 +105,8 @@ private:
     [[nodiscard]] bool initMenuPanelImage();
     [[nodiscard]] bool initPreviewEntity();
     void releaseMenuPanelImage();
+    void suspendClosetLighting();
+    void restoreClosetLighting();
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();

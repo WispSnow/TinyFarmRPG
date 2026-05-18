@@ -18,6 +18,9 @@ namespace engine::system {
 
 void LightSystem::render(entt::registry& registry, engine::render::Renderer& renderer, float interpolation_alpha) {
     const float clamped_alpha = std::clamp(interpolation_alpha, 0.0f, 1.0f);
+    if (!renderer.isLightingEnabled()) {
+        return;
+    }
 
     if (const auto* lighting = registry.ctx().find<engine::render::GlobalLightingState>(); lighting) {
         renderer.setAmbient(lighting->ambient);

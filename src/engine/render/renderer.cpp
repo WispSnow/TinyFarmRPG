@@ -242,12 +242,22 @@ void Renderer::setClearColorFloat(const engine::utils::FColor& color)
     gl_renderer_->setClearColor({color.r, color.g, color.b, color.a});
 }
 
+void Renderer::setLightingEnabled(bool enabled) {
+    lighting_enabled_ = enabled;
+    if (!lighting_enabled_) {
+        gl_renderer_->setAmbient({1.0f, 1.0f, 1.0f});
+    }
+}
+
 void Renderer::clearScreen() {
     gl_renderer_->clear();
 }
 
 void Renderer::addPointLight(const glm::vec2& position, float radius,
                              const engine::utils::PointLightOptions* options) {
+    if (!lighting_enabled_) {
+        return;
+    }
     if (shouldCullCircle(position, radius)) {
         return;
     }
@@ -257,6 +267,9 @@ void Renderer::addPointLight(const glm::vec2& position, float radius,
 
 void Renderer::addSpotLight(const glm::vec2& position, float radius, const glm::vec2& direction,
                             const engine::utils::SpotLightOptions* options) {
+    if (!lighting_enabled_) {
+        return;
+    }
     if (shouldCullCircle(position, radius)) {
         return;
     }
@@ -266,15 +279,24 @@ void Renderer::addSpotLight(const glm::vec2& position, float radius, const glm::
 
 void Renderer::addDirectionalLight(const glm::vec2& direction,
                                    const engine::utils::DirectionalLightOptions* options) {
+    if (!lighting_enabled_) {
+        return;
+    }
     gl_renderer_->addDirectionalLight(direction, options);
 }
 
 void Renderer::setAmbient(const glm::vec3& ambient) {
+    if (!lighting_enabled_) {
+        return;
+    }
     gl_renderer_->setAmbient(ambient);
 }
 
 void Renderer::addEmissiveRect(const engine::utils::Rect& rect,
                                const engine::utils::EmissiveParams* params) {
+    if (!lighting_enabled_) {
+        return;
+    }
     if (shouldCullRect(rect)) {
         return;
     }
@@ -286,6 +308,9 @@ void Renderer::addEmissiveRect(const engine::utils::Rect& rect,
 void Renderer::addEmissiveSprite(const component::Sprite& sprite, const glm::vec2& position,
                                  const glm::vec2& size,
                                  const engine::utils::EmissiveParams* params) {
+    if (!lighting_enabled_) {
+        return;
+    }
     if (shouldCullRect(engine::utils::Rect(position, size))) {
         return;
     }
