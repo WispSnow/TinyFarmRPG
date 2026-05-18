@@ -101,7 +101,7 @@ private:
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();
-    void syncSlotViewModels();
+    void syncSlotViewModels(bool mark_dirty = true);
     void rebuildPreviewCache();
     void updatePreviewPosition();
     void focusDefaultAction();
