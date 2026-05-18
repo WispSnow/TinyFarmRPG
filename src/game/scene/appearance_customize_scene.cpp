@@ -442,10 +442,14 @@ void AppearanceCustomizeScene::updatePreviewPosition() {
         return;
     }
 
+    const auto& camera = context_.getCamera();
     const glm::vec2 screen_pivot{PREVIEW_SCREEN_PIVOT_X, PREVIEW_SCREEN_PIVOT_Y};
-    const glm::vec2 world_position = context_.getCamera().screenToWorld(screen_pivot);
+    const glm::vec2 world_position = camera.screenToWorld(screen_pivot);
+    const float camera_zoom = camera.getZoom();
+    const float screen_space_scale = camera_zoom > 0.0f ? 1.0f / camera_zoom : 1.0f;
     transform->position_ = world_position;
     transform->previous_position_ = world_position;
+    transform->scale_ = glm::vec2{screen_space_scale, screen_space_scale};
     render->depth_ = world_position.y;
 }
 
