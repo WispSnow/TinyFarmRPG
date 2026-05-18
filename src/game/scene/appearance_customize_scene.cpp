@@ -175,6 +175,7 @@ AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
 }
 
 AppearanceCustomizeScene::~AppearanceCustomizeScene() {
+    restoreClosetLighting();
     disconnectRuntimeListeners();
     shutdownUI();
     releaseMenuPanelImage();
@@ -214,6 +215,7 @@ bool AppearanceCustomizeScene::init() {
         return false;
     }
 
+    suspendClosetLighting();
     connectRuntimeListeners();
     return Scene::init();
 }
@@ -246,6 +248,7 @@ void AppearanceCustomizeScene::render(float interpolation_alpha) {
 }
 
 void AppearanceCustomizeScene::clean() {
+    restoreClosetLighting();
     shutdownUI();
     releaseMenuPanelImage();
     disconnectRuntimeListeners();
@@ -394,6 +397,26 @@ void AppearanceCustomizeScene::releaseMenuPanelImage() {
     context_.getResourceManager().unloadTexture(MENU_PANEL_TEXTURE_ID);
     menu_panel_texture_loaded_ = false;
     menu_panel_image_ = engine::render::Image{};
+}
+
+void AppearanceCustomizeScene::suspendClosetLighting() {
+    if (mode_ != Mode::Closet || lighting_suspended_) {
+        return;
+    }
+
+    auto& renderer = context_.getRenderer();
+    previous_lighting_enabled_ = renderer.isLightingEnabled();
+    renderer.setLightingEnabled(false);
+    lighting_suspended_ = true;
+}
+
+void AppearanceCustomizeScene::restoreClosetLighting() {
+    if (!lighting_suspended_) {
+        return;
+    }
+
+    context_.getRenderer().setLightingEnabled(previous_lighting_enabled_);
+    lighting_suspended_ = false;
 }
 
 void AppearanceCustomizeScene::shutdownUI() {

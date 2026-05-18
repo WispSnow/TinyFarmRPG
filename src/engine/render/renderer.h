@@ -41,6 +41,7 @@ private:
 
     engine::utils::FColor clear_color_{0.0f, 0.0f, 0.0f, 1.0f};///< @brief 清除屏幕的颜色（默认黑色），可调用setClearColorFloat设置
     const Camera* current_camera_{nullptr};                         ///< @brief 当前帧使用的相机指针
+    bool lighting_enabled_{true};                                    ///< @brief 是否接受本帧光照/自发光提交
 public:
     /**
      * @brief 创建并初始化渲染器。
@@ -178,6 +179,8 @@ public:
     void clearScreen();                                                 ///< @brief 清空本帧缓冲（转发到 GLRenderer::clear）
 
     void setClearColorFloat(const engine::utils::FColor& color);  ///< @brief 设置清除屏幕颜色，使用 float 类型
+    void setLightingEnabled(bool enabled);                         ///< @brief 全局启停光照与自发光提交
+    [[nodiscard]] bool isLightingEnabled() const { return lighting_enabled_; }
 
     engine::render::opengl::GLRenderer* getGLRenderer() const { return gl_renderer_; }          ///< @brief 获取底层的 GLRenderer 指针
 
