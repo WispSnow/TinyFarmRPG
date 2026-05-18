@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/scene/scene.h"
+#include "engine/render/image.h"
 #include "engine/system/animation_system.h"
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
@@ -71,6 +72,8 @@ private:
     engine::system::AnimationSystem preview_animation_system_{preview_registry_, preview_dispatcher_};
     engine::system::RenderSystem preview_render_system_{};
     entt::entity preview_entity_{entt::null};
+    engine::render::Image menu_panel_image_{};
+    bool menu_panel_texture_loaded_{false};
     std::mt19937 rng_{0xC0FFEEu};
 
 public:
@@ -97,7 +100,9 @@ private:
     [[nodiscard]] bool ensureCatalog();
     [[nodiscard]] bool initUI();
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
+    [[nodiscard]] bool initMenuPanelImage();
     [[nodiscard]] bool initPreviewEntity();
+    void releaseMenuPanelImage();
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();

@@ -20,7 +20,7 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: #00000099;
+    background-color: transparent;
     pointer-events: auto;
 }
 
@@ -28,9 +28,9 @@ body {
 
 #appearance-title {
     position: absolute;
-    left: 30dp;
-    top: 28dp;
-    width: 240dp;
+    left: 42dp;
+    top: 34dp;
+    width: 220dp;
     height: 18dp;
     line-height: 18dp;
     color: #fce97fff;
@@ -39,9 +39,9 @@ body {
 
 #appearance-subtitle {
     position: absolute;
-    left: 30dp;
-    top: 52dp;
-    width: 240dp;
+    left: 42dp;
+    top: 60dp;
+    width: 220dp;
     height: 14dp;
     line-height: 14dp;
     color: #a9b1d6ff;
@@ -53,12 +53,12 @@ body {
 
 #appearance-preview-frame {
     position: absolute;
-    left: 30dp;
-    top: 78dp;
-    width: 240dp;
-    height: 232dp;
+    left: 42dp;
+    top: 86dp;
+    width: 220dp;
+    height: 224dp;
     border: 1dp #d9a88aaa;
-    background-color: #00000044;
+    background-color: transparent;
     pointer-events: auto;
 }
 
@@ -76,12 +76,12 @@ body {
 
 #appearance-panel {
     position: absolute;
-    left: 290dp;
-    top: 26dp;
-    width: 320dp;
-    height: 308dp;
+    left: 292dp;
+    top: 34dp;
+    width: 292dp;
+    height: 260dp;
     padding: 10dp;
-    decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
+    decorator: ninepatch(menu-party-card-bg, menu-party-card-bg-inner, 1.0);
     pointer-events: auto;
 }
 
@@ -148,12 +148,12 @@ body {
     width: 100%;
     display: flex;
     flex-direction: row;
-    gap: 10dp;
+    gap: 8dp;
 }
 
 .appearance-tool-button {
     /* Navigation tab-index comes from tf-button-light. */
-    width: 145dp;
+    width: 142dp;
     nav-up: auto;
     nav-down: auto;
     nav-left: auto;
@@ -165,12 +165,12 @@ body {
     width: 100%;
     display: flex;
     flex-direction: row;
-    gap: 10dp;
+    gap: 8dp;
 }
 
 .appearance-main-button {
     /* Navigation tab-index comes from tf-button-light. */
-    width: 145dp;
+    width: 142dp;
     nav-up: auto;
     nav-down: auto;
     nav-left: auto;

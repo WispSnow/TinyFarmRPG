@@ -22,6 +22,8 @@
 #include <entt/core/hashed_string.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -32,10 +34,20 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/appearance_customize.rml";
 constexpr std::string_view MODEL_NAME = "appearance_customize";
+constexpr std::string_view MENU_PANEL_TEXTURE_PATH = "assets/farm-rpg/UI/Inventory/inventory.png";
+constexpr entt::id_type MENU_PANEL_TEXTURE_ID = "ui/appearance/menu-panel"_hs;
+const engine::utils::Rect MENU_PANEL_SOURCE_RECT{{0.0f, 64.0f}, {48.0f, 48.0f}};
+constexpr engine::render::NineSliceMargins MENU_PANEL_MARGINS{
+    .left = 10.0f,
+    .top = 10.0f,
+    .right = 10.0f,
+    .bottom = 10.0f,
+};
+const engine::utils::Rect MENU_PANEL_SCREEN_RECT{{30.0f, 26.0f}, {580.0f, 308.0f}};
 // Tuned against #appearance-preview-frame in appearance_customize.rcss. The transform
 // position is the sprite pivot, so Y sits below the frame's geometric center.
-constexpr float PREVIEW_SCREEN_PIVOT_X = 150.0f;
-constexpr float PREVIEW_SCREEN_PIVOT_Y = 234.0f;
+constexpr float PREVIEW_SCREEN_PIVOT_X = 152.0f;
+constexpr float PREVIEW_SCREEN_PIVOT_Y = 238.0f;
 constexpr float PREVIEW_SIZE_PX = 160.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
 
@@ -45,6 +57,81 @@ constexpr float FRAME_SIZE_PX = 32.0f;
 
 [[nodiscard]] int singleIntArg(const Rml::VariantList& arguments) {
     return arguments.size() == 1 ? arguments[0].Get<int>(-1) : -1;
+}
+
+[[nodiscard]] bool hasPositiveSize(const engine::utils::Rect& rect) {
+    return rect.size.x > 0.0f && rect.size.y > 0.0f;
+}
+
+[[nodiscard]] engine::utils::Rect screenRectToWorldRect(const engine::render::Camera& camera,
+                                                        const engine::utils::Rect& screen_rect) {
+    const glm::vec2 top_left = camera.screenToWorld(screen_rect.pos);
+    const glm::vec2 bottom_right = camera.screenToWorld(screen_rect.pos + screen_rect.size);
+    return engine::utils::Rect{top_left, bottom_right - top_left};
+}
+
+[[nodiscard]] std::array<engine::utils::Rect, 9> buildNineSliceDestinationRects(
+    const engine::utils::Rect& target_rect,
+    const engine::render::NineSliceMargins& margins) {
+    const float horizontal_scale = margins.left + margins.right > 0.0f
+                                       ? std::min(1.0f, target_rect.size.x / (margins.left + margins.right))
+                                       : 1.0f;
+    const float vertical_scale = margins.top + margins.bottom > 0.0f
+                                     ? std::min(1.0f, target_rect.size.y / (margins.top + margins.bottom))
+                                     : 1.0f;
+
+    const float left = margins.left * horizontal_scale;
+    const float right = margins.right * horizontal_scale;
+    const float top = margins.top * vertical_scale;
+    const float bottom = margins.bottom * vertical_scale;
+    const float center_width = std::max(0.0f, target_rect.size.x - left - right);
+    const float center_height = std::max(0.0f, target_rect.size.y - top - bottom);
+
+    const std::array<float, 3> x_positions{
+        target_rect.pos.x,
+        target_rect.pos.x + left,
+        target_rect.pos.x + left + center_width,
+    };
+    const std::array<float, 3> y_positions{
+        target_rect.pos.y,
+        target_rect.pos.y + top,
+        target_rect.pos.y + top + center_height,
+    };
+    const std::array<float, 3> widths{left, center_width, right};
+    const std::array<float, 3> heights{top, center_height, bottom};
+
+    std::array<engine::utils::Rect, 9> rects{};
+    for (std::size_t row = 0; row < 3; ++row) {
+        for (std::size_t column = 0; column < 3; ++column) {
+            rects[row * 3 + column] = engine::utils::Rect{
+                {x_positions[column], y_positions[row]},
+                {widths[column], heights[row]},
+            };
+        }
+    }
+    return rects;
+}
+
+void drawNineSliceImageInScreenSpace(engine::render::Renderer& renderer,
+                                     const engine::render::Camera& camera,
+                                     const engine::render::Image& image,
+                                     const engine::utils::Rect& screen_rect) {
+    const auto* nine_slice = image.ensureNineSlice();
+    if (!nine_slice || !hasPositiveSize(screen_rect)) {
+        return;
+    }
+
+    const auto destination_rects = buildNineSliceDestinationRects(screen_rect, nine_slice->getMargins());
+    const auto& source_rects = nine_slice->getSlices();
+    for (std::size_t index = 0; index < source_rects.size(); ++index) {
+        if (!hasPositiveSize(source_rects[index]) || !hasPositiveSize(destination_rects[index])) {
+            continue;
+        }
+
+        const engine::component::Sprite sprite{image.getTextureId(), source_rects[index], image.isFlipped()};
+        const engine::utils::Rect world_rect = screenRectToWorldRect(camera, destination_rects[index]);
+        renderer.drawSprite(sprite, world_rect.pos, world_rect.size);
+    }
 }
 
 [[nodiscard]] engine::component::Animation makePreviewAnimation() {
@@ -90,6 +177,7 @@ AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
 AppearanceCustomizeScene::~AppearanceCustomizeScene() {
     disconnectRuntimeListeners();
     shutdownUI();
+    releaseMenuPanelImage();
 }
 
 bool AppearanceCustomizeScene::init() {
@@ -114,10 +202,15 @@ bool AppearanceCustomizeScene::init() {
     }
     draft_selection_ = original_selection_;
 
+    if (!initMenuPanelImage()) {
+        return false;
+    }
     if (!initPreviewEntity()) {
+        releaseMenuPanelImage();
         return false;
     }
     if (!initUI()) {
+        releaseMenuPanelImage();
         return false;
     }
 
@@ -147,12 +240,14 @@ void AppearanceCustomizeScene::render(float interpolation_alpha) {
 
     // Closet mode is drawn over GameScene, which has already begun the frame for the
     // shared renderer. Starting another frame here would clear or reset the world pass.
+    drawNineSliceImageInScreenSpace(renderer, camera, menu_panel_image_, MENU_PANEL_SCREEN_RECT);
     updatePreviewPosition();
     preview_render_system_.renderPrepared(preview_registry_, renderer, interpolation_alpha);
 }
 
 void AppearanceCustomizeScene::clean() {
     shutdownUI();
+    releaseMenuPanelImage();
     disconnectRuntimeListeners();
     context_.getGameState().setState(previous_state_);
     if (context_pushed_) {
@@ -252,6 +347,19 @@ bool AppearanceCustomizeScene::ensureDataTypesRegistered(Rml::DataModelConstruct
     return true;
 }
 
+bool AppearanceCustomizeScene::initMenuPanelImage() {
+    const auto texture = context_.getResourceManager().loadTexture(MENU_PANEL_TEXTURE_ID, MENU_PANEL_TEXTURE_PATH);
+    if (!texture) {
+        spdlog::error("AppearanceCustomizeScene: 加载外观背景面板纹理失败: {}", MENU_PANEL_TEXTURE_PATH);
+        return false;
+    }
+
+    menu_panel_image_ = engine::render::Image{MENU_PANEL_TEXTURE_PATH, MENU_PANEL_TEXTURE_ID, MENU_PANEL_SOURCE_RECT};
+    menu_panel_image_.setNineSliceMargins(MENU_PANEL_MARGINS);
+    menu_panel_texture_loaded_ = true;
+    return true;
+}
+
 bool AppearanceCustomizeScene::initPreviewEntity() {
     preview_registry_ = entt::registry{};
     preview_entity_ = preview_registry_.create();
@@ -277,6 +385,15 @@ bool AppearanceCustomizeScene::initPreviewEntity() {
     preview_registry_.emplace<engine::component::LayeredSpriteComponent>(preview_entity_);
     rebuildPreviewCache();
     return true;
+}
+
+void AppearanceCustomizeScene::releaseMenuPanelImage() {
+    if (!menu_panel_texture_loaded_) {
+        return;
+    }
+    context_.getResourceManager().unloadTexture(MENU_PANEL_TEXTURE_ID);
+    menu_panel_texture_loaded_ = false;
+    menu_panel_image_ = engine::render::Image{};
 }
 
 void AppearanceCustomizeScene::shutdownUI() {
