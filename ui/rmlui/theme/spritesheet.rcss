@@ -200,4 +200,6 @@
     src: ../../../assets/farm-rpg/UI/Inventory/Banner.png;
     tooltip-panel-bg:       3px 3px 42px 42px;
     tooltip-panel-bg-inner: 12px 12px 24px 24px;
+    menu-party-card-bg:       67px  3px 42px 42px;
+    menu-party-card-bg-inner: 76px 12px 24px 24px;
 }
