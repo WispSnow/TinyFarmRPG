@@ -32,11 +32,11 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/appearance_customize.rml";
 constexpr std::string_view MODEL_NAME = "appearance_customize";
-// Tuned against #appearance-preview-frame in appearance_customize.rcss; Y is intentionally
-// above the frame's geometric center because the preview sprite uses a lower pivot.
-constexpr float PREVIEW_SCREEN_CENTER_X = 164.0f;
-constexpr float PREVIEW_SCREEN_CENTER_Y = 176.0f;
-constexpr float PREVIEW_SIZE_PX = 96.0f;
+// Tuned against #appearance-preview-frame in appearance_customize.rcss. The transform
+// position is the sprite pivot, so Y sits below the frame's geometric center.
+constexpr float PREVIEW_SCREEN_PIVOT_X = 150.0f;
+constexpr float PREVIEW_SCREEN_PIVOT_Y = 234.0f;
+constexpr float PREVIEW_SIZE_PX = 160.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
 
 [[nodiscard]] Rml::String makeRmlString(std::string_view value) {
@@ -52,7 +52,7 @@ constexpr float FRAME_SIZE_PX = 32.0f;
     animation.name_ = "idle_down";
     animation.texture_id_ = entt::null;
     animation.pivot_ = glm::vec2{0.5f, 0.75f};
-    animation.dst_size_ = glm::vec2{FRAME_SIZE_PX, FRAME_SIZE_PX};
+    animation.dst_size_ = glm::vec2{PREVIEW_SIZE_PX, PREVIEW_SIZE_PX};
     for (int frame = 0; frame < 4; ++frame) {
         animation.frames_.emplace_back(
             engine::utils::Rect{
@@ -210,7 +210,7 @@ bool AppearanceCustomizeScene::initUI() {
         return false;
     }
 
-    syncSlotViewModels();
+    syncSlotViewModels(false);
     if (!constructor.Bind("slots", &slot_view_models_) ||
         !constructor.Bind("title_text", &title_text_) ||
         !constructor.Bind("subtitle_text", &subtitle_text_)) {
@@ -291,12 +291,14 @@ void AppearanceCustomizeScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&AppearanceCustomizeScene::onMenuCancelPressed>(this);
 }
 
-void AppearanceCustomizeScene::syncSlotViewModels() {
+void AppearanceCustomizeScene::syncSlotViewModels(bool mark_dirty) {
     if (!catalog_) {
         return;
     }
     slot_view_models_ = game::ui::buildAppearanceSlotViewModels(*catalog_, draft_selection_);
-    document_controller_.markDirty("slots");
+    if (mark_dirty) {
+        document_controller_.markDirty("slots");
+    }
 }
 
 void AppearanceCustomizeScene::rebuildPreviewCache() {
@@ -323,8 +325,8 @@ void AppearanceCustomizeScene::updatePreviewPosition() {
         return;
     }
 
-    const glm::vec2 screen_center{PREVIEW_SCREEN_CENTER_X, PREVIEW_SCREEN_CENTER_Y};
-    const glm::vec2 world_position = context_.getCamera().screenToWorld(screen_center);
+    const glm::vec2 screen_pivot{PREVIEW_SCREEN_PIVOT_X, PREVIEW_SCREEN_PIVOT_Y};
+    const glm::vec2 world_position = context_.getCamera().screenToWorld(screen_pivot);
     transform->position_ = world_position;
     transform->previous_position_ = world_position;
     render->depth_ = world_position.y;
