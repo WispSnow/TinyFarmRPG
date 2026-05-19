@@ -9,19 +9,20 @@
 
 /* ====== 面板 (ninepatch 背景) ====== */
 
-/* 深色主面板: 主菜单/商店等"信息密度高"的弹出面板。
+/* 主面板: 米色木板 ninepatch, 带深褐色边框。所有弹出场景的最外层窗口都用它。
    依赖 spritesheet.rcss 中的 ui-inventory.inventory-panel-bg。 */
-.tf-scene-panel-dark {
+.tf-scene-panel {
     decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
     padding: 10dp;
     pointer-events: auto;
 }
 
-/* 木纹/羊皮纸面板: 卡片式弹窗 (外观自定义 / 招募 / 任务等对话场合)。
+/* 子卡片"画框": 透明填充 + 深褐色 ninepatch 边框, 嵌在 tf-scene-panel 内部。
+   适合 party-card / portrait card / appearance 控制区 / 信息卡等"分组容器"。
    依赖 spritesheet.rcss 中的 ui-tooltip.menu-party-card-bg。 */
-.tf-scene-panel-light {
+.tf-scene-card-frame {
     decorator: ninepatch(menu-party-card-bg, menu-party-card-bg-inner, 1.0);
-    padding: 10dp;
+    padding: 8dp;
     pointer-events: auto;
 }
 
@@ -56,8 +57,9 @@
 .tf-scene-accent-success { color: #9ece6aff; }
 .tf-scene-accent-info    { color: #7dcfffff; }
 
-/* 浅色面板上的"暗色文字": 与 tf-button-light 同款配色。
-   外观自定义中 slot-label / variant-name 即此风格。 */
+/* 暗色文字 (用于"自带浅色底"的场合): 与 tf-button-light 同款配色。
+   主要给透明 body 的场景使用 (例: 外观自定义中 slot-label / variant-name)。
+   常规 tf-scene-panel 主面板内不需要它, 白字 + 黑阴影即可。 */
 .tf-scene-text-dark {
     color: #2a1f17ff;
     font-effect: shadow(1dp 1dp #ffffff44);
