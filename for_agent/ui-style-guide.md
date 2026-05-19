@@ -64,20 +64,34 @@
 
 ## 3. 面板 (Panel)
 
-### 3.1 两种主面板
+### 3.1 主面板 vs 子卡片画框
 
-| 风格 | 适用 | class | 来源 sprite |
-|------|------|-------|------------|
-| **深色 (蓝紫)** | 信息密度高的菜单 (Inventory / Shop / Quest list / Battle window) | `tf-scene-panel-dark` | `inventory-panel-bg` |
-| **浅色 (木纹)** | 卡片式弹窗 / 个人化界面 (Appearance / Recruit / Quest offer 卡片 / Rest) | `tf-scene-panel-light` | `menu-party-card-bg` |
+**所有**弹出场景最外层都用同一种主面板。需要在主面板内部分组时, 再叠加"子卡片画框"。
 
-> 浅色面板内的文字**必须**用 `tf-scene-text-dark` 系列 (`#2a1f17` + 白阴影), 否则在木纹底色上读不清。深色面板用白/灰文字。
+| 名称 | class | sprite | 视觉 | 用途 |
+|------|-------|--------|------|------|
+| **主面板** | `tf-scene-panel` | `inventory-panel-bg` | 米色木板填充 + 深褐色 ninepatch 边框 | 所有弹出场景的最外层窗口 |
+| **子卡片画框** | `tf-scene-card-frame` | `menu-party-card-bg` | **透明填充** + 深褐色 ninepatch 边框 (仅边框) | 主面板内的分组容器: party-card / portrait card / 信息卡 / 透明 body 场景的控制区 |
+| 实心子卡 | `tf-scene-subcard` | — (纯色) | `#24283bcc` 半透明蓝紫 + `1dp #414868` | 列表条目 / quest-entry / action-menu 等需要明确"压色块"的场合 |
+
+> 子卡片画框是**仅边框**, 看到的填充色取决于其父容器 (通常是 `tf-scene-panel` 的米色木板)。它适合在大面板内画"分区线", 不会引入第二种底色。
+> 当场景使用透明 body (例: AppearanceCustomize, `background-color: transparent`), `tf-scene-card-frame` 直接漂浮在 3D 场景之上, 此时框内文字要改用 `tf-scene-text-dark` 才能清晰。
 
 ```html
-<!-- 推荐: 用 utility 而不是再写一份 ninepatch -->
-<div id="my-panel" class="tf-scene-panel-dark">
-    <!-- panel 几何 (left/top/width/height) 在该场景自己的 rcss 里写 -->
-</div>
+<!-- 标准结构: dim 层 + 主面板 + (可选) 内部子卡片 -->
+<body class="tf-screen-root tf-nav-root" data-model="my_scene">
+    <div id="my-overlay" class="tf-modal-overlay"></div>
+
+    <div id="my-panel" class="tf-scene-panel">
+        <div id="my-header">{{ title_text }}</div>
+
+        <div id="my-card-row">
+            <div class="tf-scene-card-frame">
+                <!-- 一组分项: portrait + 名字 + meta -->
+            </div>
+        </div>
+    </div>
+</body>
 ```
 
 ```css
@@ -93,18 +107,20 @@
 
 ### 3.2 全屏 dim 层
 
-固定模板:
-```html
-<body class="tf-screen-root tf-nav-root" data-model="...">
-    <div id="my-overlay" class="tf-modal-overlay"></div>
-    <div id="my-panel" class="tf-scene-panel-dark">...</div>
-</body>
-```
+`tf-modal-overlay` 默认是 `#00000099`。需要更暗时, 在自己的 rcss 里覆写 `background-color`, 但保留 class 以维持全屏布局。
 
-> `tf-modal-overlay` 默认是 `#00000099`。需要更暗时, 在自己的 rcss 里覆写 `background-color`, 但保留 class 以维持全屏布局。
 > **不要**再使用 `tf-modal-panel` / `tf-modal-panel-strong` (那是无背景图的扁平黑底, 现已视为旧风格)。
 
-### 3.3 几何 (panel 尺寸)
+### 3.3 文字色 / 面板配色搭配
+
+| 底 | 默认文字 | 备注 |
+|----|---------|------|
+| `tf-scene-panel` (米色木板) | 白 + 黑阴影 (`tf-scene-title`) | 三个基准场景的标准选择 |
+| `tf-scene-card-frame` 内部 (背后是主面板) | 白 + 黑阴影 | 透明框看到的还是米色木板, 沿用白字 |
+| `tf-scene-card-frame` 内部 (背后是透明 body) | 暗色 + 白阴影 (`tf-scene-text-dark`) | 仅 AppearanceCustomize 这类场景适用 |
+| `tf-scene-subcard` (蓝紫色块) | 白 + 黑阴影 | |
+
+### 3.4 几何 (panel 尺寸)
 
 逻辑分辨率 **640×360 dp**。一些已落地的常见尺寸供参考:
 
@@ -113,7 +129,8 @@
 - 中型卡片对话 (Quest offer): 384×250dp，居中
 - 小型确认 (Rest / Save 确认): 232-272dp 宽，居中
 
-内边距 `padding: 10dp` 是默认值, 信息更密集时可降至 `8dp`, 卡片式对话用 `16dp`。
+主面板默认 `padding: 10dp`, 信息更密集时可降至 `8dp`, 卡片式对话用 `16dp`。
+`tf-scene-card-frame` 默认 `padding: 8dp`, 视内容可覆写。
 
 ---
 
@@ -125,10 +142,11 @@
 |-------|------|------|
 | `tf-button-primary`   | 蓝色 ninepatch | 主要操作 (Confirm/Accept/Save) |
 | `tf-button-secondary` | 灰色 ninepatch | 次要操作 (Cancel/Decline/Leave) |
-| `tf-button-light`     | 木牌 ninepatch (浅色, 深色字) | **木纹面板上的所有按钮** (Appearance/Shop 动作区) |
+| `tf-button-light`     | 木牌 ninepatch (米色, 深色字) | **`tf-scene-panel` 主面板上的所有按钮** (Appearance / Shop 动作区) |
 | `tf-icon-button`      | 16dp 图标按钮 | Stepper、关闭、排序、垃圾桶等 |
 
-> **木纹面板里不要混用 primary/secondary**, 视觉会割裂。Appearance/Shop detail 都统一用 `tf-button-light`。
+> 主面板本身就是米色木板, 蓝色 `tf-button-primary` 与之冲突。**`tf-scene-panel` 内默认全用 `tf-button-light`**, 视觉与基准场景一致。
+> `tf-button-primary/secondary` 当前主要在旧风格扁平黑底场景里出现, 迁移时一并替换成 `tf-button-light`。
 
 按钮尺寸由场景自己定 (`width: 100dp` 之类), 高度由 utility 决定 (32dp), 不要覆写。
 
@@ -209,8 +227,16 @@ label 宽度建议 80-100dp, 由场景给固定 `width`。
 
 ## 8. 分隔线 / 子卡片
 
-- 1dp 暖灰横线: `tf-scene-divider-h` (66 透明) / `tf-scene-divider-h-faint` (44 透明)。
-- 主面板内嵌"子方块" (quest entry / action menu 等): `tf-scene-subcard` (`#24283bcc` + `1dp #414868`)。
+主面板内的分组方式 (按"分隔强度"从弱到强):
+
+| 强度 | class | 视觉 |
+|-----|-------|------|
+| 最弱 | `tf-scene-divider-h-faint` | 1dp 暖灰 (44 透明), 仅分行 |
+| 弱 | `tf-scene-divider-h` | 1dp 暖灰 (66 透明), 头部底边常用 |
+| 中 | `tf-scene-card-frame` | 透明填充 + 深褐 ninepatch 边框, 不改变底色 |
+| 强 | `tf-scene-subcard` | `#24283bcc` 半透明蓝紫色块 + `1dp #414868` 边框, 明显压色 |
+
+> 在米色主面板里画"分组容器"优先用 `tf-scene-card-frame`; 只有当条目需要明确高亮 (quest entry / action menu / 列表行的实心选中态背景) 才上 `tf-scene-subcard`。
 
 ---
 
@@ -248,7 +274,7 @@ label 宽度建议 80-100dp, 由场景给固定 `width`。
 <body class="tf-screen-root tf-nav-root" data-model="my_scene">
     <div id="my-overlay" class="tf-modal-overlay"></div>
 
-    <div id="my-panel" class="tf-scene-panel-dark">
+    <div id="my-panel" class="tf-scene-panel">
         <div id="my-header" class="tf-scene-header-strip">
             <div class="tf-scene-title">{{ title_text }}</div>
         </div>
@@ -264,17 +290,19 @@ label 宽度建议 80-100dp, 由场景给固定 `width`。
                 </button>
             </div>
 
-            <!-- 信息行 -->
-            <div class="tf-scene-info-row">
-                <div class="tf-scene-info-label">Total</div>
-                <div class="tf-scene-info-value-gold">{{ total_text }}</div>
+            <!-- 分组容器 (透明边框, 主面板米色透出) -->
+            <div class="tf-scene-card-frame">
+                <div class="tf-scene-info-row">
+                    <div class="tf-scene-info-label">Total</div>
+                    <div class="tf-scene-info-value-gold">{{ total_text }}</div>
+                </div>
             </div>
         </div>
 
         <div id="my-actions">
-            <button class="tf-button-primary tf-nav-auto tf-focus-ring-blue"
+            <button class="tf-button-light tf-nav-auto tf-focus-ring-blue"
                     data-event-click="confirm">Confirm</button>
-            <button class="tf-button-secondary tf-nav-auto tf-focus-ring-blue"
+            <button class="tf-button-light tf-nav-auto tf-focus-ring-blue"
                     data-event-click="cancel">Cancel</button>
         </div>
     </div>
@@ -318,11 +346,13 @@ body, div, h1, h2, h3, h4, p, hr {
 
 | ✅ Do | ❌ Don't |
 |------|---------|
-| 用 `tf-scene-panel-dark/light` 套面板 | 用 `tf-modal-panel` + 自己拼 `background-color` 黑底 |
+| 弹出场景最外层一律 `tf-scene-panel` (米色木板主面板) | 用 `tf-modal-panel*` + 自己拼 `background-color` 黑底 |
+| 内部分组用 `tf-scene-card-frame` (透明边框) | 嵌一个二次填充的纯色面板, 让画面出现两层底色 |
+| `tf-scene-panel` 上的按钮一律 `tf-button-light` | 主面板里塞蓝色 `tf-button-primary` (与米色木板冲突) |
 | 颜色用本指引 §1 中的值 | 写新的灰/蓝色变体 (`#1a2535` / `#46546a` 等) |
 | 字号用 rem | 写死 `font-size: 12dp` |
 | 按钮组合 `tf-button-* + tf-nav-auto + tf-focus-ring-*` | 自己拼一套按钮 hover/active 样式 |
-| 浅色面板用 `tf-button-light` 与 `tf-scene-text-dark` | 浅面板里塞蓝色 `tf-button-primary` |
+| 透明 body 场景在 `tf-scene-card-frame` 里用 `tf-scene-text-dark` | 主面板内嵌的 `tf-scene-card-frame` 也用暗色字 (背后是米色, 反而读不清) |
 | 滚动容器加 `tf-scene-scroll` | 单独写 `scrollbarvertical` |
 | 信息行用 `tf-scene-info-row` | 用 table 或手写 label/value 各自 absolute |
 | panel 几何 (left/top/w/h) 写在场景自己的 rcss | 在 utility class 里写死尺寸 |
@@ -331,14 +361,14 @@ body, div, h1, h2, h3, h4, p, hr {
 
 ## 12. 待迁移场景清单 (参考)
 
-以下场景**仍是旧扁平风格**, 后续重构时按本指引迁移即可:
+以下场景**仍是旧扁平黑底风格**, 后续重构时统一改成"`tf-scene-panel` 主面板 + `tf-scene-card-frame` 内嵌分组 + `tf-button-light` 按钮":
 
-- `scenes/quest_offer.{rml,rcss}` — 改为 `tf-scene-panel-light`, speaker 用 `tf-scene-title-gold`, 内嵌 card 换 `tf-scene-subcard`。
-- `scenes/recruit_offer.{rml,rcss}` — 同上, 卡片改 `tf-scene-panel-light`。
-- `scenes/rest_dialog.{rml,rcss}` — `tf-scene-panel-light`, 按钮 `tf-button-light`。
-- `scenes/pause_menu.{rml,rcss}` — `tf-scene-panel-dark`。
-- `scenes/save_slot_select.{rml,rcss}` — `tf-scene-panel-dark` + 确认弹窗 `tf-scene-panel-light`。
-- `scenes/battle.rcss` 中的 `#battle-victory-panel` 等内嵌弹窗 — `tf-scene-panel-dark`, 替换 `#fff2a6` → `#fce97f`、`#46546a` → `#414868`。
+- `scenes/quest_offer.{rml,rcss}` — 外框换 `tf-scene-panel`, 中间的"任务卡 `#quest-offer-card`"换 `tf-scene-card-frame`, speaker 用 `tf-scene-title-gold`, 按钮改 `tf-button-light`。
+- `scenes/recruit_offer.{rml,rcss}` — 同上, portrait + copy 整组放进 `tf-scene-card-frame`。
+- `scenes/rest_dialog.{rml,rcss}` — `tf-scene-panel`, stepper 周围加 `tf-scene-card-frame` 或保持极简, 按钮 `tf-button-light`。
+- `scenes/pause_menu.{rml,rcss}` — `tf-scene-panel`, 三组 stepper 行各自放进 `tf-scene-card-frame`, 按钮 `tf-button-light`。
+- `scenes/save_slot_select.{rml,rcss}` — `tf-scene-panel`, 每个 save slot 按钮可保留 `tf-button-light` 现状; 确认弹窗同样 `tf-scene-panel`。
+- `scenes/battle.rcss` 中的 `#battle-victory-panel` 等内嵌弹窗 — `tf-scene-panel`, 替换 `#fff2a6` → `#fce97f`、`#46546a` → `#414868`, victory-row 用 `tf-scene-card-frame` 或 `tf-scene-subcard`。
 
 ---
 
