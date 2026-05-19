@@ -107,9 +107,18 @@
 
 ### 3.2 全屏 dim 层
 
-`tf-modal-overlay` 默认是 `#00000099`。需要更暗时, 在自己的 rcss 里覆写 `background-color`, 但保留 class 以维持全屏布局。
+`tf-modal-overlay` 默认是 `#00000099` (60% 纯黑, 让世界明显透出)。
+当世界处于 dusk/night 阶段, 这一档透明度会让暖色调透到面板边缘, 主面板看上去也跟着偏暗。
+要避免这种情况, 在场景自己的 rcss 里覆写 `background-color`, 例如 Inventory 使用:
+
+```css
+#my-overlay {
+    background-color: #1a1b26c0;  /* Tokyo Night 暗蓝 75%, 世界几乎看不见 */
+}
+```
 
 > **不要**再使用 `tf-modal-panel` / `tf-modal-panel-strong` (那是无背景图的扁平黑底, 现已视为旧风格)。
+> `tf-scene-panel` 自带 `position: absolute`, 场景里只需声明 `left/top/width/height/padding`。
 
 ### 3.3 文字色 / 面板配色搭配
 
