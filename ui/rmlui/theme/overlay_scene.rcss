@@ -1,0 +1,193 @@
+/* ===========================================
+ * Overlay Scene — 共享样式工具
+ * 基准场景: InventoryMenuScene / ShopMenuScene / AppearanceCustomizeScene
+ *
+ * 使用方式: 在场景 RCSS 之前 link 本文件, 然后在 RML 中以 class 形式叠加。
+ * 仅提供原子工具类, 不规定具体几何 (panel 尺寸/位置由各场景自行决定)。
+ * 详见 for_agent/ui-style-guide.md
+ * =========================================== */
+
+/* ====== 面板 (ninepatch 背景) ====== */
+
+/* 深色主面板: 主菜单/商店等"信息密度高"的弹出面板。
+   依赖 spritesheet.rcss 中的 ui-inventory.inventory-panel-bg。 */
+.tf-scene-panel-dark {
+    decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
+    padding: 10dp;
+    pointer-events: auto;
+}
+
+/* 木纹/羊皮纸面板: 卡片式弹窗 (外观自定义 / 招募 / 任务等对话场合)。
+   依赖 spritesheet.rcss 中的 ui-tooltip.menu-party-card-bg。 */
+.tf-scene-panel-light {
+    decorator: ninepatch(menu-party-card-bg, menu-party-card-bg-inner, 1.0);
+    padding: 10dp;
+    pointer-events: auto;
+}
+
+/* ====== 文字色 / 文字效果 ====== */
+
+/* 标题: 白底+1dp 阴影。深色面板上使用。 */
+.tf-scene-title {
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+/* 强调标题: 金色 (任务/招募 speaker, 外观标题等场景的醒目项)。 */
+.tf-scene-title-gold {
+    color: #fce97fff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+/* 副标题 / 元信息: 蓝灰色, 用于 greeting、subtitle、副信息行。 */
+.tf-scene-subtitle,
+.tf-scene-meta {
+    color: #a9b1d6ff;
+}
+
+/* 描述文本: 更暗的蓝灰, 用于 detail-description、quest-description。 */
+.tf-scene-description {
+    color: #7888bdff;
+}
+
+/* 强调色 (用于金币、奖励、警告/破坏性、成功、状态信息等) */
+.tf-scene-accent-gold    { color: #e0af68ff; font-effect: shadow(1dp 1dp #000000cc); }
+.tf-scene-accent-danger  { color: #f7768eff; }
+.tf-scene-accent-success { color: #9ece6aff; }
+.tf-scene-accent-info    { color: #7dcfffff; }
+
+/* 浅色面板上的"暗色文字": 与 tf-button-light 同款配色。
+   外观自定义中 slot-label / variant-name 即此风格。 */
+.tf-scene-text-dark {
+    color: #2a1f17ff;
+    font-effect: shadow(1dp 1dp #ffffff44);
+}
+.tf-scene-text-dark-muted {
+    color: #6f4f37cc;
+}
+
+/* ====== 分隔线 ====== */
+
+/* 头部底边: 标题/Tab 条下方 1dp 暖灰分隔线。
+   推荐写法: <div class="tf-scene-header-strip">...</div> */
+.tf-scene-header-strip {
+    border-width: 0 0 1dp 0;
+    border-color: #d9a88a66;
+    padding-bottom: 4dp;
+}
+
+/* 独立分隔块: 适用于 detail panel 上方 1dp 横线。 */
+.tf-scene-divider-h {
+    width: 100%;
+    height: 1dp;
+    background-color: #d9a88a66;
+}
+
+.tf-scene-divider-h-faint {
+    width: 100%;
+    height: 1dp;
+    background-color: #d9a88a44;
+}
+
+/* ====== 信息行 (Label : Value) ====== */
+
+.tf-scene-info-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2dp;
+}
+
+.tf-scene-info-label {
+    color: #a9b1d6ff;
+}
+
+.tf-scene-info-value {
+    text-align: right;
+    color: #ffffffff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+/* 金币/价格等金黄数值。 */
+.tf-scene-info-value-gold {
+    text-align: right;
+    color: #e0af68ff;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+/* ====== 滚动容器 (4dp 暖色调) ====== */
+
+.tf-scene-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.tf-scene-scroll scrollbarvertical {
+    width: 4dp;
+    scrollbar-margin: 0dp;
+}
+
+.tf-scene-scroll scrollbarvertical slidertrack {
+    background-color: #d9a88a33;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
+.tf-scene-scroll scrollbarvertical sliderbar {
+    background-color: #b56f5ddd;
+    border-width: 0dp;
+    border-color: #00000000;
+}
+
+/* ====== 扁平列表行 (商店物品、动作菜单等) ====== */
+
+.tf-scene-list-entry {
+    height: 24dp;
+    line-height: 24dp;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    color: #f7f7f7ff;
+    text-align: left;
+    font-effect: shadow(1dp 1dp #000000cc);
+    transition: background-color 0.06s cubic-out, color 0.06s cubic-out;
+}
+
+.tf-input-mouse .tf-scene-list-entry:hover,
+.tf-input-nav .tf-scene-list-entry:focus {
+    background-color: #41486888;
+}
+
+.tf-scene-list-entry.selected {
+    background-color: #24283bcc;
+    color: #fce97fff;
+}
+
+.tf-scene-list-entry.disabled,
+.tf-scene-list-entry:disabled {
+    color: #666666ff;
+    opacity: 0.6;
+}
+
+/* ====== 卡片子面板 (主面板内的"内嵌方块") ====== */
+
+/* 用于 quest-entry、action-menu、speaker card 等 "副信息容器"。 */
+.tf-scene-subcard {
+    background-color: #24283bcc;
+    border: 1dp #414868;
+    padding: 6dp;
+}
+
+/* ====== 焦点框 (整组聚焦时高亮边框) ====== */
+
+/* 给"按方向键聚焦时, 整组 (tab/mode toggle/quantity 控件) 显示统一边框"用。
+   切换类: 加 .focused 即点亮。 */
+.tf-scene-section-focus-frame {
+    border: 1dp transparent;
+    transition: border-color 0.08s cubic-out, background-color 0.08s cubic-out;
+}
+
+.tf-scene-section-focus-frame.focused {
+    border-color: #d9a88a66;
+    background-color: #24283b66;
+}
