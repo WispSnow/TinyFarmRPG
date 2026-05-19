@@ -10,8 +10,10 @@
 /* ====== 面板 (ninepatch 背景) ====== */
 
 /* 主面板: 米色木板 ninepatch, 带深褐色边框。所有弹出场景的最外层窗口都用它。
-   依赖 spritesheet.rcss 中的 ui-inventory.inventory-panel-bg。 */
+   依赖 spritesheet.rcss 中的 ui-inventory.inventory-panel-bg。
+   utility 已包含 position: absolute, 各场景在 rcss 中只需声明 left/top/width/height。 */
 .tf-scene-panel {
+    position: absolute;
     decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
     padding: 10dp;
     pointer-events: auto;
