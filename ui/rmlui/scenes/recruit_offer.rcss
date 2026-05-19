@@ -2,6 +2,15 @@ body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
+/* 几何 / 布局; 颜色与文字效果通过 RML 上的 tf-scene-* utility 提供。
+   position: absolute 来自 .tf-scene-panel utility。 */
+
+/* 覆盖默认 tf-modal-overlay (60% 黑) 为 Tokyo Night 暗蓝 75%, 与 Inventory 一致,
+   让世界 dusk 色调不再渗透到面板边缘。 */
+#recruit-offer-overlay {
+    background-color: #1a1b26c0;
+}
+
 #recruit-offer-panel {
     left: 128dp;
     top: 58dp;
@@ -14,8 +23,6 @@ body, div, h1, h2, h3, h4, p, hr {
     width: 100%;
     height: 18dp;
     line-height: 18dp;
-    color: #fce97fff;
-    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #recruit-offer-card {
@@ -25,7 +32,6 @@ body, div, h1, h2, h3, h4, p, hr {
     padding: 10dp;
     display: flex;
     flex-direction: row;
-    background-color: #1b2430dd;
 }
 
 #recruit-offer-portrait {
@@ -55,8 +61,6 @@ body, div, h1, h2, h3, h4, p, hr {
     width: 100%;
     height: 22dp;
     line-height: 22dp;
-    color: #ffffffff;
-    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #recruit-offer-line {
@@ -64,7 +68,6 @@ body, div, h1, h2, h3, h4, p, hr {
     width: 100%;
     height: 42dp;
     line-height: 18dp;
-    color: #d8dee9ff;
 }
 
 #recruit-offer-actions {

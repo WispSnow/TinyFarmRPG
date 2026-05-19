@@ -3,15 +3,17 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="../theme/overlay_scene.rcss"/>
     <link type="text/rcss" href="rest_dialog.rcss"/>
 </head>
-<body class="tf-screen-root" data-model="rest_dialog">
+<body class="tf-screen-root tf-nav-root" data-model="rest_dialog">
     <div id="rest-overlay" class="tf-modal-overlay"></div>
 
-    <div id="rest-panel" class="tf-modal-panel">
-        <div id="rest-title">Rest</div>
+    <div id="rest-panel" class="tf-scene-panel">
+        <div id="rest-title" class="tf-scene-title">Rest</div>
 
         <div id="rest-selector">
             <button id="rest-hours-down-button" class="tf-icon-button icon-page-left" data-event-click="hours_down"></button>
@@ -20,8 +22,8 @@
         </div>
 
         <div id="rest-actions">
-            <button id="rest-confirm-button" class="tf-button-primary rest-action-button" data-event-click="confirm">Confirm</button>
-            <button id="rest-cancel-button" class="tf-button-secondary rest-action-button" data-event-click="cancel">Cancel</button>
+            <button id="rest-confirm-button" class="tf-button-light rest-action-button" data-event-click="confirm">Confirm</button>
+            <button id="rest-cancel-button" class="tf-button-light rest-action-button" data-event-click="cancel">Cancel</button>
         </div>
     </div>
 </body>

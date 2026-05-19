@@ -1,9 +1,21 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+/* 几何 / 布局; 颜色与文字效果通过 RML 上的 tf-scene-* utility 提供。
+   position: absolute 来自 .tf-scene-panel utility。 */
+
+/* 与其它弹出场景统一, 把世界 dusk 色调遮成 Tokyo Night 暗蓝。 */
+#rest-overlay {
+    background-color: #1a1b26c0;
+}
+
 #rest-panel {
-    left: 160dp;
-    top: 98dp;
+    left: 168dp;
+    top: 100dp;
     width: 272dp;
-    height: 116dp;
-    padding: 24dp;
+    height: 128dp;
+    padding: 16dp;
 }
 
 #rest-title {
@@ -11,8 +23,6 @@
     height: 20dp;
     text-align: center;
     line-height: 20dp;
-    color: #ffffffff;
-    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #rest-selector {
