@@ -4,6 +4,8 @@
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="../theme/overlay_scene.rcss"/>
     <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="../theme/battle_enemy_icons.rcss"/>
     <link type="text/rcss" href="../theme/battle_state_icons.rcss"/>
@@ -40,16 +42,16 @@
     </div>
 
     <div id="battle-victory-overlay" data-if="victory_overlay_visible">
-        <div id="battle-victory-panel">
-            <div id="battle-victory-title">{{ victory_title }}</div>
-            <div id="battle-victory-rewards">
-                <div class="battle-victory-row">
-                    <span class="battle-victory-label">Gold</span>
-                    <span class="battle-victory-value">{{ victory_gold_text }}</span>
+        <div id="battle-victory-panel" class="tf-scene-panel">
+            <div id="battle-victory-title" class="tf-scene-title-gold">{{ victory_title }}</div>
+            <div id="battle-victory-rewards" class="tf-scene-card-frame">
+                <div class="battle-victory-row tf-scene-info-row">
+                    <span class="battle-victory-label tf-scene-info-label">Gold</span>
+                    <span class="battle-victory-value tf-scene-info-value-gold">{{ victory_gold_text }}</span>
                 </div>
-                <div class="battle-victory-row">
-                    <span class="battle-victory-label">EXP</span>
-                    <span class="battle-victory-value">{{ victory_exp_text }}</span>
+                <div class="battle-victory-row tf-scene-info-row">
+                    <span class="battle-victory-label tf-scene-info-label">EXP</span>
+                    <span class="battle-victory-value tf-scene-info-value-gold">{{ victory_exp_text }}</span>
                 </div>
                 <div id="battle-victory-item-list">
                     <div class="battle-victory-empty" data-if="victory_items_empty">{{ victory_item_empty_text }}</div>
@@ -67,16 +69,16 @@
                 </div>
             </div>
             <button id="battle-victory-continue"
-                    class="battle-text-button tf-nav-auto"
+                    class="tf-button-light tf-nav-auto tf-focus-ring-blue"
                     data-class-disabled="!victory_continue_enabled"
                     data-attrif-disabled="!victory_continue_enabled"
                     data-event-click="victory_continue">{{ victory_prompt_text }}</button>
         </div>
     </div>
 
-    <div id="battle-hud">
+    <div id="battle-hud" class="tf-scene-panel">
         <div id="battle-party-panel">
-            <div class="battle-party-card"
+            <div class="battle-party-card tf-scene-card-frame"
                  data-for="member : party_status"
                  data-class-active-party-member="member.active"
                  data-class-ko-party-member="member.ko">
