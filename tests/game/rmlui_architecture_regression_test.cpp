@@ -167,8 +167,11 @@ TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRc
     EXPECT_NE(rcss.find("width: 584dp;"), std::string::npos);
     EXPECT_NE(rcss.find("height: 76dp;"), std::string::npos);
     EXPECT_NE(rcss.find("hud-dialogue-bg"), std::string::npos);
-    EXPECT_NE(rcss.find("opacity: 0.78;"), std::string::npos);
+    EXPECT_NE(rcss.find("image-color: #ffffffff;"), std::string::npos);
+    EXPECT_NE(rcss.find("background-color: #00000000;"), std::string::npos);
+    EXPECT_NE(rcss.find("opacity: 0.92;"), std::string::npos);
     EXPECT_NE(spritesheet.find("hud-dialogue-bg"), std::string::npos);
+    EXPECT_NE(spritesheet.find("hud-dialogue-bg:       0px 48px 48px 48px;"), std::string::npos);
     EXPECT_EQ(spritesheet.find(std::string{"dialogue-"} + "bubble-bg"), std::string::npos);
     EXPECT_EQ(rcss.find("solid"), std::string::npos);
     EXPECT_EQ(rcss.find("left: 0; right:"), std::string::npos);
