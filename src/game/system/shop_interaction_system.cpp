@@ -30,7 +30,7 @@
 
 namespace {
 
-constexpr std::uint8_t MERCHANT_DIALOGUE_CHANNEL = 0;
+constexpr game::defs::DialogueChannel MERCHANT_DIALOGUE_CHANNEL = game::defs::DialogueChannel::Conversation;
 constexpr float MERCHANT_DIALOGUE_CLOSE_DISTANCE_PX = 64.0F;
 constexpr std::string_view DEFAULT_MERCHANT_GREETING = "Welcome to the shop";
 
@@ -43,13 +43,6 @@ constexpr std::string_view DEFAULT_MERCHANT_GREETING = "Welcome to the shop";
         return name->name_;
     }
     return {};
-}
-
-void emitDialogueBubbleHideNow(entt::dispatcher& dispatcher, const entt::entity merchant) {
-    game::defs::DialogueHideEvent event{};
-    event.target = merchant;
-    event.channel = MERCHANT_DIALOGUE_CHANNEL;
-    dispatcher.trigger(event);
 }
 
 } // namespace
@@ -147,11 +140,6 @@ void ShopInteractionSystem::update(float) {
         return;
     }
 
-    helpers::emitDialogueBubbleMove(
-        dispatcher_,
-        MERCHANT_DIALOGUE_CHANNEL,
-        active_merchant_,
-        helpers::computeHeadPosition(registry_, active_merchant_));
 }
 
 void ShopInteractionSystem::showMerchantGreeting(entt::entity merchant,
@@ -166,13 +154,12 @@ void ShopInteractionSystem::showMerchantGreeting(entt::entity merchant,
     dialogue.cooldown_timer_ = dialogue.cooldown_;
     active_merchant_ = merchant;
 
-    helpers::emitDialogueBubbleShow(
+    helpers::emitDialogueShow(
         dispatcher_,
         MERCHANT_DIALOGUE_CHANNEL,
         merchant,
         merchantSpeaker(registry_, merchant),
-        merchantGreeting(shop),
-        helpers::computeHeadPosition(registry_, merchant));
+        merchantGreeting(shop));
 
     registry_.emplace_or_replace<game::component::StateDirtyTag>(merchant);
     if (auto* state = registry_.try_get<game::component::StateComponent>(merchant)) {
@@ -213,7 +200,7 @@ void ShopInteractionSystem::closeMerchantGreeting(entt::entity merchant) {
         dialogue->current_line_ = 0;
     }
 
-    emitDialogueBubbleHideNow(dispatcher_, merchant);
+    helpers::emitDialogueHideNow(dispatcher_, MERCHANT_DIALOGUE_CHANNEL, merchant);
     if (active_merchant_ == merchant) {
         active_merchant_ = entt::null;
     }

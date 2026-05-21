@@ -1,0 +1,21 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/portrait.rcss"/>
+    <link type="text/rcss" href="dialogue_box.rcss"/>
+</head>
+<body class="tf-screen-root">
+    <div id="dialogue-box-panel">
+        <div id="dialogue-box-portrait-frame">
+            <div id="dialogue-box-portrait"></div>
+        </div>
+        <div id="dialogue-box-copy">
+            <div id="dialogue-box-speaker"></div>
+            <div id="dialogue-box-text"></div>
+        </div>
+        <div id="dialogue-box-continue">v</div>
+    </div>
+</body>
+</rml>

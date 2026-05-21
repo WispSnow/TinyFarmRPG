@@ -7,7 +7,7 @@
 
 不属于它的职责：
 - 不直接实现玩法细节
-- 不直接实现 Hotbar / Tooltip / DialogueBubble 的 DOM 细节
+- 不直接实现 Hotbar / Tooltip / DialogueBox / FloatingNotice 的 DOM 细节
 - 不直接实现 InventoryMenu 的具体交互
 - 不解析地图文件和存档格式
 
@@ -36,7 +36,9 @@
      - `TimeClockHud`
      - overlay prompt bar
      - `ItemTooltipUI`
-     - `DialogueBubbleController` + 3 个 `DialogueBubbleView`
+     - `DialoguePresentationController`
+     - `DialogueBoxView`
+     - 2 个 `FloatingNoticeView`
      - `RmlScreenFade`
 
 这里要特别注意：
@@ -85,7 +87,7 @@
 - `GameScene` 会：
   - 对相机位置做插值
   - 调用 `ui_controller_->refreshAnchoredWidgets(camera, alpha)`
-  - 刷新 dialogue bubble 等 world-anchor UI 的屏幕位置
+  - 刷新 floating notice 等 world-anchor UI 的屏幕位置
 
 随后 `GameApp::render()` 会执行：
 1. `scene_manager_->prepareUi(alpha)`
@@ -110,9 +112,10 @@
   - `HotbarChanged`
 
 ### 4.3 Dialogue / Tooltip / Fade
-- Dialogue bubble：
+- Dialogue：
   - 由 gameplay 事件驱动
-  - 由 `DialogueBubbleController` 路由到 3 个 channel
+  - `DialoguePresentationController` 将 `Conversation` 路由到底部 `DialogueBoxView`
+  - `Notice` / `ItemNotice` 路由到世界锚点 `FloatingNoticeView`
 - Tooltip：
   - 由 `HotbarUI` 或 `InventoryMenuScene` 根据 hover 状态驱动
 - Fade：
@@ -130,9 +133,10 @@
 - 确认玩家实体同时带有 `InventoryComponent` / `HotbarComponent`
 - 确认菜单进入后完成了本地 `syncFromInventory()` / `syncHotbarFromInventory()`
 
-### 5.3 Dialogue bubble 位置抖动或滞后一帧
-- 确认 world-anchor 刷新发生在 `prepareUi(alpha)`
+### 5.3 浮动通知位置抖动或滞后一帧
+- 确认 `FloatingNoticeView` 的 world-anchor 刷新发生在 `prepareUi(alpha)`
 - 确认使用了插值相机位置，而不是 render 后再补改 DOM
+- `DialogueBoxView` 是屏幕固定 HUD，不应参与 world-anchor 刷新
 
 ### 5.4 切图或过渡时 UI 状态错乱
 - 确认 HUD 的 frame update 仍在运行

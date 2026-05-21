@@ -4,6 +4,8 @@
 #include "engine/script/script_host.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
+#include "game/data/rpg_catalog.h"
+#include "game/defs/events.h"
 #include "script_test_utils.h"
 
 #include <entt/entity/registry.hpp>
@@ -11,6 +13,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -25,6 +28,18 @@ namespace {
 } // namespace
 
 namespace game::script {
+
+namespace {
+
+struct DialogueCapture {
+    std::vector<game::defs::DialogueShowEvent> shows{};
+
+    void onShow(const game::defs::DialogueShowEvent& evt) {
+        shows.push_back(evt);
+    }
+};
+
+} // namespace
 
 TEST(ScriptHostSmokeTest, LoadAndRunInlineScriptWithoutCrash) {
     entt::registry registry;
@@ -66,6 +81,38 @@ TEST(ScriptHostSmokeTest, LoadAndRunFileWithoutCrash) {
     ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
     ASSERT_TRUE(host.loadFile(testCommandScriptPath()));
     EXPECT_TRUE(host.exec("assert(type(issue_add_item) == 'function')"));
+}
+
+TEST(ScriptHostSmokeTest, DialogueApiValidatesChannelAndCarriesSpeakerActorId) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0f, 0.0f});
+
+    engine::script::ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
+
+    EXPECT_TRUE(host.exec(R"(
+        assert(tf.dialogue.show("Hello", "Lyria", 0, nil, "actor.lyria") == true)
+        assert(tf.dialogue.show("Notice", "", 1) == true)
+        assert(tf.dialogue.show("Item notice", "", 2) == true)
+        assert(tf.dialogue.show("Bad", "Narrator", 99) == false)
+        assert(tf.dialogue.show("Bad negative", "Narrator", -1) == false)
+        assert(tf.dialogue.hide(1) == true)
+        assert(tf.dialogue.hide(-1) == false)
+    )"));
+
+    ASSERT_EQ(capture.shows.size(), 3U);
+    EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::Conversation);
+    EXPECT_EQ(capture.shows[0].speaker, "Lyria");
+    EXPECT_EQ(capture.shows[0].speaker_actor_id, "actor.lyria");
+    EXPECT_EQ(capture.shows[0].speaker_actor_id_hash, game::data::RpgCatalog::hashId("actor.lyria"));
+    EXPECT_EQ(capture.shows[1].channel, game::defs::DialogueChannel::Notice);
+    EXPECT_EQ(capture.shows[2].channel, game::defs::DialogueChannel::ItemNotice);
 }
 
 } // namespace game::script

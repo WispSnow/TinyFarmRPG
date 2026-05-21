@@ -41,7 +41,9 @@ glm::vec2 tileWorldPos(glm::ivec2 tile_coord) {
 
 struct DialogueEvents {
     std::vector<game::defs::DialogueShowEvent> shows{};
+    std::vector<game::defs::DialogueHideEvent> hides{};
     void onShow(const game::defs::DialogueShowEvent& evt) { shows.push_back(evt); }
+    void onHide(const game::defs::DialogueHideEvent& evt) { hides.push_back(evt); }
 };
 
 } // namespace
@@ -96,6 +98,7 @@ TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAnd
 
     DialogueEvents dialogue{};
     dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueEvents::onShow>(&dialogue);
+    dispatcher.sink<game::defs::DialogueHideEvent>().connect<&DialogueEvents::onHide>(&dialogue);
 
     dispatcher.trigger(game::defs::UseToolEvent{game::defs::Tool::Sickle, crop_world_pos});
     dispatcher.update();
@@ -106,6 +109,13 @@ TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAnd
     ASSERT_FALSE(dialogue.shows.empty());
     EXPECT_EQ(dialogue.shows.back().target, player);
     EXPECT_NE(dialogue.shows.back().text.find("Inventory full"), std::string::npos);
+
+    farm.update(2.0F);
+    dispatcher.update();
+
+    ASSERT_FALSE(dialogue.hides.empty());
+    EXPECT_EQ(dialogue.hides.back().target, player);
+    EXPECT_EQ(dialogue.hides.back().channel, game::defs::DialogueChannel::Notice);
 }
 
 } // namespace game::system

@@ -24,7 +24,7 @@ namespace game::system {
 namespace {
 
 constexpr float NOTIFICATION_SECONDS = 2.0f;
-constexpr std::uint8_t NOTIFICATION_CHANNEL = 2;
+constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::DialogueChannel::ItemNotice;
 
 using game::system::detail::stackLimitOrDefault;
 

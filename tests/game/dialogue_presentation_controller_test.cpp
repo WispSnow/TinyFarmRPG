@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
+#include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 #include <chrono>
@@ -25,9 +26,12 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
-#include "game/ui/dialogue_bubble_controller.h"
-#include "game/ui/dialogue_bubble_view.h"
+#include "game/system/system_helpers.h"
+#include "game/ui/dialogue_box_view.h"
+#include "game/ui/dialogue_presentation_controller.h"
+#include "game/ui/floating_notice_view.h"
 
 namespace game::ui {
 namespace {
@@ -45,13 +49,24 @@ void expectVec2Near(const glm::vec2& actual, const glm::vec2& expected) {
     EXPECT_NEAR(actual.y, expected.y, kEpsilon);
 }
 
-class DialogueBubbleControllerTest : public ::testing::Test {
+struct HideCapture {
+    int count{0};
+    game::defs::DialogueChannel last_channel{game::defs::DialogueChannel::Conversation};
+
+    void onHide(const game::defs::DialogueHideEvent& evt) {
+        ++count;
+        last_channel = evt.channel;
+    }
+};
+
+class DialoguePresentationControllerTest : public ::testing::Test {
 protected:
     static inline bool sdl_ready_{false};
 
     SDL_Window* window_{nullptr};
     std::filesystem::path input_config_path_{};
 
+    entt::registry registry_{};
     entt::dispatcher dispatcher_{};
     std::unique_ptr<engine::core::GameState> game_state_{};
     std::unique_ptr<engine::input::InputManager> input_manager_{};
@@ -85,7 +100,7 @@ protected:
             GTEST_SKIP() << "SDL video subsystem not available in this environment.";
         }
 
-        window_ = SDL_CreateWindow("DialogueBubbleControllerTest", 320, 180, SDL_WINDOW_HIDDEN);
+        window_ = SDL_CreateWindow("DialoguePresentationControllerTest", 320, 180, SDL_WINDOW_HIDDEN);
         if (!window_) {
             GTEST_SKIP() << "Failed to create SDL window.";
         }
@@ -99,7 +114,8 @@ protected:
 
         const auto timestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count();
         input_config_path_ =
-            std::filesystem::temp_directory_path() / ("dialogue_bubble_controller_input_" + std::to_string(timestamp) + ".json");
+            std::filesystem::temp_directory_path() /
+            ("dialogue_presentation_controller_input_" + std::to_string(timestamp) + ".json");
         std::ofstream input_config(input_config_path_);
         ASSERT_TRUE(input_config.is_open());
         input_config << R"({"input_mappings":{"primary_action":["MouseLeft"]}})";
@@ -192,102 +208,180 @@ protected:
     }
 };
 
-TEST_F(DialogueBubbleControllerTest, ShowMoveHideEventsDriveBubbleState) {
+#ifndef PROJECT_SOURCE_DIR
+#define PROJECT_SOURCE_DIR "."
+#endif
+
+[[nodiscard]] std::string actorsPath() {
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").string();
+}
+
+TEST_F(DialoguePresentationControllerTest, ConversationShowHideDrivesDialogueBox) {
     if (!context_->getRmlUi()) {
-        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";
     }
 
-    game::ui::DialogueBubbleController controller(dispatcher_);
-
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
-    auto* bubble_ptr = bubble.get();
-    controller.registerBubble(1, bubble_ptr, {3.0F, -7.0F});
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadActors(actorsPath()));
+    auto box = std::make_unique<game::ui::DialogueBoxView>(*context_, 1);
+    auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    game::ui::DialoguePresentationController controller(
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), &catalog);
 
     game::defs::DialogueShowEvent show_evt{};
-    show_evt.channel = 1;
-    show_evt.speaker = "NPC";
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.speaker = "Lyria";
     show_evt.text = "Hello";
+    show_evt.speaker_actor_id_hash = game::data::RpgCatalog::hashId("actor.lyria");
     show_evt.world_position = {10.0F, 20.0F};
     dispatcher_.trigger(show_evt);
 
-    ASSERT_TRUE(bubble_ptr->isVisible());
-    EXPECT_TRUE(bubble_ptr->hasWorldAnchor());
-    expectVec2Near(bubble_ptr->getWorldAnchor(), {10.0F, 20.0F});
-    expectVec2Near(bubble_ptr->getPreviousWorldAnchor(), {10.0F, 20.0F});
-    expectVec2Near(bubble_ptr->getWorldAnchorOffset(), {3.0F, -7.0F});
-    EXPECT_EQ(bubble_ptr->getText(), "NPC: \nHello");
+    ASSERT_TRUE(box->isVisible());
+    EXPECT_EQ(box->getSpeaker(), "Lyria");
+    EXPECT_EQ(box->getText(), "Hello");
+    EXPECT_EQ(box->getPortraitDecorator(), "image(portrait-lyria)");
+    EXPECT_FALSE(notice->isVisible());
 
     game::defs::DialogueMoveEvent move_evt{};
-    move_evt.channel = 1;
+    move_evt.channel = game::defs::DialogueChannel::Conversation;
     move_evt.world_position = {24.0F, 42.0F};
     dispatcher_.trigger(move_evt);
-
-    expectVec2Near(bubble_ptr->getPreviousWorldAnchor(), {10.0F, 20.0F});
-    expectVec2Near(bubble_ptr->getWorldAnchor(), {24.0F, 42.0F});
+    EXPECT_FALSE(notice->isVisible());
 
     game::defs::DialogueHideEvent hide_evt{};
-    hide_evt.channel = 1;
+    hide_evt.channel = game::defs::DialogueChannel::Conversation;
     dispatcher_.enqueue(hide_evt);
     dispatcher_.update();
 
-    EXPECT_FALSE(bubble_ptr->isVisible());
-    EXPECT_FALSE(bubble_ptr->hasWorldAnchor());
-    expectVec2Near(bubble_ptr->getWorldAnchor(), {0.0F, 0.0F});
+    EXPECT_FALSE(box->isVisible());
 }
 
-TEST_F(DialogueBubbleControllerTest, UnregisterStopsRoutingAndReregisterRecovers) {
+TEST_F(DialoguePresentationControllerTest, NoticeShowMoveHideDrivesFloatingNotice) {
     if (!context_->getRmlUi()) {
-        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";
     }
 
-    game::ui::DialogueBubbleController controller(dispatcher_);
-
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
-    auto* bubble_ptr = bubble.get();
-    controller.registerBubble(1, bubble_ptr);
+    auto box = std::make_unique<game::ui::DialogueBoxView>(*context_, 1);
+    auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    game::ui::DialoguePresentationController controller(
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, {3.0F, -7.0F});
 
     game::defs::DialogueShowEvent show_evt{};
-    show_evt.channel = 1;
-    show_evt.text = "Routed bubble";
+    show_evt.channel = game::defs::DialogueChannel::Notice;
+    show_evt.speaker = "NPC";
+    show_evt.text = "Routed notice";
     show_evt.world_position = {16.0F, 32.0F};
     dispatcher_.trigger(show_evt);
-    EXPECT_TRUE(bubble_ptr->isVisible());
 
-    controller.unregisterBubble(1);
-    bubble_ptr->setVisible(false);
-    dispatcher_.trigger(show_evt);
-    EXPECT_FALSE(bubble_ptr->isVisible());
+    ASSERT_TRUE(notice->isVisible());
+    EXPECT_TRUE(notice->hasWorldAnchor());
+    expectVec2Near(notice->getWorldAnchor(), {16.0F, 32.0F});
+    expectVec2Near(notice->getPreviousWorldAnchor(), {16.0F, 32.0F});
+    expectVec2Near(notice->getWorldAnchorOffset(), {3.0F, -7.0F});
+    EXPECT_EQ(notice->getText(), "NPC:\nRouted notice");
+    EXPECT_FALSE(box->isVisible());
 
-    auto recreated = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
-    auto* recreated_ptr = recreated.get();
+    game::defs::DialogueMoveEvent move_evt{};
+    move_evt.channel = game::defs::DialogueChannel::Notice;
+    move_evt.world_position = {24.0F, 42.0F};
+    dispatcher_.trigger(move_evt);
 
-    controller.registerBubble(1, recreated_ptr);
-    dispatcher_.trigger(show_evt);
-    EXPECT_TRUE(recreated_ptr->isVisible());
-    EXPECT_TRUE(recreated_ptr->hasWorldAnchor());
+    expectVec2Near(notice->getPreviousWorldAnchor(), {16.0F, 32.0F});
+    expectVec2Near(notice->getWorldAnchor(), {24.0F, 42.0F});
+
+    game::defs::DialogueHideEvent hide_evt{};
+    hide_evt.channel = game::defs::DialogueChannel::Notice;
+    dispatcher_.enqueue(hide_evt);
+    dispatcher_.update();
+
+    EXPECT_FALSE(notice->isVisible());
+    EXPECT_FALSE(notice->hasWorldAnchor());
 }
 
-TEST_F(DialogueBubbleControllerTest, LongDialogueTextIsNotManuallyWrappedByController) {
+TEST_F(DialoguePresentationControllerTest, HideChannelsClearIndependentViews) {
     if (!context_->getRmlUi()) {
-        GTEST_SKIP() << "RmlUiRuntime not available in dialogue bubble test environment.";
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";
     }
 
-    game::ui::DialogueBubbleController controller(dispatcher_);
-
-    auto bubble = std::make_unique<game::ui::DialogueBubbleView>(*context_, 1);
-    auto* bubble_ptr = bubble.get();
-    controller.registerBubble(1, bubble_ptr);
+    auto box = std::make_unique<game::ui::DialogueBoxView>(*context_, 1);
+    auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    game::ui::DialoguePresentationController controller(
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr);
 
     game::defs::DialogueShowEvent show_evt{};
-    show_evt.channel = 1;
-    show_evt.speaker = "Narrator";
-    show_evt.text = "This line is intentionally longer than the old wrapping threshold.";
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.text = "Conversation";
     show_evt.world_position = {8.0F, 12.0F};
     dispatcher_.trigger(show_evt);
+    show_evt.channel = game::defs::DialogueChannel::Notice;
+    show_evt.text = "Notice";
+    dispatcher_.trigger(show_evt);
 
-    EXPECT_EQ(
-        bubble_ptr->getText(),
-        "Narrator: \nThis line is intentionally longer than the old wrapping threshold.");
+    ASSERT_TRUE(box->isVisible());
+    ASSERT_TRUE(notice->isVisible());
+
+    game::defs::DialogueHideEvent hide_evt{};
+    hide_evt.channel = game::defs::DialogueChannel::Conversation;
+    dispatcher_.enqueue(hide_evt);
+    hide_evt.channel = game::defs::DialogueChannel::Notice;
+    dispatcher_.enqueue(hide_evt);
+    dispatcher_.update();
+
+    EXPECT_FALSE(box->isVisible());
+    EXPECT_FALSE(notice->isVisible());
+}
+
+TEST_F(DialoguePresentationControllerTest, ImmediateHideDoesNotWaitForDispatcherQueue) {
+    if (!context_->getRmlUi()) {
+        GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";
+    }
+
+    auto box = std::make_unique<game::ui::DialogueBoxView>(*context_, 1);
+    auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
+    game::ui::DialoguePresentationController controller(
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.text = "Shop greeting";
+    dispatcher_.trigger(show_evt);
+    ASSERT_TRUE(box->isVisible());
+
+    game::system::helpers::emitDialogueHideNow(
+        dispatcher_,
+        game::defs::DialogueChannel::Conversation,
+        entt::null);
+
+    EXPECT_FALSE(box->isVisible());
+}
+
+TEST(DialogueEventHelpersTest, HideHelperQueuesUntilDispatcherUpdate) {
+    entt::dispatcher dispatcher;
+    HideCapture capture{};
+    dispatcher.sink<game::defs::DialogueHideEvent>().connect<&HideCapture::onHide>(&capture);
+
+    game::system::helpers::emitDialogueHide(
+        dispatcher,
+        game::defs::DialogueChannel::Notice,
+        entt::entity{7});
+
+    EXPECT_EQ(capture.count, 0);
+
+    dispatcher.update();
+    ASSERT_EQ(capture.count, 1);
+    EXPECT_EQ(capture.last_channel, game::defs::DialogueChannel::Notice);
+
+    game::system::helpers::emitDialogueHideNow(
+        dispatcher,
+        game::defs::DialogueChannel::ItemNotice,
+        entt::entity{7});
+
+    ASSERT_EQ(capture.count, 2);
+    EXPECT_EQ(capture.last_channel, game::defs::DialogueChannel::ItemNotice);
 }
 
 } // namespace

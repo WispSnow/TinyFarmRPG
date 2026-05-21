@@ -15,15 +15,15 @@ flowchart TD
     IR --> CS["ChestSystem<br/>需要 ChestComponent"]
     IR --> RS["RestSystem<br/>需要 RestArea"]
 
+    SIS -->|DialogueShow<br/>Conversation| DPC["DialoguePresentationController"]
     SIS -->|PushSceneEvent| Shop["Scene Stack<br/>(ShopMenuScene)"]
-    DS -->|DialogueShow/Move/Hide<br/>channel=0| DBC["DialogueBubbleController"]
-    CS -->|DialogueShow/Move/Hide<br/>channel=1| DBC
-    IU["ItemUseSystem<br/>UseItemCommand"] -->|DialogueShow/Move/Hide<br/>channel=2| DBC
+    DS -->|DialogueShow/Hide<br/>Conversation| DPC
+    CS -->|DialogueShow/Move/Hide<br/>Notice| DPC
+    IU["ItemUseSystem<br/>UseItemCommand"] -->|DialogueShow/Move/Hide<br/>ItemNotice| DPC
 
-    QIS -->|DialogueShow/Move/Hide<br/>channel=1| DBC
-    DBC --> DB0["DialogueBubbleView #0"]
-    DBC --> DB1["DialogueBubbleView #1"]
-    DBC --> DB2["DialogueBubbleView #2"]
+    QIS -->|DialogueShow/Move/Hide<br/>Notice| DPC
+    DPC --> DB["DialogueBoxView<br/>底部 JRPG 对话框"]
+    DPC --> FN["FloatingNoticeView<br/>世界锚点短提示"]
 
     RS -->|PushSceneEvent| Scene["Scene Stack<br/>(RestDialogScene)"]
 ```
@@ -31,7 +31,7 @@ flowchart TD
 核心思想：
 - `InteractionSystem` 只做两件事：根据玩家朝向做一次空间 probe，挑出目标实体；然后发出 `InteractCommand`
 - 具体玩法不写在 `InteractionSystem`：对话、开箱、休息分别由各自系统订阅 `InteractCommand` 并处理
-- UI 是事件驱动：气泡只监听 `DialogueShow/Move/HideEvent`，并按 `channel` 区分不同用途，避免互相覆盖
+- UI 是事件驱动：`DialoguePresentationController` 监听 `DialogueShow/Move/HideEvent`，并按 `DialogueChannel` 区分主对话与短提示，避免互相覆盖
 
 ## 2) `InteractCommand`：总线式扩展点
 
@@ -58,27 +58,31 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 - `QuestGiverComponent` 来自 Tiled actor point object 的 `quest_offer_id` string property
 - 目前还没有对应的 `BattleStarterComponent` 或 Tiled 战斗触发器；战斗仍主要通过 `EnterBattleCommand` / `BattleDebugPanel` 进入
 
-## 3) DialogueBubble 的运行时结构
+## 3) Dialogue Presentation 的运行时结构
 
-当前不是每个系统自己直接操作一个气泡实例，而是：
+当前不是每个系统自己直接操作 UI 实例，而是：
 
-- `GameSceneUiController` 在初始化时创建 3 个 `DialogueBubbleView`
-- `DialogueBubbleController` 订阅：
+- `GameSceneUiController` 在初始化时创建：
+  - 1 个 `DialogueBoxView`
+  - 2 个 `FloatingNoticeView`
+  - 1 个 `DialoguePresentationController`
+- `DialoguePresentationController` 订阅：
   - `DialogueShowEvent`
   - `DialogueMoveEvent`
   - `DialogueHideEvent`
-- 再按 `channel` 把事件路由到对应 `DialogueBubbleView`
+- 再按 `DialogueChannel` 把事件路由到对应 view
 
 布局约定：
-- 气泡文本排版和尺寸由 RmlUi 自动完成
-- `DialogueBubbleView` 只负责设置文本、显隐和 world-anchor 定位
-- 世界锚点位置会在 `GameScene::prepareUi(alpha)` 阶段刷新
+- `Conversation` 走屏幕底部固定 `DialogueBoxView`，头像/speaker/body 分区由 RML/RCSS 负责
+- `Notice` 与 `ItemNotice` 走 `FloatingNoticeView`，文本排版和尺寸由 RmlUi 自动完成
+- 浮动通知的世界锚点位置会在 `GameScene::prepareUi(alpha)` 阶段刷新
+- `DialogueMoveEvent` 对 `Conversation` 会被忽略，因为底部对话框不依赖世界坐标
 
-## 4) DialogueBubble 的 channel 约定
+## 4) DialogueChannel 约定
 
-项目里约定使用 3 个频道（见 `GameSceneUiController::init`）：
-- `0`：对话（NPC 说话）
-- `1`：通知（例如拾取、开箱等短提示）
-- `2`：物品提示（例如物品栏右键使用后的提示）
+项目里约定使用 3 个频道（见 `game/defs/events.h`）：
+- `DialogueChannel::Conversation`：角色对话、商店 greeting、招募前对话，显示在底部对话框
+- `DialogueChannel::Notice`：任务反馈、开箱、战斗结算等短提示，显示为世界锚点浮动通知
+- `DialogueChannel::ItemNotice`：物品栏右键使用后的提示，显示为世界锚点浮动通知
 
-因此，系统在发 `DialogueShow/Move/HideEvent` 时必须带上对应 `channel`，才能路由到正确的气泡实例。
+因此，系统在发 `DialogueShow/Move/HideEvent` 时必须带上对应 `DialogueChannel`，才能路由到正确表现。`DialogueShowEvent::speaker_actor_id_hash` 是头像解析的主路径；如果缺失，controller 会按 `RecruitableComponent::actor_id_hash_` 和 `NameComponent::name_id_` 做 fallback。

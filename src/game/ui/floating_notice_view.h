@@ -26,7 +26,7 @@ class RmlUiRuntime;
 
 namespace game::ui {
 
-class DialogueBubbleView final {
+class FloatingNoticeView final {
     engine::core::Context& context_;
     engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
@@ -39,8 +39,8 @@ class DialogueBubbleView final {
     game::ui::WorldAnchorState world_anchor_{};
 
 public:
-    DialogueBubbleView(engine::core::Context& context, uint64_t owner_scene_id);
-    ~DialogueBubbleView();
+    FloatingNoticeView(engine::core::Context& context, uint64_t owner_scene_id);
+    ~FloatingNoticeView();
 
     void setText(std::string_view text);
     void setVisible(bool visible);

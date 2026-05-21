@@ -26,7 +26,7 @@ using namespace entt::literals;
 
 namespace {
 constexpr float NOTIFICATION_SECONDS = 2.0f;
-constexpr std::uint8_t NOTIFICATION_CHANNEL = 1;
+constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
 constexpr entt::id_type CHEST_OPEN_ANIM = "open"_hs;
 
 std::string buildLootText(const game::data::ItemCatalog& catalog,

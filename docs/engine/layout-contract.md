@@ -12,7 +12,8 @@
   - `src/engine/ui/rmlui/rml_screen_fade.*`
 - 游戏 UI：
   - `src/game/ui/item_tooltip_ui.*`
-  - `src/game/ui/dialogue_bubble_view.*`
+  - `src/game/ui/dialogue_box_view.*`
+  - `src/game/ui/floating_notice_view.*`
   - `src/game/ui/hotbar_ui.*`
   - `src/game/scene/inventory_menu_scene.*`
 
@@ -46,8 +47,10 @@ RmlUi 的布局是惰性完成的，因此：
   - `document->UpdateDocument()`
 
 当前约定：
-- `ItemTooltipUI`、`DialogueBubbleView`
+- `ItemTooltipUI`、`FloatingNoticeView`
   - 改文本后如果当前可见，会立刻 `UpdateDocument()` 并刷新缓存尺寸
+- `DialogueBoxView`
+  - 屏幕固定布局完全由 RML/RCSS 负责，不读取 world anchor，也不写 `left/top`
 - 一般 Scene/HUD data binding
   - 允许等到下一轮 `RmlUiRuntime::update()` 后由 RmlUi 自然完成布局
 
@@ -58,13 +61,19 @@ RmlUi 的布局是惰性完成的，因此：
 - C++ 每帧读取逻辑鼠标位置，并计算 tooltip 左上角
 - 必须做屏幕边界钳制，保证 tooltip 不会跑出逻辑视口
 
-### 4.2 世界锚点型：`DialogueBubbleView`
+### 4.2 屏幕固定型：`DialogueBoxView`
+- 底部主对话框固定在 HUD 坐标内
+- speaker、正文、头像区域由 RML/RCSS 布局
+- C++ 只设置 speaker/text/portrait decorator 与显隐
+- 不读取 camera，不持有 world anchor，不参与 `prepareUi(alpha)`
+
+### 4.3 世界锚点型：`FloatingNoticeView`
 - 内容尺寸由 RmlUi 自动排版得出
-- `DialogueBubbleController` 只负责 show/move/hide 路由
-- `DialogueBubbleView` 每帧根据 world anchor、camera 和插值 alpha 计算屏幕锚点
+- `DialoguePresentationController` 只负责 show/move/hide 路由
+- `FloatingNoticeView` 每帧根据 world anchor、camera 和插值 alpha 计算屏幕锚点
 - 最终以 `top_left = anchor - size * pivot` 计算面板位置
 
-### 4.3 DOM 几何锚定型：`InventoryMenuScene` action menu
+### 4.4 DOM 几何锚定型：`InventoryMenuScene` action menu
 - action menu 不再通过 C++ 常量推导几何
 - 必须基于真实 DOM 几何定位：
   - 读取 slot、slot-region、action-menu 的实际 box
@@ -114,8 +123,8 @@ RmlUi 的布局是惰性完成的，因此：
 ## 8. 测试映射
 - `tests/game/ui_layout_integration_test.cpp`
   - Inventory grid / hotbar strip / action menu 几何
-- `tests/game/dialogue_bubble_controller_test.cpp`
-  - show/move/hide 路由与控制器不再手动换行
+- `tests/game/dialogue_presentation_controller_test.cpp`
+  - Conversation / Notice 路由、immediate hide、浮动通知 world anchor
 - `tests/engine/ui/rml_screen_fade_transition_source_test.cpp`
   - fade 使用 `transitionend` 与动态 transition 属性
 - `tests/engine/ui/rmlui_transition_behavior_test.cpp`

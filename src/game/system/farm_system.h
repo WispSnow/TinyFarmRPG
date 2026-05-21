@@ -1,7 +1,8 @@
 #pragma once
 
-#include "game/defs/events.h"
 #include "game/component/resource_node_component.h"
+#include "game/defs/events.h"
+#include "game/system/system_helpers.h"
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 #include <string_view>
@@ -33,6 +34,7 @@ class FarmSystem {
     const game::factory::BlueprintManager& blueprint_manager_;
     game::data::ItemCatalog* item_catalog_{nullptr};
     game::domain::InventoryDomainService& inventory_domain_service_;
+    helpers::NotificationTimer notification_{};
 
 public:
     FarmSystem(entt::registry& registry,
@@ -43,6 +45,8 @@ public:
                game::data::ItemCatalog* item_catalog,
                game::domain::InventoryDomainService& inventory_domain_service);
     ~FarmSystem();
+
+    void update(float delta_time);
 
 private:
     void onUseToolEvent(const game::defs::UseToolEvent& event);

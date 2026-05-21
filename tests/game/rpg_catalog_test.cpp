@@ -339,7 +339,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     EXPECT_EQ(player->map_actor_id_, "player");
     ASSERT_TRUE(player->portrait_.valid());
     EXPECT_EQ(player->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
-    EXPECT_EQ(player->portrait_.decorator_, "portrait-default");
+    EXPECT_EQ(player->portrait_.decorator_, "portrait-player");
     EXPECT_EQ(player->portrait_.width_, 64);
     EXPECT_EQ(player->portrait_.height_, 64);
 

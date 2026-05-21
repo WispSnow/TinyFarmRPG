@@ -20,7 +20,7 @@
 #include <limits>
 
 namespace {
-constexpr std::uint8_t DIALOGUE_CHANNEL = 0;
+constexpr game::defs::DialogueChannel DIALOGUE_CHANNEL = game::defs::DialogueChannel::Conversation;
 constexpr float DIALOGUE_CLOSE_DISTANCE_FACTOR = 1.4f;  // 对话中允许比触发距离再远 40% 才关闭
 } // namespace
 
@@ -87,11 +87,6 @@ void DialogueSystem::update(float delta_time) {
         }
     }
 
-    // 更新气泡位置
-    if (active_entity_ != entt::null) {
-        const auto head_pos = helpers::computeHeadPosition(registry_, active_entity_);
-        helpers::emitDialogueBubbleMove(dispatcher_, DIALOGUE_CHANNEL, active_entity_, head_pos);
-    }
 }
 
 void DialogueSystem::onInteractCommand(const game::defs::InteractCommand& event) {
@@ -114,14 +109,12 @@ void DialogueSystem::onInteractCommand(const game::defs::InteractCommand& event)
     }
     auto& lines = lines_it->second;
 
-    const auto head_pos = helpers::computeHeadPosition(registry_, event.target);
-
     if (active_entity_ != event.target) {
-        startDialogue(event.target, *dialogue, lines, head_pos);
+        startDialogue(event.target, *dialogue, lines);
         return;
     }
 
-    if (advanceDialogue(event.target, *dialogue, lines, head_pos)) {
+    if (advanceDialogue(event.target, *dialogue, lines)) {
         return;
     }
 
@@ -130,8 +123,7 @@ void DialogueSystem::onInteractCommand(const game::defs::InteractCommand& event)
 
 void DialogueSystem::startDialogue(entt::entity entity,
                                   game::component::DialogueComponent& dialogue,
-                                  const std::vector<std::string>& lines,
-                                  glm::vec2 head_pos) {
+                                  const std::vector<std::string>& lines) {
     if (active_entity_ != entt::null && active_entity_ != entity) {
         closeDialogue(active_entity_);
     }
@@ -139,19 +131,18 @@ void DialogueSystem::startDialogue(entt::entity entity,
     dialogue.current_line_ = 0;
     dialogue.cooldown_timer_ = dialogue.cooldown_;
     active_entity_ = entity;
-    showLine(entity, lines, dialogue.current_line_, head_pos);
+    showLine(entity, lines, dialogue.current_line_);
 }
 
 bool DialogueSystem::advanceDialogue(entt::entity entity,
                                     game::component::DialogueComponent& dialogue,
-                                    const std::vector<std::string>& lines,
-                                    glm::vec2 head_pos) {
+                                    const std::vector<std::string>& lines) {
     if (dialogue.current_line_ + 1 >= lines.size()) {
         return false;
     }
     dialogue.current_line_++;
     dialogue.cooldown_timer_ = dialogue.cooldown_;
-    showLine(entity, lines, dialogue.current_line_, head_pos);
+    showLine(entity, lines, dialogue.current_line_);
     return true;
 }
 
@@ -167,16 +158,16 @@ void DialogueSystem::closeDialogue(entt::entity entity) {
         dialogue->active_ = false;
         dialogue->current_line_ = 0;
     }
-    helpers::emitDialogueBubbleHide(dispatcher_, DIALOGUE_CHANNEL, entity);
+    helpers::emitDialogueHide(dispatcher_, DIALOGUE_CHANNEL, entity);
 }
 
-void DialogueSystem::showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index, glm::vec2 head_pos) {
+void DialogueSystem::showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index) {
     if (line_index >= lines.size()) return;
     std::string speaker;
     if (auto* name = registry_.try_get<engine::component::NameComponent>(entity)) {
         speaker = name->name_;
     }
-    helpers::emitDialogueBubbleShow(dispatcher_, DIALOGUE_CHANNEL, entity, std::move(speaker), lines[line_index], head_pos);
+    helpers::emitDialogueShow(dispatcher_, DIALOGUE_CHANNEL, entity, std::move(speaker), lines[line_index]);
     registry_.emplace_or_replace<game::component::StateDirtyTag>(entity);
     if (auto* state = registry_.try_get<game::component::StateComponent>(entity)) {
         state->action_ = game::component::Action::Idle;

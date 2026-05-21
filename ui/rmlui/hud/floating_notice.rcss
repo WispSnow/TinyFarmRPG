@@ -1,8 +1,12 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
 body {
     pointer-events: none;
 }
 
-#dialogue-bubble-panel {
+#floating-notice-panel {
     display: inline-block;
     position: absolute;
     left: 0;
@@ -12,11 +16,11 @@ body {
     min-width: 144dp;
     min-height: 32dp;
     padding: 8dp;
-    decorator: ninepatch(dialogue-bubble-bg, dialogue-bubble-bg-inner, 1.0);
+    decorator: ninepatch(hud-dialogue-bg, hud-dialogue-bg-inner, 1.0);
     pointer-events: none;
 }
 
-#dialogue-bubble-text {
+#floating-notice-text {
     color: #000000ff;
     max-width: 144dp;
     font-size: 1rem;

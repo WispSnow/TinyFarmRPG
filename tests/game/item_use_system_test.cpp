@@ -148,7 +148,7 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
     dispatcher.update();
 
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows[0].channel, 2);
+    EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::ItemNotice);
 }
 
 TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {

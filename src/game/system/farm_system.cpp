@@ -42,7 +42,8 @@ namespace {
     constexpr entt::id_type RULE_SOIL_WET    = game::defs::auto_tile_rule::SOIL_WET;
     constexpr entt::id_type ANIM_AXE = "axe"_hs;
     constexpr entt::id_type ANIM_PICKAXE = "pickaxe"_hs;
-    constexpr std::uint8_t NOTIFICATION_CHANNEL = 1;
+    constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
+    constexpr float INVENTORY_FULL_NOTICE_SECONDS = 2.0F;
 
     using game::system::detail::stackLimitOrDefault;
 
@@ -134,6 +135,10 @@ FarmSystem::FarmSystem(entt::registry& registry,
 
 FarmSystem::~FarmSystem() {
     dispatcher_.disconnect(this);
+}
+
+void FarmSystem::update(float delta_time) {
+    helpers::updateTimedNotification(registry_, dispatcher_, NOTIFICATION_CHANNEL, notification_, delta_time);
 }
 
 void FarmSystem::onUseToolEvent(const game::defs::UseToolEvent& event) {
@@ -382,12 +387,14 @@ bool FarmSystem::harvestCrop(const glm::vec2& world_pos) {
         const auto& inventory = registry_.get<game::component::InventoryComponent>(player);
         const int stack_limit = stackLimitOrDefault(item_catalog_, harvest_item_id);
         if (!inventoryCanAdd(inventory, harvest_item_id, 1, stack_limit)) {
-            helpers::emitDialogueBubbleShow(dispatcher_,
+            helpers::showTimedNotification(registry_,
+                                           dispatcher_,
                                            NOTIFICATION_CHANNEL,
+                                           notification_,
                                            player,
                                            std::string{},
                                            "Inventory full, cannot harvest",
-                                           helpers::computeHeadPosition(registry_, player));
+                                           INVENTORY_FULL_NOTICE_SECONDS);
             return false;
         }
 
