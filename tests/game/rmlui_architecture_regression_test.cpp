@@ -168,6 +168,11 @@ TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRc
     EXPECT_NE(rcss.find("height: 92dp;"), std::string::npos);
     EXPECT_NE(rcss.find("width: 584dp;"), std::string::npos);
     EXPECT_NE(rcss.find("height: 76dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("#dialogue-box-speaker {\n    height: 16dp;\n    margin-bottom: 4dp;\n    color: #fce97fff;\n    font-size: 1rem;\n    line-height: 16dp;"),
+              std::string::npos);
+    EXPECT_NE(rcss.find("#dialogue-box-text {\n    color: #f7f7f7ff;\n    font-size: 1rem;\n    line-height: 16dp;"),
+              std::string::npos);
+    EXPECT_EQ(rcss.find("font-size: 0.6875rem;"), std::string::npos);
     EXPECT_NE(rcss.find("hud-dialogue-bg"), std::string::npos);
     EXPECT_NE(rcss.find("image-color: #ffffffff;"), std::string::npos);
     EXPECT_NE(rcss.find("background-color: #00000000;"), std::string::npos);
