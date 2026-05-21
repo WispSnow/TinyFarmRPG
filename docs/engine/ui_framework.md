@@ -66,18 +66,21 @@
     - `HotbarUI`
     - `TimeClockHud`
     - `ItemTooltipUI`
-    - `DialogueBubbleController` + `DialogueBubbleView`
+    - `DialoguePresentationController`
+    - `DialogueBoxView`
+    - `FloatingNoticeView`
     - overlay prompt bar
     - `RmlScreenFade`
 
 一个实际例子是 `GameScene`：
 - 同一个 `scene_instance_id` 下会同时存在多份文档
 - 其中 `HotbarUI`、`TimeClockHud`、overlay prompt bar 各自有自己的 `RmlDocumentController`
-- `ItemTooltipUI`、`DialogueBubbleView` 这类浮动控件则直接使用 runtime + DOM 操作，不强制经过 controller
+- `ItemTooltipUI`、`DialogueBoxView`、`FloatingNoticeView` 这类 HUD 控件则直接使用 runtime + DOM 操作，不强制经过 data model controller
 
 ### 1.5 浮动控件：直接操作 DOM，但不手写排版
 - `src/game/ui/item_tooltip_ui.cpp`
-- `src/game/ui/dialogue_bubble_view.cpp`
+- `src/game/ui/dialogue_box_view.cpp`
+- `src/game/ui/floating_notice_view.cpp`
 
 这两类控件允许 C++ 直接：
 - `GetElementById()`
@@ -86,7 +89,7 @@
 
 但约定是：
 - 文本排版、自动换行、面板尺寸仍交给 RmlUi
-- C++ 只负责内容、显隐和世界/鼠标定位
+- C++ 只负责内容、显隐和世界/鼠标定位；底部对话框是屏幕固定 HUD，不参与世界锚点刷新
 
 ## 2) 标准生命周期模式
 

@@ -81,7 +81,7 @@
 using namespace entt::literals;
 
 namespace {
-constexpr std::uint8_t BATTLE_REWARD_NOTIFICATION_CHANNEL = 1;
+constexpr game::defs::DialogueChannel BATTLE_REWARD_NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -613,7 +613,8 @@ bool GameScene::initUI() {
         context_,
         registry_,
         instance_id_,
-        services_ ? services_->item_catalog.get() : nullptr);
+        services_ ? services_->item_catalog.get() : nullptr,
+        services_ ? services_->rpg_catalog.get() : nullptr);
     if (!ui_controller_ || !ui_controller_->init()) {
         spdlog::error("GameScene: 创建 GameSceneUiController 失败。");
         ui_controller_.reset();

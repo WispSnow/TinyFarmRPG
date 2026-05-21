@@ -188,11 +188,11 @@
 }
 
 
-/* --- 对话气泡 (dialogue box.png) --- */
+/* --- HUD 对话面板 (dialogue box.png) --- */
 @spritesheet ui-dialogue {
     src: ../../../assets/farm-rpg/UI/dialogue box.png;
-    dialogue-bubble-bg:       0px 48px 48px 48px;
-    dialogue-bubble-bg-inner: 3px 52px 42px 41px;
+    hud-dialogue-bg:       0px 48px 48px 48px;
+    hud-dialogue-bg-inner: 3px 52px 42px 41px;
 }
 
 /* --- Tooltip 面板 (Inventory/Banner.png) --- */

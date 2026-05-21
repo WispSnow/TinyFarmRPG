@@ -1,4 +1,4 @@
-#include "dialogue_bubble_view.h"
+#include "floating_notice_view.h"
 
 #include "engine/core/context.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
@@ -14,19 +14,19 @@ using engine::ui::rmlui::setPixelProperty;
 using engine::ui::rmlui::snapToPixel;
 using engine::ui::rmlui::textToInnerRml;
 
-constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/dialogue_bubble.rml";
+constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/floating_notice.rml";
 
 } // namespace
 
 namespace game::ui {
 
-DialogueBubbleView::DialogueBubbleView(engine::core::Context& context, uint64_t owner_scene_id)
+FloatingNoticeView::FloatingNoticeView(engine::core::Context& context, uint64_t owner_scene_id)
     : context_(context) {
     initDocument(owner_scene_id);
     setVisible(false);
 }
 
-DialogueBubbleView::~DialogueBubbleView() {
+FloatingNoticeView::~FloatingNoticeView() {
     if (document_ && runtime_) {
         runtime_->unloadDocument(document_);
     }
@@ -35,23 +35,23 @@ DialogueBubbleView::~DialogueBubbleView() {
     text_element_ = nullptr;
 }
 
-void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
+void FloatingNoticeView::initDocument(uint64_t owner_scene_id) {
     runtime_ = context_.getRmlUi();
     if (!runtime_) {
-        spdlog::error("DialogueBubbleView: RmlUiRuntime 不可用。");
+        spdlog::error("FloatingNoticeView: RmlUiRuntime 不可用。");
         return;
     }
 
     document_ = runtime_->loadDocument(DOCUMENT_PATH, owner_scene_id);
     if (!document_) {
-        spdlog::error("DialogueBubbleView: 加载 RML 文档失败: {}", DOCUMENT_PATH);
+        spdlog::error("FloatingNoticeView: 加载 RML 文档失败: {}", DOCUMENT_PATH);
         return;
     }
 
-    panel_ = document_->GetElementById("dialogue-bubble-panel");
-    text_element_ = document_->GetElementById("dialogue-bubble-text");
+    panel_ = document_->GetElementById("floating-notice-panel");
+    text_element_ = document_->GetElementById("floating-notice-text");
     if (!panel_ || !text_element_) {
-        spdlog::error("DialogueBubbleView: RML 元素缺失。");
+        spdlog::error("FloatingNoticeView: RML 元素缺失。");
         runtime_->unloadDocument(document_);
         document_ = nullptr;
         panel_ = nullptr;
@@ -62,7 +62,7 @@ void DialogueBubbleView::initDocument(uint64_t owner_scene_id) {
     runtime_->hideDocument(document_);
 }
 
-void DialogueBubbleView::refreshLayoutMetrics() {
+void FloatingNoticeView::refreshLayoutMetrics() {
     if (!document_ || !panel_) {
         return;
     }
@@ -74,7 +74,7 @@ void DialogueBubbleView::refreshLayoutMetrics() {
     };
 }
 
-void DialogueBubbleView::setText(std::string_view text) {
+void FloatingNoticeView::setText(std::string_view text) {
     text_ = std::string(text);
     if (text_element_) {
         text_element_->SetInnerRML(textToInnerRml(text_));
@@ -84,7 +84,7 @@ void DialogueBubbleView::setText(std::string_view text) {
     }
 }
 
-void DialogueBubbleView::setVisible(bool visible) {
+void FloatingNoticeView::setVisible(bool visible) {
     visible_ = visible;
     if (!document_ || !runtime_) {
         return;
@@ -98,15 +98,15 @@ void DialogueBubbleView::setVisible(bool visible) {
     }
 }
 
-void DialogueBubbleView::setWorldAnchor(glm::vec2 world_position, glm::vec2 screen_offset) {
+void FloatingNoticeView::setWorldAnchor(glm::vec2 world_position, glm::vec2 screen_offset) {
     world_anchor_.setWorldAnchor(world_position, screen_offset);
 }
 
-void DialogueBubbleView::clearWorldAnchor() {
+void FloatingNoticeView::clearWorldAnchor() {
     world_anchor_.clearWorldAnchor();
 }
 
-void DialogueBubbleView::refreshAnchoredPosition(const engine::render::Camera& camera, float interpolation_alpha) {
+void FloatingNoticeView::refreshAnchoredPosition(const engine::render::Camera& camera, float interpolation_alpha) {
     if (!visible_ || !panel_ || !document_ || !world_anchor_.hasWorldAnchor()) {
         return;
     }

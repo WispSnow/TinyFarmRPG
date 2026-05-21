@@ -63,25 +63,29 @@ struct NotificationTimer {
     return glm::vec2{0.0f};
 }
 
-inline void emitDialogueBubbleShow(entt::dispatcher& dispatcher,
-                                  std::uint8_t channel,
-                                  entt::entity target,
-                                  std::string speaker,
-                                  std::string text,
-                                  glm::vec2 world_position) {
+inline void emitDialogueShow(entt::dispatcher& dispatcher,
+                             game::defs::DialogueChannel channel,
+                             entt::entity target,
+                             std::string speaker,
+                             std::string text,
+                             glm::vec2 world_position = {0.0F, 0.0F},
+                             entt::id_type speaker_actor_id_hash = entt::null,
+                             std::string speaker_actor_id = {}) {
     game::defs::DialogueShowEvent evt{};
     evt.target = target;
     evt.speaker = std::move(speaker);
     evt.text = std::move(text);
     evt.world_position = world_position;
     evt.channel = channel;
+    evt.speaker_actor_id_hash = speaker_actor_id_hash;
+    evt.speaker_actor_id = std::move(speaker_actor_id);
     dispatcher.trigger(evt);
 }
 
-inline void emitDialogueBubbleMove(entt::dispatcher& dispatcher,
-                                  std::uint8_t channel,
-                                  entt::entity target,
-                                  glm::vec2 world_position) {
+inline void emitDialogueMove(entt::dispatcher& dispatcher,
+                             game::defs::DialogueChannel channel,
+                             entt::entity target,
+                             glm::vec2 world_position) {
     game::defs::DialogueMoveEvent evt{};
     evt.target = target;
     evt.world_position = world_position;
@@ -89,16 +93,27 @@ inline void emitDialogueBubbleMove(entt::dispatcher& dispatcher,
     dispatcher.trigger(evt);
 }
 
-inline void emitDialogueBubbleHide(entt::dispatcher& dispatcher, std::uint8_t channel, entt::entity target) {
+inline void emitDialogueHide(entt::dispatcher& dispatcher,
+                             game::defs::DialogueChannel channel,
+                             entt::entity target) {
     game::defs::DialogueHideEvent evt{};
     evt.target = target;
     evt.channel = channel;
     dispatcher.enqueue(evt);
 }
 
+inline void emitDialogueHideNow(entt::dispatcher& dispatcher,
+                                game::defs::DialogueChannel channel,
+                                entt::entity target) {
+    game::defs::DialogueHideEvent evt{};
+    evt.target = target;
+    evt.channel = channel;
+    dispatcher.trigger(evt);
+}
+
 inline void showTimedNotification(entt::registry& registry,
                                   entt::dispatcher& dispatcher,
-                                  std::uint8_t channel,
+                                  game::defs::DialogueChannel channel,
                                   NotificationTimer& timer,
                                   entt::entity target,
                                   std::string speaker,
@@ -111,7 +126,7 @@ inline void showTimedNotification(entt::registry& registry,
 
     timer.target = target;
     timer.remaining_seconds = seconds;
-    emitDialogueBubbleShow(
+    emitDialogueShow(
         dispatcher,
         channel,
         target,
@@ -122,7 +137,7 @@ inline void showTimedNotification(entt::registry& registry,
 
 inline void updateTimedNotification(entt::registry& registry,
                                     entt::dispatcher& dispatcher,
-                                    std::uint8_t channel,
+                                    game::defs::DialogueChannel channel,
                                     NotificationTimer& timer,
                                     float delta_time) {
     if (timer.target == entt::null || timer.remaining_seconds <= 0.0f) {
@@ -132,11 +147,11 @@ inline void updateTimedNotification(entt::registry& registry,
     timer.remaining_seconds = std::max(0.0f, timer.remaining_seconds - delta_time);
 
     if (registry.valid(timer.target)) {
-        emitDialogueBubbleMove(dispatcher, channel, timer.target, computeHeadPosition(registry, timer.target));
+        emitDialogueMove(dispatcher, channel, timer.target, computeHeadPosition(registry, timer.target));
     }
 
     if (timer.remaining_seconds <= 0.0f) {
-        emitDialogueBubbleHide(dispatcher, channel, timer.target);
+        emitDialogueHide(dispatcher, channel, timer.target);
         timer = {};
     }
 }

@@ -230,8 +230,9 @@ target_sources(game PRIVATE
     game/ui/map_tab_content.cpp
     game/ui/quest_map_marker_resolver.cpp
     game/ui/quest_tab_content.cpp
-    game/ui/dialogue_bubble_view.cpp
-    game/ui/dialogue_bubble_controller.cpp
+    game/ui/dialogue_box_view.cpp
+    game/ui/dialogue_presentation_controller.cpp
+    game/ui/floating_notice_view.cpp
     game/ui/game_scene_ui_controller.cpp
     game/ui/item_tooltip_ui.cpp
     # System

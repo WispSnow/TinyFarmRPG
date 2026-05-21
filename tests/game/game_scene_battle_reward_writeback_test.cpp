@@ -252,7 +252,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotif
     EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nGained Herb x1");
     EXPECT_FLOAT_EQ(capture.shows[0].world_position.x, 128.0F);
     EXPECT_FLOAT_EQ(capture.shows[0].world_position.y, 48.0F);
-    EXPECT_EQ(capture.shows[0].channel, 1);
+    EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::Notice);
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }
@@ -292,21 +292,23 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryNotificationMovesAndAutoHidesA
     auto& transform = registry_.get<engine::component::TransformComponent>(player);
     transform.position_ = {160.0f, 96.0f};
 
-    game::system::helpers::updateTimedNotification(registry_, dispatcher_, 1, notification_state, 0.5F);
+    game::system::helpers::updateTimedNotification(
+        registry_, dispatcher_, game::defs::DialogueChannel::Notice, notification_state, 0.5F);
     EXPECT_EQ(capture.moves.size(), 1U);
     EXPECT_EQ(capture.moves[0].target, player);
-    EXPECT_EQ(capture.moves[0].channel, 1);
+    EXPECT_EQ(capture.moves[0].channel, game::defs::DialogueChannel::Notice);
     EXPECT_FLOAT_EQ(capture.moves[0].world_position.x, 160.0F);
     EXPECT_FLOAT_EQ(capture.moves[0].world_position.y, 80.0F);
     EXPECT_GT(notification_state.remaining_seconds, 0.0F);
 
-    game::system::helpers::updateTimedNotification(registry_, dispatcher_, 1, notification_state, 1.5F);
+    game::system::helpers::updateTimedNotification(
+        registry_, dispatcher_, game::defs::DialogueChannel::Notice, notification_state, 1.5F);
     dispatcher_.update();
 
     EXPECT_EQ(capture.moves.size(), 2U);
     EXPECT_EQ(capture.hides.size(), 1U);
     EXPECT_EQ(capture.hides[0].target, player);
-    EXPECT_EQ(capture.hides[0].channel, 1);
+    EXPECT_EQ(capture.hides[0].channel, game::defs::DialogueChannel::Notice);
     EXPECT_TRUE(notification_state.target == entt::null);
     EXPECT_FLOAT_EQ(notification_state.remaining_seconds, 0.0F);
 
@@ -453,7 +455,7 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryCombinesRewardAndQuestProgress
     EXPECT_EQ(quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey("quest.slime_hunt", "slime_count")], 2);
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].target, player);
-    EXPECT_EQ(capture.shows[0].channel, 1);
+    EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::Notice);
     EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nGained Herb x1\nReady: Slime Hunt");
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);

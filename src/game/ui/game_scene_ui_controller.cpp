@@ -8,13 +8,15 @@
 #include "game/data/game_time.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
-#include "game/ui/dialogue_bubble_controller.h"
-#include "game/ui/dialogue_bubble_view.h"
+#include "game/ui/dialogue_box_view.h"
+#include "game/ui/dialogue_presentation_controller.h"
+#include "game/ui/floating_notice_view.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/item_tooltip_ui.h"
 #include "game/ui/time_clock_hud.h"
 
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
 namespace game::ui {
@@ -22,11 +24,13 @@ namespace game::ui {
 GameSceneUiController::GameSceneUiController(engine::core::Context& context,
                                              entt::registry& registry,
                                              uint64_t scene_instance_id,
-                                             game::data::ItemCatalog* item_catalog)
+                                             game::data::ItemCatalog* item_catalog,
+                                             const game::data::RpgCatalog* rpg_catalog)
     : context_(context),
       registry_(registry),
       scene_instance_id_(scene_instance_id),
-      item_catalog_(item_catalog) {
+      item_catalog_(item_catalog),
+      rpg_catalog_(rpg_catalog) {
 }
 
 GameSceneUiController::~GameSceneUiController() {
@@ -52,15 +56,16 @@ bool GameSceneUiController::init() {
     }
 
     item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>(context_, scene_instance_id_);
-    dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>(context_.getDispatcher());
-
-    dialogue_bubbles_[0] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
-    dialogue_bubbles_[1] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
-    dialogue_bubbles_[2] = std::make_unique<game::ui::DialogueBubbleView>(context_, scene_instance_id_);
-
-    dialogue_controller_->registerBubble(0, dialogue_bubbles_[0].get());
-    dialogue_controller_->registerBubble(1, dialogue_bubbles_[1].get());
-    dialogue_controller_->registerBubble(2, dialogue_bubbles_[2].get(), {0.0F, -56.0F});
+    dialogue_box_ = std::make_unique<game::ui::DialogueBoxView>(context_, scene_instance_id_);
+    floating_notices_[0] = std::make_unique<game::ui::FloatingNoticeView>(context_, scene_instance_id_);
+    floating_notices_[1] = std::make_unique<game::ui::FloatingNoticeView>(context_, scene_instance_id_);
+    dialogue_controller_ = std::make_unique<game::ui::DialoguePresentationController>(
+        context_.getDispatcher(),
+        registry_,
+        dialogue_box_.get(),
+        floating_notices_[0].get(),
+        floating_notices_[1].get(),
+        rpg_catalog_);
 
     hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
     if (const entt::entity player = findPlayerEntity(); player != entt::null) {
@@ -87,9 +92,9 @@ void GameSceneUiController::update(float delta_time) {
 }
 
 void GameSceneUiController::refreshAnchoredWidgets(const engine::render::Camera& camera, float interpolation_alpha) {
-    for (auto& bubble : dialogue_bubbles_) {
-        if (bubble) {
-            bubble->refreshAnchoredPosition(camera, interpolation_alpha);
+    for (auto& notice : floating_notices_) {
+        if (notice) {
+            notice->refreshAnchoredPosition(camera, interpolation_alpha);
         }
     }
 }
@@ -102,8 +107,9 @@ void GameSceneUiController::clean() {
 
     time_clock_hud_.reset();
     dialogue_controller_.reset();
-    for (auto& bubble : dialogue_bubbles_) {
-        bubble.reset();
+    dialogue_box_.reset();
+    for (auto& notice : floating_notices_) {
+        notice.reset();
     }
     hotbar_ui_.reset();
     item_tooltip_ui_.reset();

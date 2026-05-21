@@ -263,7 +263,7 @@ TEST(QuestInteractionSystemTest, AcceptQuestCommandAcceptsQuestAndInitializesPro
 
     ASSERT_EQ(capture.shows.size(), 1u);
     EXPECT_EQ(capture.shows.front().target, giver);
-    EXPECT_EQ(capture.shows.front().channel, 1);
+    EXPECT_EQ(capture.shows.front().channel, game::defs::DialogueChannel::Notice);
     EXPECT_EQ(capture.shows.front().text, "Take this hunt.");
 }
 
@@ -321,7 +321,7 @@ TEST(QuestInteractionSystemTest, ActiveQuestShowsProgressTextWithoutDuplicatingQ
 
     EXPECT_EQ(std::count(quest_log.active_quests.begin(), quest_log.active_quests.end(), QUEST_ID), 1);
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows.front().channel, 1);
+    EXPECT_EQ(capture.shows.front().channel, game::defs::DialogueChannel::Notice);
     EXPECT_EQ(capture.shows.front().text, "Keep going.");
 }
 

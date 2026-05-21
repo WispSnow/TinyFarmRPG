@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
-#include <glm/vec2.hpp>
 #include <entt/signal/dispatcher.hpp>
 
 namespace game::component {
@@ -35,15 +34,13 @@ private:
     void onInteractCommand(const game::defs::InteractCommand& event);
     void startDialogue(entt::entity entity,
                        game::component::DialogueComponent& dialogue,
-                       const std::vector<std::string>& lines,
-                       glm::vec2 head_pos);
+                       const std::vector<std::string>& lines);
     [[nodiscard]] bool advanceDialogue(entt::entity entity,
                                       game::component::DialogueComponent& dialogue,
-                                      const std::vector<std::string>& lines,
-                                      glm::vec2 head_pos);
+                                      const std::vector<std::string>& lines);
     void endDialogue(entt::entity entity, game::component::DialogueComponent& dialogue);
     void closeDialogue(entt::entity entity);
-    void showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index, glm::vec2 head_pos);
+    void showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index);
 };
 
 } // namespace game::system

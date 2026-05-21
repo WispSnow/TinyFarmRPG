@@ -33,6 +33,7 @@
 #include "game/system/day_night_system.h"
 #include "game/system/dialogue_system.h"
 #include "game/system/enemy_encounter_system.h"
+#include "game/system/farm_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/item_use_system.h"
 #include "game/system/light_toggle_system.h"
@@ -212,6 +213,9 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
         case SchedulerStage::ItemUse:
             if (systems.item_use_system) {
                 systems.item_use_system->update(delta_time);
+            }
+            if (systems.farm_system) {
+                systems.farm_system->update(delta_time);
             }
             break;
         case SchedulerStage::Dialogue:

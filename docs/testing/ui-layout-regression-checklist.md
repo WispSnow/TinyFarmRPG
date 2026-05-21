@@ -96,7 +96,7 @@
 ## 自动化参考
 
 - `tests/game/ui_layout_integration_test.cpp`
-- `tests/game/dialogue_bubble_controller_test.cpp`
+- `tests/game/dialogue_presentation_controller_test.cpp`
 - `tests/engine/ui/rml_screen_fade_transition_source_test.cpp`
 - `tests/engine/ui/rmlui_transition_behavior_test.cpp`
 

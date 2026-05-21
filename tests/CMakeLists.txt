@@ -219,7 +219,7 @@ set(GAME_TEST_SOURCES
     game/title_scene_menu_button_test.cpp
     game/pause_menu_scene_save_load_disabled_test.cpp
     game/pause_menu_scene_async_save_ui_test.cpp
-    game/dialogue_bubble_controller_test.cpp
+    game/dialogue_presentation_controller_test.cpp
     game/hud_document_controller_source_test.cpp
     game/save_slot_select_scene_enable_state_test.cpp
     game/inventory_menu_character_panel_test.cpp

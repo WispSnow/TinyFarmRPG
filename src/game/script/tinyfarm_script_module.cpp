@@ -14,8 +14,8 @@
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -40,9 +40,17 @@ namespace {
     return true;
 }
 
-[[nodiscard]] std::uint8_t sanitizeChannel(int value) {
-    const int clamped = std::clamp(value, 0, 255);
-    return static_cast<std::uint8_t>(clamped);
+[[nodiscard]] std::optional<game::defs::DialogueChannel> parseDialogueChannel(int value) {
+    switch (value) {
+    case 0:
+        return game::defs::DialogueChannel::Conversation;
+    case 1:
+        return game::defs::DialogueChannel::Notice;
+    case 2:
+        return game::defs::DialogueChannel::ItemNotice;
+    default:
+        return std::nullopt;
+    }
 }
 
 } // namespace
@@ -217,7 +225,8 @@ void installTinyFarmScriptModule(sol::state& lua,
         [&host, &registry, &dispatcher](const std::string& text,
                                         sol::optional<std::string> speaker,
                                         sol::optional<int> channel,
-                                        sol::optional<ScriptEntityHandle> target_handle) -> bool {
+                                        sol::optional<ScriptEntityHandle> target_handle,
+                                        sol::optional<std::string> speaker_actor_id) -> bool {
             if (text.empty()) {
                 return false;
             }
@@ -227,7 +236,10 @@ void installTinyFarmScriptModule(sol::state& lua,
                 return false;
             }
 
-            const std::uint8_t resolved_channel = sanitizeChannel(channel.value_or(1));
+            const auto resolved_channel = parseDialogueChannel(channel.value_or(1));
+            if (!resolved_channel.has_value()) {
+                return false;
+            }
             const glm::vec2 world_position = target == entt::null
                                                  ? glm::vec2{0.0f}
                                                  : game::system::helpers::computeHeadPosition(registry, target);
@@ -237,7 +249,11 @@ void installTinyFarmScriptModule(sol::state& lua,
             evt.speaker = speaker.value_or("Script");
             evt.text = text;
             evt.world_position = world_position;
-            evt.channel = resolved_channel;
+            evt.channel = *resolved_channel;
+            if (speaker_actor_id.has_value() && !speaker_actor_id->empty()) {
+                evt.speaker_actor_id = *speaker_actor_id;
+                evt.speaker_actor_id_hash = entt::hashed_string{speaker_actor_id->c_str()}.value();
+            }
             dispatcher.trigger(evt);
             return true;
         });
@@ -250,9 +266,14 @@ void installTinyFarmScriptModule(sol::state& lua,
                 return false;
             }
 
+            const auto resolved_channel = parseDialogueChannel(channel.value_or(1));
+            if (!resolved_channel.has_value()) {
+                return false;
+            }
+
             game::defs::DialogueHideEvent evt{};
             evt.target = target;
-            evt.channel = sanitizeChannel(channel.value_or(1));
+            evt.channel = *resolved_channel;
             dispatcher.enqueue(evt);
             return true;
         });

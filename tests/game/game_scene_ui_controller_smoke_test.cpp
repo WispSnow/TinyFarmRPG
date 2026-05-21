@@ -34,6 +34,7 @@ TEST(GameSceneUiControllerSmokeTest, GameSceneOwnsAndBuildsUiControllerAndSceneO
     const std::string init_ui_block = test_source_utils::extractFunctionBlock(source, "bool GameScene::initUI()");
     ASSERT_FALSE(init_ui_block.empty());
     EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameSceneUiController>("), std::string::npos);
+    EXPECT_NE(init_ui_block.find("services_->rpg_catalog.get()"), std::string::npos);
     EXPECT_NE(init_ui_block.find("ui_controller_->init()"), std::string::npos);
     EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameOverlay>("), std::string::npos);
     EXPECT_NE(init_ui_block.find("std::make_unique<game::ui::GameInputPromptOverlay>("), std::string::npos);
@@ -107,7 +108,9 @@ TEST(GameSceneUiControllerSmokeTest, ControllerOwnsHudDialogueAndFadeComposition
     ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
 
     EXPECT_NE(header.find("std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};"), std::string::npos);
-    EXPECT_NE(header.find("std::array<std::unique_ptr<game::ui::DialogueBubbleView>, 3> dialogue_bubbles_{};"),
+    EXPECT_NE(header.find("std::unique_ptr<game::ui::DialogueBoxView> dialogue_box_{};"),
+              std::string::npos);
+    EXPECT_NE(header.find("std::array<std::unique_ptr<game::ui::FloatingNoticeView>, 2> floating_notices_{};"),
               std::string::npos);
     EXPECT_NE(header.find("std::unique_ptr<game::ui::ItemTooltipUI> item_tooltip_ui_{};"), std::string::npos);
     EXPECT_NE(header.find("std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_{};"), std::string::npos);
@@ -120,7 +123,9 @@ TEST(GameSceneUiControllerSmokeTest, ControllerOwnsHudDialogueAndFadeComposition
     EXPECT_NE(init_block.find("time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>("), std::string::npos);
     EXPECT_NE(init_block.find("hotbar_ui_ = std::make_unique<game::ui::HotbarUI>("), std::string::npos);
     EXPECT_NE(init_block.find("item_tooltip_ui_ = std::make_unique<game::ui::ItemTooltipUI>("), std::string::npos);
-    EXPECT_NE(init_block.find("dialogue_controller_ = std::make_unique<game::ui::DialogueBubbleController>("),
+    EXPECT_NE(init_block.find("dialogue_box_ = std::make_unique<game::ui::DialogueBoxView>("),
+              std::string::npos);
+    EXPECT_NE(init_block.find("dialogue_controller_ = std::make_unique<game::ui::DialoguePresentationController>("),
               std::string::npos);
     EXPECT_NE(init_block.find("rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>("),
               std::string::npos);

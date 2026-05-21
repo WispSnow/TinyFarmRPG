@@ -237,7 +237,7 @@ stateDiagram-v2
     Completed --> Completed : 交互 → 显示 completed 文本
 ```
 
-交互反馈走现有 `DialogueBubbleView` 的 `channel = 1`（通知频道），不占用普通对话频道。
+交互反馈走 `DialogueChannel::Notice`，由 `FloatingNoticeView` 显示为短提示，不占用底部主对话框。
 
 ### QuestGiverComponent 配置
 
@@ -267,11 +267,11 @@ sequenceDiagram
         GS->>BPR: apply(outcome, final_units, quest_catalog, quest_log)
         BPR-->>GS: QuestBattleProgressSummary
         GS->>FB: formatBattleSettlementFeedback(reward_result, quest_summary)
-        FB-->>GS: 合并文本 → DialogueShowEvent(channel=1)
+        FB-->>GS: 合并文本 → DialogueShowEvent(Notice)
     end
 ```
 
-若同一场 Victory 既有奖励反馈又有任务推进反馈，两者合并为同一条通知文本，避免同帧覆盖 channel 1。
+若同一场 Victory 既有奖励反馈又有任务推进反馈，两者合并为同一条通知文本，避免同帧覆盖 `DialogueChannel::Notice`。
 
 ### 当前项目配置
 

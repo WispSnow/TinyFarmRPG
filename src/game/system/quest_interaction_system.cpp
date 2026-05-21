@@ -21,7 +21,7 @@
 namespace game::system {
 namespace {
 
-constexpr std::uint8_t NOTIFICATION_CHANNEL = 1;
+constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
 constexpr float NOTIFICATION_SECONDS = 2.0f;
 
 [[nodiscard]] std::string findSpeakerName(entt::registry& registry, const entt::entity entity) {

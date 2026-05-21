@@ -139,6 +139,32 @@ TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {
     EXPECT_EQ(rcss.find("ninepatch"), std::string::npos);
 }
 
+TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRcss) {
+    const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal();
+    const std::filesystem::path rml_path = (project_root / "ui/rmlui/hud/dialogue_box.rml").lexically_normal();
+    const std::filesystem::path rcss_path = (project_root / "ui/rmlui/hud/dialogue_box.rcss").lexically_normal();
+    const std::filesystem::path spritesheet_path = (project_root / "ui/rmlui/theme/spritesheet.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+    ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+    ASSERT_TRUE(std::filesystem::exists(spritesheet_path)) << spritesheet_path;
+
+    const std::string rml = test_source_utils::readTextFile(rml_path);
+    const std::string rcss = test_source_utils::readTextFile(rcss_path);
+    const std::string spritesheet = test_source_utils::readTextFile(spritesheet_path);
+    ASSERT_FALSE(rml.empty());
+    ASSERT_FALSE(rcss.empty());
+    ASSERT_FALSE(spritesheet.empty());
+
+    EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("dialogue-box-portrait"), std::string::npos);
+    EXPECT_NE(rcss.find("body, div, h1, h2, h3, h4, p, hr"), std::string::npos);
+    EXPECT_NE(rcss.find("hud-dialogue-bg"), std::string::npos);
+    EXPECT_NE(spritesheet.find("hud-dialogue-bg"), std::string::npos);
+    EXPECT_EQ(spritesheet.find(std::string{"dialogue-"} + "bubble-bg"), std::string::npos);
+    EXPECT_EQ(rcss.find("solid"), std::string::npos);
+    EXPECT_EQ(rcss.find("left: 0; right:"), std::string::npos);
+}
+
 } // namespace
 } // namespace game::ui
 // NOLINTEND

@@ -3,11 +3,11 @@
     <link type="text/rcss" href="../theme/base.rcss"/>
     <link type="text/rcss" href="../theme/reset.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
-    <link type="text/rcss" href="dialogue_bubble.rcss"/>
+    <link type="text/rcss" href="floating_notice.rcss"/>
 </head>
 <body class="tf-screen-root">
-    <div id="dialogue-bubble-panel">
-        <div id="dialogue-bubble-text"></div>
+    <div id="floating-notice-panel">
+        <div id="floating-notice-text"></div>
     </div>
 </body>
 </rml>

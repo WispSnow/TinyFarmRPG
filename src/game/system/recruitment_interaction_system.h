@@ -4,7 +4,6 @@
 #include "game/defs/commands.h"
 #include "game/system/system_helpers.h"
 
-#include <glm/vec2.hpp>
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
 #include <entt/entity/fwd.hpp>
@@ -44,12 +43,12 @@ private:
     [[nodiscard]] bool isRecruited(std::string_view actor_id) const;
     void showNotification(entt::entity target, std::string text);
     void startDialogue(entt::entity entity, game::component::DialogueComponent& dialogue,
-                       const std::vector<std::string>& lines, glm::vec2 head_pos);
+                       const std::vector<std::string>& lines);
     [[nodiscard]] bool advanceDialogue(entt::entity entity, game::component::DialogueComponent& dialogue,
-                                        const std::vector<std::string>& lines, glm::vec2 head_pos);
+                                        const std::vector<std::string>& lines);
     void endDialogueAndRequestJoin(entt::entity player, entt::entity entity, game::component::DialogueComponent& dialogue);
     void closeDialogue(entt::entity entity);
-    void showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index, glm::vec2 head_pos);
+    void showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index);
 };
 
 } // namespace game::system

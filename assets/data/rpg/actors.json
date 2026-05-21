@@ -13,7 +13,7 @@
             "map_actor_id": "player",
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
-                "decorator": "portrait-default",
+                "decorator": "portrait-player",
                 "x": 0,
                 "y": 0,
                 "width": 64,
