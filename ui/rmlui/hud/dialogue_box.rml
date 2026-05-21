@@ -8,12 +8,15 @@
 </head>
 <body class="tf-screen-root">
     <div id="dialogue-box-panel">
-        <div id="dialogue-box-portrait-frame">
-            <div id="dialogue-box-portrait"></div>
-        </div>
-        <div id="dialogue-box-copy">
-            <div id="dialogue-box-speaker"></div>
-            <div id="dialogue-box-text"></div>
+        <div id="dialogue-box-bg"></div>
+        <div id="dialogue-box-content">
+            <div id="dialogue-box-portrait-frame">
+                <div id="dialogue-box-portrait"></div>
+            </div>
+            <div id="dialogue-box-copy">
+                <div id="dialogue-box-speaker"></div>
+                <div id="dialogue-box-text"></div>
+            </div>
         </div>
         <div id="dialogue-box-continue">v</div>
     </div>

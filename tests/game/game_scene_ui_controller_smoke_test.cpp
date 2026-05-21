@@ -127,6 +127,7 @@ TEST(GameSceneUiControllerSmokeTest, ControllerOwnsHudDialogueAndFadeComposition
               std::string::npos);
     EXPECT_NE(init_block.find("dialogue_controller_ = std::make_unique<game::ui::DialoguePresentationController>("),
               std::string::npos);
+    EXPECT_NE(init_block.find("hotbar_ui_.get()"), std::string::npos);
     EXPECT_NE(init_block.find("rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>("),
               std::string::npos);
 }

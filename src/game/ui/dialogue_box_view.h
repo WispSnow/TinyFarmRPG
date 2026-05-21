@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/ui/hud_view_ports.h"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -19,7 +21,7 @@ class RmlUiRuntime;
 
 namespace game::ui {
 
-class DialogueBoxView final {
+class DialogueBoxView final : public DialogueBoxViewPort {
     engine::core::Context& context_;
     engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
@@ -36,12 +38,12 @@ class DialogueBoxView final {
 
 public:
     DialogueBoxView(engine::core::Context& context, std::uint64_t owner_scene_id);
-    ~DialogueBoxView();
+    ~DialogueBoxView() override;
 
-    void setSpeaker(std::string_view speaker);
-    void setText(std::string_view text);
-    void setPortraitDecorator(std::string_view decorator);
-    void setVisible(bool visible);
+    void setSpeaker(std::string_view speaker) override;
+    void setText(std::string_view text) override;
+    void setPortraitDecorator(std::string_view decorator) override;
+    void setVisible(bool visible) override;
 
     [[nodiscard]] bool isReady() const;
     [[nodiscard]] bool isVisible() const { return visible_; }

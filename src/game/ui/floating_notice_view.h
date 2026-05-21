@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/ui/hud_view_ports.h"
 #include "game/ui/world_anchor_state.h"
 
 #include <cstdint>
@@ -26,7 +27,7 @@ class RmlUiRuntime;
 
 namespace game::ui {
 
-class FloatingNoticeView final {
+class FloatingNoticeView final : public FloatingNoticeViewPort {
     engine::core::Context& context_;
     engine::ui::rmlui::RmlUiRuntime* runtime_{nullptr};
     Rml::ElementDocument* document_{nullptr};
@@ -40,12 +41,12 @@ class FloatingNoticeView final {
 
 public:
     FloatingNoticeView(engine::core::Context& context, uint64_t owner_scene_id);
-    ~FloatingNoticeView();
+    ~FloatingNoticeView() override;
 
-    void setText(std::string_view text);
-    void setVisible(bool visible);
-    void setWorldAnchor(glm::vec2 world_position, glm::vec2 screen_offset = {0.0F, 0.0F});
-    void clearWorldAnchor();
+    void setText(std::string_view text) override;
+    void setVisible(bool visible) override;
+    void setWorldAnchor(glm::vec2 world_position, glm::vec2 screen_offset = {0.0F, 0.0F}) override;
+    void clearWorldAnchor() override;
     void refreshAnchoredPosition(const engine::render::Camera& camera, float interpolation_alpha);
 
     [[nodiscard]] bool isReady() const { return document_ != nullptr && panel_ != nullptr && text_element_ != nullptr; }

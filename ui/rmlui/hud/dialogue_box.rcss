@@ -7,18 +7,36 @@ body {
 }
 
 #dialogue-box-panel {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
     position: absolute;
     left: 20dp;
-    top: 248dp;
+    bottom: 0dp;
     width: 600dp;
-    min-height: 92dp;
-    padding: 10dp;
+    height: 92dp;
+    pointer-events: none;
+}
+
+#dialogue-box-bg {
+    position: absolute;
+    left: 0dp;
+    top: 0dp;
+    width: 600dp;
+    height: 92dp;
     decorator: ninepatch(hud-dialogue-bg, hud-dialogue-bg-inner, 1.0);
     image-color: #24283bff;
-    background-color: #1a1b26ee;
+    background-color: #1a1b26ff;
+    opacity: 0.78;
+    pointer-events: none;
+}
+
+#dialogue-box-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    position: absolute;
+    left: 8dp;
+    top: 8dp;
+    width: 584dp;
+    height: 76dp;
     color: #ffffffff;
     font-effect: shadow(1dp 1dp #000000cc);
     pointer-events: none;
@@ -45,7 +63,7 @@ body {
 
 #dialogue-box-copy {
     flex-grow: 1;
-    min-height: 64dp;
+    min-height: 60dp;
     padding-right: 18dp;
 }
 
@@ -71,8 +89,8 @@ body {
 
 #dialogue-box-continue {
     position: absolute;
-    left: 574dp;
-    top: 68dp;
+    left: 558dp;
+    top: 56dp;
     width: 12dp;
     height: 12dp;
     color: #7dcfffff;
