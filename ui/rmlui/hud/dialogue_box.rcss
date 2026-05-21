@@ -69,7 +69,7 @@ body {
     height: 16dp;
     margin-bottom: 4dp;
     color: #fce97fff;
-    font-size: 0.6875rem;
+    font-size: 1rem;
     line-height: 16dp;
 }
 
@@ -79,8 +79,8 @@ body {
 
 #dialogue-box-text {
     color: #f7f7f7ff;
-    font-size: 0.6875rem;
-    line-height: 18dp;
+    font-size: 1rem;
+    line-height: 16dp;
     white-space: pre-wrap;
     word-break: break-word;
 }
