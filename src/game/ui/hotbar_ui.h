@@ -4,6 +4,7 @@
 #include "engine/ui/ui_types.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/events.h"
+#include "game/ui/hud_view_ports.h"
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -39,7 +40,7 @@ class ItemTooltipUI;
 /// - 维护一份适合 RmlUi data model 绑定的 `hotbar_slots_` 视图模型。
 /// - 将 UI 交互翻译成 gameplay 命令：左键激活、右键使用、拖拽换绑/解绑。
 /// - 拖拽视觉和命中检测由 RmlUi 原生 `drag: clone` 处理；本类只解释事件结果。
-class HotbarUI final {
+class HotbarUI final : public HotbarVisibilityPort {
     engine::ui::rmlui::RmlUiRuntime& runtime_;
     engine::core::Context& context_;
     game::data::ItemCatalog* item_catalog_{nullptr};
@@ -68,7 +69,7 @@ public:
              engine::core::Context& context,
              uint64_t owner_scene_id,
              game::data::ItemCatalog* catalog = nullptr);
-    ~HotbarUI();
+    ~HotbarUI() override;
 
     HotbarUI(const HotbarUI&) = delete;
     HotbarUI& operator=(const HotbarUI&) = delete;
@@ -78,7 +79,7 @@ public:
     [[nodiscard]] bool isReady() const {
         return document_controller_.document() != nullptr && document_controller_.isModelValid();
     }
-    [[nodiscard]] bool isVisible() const { return visible_; }
+    [[nodiscard]] bool isVisible() const override { return visible_; }
 
     void setSlotItem(int slot_index, const engine::ui::SlotItem& item);
     void clearSlot(int slot_index);
@@ -101,8 +102,8 @@ public:
     void setSlotInventoryIndex(int slot_index, int inventory_index);
     void resetInventoryMappings();
 
-    void show();
-    void hide();
+    void show() override;
+    void hide() override;
     void toggle();
 
     /// @brief 同步整份快捷栏状态快照到 HUD。

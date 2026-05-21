@@ -1,7 +1,5 @@
 #include "dialogue_presentation_controller.h"
 
-#include "dialogue_box_view.h"
-#include "floating_notice_view.h"
 #include "engine/component/name_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/data/rpg_catalog.h"
@@ -31,15 +29,17 @@ namespace game::ui {
 
 DialoguePresentationController::DialoguePresentationController(entt::dispatcher& dispatcher,
                                                                entt::registry& registry,
-                                                               DialogueBoxView* conversation_box,
-                                                               FloatingNoticeView* notice_view,
-                                                               FloatingNoticeView* item_notice_view,
+                                                               DialogueBoxViewPort* conversation_box,
+                                                               FloatingNoticeViewPort* notice_view,
+                                                               FloatingNoticeViewPort* item_notice_view,
+                                                               HotbarVisibilityPort* hotbar_ui,
                                                                const game::data::RpgCatalog* rpg_catalog,
                                                                glm::vec2 notice_offset,
                                                                glm::vec2 item_notice_offset)
     : dispatcher_(dispatcher),
       registry_(registry),
       conversation_box_(conversation_box),
+      hotbar_ui_(hotbar_ui),
       notice_slot_{.view = notice_view, .screen_offset = notice_offset},
       item_notice_slot_{.view = item_notice_view, .screen_offset = item_notice_offset},
       rpg_catalog_(rpg_catalog) {
@@ -82,6 +82,7 @@ void DialoguePresentationController::onShow(const game::defs::DialogueShowEvent&
         if (!conversation_box_) {
             return;
         }
+        hideHotbarForConversation();
         conversation_box_->setSpeaker(evt.speaker);
         conversation_box_->setText(evt.text);
         conversation_box_->setPortraitDecorator(resolvePortraitDecorator(evt));
@@ -111,6 +112,7 @@ void DialoguePresentationController::onHide(const game::defs::DialogueHideEvent&
         if (conversation_box_) {
             conversation_box_->setVisible(false);
         }
+        restoreHotbarAfterConversation();
         return;
     }
 
@@ -120,6 +122,30 @@ void DialoguePresentationController::onHide(const game::defs::DialogueHideEvent&
     }
     slot->view->clearWorldAnchor();
     slot->view->setVisible(false);
+}
+
+void DialoguePresentationController::hideHotbarForConversation() {
+    if (conversation_active_) {
+        return;
+    }
+
+    conversation_active_ = true;
+    restore_hotbar_after_conversation_ = hotbar_ui_ && hotbar_ui_->isVisible();
+    if (restore_hotbar_after_conversation_) {
+        hotbar_ui_->hide();
+    }
+}
+
+void DialoguePresentationController::restoreHotbarAfterConversation() {
+    if (!conversation_active_) {
+        return;
+    }
+
+    conversation_active_ = false;
+    if (restore_hotbar_after_conversation_ && hotbar_ui_) {
+        hotbar_ui_->show();
+    }
+    restore_hotbar_after_conversation_ = false;
 }
 
 std::string DialoguePresentationController::resolvePortraitDecorator(const game::defs::DialogueShowEvent& evt) const {

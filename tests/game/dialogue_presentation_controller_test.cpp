@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <glm/vec2.hpp>
 
 #include <chrono>
 #include <filesystem>
@@ -56,6 +57,54 @@ struct HideCapture {
     void onHide(const game::defs::DialogueHideEvent& evt) {
         ++count;
         last_channel = evt.channel;
+    }
+};
+
+class FakeDialogueBoxView final : public game::ui::DialogueBoxViewPort {
+public:
+    bool visible{false};
+    std::string speaker{};
+    std::string text{};
+    std::string portrait_decorator{};
+
+    void setSpeaker(std::string_view next_speaker) override { speaker = next_speaker; }
+    void setText(std::string_view next_text) override { text = next_text; }
+    void setPortraitDecorator(std::string_view decorator) override { portrait_decorator = decorator; }
+    void setVisible(bool next_visible) override { visible = next_visible; }
+};
+
+class FakeFloatingNoticeView final : public game::ui::FloatingNoticeViewPort {
+public:
+    bool visible{false};
+    bool has_world_anchor{false};
+    std::string text{};
+    glm::vec2 world_position{0.0F, 0.0F};
+    glm::vec2 screen_offset{0.0F, 0.0F};
+
+    void setText(std::string_view next_text) override { text = next_text; }
+    void setVisible(bool next_visible) override { visible = next_visible; }
+    void setWorldAnchor(glm::vec2 next_world_position, glm::vec2 next_screen_offset = {0.0F, 0.0F}) override {
+        has_world_anchor = true;
+        world_position = next_world_position;
+        screen_offset = next_screen_offset;
+    }
+    void clearWorldAnchor() override { has_world_anchor = false; }
+};
+
+class FakeHotbarVisibility final : public game::ui::HotbarVisibilityPort {
+public:
+    bool visible{true};
+    int show_calls{0};
+    int hide_calls{0};
+
+    [[nodiscard]] bool isVisible() const override { return visible; }
+    void show() override {
+        visible = true;
+        ++show_calls;
+    }
+    void hide() override {
+        visible = false;
+        ++hide_calls;
     }
 };
 
@@ -216,6 +265,74 @@ protected:
     return (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").string();
 }
 
+TEST(DialoguePresentationControllerUnitTest, ConversationHidesVisibleHotbarUntilDialogueEnds) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+    hotbar.visible = true;
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher, registry, &box, &notice, &item_notice, &hotbar, nullptr);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.speaker = "Lyria";
+    show_evt.text = "First line";
+    dispatcher.trigger(show_evt);
+
+    ASSERT_TRUE(box.visible);
+    EXPECT_FALSE(hotbar.visible);
+    EXPECT_EQ(hotbar.hide_calls, 1);
+    EXPECT_EQ(hotbar.show_calls, 0);
+
+    show_evt.text = "Second line";
+    dispatcher.trigger(show_evt);
+    EXPECT_EQ(box.text, "Second line");
+    EXPECT_FALSE(hotbar.visible);
+    EXPECT_EQ(hotbar.hide_calls, 1);
+
+    game::defs::DialogueHideEvent hide_evt{};
+    hide_evt.channel = game::defs::DialogueChannel::Conversation;
+    dispatcher.trigger(hide_evt);
+
+    EXPECT_FALSE(box.visible);
+    EXPECT_TRUE(hotbar.visible);
+    EXPECT_EQ(hotbar.show_calls, 1);
+}
+
+TEST(DialoguePresentationControllerUnitTest, ConversationLeavesInitiallyHiddenHotbarHidden) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+    hotbar.visible = false;
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher, registry, &box, &notice, &item_notice, &hotbar, nullptr);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.text = "Hidden hotbar should stay hidden";
+    dispatcher.trigger(show_evt);
+
+    ASSERT_TRUE(box.visible);
+    EXPECT_FALSE(hotbar.visible);
+    EXPECT_EQ(hotbar.hide_calls, 0);
+
+    game::defs::DialogueHideEvent hide_evt{};
+    hide_evt.channel = game::defs::DialogueChannel::Conversation;
+    dispatcher.trigger(hide_evt);
+
+    EXPECT_FALSE(box.visible);
+    EXPECT_FALSE(hotbar.visible);
+    EXPECT_EQ(hotbar.show_calls, 0);
+}
+
 TEST_F(DialoguePresentationControllerTest, ConversationShowHideDrivesDialogueBox) {
     if (!context_->getRmlUi()) {
         GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";
@@ -227,7 +344,7 @@ TEST_F(DialoguePresentationControllerTest, ConversationShowHideDrivesDialogueBox
     auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     game::ui::DialoguePresentationController controller(
-        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), &catalog);
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, &catalog);
 
     game::defs::DialogueShowEvent show_evt{};
     show_evt.channel = game::defs::DialogueChannel::Conversation;
@@ -266,7 +383,7 @@ TEST_F(DialoguePresentationControllerTest, NoticeShowMoveHideDrivesFloatingNotic
     auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     game::ui::DialoguePresentationController controller(
-        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, {3.0F, -7.0F});
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, nullptr, {3.0F, -7.0F});
 
     game::defs::DialogueShowEvent show_evt{};
     show_evt.channel = game::defs::DialogueChannel::Notice;
@@ -309,7 +426,7 @@ TEST_F(DialoguePresentationControllerTest, HideChannelsClearIndependentViews) {
     auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     game::ui::DialoguePresentationController controller(
-        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr);
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, nullptr);
 
     game::defs::DialogueShowEvent show_evt{};
     show_evt.channel = game::defs::DialogueChannel::Conversation;
@@ -343,7 +460,7 @@ TEST_F(DialoguePresentationControllerTest, ImmediateHideDoesNotWaitForDispatcher
     auto notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     auto item_notice = std::make_unique<game::ui::FloatingNoticeView>(*context_, 1);
     game::ui::DialoguePresentationController controller(
-        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr);
+        dispatcher_, registry_, box.get(), notice.get(), item_notice.get(), nullptr, nullptr);
 
     game::defs::DialogueShowEvent show_evt{};
     show_evt.channel = game::defs::DialogueChannel::Conversation;

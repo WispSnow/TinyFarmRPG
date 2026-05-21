@@ -65,6 +65,7 @@ bool GameSceneUiController::init() {
         dialogue_box_.get(),
         floating_notices_[0].get(),
         floating_notices_[1].get(),
+        hotbar_ui_.get(),
         rpg_catalog_);
 
     hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());

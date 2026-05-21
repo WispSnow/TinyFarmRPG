@@ -156,9 +156,18 @@ TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRc
     ASSERT_FALSE(spritesheet.empty());
 
     EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("dialogue-box-bg"), std::string::npos);
+    EXPECT_NE(rml.find("dialogue-box-content"), std::string::npos);
     EXPECT_NE(rml.find("dialogue-box-portrait"), std::string::npos);
     EXPECT_NE(rcss.find("body, div, h1, h2, h3, h4, p, hr"), std::string::npos);
+    EXPECT_NE(rcss.find("bottom: 0dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("align-items: center;"), std::string::npos);
+    EXPECT_NE(rcss.find("width: 600dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("height: 92dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("width: 584dp;"), std::string::npos);
+    EXPECT_NE(rcss.find("height: 76dp;"), std::string::npos);
     EXPECT_NE(rcss.find("hud-dialogue-bg"), std::string::npos);
+    EXPECT_NE(rcss.find("opacity: 0.78;"), std::string::npos);
     EXPECT_NE(spritesheet.find("hud-dialogue-bg"), std::string::npos);
     EXPECT_EQ(spritesheet.find(std::string{"dialogue-"} + "bubble-bg"), std::string::npos);
     EXPECT_EQ(rcss.find("solid"), std::string::npos);
