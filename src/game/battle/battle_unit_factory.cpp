@@ -3,6 +3,7 @@
 #include "game/battle/actor_stats_resolver.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_types.h"
+#include "game/domain/actor_progression_service.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -91,7 +92,12 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
 
         const auto loadout_it = options.actor_equipment.find(actor->id_);
         const auto* loadout = loadout_it == options.actor_equipment.end() ? nullptr : &loadout_it->second;
-        const auto resolved = resolveActorStats(catalog, *actor, loadout);
+        const auto runtime_it = options.actor_runtime_states.find(actor->id_);
+        const auto actor_state = runtime_it == options.actor_runtime_states.end()
+            ? game::domain::ActorProgressionService::initialState(catalog, *actor, loadout)
+            : game::domain::ActorProgressionService::normalizeState(catalog, *actor, runtime_it->second, loadout);
+        const int actor_level = actor_state.level;
+        const auto resolved = resolveActorStats(catalog, *actor, actor_level, loadout);
 
         const int max_hp = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Mhp));
         const int max_mp = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Mmp));
@@ -101,13 +107,8 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
         const int mdf = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Mdf));
         const int agi = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Agi));
         const int luk = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Luk));
-        const auto runtime_it = options.actor_runtime_states.find(actor->id_);
-        const int current_hp = runtime_it == options.actor_runtime_states.end()
-            ? max_hp
-            : std::clamp(runtime_it->second.current_hp, 0, max_hp);
-        const int current_mp = runtime_it == options.actor_runtime_states.end()
-            ? max_mp
-            : std::clamp(runtime_it->second.current_mp, 0, max_mp);
+        const int current_hp = std::clamp(actor_state.current_hp, 0, max_hp);
+        const int current_mp = std::clamp(actor_state.current_mp, 0, max_mp);
         const std::string actor_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
         player_units.push_back(BattleUnit{
             .id = next_player_id++,

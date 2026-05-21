@@ -47,9 +47,9 @@ body, div, h1, h2, h3, h4, p, hr {
 #battle-victory-panel {
     position: absolute;
     left: 170dp;
-    top: 34dp;
+    top: 22dp;
     width: 300dp;
-    height: 178dp;
+    height: 212dp;
     padding: 10dp;
     background-color: #111822f2;
     border-width: 1dp;
@@ -68,7 +68,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #battle-victory-rewards {
     width: 280dp;
-    height: 88dp;
+    height: 128dp;
     margin-top: 6dp;
 }
 
@@ -103,7 +103,7 @@ body, div, h1, h2, h3, h4, p, hr {
 
 #battle-victory-item-list {
     width: 280dp;
-    height: 62dp;
+    height: 44dp;
     margin-top: 4dp;
     overflow: hidden;
 }
@@ -151,6 +151,42 @@ body, div, h1, h2, h3, h4, p, hr {
     color: #fce97fff;
     font-size: 0.5625rem;
     text-align: right;
+}
+
+#battle-victory-level-list {
+    width: 280dp;
+    height: 36dp;
+    margin-top: 4dp;
+    overflow: hidden;
+}
+
+.battle-victory-level {
+    width: 280dp;
+    height: 18dp;
+    display: flex;
+    flex-direction: row;
+    background-color: #172416dd;
+}
+
+.battle-victory-level-label {
+    width: 142dp;
+    height: 18dp;
+    line-height: 18dp;
+    padding-left: 6dp;
+    color: #c7f59cff;
+    font-size: 0.5625rem;
+    overflow: hidden;
+}
+
+.battle-victory-level-stats {
+    width: 122dp;
+    height: 18dp;
+    line-height: 18dp;
+    padding-right: 6dp;
+    color: #fce97fff;
+    font-size: 0.5625rem;
+    text-align: right;
+    overflow: hidden;
 }
 
 #battle-victory-continue {

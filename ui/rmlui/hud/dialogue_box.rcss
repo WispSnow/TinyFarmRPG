@@ -43,13 +43,11 @@ body {
 }
 
 #dialogue-box-portrait-frame {
-    width: 62dp;
-    height: 62dp;
-    min-width: 62dp;
+    width: 56dp;
+    height: 56dp;
+    min-width: 56dp;
     margin-right: 10dp;
-    padding: 2dp;
-    border: 1dp #565f89;
-    background-color: #16161eff;
+    pointer-events: none;
 }
 
 #dialogue-box-portrait-frame.is-hidden {

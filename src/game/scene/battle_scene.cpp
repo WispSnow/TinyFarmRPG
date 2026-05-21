@@ -20,8 +20,10 @@
 #include "game/component/appearance_component.h"
 #include "game/defs/events.h"
 #include "game/defs/options_events.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/scene/battle_cursor_memory.h"
+#include "game/scene/game_scene_reward_feedback.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
@@ -660,8 +662,10 @@ bool BattleScene::initUI() {
         !constructor.Bind("victory_overlay_visible", &victory_overlay_visible_) ||
         !constructor.Bind("victory_continue_enabled", &victory_continue_enabled_) ||
         !constructor.Bind("victory_items_empty", &victory_items_empty_) ||
+        !constructor.Bind("victory_level_ups_empty", &victory_level_ups_empty_) ||
         !constructor.Bind("victory_title", &victory_title_) ||
         !constructor.Bind("victory_gold_text", &victory_gold_text_) ||
+        !constructor.Bind("victory_exp_text", &victory_exp_text_) ||
         !constructor.Bind("victory_item_empty_text", &victory_item_empty_text_) ||
         !constructor.Bind("victory_prompt_text", &victory_prompt_text_) ||
         !constructor.Bind("list_empty_text", &list_empty_text_) ||
@@ -678,6 +682,7 @@ bool BattleScene::initUI() {
         !constructor.Bind("state_tooltip", &state_tooltip_) ||
         !constructor.Bind("battle_log_entries", &battle_log_entries_) ||
         !constructor.Bind("victory_reward_items", &victory_reward_items_) ||
+        !constructor.Bind("victory_level_ups", &victory_level_ups_) ||
         !constructor.Bind("party_commands", &party_commands_) ||
         !constructor.Bind("actor_commands", &actor_commands_) ||
         !constructor.Bind("list_entries", &list_entries_) ||
@@ -847,6 +852,14 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
+    if (auto victory_level_handle = constructor.RegisterStruct<VictoryLevelUpViewModel>()) {
+        victory_level_handle.RegisterMember("entry_index", &VictoryLevelUpViewModel::entry_index);
+        victory_level_handle.RegisterMember("label", &VictoryLevelUpViewModel::label);
+        victory_level_handle.RegisterMember("stat_text", &VictoryLevelUpViewModel::stat_text);
+    } else {
+        return false;
+    }
+
     if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
         turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
         turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
@@ -869,7 +882,8 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         !constructor.RegisterArray<decltype(party_status_)>() ||
         !constructor.RegisterArray<decltype(party_state_icons_)>() ||
         !constructor.RegisterArray<decltype(battle_log_entries_)>() ||
-        !constructor.RegisterArray<decltype(victory_reward_items_)>()) {
+        !constructor.RegisterArray<decltype(victory_reward_items_)>() ||
+        !constructor.RegisterArray<decltype(victory_level_ups_)>()) {
         return false;
     }
 
@@ -1153,6 +1167,11 @@ void BattleScene::rebuildVictoryView() {
         document_controller_.markDirty("victory_gold_text");
     }
 
+    const std::string exp_text = std::to_string(std::max(0, snapshot.exp.display));
+    if (updateBoundString(victory_exp_text_, exp_text)) {
+        document_controller_.markDirty("victory_exp_text");
+    }
+
     const std::string prompt_text = snapshot.waiting_for_confirm ? "Continue" : "Confirm";
     if (updateBoundString(victory_prompt_text_, prompt_text)) {
         document_controller_.markDirty("victory_prompt_text");
@@ -1189,6 +1208,29 @@ void BattleScene::rebuildVictoryView() {
 
     if (updateBoundBool(victory_items_empty_, victory_reward_items_.empty())) {
         document_controller_.markDirty("victory_items_empty");
+    }
+
+    std::vector<VictoryLevelUpViewModel> next_level_ups;
+    next_level_ups.reserve(snapshot.level_ups.size());
+    int level_entry_index = 0;
+    for (const auto& grant : snapshot.level_ups) {
+        if (!grant.leveledUp()) {
+            continue;
+        }
+        next_level_ups.push_back(VictoryLevelUpViewModel{
+            .entry_index = level_entry_index++,
+            .label = makeRmlString(grant.display_name + " Lv." + std::to_string(grant.new_level)),
+            .stat_text = makeRmlString(game::scene::formatLevelUpStatText(grant)),
+        });
+    }
+
+    if (victory_level_ups_ != next_level_ups) {
+        victory_level_ups_ = std::move(next_level_ups);
+        document_controller_.markDirty("victory_level_ups");
+    }
+
+    if (updateBoundBool(victory_level_ups_empty_, victory_level_ups_.empty())) {
+        document_controller_.markDirty("victory_level_ups_empty");
     }
 
     const std::string empty_text = snapshot.waiting_for_confirm ? "No drops" : "Resolving...";
@@ -2538,7 +2580,22 @@ void BattleScene::beginVictoryFlow() {
     leaveInputMenu();
     state_ = FlowState::VictoryFlow;
     victory_reward_summary_ = resolveVictoryRewards();
-    victory_flow_controller_.begin(*victory_reward_summary_);
+    std::vector<std::string> actor_ids{};
+    actor_ids.reserve(session_.units().size());
+    for (const auto& unit : session_.units()) {
+        if (unit.side == game::battle::BattleSide::Player && unit.source_actor_id) {
+            actor_ids.push_back(*unit.source_actor_id);
+        }
+    }
+    const game::domain::PartyExperienceGrantResult experience_preview = rpg_catalog_
+        ? game::domain::ActorProgressionService::previewExperience(
+              *rpg_catalog_,
+              actor_ids,
+              presentation_options_.actor_runtime_states,
+              presentation_options_.actor_equipment,
+              victory_reward_summary_->exp_total)
+        : game::domain::PartyExperienceGrantResult{};
+    victory_flow_controller_.begin(*victory_reward_summary_, experience_preview);
     victory_continue_focus_dirty_ = false;
     battle_enemy_hp_bar_controller_.setHighlightedTarget(std::nullopt);
     playVictoryAudioCue();

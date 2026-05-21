@@ -164,6 +164,7 @@ set(GAME_TEST_SOURCES
     game/farm_system_harvest_inventory_full_test.cpp
     game/command_event_flow_test.cpp
     game/equipment_domain_service_test.cpp
+    game/actor_progression_service_test.cpp
     game/inventory_domain_service_test.cpp
     game/inventory_hotbar_consistency_test.cpp
     game/inventory_move_hotbar_follow_test.cpp

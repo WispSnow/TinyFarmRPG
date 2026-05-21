@@ -5,8 +5,9 @@
 - 任务ID：`RPG-PROGRESSION-001`
 - 任务标题：补齐玩家队伍经验值、等级曲线与战斗经验写回
 - 优先级：`P1`
-- 状态：`Planned`
+- 状态：`Implemented`
 - 计划时间：`2026-05-21` 起
+- 完成时间：`2026-05-21`
 - 相关文档：
   - `docs/overview.md`
   - `docs/gameplay/turn-based-battle.md`
@@ -39,6 +40,14 @@ flowchart TD
     STATE --> MENU["Inventory Party Panel<br/>level and exp"]
     STATE --> BATTLE["BattleUnitFactory<br/>stats by level"]
 ```
+
+## 执行摘要
+
+- 已新增 `ActorProgressionService`，集中处理经验阈值、等级推导、初始 runtime state、读档归一化、经验预览与写回。
+- 已扩展 `ClassData` 支持 `exp_curve` 与 `param_curves`，并为项目默认职业补齐 RPG Maker 风格曲线数据。
+- 已让 `PartyRuntimeStatsComponent` 持久化 `level / total_exp`，存档 schema 升至 v6，并在读档时以 `total_exp` 作为等级真源重算 `level`。
+- 已接通 Victory 经验写回、升级 HP/MP 上限增量、Battle Victory overlay、探索奖励通知、Inventory 队伍面板与 Debug Player 调数入口。
+- 已补充领域、解析、战斗写回、存档迁移/roundtrip、UI view model 相关测试，并通过完整 `game_tests`。
 
 ## Goals
 
@@ -312,7 +321,7 @@ struct PartyExperienceGrantResult {
 - 读档应用时按 `RpgCatalog` 校正：
   - actor 不存在则跳过并 warn。
   - `total_exp` 是真源；若 `level` 与 `total_exp` 不一致，始终以 `total_exp` 重算 `level`。
-  - 旧存档缺少 `total_exp` 时，先用 `saved_level` 或 `actor.initial_level_` 初始化为 `expForLevel(level)`。
+  - 旧存档缺少 `total_exp` 时按 0 进入读档归一化，再 clamp 到 `expForLevel(actor.initial_level_)`，避免缓存 `level` 反向污染经验真源。
   - 读档后 `total_exp` clamp 到 `[expForLevel(initial_level), expForLevel(max_level)]`。
   - `level = levelForExp(total_exp)`，并 clamp 到 `[initial_level, max_level]`。
 - 更新 `docs/gameplay/turn-based-battle.md` 的奖励结算章节。
@@ -341,12 +350,12 @@ struct PartyExperienceGrantResult {
 - 再次进入战斗时，升级后的角色属性参与伤害、速度和 HP/MP 上限计算。
 - 保存并读档后，角色等级、累计经验、当前 HP/MP 保持一致。
 - `ctest` 中 RPG catalog、progression、battle reward writeback、save migrator、inventory party panel 相关测试通过。
-- 使用 ninja 构建：`cmake --build build --target TinyFarmRPG_tests -j` 或项目当前测试目标名。
+- 使用 ninja 构建：`ninja -C build game_tests`。
 
 ## ToDo
 
-- [ ] Phase 1: 增加 RPG 数据模型与 `ActorProgressionService`
-- [ ] Phase 2: 等级属性曲线接入菜单、物品使用与战斗单位构建
-- [ ] Phase 3: Victory 经验写回与多级升级结果
-- [ ] Phase 4: Battle Victory overlay、探索通知、队伍面板与调试 UI
-- [ ] Phase 5: 存档 schema v6、迁移、roundtrip 测试与文档更新
+- [x] Phase 1: 增加 RPG 数据模型与 `ActorProgressionService`
+- [x] Phase 2: 等级属性曲线接入菜单、物品使用与战斗单位构建
+- [x] Phase 3: Victory 经验写回与多级升级结果
+- [x] Phase 4: Battle Victory overlay、探索通知、队伍面板与调试 UI
+- [x] Phase 5: 存档 schema v6、迁移、roundtrip 测试与文档更新

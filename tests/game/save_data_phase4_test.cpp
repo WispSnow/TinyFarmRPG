@@ -63,10 +63,14 @@ TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
     source.party_runtime_state.actor_states["actor.player"] = ActorRuntimeStateSaveData{
         .current_hp = 321,
         .current_mp = 12,
+        .level = 3,
+        .total_exp = 150,
     };
     source.party_runtime_state.actor_states["actor.lyria"] = ActorRuntimeStateSaveData{
         .current_hp = 42,
         .current_mp = 77,
+        .level = 2,
+        .total_exp = 50,
     };
 
     const nlohmann::json json = serialize(source);
@@ -80,8 +84,12 @@ TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
     EXPECT_EQ(loaded.equipment_state.loadouts.at("actor.lyria").slots.at("body"), 5678U);
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").current_hp, 321);
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").current_mp, 12);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").level, 3);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").total_exp, 150);
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").current_hp, 42);
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").current_mp, 77);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").level, 2);
+    EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").total_exp, 50);
 }
 
 TEST(SaveDataPhase4Test, DeserializeRejectsInvalidQuestStateFieldType) {

@@ -47,12 +47,22 @@
                     <span class="battle-victory-label">Gold</span>
                     <span class="battle-victory-value">{{ victory_gold_text }}</span>
                 </div>
+                <div class="battle-victory-row">
+                    <span class="battle-victory-label">EXP</span>
+                    <span class="battle-victory-value">{{ victory_exp_text }}</span>
+                </div>
                 <div id="battle-victory-item-list">
                     <div class="battle-victory-empty" data-if="victory_items_empty">{{ victory_item_empty_text }}</div>
                     <div class="battle-victory-item" data-for="item : victory_reward_items">
                         <div class="battle-victory-item-icon" data-style-decorator="item.icon_decorator"></div>
                         <span class="battle-victory-item-label">{{ item.label }}</span>
                         <span class="battle-victory-item-count">{{ item.count_text }}</span>
+                    </div>
+                </div>
+                <div id="battle-victory-level-list" data-if="!victory_level_ups_empty">
+                    <div class="battle-victory-level" data-for="level_up : victory_level_ups">
+                        <span class="battle-victory-level-label">{{ level_up.label }}</span>
+                        <span class="battle-victory-level-stats">{{ level_up.stat_text }}</span>
                     </div>
                 </div>
             </div>

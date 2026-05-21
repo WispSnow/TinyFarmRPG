@@ -56,16 +56,52 @@ void appendQuestProgressLines(std::string& text, const game::domain::QuestBattle
     }
 }
 
+void appendExperienceLines(std::string& text, const game::domain::PartyExperienceGrantResult* experience_result) {
+    if (!experience_result || experience_result->exp_reward <= 0) {
+        return;
+    }
+
+    appendLine(text, fmt::format("Gained EXP {}", experience_result->exp_reward));
+    for (const auto& grant : experience_result->actors) {
+        if (!grant.leveledUp()) {
+            continue;
+        }
+        const std::string stat_text = formatLevelUpStatText(grant);
+        appendLine(text, fmt::format(
+            "{} Lv.{}{}",
+            grant.display_name,
+            grant.new_level,
+            stat_text.empty() ? std::string{} : " " + stat_text));
+    }
+}
+
 } // namespace
+
+std::string formatLevelUpStatText(const game::domain::ActorExperienceGrant& grant) {
+    std::string text{};
+    if (grant.hp_max_delta > 0) {
+        text += fmt::format("HP +{}", grant.hp_max_delta);
+    }
+    if (grant.mp_max_delta > 0) {
+        if (!text.empty()) {
+            text += " ";
+        }
+        text += fmt::format("MP +{}", grant.mp_max_delta);
+    }
+    return text;
+}
 
 std::string formatRewardFeedback(const int gold_written_back,
                                  const std::vector<BattleRewardWritebackItemResult>& item_results,
-                                 const game::data::ItemCatalog* item_catalog) {
+                                 const game::data::ItemCatalog* item_catalog,
+                                 const game::domain::PartyExperienceGrantResult* experience_result) {
     std::string text{};
 
     if (gold_written_back > 0) {
         appendLine(text, fmt::format("Gained Gold {}", gold_written_back));
     }
+
+    appendExperienceLines(text, experience_result);
 
     for (const auto& item_result : item_results) {
         const std::string item_name = resolveItemName(item_result, item_catalog);
@@ -84,19 +120,30 @@ std::string formatRewardFeedback(const int gold_written_back,
 }
 
 std::string formatBattleSettlementFeedback(const BattleRewardWritebackResult& reward_result,
+                                           const game::domain::PartyExperienceGrantResult* experience_result,
                                            const game::domain::QuestBattleProgressSummary& quest_progress_summary,
                                            const game::data::ItemCatalog* item_catalog) {
-    if (reward_result.empty() && quest_progress_summary.empty()) {
-        return formatRewardFeedback(0, {}, item_catalog);
+    if (reward_result.empty() && (!experience_result || experience_result->empty()) && quest_progress_summary.empty()) {
+        return formatRewardFeedback(0, {}, item_catalog, nullptr);
     }
 
     std::string text{};
-    if (!reward_result.empty()) {
-        text = formatRewardFeedback(reward_result.gold_written_back, reward_result.item_results, item_catalog);
+    if (!reward_result.empty() || (experience_result && !experience_result->empty())) {
+        text = formatRewardFeedback(
+            reward_result.gold_written_back,
+            reward_result.item_results,
+            item_catalog,
+            experience_result);
     }
 
     appendQuestProgressLines(text, quest_progress_summary);
     return text.empty() ? std::string{kVictoryText} : text;
+}
+
+std::string formatBattleSettlementFeedback(const BattleRewardWritebackResult& reward_result,
+                                           const game::domain::QuestBattleProgressSummary& quest_progress_summary,
+                                           const game::data::ItemCatalog* item_catalog) {
+    return formatBattleSettlementFeedback(reward_result, nullptr, quest_progress_summary, item_catalog);
 }
 
 } // namespace game::scene

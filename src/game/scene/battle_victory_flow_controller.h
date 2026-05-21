@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_reward_resolver.h"
+#include "game/domain/actor_progression_service.h"
 
 #include <vector>
 
@@ -24,7 +25,9 @@ struct BattleVictoryCountValue {
 struct BattleVictoryFlowSnapshot {
     BattleVictoryFlowPhase phase{BattleVictoryFlowPhase::Inactive};
     BattleVictoryCountValue gold{};
+    BattleVictoryCountValue exp{};
     std::vector<game::battle::BattleRewardItemDrop> item_drops{};
+    std::vector<game::domain::ActorExperienceGrant> level_ups{};
     bool waiting_for_confirm{false};
     bool finished{false};
     float overlay_alpha{0.0f};
@@ -37,7 +40,8 @@ public:
     BattleVictoryFlowController() = default;
 
     /// @brief 启动 Victory 演出并载入本场奖励摘要。
-    void begin(const game::battle::BattleRewardSummary& reward_summary);
+    void begin(const game::battle::BattleRewardSummary& reward_summary,
+               game::domain::PartyExperienceGrantResult experience_preview = {});
 
     /// @brief 推进阶段与奖励数字动画。
     void update(float delta_time_seconds);
@@ -57,7 +61,9 @@ private:
 
     BattleVictoryFlowPhase phase_{BattleVictoryFlowPhase::Inactive};
     game::battle::BattleRewardSummary reward_summary_{};
+    game::domain::PartyExperienceGrantResult experience_preview_{};
     BattleVictoryCountValue gold_{};
+    BattleVictoryCountValue exp_{};
     float elapsed_seconds_{0.0f};
     float phase_elapsed_seconds_{0.0f};
     bool finished_{false};

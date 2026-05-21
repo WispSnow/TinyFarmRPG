@@ -1,6 +1,8 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/scene/battle_enemy_hp_bar_controller.h"
 
 #include <optional>
@@ -42,6 +44,8 @@ struct BattleSpriteSeed {
 
 struct BattleScenePresentationOptions {
     std::vector<BattleSpriteSeed> sprite_seeds{};
+    std::unordered_map<std::string, game::component::ActorRuntimeState> actor_runtime_states{};
+    std::unordered_map<std::string, game::component::ActorEquipmentLoadout> actor_equipment{};
     const game::factory::BlueprintManager* blueprint_manager{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog{nullptr};
     engine::vfx::VfxService* vfx_service{nullptr};

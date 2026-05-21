@@ -1,17 +1,22 @@
 #include "player_debug_panel.h"
 #include "game/component/actor_component.h"
 #include "game/component/appearance_component.h"
+#include "game/component/party_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/tags.h"
 #include "game/data/appearance_catalog.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/constants.h"
 #include "game/defs/crop_defs.h"
 #include "game/defs/events.h"
+#include "game/domain/actor_progression_service.h"
 #include "engine/component/velocity_component.h"
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <imgui.h>
 #include <glm/geometric.hpp>
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
@@ -52,16 +57,157 @@ constexpr std::array<AppearanceSlotDebugEntry, 5> kDebugSwitchSlots{{
     {"acc", "Accessory"},
 }};
 
+[[nodiscard]] bool runtimeStateEquals(const game::component::ActorRuntimeState& lhs,
+                                      const game::component::ActorRuntimeState& rhs) {
+    return lhs.current_hp == rhs.current_hp &&
+           lhs.current_mp == rhs.current_mp &&
+           lhs.level == rhs.level &&
+           lhs.total_exp == rhs.total_exp;
+}
+
+void triggerPartyRuntimeSync(entt::dispatcher& dispatcher, const entt::entity player) {
+    dispatcher.trigger(game::defs::PartyRuntimeStatsChanged{
+        .player = player,
+        .actor_id = {},
+        .full_sync = true,
+    });
+}
+
+void commitRuntimeState(entt::dispatcher& dispatcher,
+                        game::component::PartyRuntimeStatsComponent& runtime_stats,
+                        const entt::entity player,
+                        const std::string& actor_id,
+                        const game::component::ActorRuntimeState& state) {
+    auto& stored = runtime_stats.states_by_actor_id_[actor_id];
+    if (runtimeStateEquals(stored, state)) {
+        return;
+    }
+
+    stored = state;
+    ++runtime_stats.revision_;
+    triggerPartyRuntimeSync(dispatcher, player);
+}
+
+void drawActorProgressionDebug(entt::registry& registry,
+                               entt::dispatcher& dispatcher,
+                               const entt::entity player,
+                               const game::data::RpgCatalog& rpg_catalog) {
+    const auto* party = registry.try_get<game::component::PartyComponent>(player);
+    if (!party) {
+        return;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Progression");
+
+    auto& runtime_stats = registry.get_or_emplace<game::component::PartyRuntimeStatsComponent>(player);
+    for (const auto& actor_id : party->recruited_actor_ids_) {
+        const auto* actor = rpg_catalog.findActor(actor_id);
+        if (!actor) {
+            continue;
+        }
+
+        const auto state_it = runtime_stats.states_by_actor_id_.find(actor_id);
+        game::component::ActorRuntimeState state = state_it == runtime_stats.states_by_actor_id_.end()
+            ? game::domain::ActorProgressionService::initialState(rpg_catalog, *actor, nullptr)
+            : game::domain::ActorProgressionService::normalizeState(rpg_catalog, *actor, state_it->second, nullptr);
+
+        const int exp_to_next =
+            game::domain::ActorProgressionService::expToNextLevel(rpg_catalog, *actor, state.total_exp);
+        const std::string label = actor->display_name_.empty() ? actor_id : actor->display_name_;
+        ImGui::Text(
+            "%s: Lv.%d  EXP %d  Next %d",
+            label.c_str(),
+            state.level,
+            state.total_exp,
+            exp_to_next);
+
+        const int previous_level = std::max(actor->initial_level_, state.level - 1);
+        const int next_level = std::min(actor->max_level_, state.level + 1);
+        const std::string previous_label = "- Lv##" + actor_id;
+        if (ImGui::Button(previous_label.c_str())) {
+            state.total_exp =
+                game::domain::ActorProgressionService::expForLevel(rpg_catalog, *actor, previous_level);
+            state.level = previous_level;
+            state = game::domain::ActorProgressionService::normalizeState(rpg_catalog, *actor, state, nullptr);
+            commitRuntimeState(dispatcher, runtime_stats, player, actor_id, state);
+        }
+        ImGui::SameLine();
+        const std::string next_label = "+ Lv##" + actor_id;
+        if (ImGui::Button(next_label.c_str()) && next_level > state.level) {
+            const int exp_needed =
+                game::domain::ActorProgressionService::expForLevel(rpg_catalog, *actor, next_level) -
+                state.total_exp;
+            const auto result = game::domain::ActorProgressionService::grantExperience(
+                registry,
+                player,
+                rpg_catalog,
+                {actor_id},
+                std::max(0, exp_needed));
+            if (result.runtime_state_changed) {
+                triggerPartyRuntimeSync(dispatcher, player);
+            }
+        }
+        ImGui::SameLine();
+        const std::string exp_50_label = "+50 EXP##" + actor_id;
+        if (ImGui::Button(exp_50_label.c_str())) {
+            const auto result = game::domain::ActorProgressionService::grantExperience(
+                registry,
+                player,
+                rpg_catalog,
+                {actor_id},
+                50);
+            if (result.runtime_state_changed) {
+                triggerPartyRuntimeSync(dispatcher, player);
+            }
+        }
+        ImGui::SameLine();
+        const std::string exp_500_label = "+500 EXP##" + actor_id;
+        if (ImGui::Button(exp_500_label.c_str())) {
+            const auto result = game::domain::ActorProgressionService::grantExperience(
+                registry,
+                player,
+                rpg_catalog,
+                {actor_id},
+                500);
+            if (result.runtime_state_changed) {
+                triggerPartyRuntimeSync(dispatcher, player);
+            }
+        }
+        ImGui::SameLine();
+        const std::string max_label = "Max##" + actor_id;
+        if (ImGui::Button(max_label.c_str())) {
+            state.total_exp =
+                game::domain::ActorProgressionService::expForLevel(rpg_catalog, *actor, actor->max_level_);
+            state.level = actor->max_level_;
+            state = game::domain::ActorProgressionService::normalizeState(rpg_catalog, *actor, state, nullptr);
+            commitRuntimeState(dispatcher, runtime_stats, player, actor_id, state);
+        }
+        ImGui::SameLine();
+        const std::string reset_label = "Reset##" + actor_id;
+        if (ImGui::Button(reset_label.c_str())) {
+            commitRuntimeState(
+                dispatcher,
+                runtime_stats,
+                player,
+                actor_id,
+                game::domain::ActorProgressionService::initialState(rpg_catalog, *actor, nullptr));
+        }
+    }
+}
+
 } // namespace
 
 namespace game::debug {
 
 PlayerDebugPanel::PlayerDebugPanel(entt::registry& registry,
                                    entt::dispatcher& dispatcher,
-                                   const game::data::AppearanceCatalog* appearance_catalog)
+                                   const game::data::AppearanceCatalog* appearance_catalog,
+                                   const game::data::RpgCatalog* rpg_catalog)
     : registry_(registry),
       dispatcher_(dispatcher),
-      appearance_catalog_(appearance_catalog) {
+      appearance_catalog_(appearance_catalog),
+      rpg_catalog_(rpg_catalog) {
 }
 
 std::string_view PlayerDebugPanel::name() const {
@@ -151,6 +297,10 @@ void PlayerDebugPanel::draw(bool& is_open) {
         ImGui::Text("速度向量: (%.2f, %.2f)", velocity.velocity_.x, velocity.velocity_.y);
         const float velocity_magnitude = glm::length(velocity.velocity_);
         ImGui::Text("速度大小: %.2f", velocity_magnitude);
+    }
+
+    if (rpg_catalog_) {
+        drawActorProgressionDebug(registry_, dispatcher_, player_entity, *rpg_catalog_);
     }
 
     if (appearance_catalog_ && registry_.all_of<game::component::AppearanceComponent>(player_entity)) {

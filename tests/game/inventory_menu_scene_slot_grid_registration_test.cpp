@@ -122,6 +122,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     ASSERT_FALSE(tab_source.empty()) << "无法读取: " << equipment_tab_source_path;
 
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
+    EXPECT_NE(source.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
               std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-inventory\""), std::string::npos);
@@ -212,6 +213,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(theme.find("item-equipment-iron-accessory: 288px 32px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg:       67px  3px 42px 42px;"), std::string::npos);
     EXPECT_NE(style.find("menu-party-card-bg-inner: 76px 12px 24px 24px;"), std::string::npos);
+    EXPECT_EQ(style.find("portrait-default"), std::string::npos);
 
     const auto footer_block = style.find("#menu-footer");
     ASSERT_NE(footer_block, std::string::npos);

@@ -11,7 +11,7 @@
 
 namespace game::save {
 
-constexpr std::uint32_t SAVE_SCHEMA_VERSION = 5;
+constexpr std::uint32_t SAVE_SCHEMA_VERSION = 6;
 
 namespace json_keys {
 inline constexpr std::string_view SCHEMA_VERSION = "schema_version";
@@ -41,6 +41,8 @@ inline constexpr std::string_view LOADOUTS = "loadouts";
 inline constexpr std::string_view ACTOR_STATES = "actor_states";
 inline constexpr std::string_view CURRENT_HP = "current_hp";
 inline constexpr std::string_view CURRENT_MP = "current_mp";
+inline constexpr std::string_view LEVEL = "level";
+inline constexpr std::string_view TOTAL_EXP = "total_exp";
 inline constexpr std::string_view ITEM_STOCKS = "item_stocks";
 inline constexpr std::string_view ESCAPE_ATTEMPT_COUNT = "escape_attempt_count";
 inline constexpr std::string_view DEFEATED_ENCOUNTERS = "defeated_encounters";
@@ -155,6 +157,8 @@ struct EquipmentStateSaveData {
 struct ActorRuntimeStateSaveData {
     int current_hp{0};
     int current_mp{0};
+    int level{1};
+    int total_exp{0};
 };
 
 struct PartyRuntimeStateSaveData {

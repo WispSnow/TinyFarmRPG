@@ -51,6 +51,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_types.h"
 #include "game/defs/events.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/save/save_service.h"
@@ -358,6 +359,8 @@ protected:
         settings.async_preload_enabled = false;
         map_manager_->setLoadingSettings(settings);
         ASSERT_TRUE(map_manager_->loadMap(initial_map_id));
+        ASSERT_TRUE(rpg_catalog_.loadClasses("assets/data/rpg/classes.json"));
+        ASSERT_TRUE(rpg_catalog_.loadActors("assets/data/rpg/actors.json"));
         ASSERT_TRUE(rpg_catalog_.loadEquipment("assets/data/rpg/equipment.json"));
 
         save_service_ = std::make_unique<SaveService>(
@@ -593,9 +596,14 @@ TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeSt
     equipment.loadouts_by_actor_id_["actor.player"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
         game::data::RpgCatalog::hashId("equip_iron_sword");
     auto& runtime_stats = scene_->getRegistry().emplace_or_replace<game::component::PartyRuntimeStatsComponent>(player);
+    const auto* actor = rpg_catalog_.findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int level_two_exp = game::domain::ActorProgressionService::expForLevel(rpg_catalog_, *actor, 2);
     runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
         .current_hp = 222,
         .current_mp = 17,
+        .level = 2,
+        .total_exp = level_two_exp,
     };
 
     const auto file_path = tempFilePath("save_equipment_runtime_restore.json");
@@ -619,6 +627,8 @@ TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeSt
     const auto& loaded_runtime = loaded_player_view.get<game::component::PartyRuntimeStatsComponent>(loaded_player);
     EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_hp, 222);
     EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").current_mp, 17);
+    EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").level, 2);
+    EXPECT_EQ(loaded_runtime.states_by_actor_id_.at("actor.player").total_exp, level_two_exp);
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileDropsMissingEquipmentReferences) {

@@ -19,6 +19,7 @@ struct PartyMemberPanelViewModel {
     std::string display_name{};
     std::string class_label{};
     std::string level_label{};
+    std::string exp_label{};
     std::string hp_text{};
     std::string mp_text{};
     std::string portrait_decorator{"none"};

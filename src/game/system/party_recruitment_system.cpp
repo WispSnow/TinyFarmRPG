@@ -1,12 +1,12 @@
 #include "party_recruitment_system.h"
 
-#include "game/battle/actor_stats_resolver.h"
 #include "game/component/party_component.h"
 #include "game/component/party_runtime_stats_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
+#include "game/domain/actor_progression_service.h"
 
 #include "engine/component/name_component.h"
 #include "engine/spatial/spatial_index_manager.h"
@@ -111,13 +111,9 @@ void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::Recru
     }
 
     auto& runtime_stats = registry_.get_or_emplace<game::component::PartyRuntimeStatsComponent>(player);
-    const auto resolved = game::battle::resolveActorStats(rpg_catalog_, *actor, nullptr);
     runtime_stats.states_by_actor_id_.try_emplace(
         actor->id_,
-        game::component::ActorRuntimeState{
-            .current_hp = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Mhp)],
-            .current_mp = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Mmp)],
-        });
+        game::domain::ActorProgressionService::initialState(rpg_catalog_, *actor, nullptr));
     ++runtime_stats.revision_;
 
     showNotification(player, display_name + " joined the party.");

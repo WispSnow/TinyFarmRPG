@@ -3,6 +3,12 @@
         {
             "id": "class.swordsman",
             "display_name": "Warrior",
+            "exp_curve": {
+                "basis": 30,
+                "extra": 20,
+                "acc_a": 30,
+                "acc_b": 30
+            },
             "base_params": {
                 "mhp": 544,
                 "mmp": 41,
@@ -12,11 +18,27 @@
                 "mdf": 17,
                 "agi": 29,
                 "luk": 27
+            },
+            "param_curves": {
+                "mhp": { "level_1": 544, "level_99": 7509, "shape": "linear" },
+                "mmp": { "level_1": 41, "level_99": 895, "shape": "linear" },
+                "atk": { "level_1": 19, "level_99": 196, "shape": "linear" },
+                "def": { "level_1": 17, "level_99": 172, "shape": "linear" },
+                "mat": { "level_1": 15, "level_99": 133, "shape": "linear" },
+                "mdf": { "level_1": 17, "level_99": 159, "shape": "linear" },
+                "agi": { "level_1": 29, "level_99": 324, "shape": "linear" },
+                "luk": { "level_1": 27, "level_99": 332, "shape": "linear" }
             }
         },
         {
             "id": "class.mage",
             "display_name": "Mage",
+            "exp_curve": {
+                "basis": 30,
+                "extra": 20,
+                "acc_a": 30,
+                "acc_b": 30
+            },
             "base_params": {
                 "mhp": 420,
                 "mmp": 82,
@@ -26,11 +48,27 @@
                 "mdf": 24,
                 "agi": 27,
                 "luk": 30
+            },
+            "param_curves": {
+                "mhp": { "level_1": 420, "level_99": 4734, "shape": "linear" },
+                "mmp": { "level_1": 82, "level_99": 1622, "shape": "linear" },
+                "atk": { "level_1": 11, "level_99": 121, "shape": "linear" },
+                "def": { "level_1": 12, "level_99": 104, "shape": "linear" },
+                "mat": { "level_1": 30, "level_99": 217, "shape": "early" },
+                "mdf": { "level_1": 24, "level_99": 282, "shape": "early" },
+                "agi": { "level_1": 27, "level_99": 273, "shape": "linear" },
+                "luk": { "level_1": 30, "level_99": 282, "shape": "linear" }
             }
         },
         {
             "id": "class.monk",
             "display_name": "Monk",
+            "exp_curve": {
+                "basis": 30,
+                "extra": 20,
+                "acc_a": 30,
+                "acc_b": 30
+            },
             "base_params": {
                 "mhp": 639,
                 "mmp": 44,
@@ -40,6 +78,16 @@
                 "mdf": 11,
                 "agi": 34,
                 "luk": 26
+            },
+            "param_curves": {
+                "mhp": { "level_1": 639, "level_99": 8233, "shape": "linear" },
+                "mmp": { "level_1": 44, "level_99": 946, "shape": "linear" },
+                "atk": { "level_1": 18, "level_99": 196, "shape": "linear" },
+                "def": { "level_1": 20, "level_99": 183, "shape": "linear" },
+                "mat": { "level_1": 12, "level_99": 104, "shape": "late" },
+                "mdf": { "level_1": 11, "level_99": 110, "shape": "linear" },
+                "agi": { "level_1": 34, "level_99": 351, "shape": "early" },
+                "luk": { "level_1": 26, "level_99": 339, "shape": "linear" }
             }
         }
     ]

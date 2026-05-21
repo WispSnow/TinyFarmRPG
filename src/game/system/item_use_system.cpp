@@ -9,6 +9,7 @@
 #include "game/component/party_runtime_stats_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
@@ -112,15 +113,18 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
         auto& runtime_stats = registry_.get_or_emplace<game::component::PartyRuntimeStatsComponent>(evt.target);
         auto [state_it, inserted] = runtime_stats.states_by_actor_id_.try_emplace(actor_id);
         auto& state = state_it->second;
-        const auto resolved = game::battle::resolveActorStats(*rpg_catalog_, actor_id, findLoadout(registry_, evt.target, actor_id));
+        const auto* actor = rpg_catalog_->findActor(actor_id);
+        if (!actor) {
+            return;
+        }
+        const auto* loadout = findLoadout(registry_, evt.target, actor_id);
+        state = game::domain::ActorProgressionService::normalizeState(*rpg_catalog_, *actor, state, loadout);
+        const auto resolved = game::battle::resolveActorStats(*rpg_catalog_, *actor, state.level, loadout);
         const int max_hp = paramValue(resolved.params, game::data::ParamIndex::Mhp);
         const int max_mp = paramValue(resolved.params, game::data::ParamIndex::Mmp);
         if (inserted) {
             state.current_hp = max_hp;
             state.current_mp = max_mp;
-        } else {
-            state.current_hp = std::clamp(state.current_hp, 0, max_hp);
-            state.current_mp = std::clamp(state.current_mp, 0, max_mp);
         }
 
         for (const auto& effect : use_cfg.effects) {
