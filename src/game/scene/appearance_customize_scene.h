@@ -76,7 +76,7 @@ private:
     bool menu_panel_texture_loaded_{false};
     bool lighting_suspended_{false};
     bool previous_lighting_enabled_{true};
-    std::mt19937 rng_{0xC0FFEEu};
+    std::mt19937 rng_{};
 
 public:
     /// Creates the pre-new-game appearance picker; cancel pops back to the title scene.

@@ -24,6 +24,9 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstdint>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -61,6 +64,20 @@ constexpr float FRAME_SIZE_PX = 32.0f;
 
 [[nodiscard]] bool hasPositiveSize(const engine::utils::Rect& rect) {
     return rect.size.x > 0.0f && rect.size.y > 0.0f;
+}
+
+[[nodiscard]] std::mt19937 makeAppearanceRandomEngine() {
+    std::random_device device;
+    const auto timestamp = static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::seed_seq seed{
+        device(),
+        device(),
+        device(),
+        device(),
+        static_cast<std::uint32_t>(timestamp),
+        static_cast<std::uint32_t>(timestamp >> 32U),
+    };
+    return std::mt19937{seed};
 }
 
 [[nodiscard]] engine::utils::Rect screenRectToWorldRect(const engine::render::Camera& camera,
@@ -159,7 +176,8 @@ AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
                                                    SceneFactory on_confirm)
     : engine::scene::Scene(name, context),
       mode_(Mode::NewGame),
-      on_new_game_confirm_(std::move(on_confirm)) {
+      on_new_game_confirm_(std::move(on_confirm)),
+      rng_(makeAppearanceRandomEngine()) {
 }
 
 AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
@@ -171,7 +189,8 @@ AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
       mode_(Mode::Closet),
       game_registry_(&game_registry),
       player_(player),
-      catalog_(std::move(catalog)) {
+      catalog_(std::move(catalog)),
+      rng_(makeAppearanceRandomEngine()) {
 }
 
 AppearanceCustomizeScene::~AppearanceCustomizeScene() {
