@@ -22,9 +22,9 @@ body {
     width: 600dp;
     height: 92dp;
     decorator: ninepatch(hud-dialogue-bg, hud-dialogue-bg-inner, 1.0);
-    image-color: #24283bff;
-    background-color: #1a1b26ff;
-    opacity: 0.78;
+    image-color: #ffffffff;
+    background-color: #00000000;
+    opacity: 0.92;
     pointer-events: none;
 }
 
