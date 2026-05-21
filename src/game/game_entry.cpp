@@ -33,7 +33,7 @@ namespace game {
 
 int run() {
     initialize_environment();
-    spdlog::set_level(spdlog::level::info);
+    spdlog::set_level(spdlog::level::info); 
 
     engine::core::GameApp app;
     app.registerSceneSetup(setupInitialScene);

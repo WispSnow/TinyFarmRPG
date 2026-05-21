@@ -5,6 +5,7 @@
 #include <entt/core/fwd.hpp>
 #include <glm/vec2.hpp>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -69,11 +70,34 @@ struct SkillData {
     SkillPresentationData presentation_{};
 };
 
+enum class ParamCurveShape : std::uint8_t {
+    Linear = 0,
+    Early,
+    Late
+};
+
+struct ExpCurveData {
+    int basis_{30};
+    int extra_{20};
+    int acc_a_{30};
+    int acc_b_{30};
+};
+
+struct ParamCurveData {
+    int level_1_{1};
+    int level_max_{1};
+    ParamCurveShape shape_{ParamCurveShape::Linear};
+    bool configured_{false};
+};
+
 struct ClassData {
     std::string id_{};
     entt::id_type id_hash_{};
     std::string display_name_{};
+    ExpCurveData exp_curve_{};
     ParamArray base_params_{};
+    std::array<ParamCurveData, kParamCount> param_curves_{};
+    bool has_param_curves_{false};
 };
 
 struct PortraitRefData {

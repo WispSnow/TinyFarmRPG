@@ -54,21 +54,6 @@
     trash-open:     80px  0px 16px 16px;
 }
 
-@spritesheet menu-portrait {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
-    portrait-default: 0px 0px 64px 64px;
-}
-
-@spritesheet menu-portrait-lyria {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
-    portrait-lyria: 0px 0px 64px 64px;
-}
-
-@spritesheet menu-portrait-tori {
-    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
-    portrait-tori: 0px 0px 64px 64px;
-}
-
 /* --- Overlay --- */
 
 #menu-overlay {

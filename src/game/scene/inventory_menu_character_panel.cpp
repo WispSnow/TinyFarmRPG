@@ -7,6 +7,7 @@
 #include "game/component/player_wallet_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
+#include "game/domain/actor_progression_service.h"
 
 #include <entt/entity/registry.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -97,6 +98,7 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
             member.display_name = "---";
             member.class_label = "Empty";
             member.level_label = "";
+            member.exp_label = "";
             member.hp_text = "";
             member.mp_text = "";
             data.party_members.push_back(std::move(member));
@@ -116,8 +118,29 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
 
         member.display_name = actor && !actor->display_name_.empty() ? actor->display_name_ : member.actor_id;
         member.class_label = klass && !klass->display_name_.empty() ? klass->display_name_ : "Adventurer";
-        const int level = actor ? actor->initial_level_ : 1;
+        game::component::ActorRuntimeState runtime_snapshot{};
+        const auto* runtime_state = findRuntimeState(registry, player, member.actor_id);
+        if (actor && rpg_catalog) {
+            runtime_snapshot = runtime_state
+                ? game::domain::ActorProgressionService::normalizeState(
+                      *rpg_catalog,
+                      *actor,
+                      *runtime_state,
+                      findLoadout(registry, player, member.actor_id))
+                : game::domain::ActorProgressionService::initialState(
+                      *rpg_catalog,
+                      *actor,
+                      findLoadout(registry, player, member.actor_id));
+        } else {
+            runtime_snapshot.level = 1;
+        }
+        const int level = runtime_snapshot.level;
         member.level_label = fmt::format("Lv.{}", level);
+        if (actor && rpg_catalog) {
+            const int exp_to_next =
+                game::domain::ActorProgressionService::expToNextLevel(*rpg_catalog, *actor, runtime_snapshot.total_exp);
+            member.exp_label = exp_to_next > 0 ? fmt::format("Next {}", exp_to_next) : "Max";
+        }
         member.portrait_decorator = portraitDecoratorForActor(actor);
 
         int max_hp = 1;
@@ -126,13 +149,13 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
             const auto resolved = game::battle::resolveActorStats(
                 *rpg_catalog,
                 *actor,
+                level,
                 findLoadout(registry, player, member.actor_id));
             max_hp = paramValue(resolved.params, game::data::ParamIndex::Mhp);
             max_mp = paramValue(resolved.params, game::data::ParamIndex::Mmp);
         }
-        const auto* runtime_state = findRuntimeState(registry, player, member.actor_id);
-        const int current_hp = runtime_state ? std::clamp(runtime_state->current_hp, 0, max_hp) : max_hp;
-        const int current_mp = runtime_state ? std::clamp(runtime_state->current_mp, 0, max_mp) : max_mp;
+        const int current_hp = actor && rpg_catalog ? std::clamp(runtime_snapshot.current_hp, 0, max_hp) : max_hp;
+        const int current_mp = actor && rpg_catalog ? std::clamp(runtime_snapshot.current_mp, 0, max_mp) : max_mp;
         member.hp_text = fmt::format("HP {}/{}", current_hp, max_hp);
         member.mp_text = fmt::format("MP {}/{}", current_mp, max_mp);
 

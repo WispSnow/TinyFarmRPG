@@ -32,7 +32,7 @@ flowchart LR
   SaveData -->|serialize| JSON["slotX.json"]
 
   %% Load path
-  JSON -->|migrateToLatest| Migrator["SaveMigrator\n(v2 -> v3)"]
+  JSON -->|migrateToLatest| Migrator["SaveMigrator<br/>(v2 -> v6)"]
   Migrator -->|deserialize| SaveData2["SaveData"]
   SaveData2 -->|apply| SaveSvcLoad["SaveService"]
   SaveSvcLoad --> World
@@ -43,13 +43,12 @@ flowchart LR
 
 读图要点：
 - `SaveService`：流程层唯一入口（保存/加载），内部做 `capture/apply + 文件读写`。
-- `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v3`）。
+- `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v6`）。
 - `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节。
 - `MapManager::snapshotCurrentMap()`：把“当前地图的动态实体”写回持久层（否则存档可能漏掉当前地图状态）。
-- `schema v3` 预留字段：`quest_state`、`skill_state`、`combat_state` 仍为扩展位。
-- `appearance_state` 在 `FND-008` 后已落地：
-  - `gender`
-  - `slots`（slot -> variant，如 `hair: "Lyria/Brown"`）
+- `schema v6` 当前字段：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`。
+- `party_runtime_state.actor_states` 保存 actor 的 `current_hp / current_mp / level / total_exp`；读档应用时 `total_exp` 作为等级真源，`level` 会按 actor 曲线重新推导。
+- `appearance_state` 保存 `profile_id / gender / slots`（slot -> variant，如 `hair: "Lyria/Brown"`）。
 
 ## 3) 关键不变量：保存前必须 snapshot 当前地图
 
@@ -71,7 +70,7 @@ flowchart LR
 
 - 文件不存在 / 无法打开：检查 `saves/slotX.json` 路径与权限。
 - JSON 解析失败：文件损坏/半写入（可优先看 SaveService 是否使用临时文件替换）。
-- 存档迁移失败：检查 `schema_version` 与新增状态字段类型（应为 object）。
+- 存档迁移失败：检查 `schema_version` 与新增状态字段类型（容器应为 object/array，runtime `level / total_exp` 应为 int）。
 - `schema_version` 不支持：新版本存档拒绝加载（避免误读导致更坏状态）。
 - 地图加载失败：`player.map_name` 不存在或 world 文件不包含对应地图。
 - UI 不同步：确认 `SaveService::apply` 是否触发了必要的 `InventorySyncCommand/HotbarSyncCommand/HotbarActivateCommand`。

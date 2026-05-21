@@ -62,6 +62,7 @@ using PartyMemberPanelViewModels = std::vector<game::scene::PartyMemberPanelView
         handle.RegisterMember("display_name", &game::scene::PartyMemberPanelViewModel::display_name);
         handle.RegisterMember("class_label", &game::scene::PartyMemberPanelViewModel::class_label);
         handle.RegisterMember("level_label", &game::scene::PartyMemberPanelViewModel::level_label);
+        handle.RegisterMember("exp_label", &game::scene::PartyMemberPanelViewModel::exp_label);
         handle.RegisterMember("hp_text", &game::scene::PartyMemberPanelViewModel::hp_text);
         handle.RegisterMember("mp_text", &game::scene::PartyMemberPanelViewModel::mp_text);
         handle.RegisterMember("portrait_decorator", &game::scene::PartyMemberPanelViewModel::portrait_decorator);

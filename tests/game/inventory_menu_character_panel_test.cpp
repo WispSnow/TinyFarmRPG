@@ -7,6 +7,7 @@
 #include "game/component/party_runtime_stats_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/data/rpg_catalog.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 
 #include <algorithm>
@@ -60,6 +61,8 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
     EXPECT_EQ(data.party_members[0].actor_id, "actor.player");
     EXPECT_EQ(data.party_members[0].display_name, "Alex");
     EXPECT_EQ(data.party_members[0].class_label, "Warrior");
+    EXPECT_EQ(data.party_members[0].level_label, "Lv.1");
+    EXPECT_EQ(data.party_members[0].exp_label, "Next 50");
     EXPECT_EQ(data.party_members[0].hp_text, "HP 544/544");
     EXPECT_EQ(data.party_members[0].portrait_decorator, "image(portrait-player)");
     EXPECT_TRUE(data.party_members[0].selected);
@@ -96,19 +99,30 @@ TEST(InventoryMenuPartyPanelTest, UsesRuntimeHpMpWhenPresent) {
     entt::registry registry;
     const entt::entity player = registry.create();
     setParty(registry, player, {"actor.player"});
+    const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
+    const auto* actor = catalog.findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int level_two_exp =
+        game::domain::ActorProgressionService::expForLevel(catalog, *actor, 2);
     registry.emplace<game::component::PartyRuntimeStatsComponent>(
         player,
         game::component::PartyRuntimeStatsComponent{
-            .states_by_actor_id_ = {{"actor.player", {.current_hp = 321, .current_mp = 12}}},
+            .states_by_actor_id_ = {{"actor.player", {
+                .current_hp = 321,
+                .current_mp = 12,
+                .level = 2,
+                .total_exp = level_two_exp,
+            }}},
         });
 
-    const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
     const InventoryMenuPartyPanelData data =
         buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.player", false);
 
     ASSERT_EQ(data.party_members.size(), 4U);
-    EXPECT_EQ(data.party_members[0].hp_text, "HP 321/544");
-    EXPECT_EQ(data.party_members[0].mp_text, "MP 12/41");
+    EXPECT_EQ(data.party_members[0].level_label, "Lv.2");
+    EXPECT_EQ(data.party_members[0].exp_label, "Next 112");
+    EXPECT_EQ(data.party_members[0].hp_text, "HP 321/615");
+    EXPECT_EQ(data.party_members[0].mp_text, "MP 12/50");
 }
 
 } // namespace

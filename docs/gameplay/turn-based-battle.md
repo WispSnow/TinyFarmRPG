@@ -356,19 +356,18 @@ sequenceDiagram
     participant BS as BattleScene
     participant EVT as BattleEndedEvent
     participant GS as GameScene
-    participant RR as BattleRewardResolver
     participant INV as InventoryDomainService
     participant WALLET as PlayerWalletComponent
+    participant PROG as ActorProgressionService
 
-    BS->>EVT: BattleEndedEvent{outcome, final_units, remaining_item_stocks}
+    BS->>EVT: BattleEndedEvent{outcome, final_units, remaining_item_stocks, reward_summary}
     EVT->>GS: onBattleEnded()
     GS->>GS: 先写回 battle item delta
     alt outcome == Victory
-        GS->>RR: resolve(final_units, rpg_catalog)
-        RR-->>GS: gold_total / item_drops / exp_total
         GS->>WALLET: gold += gold_total
         GS->>INV: addItem(item_drops)
-        GS->>GS: 通过 DialogueShowEvent 显示最小奖励反馈
+        GS->>PROG: grantExperience(exp_total, player actor ids)
+        GS->>GS: 通过 DialogueShowEvent 显示金币、经验、升级与掉落反馈
     else outcome == Defeat / Escaped
         GS->>GS: 不发标准奖励
     end
@@ -376,10 +375,12 @@ sequenceDiagram
 
 当前规则：
 
-- `Victory`：写回金币与掉落，并显示最小奖励反馈
+- `Victory`：写回金币、掉落与参战 actor 经验，并显示奖励与升级反馈
 - `Defeat`：不发金币/掉落/经验，但保留战斗中已发生的物品消耗
 - `Escaped`：不发金币/掉落/经验，但同样保留战斗中已发生的物品消耗
 - 金币真相位于 player entity 的 `PlayerWalletComponent`
+- 经验真相位于 player entity 的 `PartyRuntimeStatsComponent`：`total_exp` 是累计经验，`level` 由累计经验推导并缓存
+- 满级 actor 的 `total_exp` 会截断在 `expForLevel(max_level)`，不会继续隐藏累计
 
 ## 数据结构
 
@@ -392,7 +393,7 @@ sequenceDiagram
 | `BattleActionResult` | `status / action_type / damage / hp_recovered / mp_recovered / mp_spent / missed / critical / target_guarded / target_defeated / escape_succeeded / states_added / states_removed / failure_reason / outcome_after / snapshot` |
 | `BattleSnapshot` | `units / current_actor_id / round_index / outcome` |
 | `BattleSessionOptions` | `rpg_catalog / item_catalog / item_stocks` |
-| `BattleScenePresentationOptions` | `sprite_seeds / blueprint_manager / appearance_catalog` |
+| `BattleScenePresentationOptions` | `sprite_seeds / blueprint_manager / appearance_catalog / actor_runtime_states / actor_equipment` |
 
 ### 关键辅助类型
 
@@ -403,9 +404,12 @@ sequenceDiagram
 | `BattleRewardSummary` | 胜利后的 `gold_total / exp_total / item_drops` 聚合结果；`empty()` 可快速判断是否有奖励 |
 | `BattleRewardWritebackItemResult` | 单个掉落条目的实际写回结果：原始 `drop`、`accepted`（成功入包数量）、`rejected`（背包满等原因拒绝数量） |
 | `BattleRewardWritebackResult` | 完整写回摘要：`gold_written_back` + `item_results` 列表；`empty()` 可判断是否有任何写回 |
+| `ActorExperienceGrant` | 单个 actor 的经验结算结果：`gained_exp / old_level / new_level / total_exp / exp_to_next / hp_max_delta / mp_max_delta` |
+| `PartyExperienceGrantResult` | 队伍经验写回摘要：`exp_reward` + actor 结果列表，供 Victory overlay 与探索通知展示 |
 | `BattleVisualData` | 敌方战斗精灵配置：`sprite_blueprint_id / idle_animation / scale`，属于表现数据，不参与战斗结算 |
 | `BattleSpriteSeed` | `GameScene` 进入战斗前生成的表现种子，携带 unit id、来源 id 和可选玩家外观快照 |
 | `PlayerWalletComponent` | 探索态金币真相 |
+| `PartyRuntimeStatsComponent` | 队伍成员运行时真相：当前 HP/MP、等级缓存、累计经验 |
 
 ### 命令与事件
 
@@ -450,7 +454,7 @@ sequenceDiagram
     BS->>GS: requestPopScene()
     D->>GS: onBattleEnded()
     GS->>GS: 写回 battle item delta
-    GS->>GS: Victory 时写回金币/掉落
+    GS->>GS: Victory 时写回金币/掉落/经验
 ```
 
 ## 扩展指南
@@ -465,7 +469,7 @@ sequenceDiagram
 | 目标 UI | 已支持单体敌/友选择 | 后续可补头像、弱点、预览、复活目标规则 |
 | 战斗日志 | 当前只有简短 `result_text` | 后续可拆独立 log/popup 系统 |
 | 战斗动作表现 | 当前播放 Side View idle，并用高亮标识当前行动者/目标 | 后续可扩展攻击位移、受击闪烁、施法特效 |
-| 奖励结算 | 已完成 Victory 金币/掉落写回 | 后续可扩经验消费方、任务推进、独立结算界面 |
+| 奖励结算 | 已完成 Victory 金币/掉落/经验写回与升级反馈 | 后续可扩任务推进表现、独立结算界面 |
 
 ## 测试策略
 
@@ -478,13 +482,14 @@ sequenceDiagram
 | `tests/game/battle/battle_unit_factory_test.cpp` | `BattleUnit` 来源信息与 catalog 构建路径 |
 | `tests/game/battle/battle_ai_planner_test.cpp` | 敌方最小 AI 选技与目标选择 |
 | `tests/game/battle/battle_reward_resolver_test.cpp` | Victory 奖励汇总、掉落合并、非 Victory 空摘要 |
+| `tests/game/actor_progression_service_test.cpp` | RPG Maker 风格经验曲线、等级推导、满级截断、升级 HP/MP 上限增量 |
 | `tests/game/battle/battle_session_test.cpp` | 会话级提交、快照、回合推进 |
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
 | `tests/game/rmlui_architecture_regression_test.cpp` | Battle RML 不引用素材按钮 class、不使用 `<progress>` |
 | `tests/game/blueprint_manager_smoke_test.cpp` | Side View 所需 goblin / gnome / slime 蓝图与镜像方向 |
 | `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback |
-| `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存与奖励写回 |
-| `tests/game/save_service_async_test.cpp` | 钱包金币写出与 roundtrip 恢复 |
+| `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存、奖励、经验与升级写回 |
+| `tests/game/save_service_async_test.cpp` | 钱包金币、装备与队伍 runtime state 的 roundtrip 恢复 |
 | `tests/game/ui_layout_integration_test.cpp` | InventoryMenuScene 的真实金币展示 |
 | `tests/game/rml_menu_navigation_style_test.cpp` | 共享导航样式与 focus/hover 规范 |
 

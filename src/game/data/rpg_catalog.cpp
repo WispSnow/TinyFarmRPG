@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -55,6 +56,81 @@ using Json = nlohmann::json;
             return false;
         }
         out_params[i] = it->get<int>();
+    }
+    return true;
+}
+
+[[nodiscard]] std::optional<ParamCurveShape> paramCurveShapeFromString(const std::string_view value) {
+    if (value == "linear" || value.empty()) {
+        return ParamCurveShape::Linear;
+    }
+    if (value == "early") {
+        return ParamCurveShape::Early;
+    }
+    if (value == "late") {
+        return ParamCurveShape::Late;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] bool parseExpCurve(const Json& node, ExpCurveData& out_curve) {
+    out_curve = {};
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    out_curve.basis_ = std::max(1, node.value("basis", out_curve.basis_));
+    out_curve.extra_ = std::max(0, node.value("extra", out_curve.extra_));
+    out_curve.acc_a_ = std::max(0, node.value("acc_a", out_curve.acc_a_));
+    out_curve.acc_b_ = std::max(1, node.value("acc_b", out_curve.acc_b_));
+    return true;
+}
+
+[[nodiscard]] bool parseParamCurves(const Json& node,
+                                    const ParamArray& base_params,
+                                    std::array<ParamCurveData, kParamCount>& out_curves,
+                                    bool& out_has_curves) {
+    out_has_curves = false;
+    for (std::size_t i = 0; i < kParamCount; ++i) {
+        out_curves[i] = ParamCurveData{
+            .level_1_ = base_params[i],
+            .level_max_ = base_params[i],
+            .shape_ = ParamCurveShape::Linear,
+            .configured_ = false,
+        };
+    }
+
+    if (node.is_null()) {
+        return true;
+    }
+    if (!node.is_object()) {
+        return false;
+    }
+
+    for (const auto& [key, value] : node.items()) {
+        const auto index = paramIndexFromString(key);
+        if (!index.has_value() || !value.is_object()) {
+            return false;
+        }
+
+        auto& curve = out_curves[static_cast<std::size_t>(*index)];
+        curve.level_1_ = value.value("level_1", base_params[static_cast<std::size_t>(*index)]);
+        curve.level_max_ = value.value("level_99", curve.level_1_);
+        if (const auto level_max_it = value.find("level_max");
+            level_max_it != value.end() && level_max_it->is_number_integer()) {
+            curve.level_max_ = level_max_it->get<int>();
+        }
+
+        const auto shape = paramCurveShapeFromString(value.value("shape", std::string{"linear"}));
+        if (!shape.has_value()) {
+            return false;
+        }
+        curve.shape_ = *shape;
+        curve.configured_ = true;
+        out_has_curves = true;
     }
     return true;
 }
@@ -395,6 +471,19 @@ bool RpgCatalog::loadClasses(const std::string_view file_path) {
         const auto params_it = class_node.find("base_params");
         if (params_it == class_node.end() || !parseParamArray(*params_it, klass.base_params_)) {
             spdlog::error("RpgCatalog: class '{}' base_params 配置非法", klass.id_);
+            return false;
+        }
+
+        if (const auto exp_curve_it = class_node.find("exp_curve");
+            exp_curve_it != class_node.end() && !parseExpCurve(*exp_curve_it, klass.exp_curve_)) {
+            spdlog::error("RpgCatalog: class '{}' exp_curve 配置非法", klass.id_);
+            return false;
+        }
+
+        if (const auto param_curves_it = class_node.find("param_curves");
+            param_curves_it != class_node.end() &&
+            !parseParamCurves(*param_curves_it, klass.base_params_, klass.param_curves_, klass.has_param_curves_)) {
+            spdlog::error("RpgCatalog: class '{}' param_curves 配置非法", klass.id_);
             return false;
         }
 

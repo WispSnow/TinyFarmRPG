@@ -9,6 +9,8 @@ namespace game::component {
 struct ActorRuntimeState {
     int current_hp{0};
     int current_mp{0};
+    int level{1};
+    int total_exp{0};
 };
 
 /// @brief 玩家队伍战斗外运行时状态。挂在玩家实体上，按 actor id 持久化。

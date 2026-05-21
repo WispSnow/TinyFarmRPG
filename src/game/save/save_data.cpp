@@ -34,6 +34,8 @@ constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
 constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
 constexpr std::string_view KEY_CURRENT_HP = json_keys::CURRENT_HP;
 constexpr std::string_view KEY_CURRENT_MP = json_keys::CURRENT_MP;
+constexpr std::string_view KEY_LEVEL = json_keys::LEVEL;
+constexpr std::string_view KEY_TOTAL_EXP = json_keys::TOTAL_EXP;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 constexpr std::string_view KEY_PLAYER = "player";
@@ -231,6 +233,8 @@ bool readPartyRuntimeState(const nlohmann::json& json,
         ActorRuntimeStateSaveData state{};
         state.current_hp = state_json.value<int>(KEY_CURRENT_HP.data(), 0);
         state.current_mp = state_json.value<int>(KEY_CURRENT_MP.data(), 0);
+        state.level = state_json.value<int>(KEY_LEVEL.data(), 1);
+        state.total_exp = state_json.value<int>(KEY_TOTAL_EXP.data(), 0);
         out_state.actor_states.emplace(actor_id, state);
     }
     return true;
@@ -364,6 +368,8 @@ nlohmann::json serialize(const SaveData& data) {
             actor_states[actor_id] = nlohmann::json{
                 {KEY_CURRENT_HP, state.current_hp},
                 {KEY_CURRENT_MP, state.current_mp},
+                {KEY_LEVEL, state.level},
+                {KEY_TOTAL_EXP, state.total_exp},
             };
         }
         root[KEY_PARTY_RUNTIME_STATE] = nlohmann::json{{KEY_ACTOR_STATES, std::move(actor_states)}};

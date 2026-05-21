@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_reward_resolver.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/domain/quest_battle_progress_resolver.h"
 
 #include <string>
@@ -31,9 +32,20 @@ struct BattleRewardWritebackResult {
 [[nodiscard]] std::string formatRewardFeedback(
     int gold_written_back,
     const std::vector<BattleRewardWritebackItemResult>& item_results,
-    const game::data::ItemCatalog* item_catalog);
+    const game::data::ItemCatalog* item_catalog,
+    const game::domain::PartyExperienceGrantResult* experience_result = nullptr);
+
+/// @brief 格式化升级时展示的 HP/MP 上限变化文本，不包含 actor 名称与等级。
+[[nodiscard]] std::string formatLevelUpStatText(const game::domain::ActorExperienceGrant& grant);
 
 /// @brief 将奖励写回与任务推进结果合并为单次战斗结算反馈文本。
+[[nodiscard]] std::string formatBattleSettlementFeedback(
+    const BattleRewardWritebackResult& reward_result,
+    const game::domain::PartyExperienceGrantResult* experience_result,
+    const game::domain::QuestBattleProgressSummary& quest_progress_summary,
+    const game::data::ItemCatalog* item_catalog);
+
+/// @brief 兼容旧调用点：无经验结果时只格式化金币、掉落与任务。
 [[nodiscard]] std::string formatBattleSettlementFeedback(
     const BattleRewardWritebackResult& reward_result,
     const game::domain::QuestBattleProgressSummary& quest_progress_summary,

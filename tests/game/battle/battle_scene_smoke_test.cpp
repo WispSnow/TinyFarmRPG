@@ -137,6 +137,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("RegisterMember(\"text\", &BattleLogEntryViewModel::text)"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"tone_class\", &BattleLogEntryViewModel::tone_class)"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<VictoryRewardItemViewModel>"), std::string::npos);
+    EXPECT_NE(source.find("RegisterStruct<VictoryLevelUpViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterStruct<TurnOrderEntryViewModel>"), std::string::npos);
     EXPECT_NE(source.find("RegisterMember(\"badge_label\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"party_status\""), std::string::npos);
@@ -145,6 +146,8 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("constructor.Bind(\"battle_log_entries\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"victory_overlay_visible\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"victory_reward_items\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"victory_exp_text\""), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"victory_level_ups\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_enter"), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_exit"), std::string::npos);
@@ -178,6 +181,7 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_EQ(source.find("RegisterArray<decltype(actor_commands_)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(battle_log_entries_)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(victory_reward_items_)>()"), std::string::npos);
+    EXPECT_NE(source.find("RegisterArray<decltype(victory_level_ups_)>()"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, WiresStage2SkillListToDraftSelection) {
@@ -880,8 +884,10 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("id=\"battle-victory-overlay\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"victory_overlay_visible\""), std::string::npos);
     EXPECT_NE(rml.find("{{ victory_gold_text }}"), std::string::npos);
+    EXPECT_NE(rml.find("{{ victory_exp_text }}"), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"victory_items_empty\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"item : victory_reward_items\""), std::string::npos);
+    EXPECT_NE(rml.find("data-for=\"level_up : victory_level_ups\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-decorator=\"item.icon_decorator\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"battle-victory-continue\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"victory_continue\""), std::string::npos);

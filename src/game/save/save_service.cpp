@@ -27,6 +27,7 @@
 #include "game/defs/render_layers.h"
 #include "game/defs/spatial_layers.h"
 #include "game/defs/events.h"
+#include "game/domain/actor_progression_service.h"
 
 #include "engine/component/auto_tile_component.h"
 #include "engine/component/render_component.h"
@@ -570,6 +571,8 @@ SaveData SaveService::capture(std::string& out_error) const {
                 ActorRuntimeStateSaveData{
                     .current_hp = state.current_hp,
                     .current_mp = state.current_mp,
+                    .level = state.level,
+                    .total_exp = state.total_exp,
                 });
         }
     }
@@ -917,7 +920,7 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
             equipment_component.loadouts_by_actor_id_.emplace(actor_id, std::move(loadout));
         }
     }
-    registry_.emplace_or_replace<game::component::PartyEquipmentComponent>(
+    const auto& stored_equipment = registry_.emplace_or_replace<game::component::PartyEquipmentComponent>(
         player,
         std::move(equipment_component));
 
@@ -926,12 +929,25 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         if (actor_id.empty()) {
             continue;
         }
-        runtime_stats.states_by_actor_id_.emplace(
-            actor_id,
-            game::component::ActorRuntimeState{
-                .current_hp = std::max(0, saved_state.current_hp),
-                .current_mp = std::max(0, saved_state.current_mp),
-            });
+        game::component::ActorRuntimeState state{
+            .current_hp = std::max(0, saved_state.current_hp),
+            .current_mp = std::max(0, saved_state.current_mp),
+            .level = std::max(1, saved_state.level),
+            .total_exp = std::max(0, saved_state.total_exp),
+        };
+        if (rpg_catalog_) {
+            if (const auto* actor = rpg_catalog_->findActor(actor_id)) {
+                const auto loadout_it = stored_equipment.loadouts_by_actor_id_.find(actor_id);
+                const auto* loadout = loadout_it == stored_equipment.loadouts_by_actor_id_.end()
+                    ? nullptr
+                    : &loadout_it->second;
+                state = game::domain::ActorProgressionService::normalizeState(*rpg_catalog_, *actor, state, loadout);
+            } else {
+                spdlog::warn("SaveService: 存档包含未知 actor runtime state '{}', 已跳过。", actor_id);
+                continue;
+            }
+        }
+        runtime_stats.states_by_actor_id_.emplace(actor_id, state);
     }
     registry_.emplace_or_replace<game::component::PartyRuntimeStatsComponent>(
         player,

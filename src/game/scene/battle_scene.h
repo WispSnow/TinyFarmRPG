@@ -201,6 +201,15 @@ class BattleScene final : public engine::scene::Scene {
         friend bool operator==(const VictoryRewardItemViewModel& lhs, const VictoryRewardItemViewModel& rhs) = default;
     };
 
+    /// @brief Victory overlay 中单个升级条目的视图模型。
+    struct VictoryLevelUpViewModel {
+        int entry_index{0};
+        Rml::String label{};
+        Rml::String stat_text{};
+
+        friend bool operator==(const VictoryLevelUpViewModel& lhs, const VictoryLevelUpViewModel& rhs) = default;
+    };
+
     /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
     struct TurnOrderEntryViewModel {
         int unit_id{0};
@@ -286,6 +295,7 @@ class BattleScene final : public engine::scene::Scene {
     std::vector<game::battle::BattleLogLine> battle_log_history_{};
     std::vector<BattleLogEntryViewModel> battle_log_entries_{};
     std::vector<VictoryRewardItemViewModel> victory_reward_items_{};
+    std::vector<VictoryLevelUpViewModel> victory_level_ups_{};
     std::vector<CommandViewModel> party_commands_{};
     std::vector<CommandViewModel> actor_commands_{};
     std::vector<ListEntryViewModel> list_entries_{};
@@ -298,8 +308,10 @@ class BattleScene final : public engine::scene::Scene {
     bool victory_continue_enabled_{false};
     bool victory_continue_focus_dirty_{false};
     bool victory_items_empty_{true};
+    bool victory_level_ups_empty_{true};
     Rml::String victory_title_{"Victory!"};
     Rml::String victory_gold_text_{"0"};
+    Rml::String victory_exp_text_{"0"};
     Rml::String victory_item_empty_text_{"No drops"};
     Rml::String victory_prompt_text_{"Confirm"};
 

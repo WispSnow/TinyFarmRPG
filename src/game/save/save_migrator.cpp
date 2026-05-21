@@ -31,6 +31,8 @@ constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_
 constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
 constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
 constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
+constexpr std::string_view KEY_LEVEL = json_keys::LEVEL;
+constexpr std::string_view KEY_TOTAL_EXP = json_keys::TOTAL_EXP;
 constexpr std::string_view KEY_ITEM_STOCKS = json_keys::ITEM_STOCKS;
 constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_COUNT;
 constexpr std::string_view KEY_PROFILE_ID = json_keys::PROFILE_ID;
@@ -163,6 +165,25 @@ bool normalizePartyRuntimeState(nlohmann::json& runtime_state, std::string& out_
     if (!ensureObjectField(runtime_state, KEY_ACTOR_STATES, out_error)) {
         return false;
     }
+    for (auto& [actor_id, actor_state] : runtime_state[KEY_ACTOR_STATES].items()) {
+        (void)actor_id;
+        if (!actor_state.is_object()) {
+            out_error = "SaveMigrator: party_runtime_state.actor_states entry is not an object";
+            return false;
+        }
+        if (!actor_state.contains(KEY_LEVEL)) {
+            actor_state[KEY_LEVEL] = 1;
+        } else if (!actor_state[KEY_LEVEL].is_number_integer()) {
+            out_error = "SaveMigrator: party runtime level is not an int";
+            return false;
+        }
+        if (!actor_state.contains(KEY_TOTAL_EXP)) {
+            actor_state[KEY_TOTAL_EXP] = 0;
+        } else if (!actor_state[KEY_TOTAL_EXP].is_number_integer()) {
+            out_error = "SaveMigrator: party runtime total_exp is not an int";
+            return false;
+        }
+    }
     return true;
 }
 
@@ -232,6 +253,17 @@ bool migrateV4ToV5(nlohmann::json& json, std::string& out_error) {
     if (!normalizeAppearanceState(json[KEY_APPEARANCE_STATE], out_error)) {
         return false;
     }
+    json[KEY_SCHEMA_VERSION] = 5u;
+    return true;
+}
+
+bool migrateV5ToV6(nlohmann::json& json, std::string& out_error) {
+    if (!ensureObjectField(json, KEY_PARTY_RUNTIME_STATE, out_error)) {
+        return false;
+    }
+    if (!normalizePartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out_error)) {
+        return false;
+    }
     json[KEY_SCHEMA_VERSION] = SAVE_SCHEMA_VERSION;
     return true;
 }
@@ -265,6 +297,12 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
 
     if (json[KEY_SCHEMA_VERSION] == 4u) {
         if (!migrateV4ToV5(json, out_error)) {
+            return false;
+        }
+    }
+
+    if (json[KEY_SCHEMA_VERSION] == 5u) {
+        if (!migrateV5ToV6(json, out_error)) {
             return false;
         }
     }

@@ -23,6 +23,16 @@ struct ActorResolvedStats {
 
 [[nodiscard]] ActorResolvedStats resolveActorStats(const game::data::RpgCatalog& catalog,
                                                    const game::data::ActorData& actor,
+                                                   int level,
+                                                   const game::component::ActorEquipmentLoadout* loadout);
+
+[[nodiscard]] ActorResolvedStats resolveActorStats(const game::data::RpgCatalog& catalog,
+                                                   const game::data::ActorData& actor,
+                                                   const game::component::ActorEquipmentLoadout* loadout);
+
+[[nodiscard]] ActorResolvedStats resolveActorStats(const game::data::RpgCatalog& catalog,
+                                                   std::string_view actor_id,
+                                                   int level,
                                                    const game::component::ActorEquipmentLoadout* loadout);
 
 [[nodiscard]] ActorResolvedStats resolveActorStats(const game::data::RpgCatalog& catalog,

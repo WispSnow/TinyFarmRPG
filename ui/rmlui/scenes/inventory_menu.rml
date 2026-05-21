@@ -5,6 +5,7 @@
     <link type="text/rcss" href="../theme/nav.rcss"/>
     <link type="text/rcss" href="../theme/slot_widgets.rcss"/>
     <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/portrait.rcss"/>
     <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
     <link type="text/rcss" href="inventory_menu.rcss"/>
 </head>
@@ -291,7 +292,7 @@
                     <div class="party-portrait" data-style-decorator="member.portrait_decorator"></div>
                     <div class="party-copy">
                         <div class="party-name">{{ member.display_name }}</div>
-                        <div class="party-meta">{{ member.level_label }} {{ member.class_label }}</div>
+                        <div class="party-meta">{{ member.level_label }} {{ member.exp_label }}</div>
                         <div class="party-resource">{{ member.hp_text }}</div>
                         <div class="party-resource">{{ member.mp_text }}</div>
                     </div>

@@ -5,6 +5,7 @@
 #include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_battle_progress_resolver.h"
 #include "game/runtime/system_bundle.h"
@@ -16,6 +17,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -205,6 +207,60 @@ void applyBattleItemStockDelta(entt::registry& registry,
     return resolver.apply(evt.outcome, evt.final_units, *services->quest_catalog, *quest_log);
 }
 
+[[nodiscard]] std::vector<std::string> collectPlayerActorIds(const std::vector<game::battle::BattleUnit>& final_units) {
+    std::vector<std::string> actor_ids{};
+    std::unordered_set<std::string> seen{};
+    actor_ids.reserve(final_units.size());
+    for (const auto& unit : final_units) {
+        if (unit.side != game::battle::BattleSide::Player || !unit.source_actor_id || unit.source_actor_id->empty()) {
+            continue;
+        }
+        if (!seen.insert(*unit.source_actor_id).second) {
+            continue;
+        }
+        actor_ids.push_back(*unit.source_actor_id);
+    }
+    return actor_ids;
+}
+
+[[nodiscard]] game::domain::PartyExperienceGrantResult applyVictoryExperience(
+    entt::registry& registry,
+    entt::dispatcher& dispatcher,
+    game::runtime::GameRuntimeServices* services,
+    const game::defs::BattleEndedEvent& evt) {
+    if (evt.outcome != game::battle::BattleOutcome::Victory ||
+        !evt.reward_summary.has_value() ||
+        evt.reward_summary->exp_total <= 0) {
+        return {};
+    }
+    if (!services || !services->rpg_catalog) {
+        spdlog::warn("GameScene: RpgCatalog 不可用，跳过战斗经验写回。");
+        return {};
+    }
+
+    const entt::entity player = findPlayerEntity(registry);
+    if (player == entt::null) {
+        spdlog::warn("GameScene: 找不到玩家实体，跳过战斗经验写回。");
+        return {};
+    }
+
+    const std::vector<std::string> actor_ids = collectPlayerActorIds(evt.final_units);
+    auto result = game::domain::ActorProgressionService::grantExperience(
+        registry,
+        player,
+        *services->rpg_catalog,
+        actor_ids,
+        evt.reward_summary->exp_total);
+    if (result.runtime_state_changed) {
+        dispatcher.trigger(game::defs::PartyRuntimeStatsChanged{
+            .player = player,
+            .actor_id = {},
+            .full_sync = true,
+        });
+    }
+    return result;
+}
+
 } // namespace
 
 void processBattleEndedForGameScene(
@@ -227,6 +283,8 @@ void processBattleEndedForGameScene(
     }
 
     const game::scene::BattleRewardWritebackResult reward_result = applyVictoryRewards(registry, services, evt);
+    const game::domain::PartyExperienceGrantResult experience_result =
+        applyVictoryExperience(registry, dispatcher, services, evt);
     const game::domain::QuestBattleProgressSummary quest_result = applyQuestBattleProgress(registry, services, evt);
 
     const entt::entity player = findPlayerEntity(registry);
@@ -235,7 +293,8 @@ void processBattleEndedForGameScene(
     }
 
     const game::data::ItemCatalog* item_catalog = services && services->item_catalog ? services->item_catalog.get() : nullptr;
-    const std::string feedback = game::scene::formatBattleSettlementFeedback(reward_result, quest_result, item_catalog);
+    const std::string feedback =
+        game::scene::formatBattleSettlementFeedback(reward_result, &experience_result, quest_result, item_catalog);
     game::system::helpers::showTimedNotification(
         registry,
         dispatcher,

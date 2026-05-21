@@ -38,6 +38,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/scene/battle_scene_entry.h"
@@ -141,7 +142,20 @@ void populateBattlePartyState(entt::registry& registry,
     }
 }
 
+[[nodiscard]] const game::component::ActorEquipmentLoadout* findActorLoadout(
+    entt::registry& registry,
+    const entt::entity player,
+    const std::string& actor_id) {
+    const auto* equipment = registry.try_get<game::component::PartyEquipmentComponent>(player);
+    if (!equipment) {
+        return nullptr;
+    }
+    const auto it = equipment->loadouts_by_actor_id_.find(actor_id);
+    return it == equipment->loadouts_by_actor_id_.end() ? nullptr : &it->second;
+}
+
 void writeBackBattleRuntimeStats(entt::registry& registry,
+                                 const game::runtime::GameRuntimeServices* services,
                                  const std::vector<game::battle::BattleUnit>& final_units) {
     const entt::entity player = findPlayer(registry);
     if (player == entt::null) {
@@ -154,7 +168,26 @@ void writeBackBattleRuntimeStats(entt::registry& registry,
         if (unit.side != game::battle::BattleSide::Player || !unit.source_actor_id) {
             continue;
         }
-        auto& state = runtime_stats.states_by_actor_id_[*unit.source_actor_id];
+        auto state_it = runtime_stats.states_by_actor_id_.find(*unit.source_actor_id);
+        if (state_it == runtime_stats.states_by_actor_id_.end()) {
+            const auto* actor = services && services->rpg_catalog
+                ? services->rpg_catalog->findActor(*unit.source_actor_id)
+                : nullptr;
+            if (!actor) {
+                spdlog::warn(
+                    "GameScene: actor '{}' 缺少 runtime state 且无法从 RPG catalog 初始化，跳过战斗 HP/MP 写回。",
+                    *unit.source_actor_id);
+                continue;
+            }
+            const auto* loadout = findActorLoadout(registry, player, *unit.source_actor_id);
+            auto [inserted_it, inserted] = runtime_stats.states_by_actor_id_.try_emplace(
+                *unit.source_actor_id,
+                game::domain::ActorProgressionService::initialState(*services->rpg_catalog, *actor, loadout));
+            state_it = inserted_it;
+            changed = changed || inserted;
+        }
+
+        auto& state = state_it->second;
         const int next_hp = std::clamp(unit.hp, 0, std::max(1, unit.max_hp));
         const int next_mp = std::clamp(unit.mp, 0, std::max(1, unit.max_mp));
         if (state.current_hp != next_hp || state.current_mp != next_mp) {
@@ -511,7 +544,11 @@ bool GameScene::registerDebugPanels() {
     auto& dispatcher = context_.getDispatcher();
 
     debug_ui_manager.registerPanel(
-        std::make_unique<game::debug::PlayerDebugPanel>(registry_, dispatcher, services_->appearance_catalog.get()),
+        std::make_unique<game::debug::PlayerDebugPanel>(
+            registry_,
+            dispatcher,
+            services_->appearance_catalog.get(),
+            services_->rpg_catalog.get()),
         false,
         engine::debug::PanelCategory::Game);
 
@@ -796,6 +833,12 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     game::scene::BattleScenePresentationOptions presentation_options{};
     presentation_options.sprite_seeds = buildBattleSpriteSeeds(units, capturePlayerBattleAppearance(registry_));
     presentation_options.battle_background_id = resolveBattleBackgroundId(cmd, services_.get(), units);
+    {
+        game::battle::BattleUnitBuildOptions party_state_options{};
+        populateBattlePartyState(registry_, party_state_options);
+        presentation_options.actor_runtime_states = std::move(party_state_options.actor_runtime_states);
+        presentation_options.actor_equipment = std::move(party_state_options.actor_equipment);
+    }
     if (services_) {
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
         presentation_options.appearance_catalog = services_->appearance_catalog.get();
@@ -872,7 +915,7 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
     spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
-    writeBackBattleRuntimeStats(registry_, evt.final_units);
+    writeBackBattleRuntimeStats(registry_, services_.get(), evt.final_units);
     resolveActiveEnemyEncounter(evt);
     game::scene::processBattleEndedForGameScene(
         registry_,

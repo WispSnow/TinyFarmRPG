@@ -71,7 +71,12 @@ FixturePaths createValidRpgFixture() {
     {
       "id": "class.adventurer",
       "display_name": "Adventurer",
-      "base_params": [120, 30, 24, 18, 14, 16, 18, 10]
+      "exp_curve": { "basis": 30, "extra": 20, "acc_a": 30, "acc_b": 30 },
+      "base_params": [120, 30, 24, 18, 14, 16, 18, 10],
+      "param_curves": {
+        "mhp": { "level_1": 120, "level_99": 620, "shape": "linear" },
+        "atk": { "level_1": 24, "level_99": 180, "shape": "late" }
+      }
     }
   ]
 })json");
@@ -220,6 +225,11 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     const auto* klass = catalog.findClass("class.adventurer");
     ASSERT_NE(klass, nullptr);
     EXPECT_EQ(klass->display_name_, "Adventurer");
+    EXPECT_EQ(klass->exp_curve_.basis_, 30);
+    EXPECT_TRUE(klass->has_param_curves_);
+    EXPECT_TRUE(klass->param_curves_[static_cast<std::size_t>(ParamIndex::Mhp)].configured_);
+    EXPECT_EQ(klass->param_curves_[static_cast<std::size_t>(ParamIndex::Mhp)].level_max_, 620);
+    EXPECT_EQ(klass->param_curves_[static_cast<std::size_t>(ParamIndex::Atk)].shape_, ParamCurveShape::Late);
 
     const auto* actor = catalog.findActor("actor.hero");
     ASSERT_NE(actor, nullptr);

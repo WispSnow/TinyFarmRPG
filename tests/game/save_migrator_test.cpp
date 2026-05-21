@@ -154,6 +154,75 @@ TEST(SaveMigratorTest, V4ToV5AddsAppearanceProfileId) {
     EXPECT_EQ(appearance["slots"]["hair"], "hair/brown");
 }
 
+TEST(SaveMigratorTest, V5ToLatestAddsRuntimeLevelAndTotalExp) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 5,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {},
+        "party_state": {},
+        "equipment_state": {},
+        "party_runtime_state": {
+            "actor_states": {
+                "actor.player": {
+                    "current_hp": 42,
+                    "current_mp": 9
+                }
+            }
+        },
+        "combat_state": {}
+    })");
+
+    std::string error;
+    ASSERT_TRUE(migrateToLatest(json, error)) << error;
+
+    EXPECT_EQ(json[json_keys::SCHEMA_VERSION.data()], SAVE_SCHEMA_VERSION);
+    const auto& actor_state =
+        json[json_keys::PARTY_RUNTIME_STATE.data()][json_keys::ACTOR_STATES.data()]["actor.player"];
+    EXPECT_EQ(actor_state[json_keys::LEVEL.data()], 1);
+    EXPECT_EQ(actor_state[json_keys::TOTAL_EXP.data()], 0);
+    EXPECT_EQ(actor_state[json_keys::CURRENT_HP.data()], 42);
+    EXPECT_EQ(actor_state[json_keys::CURRENT_MP.data()], 9);
+}
+
+TEST(SaveMigratorTest, V5ToLatestRejectsInvalidRuntimeProgressFields) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 5,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {},
+        "party_state": {},
+        "equipment_state": {},
+        "party_runtime_state": {
+            "actor_states": {
+                "actor.player": {
+                    "current_hp": 42,
+                    "current_mp": 9,
+                    "level": "two",
+                    "total_exp": 50
+                }
+            }
+        },
+        "combat_state": {}
+    })");
+
+    std::string error;
+    EXPECT_FALSE(migrateToLatest(json, error));
+    EXPECT_NE(error.find("level"), std::string::npos);
+}
+
 TEST(SaveMigratorTest, RejectsMissingOrInvalidSchemaVersion) {
     auto expect_reject = [](nlohmann::json json) {
         std::string error;

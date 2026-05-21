@@ -30,9 +30,12 @@ constexpr float MAX_UPDATE_DELTA_SECONDS = 0.25f;
 
 } // namespace
 
-void BattleVictoryFlowController::begin(const game::battle::BattleRewardSummary& reward_summary) {
+void BattleVictoryFlowController::begin(const game::battle::BattleRewardSummary& reward_summary,
+                                        game::domain::PartyExperienceGrantResult experience_preview) {
     reward_summary_ = reward_summary;
+    experience_preview_ = std::move(experience_preview);
     gold_ = BattleVictoryCountValue{.target = std::max(0, reward_summary_.gold_total), .display = 0};
+    exp_ = BattleVictoryCountValue{.target = std::max(0, reward_summary_.exp_total), .display = 0};
     phase_ = BattleVictoryFlowPhase::Intro;
     elapsed_seconds_ = 0.0f;
     phase_elapsed_seconds_ = 0.0f;
@@ -60,6 +63,7 @@ void BattleVictoryFlowController::update(const float delta_time_seconds) {
             return;
         case BattleVictoryFlowPhase::Rewards:
             gold_.display = countValue(gold_.target, phase_elapsed_seconds_);
+            exp_.display = countValue(exp_.target, phase_elapsed_seconds_);
             if (phase_elapsed_seconds_ >= GOLD_COUNT_SECONDS) {
                 skipToWaitConfirm();
             }
@@ -81,7 +85,9 @@ void BattleVictoryFlowController::confirm() {
 void BattleVictoryFlowController::reset() {
     phase_ = BattleVictoryFlowPhase::Inactive;
     reward_summary_ = {};
+    experience_preview_ = {};
     gold_ = {};
+    exp_ = {};
     elapsed_seconds_ = 0.0f;
     phase_elapsed_seconds_ = 0.0f;
     finished_ = false;
@@ -94,7 +100,9 @@ BattleVictoryFlowSnapshot BattleVictoryFlowController::snapshot() const {
     return BattleVictoryFlowSnapshot{
         .phase = phase_,
         .gold = gold_,
+        .exp = exp_,
         .item_drops = reward_summary_.item_drops,
+        .level_ups = experience_preview_.actors,
         .waiting_for_confirm = phase_ == BattleVictoryFlowPhase::WaitConfirm,
         .finished = finished_,
         .overlay_alpha = overlay_alpha,
@@ -106,6 +114,7 @@ void BattleVictoryFlowController::skipToWaitConfirm() {
     phase_ = BattleVictoryFlowPhase::WaitConfirm;
     phase_elapsed_seconds_ = INTRO_SECONDS;
     gold_.display = gold_.target;
+    exp_.display = exp_.target;
 }
 
 } // namespace game::scene

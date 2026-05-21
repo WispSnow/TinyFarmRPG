@@ -4,6 +4,7 @@
 #include "appearance_test_fixture_utils.h"
 #include "engine/component/transform_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
@@ -11,6 +12,7 @@
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/runtime/system_bundle.h"
 #include "game/scene/game_scene_battle_settlement.h"
@@ -33,7 +35,8 @@ namespace {
                                                 const game::battle::BattleSide side,
                                                 const int hp,
                                                 const int max_hp,
-                                                std::optional<std::string> source_enemy_id = std::nullopt) {
+                                                std::optional<std::string> source_enemy_id = std::nullopt,
+                                                std::optional<std::string> source_actor_id = std::nullopt) {
     return game::battle::BattleUnit{
         .id = id,
         .name = std::string{name},
@@ -48,6 +51,7 @@ namespace {
         .magic_defense = 10,
         .speed = 10,
         .luck = 10,
+        .source_actor_id = std::move(source_actor_id),
         .source_enemy_id = std::move(source_enemy_id)};
 }
 
@@ -66,6 +70,14 @@ struct DialogueCapture final {
 
     void onHide(const game::defs::DialogueHideEvent& evt) {
         hides.push_back(evt);
+    }
+};
+
+struct PartyRuntimeStatsCapture final {
+    std::vector<game::defs::PartyRuntimeStatsChanged> changes{};
+
+    void onChanged(const game::defs::PartyRuntimeStatsChanged& evt) {
+        changes.push_back(evt);
     }
 };
 
@@ -110,6 +122,39 @@ protected:
   ]
 })json");
         ASSERT_TRUE(item_catalog_->loadItemConfig(items_path.string()));
+
+        const auto classes_path = writeConfig(
+            "classes.json",
+            R"json({
+  "classes": [
+    {
+      "id": "class.hero",
+      "display_name": "Hero",
+      "exp_curve": { "basis": 30, "extra": 20, "acc_a": 30, "acc_b": 30 },
+      "base_params": { "mhp": 100, "mmp": 10, "atk": 12, "def": 10, "mat": 8, "mdf": 8, "agi": 10, "luk": 10 },
+      "param_curves": {
+        "mhp": { "level_1": 100, "level_99": 198, "shape": "linear" },
+        "mmp": { "level_1": 10, "level_99": 108, "shape": "linear" }
+      }
+    }
+  ]
+})json");
+        ASSERT_TRUE(rpg_catalog_->loadClasses(classes_path.string()));
+
+        const auto actors_path = writeConfig(
+            "actors.json",
+            R"json({
+  "actors": [
+    {
+      "id": "actor.player",
+      "display_name": "Alex",
+      "class_id": "class.hero",
+      "initial_level": 1,
+      "max_level": 99
+    }
+  ]
+})json");
+        ASSERT_TRUE(rpg_catalog_->loadActors(actors_path.string()));
 
         const auto enemies_path = writeConfig(
             "enemies.json",
@@ -211,6 +256,104 @@ protected:
         loadCatalogs();
     }
 };
+
+TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesExperienceAndLevelUpResult) {
+    DialogueCapture capture;
+    auto show_sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    show_sink.connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(10, 0);
+    auto& runtime_stats = registry_.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 50,
+        .current_mp = 5,
+        .level = 1,
+        .total_exp = 0,
+    };
+
+    const auto* actor = rpg_catalog_->findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int level_two_exp =
+        game::domain::ActorProgressionService::expForLevel(*rpg_catalog_, *actor, 2);
+
+    auto reward_summary = slimeRewardSummary();
+    reward_summary.exp_total = level_two_exp;
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Alex", game::battle::BattleSide::Player, 30, 30, std::nullopt, std::string{"actor.player"}),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = reward_summary;
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    const auto& stored = runtime_stats.states_by_actor_id_.at("actor.player");
+    EXPECT_EQ(stored.level, 2);
+    EXPECT_EQ(stored.total_exp, level_two_exp);
+    EXPECT_EQ(stored.current_hp, 51);
+    EXPECT_EQ(stored.current_mp, 6);
+
+    ASSERT_EQ(capture.shows.size(), 1U);
+    EXPECT_EQ(
+        capture.shows[0].text,
+        "Gained Gold 4\nGained EXP " + std::to_string(level_two_exp) + "\nAlex Lv.2 HP +1 MP +1\nGained Herb x1");
+
+    show_sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
+TEST_F(GameSceneBattleRewardWritebackTest, MaxLevelExperienceDoesNotEmitRuntimeStatsChanged) {
+    PartyRuntimeStatsCapture stats_capture;
+    auto stats_sink = dispatcher_.sink<game::defs::PartyRuntimeStatsChanged>();
+    stats_sink.connect<&PartyRuntimeStatsCapture::onChanged>(&stats_capture);
+
+    const entt::entity player = createPlayer(10, 0);
+    auto& runtime_stats = registry_.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    const auto* actor = rpg_catalog_->findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int max_exp =
+        game::domain::ActorProgressionService::expForLevel(*rpg_catalog_, *actor, actor->max_level_);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 1,
+        .current_mp = 0,
+        .level = actor->max_level_,
+        .total_exp = max_exp,
+    };
+
+    auto reward_summary = slimeRewardSummary();
+    reward_summary.exp_total = 25;
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Alex", game::battle::BattleSide::Player, 1, 198, std::nullopt, std::string{"actor.player"}),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = reward_summary;
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    EXPECT_TRUE(stats_capture.changes.empty());
+    EXPECT_EQ(runtime_stats.revision_, 0U);
+    EXPECT_EQ(runtime_stats.states_by_actor_id_.at("actor.player").total_exp, max_exp);
+
+    stats_sink.disconnect<&PartyRuntimeStatsCapture::onChanged>(&stats_capture);
+}
 
 TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesBackDeltaRewardsAndNotification) {
     DialogueCapture capture;

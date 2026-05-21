@@ -4,6 +4,7 @@
 #include "appearance_test_fixture_utils.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/data/rpg_catalog.h"
+#include "game/domain/actor_progression_service.h"
 
 #include <filesystem>
 #include <string>
@@ -36,7 +37,12 @@ struct FixturePaths {
     {
       "id": "class.swordsman",
       "display_name": "Swordsman",
-      "base_params": [140, 30, 28, 20, 12, 16, 18, 8]
+      "exp_curve": { "basis": 30, "extra": 20, "acc_a": 30, "acc_b": 30 },
+      "base_params": [140, 30, 28, 20, 12, 16, 18, 8],
+      "param_curves": {
+        "mhp": { "level_1": 140, "level_99": 238, "shape": "linear" },
+        "mmp": { "level_1": 30, "level_99": 128, "shape": "linear" }
+      }
     }
   ]
 })json");
@@ -297,6 +303,37 @@ TEST(BattleUnitFactoryTest, AppliesActorEquipmentBonusesWhenBuildingPlayerUnits)
     ASSERT_FALSE(units.empty());
     EXPECT_EQ(units[0].attack, 35);
     EXPECT_EQ(units[0].defense, 21);
+}
+
+TEST(BattleUnitFactoryTest, NormalizesRuntimeStateLevelFromTotalExp) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    const auto* actor = catalog.findActor("actor.hero");
+    ASSERT_NE(actor, nullptr);
+
+    BattleUnitBuildOptions options{};
+    options.actor_ids = {"actor.hero"};
+    options.actor_runtime_states["actor.hero"] = game::component::ActorRuntimeState{
+        .current_hp = 999,
+        .current_mp = 999,
+        .level = 1,
+        .total_exp = game::domain::ActorProgressionService::expForLevel(catalog, *actor, 2),
+    };
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    ASSERT_TRUE(buildBattleUnitsFromCatalog(catalog, options, units, error)) << error;
+
+    ASSERT_FALSE(units.empty());
+    EXPECT_EQ(units[0].max_hp, 141);
+    EXPECT_EQ(units[0].max_mp, 31);
+    EXPECT_EQ(units[0].hp, 141);
+    EXPECT_EQ(units[0].mp, 31);
 }
 
 TEST(BattleUnitFactoryTest, FailsWhenRequestedTroopIsMissing) {

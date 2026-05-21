@@ -156,8 +156,10 @@ TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRc
     ASSERT_FALSE(spritesheet.empty());
 
     EXPECT_NE(rml.find("../theme/portrait.rcss"), std::string::npos);
+    EXPECT_NE(rml.find("../theme/overlay_scene.rcss"), std::string::npos);
     EXPECT_NE(rml.find("dialogue-box-bg"), std::string::npos);
     EXPECT_NE(rml.find("dialogue-box-content"), std::string::npos);
+    EXPECT_NE(rml.find("id=\"dialogue-box-portrait-frame\" class=\"tf-scene-card-frame\""), std::string::npos);
     EXPECT_NE(rml.find("dialogue-box-portrait"), std::string::npos);
     EXPECT_NE(rcss.find("body, div, h1, h2, h3, h4, p, hr"), std::string::npos);
     EXPECT_NE(rcss.find("bottom: 0dp;"), std::string::npos);
@@ -174,6 +176,9 @@ TEST(RmlUiArchitectureRegressionTest, DialogueBoxUsesPortraitThemeAndRmlUiSafeRc
     EXPECT_NE(spritesheet.find("hud-dialogue-bg:       0px 48px 48px 48px;"), std::string::npos);
     EXPECT_EQ(spritesheet.find(std::string{"dialogue-"} + "bubble-bg"), std::string::npos);
     EXPECT_EQ(rcss.find("solid"), std::string::npos);
+    EXPECT_EQ(rcss.find("padding: 2dp;"), std::string::npos);
+    EXPECT_EQ(rcss.find("border: 1dp #565f89;"), std::string::npos);
+    EXPECT_EQ(rcss.find("background-color: #16161eff;"), std::string::npos);
     EXPECT_EQ(rcss.find("left: 0; right:"), std::string::npos);
 }
 
