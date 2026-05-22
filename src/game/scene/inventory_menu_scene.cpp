@@ -87,11 +87,11 @@ using engine::ui::rmlui::textToInnerRml;
 
 [[nodiscard]] std::string_view tabShortcutTooltipText(int tab_index) {
     constexpr std::array<std::string_view, 5> labels{
-        "Inventory [I]",
-        "Equipment [C]",
-        "Quests [J]",
-        "Map [M]",
-        "Options [O]",
+        "Inventory I",
+        "Equipment C",
+        "Quests J",
+        "Map M",
+        "Options O",
     };
 
     if (tab_index < 0 || tab_index >= static_cast<int>(labels.size())) {
