@@ -122,6 +122,7 @@ body {
     height: 28dp;
     padding-left: 6dp;
     padding-right: 6dp;
+    text-align: center;
 }
 
 .appearance-variant-name {
