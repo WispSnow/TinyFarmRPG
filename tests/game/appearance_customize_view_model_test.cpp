@@ -5,10 +5,15 @@
 #include "game/scene/appearance_customize_types.h"
 #include "game/ui/appearance_customize_view_model.h"
 #include "appearance_test_fixture_utils.h"
+#include "../engine/render/test_source_utils.h"
 
 #include <filesystem>
 #include <random>
 #include <utility>
+
+#ifndef PROJECT_SOURCE_DIR
+#define PROJECT_SOURCE_DIR "."
+#endif
 
 namespace game::scene {
 namespace {
@@ -136,6 +141,41 @@ TEST(AppearanceCustomizeViewModelTest, RandomizeTouchesRuntimeSlots) {
     EXPECT_TRUE(selection.slot_variants.contains("skin"));
     EXPECT_TRUE(selection.slot_variants.contains("hair"));
     EXPECT_EQ(selection.slot_variants.at("weapon"), "auto");
+}
+
+TEST(AppearanceCustomizeViewModelTest, SceneSuspendsLightingForNewGameAndClosetModes) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/appearance_customize_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+    const std::string suspend_block =
+        test_source_utils::extractFunctionBlock(source, "void AppearanceCustomizeScene::suspendSceneLighting()");
+    ASSERT_FALSE(suspend_block.empty());
+
+    EXPECT_EQ(suspend_block.find("mode_ != Mode::Closet"), std::string::npos)
+        << "New-game appearance customization also renders through the world pass, so it must not inherit stale "
+           "GameScene ambient lighting.";
+    EXPECT_NE(suspend_block.find("renderer.setLightingEnabled(false);"), std::string::npos);
+    EXPECT_NE(source.find("suspendSceneLighting();"), std::string::npos);
+}
+
+TEST(AppearanceCustomizeViewModelTest, PreviewIdleAnimationUsesGameplayFrameDuration) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/appearance_customize_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+    const std::string preview_block =
+        test_source_utils::extractFunctionBlock(source, "[[nodiscard]] engine::component::Animation makePreviewAnimation()");
+    ASSERT_FALSE(preview_block.empty());
+
+    EXPECT_NE(source.find("constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;"), std::string::npos)
+        << "The player idle animation in actor_blueprint.json uses 200ms per frame.";
+    EXPECT_NE(preview_block.find("PREVIEW_IDLE_FRAME_DURATION_MS"), std::string::npos);
+    EXPECT_EQ(preview_block.find("140.0f"), std::string::npos);
 }
 
 } // namespace

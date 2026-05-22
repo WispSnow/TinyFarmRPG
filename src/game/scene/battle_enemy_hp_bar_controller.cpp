@@ -64,7 +64,7 @@ void updateVisibility(BattleEnemyHpBarState& bar,
         bar.alpha = std::max(0.0f, bar.alpha - delta / fade_seconds);
     }
 
-    bar.visible = enabled && (bar.highlighted || bar.visible_seconds_remaining > 0.0f)
+    bar.visible = (enabled && (bar.highlighted || bar.visible_seconds_remaining > 0.0f))
                   || bar.alpha > VISIBLE_ALPHA_EPSILON;
 }
 

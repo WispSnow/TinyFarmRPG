@@ -129,6 +129,7 @@ body {
     width: 100%;
     height: 14dp;
     line-height: 14dp;
+    text-align: center;
     color: #2a1f17ff;
     font-size: 0.6875rem;
     white-space: nowrap;
@@ -140,6 +141,7 @@ body {
     width: 100%;
     height: 10dp;
     line-height: 10dp;
+    text-align: center;
     color: #6f4f37cc;
     font-size: 0.5625rem;
 }
