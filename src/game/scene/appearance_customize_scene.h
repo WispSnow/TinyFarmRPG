@@ -105,8 +105,8 @@ private:
     [[nodiscard]] bool initMenuPanelImage();
     [[nodiscard]] bool initPreviewEntity();
     void releaseMenuPanelImage();
-    void suspendClosetLighting();
-    void restoreClosetLighting();
+    void suspendSceneLighting();
+    void restoreSceneLighting();
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();

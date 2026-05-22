@@ -53,6 +53,7 @@ constexpr float PREVIEW_SCREEN_PIVOT_X = 152.0f;
 constexpr float PREVIEW_SCREEN_PIVOT_Y = 238.0f;
 constexpr float PREVIEW_SIZE_PX = 160.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
+constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;
 
 [[nodiscard]] Rml::String makeRmlString(std::string_view value) {
     return Rml::String{value.data(), value.size()};
@@ -162,7 +163,7 @@ void drawNineSliceImageInScreenSpace(engine::render::Renderer& renderer,
             engine::utils::Rect{
                 glm::vec2{static_cast<float>(frame) * FRAME_SIZE_PX, 0.0f},
                 glm::vec2{FRAME_SIZE_PX, FRAME_SIZE_PX}},
-            140.0f);
+            PREVIEW_IDLE_FRAME_DURATION_MS);
     }
     return animation;
 }
@@ -194,7 +195,7 @@ AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
 }
 
 AppearanceCustomizeScene::~AppearanceCustomizeScene() {
-    restoreClosetLighting();
+    restoreSceneLighting();
     disconnectRuntimeListeners();
     shutdownUI();
     releaseMenuPanelImage();
@@ -234,7 +235,7 @@ bool AppearanceCustomizeScene::init() {
         return false;
     }
 
-    suspendClosetLighting();
+    suspendSceneLighting();
     connectRuntimeListeners();
     return Scene::init();
 }
@@ -267,7 +268,7 @@ void AppearanceCustomizeScene::render(float interpolation_alpha) {
 }
 
 void AppearanceCustomizeScene::clean() {
-    restoreClosetLighting();
+    restoreSceneLighting();
     shutdownUI();
     releaseMenuPanelImage();
     disconnectRuntimeListeners();
@@ -418,8 +419,8 @@ void AppearanceCustomizeScene::releaseMenuPanelImage() {
     menu_panel_image_ = engine::render::Image{};
 }
 
-void AppearanceCustomizeScene::suspendClosetLighting() {
-    if (mode_ != Mode::Closet || lighting_suspended_) {
+void AppearanceCustomizeScene::suspendSceneLighting() {
+    if (lighting_suspended_) {
         return;
     }
 
@@ -429,7 +430,7 @@ void AppearanceCustomizeScene::suspendClosetLighting() {
     lighting_suspended_ = true;
 }
 
-void AppearanceCustomizeScene::restoreClosetLighting() {
+void AppearanceCustomizeScene::restoreSceneLighting() {
     if (!lighting_suspended_) {
         return;
     }
