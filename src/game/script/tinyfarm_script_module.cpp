@@ -2,6 +2,7 @@
 
 #include "engine/script/script_binding_utils.h"
 #include "engine/script/script_entity_handle.h"
+#include "engine/script/script_host.h"
 #include "game/script/script_game_api.h"
 
 #include <entt/entity/registry.hpp>
@@ -11,7 +12,9 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
+#include <utility>
 
 namespace {
 
@@ -21,6 +24,17 @@ namespace {
         return value.value();
     }
     return std::nullopt;
+}
+
+[[nodiscard]] bool registerEventCallback(engine::script::ScriptHost& host,
+                                         const std::string_view event_name,
+                                         const sol::object& callback) {
+    if (event_name.empty() || !callback.is<sol::function>()) {
+        return false;
+    }
+
+    sol::protected_function protected_callback = callback.as<sol::function>();
+    return host.registerEventCallback(event_name, std::move(protected_callback));
 }
 
 } // namespace
@@ -126,6 +140,46 @@ void installTinyFarmScriptModule(sol::state& lua,
             return api->hideDialogue(channel.value_or(1), toStdOptional(target_handle));
         });
     tf_impl["dialogue"] = engine::script::createReadOnlyProxy(lua, dialogue_impl, "tf.dialogue");
+
+    // ── tf.event / tf.callbacks ──
+    sol::table event_impl = lua.create_table();
+    event_impl.set_function("on", [&host](const std::string& event_name, const sol::object& callback) -> bool {
+        return registerEventCallback(host, event_name, callback);
+    });
+    tf_impl["event"] = engine::script::createReadOnlyProxy(lua, event_impl, "tf.event");
+
+    sol::table callbacks_impl = lua.create_table();
+    callbacks_impl.set_function("on_interact", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "interact", callback);
+    });
+    callbacks_impl.set_function("on_dialogue_closed", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "dialogue_closed", callback);
+    });
+    callbacks_impl.set_function("on_battle_start", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_started", callback);
+    });
+    callbacks_impl.set_function("on_battle_end", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_ended", callback);
+    });
+    callbacks_impl.set_function("on_day_changed", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "day_changed", callback);
+    });
+    callbacks_impl.set_function("on_time_of_day_changed", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "time_of_day_changed", callback);
+    });
+    callbacks_impl.set_function("on_inventory_changed", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "inventory_changed", callback);
+    });
+    callbacks_impl.set_function("on_item_used", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "item_used", callback);
+    });
+    callbacks_impl.set_function("on_quest_accepted", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "quest_accepted", callback);
+    });
+    callbacks_impl.set_function("on_quest_completed", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "quest_completed", callback);
+    });
+    tf_impl["callbacks"] = engine::script::createReadOnlyProxy(lua, callbacks_impl, "tf.callbacks");
 
     lua["tf"] = engine::script::createReadOnlyProxy(lua, tf_impl, "tf");
 }

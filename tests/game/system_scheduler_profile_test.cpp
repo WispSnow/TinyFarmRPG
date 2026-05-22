@@ -65,6 +65,18 @@ TEST(SystemSchedulerProfileTest, ExplorationKeepsQuestInteractionBetweenDialogue
     EXPECT_LT(quest_interaction, auto_tile);
 }
 
+TEST(SystemSchedulerProfileTest, ExplorationDrainsScriptCommandsAfterStateBeforeMovement) {
+    const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
+    ASSERT_FALSE(stages.empty());
+
+    const size_t state = indexOf(stages, SchedulerStage::State);
+    const size_t script_commands = indexOf(stages, SchedulerStage::ScriptCommands);
+    const size_t movement = indexOf(stages, SchedulerStage::Movement);
+
+    EXPECT_LT(state, script_commands);
+    EXPECT_LT(script_commands, movement);
+}
+
 TEST(SystemSchedulerProfileTest, ExplorationRunsEnemyEncounterAfterSpatialBeforeInteraction) {
     const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
     ASSERT_FALSE(stages.empty());

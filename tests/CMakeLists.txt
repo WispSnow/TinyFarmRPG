@@ -254,6 +254,7 @@ set(GAME_TEST_SOURCES
 list(APPEND GAME_TEST_SOURCES
     game/script_host_smoke_test.cpp
     game/script_host_command_bridge_test.cpp
+    game/script_event_bridge_test.cpp
 )
 
 if(ENABLE_DEBUG_UI)

@@ -36,6 +36,7 @@ enum class SchedulerStage {
     ActionSound,
     AutoTile,
     State,
+    ScriptCommands,
     Movement,
     TransitionUpdatePost,
     LightTogglePost,

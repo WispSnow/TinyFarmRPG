@@ -87,6 +87,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     auto& stack = inv.slot(evt.inventory_slot_index);
     if (stack.empty()) return;
 
+    const entt::id_type used_item_id = stack.item_id_;
     const auto* item = catalog_.findItem(stack.item_id_);
     if (!item) return;
 
@@ -144,6 +145,13 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
             .player = evt.target,
             .actor_id = actor_id,
             .full_sync = false,
+        });
+        dispatcher_.trigger(game::defs::ItemUsedEvent{
+            .target = evt.target,
+            .item_id = used_item_id,
+            .inventory_slot_index = evt.inventory_slot_index,
+            .count = use_times,
+            .actor_target_id = evt.actor_target_id,
         });
 
         if (evt.show_prompt) {
@@ -220,6 +228,13 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
         (void)inventory_domain_service_.addItem(
             evt.target, effect.item_id, add_total, evt.inventory_slot_index);
     }
+    dispatcher_.trigger(game::defs::ItemUsedEvent{
+        .target = evt.target,
+        .item_id = used_item_id,
+        .inventory_slot_index = evt.inventory_slot_index,
+        .count = use_times,
+        .actor_target_id = evt.actor_target_id,
+    });
 
     if (evt.show_prompt) {
         std::ostringstream oss;

@@ -104,9 +104,9 @@ end)
 
 待办：
 
-- [ ] 在 C++ 侧实现 typed event 到 Lua payload table 的统一中转层。
-- [ ] 先盘点 C++ 侧事件源：复用已存在的 `DayChangedEvent` / `HourChangedEvent` / `TimeOfDayChangedEvent` / `InventoryChanged` / `BattleEndedEvent`，并补齐缺失的高价值事件源，例如 `BattleStartedEvent`、`MapEnteredEvent`、`ItemUsedEvent`。
-- [ ] 首批事件建议只做高价值、低风险集合：
+- [x] 在 C++ 侧实现 typed event 到 Lua payload table 的统一中转层。
+- [x] 先盘点 C++ 侧事件源：复用已存在的 `DayChangedEvent` / `HourChangedEvent` / `TimeOfDayChangedEvent` / `InventoryChanged` / `BattleEndedEvent`，并补齐首批缺失事件源：`BattleStartedEvent`、`ItemUsedEvent`、`QuestAcceptedEvent`、`QuestCompletedEvent`；`MapEnteredEvent` 待地图切换完成事件边界明确后接入。
+- [x] 首批事件建议只做高价值、低风险集合：
   - `interact`
   - `dialogue_closed`
   - `quest_accepted`
@@ -115,16 +115,16 @@ end)
   - `battle_ended`
   - `day_changed`
   - `time_of_day_changed`
-  - `map_changed`
+  - `map_changed`（待 `MapEnteredEvent`/地图切换完成事件明确后接入）
   - `inventory_changed`
   - `item_used`
-- [ ] 回调调用必须走 `sol::protected_function`，错误进入日志，不中断主循环。
-- [ ] 回调注册与 `ScriptHost::shutdown()` 绑定生命周期，场景销毁时全部失效。
-- [ ] 明确回调内可执行命令的时机：先 enqueue 到脚本命令队列，在安全阶段统一 drain，避免 dispatcher 重入。
-- [ ] 在 `SystemScheduler` 中先局部加入 `SchedulerStage::ScriptCommands`，推荐放在 `State` 之后、`Movement` 之前；Phase 5 声明式调度重构时再迁入 `StageDecl`。
-- [ ] 制定回调级指令预算策略：每次调用 Lua 回调前重置/配置 instruction budget，避免单个回调长跑拖死 VM。
-- [ ] 增加无限循环回调 stress 测试，验证回调被中断后不会崩溃，也不会留下半写脚本命令队列。
-- [ ] 增加事件回调端到端测试：Lua 注册回调，C++ 触发事件，Lua 通过 `tf.command` 或 `tf.state` 产生可验证结果。
+- [x] 回调调用必须走 `sol::protected_function`，错误进入日志，不中断主循环。
+- [x] 回调注册与 `ScriptHost::shutdown()` 绑定生命周期，场景销毁时全部失效。
+- [x] 明确回调内可执行命令的时机：先 enqueue 到脚本命令队列，在安全阶段统一 drain，避免 dispatcher 重入。
+- [x] 在 `SystemScheduler` 中先局部加入 `SchedulerStage::ScriptCommands`，推荐放在 `State` 之后、`Movement` 之前；Phase 5 声明式调度重构时再迁入 `StageDecl`。
+- [x] 制定回调级指令预算策略：每次调用 Lua 回调前重置/配置 instruction budget，避免单个回调长跑拖死 VM。
+- [x] 增加无限循环回调 stress 测试，验证回调被中断后不会崩溃，也不会留下半写脚本命令队列。
+- [x] 增加事件回调端到端测试：Lua 注册回调，C++ 触发事件，Lua 通过 `tf.command` 或 `tf.state` 产生可验证结果。
 
 验收：
 

@@ -4,6 +4,8 @@
 #include <entt/entity/entity.hpp>
 
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace game::defs {
@@ -35,6 +37,14 @@ struct InventoryFullEvent {
     entt::entity target{entt::null};
     entt::id_type item_id{entt::null};
     int rejected{0};
+};
+
+struct ItemUsedEvent {
+    entt::entity target{entt::null};
+    entt::id_type item_id{entt::null};
+    int inventory_slot_index{-1};
+    int count{0};
+    std::optional<std::string> actor_target_id{};
 };
 
 struct HotbarSlotChanged {

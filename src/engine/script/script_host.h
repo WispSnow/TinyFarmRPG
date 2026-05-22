@@ -8,8 +8,10 @@
 #include <sol/sol.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace engine::script {
@@ -46,6 +48,13 @@ public:
     [[nodiscard]] bool validateHandle(const ScriptEntityHandle& handle,
                                       entt::entity& out_entity,
                                       std::string_view source) const;
+    [[nodiscard]] sol::state& luaState() noexcept;
+
+    [[nodiscard]] bool registerEventCallback(std::string_view event_name, sol::protected_function callback);
+    [[nodiscard]] bool emitEvent(std::string_view event_name, const sol::table& payload);
+    [[nodiscard]] bool isHandlingScriptCallback() const noexcept;
+    void enqueueDeferredCommand(std::function<void()> command);
+    void drainDeferredCommands();
 
 private:
     /// 统一处理 sol::protected_function 的执行结果，失败时记录日志而非抛异常。
@@ -60,6 +69,9 @@ private:
     sol::state lua_;                  ///< RAII 封装的 Lua 虚拟机，析构时自动释放
     std::string last_loaded_file_{};  ///< 最近一次 loadFile 的路径，供 reload 使用
     std::uint64_t scene_token_{0};    ///< 当前脚本会话 token（跨场景代际校验）
+    std::unordered_map<std::string, std::vector<sol::protected_function>> event_callbacks_{};
+    std::vector<std::function<void()>> deferred_commands_{};
+    std::vector<std::function<void()>>* active_callback_commands_{nullptr};
     bool ready_{false};               ///< init() 成功后置 true
 };
 

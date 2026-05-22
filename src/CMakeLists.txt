@@ -303,6 +303,7 @@ target_sources(game PRIVATE
 )
 
 target_sources(game PRIVATE
+    game/script/script_event_bridge.cpp
     game/script/script_game_api.cpp
     game/script/tinyfarm_script_module.cpp
 )
