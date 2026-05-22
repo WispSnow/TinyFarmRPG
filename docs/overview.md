@@ -2,14 +2,22 @@
 
 ## 项目简介
 
-TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的教学项目。项目仍保留农场、背包、快捷栏、地图切换、昼夜、存档等基础玩法，同时已经接入 Lua 脚本、分层角色外观、Effekseer 特效、RmlUi 生产 UI，并开始形成任务、商店、队伍、装备、招募与回合制战斗等 JRPG 核心闭环。
+TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的教学项目。项目仍保留农场、背包、快捷栏、地图切换、昼夜、存档等基础玩法，同时已经接入 Lua 脚本、分层角色外观、Effekseer 特效、RmlUi 生产 UI，并完成任务、商店、队伍、装备、招募与回合制战斗等 JRPG 核心闭环。
 
 本项目的核心目的不是上线完整商业游戏，而是以教学和重构实践为导向，展示如何使用现代 C++、ECS、数据驱动资源和清晰的 engine/game 分层来构建可扩展的小型游戏工程。
+
+## 核心架构原则
+
+- **engine / game 分层**：`src/engine` 提供与具体玩法无关的可复用基础设施（渲染、输入、资源、ECS 系统、脚本宿主、VFX、UI 运行时等），`src/game` 在其之上组合出 TinyFarmRPG 的具体玩法、组件、系统、数据目录与场景。
+- **ECS（EnTT）**：组件描述数据，系统在固定步 `SystemScheduler` 中推进；跨模块通信经由 `entt::dispatcher` 的命令 / 事件而非直接耦合，便于脚本与 UI 介入。
+- **数据驱动**：物品、作物、外观、对话、任务、商店、JRPG（actors / classes / skills / states / equipment / enemies / troops）等均落到 `assets/data` 下的 JSON 目录，由各自的 `Catalog` 负责加载与查询。
+- **领域服务**：背包、装备、任务、商店等关键写入操作集中到 `game::domain::*Service`，命令与脚本桥接全部经其入口，确保一致性与原子性。
+- **覆盖式场景**：常驻 `GameScene` 之上由 `SceneManager` 叠加 Inventory / Shop / Quest / Recruit / Battle / Pause / Save 等 RmlUi 弹出场景，所有 UI 资源走 `ui/rmlui/` 共享主题。
 
 ## 当前玩法扩展状态
 
 - 基础农场循环仍可用：地图切换、耕地/浇水/作物、资源点、宝箱、休息、昼夜光照、背包、快捷栏、HUD、存档与读档。
-- Lua + Sol2 已落地：`engine::script::ScriptHost` 提供 Lua VM、安全边界、实体句柄与模块安装；game 层通过 `tinyfarm_script_module` 暴露 `tf.time/player/command/dialogue` 等绑定。
+- Lua + Sol2 已落地：`engine::script::ScriptHost` 提供 Lua VM、安全边界、实体句柄与模块安装；game 层通过 `tinyfarm_script_module` 暴露 `tf.time / tf.player / tf.command / tf.dialogue` 等只读代理表。`scripts/bootstrap.lua` 目前仅为占位入口，下一阶段将由 Lua 承载更多玩法逻辑（详见末节）。
 - 分层外观已落地：`AppearanceCatalog` + `AppearanceComponent` + `LayeredSpriteComponent` 支持皮肤、眼睛、衣服、头发、饰品、武器等部件组合，运行时换装由 `AppearanceSystem` 重建缓存。
 - VFX 已落地：`VfxService` 通过 `VfxBackend` 抽象接入 `EffekseerBackend`，渲染管线区分 world-vfx 与 overlay-vfx 双通道。
 - Quest MVP 已落地：支持 `QuestCatalog`、地图实例 `quest_offer_id`、接任务、战斗击败计数推进、回 NPC 交付，以及存档 roundtrip。
@@ -20,7 +28,18 @@ TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的
 - 玩家成长已落地：`ClassData` 提供 RPG Maker 风格经验曲线和等级属性曲线；`PartyRuntimeStatsComponent` 持久化 actor 的 `level / total_exp / current_hp / current_mp`，战斗胜利经验会写回参战 actor 并影响后续战斗属性。
 - 玩家偏好已落地：`UserSettingsService` 统一管理音量、全局倍速、战斗动画速度、伤害飘字、敌方 HP 条、光标记忆等偏好；Inventory 菜单 Options 标签暴露 4 项战斗体验设置，UI 字号固定 Normal；持久化到 `config/user_settings.json`（不进 source repo）。
 - 存档当前 schema 为 v6：除基础世界状态外，还包含 `quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state` 与 `combat_state`，其中 `party_runtime_state.actor_states` 保存队伍成员当前 HP/MP、等级与累计经验。
-- 下一阶段更适合聚焦在内容和规则深度：状态/技能效果扩展、等级学习技能、装备词条与限制深化、商店限量库存、更多任务目标类型，以及战斗表现打磨。
+
+## 下一阶段：让 Lua 承载更多玩法
+
+教学 demo 计划中的基础闭环已经落地，下一阶段的重心转向**用 Lua 脚本承载更多游戏逻辑**：
+
+- 把现在散落在 C++ 里的"剧本式"内容（对话脚本、任务推进、招募对白、商店预设、特定地图事件等）逐步迁出到 Lua，让策划/教学读者可以仅靠脚本驱动玩法。
+- 扩展 `tf.*` 绑定表面：从当前的 `time / player / command / dialogue` 扩到 `quest`、`shop`、`party`、`battle`、`event` 等命名空间，并补齐相应的事件订阅入口（如 `on_interact`、`on_quest_complete`、`on_battle_end` 等回调挂载）。
+- 让 `scripts/bootstrap.lua` 由当前的占位入口演化为真正的脚本组合根：装载子模块、注册回调、声明世界事件钩子。
+- 维持安全边界与生命周期约束：脚本仅通过 `dispatcher` 命令修改 ECS 数据，所有写入仍走 `game::domain::*Service` 入口，错误经 `sol::protected_function` 收口而非抛异常。
+- 测试层补充端到端用例（沿用 `tests/scripts/` 下的辅助脚本模式），保证脚本驱动的玩法可被回归。
+
+具体绑定与扩展节奏请见 `plans/` 下的迭代计划与 `docs/tutorial/lua-binding-guide.md`。
 
 ## 高层运行链路
 
