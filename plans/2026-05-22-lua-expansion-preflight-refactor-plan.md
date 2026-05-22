@@ -61,7 +61,7 @@
 
 待办：
 
-- [ ] 拆分 `src/game/defs/commands.h`：
+- [x] 拆分 `src/game/defs/commands.h`：
   - `commands_inventory.h`
   - `commands_equipment.h`
   - `commands_interaction.h`
@@ -70,8 +70,8 @@
   - `commands_battle.h`
   - `commands_appearance.h`
   - 保留聚合头 `commands.h` 作为内部过渡入口。
-- [ ] 拆分 `src/game/defs/events.h`，至少把 dialogue、inventory、equipment、quest、battle 事件分域。
-- [ ] 新建 `game::script::ScriptGameApi` 或类似 facade，Lua 绑定优先依赖 facade，不直接散落调用 registry/dispatcher/domain service。
+- [x] 拆分 `src/game/defs/events.h`，至少把 dialogue、inventory、equipment、quest、battle 事件分域。
+- [x] 新建 `game::script::ScriptGameApi` 或类似 facade，Lua 绑定优先依赖 facade，不直接散落调用 registry/dispatcher/domain service。
 - [ ] 对脚本需要主动调用的玩法按需补 domain/service 入口，而不是预先为空壳抽象：
   - 如果只是单个事件或命令转发，facade 直接发 command/event，例如 `DialogueShowEvent`、`DialogueHideEvent`、`RecruitPartyMemberCommand`。
   - 如果逻辑涉及多步原子写入、共享校验或跨多个调用点复用，再升级为 domain service。
