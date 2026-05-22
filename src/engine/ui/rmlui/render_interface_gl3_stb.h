@@ -3,6 +3,7 @@
 #include "RmlUi_Renderer_GL3.h"
 #include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 
+#include <unordered_map>
 #include <unordered_set>
 
 namespace engine::ui::rmlui {
@@ -24,10 +25,13 @@ public:
 
 private:
     void applyTextureSampling(Rml::TextureHandle texture_handle) const;
+    void applyTextureSampling(Rml::TextureHandle texture_handle, RmlUiTextureFilterMode filter_mode) const;
+    [[nodiscard]] RmlUiTextureFilterMode textureFilterModeFor(Rml::TextureHandle texture_handle) const;
 
     RmlUiTextureFilterMode texture_filter_mode_{RmlUiTextureFilterMode::Nearest};
     RmlGeneratedImageRegistry* generated_image_registry_{nullptr};
     std::unordered_set<Rml::TextureHandle> tracked_texture_handles_{};
+    std::unordered_map<Rml::TextureHandle, RmlUiTextureFilterMode> texture_filter_overrides_{};
 };
 
 } // namespace engine::ui::rmlui

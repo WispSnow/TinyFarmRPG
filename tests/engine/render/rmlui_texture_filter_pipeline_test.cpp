@@ -58,6 +58,28 @@ TEST(RmlUiTextureFilterPipelineTest, GenerateTextureTracksHandlesAndAppliesConfi
     EXPECT_NE(content.find("GL_LINEAR"), std::string::npos);
 }
 
+TEST(RmlUiTextureFilterPipelineTest, GeneratedTexturesCanOverrideGlobalSampling) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/render_interface_gl3_stb.cpp")
+            .lexically_normal();
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/render_interface_gl3_stb.h")
+            .lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    const std::string header = test_source_utils::readTextFile(header_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+
+    EXPECT_NE(header.find("texture_filter_overrides_"), std::string::npos);
+    EXPECT_NE(source.find("textureFilterOverrideFor(source)"), std::string::npos);
+    EXPECT_NE(source.find("texture_filter_overrides_[texture_handle] = *filter_override;"), std::string::npos);
+    EXPECT_NE(source.find("textureFilterModeFor(texture_handle)"), std::string::npos);
+    EXPECT_NE(source.find("texture_filter_overrides_.erase(texture_handle);"), std::string::npos);
+}
+
 TEST(RmlUiTextureFilterPipelineTest, SaveLayerAsTextureStillUsesDedicatedEffectPath) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "external/RmlUi-6.2/Backends/RmlUi_Renderer_GL3.cpp").lexically_normal();

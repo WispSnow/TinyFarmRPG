@@ -36,8 +36,8 @@ namespace game::ui {
 
 inline constexpr float MAP_TAB_PREVIEW_FRAME_WIDTH = 218.0F;
 inline constexpr float MAP_TAB_PREVIEW_FRAME_HEIGHT = 126.0F;
-inline constexpr float MAP_TAB_MARKER_SIZE = 12.0F;
-inline constexpr float MAP_TAB_MARKER_SELECTED_SIZE = 14.0F;
+inline constexpr float MAP_TAB_MARKER_SIZE = 16.0F;
+inline constexpr float MAP_TAB_MARKER_SELECTED_SIZE = 16.0F;
 
 struct MapTabPreviewInput {
     Rml::String source_uri{};

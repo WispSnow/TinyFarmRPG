@@ -109,10 +109,21 @@ Rml::TextureHandle RenderInterface_GL3_STB::GenerateTexture(Rml::Span<const Rml:
 
 void RenderInterface_GL3_STB::ReleaseTexture(Rml::TextureHandle texture_handle) {
     tracked_texture_handles_.erase(texture_handle);
+    texture_filter_overrides_.erase(texture_handle);
     RenderInterface_GL3::ReleaseTexture(texture_handle);
 }
 
+RmlUiTextureFilterMode RenderInterface_GL3_STB::textureFilterModeFor(Rml::TextureHandle texture_handle) const {
+    const auto override_it = texture_filter_overrides_.find(texture_handle);
+    return override_it == texture_filter_overrides_.end() ? texture_filter_mode_ : override_it->second;
+}
+
 void RenderInterface_GL3_STB::applyTextureSampling(Rml::TextureHandle texture_handle) const {
+    applyTextureSampling(texture_handle, textureFilterModeFor(texture_handle));
+}
+
+void RenderInterface_GL3_STB::applyTextureSampling(Rml::TextureHandle texture_handle,
+                                                   RmlUiTextureFilterMode filter_mode) const {
     const GLuint texture_id = toTextureId(texture_handle);
     if (texture_id == 0) {
         return;
@@ -121,7 +132,7 @@ void RenderInterface_GL3_STB::applyTextureSampling(Rml::TextureHandle texture_ha
     GLint previous_texture = 0;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
 
-    const GLint gl_filter = toGlTextureFilter(texture_filter_mode_);
+    const GLint gl_filter = toGlTextureFilter(filter_mode);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter);
@@ -147,7 +158,14 @@ Rml::TextureHandle RenderInterface_GL3_STB::LoadTexture(Rml::Vector2i& texture_d
         premultiplyAlpha(pixels.data(), image->width, image->height);
 
         texture_dimensions = {image->width, image->height};
-        return this->GenerateTexture({pixels.data(), pixels.size()}, texture_dimensions);
+        const Rml::TextureHandle texture_handle = this->GenerateTexture({pixels.data(), pixels.size()}, texture_dimensions);
+        if (texture_handle) {
+            if (const auto filter_override = generated_image_registry_->textureFilterOverrideFor(source)) {
+                texture_filter_overrides_[texture_handle] = *filter_override;
+                applyTextureSampling(texture_handle);
+            }
+        }
+        return texture_handle;
     }
 
     std::vector<std::uint8_t> file_buffer;

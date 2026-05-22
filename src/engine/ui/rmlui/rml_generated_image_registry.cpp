@@ -47,13 +47,19 @@ void RmlGeneratedImageRegistry::Registration::reset() {
 }
 
 RmlGeneratedImageRegistry::Registration
-RmlGeneratedImageRegistry::registerImage(std::string source_uri, engine::resource::DecodedImage image) {
+RmlGeneratedImageRegistry::registerImage(
+    std::string source_uri,
+    engine::resource::DecodedImage image,
+    std::optional<RmlUiTextureFilterMode> texture_filter_override) {
     if (source_uri.empty() || !image.valid()) {
         return {};
     }
 
     const std::string handle_source = source_uri;
-    images_[std::move(source_uri)] = std::move(image);
+    images_[std::move(source_uri)] = ImageEntry{
+        .image = std::move(image),
+        .texture_filter_override = texture_filter_override,
+    };
     return Registration{*this, handle_source};
 }
 
@@ -69,7 +75,16 @@ const engine::resource::DecodedImage* RmlGeneratedImageRegistry::find(std::strin
         return nullptr;
     }
     const auto it = images_.find(std::string{source_uri});
-    return it == images_.end() ? nullptr : &it->second;
+    return it == images_.end() ? nullptr : &it->second.image;
+}
+
+std::optional<RmlUiTextureFilterMode>
+RmlGeneratedImageRegistry::textureFilterOverrideFor(std::string_view source_uri) const {
+    if (source_uri.empty()) {
+        return std::nullopt;
+    }
+    const auto it = images_.find(std::string{source_uri});
+    return it == images_.end() ? std::nullopt : it->second.texture_filter_override;
 }
 
 bool RmlGeneratedImageRegistry::isGeneratedSource(std::string_view source_uri) {

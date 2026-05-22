@@ -7,6 +7,7 @@
 #include "game/data/shop_catalog.h"
 #include "game/ui/map_tab_content.h"
 #include "game/world/world_state.h"
+#include "../engine/render/test_source_utils.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -141,8 +142,10 @@ TEST(MapTabContentTest, BuildsPlayerMarkerFromRuntimeLocalPositionAfterMapSwitch
     EXPECT_EQ(state.map_title, "Town");
     ASSERT_EQ(state.map_markers.size(), 1U);
     EXPECT_EQ(state.map_markers[0].kind, "player");
-    EXPECT_EQ(state.map_markers[0].left, "45.30dp");
-    EXPECT_EQ(state.map_markers[0].top, "49.00dp");
+    EXPECT_EQ(state.map_markers[0].left, "44dp");
+    EXPECT_EQ(state.map_markers[0].top, "47dp");
+    EXPECT_EQ(state.map_markers[0].width, "16dp");
+    EXPECT_EQ(state.map_markers[0].height, "16dp");
 }
 
 TEST(MapTabContentTest, BuildsPlayerMarkerAndClampsOutOfRangePositionToMapBounds) {
@@ -165,8 +168,8 @@ TEST(MapTabContentTest, BuildsPlayerMarkerAndClampsOutOfRangePositionToMapBounds
 
     ASSERT_EQ(state.map_markers.size(), 1U);
     EXPECT_EQ(state.map_markers[0].kind, "player");
-    EXPECT_EQ(state.map_markers[0].left, "190.20dp");
-    EXPECT_EQ(state.map_markers[0].top, "49.00dp");
+    EXPECT_EQ(state.map_markers[0].left, "189dp");
+    EXPECT_EQ(state.map_markers[0].top, "47dp");
 }
 
 TEST(MapTabContentTest, MissingWorldStateShowsNoMapData) {
@@ -438,6 +441,20 @@ TEST(MapTabContentTest, InlineCatalogsResolveDetailsWithoutDependingOnProjectDat
     EXPECT_EQ(state.map_markers[3].description, "Recover and pass time.");
     EXPECT_EQ(state.map_detail_title, "Inline Shop");
     EXPECT_EQ(state.map_detail_type, "Shop");
+}
+
+TEST(MapTabContentSourceTest, RegistersMapPreviewGeneratedTextureWithLinearSampling) {
+    const auto source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/map_tab_content.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(source.find("generated://map-preview/"), std::string::npos);
+    EXPECT_NE(source.find("engine::ui::rmlui::RmlUiTextureFilterMode::Linear"), std::string::npos);
+    EXPECT_NE(source.find("formatWholeDp(top_left.x)"), std::string::npos);
+    EXPECT_NE(source.find("formatWholeDp(marker_size)"), std::string::npos);
 }
 
 } // namespace

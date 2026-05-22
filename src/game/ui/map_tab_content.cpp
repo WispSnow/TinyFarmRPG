@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <map>
 #include <string>
@@ -38,6 +39,10 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
         return "0dp";
     }
     return std::string{buffer.data(), static_cast<std::size_t>(std::min(count, static_cast<int>(buffer.size() - 1U)))};
+}
+
+[[nodiscard]] std::string formatWholeDp(float value) {
+    return std::to_string(static_cast<int>(std::lround(value))) + "dp";
 }
 
 [[nodiscard]] const game::world::MapInfo* findMapInfo(const game::world::WorldState* world_state,
@@ -184,10 +189,10 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
     marker.marker_index = marker_index;
     marker.kind = "player";
     marker.icon_decorator = "image(map-marker-player)";
-    marker.left = formatDp(top_left.x);
-    marker.top = formatDp(top_left.y);
-    marker.width = formatDp(marker_size);
-    marker.height = formatDp(marker_size);
+    marker.left = formatWholeDp(top_left.x);
+    marker.top = formatWholeDp(top_left.y);
+    marker.width = formatWholeDp(marker_size);
+    marker.height = formatWholeDp(marker_size);
     marker.z_index = selected ? 100 : 50;
     marker.normal_top_left = mapMarkerBottomCenterTopLeft(
         map_local_position,
@@ -224,10 +229,10 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
     marker.marker_index = marker_index;
     marker.kind = markerKindString(source.kind);
     marker.icon_decorator = markerDecorator(source.kind);
-    marker.left = formatDp(top_left.x);
-    marker.top = formatDp(top_left.y);
-    marker.width = formatDp(marker_size);
-    marker.height = formatDp(marker_size);
+    marker.left = formatWholeDp(top_left.x);
+    marker.top = formatWholeDp(top_left.y);
+    marker.width = formatWholeDp(marker_size);
+    marker.height = formatWholeDp(marker_size);
     marker.z_index = selected ? 100 : markerBaseZIndex(source.kind);
     marker.normal_top_left = mapMarkerBottomCenterTopLeft(
         source.map_position,
@@ -321,10 +326,10 @@ struct MarkerPositionKey {
     marker.marker_index = marker_index;
     marker.kind = questMarkerKindString(source.kind);
     marker.icon_decorator = "image(map-marker-quest)";
-    marker.left = formatDp(top_left.x);
-    marker.top = formatDp(top_left.y);
-    marker.width = formatDp(marker_size);
-    marker.height = formatDp(marker_size);
+    marker.left = formatWholeDp(top_left.x);
+    marker.top = formatWholeDp(top_left.y);
+    marker.width = formatWholeDp(marker_size);
+    marker.height = formatWholeDp(marker_size);
     marker.z_index = selected ? 100 : questMarkerBaseZIndex(source.kind);
     marker.normal_top_left = normal_top_left;
     marker.selected_top_left = selected_top_left;
@@ -576,7 +581,10 @@ MapTabPreviewInput MapTabContent::buildPreviewInput(const entt::id_type map_id) 
     input.source_uri = "generated://map-preview/" + map_info->name;
     input.width = result.map_pixel_size.x;
     input.height = result.map_pixel_size.y;
-    preview_registration_ = generated_images_->registerImage(input.source_uri, std::move(result.image));
+    preview_registration_ = generated_images_->registerImage(
+        input.source_uri,
+        std::move(result.image),
+        engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
     if (!preview_registration_.valid()) {
         input = {};
         preview_map_id_ = entt::null;
@@ -731,10 +739,10 @@ void MapTabContent::selectMarker(const int marker_index) {
         marker.is_selected = should_select;
         const glm::vec2 top_left = should_select ? marker.selected_top_left : marker.normal_top_left;
         const float marker_size = should_select ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
-        marker.left = formatDp(top_left.x);
-        marker.top = formatDp(top_left.y);
-        marker.width = formatDp(marker_size);
-        marker.height = formatDp(marker_size);
+        marker.left = formatWholeDp(top_left.x);
+        marker.top = formatWholeDp(top_left.y);
+        marker.width = formatWholeDp(marker_size);
+        marker.height = formatWholeDp(marker_size);
         marker.z_index = should_select ? 100 : marker.normal_z_index;
         changed = true;
     }
