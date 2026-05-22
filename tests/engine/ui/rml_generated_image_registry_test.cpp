@@ -31,6 +31,21 @@ TEST(RmlGeneratedImageRegistryTest, RegisterFindAndUnregisterImage) {
     EXPECT_EQ(registry.find("generated://test/image/1"), nullptr);
 }
 
+TEST(RmlGeneratedImageRegistryTest, OptionalTextureFilterOverrideFollowsRegistrationLifetime) {
+    RmlGeneratedImageRegistry registry;
+    auto registration = registry.registerImage(
+        "generated://test/image/linear",
+        makeImage(),
+        RmlUiTextureFilterMode::Linear);
+
+    const auto filter = registry.textureFilterOverrideFor("generated://test/image/linear");
+    ASSERT_TRUE(filter.has_value());
+    EXPECT_EQ(*filter, RmlUiTextureFilterMode::Linear);
+
+    registration.reset();
+    EXPECT_FALSE(registry.textureFilterOverrideFor("generated://test/image/linear").has_value());
+}
+
 TEST(RmlGeneratedImageRegistryTest, RegistrationReleasesOnMoveAssignment) {
     RmlGeneratedImageRegistry registry;
     auto first = registry.registerImage("generated://test/image/1", makeImage());
