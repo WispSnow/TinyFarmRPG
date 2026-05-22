@@ -9,12 +9,17 @@
 #include <RmlUi/Core/Types.h>
 #include <entt/entity/entity.hpp>
 #include <entt/entity/fwd.hpp>
+#include <glm/vec2.hpp>
 
 #include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+namespace Rml {
+class Element;
+}
 
 namespace engine::core {
 enum class State;
@@ -67,6 +72,11 @@ class InventoryMenuScene final : public engine::scene::Scene {
     game::ui::MenuTabId initial_tab_id_{game::ui::MenuTabId::Inventory};
     game::ui::MenuTabId active_tab_id_{game::ui::MenuTabId::Inventory};
     game::ui::EquipmentTabContent* equipment_tab_{nullptr};
+    Rml::Element* tab_shortcut_tooltip_panel_{nullptr};
+    Rml::Element* tab_shortcut_tooltip_text_{nullptr};
+    bool tab_shortcut_tooltip_visible_{false};
+    glm::vec2 tab_shortcut_tooltip_size_{0.0F, 0.0F};
+    glm::vec2 tab_shortcut_tooltip_offset_{12.0F, 16.0F};
 
     // Party panel
     std::vector<PartyMemberPanelViewModel> party_members_{};
@@ -106,6 +116,11 @@ private:
     void switchTabFromTabsetIndex(int tab_index);
     [[nodiscard]] bool activateRmlTab(game::ui::MenuTabId tab_id);
     [[nodiscard]] game::ui::IMenuTabContent* activeTab();
+    void cacheTabShortcutTooltipElements();
+    void showTabShortcutTooltip(int tab_index);
+    void hideTabShortcutTooltip();
+    void refreshTabShortcutTooltipMetrics();
+    void updateTabShortcutTooltipPosition();
 
     bool onMenuCancelPressed();
     bool handleTabShortcut(game::ui::MenuTabId target_tab);

@@ -3,6 +3,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/ui/rmlui/rml_element_helpers.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
@@ -19,6 +20,7 @@
 #include "game/ui/quest_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
+#include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/DataTypeRegister.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Elements/ElementTabSet.h>
@@ -28,6 +30,8 @@
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <array>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -41,6 +45,9 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
 using SlotGridViewModels = std::vector<game::ui::SlotGridViewModel>;
 using PartyMemberPanelViewModels = std::vector<game::scene::PartyMemberPanelViewModel>;
+using engine::ui::rmlui::setPixelProperty;
+using engine::ui::rmlui::snapToPixel;
+using engine::ui::rmlui::textToInnerRml;
 
 [[nodiscard]] std::optional<game::ui::MenuTabId> toMenuTabId(int tab_index) {
     switch (tab_index) {
@@ -76,6 +83,21 @@ using PartyMemberPanelViewModels = std::vector<game::scene::PartyMemberPanelView
         return true;
     }
     return false;
+}
+
+[[nodiscard]] std::string_view tabShortcutTooltipText(int tab_index) {
+    constexpr std::array<std::string_view, 5> labels{
+        "Inventory [I]",
+        "Equipment [C]",
+        "Quests [J]",
+        "Map [M]",
+        "Options [O]",
+    };
+
+    if (tab_index < 0 || tab_index >= static_cast<int>(labels.size())) {
+        return {};
+    }
+    return labels[static_cast<std::size_t>(tab_index)];
 }
 
 } // namespace
@@ -144,6 +166,7 @@ void InventoryMenuScene::update(float delta_time) {
     if (auto* tab = activeTab()) {
         tab->update(delta_time);
     }
+    updateTabShortcutTooltipPosition();
     Scene::update(delta_time);
 }
 
@@ -233,6 +256,16 @@ bool InventoryMenuScene::initUI() {
             [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList& arguments) {
                 event.StopPropagation();
                 onPartyMemberClick(game::ui::getSingleIntArgument(arguments));
+            }) ||
+        !constructor.BindEventCallback(
+            "tab_shortcut_hover",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList& arguments) {
+                showTabShortcutTooltip(game::ui::getSingleIntArgument(arguments));
+            }) ||
+        !constructor.BindEventCallback(
+            "tab_shortcut_exit",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
+                hideTabShortcutTooltip();
             })) {
         spdlog::error("InventoryMenuScene: 绑定全局 event 回调失败。");
         document_controller_.unload();
@@ -308,6 +341,8 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
 
+    cacheTabShortcutTooltipElements();
+    hideTabShortcutTooltip();
     syncPartyPanel();
     if (equipment_tab_) {
         equipment_tab_->setSelectedActor(selected_actor_id_);
@@ -323,7 +358,10 @@ bool InventoryMenuScene::initUI() {
 }
 
 void InventoryMenuScene::shutdownUI() {
+    hideTabShortcutTooltip();
     document_controller_.unload();
+    tab_shortcut_tooltip_panel_ = nullptr;
+    tab_shortcut_tooltip_text_ = nullptr;
 }
 
 void InventoryMenuScene::disconnectRuntimeListeners() {
@@ -511,6 +549,76 @@ game::ui::IMenuTabContent* InventoryMenuScene::activeTab() {
         return it->second.get();
     }
     return nullptr;
+}
+
+void InventoryMenuScene::cacheTabShortcutTooltipElements() {
+    auto* document = document_controller_.document();
+    tab_shortcut_tooltip_panel_ = document ? document->GetElementById("tab-shortcut-tooltip-panel") : nullptr;
+    tab_shortcut_tooltip_text_ = document ? document->GetElementById("tab-shortcut-tooltip-text") : nullptr;
+    if (!tab_shortcut_tooltip_panel_ || !tab_shortcut_tooltip_text_) {
+        spdlog::warn("InventoryMenuScene: tab shortcut tooltip elements are missing.");
+    }
+}
+
+void InventoryMenuScene::showTabShortcutTooltip(int tab_index) {
+    if (!tab_shortcut_tooltip_panel_ || !tab_shortcut_tooltip_text_) {
+        return;
+    }
+
+    const std::string_view label = tabShortcutTooltipText(tab_index);
+    if (label.empty()) {
+        hideTabShortcutTooltip();
+        return;
+    }
+
+    tab_shortcut_tooltip_text_->SetInnerRML(textToInnerRml(label));
+    tab_shortcut_tooltip_panel_->SetProperty("display", "inline-block");
+    tab_shortcut_tooltip_visible_ = true;
+    refreshTabShortcutTooltipMetrics();
+    updateTabShortcutTooltipPosition();
+}
+
+void InventoryMenuScene::hideTabShortcutTooltip() {
+    tab_shortcut_tooltip_visible_ = false;
+    if (tab_shortcut_tooltip_panel_) {
+        tab_shortcut_tooltip_panel_->SetProperty("display", "none");
+    }
+}
+
+void InventoryMenuScene::refreshTabShortcutTooltipMetrics() {
+    auto* document = document_controller_.document();
+    if (!document || !tab_shortcut_tooltip_panel_) {
+        return;
+    }
+
+    document->UpdateDocument();
+    tab_shortcut_tooltip_size_ = {
+        snapToPixel(tab_shortcut_tooltip_panel_->GetOffsetWidth()),
+        snapToPixel(tab_shortcut_tooltip_panel_->GetOffsetHeight()),
+    };
+}
+
+void InventoryMenuScene::updateTabShortcutTooltipPosition() {
+    if (!tab_shortcut_tooltip_visible_ || !tab_shortcut_tooltip_panel_) {
+        return;
+    }
+
+    const glm::vec2 mouse_pos = context_.getInputManager().getLogicalMousePosition();
+    const glm::vec2 logical_size = context_.getGameState().getLogicalSize();
+
+    glm::vec2 pos = mouse_pos + tab_shortcut_tooltip_offset_;
+    if (pos.x + tab_shortcut_tooltip_size_.x > logical_size.x) {
+        pos.x = mouse_pos.x - tab_shortcut_tooltip_offset_.x - tab_shortcut_tooltip_size_.x;
+    }
+    if (pos.y + tab_shortcut_tooltip_size_.y > logical_size.y) {
+        pos.y = mouse_pos.y - tab_shortcut_tooltip_offset_.y - tab_shortcut_tooltip_size_.y;
+    }
+
+    pos.x = std::clamp(pos.x, 0.0F, std::max(0.0F, logical_size.x - tab_shortcut_tooltip_size_.x));
+    pos.y = std::clamp(pos.y, 0.0F, std::max(0.0F, logical_size.y - tab_shortcut_tooltip_size_.y));
+
+    setPixelProperty(tab_shortcut_tooltip_panel_, "left", pos.x);
+    setPixelProperty(tab_shortcut_tooltip_panel_, "top", pos.y);
 }
 
 } // namespace game::scene

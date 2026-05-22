@@ -12,6 +12,10 @@
 <body class="tf-screen-root tf-nav-root" data-model="inventory_menu">
     <div id="menu-overlay"></div>
 
+    <div id="tab-shortcut-tooltip-panel">
+        <div id="tab-shortcut-tooltip-text"></div>
+    </div>
+
     <div id="menu-panel">
 
         <!-- Two-column content -->
@@ -19,7 +23,10 @@
 
             <!-- Left: Tabbed content -->
             <tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">
-                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-inventory"></tab>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                     id="tab-inventory"
+                     data-event-mouseover="tab_shortcut_hover(0)"
+                     data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-inventory">
                     <div id="inventory-actions">
                         <button class="tf-nav-auto tf-focus-ring-blue"
@@ -107,7 +114,10 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-equipment"></tab>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                     id="tab-equipment"
+                     data-event-mouseover="tab_shortcut_hover(1)"
+                     data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-equipment">
                     <div id="equipment-content">
                         <div id="equipment-header">
@@ -162,7 +172,10 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tab-placeholder tf-nav-auto tf-focus-ring-gold" id="tab-quests"></tab>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                     id="tab-quests"
+                     data-event-mouseover="tab_shortcut_hover(2)"
+                     data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-quests">
                     <div id="quests-content">
                         <div class="quest-section">
@@ -195,7 +208,10 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-map"></tab>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                     id="tab-map"
+                     data-event-mouseover="tab_shortcut_hover(3)"
+                     data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-map">
                     <div id="map-content">
                         <div id="map-title">{{ map_title }}</div>
@@ -239,7 +255,10 @@
                     </div>
                 </panel>
 
-                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold" id="tab-options"></tab>
+                <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
+                     id="tab-options"
+                     data-event-mouseover="tab_shortcut_hover(4)"
+                     data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-options">
                     <div id="options-content">
                         <div class="options-row">

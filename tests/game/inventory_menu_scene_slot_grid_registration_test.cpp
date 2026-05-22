@@ -125,6 +125,17 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(source.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),
               std::string::npos);
+    EXPECT_NE(source.find("id=\"tab-shortcut-tooltip-panel\""), std::string::npos);
+    EXPECT_NE(source.find("id=\"tab-shortcut-tooltip-text\""), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_hover(0)"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_hover(1)"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_hover(2)"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_hover(3)"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_hover(4)"), std::string::npos);
+    EXPECT_EQ(test_source_utils::countOccurrences(source, "data-event-mouseover=\"tab_shortcut_hover("), 5U);
+    EXPECT_EQ(test_source_utils::countOccurrences(source, "data-event-mouseout=\"tab_shortcut_exit\""), 5U);
+    EXPECT_EQ(source.find("class=\"tab-shortcut-tooltip\""), std::string::npos);
+    EXPECT_EQ(source.find("tab-icon tab-placeholder"), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-inventory\""), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-equipment\""), std::string::npos);
     EXPECT_NE(source.find("<panel id=\"panel-quests\""), std::string::npos);
@@ -160,6 +171,19 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_NE(source.find("data-style-decorator=\"eqslot.placeholder_decorator\""), std::string::npos);
     EXPECT_NE(style.find("sort-icon:     368px 32px 16px 16px;"), std::string::npos);
     EXPECT_NE(style.find("sort-icon-pressed: 368px 48px 16px 16px;"), std::string::npos);
+    EXPECT_NE(style.find("#tab-shortcut-tooltip-panel"), std::string::npos);
+    EXPECT_NE(style.find("#tab-shortcut-tooltip-text"), std::string::npos);
+    EXPECT_NE(style.find("display: none;"), std::string::npos);
+    EXPECT_NE(style.find("position: absolute;"), std::string::npos);
+    EXPECT_NE(style.find("width: auto;"), std::string::npos);
+    EXPECT_NE(style.find("display: inline-block;"), std::string::npos);
+    EXPECT_NE(style.find("decorator: ninepatch(tooltip-panel-bg, tooltip-panel-bg-inner, 1.0);"), std::string::npos);
+    EXPECT_NE(style.find("white-space: nowrap;"), std::string::npos);
+    EXPECT_NE(style.find("pointer-events: none;"), std::string::npos);
+    EXPECT_EQ(style.find(".tab-shortcut-tooltip"), std::string::npos);
+    EXPECT_EQ(style.find(".tf-input-mouse #menu-tabset tab:hover .tab-shortcut-tooltip"), std::string::npos);
+    EXPECT_EQ(style.find("min-width: 54dp;"), std::string::npos);
+    EXPECT_EQ(style.find(".tab-placeholder"), std::string::npos);
     EXPECT_NE(style.find("menu-equipment-slot-bg:        71px 41px 18px 18px;"), std::string::npos);
     EXPECT_NE(style.find("menu-equipment-slot-bg-inner:  74px 44px 12px 12px;"), std::string::npos);
     EXPECT_NE(style.find("equipment-slot-weapon-hint:    106px 41px 14px 15px;"), std::string::npos);
@@ -224,7 +248,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_LT(footer_width, footer_block_end);
 
     const auto inventory_panel = source.find("<panel id=\"panel-inventory\"");
-    const auto equipment_tab = source.find("<tab class=\"tab-icon tf-nav-auto tf-focus-ring-gold\" id=\"tab-equipment\"");
+    const auto equipment_tab = source.find("id=\"tab-equipment\"");
     const auto footer = source.find("id=\"menu-footer\"");
     ASSERT_NE(inventory_panel, std::string::npos);
     ASSERT_NE(equipment_tab, std::string::npos);
@@ -304,11 +328,27 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuTabShortcutsUseNat
     EXPECT_NE(header.find("game::ui::MenuTabId initial_tab_id_"), std::string::npos);
     EXPECT_NE(header.find("bool activateRmlTab(game::ui::MenuTabId tab_id)"), std::string::npos);
     EXPECT_NE(header.find("bool handleTabShortcut(game::ui::MenuTabId target_tab)"), std::string::npos);
+    EXPECT_NE(header.find("Rml::Element* tab_shortcut_tooltip_panel_"), std::string::npos);
+    EXPECT_NE(header.find("void updateTabShortcutTooltipPosition()"), std::string::npos);
     EXPECT_NE(source.find("initial_tab_id_(initial_tab)"), std::string::npos);
     EXPECT_NE(source.find("active_tab_id_ = initial_tab_id_;"), std::string::npos);
     EXPECT_NE(source.find("rmlui_dynamic_cast<Rml::ElementTabSet*>"), std::string::npos);
     EXPECT_NE(source.find("tabset->SetActiveTab(game::ui::tabsetIndexForMenuTab(tab_id));"), std::string::npos);
     EXPECT_NE(source.find("requestPopScene();"), std::string::npos);
+    EXPECT_NE(source.find("\"Inventory [I]\""), std::string::npos);
+    EXPECT_NE(source.find("\"Equipment [C]\""), std::string::npos);
+    EXPECT_NE(source.find("\"Quests [J]\""), std::string::npos);
+    EXPECT_NE(source.find("\"Map [M]\""), std::string::npos);
+    EXPECT_NE(source.find("\"Options [O]\""), std::string::npos);
+    EXPECT_NE(source.find("\"tab_shortcut_hover\""), std::string::npos);
+    EXPECT_NE(source.find("\"tab_shortcut_exit\""), std::string::npos);
+    EXPECT_NE(source.find("cacheTabShortcutTooltipElements();"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_tooltip_text_->SetInnerRML(textToInnerRml(label));"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_tooltip_panel_->SetProperty(\"display\", \"inline-block\");"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_tooltip_panel_->SetProperty(\"display\", \"none\");"), std::string::npos);
+    EXPECT_NE(source.find("tab_shortcut_tooltip_panel_->GetOffsetWidth()"), std::string::npos);
+    EXPECT_NE(source.find("context_.getInputManager().getLogicalMousePosition()"), std::string::npos);
+    EXPECT_NE(source.find("setPixelProperty(tab_shortcut_tooltip_panel_, \"left\", pos.x);"), std::string::npos);
 
     const std::string init_ui_block =
         test_source_utils::extractFunctionBlock(source, "bool InventoryMenuScene::initUI()");
