@@ -7,7 +7,6 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <string>
 
@@ -22,15 +21,6 @@ namespace {
 
 [[nodiscard]] std::string_view toggleLabel(bool value) noexcept {
     return value ? "On" : "Off";
-}
-
-[[nodiscard]] std::string_view fontScaleLabel(game::runtime::UiFontScale scale) noexcept {
-    switch (scale) {
-        case game::runtime::UiFontScale::Small: return "Small";
-        case game::runtime::UiFontScale::Large: return "Large";
-        case game::runtime::UiFontScale::Normal:
-        default:                                return "Normal";
-    }
 }
 
 [[nodiscard]] std::size_t indexOfSpeed(float speed) noexcept {
@@ -63,7 +53,6 @@ bool OptionsTabContent::bindModel(Rml::DataModelConstructor& constructor) {
         !constructor.Bind("options_damage_popup_text", &options_damage_popup_text_) ||
         !constructor.Bind("options_enemy_hp_bar_text", &options_enemy_hp_bar_text_) ||
         !constructor.Bind("options_cursor_memory_text", &options_cursor_memory_text_) ||
-        !constructor.Bind("options_font_scale_text", &options_font_scale_text_) ||
         !constructor.Bind("options_show_damage_popup", &options_show_damage_popup_) ||
         !constructor.Bind("options_show_enemy_hp_bar", &options_show_enemy_hp_bar_) ||
         !constructor.Bind("options_cursor_memory", &options_cursor_memory_)) {
@@ -80,11 +69,7 @@ bool OptionsTabContent::bindModel(Rml::DataModelConstructor& constructor) {
         !document_controller_.bindSimpleEvent(constructor, "options_toggle_enemy_hp_bar",
                                               [this] { onToggleEnemyHpBar(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "options_toggle_cursor_memory",
-                                              [this] { onToggleCursorMemory(); }) ||
-        !document_controller_.bindSimpleEvent(constructor, "options_font_scale_prev",
-                                              [this] { onFontScaleStep(-1); }) ||
-        !document_controller_.bindSimpleEvent(constructor, "options_font_scale_next",
-                                              [this] { onFontScaleStep(1); })) {
+                                              [this] { onToggleCursorMemory(); })) {
         spdlog::error("OptionsTabContent: 绑定 options 页 event 回调失败。");
         return false;
     }
@@ -93,6 +78,9 @@ bool OptionsTabContent::bindModel(Rml::DataModelConstructor& constructor) {
 }
 
 void OptionsTabContent::onActivated() {
+    if (settings_) {
+        settings_->setUiFontScale(game::runtime::UiFontScale::Normal);
+    }
     syncFromSettings();
 }
 
@@ -118,7 +106,6 @@ void OptionsTabContent::syncFromSettings() {
     options_damage_popup_text_ = std::string{toggleLabel(s.show_damage_popup)};
     options_enemy_hp_bar_text_ = std::string{toggleLabel(s.show_enemy_hp_bar)};
     options_cursor_memory_text_ = std::string{toggleLabel(s.cursor_memory)};
-    options_font_scale_text_ = std::string{fontScaleLabel(s.ui_font_scale)};
     options_show_damage_popup_ = s.show_damage_popup;
     options_show_enemy_hp_bar_ = s.show_enemy_hp_bar;
     options_cursor_memory_ = s.cursor_memory;
@@ -127,7 +114,6 @@ void OptionsTabContent::syncFromSettings() {
     document_controller_.markDirty("options_damage_popup_text");
     document_controller_.markDirty("options_enemy_hp_bar_text");
     document_controller_.markDirty("options_cursor_memory_text");
-    document_controller_.markDirty("options_font_scale_text");
     document_controller_.markDirty("options_show_damage_popup");
     document_controller_.markDirty("options_show_enemy_hp_bar");
     document_controller_.markDirty("options_cursor_memory");
@@ -142,29 +128,6 @@ void OptionsTabContent::onBattleSpeedStep(int direction) {
     const std::size_t next = (current + choices.size() + static_cast<std::size_t>(direction > 0 ? 1 : -1))
                              % choices.size();
     settings_->setBattleAnimationSpeed(speedAtIndex(next));
-    syncFromSettings();
-}
-
-void OptionsTabContent::onFontScaleStep(int direction) {
-    if (!settings_) {
-        return;
-    }
-    constexpr std::array<game::runtime::UiFontScale, 3> kOrder{
-        game::runtime::UiFontScale::Small,
-        game::runtime::UiFontScale::Normal,
-        game::runtime::UiFontScale::Large,
-    };
-    const auto current = settings_->snapshot().ui_font_scale;
-    std::size_t index = 0;
-    for (std::size_t i = 0; i < kOrder.size(); ++i) {
-        if (kOrder[i] == current) {
-            index = i;
-            break;
-        }
-    }
-    const std::size_t next = (index + kOrder.size() + static_cast<std::size_t>(direction > 0 ? 1 : -1))
-                             % kOrder.size();
-    settings_->setUiFontScale(kOrder[next]);
     syncFromSettings();
 }
 
