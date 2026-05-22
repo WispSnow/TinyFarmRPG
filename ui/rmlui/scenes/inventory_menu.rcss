@@ -65,6 +65,31 @@
     background-color: #1a1b26c0;
 }
 
+#tab-shortcut-tooltip-panel {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    padding: 4dp 6dp;
+    decorator: ninepatch(tooltip-panel-bg, tooltip-panel-bg-inner, 1.0);
+    z-index: 20;
+    pointer-events: none;
+}
+
+#tab-shortcut-tooltip-text {
+    display: inline-block;
+    width: auto;
+    height: auto;
+    color: #2a1f17ff;
+    font-size: 0.5625rem;
+    line-height: 10dp;
+    font-effect: shadow(1dp 1dp #ffffffcc);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 /* --- Menu Panel --- */
 
 #menu-panel {
@@ -125,13 +150,6 @@
 #menu-tabset tab:selected {
     border-width: 0 0 2dp 0;
     border-color: #7aa2f7;
-}
-
-/* 尚未实现功能的占位标签页：可点击但给予视觉提示。
-   实现完毕后移除此类即可，不影响其他样式。 */
-.tab-placeholder {
-    opacity: 0.55;
-    image-color: #a7adbad0;
 }
 
 #tab-inventory  { decorator: image(tab-inventory); }
