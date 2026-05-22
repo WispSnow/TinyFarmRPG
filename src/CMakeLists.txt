@@ -220,6 +220,7 @@ target_sources(game PRIVATE
     game/ui/hotbar_ui.cpp
     game/ui/slot_grid_support.cpp
     game/ui/shop_menu_support.cpp
+    game/ui/inventory_menu_tab_shortcuts.cpp
     game/ui/appearance_customize_view_model.cpp
     game/ui/text_utils.cpp
     game/ui/inventory_tab_content.cpp

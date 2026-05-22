@@ -49,6 +49,7 @@
 #include "game/ui/game_input_prompt_overlay.h"
 #include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
+#include "game/ui/menu_tab_content.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
 #include "engine/vfx/vfx_service.h"
@@ -295,6 +296,10 @@ GameScene::GameScene(std::string_view name,
 
 GameScene::~GameScene() noexcept {
     context_.getInputManager().onAction("inventory"_hs).disconnect<&GameScene::onInventoryToggle>(this);
+    context_.getInputManager().onAction("inventory_tab_equipment"_hs).disconnect<&GameScene::onInventoryEquipmentShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_quests"_hs).disconnect<&GameScene::onInventoryQuestsShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_map"_hs).disconnect<&GameScene::onInventoryMapShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_options"_hs).disconnect<&GameScene::onInventoryOptionsShortcut>(this);
     context_.getInputManager().onAction("hotbar"_hs).disconnect<&GameScene::onHotbarToggle>(this);
     context_.getInputManager().onAction("pause"_hs).disconnect<&GameScene::onPauseToggle>(this);
     context_.getInputManager().onAction("toggle_prompt_bar"_hs).disconnect<&GameScene::onTogglePromptBar>(this);
@@ -533,6 +538,10 @@ void GameScene::setGameMode(game::runtime::GameMode mode) {
 void GameScene::bindSceneInputActions() {
     auto& input_manager = context_.getInputManager();
     input_manager.onAction("inventory"_hs).connect<&GameScene::onInventoryToggle>(this);
+    input_manager.onAction("inventory_tab_equipment"_hs).connect<&GameScene::onInventoryEquipmentShortcut>(this);
+    input_manager.onAction("inventory_tab_quests"_hs).connect<&GameScene::onInventoryQuestsShortcut>(this);
+    input_manager.onAction("inventory_tab_map"_hs).connect<&GameScene::onInventoryMapShortcut>(this);
+    input_manager.onAction("inventory_tab_options"_hs).connect<&GameScene::onInventoryOptionsShortcut>(this);
     input_manager.onAction("hotbar"_hs).connect<&GameScene::onHotbarToggle>(this);
     input_manager.onAction("pause"_hs).connect<&GameScene::onPauseToggle>(this);
     input_manager.onAction("toggle_prompt_bar"_hs).connect<&GameScene::onTogglePromptBar>(this);
@@ -693,7 +702,7 @@ void GameScene::applyNewGameAppearance(const NewGameOptions& options) {
     }
 }
 
-bool GameScene::onInventoryToggle() {
+bool GameScene::openInventoryMenu(const game::ui::MenuTabId initial_tab) {
     if (context_.getGameState().isPaused()) {
         return false;
     }
@@ -718,8 +727,29 @@ bool GameScene::onInventoryToggle() {
         services_->quest_catalog.get(),
         services_->shop_catalog.get(),
         services_->world_state.get(),
-        services_->user_settings_service.get()));
+        services_->user_settings_service.get(),
+        initial_tab));
     return true;
+}
+
+bool GameScene::onInventoryToggle() {
+    return openInventoryMenu(game::ui::MenuTabId::Inventory);
+}
+
+bool GameScene::onInventoryEquipmentShortcut() {
+    return openInventoryMenu(game::ui::MenuTabId::Equipment);
+}
+
+bool GameScene::onInventoryQuestsShortcut() {
+    return openInventoryMenu(game::ui::MenuTabId::Quests);
+}
+
+bool GameScene::onInventoryMapShortcut() {
+    return openInventoryMenu(game::ui::MenuTabId::Map);
+}
+
+bool GameScene::onInventoryOptionsShortcut() {
+    return openInventoryMenu(game::ui::MenuTabId::Options);
 }
 
 bool GameScene::onHotbarToggle() {

@@ -31,6 +31,7 @@ namespace game::ui {
     class GameInputPromptOverlay;
     class GameOverlay;
     class GameSceneUiController;
+    enum class MenuTabId;
 }
 
 namespace game::runtime {
@@ -94,7 +95,12 @@ private:
     [[nodiscard]] bool registerDebugPanels();
 #endif
 
+    bool openInventoryMenu(game::ui::MenuTabId initial_tab);
     bool onInventoryToggle();
+    bool onInventoryEquipmentShortcut();
+    bool onInventoryQuestsShortcut();
+    bool onInventoryMapShortcut();
+    bool onInventoryOptionsShortcut();
     bool onHotbarToggle();
     bool onPauseToggle();
     bool onTogglePromptBar();

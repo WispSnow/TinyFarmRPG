@@ -274,12 +274,73 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuSceneAndGameSceneP
     EXPECT_NE(source.find("shop_catalog_(shop_catalog)"), std::string::npos);
     EXPECT_NE(source.find("world_state_(world_state)"), std::string::npos);
 
-    const std::string inventory_toggle_block =
-        test_source_utils::extractFunctionBlock(game_scene_source, "bool GameScene::onInventoryToggle()");
-    ASSERT_FALSE(inventory_toggle_block.empty());
-    EXPECT_NE(inventory_toggle_block.find("services_->quest_catalog.get()"), std::string::npos);
-    EXPECT_NE(inventory_toggle_block.find("services_->shop_catalog.get()"), std::string::npos);
-    EXPECT_NE(inventory_toggle_block.find("services_->world_state.get()"), std::string::npos);
+    const std::string open_inventory_block =
+        test_source_utils::extractFunctionBlock(game_scene_source, "bool GameScene::openInventoryMenu(");
+    ASSERT_FALSE(open_inventory_block.empty());
+    EXPECT_NE(open_inventory_block.find("services_->quest_catalog.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("services_->shop_catalog.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("services_->world_state.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("initial_tab"), std::string::npos);
+}
+
+TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuTabShortcutsUseNativeTabsetPath) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/inventory_menu_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/inventory_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path game_scene_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(game_scene_path)) << game_scene_path;
+
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    const std::string game_scene_source = test_source_utils::readTextFile(game_scene_path);
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+    ASSERT_FALSE(game_scene_source.empty()) << "无法读取: " << game_scene_path;
+
+    EXPECT_NE(header.find("game::ui::MenuTabId initial_tab_id_"), std::string::npos);
+    EXPECT_NE(header.find("bool activateRmlTab(game::ui::MenuTabId tab_id)"), std::string::npos);
+    EXPECT_NE(header.find("bool handleTabShortcut(game::ui::MenuTabId target_tab)"), std::string::npos);
+    EXPECT_NE(source.find("initial_tab_id_(initial_tab)"), std::string::npos);
+    EXPECT_NE(source.find("active_tab_id_ = initial_tab_id_;"), std::string::npos);
+    EXPECT_NE(source.find("rmlui_dynamic_cast<Rml::ElementTabSet*>"), std::string::npos);
+    EXPECT_NE(source.find("tabset->SetActiveTab(game::ui::tabsetIndexForMenuTab(tab_id));"), std::string::npos);
+    EXPECT_NE(source.find("requestPopScene();"), std::string::npos);
+
+    const std::string init_ui_block =
+        test_source_utils::extractFunctionBlock(source, "bool InventoryMenuScene::initUI()");
+    ASSERT_FALSE(init_ui_block.empty());
+    const std::size_t load_pos = init_ui_block.find("document_controller_.load(DOCUMENT_PATH)");
+    const std::size_t activate_pos = init_ui_block.find("activateRmlTab(initial_tab_id_)");
+    const std::size_t on_activated_pos = init_ui_block.find("tab->onActivated()");
+    ASSERT_NE(load_pos, std::string::npos);
+    ASSERT_NE(activate_pos, std::string::npos);
+    ASSERT_NE(on_activated_pos, std::string::npos);
+    EXPECT_LT(load_pos, activate_pos);
+    EXPECT_LT(activate_pos, on_activated_pos);
+
+    const std::string handle_shortcut_block =
+        test_source_utils::extractFunctionBlock(source, "bool InventoryMenuScene::handleTabShortcut(");
+    ASSERT_FALSE(handle_shortcut_block.empty());
+    EXPECT_NE(handle_shortcut_block.find("target_tab == active_tab_id_"), std::string::npos);
+    EXPECT_NE(handle_shortcut_block.find("requestPopScene();"), std::string::npos);
+    EXPECT_NE(handle_shortcut_block.find("activateRmlTab(target_tab)"), std::string::npos);
+    EXPECT_EQ(handle_shortcut_block.find("switchTab(target_tab)"), std::string::npos);
+
+    const std::string bind_input_block =
+        test_source_utils::extractFunctionBlock(game_scene_source, "void GameScene::bindSceneInputActions()");
+    const std::string open_inventory_block =
+        test_source_utils::extractFunctionBlock(game_scene_source, "bool GameScene::openInventoryMenu(");
+    ASSERT_FALSE(bind_input_block.empty());
+    ASSERT_FALSE(open_inventory_block.empty());
+    EXPECT_NE(bind_input_block.find("inventory_tab_equipment"), std::string::npos);
+    EXPECT_NE(bind_input_block.find("inventory_tab_quests"), std::string::npos);
+    EXPECT_NE(bind_input_block.find("inventory_tab_map"), std::string::npos);
+    EXPECT_NE(bind_input_block.find("inventory_tab_options"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("initial_tab"), std::string::npos);
 }
 
 TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEntriesInSameUiTick) {

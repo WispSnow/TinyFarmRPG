@@ -184,6 +184,85 @@ TEST_F(InputContextTest, TogglePromptBarActionRespectsContextFilter) {
     EXPECT_EQ(listener.calls, 1);
 }
 
+TEST_F(InputContextTest, InventoryTabShortcutsDispatchInGameplayAndMenuContexts) {
+    auto manager = createManager({
+        {"inventory", {"I"}},
+        {"inventory_tab_equipment", {"C"}},
+        {"inventory_tab_quests", {"J"}},
+        {"inventory_tab_map", {"M"}},
+        {"inventory_tab_options", {"O"}},
+    });
+    ASSERT_NE(manager, nullptr);
+
+    manager->pushContext(InputContextId::Gameplay);
+    pushKey(SDL_SCANCODE_I, true);
+    pushKey(SDL_SCANCODE_C, true);
+    pushKey(SDL_SCANCODE_J, true);
+    pushKey(SDL_SCANCODE_M, true);
+    pushKey(SDL_SCANCODE_O, true);
+    manager->sampleInputEvents();
+
+    EXPECT_TRUE(manager->isActionPressed("inventory"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_equipment"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_quests"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_map"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_options"_hs));
+
+    manager->pushContext(InputContextId::Menu);
+    pushKey(SDL_SCANCODE_I, true);
+    pushKey(SDL_SCANCODE_C, true);
+    pushKey(SDL_SCANCODE_J, true);
+    pushKey(SDL_SCANCODE_M, true);
+    pushKey(SDL_SCANCODE_O, true);
+    manager->sampleInputEvents();
+
+    EXPECT_TRUE(manager->isActionPressed("inventory"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_equipment"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_quests"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_map"_hs));
+    EXPECT_TRUE(manager->isActionPressed("inventory_tab_options"_hs));
+}
+
+TEST_F(InputContextTest, InventoryTabShortcutsAreFilteredInDialogueAndBattleContexts) {
+    auto manager = createManager({
+        {"inventory", {"I"}},
+        {"inventory_tab_equipment", {"C"}},
+        {"inventory_tab_quests", {"J"}},
+        {"inventory_tab_map", {"M"}},
+        {"inventory_tab_options", {"O"}},
+        {"menu_confirm", {"Return"}},
+    });
+    ASSERT_NE(manager, nullptr);
+
+    manager->pushContext(InputContextId::Dialogue);
+    pushKey(SDL_SCANCODE_I, true);
+    pushKey(SDL_SCANCODE_C, true);
+    pushKey(SDL_SCANCODE_J, true);
+    pushKey(SDL_SCANCODE_M, true);
+    pushKey(SDL_SCANCODE_O, true);
+    manager->sampleInputEvents();
+
+    EXPECT_FALSE(manager->isActionPressed("inventory"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_equipment"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_quests"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_map"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_options"_hs));
+
+    manager->pushContext(InputContextId::Battle);
+    pushKey(SDL_SCANCODE_I, true);
+    pushKey(SDL_SCANCODE_C, true);
+    pushKey(SDL_SCANCODE_J, true);
+    pushKey(SDL_SCANCODE_M, true);
+    pushKey(SDL_SCANCODE_O, true);
+    manager->sampleInputEvents();
+
+    EXPECT_FALSE(manager->isActionPressed("inventory"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_equipment"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_quests"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_map"_hs));
+    EXPECT_FALSE(manager->isActionPressed("inventory_tab_options"_hs));
+}
+
 TEST_F(InputContextTest, ContextSwitchClearsActiveActionsAndPhysicalCaches) {
     auto manager = createManager({{"move_left", {"A"}}});
     ASSERT_NE(manager, nullptr);
