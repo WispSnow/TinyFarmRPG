@@ -13,7 +13,8 @@ namespace game::ui {
 
 /// @brief Inventory 菜单中的 Options 标签页。
 ///
-/// 五项偏好：战斗动画速度 / 伤害飘字 / 敌方 HP 条 / 光标记忆 / UI 字号。
+/// 四项偏好：战斗动画速度 / 伤害飘字 / 敌方 HP 条 / 光标记忆。
+/// UI 字号固定为 Normal，不再在此页暴露调节控件。
 /// 数据源自 UserSettingsService；用户操作通过 setter 立即生效，标签关闭时落盘。
 class OptionsTabContent final : public IMenuTabContent {
 public:
@@ -30,7 +31,6 @@ public:
 private:
     void syncFromSettings();
     void onBattleSpeedStep(int direction);
-    void onFontScaleStep(int direction);
     void onToggleDamagePopup();
     void onToggleEnemyHpBar();
     void onToggleCursorMemory();
@@ -42,7 +42,6 @@ private:
     Rml::String options_damage_popup_text_{"On"};
     Rml::String options_enemy_hp_bar_text_{"On"};
     Rml::String options_cursor_memory_text_{"On"};
-    Rml::String options_font_scale_text_{"Normal"};
     bool options_show_damage_popup_{true};
     bool options_show_enemy_hp_bar_{true};
     bool options_cursor_memory_{true};

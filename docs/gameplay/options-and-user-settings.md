@@ -5,7 +5,7 @@
 游戏内有两套菜单承担"调整设置"的职能：
 
 - **PauseMenuScene**（系统级）：Resume / Save / Load / Title、全局倍速、BGM 音量、SFX 音量。
-- **InventoryMenuScene → Options 标签**（玩家体验偏好）：战斗动画速度、伤害飘字、敌方 HP 条、光标记忆、UI 字号。
+- **InventoryMenuScene → Options 标签**（玩家体验偏好）：战斗动画速度、伤害飘字、敌方 HP 条、光标记忆。UI 字号固定为 Normal，不在 Options 标签中暴露。
 
 两套菜单共同使用 `game::runtime::UserSettingsService` 作为偏好设置的**唯一真源**；用户改动立即生效，菜单关闭时一次性落盘。
 
@@ -29,7 +29,7 @@ flowchart LR
 - `CopyConfig.cmake` 无需修改：source 中不存在用户文件，复制脚本不会覆盖玩家修改。
 - 重新构建后，build 目录的 `user_settings.json` MD5 保持不变。
 
-## 五项 Options 偏好
+## 四项 Options 偏好
 
 | 配置项 | 默认值 | 取值 | 作用点 |
 |--------|--------|------|--------|
@@ -37,9 +37,10 @@ flowchart LR
 | Damage Popups | On | On / Off | `BattleDamagePopupController::setEnabled`；禁用时 spawn 早返回，已在播 popup 自然消亡 |
 | Enemy HP Bar | On | On / Off | `BattleEnemyHpBarController::setEnabled`；禁用时 reveal 不写 alpha，已显示血条按 fade_seconds 淡出 |
 | Cursor Memory | On | On / Off | `BattleScene` 在 `populateActorCommands` 时用 `resolveCursorMemoryDefaultIndex` 解析默认下标 |
-| UI Font Size | Normal | Small / Normal / Large | 给 `<body>` 加 `tf-font-{small,normal,large}` class，触发 `body.tf-font-*` 字号规则与所有 `rem` 单位的级联 |
 
-## 字号联动的实现
+## 字号 Normal 固定策略
+
+Inventory Options 标签激活时会把 `UserSettingsService` 中的 UI 字号恢复为 `UiFontScale::Normal`。底层仍保留 body 字号 class 管线，方便未来如果要重新开放字号选项时复用。
 
 ```mermaid
 flowchart LR
@@ -64,7 +65,7 @@ Options 偏好**不**入存档（save schema v4 没有相关字段）；偏好�
 | `src/game/runtime/user_settings.h` | `UserSettings` POD + clamp / 序列化 helper |
 | `src/game/runtime/user_settings.cpp` | JSON parse / serialize 实现 |
 | `src/game/runtime/user_settings_service.{h,cpp}` | service：load/save、apply、setter、事件派发 |
-| `src/game/defs/options_events.h` | 5 个 `*ChangedEvent` |
+| `src/game/defs/options_events.h` | Options / UI 偏好相关 `*ChangedEvent` |
 | `src/game/ui/options_tab_content.{h,cpp}` | Options 标签 UI 逻辑 |
 | `src/game/scene/battle_cursor_memory.h` | `resolveCursorMemoryDefaultIndex` 纯函数 |
 | `ui/rmlui/scenes/inventory_menu.rml` / `.rcss` | Options 表单与样式 |
