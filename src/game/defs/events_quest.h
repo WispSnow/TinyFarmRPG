@@ -14,4 +14,18 @@ struct QuestOfferRequestedEvent {
     std::string quest_id{};
 };
 
+struct QuestAcceptedEvent {
+    entt::entity player{entt::null};
+    entt::entity giver{entt::null};
+    entt::id_type quest_id_hash{entt::null};
+    std::string quest_id{};
+};
+
+struct QuestCompletedEvent {
+    entt::entity player{entt::null};
+    entt::entity giver{entt::null};
+    entt::id_type quest_id_hash{entt::null};
+    std::string quest_id{};
+};
+
 } // namespace game::defs

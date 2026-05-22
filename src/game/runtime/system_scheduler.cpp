@@ -47,6 +47,7 @@
 #include "game/system/shop_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_system.h"
+#include "game/script/script_event_bridge.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/core/type_info.hpp>
@@ -97,6 +98,7 @@ const std::vector<SchedulerStage>& exploration_profile() {
         // 此处顺序仅用于 profile 展示和 fallback 串行回退，不代表 happens-before。
         SchedulerStage::ActionSound,
         SchedulerStage::State,
+        SchedulerStage::ScriptCommands,
         SchedulerStage::Movement,
         SchedulerStage::TransitionUpdatePost,
         SchedulerStage::LightTogglePost,
@@ -250,6 +252,11 @@ void execute_stage_main_thread(const SystemScheduler::TickParams& params,
         case SchedulerStage::State:
             if (systems.state_system) {
                 systems.state_system->update();
+            }
+            break;
+        case SchedulerStage::ScriptCommands:
+            if (systems.script_event_bridge) {
+                systems.script_event_bridge->drainDeferredCommands();
             }
             break;
         case SchedulerStage::Movement:
@@ -422,6 +429,7 @@ SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) cons
         }
     }
 
+    execute_stage_main_thread(params, SchedulerStage::ScriptCommands, result);
     execute_stage_main_thread(params, SchedulerStage::Movement, result);
 
     execute_stage_main_thread(params, SchedulerStage::TransitionUpdatePost, result);
@@ -703,6 +711,8 @@ const char* toString(const SchedulerStage stage) {
             return "AutoTile";
         case SchedulerStage::State:
             return "State";
+        case SchedulerStage::ScriptCommands:
+            return "ScriptCommands";
         case SchedulerStage::Movement:
             return "Movement";
         case SchedulerStage::TransitionUpdatePost:

@@ -5,7 +5,10 @@
 #include <spdlog/spdlog.h>
 
 #include <exception>
+#include <functional>
+#include <iterator>
 #include <string>
+#include <utility>
 
 extern "C" {
 #include <lauxlib.h>
@@ -64,6 +67,9 @@ bool ScriptHost::init(entt::dispatcher& dispatcher, const std::vector<ScriptModu
 }
 
 void ScriptHost::shutdown() {
+    event_callbacks_.clear();
+    deferred_commands_.clear();
+    active_callback_commands_ = nullptr;
     lua_ = sol::state{};
     last_loaded_file_.clear();
     ready_ = false;
@@ -86,6 +92,7 @@ bool ScriptHost::loadFile(std::string_view file_path) {
 
     // 第二步：执行——Lua 文件的顶层代码本身是一个匿名函数，调用它使其生效
     sol::protected_function fn = chunk;
+    configureInstructionLimit();
     if (!runResult(fn(), path)) {
         return false;
     }
@@ -108,6 +115,7 @@ bool ScriptHost::exec(std::string_view script) {
     }
 
     sol::protected_function fn = chunk;
+    configureInstructionLimit();
     return runResult(fn(), "ScriptHost::exec");
 }
 
@@ -170,6 +178,95 @@ bool ScriptHost::validateHandle(const ScriptEntityHandle& handle,
 
     out_entity = handle.entity;
     return true;
+}
+
+sol::state& ScriptHost::luaState() noexcept {
+    return lua_;
+}
+
+bool ScriptHost::registerEventCallback(std::string_view event_name, sol::protected_function callback) {
+    if (!ensureReady("registerEventCallback")) {
+        return false;
+    }
+    if (event_name.empty() || !callback.valid()) {
+        spdlog::warn("ScriptHost: event callback 注册失败，事件名为空或回调无效");
+        return false;
+    }
+
+    event_callbacks_[std::string{event_name}].push_back(std::move(callback));
+    return true;
+}
+
+bool ScriptHost::emitEvent(std::string_view event_name, const sol::table& payload) {
+    if (!ensureReady("emitEvent")) {
+        return false;
+    }
+
+    const auto found = event_callbacks_.find(std::string{event_name});
+    if (found == event_callbacks_.end()) {
+        return true;
+    }
+
+    auto callbacks = found->second;
+    bool all_ok = true;
+    for (auto& callback : callbacks) {
+        if (!callback.valid()) {
+            all_ok = false;
+            continue;
+        }
+
+        std::vector<std::function<void()>> callback_commands{};
+        auto* previous_commands = active_callback_commands_;
+        active_callback_commands_ = &callback_commands;
+
+        configureInstructionLimit();
+        sol::protected_function_result result = callback(payload);
+        active_callback_commands_ = previous_commands;
+
+        const std::string source = "tf.event." + std::string{event_name};
+        if (!runResult(std::move(result), source)) {
+            all_ok = false;
+            continue;
+        }
+
+        auto& destination = previous_commands ? *previous_commands : deferred_commands_;
+        destination.insert(destination.end(),
+                           std::make_move_iterator(callback_commands.begin()),
+                           std::make_move_iterator(callback_commands.end()));
+    }
+
+    return all_ok;
+}
+
+bool ScriptHost::isHandlingScriptCallback() const noexcept {
+    return active_callback_commands_ != nullptr;
+}
+
+void ScriptHost::enqueueDeferredCommand(std::function<void()> command) {
+    if (!command) {
+        return;
+    }
+
+    if (active_callback_commands_) {
+        active_callback_commands_->push_back(std::move(command));
+        return;
+    }
+
+    deferred_commands_.push_back(std::move(command));
+}
+
+void ScriptHost::drainDeferredCommands() {
+    if (deferred_commands_.empty()) {
+        return;
+    }
+
+    auto commands = std::move(deferred_commands_);
+    deferred_commands_.clear();
+    for (auto& command : commands) {
+        if (command) {
+            command();
+        }
+    }
 }
 
 /// 使用 sol::protected_function（内部走 lua_pcall）而非 sol::function，

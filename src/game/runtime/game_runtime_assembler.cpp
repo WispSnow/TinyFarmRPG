@@ -47,6 +47,7 @@
 #include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
+#include "game/script/script_event_bridge.h"
 #include "game/script/tinyfarm_script_module.h"
 #include "game/system/action_sound_system.h"
 #include "game/system/animal_behavior_system.h"
@@ -908,6 +909,13 @@ bool GameRuntimeAssembler::assembleSystems(SystemBuildParams params) {
         *services.world_state,
         *services.map_manager,
         services.collision_resolver.get());
+
+    if (services.script_host) {
+        systems.script_event_bridge = std::make_unique<game::script::ScriptEventBridge>(
+            *services.script_host,
+            params.registry,
+            dispatcher);
+    }
 
     return true;
 }

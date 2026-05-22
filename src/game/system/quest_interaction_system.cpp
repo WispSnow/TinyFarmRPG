@@ -193,6 +193,12 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
                 showText(event.target, turn_in_result.failure_message);
                 return;
             }
+            dispatcher_.trigger(game::defs::QuestCompletedEvent{
+                .player = player,
+                .giver = event.target,
+                .quest_id_hash = quest->id_hash_,
+                .quest_id = quest->id_,
+            });
             showText(event.target, formatTurnInSuccessText(*quest, turn_in_result));
             return;
         }
@@ -242,6 +248,12 @@ void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestC
     if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
         return;
     }
+    dispatcher_.trigger(game::defs::QuestAcceptedEvent{
+        .player = player,
+        .giver = command.giver,
+        .quest_id_hash = quest->id_hash_,
+        .quest_id = quest->id_,
+    });
     showQuestText(command.giver, *quest, InteractionState::Offerable);
 }
 

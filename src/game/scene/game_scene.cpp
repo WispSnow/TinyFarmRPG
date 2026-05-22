@@ -878,6 +878,14 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
 
     playBattleMusicCue();
 
+    context_.getDispatcher().trigger(game::defs::BattleStartedEvent{
+        .actor_ids = cmd.actor_ids,
+        .troop_id = cmd.troop_id,
+        .battle_background_id = presentation_options.battle_background_id,
+        .from_encounter = cmd.encounter_context.has_value(),
+        .encounter_id = cmd.encounter_context ? cmd.encounter_context->encounter_id : 0,
+    });
+
     requestPushScene(std::make_unique<game::scene::BattleScene>(
         "BattleScene",
         context_,

@@ -11,6 +11,15 @@
 
 namespace game::defs {
 
+/// @brief 探索流程确认进入战斗场景时发出的开始事件。
+struct BattleStartedEvent {
+    std::vector<std::string> actor_ids{};
+    std::string troop_id{};
+    std::string battle_background_id{};
+    bool from_encounter{false};
+    int encounter_id{0};
+};
+
 /// @brief 战斗场景退出时发出的结算事件。
 ///
 /// GameScene 通过该事件恢复探索流程并处理未来的经验、掉落、任务推进等结算逻辑。

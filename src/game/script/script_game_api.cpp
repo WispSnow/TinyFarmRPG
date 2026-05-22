@@ -14,6 +14,8 @@
 #include <glm/vec2.hpp>
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 namespace game::script {
 
 namespace {
@@ -33,6 +35,30 @@ namespace {
 
 [[nodiscard]] entt::id_type hashId(const std::string_view value) {
     return value.empty() ? entt::id_type{entt::null} : entt::hashed_string{value.data(), value.size()}.value();
+}
+
+template <typename Event>
+void triggerFromScript(engine::script::ScriptHost& host, entt::dispatcher& dispatcher, Event event) {
+    if (!host.isHandlingScriptCallback()) {
+        dispatcher.trigger(std::move(event));
+        return;
+    }
+
+    host.enqueueDeferredCommand([&dispatcher, event = std::move(event)]() mutable {
+        dispatcher.trigger(std::move(event));
+    });
+}
+
+template <typename Event>
+void enqueueFromScript(engine::script::ScriptHost& host, entt::dispatcher& dispatcher, Event event) {
+    if (!host.isHandlingScriptCallback()) {
+        dispatcher.enqueue(std::move(event));
+        return;
+    }
+
+    host.enqueueDeferredCommand([&dispatcher, event = std::move(event)]() mutable {
+        dispatcher.enqueue(std::move(event));
+    });
 }
 
 } // namespace
@@ -108,7 +134,7 @@ bool ScriptGameApi::addItem(const std::string_view item_id,
         return false;
     }
 
-    dispatcher_.trigger(game::defs::AddItemCommand{
+    triggerFromScript(host_, dispatcher_, game::defs::AddItemCommand{
         target,
         hashId(item_id),
         count,
@@ -130,7 +156,7 @@ bool ScriptGameApi::removeItem(const std::string_view item_id,
         return false;
     }
 
-    dispatcher_.trigger(game::defs::RemoveItemCommand{
+    triggerFromScript(host_, dispatcher_, game::defs::RemoveItemCommand{
         target,
         hashId(item_id),
         count,
@@ -144,7 +170,7 @@ bool ScriptGameApi::inventorySync(const std::optional<engine::script::ScriptEnti
         return false;
     }
 
-    dispatcher_.trigger(game::defs::InventorySyncCommand{target});
+    triggerFromScript(host_, dispatcher_, game::defs::InventorySyncCommand{target});
     return true;
 }
 
@@ -155,7 +181,7 @@ bool ScriptGameApi::hotbarSync(const std::optional<engine::script::ScriptEntityH
         return false;
     }
 
-    dispatcher_.trigger(game::defs::HotbarSyncCommand{target, full_sync});
+    triggerFromScript(host_, dispatcher_, game::defs::HotbarSyncCommand{target, full_sync});
     return true;
 }
 
@@ -179,7 +205,7 @@ bool ScriptGameApi::interact(const engine::script::ScriptEntityHandle& target_ha
         }
     }
 
-    dispatcher_.trigger(game::defs::InteractCommand{player, target});
+    triggerFromScript(host_, dispatcher_, game::defs::InteractCommand{player, target});
     return true;
 }
 
@@ -215,7 +241,7 @@ bool ScriptGameApi::showDialogue(const std::string_view text,
         evt.speaker_actor_id_hash = hashId(speaker_actor_id);
     }
 
-    dispatcher_.trigger(evt);
+    triggerFromScript(host_, dispatcher_, std::move(evt));
     return true;
 }
 
@@ -234,7 +260,7 @@ bool ScriptGameApi::hideDialogue(const int channel,
     game::defs::DialogueHideEvent evt{};
     evt.target = target;
     evt.channel = *resolved_channel;
-    dispatcher_.enqueue(evt);
+    enqueueFromScript(host_, dispatcher_, std::move(evt));
     return true;
 }
 
