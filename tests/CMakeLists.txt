@@ -184,6 +184,7 @@ set(GAME_TEST_SOURCES
     game/map_marker_provider_test.cpp
     game/map_preview_builder_test.cpp
     game/map_tab_content_test.cpp
+    game/inventory_menu_tab_shortcuts_test.cpp
     game/quest_tab_content_test.cpp
     game/quest_turn_in_service_test.cpp
     game/shop_transaction_service_test.cpp

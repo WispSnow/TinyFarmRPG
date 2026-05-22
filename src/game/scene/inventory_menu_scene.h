@@ -64,6 +64,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool data_types_registered_{false};
 
     std::unordered_map<game::ui::MenuTabId, std::unique_ptr<game::ui::IMenuTabContent>, MenuTabIdHash> tabs_{};
+    game::ui::MenuTabId initial_tab_id_{game::ui::MenuTabId::Inventory};
     game::ui::MenuTabId active_tab_id_{game::ui::MenuTabId::Inventory};
     game::ui::EquipmentTabContent* equipment_tab_{nullptr};
 
@@ -85,7 +86,8 @@ public:
                        const game::data::QuestCatalog* quest_catalog,
                        const game::data::ShopCatalog* shop_catalog,
                        const game::world::WorldState* world_state,
-                       game::runtime::UserSettingsService* user_settings_service);
+                       game::runtime::UserSettingsService* user_settings_service,
+                       game::ui::MenuTabId initial_tab = game::ui::MenuTabId::Inventory);
     ~InventoryMenuScene() override;
 
     bool init() override;
@@ -102,9 +104,16 @@ private:
     void onPartyMemberClick(int party_slot_index);
     void switchTab(game::ui::MenuTabId new_tab);
     void switchTabFromTabsetIndex(int tab_index);
+    [[nodiscard]] bool activateRmlTab(game::ui::MenuTabId tab_id);
     [[nodiscard]] game::ui::IMenuTabContent* activeTab();
 
     bool onMenuCancelPressed();
+    bool handleTabShortcut(game::ui::MenuTabId target_tab);
+    bool onInventoryTabShortcut();
+    bool onEquipmentTabShortcut();
+    bool onQuestsTabShortcut();
+    bool onMapTabShortcut();
+    bool onOptionsTabShortcut();
 };
 
 } // namespace game::scene

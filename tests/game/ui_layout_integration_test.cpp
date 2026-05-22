@@ -5,8 +5,10 @@
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementTabSet.h>
 #include <RmlUi/Core/EventListener.h>
 #include <RmlUi/Core/Property.h>
+#include <RmlUi/Core/Traits.h>
 
 #include <algorithm>
 #include <chrono>
@@ -40,6 +42,7 @@
 #include "game/component/player_wallet_component.h"
 #include "game/scene/inventory_menu_scene.h"
 #include "game/ui/hotbar_ui.h"
+#include "game/ui/menu_tab_content.h"
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -420,6 +423,54 @@ TEST_F(UILayoutIntegrationTest, InventoryMenuSceneRmlDocumentKeepsGridAndToolbar
 
         EXPECT_GT(sort_button->GetAbsoluteLeft(), centerX(hotbar_slot1));
         EXPECT_GT(trash_button->GetAbsoluteLeft(), sort_button->GetAbsoluteLeft());
+
+        menu.clean();
+    }
+
+    runtime->update();
+    EXPECT_EQ(rml_context->GetNumDocuments(), initial_document_count);
+}
+
+TEST_F(UILayoutIntegrationTest, InventoryMenuSceneInitialTabSynchronizesNativeTabset) {
+    auto* runtime = context_->getRmlUi();
+    if (!runtime) {
+        GTEST_SKIP() << "RmlUiRuntime not available in headless layout test environment.";
+    }
+    auto* rml_context = runtime->getContext();
+    if (!rml_context) {
+        GTEST_SKIP() << "RmlUi context not available in headless layout test environment.";
+    }
+
+    const int initial_document_count = rml_context->GetNumDocuments();
+
+    {
+        entt::registry registry;
+        const entt::entity player = registry.create();
+        registry.emplace<game::component::InventoryComponent>(player);
+        registry.emplace<game::component::HotbarComponent>(player);
+
+        game::scene::InventoryMenuScene menu(
+            "InventoryMenu",
+            *context_,
+            registry,
+            player,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            game::ui::MenuTabId::Map);
+        ASSERT_TRUE(menu.init());
+
+        runtime->update();
+
+        auto* document = findDocumentByElementId(*rml_context, "menu-panel");
+        ASSERT_NE(document, nullptr);
+        auto* tabset_element = document->GetElementById("menu-tabset");
+        auto* tabset = tabset_element ? rmlui_dynamic_cast<Rml::ElementTabSet*>(tabset_element) : nullptr;
+        ASSERT_NE(tabset, nullptr);
+        EXPECT_EQ(tabset->GetActiveTab(), static_cast<int>(game::ui::MenuTabId::Map));
 
         menu.clean();
     }

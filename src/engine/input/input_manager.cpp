@@ -55,6 +55,10 @@ template <typename InputT>
         {"pause", {"P", "Escape", "GamepadStart"}},
         {"interact", {"F", "GamepadWest"}},
         {"inventory", {"I", "GamepadBack"}},
+        {"inventory_tab_equipment", {"C"}},
+        {"inventory_tab_quests", {"J"}},
+        {"inventory_tab_map", {"M"}},
+        {"inventory_tab_options", {"O"}},
         {"toggle_prompt_bar", {"F1"}},
         {"hotbar", {"Tab", "GamepadNorth"}},
         {"hotbar_prev", {"GamepadLeftShoulder"}},
@@ -1060,6 +1064,10 @@ void InputManager::initializeContextDefinitions() {
             "interact",
             "pause",
             "inventory",
+            "inventory_tab_equipment",
+            "inventory_tab_quests",
+            "inventory_tab_map",
+            "inventory_tab_options",
             "toggle_prompt_bar",
             "hotbar",
             "hotbar_prev",
@@ -1081,7 +1089,19 @@ void InputManager::initializeContextDefinitions() {
         }));
     context_definitions_.emplace(
         InputContextId::Menu,
-        build_definition({"menu_left", "menu_right", "menu_up", "menu_down", "menu_confirm", "menu_cancel"}));
+        build_definition({
+            "menu_left",
+            "menu_right",
+            "menu_up",
+            "menu_down",
+            "menu_confirm",
+            "menu_cancel",
+            "inventory",
+            "inventory_tab_equipment",
+            "inventory_tab_quests",
+            "inventory_tab_map",
+            "inventory_tab_options",
+        }));
     context_definitions_.emplace(
         InputContextId::Dialogue,
         build_definition({"menu_left", "menu_right", "menu_up", "menu_down", "menu_confirm", "menu_cancel"}));

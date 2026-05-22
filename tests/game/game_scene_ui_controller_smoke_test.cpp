@@ -72,7 +72,7 @@ TEST(GameSceneUiControllerSmokeTest, GameSceneDelegatesUiLifecycleAndActionsToCo
     EXPECT_NE(prompt_block.find("input_prompt_overlay_->toggleVisible();"), std::string::npos);
 }
 
-TEST(GameSceneUiControllerSmokeTest, GameScenePassesQuestCatalogWhenOpeningInventoryMenu) {
+TEST(GameSceneUiControllerSmokeTest, GameScenePassesCatalogsAndInitialTabWhenOpeningInventoryMenu) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
@@ -80,12 +80,16 @@ TEST(GameSceneUiControllerSmokeTest, GameScenePassesQuestCatalogWhenOpeningInven
     const std::string content = test_source_utils::readTextFile(source_path);
     ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
 
-    const std::string inventory_block = test_source_utils::extractFunctionBlock(content, "bool GameScene::onInventoryToggle()");
-    ASSERT_FALSE(inventory_block.empty());
+    const std::string open_inventory_block =
+        test_source_utils::extractFunctionBlock(content, "bool GameScene::openInventoryMenu(");
+    ASSERT_FALSE(open_inventory_block.empty());
 
-    EXPECT_NE(inventory_block.find("InventoryMenuScene"), std::string::npos);
-    EXPECT_NE(inventory_block.find("services_->item_catalog.get()"), std::string::npos);
-    EXPECT_NE(inventory_block.find("services_->quest_catalog.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("InventoryMenuScene"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("services_->item_catalog.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("services_->quest_catalog.get()"), std::string::npos);
+    EXPECT_NE(open_inventory_block.find("initial_tab"), std::string::npos);
+    EXPECT_NE(content.find("onInventoryMapShortcut"), std::string::npos);
+    EXPECT_NE(content.find("openInventoryMenu(game::ui::MenuTabId::Map)"), std::string::npos);
 }
 
 } // namespace

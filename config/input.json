@@ -87,6 +87,18 @@
       "I",
       "GamepadBack"
     ],
+    "inventory_tab_equipment": [
+      "C"
+    ],
+    "inventory_tab_quests": [
+      "J"
+    ],
+    "inventory_tab_map": [
+      "M"
+    ],
+    "inventory_tab_options": [
+      "O"
+    ],
     "toggle_prompt_bar": [
       "F1"
     ],

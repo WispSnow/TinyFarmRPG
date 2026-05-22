@@ -12,6 +12,7 @@
 #include "game/runtime/user_settings_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
+#include "game/ui/inventory_menu_tab_shortcuts.h"
 #include "game/ui/inventory_tab_content.h"
 #include "game/ui/map_tab_content.h"
 #include "game/ui/options_tab_content.h"
@@ -19,7 +20,10 @@
 #include "game/ui/slot_grid_support.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementTabSet.h>
 #include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/Traits.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
@@ -87,7 +91,8 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
                                        const game::data::QuestCatalog* quest_catalog,
                                        const game::data::ShopCatalog* shop_catalog,
                                        const game::world::WorldState* world_state,
-                                       game::runtime::UserSettingsService* user_settings_service)
+                                       game::runtime::UserSettingsService* user_settings_service,
+                                       game::ui::MenuTabId initial_tab)
     : engine::scene::Scene(name, context),
       game_registry_(game_registry),
       player_(player),
@@ -97,7 +102,8 @@ InventoryMenuScene::InventoryMenuScene(std::string_view name,
       shop_catalog_(shop_catalog),
       world_state_(world_state),
       user_settings_service_(user_settings_service),
-      previous_state_(context.getGameState().getCurrentState()) {}
+      previous_state_(context.getGameState().getCurrentState()),
+      initial_tab_id_(initial_tab) {}
 
 InventoryMenuScene::~InventoryMenuScene() {
     disconnectRuntimeListeners();
@@ -120,6 +126,16 @@ bool InventoryMenuScene::init() {
 
     context_.getInputManager().onAction("menu_cancel"_hs)
         .connect<&InventoryMenuScene::onMenuCancelPressed>(this);
+    context_.getInputManager().onAction("inventory"_hs)
+        .connect<&InventoryMenuScene::onInventoryTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_equipment"_hs)
+        .connect<&InventoryMenuScene::onEquipmentTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_quests"_hs)
+        .connect<&InventoryMenuScene::onQuestsTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_map"_hs)
+        .connect<&InventoryMenuScene::onMapTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_options"_hs)
+        .connect<&InventoryMenuScene::onOptionsTabShortcut>(this);
 
     return Scene::init();
 }
@@ -153,7 +169,7 @@ bool InventoryMenuScene::initUI() {
         return false;
     }
 
-    active_tab_id_ = game::ui::MenuTabId::Inventory;
+    active_tab_id_ = initial_tab_id_;
 
     document_controller_.attach(runtime, instanceId());
     auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
@@ -296,6 +312,9 @@ bool InventoryMenuScene::initUI() {
     if (equipment_tab_) {
         equipment_tab_->setSelectedActor(selected_actor_id_);
     }
+    if (!activateRmlTab(initial_tab_id_)) {
+        spdlog::warn("InventoryMenuScene: 初始 tab 无法同步到 RmlUi tabset。");
+    }
     if (auto* tab = activeTab()) {
         tab->onActivated();
     }
@@ -310,6 +329,16 @@ void InventoryMenuScene::shutdownUI() {
 void InventoryMenuScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs)
         .disconnect<&InventoryMenuScene::onMenuCancelPressed>(this);
+    context_.getInputManager().onAction("inventory"_hs)
+        .disconnect<&InventoryMenuScene::onInventoryTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_equipment"_hs)
+        .disconnect<&InventoryMenuScene::onEquipmentTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_quests"_hs)
+        .disconnect<&InventoryMenuScene::onQuestsTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_map"_hs)
+        .disconnect<&InventoryMenuScene::onMapTabShortcut>(this);
+    context_.getInputManager().onAction("inventory_tab_options"_hs)
+        .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
 }
 
 void InventoryMenuScene::syncPartyPanel() {
@@ -401,6 +430,38 @@ bool InventoryMenuScene::onMenuCancelPressed() {
     return true;
 }
 
+bool InventoryMenuScene::handleTabShortcut(game::ui::MenuTabId target_tab) {
+    if (target_tab == active_tab_id_) {
+        requestPopScene();
+        return true;
+    }
+
+    if (!activateRmlTab(target_tab)) {
+        spdlog::warn("InventoryMenuScene: 快捷键 tab 无法同步到 RmlUi tabset。");
+    }
+    return true;
+}
+
+bool InventoryMenuScene::onInventoryTabShortcut() {
+    return handleTabShortcut(game::ui::MenuTabId::Inventory);
+}
+
+bool InventoryMenuScene::onEquipmentTabShortcut() {
+    return handleTabShortcut(game::ui::MenuTabId::Equipment);
+}
+
+bool InventoryMenuScene::onQuestsTabShortcut() {
+    return handleTabShortcut(game::ui::MenuTabId::Quests);
+}
+
+bool InventoryMenuScene::onMapTabShortcut() {
+    return handleTabShortcut(game::ui::MenuTabId::Map);
+}
+
+bool InventoryMenuScene::onOptionsTabShortcut() {
+    return handleTabShortcut(game::ui::MenuTabId::Options);
+}
+
 void InventoryMenuScene::switchTab(game::ui::MenuTabId new_tab) {
     const auto next_it = tabs_.find(new_tab);
     if (new_tab == active_tab_id_ || next_it == tabs_.end()) {
@@ -425,6 +486,24 @@ void InventoryMenuScene::switchTabFromTabsetIndex(int tab_index) {
     if (const auto tab_id = toMenuTabId(tab_index)) {
         switchTab(*tab_id);
     }
+}
+
+bool InventoryMenuScene::activateRmlTab(game::ui::MenuTabId tab_id) {
+    auto* document = document_controller_.document();
+    if (!document) {
+        spdlog::warn("InventoryMenuScene: cannot activate tab, RmlUi document is null.");
+        return false;
+    }
+
+    auto* element = document->GetElementById("menu-tabset");
+    auto* tabset = element ? rmlui_dynamic_cast<Rml::ElementTabSet*>(element) : nullptr;
+    if (!tabset) {
+        spdlog::warn("InventoryMenuScene: menu-tabset element is missing or not an ElementTabSet.");
+        return false;
+    }
+
+    tabset->SetActiveTab(game::ui::tabsetIndexForMenuTab(tab_id));
+    return true;
 }
 
 game::ui::IMenuTabContent* InventoryMenuScene::activeTab() {
