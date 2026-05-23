@@ -251,7 +251,7 @@ tf.state.add("npc.lyria.gift_count", 1)
    - [x] 拆数据绑定/菜单模型：`BattleMenuModel` 负责菜单 RmlUi 绑定字段、命令列表、游标、dirty 标记与 enabled 刷新。
    - 保留 `BattleScene` 作为场景生命周期和胶水层。
 2. `shop_menu_scene.cpp`
-   - 保留 scene 生命周期，抽 buy/sell view model 和 transaction presenter。
+   - [x] 保留 scene 生命周期，抽 `ShopTradeListBuilder` 和 `ShopMenuTransactionPresenter`，Scene 继续负责 UI 生命周期、输入与交易协调。
 3. `inventory_tab_content.cpp`
    - 抽 slot drag/drop 状态机和 action menu model。
 4. `input_manager.cpp`

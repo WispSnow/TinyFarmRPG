@@ -77,13 +77,23 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuSceneWiresSellPreviewModeSwitchAndExact
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_menu_scene.h").lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path builder_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_trade_list_builder.cpp").lexically_normal();
+    const std::filesystem::path presenter_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_menu_transaction_presenter.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(builder_source_path)) << builder_source_path;
+    ASSERT_TRUE(std::filesystem::exists(presenter_source_path)) << presenter_source_path;
 
     const std::string header = test_source_utils::readTextFile(header_path);
     const std::string source = test_source_utils::readTextFile(source_path);
+    const std::string builder_source = test_source_utils::readTextFile(builder_source_path);
+    const std::string presenter_source = test_source_utils::readTextFile(presenter_source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(builder_source.empty());
+    ASSERT_FALSE(presenter_source.empty());
 
     const std::string init_ui_block = test_source_utils::extractFunctionBlock(source, "bool ShopMenuScene::initUI()");
     const std::string switch_mode_block =
@@ -104,14 +114,16 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuSceneWiresSellPreviewModeSwitchAndExact
     EXPECT_NE(header.find("ShopMenuCategory current_category_"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->previewSell"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->commitSell"), std::string::npos);
-    EXPECT_NE(source.find("isItemInCategoryTab"), std::string::npos);
+    EXPECT_NE(source.find("ShopTradeListBuilder::buildSellList"), std::string::npos);
+    EXPECT_NE(builder_source.find("isItemInCategoryTab"), std::string::npos);
     EXPECT_NE(source.find("hasEntriesForCategory"), std::string::npos);
     EXPECT_NE(source.find("switchCategory"), std::string::npos);
     EXPECT_NE(source.find("\"has_equipment_entries\""), std::string::npos);
     EXPECT_NE(source.find("\"has_consumable_entries\""), std::string::npos);
     EXPECT_NE(source.find("current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell()"), std::string::npos);
-    EXPECT_NE(source.find("formatFailureText(const ShopMenuMode mode"), std::string::npos);
-    EXPECT_NE(source.find("defaultEmptyText(current_mode_, current_category_)"), std::string::npos);
+    EXPECT_NE(presenter_source.find("formatFailureText"), std::string::npos);
+    EXPECT_NE(source.find("ShopTransactionPresenter::defaultEmptyText(toTradeMode(current_mode_), current_category_)"),
+              std::string::npos);
     EXPECT_NE(source.find("detail_owned_label_"), std::string::npos);
     EXPECT_NE(source.find("primary_action_text_"), std::string::npos);
     EXPECT_NE(init_ui_block.find("\"sell_entry_select\""), std::string::npos);

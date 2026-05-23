@@ -5,6 +5,8 @@
 #include "game/data/item_catalog.h"
 #include "game/data/shop_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/scene/shop_menu_transaction_presenter.h"
+#include "game/scene/shop_trade_list_builder.h"
 #include "game/ui/slot_grid_support.h"
 
 #include "engine/core/context.h"
@@ -31,6 +33,8 @@ using ShopMenuFocusArea = game::ui::ShopMenuFocusArea;
 using ShopMenuNavigationDecision = game::ui::ShopMenuNavigationDecision;
 using ShopMenuNavigationInput = game::ui::ShopMenuNavigationInput;
 using ShopMenuNavigationState = game::ui::ShopMenuNavigationState;
+using ShopTransactionPresenter = game::scene::ShopMenuTransactionPresenter;
+using ShopTradeMode = game::scene::ShopTradeMode;
 using engine::ui::rmlui::updateBoundBool;
 using engine::ui::rmlui::updateBoundString;
 using namespace entt::literals;
@@ -53,102 +57,8 @@ void updateBoolBinding(engine::ui::rmlui::RmlDocumentController& controller,
     }
 }
 
-[[nodiscard]] int clampSelectionIndex(const int index, const int size) {
-    if (size <= 0) {
-        return 0;
-    }
-    return std::clamp(index, 0, size - 1);
-}
-
-[[nodiscard]] std::string formatGoldLabel(const int gold) {
-    return "Gold: " + std::to_string(gold);
-}
-
-[[nodiscard]] std::string formatGoldValue(const int gold) {
-    return std::to_string(gold) + " G";
-}
-
-[[nodiscard]] std::string formatQuantityText(const int quantity) {
-    return "x" + std::to_string(std::max(0, quantity));
-}
-
-[[nodiscard]] std::string_view defaultEmptyText(const ShopMenuMode mode, const ShopMenuCategory category) {
-    if (mode == ShopMenuMode::Buy) {
-        return category == ShopMenuCategory::Equipment ? "No equipment for sale." : "No consumables available.";
-    }
-
-    return category == ShopMenuCategory::Equipment ? "No equipment to sell." : "No items to sell.";
-}
-
-[[nodiscard]] std::string formatFocusStatus(const ShopMenuMode mode,
-                                            const ShopMenuFocusArea focus_area,
-                                            const bool quantity_adjustable) {
-    switch (focus_area) {
-        case ShopMenuFocusArea::ModeToggle:
-            return "Left / Right switches Buy and Sell. Down enters category tabs.";
-        case ShopMenuFocusArea::CategoryTabs:
-            return "Left / Right switches category. Down enters the list.";
-        case ShopMenuFocusArea::EntryList:
-            return mode == ShopMenuMode::Buy ? "Up / Down selects. Right opens quantity. Confirm goes to Buy."
-                                             : "Up / Down selects. Right opens quantity. Confirm goes to Sell.";
-        case ShopMenuFocusArea::Quantity:
-            if (!quantity_adjustable) {
-                return mode == ShopMenuMode::Buy ? "Quantity is fixed at x1. Down or Confirm goes to Buy."
-                                                 : "Quantity is fixed at x1. Down or Confirm goes to Sell.";
-            }
-            return mode == ShopMenuMode::Buy ? "Left / Right changes quantity. Down or Confirm goes to Buy."
-                                             : "Left / Right changes quantity. Down or Confirm goes to Sell.";
-        case ShopMenuFocusArea::PrimaryAction:
-            return mode == ShopMenuMode::Buy ? "Confirm to buy. Left returns to the list."
-                                             : "Confirm to sell. Left returns to the list.";
-    }
-
-    return mode == ShopMenuMode::Buy ? "Confirm to buy." : "Confirm to sell.";
-}
-
-[[nodiscard]] std::string formatFailureText(const ShopMenuMode mode, const game::domain::ShopTradeFailureReason failure_reason) {
-    using game::domain::ShopTradeFailureReason;
-
-    switch (failure_reason) {
-        case ShopTradeFailureReason::None:
-            break;
-        case ShopTradeFailureReason::InsufficientGold:
-            return "Not enough gold.";
-        case ShopTradeFailureReason::InventoryFull:
-            return mode == ShopMenuMode::Buy ? "Inventory is full." : "Action unavailable.";
-        case ShopTradeFailureReason::InvalidQuantity:
-            return "Invalid quantity.";
-        case ShopTradeFailureReason::InvalidPlayer:
-            return "Action unavailable.";
-        case ShopTradeFailureReason::InvalidShop:
-            return mode == ShopMenuMode::Buy ? "This shop is unavailable." : "Action unavailable.";
-        case ShopTradeFailureReason::InvalidItem:
-            return "Action unavailable.";
-        case ShopTradeFailureReason::ItemNotSoldHere:
-            return "This item cannot be purchased here.";
-        case ShopTradeFailureReason::ItemNotSellable:
-            return "This item cannot be sold.";
-        case ShopTradeFailureReason::SlotMismatch:
-            return "This slot changed.";
-        case ShopTradeFailureReason::InsufficientItemCount:
-            return "Not enough items in this slot.";
-    }
-
-    return mode == ShopMenuMode::Buy ? "Purchase failed." : "Sale failed.";
-}
-
-[[nodiscard]] std::string formatSuccessText(const ShopMenuMode mode,
-                                            std::string_view item_name,
-                                            const int quantity) {
-    std::string text = mode == ShopMenuMode::Buy ? "Purchased " : "Sold ";
-    text.append(item_name);
-    if (quantity > 1) {
-        text.push_back(' ');
-        text.push_back('x');
-        text += std::to_string(quantity);
-    }
-    text.push_back('.');
-    return text;
+[[nodiscard]] ShopTradeMode toTradeMode(const ShopMenuMode mode) {
+    return mode == ShopMenuMode::Buy ? ShopTradeMode::Buy : ShopTradeMode::Sell;
 }
 
 } // namespace
@@ -397,7 +307,11 @@ void ShopMenuScene::disconnectRuntimeListeners() {
 
 void ShopMenuScene::syncGoldLabel() {
     const auto* wallet = game_registry_.try_get<game::component::PlayerWalletComponent>(player_);
-    updateStringBinding(document_controller_, "gold_label", gold_label_, formatGoldLabel(wallet ? wallet->gold_ : 0));
+    updateStringBinding(
+        document_controller_,
+        "gold_label",
+        gold_label_,
+        ShopTransactionPresenter::formatGoldLabel(wallet ? wallet->gold_ : 0));
 }
 
 void ShopMenuScene::syncModeBindings() {
@@ -444,7 +358,7 @@ void ShopMenuScene::syncCategoryBindings() {
         document_controller_,
         "empty_text",
         empty_text_,
-        defaultEmptyText(current_mode_, current_category_));
+        ShopTransactionPresenter::defaultEmptyText(toTradeMode(current_mode_), current_category_));
 }
 
 void ShopMenuScene::syncFocusBindings() {
@@ -487,99 +401,35 @@ void ShopMenuScene::markTradeListsDirty() {
 }
 
 void ShopMenuScene::rebuildBuyEntries() {
-    buy_entry_refs_.clear();
-    buy_entries_.clear();
-
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
-    if (!shop_data_ || !item_catalog_) {
-        updateBoolBinding(document_controller_, "has_buy_entries", has_buy_entries_, false);
-        document_controller_.markDirty("buy_entries");
-        buy_entries_dirty_ = false;
-        return;
-    }
-
-    buy_entry_refs_.reserve(shop_data_->buy_entries_.size());
-    buy_entries_.reserve(shop_data_->buy_entries_.size());
-
-    for (const auto& buy_entry : shop_data_->buy_entries_) {
-        const auto* item = item_catalog_->findItem(buy_entry.item_id_hash_);
-        if (!item) {
-            spdlog::error("ShopMenuScene: shop_id='{}' 的 buy entry item_id='{}' 在 ItemCatalog 中缺失，已跳过。",
-                          shop_id_,
-                          buy_entry.item_id_);
-            continue;
-        }
-        if (!game::ui::isItemInCategoryTab(current_category_, item->category_)) {
-            continue;
-        }
-
-        const int owned_count = inventory ? game::ui::countOwnedItems(*inventory, buy_entry.item_id_hash_) : 0;
-        game::ui::ShopBuyEntryViewModel view_model{};
-        game::ui::populateShopBuyEntryViewModel(
-            view_model,
-            static_cast<int>(buy_entries_.size()),
-            buy_entry,
-            item_catalog_,
-            owned_count,
-            false,
-            false);
-        buy_entry_refs_.push_back(&buy_entry);
-        buy_entries_.push_back(std::move(view_model));
-    }
+    auto snapshot = ShopTradeListBuilder::buildBuyList(
+        shop_data_,
+        item_catalog_,
+        inventory,
+        current_category_,
+        selected_buy_index_,
+        shop_id_);
+    buy_entry_refs_ = std::move(snapshot.entry_refs);
+    buy_entries_ = std::move(snapshot.entries);
+    selected_buy_index_ = snapshot.selected_index;
 
     updateBoolBinding(document_controller_, "has_buy_entries", has_buy_entries_, !buy_entries_.empty());
-    selected_buy_index_ = clampSelectionIndex(selected_buy_index_, static_cast<int>(buy_entries_.size()));
-    for (auto& entry : buy_entries_) {
-        entry.is_selected = has_buy_entries_ && entry.index == selected_buy_index_;
-    }
-
     document_controller_.markDirty("buy_entries");
     buy_entries_dirty_ = false;
 }
 
 void ShopMenuScene::rebuildSellEntries() {
-    sell_entries_.clear();
-
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
-    if (!inventory || !item_catalog_ || !shop_catalog_) {
-        updateBoolBinding(document_controller_, "has_sell_entries", has_sell_entries_, false);
-        document_controller_.markDirty("sell_entries");
-        sell_entries_dirty_ = false;
-        return;
-    }
-
-    sell_entries_.reserve(static_cast<std::size_t>(inventory->slotCount()));
-    for (int slot_index = 0; slot_index < inventory->slotCount(); ++slot_index) {
-        const auto& stack = inventory->slot(slot_index);
-        if (stack.empty()) {
-            continue;
-        }
-
-        const auto* item = item_catalog_->findItem(stack.item_id_);
-        const game::data::ItemCategory item_category =
-            item ? item->category_ : game::data::ItemCategory::Unknown;
-        if (!game::ui::isItemInCategoryTab(current_category_, item_category)) {
-            continue;
-        }
-
-        game::ui::ShopSellEntryViewModel view_model{};
-        game::ui::populateShopSellEntryViewModel(
-            view_model,
-            static_cast<int>(sell_entries_.size()),
-            slot_index,
-            stack,
-            shop_catalog_->findSellRule(stack.item_id_),
-            item_catalog_,
-            false);
-        sell_entries_.push_back(std::move(view_model));
-    }
+    auto snapshot = ShopTradeListBuilder::buildSellList(
+        inventory,
+        item_catalog_,
+        shop_catalog_,
+        current_category_,
+        selected_sell_index_);
+    sell_entries_ = std::move(snapshot.entries);
+    selected_sell_index_ = snapshot.selected_index;
 
     updateBoolBinding(document_controller_, "has_sell_entries", has_sell_entries_, !sell_entries_.empty());
-    selected_sell_index_ = clampSelectionIndex(selected_sell_index_, static_cast<int>(sell_entries_.size()));
-    for (auto& entry : sell_entries_) {
-        entry.is_selected = has_sell_entries_ && entry.index == selected_sell_index_;
-    }
-
     document_controller_.markDirty("sell_entries");
     sell_entries_dirty_ = false;
 }
@@ -593,7 +443,7 @@ void ShopMenuScene::refreshSelectedBuyEntry() {
             document_controller_,
             "detail_name",
             detail_name_,
-            defaultEmptyText(ShopMenuMode::Buy, current_category_));
+            ShopTransactionPresenter::defaultEmptyText(ShopTradeMode::Buy, current_category_));
         updateStringBinding(
             document_controller_,
             "detail_description",
@@ -618,7 +468,7 @@ void ShopMenuScene::refreshSelectedBuyEntry() {
         document_controller_,
         "detail_quantity_text",
         detail_quantity_text_,
-        formatQuantityText(requested_buy_quantity_));
+        ShopTransactionPresenter::formatQuantityText(requested_buy_quantity_));
     updateStringBinding(
         document_controller_,
         "detail_owned_text",
@@ -647,7 +497,7 @@ void ShopMenuScene::refreshSelectedSellEntry() {
             document_controller_,
             "detail_name",
             detail_name_,
-            defaultEmptyText(ShopMenuMode::Sell, current_category_));
+            ShopTransactionPresenter::defaultEmptyText(ShopTradeMode::Sell, current_category_));
         updateStringBinding(document_controller_, "detail_description", detail_description_, "You have nothing to sell in this category.");
         updateStringBinding(document_controller_, "detail_quantity_text", detail_quantity_text_, "x0");
         updateStringBinding(document_controller_, "detail_owned_text", detail_owned_text_, "0");
@@ -668,7 +518,7 @@ void ShopMenuScene::refreshSelectedSellEntry() {
         document_controller_,
         "detail_quantity_text",
         detail_quantity_text_,
-        formatQuantityText(requested_sell_quantity_));
+        ShopTransactionPresenter::formatQuantityText(requested_sell_quantity_));
     updateStringBinding(
         document_controller_,
         "detail_owned_text",
@@ -709,17 +559,17 @@ void ShopMenuScene::refreshBuyPreview() {
         document_controller_,
         "detail_price_text",
         detail_price_text_,
-        formatGoldValue(active_buy_preview_.unit_price));
+        ShopTransactionPresenter::formatGoldValue(active_buy_preview_.unit_price));
     updateStringBinding(
         document_controller_,
         "detail_total_text",
         detail_total_text_,
-        formatGoldValue(active_buy_preview_.total_price));
+        ShopTransactionPresenter::formatGoldValue(active_buy_preview_.total_price));
     updateStringBinding(
         document_controller_,
         "detail_after_gold_text",
         detail_after_gold_text_,
-        formatGoldValue(active_buy_preview_.final_gold_after));
+        ShopTransactionPresenter::formatGoldValue(active_buy_preview_.final_gold_after));
     updateBoolBinding(document_controller_, "buy_enabled", buy_enabled_, active_buy_preview_.canCommit());
 }
 
@@ -748,7 +598,7 @@ void ShopMenuScene::refreshSellPreview() {
             document_controller_,
             "detail_after_gold_text",
             detail_after_gold_text_,
-            formatGoldValue(active_sell_preview_.final_gold_after));
+            ShopTransactionPresenter::formatGoldValue(active_sell_preview_.final_gold_after));
         updateBoolBinding(document_controller_, "sell_enabled", sell_enabled_, false);
         return;
     }
@@ -757,17 +607,17 @@ void ShopMenuScene::refreshSellPreview() {
         document_controller_,
         "detail_price_text",
         detail_price_text_,
-        formatGoldValue(active_sell_preview_.unit_price));
+        ShopTransactionPresenter::formatGoldValue(active_sell_preview_.unit_price));
     updateStringBinding(
         document_controller_,
         "detail_total_text",
         detail_total_text_,
-        formatGoldValue(active_sell_preview_.total_price));
+        ShopTransactionPresenter::formatGoldValue(active_sell_preview_.total_price));
     updateStringBinding(
         document_controller_,
         "detail_after_gold_text",
         detail_after_gold_text_,
-        formatGoldValue(active_sell_preview_.final_gold_after));
+        ShopTransactionPresenter::formatGoldValue(active_sell_preview_.final_gold_after));
     updateBoolBinding(document_controller_, "sell_enabled", sell_enabled_, active_sell_preview_.canCommit());
 }
 
@@ -778,7 +628,11 @@ void ShopMenuScene::refreshStatusText() {
     }
 
     if (!hasCurrentEntries()) {
-        updateStringBinding(document_controller_, "status_text", status_text_, defaultEmptyText(current_mode_, current_category_));
+        updateStringBinding(
+            document_controller_,
+            "status_text",
+            status_text_,
+            ShopTransactionPresenter::defaultEmptyText(toTradeMode(current_mode_), current_category_));
         return;
     }
 
@@ -789,11 +643,18 @@ void ShopMenuScene::refreshStatusText() {
             document_controller_,
             "status_text",
             status_text_,
-            formatFocusStatus(current_mode_, current_focus_area_, isCurrentQuantityAdjustable()));
+            ShopTransactionPresenter::formatFocusStatus(
+                toTradeMode(current_mode_),
+                current_focus_area_,
+                isCurrentQuantityAdjustable()));
         return;
     }
 
-    updateStringBinding(document_controller_, "status_text", status_text_, formatFailureText(current_mode_, failure_reason));
+    updateStringBinding(
+        document_controller_,
+        "status_text",
+        status_text_,
+        ShopTransactionPresenter::formatFailureText(toTradeMode(current_mode_), failure_reason));
 }
 
 void ShopMenuScene::refreshAll() {
@@ -900,35 +761,11 @@ bool ShopMenuScene::hasCurrentEntries() const {
 
 bool ShopMenuScene::hasEntriesForCategory(const ShopMenuMode mode, const ShopMenuCategory category) const {
     if (mode == ShopMenuMode::Buy) {
-        if (!shop_data_ || !item_catalog_) {
-            return false;
-        }
-
-        return std::ranges::any_of(shop_data_->buy_entries_, [this, category](const auto& entry) {
-            const auto* item = item_catalog_->findItem(entry.item_id_hash_);
-            return item != nullptr && game::ui::isItemInCategoryTab(category, item->category_);
-        });
+        return ShopTradeListBuilder::hasBuyEntriesForCategory(shop_data_, item_catalog_, category);
     }
 
     const auto* inventory = game_registry_.try_get<game::component::InventoryComponent>(player_);
-    if (!inventory || !item_catalog_) {
-        return false;
-    }
-
-    for (const auto& slot : inventory->slots_) {
-        if (slot.empty()) {
-            continue;
-        }
-
-        const auto* item = item_catalog_->findItem(slot.item_id_);
-        const game::data::ItemCategory item_category =
-            item ? item->category_ : game::data::ItemCategory::Unknown;
-        if (game::ui::isItemInCategoryTab(category, item_category)) {
-            return true;
-        }
-    }
-
-    return false;
+    return ShopTradeListBuilder::hasSellEntriesForCategory(inventory, item_catalog_, category);
 }
 
 int ShopMenuScene::currentQuantityUiMax() const {
@@ -1136,7 +973,9 @@ void ShopMenuScene::confirmBuy() {
     }
 
     if (!active_buy_preview_.canCommit()) {
-        status_override_ = formatFailureText(ShopMenuMode::Buy, active_buy_preview_.failure_reason);
+        status_override_ = ShopTransactionPresenter::formatFailureText(
+            ShopTradeMode::Buy,
+            active_buy_preview_.failure_reason);
         refreshStatusText();
         return;
     }
@@ -1150,9 +989,12 @@ void ShopMenuScene::confirmBuy() {
         requested_buy_quantity_);
     if (result.completed()) {
         requested_buy_quantity_ = 1;
-        status_override_ = formatSuccessText(ShopMenuMode::Buy, item_name, result.resolved_quantity);
+        status_override_ = ShopTransactionPresenter::formatSuccessText(
+            ShopTradeMode::Buy,
+            item_name,
+            result.resolved_quantity);
     } else {
-        status_override_ = formatFailureText(ShopMenuMode::Buy, result.failure_reason);
+        status_override_ = ShopTransactionPresenter::formatFailureText(ShopTradeMode::Buy, result.failure_reason);
     }
 
     markTradeListsDirty();
@@ -1170,7 +1012,9 @@ void ShopMenuScene::confirmSell() {
     }
 
     if (!active_sell_preview_.canCommit()) {
-        status_override_ = formatFailureText(ShopMenuMode::Sell, active_sell_preview_.failure_reason);
+        status_override_ = ShopTransactionPresenter::formatFailureText(
+            ShopTradeMode::Sell,
+            active_sell_preview_.failure_reason);
         refreshStatusText();
         return;
     }
@@ -1184,9 +1028,12 @@ void ShopMenuScene::confirmSell() {
         slot_index);
     if (result.completed()) {
         requested_sell_quantity_ = 1;
-        status_override_ = formatSuccessText(ShopMenuMode::Sell, item_name, result.resolved_quantity);
+        status_override_ = ShopTransactionPresenter::formatSuccessText(
+            ShopTradeMode::Sell,
+            item_name,
+            result.resolved_quantity);
     } else {
-        status_override_ = formatFailureText(ShopMenuMode::Sell, result.failure_reason);
+        status_override_ = ShopTransactionPresenter::formatFailureText(ShopTradeMode::Sell, result.failure_reason);
     }
 
     markTradeListsDirty();

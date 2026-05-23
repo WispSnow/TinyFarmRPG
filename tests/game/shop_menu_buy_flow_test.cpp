@@ -9,6 +9,8 @@
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/scene/shop_menu_transaction_presenter.h"
+#include "game/scene/shop_trade_list_builder.h"
 #include "game/ui/shop_menu_support.h"
 
 #include "../engine/render/test_source_utils.h"
@@ -80,13 +82,76 @@ TEST(ShopMenuSupportTest, PopulateShopBuyEntryViewModelFormatsDisplayFields) {
     EXPECT_FALSE(view_model.is_disabled);
 }
 
+TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStable) {
+    const auto item_catalog = loadProjectItemCatalog();
+
+    game::component::InventoryComponent inventory;
+    inventory.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inventory.slot(0).count_ = 3;
+
+    game::data::ShopData shop_data{};
+    shop_data.buy_entries_.push_back(game::data::ShopBuyEntryData{
+        .item_id_ = "potion",
+        .item_id_hash_ = entt::hashed_string{"potion"}.value(),
+        .buy_price_ = 30});
+    shop_data.buy_entries_.push_back(game::data::ShopBuyEntryData{
+        .item_id_ = "equip_wooden_sword",
+        .item_id_hash_ = entt::hashed_string{"equip_wooden_sword"}.value(),
+        .buy_price_ = 120});
+
+    const auto consumables = ShopTradeListBuilder::buildBuyList(
+        &shop_data,
+        &item_catalog,
+        &inventory,
+        game::ui::ShopMenuCategory::Consumable,
+        5,
+        "shop.test");
+    ASSERT_EQ(consumables.entries.size(), 1U);
+    EXPECT_EQ(consumables.selected_index, 0);
+    EXPECT_EQ(consumables.entries.front().item_name, "Potion");
+    EXPECT_EQ(consumables.entries.front().owned_text, "Owned: 3");
+    EXPECT_TRUE(consumables.entries.front().is_selected);
+
+    const auto equipment = ShopTradeListBuilder::buildBuyList(
+        &shop_data,
+        &item_catalog,
+        nullptr,
+        game::ui::ShopMenuCategory::Equipment,
+        -3,
+        "shop.test");
+    ASSERT_EQ(equipment.entries.size(), 1U);
+    EXPECT_EQ(equipment.entries.front().item_name, "Wooden Sword");
+    EXPECT_TRUE(equipment.entries.front().is_selected);
+}
+
+TEST(ShopMenuSupportTest, TransactionPresenterFormatsCommonOutcomes) {
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatGoldLabel(42), "Gold: 42");
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatQuantityText(3), "x3");
+    EXPECT_EQ(
+        ShopMenuTransactionPresenter::formatFailureText(
+            ShopTradeMode::Buy,
+            game::domain::ShopTradeFailureReason::InsufficientGold),
+        "Not enough gold.");
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatSuccessText(ShopTradeMode::Sell, "Potion", 2), "Sold Potion x2.");
+}
+
 TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path builder_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_trade_list_builder.cpp").lexically_normal();
+    const std::filesystem::path presenter_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/shop_menu_transaction_presenter.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(builder_source_path)) << builder_source_path;
+    ASSERT_TRUE(std::filesystem::exists(presenter_source_path)) << presenter_source_path;
 
     const std::string source = test_source_utils::readTextFile(source_path);
+    const std::string builder_source = test_source_utils::readTextFile(builder_source_path);
+    const std::string presenter_source = test_source_utils::readTextFile(presenter_source_path);
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(builder_source.empty());
+    ASSERT_FALSE(presenter_source.empty());
     const std::string select_block =
         test_source_utils::extractFunctionBlock(source, "void ShopMenuScene::selectBuyEntry(const int index)");
     const std::string confirm_buy_block =
@@ -99,15 +164,18 @@ TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh)
 
     EXPECT_NE(source.find("shop_transaction_service_->previewBuy"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->commitBuy"), std::string::npos);
-    EXPECT_NE(source.find("isItemInCategoryTab"), std::string::npos);
+    EXPECT_NE(source.find("ShopTradeListBuilder::buildBuyList"), std::string::npos);
+    EXPECT_NE(builder_source.find("isItemInCategoryTab"), std::string::npos);
     EXPECT_NE(source.find("switch_category_consumable"), std::string::npos);
     EXPECT_NE(source.find("switch_category_equipment"), std::string::npos);
     EXPECT_NE(source.find("\"is_consumable_category\""), std::string::npos);
     EXPECT_NE(source.find("\"is_equipment_category\""), std::string::npos);
     EXPECT_NE(source.find("current_category_"), std::string::npos);
     EXPECT_NE(source.find("clearStatusOverride();"), std::string::npos);
-    EXPECT_NE(source.find("formatFailureText"), std::string::npos);
-    EXPECT_NE(source.find("formatSuccessText"), std::string::npos);
+    EXPECT_NE(source.find("ShopTransactionPresenter::formatFailureText"), std::string::npos);
+    EXPECT_NE(source.find("ShopTransactionPresenter::formatSuccessText"), std::string::npos);
+    EXPECT_NE(presenter_source.find("formatFailureText"), std::string::npos);
+    EXPECT_NE(presenter_source.find("formatSuccessText"), std::string::npos);
     EXPECT_NE(source.find("\"detail_after_gold_text\""), std::string::npos);
     EXPECT_NE(source.find("\"detail_total_text\""), std::string::npos);
     EXPECT_NE(source.find("\"buy_enabled\""), std::string::npos);
