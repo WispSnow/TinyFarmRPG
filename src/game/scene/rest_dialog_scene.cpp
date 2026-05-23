@@ -28,14 +28,8 @@ using engine::ui::rmlui::updateBoundBool;
     return Rml::String{value.data(), value.size()};
 }
 
-[[nodiscard]] std::string formatRestStatLine(const std::string_view label,
-                                             const int current,
-                                             const int after,
-                                             const int max_value) {
-    if (current == after) {
-        return fmt::format("{} {}/{}", label, after, max_value);
-    }
-    return fmt::format("{} {}>{}/{}", label, current, after, max_value);
+[[nodiscard]] std::string formatRestStatValue(const int value, const int max_value) {
+    return fmt::format("{}/{}", value, max_value);
 }
 
 } // namespace
@@ -144,10 +138,10 @@ bool RestDialogScene::ensureDataTypesRegistered(Rml::DataModelConstructor& const
 
     if (auto member_handle = constructor.RegisterStruct<RestRecoveryMemberViewModel>()) {
         member_handle.RegisterMember("display_name", &RestRecoveryMemberViewModel::display_name);
-        member_handle.RegisterMember("hp_text", &RestRecoveryMemberViewModel::hp_text);
-        member_handle.RegisterMember("mp_text", &RestRecoveryMemberViewModel::mp_text);
-        member_handle.RegisterMember("hp_delta_text", &RestRecoveryMemberViewModel::hp_delta_text);
-        member_handle.RegisterMember("mp_delta_text", &RestRecoveryMemberViewModel::mp_delta_text);
+        member_handle.RegisterMember("hp_current_text", &RestRecoveryMemberViewModel::hp_current_text);
+        member_handle.RegisterMember("hp_after_text", &RestRecoveryMemberViewModel::hp_after_text);
+        member_handle.RegisterMember("mp_current_text", &RestRecoveryMemberViewModel::mp_current_text);
+        member_handle.RegisterMember("mp_after_text", &RestRecoveryMemberViewModel::mp_after_text);
         member_handle.RegisterMember("has_hp_gain", &RestRecoveryMemberViewModel::has_hp_gain);
         member_handle.RegisterMember("has_mp_gain", &RestRecoveryMemberViewModel::has_mp_gain);
     } else {
@@ -210,18 +204,12 @@ void RestDialogScene::refreshRecoveryPreview() {
         for (const auto& member : preview->members) {
             RestRecoveryMemberViewModel view_model{};
             view_model.display_name = makeRmlString(member.display_name);
-            view_model.hp_text = makeRmlString(
-                formatRestStatLine("HP", member.current_hp, member.after_hp, member.max_hp));
-            view_model.mp_text = makeRmlString(
-                formatRestStatLine("MP", member.current_mp, member.after_mp, member.max_mp));
+            view_model.hp_current_text = makeRmlString(formatRestStatValue(member.current_hp, member.max_hp));
+            view_model.hp_after_text = makeRmlString(formatRestStatValue(member.after_hp, member.max_hp));
+            view_model.mp_current_text = makeRmlString(formatRestStatValue(member.current_mp, member.max_mp));
+            view_model.mp_after_text = makeRmlString(formatRestStatValue(member.after_mp, member.max_mp));
             view_model.has_hp_gain = member.hpGain() > 0;
             view_model.has_mp_gain = member.mpGain() > 0;
-            view_model.hp_delta_text = view_model.has_hp_gain
-                ? makeRmlString(fmt::format("+{}", member.hpGain()))
-                : Rml::String{};
-            view_model.mp_delta_text = view_model.has_mp_gain
-                ? makeRmlString(fmt::format("+{}", member.mpGain()))
-                : Rml::String{};
             recovery_members_.push_back(std::move(view_model));
         }
     }

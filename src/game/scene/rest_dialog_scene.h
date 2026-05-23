@@ -25,16 +25,16 @@ class RestDialogScene final : public engine::scene::Scene {
 private:
     struct RestRecoveryMemberViewModel {
         Rml::String display_name{};
-        Rml::String hp_text{};
-        Rml::String mp_text{};
-        Rml::String hp_delta_text{};
-        Rml::String mp_delta_text{};
+        Rml::String hp_current_text{};
+        Rml::String hp_after_text{};
+        Rml::String mp_current_text{};
+        Rml::String mp_after_text{};
         bool has_hp_gain{false};
         bool has_mp_gain{false};
     };
 
     engine::core::State previous_state_{};
-    int selected_hours_{24};
+    int selected_hours_{8};
     entt::entity player_{entt::null};
     bool context_pushed_{false};
     bool data_types_registered_{false};
