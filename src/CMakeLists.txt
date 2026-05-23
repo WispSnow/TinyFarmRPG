@@ -304,6 +304,7 @@ target_sources(game PRIVATE
     game/scene/battle_input_router.cpp
     game/scene/battle_scene_data_bindings.cpp
     game/scene/battle_scene_entry.cpp
+    game/scene/battle_view_model_builder.cpp
     game/scene/battle_victory_flow_controller.cpp
     game/scene/battle_scene.cpp
     game/scene/inventory_menu_character_panel.cpp
