@@ -93,6 +93,11 @@ FixturePaths createValidRpgFixture() {
       "max_level": 99,
       "skill_ids": ["skill.attack"],
       "map_actor_id": "hero",
+      "battle_visual": {
+        "sprite_blueprint_id": "hero",
+        "idle_animation": "idle_left",
+        "sprite_scale": 2.0
+      },
       "portrait": {
         "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
         "x": 0,
@@ -168,7 +173,7 @@ FixturePaths createValidRpgFixture() {
       "battle_visual": {
         "sprite_blueprint_id": "slime",
         "idle_animation": "idle_right",
-        "scale": 2.0,
+        "sprite_scale": 2.0,
         "shadow_offset": { "x": 2.0, "y": -6.0 }
       },
       "drops": [
@@ -236,6 +241,10 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->class_id_, "class.adventurer");
     EXPECT_EQ(actor->map_actor_id_, "hero");
+    EXPECT_TRUE(actor->battle_visual_.valid());
+    EXPECT_EQ(actor->battle_visual_.sprite_blueprint_id_, "hero");
+    EXPECT_EQ(actor->battle_visual_.idle_animation_, "idle_left");
+    EXPECT_FLOAT_EQ(actor->battle_visual_.sprite_scale_, 2.0F);
     ASSERT_EQ(actor->skill_ids_.size(), 1U);
     EXPECT_EQ(actor->skill_ids_[0], "skill.attack");
     ASSERT_TRUE(actor->portrait_.valid());
@@ -266,7 +275,7 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     EXPECT_EQ(enemy->exp_reward_, 10);
     EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
     EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
-    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 2.0F);
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.sprite_scale_, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.x, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.y, -6.0F);
 
@@ -329,7 +338,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     EXPECT_TRUE(enemy->battle_visual_.valid());
     EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
     EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
-    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 2.0F);
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.sprite_scale_, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.x, 0.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.y, -8.0F);
 
@@ -337,13 +346,13 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     ASSERT_NE(goblin, nullptr);
     EXPECT_TRUE(goblin->battle_visual_.valid());
     EXPECT_EQ(goblin->battle_visual_.sprite_blueprint_id_, "goblin");
-    EXPECT_FLOAT_EQ(goblin->battle_visual_.scale_, 2.0F);
+    EXPECT_FLOAT_EQ(goblin->battle_visual_.sprite_scale_, 2.0F);
 
     const auto* gnome = catalog.findEnemy("enemy.gnome");
     ASSERT_NE(gnome, nullptr);
     EXPECT_TRUE(gnome->battle_visual_.valid());
     EXPECT_EQ(gnome->battle_visual_.sprite_blueprint_id_, "gnome");
-    EXPECT_FLOAT_EQ(gnome->battle_visual_.scale_, 2.0F);
+    EXPECT_FLOAT_EQ(gnome->battle_visual_.sprite_scale_, 2.0F);
 
     const auto* troop = catalog.findTroop("troop.slime");
     ASSERT_NE(troop, nullptr);
@@ -356,6 +365,10 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(player->display_name_, "Alex");
     EXPECT_EQ(player->map_actor_id_, "player");
+    EXPECT_TRUE(player->battle_visual_.valid());
+    EXPECT_EQ(player->battle_visual_.sprite_blueprint_id_, "player");
+    EXPECT_EQ(player->battle_visual_.idle_animation_, "idle_left");
+    EXPECT_FLOAT_EQ(player->battle_visual_.sprite_scale_, 2.0F);
     ASSERT_TRUE(player->portrait_.valid());
     EXPECT_EQ(player->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png");
     EXPECT_EQ(player->portrait_.decorator_, "portrait-player");
@@ -365,6 +378,10 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     const auto* lyria = catalog.findActor("actor.lyria");
     ASSERT_NE(lyria, nullptr);
     EXPECT_EQ(lyria->map_actor_id_, "lyria");
+    EXPECT_TRUE(lyria->battle_visual_.valid());
+    EXPECT_EQ(lyria->battle_visual_.sprite_blueprint_id_, "lyria");
+    EXPECT_EQ(lyria->battle_visual_.idle_animation_, "idle_left");
+    EXPECT_FLOAT_EQ(lyria->battle_visual_.sprite_scale_, 2.0F);
     ASSERT_TRUE(lyria->portrait_.valid());
     EXPECT_EQ(lyria->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png");
     EXPECT_EQ(lyria->portrait_.decorator_, "portrait-lyria");
@@ -372,6 +389,10 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     const auto* tori = catalog.findActor("actor.tori");
     ASSERT_NE(tori, nullptr);
     EXPECT_EQ(tori->map_actor_id_, "tori");
+    EXPECT_TRUE(tori->battle_visual_.valid());
+    EXPECT_EQ(tori->battle_visual_.sprite_blueprint_id_, "tori");
+    EXPECT_EQ(tori->battle_visual_.idle_animation_, "idle_left");
+    EXPECT_FLOAT_EQ(tori->battle_visual_.sprite_scale_, 2.0F);
     ASSERT_TRUE(tori->portrait_.valid());
     EXPECT_EQ(tori->portrait_.path_, "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png");
     EXPECT_EQ(tori->portrait_.decorator_, "portrait-tori");

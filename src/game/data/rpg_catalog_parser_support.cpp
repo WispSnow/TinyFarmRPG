@@ -355,8 +355,8 @@ bool parseRpgBattleVisual(const RpgCatalogJson& node, BattleVisualData& out_visu
 
     out_visual.sprite_blueprint_id_ = node.value("sprite_blueprint_id", std::string{});
     out_visual.idle_animation_ = node.value("idle_animation", std::string{"idle_right"});
-    out_visual.scale_ = node.value("scale", 1.0F);
-    if (out_visual.scale_ <= 0.0F) {
+    out_visual.sprite_scale_ = node.value("sprite_scale", 1.0F);
+    if (out_visual.sprite_scale_ <= 0.0F) {
         return false;
     }
     if (const auto shadow_offset_it = node.find("shadow_offset");

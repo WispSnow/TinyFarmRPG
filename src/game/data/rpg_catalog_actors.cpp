@@ -47,6 +47,12 @@ bool loadRpgActorsFile(const std::string_view file_path,
         actor.map_actor_id_ = actor_node.value("map_actor_id", std::string{});
         actor.map_actor_id_hash_ = actor.map_actor_id_.empty() ? entt::null : RpgCatalog::hashId(actor.map_actor_id_);
 
+        if (const auto visual_it = actor_node.find("battle_visual");
+            visual_it != actor_node.end() && !parseRpgBattleVisual(*visual_it, actor.battle_visual_)) {
+            spdlog::error("RpgCatalog: actor '{}' battle_visual 配置非法", actor.id_);
+            return false;
+        }
+
         if (actor.class_id_.empty()) {
             spdlog::error("RpgCatalog: actor '{}' 缺少 class_id", actor.id_);
             return false;

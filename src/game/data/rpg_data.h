@@ -112,6 +112,17 @@ struct PortraitRefData {
     [[nodiscard]] bool valid() const { return !path_.empty() && width_ > 0 && height_ > 0; }
 };
 
+struct BattleVisualData {
+    std::string sprite_blueprint_id_{};
+    entt::id_type sprite_blueprint_id_hash_{};
+    std::string idle_animation_{"idle_right"};
+    float sprite_scale_{1.0F};
+    /// @brief 战斗阴影相对默认脚底锚点的屏幕逻辑坐标偏移。
+    glm::vec2 shadow_offset_{0.0F, 0.0F};
+
+    [[nodiscard]] bool valid() const { return !sprite_blueprint_id_.empty(); }
+};
+
 struct ActorData {
     std::string id_{};
     entt::id_type id_hash_{};
@@ -122,6 +133,7 @@ struct ActorData {
     std::vector<std::string> skill_ids_{};
     std::string map_actor_id_{};
     entt::id_type map_actor_id_hash_{};
+    BattleVisualData battle_visual_{};
     PortraitRefData portrait_{};
 };
 
@@ -154,17 +166,6 @@ struct EnemyDropData {
 struct EnemyActionData {
     std::string skill_id_{};
     int rating_{0};
-};
-
-struct BattleVisualData {
-    std::string sprite_blueprint_id_{};
-    entt::id_type sprite_blueprint_id_hash_{};
-    std::string idle_animation_{"idle_right"};
-    float scale_{1.0F};
-    /// @brief 战斗阴影相对默认脚底锚点的屏幕逻辑坐标偏移。
-    glm::vec2 shadow_offset_{0.0F, 0.0F};
-
-    [[nodiscard]] bool valid() const { return !sprite_blueprint_id_.empty(); }
 };
 
 struct EnemyData {

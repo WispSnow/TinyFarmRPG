@@ -2267,7 +2267,14 @@ bool BattleScene::initPresentation() {
         if (unit.side == game::battle::BattleSide::Player) {
             if (rpg_catalog_ && unit.source_actor_id) {
                 if (const auto* actor = rpg_catalog_->findActor(*unit.source_actor_id)) {
-                    blueprint_id = actor->map_actor_id_;
+                    if (actor->battle_visual_.valid()) {
+                        blueprint_id = actor->battle_visual_.sprite_blueprint_id_;
+                        idle_animation = actor->battle_visual_.idle_animation_;
+                        scale = actor->battle_visual_.sprite_scale_;
+                        shadow_offset = actor->battle_visual_.shadow_offset_;
+                    } else {
+                        blueprint_id = actor->map_actor_id_;
+                    }
                 }
             }
             if (blueprint_id.empty() && unit.source_actor_id) {
@@ -2281,7 +2288,7 @@ bool BattleScene::initPresentation() {
                 if (enemy->battle_visual_.valid()) {
                     blueprint_id = enemy->battle_visual_.sprite_blueprint_id_;
                     idle_animation = enemy->battle_visual_.idle_animation_;
-                    scale = enemy->battle_visual_.scale_;
+                    scale = enemy->battle_visual_.sprite_scale_;
                     shadow_offset = enemy->battle_visual_.shadow_offset_;
                 } else {
                     spdlog::warn("BattleScene: enemy '{}' 缺少 battle_visual，已跳过战斗精灵。", enemy->id_);

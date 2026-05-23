@@ -11,6 +11,11 @@
                 "skill.bash"
             ],
             "map_actor_id": "player",
+            "battle_visual": {
+                "sprite_blueprint_id": "player",
+                "idle_animation": "idle_left",
+                "sprite_scale": 2.0
+            },
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png",
                 "decorator": "portrait-player",
@@ -32,6 +37,11 @@
                 "skill.thunder_1"
             ],
             "map_actor_id": "lyria",
+            "battle_visual": {
+                "sprite_blueprint_id": "lyria",
+                "idle_animation": "idle_left",
+                "sprite_scale": 2.0
+            },
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png",
                 "decorator": "portrait-lyria",
@@ -52,6 +62,11 @@
                 "skill.heal_1"
             ],
             "map_actor_id": "tori",
+            "battle_visual": {
+                "sprite_blueprint_id": "tori",
+                "idle_animation": "idle_left",
+                "sprite_scale": 2.0
+            },
             "portrait": {
                 "path": "assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png",
                 "decorator": "portrait-tori",
