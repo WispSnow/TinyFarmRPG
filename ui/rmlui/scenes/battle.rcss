@@ -381,7 +381,7 @@ body, div, h1, h2, h3, h4, p, hr {
 .battle-party-main {
     display: flex;
     flex-direction: column;
-    gap: 4dp;
+    gap: 0;
     width: 114dp;
     height: 78dp;
 }
@@ -391,22 +391,21 @@ body, div, h1, h2, h3, h4, p, hr {
     flex-direction: row;
     gap: 4dp;
     width: 114dp;
-    height: 58dp;
+    height: 64dp;
 }
 
 .battle-portrait {
-    width: 36dp;
-    height: 36dp;
-    margin-top: 2dp;
-    background-color: #1a1b26cc;
-    border-width: 1dp;
-    border-color: #414868ff;
+    width: 64dp;
+    height: 64dp;
+    background-color: #00000000;
+    border-width: 0dp;
+    border-color: #00000000;
     decorator: none;
 }
 
 .battle-party-stats {
-    width: 74dp;
-    height: 58dp;
+    width: 46dp;
+    height: 64dp;
 }
 
 .battle-party-name {
@@ -414,7 +413,7 @@ body, div, h1, h2, h3, h4, p, hr {
     height: 14dp;
     line-height: 14dp;
     color: #2a1f17ff;
-    text-align: left;
+    text-align: center;
     font-effect: shadow(1dp 1dp #ffffff44);
     overflow: hidden;
 }
@@ -425,7 +424,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-label {
-    width: 74dp;
+    width: 46dp;
     height: 11dp;
     line-height: 11dp;
     color: #2a1f17ff;
@@ -442,12 +441,12 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-kind {
-    width: 13dp;
+    width: 11dp;
     color: #6f4f37cc;
 }
 
 .battle-stat-value {
-    width: 61dp;
+    width: 35dp;
     color: #2a1f17ff;
     font-size: 0.4375rem;
     text-align: right;
@@ -462,7 +461,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-bar {
-    width: 74dp;
+    width: 46dp;
     height: 6dp;
     background-color: #1a1b26cc;
     border-width: 1dp;
@@ -474,7 +473,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-state-icon-row {
-    width: 74dp;
+    width: 46dp;
     height: 12dp;
     margin-top: 4dp;
     display: flex;

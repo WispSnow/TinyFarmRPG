@@ -1050,6 +1050,12 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find(".battle-log-entry"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-list-entry-row"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-target-entry-row"), std::string::npos);
+    const std::string portrait_block = snippetFrom(rcss, ".battle-portrait {");
+    ASSERT_FALSE(portrait_block.empty());
+    EXPECT_NE(portrait_block.find("width: 64dp;"), std::string::npos);
+    EXPECT_NE(portrait_block.find("height: 64dp;"), std::string::npos);
+    EXPECT_NE(portrait_block.find("background-color: #00000000;"), std::string::npos);
+    EXPECT_NE(portrait_block.find("border-width: 0dp;"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-damage"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-recovery"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-state"), std::string::npos);
