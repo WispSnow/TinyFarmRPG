@@ -530,6 +530,8 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("BattleShadowComponent"), std::string::npos);
     EXPECT_NE(source.find("syncPresentationShadows"), std::string::npos);
     EXPECT_NE(source.find("BATTLE_SHADOW_VERTICAL_PADDING"), std::string::npos);
+    EXPECT_NE(source.find("shadow_offset = enemy->battle_visual_.shadow_offset_"), std::string::npos);
+    EXPECT_NE(source.find("+ sprite.shadow_offset"), std::string::npos);
     EXPECT_NE(source.find("idle_left"), std::string::npos);
     EXPECT_NE(source.find("enemy->battle_visual_"), std::string::npos);
     EXPECT_NE(source.find("AppearanceLayerCacheBuilder::rebuild"), std::string::npos);

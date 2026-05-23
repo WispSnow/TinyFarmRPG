@@ -313,7 +313,7 @@
             "position": {"x": 0, "y": 32},
             "src_size": {"width": 32, "height": 32},
             "dst_size": {"width": 32, "height": 32},
-            "pivot": {"x": 0.5, "y": 0.75}
+            "pivot": {"x": 0.5, "y": 0.55}
         },
         "animations": {
             "idle": {
@@ -321,7 +321,7 @@
                 "position": {"x": 0, "y": 0},
                 "src_size": {"width": 32, "height": 32},
                 "dst_size": {"width": 32, "height": 32},
-                "pivot": {"x": 0.5, "y": 0.75},
+                "pivot": {"x": 0.5, "y": 0.55},
                 "frames": [0, 1, 2, 3],
                 "duration": 200,
                 "direction": ["left", "down", "up"]
@@ -331,7 +331,7 @@
                 "position": {"x": 0, "y": 0},
                 "src_size": {"width": 32, "height": 32},
                 "dst_size": {"width": 32, "height": 32},
-                "pivot": {"x": 0.5, "y": 0.75},
+                "pivot": {"x": 0.5, "y": 0.55},
                 "frames": [0, 1, 2, 3],
                 "duration": 120,
                 "direction": ["left", "down", "up"]
