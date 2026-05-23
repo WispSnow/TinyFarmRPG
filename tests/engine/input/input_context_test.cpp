@@ -13,15 +13,99 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <variant>
 #include <vector>
 
 #include "engine/core/game_state.h"
+#include "engine/input/input_binding_tokens.h"
+#include "engine/input/input_context_registry.h"
+#include "engine/input/input_event_routing.h"
 #include "engine/input/input_manager.h"
 
 namespace engine::input {
 namespace {
 
 using namespace entt::literals;
+
+TEST(InputContextRegistryTest, BuildsDefaultContextDefinitionsFromRegisteredActions) {
+    const auto mappings = defaultInputMappings();
+    std::unordered_map<entt::id_type, ActionEntry> actions;
+    std::vector<entt::id_type> dispatch_order;
+
+    for (const auto& [action_name, _] : mappings) {
+        const auto action_id = entt::hashed_string{action_name.c_str()}.value();
+        actions[action_id].name = action_name;
+        dispatch_order.push_back(action_id);
+    }
+
+    const auto definitions = buildInputContextDefinitions(dispatch_order, actions);
+    ASSERT_TRUE(definitions.contains(InputContextId::Gameplay));
+    ASSERT_TRUE(definitions.contains(InputContextId::Menu));
+    ASSERT_TRUE(definitions.contains(InputContextId::Dialogue));
+    ASSERT_TRUE(definitions.contains(InputContextId::Battle));
+
+    EXPECT_TRUE(definitions.at(InputContextId::Gameplay).allowed_actions.contains("move_left"_hs));
+    EXPECT_TRUE(definitions.at(InputContextId::Gameplay).allowed_actions.contains("toggle_prompt_bar"_hs));
+    EXPECT_FALSE(definitions.at(InputContextId::Menu).allowed_actions.contains("move_left"_hs));
+    EXPECT_TRUE(definitions.at(InputContextId::Menu).allowed_actions.contains("inventory_tab_map"_hs));
+    EXPECT_FALSE(definitions.at(InputContextId::Dialogue).allowed_actions.contains("inventory"_hs));
+    EXPECT_FALSE(definitions.at(InputContextId::Battle).allowed_actions.contains("inventory_tab_equipment"_hs));
+}
+
+TEST(InputEventRoutingTest, SuppressesMenuNavigationKeyboardEventsOnlyInMenuLikeContexts) {
+    std::unordered_set<SDL_Scancode> suppressed_scancodes{
+        SDL_SCANCODE_W,
+        SDL_SCANCODE_RETURN,
+    };
+
+    SDL_Event event{};
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.scancode = SDL_SCANCODE_W;
+    EXPECT_TRUE(shouldSuppressRmlUiKeyboardEvent(event, InputContextId::Menu, suppressed_scancodes));
+    EXPECT_TRUE(shouldSuppressRmlUiKeyboardEvent(event, InputContextId::Dialogue, suppressed_scancodes));
+    EXPECT_FALSE(shouldSuppressRmlUiKeyboardEvent(event, InputContextId::Gameplay, suppressed_scancodes));
+
+    event.key.scancode = SDL_SCANCODE_TAB;
+    EXPECT_FALSE(shouldSuppressRmlUiKeyboardEvent(event, InputContextId::Menu, suppressed_scancodes));
+
+    event.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    EXPECT_TRUE(shouldAlwaysPropagateAfterUi(event));
+
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.scancode = SDL_SCANCODE_RETURN;
+    EXPECT_FALSE(shouldAlwaysPropagateAfterUi(event));
+}
+
+TEST(InputBindingTokensTest, ConvertsTokensAndSdlEventsToBindingDefinitions) {
+    const auto mouse_binding = bindingDefinitionFromToken("MouseRight");
+    ASSERT_TRUE(mouse_binding.has_value());
+    EXPECT_EQ(mouse_binding->device, InputDevice::Mouse);
+    EXPECT_EQ(std::get<Uint32>(mouse_binding->physical_input), SDL_BUTTON_RIGHT);
+    EXPECT_EQ(mouse_binding->token, "MouseRight");
+
+    SDL_Event key_event{};
+    key_event.type = SDL_EVENT_KEY_DOWN;
+    key_event.key.down = true;
+    key_event.key.repeat = false;
+    key_event.key.scancode = SDL_SCANCODE_Z;
+    const auto key_binding = bindingDefinitionFromEvent(key_event, 7, 0.6f);
+    ASSERT_TRUE(key_binding.has_value());
+    EXPECT_EQ(key_binding->device, InputDevice::Keyboard);
+    EXPECT_EQ(std::get<SDL_Scancode>(key_binding->physical_input), SDL_SCANCODE_Z);
+
+    SDL_Event axis_event{};
+    axis_event.type = SDL_EVENT_GAMEPAD_AXIS_MOTION;
+    axis_event.gaxis.which = 7;
+    axis_event.gaxis.axis = SDL_GAMEPAD_AXIS_LEFTX;
+    axis_event.gaxis.value = 30000;
+    const auto axis_binding = bindingDefinitionFromEvent(axis_event, 7, 0.6f);
+    ASSERT_TRUE(axis_binding.has_value());
+    EXPECT_EQ(axis_binding->device, InputDevice::Gamepad);
+    EXPECT_EQ(std::get<GamepadAxisDirection>(axis_binding->physical_input), GamepadAxisDirection::LeftStickRight);
+    EXPECT_EQ(axis_binding->token, "LeftStickRight");
+}
 
 [[nodiscard]] bool initSdlVideoWithDummyFallback(Uint32 flags) {
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");

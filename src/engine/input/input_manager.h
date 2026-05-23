@@ -340,8 +340,6 @@ private:
     void closeActiveGamepad();
     void clearGamepadContributions();
     void clearAllInputState();
-    [[nodiscard]] std::optional<BindingDefinition> bindingDefinitionFromToken(std::string_view token) const;
-    [[nodiscard]] std::optional<BindingDefinition> bindingDefinitionFromEvent(const SDL_Event& event) const;
     [[nodiscard]] bool persistBindings() const;
     [[nodiscard]] bool applyBindingReplacement(entt::id_type action_name_id,
                                                std::size_t binding_index,
@@ -352,15 +350,9 @@ private:
         std::size_t binding_index,
         const BindingDefinition& candidate) const;
     [[nodiscard]] bool handleRebindCaptureEvent(const SDL_Event& event);
-    [[nodiscard]] bool isSystemEventDuringCapture(const SDL_Event& event) const;
     [[nodiscard]] const InputContextDefinition* currentContextDefinition() const;
-    [[nodiscard]] bool shouldSuppressRmlUiKeyboardEvent(const SDL_Event& event) const;
     void resetGamepadDebugState();
 
-    [[nodiscard]] SDL_Scancode scancodeFromString(std::string_view key_name) const;     ///< @brief 将字符串键名转换为 SDL_Scancode
-    [[nodiscard]] Uint32 mouseButtonFromString(std::string_view button_name) const;      ///< @brief 将字符串按钮名转换为 SDL_Button
-    [[nodiscard]] SDL_GamepadButton gamepadButtonFromString(std::string_view button_name) const;
-    [[nodiscard]] std::optional<GamepadAxisDirection> gamepadAxisDirectionFromString(std::string_view axis_name) const;
     void recalculateLogicalMousePosition();                         ///< @brief 根据当前窗口/逻辑尺寸更新逻辑坐标
 };
 
