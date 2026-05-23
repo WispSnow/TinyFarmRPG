@@ -7,11 +7,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "game/script/script_state.h"
+
 #include <nlohmann/json_fwd.hpp>
 
 namespace game::save {
 
-constexpr std::uint32_t SAVE_SCHEMA_VERSION = 6;
+constexpr std::uint32_t SAVE_SCHEMA_VERSION = 7;
 
 namespace json_keys {
 inline constexpr std::string_view SCHEMA_VERSION = "schema_version";
@@ -26,6 +28,7 @@ inline constexpr std::string_view PARTY_STATE = "party_state";
 inline constexpr std::string_view EQUIPMENT_STATE = "equipment_state";
 inline constexpr std::string_view PARTY_RUNTIME_STATE = "party_runtime_state";
 inline constexpr std::string_view COMBAT_STATE = "combat_state";
+inline constexpr std::string_view SCRIPT_STATE = "script_state";
 inline constexpr std::string_view ACTIVE_QUESTS = "active_quests";
 inline constexpr std::string_view COMPLETED_QUESTS = "completed_quests";
 inline constexpr std::string_view OBJECTIVE_PROGRESS = "objective_progress";
@@ -173,6 +176,10 @@ struct CombatStateSaveData {
     std::uint32_t escape_attempt_count{0};
 };
 
+struct ScriptStateSaveData {
+    game::script::ScriptStateValueMap values{};
+};
+
 struct SaveData {
     std::uint32_t schema_version{SAVE_SCHEMA_VERSION};
     std::optional<std::string> timestamp{};
@@ -188,6 +195,7 @@ struct SaveData {
     EquipmentStateSaveData equipment_state{};
     PartyRuntimeStateSaveData party_runtime_state{};
     CombatStateSaveData combat_state{};
+    ScriptStateSaveData script_state{};
 };
 
 [[nodiscard]] nlohmann::json serialize(const SaveData& data);

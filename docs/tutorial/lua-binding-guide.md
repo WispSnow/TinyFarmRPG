@@ -64,14 +64,13 @@ lua_.open_libraries(
     sol::lib::base,     // print, assert, type, pairs ...
     sol::lib::math,     // math.floor, math.random ...
     sol::lib::table,    // table.insert, table.sort ...
-    sol::lib::string,   // string.format, string.find ...
-    sol::lib::package   // require ...
+    sol::lib::string    // string.format, string.find ...
 );
 ```
 
 每个 `sol::lib` 对应 Lua 标准库的一个模块。你可以按需选择——不加载的库在脚本中就不可用（这也是安全沙箱的基础）。
 
-> **项目选择**：没有加载 `sol::lib::io`（文件操作）和 `sol::lib::os`（系统命令），因为脚本不需要直接访问文件系统。这是有意的安全限制。
+> **项目选择**：没有加载 `sol::lib::io`（文件操作）、`sol::lib::os`（系统命令）和 `sol::lib::package`（Lua 原生 `require`）。脚本模块通过白名单式 `tf.script.require("module.name")` 加载，只能解析到 `scripts/` 下的 `.lua` 文件。
 
 ---
 
@@ -151,20 +150,36 @@ tf
 │   └── formatted()    → string
 ├── player
 │   ├── exists()       → bool
-│   ├── id()           → uint32
+│   ├── handle()       → ScriptEntityHandle | nil
 │   └── position()     → float, float  (多返回值)
 ├── command
-│   ├── add_item(item_id, count [, target_id] [, slot])  → bool
-│   ├── remove_item(item_id, count [, target_id] [, slot]) → bool
-│   ├── inventory_sync([target_id])                       → bool
-│   ├── hotbar_sync([target_id] [, full_sync])            → bool
-│   └── interact(target_id [, player_id])                 → bool
-└── dialogue
-    ├── show(text [, speaker] [, channel] [, target_id])  → bool
-    └── hide([channel] [, target_id])                     → bool
+│   ├── add_item(item_id, count [, target_handle] [, slot])     → bool
+│   ├── remove_item(item_id, count [, target_handle] [, slot])  → bool
+│   ├── inventory_sync([target_handle])                         → bool
+│   ├── hotbar_sync([target_handle] [, full_sync])              → bool
+│   └── interact(target_handle [, player_handle])               → bool
+├── dialogue
+│   ├── show(text [, speaker] [, channel] [, target_handle])    → bool
+│   └── hide([channel] [, target_handle])                       → bool
+├── event
+│   └── on(event_name, fn)                                      → bool
+├── callbacks
+│   ├── on_interact(fn)                                         → bool
+│   ├── on_day_changed(fn)                                      → bool
+│   └── on_battle_end(fn)                                       → bool
+├── script
+│   └── require(module_name)                                    → table | bool | nil
+└── state
+    ├── get(key [, default])                                    → value | default | nil
+    ├── get_int/get_number/get_bool/get_string(key [, default]) → typed value
+    ├── set(key, value)                                         → bool
+    ├── add(key [, amount])                                     → number | nil
+    └── unset(key)                                              → bool
 ```
 
 `[ ]` 表示可选参数，用 `sol::optional` 实现。
+
+`tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
 
 ---
 

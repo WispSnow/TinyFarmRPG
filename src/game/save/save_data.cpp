@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include <string_view>
+#include <type_traits>
 
 namespace game::save {
 
@@ -19,6 +20,7 @@ constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
 constexpr std::string_view KEY_EQUIPMENT_STATE = json_keys::EQUIPMENT_STATE;
 constexpr std::string_view KEY_PARTY_RUNTIME_STATE = json_keys::PARTY_RUNTIME_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
+constexpr std::string_view KEY_SCRIPT_STATE = json_keys::SCRIPT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
 constexpr std::string_view KEY_OBJECTIVE_PROGRESS = json_keys::OBJECTIVE_PROGRESS;
@@ -240,6 +242,45 @@ bool readPartyRuntimeState(const nlohmann::json& json,
     return true;
 }
 
+nlohmann::json scriptStateValueToJson(const game::script::ScriptStateValue& value) {
+    return std::visit(
+        [](const auto& stored_value) -> nlohmann::json {
+            using Value = std::decay_t<decltype(stored_value)>;
+            if constexpr (std::is_same_v<Value, std::nullptr_t>) {
+                return nullptr;
+            } else {
+                return stored_value;
+            }
+        },
+        value);
+}
+
+bool readScriptState(const nlohmann::json& json,
+                     ScriptStateSaveData& out_state,
+                     std::string& out_error) {
+    out_state.values.clear();
+    if (!json.is_object()) {
+        out_error = "SaveData: script_state is not an object";
+        return false;
+    }
+
+    for (const auto& [key, value] : json.items()) {
+        if (value.is_null()) {
+            out_state.values.emplace(key, nullptr);
+        } else if (value.is_boolean()) {
+            out_state.values.emplace(key, value.get<bool>());
+        } else if (value.is_number()) {
+            out_state.values.emplace(key, value.get<double>());
+        } else if (value.is_string()) {
+            out_state.values.emplace(key, value.get<std::string>());
+        } else {
+            out_error = "SaveData: script_state." + key + " is not a JSON primitive";
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 nlohmann::json serialize(const SaveData& data) {
@@ -381,6 +422,13 @@ nlohmann::json serialize(const SaveData& data) {
         {KEY_ITEM_STOCKS, stringIntMapToJson(data.combat_state.item_stocks)},
         {KEY_ESCAPE_ATTEMPT_COUNT, data.combat_state.escape_attempt_count},
     };
+    {
+        nlohmann::json script_state = nlohmann::json::object();
+        for (const auto& [key, value] : data.script_state.values) {
+            script_state[key] = scriptStateValueToJson(value);
+        }
+        root[KEY_SCRIPT_STATE] = std::move(script_state);
+    }
 
     return root;
 }
@@ -648,6 +696,10 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
         if (!readStringIntMapField(combat_state, KEY_ITEM_STOCKS, out.combat_state.item_stocks, out_error)) {
             return false;
         }
+    }
+    if (json.contains(KEY_SCRIPT_STATE) &&
+        !readScriptState(json[KEY_SCRIPT_STATE], out.script_state, out_error)) {
+        return false;
     }
 
     return true;

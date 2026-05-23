@@ -61,6 +61,8 @@ TEST(SaveMigratorTest, V2ToLatestFillsNewStateFields) {
     EXPECT_TRUE(json[json_keys::PARTY_STATE.data()][json_keys::RECRUITED_ACTOR_IDS.data()].is_array());
     EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::ACTIVE_ACTOR_IDS.data()));
     EXPECT_TRUE(json[json_keys::PARTY_STATE.data()][json_keys::ACTIVE_ACTOR_IDS.data()].is_array());
+    EXPECT_TRUE(json.contains(json_keys::SCRIPT_STATE.data()));
+    EXPECT_TRUE(json[json_keys::SCRIPT_STATE.data()].is_object());
 
     EXPECT_EQ(json[json_keys::GAME_TIME.data()][json_keys::DAY.data()], 5);
     EXPECT_EQ(json["player"]["map_name"], "farm");
@@ -189,6 +191,68 @@ TEST(SaveMigratorTest, V5ToLatestAddsRuntimeLevelAndTotalExp) {
     EXPECT_EQ(actor_state[json_keys::TOTAL_EXP.data()], 0);
     EXPECT_EQ(actor_state[json_keys::CURRENT_HP.data()], 42);
     EXPECT_EQ(actor_state[json_keys::CURRENT_MP.data()], 9);
+}
+
+TEST(SaveMigratorTest, V6ToLatestAddsScriptStateAndPreservesPrimitiveValues) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 6,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {},
+        "party_state": {},
+        "equipment_state": {},
+        "party_runtime_state": {},
+        "combat_state": {},
+        "script_state": {
+            "quest.first_delivery.stage": 2,
+            "npc.lyria.mood": "happy",
+            "flags.met_lyria": true,
+            "nullable.marker": null
+        }
+    })");
+
+    std::string error;
+    ASSERT_TRUE(migrateToLatest(json, error)) << error;
+
+    EXPECT_EQ(json[json_keys::SCHEMA_VERSION.data()], SAVE_SCHEMA_VERSION);
+    ASSERT_TRUE(json.contains(json_keys::SCRIPT_STATE.data()));
+    const auto& script_state = json[json_keys::SCRIPT_STATE.data()];
+    EXPECT_EQ(script_state["quest.first_delivery.stage"], 2);
+    EXPECT_EQ(script_state["npc.lyria.mood"], "happy");
+    EXPECT_EQ(script_state["flags.met_lyria"], true);
+    EXPECT_TRUE(script_state["nullable.marker"].is_null());
+}
+
+TEST(SaveMigratorTest, V6ToLatestRejectsNonPrimitiveScriptStateValue) {
+    auto json = nlohmann::json::parse(R"({
+        "schema_version": 6,
+        "game_time": {"day": 5},
+        "player": {
+            "map_name": "farm",
+            "position": {"x": 10.5, "y": 20.5}
+        },
+        "maps": [],
+        "quest_state": {},
+        "skill_state": {},
+        "appearance_state": {},
+        "party_state": {},
+        "equipment_state": {},
+        "party_runtime_state": {},
+        "combat_state": {},
+        "script_state": {
+            "bad.table": []
+        }
+    })");
+
+    std::string error;
+    EXPECT_FALSE(migrateToLatest(json, error));
+    EXPECT_NE(error.find("script_state.bad.table"), std::string::npos);
 }
 
 TEST(SaveMigratorTest, V5ToLatestRejectsInvalidRuntimeProgressFields) {

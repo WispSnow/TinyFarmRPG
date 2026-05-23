@@ -28,6 +28,7 @@
 #include "game/defs/spatial_layers.h"
 #include "game/defs/events.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/script/script_state.h"
 
 #include "engine/component/auto_tile_component.h"
 #include "engine/component/render_component.h"
@@ -577,6 +578,10 @@ SaveData SaveService::capture(std::string& out_error) const {
         }
     }
 
+    if (const auto* script_state = registry_.ctx().find<game::script::ScriptStateStore>()) {
+        out.script_state.values = script_state->values();
+    }
+
     out.maps.clear();
     out.maps.reserve(world_state_.maps().size());
 
@@ -666,6 +671,12 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
     game_time->time_scale_ = data.game_time.time_scale;
     game_time->paused_ = data.game_time.paused;
     game_time->time_of_day_ = game_time->calculateTimeOfDay(game_time->hour_);
+
+    if (auto* script_state = registry_.ctx().find<game::script::ScriptStateStore>()) {
+        script_state->replaceAll(data.script_state.values);
+    } else {
+        registry_.ctx().emplace<game::script::ScriptStateStore>().replaceAll(data.script_state.values);
+    }
 
     map_manager_.unloadCurrentMap();
 
