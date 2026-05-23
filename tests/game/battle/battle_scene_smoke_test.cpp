@@ -997,7 +997,7 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("{{ icon.turns_text }}"), std::string::npos);
     EXPECT_NE(rml.find("battle-state-tooltip"), std::string::npos);
     EXPECT_NE(rml.find("state_tooltip.active_unit_id == member.unit_id"), std::string::npos);
-    EXPECT_NE(rml.find("battle-party-identity"), std::string::npos);
+    EXPECT_NE(rml.find("battle-party-body"), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.hp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("data-style-width=\"member.mp_ratio_percent\""), std::string::npos);
     EXPECT_NE(rml.find("battle-party-main"), std::string::npos);
