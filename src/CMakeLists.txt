@@ -207,9 +207,14 @@ target_sources(game PRIVATE
     # Loader
     game/loader/entity_builder.cpp
     # Runtime
+    game/runtime/asset_preload_registrar.cpp
+    game/runtime/content_catalog_loader.cpp
     game/runtime/system_bundle.cpp
     game/runtime/game_runtime_assembler.cpp
+    game/runtime/runtime_service_factory.cpp
     game/runtime/rpg_catalog_loader.cpp
+    game/runtime/script_runtime_factory.cpp
+    game/runtime/system_factory.cpp
     game/runtime/system_scheduler.cpp
     game/runtime/user_settings.cpp
     game/runtime/user_settings_service.cpp

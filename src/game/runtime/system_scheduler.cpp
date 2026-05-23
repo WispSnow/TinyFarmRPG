@@ -53,7 +53,10 @@
 #include <entt/core/type_info.hpp>
 #include <entt/entity/registry.hpp>
 
+#include <algorithm>
 #include <chrono>
+#include <cstdint>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -78,70 +81,358 @@ constexpr entt::id_type RESOURCE_ANIMAL_BEHAVIOR_DOMAIN = "animal_behavior_domai
     return std::chrono::duration<double, std::milli>(end - begin).count();
 }
 
-const std::vector<SchedulerStage>& exploration_profile() {
-    static const std::vector<SchedulerStage> kStages{
-        SchedulerStage::RemoveEntity,
-        SchedulerStage::TransitionUpdatePre,
-        SchedulerStage::LightTogglePre,
-        SchedulerStage::Time,
-        // DayNight 已进入中段并行岛，保持在 PlayerControl 之后以匹配 tick 实际执行顺序。
-        SchedulerStage::PlayerControl,
-        SchedulerStage::DayNight,
-        SchedulerStage::NPCWander,
-        SchedulerStage::AnimalBehavior,
-        SchedulerStage::Chest,
-        SchedulerStage::ItemUse,
-        SchedulerStage::Dialogue,
-        SchedulerStage::QuestInteraction,
-        SchedulerStage::AutoTile,
-        // ActionSound/State 在 tick 中以同一并行 wave 执行；
-        // 此处顺序仅用于 profile 展示和 fallback 串行回退，不代表 happens-before。
-        SchedulerStage::ActionSound,
-        SchedulerStage::State,
-        SchedulerStage::ScriptCommands,
-        SchedulerStage::Movement,
-        SchedulerStage::TransitionUpdatePost,
-        SchedulerStage::LightTogglePost,
-        SchedulerStage::SpatialIndex,
-        SchedulerStage::CameraFollow,
-        SchedulerStage::Animation,
-        SchedulerStage::EnemyEncounter,
-        SchedulerStage::Pickup,
-        SchedulerStage::Interaction
+enum class StageBlock : std::uint8_t {
+    PreGate1,
+    Gate1Transition,
+    Main,
+    PostTransition,
+    PostGate
+};
+
+enum class ParallelIsland : std::uint8_t {
+    None,
+    MidStage,
+    PreMovement,
+    PostGate
+};
+
+using MainStageRunner = void (*)(const SystemScheduler::TickParams& params);
+
+struct StageDecl {
+    SchedulerStage stage{SchedulerStage::RemoveEntity};
+    std::string_view name{};
+    std::uint8_t mode_mask{0};
+    StageBlock block{StageBlock::Main};
+    MainStageRunner run_main{nullptr};
+    ParallelIsland parallel_island{ParallelIsland::None};
+    engine::system::ExecutionPolicy policy{engine::system::ExecutionPolicy::MainThreadOnly};
+    std::vector<entt::id_type> ro_resources{};
+    std::vector<entt::id_type> rw_resources{};
+};
+
+constexpr std::uint8_t MODE_EXPLORATION = 1U << 0U;
+constexpr std::uint8_t MODE_BATTLE = 1U << 1U;
+constexpr std::uint8_t MODE_PAUSE_OVERLAY = 1U << 2U;
+constexpr std::uint8_t MODE_CUTSCENE = 1U << 3U;
+constexpr std::uint8_t MODE_ALL = MODE_EXPLORATION | MODE_BATTLE | MODE_PAUSE_OVERLAY | MODE_CUTSCENE;
+
+[[nodiscard]] const game::data::GameTime* find_game_time(const entt::registry& registry);
+
+void run_remove_entity(const SystemScheduler::TickParams& params);
+void run_transition_update(const SystemScheduler::TickParams& params);
+void run_light_toggle(const SystemScheduler::TickParams& params);
+void run_time(const SystemScheduler::TickParams& params);
+void run_day_night(const SystemScheduler::TickParams& params);
+void run_player_control(const SystemScheduler::TickParams& params);
+void run_npc_wander(const SystemScheduler::TickParams& params);
+void run_animal_behavior(const SystemScheduler::TickParams& params);
+void run_chest(const SystemScheduler::TickParams& params);
+void run_item_use(const SystemScheduler::TickParams& params);
+void run_dialogue(const SystemScheduler::TickParams& params);
+void run_quest_interaction(const SystemScheduler::TickParams& params);
+void run_action_sound(const SystemScheduler::TickParams& params);
+void run_auto_tile(const SystemScheduler::TickParams& params);
+void run_state(const SystemScheduler::TickParams& params);
+void run_script_commands(const SystemScheduler::TickParams& params);
+void run_movement(const SystemScheduler::TickParams& params);
+void run_spatial_index(const SystemScheduler::TickParams& params);
+void run_enemy_encounter(const SystemScheduler::TickParams& params);
+void run_pickup(const SystemScheduler::TickParams& params);
+void run_interaction(const SystemScheduler::TickParams& params);
+void run_camera_follow(const SystemScheduler::TickParams& params);
+void run_animation(const SystemScheduler::TickParams& params);
+
+[[nodiscard]] const std::vector<StageDecl>& stage_declarations() {
+    static const std::vector<StageDecl> kDecls{
+        {
+            .stage = SchedulerStage::RemoveEntity,
+            .name = "RemoveEntity",
+            .mode_mask = MODE_ALL,
+            .block = StageBlock::PreGate1,
+            .run_main = run_remove_entity
+        },
+        {
+            .stage = SchedulerStage::TransitionUpdatePre,
+            .name = "TransitionUpdatePre",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Gate1Transition,
+            .run_main = run_transition_update
+        },
+        {
+            .stage = SchedulerStage::LightTogglePre,
+            .name = "LightTogglePre",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Gate1Transition,
+            .run_main = run_light_toggle
+        },
+        {
+            .stage = SchedulerStage::Time,
+            .name = "Time",
+            .mode_mask = MODE_EXPLORATION | MODE_CUTSCENE,
+            .block = StageBlock::Main,
+            .run_main = run_time
+        },
+        {
+            .stage = SchedulerStage::PlayerControl,
+            .name = "PlayerControl",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_player_control
+        },
+        {
+            .stage = SchedulerStage::DayNight,
+            .name = "DayNight",
+            .mode_mask = MODE_EXPLORATION | MODE_CUTSCENE,
+            .block = StageBlock::Main,
+            .run_main = run_day_night,
+            .parallel_island = ParallelIsland::MidStage,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .ro_resources = {RESOURCE_GAME_TIME, RESOURCE_WORLD_STATE},
+            .rw_resources = {RESOURCE_GLOBAL_LIGHTING_STATE}
+        },
+        {
+            .stage = SchedulerStage::NPCWander,
+            .name = "NPCWander",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_npc_wander,
+            .parallel_island = ParallelIsland::MidStage,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .rw_resources = {RESOURCE_NPC_WANDER_DOMAIN}
+        },
+        {
+            .stage = SchedulerStage::AnimalBehavior,
+            .name = "AnimalBehavior",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_animal_behavior,
+            .parallel_island = ParallelIsland::MidStage,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .rw_resources = {RESOURCE_ANIMAL_BEHAVIOR_DOMAIN}
+        },
+        {
+            .stage = SchedulerStage::Chest,
+            .name = "Chest",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_chest
+        },
+        {
+            .stage = SchedulerStage::ItemUse,
+            .name = "ItemUse",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_item_use
+        },
+        {
+            .stage = SchedulerStage::Dialogue,
+            .name = "Dialogue",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_dialogue
+        },
+        {
+            .stage = SchedulerStage::QuestInteraction,
+            .name = "QuestInteraction",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_quest_interaction
+        },
+        {
+            .stage = SchedulerStage::AutoTile,
+            .name = "AutoTile",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_auto_tile
+        },
+        {
+            .stage = SchedulerStage::ActionSound,
+            .name = "ActionSound",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_action_sound,
+            .parallel_island = ParallelIsland::PreMovement,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .ro_resources = {
+                entt::type_hash<game::component::StateComponent>::value(),
+                entt::type_hash<engine::component::AudioComponent>::value(),
+                entt::type_hash<engine::component::TransformComponent>::value(),
+                entt::type_hash<engine::component::NeedRemoveTag>::value()
+            },
+            .rw_resources = {entt::type_hash<game::component::ActionSoundComponent>::value()}
+        },
+        {
+            .stage = SchedulerStage::State,
+            .name = "State",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_state,
+            .parallel_island = ParallelIsland::PreMovement,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .ro_resources = {
+                entt::type_hash<game::component::StateComponent>::value(),
+                entt::type_hash<engine::component::AnimationComponent>::value(),
+                entt::type_hash<engine::component::NeedRemoveTag>::value()
+            },
+            .rw_resources = {entt::type_hash<game::component::StateDirtyTag>::value()}
+        },
+        {
+            .stage = SchedulerStage::ScriptCommands,
+            .name = "ScriptCommands",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_script_commands
+        },
+        {
+            .stage = SchedulerStage::Movement,
+            .name = "Movement",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::Main,
+            .run_main = run_movement
+        },
+        {
+            .stage = SchedulerStage::TransitionUpdatePost,
+            .name = "TransitionUpdatePost",
+            .mode_mask = MODE_EXPLORATION | MODE_CUTSCENE,
+            .block = StageBlock::PostTransition,
+            .run_main = run_transition_update
+        },
+        {
+            .stage = SchedulerStage::LightTogglePost,
+            .name = "LightTogglePost",
+            .mode_mask = MODE_EXPLORATION | MODE_CUTSCENE,
+            .block = StageBlock::PostTransition,
+            .run_main = run_light_toggle
+        },
+        {
+            .stage = SchedulerStage::SpatialIndex,
+            .name = "SpatialIndex",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_spatial_index,
+            .parallel_island = ParallelIsland::PostGate,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .ro_resources = {
+                entt::type_hash<engine::component::TransformDirtyTag>::value(),
+                entt::type_hash<engine::component::TransformComponent>::value(),
+                entt::type_hash<engine::component::AABBCollider>::value(),
+                entt::type_hash<engine::component::CircleCollider>::value()
+            },
+            .rw_resources = {RESOURCE_SPATIAL_INDEX}
+        },
+        {
+            .stage = SchedulerStage::CameraFollow,
+            .name = "CameraFollow",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_camera_follow,
+            .parallel_island = ParallelIsland::PostGate,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .ro_resources = {
+                entt::type_hash<game::component::PlayerTag>::value(),
+                entt::type_hash<engine::component::TransformComponent>::value(),
+                RESOURCE_INPUT
+            },
+            .rw_resources = {RESOURCE_CAMERA}
+        },
+        {
+            .stage = SchedulerStage::Animation,
+            .name = "Animation",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_animation,
+            .parallel_island = ParallelIsland::PostGate,
+            .policy = engine::system::ExecutionPolicy::WorkerEligible,
+            .rw_resources = {
+                entt::type_hash<engine::component::AnimationComponent>::value(),
+                entt::type_hash<engine::component::SpriteComponent>::value()
+            }
+        },
+        {
+            .stage = SchedulerStage::EnemyEncounter,
+            .name = "EnemyEncounter",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_enemy_encounter
+        },
+        {
+            .stage = SchedulerStage::Pickup,
+            .name = "Pickup",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_pickup
+        },
+        {
+            .stage = SchedulerStage::Interaction,
+            .name = "Interaction",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_interaction
+        }
     };
+    return kDecls;
+}
+
+[[nodiscard]] std::uint8_t mode_mask_for(const GameMode mode) {
+    switch (mode) {
+        case GameMode::Exploration:
+            return MODE_EXPLORATION;
+        case GameMode::Battle:
+            return MODE_BATTLE;
+        case GameMode::PauseOverlay:
+            return MODE_PAUSE_OVERLAY;
+        case GameMode::Cutscene:
+            return MODE_CUTSCENE;
+    }
+
+    return MODE_EXPLORATION;
+}
+
+[[nodiscard]] bool stage_matches_mode(const StageDecl& decl, const GameMode mode) {
+    return (decl.mode_mask & mode_mask_for(mode)) != 0U;
+}
+
+[[nodiscard]] const StageDecl* find_stage_decl(const SchedulerStage stage) {
+    const auto& decls = stage_declarations();
+    const auto it = std::find_if(decls.begin(), decls.end(), [stage](const StageDecl& decl) {
+        return decl.stage == stage;
+    });
+    return it == decls.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] std::vector<SchedulerStage> build_profile(const GameMode mode) {
+    std::vector<SchedulerStage> stages;
+    for (const auto& decl : stage_declarations()) {
+        if (stage_matches_mode(decl, mode)) {
+            stages.push_back(decl.stage);
+        }
+    }
+    return stages;
+}
+
+const std::vector<SchedulerStage>& exploration_profile() {
+    static const std::vector<SchedulerStage> kStages = build_profile(GameMode::Exploration);
     return kStages;
 }
 
 const std::vector<SchedulerStage>& battle_profile() {
-    static const std::vector<SchedulerStage> kStages{
-        SchedulerStage::RemoveEntity
-    };
+    static const std::vector<SchedulerStage> kStages = build_profile(GameMode::Battle);
     return kStages;
 }
 
 const std::vector<SchedulerStage>& pause_overlay_profile() {
-    static const std::vector<SchedulerStage> kStages{
-        SchedulerStage::RemoveEntity
-    };
+    static const std::vector<SchedulerStage> kStages = build_profile(GameMode::PauseOverlay);
     return kStages;
 }
 
 const std::vector<SchedulerStage>& cutscene_profile() {
-    static const std::vector<SchedulerStage> kStages{
-        SchedulerStage::RemoveEntity,
-        SchedulerStage::Time,
-        SchedulerStage::DayNight,
-        SchedulerStage::TransitionUpdatePost,
-        SchedulerStage::LightTogglePost
-    };
+    static const std::vector<SchedulerStage> kStages = build_profile(GameMode::Cutscene);
     return kStages;
 }
 
 void trace_stage(SystemScheduler::TickResult& result, const SchedulerStage stage, const double elapsed_ms) {
     result.trace.stages.push_back(SystemScheduler::StageTrace{stage, elapsed_ms});
 }
-
-[[nodiscard]] const game::data::GameTime* find_game_time(const entt::registry& registry);
 
 void ensure_global_lighting_state(entt::registry& registry) {
     auto* state = registry.ctx().find<engine::render::GlobalLightingState>();
@@ -150,156 +441,174 @@ void ensure_global_lighting_state(entt::registry& registry) {
     }
 }
 
-void execute_stage_main_thread(const SystemScheduler::TickParams& params,
-                               const SchedulerStage stage,
-                               SystemScheduler::TickResult& result) {
-    auto& systems = params.systems;
-    auto& registry = params.registry;
-    const float delta_time = params.delta_time;
+void run_remove_entity(const SystemScheduler::TickParams& params) {
+    if (params.systems.remove_entity_system) {
+        params.systems.remove_entity_system->update(params.registry);
+    }
+}
 
+void run_transition_update(const SystemScheduler::TickParams& params) {
+    if (params.systems.map_transition_system) {
+        params.systems.map_transition_system->update();
+    }
+}
+
+void run_light_toggle(const SystemScheduler::TickParams& params) {
+    if (params.systems.light_toggle_system) {
+        params.systems.light_toggle_system->update();
+    }
+}
+
+void run_time(const SystemScheduler::TickParams& params) {
+    if (params.systems.time_system) {
+        params.systems.time_system->update(params.delta_time);
+    }
+}
+
+void run_day_night(const SystemScheduler::TickParams& params) {
+    if (params.systems.day_night_system) {
+        ensure_global_lighting_state(params.registry);
+        params.systems.day_night_system->update(find_game_time(params.registry));
+    }
+}
+
+void run_player_control(const SystemScheduler::TickParams& params) {
+    if (params.systems.player_control_system) {
+        params.systems.player_control_system->update(params.delta_time);
+    }
+}
+
+void run_npc_wander(const SystemScheduler::TickParams& params) {
+    if (params.systems.npc_wander_system) {
+        engine::system::DeferredCommands deferred;
+        params.systems.npc_wander_system->update(params.delta_time, deferred);
+        deferred.drain(params.registry);
+    }
+}
+
+void run_animal_behavior(const SystemScheduler::TickParams& params) {
+    if (params.systems.animal_behavior_system) {
+        engine::system::DeferredCommands deferred;
+        params.systems.animal_behavior_system->update(params.delta_time, find_game_time(params.registry), deferred);
+        deferred.drain(params.registry);
+    }
+}
+
+void run_chest(const SystemScheduler::TickParams& params) {
+    if (params.systems.chest_system) {
+        params.systems.chest_system->update(params.delta_time);
+    }
+}
+
+void run_item_use(const SystemScheduler::TickParams& params) {
+    if (params.systems.item_use_system) {
+        params.systems.item_use_system->update(params.delta_time);
+    }
+    if (params.systems.farm_system) {
+        params.systems.farm_system->update(params.delta_time);
+    }
+}
+
+void run_dialogue(const SystemScheduler::TickParams& params) {
+    if (params.systems.dialogue_system) {
+        params.systems.dialogue_system->update(params.delta_time);
+    }
+}
+
+void run_quest_interaction(const SystemScheduler::TickParams& params) {
+    if (params.systems.quest_interaction_system) {
+        params.systems.quest_interaction_system->update(params.delta_time);
+    }
+    if (params.systems.recruitment_interaction_system) {
+        params.systems.recruitment_interaction_system->update(params.delta_time);
+    }
+    if (params.systems.party_recruitment_system) {
+        params.systems.party_recruitment_system->update(params.delta_time);
+    }
+    if (params.systems.shop_interaction_system) {
+        params.systems.shop_interaction_system->update(params.delta_time);
+    }
+}
+
+void run_action_sound(const SystemScheduler::TickParams& params) {
+    if (params.systems.action_sound_system) {
+        params.systems.action_sound_system->update(params.delta_time);
+    }
+}
+
+void run_auto_tile(const SystemScheduler::TickParams& params) {
+    if (params.systems.auto_tile_system) {
+        params.systems.auto_tile_system->update();
+    }
+}
+
+void run_state(const SystemScheduler::TickParams& params) {
+    if (params.systems.state_system) {
+        params.systems.state_system->update();
+    }
+}
+
+void run_script_commands(const SystemScheduler::TickParams& params) {
+    if (params.systems.script_event_bridge) {
+        params.systems.script_event_bridge->drainDeferredCommands();
+    }
+}
+
+void run_movement(const SystemScheduler::TickParams& params) {
+    if (params.systems.movement_system) {
+        params.systems.movement_system->update(params.registry, params.delta_time);
+    }
+}
+
+void run_spatial_index(const SystemScheduler::TickParams& params) {
+    if (params.systems.spatial_index_system) {
+        engine::system::DeferredCommands deferred;
+        params.systems.spatial_index_system->update(params.registry, deferred);
+        deferred.drain(params.registry);
+    }
+}
+
+void run_enemy_encounter(const SystemScheduler::TickParams& params) {
+    if (params.systems.enemy_encounter_system) {
+        params.systems.enemy_encounter_system->update(params.delta_time);
+    }
+}
+
+void run_pickup(const SystemScheduler::TickParams& params) {
+    if (params.systems.pickup_system) {
+        params.systems.pickup_system->update(params.delta_time);
+    }
+}
+
+void run_interaction(const SystemScheduler::TickParams& params) {
+    if (params.systems.interaction_system) {
+        params.systems.interaction_system->update();
+    }
+}
+
+void run_camera_follow(const SystemScheduler::TickParams& params) {
+    if (params.systems.camera_follow_system) {
+        params.systems.camera_follow_system->update(params.delta_time);
+    }
+}
+
+void run_animation(const SystemScheduler::TickParams& params) {
+    if (params.systems.animation_system) {
+        params.systems.animation_system->update(params.delta_time);
+    }
+}
+
+void execute_stage_main_thread(const SystemScheduler::TickParams& params,
+                               const StageDecl& decl,
+                               SystemScheduler::TickResult& result) {
     const auto begin = std::chrono::steady_clock::now();
 
-    switch (stage) {
-        case SchedulerStage::RemoveEntity:
-            if (systems.remove_entity_system) {
-                systems.remove_entity_system->update(registry);
-            }
-            break;
-        case SchedulerStage::TransitionUpdatePre:
-        case SchedulerStage::TransitionUpdatePost:
-            if (systems.map_transition_system) {
-                systems.map_transition_system->update();
-            }
-            break;
-        case SchedulerStage::LightTogglePre:
-        case SchedulerStage::LightTogglePost:
-            if (systems.light_toggle_system) {
-                systems.light_toggle_system->update();
-            }
-            break;
-        case SchedulerStage::Time:
-            if (systems.time_system) {
-                systems.time_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::DayNight:
-            if (systems.day_night_system) {
-                ensure_global_lighting_state(registry);
-                systems.day_night_system->update(find_game_time(registry));
-            }
-            break;
-        case SchedulerStage::PlayerControl:
-            if (systems.player_control_system) {
-                systems.player_control_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::NPCWander:
-            if (systems.npc_wander_system) {
-                engine::system::DeferredCommands deferred;
-                systems.npc_wander_system->update(delta_time, deferred);
-                deferred.drain(registry);
-            }
-            break;
-        case SchedulerStage::AnimalBehavior:
-            if (systems.animal_behavior_system) {
-                engine::system::DeferredCommands deferred;
-                systems.animal_behavior_system->update(delta_time, find_game_time(registry), deferred);
-                deferred.drain(registry);
-            }
-            break;
-        case SchedulerStage::Chest:
-            if (systems.chest_system) {
-                systems.chest_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::ItemUse:
-            if (systems.item_use_system) {
-                systems.item_use_system->update(delta_time);
-            }
-            if (systems.farm_system) {
-                systems.farm_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::Dialogue:
-            if (systems.dialogue_system) {
-                systems.dialogue_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::QuestInteraction:
-            if (systems.quest_interaction_system) {
-                systems.quest_interaction_system->update(delta_time);
-            }
-            if (systems.recruitment_interaction_system) {
-                systems.recruitment_interaction_system->update(delta_time);
-            }
-            if (systems.party_recruitment_system) {
-                systems.party_recruitment_system->update(delta_time);
-            }
-            if (systems.shop_interaction_system) {
-                systems.shop_interaction_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::ActionSound:
-            if (systems.action_sound_system) {
-                systems.action_sound_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::AutoTile:
-            if (systems.auto_tile_system) {
-                systems.auto_tile_system->update();
-            }
-            break;
-        case SchedulerStage::State:
-            if (systems.state_system) {
-                systems.state_system->update();
-            }
-            break;
-        case SchedulerStage::ScriptCommands:
-            if (systems.script_event_bridge) {
-                systems.script_event_bridge->drainDeferredCommands();
-            }
-            break;
-        case SchedulerStage::Movement:
-            if (systems.movement_system) {
-                systems.movement_system->update(registry, delta_time);
-            }
-            break;
-        case SchedulerStage::SpatialIndex:
-            if (systems.spatial_index_system) {
-                engine::system::DeferredCommands deferred;
-                systems.spatial_index_system->update(registry, deferred);
-                deferred.drain(registry);
-            }
-            break;
-        case SchedulerStage::EnemyEncounter:
-            if (systems.enemy_encounter_system) {
-                systems.enemy_encounter_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::Pickup:
-            if (systems.pickup_system) {
-                systems.pickup_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::Interaction:
-            if (systems.interaction_system) {
-                systems.interaction_system->update();
-            }
-            break;
-        case SchedulerStage::CameraFollow:
-            if (systems.camera_follow_system) {
-                systems.camera_follow_system->update(delta_time);
-            }
-            break;
-        case SchedulerStage::Animation:
-            if (systems.animation_system) {
-                systems.animation_system->update(delta_time);
-            }
-            break;
+    if (decl.run_main) {
+        decl.run_main(params);
     }
 
     const auto end = std::chrono::steady_clock::now();
-    trace_stage(result, stage, elapsedMs(begin, end));
+    trace_stage(result, decl.stage, elapsedMs(begin, end));
 }
 
 [[nodiscard]] bool transition_active(const SystemScheduler::TickParams& params) {
@@ -353,6 +662,47 @@ void prepare_post_gate_parallel_island_registry(entt::registry& registry) {
     (void)registry.storage<game::component::PlayerTag>();
 }
 
+using ParallelRunner = std::function<void(SchedulerStage, engine::system::DeferredCommands&, engine::system::TaskEventBuffer&)>;
+
+[[nodiscard]] std::vector<const StageDecl*> parallel_stage_decls(const ParallelIsland island) {
+    std::vector<const StageDecl*> decls;
+    for (const auto& decl : stage_declarations()) {
+        if (decl.parallel_island == island) {
+            decls.push_back(&decl);
+        }
+    }
+    return decls;
+}
+
+[[nodiscard]] std::vector<engine::system::SystemTaskDecl> make_parallel_task_decls(
+    const ParallelIsland island,
+    ParallelRunner runner) {
+    const auto decls = parallel_stage_decls(island);
+    std::vector<engine::system::SystemTaskDecl> tasks;
+    tasks.reserve(decls.size());
+
+    for (const auto* decl : decls) {
+        if (decl == nullptr) {
+            continue;
+        }
+
+        tasks.push_back(engine::system::SystemTaskDecl{
+            .name = std::string{decl->name},
+            .policy = decl->policy,
+            .run = [runner, stage = decl->stage](engine::system::DeferredCommands& deferred,
+                                                 engine::system::TaskEventBuffer& task_events) {
+                if (runner) {
+                    runner(stage, deferred, task_events);
+                }
+            },
+            .ro_resources = decl->ro_resources,
+            .rw_resources = decl->rw_resources
+        });
+    }
+
+    return tasks;
+}
+
 } // namespace
 
 namespace game::runtime {
@@ -362,113 +712,120 @@ SystemScheduler::~SystemScheduler() = default;
 SystemScheduler::TickResult SystemScheduler::tick(const TickParams& params) const {
     TickResult result{};
 
+    const auto execute_decl = [&](const StageDecl& decl) {
+        execute_stage_main_thread(params, decl, result);
+    };
+
+    const auto execute_parallel_island = [&](const ParallelIsland island) {
+        const auto decls = parallel_stage_decls(island);
+        if (decls.empty()) {
+            return;
+        }
+
+        switch (island) {
+            case ParallelIsland::MidStage:
+                prepare_mid_stage_parallel_island_registry(params.registry);
+                setParallelIslandContext(params, find_game_time(params.registry));
+                break;
+            case ParallelIsland::PreMovement:
+                prepare_pre_movement_parallel_island_registry(params.registry);
+                setParallelIslandContext(params);
+                break;
+            case ParallelIsland::PostGate:
+                prepare_post_gate_parallel_island_registry(params.registry);
+                setParallelIslandContext(params);
+                break;
+            case ParallelIsland::None:
+                return;
+        }
+
+        auto* scheduler = [this, island]() -> engine::system::ParallelWaveScheduler* {
+            switch (island) {
+                case ParallelIsland::MidStage:
+                    return &midStageParallelIslandScheduler();
+                case ParallelIsland::PreMovement:
+                    return &preMovementParallelIslandScheduler();
+                case ParallelIsland::PostGate:
+                    return &postGateParallelIslandScheduler();
+                case ParallelIsland::None:
+                    return nullptr;
+            }
+            return nullptr;
+        }();
+
+        if (scheduler == nullptr || !scheduler->valid()) {
+            for (const auto* decl : decls) {
+                if (decl != nullptr) {
+                    execute_decl(*decl);
+                }
+            }
+            clearParallelIslandContext();
+            return;
+        }
+
+        const auto elapsed = scheduler->execute(params.registry, params.dispatcher);
+        clearParallelIslandContext();
+        if (elapsed.size() < decls.size()) {
+            for (const auto* decl : decls) {
+                if (decl != nullptr) {
+                    execute_decl(*decl);
+                }
+            }
+            return;
+        }
+
+        for (std::size_t index = 0; index < decls.size(); ++index) {
+            if (decls[index] != nullptr) {
+                trace_stage(result, decls[index]->stage, elapsed[index]);
+            }
+        }
+    };
+
+    const auto execute_block = [&](const StageBlock block) {
+        ParallelIsland last_executed_island = ParallelIsland::None;
+        for (const auto& decl : stage_declarations()) {
+            if (!stage_matches_mode(decl, params.mode) || decl.block != block) {
+                continue;
+            }
+
+            if (decl.parallel_island != ParallelIsland::None) {
+                if (decl.parallel_island != last_executed_island) {
+                    execute_parallel_island(decl.parallel_island);
+                    last_executed_island = decl.parallel_island;
+                }
+                continue;
+            }
+
+            execute_decl(decl);
+        }
+    };
+
     if (params.mode != GameMode::Exploration) {
-        for (const auto stage : profileStages(params.mode)) {
-            execute_stage_main_thread(params, stage, result);
+        for (const auto& decl : stage_declarations()) {
+            if (stage_matches_mode(decl, params.mode)) {
+                execute_decl(decl);
+            }
         }
         return result;
     }
 
-    execute_stage_main_thread(params, SchedulerStage::RemoveEntity, result);
+    execute_block(StageBlock::PreGate1);
 
     if (transition_active(params)) {
-        execute_stage_main_thread(params, SchedulerStage::TransitionUpdatePre, result);
-        execute_stage_main_thread(params, SchedulerStage::LightTogglePre, result);
+        execute_block(StageBlock::Gate1Transition);
         result.gate1_triggered = true;
         return result;
     }
 
-    execute_stage_main_thread(params, SchedulerStage::Time, result);
-    execute_stage_main_thread(params, SchedulerStage::PlayerControl, result);
-
-    prepare_mid_stage_parallel_island_registry(params.registry);
-    setParallelIslandContext(params, find_game_time(params.registry));
-    auto& mid_stage_island_scheduler = midStageParallelIslandScheduler();
-    if (!mid_stage_island_scheduler.valid()) {
-        execute_stage_main_thread(params, SchedulerStage::DayNight, result);
-        execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
-        execute_stage_main_thread(params, SchedulerStage::AnimalBehavior, result);
-        clearParallelIslandContext();
-    } else {
-        const auto elapsed = mid_stage_island_scheduler.execute(params.registry, params.dispatcher);
-        clearParallelIslandContext();
-        if (elapsed.size() < 3) {
-            execute_stage_main_thread(params, SchedulerStage::DayNight, result);
-            execute_stage_main_thread(params, SchedulerStage::NPCWander, result);
-            execute_stage_main_thread(params, SchedulerStage::AnimalBehavior, result);
-        } else {
-            trace_stage(result, SchedulerStage::DayNight, elapsed[0]);
-            trace_stage(result, SchedulerStage::NPCWander, elapsed[1]);
-            trace_stage(result, SchedulerStage::AnimalBehavior, elapsed[2]);
-        }
-    }
-
-    execute_stage_main_thread(params, SchedulerStage::Chest, result);
-    execute_stage_main_thread(params, SchedulerStage::ItemUse, result);
-    execute_stage_main_thread(params, SchedulerStage::Dialogue, result);
-    execute_stage_main_thread(params, SchedulerStage::QuestInteraction, result);
-    execute_stage_main_thread(params, SchedulerStage::AutoTile, result);
-
-    prepare_pre_movement_parallel_island_registry(params.registry);
-    setParallelIslandContext(params);
-    auto& pre_movement_island_scheduler = preMovementParallelIslandScheduler();
-    if (!pre_movement_island_scheduler.valid()) {
-        execute_stage_main_thread(params, SchedulerStage::ActionSound, result);
-        execute_stage_main_thread(params, SchedulerStage::State, result);
-        clearParallelIslandContext();
-    } else {
-        const auto elapsed = pre_movement_island_scheduler.execute(params.registry, params.dispatcher);
-        clearParallelIslandContext();
-        if (elapsed.size() < 2) {
-            execute_stage_main_thread(params, SchedulerStage::ActionSound, result);
-            execute_stage_main_thread(params, SchedulerStage::State, result);
-        } else {
-            // 同一 wave 内的采样值按 task 索引回填，用于统计展示；不表达两者先后时序。
-            trace_stage(result, SchedulerStage::ActionSound, elapsed[0]);
-            trace_stage(result, SchedulerStage::State, elapsed[1]);
-        }
-    }
-
-    execute_stage_main_thread(params, SchedulerStage::ScriptCommands, result);
-    execute_stage_main_thread(params, SchedulerStage::Movement, result);
-
-    execute_stage_main_thread(params, SchedulerStage::TransitionUpdatePost, result);
-    execute_stage_main_thread(params, SchedulerStage::LightTogglePost, result);
+    execute_block(StageBlock::Main);
+    execute_block(StageBlock::PostTransition);
 
     if (transition_active(params)) {
         result.gate2_triggered = true;
         return result;
     }
 
-    prepare_post_gate_parallel_island_registry(params.registry);
-    setParallelIslandContext(params);
-    auto& island_scheduler = postGateParallelIslandScheduler();
-    if (!island_scheduler.valid()) {
-        execute_stage_main_thread(params, SchedulerStage::SpatialIndex, result);
-        execute_stage_main_thread(params, SchedulerStage::CameraFollow, result);
-        execute_stage_main_thread(params, SchedulerStage::Animation, result);
-        clearParallelIslandContext();
-        execute_stage_main_thread(params, SchedulerStage::EnemyEncounter, result);
-        execute_stage_main_thread(params, SchedulerStage::Pickup, result);
-        execute_stage_main_thread(params, SchedulerStage::Interaction, result);
-        return result;
-    }
-
-    const auto elapsed = island_scheduler.execute(params.registry, params.dispatcher);
-    clearParallelIslandContext();
-    if (elapsed.size() < 3) {
-        execute_stage_main_thread(params, SchedulerStage::SpatialIndex, result);
-        execute_stage_main_thread(params, SchedulerStage::CameraFollow, result);
-        execute_stage_main_thread(params, SchedulerStage::Animation, result);
-    } else {
-        trace_stage(result, SchedulerStage::SpatialIndex, elapsed[0]);
-        trace_stage(result, SchedulerStage::CameraFollow, elapsed[1]);
-        trace_stage(result, SchedulerStage::Animation, elapsed[2]);
-    }
-
-    execute_stage_main_thread(params, SchedulerStage::EnemyEncounter, result);
-    execute_stage_main_thread(params, SchedulerStage::Pickup, result);
-    execute_stage_main_thread(params, SchedulerStage::Interaction, result);
+    execute_block(StageBlock::PostGate);
     return result;
 }
 
@@ -498,53 +855,8 @@ engine::async::ThreadPool& SystemScheduler::parallelThreadPool() const {
 
 engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandScheduler() const {
     if (!mid_stage_parallel_island_scheduler_) {
-        std::vector<engine::system::SystemTaskDecl> decls;
-        decls.reserve(3);
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "DayNight",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->day_night_system) {
-                    return;
-                }
-                systems->day_night_system->update(parallel_island_context_.game_time);
-            },
-            .ro_resources = {RESOURCE_GAME_TIME, RESOURCE_WORLD_STATE},
-            .rw_resources = {RESOURCE_GLOBAL_LIGHTING_STATE}
-        });
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "NPCWander",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer&) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->npc_wander_system) {
-                    return;
-                }
-                systems->npc_wander_system->update(parallel_island_context_.delta_time, deferred);
-            },
-            .rw_resources = {RESOURCE_NPC_WANDER_DOMAIN}
-        });
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "AnimalBehavior",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer&) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->animal_behavior_system) {
-                    return;
-                }
-                systems->animal_behavior_system->update(parallel_island_context_.delta_time,
-                                                        parallel_island_context_.game_time,
-                                                        deferred);
-            },
-            .rw_resources = {RESOURCE_ANIMAL_BEHAVIOR_DOMAIN}
-        });
-
         mid_stage_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
-            std::move(decls),
+            buildMidStageParallelIslandTasks(),
             &parallelThreadPool());
     }
     return *mid_stage_parallel_island_scheduler_;
@@ -552,50 +864,8 @@ engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandSc
 
 engine::system::ParallelWaveScheduler& SystemScheduler::preMovementParallelIslandScheduler() const {
     if (!pre_movement_parallel_island_scheduler_) {
-        std::vector<engine::system::SystemTaskDecl> decls;
-        decls.reserve(2);
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "ActionSound",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer& task_events) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->action_sound_system) {
-                    return;
-                }
-                systems->action_sound_system->update(parallel_island_context_.delta_time, task_events);
-            },
-            .ro_resources = {
-                entt::type_hash<game::component::StateComponent>::value(),
-                entt::type_hash<engine::component::AudioComponent>::value(),
-                entt::type_hash<engine::component::TransformComponent>::value(),
-                entt::type_hash<engine::component::NeedRemoveTag>::value()
-            },
-            .rw_resources = {
-                entt::type_hash<game::component::ActionSoundComponent>::value()
-            }
-        });
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "State",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer& task_events) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->state_system) {
-                    return;
-                }
-                systems->state_system->update(deferred, task_events);
-            },
-            .ro_resources = {
-                entt::type_hash<game::component::StateComponent>::value(),
-                entt::type_hash<engine::component::AnimationComponent>::value(),
-                entt::type_hash<engine::component::NeedRemoveTag>::value()
-            },
-            .rw_resources = {entt::type_hash<game::component::StateDirtyTag>::value()}
-        });
-
         pre_movement_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
-            std::move(decls),
+            buildPreMovementParallelIslandTasks(),
             &parallelThreadPool());
     }
     return *pre_movement_parallel_island_scheduler_;
@@ -603,69 +873,95 @@ engine::system::ParallelWaveScheduler& SystemScheduler::preMovementParallelIslan
 
 engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandScheduler() const {
     if (!post_gate_parallel_island_scheduler_) {
-        std::vector<engine::system::SystemTaskDecl> decls;
-        decls.reserve(3);
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "SpatialIndex",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands& deferred, engine::system::TaskEventBuffer&) {
-                const auto* systems = parallel_island_context_.systems;
-                const auto* registry = parallel_island_context_.registry;
-                if (systems && systems->spatial_index_system && registry) {
-                    systems->spatial_index_system->update(*registry, deferred);
-                }
-            },
-            .ro_resources = {
-                entt::type_hash<engine::component::TransformDirtyTag>::value(),
-                entt::type_hash<engine::component::TransformComponent>::value(),
-                entt::type_hash<engine::component::AABBCollider>::value(),
-                entt::type_hash<engine::component::CircleCollider>::value()
-            },
-            .rw_resources = {RESOURCE_SPATIAL_INDEX}
-        });
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "CameraFollow",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->camera_follow_system) {
-                    return;
-                }
-
-                // InputManager 仅在主线程 handleEvents() 中写入；并行岛执行期间只读快照状态。
-                systems->camera_follow_system->update(parallel_island_context_.delta_time);
-            },
-            .ro_resources = {
-                entt::type_hash<game::component::PlayerTag>::value(),
-                entt::type_hash<engine::component::TransformComponent>::value(),
-                RESOURCE_INPUT
-            },
-            .rw_resources = {RESOURCE_CAMERA}
-        });
-
-        decls.push_back(engine::system::SystemTaskDecl{
-            .name = "Animation",
-            .policy = engine::system::ExecutionPolicy::WorkerEligible,
-            .run = [this](engine::system::DeferredCommands&, engine::system::TaskEventBuffer& task_events) {
-                const auto* systems = parallel_island_context_.systems;
-                if (!systems || !systems->animation_system) {
-                    return;
-                }
-                systems->animation_system->update(parallel_island_context_.delta_time, task_events);
-            },
-            .rw_resources = {
-                entt::type_hash<engine::component::AnimationComponent>::value(),
-                entt::type_hash<engine::component::SpriteComponent>::value()
-            }
-        });
-
         post_gate_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
-            std::move(decls),
+            buildPostGateParallelIslandTasks(),
             &parallelThreadPool());
     }
     return *post_gate_parallel_island_scheduler_;
+}
+
+std::vector<engine::system::SystemTaskDecl> SystemScheduler::buildMidStageParallelIslandTasks() const {
+    return make_parallel_task_decls(ParallelIsland::MidStage,
+                                    [this](const SchedulerStage stage,
+                                           engine::system::DeferredCommands& deferred,
+                                           engine::system::TaskEventBuffer& task_events) {
+                                        executeParallelStage(stage, deferred, task_events);
+                                    });
+}
+
+std::vector<engine::system::SystemTaskDecl> SystemScheduler::buildPreMovementParallelIslandTasks() const {
+    return make_parallel_task_decls(ParallelIsland::PreMovement,
+                                    [this](const SchedulerStage stage,
+                                           engine::system::DeferredCommands& deferred,
+                                           engine::system::TaskEventBuffer& task_events) {
+                                        executeParallelStage(stage, deferred, task_events);
+                                    });
+}
+
+std::vector<engine::system::SystemTaskDecl> SystemScheduler::buildPostGateParallelIslandTasks() const {
+    return make_parallel_task_decls(ParallelIsland::PostGate,
+                                    [this](const SchedulerStage stage,
+                                           engine::system::DeferredCommands& deferred,
+                                           engine::system::TaskEventBuffer& task_events) {
+                                        executeParallelStage(stage, deferred, task_events);
+                                    });
+}
+
+void SystemScheduler::executeParallelStage(const SchedulerStage stage,
+                                           engine::system::DeferredCommands& deferred,
+                                           engine::system::TaskEventBuffer& task_events) const {
+    const auto* systems = parallel_island_context_.systems;
+    if (systems == nullptr) {
+        return;
+    }
+
+    switch (stage) {
+        case SchedulerStage::DayNight:
+            if (systems->day_night_system) {
+                systems->day_night_system->update(parallel_island_context_.game_time);
+            }
+            return;
+        case SchedulerStage::NPCWander:
+            if (systems->npc_wander_system) {
+                systems->npc_wander_system->update(parallel_island_context_.delta_time, deferred);
+            }
+            return;
+        case SchedulerStage::AnimalBehavior:
+            if (systems->animal_behavior_system) {
+                systems->animal_behavior_system->update(parallel_island_context_.delta_time,
+                                                        parallel_island_context_.game_time,
+                                                        deferred);
+            }
+            return;
+        case SchedulerStage::ActionSound:
+            if (systems->action_sound_system) {
+                systems->action_sound_system->update(parallel_island_context_.delta_time, task_events);
+            }
+            return;
+        case SchedulerStage::State:
+            if (systems->state_system) {
+                systems->state_system->update(deferred, task_events);
+            }
+            return;
+        case SchedulerStage::SpatialIndex:
+            if (systems->spatial_index_system && parallel_island_context_.registry) {
+                systems->spatial_index_system->update(*parallel_island_context_.registry, deferred);
+            }
+            return;
+        case SchedulerStage::CameraFollow:
+            if (systems->camera_follow_system) {
+                // InputManager 仅在主线程 handleEvents() 中写入；并行岛执行期间只读快照状态。
+                systems->camera_follow_system->update(parallel_island_context_.delta_time);
+            }
+            return;
+        case SchedulerStage::Animation:
+            if (systems->animation_system) {
+                systems->animation_system->update(parallel_island_context_.delta_time, task_events);
+            }
+            return;
+        default:
+            return;
+    }
 }
 
 void SystemScheduler::setParallelIslandContext(const TickParams& params, const game::data::GameTime* game_time) const {
@@ -680,102 +976,17 @@ void SystemScheduler::clearParallelIslandContext() const {
 }
 
 const char* toString(const SchedulerStage stage) {
-    switch (stage) {
-        case SchedulerStage::RemoveEntity:
-            return "RemoveEntity";
-        case SchedulerStage::TransitionUpdatePre:
-            return "TransitionUpdatePre";
-        case SchedulerStage::LightTogglePre:
-            return "LightTogglePre";
-        case SchedulerStage::Time:
-            return "Time";
-        case SchedulerStage::DayNight:
-            return "DayNight";
-        case SchedulerStage::PlayerControl:
-            return "PlayerControl";
-        case SchedulerStage::NPCWander:
-            return "NPCWander";
-        case SchedulerStage::AnimalBehavior:
-            return "AnimalBehavior";
-        case SchedulerStage::Chest:
-            return "Chest";
-        case SchedulerStage::ItemUse:
-            return "ItemUse";
-        case SchedulerStage::Dialogue:
-            return "Dialogue";
-        case SchedulerStage::QuestInteraction:
-            return "QuestInteraction";
-        case SchedulerStage::ActionSound:
-            return "ActionSound";
-        case SchedulerStage::AutoTile:
-            return "AutoTile";
-        case SchedulerStage::State:
-            return "State";
-        case SchedulerStage::ScriptCommands:
-            return "ScriptCommands";
-        case SchedulerStage::Movement:
-            return "Movement";
-        case SchedulerStage::TransitionUpdatePost:
-            return "TransitionUpdatePost";
-        case SchedulerStage::LightTogglePost:
-            return "LightTogglePost";
-        case SchedulerStage::SpatialIndex:
-            return "SpatialIndex";
-        case SchedulerStage::EnemyEncounter:
-            return "EnemyEncounter";
-        case SchedulerStage::Pickup:
-            return "Pickup";
-        case SchedulerStage::Interaction:
-            return "Interaction";
-        case SchedulerStage::CameraFollow:
-            return "CameraFollow";
-        case SchedulerStage::Animation:
-            return "Animation";
+    if (const auto* decl = find_stage_decl(stage)) {
+        return decl->name.data();
     }
 
     return "Unknown";
 }
 
 std::string dumpPostGateParallelIslandDot() {
-    std::vector<engine::system::SystemTaskDecl> decls;
-    decls.reserve(3);
-
-    decls.push_back(engine::system::SystemTaskDecl{
-        .name = "SpatialIndex",
-        .policy = engine::system::ExecutionPolicy::WorkerEligible,
-        .run = [](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {},
-        .ro_resources = {
-            entt::type_hash<engine::component::TransformDirtyTag>::value(),
-            entt::type_hash<engine::component::TransformComponent>::value(),
-            entt::type_hash<engine::component::AABBCollider>::value(),
-            entt::type_hash<engine::component::CircleCollider>::value()
-        },
-        .rw_resources = {RESOURCE_SPATIAL_INDEX}
-    });
-
-    decls.push_back(engine::system::SystemTaskDecl{
-        .name = "CameraFollow",
-        .policy = engine::system::ExecutionPolicy::WorkerEligible,
-        .run = [](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {},
-        .ro_resources = {
-            entt::type_hash<game::component::PlayerTag>::value(),
-            entt::type_hash<engine::component::TransformComponent>::value(),
-            RESOURCE_INPUT
-        },
-        .rw_resources = {RESOURCE_CAMERA}
-    });
-
-    decls.push_back(engine::system::SystemTaskDecl{
-        .name = "Animation",
-        .policy = engine::system::ExecutionPolicy::WorkerEligible,
-        .run = [](engine::system::DeferredCommands&, engine::system::TaskEventBuffer&) {},
-        .rw_resources = {
-            entt::type_hash<engine::component::AnimationComponent>::value(),
-            entt::type_hash<engine::component::SpriteComponent>::value()
-        }
-    });
-
-    engine::system::ParallelWaveScheduler scheduler(std::move(decls), nullptr);
+    engine::system::ParallelWaveScheduler scheduler(
+        make_parallel_task_decls(ParallelIsland::PostGate, {}),
+        nullptr);
     if (!scheduler.valid()) {
         return {};
     }

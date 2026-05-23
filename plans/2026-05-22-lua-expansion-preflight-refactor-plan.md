@@ -213,22 +213,22 @@ tf.state.add("npc.lyria.gift_count", 1)
 
 待办：
 
-- [ ] 拆 `GameRuntimeAssembler`：
+- [x] 拆 `GameRuntimeAssembler`：
   - `ContentCatalogLoader`
   - `AssetPreloadRegistrar`
   - `RuntimeServiceFactory`
   - `SystemFactory`
   - `ScriptRuntimeFactory`
-- [ ] 把硬编码资源路径集中到 `GameContentManifest` 或 `GameRuntimeConfig`。
-- [ ] `SystemScheduler` 改为声明式 `StageDecl`：
+- [x] 把硬编码资源路径集中到 `GameContentManifest` 或 `GameRuntimeConfig`。
+- [x] `SystemScheduler` 改为声明式 `StageDecl`：
   - stage 名称
   - mode mask
   - run 函数
   - ro/rw resources
   - gate 条件
   - 是否 worker eligible
-- [ ] 显式处理 `Battle` / `PauseOverlay` profile：要么短路 scheduler，要么列出真实需要 tick 的 stage，避免“只有 RemoveEntity”的半表达状态。
-- [ ] 将 Phase 2 中临时硬编码的 `ScriptCommands` 阶段迁入声明式 `StageDecl`。
+- [x] 显式处理 `Battle` / `PauseOverlay` profile：目前声明为暂停型 profile，仅保留 `RemoveEntity` 清理 stage。
+- [x] 将 Phase 2 中临时硬编码的 `ScriptCommands` 阶段迁入声明式 `StageDecl`。
 
 验收：
 

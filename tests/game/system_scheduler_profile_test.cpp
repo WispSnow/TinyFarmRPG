@@ -12,6 +12,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 namespace game::runtime {
@@ -77,6 +78,16 @@ TEST(SystemSchedulerProfileTest, ExplorationDrainsScriptCommandsAfterStateBefore
     EXPECT_LT(script_commands, movement);
 }
 
+TEST(SystemSchedulerProfileTest, BattleAndPauseProfilesOnlyRunCleanupStage) {
+    const auto& battle = SystemScheduler::profileStages(GameMode::Battle);
+    const auto& pause = SystemScheduler::profileStages(GameMode::PauseOverlay);
+
+    ASSERT_EQ(battle.size(), 1U);
+    ASSERT_EQ(pause.size(), 1U);
+    EXPECT_EQ(battle.front(), SchedulerStage::RemoveEntity);
+    EXPECT_EQ(pause.front(), SchedulerStage::RemoveEntity);
+}
+
 TEST(SystemSchedulerProfileTest, ExplorationRunsEnemyEncounterAfterSpatialBeforeInteraction) {
     const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
     ASSERT_FALSE(stages.empty());
@@ -87,6 +98,14 @@ TEST(SystemSchedulerProfileTest, ExplorationRunsEnemyEncounterAfterSpatialBefore
 
     EXPECT_LT(spatial_index, enemy_encounter);
     EXPECT_LT(enemy_encounter, interaction);
+}
+
+TEST(SystemSchedulerProfileTest, PostGateDotDumpComesFromDeclaredParallelStages) {
+    const std::string dot = dumpPostGateParallelIslandDot();
+
+    EXPECT_NE(dot.find("SpatialIndex"), std::string::npos);
+    EXPECT_NE(dot.find("CameraFollow"), std::string::npos);
+    EXPECT_NE(dot.find("Animation"), std::string::npos);
 }
 
 TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransition) {

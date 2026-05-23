@@ -110,7 +110,7 @@ TinyFarmRPG/
 │   │   ├── domain/              #   领域服务（Inventory/Equipment/Quest/Shop 等原子写入与规则入口）
 │   │   ├── factory/             #   实体蓝图 Blueprint 与工厂 EntityFactory
 │   │   ├── loader/              #   游戏实体构建器（Tiled 约定扩展）
-│   │   ├── runtime/             #   运行时装配 GameRuntimeAssembler 与系统调度 SystemScheduler
+│   │   ├── runtime/             #   运行时装配（catalog/service/system/script factories）与声明式 SystemScheduler
 │   │   ├── save/                #   存档系统（序列化/schema 迁移/槽位管理）
 │   │   ├── scene/               #   游戏场景（Title/GameScene/Pause/Save/Inventory/Shop/Quest/Recruit/Battle 等）
 │   │   ├── script/              #   TinyFarm 脚本扩展模块（tf.time/player/command/dialogue 绑定）

@@ -12,6 +12,11 @@
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 
+namespace engine::system {
+class DeferredCommands;
+class TaskEventBuffer;
+}
+
 namespace game::data {
 struct GameTime;
 }
@@ -92,6 +97,12 @@ private:
     engine::system::ParallelWaveScheduler& midStageParallelIslandScheduler() const;
     engine::system::ParallelWaveScheduler& preMovementParallelIslandScheduler() const;
     engine::system::ParallelWaveScheduler& postGateParallelIslandScheduler() const;
+    [[nodiscard]] std::vector<engine::system::SystemTaskDecl> buildMidStageParallelIslandTasks() const;
+    [[nodiscard]] std::vector<engine::system::SystemTaskDecl> buildPreMovementParallelIslandTasks() const;
+    [[nodiscard]] std::vector<engine::system::SystemTaskDecl> buildPostGateParallelIslandTasks() const;
+    void executeParallelStage(SchedulerStage stage,
+                              engine::system::DeferredCommands& deferred,
+                              engine::system::TaskEventBuffer& task_events) const;
     void setParallelIslandContext(const TickParams& params, const game::data::GameTime* game_time = nullptr) const;
     void clearParallelIslandContext() const;
 

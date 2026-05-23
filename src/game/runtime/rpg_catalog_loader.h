@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/runtime/game_content_manifest.h"
+
 #include <string>
 #include <string_view>
 
@@ -11,8 +13,8 @@ class RpgCatalog;
 namespace game::runtime {
 
 struct RpgCatalogLoadOptions {
-    std::string manifest_path{"assets/data/rpg/manifest.json"};
-    std::string root_path{"assets/data/rpg"};
+    std::string manifest_path{GameContentManifest::RpgManifest};
+    std::string root_path{GameContentManifest::RpgRoot};
     const game::data::ItemCatalog* item_catalog{nullptr};
 };
 
