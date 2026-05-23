@@ -13,6 +13,7 @@
 #include "game/scene/battle_animation_director.h"
 #include "game/scene/battle_background.h"
 #include "game/scene/battle_damage_popup_controller.h"
+#include "game/scene/battle_flow_controller.h"
 #include "game/scene/battle_scene_state.h"
 #include "game/scene/battle_scene_types.h"
 #include "game/scene/battle_scene_view_models.h"
@@ -58,8 +59,7 @@ namespace game::scene {
 /// BattleScene 负责 UI、输入与状态机编排；领域规则通过 BattleSession 访问，
 /// 不直接修改 TurnCore。该场景以 push/pop 方式叠加在探索场景之上，战斗结束后
 /// 发出 BattleEndedEvent 并请求弹出自身。
-class BattleScene final : public engine::scene::Scene {
-    using FlowState = BattleFlowState;
+class BattleScene final : public engine::scene::Scene, private BattleFlowController::Delegate {
     using MenuState = BattleMenuState;
     using ActionDraft = BattleActionDraft;
     using CameraStateSnapshot = BattleCameraStateSnapshot;
@@ -86,7 +86,7 @@ class BattleScene final : public engine::scene::Scene {
     BattleBackgroundRenderer battle_background_{};
     entt::registry battle_registry_{};
     engine::system::RenderSystem battle_render_system_{};
-    FlowState state_{FlowState::WaitingForInput};
+    BattleFlowController flow_controller_{};
     MenuState menu_state_{MenuState::None};
     ActionDraft action_draft_{};
     std::optional<game::battle::BattleAction> pending_action_{};
@@ -196,9 +196,14 @@ private:
 
     /// @brief 运行同步战斗流程状态机，直到进入需要等待的状态。
     void runStateMachine(float delta_time);
-    void beginCurrentTurnFlow();
+    [[nodiscard]] bool hasPendingAction() const override;
+    void executePendingAction() override;
+    void beginCurrentTurnFlow() override;
     [[nodiscard]] const game::battle::BattleUnit* currentActor() const;
     [[nodiscard]] game::battle::BattleAction buildEnemyAction(const game::battle::BattleUnit& actor) const;
+    void updateResultAnimation(float delta_time) override;
+    [[nodiscard]] bool resultAnimationFinished() const override;
+    [[nodiscard]] game::battle::BattleOutcome battleOutcome() const override;
 
     /// @brief 根据 BattleSession 快照刷新 UI 文本和按钮状态。
     void refreshView();
@@ -212,7 +217,7 @@ private:
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
     void enterInputMenu();
-    void leaveInputMenu();
+    void leaveInputMenu() override;
     void setMenuState(MenuState next_state);
     void syncMenuFocus();
     void syncVictoryContinueFocus();
@@ -282,9 +287,11 @@ private:
     /// @brief 获取当前行动者并写出 actor id。
     /// @return 当前行动者存在时返回单位指针，否则返回 nullptr。
     [[nodiscard]] const game::battle::BattleUnit* prepareActionActor(game::battle::BattleUnitId& out_actor_id) const;
-    void beginVictoryFlow();
+    void beginVictoryFlow() override;
     [[nodiscard]] game::battle::BattleRewardSummary resolveVictoryRewards();
-    void finishVictoryFlow();
+    void updateVictoryFlow(float delta_time) override;
+    [[nodiscard]] bool victoryFlowFinished() const override;
+    void finishVictoryFlow() override;
     void playVictoryAudioCue();
     [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
     [[nodiscard]] BattleAnimationTimelineConfig animationConfigForPlan(
@@ -306,7 +313,7 @@ private:
     [[nodiscard]] std::optional<BattleAnimationPose> presentationPoseFor(game::battle::BattleUnitId unit_id,
                                                                          game::battle::BattleSide side) const;
 
-    void requestBattleEnd();
+    void requestBattleEnd() override;
 
     [[nodiscard]] bool initPresentation();
     void updatePresentation(float delta_time);

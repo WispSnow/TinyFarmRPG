@@ -42,19 +42,19 @@ namespace {
 
 TEST(BattleSceneSmokeTest, ContainsStateMachineStages) {
     const std::filesystem::path source_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_flow_controller.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(source.empty());
 
-    EXPECT_NE(source.find("FlowState::WaitingForInput"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::ExecutingAction"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::AnimatingResult"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::CheckVictory"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::VictoryFlow"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::NextTurn"), std::string::npos);
-    EXPECT_NE(source.find("FlowState::BattleEnd"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::WaitingForInput"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::ExecutingAction"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::AnimatingResult"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::CheckVictory"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::VictoryFlow"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::NextTurn"), std::string::npos);
+    EXPECT_NE(source.find("BattleFlowState::BattleEnd"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, EmitsBattleEndedEventAndRequestsPop) {
@@ -75,47 +75,55 @@ TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path flow_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_flow_controller.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(flow_source_path)) << flow_source_path;
 
     const std::string header = readTextFile(header_path);
     const std::string source = readTextFile(source_path);
+    const std::string flow_source = readTextFile(flow_source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(flow_source.empty());
 
+    EXPECT_NE(header.find("#include \"game/scene/battle_flow_controller.h\""), std::string::npos);
+    EXPECT_NE(header.find("BattleFlowController flow_controller_{}"), std::string::npos);
     EXPECT_NE(header.find("#include \"game/scene/battle_victory_flow_controller.h\""), std::string::npos);
     EXPECT_NE(header.find("BattleVictoryFlowController victory_flow_controller_{}"), std::string::npos);
     EXPECT_NE(header.find("std::optional<game::battle::BattleRewardSummary> victory_reward_summary_{}"), std::string::npos);
     EXPECT_NE(header.find("beginVictoryFlow"), std::string::npos);
     EXPECT_NE(header.find("finishVictoryFlow"), std::string::npos);
 
-    const std::string check_block = snippetFrom(source, "case FlowState::CheckVictory:", 900U);
+    const std::string check_block = snippetFrom(flow_source, "case BattleFlowState::CheckVictory:", 900U);
     ASSERT_FALSE(check_block.empty());
-    EXPECT_NE(check_block.find("beginVictoryFlow();"), std::string::npos);
-    EXPECT_NE(check_block.find("state_ = FlowState::BattleEnd"), std::string::npos);
-    EXPECT_LT(check_block.find("beginVictoryFlow();"), check_block.find("state_ = FlowState::BattleEnd"));
+    EXPECT_NE(check_block.find("startVictoryFlow(delegate);"), std::string::npos);
+    EXPECT_NE(check_block.find("state_ = BattleFlowState::BattleEnd"), std::string::npos);
+    EXPECT_LT(check_block.find("startVictoryFlow(delegate);"),
+              check_block.find("state_ = BattleFlowState::BattleEnd"));
 
-    const std::string victory_block = snippetFrom(source, "case FlowState::VictoryFlow:", 360U);
+    const std::string victory_block = snippetFrom(flow_source, "case BattleFlowState::VictoryFlow:", 360U);
     ASSERT_FALSE(victory_block.empty());
-    EXPECT_NE(victory_block.find("victory_flow_controller_.update(delta_time)"), std::string::npos);
-    EXPECT_NE(victory_block.find("finishVictoryFlow();"), std::string::npos);
+    EXPECT_NE(victory_block.find("delegate.updateVictoryFlow(delta_time)"), std::string::npos);
+    EXPECT_NE(victory_block.find("delegate.finishVictoryFlow();"), std::string::npos);
     EXPECT_EQ(victory_block.find("requestBattleEnd()"), std::string::npos);
 
     const std::string confirm_block = snippetFrom(source, "bool BattleScene::onMenuConfirmPressed()", 600U);
     ASSERT_FALSE(confirm_block.empty());
-    EXPECT_NE(confirm_block.find("state_ == FlowState::VictoryFlow"), std::string::npos);
+    EXPECT_NE(confirm_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
     EXPECT_NE(confirm_block.find("victory_flow_controller_.confirm();"), std::string::npos);
 
     const std::string cancel_block = snippetFrom(source, "bool BattleScene::onMenuCancelPressed()", 260U);
     ASSERT_FALSE(cancel_block.empty());
-    EXPECT_NE(cancel_block.find("state_ == FlowState::VictoryFlow"), std::string::npos);
+    EXPECT_NE(cancel_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
     EXPECT_EQ(cancel_block.find("victory_flow_controller_.confirm();"), std::string::npos);
 
     const std::string finish_block = snippetFrom(source, "void BattleScene::finishVictoryFlow()", 260U);
     ASSERT_FALSE(finish_block.empty());
     EXPECT_NE(finish_block.find("victory_flow_controller_.reset();"), std::string::npos);
-    EXPECT_NE(finish_block.find("state_ = FlowState::BattleEnd;"), std::string::npos);
     EXPECT_EQ(finish_block.find("requestBattleEnd()"), std::string::npos);
+    EXPECT_NE(victory_block.find("state_ = BattleFlowState::BattleEnd;"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
@@ -378,23 +386,28 @@ TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {
 TEST(BattleSceneSmokeTest, RoutesEnemyTurnsWithoutFallingBackToPlayerMenu) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path flow_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_flow_controller.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(flow_source_path)) << flow_source_path;
 
     const std::string source = readTextFile(source_path);
+    const std::string flow_source = readTextFile(flow_source_path);
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(flow_source.empty());
 
     EXPECT_NE(source.find("BattleAiPlanner::planEnemyAction"), std::string::npos);
     EXPECT_NE(source.find("BattleAiPlanner::planFallbackAction"), std::string::npos);
     EXPECT_NE(source.find("actor->side == game::battle::BattleSide::Enemy"), std::string::npos);
 
-    const std::string next_turn_block = snippetFrom(source, "case FlowState::NextTurn:");
+    const std::string next_turn_block = snippetFrom(flow_source, "case BattleFlowState::NextTurn:");
     ASSERT_FALSE(next_turn_block.empty());
-    EXPECT_EQ(next_turn_block.find("state_ = FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_EQ(next_turn_block.find("waitForInput()"), std::string::npos);
     EXPECT_EQ(next_turn_block.find("enterInputMenu()"), std::string::npos);
 
-    const std::string missing_pending_block = snippetFrom(source, "if (!pending_action_) {");
+    const std::string missing_pending_block = snippetFrom(flow_source, "if (!delegate.hasPendingAction()) {");
     ASSERT_FALSE(missing_pending_block.empty());
-    EXPECT_EQ(missing_pending_block.find("state_ = FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_EQ(missing_pending_block.find("waitForInput()"), std::string::npos);
     EXPECT_EQ(missing_pending_block.find("enterInputMenu()"), std::string::npos);
 }
 
@@ -563,13 +576,18 @@ TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path flow_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_flow_controller.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(flow_source_path)) << flow_source_path;
 
     const std::string header = readTextFile(header_path);
     const std::string source = readTextFile(source_path);
+    const std::string flow_source = readTextFile(flow_source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(flow_source.empty());
 
     EXPECT_NE(header.find("#include \"game/scene/battle_animation_director.h\""), std::string::npos);
     EXPECT_NE(header.find("BattleAnimationDirector battle_animation_director_{}"), std::string::npos);
@@ -584,10 +602,10 @@ TEST(BattleSceneSmokeTest, UsesBattleAnimationDirectorForResultPresentation) {
     EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"),
               std::string::npos);
 
-    const std::string animating_snippet = snippetFrom(source, "case FlowState::AnimatingResult:", 360U);
+    const std::string animating_snippet = snippetFrom(flow_source, "case BattleFlowState::AnimatingResult:", 360U);
     ASSERT_FALSE(animating_snippet.empty());
-    EXPECT_NE(animating_snippet.find("battle_animation_director_.update(delta_time)"), std::string::npos);
-    EXPECT_NE(animating_snippet.find("battle_animation_director_.finished()"), std::string::npos);
+    EXPECT_NE(animating_snippet.find("delegate.updateResultAnimation(delta_time)"), std::string::npos);
+    EXPECT_NE(animating_snippet.find("delegate.resultAnimationFinished()"), std::string::npos);
 
     EXPECT_NE(source.find("previous_position_ = position"), std::string::npos);
     EXPECT_NE(source.find("pose->rotation_radians"), std::string::npos);
@@ -858,7 +876,7 @@ TEST(BattleSceneSmokeTest, CurrentPlayerActorUsesCommandFocusPoseWhileWaitingFor
     EXPECT_NE(source.find("constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F}"), std::string::npos);
     EXPECT_NE(source.find("constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F"), std::string::npos);
     EXPECT_NE(source.find("updateCommandFocus(delta_time)"), std::string::npos);
-    EXPECT_NE(source.find("state_ != FlowState::WaitingForInput"), std::string::npos);
+    EXPECT_NE(source.find("!flow_controller_.isWaitingForInput()"), std::string::npos);
     EXPECT_NE(source.find("battle_animation_director_.active()"), std::string::npos);
     EXPECT_NE(source.find("side != game::battle::BattleSide::Player"), std::string::npos);
     EXPECT_NE(source.find("pose.offset = COMMAND_FOCUS_PLAYER_OFFSET * eased"), std::string::npos);
