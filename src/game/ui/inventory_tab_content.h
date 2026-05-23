@@ -1,6 +1,8 @@
 #pragma once
 
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "game/ui/inventory_action_menu_model.h"
+#include "game/ui/inventory_slot_drag_controller.h"
 #include "game/ui/menu_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -64,13 +66,6 @@ public:
     using ActorTargetRequestHandler = std::function<void(int inventory_slot_index)>;
 
 private:
-    /// 上下文操作菜单中单条操作的视图数据。
-    struct ActionEntryViewModel {
-        int action_id{0};
-        Rml::String label{};
-        bool is_destructive{false}; ///< 若为 true，UI 侧以危险色渲染该条目。
-    };
-
     // --- 外部依赖 ---
     engine::core::Context& context_;
     engine::ui::rmlui::RmlDocumentController& document_controller_;
@@ -82,7 +77,6 @@ private:
     // --- RmlUi 数据模型绑定字段 ---
     std::vector<SlotGridViewModel> backpack_slots_{};
     std::vector<SlotGridViewModel> hotbar_slots_{};
-    std::vector<ActionEntryViewModel> action_menu_entries_{};
 
     // --- 悬停 / 提示框状态 ---
     std::unique_ptr<ItemTooltipUI> tooltip_ui_{};
@@ -97,11 +91,10 @@ private:
     SelectedSlot selected_slot_{};
 
     // --- 拖放状态 ---
-    SlotGridDragState drag_state_{};
+    InventorySlotDragController drag_controller_{};
 
     // --- 操作菜单状态 ---
-    Rml::String action_menu_title_{};
-    bool action_menu_visible_{false};
+    InventoryActionMenuModel action_menu_model_{};
     bool listeners_connected_{false}; ///< 防止重复连接 ECS 事件监听器。
     ActorTargetRequestHandler actor_target_request_handler_{};
 
@@ -150,7 +143,6 @@ private:
     /// 增量刷新单个背包槽位（由 InventoryChanged 事件驱动）。
     void refreshSlot(int slot_index);
     void markSlotsDirty();
-    void markActionMenuDirty();
 
     // --- 提示框 ---
 
@@ -183,9 +175,9 @@ private:
     void openHotbarActionMenu(int slot_index);
     /// 二次确认丢弃，展示"Discard x[N]? / Cancel"操作菜单。
     void openDiscardConfirmForBackpackSlot(int slot_index);
-    /// 填充 action_menu_entries_、强制 RmlUi 更新后定位菜单至锚点槽位旁。
+    /// 填充操作菜单模型、强制 RmlUi 更新后定位菜单至锚点槽位旁。
     void showActionMenu(Rml::String title,
-                        std::vector<ActionEntryViewModel> entries,
+                        std::vector<InventoryActionEntryViewModel> entries,
                         std::string_view anchor_grid_id,
                         int anchor_slot_index);
     /// 将操作菜单定位在锚点槽位右侧；若右侧溢出则改为左侧，最终 clamp 至区域内。

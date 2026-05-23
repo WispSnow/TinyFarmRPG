@@ -253,7 +253,7 @@ tf.state.add("npc.lyria.gift_count", 1)
 2. `shop_menu_scene.cpp`
    - [x] 保留 scene 生命周期，抽 `ShopTradeListBuilder` 和 `ShopMenuTransactionPresenter`，Scene 继续负责 UI 生命周期、输入与交易协调。
 3. `inventory_tab_content.cpp`
-   - 抽 slot drag/drop 状态机和 action menu model。
+   - [x] 抽 `InventorySlotDragController` 和 `InventoryActionMenuModel`，TabContent 保留事件入口、RmlUi 定位与命令 dispatch。
 4. `input_manager.cpp`
    - 拆 SDL event ingestion、binding persistence、context filter、rumble/glyph 辅助。
 5. `rpg_catalog.cpp`
