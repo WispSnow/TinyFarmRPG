@@ -18,6 +18,7 @@
 #include "game/scene/battle_scene_state.h"
 #include "game/scene/battle_scene_types.h"
 #include "game/scene/battle_scene_view_models.h"
+#include "game/scene/battle_view_model_builder.h"
 #include "game/scene/battle_victory_flow_controller.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -83,6 +84,7 @@ class BattleScene final : public engine::scene::Scene,
     const game::factory::BlueprintManager* blueprint_manager_{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
     engine::vfx::VfxService* vfx_service_{nullptr};
+    BattleViewModelBuilder view_model_builder_;
     game::battle::BattleSession session_;
     BattleScenePresentationOptions presentation_options_{};
     BattleEnemyHpBarController battle_enemy_hp_bar_controller_{};
@@ -216,7 +218,6 @@ private:
     void hideStateTooltip();
     void appendBattleLogLines(const std::vector<game::battle::BattleLogLine>& lines);
     void rebuildBattleLogView();
-    [[nodiscard]] Rml::String battleLogToneClass(game::battle::BattleLogTone tone) const;
     void refreshMenuEnabledState(bool enabled);
     void markMenuDirty();
     void enterInputMenu();

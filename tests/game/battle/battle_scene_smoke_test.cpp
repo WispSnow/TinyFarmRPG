@@ -134,16 +134,22 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
             .lexically_normal();
     const std::filesystem::path input_router_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_input_router.cpp").lexically_normal();
+    const std::filesystem::path view_model_builder_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_view_model_builder.cpp")
+            .lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
     ASSERT_TRUE(std::filesystem::exists(data_bindings_source_path)) << data_bindings_source_path;
     ASSERT_TRUE(std::filesystem::exists(input_router_source_path)) << input_router_source_path;
+    ASSERT_TRUE(std::filesystem::exists(view_model_builder_source_path)) << view_model_builder_source_path;
 
     const std::string source = readTextFile(source_path);
     const std::string data_bindings_source = readTextFile(data_bindings_source_path);
     const std::string input_router_source = readTextFile(input_router_source_path);
+    const std::string view_model_builder_source = readTextFile(view_model_builder_source_path);
     ASSERT_FALSE(source.empty());
     ASSERT_FALSE(data_bindings_source.empty());
     ASSERT_FALSE(input_router_source.empty());
+    ASSERT_FALSE(view_model_builder_source.empty());
 
     EXPECT_NE(source.find("createModel(MODEL_NAME, &type_register_)"), std::string::npos);
     EXPECT_NE(source.find("registerBattleSceneViewModelStructs(constructor)"), std::string::npos);
@@ -192,12 +198,13 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("setMenuState(MenuState::ItemList)"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::PartyCommand)"), std::string::npos);
     EXPECT_NE(source.find("setMenuState(MenuState::ActorCommand)"), std::string::npos);
-    EXPECT_NE(source.find("enemyTurnOrderIconDecorator"), std::string::npos);
-    EXPECT_NE(source.find("battleEnemyIconSpriteName"), std::string::npos);
-    EXPECT_NE(source.find("findEnemyIdleDownAnimation"), std::string::npos);
-    EXPECT_NE(source.find("\"idle_down\"_hs"), std::string::npos);
-    EXPECT_NE(source.find("sprite_blueprint_id_hash_"), std::string::npos);
-    EXPECT_NE(source.find("turnOrderFallbackLabel(unit.side, side_index)"), std::string::npos);
+    EXPECT_NE(source.find("view_model_builder_.buildTurnOrderEntries(session_)"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("enemyTurnOrderIconDecorator"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("battleEnemyIconSpriteName"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("findEnemyIdleDownAnimation"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("\"idle_down\"_hs"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("sprite_blueprint_id_hash_"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("turnOrderFallbackLabel(unit.side, side_index)"), std::string::npos);
     EXPECT_EQ(source.find("units_text"), std::string::npos);
     EXPECT_EQ(data_bindings_source.find("RegisterStruct<MainActionViewModel>"), std::string::npos);
     EXPECT_EQ(countOccurrences(source, "RegisterArray<decltype(party_commands_)>()"), 1U);
@@ -439,17 +446,23 @@ TEST(BattleSceneSmokeTest, AppendsBattleLogBeforeClearingPendingAction) {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
     const std::filesystem::path view_models_header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_view_models.h").lexically_normal();
+    const std::filesystem::path view_model_builder_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_view_model_builder.cpp")
+            .lexically_normal();
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
     ASSERT_TRUE(std::filesystem::exists(view_models_header_path)) << view_models_header_path;
+    ASSERT_TRUE(std::filesystem::exists(view_model_builder_source_path)) << view_model_builder_source_path;
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
 
     const std::string header = readTextFile(header_path);
     const std::string view_models_header = readTextFile(view_models_header_path);
+    const std::string view_model_builder_source = readTextFile(view_model_builder_source_path);
     const std::string source = readTextFile(source_path);
     ASSERT_FALSE(header.empty());
     ASSERT_FALSE(view_models_header.empty());
+    ASSERT_FALSE(view_model_builder_source.empty());
     ASSERT_FALSE(source.empty());
 
     EXPECT_NE(header.find("#include \"game/battle/battle_log_formatter.h\""), std::string::npos);
@@ -459,7 +472,7 @@ TEST(BattleSceneSmokeTest, AppendsBattleLogBeforeClearingPendingAction) {
     EXPECT_NE(header.find("battle_log_entries_"), std::string::npos);
     EXPECT_NE(header.find("appendBattleLogLines"), std::string::npos);
     EXPECT_NE(header.find("rebuildBattleLogView"), std::string::npos);
-    EXPECT_NE(header.find("battleLogToneClass"), std::string::npos);
+    EXPECT_NE(view_model_builder_source.find("battleLogToneClass"), std::string::npos);
 
     const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
     ASSERT_FALSE(executing_snippet.empty());
