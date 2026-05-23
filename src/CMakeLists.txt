@@ -223,6 +223,8 @@ target_sources(game PRIVATE
     game/ui/game_overlay.cpp
     game/ui/game_input_prompt_overlay.cpp
     game/ui/hotbar_ui.cpp
+    game/ui/inventory_action_menu_model.cpp
+    game/ui/inventory_slot_drag_controller.cpp
     game/ui/slot_grid_support.cpp
     game/ui/shop_menu_support.cpp
     game/ui/inventory_menu_tab_shortcuts.cpp

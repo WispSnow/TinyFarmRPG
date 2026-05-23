@@ -4,6 +4,10 @@
 #include <filesystem>
 #include <string>
 
+#include "game/component/hotbar_component.h"
+#include "game/ui/inventory_action_menu_model.h"
+#include "game/ui/inventory_slot_drag_controller.h"
+
 #include "../engine/render/test_source_utils.h"
 
 #ifndef PROJECT_SOURCE_DIR
@@ -381,19 +385,92 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuTabShortcutsUseNat
 TEST(InventoryMenuSceneSlotGridRegistrationTest, ClosingActionMenuDoesNotClearEntriesInSameUiTick) {
     const std::filesystem::path tab_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/inventory_tab_content.cpp").lexically_normal();
+    const std::filesystem::path model_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/inventory_action_menu_model.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(tab_source_path)) << tab_source_path;
+    ASSERT_TRUE(std::filesystem::exists(model_source_path)) << model_source_path;
 
     const std::string source = test_source_utils::readTextFile(tab_source_path);
+    const std::string model_source = test_source_utils::readTextFile(model_source_path);
     ASSERT_FALSE(source.empty()) << "无法读取: " << tab_source_path;
+    ASSERT_FALSE(model_source.empty()) << "无法读取: " << model_source_path;
 
     const std::string close_action_menu_block =
         test_source_utils::extractFunctionBlock(source, "void InventoryTabContent::closeActionMenu()");
+    const std::string model_close_block =
+        test_source_utils::extractFunctionBlock(model_source, "void InventoryActionMenuModel::close(");
     ASSERT_FALSE(close_action_menu_block.empty());
+    ASSERT_FALSE(model_close_block.empty());
 
-    EXPECT_NE(close_action_menu_block.find("action_menu_visible_ = false;"), std::string::npos);
-    EXPECT_EQ(close_action_menu_block.find("action_menu_entries_.clear();"), std::string::npos)
+    EXPECT_NE(close_action_menu_block.find("action_menu_model_.close(document_controller_)"), std::string::npos);
+    EXPECT_NE(model_close_block.find("visible = false;"), std::string::npos);
+    EXPECT_EQ(model_close_block.find("entries.clear();"), std::string::npos)
         << "Closing the menu should hide the data-if subtree first; clearing the backing array in the same tick "
            "can make stale data-for bindings read action_menu_entries[n] and trigger RmlUi out-of-bounds warnings.";
+}
+
+TEST(InventoryMenuSceneSlotGridRegistrationTest, ActionMenuModelCloseKeepsEntriesUntilNextShow) {
+    engine::ui::rmlui::RmlDocumentController document_controller;
+    game::ui::InventoryActionMenuModel model;
+    model.entries.push_back(game::ui::InventoryActionEntryViewModel{
+        .action_id = 1,
+        .label = "Use",
+        .is_destructive = false,
+    });
+    model.visible = true;
+
+    model.close(document_controller);
+
+    EXPECT_FALSE(model.visible);
+    ASSERT_EQ(model.entries.size(), 1U);
+    EXPECT_EQ(model.entries.front().label, "Use");
+}
+
+TEST(InventoryMenuSceneSlotGridRegistrationTest, SlotDragControllerPlansHotbarSwapAndLooseUnbind) {
+    game::component::HotbarComponent hotbar;
+    hotbar.setSlotMapping(0, 3);
+    hotbar.setSlotMapping(1, 8);
+
+    game::ui::InventorySlotDragController controller;
+    controller.start();
+    const auto swap_plan = controller.resolveDrop(
+        game::ui::MenuPanelKind::Hotbar,
+        1,
+        game::ui::SlotGridDragInfo{
+            .source = game::ui::SlotGridDragSourceKind::Hotbar,
+            .slot_index = 0,
+        },
+        &hotbar);
+
+    ASSERT_TRUE(swap_plan.handled);
+    ASSERT_EQ(swap_plan.commands.size(), 2U);
+    EXPECT_EQ(swap_plan.commands[0].kind, game::ui::InventorySlotDragCommandKind::HotbarBind);
+    EXPECT_EQ(swap_plan.commands[0].hotbar_slot_index, 1);
+    EXPECT_EQ(swap_plan.commands[0].inventory_slot_index, 3);
+    EXPECT_EQ(swap_plan.commands[1].hotbar_slot_index, 0);
+    EXPECT_EQ(swap_plan.commands[1].inventory_slot_index, 8);
+
+    const auto consumed_end = controller.resolveDragEnd(
+        game::ui::MenuPanelKind::Hotbar,
+        0,
+        game::ui::SlotGridDragInfo{
+            .source = game::ui::SlotGridDragSourceKind::Hotbar,
+            .slot_index = 0,
+        });
+    EXPECT_TRUE(consumed_end.handled);
+    EXPECT_FALSE(consumed_end.unbind_hotbar);
+
+    controller.start();
+    const auto loose_end = controller.resolveDragEnd(
+        game::ui::MenuPanelKind::Hotbar,
+        2,
+        game::ui::SlotGridDragInfo{
+            .source = game::ui::SlotGridDragSourceKind::Hotbar,
+            .slot_index = 2,
+        });
+    EXPECT_TRUE(loose_end.handled);
+    EXPECT_TRUE(loose_end.unbind_hotbar);
+    EXPECT_EQ(loose_end.hotbar_slot_index, 2);
 }
 
 } // namespace
