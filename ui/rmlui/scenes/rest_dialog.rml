@@ -16,9 +16,22 @@
         <div id="rest-title" class="tf-scene-title">Rest</div>
 
         <div id="rest-selector">
-            <button id="rest-hours-down-button" class="tf-icon-button icon-page-left" data-event-click="hours_down"></button>
+            <button id="rest-hours-down-button" class="tf-icon-button icon-page-left tf-nav-auto" data-event-click="hours_down"></button>
             <div id="rest-hours" class="tf-value-label">{{ hours_text }}</div>
-            <button id="rest-hours-up-button" class="tf-icon-button icon-page-right" data-event-click="hours_up"></button>
+            <button id="rest-hours-up-button" class="tf-icon-button icon-page-right tf-nav-auto" data-event-click="hours_up"></button>
+        </div>
+
+        <div id="rest-recovery-summary" class="tf-scene-subtitle">{{ recovery_summary_text }}</div>
+
+        <div id="rest-preview-card" class="tf-scene-card-frame">
+            <div id="rest-preview-empty" data-if="!has_recovery_members">{{ recovery_empty_text }}</div>
+            <div id="rest-member-list" data-if="has_recovery_members">
+                <div class="rest-member-row" data-for="member : recovery_members">
+                    <div class="rest-member-name">{{ member.display_name }}</div>
+                    <div class="rest-stat-text rest-hp-text">{{ member.hp_text }}</div>
+                    <div class="rest-stat-text rest-mp-text">{{ member.mp_text }}</div>
+                </div>
+            </div>
         </div>
 
         <div id="rest-actions">

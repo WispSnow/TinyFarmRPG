@@ -24,6 +24,7 @@
 #include "game/data/rpg_types.h"
 #include "game/defs/constants.h"
 #include "game/defs/commands.h"
+#include "game/defs/party_ids.h"
 #include "game/defs/render_layers.h"
 #include "game/defs/spatial_layers.h"
 #include "game/defs/events.h"
@@ -68,7 +69,6 @@ namespace {
 
 constexpr entt::id_type RULE_SOIL_TILLED = game::defs::auto_tile_rule::SOIL_TILLED;
 constexpr entt::id_type RULE_SOIL_WET    = game::defs::auto_tile_rule::SOIL_WET;
-constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 
 constexpr std::array<Vec2i, 8> NEIGHBOR_OFFSETS{{
     {0, -1},  // up
@@ -108,15 +108,15 @@ Vec2i worldToTile(glm::vec2 world_pos) {
 }
 
 void ensureDefaultPartyActor(std::vector<std::string>& actor_ids) {
-    if (!containsString(actor_ids, DEFAULT_PARTY_ACTOR_ID)) {
-        actor_ids.insert(actor_ids.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    if (!containsString(actor_ids, game::defs::kDefaultPlayerActorId)) {
+        actor_ids.insert(actor_ids.begin(), std::string(game::defs::kDefaultPlayerActorId));
     }
 }
 
 void normalizeParty(game::component::PartyComponent& party) {
     ensureDefaultPartyActor(party.recruited_actor_ids_);
     if (party.active_actor_ids_.empty()) {
-        party.active_actor_ids_.push_back(std::string(DEFAULT_PARTY_ACTOR_ID));
+        party.active_actor_ids_.push_back(std::string(game::defs::kDefaultPlayerActorId));
     }
     ensureDefaultPartyActor(party.active_actor_ids_);
 
@@ -137,7 +137,7 @@ void normalizeParty(game::component::PartyComponent& party) {
 
     party.active_actor_ids_ = std::move(filtered_active);
     if (party.active_actor_ids_.empty()) {
-        party.active_actor_ids_.push_back(std::string(DEFAULT_PARTY_ACTOR_ID));
+        party.active_actor_ids_.push_back(std::string(game::defs::kDefaultPlayerActorId));
     }
 }
 

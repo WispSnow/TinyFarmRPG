@@ -3,6 +3,7 @@
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
+#include "game/defs/party_ids.h"
 #include "game/factory/blueprint.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/scene/game_scene_reward_feedback.h"
@@ -60,7 +61,7 @@ struct BattleEnemyIconDescriptor {
 
 [[nodiscard]] Rml::String portraitDecoratorForUnit(const game::battle::BattleUnit& unit) {
     if (unit.source_actor_id) {
-        if (*unit.source_actor_id == "actor.player") {
+        if (*unit.source_actor_id == game::defs::kDefaultPlayerActorId) {
             return "image(portrait-player)";
         }
         if (*unit.source_actor_id == "actor.lyria") {

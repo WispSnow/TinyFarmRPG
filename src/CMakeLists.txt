@@ -201,6 +201,7 @@ target_sources(game PRIVATE
     game/domain/inventory_domain_service.cpp
     game/domain/equipment_domain_service.cpp
     game/domain/actor_progression_service.cpp
+    game/domain/party_rest_service.cpp
     game/domain/quest_battle_progress_resolver.cpp
     game/domain/quest_log_ops.cpp
     game/domain/quest_turn_in_service.cpp

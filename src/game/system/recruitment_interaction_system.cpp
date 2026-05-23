@@ -10,6 +10,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/defs/party_ids.h"
 
 #include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
@@ -185,7 +186,7 @@ void RecruitmentInteractionSystem::onInteractCommand(const game::defs::InteractC
 bool RecruitmentInteractionSystem::isRecruited(std::string_view actor_id) const {
     auto players = registry_.view<game::component::PlayerTag, game::component::PartyComponent>();
     if (players.begin() == players.end()) {
-        return actor_id == "actor.player";
+        return actor_id == game::defs::kDefaultPlayerActorId;
     }
     const auto& party = players.get<game::component::PartyComponent>(*players.begin());
     return containsString(party.recruited_actor_ids_, actor_id);

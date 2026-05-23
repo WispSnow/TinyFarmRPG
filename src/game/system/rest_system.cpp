@@ -2,8 +2,10 @@
 
 #include "game/component/map_component.h"
 #include "game/data/game_time.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/party_rest_service.h"
 #include "game/scene/rest_dialog_scene.h"
 
 #include "engine/core/context.h"
@@ -16,14 +18,19 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace game::system {
 
-RestSystem::RestSystem(entt::registry& registry, engine::core::Context& context)
+RestSystem::RestSystem(entt::registry& registry,
+                       engine::core::Context& context,
+                       const game::data::RpgCatalog* rpg_catalog)
     : registry_(registry),
       context_(context),
-      dispatcher_(context.getDispatcher()) {
+      dispatcher_(context.getDispatcher()),
+      rpg_catalog_(rpg_catalog) {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&RestSystem::onInteractCommand>(this);
+    dispatcher_.sink<game::defs::RestConfirmRequest>().connect<&RestSystem::onRestConfirmRequest>(this);
 }
 
 RestSystem::~RestSystem() {
@@ -50,8 +57,49 @@ void RestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
         return;
     }
 
-    auto scene = std::make_unique<game::scene::RestDialogScene>("RestDialog", context_);
+    std::vector<game::domain::RestRecoveryPreview> recovery_previews{};
+    if (rpg_catalog_) {
+        recovery_previews.reserve(game::scene::RestDialogScene::MAX_REST_HOURS);
+        for (int hours = game::scene::RestDialogScene::MIN_REST_HOURS;
+             hours <= game::scene::RestDialogScene::MAX_REST_HOURS;
+             ++hours) {
+            recovery_previews.push_back(game::domain::PartyRestService::previewActivePartyRecovery(
+                registry_,
+                event.player,
+                *rpg_catalog_,
+                hours));
+        }
+    }
+
+    auto scene = std::make_unique<game::scene::RestDialogScene>(
+        "RestDialog",
+        context_,
+        event.player,
+        std::move(recovery_previews));
     dispatcher_.trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(scene)});
+}
+
+void RestSystem::onRestConfirmRequest(const game::defs::RestConfirmRequest& event) {
+    if (event.hours <= 0 || event.player == entt::null || !registry_.valid(event.player)) {
+        return;
+    }
+
+    if (rpg_catalog_) {
+        const auto result = game::domain::PartyRestService::applyActivePartyRecovery(
+            registry_,
+            event.player,
+            *rpg_catalog_,
+            event.hours);
+        if (result.runtime_state_changed) {
+            dispatcher_.trigger(game::defs::PartyRuntimeStatsChanged{
+                .player = event.player,
+                .actor_id = {},
+                .full_sync = true,
+            });
+        }
+    }
+
+    dispatcher_.enqueue(game::defs::AdvanceTimeRequest{event.hours});
 }
 
 } // namespace game::system
