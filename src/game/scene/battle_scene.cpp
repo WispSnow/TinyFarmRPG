@@ -565,9 +565,9 @@ bool BattleScene::init() {
     connectUserSettingsListeners();
 
     if (session_.outcome() == game::battle::BattleOutcome::Victory) {
-        beginVictoryFlow();
+        flow_controller_.startVictoryFlow(*this);
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        state_ = FlowState::BattleEnd;
+        flow_controller_.setBattleEnd();
         leaveInputMenu();
     } else {
         beginCurrentTurnFlow();
@@ -697,7 +697,7 @@ bool BattleScene::initUI() {
             constructor,
             "victory_continue",
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
-                if (state_ == FlowState::VictoryFlow) {
+                if (flow_controller_.isVictoryFlow()) {
                     victory_flow_controller_.confirm();
                 }
             }) ||
@@ -860,93 +860,51 @@ void BattleScene::restoreBattleCamera() {
 }
 
 void BattleScene::runStateMachine(float delta_time) {
-    bool keep_running = true;
-    while (keep_running) {
-        keep_running = false;
+    flow_controller_.run(delta_time, *this);
+}
 
-        switch (state_) {
-            case FlowState::WaitingForInput:
-                return;
-            case FlowState::ExecutingAction: {
-                if (!pending_action_) {
-                    beginCurrentTurnFlow();
-                    keep_running = true;
-                    break;
-                }
+bool BattleScene::hasPendingAction() const {
+    return pending_action_.has_value();
+}
 
-                last_action_result_ = session_.submitAction(*pending_action_);
-                appendBattleLogLines(game::battle::formatBattleLogLines(
-                    *last_action_result_,
-                    game::battle::BattleLogFormatterContext{
-                        .rpg_catalog = rpg_catalog_,
-                        .item_catalog = item_catalog_
-                    }));
-                const auto unit_anchors = collectBattlePresentationUnitAnchors();
-                const BattleActionPresentationPlan presentation_plan =
-                    presentationPlanForResult(*last_action_result_, unit_anchors);
-                const BattleAnimationTimelineConfig animation_config = animationConfigForPlan(presentation_plan);
-                battle_enemy_hp_bar_controller_.stageSnapshot(last_action_result_->snapshot);
-                schedulePresentationPlanEvents(presentation_plan, *last_action_result_);
-                battle_damage_popup_controller_.spawnFromResult(
-                    *last_action_result_,
-                    unit_anchors,
-                    presentation_plan.impact_time_seconds);
-                battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
-                pending_action_.reset();
-                leaveInputMenu();
-                state_ = FlowState::AnimatingResult;
-                keep_running = true;
-                break;
-            }
-            case FlowState::AnimatingResult: {
-                battle_animation_director_.update(delta_time);
-                if (battle_animation_director_.finished()) {
-                    state_ = FlowState::CheckVictory;
-                    keep_running = true;
-                }
-                break;
-            }
-            case FlowState::CheckVictory:
-                if (session_.outcome() == game::battle::BattleOutcome::Ongoing) {
-                    state_ = FlowState::NextTurn;
-                } else if (session_.outcome() == game::battle::BattleOutcome::Victory) {
-                    beginVictoryFlow();
-                } else {
-                    state_ = FlowState::BattleEnd;
-                }
-                keep_running = true;
-                break;
-            case FlowState::VictoryFlow:
-                victory_flow_controller_.update(delta_time);
-                if (victory_flow_controller_.finished()) {
-                    finishVictoryFlow();
-                    keep_running = true;
-                }
-                break;
-            case FlowState::NextTurn:
-                beginCurrentTurnFlow();
-                keep_running = true;
-                break;
-            case FlowState::BattleEnd:
-                leaveInputMenu();
-                requestBattleEnd();
-                return;
-        }
+void BattleScene::executePendingAction() {
+    if (!pending_action_) {
+        return;
     }
+
+    last_action_result_ = session_.submitAction(*pending_action_);
+    appendBattleLogLines(game::battle::formatBattleLogLines(
+        *last_action_result_,
+        game::battle::BattleLogFormatterContext{
+            .rpg_catalog = rpg_catalog_,
+            .item_catalog = item_catalog_
+        }));
+    const auto unit_anchors = collectBattlePresentationUnitAnchors();
+    const BattleActionPresentationPlan presentation_plan =
+        presentationPlanForResult(*last_action_result_, unit_anchors);
+    const BattleAnimationTimelineConfig animation_config = animationConfigForPlan(presentation_plan);
+    battle_enemy_hp_bar_controller_.stageSnapshot(last_action_result_->snapshot);
+    schedulePresentationPlanEvents(presentation_plan, *last_action_result_);
+    battle_damage_popup_controller_.spawnFromResult(
+        *last_action_result_,
+        unit_anchors,
+        presentation_plan.impact_time_seconds);
+    battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
+    pending_action_.reset();
 }
 
 void BattleScene::beginCurrentTurnFlow() {
     pending_action_.reset();
 
     if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        state_ = FlowState::BattleEnd;
+        flow_controller_.setBattleEnd();
         leaveInputMenu();
         return;
     }
 
     const auto* actor = currentActor();
     if (!actor) {
-        state_ = FlowState::BattleEnd;
+        flow_controller_.setBattleEnd();
         leaveInputMenu();
         return;
     }
@@ -956,7 +914,7 @@ void BattleScene::beginCurrentTurnFlow() {
         return;
     }
 
-    state_ = FlowState::WaitingForInput;
+    flow_controller_.waitForInput();
     enterInputMenu();
 }
 
@@ -999,6 +957,18 @@ game::battle::BattleAction BattleScene::buildEnemyAction(const game::battle::Bat
     return game::battle::BattleAiPlanner::planEnemyAction(actor, *enemy, session_.units(), *rpg_catalog_);
 }
 
+void BattleScene::updateResultAnimation(const float delta_time) {
+    battle_animation_director_.update(delta_time);
+}
+
+bool BattleScene::resultAnimationFinished() const {
+    return battle_animation_director_.finished();
+}
+
+game::battle::BattleOutcome BattleScene::battleOutcome() const {
+    return session_.outcome();
+}
+
 void BattleScene::refreshView() {
     const auto current_actor_id = session_.currentActorId();
 
@@ -1017,7 +987,7 @@ void BattleScene::refreshView() {
     rebuildVictoryView();
 
     std::string result_text = "Result: " + menu_status_text_;
-    if (state_ == FlowState::VictoryFlow) {
+    if (flow_controller_.isVictoryFlow()) {
         result_text = "Result: Victory";
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
@@ -1028,7 +998,7 @@ void BattleScene::refreshView() {
 
     const bool can_submit_action =
         !end_requested_ &&
-        state_ == FlowState::WaitingForInput &&
+        flow_controller_.isWaitingForInput() &&
         session_.outcome() == game::battle::BattleOutcome::Ongoing &&
         current_actor_id.has_value();
 
@@ -1046,7 +1016,7 @@ void BattleScene::refreshView() {
 
 void BattleScene::rebuildVictoryView() {
     const BattleVictoryFlowSnapshot snapshot = victory_flow_controller_.snapshot();
-    const bool overlay_visible = state_ == FlowState::VictoryFlow && victory_flow_controller_.active();
+    const bool overlay_visible = flow_controller_.isVictoryFlow() && victory_flow_controller_.active();
     if (updateBoundBool(victory_overlay_visible_, overlay_visible)) {
         document_controller_.markDirty("victory_overlay_visible");
     }
@@ -2195,12 +2165,12 @@ bool BattleScene::submitDraftAction() {
 void BattleScene::submitAction(game::battle::BattleAction action) {
     pending_action_ = std::move(action);
     leaveInputMenu();
-    state_ = FlowState::ExecutingAction;
+    flow_controller_.beginExecutingAction();
 }
 
 bool BattleScene::isWaitingForActionInput() const {
     return !end_requested_ &&
-        state_ == FlowState::WaitingForInput &&
+        flow_controller_.isWaitingForInput() &&
         session_.outcome() == game::battle::BattleOutcome::Ongoing &&
         session_.currentActorId().has_value();
 }
@@ -2323,7 +2293,7 @@ bool BattleScene::onMenuRightPressed() {
 }
 
 bool BattleScene::onMenuConfirmPressed() {
-    if (state_ == FlowState::VictoryFlow) {
+    if (flow_controller_.isVictoryFlow()) {
         victory_flow_controller_.confirm();
         return true;
     }
@@ -2352,7 +2322,7 @@ bool BattleScene::onMenuConfirmPressed() {
 }
 
 bool BattleScene::onMenuCancelPressed() {
-    if (state_ == FlowState::VictoryFlow) {
+    if (flow_controller_.isVictoryFlow()) {
         return true;
     }
 
@@ -2455,7 +2425,7 @@ void BattleScene::queueEscapeAction() {
 }
 
 const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::BattleUnitId& out_actor_id) const {
-    if (state_ != FlowState::WaitingForInput || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
+    if (!flow_controller_.isWaitingForInput() || session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         return nullptr;
     }
 
@@ -2475,7 +2445,6 @@ const game::battle::BattleUnit* BattleScene::prepareActionActor(game::battle::Ba
 
 void BattleScene::beginVictoryFlow() {
     leaveInputMenu();
-    state_ = FlowState::VictoryFlow;
     victory_reward_summary_ = resolveVictoryRewards();
     std::vector<std::string> actor_ids{};
     actor_ids.reserve(session_.units().size());
@@ -2510,7 +2479,14 @@ game::battle::BattleRewardSummary BattleScene::resolveVictoryRewards() {
 
 void BattleScene::finishVictoryFlow() {
     victory_flow_controller_.reset();
-    state_ = FlowState::BattleEnd;
+}
+
+void BattleScene::updateVictoryFlow(const float delta_time) {
+    victory_flow_controller_.update(delta_time);
+}
+
+bool BattleScene::victoryFlowFinished() const {
+    return victory_flow_controller_.finished();
 }
 
 void BattleScene::playVictoryAudioCue() {
@@ -2645,7 +2621,7 @@ void BattleScene::updateScheduledPresentationEvents(const float delta_time) {
 
 void BattleScene::updateCommandFocus(const float delta_time) {
     std::optional<game::battle::BattleUnitId> next_actor_id{};
-    if (state_ == FlowState::WaitingForInput && !battle_animation_director_.active()) {
+    if (flow_controller_.isWaitingForInput() && !battle_animation_director_.active()) {
         if (const auto current_actor_id = session_.currentActorId()) {
             if (const auto* unit = session_.findUnit(*current_actor_id);
                 unit && unit->side == game::battle::BattleSide::Player && unit->isAlive()) {
@@ -2671,7 +2647,7 @@ void BattleScene::updateCommandFocus(const float delta_time) {
 std::optional<BattleAnimationPose> BattleScene::commandFocusPoseFor(
     const game::battle::BattleUnitId unit_id,
     const game::battle::BattleSide side) const {
-    if (state_ != FlowState::WaitingForInput || battle_animation_director_.active() ||
+    if (!flow_controller_.isWaitingForInput() || battle_animation_director_.active() ||
         side != game::battle::BattleSide::Player) {
         return std::nullopt;
     }
@@ -2699,7 +2675,7 @@ std::optional<BattleAnimationPose> BattleScene::presentationPoseFor(
     if (const auto pose = battle_animation_director_.poseFor(unit_id)) {
         return pose;
     }
-    if (state_ == FlowState::VictoryFlow && side == game::battle::BattleSide::Player) {
+    if (flow_controller_.isVictoryFlow() && side == game::battle::BattleSide::Player) {
         const auto* unit = session_.findUnit(unit_id);
         if (unit && unit->isAlive()) {
             const BattleVictoryFlowSnapshot victory_snapshot = victory_flow_controller_.snapshot();
