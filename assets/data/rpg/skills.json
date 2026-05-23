@@ -34,7 +34,7 @@
             "description": "Deals damage to one enemy and knocks it off balance.",
             "scope": "one_enemy",
             "hit_type": "physical",
-            "mp_cost": 0,
+            "mp_cost": 3,
             "success_rate": 100,
             "repeats": 1,
             "damage": {

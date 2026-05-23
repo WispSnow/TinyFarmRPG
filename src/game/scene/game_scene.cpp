@@ -1033,7 +1033,7 @@ void GameScene::resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& 
     active_encounter_context_.reset();
     const bool victory = evt.outcome == game::battle::BattleOutcome::Victory;
 
-    if (victory && context.once && services_ && services_->world_state) {
+    if (victory && services_ && services_->world_state) {
         if (auto* map_state = services_->world_state->getMapStateMutable(context.map_id)) {
             map_state->persistent.defeated_encounters.insert(context.encounter_id);
         }
@@ -1048,7 +1048,7 @@ void GameScene::resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& 
         return;
     }
 
-    if (victory && context.once) {
+    if (victory) {
         encounter->defeated_ = true;
         if (context_.getSpatialIndexManager().isInitialized()) {
             context_.getSpatialIndexManager().removeColliderEntity(context.source_entity);

@@ -44,17 +44,17 @@ TEST(QuestCatalogTest, LoadsProjectQuestAssetAndValidatesReferences) {
 
     const auto* quest = catalog.findQuest("quest.village.goblin_cleanup");
     ASSERT_NE(quest, nullptr);
-    EXPECT_EQ(quest->title_, "Goblin Cleanup");
+    EXPECT_EQ(quest->title_, "Slime Cleanup");
     ASSERT_EQ(quest->objectives_.size(), 1U);
-    EXPECT_EQ(quest->objectives_[0].id_, "kill_goblins");
-    EXPECT_EQ(quest->objectives_[0].enemy_id_, "enemy.goblin");
+    EXPECT_EQ(quest->objectives_[0].id_, "kill_slimes");
+    EXPECT_EQ(quest->objectives_[0].enemy_id_, "enemy.slime");
     EXPECT_EQ(quest->objectives_[0].required_count_, 3);
     ASSERT_TRUE(quest->objectives_[0].marker_.has_value());
     EXPECT_EQ(quest->objectives_[0].marker_->map_name_, "town");
     EXPECT_EQ(quest->objectives_[0].marker_->map_id_hash_, QuestCatalog::hashId("town"));
     EXPECT_EQ(quest->objectives_[0].marker_->position_.x, 532.0F);
     EXPECT_EQ(quest->objectives_[0].marker_->position_.y, 296.0F);
-    EXPECT_EQ(quest->objectives_[0].marker_->label_, "Goblin Target");
+    EXPECT_EQ(quest->objectives_[0].marker_->label_, "Slime Targets");
 
     ItemCatalog item_catalog;
     ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
@@ -439,8 +439,8 @@ TEST(QuestCatalogTest, ValidateReferencesFailsOnUnknownRewardItem) {
 
 TEST(QuestCatalogTest, MakeQuestObjectiveProgressKeyBuildsStableCompositeKey) {
     EXPECT_EQ(
-        makeQuestObjectiveProgressKey("quest.village.goblin_cleanup", "kill_goblins"),
-        "quest.village.goblin_cleanup::kill_goblins");
+        makeQuestObjectiveProgressKey("quest.village.goblin_cleanup", "kill_slimes"),
+        "quest.village.goblin_cleanup::kill_slimes");
 }
 
 } // namespace

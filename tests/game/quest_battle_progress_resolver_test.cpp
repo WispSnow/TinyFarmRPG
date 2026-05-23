@@ -197,7 +197,7 @@ TEST(QuestBattleProgressResolverTest, CompletedAndMissingQuestsAreSkipped) {
     EXPECT_TRUE(quest_log.objective_progress.empty());
 }
 
-TEST(QuestBattleProgressResolverTest, ProjectGoblinTroopBattleAdvancesGoblinCleanupQuest) {
+TEST(QuestBattleProgressResolverTest, ProjectSlimeTroopBattleAdvancesSlimeCleanupQuest) {
     auto quest_catalog = loadProjectQuestCatalog();
     auto rpg_catalog = loadProjectRpgCatalog();
     QuestBattleProgressResolver resolver{};
@@ -206,28 +206,28 @@ TEST(QuestBattleProgressResolverTest, ProjectGoblinTroopBattleAdvancesGoblinClea
     std::string build_error{};
     ASSERT_TRUE(game::battle::buildBattleUnitsFromCatalog(
         rpg_catalog,
-        game::battle::BattleUnitBuildOptions{.troop_id = "troop.goblin_pair"},
+        game::battle::BattleUnitBuildOptions{.troop_id = "troop.slime"},
         units,
         build_error)) << build_error;
 
-    int goblin_enemy_count = 0;
+    int slime_enemy_count = 0;
     for (auto& unit : units) {
         if (unit.side != game::battle::BattleSide::Enemy) {
             continue;
         }
-        ++goblin_enemy_count;
+        ++slime_enemy_count;
         unit.hp = 0;
         ASSERT_TRUE(unit.source_enemy_id.has_value());
-        EXPECT_EQ(*unit.source_enemy_id, "enemy.goblin");
+        EXPECT_EQ(*unit.source_enemy_id, "enemy.slime");
     }
-    ASSERT_EQ(goblin_enemy_count, 2);
+    ASSERT_EQ(slime_enemy_count, 3);
 
     const auto* quest = quest_catalog.findQuest("quest.village.goblin_cleanup");
     ASSERT_NE(quest, nullptr);
 
     game::component::QuestLogComponent quest_log{};
     ASSERT_TRUE(game::domain::quest_log_ops::tryAcceptQuest(quest_log, *quest));
-    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(quest->id_, quest->objectives_.front().id_)] = 1;
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(quest->id_, quest->objectives_.front().id_)] = 0;
 
     const auto summary = resolver.apply(
         game::battle::BattleOutcome::Victory,

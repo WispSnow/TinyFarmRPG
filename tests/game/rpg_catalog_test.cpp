@@ -339,9 +339,10 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
 
     const auto* troop = catalog.findTroop("troop.slime");
     ASSERT_NE(troop, nullptr);
-    ASSERT_EQ(troop->members_.size(), 2U);
-    EXPECT_EQ(troop->members_[0].enemy_id_, "enemy.slime");
-    EXPECT_EQ(troop->members_[1].enemy_id_, "enemy.slime");
+    ASSERT_EQ(troop->members_.size(), 3U);
+    for (const auto& member : troop->members_) {
+        EXPECT_EQ(member.enemy_id_, "enemy.slime");
+    }
 
     const auto* player = catalog.findActor("actor.player");
     ASSERT_NE(player, nullptr);

@@ -404,7 +404,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
         } else if (!encounter_id || *encounter_id <= 0) {
             spdlog::warn("EntityBuilder: actor 声明 battle_troop_id='{}' 但缺少合法 encounter_id，忽略战斗入口。",
                          *battle_troop_id);
-        } else if (encounter_once && isEncounterDefeated(*encounter_id)) {
+        } else if (isEncounterDefeated(*encounter_id)) {
             entity_id_ = entt::null;
             return;
         } else if (!seen_encounter_ids_.insert(*encounter_id).second) {

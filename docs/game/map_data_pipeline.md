@@ -65,7 +65,7 @@
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
 | `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
-| `encounter_once` | bool | 是否一次性遭遇；胜利后写入存档并不再生成 | 地图存档 |
+| `encounter_once` | bool | 兼容旧地图的一次性遭遇标记；当前地图遭遇胜利后统一写入存档并不再生成 | 地图存档 |
 | `wander_radius_override` | float | 覆盖该 actor 实例的漫游半径 | 地图实例 |
 
 运行时行为：
@@ -78,7 +78,7 @@
 - 若 `shop_id` 与 `quest_offer_id` 同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
 - `recruit_actor_id` 不能与 `shop_id` / `quest_offer_id` / `battle_troop_id` 共存；共存时会 `warn`，并忽略招募入口
 - `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` / `recruit_actor_id` 共存；共存时会 `warn`，并忽略战斗入口
-- `encounter_once=true` 且该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
+- 该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
 
 推荐直接避免在同一个 actor object 上同时配置多个玩法入口。
 
@@ -232,7 +232,7 @@
 - 用 `encounter_id` 标识该地图中的遭遇实例
 - `EnemyEncounterSystem` 在空间索引更新后检测玩家与敌人的接触，并发布 `EnterBattleCommand`
 - `GameScene` 会携带遭遇上下文进入战斗，并在 `BattleEndedEvent` 到达时先结算遭遇状态
-- `encounter_once=true` 的遭遇胜利后写入 `MapPersistentState::defeated_encounters`，并通过 `SaveData::MapSaveData::defeated_encounters` 进入 JSON 存档
+- 地图遭遇胜利后写入 `MapPersistentState::defeated_encounters`，并通过 `SaveData::MapSaveData::defeated_encounters` 进入 JSON 存档
 
 暂未支持独立的矩形 `battle_trigger` 区域；当前推荐使用可见 actor 敌人作为地图战斗入口。
 

@@ -82,7 +82,7 @@ progress key 由统一 helper 生成，规则为：
 key = quest_id + "::" + objective_id
 ```
 
-例如 `quest.village.goblin_cleanup::kill_goblins`。
+例如 `quest.village.goblin_cleanup::kill_slimes`。
 
 禁止业务代码手写字符串拼接，必须通过 `game::data::makeQuestObjectiveProgressKey(quest_id, objective_id)` 生成。
 
@@ -98,13 +98,13 @@ key = quest_id + "::" + objective_id
   "quests": [
     {
       "id": "quest.village.goblin_cleanup",
-      "title": "Goblin Cleanup",
-      "description": "Defeat goblins near the village.",
+      "title": "Slime Cleanup",
+      "description": "Defeat slimes near the village.",
       "objectives": [
         {
-          "id": "kill_goblins",
+          "id": "kill_slimes",
           "kind": "defeat_enemy_count",
-          "enemy_id": "enemy.goblin",
+          "enemy_id": "enemy.slime",
           "required_count": 3
         }
       ],
@@ -113,7 +113,7 @@ key = quest_id + "::" + objective_id
         "items": [{ "item_id": "potion", "count": 2 }]
       },
       "giver_text": {
-        "offer": "Can you help us drive away the goblins?",
+        "offer": "Can you help us drive away the slimes?",
         "progress": "We still need more help.",
         "ready_to_turn_in": "You did it? That's a relief.",
         "completed": "Thank you again."
@@ -278,7 +278,7 @@ sequenceDiagram
 当前项目自带一条最小任务配置（`assets/data/quests.json`）：
 
 - quest id：`quest.village.goblin_cleanup`
-- objective：击败 `enemy.goblin` 3 次
+- objective：击败 `enemy.slime` 3 次
 - reward：`50 gold + potion x2`
 - giver text：已配置 `offer / progress / ready_to_turn_in / completed` 四组文本
 

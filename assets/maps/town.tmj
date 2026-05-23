@@ -556,12 +556,12 @@
                          "name":"encounter_id",
                          "type":"int",
                          "value":1001
-                        }, 
+                        },
                         {
                          "name":"encounter_once",
                          "type":"bool",
                          "value":true
-                        }, 
+                        },
                         {
                          "name":"wander_radius_override",
                          "type":"float",
@@ -594,7 +594,7 @@
                         {
                          "name":"encounter_once",
                          "type":"bool",
-                         "value":false
+                         "value":true
                         },
                         {
                          "name":"wander_radius_override",
