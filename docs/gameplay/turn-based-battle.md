@@ -210,7 +210,7 @@ flowchart TD
 
 - `BattleScene::render()` 会先绘制全屏战斗底色和站位地面线，遮住底层探索地图，避免场景栈透出。
 - 玩家方站在右侧，默认播放 `idle_left`；玩家角色蓝图只有 `idle_right` 资源时，`BlueprintManager` 会自动镜像生成 `idle_left`。
-- 敌方站在左侧，使用 `EnemyData::battle_visual_` 指定 actor blueprint、idle 动画与缩放；默认资源中的 `enemy.goblin` / `enemy.gnome` / `enemy.slime` 都有显式配置。
+- 玩家方与敌方都使用 `battle_visual` 指定 actor blueprint、idle 动画与战斗精灵缩放；默认资源中的 `actor.player` / `actor.lyria` / `actor.tori` 和 `enemy.goblin` / `enemy.gnome` / `enemy.slime` 都有显式配置。
 - `BattleScene` 为战斗表现维护独立 `battle_registry_`，并通过 `RenderSystem::renderPrepared()` 在不重置 GameScene 相机的前提下追加战斗精灵绘制。
 - 战斗中 SceneManager 只更新栈顶 scene，因此底层 `GameScene` 的探索 update 会冻结；`GameScene` 在 push `BattleScene` 前同步采集玩家外观快照。
 
@@ -406,7 +406,7 @@ sequenceDiagram
 | `BattleRewardWritebackResult` | 完整写回摘要：`gold_written_back` + `item_results` 列表；`empty()` 可判断是否有任何写回 |
 | `ActorExperienceGrant` | 单个 actor 的经验结算结果：`gained_exp / old_level / new_level / total_exp / exp_to_next / hp_max_delta / mp_max_delta` |
 | `PartyExperienceGrantResult` | 队伍经验写回摘要：`exp_reward` + actor 结果列表，供 Victory overlay 与探索通知展示 |
-| `BattleVisualData` | 敌方战斗精灵配置：`sprite_blueprint_id / idle_animation / scale`，属于表现数据，不参与战斗结算 |
+| `BattleVisualData` | 战斗精灵配置：`sprite_blueprint_id / idle_animation / sprite_scale`，属于表现数据，不参与战斗结算 |
 | `BattleSpriteSeed` | `GameScene` 进入战斗前生成的表现种子，携带 unit id、来源 id 和可选玩家外观快照 |
 | `PlayerWalletComponent` | 探索态金币真相 |
 | `PartyRuntimeStatsComponent` | 队伍成员运行时真相：当前 HP/MP、等级缓存、累计经验 |
@@ -518,7 +518,7 @@ sequenceDiagram
 | `src/game/scene/game_scene_battle_settlement.h/.cpp` | 表现 | 战斗结束统一入口：物品库存写回 → Victory 奖励写回 → 任务推进 → 触发通知 |
 | `src/game/scene/game_scene_reward_feedback.h/.cpp` | 表现 | 奖励写回结果格式化（`BattleRewardWritebackResult`）与战斗结算合并通知（含任务推进摘要） |
 | `src/game/component/player_wallet_component.h` | 探索态 | 金币真相 |
-| `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表；解析敌人 `battle_visual` |
+| `src/game/data/rpg_catalog.*` | 数据 | 技能、状态、actor、enemy、troop 查表；解析 actor / enemy `battle_visual` |
 | `src/game/data/item_catalog.*` | 数据 | `battle_use` 物品效果查表 |
 | `src/game/defs/commands.h` | 契约 | `EnterBattleCommand` / `SubmitBattleActionCommand` |
 | `src/game/defs/events.h` | 契约 | `BattleEndedEvent` |
