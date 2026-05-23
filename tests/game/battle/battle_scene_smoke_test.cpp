@@ -519,7 +519,7 @@ TEST(BattleSceneSmokeTest, RendersSideViewSpritesOverOpaqueBattlefield) {
     EXPECT_NE(source.find("battle_render_system_.renderPrepared"), std::string::npos);
     EXPECT_NE(source.find("battleFormationSlot"), std::string::npos);
     EXPECT_NE(source.find("constexpr float BATTLEFIELD_HEIGHT = 256.0f;"), std::string::npos);
-    EXPECT_NE(source.find("BATTLE_SPRITE_SCALE_MULTIPLIER"), std::string::npos);
+    EXPECT_NE(source.find("scale = enemy->battle_visual_.scale_"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{480.0F, 172.0F}"), std::string::npos);
     EXPECT_NE(source.find("glm::vec2{160.0F, 172.0F}"), std::string::npos);
     EXPECT_NE(source.find("std::clamp(position.y, 96.0F, BATTLEFIELD_HEIGHT - 30.0F)"), std::string::npos);

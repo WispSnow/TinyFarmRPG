@@ -168,7 +168,7 @@ FixturePaths createValidRpgFixture() {
       "battle_visual": {
         "sprite_blueprint_id": "slime",
         "idle_animation": "idle_right",
-        "scale": 1.8,
+        "scale": 2.0,
         "shadow_offset": { "x": 2.0, "y": -6.0 }
       },
       "drops": [
@@ -266,7 +266,7 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     EXPECT_EQ(enemy->exp_reward_, 10);
     EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
     EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
-    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 1.8F);
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.x, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.y, -6.0F);
 
@@ -329,18 +329,21 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     EXPECT_TRUE(enemy->battle_visual_.valid());
     EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
     EXPECT_EQ(enemy->battle_visual_.idle_animation_, "idle_right");
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.scale_, 2.0F);
     EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.x, 0.0F);
-    EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.y, -6.0F);
+    EXPECT_FLOAT_EQ(enemy->battle_visual_.shadow_offset_.y, -8.0F);
 
     const auto* goblin = catalog.findEnemy("enemy.goblin");
     ASSERT_NE(goblin, nullptr);
     EXPECT_TRUE(goblin->battle_visual_.valid());
     EXPECT_EQ(goblin->battle_visual_.sprite_blueprint_id_, "goblin");
+    EXPECT_FLOAT_EQ(goblin->battle_visual_.scale_, 2.0F);
 
     const auto* gnome = catalog.findEnemy("enemy.gnome");
     ASSERT_NE(gnome, nullptr);
     EXPECT_TRUE(gnome->battle_visual_.valid());
     EXPECT_EQ(gnome->battle_visual_.sprite_blueprint_id_, "gnome");
+    EXPECT_FLOAT_EQ(gnome->battle_visual_.scale_, 2.0F);
 
     const auto* troop = catalog.findTroop("troop.slime");
     ASSERT_NE(troop, nullptr);

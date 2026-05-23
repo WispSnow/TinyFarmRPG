@@ -18,7 +18,7 @@
             "battle_visual": {
                 "sprite_blueprint_id": "goblin",
                 "idle_animation": "idle_right",
-                "scale": 1.8
+                "scale": 2.0
             },
             "drops": [
                 {
@@ -55,7 +55,7 @@
             "battle_visual": {
                 "sprite_blueprint_id": "gnome",
                 "idle_animation": "idle_right",
-                "scale": 1.8
+                "scale": 2.0
             },
             "drops": [],
             "actions": [
@@ -87,10 +87,10 @@
             "battle_visual": {
                 "sprite_blueprint_id": "slime",
                 "idle_animation": "idle_right",
-                "scale": 1.8,
+                "scale": 2.0,
                 "shadow_offset": {
                     "x": 0.0,
-                    "y": -5.0
+                    "y": -8.0
                 }
             },
             "drops": [],

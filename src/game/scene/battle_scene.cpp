@@ -63,7 +63,6 @@ constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
 constexpr float BATTLE_CAMERA_ZOOM = 1.0F;
 constexpr float BATTLEFIELD_HEIGHT = 256.0f;
-constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
 constexpr int BATTLE_RENDER_LAYER = 40;
 constexpr glm::vec2 COMMAND_FOCUS_PLAYER_OFFSET{-12.0F, -2.0F};
 constexpr float COMMAND_FOCUS_EASE_SECONDS = 0.18F;
@@ -71,7 +70,7 @@ constexpr glm::vec2 VICTORY_POSE_PLAYER_BASE_OFFSET{-8.0F, -2.0F};
 constexpr float VICTORY_POSE_BOB_TAU = 6.28318530717958647692F;
 constexpr float VICTORY_POSE_BOB_RATE = 1.2F;
 constexpr float VICTORY_POSE_BOB_PIXELS = 2.0F;
-constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -10.0F;
+constexpr float BATTLE_SHADOW_VERTICAL_PADDING = -15.0F;
 constexpr float BATTLE_SHADOW_ALPHA = 0.4F;
 constexpr float BATTLE_SHADOW_DEPTH_OFFSET = -0.10F;
 constexpr float BATTLE_TARGET_SHADOW_DEPTH_OFFSET = -0.05F;
@@ -2251,7 +2250,7 @@ bool BattleScene::initPresentation() {
     for (const auto& unit : session_.units()) {
         std::string blueprint_id;
         std::string idle_animation = unit.side == game::battle::BattleSide::Player ? "idle_left" : "idle_right";
-        float scale = unit.side == game::battle::BattleSide::Player ? 2.0F : 1.8F;
+        float scale = 2.0F;
         glm::vec2 shadow_offset{0.0F, 0.0F};
         std::optional<AppearanceSnapshot> appearance_snapshot{};
 
@@ -2313,7 +2312,6 @@ bool BattleScene::initPresentation() {
 
         const std::size_t side_index = unit.side == game::battle::BattleSide::Player ? player_index++ : enemy_index++;
         const std::size_t side_count = unit.side == game::battle::BattleSide::Player ? player_count : enemy_count;
-        scale = std::clamp(scale * BATTLE_SPRITE_SCALE_MULTIPLIER, 0.95F, 1.45F);
         const BattleFormationSlot formation_slot = battleFormationSlot(unit.side, side_index, side_count, scale);
 
         auto animations = toRuntimeAnimations(blueprint.animations_);
