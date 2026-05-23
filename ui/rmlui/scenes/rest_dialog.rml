@@ -28,8 +28,18 @@
             <div id="rest-member-list" data-if="has_recovery_members">
                 <div class="rest-member-row" data-for="member : recovery_members">
                     <div class="rest-member-name">{{ member.display_name }}</div>
-                    <div class="rest-stat-text rest-hp-text">{{ member.hp_text }}</div>
-                    <div class="rest-stat-text rest-mp-text">{{ member.mp_text }}</div>
+                    <div class="rest-stat-text rest-hp-text">
+                        <div class="rest-stat-label">HP</div>
+                        <div class="rest-stat-current">{{ member.hp_current_text }}</div>
+                        <div class="rest-stat-arrow" data-if="member.has_hp_gain">&gt;</div>
+                        <div class="rest-stat-after" data-if="member.has_hp_gain">{{ member.hp_after_text }}</div>
+                    </div>
+                    <div class="rest-stat-text rest-mp-text">
+                        <div class="rest-stat-label">MP</div>
+                        <div class="rest-stat-current">{{ member.mp_current_text }}</div>
+                        <div class="rest-stat-arrow" data-if="member.has_mp_gain">&gt;</div>
+                        <div class="rest-stat-after" data-if="member.has_mp_gain">{{ member.mp_after_text }}</div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -11,9 +11,9 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-panel {
-    left: 136dp;
+    left: 120dp;
     top: 58dp;
-    width: 368dp;
+    width: 400dp;
     height: 244dp;
     padding: 12dp;
 }
@@ -28,7 +28,7 @@ body, div, h1, h2, h3, h4, p, hr {
 #rest-selector {
     margin-top: 8dp;
     margin-left: 12dp;
-    width: 344dp;
+    width: 376dp;
     height: 32dp;
     display: flex;
     flex-direction: row;
@@ -37,13 +37,13 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-hours {
-    width: 280dp;
+    width: 312dp;
 }
 
 #rest-recovery-summary {
     margin-top: 8dp;
     margin-left: 12dp;
-    width: 344dp;
+    width: 376dp;
     height: 16dp;
     line-height: 16dp;
     text-align: center;
@@ -52,13 +52,13 @@ body, div, h1, h2, h3, h4, p, hr {
 #rest-preview-card {
     margin-top: 8dp;
     margin-left: 12dp;
-    width: 328dp;
+    width: 360dp;
     height: 86dp;
     padding: 8dp;
 }
 
 #rest-preview-empty {
-    width: 328dp;
+    width: 360dp;
     height: 70dp;
     line-height: 70dp;
     text-align: center;
@@ -67,12 +67,12 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-member-list {
-    width: 328dp;
+    width: 360dp;
     height: 70dp;
 }
 
 .rest-member-row {
-    width: 328dp;
+    width: 360dp;
     height: 17dp;
     display: flex;
     flex-direction: row;
@@ -80,7 +80,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .rest-member-name {
-    width: 62dp;
+    width: 58dp;
     height: 17dp;
     line-height: 17dp;
     color: #ffffff;
@@ -91,23 +91,54 @@ body, div, h1, h2, h3, h4, p, hr {
 .rest-stat-text {
     height: 17dp;
     line-height: 17dp;
-    color: #f7f7f7;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     font-size: 0.5625rem;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 .rest-hp-text {
-    width: 144dp;
+    width: 176dp;
 }
 
 .rest-mp-text {
-    width: 122dp;
+    width: 126dp;
+}
+
+.rest-stat-label {
+    width: 16dp;
+    height: 17dp;
+    line-height: 17dp;
+    color: #ffffff;
+}
+
+.rest-stat-current {
+    height: 17dp;
+    line-height: 17dp;
+    color: #f7f7f7;
+}
+
+.rest-stat-arrow {
+    width: 10dp;
+    height: 17dp;
+    margin-left: 4dp;
+    margin-right: 4dp;
+    line-height: 17dp;
+    text-align: center;
+    color: #a9b1d6;
+}
+
+.rest-stat-after {
+    height: 17dp;
+    line-height: 17dp;
+    color: #9ece6a;
 }
 
 #rest-actions {
     margin-top: 10dp;
     margin-left: 12dp;
-    width: 344dp;
+    width: 376dp;
     display: flex;
     flex-direction: row;
     justify-content: center;
