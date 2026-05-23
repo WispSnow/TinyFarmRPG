@@ -119,7 +119,7 @@ struct MapSaveData {
     std::string map_name{};
     std::uint32_t last_updated_day{0};
     std::vector<int> opened_chests{};   // 已打开的宝箱（chest_id）
-    std::vector<int> defeated_encounters{}; // 已击败的一次性遭遇（encounter_id）
+    std::vector<int> defeated_encounters{}; // 已击败且不应重刷的遭遇（encounter_id）
     std::vector<Vec2i> tilled_tiles{};
     std::vector<Vec2i> wet_tiles{};
     std::vector<CropSaveData> crops{};

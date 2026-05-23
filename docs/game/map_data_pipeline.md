@@ -65,7 +65,7 @@
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
 | `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
-| `encounter_once` | bool | 兼容旧地图的一次性遭遇标记；当前地图遭遇胜利后统一写入存档并不再生成 | 地图存档 |
+| `respawn_on_map_reload` | bool | 胜利后切换地图 / 重新加载地图时是否重新生成；默认 `true` | 地图存档 |
 | `wander_radius_override` | float | 覆盖该 actor 实例的漫游半径 | 地图实例 |
 
 运行时行为：
@@ -78,7 +78,7 @@
 - 若 `shop_id` 与 `quest_offer_id` 同时存在，当前实现会 `warn`，并按 **merchant 优先** 处理
 - `recruit_actor_id` 不能与 `shop_id` / `quest_offer_id` / `battle_troop_id` 共存；共存时会 `warn`，并忽略招募入口
 - `battle_troop_id` 不能与 `shop_id` / `quest_offer_id` / `recruit_actor_id` 共存；共存时会 `warn`，并忽略战斗入口
-- 该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
+- `respawn_on_map_reload=false` 且该 `encounter_id` 已在存档中击败时，loader 会在创建 actor 前跳过生成
 
 推荐直接避免在同一个 actor object 上同时配置多个玩法入口。
 
@@ -152,7 +152,7 @@
 3. 设置 `name="<actor blueprint key>"`
 4. 新增 **string property**：`battle_troop_id`
 5. 新增 **int property**：`encounter_id`，同一地图内保持唯一
-6. 可选新增 **bool property**：`encounter_once`
+6. 可选新增 **bool property**：`respawn_on_map_reload`，默认 `true`
 7. 可选新增 **string property**：`battle_background_id`
 8. 可选新增 **float property**：`wander_radius_override`
 
@@ -167,7 +167,7 @@
     { "name": "battle_troop_id", "type": "string", "value": "troop.slime" },
     { "name": "battle_background_id", "type": "string", "value": "Grassland" },
     { "name": "encounter_id", "type": "int", "value": 1001 },
-    { "name": "encounter_once", "type": "bool", "value": true },
+    { "name": "respawn_on_map_reload", "type": "bool", "value": false },
     { "name": "wander_radius_override", "type": "float", "value": 48.0 }
   ]
 }
@@ -178,7 +178,7 @@
 - `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店
 - `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
 - `recruit_actor_id`：玩家面向该 NPC 按 `F`，会由 `RecruitmentInteractionSystem` 展示对话；对话结束后弹出入队确认框
-- `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利的一次性遭遇会写入 `defeated_encounters`
+- `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利且 `respawn_on_map_reload=false` 的遭遇会写入 `defeated_encounters`
 - 交互优先级当前固定为 `Merchant > QuestGiver > Recruitable > Dialogue NPC > Chest > Rest`
 
 #### `animal`（point object）
@@ -232,7 +232,7 @@
 - 用 `encounter_id` 标识该地图中的遭遇实例
 - `EnemyEncounterSystem` 在空间索引更新后检测玩家与敌人的接触，并发布 `EnterBattleCommand`
 - `GameScene` 会携带遭遇上下文进入战斗，并在 `BattleEndedEvent` 到达时先结算遭遇状态
-- 地图遭遇胜利后写入 `MapPersistentState::defeated_encounters`，并通过 `SaveData::MapSaveData::defeated_encounters` 进入 JSON 存档
+- `respawn_on_map_reload=false` 的地图遭遇胜利后写入 `MapPersistentState::defeated_encounters`，并通过 `SaveData::MapSaveData::defeated_encounters` 进入 JSON 存档
 
 暂未支持独立的矩形 `battle_trigger` 区域；当前推荐使用可见 actor 敌人作为地图战斗入口。
 

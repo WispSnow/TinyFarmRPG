@@ -39,7 +39,8 @@ TEST(EntityBuilderMerchantSourceTest, BuildActorReadsShopIdAndKeepsMerchantPrior
     EXPECT_NE(build_actor_block.find("merchant 优先处理"), std::string::npos);
     EXPECT_NE(build_actor_block.find("ACTOR_PROP_BATTLE_TROOP_ID"), std::string::npos);
     EXPECT_NE(build_actor_block.find("EnemyEncounterComponent"), std::string::npos);
-    EXPECT_NE(build_actor_block.find("isEncounterDefeated(*encounter_id)"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("ACTOR_PROP_RESPAWN_ON_MAP_RELOAD"), std::string::npos);
+    EXPECT_NE(build_actor_block.find("!respawn_on_map_reload && isEncounterDefeated(*encounter_id)"), std::string::npos);
     EXPECT_NE(build_actor_block.find("本阶段忽略战斗入口"), std::string::npos);
 
     const auto shop_pos = build_actor_block.find("ACTOR_PROP_SHOP_ID");

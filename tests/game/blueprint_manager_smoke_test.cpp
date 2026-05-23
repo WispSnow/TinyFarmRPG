@@ -187,7 +187,7 @@ TEST(BlueprintManagerTest, ProjectBattleEnemiesExposeTurnOrderIdleDownIcons) {
     EXPECT_GT(checked_enemy_count, 0U);
 }
 
-TEST(BlueprintManagerTest, ProjectTownKeepsOneSlimeAndClearsGoblinEncounterOnce) {
+TEST(BlueprintManagerTest, ProjectTownKeepsOnePersistentSlimeAndRespawningGoblinEncounter) {
     const std::filesystem::path town_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/maps/town.tmj").lexically_normal();
     std::ifstream town_file(town_path);
@@ -198,6 +198,7 @@ TEST(BlueprintManagerTest, ProjectTownKeepsOneSlimeAndClearsGoblinEncounterOnce)
 
     int slime_count = 0;
     bool found_goblin = false;
+    bool found_encounter_once = false;
     for (const auto& layer : root.value("layers", nlohmann::json::array())) {
         if (!layer.is_object() || layer.value("type", std::string{}) != "objectgroup") {
             continue;
@@ -208,25 +209,31 @@ TEST(BlueprintManagerTest, ProjectTownKeepsOneSlimeAndClearsGoblinEncounterOnce)
             }
 
             std::string troop_id{};
-            bool encounter_once = false;
+            bool has_respawn_on_map_reload = false;
+            bool respawn_on_map_reload = true;
             for (const auto& property : object.value("properties", nlohmann::json::array())) {
                 if (!property.is_object()) {
                     continue;
                 }
                 if (property.value("name", std::string{}) == "battle_troop_id") {
                     troop_id = property.value("value", std::string{});
+                } else if (property.value("name", std::string{}) == "respawn_on_map_reload") {
+                    has_respawn_on_map_reload = true;
+                    respawn_on_map_reload = property.value("value", true);
                 } else if (property.value("name", std::string{}) == "encounter_once") {
-                    encounter_once = property.value("value", false);
+                    found_encounter_once = true;
                 }
             }
 
             if (object.value("name", std::string{}) == "slime" && troop_id == "troop.slime") {
                 ++slime_count;
-                EXPECT_TRUE(encounter_once);
+                EXPECT_TRUE(has_respawn_on_map_reload);
+                EXPECT_FALSE(respawn_on_map_reload);
             }
             if (object.value("name", std::string{}) == "goblin" && troop_id == "troop.goblin_pair") {
                 found_goblin = true;
-                EXPECT_TRUE(encounter_once);
+                EXPECT_TRUE(has_respawn_on_map_reload);
+                EXPECT_TRUE(respawn_on_map_reload);
                 EXPECT_FLOAT_EQ(object.value("x", 0.0F), 532.0F);
                 EXPECT_FLOAT_EQ(object.value("y", 0.0F), 296.0F);
             }
@@ -235,6 +242,7 @@ TEST(BlueprintManagerTest, ProjectTownKeepsOneSlimeAndClearsGoblinEncounterOnce)
 
     EXPECT_EQ(slime_count, 1);
     EXPECT_TRUE(found_goblin);
+    EXPECT_FALSE(found_encounter_once);
     EXPECT_EQ(root.value("nextobjectid", 0), 29);
 }
 

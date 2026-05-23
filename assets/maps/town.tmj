@@ -558,9 +558,9 @@
                          "value":1001
                         },
                         {
-                         "name":"encounter_once",
+                         "name":"respawn_on_map_reload",
                          "type":"bool",
-                         "value":true
+                         "value":false
                         },
                         {
                          "name":"wander_radius_override",
@@ -592,7 +592,7 @@
                          "value":1002
                         },
                         {
-                         "name":"encounter_once",
+                         "name":"respawn_on_map_reload",
                          "type":"bool",
                          "value":true
                         },

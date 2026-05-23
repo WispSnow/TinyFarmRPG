@@ -104,7 +104,7 @@ void EnemyEncounterSystem::update(float delta_time) {
             current_map,
             encounter.encounter_id_,
             encounter.troop_id_,
-            encounter.once_,
+            encounter.respawn_on_map_reload_,
             encounter.home_position_,
         };
         dispatcher_.trigger(command);
