@@ -173,6 +173,14 @@ target_sources(game PRIVATE
     # Data
     game/data/game_time.cpp
     game/data/rpg_types.cpp
+    game/data/rpg_catalog_actors.cpp
+    game/data/rpg_catalog_classes.cpp
+    game/data/rpg_catalog_enemies.cpp
+    game/data/rpg_catalog_equipment.cpp
+    game/data/rpg_catalog_parser_support.cpp
+    game/data/rpg_catalog_skills.cpp
+    game/data/rpg_catalog_states.cpp
+    game/data/rpg_catalog_troops.cpp
     game/data/rpg_catalog.cpp
     game/data/audio_cue_catalog.cpp
     game/data/appearance_catalog.cpp

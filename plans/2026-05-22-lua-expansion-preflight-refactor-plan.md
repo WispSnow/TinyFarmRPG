@@ -258,7 +258,7 @@ tf.state.add("npc.lyria.gift_count", 1)
    - [x] 拆 `InputBindingConfig`、`InputBindingTokens`、`InputContextRegistry`、`InputEventRouting`，`InputManager` 保留 SDL 采样、动作状态更新、手柄运行态与 dispatch。
    - [ ] 后续如继续收敛，可再拆手柄连接/rumble 运行态；当前不阻塞 Lua 扩展主线。
 5. `rpg_catalog.cpp`
-   - 按 classes/actors/skills/states/equipment/enemies/troops 拆 parser 文件。
+   - [x] 按 classes/actors/skills/states/equipment/enemies/troops 拆 loader 文件，并抽共享 `rpg_catalog_parser_support`；`RpgCatalog` 保留 manifest、引用校验和查询接口。
 
 验收：
 
