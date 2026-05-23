@@ -23,6 +23,7 @@
 #include "game/domain/actor_progression_service.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/scene/battle_cursor_memory.h"
+#include "game/scene/battle_scene_data_bindings.h"
 #include "game/scene/game_scene_reward_feedback.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
@@ -767,111 +768,7 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return true;
     }
 
-    if (auto command_handle = constructor.RegisterStruct<CommandViewModel>()) {
-        command_handle.RegisterMember("command_id", &CommandViewModel::command_id);
-        command_handle.RegisterMember("entry_index", &CommandViewModel::entry_index);
-        command_handle.RegisterMember("label", &CommandViewModel::label);
-        command_handle.RegisterMember("enabled", &CommandViewModel::enabled);
-    } else {
-        return false;
-    }
-
-    if (auto entry_handle = constructor.RegisterStruct<ListEntryViewModel>()) {
-        entry_handle.RegisterMember("entry_index", &ListEntryViewModel::entry_index);
-        entry_handle.RegisterMember("entry_id", &ListEntryViewModel::entry_id);
-        entry_handle.RegisterMember("label", &ListEntryViewModel::label);
-        entry_handle.RegisterMember("sublabel", &ListEntryViewModel::sublabel);
-        entry_handle.RegisterMember("enabled", &ListEntryViewModel::enabled);
-    } else {
-        return false;
-    }
-
-    if (auto target_handle = constructor.RegisterStruct<TargetEntryViewModel>()) {
-        target_handle.RegisterMember("entry_index", &TargetEntryViewModel::entry_index);
-        target_handle.RegisterMember("unit_id", &TargetEntryViewModel::unit_id);
-        target_handle.RegisterMember("label", &TargetEntryViewModel::label);
-        target_handle.RegisterMember("sublabel", &TargetEntryViewModel::sublabel);
-        target_handle.RegisterMember("enabled", &TargetEntryViewModel::enabled);
-        target_handle.RegisterMember("is_ally", &TargetEntryViewModel::is_ally);
-        target_handle.RegisterMember("is_dead", &TargetEntryViewModel::is_dead);
-    } else {
-        return false;
-    }
-
-    if (auto party_handle = constructor.RegisterStruct<PartyStatusViewModel>()) {
-        party_handle.RegisterMember("unit_id", &PartyStatusViewModel::unit_id);
-        party_handle.RegisterMember("name", &PartyStatusViewModel::name);
-        party_handle.RegisterMember("hp_text", &PartyStatusViewModel::hp_text);
-        party_handle.RegisterMember("mp_text", &PartyStatusViewModel::mp_text);
-        party_handle.RegisterMember("hp_ratio_percent", &PartyStatusViewModel::hp_ratio_percent);
-        party_handle.RegisterMember("mp_ratio_percent", &PartyStatusViewModel::mp_ratio_percent);
-        party_handle.RegisterMember("portrait_decorator", &PartyStatusViewModel::portrait_decorator);
-        party_handle.RegisterMember("active", &PartyStatusViewModel::active);
-        party_handle.RegisterMember("ko", &PartyStatusViewModel::ko);
-    } else {
-        return false;
-    }
-
-    if (auto state_icon_handle = constructor.RegisterStruct<StateIconViewModel>()) {
-        state_icon_handle.RegisterMember("unit_id", &StateIconViewModel::unit_id);
-        state_icon_handle.RegisterMember("entry_index", &StateIconViewModel::entry_index);
-        state_icon_handle.RegisterMember("state_id", &StateIconViewModel::state_id);
-        state_icon_handle.RegisterMember("display_name", &StateIconViewModel::display_name);
-        state_icon_handle.RegisterMember("description", &StateIconViewModel::description);
-        state_icon_handle.RegisterMember("turns_text", &StateIconViewModel::turns_text);
-        state_icon_handle.RegisterMember("short_label", &StateIconViewModel::short_label);
-        state_icon_handle.RegisterMember("icon_decorator", &StateIconViewModel::icon_decorator);
-        state_icon_handle.RegisterMember("known", &StateIconViewModel::known);
-    } else {
-        return false;
-    }
-
-    if (auto state_tooltip_handle = constructor.RegisterStruct<StateTooltipViewModel>()) {
-        state_tooltip_handle.RegisterMember("active_unit_id", &StateTooltipViewModel::active_unit_id);
-        state_tooltip_handle.RegisterMember("title", &StateTooltipViewModel::title);
-        state_tooltip_handle.RegisterMember("turns", &StateTooltipViewModel::turns);
-        state_tooltip_handle.RegisterMember("description", &StateTooltipViewModel::description);
-        state_tooltip_handle.RegisterMember("visible", &StateTooltipViewModel::visible);
-    } else {
-        return false;
-    }
-
-    if (auto battle_log_handle = constructor.RegisterStruct<BattleLogEntryViewModel>()) {
-        battle_log_handle.RegisterMember("text", &BattleLogEntryViewModel::text);
-        battle_log_handle.RegisterMember("tone_class", &BattleLogEntryViewModel::tone_class);
-    } else {
-        return false;
-    }
-
-    if (auto victory_item_handle = constructor.RegisterStruct<VictoryRewardItemViewModel>()) {
-        victory_item_handle.RegisterMember("entry_index", &VictoryRewardItemViewModel::entry_index);
-        victory_item_handle.RegisterMember("label", &VictoryRewardItemViewModel::label);
-        victory_item_handle.RegisterMember("count_text", &VictoryRewardItemViewModel::count_text);
-        victory_item_handle.RegisterMember("icon_decorator", &VictoryRewardItemViewModel::icon_decorator);
-    } else {
-        return false;
-    }
-
-    if (auto victory_level_handle = constructor.RegisterStruct<VictoryLevelUpViewModel>()) {
-        victory_level_handle.RegisterMember("entry_index", &VictoryLevelUpViewModel::entry_index);
-        victory_level_handle.RegisterMember("label", &VictoryLevelUpViewModel::label);
-        victory_level_handle.RegisterMember("stat_text", &VictoryLevelUpViewModel::stat_text);
-    } else {
-        return false;
-    }
-
-    if (auto turn_order_handle = constructor.RegisterStruct<TurnOrderEntryViewModel>()) {
-        turn_order_handle.RegisterMember("unit_id", &TurnOrderEntryViewModel::unit_id);
-        turn_order_handle.RegisterMember("entry_index", &TurnOrderEntryViewModel::entry_index);
-        turn_order_handle.RegisterMember("name", &TurnOrderEntryViewModel::name);
-        turn_order_handle.RegisterMember("short_label", &TurnOrderEntryViewModel::short_label);
-        turn_order_handle.RegisterMember("badge_label", &TurnOrderEntryViewModel::badge_label);
-        turn_order_handle.RegisterMember("portrait_decorator", &TurnOrderEntryViewModel::portrait_decorator);
-        turn_order_handle.RegisterMember("current", &TurnOrderEntryViewModel::current);
-        turn_order_handle.RegisterMember("acted", &TurnOrderEntryViewModel::acted);
-        turn_order_handle.RegisterMember("ko", &TurnOrderEntryViewModel::ko);
-        turn_order_handle.RegisterMember("enemy", &TurnOrderEntryViewModel::enemy);
-    } else {
+    if (!registerBattleSceneViewModelStructs(constructor)) {
         return false;
     }
 

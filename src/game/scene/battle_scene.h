@@ -13,7 +13,9 @@
 #include "game/scene/battle_animation_director.h"
 #include "game/scene/battle_background.h"
 #include "game/scene/battle_damage_popup_controller.h"
+#include "game/scene/battle_scene_state.h"
 #include "game/scene/battle_scene_types.h"
+#include "game/scene/battle_scene_view_models.h"
 #include "game/scene/battle_victory_flow_controller.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -57,174 +59,21 @@ namespace game::scene {
 /// 不直接修改 TurnCore。该场景以 push/pop 方式叠加在探索场景之上，战斗结束后
 /// 发出 BattleEndedEvent 并请求弹出自身。
 class BattleScene final : public engine::scene::Scene {
-    /// @brief 单帧同步推进的战斗流程状态。
-    enum class FlowState {
-        WaitingForInput,    ///< 等待玩家输入行动。
-        ExecutingAction,    ///< 将 pending_action_ 提交给 BattleSession。
-        AnimatingResult,    ///< 展示动作结果；当前以短计时占位。
-        CheckVictory,       ///< 根据 BattleActionResult::outcome_after 判断是否结束战斗。
-        VictoryFlow,        ///< 展示 Victory 结算流程，等待玩家确认后退出。
-        NextTurn,           ///< 刷新到下一个行动者并路由到玩家输入或敌方自动行动。
-        BattleEnd           ///< 发送结算事件并请求弹出场景。
-    };
-
-    /// @brief 当前菜单上下文，用于区分主菜单、技能列表、道具列表和目标选择等不同输入语义。
-    enum class MenuState {
-        None,
-        PartyCommand,
-        ActorCommand,
-        SkillList,
-        ItemList,
-        TargetSelect
-    };
-
-    /// @brief 记录玩家在菜单中逐步拼装中的行动草稿。
-    ///
-    /// BattleScene 会先记录动作类型、技能/道具来源与已选目标，再在信息足够时
-    /// 组装为最终 BattleAction 并提交给 BattleSession。
-    struct ActionDraft {
-        game::battle::BattleActionType pending_type{game::battle::BattleActionType::EndTurn};
-        std::optional<std::string> selected_skill_id{};
-        std::optional<std::string> selected_item_id{};
-        std::optional<game::battle::BattleUnitId> selected_target_id{};
-        bool requires_target_selection{false};
-    };
-
-    /// @brief 进入战斗前的相机状态，BattleScene 退出时恢复探索态相机。
-    struct CameraStateSnapshot {
-        glm::vec2 position{0.0F};
-        float zoom{1.0F};
-        float rotation{0.0F};
-        float min_zoom{0.1F};
-        float max_zoom{10.0F};
-        std::optional<engine::utils::Rect> limit_bounds{};
-    };
-
-    struct ScheduledPresentationEvent {
-        std::variant<engine::vfx::PlayVfxCommand, engine::utils::PlaySoundEvent, game::battle::BattleActionResult> payload{};
-        float remaining_seconds{0.0F};
-    };
-
-    /// @brief 战斗命令单项的表现层视图模型。
-    ///
-    /// 该结构体只服务于 RmlUi 数据绑定，用于描述 PartyCommand / ActorCommand 条目
-    /// 的文本、顺序与可选状态。
-    struct CommandViewModel {
-        int command_id{0};
-        int entry_index{0};
-        Rml::String label{};
-        bool enabled{false};
-
-        friend bool operator==(const CommandViewModel& lhs, const CommandViewModel& rhs) = default;
-    };
-
-    /// @brief 技能列表或道具列表共用的条目视图模型。
-    ///
-    /// BattleScene 会按当前菜单上下文生成这类条目，供 RmlUi 渲染可滚动列表并在
-    /// 选择后回查对应技能或道具。
-    struct ListEntryViewModel {
-        int entry_index{0};
-        Rml::String entry_id{};
-        Rml::String label{};
-        Rml::String sublabel{};
-        bool enabled{false};
-    };
-
-    /// @brief 目标选择菜单中单个战斗单位的视图模型。
-    ///
-    /// 该结构体把 BattleUnit 转换为 UI 需要的目标条目数据，供玩家在选择技能或
-    /// 道具作用对象时展示阵营、死亡状态与标签文本。
-    struct TargetEntryViewModel {
-        int entry_index{0};
-        int unit_id{0};
-        Rml::String label{};
-        Rml::String sublabel{};
-        bool enabled{false};
-        bool is_ally{false};
-        bool is_dead{false};
-    };
-
-    /// @brief 下方 HUD 中单个队友状态条目的视图模型。
-    struct PartyStatusViewModel {
-        int unit_id{0};
-        Rml::String name{};
-        Rml::String hp_text{};
-        Rml::String mp_text{};
-        Rml::String hp_ratio_percent{"0%"};
-        Rml::String mp_ratio_percent{"0%"};
-        Rml::String portrait_decorator{"none"};
-        bool active{false};
-        bool ko{false};
-    };
-
-    /// @brief 下方 HUD 中单个状态图标的扁平视图模型。
-    struct StateIconViewModel {
-        int unit_id{0};
-        int entry_index{0};
-        Rml::String state_id{};
-        Rml::String display_name{};
-        Rml::String description{};
-        Rml::String turns_text{};
-        Rml::String short_label{};
-        Rml::String icon_decorator{"none"};
-        bool known{false};
-
-        friend bool operator==(const StateIconViewModel& lhs, const StateIconViewModel& rhs) = default;
-    };
-
-    /// @brief 状态图标 hover tooltip 的轻量视图模型。
-    struct StateTooltipViewModel {
-        int active_unit_id{0};
-        Rml::String title{};
-        Rml::String turns{};
-        Rml::String description{};
-        bool visible{false};
-
-        friend bool operator==(const StateTooltipViewModel& lhs, const StateTooltipViewModel& rhs) = default;
-    };
-
-    /// @brief 滚动战斗日志中单行的 RmlUi 表现层视图模型。
-    struct BattleLogEntryViewModel {
-        Rml::String text{};
-        Rml::String tone_class{};
-
-        friend bool operator==(const BattleLogEntryViewModel& lhs, const BattleLogEntryViewModel& rhs) = default;
-    };
-
-    /// @brief Victory overlay 中单个掉落条目的视图模型。
-    struct VictoryRewardItemViewModel {
-        int entry_index{0};
-        Rml::String label{};
-        Rml::String count_text{};
-        Rml::String icon_decorator{"none"};
-
-        friend bool operator==(const VictoryRewardItemViewModel& lhs, const VictoryRewardItemViewModel& rhs) = default;
-    };
-
-    /// @brief Victory overlay 中单个升级条目的视图模型。
-    struct VictoryLevelUpViewModel {
-        int entry_index{0};
-        Rml::String label{};
-        Rml::String stat_text{};
-
-        friend bool operator==(const VictoryLevelUpViewModel& lhs, const VictoryLevelUpViewModel& rhs) = default;
-    };
-
-    /// @brief 顶部行动顺序条中单个单位的只读表现层条目。
-    struct TurnOrderEntryViewModel {
-        int unit_id{0};
-        int entry_index{0};
-        Rml::String name{};
-        Rml::String short_label{};
-        Rml::String badge_label{};
-        Rml::String portrait_decorator{"none"};
-        bool current{false};
-        bool acted{false};
-        bool ko{false};
-        bool enemy{false};
-
-        friend bool operator==(const TurnOrderEntryViewModel& lhs, const TurnOrderEntryViewModel& rhs) = default;
-    };
+    using FlowState = BattleFlowState;
+    using MenuState = BattleMenuState;
+    using ActionDraft = BattleActionDraft;
+    using CameraStateSnapshot = BattleCameraStateSnapshot;
+    using ScheduledPresentationEvent = BattleScheduledPresentationEvent;
+    using CommandViewModel = BattleCommandViewModel;
+    using ListEntryViewModel = BattleListEntryViewModel;
+    using TargetEntryViewModel = BattleTargetEntryViewModel;
+    using PartyStatusViewModel = BattlePartyStatusViewModel;
+    using StateIconViewModel = BattleStateIconViewModel;
+    using StateTooltipViewModel = BattleStateTooltipViewModel;
+    using BattleLogEntryViewModel = game::scene::BattleLogEntryViewModel;
+    using VictoryRewardItemViewModel = BattleVictoryRewardItemViewModel;
+    using VictoryLevelUpViewModel = BattleVictoryLevelUpViewModel;
+    using TurnOrderEntryViewModel = BattleTurnOrderEntryViewModel;
 
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::ItemCatalog* item_catalog_{nullptr};

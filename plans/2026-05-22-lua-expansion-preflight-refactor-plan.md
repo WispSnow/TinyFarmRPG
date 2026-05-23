@@ -243,6 +243,8 @@ tf.state.add("npc.lyria.gift_count", 1)
 优先级：
 
 1. `battle_scene.cpp` / `battle_scene.h`
+   - [x] 先拆出战斗状态/菜单状态与 RmlUi ViewModel 类型定义：`battle_scene_state.h`、`battle_scene_view_models.h`，保持 `BattleScene` 对外行为不变。
+   - [x] 拆出 RmlUi ViewModel 结构体注册：`battle_scene_data_bindings.h/.cpp`，`BattleScene` 只保留数据实例绑定。
    - 拆状态机：`BattleFlowController`
    - 拆输入路由：`BattleInputRouter`
    - 拆 ViewModel 构建：`BattleViewModelBuilder`
