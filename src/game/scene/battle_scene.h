@@ -14,6 +14,7 @@
 #include "game/scene/battle_background.h"
 #include "game/scene/battle_damage_popup_controller.h"
 #include "game/scene/battle_flow_controller.h"
+#include "game/scene/battle_input_router.h"
 #include "game/scene/battle_scene_state.h"
 #include "game/scene/battle_scene_types.h"
 #include "game/scene/battle_scene_view_models.h"
@@ -59,7 +60,9 @@ namespace game::scene {
 /// BattleScene 负责 UI、输入与状态机编排；领域规则通过 BattleSession 访问，
 /// 不直接修改 TurnCore。该场景以 push/pop 方式叠加在探索场景之上，战斗结束后
 /// 发出 BattleEndedEvent 并请求弹出自身。
-class BattleScene final : public engine::scene::Scene, private BattleFlowController::Delegate {
+class BattleScene final : public engine::scene::Scene,
+                          private BattleFlowController::Delegate,
+                          private BattleInputRouter::Delegate {
     using MenuState = BattleMenuState;
     using ActionDraft = BattleActionDraft;
     using CameraStateSnapshot = BattleCameraStateSnapshot;
@@ -87,6 +90,7 @@ class BattleScene final : public engine::scene::Scene, private BattleFlowControl
     entt::registry battle_registry_{};
     engine::system::RenderSystem battle_render_system_{};
     BattleFlowController flow_controller_{};
+    BattleInputRouter input_router_{};
     MenuState menu_state_{MenuState::None};
     ActionDraft action_draft_{};
     std::optional<game::battle::BattleAction> pending_action_{};
@@ -101,7 +105,6 @@ class BattleScene final : public engine::scene::Scene, private BattleFlowControl
     bool actor_command_entered_via_fight_this_step_{false};       ///< 仅表示当前 ActorCommand 由 Fight 直入且尚未选择角色命令，控制取消是否回退到 PartyCommand。
     bool end_requested_{false};
     bool context_pushed_{false};
-    bool input_listeners_connected_{false};
     bool menu_focus_dirty_{true};
     std::optional<CameraStateSnapshot> saved_camera_state_{};
     std::vector<ScheduledPresentationEvent> scheduled_presentation_events_{};
@@ -267,15 +270,12 @@ private:
     [[nodiscard]] bool submitDraftAction();
     void submitAction(game::battle::BattleAction action);
     [[nodiscard]] bool isWaitingForActionInput() const;
+    [[nodiscard]] BattleMenuState battleMenuState() const override;
     [[nodiscard]] bool moveMenuCursor(int delta);
+    [[nodiscard]] bool moveBattleMenuCursor(int delta) override;
     [[nodiscard]] bool moveCursorInEntries(int& cursor, int count, int step, const std::vector<bool>& enabled_entries);
-
-    bool onMenuUpPressed();
-    bool onMenuDownPressed();
-    bool onMenuLeftPressed();
-    bool onMenuRightPressed();
-    bool onMenuConfirmPressed();
-    bool onMenuCancelPressed();
+    bool confirmBattleMenu() override;
+    bool cancelBattleMenu() override;
 
     /// @brief 构造并排队普通攻击行动。
     void queueAttackAction();

@@ -246,7 +246,7 @@ tf.state.add("npc.lyria.gift_count", 1)
    - [x] 先拆出战斗状态/菜单状态与 RmlUi ViewModel 类型定义：`battle_scene_state.h`、`battle_scene_view_models.h`，保持 `BattleScene` 对外行为不变。
    - [x] 拆出 RmlUi ViewModel 结构体注册：`battle_scene_data_bindings.h/.cpp`，`BattleScene` 只保留数据实例绑定。
    - [x] 拆状态机：`BattleFlowController` 负责流程状态推进，`BattleScene` 通过 delegate 保留场景动作与表现层编排。
-   - 拆输入路由：`BattleInputRouter`
+   - [x] 拆输入路由：`BattleInputRouter` 负责动作订阅和方向输入映射，`BattleScene` 只暴露菜单状态、游标移动、确认/取消。
    - 拆 ViewModel 构建：`BattleViewModelBuilder`
    - 拆数据绑定/菜单模型：`BattleMenuModel`
    - 保留 `BattleScene` 作为场景生命周期和胶水层。

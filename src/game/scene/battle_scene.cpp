@@ -64,8 +64,6 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
 constexpr std::string_view MODEL_NAME = "battle_scene";
-constexpr int PARTY_COMMAND_COLUMNS = 1;
-constexpr int ACTOR_COMMAND_COLUMNS = 2;
 constexpr float BATTLE_CAMERA_ZOOM = 1.0F;
 constexpr float BATTLEFIELD_HEIGHT = 256.0f;
 constexpr float BATTLE_SPRITE_SCALE_MULTIPLIER = 0.70f;
@@ -789,33 +787,11 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
 }
 
 void BattleScene::connectInputListeners() {
-    if (input_listeners_connected_) {
-        return;
-    }
-
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("menu_up"_hs).connect<&BattleScene::onMenuUpPressed>(this);
-    input_manager.onAction("menu_down"_hs).connect<&BattleScene::onMenuDownPressed>(this);
-    input_manager.onAction("menu_left"_hs).connect<&BattleScene::onMenuLeftPressed>(this);
-    input_manager.onAction("menu_right"_hs).connect<&BattleScene::onMenuRightPressed>(this);
-    input_manager.onAction("menu_confirm"_hs).connect<&BattleScene::onMenuConfirmPressed>(this);
-    input_manager.onAction("menu_cancel"_hs).connect<&BattleScene::onMenuCancelPressed>(this);
-    input_listeners_connected_ = true;
+    input_router_.connect(context_.getInputManager(), *this);
 }
 
 void BattleScene::disconnectInputListeners() {
-    if (!input_listeners_connected_) {
-        return;
-    }
-
-    auto& input_manager = context_.getInputManager();
-    input_manager.onAction("menu_up"_hs).disconnect<&BattleScene::onMenuUpPressed>(this);
-    input_manager.onAction("menu_down"_hs).disconnect<&BattleScene::onMenuDownPressed>(this);
-    input_manager.onAction("menu_left"_hs).disconnect<&BattleScene::onMenuLeftPressed>(this);
-    input_manager.onAction("menu_right"_hs).disconnect<&BattleScene::onMenuRightPressed>(this);
-    input_manager.onAction("menu_confirm"_hs).disconnect<&BattleScene::onMenuConfirmPressed>(this);
-    input_manager.onAction("menu_cancel"_hs).disconnect<&BattleScene::onMenuCancelPressed>(this);
-    input_listeners_connected_ = false;
+    input_router_.disconnect();
 }
 
 void BattleScene::enterBattleCamera() {
@@ -2175,6 +2151,14 @@ bool BattleScene::isWaitingForActionInput() const {
         session_.currentActorId().has_value();
 }
 
+BattleMenuState BattleScene::battleMenuState() const {
+    return menu_state_;
+}
+
+bool BattleScene::moveBattleMenuCursor(const int delta) {
+    return moveMenuCursor(delta);
+}
+
 bool BattleScene::moveMenuCursor(int delta) {
     if (!isWaitingForActionInput() || delta == 0) {
         return false;
@@ -2268,31 +2252,7 @@ bool BattleScene::moveCursorInEntries(int& cursor, int count, int step, const st
     return false;
 }
 
-bool BattleScene::onMenuUpPressed() {
-    const bool moved =
-        moveMenuCursor(menu_state_ == MenuState::ActorCommand ? -ACTOR_COMMAND_COLUMNS :
-                       menu_state_ == MenuState::PartyCommand ? -PARTY_COMMAND_COLUMNS : -1);
-    return moved || menu_state_ != MenuState::None;
-}
-
-bool BattleScene::onMenuDownPressed() {
-    const bool moved =
-        moveMenuCursor(menu_state_ == MenuState::ActorCommand ? ACTOR_COMMAND_COLUMNS :
-                       menu_state_ == MenuState::PartyCommand ? PARTY_COMMAND_COLUMNS : 1);
-    return moved || menu_state_ != MenuState::None;
-}
-
-bool BattleScene::onMenuLeftPressed() {
-    const bool moved = moveMenuCursor(-1);
-    return moved || menu_state_ != MenuState::None;
-}
-
-bool BattleScene::onMenuRightPressed() {
-    const bool moved = moveMenuCursor(1);
-    return moved || menu_state_ != MenuState::None;
-}
-
-bool BattleScene::onMenuConfirmPressed() {
+bool BattleScene::confirmBattleMenu() {
     if (flow_controller_.isVictoryFlow()) {
         victory_flow_controller_.confirm();
         return true;
@@ -2321,7 +2281,7 @@ bool BattleScene::onMenuConfirmPressed() {
     }
 }
 
-bool BattleScene::onMenuCancelPressed() {
+bool BattleScene::cancelBattleMenu() {
     if (flow_controller_.isVictoryFlow()) {
         return true;
     }
