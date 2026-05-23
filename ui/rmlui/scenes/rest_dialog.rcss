@@ -11,11 +11,11 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-panel {
-    left: 168dp;
-    top: 100dp;
-    width: 272dp;
-    height: 128dp;
-    padding: 16dp;
+    left: 136dp;
+    top: 58dp;
+    width: 368dp;
+    height: 244dp;
+    padding: 12dp;
 }
 
 #rest-title {
@@ -26,10 +26,10 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-selector {
-    margin-top: 16dp;
-    width: 240dp;
+    margin-top: 8dp;
+    margin-left: 12dp;
+    width: 344dp;
     height: 32dp;
-    margin-left: 16dp;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -37,13 +37,77 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 #rest-hours {
-    width: 176dp;
+    width: 280dp;
+}
+
+#rest-recovery-summary {
+    margin-top: 8dp;
+    margin-left: 12dp;
+    width: 344dp;
+    height: 16dp;
+    line-height: 16dp;
+    text-align: center;
+}
+
+#rest-preview-card {
+    margin-top: 8dp;
+    margin-left: 12dp;
+    width: 328dp;
+    height: 86dp;
+    padding: 8dp;
+}
+
+#rest-preview-empty {
+    width: 328dp;
+    height: 70dp;
+    line-height: 70dp;
+    text-align: center;
+    color: #7888bd;
+    font-size: 0.625rem;
+}
+
+#rest-member-list {
+    width: 328dp;
+    height: 70dp;
+}
+
+.rest-member-row {
+    width: 328dp;
+    height: 17dp;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.rest-member-name {
+    width: 62dp;
+    height: 17dp;
+    line-height: 17dp;
+    color: #ffffff;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.rest-stat-text {
+    height: 17dp;
+    line-height: 17dp;
+    color: #f7f7f7;
+    font-size: 0.5625rem;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.rest-hp-text {
+    width: 144dp;
+}
+
+.rest-mp-text {
+    width: 122dp;
 }
 
 #rest-actions {
-    margin-top: 16dp;
-    width: 240dp;
-    margin-left: 16dp;
+    margin-top: 10dp;
+    margin-left: 12dp;
+    width: 344dp;
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -51,5 +115,5 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .rest-action-button {
-    width: 128dp;
+    width: 126dp;
 }

@@ -165,6 +165,7 @@ set(GAME_TEST_SOURCES
     game/command_event_flow_test.cpp
     game/equipment_domain_service_test.cpp
     game/actor_progression_service_test.cpp
+    game/party_rest_service_test.cpp
     game/inventory_domain_service_test.cpp
     game/inventory_hotbar_consistency_test.cpp
     game/inventory_move_hotbar_follow_test.cpp

@@ -113,6 +113,31 @@ TEST(RmlUiArchitectureRegressionTest, RuntimeSourceDoesNotDependOnRemovedEventBr
     }
 }
 
+TEST(RmlUiArchitectureRegressionTest, RestDialogExposesRecoveryPreviewBindings) {
+    const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal();
+    const std::filesystem::path rest_rml_path = (project_root / "ui/rmlui/scenes/rest_dialog.rml").lexically_normal();
+    const std::filesystem::path rest_scene_path =
+        (project_root / "src/game/scene/rest_dialog_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(rest_rml_path)) << rest_rml_path;
+    ASSERT_TRUE(std::filesystem::exists(rest_scene_path)) << rest_scene_path;
+
+    const std::string rml_source = test_source_utils::readTextFile(rest_rml_path);
+    ASSERT_FALSE(rml_source.empty()) << "无法读取: " << rest_rml_path;
+    EXPECT_NE(rml_source.find("recovery_summary_text"), std::string::npos);
+    EXPECT_NE(rml_source.find("has_recovery_members"), std::string::npos);
+    EXPECT_NE(rml_source.find("recovery_empty_text"), std::string::npos);
+    EXPECT_NE(rml_source.find("data-for=\"member : recovery_members\""), std::string::npos);
+    EXPECT_NE(rml_source.find("member.display_name"), std::string::npos);
+    EXPECT_NE(rml_source.find("member.hp_text"), std::string::npos);
+    EXPECT_NE(rml_source.find("member.mp_text"), std::string::npos);
+
+    const std::string scene_source = test_source_utils::readTextFile(rest_scene_path);
+    ASSERT_FALSE(scene_source.empty()) << "无法读取: " << rest_scene_path;
+    EXPECT_NE(scene_source.find("RegisterArray<decltype(recovery_members_)>()"), std::string::npos);
+    EXPECT_NE(scene_source.find("refreshRecoveryPreview();"), std::string::npos);
+    EXPECT_NE(scene_source.find("RestConfirmRequest"), std::string::npos);
+}
+
 TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {
     const std::filesystem::path project_root = std::filesystem::path{PROJECT_SOURCE_DIR}.lexically_normal();
     const std::filesystem::path battle_rml_path = (project_root / "ui/rmlui/scenes/battle.rml").lexically_normal();

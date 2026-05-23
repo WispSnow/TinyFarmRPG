@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/battle/battle_types.h"
+#include "game/defs/party_ids.h"
 #include "game/scene/battle_scene_types.h"
 
 #include <entt/entity/fwd.hpp>
@@ -16,7 +17,7 @@ struct AppearanceProfile;
 
 namespace game::scene {
 
-inline constexpr std::string_view DEFAULT_BATTLE_PLAYER_ACTOR_ID{"actor.player"};
+inline constexpr std::string_view DEFAULT_BATTLE_PLAYER_ACTOR_ID{game::defs::kDefaultPlayerActorId};
 
 /// @brief 从探索态玩家实体捕获进入战斗表现层所需的外观快照。
 [[nodiscard]] std::optional<AppearanceSnapshot> capturePlayerBattleAppearance(entt::registry& registry);

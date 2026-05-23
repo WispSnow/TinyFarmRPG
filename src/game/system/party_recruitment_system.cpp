@@ -6,6 +6,7 @@
 #include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/party_ids.h"
 #include "game/domain/actor_progression_service.h"
 
 #include "engine/component/name_component.h"
@@ -25,7 +26,6 @@ namespace {
 
 constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
 constexpr float NOTIFICATION_SECONDS = 2.0f;
-constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 
 [[nodiscard]] bool containsString(const std::vector<std::string>& values, std::string_view value) {
     return std::any_of(values.begin(), values.end(), [value](const std::string& current) {
@@ -34,11 +34,15 @@ constexpr std::string_view DEFAULT_PARTY_ACTOR_ID = "actor.player";
 }
 
 void ensureDefaultPartyActor(game::component::PartyComponent& party) {
-    if (!containsString(party.recruited_actor_ids_, DEFAULT_PARTY_ACTOR_ID)) {
-        party.recruited_actor_ids_.insert(party.recruited_actor_ids_.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    if (!containsString(party.recruited_actor_ids_, game::defs::kDefaultPlayerActorId)) {
+        party.recruited_actor_ids_.insert(
+            party.recruited_actor_ids_.begin(),
+            std::string(game::defs::kDefaultPlayerActorId));
     }
-    if (!containsString(party.active_actor_ids_, DEFAULT_PARTY_ACTOR_ID)) {
-        party.active_actor_ids_.insert(party.active_actor_ids_.begin(), std::string(DEFAULT_PARTY_ACTOR_ID));
+    if (!containsString(party.active_actor_ids_, game::defs::kDefaultPlayerActorId)) {
+        party.active_actor_ids_.insert(
+            party.active_actor_ids_.begin(),
+            std::string(game::defs::kDefaultPlayerActorId));
     }
 }
 

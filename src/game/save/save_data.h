@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/defs/party_ids.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -145,8 +147,8 @@ struct AppearanceStateSaveData {
 };
 
 struct PartyStateSaveData {
-    std::vector<std::string> recruited_actor_ids{"actor.player"};
-    std::vector<std::string> active_actor_ids{"actor.player"};
+    std::vector<std::string> recruited_actor_ids{std::string{game::defs::kDefaultPlayerActorId}};
+    std::vector<std::string> active_actor_ids{std::string{game::defs::kDefaultPlayerActorId}};
 };
 
 struct ActorEquipmentSaveData {

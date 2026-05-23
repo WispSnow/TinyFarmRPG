@@ -2,6 +2,7 @@
 
 #include "game/data/rpg_data.h"
 #include "game/defs/commands.h"
+#include "game/defs/party_ids.h"
 
 #include "engine/component/name_component.h"
 #include "engine/core/context.h"
@@ -144,7 +145,7 @@ void RecruitOfferScene::refreshBindings() {
     actor_name_ = makeRmlString(name);
     offer_text_ = makeRmlString("Invite " + name + " to join the party?");
 
-    portrait_player_ = actor_.id_ == "actor.player";
+    portrait_player_ = actor_.id_ == game::defs::kDefaultPlayerActorId;
     portrait_lyria_ = actor_.id_ == "actor.lyria";
     portrait_tori_ = actor_.id_ == "actor.tori";
 }

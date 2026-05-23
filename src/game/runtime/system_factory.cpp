@@ -241,7 +241,10 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
         input_manager,
         spatial_index_manager,
         *services.world_state);
-    systems.rest_system = std::make_unique<game::system::RestSystem>(params.registry, params.context);
+    systems.rest_system = std::make_unique<game::system::RestSystem>(
+        params.registry,
+        params.context,
+        services.rpg_catalog.get());
     systems.closet_interaction_system = std::make_unique<game::system::ClosetInteractionSystem>(
         params.registry,
         params.context,

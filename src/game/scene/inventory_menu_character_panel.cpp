@@ -7,6 +7,7 @@
 #include "game/component/player_wallet_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
+#include "game/defs/party_ids.h"
 #include "game/domain/actor_progression_service.h"
 
 #include <entt/entity/registry.hpp>
@@ -23,7 +24,6 @@ namespace game::scene {
 namespace {
 
 constexpr std::size_t kMaxPartyMembers = 4;
-constexpr std::string_view kDefaultPartyActorId = "actor.player";
 
 [[nodiscard]] std::string portraitDecoratorForActor(const game::data::ActorData* actor) {
     if (!actor || actor->portrait_.decorator_.empty()) {
@@ -37,7 +37,7 @@ constexpr std::string_view kDefaultPartyActorId = "actor.player";
         party && !party->active_actor_ids_.empty()) {
         return party->active_actor_ids_;
     }
-    return {std::string{kDefaultPartyActorId}};
+    return {std::string{game::defs::kDefaultPlayerActorId}};
 }
 
 [[nodiscard]] const game::component::ActorEquipmentLoadout* findLoadout(const entt::registry& registry,

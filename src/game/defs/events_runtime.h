@@ -11,6 +11,11 @@ struct AdvanceTimeRequest {
     int hours{0};
 };
 
+struct RestConfirmRequest {
+    entt::entity player{entt::null};
+    int hours{0};
+};
+
 struct ToggleLightRequest {
     entt::id_type light_type_id{entt::null};
 };
