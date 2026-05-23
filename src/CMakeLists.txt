@@ -63,6 +63,10 @@ target_sources(engine PRIVATE
     engine/render/opengl/vfx_pass.cpp
     # Input
     engine/input/input_buffer.cpp
+    engine/input/input_binding_config.cpp
+    engine/input/input_binding_tokens.cpp
+    engine/input/input_context_registry.cpp
+    engine/input/input_event_routing.cpp
     engine/input/input_glyphs.cpp
     engine/input/input_manager.cpp
     # Loader
