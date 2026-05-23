@@ -2,6 +2,21 @@ body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
+@spritesheet battle-party-portrait-player-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png;
+    battle-party-portrait-player: 8px 8px 48px 48px;
+}
+
+@spritesheet battle-party-portrait-lyria-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png;
+    battle-party-portrait-lyria: 8px 8px 48px 48px;
+}
+
+@spritesheet battle-party-portrait-tori-sheet {
+    src: ../../../assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png;
+    battle-party-portrait-tori: 8px 8px 48px 48px;
+}
+
 #battle-hud {
     position: absolute;
     box-sizing: border-box;
@@ -395,8 +410,9 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-portrait {
-    width: 64dp;
-    height: 64dp;
+    width: 48dp;
+    height: 48dp;
+    margin-top: 5dp;
     background-color: #00000000;
     border-width: 0dp;
     border-color: #00000000;
@@ -404,8 +420,9 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-party-stats {
-    width: 46dp;
-    height: 64dp;
+    width: 62dp;
+    height: 58dp;
+    margin-top: 5dp;
 }
 
 .battle-party-name {
@@ -424,7 +441,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-label {
-    width: 46dp;
+    width: 62dp;
     height: 11dp;
     line-height: 11dp;
     color: #2a1f17ff;
@@ -441,12 +458,12 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-kind {
-    width: 11dp;
+    width: 13dp;
     color: #6f4f37cc;
 }
 
 .battle-stat-value {
-    width: 35dp;
+    width: 49dp;
     color: #2a1f17ff;
     font-size: 0.4375rem;
     text-align: right;
@@ -461,7 +478,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-stat-bar {
-    width: 46dp;
+    width: 62dp;
     height: 6dp;
     background-color: #1a1b26cc;
     border-width: 1dp;
@@ -473,7 +490,7 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-state-icon-row {
-    width: 46dp;
+    width: 62dp;
     height: 12dp;
     margin-top: 4dp;
     display: flex;

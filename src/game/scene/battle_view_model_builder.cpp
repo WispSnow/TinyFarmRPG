@@ -87,6 +87,34 @@ struct BattleEnemyIconDescriptor {
     return "none";
 }
 
+[[nodiscard]] Rml::String battlePartyPortraitDecoratorForUnit(const game::battle::BattleUnit& unit) {
+    if (unit.source_actor_id) {
+        if (*unit.source_actor_id == game::defs::kDefaultPlayerActorId) {
+            return "image(battle-party-portrait-player)";
+        }
+        if (*unit.source_actor_id == "actor.lyria") {
+            return "image(battle-party-portrait-lyria)";
+        }
+        if (*unit.source_actor_id == "actor.tori") {
+            return "image(battle-party-portrait-tori)";
+        }
+    }
+
+    if (unit.portrait.valid()) {
+        if (unit.portrait.path.ends_with("/1.png")) {
+            return "image(battle-party-portrait-player)";
+        }
+        if (unit.portrait.path.ends_with("/9.png")) {
+            return "image(battle-party-portrait-lyria)";
+        }
+        if (unit.portrait.path.ends_with("/2.png")) {
+            return "image(battle-party-portrait-tori)";
+        }
+    }
+
+    return portraitDecoratorForUnit(unit);
+}
+
 [[nodiscard]] Rml::String turnOrderFallbackLabel(const game::battle::BattleSide side, const std::size_t side_index) {
     const char prefix = side == game::battle::BattleSide::Player ? 'P' : 'E';
     return Rml::String{1, prefix} + std::to_string(side_index + 1U);
@@ -316,7 +344,7 @@ BattlePartyHudViewModels BattleViewModelBuilder::buildPartyHud(const game::battl
             .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + "/" + std::to_string(std::max(0, unit.max_mp))),
             .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
             .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),
-            .portrait_decorator = portraitDecoratorForUnit(unit),
+            .portrait_decorator = battlePartyPortraitDecoratorForUnit(unit),
             .active = current_actor_id.has_value() && *current_actor_id == unit.id,
             .ko = !unit.isAlive()
         });
