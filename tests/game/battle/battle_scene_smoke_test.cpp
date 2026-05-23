@@ -109,12 +109,12 @@ TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
     EXPECT_NE(victory_block.find("delegate.finishVictoryFlow();"), std::string::npos);
     EXPECT_EQ(victory_block.find("requestBattleEnd()"), std::string::npos);
 
-    const std::string confirm_block = snippetFrom(source, "bool BattleScene::onMenuConfirmPressed()", 600U);
+    const std::string confirm_block = snippetFrom(source, "bool BattleScene::confirmBattleMenu()", 600U);
     ASSERT_FALSE(confirm_block.empty());
     EXPECT_NE(confirm_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
     EXPECT_NE(confirm_block.find("victory_flow_controller_.confirm();"), std::string::npos);
 
-    const std::string cancel_block = snippetFrom(source, "bool BattleScene::onMenuCancelPressed()", 260U);
+    const std::string cancel_block = snippetFrom(source, "bool BattleScene::cancelBattleMenu()", 260U);
     ASSERT_FALSE(cancel_block.empty());
     EXPECT_NE(cancel_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
     EXPECT_EQ(cancel_block.find("victory_flow_controller_.confirm();"), std::string::npos);
@@ -132,13 +132,18 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     const std::filesystem::path data_bindings_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_data_bindings.cpp")
             .lexically_normal();
+    const std::filesystem::path input_router_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_input_router.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
     ASSERT_TRUE(std::filesystem::exists(data_bindings_source_path)) << data_bindings_source_path;
+    ASSERT_TRUE(std::filesystem::exists(input_router_source_path)) << input_router_source_path;
 
     const std::string source = readTextFile(source_path);
     const std::string data_bindings_source = readTextFile(data_bindings_source_path);
+    const std::string input_router_source = readTextFile(input_router_source_path);
     ASSERT_FALSE(source.empty());
     ASSERT_FALSE(data_bindings_source.empty());
+    ASSERT_FALSE(input_router_source.empty());
 
     EXPECT_NE(source.find("createModel(MODEL_NAME, &type_register_)"), std::string::npos);
     EXPECT_NE(source.find("registerBattleSceneViewModelStructs(constructor)"), std::string::npos);
@@ -168,16 +173,17 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("constructor.Bind(\"turn_order_entries\""), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_enter"), std::string::npos);
     EXPECT_NE(source.find("state_icon_hover_exit"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_down\"_hs)"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_left\"_hs)"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_right\"_hs)"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
-    EXPECT_NE(source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
+    EXPECT_NE(source.find("input_router_.connect(context_.getInputManager(), *this)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_up\"_hs)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_down\"_hs)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_left\"_hs)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_right\"_hs)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_confirm\"_hs)"), std::string::npos);
+    EXPECT_NE(input_router_source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("focusElementById(\"battle-victory-continue\")"), std::string::npos);
-    EXPECT_NE(source.find("constexpr int PARTY_COMMAND_COLUMNS = 1;"), std::string::npos);
-    EXPECT_NE(source.find("constexpr int ACTOR_COMMAND_COLUMNS = 2;"), std::string::npos);
+    EXPECT_NE(input_router_source.find("constexpr int PARTY_COMMAND_COLUMNS = 1;"), std::string::npos);
+    EXPECT_NE(input_router_source.find("constexpr int ACTOR_COMMAND_COLUMNS = 2;"), std::string::npos);
     EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
     EXPECT_NE(source.find("item_catalog_(session_options.item_catalog)"), std::string::npos);
     EXPECT_NE(source.find("populateSkillEntries"), std::string::npos);
@@ -364,7 +370,7 @@ TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {
     EXPECT_NE(escape_case.find("queueEscapeAction();"), std::string::npos);
     EXPECT_EQ(escape_case.find("party_command_accepted_round_ ="), std::string::npos);
 
-    const std::string cancel_block = snippetFrom(source, "bool BattleScene::onMenuCancelPressed()", 1400U);
+    const std::string cancel_block = snippetFrom(source, "bool BattleScene::cancelBattleMenu()", 1400U);
     ASSERT_FALSE(cancel_block.empty());
     EXPECT_NE(cancel_block.find("case MenuState::SkillList:"), std::string::npos);
     EXPECT_NE(cancel_block.find("case MenuState::ItemList:"), std::string::npos);
