@@ -1017,8 +1017,10 @@ TEST(BattleSceneSmokeTest, RmlUsesDataDrivenBattleMenuBindings) {
     EXPECT_NE(rml.find("data-event-click=\"actor_command_select(command.entry_index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"list_menu_visible\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"entry : list_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("class=\"battle-list-entry-row\" data-for=\"entry : list_entries\""), std::string::npos);
     EXPECT_NE(rml.find("data-if=\"target_menu_visible\""), std::string::npos);
     EXPECT_NE(rml.find("data-for=\"target : target_entries\""), std::string::npos);
+    EXPECT_NE(rml.find("class=\"battle-target-entry-row\" data-for=\"target : target_entries\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"target_entry_select(target.entry_index)\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-is-ally=\"target.is_ally\""), std::string::npos);
     EXPECT_NE(rml.find("data-class-is-dead=\"target.is_dead\""), std::string::npos);
@@ -1043,6 +1045,8 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     EXPECT_NE(rcss.find("tab-index: auto;"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-victory-item-icon"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-list-entry-row"), std::string::npos);
+    EXPECT_NE(rcss.find(".battle-target-entry-row"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-damage"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-recovery"), std::string::npos);
     EXPECT_NE(rcss.find(".battle-log-entry.log-state"), std::string::npos);

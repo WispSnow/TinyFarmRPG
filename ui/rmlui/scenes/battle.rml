@@ -145,24 +145,26 @@
 
                 <div id="battle-list-menu" data-if="list_menu_visible">
                     <div id="battle-list-empty" data-if="list_empty">{{ list_empty_text }}</div>
-                    <button class="battle-text-button tf-nav-auto battle-list-entry"
-                            data-for="entry : list_entries"
-                            id="battle-list-entry-{{ entry.entry_index }}"
-                            data-class-disabled="!entry.enabled"
-                            data-attrif-disabled="!entry.enabled"
-                            data-event-click="list_entry_select(entry.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ entry.label }}</span><span class="battle-entry-sublabel">{{ entry.sublabel }}</span></button>
+                    <div class="battle-list-entry-row" data-for="entry : list_entries">
+                        <button class="battle-text-button tf-nav-auto battle-list-entry"
+                                id="battle-list-entry-{{ entry.entry_index }}"
+                                data-class-disabled="!entry.enabled"
+                                data-attrif-disabled="!entry.enabled"
+                                data-event-click="list_entry_select(entry.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ entry.label }}</span><span class="battle-entry-sublabel">{{ entry.sublabel }}</span></button>
+                    </div>
                 </div>
 
                 <div id="battle-target-menu" data-if="target_menu_visible">
                     <div id="battle-target-empty" data-if="target_empty">{{ target_empty_text }}</div>
-                    <button class="battle-text-button tf-nav-auto battle-target-entry"
-                            data-for="target : target_entries"
-                            id="battle-target-entry-{{ target.entry_index }}"
-                            data-class-disabled="!target.enabled"
-                            data-attrif-disabled="!target.enabled"
-                            data-class-is-ally="target.is_ally"
-                            data-class-is-dead="target.is_dead"
-                            data-event-click="target_entry_select(target.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ target.label }}</span><span class="battle-entry-sublabel">{{ target.sublabel }}</span></button>
+                    <div class="battle-target-entry-row" data-for="target : target_entries">
+                        <button class="battle-text-button tf-nav-auto battle-target-entry"
+                                id="battle-target-entry-{{ target.entry_index }}"
+                                data-class-disabled="!target.enabled"
+                                data-attrif-disabled="!target.enabled"
+                                data-class-is-ally="target.is_ally"
+                                data-class-is-dead="target.is_dead"
+                                data-event-click="target_entry_select(target.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ target.label }}</span><span class="battle-entry-sublabel">{{ target.sublabel }}</span></button>
+                    </div>
                 </div>
             </div>
         </div>
