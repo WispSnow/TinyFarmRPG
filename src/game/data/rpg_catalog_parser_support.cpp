@@ -359,6 +359,10 @@ bool parseRpgBattleVisual(const RpgCatalogJson& node, BattleVisualData& out_visu
     if (out_visual.scale_ <= 0.0F) {
         return false;
     }
+    if (const auto shadow_offset_it = node.find("shadow_offset");
+        shadow_offset_it != node.end() && !parseVec2(*shadow_offset_it, out_visual.shadow_offset_)) {
+        return false;
+    }
 
     out_visual.sprite_blueprint_id_hash_ = out_visual.sprite_blueprint_id_.empty()
         ? entt::null

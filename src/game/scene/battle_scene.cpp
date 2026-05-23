@@ -101,6 +101,7 @@ struct BattleSpriteComponent {
     float scale{1.0f};
     float depth{0.0f};
     glm::vec2 shadow_size{32.0f, 16.0f};
+    glm::vec2 shadow_offset{0.0f, 0.0f};
     entt::entity shadow_entity{entt::null};
     entt::entity target_shadow_entity{entt::null};
 
@@ -110,13 +111,15 @@ struct BattleSpriteComponent {
                           glm::vec2 screen_position,
                           float scale,
                           float depth,
-                          glm::vec2 shadow_size)
+                          glm::vec2 shadow_size,
+                          glm::vec2 shadow_offset)
         : unit_id(unit_id),
           side(side),
           screen_position(screen_position),
           scale(scale),
           depth(depth),
-          shadow_size(shadow_size) {}
+          shadow_size(shadow_size),
+          shadow_offset(shadow_offset) {}
 };
 
 struct BattleShadowComponent {
@@ -296,7 +299,7 @@ void advanceAnimation(engine::component::AnimationComponent& animation,
                                                    const engine::component::SpriteComponent& visual) {
     const glm::vec2 visual_size = visual.size_ * sprite.scale;
     const float foot_y = (1.0F - visual.pivot_.y) * visual_size.y + BATTLE_SHADOW_VERTICAL_PADDING;
-    return sprite.screen_position + glm::vec2{0.0F, foot_y};
+    return sprite.screen_position + glm::vec2{0.0F, foot_y} + sprite.shadow_offset;
 }
 
 [[nodiscard]] engine::utils::FColor enemyHpBarFillColor(const float ratio, const float alpha) {
@@ -2249,6 +2252,7 @@ bool BattleScene::initPresentation() {
         std::string blueprint_id;
         std::string idle_animation = unit.side == game::battle::BattleSide::Player ? "idle_left" : "idle_right";
         float scale = unit.side == game::battle::BattleSide::Player ? 2.0F : 1.8F;
+        glm::vec2 shadow_offset{0.0F, 0.0F};
         std::optional<AppearanceSnapshot> appearance_snapshot{};
 
         const auto seed_it = std::find_if(
@@ -2279,6 +2283,7 @@ bool BattleScene::initPresentation() {
                     blueprint_id = enemy->battle_visual_.sprite_blueprint_id_;
                     idle_animation = enemy->battle_visual_.idle_animation_;
                     scale = enemy->battle_visual_.scale_;
+                    shadow_offset = enemy->battle_visual_.shadow_offset_;
                 } else {
                     spdlog::warn("BattleScene: enemy '{}' 缺少 battle_visual，已跳过战斗精灵。", enemy->id_);
                 }
@@ -2373,7 +2378,8 @@ bool BattleScene::initPresentation() {
             formation_slot.screen_position,
             formation_slot.scale,
             formation_slot.depth,
-            formation_slot.shadow_size);
+            formation_slot.shadow_size,
+            shadow_offset);
         battle_sprite.shadow_entity = shadow_entity;
         battle_sprite.target_shadow_entity = target_shadow_entity;
 

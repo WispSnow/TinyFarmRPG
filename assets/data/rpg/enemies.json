@@ -87,7 +87,11 @@
             "battle_visual": {
                 "sprite_blueprint_id": "slime",
                 "idle_animation": "idle_right",
-                "scale": 1.8
+                "scale": 1.8,
+                "shadow_offset": {
+                    "x": 0.0,
+                    "y": -5.0
+                }
             },
             "drops": [],
             "actions": [

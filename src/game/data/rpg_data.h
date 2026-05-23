@@ -161,6 +161,8 @@ struct BattleVisualData {
     entt::id_type sprite_blueprint_id_hash_{};
     std::string idle_animation_{"idle_right"};
     float scale_{1.0F};
+    /// @brief 战斗阴影相对默认脚底锚点的屏幕逻辑坐标偏移。
+    glm::vec2 shadow_offset_{0.0F, 0.0F};
 
     [[nodiscard]] bool valid() const { return !sprite_blueprint_id_.empty(); }
 };
