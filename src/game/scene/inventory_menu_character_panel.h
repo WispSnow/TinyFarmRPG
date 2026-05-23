@@ -23,9 +23,11 @@ struct PartyMemberPanelViewModel {
     std::string hp_text{};
     std::string mp_text{};
     std::string portrait_decorator{"none"};
+    std::string portrait_src{};
     bool selected{false};
     bool empty{true};
     bool targetable{false};
+    bool has_portrait{false};
 };
 
 struct InventoryMenuPartyPanelData {

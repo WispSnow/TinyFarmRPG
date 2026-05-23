@@ -3,11 +3,16 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/resource/decoded_image.h"
+#include "engine/resource/image_decode_service.h"
 #include "engine/ui/rmlui/rml_element_helpers.h"
+#include "engine/ui/rmlui/rml_generated_image_registry.h"
+#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
 #include "game/runtime/user_settings_service.h"
@@ -28,10 +33,13 @@
 #include <RmlUi/Core/Traits.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -77,12 +85,53 @@ using engine::ui::rmlui::textToInnerRml;
         handle.RegisterMember("hp_text", &game::scene::PartyMemberPanelViewModel::hp_text);
         handle.RegisterMember("mp_text", &game::scene::PartyMemberPanelViewModel::mp_text);
         handle.RegisterMember("portrait_decorator", &game::scene::PartyMemberPanelViewModel::portrait_decorator);
+        handle.RegisterMember("portrait_src", &game::scene::PartyMemberPanelViewModel::portrait_src);
         handle.RegisterMember("selected", &game::scene::PartyMemberPanelViewModel::selected);
         handle.RegisterMember("empty", &game::scene::PartyMemberPanelViewModel::empty);
         handle.RegisterMember("targetable", &game::scene::PartyMemberPanelViewModel::targetable);
+        handle.RegisterMember("has_portrait", &game::scene::PartyMemberPanelViewModel::has_portrait);
         return true;
     }
     return false;
+}
+
+[[nodiscard]] engine::resource::DecodedImage cropPortraitImage(
+    const engine::resource::DecodedImage& source,
+    const game::data::PortraitRefData& portrait) {
+    if (!source.valid() || source.channels != 4 || !portrait.valid() ||
+        portrait.x_ < 0 || portrait.y_ < 0 ||
+        portrait.x_ + portrait.width_ > source.width ||
+        portrait.y_ + portrait.height_ > source.height) {
+        return {};
+    }
+
+    engine::resource::DecodedImage output{};
+    output.width = portrait.width_;
+    output.height = portrait.height_;
+    output.channels = 4;
+    const std::size_t row_bytes = static_cast<std::size_t>(output.width) * 4U;
+    output.pixels.resize(row_bytes * static_cast<std::size_t>(output.height));
+
+    for (int y = 0; y < output.height; ++y) {
+        const std::size_t source_offset =
+            (static_cast<std::size_t>(portrait.y_ + y) * static_cast<std::size_t>(source.width) +
+             static_cast<std::size_t>(portrait.x_)) * 4U;
+        const std::size_t target_offset = static_cast<std::size_t>(y) * row_bytes;
+        std::copy_n(source.pixels.data() + source_offset, row_bytes, output.pixels.data() + target_offset);
+    }
+
+    return output;
+}
+
+[[nodiscard]] std::string partyPortraitSourceUri(
+    std::uint64_t scene_instance_id,
+    int slot_index,
+    const game::data::ActorData& actor) {
+    return fmt::format(
+        "generated://inventory-party-portrait/{}/{}/{}",
+        scene_instance_id,
+        slot_index,
+        actor.id_hash_);
 }
 
 [[nodiscard]] std::string_view tabShortcutTooltipText(int tab_index) {
@@ -360,6 +409,7 @@ bool InventoryMenuScene::initUI() {
 void InventoryMenuScene::shutdownUI() {
     hideTabShortcutTooltip();
     document_controller_.unload();
+    clearPartyPortraitImages();
     tab_shortcut_tooltip_panel_ = nullptr;
     tab_shortcut_tooltip_text_ = nullptr;
 }
@@ -379,13 +429,72 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
         .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
 }
 
+void InventoryMenuScene::clearPartyPortraitImages() {
+    party_portrait_registrations_.clear();
+}
+
+void InventoryMenuScene::registerPartyPortraitImages(std::vector<PartyMemberPanelViewModel>& members) {
+    clearPartyPortraitImages();
+
+    auto* runtime = context_.getRmlUi();
+    if (!runtime || !rpg_catalog_) {
+        return;
+    }
+
+    auto& generated_images = runtime->generatedImages();
+    party_portrait_registrations_.reserve(members.size());
+    for (auto& member : members) {
+        member.portrait_src.clear();
+        member.has_portrait = false;
+
+        if (member.empty || member.actor_id.empty()) {
+            continue;
+        }
+
+        const auto* actor = rpg_catalog_->findActor(member.actor_id);
+        if (!actor || !actor->portrait_.valid()) {
+            continue;
+        }
+
+        auto decoded = engine::resource::ImageDecodeService::decodeRGBA(actor->portrait_.path_);
+        if (!decoded) {
+            spdlog::warn(
+                "InventoryMenuScene: 无法解码角色头像 '{}'。",
+                actor->portrait_.path_);
+            continue;
+        }
+
+        auto portrait_image = cropPortraitImage(*decoded, actor->portrait_);
+        if (!portrait_image.valid()) {
+            spdlog::warn(
+                "InventoryMenuScene: 角色 '{}' 的头像裁剪区域非法。",
+                actor->id_);
+            continue;
+        }
+
+        const std::string source_uri = partyPortraitSourceUri(instanceId(), member.slot_index, *actor);
+        auto registration = generated_images.registerImage(
+            source_uri,
+            std::move(portrait_image),
+            engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
+        if (!registration.valid()) {
+            continue;
+        }
+
+        member.portrait_src = source_uri;
+        member.has_portrait = true;
+        party_portrait_registrations_.push_back(std::move(registration));
+    }
+}
+
 void InventoryMenuScene::syncPartyPanel() {
-    const InventoryMenuPartyPanelData data = buildInventoryMenuPartyPanelData(
+    InventoryMenuPartyPanelData data = buildInventoryMenuPartyPanelData(
         game_registry_,
         player_,
         rpg_catalog_,
         selected_actor_id_,
         actor_target_mode_);
+    registerPartyPortraitImages(data.party_members);
     party_members_ = data.party_members;
     gold_label_ = data.gold_label;
     farm_label_ = data.farm_label;

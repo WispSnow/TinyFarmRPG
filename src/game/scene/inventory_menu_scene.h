@@ -2,6 +2,7 @@
 
 #include "engine/scene/scene.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "engine/ui/rmlui/rml_generated_image_registry.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/menu_tab_content.h"
 
@@ -80,6 +81,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
 
     // Party panel
     std::vector<PartyMemberPanelViewModel> party_members_{};
+    std::vector<engine::ui::rmlui::RmlGeneratedImageRegistry::Registration> party_portrait_registrations_{};
     std::string selected_actor_id_{};
     bool actor_target_mode_{false};
     int pending_actor_target_inventory_slot_{-1};
@@ -109,6 +111,8 @@ private:
     void shutdownUI();
     void disconnectRuntimeListeners();
     void syncPartyPanel();
+    void registerPartyPortraitImages(std::vector<PartyMemberPanelViewModel>& members);
+    void clearPartyPortraitImages();
     void beginActorTargetSelection(int inventory_slot_index);
     void cancelActorTargetSelection();
     void onPartyMemberClick(int party_slot_index);

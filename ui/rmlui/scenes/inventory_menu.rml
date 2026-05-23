@@ -302,7 +302,12 @@
                         data-class-party-targetable="member.targetable"
                         data-attrif-disabled="member.empty"
                         data-event-click="party_member_click(member.slot_index)">
-                    <div class="party-portrait" data-style-decorator="member.portrait_decorator"></div>
+                    <img class="party-portrait"
+                         data-if="member.has_portrait"
+                         data-attr-src="member.portrait_src"/>
+                    <div class="party-portrait"
+                         data-if="!member.has_portrait"
+                         data-style-decorator="member.portrait_decorator"></div>
                     <div class="party-copy">
                         <div class="party-name">{{ member.display_name }}</div>
                         <div class="party-meta">{{ member.level_label }} {{ member.exp_label }}</div>
