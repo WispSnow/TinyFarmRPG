@@ -42,6 +42,7 @@ public:
     /// 重新加载上一次 loadFile 成功的脚本，用于热重载。
     [[nodiscard]] bool reload();
 
+    void setScriptRoot(std::string_view root_dir);
     [[nodiscard]] bool isReady() const noexcept;
     [[nodiscard]] std::uint64_t sceneToken() const noexcept;
     [[nodiscard]] ScriptEntityHandle makeHandle(entt::entity entity) const noexcept;
@@ -49,6 +50,7 @@ public:
                                       entt::entity& out_entity,
                                       std::string_view source) const;
     [[nodiscard]] sol::state& luaState() noexcept;
+    [[nodiscard]] sol::object requireScriptModule(std::string_view module_name);
 
     [[nodiscard]] bool registerEventCallback(std::string_view event_name, sol::protected_function callback);
     [[nodiscard]] bool emitEvent(std::string_view event_name, const sol::table& payload);
@@ -62,12 +64,15 @@ private:
 
     /// 前置检查：若未初始化则记录警告并返回 false，保护所有公共方法。
     [[nodiscard]] bool ensureReady(std::string_view op_name) const;
+    void clearScriptRuntimeState();
     void hardenLuaGlobals();
     void configureInstructionLimit();
 
     entt::registry& registry_;
     sol::state lua_;                  ///< RAII 封装的 Lua 虚拟机，析构时自动释放
+    sol::table script_modules_{};     ///< tf.script.require 的模块缓存表
     std::string last_loaded_file_{};  ///< 最近一次 loadFile 的路径，供 reload 使用
+    std::string script_root_{"scripts"};
     std::uint64_t scene_token_{0};    ///< 当前脚本会话 token（跨场景代际校验）
     std::unordered_map<std::string, std::vector<sol::protected_function>> event_callbacks_{};
     std::vector<std::function<void()>> deferred_commands_{};

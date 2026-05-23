@@ -4,10 +4,12 @@
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 
+#include <cctype>
 #include <exception>
 #include <functional>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <utility>
 
 extern "C" {
@@ -30,6 +32,54 @@ void onInstructionLimitReached(lua_State* lua_state, lua_Debug*) {
     luaL_error(lua_state, "ScriptHost: script exceeded instruction limit");
 }
 
+bool isValidModuleSegment(std::string_view segment) {
+    if (segment.empty()) {
+        return false;
+    }
+
+    for (const char ch : segment) {
+        const auto byte = static_cast<unsigned char>(ch);
+        if (!std::isalnum(byte) && ch != '_') {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isValidScriptModuleName(std::string_view module_name) {
+    if (module_name.empty()) {
+        return false;
+    }
+
+    std::size_t segment_begin = 0;
+    while (segment_begin < module_name.size()) {
+        const std::size_t dot = module_name.find('.', segment_begin);
+        const std::size_t segment_end = dot == std::string_view::npos ? module_name.size() : dot;
+        if (!isValidModuleSegment(module_name.substr(segment_begin, segment_end - segment_begin))) {
+            return false;
+        }
+        if (dot == std::string_view::npos) {
+            return true;
+        }
+        segment_begin = dot + 1;
+    }
+
+    return false;
+}
+
+std::string scriptModulePath(std::string_view root_dir, std::string_view module_name) {
+    std::string path(root_dir);
+    if (!path.empty() && path.back() != '/') {
+        path.push_back('/');
+    }
+
+    for (const char ch : module_name) {
+        path.push_back(ch == '.' ? '/' : ch);
+    }
+    path += ".lua";
+    return path;
+}
+
 } // namespace
 
 ScriptHost::ScriptHost(entt::registry& registry)
@@ -50,6 +100,7 @@ bool ScriptHost::init(entt::dispatcher& dispatcher, const std::vector<ScriptModu
         lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
         hardenLuaGlobals();
         configureInstructionLimit();
+        script_modules_ = lua_.create_table();
 
         for (const auto& installer : installers) {
             if (!installer) {
@@ -67,12 +118,10 @@ bool ScriptHost::init(entt::dispatcher& dispatcher, const std::vector<ScriptModu
 }
 
 void ScriptHost::shutdown() {
-    event_callbacks_.clear();
-    deferred_commands_.clear();
-    active_callback_commands_ = nullptr;
+    ready_ = false;
+    clearScriptRuntimeState();
     lua_ = sol::state{};
     last_loaded_file_.clear();
-    ready_ = false;
     scene_token_ = 0;
 }
 
@@ -124,7 +173,17 @@ bool ScriptHost::reload() {
         spdlog::warn("ScriptHost: reload 失败，尚未加载任何脚本文件");
         return false;
     }
-    return loadFile(last_loaded_file_);
+
+    const std::string path = last_loaded_file_;
+    clearScriptRuntimeState();
+    return loadFile(path);
+}
+
+void ScriptHost::setScriptRoot(std::string_view root_dir) {
+    script_root_ = root_dir.empty() ? "scripts" : std::string{root_dir};
+    if (ready_) {
+        script_modules_ = lua_.create_table();
+    }
 }
 
 bool ScriptHost::isReady() const noexcept {
@@ -182,6 +241,54 @@ bool ScriptHost::validateHandle(const ScriptEntityHandle& handle,
 
 sol::state& ScriptHost::luaState() noexcept {
     return lua_;
+}
+
+sol::object ScriptHost::requireScriptModule(std::string_view module_name) {
+    if (!ensureReady("requireScriptModule")) {
+        return sol::make_object(lua_, sol::lua_nil);
+    }
+
+    if (!isValidScriptModuleName(module_name)) {
+        spdlog::warn("ScriptHost: 模块名非法 [{}]", module_name);
+        return sol::make_object(lua_, sol::lua_nil);
+    }
+
+    const std::string module_key(module_name);
+    sol::object cached = script_modules_.get<sol::object>(module_key);
+    if (cached.valid() && cached.get_type() != sol::type::lua_nil) {
+        return cached;
+    }
+
+    const std::string path = scriptModulePath(script_root_, module_name);
+    sol::load_result chunk = lua_.load_file(path);
+    if (!chunk.valid()) {
+        const sol::error err = chunk;
+        spdlog::error("ScriptHost: 模块加载失败 [{} -> {}]: {}", module_key, path, err.what());
+        return sol::make_object(lua_, sol::lua_nil);
+    }
+
+    // Sentinel for circular/self require. Modules that return no value stay cached as true.
+    script_modules_.set(module_key, true);
+
+    sol::protected_function fn = chunk;
+    configureInstructionLimit();
+    sol::protected_function_result result = fn();
+    if (!result.valid()) {
+        const sol::error err = result;
+        spdlog::error("ScriptHost: 模块执行失败 [{} -> {}]: {}", module_key, path, err.what());
+        script_modules_.set(module_key, sol::lua_nil);
+        return sol::make_object(lua_, sol::lua_nil);
+    }
+
+    if (result.return_count() > 0) {
+        sol::object module_value = result.get<sol::object>();
+        if (module_value.get_type() != sol::type::lua_nil) {
+            script_modules_.set(module_key, module_value);
+            return module_value;
+        }
+    }
+
+    return script_modules_.get<sol::object>(module_key);
 }
 
 bool ScriptHost::registerEventCallback(std::string_view event_name, sol::protected_function callback) {
@@ -287,6 +394,13 @@ bool ScriptHost::ensureReady(std::string_view op_name) const {
     }
     spdlog::warn("ScriptHost: {} 被忽略，宿主未初始化", op_name);
     return false;
+}
+
+void ScriptHost::clearScriptRuntimeState() {
+    event_callbacks_.clear();
+    deferred_commands_.clear();
+    active_callback_commands_ = nullptr;
+    script_modules_ = ready_ ? lua_.create_table() : sol::table{};
 }
 
 void ScriptHost::hardenLuaGlobals() {

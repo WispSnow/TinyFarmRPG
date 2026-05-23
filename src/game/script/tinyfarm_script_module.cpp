@@ -181,6 +181,13 @@ void installTinyFarmScriptModule(sol::state& lua,
     });
     tf_impl["callbacks"] = engine::script::createReadOnlyProxy(lua, callbacks_impl, "tf.callbacks");
 
+    // ── tf.script ──
+    sol::table script_impl = lua.create_table();
+    script_impl.set_function("require", [&host](const std::string& module_name) -> sol::object {
+        return host.requireScriptModule(module_name);
+    });
+    tf_impl["script"] = engine::script::createReadOnlyProxy(lua, script_impl, "tf.script");
+
     lua["tf"] = engine::script::createReadOnlyProxy(lua, tf_impl, "tf");
 }
 

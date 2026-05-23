@@ -157,16 +157,16 @@ scripts/
 
 待办：
 
-- [ ] 增加白名单式 `tf.script.require("module.name")`，只允许加载 `scripts/` 下 `.lua`。
-- [ ] 不打开 Lua `package`；模块解析由 C++ 控制路径、缓存和错误日志。
-- [ ] 明确脚本生命周期：`bootstrap.lua` 在每次 `GameScene` 初始化时执行；读档会销毁旧 `GameScene`、创建新 `GameScene`、重新加载 bootstrap 并重新注册回调。
-- [ ] 编写脚本约定：模块顶层只做注册和幂等初始化，不假设自己是 app 生命周期内只执行一次。
-- [ ] `bootstrap.lua` 示例化：
+- [x] 增加白名单式 `tf.script.require("module.name")`，只允许加载 `scripts/` 下 `.lua`。
+- [x] 不打开 Lua `package`；模块解析由 C++ 控制路径、缓存和错误日志。
+- [x] 明确脚本生命周期：`bootstrap.lua` 在每次 `GameScene` 初始化时执行；读档会销毁旧 `GameScene`、创建新 `GameScene`、重新加载 bootstrap 并重新注册回调。
+- [x] 编写脚本约定：模块顶层只做注册和幂等初始化，不假设自己是 app 生命周期内只执行一次。
+- [x] `bootstrap.lua` 示例化：
   - 加载 `lib/event.lua`
   - 加载 `quests/*.lua` 或显式 require 几个样例模块
   - 注册一个 NPC 交互样例
   - 注册一个 `day_changed` 或 `battle_ended` 样例
-- [ ] 测试脚本 fixture 增加多文件加载与失败路径。
+- [x] 测试脚本 fixture 增加多文件加载与失败路径。
 
 验收：
 
