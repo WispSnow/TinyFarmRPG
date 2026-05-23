@@ -473,9 +473,7 @@ bool BattleScene::initUI() {
     populatePartyCommands();
     populateActorCommands();
 
-    if (!constructor.Bind("turn_text", &turn_text_) ||
-        !constructor.Bind("result_text", &result_text_) ||
-        !constructor.Bind("actions_enabled", &actions_enabled_) ||
+    if (!menu_model_.bind(constructor) ||
         !constructor.Bind("victory_overlay_visible", &victory_overlay_visible_) ||
         !constructor.Bind("victory_continue_enabled", &victory_continue_enabled_) ||
         !constructor.Bind("victory_items_empty", &victory_items_empty_) ||
@@ -485,25 +483,13 @@ bool BattleScene::initUI() {
         !constructor.Bind("victory_exp_text", &victory_exp_text_) ||
         !constructor.Bind("victory_item_empty_text", &victory_item_empty_text_) ||
         !constructor.Bind("victory_prompt_text", &victory_prompt_text_) ||
-        !constructor.Bind("list_empty_text", &list_empty_text_) ||
-        !constructor.Bind("target_empty_text", &target_empty_text_) ||
-        !constructor.Bind("party_command_visible", &party_command_visible_) ||
-        !constructor.Bind("actor_command_visible", &actor_command_visible_) ||
-        !constructor.Bind("list_menu_visible", &list_menu_visible_) ||
-        !constructor.Bind("target_menu_visible", &target_menu_visible_) ||
-        !constructor.Bind("list_empty", &list_empty_) ||
-        !constructor.Bind("target_empty", &target_empty_) ||
         !constructor.Bind("turn_order_entries", &turn_order_entries_) ||
         !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("party_state_icons", &party_state_icons_) ||
         !constructor.Bind("state_tooltip", &state_tooltip_) ||
         !constructor.Bind("battle_log_entries", &battle_log_entries_) ||
         !constructor.Bind("victory_reward_items", &victory_reward_items_) ||
-        !constructor.Bind("victory_level_ups", &victory_level_ups_) ||
-        !constructor.Bind("party_commands", &party_commands_) ||
-        !constructor.Bind("actor_commands", &actor_commands_) ||
-        !constructor.Bind("list_entries", &list_entries_) ||
-        !constructor.Bind("target_entries", &target_entries_)) {
+        !constructor.Bind("victory_level_ups", &victory_level_ups_)) {
         spdlog::error("BattleScene: 绑定 data model 变量失败。");
         document_controller_.unload();
         return false;
@@ -571,7 +557,7 @@ bool BattleScene::initUI() {
     }
 
     document_controller_.markAllDirty();
-    menu_focus_dirty_ = true;
+    menu_model_.focus_dirty = true;
     return true;
 }
 
@@ -588,9 +574,7 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
         return false;
     }
 
-    if (!constructor.RegisterArray<decltype(party_commands_)>() ||
-        !constructor.RegisterArray<decltype(list_entries_)>() ||
-        !constructor.RegisterArray<decltype(target_entries_)>() ||
+    if (!menu_model_.registerArrays(constructor) ||
         !constructor.RegisterArray<decltype(turn_order_entries_)>() ||
         !constructor.RegisterArray<decltype(party_status_)>() ||
         !constructor.RegisterArray<decltype(party_state_icons_)>() ||
@@ -772,7 +756,7 @@ void BattleScene::refreshView() {
             turn_text = "Turn: " + actor->name + " (" + std::string(game::battle::toString(actor->side)) + ")";
         }
     }
-    if (updateBoundString(turn_text_, turn_text)) {
+    if (updateBoundString(menu_model_.turn_text, turn_text)) {
         document_controller_.markDirty("turn_text");
     }
 
@@ -780,13 +764,13 @@ void BattleScene::refreshView() {
     rebuildPartyStatusView();
     rebuildVictoryView();
 
-    std::string result_text = "Result: " + menu_status_text_;
+    std::string result_text = "Result: " + menu_model_.status_text;
     if (flow_controller_.isVictoryFlow()) {
         result_text = "Result: Victory";
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
     }
-    if (updateBoundString(result_text_, result_text)) {
+    if (updateBoundString(menu_model_.result_text, result_text)) {
         document_controller_.markDirty("result_text");
     }
 
@@ -796,14 +780,14 @@ void BattleScene::refreshView() {
         session_.outcome() == game::battle::BattleOutcome::Ongoing &&
         current_actor_id.has_value();
 
-    if (updateBoundBool(actions_enabled_, can_submit_action)) {
+    if (updateBoundBool(menu_model_.actions_enabled, can_submit_action)) {
         document_controller_.markDirty("actions_enabled");
     }
 
     refreshMenuEnabledState(can_submit_action);
-    if (!can_submit_action && menu_state_ != MenuState::None) {
+    if (!can_submit_action && menu_model_.state != MenuState::None) {
         leaveInputMenu();
-    } else if (can_submit_action && menu_state_ == MenuState::None) {
+    } else if (can_submit_action && menu_model_.state == MenuState::None) {
         enterInputMenu();
     }
 }
@@ -951,41 +935,11 @@ void BattleScene::rebuildBattleLogView() {
 }
 
 void BattleScene::refreshMenuEnabledState(bool enabled) {
-    bool changed = false;
-    for (auto& command : party_commands_) {
-        if (command.enabled != enabled) {
-            command.enabled = enabled;
-            changed = true;
-        }
-    }
-    for (auto& command : actor_commands_) {
-        if (command.enabled != enabled) {
-            command.enabled = enabled;
-            changed = true;
-        }
-    }
-
-    if (changed) {
-        document_controller_.markDirty("party_commands");
-        document_controller_.markDirty("actor_commands");
-        menu_focus_dirty_ = true;
-    }
+    menu_model_.refreshCommandEnabled(enabled, document_controller_);
 }
 
 void BattleScene::markMenuDirty() {
-    document_controller_.markDirty("result_text");
-    document_controller_.markDirty("list_empty_text");
-    document_controller_.markDirty("target_empty_text");
-    document_controller_.markDirty("party_command_visible");
-    document_controller_.markDirty("actor_command_visible");
-    document_controller_.markDirty("list_menu_visible");
-    document_controller_.markDirty("target_menu_visible");
-    document_controller_.markDirty("list_empty");
-    document_controller_.markDirty("target_empty");
-    document_controller_.markDirty("party_commands");
-    document_controller_.markDirty("actor_commands");
-    document_controller_.markDirty("list_entries");
-    document_controller_.markDirty("target_entries");
+    menu_model_.markDirty(document_controller_);
 }
 
 void BattleScene::enterInputMenu() {
@@ -1004,79 +958,37 @@ void BattleScene::leaveInputMenu() {
 }
 
 void BattleScene::setMenuState(MenuState next_state) {
-    menu_state_ = next_state;
-    party_command_visible_ = next_state == MenuState::PartyCommand;
-    actor_command_visible_ = next_state == MenuState::ActorCommand;
-    list_menu_visible_ = next_state == MenuState::SkillList || next_state == MenuState::ItemList;
-    target_menu_visible_ = next_state == MenuState::TargetSelect;
-    list_empty_ = list_entries_.empty();
-    target_empty_ = target_entries_.empty();
-
-    switch (next_state) {
-        case MenuState::None:
-            menu_status_text_ = "Choose action";
-            break;
-        case MenuState::PartyCommand:
-            menu_status_text_ = "Choose action";
-            party_command_cursor_ = party_commands_.empty()
-                ? -1
-                : std::clamp(party_command_cursor_, 0, static_cast<int>(party_commands_.size()) - 1);
-            break;
-        case MenuState::ActorCommand:
-            menu_status_text_ = "Choose action";
-            actor_command_cursor_ = actor_commands_.empty()
-                ? -1
-                : std::clamp(actor_command_cursor_, 0, static_cast<int>(actor_commands_.size()) - 1);
-            break;
-        case MenuState::SkillList:
-            menu_status_text_ = "Choose a skill";
-            list_empty_text_ = "No skills available";
-            list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
-            break;
-        case MenuState::ItemList:
-            menu_status_text_ = "Choose an item";
-            list_empty_text_ = "No battle items available";
-            list_entry_cursor_ = list_entries_.empty() ? -1 : std::clamp(list_entry_cursor_, 0, static_cast<int>(list_entries_.size()) - 1);
-            break;
-        case MenuState::TargetSelect:
-            menu_status_text_ = "Choose a target";
-            target_empty_text_ = "No targets available";
-            target_entry_cursor_ = target_entries_.empty() ? -1 : std::clamp(target_entry_cursor_, 0, static_cast<int>(target_entries_.size()) - 1);
-            break;
-    }
-
-    markMenuDirty();
-    menu_focus_dirty_ = true;
+    menu_model_.setState(next_state, document_controller_);
     syncEnemyHpBarHighlight();
 }
 
 void BattleScene::syncMenuFocus() {
-    if (!menu_focus_dirty_) {
+    if (!menu_model_.focus_dirty) {
         return;
     }
 
     int cursor = -1;
     std::string_view prefix;
 
-    switch (menu_state_) {
+    switch (menu_model_.state) {
         case MenuState::None:
-            menu_focus_dirty_ = false;
+            menu_model_.focus_dirty = false;
             return;
         case MenuState::PartyCommand:
-            cursor = party_command_cursor_;
+            cursor = menu_model_.party_command_cursor;
             prefix = "battle-party-command-";
             break;
         case MenuState::ActorCommand:
-            cursor = actor_command_cursor_;
+            cursor = menu_model_.actor_command_cursor;
             prefix = "battle-actor-command-";
             break;
         case MenuState::SkillList:
         case MenuState::ItemList:
-            cursor = list_entry_cursor_;
+            cursor = menu_model_.list_entry_cursor;
             prefix = "battle-list-entry-";
             break;
         case MenuState::TargetSelect:
-            cursor = target_entry_cursor_;
+            cursor = menu_model_.target_entry_cursor;
             prefix = "battle-target-entry-";
             break;
     }
@@ -1085,7 +997,7 @@ void BattleScene::syncMenuFocus() {
     // cursor >= 0 且 focus 成功: 清除。
     // cursor >= 0 但元素尚未生成（data-if 子树未展开）: 保持脏标记，下帧重试。
     if (cursor < 0 || focusElementById(makeElementId(prefix, cursor))) {
-        menu_focus_dirty_ = false;
+        menu_model_.focus_dirty = false;
     }
 }
 
@@ -1122,17 +1034,17 @@ bool BattleScene::focusElementById(std::string_view element_id) {
 }
 
 void BattleScene::populatePartyCommands() {
-    const bool enabled = actions_enabled_;
-    party_commands_ = {
+    const bool enabled = menu_model_.actions_enabled;
+    menu_model_.party_commands = {
         CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Fight), .entry_index = 0, .label = "Fight", .enabled = enabled},
         CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Escape), .entry_index = 1, .label = "Escape", .enabled = enabled},
     };
-    party_command_cursor_ = firstEnabledPartyCommandIndex();
+    menu_model_.party_command_cursor = firstEnabledPartyCommandIndex();
 }
 
 void BattleScene::populateActorCommands() {
-    const bool enabled = actions_enabled_;
-    actor_commands_ = {
+    const bool enabled = menu_model_.actions_enabled;
+    menu_model_.actor_commands = {
         CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Attack), .entry_index = 0, .label = "Attack", .enabled = enabled},
         CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Skill), .entry_index = 1, .label = "Skill", .enabled = enabled},
         CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Guard), .entry_index = 2, .label = "Guard", .enabled = enabled},
@@ -1148,18 +1060,18 @@ void BattleScene::populateActorCommands() {
         }
     }
     std::vector<bool> enabled_states;
-    enabled_states.reserve(actor_commands_.size());
-    for (const auto& cmd : actor_commands_) {
+    enabled_states.reserve(menu_model_.actor_commands.size());
+    for (const auto& cmd : menu_model_.actor_commands) {
         enabled_states.push_back(cmd.enabled);
     }
-    actor_command_cursor_ = resolveCursorMemoryDefaultIndex(
+    menu_model_.actor_command_cursor = resolveCursorMemoryDefaultIndex(
         remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
-    list_entries_.clear();
-    list_entry_cursor_ = -1;
-    list_empty_text_ = "No skills available";
+    menu_model_.list_entries.clear();
+    menu_model_.list_entry_cursor = -1;
+    menu_model_.list_empty_text = "No skills available";
 
     if (!rpg_catalog_) {
         spdlog::warn("BattleScene: RPG catalog 不可用，无法生成技能列表。");
@@ -1181,7 +1093,7 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
         const std::string_view label = skill->display_name_.empty()
             ? std::string_view{skill->id_}
             : std::string_view{skill->display_name_};
-        list_entries_.push_back(ListEntryViewModel{
+        menu_model_.list_entries.push_back(ListEntryViewModel{
             .entry_index = entry_index++,
             .entry_id = skill->id_,
             .label = makeRmlString(label),
@@ -1194,7 +1106,7 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
     int remembered = -1;
     if (cursor_memory_enabled_) {
         if (const auto it = last_skill_id_per_actor_.find(actor.id); it != last_skill_id_per_actor_.end()) {
-            for (const auto& entry : list_entries_) {
+            for (const auto& entry : menu_model_.list_entries) {
                 if (entry.entry_id == it->second) {
                     remembered = entry.entry_index;
                     break;
@@ -1203,18 +1115,18 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
         }
     }
     std::vector<bool> enabled_states;
-    enabled_states.reserve(list_entries_.size());
-    for (const auto& entry : list_entries_) {
+    enabled_states.reserve(menu_model_.list_entries.size());
+    for (const auto& entry : menu_model_.list_entries) {
         enabled_states.push_back(entry.enabled);
     }
-    list_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+    menu_model_.list_entry_cursor = resolveCursorMemoryDefaultIndex(
         remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 void BattleScene::populateItemEntries() {
-    list_entries_.clear();
-    list_entry_cursor_ = -1;
-    list_empty_text_ = "No battle items available";
+    menu_model_.list_entries.clear();
+    menu_model_.list_entry_cursor = -1;
+    menu_model_.list_empty_text = "No battle items available";
 
     if (!item_catalog_) {
         spdlog::warn("BattleScene: Item catalog 不可用，无法生成物品列表。");
@@ -1254,7 +1166,7 @@ void BattleScene::populateItemEntries() {
         const std::string_view label = item->display_name_.empty()
             ? std::string_view{item->id_str_}
             : std::string_view{item->display_name_};
-        list_entries_.push_back(ListEntryViewModel{
+        menu_model_.list_entries.push_back(ListEntryViewModel{
             .entry_index = entry_index++,
             .entry_id = item->id_str_,
             .label = makeRmlString(label),
@@ -1268,7 +1180,7 @@ void BattleScene::populateItemEntries() {
     if (cursor_memory_enabled_) {
         if (const auto* actor = currentActor()) {
             if (const auto it = last_item_id_per_actor_.find(actor->id); it != last_item_id_per_actor_.end()) {
-                for (const auto& entry : list_entries_) {
+                for (const auto& entry : menu_model_.list_entries) {
                     if (entry.entry_id == it->second) {
                         remembered = entry.entry_index;
                         break;
@@ -1278,22 +1190,22 @@ void BattleScene::populateItemEntries() {
         }
     }
     std::vector<bool> enabled_states;
-    enabled_states.reserve(list_entries_.size());
-    for (const auto& entry : list_entries_) {
+    enabled_states.reserve(menu_model_.list_entries.size());
+    for (const auto& entry : menu_model_.list_entries) {
         enabled_states.push_back(entry.enabled);
     }
-    list_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+    menu_model_.list_entry_cursor = resolveCursorMemoryDefaultIndex(
         remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 const BattleScene::ListEntryViewModel* BattleScene::findListEntry(int entry_index) const {
     const auto it = std::find_if(
-        list_entries_.begin(),
-        list_entries_.end(),
+        menu_model_.list_entries.begin(),
+        menu_model_.list_entries.end(),
         [entry_index](const ListEntryViewModel& entry) {
             return entry.entry_index == entry_index;
         });
-    return it == list_entries_.end() ? nullptr : &*it;
+    return it == menu_model_.list_entries.end() ? nullptr : &*it;
 }
 
 bool BattleScene::isSkillEntryEnabled(const game::battle::BattleUnit& actor,
@@ -1348,18 +1260,18 @@ bool BattleScene::requiresTargetSelection(game::data::Scope scope) const {
 }
 
 int BattleScene::firstEnabledListEntryIndex() const {
-    for (const auto& entry : list_entries_) {
+    for (const auto& entry : menu_model_.list_entries) {
         if (entry.enabled) {
             return entry.entry_index;
         }
     }
-    return list_entries_.empty() ? -1 : list_entries_.front().entry_index;
+    return menu_model_.list_entries.empty() ? -1 : menu_model_.list_entries.front().entry_index;
 }
 
 void BattleScene::populateTargetEntries(game::data::Scope scope, const game::battle::BattleUnit& actor) {
-    target_entries_.clear();
-    target_entry_cursor_ = -1;
-    target_empty_text_ = "No valid targets";
+    menu_model_.target_entries.clear();
+    menu_model_.target_entry_cursor = -1;
+    menu_model_.target_empty_text = "No valid targets";
 
     int entry_index = 0;
     for (const auto& unit : session_.units()) {
@@ -1369,7 +1281,7 @@ void BattleScene::populateTargetEntries(game::data::Scope scope, const game::bat
             continue;
         }
 
-        target_entries_.push_back(TargetEntryViewModel{
+        menu_model_.target_entries.push_back(TargetEntryViewModel{
             .entry_index = entry_index++,
             .unit_id = static_cast<int>(unit.id),
             .label = targetLabel(unit),
@@ -1384,7 +1296,7 @@ void BattleScene::populateTargetEntries(game::data::Scope scope, const game::bat
     int remembered = -1;
     if (cursor_memory_enabled_) {
         if (const auto it = last_target_unit_id_per_actor_.find(actor.id); it != last_target_unit_id_per_actor_.end()) {
-            for (const auto& entry : target_entries_) {
+            for (const auto& entry : menu_model_.target_entries) {
                 if (static_cast<game::battle::BattleUnitId>(entry.unit_id) == it->second) {
                     remembered = entry.entry_index;
                     break;
@@ -1393,31 +1305,31 @@ void BattleScene::populateTargetEntries(game::data::Scope scope, const game::bat
         }
     }
     std::vector<bool> enabled_states;
-    enabled_states.reserve(target_entries_.size());
-    for (const auto& entry : target_entries_) {
+    enabled_states.reserve(menu_model_.target_entries.size());
+    for (const auto& entry : menu_model_.target_entries) {
         enabled_states.push_back(entry.enabled);
     }
-    target_entry_cursor_ = resolveCursorMemoryDefaultIndex(
+    menu_model_.target_entry_cursor = resolveCursorMemoryDefaultIndex(
         remembered, enabled_states, fallback, cursor_memory_enabled_);
 }
 
 const BattleScene::TargetEntryViewModel* BattleScene::findTargetEntry(int entry_index) const {
     const auto it = std::find_if(
-        target_entries_.begin(),
-        target_entries_.end(),
+        menu_model_.target_entries.begin(),
+        menu_model_.target_entries.end(),
         [entry_index](const TargetEntryViewModel& entry) {
             return entry.entry_index == entry_index;
         });
-    return it == target_entries_.end() ? nullptr : &*it;
+    return it == menu_model_.target_entries.end() ? nullptr : &*it;
 }
 
 int BattleScene::firstEnabledTargetEntryIndex() const {
-    for (const auto& entry : target_entries_) {
+    for (const auto& entry : menu_model_.target_entries) {
         if (entry.enabled) {
             return entry.entry_index;
         }
     }
-    return target_entries_.empty() ? -1 : target_entries_.front().entry_index;
+    return menu_model_.target_entries.empty() ? -1 : menu_model_.target_entries.front().entry_index;
 }
 
 Rml::String BattleScene::targetLabel(const game::battle::BattleUnit& unit) const {
@@ -1447,8 +1359,7 @@ BattleScene::MenuState BattleScene::menuStateForActionDraftSource() const {
 }
 
 void BattleScene::setMenuHint(std::string_view text) {
-    menu_status_text_ = std::string{text};
-    document_controller_.markDirty("result_text");
+    menu_model_.setHint(text, document_controller_);
 }
 
 void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor) {
@@ -1492,44 +1403,44 @@ bool BattleScene::shouldOpenPartyCommand() const {
 
 const BattleScene::CommandViewModel* BattleScene::findPartyCommand(int entry_index) const {
     const auto it = std::find_if(
-        party_commands_.begin(),
-        party_commands_.end(),
+        menu_model_.party_commands.begin(),
+        menu_model_.party_commands.end(),
         [entry_index](const CommandViewModel& command) {
             return command.entry_index == entry_index;
         });
-    return it == party_commands_.end() ? nullptr : &*it;
+    return it == menu_model_.party_commands.end() ? nullptr : &*it;
 }
 
 const BattleScene::CommandViewModel* BattleScene::findActorCommand(int entry_index) const {
     const auto it = std::find_if(
-        actor_commands_.begin(),
-        actor_commands_.end(),
+        menu_model_.actor_commands.begin(),
+        menu_model_.actor_commands.end(),
         [entry_index](const CommandViewModel& command) {
             return command.entry_index == entry_index;
         });
-    return it == actor_commands_.end() ? nullptr : &*it;
+    return it == menu_model_.actor_commands.end() ? nullptr : &*it;
 }
 
 int BattleScene::firstEnabledPartyCommandIndex() const {
-    for (const auto& command : party_commands_) {
+    for (const auto& command : menu_model_.party_commands) {
         if (command.enabled) {
             return command.entry_index;
         }
     }
-    return party_commands_.empty() ? -1 : party_commands_.front().entry_index;
+    return menu_model_.party_commands.empty() ? -1 : menu_model_.party_commands.front().entry_index;
 }
 
 int BattleScene::firstEnabledActorCommandIndex() const {
-    for (const auto& command : actor_commands_) {
+    for (const auto& command : menu_model_.actor_commands) {
         if (command.enabled) {
             return command.entry_index;
         }
     }
-    return actor_commands_.empty() ? -1 : actor_commands_.front().entry_index;
+    return menu_model_.actor_commands.empty() ? -1 : menu_model_.actor_commands.front().entry_index;
 }
 
 void BattleScene::handlePartyCommand(int entry_index) {
-    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(party_commands_.size())) {
+    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(menu_model_.party_commands.size())) {
         return;
     }
 
@@ -1538,8 +1449,8 @@ void BattleScene::handlePartyCommand(int entry_index) {
         return;
     }
 
-    party_command_cursor_ = command->entry_index;
-    menu_focus_dirty_ = true;
+    menu_model_.party_command_cursor = command->entry_index;
+    menu_model_.focus_dirty = true;
     if (!command->enabled) {
         return;
     }
@@ -1558,7 +1469,7 @@ void BattleScene::handlePartyCommand(int entry_index) {
 }
 
 void BattleScene::handleActorCommand(int entry_index) {
-    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(actor_commands_.size())) {
+    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(menu_model_.actor_commands.size())) {
         return;
     }
 
@@ -1567,8 +1478,8 @@ void BattleScene::handleActorCommand(int entry_index) {
         return;
     }
 
-    actor_command_cursor_ = command->entry_index;
-    menu_focus_dirty_ = true;
+    menu_model_.actor_command_cursor = command->entry_index;
+    menu_model_.focus_dirty = true;
     if (!command->enabled) {
         return;
     }
@@ -1596,7 +1507,7 @@ void BattleScene::handleActorCommand(int entry_index) {
 }
 
 void BattleScene::handleListEntry(int entry_index) {
-    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(list_entries_.size())) {
+    if (!isWaitingForActionInput() || entry_index < 0 || entry_index >= static_cast<int>(menu_model_.list_entries.size())) {
         return;
     }
 
@@ -1605,16 +1516,16 @@ void BattleScene::handleListEntry(int entry_index) {
         return;
     }
 
-    list_entry_cursor_ = entry->entry_index;
-    menu_focus_dirty_ = true;
+    menu_model_.list_entry_cursor = entry->entry_index;
+    menu_model_.focus_dirty = true;
     if (!entry->enabled) {
         return;
     }
 
     actor_command_entered_via_fight_this_step_ = false;
-    if (menu_state_ == MenuState::SkillList) {
+    if (menu_model_.state == MenuState::SkillList) {
         handleSkillEntry(*entry);
-    } else if (menu_state_ == MenuState::ItemList) {
+    } else if (menu_model_.state == MenuState::ItemList) {
         handleItemEntry(*entry);
     }
 }
@@ -1674,8 +1585,8 @@ void BattleScene::handleTargetEntry(int entry_index) {
         return;
     }
 
-    target_entry_cursor_ = entry->entry_index;
-    menu_focus_dirty_ = true;
+    menu_model_.target_entry_cursor = entry->entry_index;
+    menu_model_.focus_dirty = true;
     if (!entry->enabled) {
         return;
     }
@@ -1799,7 +1710,7 @@ bool BattleScene::isWaitingForActionInput() const {
 }
 
 BattleMenuState BattleScene::battleMenuState() const {
-    return menu_state_;
+    return menu_model_.state;
 }
 
 bool BattleScene::moveBattleMenuCursor(const int delta) {
@@ -1811,61 +1722,61 @@ bool BattleScene::moveMenuCursor(int delta) {
         return false;
     }
 
-    switch (menu_state_) {
+    switch (menu_model_.state) {
         case MenuState::PartyCommand: {
             std::vector<bool> enabled_entries;
-            enabled_entries.reserve(party_commands_.size());
-            for (const auto& command : party_commands_) {
+            enabled_entries.reserve(menu_model_.party_commands.size());
+            for (const auto& command : menu_model_.party_commands) {
                 enabled_entries.push_back(command.enabled);
             }
 
-            if (!moveCursorInEntries(party_command_cursor_, static_cast<int>(party_commands_.size()), delta, enabled_entries)) {
+            if (!moveCursorInEntries(menu_model_.party_command_cursor, static_cast<int>(menu_model_.party_commands.size()), delta, enabled_entries)) {
                 return false;
             }
-            menu_focus_dirty_ = true;
+            menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
         }
         case MenuState::ActorCommand: {
             std::vector<bool> enabled_entries;
-            enabled_entries.reserve(actor_commands_.size());
-            for (const auto& command : actor_commands_) {
+            enabled_entries.reserve(menu_model_.actor_commands.size());
+            for (const auto& command : menu_model_.actor_commands) {
                 enabled_entries.push_back(command.enabled);
             }
 
-            if (!moveCursorInEntries(actor_command_cursor_, static_cast<int>(actor_commands_.size()), delta, enabled_entries)) {
+            if (!moveCursorInEntries(menu_model_.actor_command_cursor, static_cast<int>(menu_model_.actor_commands.size()), delta, enabled_entries)) {
                 return false;
             }
-            menu_focus_dirty_ = true;
+            menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
         }
         case MenuState::SkillList:
         case MenuState::ItemList: {
             std::vector<bool> enabled_entries;
-            enabled_entries.reserve(list_entries_.size());
-            for (const auto& entry : list_entries_) {
+            enabled_entries.reserve(menu_model_.list_entries.size());
+            for (const auto& entry : menu_model_.list_entries) {
                 enabled_entries.push_back(entry.enabled);
             }
 
-            if (!moveCursorInEntries(list_entry_cursor_, static_cast<int>(list_entries_.size()), delta, enabled_entries)) {
+            if (!moveCursorInEntries(menu_model_.list_entry_cursor, static_cast<int>(menu_model_.list_entries.size()), delta, enabled_entries)) {
                 return false;
             }
-            menu_focus_dirty_ = true;
+            menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
         }
         case MenuState::TargetSelect: {
             std::vector<bool> enabled_entries;
-            enabled_entries.reserve(target_entries_.size());
-            for (const auto& target : target_entries_) {
+            enabled_entries.reserve(menu_model_.target_entries.size());
+            for (const auto& target : menu_model_.target_entries) {
                 enabled_entries.push_back(target.enabled);
             }
 
-            if (!moveCursorInEntries(target_entry_cursor_, static_cast<int>(target_entries_.size()), delta, enabled_entries)) {
+            if (!moveCursorInEntries(menu_model_.target_entry_cursor, static_cast<int>(menu_model_.target_entries.size()), delta, enabled_entries)) {
                 return false;
             }
-            menu_focus_dirty_ = true;
+            menu_model_.focus_dirty = true;
             syncEnemyHpBarHighlight();
             syncMenuFocus();
             return true;
@@ -1906,22 +1817,22 @@ bool BattleScene::confirmBattleMenu() {
     }
 
     if (!isWaitingForActionInput()) {
-        return menu_state_ != MenuState::None;
+        return menu_model_.state != MenuState::None;
     }
 
-    switch (menu_state_) {
+    switch (menu_model_.state) {
         case MenuState::PartyCommand:
-            handlePartyCommand(party_command_cursor_);
+            handlePartyCommand(menu_model_.party_command_cursor);
             return true;
         case MenuState::ActorCommand:
-            handleActorCommand(actor_command_cursor_);
+            handleActorCommand(menu_model_.actor_command_cursor);
             return true;
         case MenuState::SkillList:
         case MenuState::ItemList:
-            handleListEntry(list_entry_cursor_);
+            handleListEntry(menu_model_.list_entry_cursor);
             return true;
         case MenuState::TargetSelect:
-            handleTargetEntry(target_entry_cursor_);
+            handleTargetEntry(menu_model_.target_entry_cursor);
             return true;
         case MenuState::None:
             return false;
@@ -1934,10 +1845,10 @@ bool BattleScene::cancelBattleMenu() {
     }
 
     if (!isWaitingForActionInput()) {
-        return menu_state_ != MenuState::None;
+        return menu_model_.state != MenuState::None;
     }
 
-    switch (menu_state_) {
+    switch (menu_model_.state) {
         case MenuState::TargetSelect:
             action_draft_.selected_target_id.reset();
             setMenuState(menuStateForActionDraftSource());
@@ -2508,8 +2419,8 @@ void BattleScene::updatePresentation(float delta_time) {
 
 void BattleScene::refreshPresentation() {
     std::optional<game::battle::BattleUnitId> target_id{};
-    if (menu_state_ == MenuState::TargetSelect) {
-        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
+    if (menu_model_.state == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(menu_model_.target_entry_cursor); entry && entry->enabled) {
             target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
         }
     } else {
@@ -2566,8 +2477,8 @@ void BattleScene::syncPresentationTransforms() {
 void BattleScene::syncPresentationShadows() {
     const auto& camera = context_.getCamera();
     std::optional<game::battle::BattleUnitId> target_id{};
-    if (menu_state_ == MenuState::TargetSelect) {
-        if (const auto* entry = findTargetEntry(target_entry_cursor_); entry && entry->enabled) {
+    if (menu_model_.state == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(menu_model_.target_entry_cursor); entry && entry->enabled) {
             target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
         }
     }
@@ -2622,8 +2533,8 @@ void BattleScene::syncPresentationShadows() {
 
 void BattleScene::syncEnemyHpBarHighlight() {
     std::optional<game::battle::BattleUnitId> target_id{};
-    if (menu_state_ == MenuState::TargetSelect) {
-        if (const auto* entry = findTargetEntry(target_entry_cursor_);
+    if (menu_model_.state == MenuState::TargetSelect) {
+        if (const auto* entry = findTargetEntry(menu_model_.target_entry_cursor);
             entry && entry->enabled && !entry->is_ally) {
             target_id = static_cast<game::battle::BattleUnitId>(entry->unit_id);
         }

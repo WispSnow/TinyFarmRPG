@@ -302,6 +302,7 @@ target_sources(game PRIVATE
     game/scene/battle_enemy_hp_bar_controller.cpp
     game/scene/battle_flow_controller.cpp
     game/scene/battle_input_router.cpp
+    game/scene/battle_menu_model.cpp
     game/scene/battle_scene_data_bindings.cpp
     game/scene/battle_scene_entry.cpp
     game/scene/battle_view_model_builder.cpp
