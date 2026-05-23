@@ -70,7 +70,7 @@ entt::entity createEnemy(entt::registry& registry,
             .troop_id_hash_ = entt::hashed_string{troop_id.c_str()}.value(),
             .battle_background_id_ = "Grassland",
             .encounter_id_ = encounter_id,
-            .once_ = true,
+            .respawn_on_map_reload_ = false,
             .home_position_ = position});
     return enemy;
 }
@@ -100,6 +100,7 @@ TEST(EnemyEncounterSystemTest, TouchingEnemyTriggersEnterBattleCommand) {
     ASSERT_TRUE(collector.commands[0].encounter_context.has_value());
     EXPECT_EQ(collector.commands[0].encounter_context->source_entity, enemy);
     EXPECT_EQ(collector.commands[0].encounter_context->encounter_id, 1001);
+    EXPECT_FALSE(collector.commands[0].encounter_context->respawn_on_map_reload);
     EXPECT_TRUE(registry.get<game::component::EnemyEncounterComponent>(enemy).engaged_);
 }
 

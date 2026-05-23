@@ -17,7 +17,7 @@ struct EnemyEncounterBattleContext {
     entt::id_type map_id{entt::null};
     int encounter_id{0};
     std::string troop_id{};
-    bool once{false};
+    bool respawn_on_map_reload{true};
     glm::vec2 home_position{0.0f, 0.0f};
 };
 

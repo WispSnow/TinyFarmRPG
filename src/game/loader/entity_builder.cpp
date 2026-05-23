@@ -377,7 +377,8 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
     const auto battle_troop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_TROOP_ID);
     auto battle_background_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_BATTLE_BACKGROUND_ID);
     const auto encounter_id = findObjectIntProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ID);
-    const bool encounter_once = findObjectBoolProperty(object_json_, tiled::ACTOR_PROP_ENCOUNTER_ONCE).value_or(false);
+    const bool respawn_on_map_reload =
+        findObjectBoolProperty(object_json_, tiled::ACTOR_PROP_RESPAWN_ON_MAP_RELOAD).value_or(true);
     const auto wander_radius_override = findObjectFloatProperty(object_json_, tiled::ACTOR_PROP_WANDER_RADIUS_OVERRIDE);
 
     if (battle_background_id && !game::data::isValidBattleBackgroundId(*battle_background_id)) {
@@ -404,7 +405,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
         } else if (!encounter_id || *encounter_id <= 0) {
             spdlog::warn("EntityBuilder: actor 声明 battle_troop_id='{}' 但缺少合法 encounter_id，忽略战斗入口。",
                          *battle_troop_id);
-        } else if (isEncounterDefeated(*encounter_id)) {
+        } else if (!respawn_on_map_reload && isEncounterDefeated(*encounter_id)) {
             entity_id_ = entt::null;
             return;
         } else if (!seen_encounter_ids_.insert(*encounter_id).second) {
@@ -477,7 +478,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
                 .troop_id_hash_ = entt::hashed_string{battle_troop_id->c_str()}.value(),
                 .battle_background_id_ = battle_background_id.value_or(std::string{}),
                 .encounter_id_ = *encounter_id,
-                .once_ = encounter_once,
+                .respawn_on_map_reload_ = respawn_on_map_reload,
                 .defeated_ = false,
                 .home_position_ = position});
     }

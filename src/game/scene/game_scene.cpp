@@ -1035,7 +1035,11 @@ void GameScene::resolveActiveEnemyEncounter(const game::defs::BattleEndedEvent& 
 
     if (victory && services_ && services_->world_state) {
         if (auto* map_state = services_->world_state->getMapStateMutable(context.map_id)) {
-            map_state->persistent.defeated_encounters.insert(context.encounter_id);
+            if (context.respawn_on_map_reload) {
+                map_state->persistent.defeated_encounters.erase(context.encounter_id);
+            } else {
+                map_state->persistent.defeated_encounters.insert(context.encounter_id);
+            }
         }
     }
 

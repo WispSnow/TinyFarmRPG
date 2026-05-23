@@ -105,6 +105,8 @@ TEST(GameSceneBattleEntryTest, ResolvesEnemyEncounterBeforeBattleRewardSettlemen
     ASSERT_NE(settlement_pos, std::string::npos);
     EXPECT_LT(resolve_pos, settlement_pos);
     EXPECT_NE(source.find("active_encounter_context_ = cmd.encounter_context;"), std::string::npos);
+    EXPECT_NE(source.find("context.respawn_on_map_reload"), std::string::npos);
+    EXPECT_NE(source.find("defeated_encounters.erase(context.encounter_id);"), std::string::npos);
     EXPECT_NE(source.find("defeated_encounters.insert(context.encounter_id);"), std::string::npos);
     EXPECT_NE(source.find("NeedRemoveTag"), std::string::npos);
 }
