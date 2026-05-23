@@ -15,6 +15,7 @@
 #include "game/scene/battle_damage_popup_controller.h"
 #include "game/scene/battle_flow_controller.h"
 #include "game/scene/battle_input_router.h"
+#include "game/scene/battle_menu_model.h"
 #include "game/scene/battle_scene_state.h"
 #include "game/scene/battle_scene_types.h"
 #include "game/scene/battle_scene_view_models.h"
@@ -93,7 +94,7 @@ class BattleScene final : public engine::scene::Scene,
     engine::system::RenderSystem battle_render_system_{};
     BattleFlowController flow_controller_{};
     BattleInputRouter input_router_{};
-    MenuState menu_state_{MenuState::None};
+    BattleMenuModel menu_model_{};
     ActionDraft action_draft_{};
     std::optional<game::battle::BattleAction> pending_action_{};
     std::optional<game::battle::BattleActionResult> last_action_result_{};
@@ -107,7 +108,6 @@ class BattleScene final : public engine::scene::Scene,
     bool actor_command_entered_via_fight_this_step_{false};       ///< 仅表示当前 ActorCommand 由 Fight 直入且尚未选择角色命令，控制取消是否回退到 PartyCommand。
     bool end_requested_{false};
     bool context_pushed_{false};
-    bool menu_focus_dirty_{true};
     std::optional<CameraStateSnapshot> saved_camera_state_{};
     std::vector<ScheduledPresentationEvent> scheduled_presentation_events_{};
 
@@ -118,9 +118,9 @@ class BattleScene final : public engine::scene::Scene,
     bool cursor_memory_enabled_{true};
     /// @brief 每个行动者上次选择的 ActorCommand 下标（按 BattleUnitId 键存储）。战斗结束清空。
     std::unordered_map<game::battle::BattleUnitId, int> last_actor_command_index_per_actor_{};
-    /// @brief 每个行动者上次选中的 skill id（list_entries_.entry_id）。
+    /// @brief 每个行动者上次选中的 skill id（BattleMenuModel::list_entries.entry_id）。
     std::unordered_map<game::battle::BattleUnitId, std::string> last_skill_id_per_actor_{};
-    /// @brief 每个行动者上次选中的 item id（list_entries_.entry_id）。
+    /// @brief 每个行动者上次选中的 item id（BattleMenuModel::list_entries.entry_id）。
     std::unordered_map<game::battle::BattleUnitId, std::string> last_item_id_per_actor_{};
     /// @brief 每个行动者上次选中的 target unit id。
     std::unordered_map<game::battle::BattleUnitId, game::battle::BattleUnitId> last_target_unit_id_per_actor_{};
@@ -129,18 +129,6 @@ class BattleScene final : public engine::scene::Scene,
     Rml::DataTypeRegister type_register_{};
     bool data_types_registered_{false};
 
-    Rml::String turn_text_{"Turn: -"};
-    Rml::String result_text_{"Result: Choose action"};
-    bool actions_enabled_{false};
-    std::string menu_status_text_{"Choose action"};
-    Rml::String list_empty_text_{"No entries available"};
-    Rml::String target_empty_text_{"No targets available"};
-    bool party_command_visible_{false};
-    bool actor_command_visible_{false};
-    bool list_menu_visible_{false};
-    bool target_menu_visible_{false};
-    bool list_empty_{true};
-    bool target_empty_{true};
     std::vector<TurnOrderEntryViewModel> turn_order_entries_{};
     std::vector<PartyStatusViewModel> party_status_{};
     std::vector<StateIconViewModel> party_state_icons_{};
@@ -150,14 +138,6 @@ class BattleScene final : public engine::scene::Scene,
     std::vector<BattleLogEntryViewModel> battle_log_entries_{};
     std::vector<VictoryRewardItemViewModel> victory_reward_items_{};
     std::vector<VictoryLevelUpViewModel> victory_level_ups_{};
-    std::vector<CommandViewModel> party_commands_{};
-    std::vector<CommandViewModel> actor_commands_{};
-    std::vector<ListEntryViewModel> list_entries_{};
-    std::vector<TargetEntryViewModel> target_entries_{};
-    int party_command_cursor_{0};
-    int actor_command_cursor_{0};
-    int list_entry_cursor_{-1};
-    int target_entry_cursor_{-1};
     bool victory_overlay_visible_{false};
     bool victory_continue_enabled_{false};
     bool victory_continue_focus_dirty_{false};

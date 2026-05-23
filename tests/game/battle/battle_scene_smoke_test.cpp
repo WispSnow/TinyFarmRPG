@@ -134,21 +134,26 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
             .lexically_normal();
     const std::filesystem::path input_router_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_input_router.cpp").lexically_normal();
+    const std::filesystem::path menu_model_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_menu_model.cpp").lexically_normal();
     const std::filesystem::path view_model_builder_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_view_model_builder.cpp")
             .lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
     ASSERT_TRUE(std::filesystem::exists(data_bindings_source_path)) << data_bindings_source_path;
     ASSERT_TRUE(std::filesystem::exists(input_router_source_path)) << input_router_source_path;
+    ASSERT_TRUE(std::filesystem::exists(menu_model_source_path)) << menu_model_source_path;
     ASSERT_TRUE(std::filesystem::exists(view_model_builder_source_path)) << view_model_builder_source_path;
 
     const std::string source = readTextFile(source_path);
     const std::string data_bindings_source = readTextFile(data_bindings_source_path);
     const std::string input_router_source = readTextFile(input_router_source_path);
+    const std::string menu_model_source = readTextFile(menu_model_source_path);
     const std::string view_model_builder_source = readTextFile(view_model_builder_source_path);
     ASSERT_FALSE(source.empty());
     ASSERT_FALSE(data_bindings_source.empty());
     ASSERT_FALSE(input_router_source.empty());
+    ASSERT_FALSE(menu_model_source.empty());
     ASSERT_FALSE(view_model_builder_source.empty());
 
     EXPECT_NE(source.find("createModel(MODEL_NAME, &type_register_)"), std::string::npos);
@@ -172,6 +177,11 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(source.find("constructor.Bind(\"party_state_icons\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"state_tooltip\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"battle_log_entries\""), std::string::npos);
+    EXPECT_NE(source.find("menu_model_.bind(constructor)"), std::string::npos);
+    EXPECT_NE(menu_model_source.find("constructor.Bind(\"party_commands\""), std::string::npos);
+    EXPECT_NE(menu_model_source.find("constructor.Bind(\"actor_commands\""), std::string::npos);
+    EXPECT_NE(menu_model_source.find("constructor.Bind(\"list_entries\""), std::string::npos);
+    EXPECT_NE(menu_model_source.find("constructor.Bind(\"target_entries\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"victory_overlay_visible\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"victory_reward_items\""), std::string::npos);
     EXPECT_NE(source.find("constructor.Bind(\"victory_exp_text\""), std::string::npos);
@@ -207,8 +217,9 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(view_model_builder_source.find("turnOrderFallbackLabel(unit.side, side_index)"), std::string::npos);
     EXPECT_EQ(source.find("units_text"), std::string::npos);
     EXPECT_EQ(data_bindings_source.find("RegisterStruct<MainActionViewModel>"), std::string::npos);
-    EXPECT_EQ(countOccurrences(source, "RegisterArray<decltype(party_commands_)>()"), 1U);
-    EXPECT_EQ(source.find("RegisterArray<decltype(actor_commands_)>()"), std::string::npos);
+    EXPECT_NE(source.find("menu_model_.registerArrays(constructor)"), std::string::npos);
+    EXPECT_EQ(countOccurrences(menu_model_source, "RegisterArray<decltype(party_commands)>()"), 1U);
+    EXPECT_EQ(menu_model_source.find("RegisterArray<decltype(actor_commands)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(battle_log_entries_)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(victory_reward_items_)>()"), std::string::npos);
     EXPECT_NE(source.find("RegisterArray<decltype(victory_level_ups_)>()"), std::string::npos);
