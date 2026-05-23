@@ -41,12 +41,17 @@
             "members": [
                 {
                     "enemy_id": "enemy.slime",
-                    "x": 337.0,
+                    "x": 264.0,
                     "y": 436.0
                 },
                 {
                     "enemy_id": "enemy.slime",
-                    "x": 480.0,
+                    "x": 408.0,
+                    "y": 436.0
+                },
+                {
+                    "enemy_id": "enemy.slime",
+                    "x": 552.0,
                     "y": 436.0
                 }
             ]

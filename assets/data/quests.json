@@ -3,18 +3,18 @@
   "quests": [
     {
       "id": "quest.village.goblin_cleanup",
-      "title": "Goblin Cleanup",
-      "description": "Defeat goblins near the village.",
+      "title": "Slime Cleanup",
+      "description": "Defeat slimes near the village.",
       "objectives": [
         {
-          "id": "kill_goblins",
+          "id": "kill_slimes",
           "kind": "defeat_enemy_count",
-          "enemy_id": "enemy.goblin",
+          "enemy_id": "enemy.slime",
           "required_count": 3,
           "marker": {
             "map": "town",
             "position": [532, 296],
-            "label": "Goblin Target"
+            "label": "Slime Targets"
           }
         }
       ],
@@ -28,7 +28,7 @@
         ]
       },
       "giver_text": {
-        "offer": "Can you help us drive away the goblins?",
+        "offer": "Can you help us drive away the slimes?",
         "progress": "We still need more help.",
         "ready_to_turn_in": "You did it? That's a relief.",
         "completed": "Thank you again."

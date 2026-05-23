@@ -241,9 +241,9 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
             .quest_id = "quest.village.goblin_cleanup",
             .objective_id = "",
             .map_position = {503.0F, 175.5F},
-            .title = "Goblin Cleanup",
+            .title = "Slime Cleanup",
             .type_label = "Quest Available",
-            .description = "Defeat goblins near the village.",
+            .description = "Defeat slimes near the village.",
         },
     };
 
@@ -265,15 +265,15 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
     EXPECT_EQ(state.map_markers[0].kind, "player");
     EXPECT_EQ(state.map_markers[1].kind, "quest_offer");
     EXPECT_TRUE(state.map_markers[1].is_selected);
-    EXPECT_EQ(state.map_markers[1].title, "Goblin Cleanup");
-    EXPECT_EQ(state.map_markers[1].description, "Defeat goblins near the village.");
+    EXPECT_EQ(state.map_markers[1].title, "Slime Cleanup");
+    EXPECT_EQ(state.map_markers[1].description, "Defeat slimes near the village.");
     EXPECT_EQ(state.map_markers[2].title, "Village General Store");
     EXPECT_EQ(state.map_markers[2].description, "Welcome to the shop");
     EXPECT_EQ(state.map_markers[3].title, "Lyria");
     EXPECT_TRUE(state.has_map_markers);
     EXPECT_TRUE(state.has_place_markers);
     EXPECT_TRUE(state.has_map_detail);
-    EXPECT_EQ(state.map_detail_title, "Goblin Cleanup");
+    EXPECT_EQ(state.map_detail_title, "Slime Cleanup");
     EXPECT_EQ(state.map_detail_type, "Quest Available");
 }
 

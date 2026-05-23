@@ -187,7 +187,7 @@ TEST(BlueprintManagerTest, ProjectBattleEnemiesExposeTurnOrderIdleDownIcons) {
     EXPECT_GT(checked_enemy_count, 0U);
 }
 
-TEST(BlueprintManagerTest, ProjectTownKeepsSlimeAndAddsSeparateGoblinEncounter) {
+TEST(BlueprintManagerTest, ProjectTownKeepsOneSlimeAndClearsGoblinEncounterOnce) {
     const std::filesystem::path town_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/maps/town.tmj").lexically_normal();
     std::ifstream town_file(town_path);
@@ -196,7 +196,7 @@ TEST(BlueprintManagerTest, ProjectTownKeepsSlimeAndAddsSeparateGoblinEncounter) 
     const nlohmann::json root = nlohmann::json::parse(town_file, nullptr, false);
     ASSERT_FALSE(root.is_discarded()) << town_path;
 
-    bool found_slime = false;
+    int slime_count = 0;
     bool found_goblin = false;
     for (const auto& layer : root.value("layers", nlohmann::json::array())) {
         if (!layer.is_object() || layer.value("type", std::string{}) != "objectgroup") {
@@ -221,19 +221,19 @@ TEST(BlueprintManagerTest, ProjectTownKeepsSlimeAndAddsSeparateGoblinEncounter) 
             }
 
             if (object.value("name", std::string{}) == "slime" && troop_id == "troop.slime") {
-                found_slime = true;
+                ++slime_count;
                 EXPECT_TRUE(encounter_once);
             }
             if (object.value("name", std::string{}) == "goblin" && troop_id == "troop.goblin_pair") {
                 found_goblin = true;
-                EXPECT_FALSE(encounter_once);
+                EXPECT_TRUE(encounter_once);
                 EXPECT_FLOAT_EQ(object.value("x", 0.0F), 532.0F);
                 EXPECT_FLOAT_EQ(object.value("y", 0.0F), 296.0F);
             }
         }
     }
 
-    EXPECT_TRUE(found_slime);
+    EXPECT_EQ(slime_count, 1);
     EXPECT_TRUE(found_goblin);
     EXPECT_EQ(root.value("nextobjectid", 0), 29);
 }
