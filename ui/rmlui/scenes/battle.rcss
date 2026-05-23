@@ -380,21 +380,24 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-party-main {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 4dp;
     width: 114dp;
     height: 78dp;
 }
 
-.battle-party-identity {
-    width: 36dp;
-    height: 78dp;
+.battle-party-body {
+    display: flex;
+    flex-direction: row;
+    gap: 4dp;
+    width: 114dp;
+    height: 58dp;
 }
 
 .battle-portrait {
     width: 36dp;
     height: 36dp;
-    margin-top: 4dp;
+    margin-top: 2dp;
     background-color: #1a1b26cc;
     border-width: 1dp;
     border-color: #414868ff;
@@ -403,15 +406,15 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-party-stats {
     width: 74dp;
-    height: 78dp;
+    height: 58dp;
 }
 
 .battle-party-name {
-    width: 36dp;
+    width: 114dp;
     height: 14dp;
     line-height: 14dp;
     color: #2a1f17ff;
-    text-align: center;
+    text-align: left;
     font-effect: shadow(1dp 1dp #ffffff44);
     overflow: hidden;
 }
@@ -451,11 +454,11 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .battle-hp-label {
-    margin-top: 8dp;
+    margin-top: 0;
 }
 
 .battle-mp-label {
-    margin-top: 7dp;
+    margin-top: 4dp;
 }
 
 .battle-stat-bar {
@@ -473,7 +476,7 @@ body, div, h1, h2, h3, h4, p, hr {
 .battle-state-icon-row {
     width: 74dp;
     height: 12dp;
-    margin-top: 5dp;
+    margin-top: 4dp;
     display: flex;
     flex-direction: row;
     gap: 2dp;
