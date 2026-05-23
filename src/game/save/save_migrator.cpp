@@ -18,6 +18,7 @@ constexpr std::string_view KEY_PARTY_STATE = json_keys::PARTY_STATE;
 constexpr std::string_view KEY_EQUIPMENT_STATE = json_keys::EQUIPMENT_STATE;
 constexpr std::string_view KEY_PARTY_RUNTIME_STATE = json_keys::PARTY_RUNTIME_STATE;
 constexpr std::string_view KEY_COMBAT_STATE = json_keys::COMBAT_STATE;
+constexpr std::string_view KEY_SCRIPT_STATE = json_keys::SCRIPT_STATE;
 constexpr std::string_view KEY_ACTIVE_QUESTS = json_keys::ACTIVE_QUESTS;
 constexpr std::string_view KEY_COMPLETED_QUESTS = json_keys::COMPLETED_QUESTS;
 constexpr std::string_view KEY_OBJECTIVE_PROGRESS = json_keys::OBJECTIVE_PROGRESS;
@@ -200,6 +201,20 @@ bool normalizeAppearanceState(nlohmann::json& appearance_state, std::string& out
     return true;
 }
 
+bool normalizeScriptState(nlohmann::json& script_state, std::string& out_error) {
+    if (!script_state.is_object()) {
+        out_error = "SaveMigrator: field '" + std::string(KEY_SCRIPT_STATE) + "' is not an object";
+        return false;
+    }
+    for (const auto& [key, value] : script_state.items()) {
+        if (!value.is_null() && !value.is_boolean() && !value.is_number() && !value.is_string()) {
+            out_error = "SaveMigrator: script_state." + key + " is not a JSON primitive";
+            return false;
+        }
+    }
+    return true;
+}
+
 bool normalizeLatestFields(nlohmann::json& json, std::string& out_error) {
     if (!ensureObjectField(json, KEY_QUEST_STATE, out_error)) {
         return false;
@@ -220,6 +235,9 @@ bool normalizeLatestFields(nlohmann::json& json, std::string& out_error) {
         return false;
     }
     if (!ensureObjectField(json, KEY_PARTY_RUNTIME_STATE, out_error)) {
+        return false;
+    }
+    if (!ensureObjectField(json, KEY_SCRIPT_STATE, out_error)) {
         return false;
     }
     if (!normalizeQuestState(json[KEY_QUEST_STATE], out_error)) {
@@ -243,6 +261,9 @@ bool normalizeLatestFields(nlohmann::json& json, std::string& out_error) {
     if (!normalizePartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out_error)) {
         return false;
     }
+    if (!normalizeScriptState(json[KEY_SCRIPT_STATE], out_error)) {
+        return false;
+    }
     return true;
 }
 
@@ -262,6 +283,17 @@ bool migrateV5ToV6(nlohmann::json& json, std::string& out_error) {
         return false;
     }
     if (!normalizePartyRuntimeState(json[KEY_PARTY_RUNTIME_STATE], out_error)) {
+        return false;
+    }
+    json[KEY_SCHEMA_VERSION] = 6u;
+    return true;
+}
+
+bool migrateV6ToV7(nlohmann::json& json, std::string& out_error) {
+    if (!ensureObjectField(json, KEY_SCRIPT_STATE, out_error)) {
+        return false;
+    }
+    if (!normalizeScriptState(json[KEY_SCRIPT_STATE], out_error)) {
         return false;
     }
     json[KEY_SCHEMA_VERSION] = SAVE_SCHEMA_VERSION;
@@ -303,6 +335,12 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
 
     if (json[KEY_SCHEMA_VERSION] == 5u) {
         if (!migrateV5ToV6(json, out_error)) {
+            return false;
+        }
+    }
+
+    if (json[KEY_SCHEMA_VERSION] == 6u) {
+        if (!migrateV6ToV7(json, out_error)) {
             return false;
         }
     }

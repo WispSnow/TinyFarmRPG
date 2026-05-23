@@ -1,7 +1,7 @@
 -- TinyFarm script bootstrap.
 -- GameRuntimeAssembler loads this file every time GameScene is initialized,
 -- including after loading a save. Keep top-level work idempotent; persistent
--- story state must go through tf.state once Phase 4 lands.
+-- story state must go through tf.state.
 
 local event = tf.script.require("lib.event")
 tf.script.require("lib.dialogue")

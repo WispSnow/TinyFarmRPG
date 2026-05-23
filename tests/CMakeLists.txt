@@ -256,6 +256,7 @@ list(APPEND GAME_TEST_SOURCES
     game/script_host_command_bridge_test.cpp
     game/script_event_bridge_test.cpp
     game/script_module_require_test.cpp
+    game/script_state_test.cpp
 )
 
 if(ENABLE_DEBUG_UI)

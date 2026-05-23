@@ -193,12 +193,12 @@ tf.state.add("npc.lyria.gift_count", 1)
 
 待办：
 
-- [ ] 新增 `ScriptStateComponent` 或 SaveData 中的 `script_state` 字段，值只允许 JSON 兼容基元：null / bool / number / string。
-- [ ] Lua `number` 不在存档层区分 int/float；脚本侧通过类型化访问器表达期望类型，例如 `get_int`、`get_number`、`get_bool`、`get_string`。
-- [ ] `tf.state` 只允许简单可序列化值，不允许保存 function/table/entity handle。
-- [ ] SaveService 写入和读取 `script_state`。
-- [ ] 增加 schema 迁移测试和 roundtrip 测试。
-- [ ] 明确命名规范：推荐 `domain.object.field`，例如 `quest.first_delivery.stage`。
+- [x] 新增 `ScriptStateComponent` 或 SaveData 中的 `script_state` 字段，值只允许 JSON 兼容基元：null / bool / number / string。
+- [x] Lua `number` 不在存档层区分 int/float；脚本侧通过类型化访问器表达期望类型，例如 `get_int`、`get_number`、`get_bool`、`get_string`。
+- [x] `tf.state` 只允许简单可序列化值，不允许保存 function/table/entity handle。
+- [x] SaveService 写入和读取 `script_state`。
+- [x] 增加 schema 迁移测试和 roundtrip 测试。
+- [x] 明确命名规范：推荐 `domain.object.field`，例如 `quest.first_delivery.stage`。
 
 验收：
 

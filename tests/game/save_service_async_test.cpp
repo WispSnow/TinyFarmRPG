@@ -17,6 +17,7 @@
 #include <string_view>
 #include <thread>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "engine/audio/audio_player.h"
@@ -55,6 +56,7 @@
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/save/save_service.h"
+#include "game/script/script_state.h"
 #include "game/world/map_loading_settings.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
@@ -507,6 +509,55 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContaine
     ASSERT_TRUE(json.contains("player"));
     EXPECT_TRUE(json.at("player").contains("gold"));
     EXPECT_EQ(json.at("player").at("gold").get<int>(), 345);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, SaveAndLoadRoundtripPreservesScriptState) {
+    auto& registry = scene_->getRegistry();
+    auto& script_state = registry.ctx().emplace<game::script::ScriptStateStore>();
+    script_state.set("quest.first_delivery.stage", 2.0);
+    script_state.set("npc.lyria.mood", std::string{"happy"});
+    script_state.set("flags.met_lyria", true);
+    script_state.set("nullable.marker", nullptr);
+
+    const auto file_path = tempFilePath("save_script_state_roundtrip.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    std::ifstream in(file_path);
+    ASSERT_TRUE(in.is_open());
+    nlohmann::json json;
+    in >> json;
+
+    ASSERT_TRUE(json.contains("script_state"));
+    const auto& saved_script_state = json.at("script_state");
+    EXPECT_EQ(saved_script_state.at("quest.first_delivery.stage").get<double>(), 2.0);
+    EXPECT_EQ(saved_script_state.at("npc.lyria.mood").get<std::string>(), "happy");
+    EXPECT_TRUE(saved_script_state.at("flags.met_lyria").get<bool>());
+    EXPECT_TRUE(saved_script_state.at("nullable.marker").is_null());
+
+    script_state.clear();
+    script_state.set("quest.first_delivery.stage", 99.0);
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    const auto* restored = registry.ctx().find<game::script::ScriptStateStore>();
+    ASSERT_NE(restored, nullptr);
+    const auto* stage = restored->find("quest.first_delivery.stage");
+    ASSERT_NE(stage, nullptr);
+    ASSERT_TRUE(std::holds_alternative<double>(*stage));
+    EXPECT_DOUBLE_EQ(std::get<double>(*stage), 2.0);
+    const auto* mood = restored->find("npc.lyria.mood");
+    ASSERT_NE(mood, nullptr);
+    ASSERT_TRUE(std::holds_alternative<std::string>(*mood));
+    EXPECT_EQ(std::get<std::string>(*mood), "happy");
+    const auto* met_lyria = restored->find("flags.met_lyria");
+    ASSERT_NE(met_lyria, nullptr);
+    ASSERT_TRUE(std::holds_alternative<bool>(*met_lyria));
+    EXPECT_TRUE(std::get<bool>(*met_lyria));
+    const auto* nullable = restored->find("nullable.marker");
+    ASSERT_NE(nullable, nullptr);
+    EXPECT_TRUE(std::holds_alternative<std::nullptr_t>(*nullable));
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPlayerWalletGold) {

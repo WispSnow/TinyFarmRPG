@@ -4,16 +4,21 @@
 #include "engine/script/script_entity_handle.h"
 #include "engine/script/script_host.h"
 #include "game/script/script_game_api.h"
+#include "game/script/script_state.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <spdlog/spdlog.h>
 
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace {
@@ -35,6 +40,54 @@ namespace {
 
     sol::protected_function protected_callback = callback.as<sol::function>();
     return host.registerEventCallback(event_name, std::move(protected_callback));
+}
+
+[[nodiscard]] game::script::ScriptStateStore& scriptState(entt::registry& registry) {
+    if (auto* state = registry.ctx().find<game::script::ScriptStateStore>()) {
+        return *state;
+    }
+    return registry.ctx().emplace<game::script::ScriptStateStore>();
+}
+
+[[nodiscard]] bool isValidScriptStateKey(const std::string& key) {
+    return !key.empty();
+}
+
+[[nodiscard]] sol::object scriptStateValueToLua(sol::state& lua, const game::script::ScriptStateValue& value) {
+    return std::visit(
+        [&lua](const auto& stored_value) -> sol::object {
+            using Value = std::decay_t<decltype(stored_value)>;
+            if constexpr (std::is_same_v<Value, std::nullptr_t>) {
+                return sol::make_object(lua, sol::lua_nil);
+            } else {
+                return sol::make_object(lua, stored_value);
+            }
+        },
+        value);
+}
+
+[[nodiscard]] std::optional<game::script::ScriptStateValue> luaToScriptStateValue(const sol::object& value) {
+    switch (value.get_type()) {
+        case sol::type::lua_nil:
+            return game::script::ScriptStateValue{nullptr};
+        case sol::type::boolean:
+            return game::script::ScriptStateValue{value.as<bool>()};
+        case sol::type::number: {
+            const double number = value.as<double>();
+            if (!std::isfinite(number)) {
+                return std::nullopt;
+            }
+            return game::script::ScriptStateValue{number};
+        }
+        case sol::type::string:
+            return game::script::ScriptStateValue{value.as<std::string>()};
+        default:
+            return std::nullopt;
+    }
+}
+
+void warnScriptStateTypeMismatch(const std::string& key, std::string_view expected_type) {
+    spdlog::warn("tf.state: key '{}' is not {}", key, expected_type);
 }
 
 } // namespace
@@ -187,6 +240,122 @@ void installTinyFarmScriptModule(sol::state& lua,
         return host.requireScriptModule(module_name);
     });
     tf_impl["script"] = engine::script::createReadOnlyProxy(lua, script_impl, "tf.script");
+
+    // ── tf.state ──
+    sol::table state_impl = lua.create_table();
+    state_impl.set_function("has", [&registry](const std::string& key) -> bool {
+        return isValidScriptStateKey(key) && scriptState(registry).has(key);
+    });
+    state_impl.set_function("get",
+                            [&lua, &registry](const std::string& key,
+                                              sol::optional<sol::object> default_value) -> sol::object {
+        if (!isValidScriptStateKey(key)) {
+            return default_value.value_or(sol::make_object(lua, sol::lua_nil));
+        }
+        if (const auto* value = scriptState(registry).find(key)) {
+            return scriptStateValueToLua(lua, *value);
+        }
+        return default_value.value_or(sol::make_object(lua, sol::lua_nil));
+    });
+    state_impl.set_function("get_number",
+                            [&registry](const std::string& key, sol::optional<double> default_value) -> double {
+        const double fallback = default_value.value_or(0.0);
+        if (!isValidScriptStateKey(key)) {
+            return fallback;
+        }
+        const auto* value = scriptState(registry).find(key);
+        if (!value) {
+            return fallback;
+        }
+        if (const auto* number = std::get_if<double>(value)) {
+            return *number;
+        }
+        warnScriptStateTypeMismatch(key, "number");
+        return fallback;
+    });
+    state_impl.set_function("get_int", [&registry](const std::string& key, sol::optional<int> default_value) -> int {
+        const int fallback = default_value.value_or(0);
+        if (!isValidScriptStateKey(key)) {
+            return fallback;
+        }
+        const auto* value = scriptState(registry).find(key);
+        if (!value) {
+            return fallback;
+        }
+        const auto* number = std::get_if<double>(value);
+        if (!number || !std::isfinite(*number) ||
+            *number < static_cast<double>(std::numeric_limits<int>::min()) ||
+            *number > static_cast<double>(std::numeric_limits<int>::max())) {
+            warnScriptStateTypeMismatch(key, "int");
+            return fallback;
+        }
+        return static_cast<int>(*number);
+    });
+    state_impl.set_function("get_bool", [&registry](const std::string& key, sol::optional<bool> default_value) -> bool {
+        const bool fallback = default_value.value_or(false);
+        if (!isValidScriptStateKey(key)) {
+            return fallback;
+        }
+        const auto* value = scriptState(registry).find(key);
+        if (!value) {
+            return fallback;
+        }
+        if (const auto* boolean = std::get_if<bool>(value)) {
+            return *boolean;
+        }
+        warnScriptStateTypeMismatch(key, "bool");
+        return fallback;
+    });
+    state_impl.set_function(
+        "get_string",
+        [&registry](const std::string& key, sol::optional<std::string> default_value) -> std::string {
+            const std::string fallback = default_value.value_or("");
+            if (!isValidScriptStateKey(key)) {
+                return fallback;
+            }
+            const auto* value = scriptState(registry).find(key);
+            if (!value) {
+                return fallback;
+            }
+            if (const auto* text = std::get_if<std::string>(value)) {
+                return *text;
+            }
+            warnScriptStateTypeMismatch(key, "string");
+            return fallback;
+        });
+    state_impl.set_function("set",
+                            [&lua, &registry](const std::string& key, sol::optional<sol::object> value) -> bool {
+        if (!isValidScriptStateKey(key)) {
+            spdlog::warn("tf.state.set: key must not be empty");
+            return false;
+        }
+        const auto parsed = luaToScriptStateValue(value.value_or(sol::make_object(lua, sol::lua_nil)));
+        if (!parsed.has_value()) {
+            spdlog::warn("tf.state.set: key '{}' rejected non-serializable value", key);
+            return false;
+        }
+        scriptState(registry).set(key, *parsed);
+        return true;
+    });
+    state_impl.set_function("add",
+                            [&lua, &registry](const std::string& key,
+                                              sol::optional<double> amount) -> sol::object {
+        if (!isValidScriptStateKey(key)) {
+            spdlog::warn("tf.state.add: key must not be empty");
+            return sol::make_object(lua, sol::lua_nil);
+        }
+        const auto* current = scriptState(registry).find(key);
+        if (current && !std::holds_alternative<double>(*current)) {
+            warnScriptStateTypeMismatch(key, "number");
+            return sol::make_object(lua, sol::lua_nil);
+        }
+        const double next_value = scriptState(registry).add(key, amount.value_or(1.0));
+        return sol::make_object(lua, next_value);
+    });
+    state_impl.set_function("unset", [&registry](const std::string& key) -> bool {
+        return isValidScriptStateKey(key) && scriptState(registry).erase(key);
+    });
+    tf_impl["state"] = engine::script::createReadOnlyProxy(lua, state_impl, "tf.state");
 
     lua["tf"] = engine::script::createReadOnlyProxy(lua, tf_impl, "tf");
 }

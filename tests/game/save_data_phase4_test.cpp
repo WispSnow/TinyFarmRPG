@@ -4,6 +4,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <variant>
+
 namespace game::save {
 namespace {
 
@@ -92,6 +94,34 @@ TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.lyria").total_exp, 50);
 }
 
+TEST(SaveDataPhase4Test, RoundtripPreservesScriptStateJsonPrimitives) {
+    SaveData source{};
+    source.script_state.values["quest.first_delivery.stage"] = 2.0;
+    source.script_state.values["npc.lyria.mood"] = std::string{"happy"};
+    source.script_state.values["flags.met_lyria"] = true;
+    source.script_state.values["nullable.marker"] = nullptr;
+
+    const nlohmann::json json = serialize(source);
+    ASSERT_TRUE(json.contains(json_keys::SCRIPT_STATE.data()));
+    const auto& script_state = json.at(json_keys::SCRIPT_STATE.data());
+    EXPECT_EQ(script_state.at("quest.first_delivery.stage").get<double>(), 2.0);
+    EXPECT_EQ(script_state.at("npc.lyria.mood").get<std::string>(), "happy");
+    EXPECT_TRUE(script_state.at("flags.met_lyria").get<bool>());
+    EXPECT_TRUE(script_state.at("nullable.marker").is_null());
+
+    SaveData loaded{};
+    std::string error{};
+    ASSERT_TRUE(deserialize(json, loaded, error)) << error;
+
+    ASSERT_TRUE(std::holds_alternative<double>(loaded.script_state.values.at("quest.first_delivery.stage")));
+    EXPECT_DOUBLE_EQ(std::get<double>(loaded.script_state.values.at("quest.first_delivery.stage")), 2.0);
+    ASSERT_TRUE(std::holds_alternative<std::string>(loaded.script_state.values.at("npc.lyria.mood")));
+    EXPECT_EQ(std::get<std::string>(loaded.script_state.values.at("npc.lyria.mood")), "happy");
+    ASSERT_TRUE(std::holds_alternative<bool>(loaded.script_state.values.at("flags.met_lyria")));
+    EXPECT_TRUE(std::get<bool>(loaded.script_state.values.at("flags.met_lyria")));
+    EXPECT_TRUE(std::holds_alternative<std::nullptr_t>(loaded.script_state.values.at("nullable.marker")));
+}
+
 TEST(SaveDataPhase4Test, DeserializeRejectsInvalidQuestStateFieldType) {
     const auto json = nlohmann::json::parse(R"json(
 {
@@ -140,6 +170,28 @@ TEST(SaveDataPhase4Test, DeserializeRejectsInvalidCombatStateFieldType) {
     std::string error{};
     EXPECT_FALSE(deserialize(json, data, error));
     EXPECT_NE(error.find("item_stocks"), std::string::npos);
+}
+
+TEST(SaveDataPhase4Test, DeserializeRejectsNonPrimitiveScriptStateValue) {
+    const auto json = nlohmann::json::parse(R"json(
+{
+  "schema_version": 7,
+  "game_time": { "day": 1 },
+  "player": {
+    "map_name": "farm",
+    "position": { "x": 0.0, "y": 0.0 }
+  },
+  "maps": [],
+  "script_state": {
+    "bad.table": {}
+  }
+}
+)json");
+
+    SaveData data{};
+    std::string error{};
+    EXPECT_FALSE(deserialize(json, data, error));
+    EXPECT_NE(error.find("script_state.bad.table"), std::string::npos);
 }
 
 } // namespace
