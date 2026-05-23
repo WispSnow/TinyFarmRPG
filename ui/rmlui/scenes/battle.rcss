@@ -709,6 +709,13 @@ body, div, h1, h2, h3, h4, p, hr {
     line-height: 18dp;
 }
 
+.battle-list-entry-row,
+.battle-target-entry-row {
+    width: 100%;
+    height: 16dp;
+    flex-shrink: 0;
+}
+
 .battle-list-entry,
 .battle-target-entry {
     width: 100%;
