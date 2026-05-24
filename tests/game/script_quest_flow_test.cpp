@@ -14,8 +14,10 @@
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/defs/commands_quest.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_dialogue.h"
+#include "game/defs/events_quest.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_battle_progress_resolver.h"
 #include "game/domain/quest_turn_in_service.h"
@@ -83,6 +85,14 @@ struct DialogueCapture {
 
     void onHide(const game::defs::DialogueHideEvent&) {
         ++hide_count;
+    }
+};
+
+struct QuestOfferCapture {
+    std::vector<game::defs::QuestOfferRequestedEvent> requests{};
+
+    void onRequest(const game::defs::QuestOfferRequestedEvent& event) {
+        requests.push_back(event);
     }
 };
 
@@ -226,8 +236,11 @@ TEST(ScriptQuestFlowTest, QuestModuleForFlattensQuestIds) {
     )"));
 }
 
-TEST(ScriptQuestFlowTest, ScriptedSlimeCleanupQuestAcceptsProgressesAndTurnsIn) {
+TEST(ScriptQuestFlowTest, ScriptedSlimeCleanupQuestRequestsOfferThenAcceptsProgressesAndTurnsIn) {
     ScriptQuestFlowEnv env{};
+    QuestOfferCapture offers{};
+    env.dispatcher.sink<game::defs::QuestOfferRequestedEvent>()
+        .connect<&QuestOfferCapture::onRequest>(&offers);
     env.loadQuestScript();
 
     env.interact();
@@ -235,6 +248,20 @@ TEST(ScriptQuestFlowTest, ScriptedSlimeCleanupQuestAcceptsProgressesAndTurnsIn) 
     env.interact();
 
     auto& quest_log = env.questLog();
+    ASSERT_EQ(offers.requests.size(), 1U);
+    EXPECT_EQ(offers.requests.front().player, env.player);
+    EXPECT_EQ(offers.requests.front().giver, env.giver);
+    EXPECT_EQ(offers.requests.front().quest_id, QUEST_ID);
+    EXPECT_TRUE(quest_log.active_quests.empty());
+    EXPECT_TRUE(quest_log.objective_progress.empty());
+
+    env.dispatcher.trigger(game::defs::AcceptQuestCommand{
+        .player = offers.requests.front().player,
+        .giver = offers.requests.front().giver,
+        .quest_id_hash = offers.requests.front().quest_id_hash,
+        .quest_id = offers.requests.front().quest_id,
+    });
+
     ASSERT_EQ(quest_log.active_quests.size(), 1U);
     EXPECT_EQ(quest_log.active_quests.front(), QUEST_ID);
     EXPECT_EQ(
@@ -270,10 +297,16 @@ TEST(ScriptQuestFlowTest, ScriptedSlimeCleanupQuestAcceptsProgressesAndTurnsIn) 
 
     ASSERT_EQ(env.capture.shows.size(), 5U);
     EXPECT_EQ(env.capture.shows[0].text, "Can you help us drive away the slimes?");
+    EXPECT_EQ(env.capture.shows[0].speaker, "Manu");
+    EXPECT_EQ(env.capture.shows[0].speaker_actor_id, "npc.manu");
     EXPECT_EQ(env.capture.shows[1].text, "The old path is crawling with them. Three should be enough.");
+    EXPECT_EQ(env.capture.shows[1].speaker, "Manu");
     EXPECT_EQ(env.capture.shows[2].text, "You did it? That's a relief.");
+    EXPECT_EQ(env.capture.shows[2].speaker, "Manu");
     EXPECT_EQ(env.capture.shows[3].text, "Here, take this for the trouble.");
+    EXPECT_EQ(env.capture.shows[3].speaker, "Manu");
     EXPECT_EQ(env.capture.shows[4].text, "Thank you again. The village path feels safe now.");
+    EXPECT_EQ(env.capture.shows[4].speaker, "Manu");
     EXPECT_EQ(env.capture.hide_count, 2);
 }
 

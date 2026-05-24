@@ -25,6 +25,34 @@ local function copy_lines(lines)
     return copied
 end
 
+local function start_args(opts_or_done, maybe_done)
+    if type(opts_or_done) == "table" then
+        return opts_or_done, maybe_done
+    end
+    return {}, opts_or_done
+end
+
+local function resolve_speaker(target, speaker, speaker_actor_id, channel)
+    if channel == CHANNEL_CONVERSATION and target ~= nil then
+        if speaker == nil then
+            speaker = tf.entity.name(target)
+        end
+        if speaker_actor_id == nil then
+            speaker_actor_id = tf.entity.actor_id(target)
+        end
+    end
+    return speaker or "", speaker_actor_id or ""
+end
+
+local function show_line(state)
+    return tf.dialogue.show(
+        state.lines[state.cursor],
+        state.speaker,
+        CHANNEL_CONVERSATION,
+        state.target,
+        state.speaker_actor_id)
+end
+
 local function complete(key, interrupted)
     local state = active[key]
     if state == nil then
@@ -61,14 +89,14 @@ local function advance(target)
 
     state.cursor = state.cursor + 1
     if state.cursor <= #state.lines then
-        tf.dialogue.show(state.lines[state.cursor], nil, CHANNEL_CONVERSATION, state.target)
-        return true
+        return show_line(state)
     end
 
     return complete(key, false)
 end
 
 function dialogue.show(text, speaker, channel, target, speaker_actor_id)
+    speaker, speaker_actor_id = resolve_speaker(target, speaker, speaker_actor_id, channel)
     return tf.dialogue.show(text, speaker, channel, target, speaker_actor_id)
 end
 
@@ -76,12 +104,19 @@ function dialogue.hide(channel, target)
     return tf.dialogue.hide(channel, target)
 end
 
-function dialogue.start(target, lines, on_done)
+function dialogue.start(target, lines, opts_or_done, maybe_done)
     local key = handle_key(target)
     local copied_lines = copy_lines(lines)
     if key == nil or copied_lines == nil or #copied_lines == 0 then
         return false
     end
+
+    local opts, on_done = start_args(opts_or_done, maybe_done)
+    local speaker, speaker_actor_id = resolve_speaker(
+        target,
+        opts.speaker,
+        opts.speaker_actor_id,
+        CHANNEL_CONVERSATION)
 
     if current_key ~= nil and current_key ~= key then
         complete(current_key, true)
@@ -94,10 +129,12 @@ function dialogue.start(target, lines, on_done)
         target = target,
         lines = copied_lines,
         cursor = 1,
+        speaker = speaker,
+        speaker_actor_id = speaker_actor_id,
         on_done = on_done,
     }
     current_key = key
-    return tf.dialogue.show(copied_lines[1], nil, CHANNEL_CONVERSATION, target)
+    return show_line(active[key])
 end
 
 function dialogue.cancel(target)

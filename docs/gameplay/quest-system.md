@@ -220,7 +220,7 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 
 ### QuestInteractionSystem 状态机
 
-`QuestInteractionSystem` 订阅 `InteractCommand`，根据玩家任务状态做出对应响应；带 `ScriptedInteractionComponent` 的 quest giver 会在交互入口早退，由 Lua 脚本主动调用 `tf.quest.accept` / `tf.quest.turn_in`，C++ 只继续处理状态迁移与奖励写回。
+`QuestInteractionSystem` 订阅 `InteractCommand`，根据玩家任务状态做出对应响应；带 `ScriptedInteractionComponent` 的 quest giver 会在交互入口早退，由 Lua 脚本主动调用 `tf.quest.offer` 打开接取确认，确认后再走 `AcceptQuestCommand`；交付阶段仍由 Lua 调用 `tf.quest.turn_in`，C++ 继续处理状态迁移与奖励写回。
 
 ```mermaid
 stateDiagram-v2

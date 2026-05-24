@@ -161,6 +161,7 @@ tf
 │   ├── status(quest_id)                          → string
 │   ├── progress(quest_id, objective_id)          → { current, required }
 │   ├── is_available(quest_id)                    → bool
+│   ├── offer(quest_id, giver_handle)             → { ok, reason }
 │   ├── accept(quest_id, giver_handle)            → { ok, reason }
 │   └── turn_in(quest_id, giver_handle)           → { ok, reason }
 ├── party
@@ -214,7 +215,9 @@ tf
 
 `tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
 
-`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.offer_recruit`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command/event；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
+`tf.quest.offer`、`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.offer_recruit`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command/event；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
+
+脚本化任务 NPC 通常在 offerable 分支对白结束后调用 `tf.quest.offer(quest_id, evt.target)` 打开 C++ 任务确认弹窗；玩家确认后才由 `QuestOfferScene` 调用 `tf.quest.accept` 对应的底层 command。`tf.quest.accept` 只适合确认按钮或明确想跳过确认的脚本直接使用。
 
 `tf.party.members()` 返回 `PartyComponent::recruited_actor_ids_` 原样，因此包含玩家本人（默认 `actor.player`）。`tf.party.level(actor_id)` 只表示已招募角色的当前等级；未招募或未知角色返回 `0`。如果脚本需要读取 catalog 中的初始等级，使用 `tf.party.initial_level(actor_id)`。
 

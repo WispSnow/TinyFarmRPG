@@ -28,6 +28,7 @@
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
 #include "game/defs/events_dialogue.h"
+#include "game/defs/events_quest.h"
 #include "game/defs/events_recruit.h"
 #include "game/domain/quest_log_ops.h"
 #include "game/system/system_helpers.h"
@@ -160,6 +161,68 @@ struct RecruitRequestResolution {
         .recruiter = recruiter,
         .actor_id_hash = hashId(actor_id),
         .actor_id = std::string{actor_id},
+    };
+}
+
+struct QuestOfferResolution {
+    ScriptCommandResult status{};
+    entt::entity player{entt::null};
+    entt::entity giver{entt::null};
+    const game::data::QuestData* quest{nullptr};
+};
+
+[[nodiscard]] QuestOfferResolution resolveQuestOfferRequest(
+    engine::script::ScriptHost& host,
+    entt::registry& registry,
+    const std::string_view quest_id,
+    const std::optional<engine::script::ScriptEntityHandle>& giver_handle,
+    const std::string_view api_name) {
+    if (quest_id.empty()) {
+        return {.status = commandFailure("invalid_quest_id")};
+    }
+    if (!giver_handle.has_value()) {
+        return {.status = commandFailure("invalid_giver")};
+    }
+
+    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry);
+    if (!quest_catalog) {
+        return {.status = commandFailure("catalog_unavailable")};
+    }
+    const auto* quest = quest_catalog->findQuest(quest_id);
+    if (!quest) {
+        return {.status = commandFailure("unknown_quest")};
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry);
+    if (player == entt::null) {
+        return {.status = commandFailure("no_player")};
+    }
+    const auto* quest_log = registry.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        return {.status = commandFailure("missing_quest_log")};
+    }
+
+    if (game::domain::quest_log_ops::isQuestCompleted(*quest_log, quest->id_hash_) ||
+        game::domain::quest_log_ops::isQuestReadyToTurnIn(*quest_log, *quest) ||
+        game::domain::quest_log_ops::isQuestActive(*quest_log, quest->id_hash_)) {
+        return {.status = commandFailure("not_available")};
+    }
+
+    entt::entity giver = entt::null;
+    const std::string validation_source = std::string{api_name} + ".giver";
+    if (!host.validateHandle(giver_handle.value(), giver, validation_source)) {
+        return {.status = commandFailure("invalid_giver")};
+    }
+    const auto* giver_component = registry.try_get<game::component::QuestGiverComponent>(giver);
+    if (!giver_component || giver_component->quest_id_hash_ != quest->id_hash_) {
+        return {.status = commandFailure("invalid_giver")};
+    }
+
+    return QuestOfferResolution{
+        .status = commandOk(),
+        .player = player,
+        .giver = giver,
+        .quest = quest,
     };
 }
 
@@ -395,51 +458,46 @@ bool ScriptGameApi::questIsAvailable(const std::string_view quest_id) const {
     return questStatus(quest_id) == "offerable";
 }
 
+ScriptCommandResult ScriptGameApi::questOffer(
+    const std::string_view quest_id,
+    const std::optional<engine::script::ScriptEntityHandle>& giver_handle) {
+    const auto request = resolveQuestOfferRequest(
+        host_,
+        registry_,
+        quest_id,
+        giver_handle,
+        "tf.quest.offer");
+    if (!request.status.ok) {
+        return request.status;
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::QuestOfferRequestedEvent{
+        .player = request.player,
+        .giver = request.giver,
+        .quest_id_hash = request.quest->id_hash_,
+        .quest_id = request.quest->id_,
+    });
+    return commandOk();
+}
+
 ScriptCommandResult ScriptGameApi::questAccept(
     const std::string_view quest_id,
     const std::optional<engine::script::ScriptEntityHandle>& giver_handle) {
-    if (quest_id.empty()) {
-        return commandFailure("invalid_quest_id");
-    }
-    if (!giver_handle.has_value()) {
-        return commandFailure("invalid_giver");
-    }
-
-    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry_);
-    if (!quest_catalog) {
-        return commandFailure("catalog_unavailable");
-    }
-    const auto* quest = quest_catalog->findQuest(quest_id);
-    if (!quest) {
-        return commandFailure("unknown_quest");
-    }
-
-    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
-    if (player == entt::null) {
-        return commandFailure("no_player");
-    }
-    if (!registry_.all_of<game::component::QuestLogComponent>(player)) {
-        return commandFailure("missing_quest_log");
-    }
-
-    if (questStatus(quest_id) != "offerable") {
-        return commandFailure("not_available");
-    }
-
-    entt::entity giver = entt::null;
-    if (!host_.validateHandle(giver_handle.value(), giver, "tf.quest.accept.giver")) {
-        return commandFailure("invalid_giver");
-    }
-    const auto* giver_component = registry_.try_get<game::component::QuestGiverComponent>(giver);
-    if (!giver_component || giver_component->quest_id_hash_ != quest->id_hash_) {
-        return commandFailure("invalid_giver");
+    const auto request = resolveQuestOfferRequest(
+        host_,
+        registry_,
+        quest_id,
+        giver_handle,
+        "tf.quest.accept");
+    if (!request.status.ok) {
+        return request.status;
     }
 
     triggerFromScript(host_, dispatcher_, game::defs::AcceptQuestCommand{
-        .player = player,
-        .giver = giver,
-        .quest_id_hash = quest->id_hash_,
-        .quest_id = quest->id_,
+        .player = request.player,
+        .giver = request.giver,
+        .quest_id_hash = request.quest->id_hash_,
+        .quest_id = request.quest->id_,
     });
     return commandOk();
 }
