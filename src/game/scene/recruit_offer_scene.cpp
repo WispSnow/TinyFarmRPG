@@ -89,6 +89,10 @@ void RecruitOfferScene::clean() {
     Scene::clean();
 }
 
+engine::scene::SceneUiCoverage RecruitOfferScene::uiCoverage() const {
+    return engine::scene::SceneUiCoverage::HideUnderlyingSceneUi;
+}
+
 bool RecruitOfferScene::initUI() {
     auto* runtime = context_.getRmlUi();
     if (!runtime) {

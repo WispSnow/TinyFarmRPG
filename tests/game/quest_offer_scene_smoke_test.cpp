@@ -41,6 +41,7 @@ TEST(QuestOfferSceneSmokeTest, QuestOfferSceneOwnsConfirmationUiAndAcceptCommand
     EXPECT_NE(header.find("const game::data::QuestData& quest_"), std::string::npos);
     EXPECT_NE(header.find("void onAccept()"), std::string::npos);
     EXPECT_NE(header.find("void onDecline()"), std::string::npos);
+    EXPECT_NE(header.find("SceneUiCoverage uiCoverage() const override"), std::string::npos);
 
     const std::string init_block = test_source_utils::extractFunctionBlock(source, "bool QuestOfferScene::init()");
     const std::string init_ui_block = test_source_utils::extractFunctionBlock(source, "bool QuestOfferScene::initUI()");
@@ -59,6 +60,8 @@ TEST(QuestOfferSceneSmokeTest, QuestOfferSceneOwnsConfirmationUiAndAcceptCommand
     EXPECT_NE(init_ui_block.find("document_controller_.load(DOCUMENT_PATH)"), std::string::npos);
     EXPECT_NE(source.find("\"menu_cancel\"_hs"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
+    EXPECT_NE(source.find("QuestOfferScene::uiCoverage()"), std::string::npos);
+    EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi"), std::string::npos);
     EXPECT_NE(accept_block.find("AcceptQuestCommand"), std::string::npos);
     EXPECT_NE(accept_block.find("requestPopScene()"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getInputManager().popContext();"), std::string::npos);
