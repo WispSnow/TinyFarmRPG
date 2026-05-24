@@ -338,6 +338,35 @@ TEST_F(ShopInteractionSystemTest, ValidMerchantShowsGreetingBeforePushingShopMen
     EXPECT_EQ(dialogue_capture.hides, 1);
 }
 
+TEST_F(ShopInteractionSystemTest, OpenShopCommandPushesSelectedShopMenuScene) {
+    entt::registry registry;
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
+
+    const entt::entity player = registry.create();
+    const entt::entity merchant = registry.create();
+
+    PushSceneCapture capture{};
+    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
+
+    dispatcher_.trigger(game::defs::OpenShopCommand{
+        .player = player,
+        .merchant = merchant,
+        .shop_id_hash = entt::hashed_string{"shop.village.general"}.value(),
+        .shop_id = "shop.village.general"});
+
+    EXPECT_EQ(capture.count, 1);
+    EXPECT_EQ(capture.scene_name, "ShopMenu");
+    EXPECT_TRUE(capture.saw_shop_menu_scene);
+}
+
 TEST_F(ShopInteractionSystemTest, ActiveMerchantGreetingClosesWhenPlayerLeavesRange) {
     entt::registry registry;
     auto item_catalog = loadProjectItemCatalog();

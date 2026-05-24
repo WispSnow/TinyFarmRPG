@@ -7,3 +7,4 @@
 #include "game/defs/commands_inventory.h"
 #include "game/defs/commands_quest.h"
 #include "game/defs/commands_recruit.h"
+#include "game/defs/commands_shop.h"

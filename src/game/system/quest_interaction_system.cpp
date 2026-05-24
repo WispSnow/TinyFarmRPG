@@ -102,6 +102,7 @@ QuestInteractionSystem::QuestInteractionSystem(entt::registry& registry,
       quest_turn_in_service_(quest_turn_in_service) {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&QuestInteractionSystem::onInteractCommand>(this);
     dispatcher_.sink<game::defs::AcceptQuestCommand>().connect<&QuestInteractionSystem::onAcceptQuestCommand>(this);
+    dispatcher_.sink<game::defs::TurnInQuestCommand>().connect<&QuestInteractionSystem::onTurnInQuestCommand>(this);
 }
 
 QuestInteractionSystem::~QuestInteractionSystem() {
@@ -190,21 +191,9 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
                 .quest_id_hash = quest->id_hash_,
                 .quest_id = quest->id_});
             return;
-        case InteractionState::ReadyToTurnIn: {
-            const auto turn_in_result = quest_turn_in_service_.turnIn(player, *quest, *quest_log);
-            if (!turn_in_result.completed()) {
-                showText(event.target, turn_in_result.failure_message);
-                return;
-            }
-            dispatcher_.trigger(game::defs::QuestCompletedEvent{
-                .player = player,
-                .giver = event.target,
-                .quest_id_hash = quest->id_hash_,
-                .quest_id = quest->id_,
-            });
-            showText(event.target, formatTurnInSuccessText(*quest, turn_in_result));
+        case InteractionState::ReadyToTurnIn:
+            turnInQuest(player, event.target, *quest, *quest_log);
             return;
-        }
         case InteractionState::InProgress:
         case InteractionState::Completed:
             showQuestText(event.target, *quest, state);
@@ -258,6 +247,63 @@ void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestC
         .quest_id = quest->id_,
     });
     showQuestText(command.giver, *quest, InteractionState::Offerable);
+}
+
+void QuestInteractionSystem::onTurnInQuestCommand(const game::defs::TurnInQuestCommand& command) {
+    const entt::entity player = helpers::getPlayerEntity(registry_);
+    if (player == entt::null || command.player != player) {
+        return;
+    }
+    if (command.giver == entt::null || !registry_.valid(command.giver)) {
+        return;
+    }
+    if (registry_.all_of<game::component::MerchantComponent>(command.giver)) {
+        return;
+    }
+
+    const auto* giver = registry_.try_get<game::component::QuestGiverComponent>(command.giver);
+    if (!giver || giver->quest_id_hash_ == entt::null) {
+        return;
+    }
+    if (command.quest_id_hash == entt::null || command.quest_id_hash != giver->quest_id_hash_) {
+        return;
+    }
+
+    auto* quest_log = registry_.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        spdlog::warn("QuestInteractionSystem: 玩家缺少 QuestLogComponent，忽略任务交付。");
+        return;
+    }
+
+    const auto* quest = quest_catalog_.findQuest(giver->quest_id_hash_);
+    if (!quest) {
+        spdlog::warn("QuestInteractionSystem: giver quest_id='{}' 未在 QuestCatalog 中找到。", giver->quest_id_);
+        return;
+    }
+
+    if (resolveState(*quest_log, *quest) != InteractionState::ReadyToTurnIn) {
+        return;
+    }
+
+    turnInQuest(player, command.giver, *quest, *quest_log);
+}
+
+void QuestInteractionSystem::turnInQuest(const entt::entity player,
+                                         const entt::entity giver,
+                                         const game::data::QuestData& quest,
+                                         game::component::QuestLogComponent& quest_log) {
+    const auto turn_in_result = quest_turn_in_service_.turnIn(player, quest, quest_log);
+    if (!turn_in_result.completed()) {
+        showText(giver, turn_in_result.failure_message);
+        return;
+    }
+    dispatcher_.trigger(game::defs::QuestCompletedEvent{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = quest.id_hash_,
+        .quest_id = quest.id_,
+    });
+    showText(giver, formatTurnInSuccessText(quest, turn_in_result));
 }
 
 } // namespace game::system

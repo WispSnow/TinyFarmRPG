@@ -23,6 +23,7 @@ struct QuestTurnInResult;
 namespace game::defs {
 struct AcceptQuestCommand;
 struct InteractCommand;
+struct TurnInQuestCommand;
 }
 
 namespace game::system {
@@ -53,12 +54,17 @@ private:
 
     void onInteractCommand(const game::defs::InteractCommand& event);
     void onAcceptQuestCommand(const game::defs::AcceptQuestCommand& command);
+    void onTurnInQuestCommand(const game::defs::TurnInQuestCommand& command);
     [[nodiscard]] InteractionState resolveState(const game::component::QuestLogComponent& quest_log,
                                                 const game::data::QuestData& quest) const;
     void showText(entt::entity giver, std::string text);
     void showQuestText(entt::entity giver,
                        const game::data::QuestData& quest,
                        InteractionState state);
+    void turnInQuest(entt::entity player,
+                     entt::entity giver,
+                     const game::data::QuestData& quest,
+                     game::component::QuestLogComponent& quest_log);
 };
 
 } // namespace game::system

@@ -16,6 +16,7 @@ struct ShopData;
 
 namespace game::defs {
 struct InteractCommand;
+struct OpenShopCommand;
 }
 
 namespace game::component {
@@ -50,6 +51,7 @@ private:
     entt::entity active_merchant_{entt::null};
 
     void onInteractCommand(const game::defs::InteractCommand& event);
+    void onOpenShopCommand(const game::defs::OpenShopCommand& command);
     void showMerchantGreeting(entt::entity merchant,
                               game::component::DialogueComponent& dialogue,
                               const game::data::ShopData& shop);

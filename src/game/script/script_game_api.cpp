@@ -8,15 +8,28 @@
 #include "game/component/map_component.h"
 #include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/party_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/quest_giver_component.h"
+#include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/scripted_interaction_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
-#include "game/defs/commands_interaction.h"
+#include "game/data/quest_catalog.h"
+#include "game/data/quest_data.h"
+#include "game/data/rpg_catalog.h"
+#include "game/data/shop_catalog.h"
+#include "game/defs/commands_battle.h"
 #include "game/defs/commands_inventory.h"
+#include "game/defs/commands_interaction.h"
+#include "game/defs/commands_quest.h"
+#include "game/defs/commands_recruit.h"
+#include "game/defs/commands_shop.h"
 #include "game/defs/events_dialogue.h"
+#include "game/domain/quest_log_ops.h"
 #include "game/system/system_helpers.h"
+#include "game/world/world_state.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -24,6 +37,7 @@
 #include <glm/vec2.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <utility>
 
 namespace game::script {
@@ -45,6 +59,37 @@ namespace {
 
 [[nodiscard]] entt::id_type hashId(const std::string_view value) {
     return value.empty() ? entt::id_type{entt::null} : entt::hashed_string{value.data(), value.size()}.value();
+}
+
+template <typename T>
+[[nodiscard]] T* findRegistryContextPointer(entt::registry& registry) {
+    auto** ptr = registry.ctx().find<T*>();
+    return ptr ? *ptr : nullptr;
+}
+
+[[nodiscard]] bool containsString(const std::vector<std::string>& values, const std::string_view value) {
+    return std::any_of(values.begin(), values.end(), [value](const std::string& current) {
+        return current == value;
+    });
+}
+
+[[nodiscard]] const game::data::QuestObjectiveData* findObjective(const game::data::QuestData& quest,
+                                                                  const std::string_view objective_id) {
+    const auto found = std::find_if(
+        quest.objectives_.begin(),
+        quest.objectives_.end(),
+        [objective_id](const game::data::QuestObjectiveData& objective) {
+            return objective.id_ == objective_id;
+        });
+    return found == quest.objectives_.end() ? nullptr : &*found;
+}
+
+[[nodiscard]] ScriptCommandResult commandOk() {
+    return ScriptCommandResult{.ok = true, .reason = {}};
+}
+
+[[nodiscard]] ScriptCommandResult commandFailure(std::string reason) {
+    return ScriptCommandResult{.ok = false, .reason = std::move(reason)};
 }
 
 template <typename Event>
@@ -224,6 +269,329 @@ bool ScriptGameApi::entityHasComponent(const engine::script::ScriptEntityHandle&
     }
 
     return false;
+}
+
+std::string ScriptGameApi::questStatus(const std::string_view quest_id) const {
+    if (quest_id.empty()) {
+        return "unknown";
+    }
+
+    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry_);
+    if (!quest_catalog) {
+        return "unknown";
+    }
+
+    const auto* quest = quest_catalog->findQuest(quest_id);
+    if (!quest) {
+        return "unknown";
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return "unknown";
+    }
+
+    const auto* quest_log = registry_.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        return "unknown";
+    }
+
+    if (game::domain::quest_log_ops::isQuestCompleted(*quest_log, quest->id_hash_)) {
+        return "completed";
+    }
+    if (game::domain::quest_log_ops::isQuestReadyToTurnIn(*quest_log, *quest)) {
+        return "ready_to_turn_in";
+    }
+    if (game::domain::quest_log_ops::isQuestActive(*quest_log, quest->id_hash_)) {
+        return "in_progress";
+    }
+    return "offerable";
+}
+
+QuestProgressSnapshot ScriptGameApi::questProgress(const std::string_view quest_id,
+                                                   const std::string_view objective_id) const {
+    QuestProgressSnapshot snapshot{};
+    if (quest_id.empty() || objective_id.empty()) {
+        return snapshot;
+    }
+
+    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry_);
+    const auto* quest = quest_catalog ? quest_catalog->findQuest(quest_id) : nullptr;
+    if (!quest) {
+        return snapshot;
+    }
+
+    const auto* objective = findObjective(*quest, objective_id);
+    if (!objective) {
+        return snapshot;
+    }
+    snapshot.required = objective->required_count_;
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    const auto* quest_log =
+        player == entt::null ? nullptr : registry_.try_get<game::component::QuestLogComponent>(player);
+    if (!quest_log) {
+        return snapshot;
+    }
+
+    const std::string key = game::data::makeQuestObjectiveProgressKey(quest->id_, objective->id_);
+    if (const auto found = quest_log->objective_progress.find(key); found != quest_log->objective_progress.end()) {
+        snapshot.current = found->second;
+    }
+    return snapshot;
+}
+
+bool ScriptGameApi::questIsAvailable(const std::string_view quest_id) const {
+    return questStatus(quest_id) == "offerable";
+}
+
+ScriptCommandResult ScriptGameApi::questAccept(
+    const std::string_view quest_id,
+    const std::optional<engine::script::ScriptEntityHandle>& giver_handle) {
+    if (quest_id.empty()) {
+        return commandFailure("invalid_quest_id");
+    }
+    if (!giver_handle.has_value()) {
+        return commandFailure("invalid_giver");
+    }
+
+    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry_);
+    if (!quest_catalog) {
+        return commandFailure("catalog_unavailable");
+    }
+    const auto* quest = quest_catalog->findQuest(quest_id);
+    if (!quest) {
+        return commandFailure("unknown_quest");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return commandFailure("no_player");
+    }
+    if (!registry_.all_of<game::component::QuestLogComponent>(player)) {
+        return commandFailure("missing_quest_log");
+    }
+
+    if (questStatus(quest_id) != "offerable") {
+        return commandFailure("not_available");
+    }
+
+    entt::entity giver = entt::null;
+    if (!host_.validateHandle(giver_handle.value(), giver, "tf.quest.accept.giver")) {
+        return commandFailure("invalid_giver");
+    }
+    const auto* giver_component = registry_.try_get<game::component::QuestGiverComponent>(giver);
+    if (!giver_component || giver_component->quest_id_hash_ != quest->id_hash_) {
+        return commandFailure("invalid_giver");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::AcceptQuestCommand{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = quest->id_hash_,
+        .quest_id = quest->id_,
+    });
+    return commandOk();
+}
+
+ScriptCommandResult ScriptGameApi::questTurnIn(
+    const std::string_view quest_id,
+    const std::optional<engine::script::ScriptEntityHandle>& giver_handle) {
+    if (quest_id.empty()) {
+        return commandFailure("invalid_quest_id");
+    }
+    if (!giver_handle.has_value()) {
+        return commandFailure("invalid_giver");
+    }
+
+    const auto* quest_catalog = findRegistryContextPointer<game::data::QuestCatalog>(registry_);
+    if (!quest_catalog) {
+        return commandFailure("catalog_unavailable");
+    }
+    const auto* quest = quest_catalog->findQuest(quest_id);
+    if (!quest) {
+        return commandFailure("unknown_quest");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return commandFailure("no_player");
+    }
+    if (!registry_.all_of<game::component::QuestLogComponent>(player)) {
+        return commandFailure("missing_quest_log");
+    }
+
+    if (questStatus(quest_id) != "ready_to_turn_in") {
+        return commandFailure("not_ready");
+    }
+
+    entt::entity giver = entt::null;
+    if (!host_.validateHandle(giver_handle.value(), giver, "tf.quest.turn_in.giver")) {
+        return commandFailure("invalid_giver");
+    }
+    const auto* giver_component = registry_.try_get<game::component::QuestGiverComponent>(giver);
+    if (!giver_component || giver_component->quest_id_hash_ != quest->id_hash_) {
+        return commandFailure("invalid_giver");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::TurnInQuestCommand{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = quest->id_hash_,
+        .quest_id = quest->id_,
+    });
+    return commandOk();
+}
+
+std::vector<std::string> ScriptGameApi::partyMembers() const {
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return {};
+    }
+
+    const auto* party = registry_.try_get<game::component::PartyComponent>(player);
+    if (!party) {
+        return {};
+    }
+    return party->recruited_actor_ids_;
+}
+
+bool ScriptGameApi::partyIsRecruited(const std::string_view actor_id) const {
+    if (actor_id.empty()) {
+        return false;
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return false;
+    }
+
+    const auto* party = registry_.try_get<game::component::PartyComponent>(player);
+    return party && containsString(party->recruited_actor_ids_, actor_id);
+}
+
+ScriptCommandResult ScriptGameApi::partyRequestRecruit(
+    const std::string_view actor_id,
+    const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle) {
+    if (actor_id.empty()) {
+        return commandFailure("invalid_actor_id");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return commandFailure("no_player");
+    }
+
+    const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
+    if (rpg_catalog && !rpg_catalog->findActor(actor_id)) {
+        return commandFailure("unknown_actor");
+    }
+
+    entt::entity recruiter = entt::null;
+    if (recruiter_handle.has_value() &&
+        !host_.validateHandle(recruiter_handle.value(), recruiter, "tf.party.request_recruit.recruiter")) {
+        return commandFailure("invalid_recruiter");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::RecruitPartyMemberCommand{
+        .player = player,
+        .recruiter = recruiter,
+        .actor_id_hash = hashId(actor_id),
+        .actor_id = std::string{actor_id},
+    });
+    return commandOk();
+}
+
+int ScriptGameApi::partyLevel(const std::string_view actor_id) const {
+    if (actor_id.empty()) {
+        return 0;
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player != entt::null) {
+        if (const auto* stats = registry_.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
+            if (const auto found = stats->states_by_actor_id_.find(std::string{actor_id});
+                found != stats->states_by_actor_id_.end()) {
+                return found->second.level;
+            }
+        }
+    }
+
+    const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
+    const auto* actor = rpg_catalog ? rpg_catalog->findActor(actor_id) : nullptr;
+    return actor ? actor->initial_level_ : 0;
+}
+
+ScriptCommandResult ScriptGameApi::shopOpen(
+    const std::string_view shop_id,
+    const std::optional<engine::script::ScriptEntityHandle>& merchant_handle) {
+    if (shop_id.empty()) {
+        return commandFailure("invalid_shop_id");
+    }
+
+    const auto* shop_catalog = findRegistryContextPointer<game::data::ShopCatalog>(registry_);
+    if (!shop_catalog) {
+        return commandFailure("catalog_unavailable");
+    }
+    const auto* shop = shop_catalog->findShop(shop_id);
+    if (!shop) {
+        return commandFailure("unknown_shop");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return commandFailure("no_player");
+    }
+
+    entt::entity merchant = entt::null;
+    if (merchant_handle.has_value() &&
+        !host_.validateHandle(merchant_handle.value(), merchant, "tf.shop.open.merchant")) {
+        return commandFailure("invalid_merchant");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::OpenShopCommand{
+        .player = player,
+        .merchant = merchant,
+        .shop_id_hash = shop->id_hash_,
+        .shop_id = shop->id_,
+    });
+    return commandOk();
+}
+
+ScriptCommandResult ScriptGameApi::battleStart(const std::string_view troop_id,
+                                               std::vector<std::string> actor_ids,
+                                               const std::string_view battle_background_id) {
+    if (!troop_id.empty()) {
+        const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
+        if (!rpg_catalog) {
+            return commandFailure("catalog_unavailable");
+        }
+        if (!rpg_catalog->findTroop(troop_id)) {
+            return commandFailure("unknown_troop");
+        }
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::EnterBattleCommand{
+        .actor_ids = std::move(actor_ids),
+        .troop_id = std::string{troop_id},
+        .battle_background_id = std::string{battle_background_id},
+    });
+    return commandOk();
+}
+
+std::string ScriptGameApi::currentMap() const {
+    const auto* world_state = findRegistryContextPointer<game::world::WorldState>(registry_);
+    if (!world_state) {
+        return {};
+    }
+
+    const entt::id_type current_map = world_state->getCurrentMap();
+    if (current_map == entt::null) {
+        return {};
+    }
+
+    const auto* map_state = world_state->getMapState(current_map);
+    return map_state ? map_state->info.name : std::string{};
 }
 
 bool ScriptGameApi::addItem(const std::string_view item_id,

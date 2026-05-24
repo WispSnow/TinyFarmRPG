@@ -208,37 +208,37 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 命令补全任务（在子模块绑定前完成）
 
-- [ ] 检查 [commands_quest.h](../src/game/defs/commands_quest.h) 现有 command，缺什么补什么（至少需要 `TurnInQuestCommand`，因为 `QuestTurnInService` 当前只有 service 入口）。
-- [ ] 检查 [commands_shop.h](../src/game/defs/commands_shop.h)（或目前所在头文件）补 `OpenShopCommand{shop_id_hash, merchant, player}`，由 `ShopInteractionSystem` 或新增 handler 消费。
-- [ ] 已有命令在对应 system 中确认能正确收口。每个新命令配套一个 system 侧单元测试。
+- [x] 检查 [commands_quest.h](../src/game/defs/commands_quest.h) 现有 command，缺什么补什么（至少需要 `TurnInQuestCommand`，因为 `QuestTurnInService` 当前只有 service 入口）。
+- [x] 检查 [commands_shop.h](../src/game/defs/commands_shop.h)（或目前所在头文件）补 `OpenShopCommand{shop_id_hash, merchant, player}`，由 `ShopInteractionSystem` 或新增 handler 消费。
+- [x] 已有命令在对应 system 中确认能正确收口。每个新命令配套一个 system 侧单元测试。
 
 ### 待办
 
 按 ROI 顺序落地，每个子模块独立 PR：
 
-- [ ] **`tf.quest`**：
+- [x] **`tf.quest`**：
   - `status(quest_id) -> "unknown"/"offerable"/"in_progress"/"ready_to_turn_in"/"completed"`
   - `progress(quest_id, objective_id) -> {current, required}`
   - `accept(quest_id, giver_handle)` → 内部发 [`AcceptQuestCommand`](../src/game/defs/commands_quest.h)（注意：是 AcceptQuestCommand，不是 QuestAcceptCommand）
   - `turn_in(quest_id, giver_handle)` → 内部走 `QuestTurnInService`
   - `is_available(quest_id) -> bool`（前置条件检查）
-- [ ] **`tf.party`**：
+- [x] **`tf.party`**：
   - `members() -> {actor_id, ...}`（已招募列表）
   - `is_recruited(actor_id) -> bool`
   - `request_recruit(actor_id, recruiter_handle)` → 内部发 `RecruitPartyMemberCommand`
   - `level(actor_id) -> int`
-- [ ] **`tf.shop`**：
+- [x] **`tf.shop`**：
   - `open(shop_id, merchant_handle)` → 触发 `ShopMenuScene` 并指定 `shop_id`
   - **第一版只支持多个静态 shop_id 切换**（"今天卖哪套预设"），不做动态库存覆盖
   - `set_stock` / 动态库存延后到独立子任务（见下文"延后项"）
-- [ ] **`tf.battle`**：
+- [x] **`tf.battle`**：
   - `start(troop_id, opts)` → 内部发 `EnterBattleCommand`
   - 现有 `battle_started` / `battle_ended` payload 补充 `troop_id`、`actor_ids`（已有）、`rewards` 摘要
-- [ ] **`tf.map`**（暂仅查询，不支持 warp）：
+- [x] **`tf.map`**（暂仅查询，不支持 warp）：
   - `current() -> map_id`
   - **`warp(map, x, y)` 暂不实现**：[MapTransitionSystem](../src/game/system/map_transition_system.h) 当前没有公开 command 入口，仅响应 edge/trigger 检测。要加 Lua warp，先做一个独立子任务"补 `WarpToMapCommand` + MapTransitionSystem 订阅"，再回头补绑定。
-- [ ] 每个子模块配套 smoke 测试 + 一个端到端 fixture。
-- [ ] 更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md) 的 API 树章节。
+- [x] 每个子模块配套 smoke 测试 + 一个端到端 fixture。
+- [x] 更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md) 的 API 树章节。
 
 ### 延后项（明确不在 Phase 2 范围）
 
