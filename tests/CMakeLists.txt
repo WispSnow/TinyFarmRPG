@@ -260,6 +260,7 @@ list(APPEND GAME_TEST_SOURCES
     game/script_phase2_api_test.cpp
     game/script_quest_flow_test.cpp
     game/script_recruitment_flow_test.cpp
+    game/script_shop_flow_test.cpp
     game/script_module_require_test.cpp
     game/script_state_test.cpp
 )

@@ -14,6 +14,7 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 tf.script.require("npcs.greeter")
 tf.script.require("npcs.lyria")
 tf.script.require("npcs.tori")
+tf.script.require("npcs.merchant")
 
 if event ~= nil then
     event.on_day_changed(function(evt)

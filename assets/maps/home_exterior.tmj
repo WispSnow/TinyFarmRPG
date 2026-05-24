@@ -602,9 +602,19 @@
                  "point":true,
                  "properties":[
                         {
+                         "name":"actor_id",
+                         "type":"string",
+                         "value":"npc.josh"
+                        },
+                        {
                          "name":"shop_id",
                          "type":"string",
                          "value":"shop.village.general"
+                        },
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"actor",

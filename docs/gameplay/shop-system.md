@@ -2,7 +2,7 @@
 
 ## 概述
 
-商店系统实现了"与 NPC 商人交互 → 进入买卖场景 → 原子交易 → 背包/金币更新"的最小 JRPG 商店闭环。核心设计原则：
+商店系统实现了"与 NPC 商人交互 → 进入买卖场景 → 原子交易 → 背包/金币更新"的最小 JRPG 商店闭环。脚本化商人可以先由 Lua 播放 greeting，再按时间或任务状态选择一个静态 `shop_id` 预设交给 C++ 打开。核心设计原则：
 
 - **覆盖式场景**：商店作为独立的 `ShopMenuScene` 叠加在探索场景之上，交易完成或取消后 pop 回探索。
 - **原子交易**：每笔交易都先 preview（不修改状态），只有 `canCommit()` 为真时才 commit（原子写入）。
@@ -30,6 +30,7 @@ graph TD
 
     subgraph "系统层"
         SIS["ShopInteractionSystem<br/>订阅 InteractCommand"]
+        LUA["Lua npc script<br/>tf.shop.open"]
         IS["InteractionSystem<br/>chooseFacingTarget<br/>优先级: Merchant > QuestGiver > ..."]
     end
 
@@ -44,6 +45,7 @@ graph TD
 
     SC --> SD
     MC --> SIS
+    LUA -->|OpenShopCommand| SIS
     IS -->|InteractCommand| SIS
     SIS -->|PushSceneEvent| SMS
     SMS --> STS
@@ -107,10 +109,10 @@ graph TD
 
 当前项目自带一份最小可玩的商店配置：
 
-- 商店：`shop.village.general`
-- greeting：`Take a look.`
-- buy entries：`potion (30G)`、`strawberry_seed (12G)`
-- sell rules：`potion (15G)`、`material_timber (5G)`、`strawberry_item (4G)`
+- 基础 fallback：`shop.village.general`，保留完整通用商品列表，供非脚本路径和测试复用
+- Lua 商人 Josh 的静态预设：`shop.village.general.day`、`shop.village.general.night`、`shop.village.general.post_slime_cleanup`
+- `scripts/npcs/merchant.lua` 根据 `lib.time.is_night()` 与 `tf.quest.status("quest.village.goblin_cleanup")` 选择预设，然后调用 `tf.shop.open`
+- sell rules：覆盖 `potion`、`material_timber`、作物与木制 / 铁制装备的卖出价
 
 ### 主要 API
 
