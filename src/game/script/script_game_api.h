@@ -59,6 +59,9 @@ public:
     [[nodiscard]] QuestProgressSnapshot questProgress(std::string_view quest_id,
                                                       std::string_view objective_id) const;
     [[nodiscard]] bool questIsAvailable(std::string_view quest_id) const;
+    [[nodiscard]] ScriptCommandResult questOffer(
+        std::string_view quest_id,
+        const std::optional<engine::script::ScriptEntityHandle>& giver_handle);
     [[nodiscard]] ScriptCommandResult questAccept(
         std::string_view quest_id,
         const std::optional<engine::script::ScriptEntityHandle>& giver_handle);

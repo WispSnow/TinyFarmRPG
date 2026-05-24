@@ -1,12 +1,15 @@
 #include <gtest/gtest.h>
 
+#include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
 #include "engine/script/script_host.h"
+#include "game/component/actor_identity_component.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_dialogue.h"
 #include "game/script/script_event_bridge.h"
 #include "script_test_utils.h"
 
+#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
@@ -26,10 +29,14 @@ namespace {
 
 struct DialogueCapture {
     std::vector<std::string> shown_texts{};
+    std::vector<std::string> speakers{};
+    std::vector<std::string> speaker_actor_ids{};
     int hide_count{0};
 
     void onShow(const game::defs::DialogueShowEvent& event) {
         shown_texts.push_back(event.text);
+        speakers.push_back(event.speaker);
+        speaker_actor_ids.push_back(event.speaker_actor_id);
     }
 
     void onHide(const game::defs::DialogueHideEvent&) {
@@ -55,6 +62,19 @@ struct ScriptDialogueHelperEnv {
 
         target = registry.create();
         registry.emplace<engine::component::TransformComponent>(target, glm::vec2{16.0F, 0.0F});
+        registry.emplace<engine::component::NameComponent>(
+            target,
+            engine::component::NameComponent{
+                .name_id_ = entt::hashed_string{"Lyria"}.value(),
+                .name_ = "Lyria",
+            });
+        registry.emplace<game::component::ActorIdentityComponent>(
+            target,
+            game::component::ActorIdentityComponent{
+                .actor_id_ = "actor.lyria",
+                .actor_id_hash_ = entt::hashed_string{"actor.lyria"}.value(),
+                .blueprint_id_ = "lyria",
+            });
 
         other_target = registry.create();
         registry.emplace<engine::component::TransformComponent>(other_target, glm::vec2{32.0F, 0.0F});
@@ -109,11 +129,15 @@ TEST(ScriptDialogueHelperTest, InteractAdvancesSequenceAndClosesAtEnd) {
     env.interact();
     ASSERT_EQ(env.capture.shown_texts.size(), 1U);
     EXPECT_EQ(env.capture.shown_texts[0], "Hi");
+    EXPECT_EQ(env.capture.speakers[0], "Lyria");
+    EXPECT_EQ(env.capture.speaker_actor_ids[0], "actor.lyria");
     EXPECT_EQ(env.capture.hide_count, 0);
 
     env.interact();
     ASSERT_EQ(env.capture.shown_texts.size(), 2U);
     EXPECT_EQ(env.capture.shown_texts[1], "Bye");
+    EXPECT_EQ(env.capture.speakers[1], "Lyria");
+    EXPECT_EQ(env.capture.speaker_actor_ids[1], "actor.lyria");
     EXPECT_EQ(env.capture.hide_count, 0);
 
     env.interact();

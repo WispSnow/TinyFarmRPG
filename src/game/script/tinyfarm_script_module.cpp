@@ -184,6 +184,11 @@ void installTinyFarmScriptModule(sol::state& lua,
         return api->questIsAvailable(quest_id);
     });
     quest_impl.set_function(
+        "offer",
+        [&lua, api](const std::string& quest_id, sol::optional<ScriptEntityHandle> giver_handle) -> sol::table {
+            return commandResultToLua(lua, api->questOffer(quest_id, toStdOptional(giver_handle)));
+        });
+    quest_impl.set_function(
         "accept",
         [&lua, api](const std::string& quest_id, sol::optional<ScriptEntityHandle> giver_handle) -> sol::table {
             return commandResultToLua(lua, api->questAccept(quest_id, toStdOptional(giver_handle)));
@@ -342,7 +347,7 @@ void installTinyFarmScriptModule(sol::state& lua,
               sol::optional<std::string> speaker_actor_id) -> bool {
             return api->showDialogue(
                 text,
-                speaker.value_or("Script"),
+                speaker.value_or(""),
                 channel.value_or(1),
                 toStdOptional(target_handle),
                 speaker_actor_id.value_or(""));

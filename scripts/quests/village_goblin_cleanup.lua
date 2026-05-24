@@ -42,7 +42,7 @@ tf.event.on("interact", function(evt)
             "Can you help us drive away the slimes?",
             "The old path is crawling with them. Three should be enough.",
         }, function()
-            return tf.quest.accept(quest.id, evt.target)
+            return tf.quest.offer(quest.id, evt.target)
         end)
     elseif status == "in_progress" then
         local progress = tf.quest.progress(quest.id, quest.objective_id)

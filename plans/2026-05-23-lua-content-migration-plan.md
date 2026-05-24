@@ -219,6 +219,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 - [x] **`tf.quest`**：
   - `status(quest_id) -> "unknown"/"offerable"/"in_progress"/"ready_to_turn_in"/"completed"`
   - `progress(quest_id, objective_id) -> {current, required}`
+  - `offer(quest_id, giver_handle)` → 内部发 `QuestOfferRequestedEvent`，打开任务接取确认
   - `accept(quest_id, giver_handle)` → 内部发 [`AcceptQuestCommand`](../src/game/defs/commands_quest.h)（注意：是 AcceptQuestCommand，不是 QuestAcceptCommand）
   - `turn_in(quest_id, giver_handle)` → 内部走 `QuestTurnInService`
   - `is_available(quest_id) -> bool`（前置条件检查）
@@ -274,7 +275,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 1. 注册 `tf.event.on("interact", fn)`，按 `target_actor_id` 过滤
 2. 自己调 `tf.quest.status(quest_id)` 查当前状态
 3. 按 state 走 if/elseif 选 offer/progress/ready/completed 不同对白
-4. 状态推进时调 `tf.quest.accept(...)` / `tf.quest.turn_in(...)`
+4. offerable 对白结束时调 `tf.quest.offer(...)` 打开接取确认；交付时调 `tf.quest.turn_in(...)`
 
 **不引入 `quest_interaction` 派生事件**——C++ 早退就是早退，Lua 主动查、主动调，避免双轨。
 

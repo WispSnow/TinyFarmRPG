@@ -103,19 +103,21 @@ TEST(ScriptHostSmokeTest, DialogueApiValidatesChannelAndCarriesSpeakerActorId) {
         assert(tf.dialogue.show("Hello", "Lyria", tf.dialogue.CHANNEL_CONVERSATION, nil, "actor.lyria") == true)
         assert(tf.dialogue.show("Notice", "", tf.dialogue.CHANNEL_NOTICE) == true)
         assert(tf.dialogue.show("Item notice", "", tf.dialogue.CHANNEL_ITEM_NOTICE) == true)
+        assert(tf.dialogue.show("No speaker", nil, tf.dialogue.CHANNEL_NOTICE) == true)
         assert(tf.dialogue.show("Bad", "Narrator", 99) == false)
         assert(tf.dialogue.show("Bad negative", "Narrator", -1) == false)
         assert(tf.dialogue.hide(tf.dialogue.CHANNEL_NOTICE) == true)
         assert(tf.dialogue.hide(-1) == false)
     )"));
 
-    ASSERT_EQ(capture.shows.size(), 3U);
+    ASSERT_EQ(capture.shows.size(), 4U);
     EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::Conversation);
     EXPECT_EQ(capture.shows[0].speaker, "Lyria");
     EXPECT_EQ(capture.shows[0].speaker_actor_id, "actor.lyria");
     EXPECT_EQ(capture.shows[0].speaker_actor_id_hash, game::data::RpgCatalog::hashId("actor.lyria"));
     EXPECT_EQ(capture.shows[1].channel, game::defs::DialogueChannel::Notice);
     EXPECT_EQ(capture.shows[2].channel, game::defs::DialogueChannel::ItemNotice);
+    EXPECT_EQ(capture.shows[3].speaker, "");
 }
 
 } // namespace game::script
