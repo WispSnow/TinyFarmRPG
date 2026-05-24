@@ -368,10 +368,10 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 待办
 
-- [ ] **`tf.shop.open(shop_id, merchant_handle)`** 实现：触发 `ShopMenuScene` 并指定 shop_id。
-- [ ] [ShopInteractionSystem](../src/game/system/shop_interaction_system.cpp) 改造：挂 `ScriptedInteractionComponent` 的商人，C++ 完全不响应（Phase 0 早退）；Lua 自己决定先说什么话再 `tf.shop.open`。
-- [ ] **样板商店全 Lua 化**：选一个 NPC 商人，在 `shops.json` 增加两个预设（如 `shop.alice.day` / `shop.alice.night`），Lua 按 `tf.time.hour()` 选择。
-- [ ] 在 `shops.json` 配套增加按任务状态切换的样板（如 `shop.alice.post_first_quest`）。
+- [x] **`tf.shop.open(shop_id, merchant_handle)`** 实现：触发 `ShopMenuScene` 并指定 shop_id。
+- [x] [ShopInteractionSystem](../src/game/system/shop_interaction_system.cpp) 改造：挂 `ScriptedInteractionComponent` 的商人，C++ 完全不响应（Phase 0 早退）；Lua 自己决定先说什么话再 `tf.shop.open`。
+- [x] **样板商店全 Lua 化**：选一个 NPC 商人，在 `shops.json` 增加两个预设（如 `shop.alice.day` / `shop.alice.night`），Lua 按 `tf.time.hour()` 选择。
+- [x] 在 `shops.json` 配套增加按任务状态切换的样板（如 `shop.alice.post_first_quest`）。
 
 ### 验收
 

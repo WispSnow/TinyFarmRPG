@@ -36,6 +36,7 @@
 
 #include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/scripted_interaction_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_catalog.h"
@@ -365,6 +366,42 @@ TEST_F(ShopInteractionSystemTest, OpenShopCommandPushesSelectedShopMenuScene) {
     EXPECT_EQ(capture.count, 1);
     EXPECT_EQ(capture.scene_name, "ShopMenu");
     EXPECT_TRUE(capture.saw_shop_menu_scene);
+}
+
+TEST_F(ShopInteractionSystemTest, ScriptedMerchantInteractIsIgnoredByCppSystem) {
+    entt::registry registry;
+    auto item_catalog = loadProjectItemCatalog();
+    auto shop_catalog = loadProjectShopCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
+    game::domain::ShopTransactionService shop_transaction_service(
+        registry,
+        item_catalog,
+        shop_catalog,
+        inventory_domain_service);
+    ShopInteractionSystem system(registry, *context_, shop_catalog, item_catalog, shop_transaction_service);
+
+    const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
+
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::TransformComponent>(merchant, glm::vec2{0.0F, 0.0F});
+    registry.emplace<game::component::MerchantComponent>(
+        merchant,
+        game::component::MerchantComponent{
+            .shop_id_ = "shop.village.general",
+            .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
+    registry.emplace<game::component::ScriptedInteractionComponent>(merchant);
+
+    PushSceneCapture capture{};
+    DialogueCapture dialogue_capture{};
+    dispatcher_.sink<engine::utils::PushSceneEvent>().connect<&PushSceneCapture::onEvent>(&capture);
+    dispatcher_.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&dialogue_capture);
+
+    dispatcher_.trigger(game::defs::InteractCommand{player, merchant});
+
+    EXPECT_EQ(capture.count, 0);
+    EXPECT_TRUE(dialogue_capture.shows.empty());
+    EXPECT_FALSE(registry.any_of<game::component::DialogueComponent>(merchant));
 }
 
 TEST_F(ShopInteractionSystemTest, ActiveMerchantGreetingClosesWhenPlayerLeavesRange) {
