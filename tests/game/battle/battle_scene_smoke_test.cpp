@@ -70,6 +70,39 @@ TEST(BattleSceneSmokeTest, EmitsBattleEndedEventAndRequestsPop) {
     EXPECT_NE(source.find("event.reward_summary"), std::string::npos);
 }
 
+TEST(BattleSceneSmokeTest, EmitsLuaBattleHookEventsAroundTurnsAndActions) {
+    // Guards emission points during BattleScene flow refactors; payload shape is covered by ScriptEventBridgeTest.
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("emitBattleTurnStarted"), std::string::npos);
+    EXPECT_NE(header.find("emitBattleActionScriptEvents"), std::string::npos);
+
+    const std::string turn_block = snippetFrom(source, "void BattleScene::beginCurrentTurnFlow()", 900U);
+    ASSERT_FALSE(turn_block.empty());
+    EXPECT_NE(turn_block.find("emitBattleTurnStarted(*actor);"), std::string::npos);
+
+    const std::string action_block = snippetFrom(source, "void BattleScene::executePendingAction()", 700U);
+    ASSERT_FALSE(action_block.empty());
+    EXPECT_NE(action_block.find("const auto before_units = session_.units();"), std::string::npos);
+    EXPECT_NE(action_block.find("emitBattleActionScriptEvents"), std::string::npos);
+
+    const std::string hook_block = snippetFrom(source, "void BattleScene::emitBattleActionScriptEvents", 1800U);
+    ASSERT_FALSE(hook_block.empty());
+    EXPECT_NE(hook_block.find("BattleTurnEndedEvent"), std::string::npos);
+    EXPECT_NE(hook_block.find("BattleSkillUsedEvent"), std::string::npos);
+    EXPECT_NE(hook_block.find("BattleUnitDiedEvent"), std::string::npos);
+}
+
 TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.h").lexically_normal();

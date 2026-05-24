@@ -159,6 +159,14 @@ using namespace entt::literals;
     return entt::hashed_string{value.data(), value.size()}.value();
 }
 
+[[nodiscard]] const game::battle::BattleUnit* findBattleUnitById(const std::vector<game::battle::BattleUnit>& units,
+                                                                 const game::battle::BattleUnitId unit_id) {
+    const auto it = std::find_if(units.begin(), units.end(), [unit_id](const game::battle::BattleUnit& unit) {
+        return unit.id == unit_id;
+    });
+    return it != units.end() ? &*it : nullptr;
+}
+
 /// @brief 普通攻击由 ActorCommandId::Attack 承担，不作为 Skill 菜单条目展示。
 [[nodiscard]] bool isActorSkillMenuEntry(std::string_view skill_id) {
     return skill_id != BASIC_ATTACK_SKILL_ID;
@@ -652,7 +660,10 @@ void BattleScene::executePendingAction() {
         return;
     }
 
+    const auto before_units = session_.units();
+    const std::uint32_t round_index = session_.roundIndex();
     last_action_result_ = session_.submitAction(*pending_action_);
+    emitBattleActionScriptEvents(*last_action_result_, before_units, round_index);
     appendBattleLogLines(game::battle::formatBattleLogLines(
         *last_action_result_,
         game::battle::BattleLogFormatterContext{
@@ -689,6 +700,8 @@ void BattleScene::beginCurrentTurnFlow() {
         return;
     }
 
+    emitBattleTurnStarted(*actor);
+
     if (actor->side == game::battle::BattleSide::Enemy) {
         submitAction(buildEnemyAction(*actor));
         return;
@@ -709,6 +722,60 @@ const game::battle::BattleUnit* BattleScene::currentActor() const {
     }
 
     return session_.findUnit(*actor_id);
+}
+
+void BattleScene::emitBattleTurnStarted(const game::battle::BattleUnit& unit) {
+    context_.getDispatcher().trigger(game::defs::BattleTurnStartedEvent{
+        .unit = unit,
+        .round_index = session_.roundIndex(),
+    });
+}
+
+void BattleScene::emitBattleActionScriptEvents(const game::battle::BattleActionResult& result,
+                                               const std::vector<game::battle::BattleUnit>& before_units,
+                                               const std::uint32_t round_index) {
+    if (result.status != game::battle::BattleActionStatus::Applied) {
+        return;
+    }
+
+    const auto* actor_after = findBattleUnitById(result.snapshot.units, result.actor_id);
+    const auto* actor_before = findBattleUnitById(before_units, result.actor_id);
+    const auto* actor = actor_after ? actor_after : actor_before;
+    if (actor) {
+        context_.getDispatcher().trigger(game::defs::BattleTurnEndedEvent{
+            .unit = *actor,
+            .result = result,
+            .round_index = round_index,
+        });
+
+        if (result.action_type == game::battle::BattleActionType::Skill) {
+            context_.getDispatcher().trigger(game::defs::BattleSkillUsedEvent{
+                .unit = *actor,
+                .result = result,
+                .round_index = round_index,
+            });
+        }
+    }
+
+    for (const auto& before_unit : before_units) {
+        if (!before_unit.isAlive()) {
+            continue;
+        }
+
+        const auto* after_unit = findBattleUnitById(result.snapshot.units, before_unit.id);
+        if (!after_unit || after_unit->isAlive()) {
+            continue;
+        }
+
+        context_.getDispatcher().trigger(game::defs::BattleUnitDiedEvent{
+            .unit = *after_unit,
+            .source_unit_id = result.actor_id,
+            .source_action_type = result.action_type,
+            .skill_id = result.skill_id,
+            .item_id = result.item_id,
+            .round_index = round_index,
+        });
+    }
 }
 
 game::battle::BattleAction BattleScene::buildEnemyAction(const game::battle::BattleUnit& actor) const {

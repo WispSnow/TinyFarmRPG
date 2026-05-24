@@ -172,7 +172,11 @@ tf
 ├── shop
 │   └── open(shop_id [, merchant_handle])         → { ok, reason }
 ├── battle
-│   └── start(troop_id [, opts])                  → { ok, reason }
+│   ├── start(troop_id [, opts])                  → { ok, reason }
+│   ├── on_turn_start(fn)                         → bool
+│   ├── on_turn_end(fn)                           → bool
+│   ├── on_unit_died(fn)                          → bool
+│   └── on_skill_used(fn)                         → bool
 ├── map
 │   └── current()                                 → string
 ├── command
@@ -190,7 +194,11 @@ tf
 ├── callbacks
 │   ├── on_interact(fn)                                         → bool
 │   ├── on_day_changed(fn)                                      → bool
-│   └── on_battle_end(fn)                                       → bool
+│   ├── on_battle_end(fn)                                       → bool
+│   ├── on_battle_turn_start(fn)                                → bool
+│   ├── on_battle_turn_end(fn)                                  → bool
+│   ├── on_battle_unit_died(fn)                                 → bool
+│   └── on_battle_skill_used(fn)                                → bool
 ├── script
 │   └── require(module_name)                                    → table | bool | nil
 └── state
@@ -215,7 +223,13 @@ tf
 
 `tf.shop.open` 会直接打开指定商店，不播放 C++ 商人 greeting；脚本侧如果需要开店前对白，应先用 `tf.dialogue` 或 `lib.dialogue` 自行编排。动态商店首版采用"多个静态 `shop_id` 预设"模式：在 `assets/data/shops.json` 预先定义 day / night / post-quest 等商店，Lua 根据 `lib.time.is_night()`、`tf.quest.status(...)` 等条件选择其中一个传给 `tf.shop.open`。例如 `scripts/npcs/merchant.lua` 会让 Josh 在白天打开 `shop.village.general.day`，夜晚打开 `shop.village.general.night`，完成清理史莱姆任务后打开 `shop.village.general.post_slime_cleanup`。当前不要在 Lua 中临时生成库存或价格；交易 UI 与 `ShopTransactionService` 都读取同一份 `ShopCatalog`。
 
-`tf.battle.start` 要求显式传入非空 `troop_id`；`opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`。
+`tf.battle.start` 要求显式传入非空 `troop_id`；`opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`。`battle_started` payload 会包含 `troop_id`、`battle_background_id`、`actor_ids`、`from_encounter` 与 `encounter_id`；`battle_ended` payload 包含 `outcome` 与胜利奖励摘要。
+
+战斗回调首版只做观察，不允许 Lua 直接改写单位 HP、回合队列，或在战斗回调内调用 `tf.battle.start` 叠开新战斗；如果需要胜利后接下一场战斗，应在 `battle_ended` 后编排。`tf.battle.on_*` 与 `tf.callbacks.on_battle_*` 是同一组事件的两套注册入口，根据脚本风格选一种即可。
+
+`tf.battle.on_turn_start(fn)` 对应 `battle_turn_started`，payload 含 `round_index`、`unit`、`unit_id`、`actor_id` / `enemy_id` 与 `unit_kind`；`on_turn_end(fn)` 对应 `battle_turn_ended`，额外含 `result`，其中 `action_type`、`status`、`skill_id`、`target_unit_id`、`damage`、`states_added` 等字段来自 C++ 行动结算结果；`on_unit_died(fn)` 对应 `battle_unit_died`，用于判断死亡单位身份和来源行动；`on_skill_used(fn)` 对应 `battle_skill_used`，用于剧情战阶段提示或统计特殊技能。`unit_kind` 优先根据 catalog 来源返回 `actor` / `enemy`；无来源 id 的临时单位会按阵营 fallback 为 `player` / `enemy`，此时 `actor_id` / `enemy_id` 为 `nil`。
+
+成功行动的事件顺序固定为 `battle_turn_ended` → `battle_skill_used`（仅 Skill 行动）→ `battle_unit_died`（0 到多个）。如果行动者因自己的行动死亡，`battle_turn_ended.unit` 会已经是死亡后的行动者状态，随后同一单位还会收到 `battle_unit_died`；脚本应按需求选择监听其中一个事件。战斗内事件较密集，脚本应保持回调短小，并确保重复注册是幂等的。
 
 任务内容脚本约定用 `scripts/quests/*.lua` 承载剧情分支，quest id 保持数据侧 dot 命名，例如 `quest.village.goblin_cleanup`；Lua module path 去掉 `quest.` 前缀后把余下的 `.` 压平成 `_`，例如 `quests.village_goblin_cleanup`。脚本侧使用 `lib.quest.module_for(quest_id)` 生成 module path，避免手写 require 路径：
 

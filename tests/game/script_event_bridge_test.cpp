@@ -29,6 +29,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #ifndef PROJECT_SOURCE_DIR
@@ -422,6 +423,134 @@ TEST(ScriptEventBridgeTest, BattleEndedPayloadIncludesRewardSummary) {
     });
 
     EXPECT_TRUE(env.host.exec("assert(battle_reward_seen == true)"));
+}
+
+TEST(ScriptEventBridgeTest, BattleHookPayloadsExposeUnitsAndActionResult) {
+    ScriptEventBridgeTestEnv env{};
+
+    game::battle::BattleUnit hero{};
+    hero.id = 1;
+    hero.name = "Hero";
+    hero.side = game::battle::BattleSide::Player;
+    hero.hp = 24;
+    hero.max_hp = 30;
+    hero.mp = 8;
+    hero.max_mp = 12;
+    hero.source_actor_id = std::optional<std::string>{"actor.hero"};
+
+    game::battle::BattleUnit hero_after = hero;
+    hero_after.mp = 4;
+
+    game::battle::BattleUnit slime{};
+    slime.id = 2;
+    slime.name = "Slime";
+    slime.side = game::battle::BattleSide::Enemy;
+    slime.hp = 9;
+    slime.max_hp = 9;
+    slime.source_enemy_id = std::optional<std::string>{"enemy.slime"};
+
+    game::battle::BattleUnit slime_after = slime;
+    slime_after.hp = 0;
+
+    game::battle::BattleActionResult result{};
+    result.status = game::battle::BattleActionStatus::Applied;
+    result.action_type = game::battle::BattleActionType::Skill;
+    result.actor_id = hero.id;
+    result.target_id = slime.id;
+    result.skill_id = "skill.fire";
+    result.damage = 12;
+    result.mp_spent = 4;
+    result.target_defeated = true;
+    result.states_added = {"state.burn"};
+    result.outcome_after = game::battle::BattleOutcome::Victory;
+    result.snapshot.units = {hero_after, slime_after};
+    result.snapshot.round_index = 2;
+    result.snapshot.outcome = game::battle::BattleOutcome::Victory;
+
+    ASSERT_TRUE(env.host.exec(R"(
+        battle_turn_started_seen = false
+        battle_turn_ended_seen = false
+        battle_unit_died_seen = false
+        battle_skill_used_seen = false
+
+        assert(tf.battle.on_turn_start(function(evt)
+            assert(evt.name == "battle_turn_started")
+            assert(evt.round_index == 2)
+            assert(evt.unit_id == 1)
+            assert(evt.actor_id == "actor.hero")
+            assert(evt.unit.unit_kind == "actor")
+            assert(evt.unit.hp == 24)
+            battle_turn_started_seen = true
+        end) == true)
+
+        assert(tf.battle.on_turn_end(function(evt)
+            assert(evt.name == "battle_turn_ended")
+            assert(evt.round_index == 2)
+            assert(evt.unit.mp == 4)
+            assert(evt.result.status == "Applied")
+            assert(evt.result.action_type == "Skill")
+            assert(evt.result.target_unit_id == 2)
+            assert(evt.result.skill_id == "skill.fire")
+            assert(evt.result.damage == 12)
+            assert(evt.result.mp_spent == 4)
+            assert(evt.result.target_defeated == true)
+            assert(evt.result.outcome_after == "Victory")
+            assert(evt.result.states_added[1] == "state.burn")
+            battle_turn_ended_seen = true
+        end) == true)
+
+        assert(tf.battle.on_unit_died(function(evt)
+            assert(evt.name == "battle_unit_died")
+            assert(evt.unit_id == 2)
+            assert(evt.unit_kind == "enemy")
+            assert(evt.actor_id == nil)
+            assert(evt.enemy_id == "enemy.slime")
+            assert(evt.unit.alive == false)
+            assert(evt.source_unit_id == 1)
+            assert(evt.source_action_type == "Skill")
+            assert(evt.skill_id == "skill.fire")
+            battle_unit_died_seen = true
+        end) == true)
+
+        assert(tf.battle.on_skill_used(function(evt)
+            assert(evt.name == "battle_skill_used")
+            assert(evt.unit_id == 1)
+            assert(evt.actor_id == "actor.hero")
+            assert(evt.skill_id == "skill.fire")
+            assert(evt.target_unit_id == 2)
+            assert(evt.result.snapshot_round_index == 2)
+            battle_skill_used_seen = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::BattleTurnStartedEvent{
+        .unit = hero,
+        .round_index = 2,
+    });
+    env.dispatcher.trigger(game::defs::BattleTurnEndedEvent{
+        .unit = hero_after,
+        .result = result,
+        .round_index = 2,
+    });
+    env.dispatcher.trigger(game::defs::BattleUnitDiedEvent{
+        .unit = slime_after,
+        .source_unit_id = hero.id,
+        .source_action_type = game::battle::BattleActionType::Skill,
+        .skill_id = "skill.fire",
+        .round_index = 2,
+    });
+    env.dispatcher.trigger(game::defs::BattleSkillUsedEvent{
+        .unit = hero_after,
+        .result = result,
+        .round_index = 2,
+    });
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(battle_turn_started_seen == true)
+        assert(battle_turn_ended_seen == true)
+        assert(battle_unit_died_seen == true)
+        assert(battle_skill_used_seen == true)
+    )"));
 }
 
 } // namespace game::script

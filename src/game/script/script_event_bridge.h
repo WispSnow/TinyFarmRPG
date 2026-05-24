@@ -14,7 +14,11 @@ struct TimeOfDayChangedEvent;
 
 namespace game::defs {
 struct BattleEndedEvent;
+struct BattleSkillUsedEvent;
 struct BattleStartedEvent;
+struct BattleTurnEndedEvent;
+struct BattleTurnStartedEvent;
+struct BattleUnitDiedEvent;
 struct DialogueHideEvent;
 struct InteractCommand;
 struct InventoryChanged;
@@ -51,6 +55,10 @@ private:
     void onInventoryChanged(const game::defs::InventoryChanged& event);
     void onItemUsed(const game::defs::ItemUsedEvent& event);
     void onBattleStarted(const game::defs::BattleStartedEvent& event);
+    void onBattleTurnStarted(const game::defs::BattleTurnStartedEvent& event);
+    void onBattleTurnEnded(const game::defs::BattleTurnEndedEvent& event);
+    void onBattleUnitDied(const game::defs::BattleUnitDiedEvent& event);
+    void onBattleSkillUsed(const game::defs::BattleSkillUsedEvent& event);
     void onBattleEnded(const game::defs::BattleEndedEvent& event);
     void onMapEntered(const game::defs::MapEnteredEvent& event);
     void onMapExited(const game::defs::MapExitedEvent& event);

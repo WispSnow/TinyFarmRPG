@@ -264,6 +264,18 @@ void installTinyFarmScriptModule(sol::state& lua,
                 lua,
                 api->battleStart(troop_id.value_or(""), std::move(actor_ids), battle_background_id));
         });
+    battle_impl.set_function("on_turn_start", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_turn_started", callback);
+    });
+    battle_impl.set_function("on_turn_end", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_turn_ended", callback);
+    });
+    battle_impl.set_function("on_unit_died", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_unit_died", callback);
+    });
+    battle_impl.set_function("on_skill_used", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_skill_used", callback);
+    });
     tf_impl["battle"] = engine::script::createReadOnlyProxy(lua, battle_impl, "tf.battle");
 
     // ── tf.map ──
@@ -356,6 +368,18 @@ void installTinyFarmScriptModule(sol::state& lua,
     });
     callbacks_impl.set_function("on_battle_end", [&host](const sol::object& callback) -> bool {
         return registerEventCallback(host, "battle_ended", callback);
+    });
+    callbacks_impl.set_function("on_battle_turn_start", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_turn_started", callback);
+    });
+    callbacks_impl.set_function("on_battle_turn_end", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_turn_ended", callback);
+    });
+    callbacks_impl.set_function("on_battle_unit_died", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_unit_died", callback);
+    });
+    callbacks_impl.set_function("on_battle_skill_used", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "battle_skill_used", callback);
     });
     callbacks_impl.set_function("on_day_changed", [&host](const sol::object& callback) -> bool {
         return registerEventCallback(host, "day_changed", callback);
