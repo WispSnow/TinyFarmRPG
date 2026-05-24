@@ -557,6 +557,11 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.lyria"
+                        },
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"actor",
@@ -648,6 +653,11 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.tori"
+                        },
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"actor",

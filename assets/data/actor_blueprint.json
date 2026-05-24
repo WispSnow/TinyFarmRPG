@@ -113,7 +113,6 @@
     "lyria": {
         "name": "Lyria",
         "description": "Lyria is a friend of the player",
-        "dialogue_id": "lyria_intro",
         "wander_radius": 48.0,
         "interact_distance": 64.0,
         "sprite": {
@@ -149,7 +148,6 @@
     "tori": {
         "name": "Tori",
         "description": "Tori is ready to join the party.",
-        "dialogue_id": "tori_intro",
         "wander_radius": 48.0,
         "interact_distance": 64.0,
         "sprite": {

@@ -182,6 +182,7 @@ tf
 │   ├── hotbar_sync([target_handle] [, full_sync])              → bool
 │   └── interact(target_handle [, player_handle])               → bool
 ├── dialogue
+│   ├── CHANNEL_CONVERSATION / CHANNEL_NOTICE / CHANNEL_ITEM_NOTICE
 │   ├── show(text [, speaker] [, channel] [, target_handle])    → bool
 │   └── hide([channel] [, target_handle])                       → bool
 ├── event
@@ -208,6 +209,10 @@ tf
 
 `tf.party.members()` 返回 `PartyComponent::recruited_actor_ids_` 原样，因此包含玩家本人（默认 `actor.player`）。`tf.party.level(actor_id)` 只表示已招募角色的当前等级；未招募或未知角色返回 `0`。如果脚本需要读取 catalog 中的初始等级，使用 `tf.party.initial_level(actor_id)`。
 
+脚本化招募 NPC 通常在 Tiled 同时配置 `recruit_actor_id = "actor.lyria"` 与 `scripted_interaction = true`。Lua 负责对白分支，在对白结束回调里调用 `tf.party.request_recruit(actor_id, evt.target)`；C++ 的 `PartyRecruitmentSystem` 仍负责校验 recruitable 实体、写入 `PartyComponent` / 运行时状态并移除地图上的招募 NPC。未脚本化的 recruitable 只保留为 fallback，会直接触发 C++ 入队确认，正式内容优先使用 Lua。
+
+重复的招募 NPC 样板放在 `lib.recruit_npc`：内容脚本只需传 `actor_id`、`intro_lines` 和 `recruited_line`，helper 会按 `evt.target_actor_id` 过滤目标、尊重 `evt.dialogue_handled`，并在对白结束后请求入队。
+
 `tf.shop.open` 会直接打开指定商店，不播放 C++ 商人 greeting；脚本侧如果需要开店前对白，应先用 `tf.dialogue` 或 `lib.dialogue` 自行编排。
 
 `tf.battle.start` 要求显式传入非空 `troop_id`；`opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`。
@@ -230,7 +235,7 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 
 挂 `ScriptedInteractionComponent` 或 Tiled 属性 `scripted_interaction = true` 的实体由 Lua 独占交互，默认 C++ 对话、任务、招募、商店、宝箱、休息、衣柜系统都会早退。
 
-脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 会在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
+脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 使用 `Conversation` channel，并在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
 
 `evt.dialogue_handled` 是 Lua 脚本之间约定的协调标志，不来自 C++ payload。`lib.dialogue` 在同一次按键推进或关闭当前对话时会把它设为 `true`；NPC/quest 脚本应在回调开头检查并尽早 `return`。脚本自己成功认领一次交互并调用 `dialogue.start(...)` 后，也可以把该字段设为 `true`，避免后续监听器再处理同一按键。
 

@@ -1,15 +1,16 @@
-local event = tf.script.require("lib.event")
+local recruit_npc = tf.script.require("lib.recruit_npc")
 
 local lyria = {
     actor_id = "actor.lyria",
 }
 
-if event ~= nil then
-    event.on_interact(function(evt)
-        if evt.target_actor_id == lyria.actor_id or evt.target_name == "Lyria" then
-            print("[tf] interacted with Lyria")
-        end
-    end)
-end
+assert(recruit_npc.register({
+    actor_id = lyria.actor_id,
+    intro_lines = {
+        "Hey there! Welcome to the valley.",
+        "I can help if you are heading into danger.",
+    },
+    recruited_line = "Stay safe out there. I'll be close by.",
+}))
 
 return lyria

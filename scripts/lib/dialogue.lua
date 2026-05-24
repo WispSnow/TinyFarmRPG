@@ -1,5 +1,6 @@
 local dialogue = {}
 
+local CHANNEL_CONVERSATION = tf.dialogue.CHANNEL_CONVERSATION
 local active = {}
 local current_key = nil
 
@@ -35,7 +36,7 @@ local function complete(key, interrupted)
         current_key = nil
     end
 
-    tf.dialogue.hide(nil, state.target)
+    tf.dialogue.hide(CHANNEL_CONVERSATION, state.target)
     if type(state.on_done) == "function" then
         state.on_done(interrupted == true)
     end
@@ -60,7 +61,7 @@ local function advance(target)
 
     state.cursor = state.cursor + 1
     if state.cursor <= #state.lines then
-        tf.dialogue.show(state.lines[state.cursor], nil, nil, state.target)
+        tf.dialogue.show(state.lines[state.cursor], nil, CHANNEL_CONVERSATION, state.target)
         return true
     end
 
@@ -96,7 +97,7 @@ function dialogue.start(target, lines, on_done)
         on_done = on_done,
     }
     current_key = key
-    return tf.dialogue.show(copied_lines[1], nil, nil, target)
+    return tf.dialogue.show(copied_lines[1], nil, CHANNEL_CONVERSATION, target)
 end
 
 function dialogue.cancel(target)

@@ -493,7 +493,7 @@ TEST(QuestInteractionSystemTest, DialogueSystemSkipsQuestGiverTargets) {
     const entt::entity giver = createQuestGiver(registry);
     auto& dialogue = registry.emplace<game::component::DialogueComponent>(
         giver,
-        game::component::DialogueComponent{entt::hashed_string{"lyria_intro"}.value()});
+        game::component::DialogueComponent{entt::hashed_string{"skipped_dialogue"}.value()});
 
     dispatcher.trigger(game::defs::InteractCommand{player, giver});
 
@@ -515,7 +515,7 @@ TEST(QuestInteractionSystemTest, DialogueSystemSkipsMerchantTargets) {
     const entt::entity merchant = createMerchant(registry);
     auto& dialogue = registry.emplace<game::component::DialogueComponent>(
         merchant,
-        game::component::DialogueComponent{entt::hashed_string{"lyria_intro"}.value()});
+        game::component::DialogueComponent{entt::hashed_string{"skipped_dialogue"}.value()});
 
     dispatcher.trigger(game::defs::InteractCommand{player, merchant});
 
@@ -590,7 +590,7 @@ TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersQuestGiverOverDialo
             .quest_id_hash_ = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value()});
     registry.emplace<game::component::DialogueComponent>(
         quest_giver,
-        game::component::DialogueComponent{entt::hashed_string{"lyria_intro"}.value()});
+        game::component::DialogueComponent{entt::hashed_string{"skipped_dialogue"}.value()});
     spatial.updateColliderEntity(quest_giver);
 
     const entt::entity npc = registry.create();
@@ -598,7 +598,7 @@ TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersQuestGiverOverDialo
     registry.emplace<engine::component::CircleCollider>(npc, 6.0f, glm::vec2(0.0f));
     registry.emplace<engine::component::SpatialIndexTag>(npc);
     registry.emplace<game::component::MapId>(npc, map_id);
-    registry.emplace<game::component::DialogueComponent>(npc, game::component::DialogueComponent{"lyria_intro"_hs});
+    registry.emplace<game::component::DialogueComponent>(npc, game::component::DialogueComponent{"skipped_dialogue"_hs});
     spatial.updateColliderEntity(npc);
 
     const entt::entity chest = registry.create();
@@ -675,7 +675,7 @@ TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersMerchantOverQuestGi
             .shop_id_hash_ = entt::hashed_string{"shop.village.general"}.value()});
     registry.emplace<game::component::DialogueComponent>(
         merchant,
-        game::component::DialogueComponent{entt::hashed_string{"lyria_intro"}.value()});
+        game::component::DialogueComponent{entt::hashed_string{"skipped_dialogue"}.value()});
     spatial.updateColliderEntity(merchant);
 
     const entt::entity quest_giver = registry.create();
@@ -695,7 +695,7 @@ TEST_F(QuestInteractionPriorityTest, InteractionSystemPrefersMerchantOverQuestGi
     registry.emplace<engine::component::CircleCollider>(npc, 6.0f, glm::vec2(0.0f));
     registry.emplace<engine::component::SpatialIndexTag>(npc);
     registry.emplace<game::component::MapId>(npc, map_id);
-    registry.emplace<game::component::DialogueComponent>(npc, game::component::DialogueComponent{"lyria_intro"_hs});
+    registry.emplace<game::component::DialogueComponent>(npc, game::component::DialogueComponent{"skipped_dialogue"_hs});
     spatial.updateColliderEntity(npc);
 
     const entt::entity chest = registry.create();

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game/component/npc_component.h"
 #include "game/defs/commands.h"
 #include "game/system/system_helpers.h"
 
@@ -11,8 +10,6 @@
 
 #include <string>
 #include <string_view>
-#include <unordered_map>
-#include <vector>
 
 namespace game::data {
 class RpgCatalog;
@@ -25,8 +22,6 @@ class RecruitmentInteractionSystem final {
     entt::dispatcher& dispatcher_;
     const game::data::RpgCatalog& rpg_catalog_;
 
-    std::unordered_map<entt::id_type, std::vector<std::string>> dialogue_table_{};
-    entt::entity active_entity_{entt::null};
     helpers::NotificationTimer notification_{};
 
 public:
@@ -35,20 +30,12 @@ public:
                                  const game::data::RpgCatalog& rpg_catalog);
     ~RecruitmentInteractionSystem();
 
-    [[nodiscard]] bool loadDialogueFile(std::string_view file_path);
     void update(float delta_time);
 
 private:
     void onInteractCommand(const game::defs::InteractCommand& event);
     [[nodiscard]] bool isRecruited(std::string_view actor_id) const;
     void showNotification(entt::entity target, std::string text);
-    void startDialogue(entt::entity entity, game::component::DialogueComponent& dialogue,
-                       const std::vector<std::string>& lines);
-    [[nodiscard]] bool advanceDialogue(entt::entity entity, game::component::DialogueComponent& dialogue,
-                                        const std::vector<std::string>& lines);
-    void endDialogueAndRequestJoin(entt::entity player, entt::entity entity, game::component::DialogueComponent& dialogue);
-    void closeDialogue(entt::entity entity);
-    void showLine(entt::entity entity, const std::vector<std::string>& lines, std::size_t line_index);
 };
 
 } // namespace game::system

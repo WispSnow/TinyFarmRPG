@@ -3,6 +3,7 @@
 #include "engine/script/script_binding_utils.h"
 #include "engine/script/script_entity_handle.h"
 #include "engine/script/script_host.h"
+#include "game/defs/events_dialogue.h"
 #include "game/script/script_game_api.h"
 #include "game/script/script_state.h"
 
@@ -311,6 +312,9 @@ void installTinyFarmScriptModule(sol::state& lua,
 
     // ── tf.dialogue ──
     sol::table dialogue_impl = lua.create_table();
+    dialogue_impl["CHANNEL_CONVERSATION"] = static_cast<int>(game::defs::DialogueChannel::Conversation);
+    dialogue_impl["CHANNEL_NOTICE"] = static_cast<int>(game::defs::DialogueChannel::Notice);
+    dialogue_impl["CHANNEL_ITEM_NOTICE"] = static_cast<int>(game::defs::DialogueChannel::ItemNotice);
     dialogue_impl.set_function(
         "show",
         [api](const std::string& text,
