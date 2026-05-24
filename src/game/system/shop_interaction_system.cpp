@@ -77,6 +77,9 @@ void ShopInteractionSystem::onInteractCommand(const game::defs::InteractCommand&
     if (!registry_.valid(event.player) || !registry_.valid(event.target)) {
         return;
     }
+    if (helpers::isScriptedInteraction(registry_, event.target)) {
+        return;
+    }
 
     const auto* merchant = registry_.try_get<game::component::MerchantComponent>(event.target);
     if (!merchant) {

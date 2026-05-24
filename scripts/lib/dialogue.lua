@@ -1,5 +1,72 @@
 local dialogue = {}
 
+local active = {}
+local current_key = nil
+
+local function handle_key(target)
+    if target == nil or target.entity_id == nil then
+        return nil
+    end
+    return tostring(target.entity_id)
+end
+
+local function copy_lines(lines)
+    if type(lines) ~= "table" then
+        return nil
+    end
+
+    local copied = {}
+    for index, line in ipairs(lines) do
+        if type(line) == "string" and line ~= "" then
+            copied[#copied + 1] = line
+        end
+    end
+    return copied
+end
+
+local function complete(key, interrupted)
+    local state = active[key]
+    if state == nil then
+        return false
+    end
+
+    active[key] = nil
+    if current_key == key then
+        current_key = nil
+    end
+
+    tf.dialogue.hide(nil, state.target)
+    if type(state.on_done) == "function" then
+        state.on_done(interrupted == true)
+    end
+    return true
+end
+
+local function advance(target)
+    local key = handle_key(target)
+    if key == nil then
+        return false
+    end
+
+    if current_key ~= nil and current_key ~= key then
+        complete(current_key, true)
+        return false
+    end
+
+    local state = active[key]
+    if state == nil then
+        return false
+    end
+
+    state.cursor = state.cursor + 1
+    if state.cursor <= #state.lines then
+        tf.dialogue.show(state.lines[state.cursor], nil, nil, state.target)
+        return true
+    end
+
+    return complete(key, false)
+end
+
 function dialogue.show(text, speaker, channel, target, speaker_actor_id)
     return tf.dialogue.show(text, speaker, channel, target, speaker_actor_id)
 end
@@ -7,5 +74,46 @@ end
 function dialogue.hide(channel, target)
     return tf.dialogue.hide(channel, target)
 end
+
+function dialogue.start(target, lines, on_done)
+    local key = handle_key(target)
+    local copied_lines = copy_lines(lines)
+    if key == nil or copied_lines == nil or #copied_lines == 0 then
+        return false
+    end
+
+    if current_key ~= nil and current_key ~= key then
+        complete(current_key, true)
+    end
+    if active[key] ~= nil then
+        complete(key, true)
+    end
+
+    active[key] = {
+        target = target,
+        lines = copied_lines,
+        cursor = 1,
+        on_done = on_done,
+    }
+    current_key = key
+    return tf.dialogue.show(copied_lines[1], nil, nil, target)
+end
+
+function dialogue.cancel(target)
+    local key = handle_key(target)
+    if key == nil then
+        key = current_key
+    end
+    if key == nil then
+        return false
+    end
+    return complete(key, true)
+end
+
+tf.event.on("interact", function(evt)
+    if advance(evt.target) then
+        evt.dialogue_handled = true
+    end
+end)
 
 return dialogue

@@ -11,6 +11,7 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/party_ids.h"
+#include "game/system/system_helpers.h"
 
 #include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
@@ -132,6 +133,9 @@ void RecruitmentInteractionSystem::onInteractCommand(const game::defs::InteractC
         return;
     }
     if (event.target == entt::null || !registry_.valid(event.target)) {
+        return;
+    }
+    if (game::system::helpers::isScriptedInteraction(registry_, event.target)) {
         return;
     }
     if (registry_.all_of<game::component::MerchantComponent>(event.target) ||

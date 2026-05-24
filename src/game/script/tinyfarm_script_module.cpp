@@ -133,6 +133,30 @@ void installTinyFarmScriptModule(sol::state& lua,
     player_impl.set_function("position", [api]() -> std::tuple<float, float> { return api->playerPosition(); });
     tf_impl["player"] = engine::script::createReadOnlyProxy(lua, player_impl, "tf.player");
 
+    // ── tf.entity ──
+    sol::table entity_impl = lua.create_table();
+    entity_impl.set_function("actor_id", [api](const ScriptEntityHandle& handle) -> sol::optional<std::string> {
+        const auto actor_id = api->entityActorId(handle);
+        if (!actor_id.has_value()) {
+            return {};
+        }
+        return actor_id.value();
+    });
+    entity_impl.set_function("name", [api](const ScriptEntityHandle& handle) -> sol::optional<std::string> {
+        const auto name = api->entityName(handle);
+        if (!name.has_value()) {
+            return {};
+        }
+        return name.value();
+    });
+    entity_impl.set_function("position", [api](const ScriptEntityHandle& handle) -> std::tuple<float, float> {
+        return api->entityPosition(handle);
+    });
+    entity_impl.set_function("has_component", [api](const ScriptEntityHandle& handle, const std::string& kind) -> bool {
+        return api->entityHasComponent(handle, kind);
+    });
+    tf_impl["entity"] = engine::script::createReadOnlyProxy(lua, entity_impl, "tf.entity");
+
     // ── tf.command ──
     sol::table command_impl = lua.create_table();
     command_impl.set_function(

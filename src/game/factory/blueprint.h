@@ -52,6 +52,7 @@ struct AppearanceBlueprint {
 };
 
 struct ActorBlueprint {
+    std::string id_;
     std::string name_;
     std::string description_;
     float speed_{0.0f};
@@ -62,9 +63,11 @@ struct ActorBlueprint {
     entt::id_type dialogue_id_{entt::null};      ///< @brief 对话ID
     float interact_distance_{80.0f};             ///< @brief 触发对话距离
     AppearanceBlueprint appearance_{};
+    bool scripted_interaction_{false};
 };
 
 struct AnimalBlueprint {
+    std::string id_;
     std::string name_;
     std::string description_;
     float speed_{0.0f};
@@ -75,6 +78,7 @@ struct AnimalBlueprint {
     entt::id_type dialogue_id_{entt::null};
     float interact_distance_{80.0f};
     bool sleep_at_night_{true};
+    bool scripted_interaction_{false};
 };
 
 /// @brief 作物生长阶段蓝图

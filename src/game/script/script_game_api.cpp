@@ -1,7 +1,17 @@
 #include "script_game_api.h"
 
+#include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
 #include "engine/script/script_host.h"
+#include "game/component/actor_identity_component.h"
+#include "game/component/chest_component.h"
+#include "game/component/map_component.h"
+#include "game/component/merchant_component.h"
+#include "game/component/npc_component.h"
+#include "game/component/quest_giver_component.h"
+#include "game/component/recruitable_component.h"
+#include "game/component/scripted_interaction_component.h"
+#include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/commands_inventory.h"
@@ -118,6 +128,102 @@ std::tuple<float, float> ScriptGameApi::playerPosition() const {
     }
 
     return {transform->position_.x, transform->position_.y};
+}
+
+std::optional<std::string> ScriptGameApi::entityActorId(
+    const engine::script::ScriptEntityHandle& handle) const {
+    entt::entity entity = entt::null;
+    if (!host_.validateHandle(handle, entity, "tf.entity.actor_id")) {
+        return std::nullopt;
+    }
+
+    const auto* identity = registry_.try_get<game::component::ActorIdentityComponent>(entity);
+    if (!identity || identity->actor_id_.empty()) {
+        return std::nullopt;
+    }
+    return identity->actor_id_;
+}
+
+std::optional<std::string> ScriptGameApi::entityName(
+    const engine::script::ScriptEntityHandle& handle) const {
+    entt::entity entity = entt::null;
+    if (!host_.validateHandle(handle, entity, "tf.entity.name")) {
+        return std::nullopt;
+    }
+
+    const auto* name = registry_.try_get<engine::component::NameComponent>(entity);
+    if (!name || name->name_.empty()) {
+        return std::nullopt;
+    }
+    return name->name_;
+}
+
+std::tuple<float, float> ScriptGameApi::entityPosition(
+    const engine::script::ScriptEntityHandle& handle) const {
+    entt::entity entity = entt::null;
+    if (!host_.validateHandle(handle, entity, "tf.entity.position")) {
+        return {0.0F, 0.0F};
+    }
+
+    const auto* transform = registry_.try_get<engine::component::TransformComponent>(entity);
+    if (!transform) {
+        return {0.0F, 0.0F};
+    }
+
+    return {transform->position_.x, transform->position_.y};
+}
+
+bool ScriptGameApi::entityHasComponent(const engine::script::ScriptEntityHandle& handle,
+                                       const std::string_view kind) const {
+    entt::entity entity = entt::null;
+    if (!host_.validateHandle(handle, entity, "tf.entity.has_component")) {
+        return false;
+    }
+
+    if (kind == "actor_identity") {
+        return registry_.any_of<game::component::ActorIdentityComponent>(entity);
+    }
+    if (kind == "name") {
+        return registry_.any_of<engine::component::NameComponent>(entity);
+    }
+    if (kind == "transform") {
+        return registry_.any_of<engine::component::TransformComponent>(entity);
+    }
+    if (kind == "player") {
+        return registry_.any_of<game::component::PlayerTag>(entity);
+    }
+    if (kind == "npc") {
+        return registry_.any_of<game::component::NPCTag>(entity);
+    }
+    if (kind == "dialogue") {
+        return registry_.any_of<game::component::DialogueComponent>(entity);
+    }
+    if (kind == "merchant") {
+        return registry_.any_of<game::component::MerchantComponent>(entity);
+    }
+    if (kind == "quest_giver") {
+        return registry_.any_of<game::component::QuestGiverComponent>(entity);
+    }
+    if (kind == "recruitable") {
+        return registry_.any_of<game::component::RecruitableComponent>(entity);
+    }
+    if (kind == "chest") {
+        return registry_.any_of<game::component::ChestComponent>(entity);
+    }
+    if (kind == "rest") {
+        return registry_.any_of<game::component::RestArea>(entity);
+    }
+    if (kind == "closet") {
+        return registry_.any_of<game::component::ClosetArea>(entity);
+    }
+    if (kind == "scripted_interaction") {
+        return registry_.any_of<game::component::ScriptedInteractionComponent>(entity);
+    }
+    if (kind == "map_id") {
+        return registry_.any_of<game::component::MapId>(entity);
+    }
+
+    return false;
 }
 
 bool ScriptGameApi::addItem(const std::string_view item_id,

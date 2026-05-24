@@ -2,6 +2,7 @@
 #include "tiled_conventions.h"
 #include "game/factory/entity_factory.h"
 #include "game/component/tags.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/map_component.h"
 #include "game/component/resource_node_component.h"
 #include "game/component/chest_component.h"
@@ -11,6 +12,7 @@
 #include "game/component/party_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/component/scripted_interaction_component.h"
 #include "game/data/battle_background_id.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
@@ -241,6 +243,24 @@ void applyTimeVisibilityTags(entt::registry& registry, entt::entity entity, bool
     }
 }
 
+void setActorIdentity(entt::registry& registry,
+                      const entt::entity entity,
+                      const std::string& actor_id) {
+    if (entity == entt::null || actor_id.empty()) {
+        return;
+    }
+
+    auto* identity = registry.try_get<game::component::ActorIdentityComponent>(entity);
+    const std::string blueprint_id = identity ? identity->blueprint_id_ : std::string{};
+    registry.emplace_or_replace<game::component::ActorIdentityComponent>(
+        entity,
+        game::component::ActorIdentityComponent{
+            .actor_id_ = actor_id,
+            .actor_id_hash_ = entt::hashed_string{actor_id.c_str()}.value(),
+            .blueprint_id_ = blueprint_id,
+        });
+}
+
 void registerRectToStaticGrid(engine::spatial::SpatialIndexManager& spatial_index,
                               glm::ivec2 map_size,
                               glm::ivec2 tile_size,
@@ -358,6 +378,7 @@ EntityBuilder* EntityBuilder::build() {
         }
     }
     attachMapId();
+    attachScriptedInteraction();
     return this;
 }
 
@@ -459,6 +480,7 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
             game::component::RecruitableComponent{
                 .actor_id_ = *recruit_actor_id,
                 .actor_id_hash_ = entt::hashed_string{recruit_actor_id->c_str()}.value()});
+        setActorIdentity(registry_, entity_id_, *recruit_actor_id);
     }
 
     if (wander_radius_override) {
@@ -737,6 +759,16 @@ void EntityBuilder::attachMapId() {
         return;
     }
     registry_.emplace_or_replace<game::component::MapId>(entity_id_, map_id_);
+}
+
+void EntityBuilder::attachScriptedInteraction() {
+    if (entity_id_ == entt::null) {
+        return;
+    }
+    if (!findObjectBoolProperty(object_json_, tiled::OBJECT_PROP_SCRIPTED_INTERACTION).value_or(false)) {
+        return;
+    }
+    registry_.emplace_or_replace<game::component::ScriptedInteractionComponent>(entity_id_);
 }
 
 void EntityBuilder::buildPointLight() {

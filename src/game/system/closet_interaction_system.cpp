@@ -6,6 +6,7 @@
 #include "game/component/map_component.h"
 #include "game/defs/commands.h"
 #include "game/scene/appearance_customize_scene.h"
+#include "game/system/system_helpers.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
@@ -38,6 +39,9 @@ void ClosetInteractionSystem::onInteractCommand(const game::defs::InteractComman
         return;
     }
     if (!registry_.valid(event.player) || !registry_.valid(event.target)) {
+        return;
+    }
+    if (helpers::isScriptedInteraction(registry_, event.target)) {
         return;
     }
     if (!registry_.any_of<game::component::ClosetArea>(event.target)) {

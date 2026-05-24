@@ -20,6 +20,9 @@ inline constexpr std::string_view OBJECT_TYPE_REST = "rest";
 inline constexpr std::string_view OBJECT_TYPE_CLOSET = "closet";
 inline constexpr std::string_view OBJECT_TYPE_LIGHT = "light";
 
+// Object layer: shared object properties
+inline constexpr std::string_view OBJECT_PROP_SCRIPTED_INTERACTION = "scripted_interaction";
+
 // Object layer: light "name"
 inline constexpr std::string_view LIGHT_NAME_POINT = "point";
 inline constexpr std::string_view LIGHT_NAME_SPOT = "spot";

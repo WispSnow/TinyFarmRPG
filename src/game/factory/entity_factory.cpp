@@ -3,6 +3,7 @@
 #include "game/component/state_component.h"
 #include "game/component/action_sound_component.h"
 #include "game/component/actor_component.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/crop_component.h"
 #include "game/component/map_component.h"
 #include "game/component/tags.h"
@@ -14,6 +15,7 @@
 #include "game/component/party_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/appearance_component.h"
+#include "game/component/scripted_interaction_component.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/commands.h"
 #include "game/world/world_state.h"
@@ -83,6 +85,23 @@ void attachCurrentMapId(entt::registry& registry, entt::entity entity) {
     registry.emplace_or_replace<game::component::MapId>(entity, current_map);
 }
 
+void attachActorIdentity(entt::registry& registry,
+                         const entt::entity entity,
+                         const std::string& actor_id,
+                         const std::string& blueprint_id = {}) {
+    if (entity == entt::null || actor_id.empty()) {
+        return;
+    }
+
+    registry.emplace_or_replace<game::component::ActorIdentityComponent>(
+        entity,
+        game::component::ActorIdentityComponent{
+            .actor_id_ = actor_id,
+            .actor_id_hash_ = entt::hashed_string{actor_id.c_str()}.value(),
+            .blueprint_id_ = blueprint_id.empty() ? actor_id : blueprint_id,
+        });
+}
+
 }   // anonymous namespace
 
 entt::entity EntityFactory::createMobBase(entt::id_type name_id,
@@ -124,6 +143,10 @@ entt::entity EntityFactory::createActor(const entt::id_type actor_name_id, const
                                         blueprint.sounds_,
                                         blueprint.animations_,
                                         position);
+    attachActorIdentity(registry_, entity, blueprint.id_);
+    if (blueprint.scripted_interaction_) {
+        registry_.emplace_or_replace<game::component::ScriptedInteractionComponent>(entity);
+    }
     if (actor_name_id == "player"_hs) {
         registry_.emplace<game::component::PlayerTag>(entity);
         // 为玩家添加物品栏和快捷栏组件
@@ -226,6 +249,10 @@ entt::entity EntityFactory::createAnimal(const entt::id_type animal_name_id, con
                                         blueprint.sounds_,
                                         blueprint.animations_,
                                         position);
+    attachActorIdentity(registry_, entity, blueprint.id_);
+    if (blueprint.scripted_interaction_) {
+        registry_.emplace_or_replace<game::component::ScriptedInteractionComponent>(entity);
+    }
     auto& state_component = registry_.get<game::component::StateComponent>(entity);
     registry_.emplace<game::component::NPCTag>(entity);
     registry_.emplace<game::component::AnimalTag>(entity);
