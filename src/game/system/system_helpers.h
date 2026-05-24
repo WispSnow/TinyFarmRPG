@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/component/scripted_interaction_component.h"
 #include "game/component/tags.h"
 #include "game/defs/events.h"
 #include "engine/component/sprite_component.h"
@@ -48,6 +49,12 @@ struct NotificationTimer {
     }
     cached->entity = player;
     return player;
+}
+
+[[nodiscard]] inline bool isScriptedInteraction(const entt::registry& registry, const entt::entity target) {
+    return target != entt::null &&
+           registry.valid(target) &&
+           registry.any_of<game::component::ScriptedInteractionComponent>(target);
 }
 
 [[nodiscard]] inline glm::vec2 computeHeadPosition(entt::registry& registry, entt::entity entity) {

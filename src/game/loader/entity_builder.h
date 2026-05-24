@@ -40,6 +40,7 @@ private:
     void buildRestArea();
     void buildClosetArea();
     void attachMapId();
+    void attachScriptedInteraction();
 
     void buildPointLight();
     void buildSpotLight();

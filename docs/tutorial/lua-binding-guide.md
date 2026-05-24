@@ -152,6 +152,11 @@ tf
 │   ├── exists()       → bool
 │   ├── handle()       → ScriptEntityHandle | nil
 │   └── position()     → float, float  (多返回值)
+├── entity
+│   ├── actor_id(handle)            → string | nil
+│   ├── name(handle)                → string | nil
+│   ├── position(handle)            → float, float
+│   └── has_component(handle, kind) → bool
 ├── command
 │   ├── add_item(item_id, count [, target_handle] [, slot])     → bool
 │   ├── remove_item(item_id, count [, target_handle] [, slot])  → bool
@@ -180,6 +185,21 @@ tf
 `[ ]` 表示可选参数，用 `sol::optional` 实现。
 
 `tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
+
+`tf.event.on("interact", fn)` 的 payload 会提供稳定目标信息，脚本不需要反查 ECS 细节：
+
+- `player` / `target`：`ScriptEntityHandle | nil`
+- `target_actor_id`：来自 `ActorIdentityComponent`，例如 `actor.lyria`；普通蓝图 NPC 至少会有蓝图 ID
+- `target_name`：来自 `NameComponent`
+- `target_kind`：`npc` / `merchant` / `quest_giver` / `recruitable` / `chest` / `unknown`
+- `target_blueprint_id`：地图 actor 的蓝图 ID，如 `lyria`
+- `map_id` / `map_id_hash`：当前地图名称与哈希字符串；无 `WorldState` 时为 `nil`
+
+挂 `ScriptedInteractionComponent` 或 Tiled 属性 `scripted_interaction = true` 的实体由 Lua 独占交互，默认 C++ 对话、任务、招募、商店、宝箱、休息、衣柜系统都会早退。
+
+脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 会在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
+
+使用 `lib.dialogue` 的 NPC 回调还应在开头检查 `evt.dialogue_handled`。当 helper 已经推进或关闭当前对话时会把这个字段设为 `true`，NPC 脚本据此避免在"关闭对话的同一次按键"里立刻重新开始同一段对话。
 
 ---
 

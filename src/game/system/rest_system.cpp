@@ -7,6 +7,7 @@
 #include "game/defs/events.h"
 #include "game/domain/party_rest_service.h"
 #include "game/scene/rest_dialog_scene.h"
+#include "game/system/system_helpers.h"
 
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
@@ -45,6 +46,9 @@ void RestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
         return;
     }
     if (!registry_.valid(event.target)) {
+        return;
+    }
+    if (helpers::isScriptedInteraction(registry_, event.target)) {
         return;
     }
     if (!registry_.any_of<game::component::RestArea>(event.target)) {

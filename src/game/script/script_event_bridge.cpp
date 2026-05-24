@@ -3,12 +3,20 @@
 #include "engine/script/script_entity_handle.h"
 #include "engine/script/script_host.h"
 #include "engine/utils/events.h"
+#include "engine/component/name_component.h"
 #include "game/battle/battle_types.h"
+#include "game/component/actor_identity_component.h"
+#include "game/component/chest_component.h"
+#include "game/component/merchant_component.h"
+#include "game/component/npc_component.h"
+#include "game/component/quest_giver_component.h"
+#include "game/component/recruitable_component.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_battle.h"
 #include "game/defs/events_dialogue.h"
 #include "game/defs/events_inventory.h"
 #include "game/defs/events_quest.h"
+#include "game/world/world_state.h"
 
 #include <entt/core/fwd.hpp>
 #include <entt/entity/entity.hpp>
@@ -88,6 +96,58 @@ void setIdHash(sol::table& payload, const char* key, const entt::id_type value) 
     payload[key] = std::to_string(value);
 }
 
+void setOptionalString(sol::table& payload, const char* key, const std::string& value) {
+    if (value.empty()) {
+        payload[key] = sol::lua_nil;
+        return;
+    }
+    payload[key] = value;
+}
+
+[[nodiscard]] std::string_view targetKind(const entt::registry& registry, const entt::entity target) {
+    if (target == entt::null || !registry.valid(target)) {
+        return "unknown";
+    }
+    if (registry.any_of<game::component::MerchantComponent>(target)) {
+        return "merchant";
+    }
+    if (registry.any_of<game::component::QuestGiverComponent>(target)) {
+        return "quest_giver";
+    }
+    if (registry.any_of<game::component::RecruitableComponent>(target)) {
+        return "recruitable";
+    }
+    if (registry.any_of<game::component::ChestComponent>(target)) {
+        return "chest";
+    }
+    if (registry.any_of<game::component::NPCTag, game::component::DialogueComponent>(target)) {
+        return "npc";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] entt::id_type currentMapId(entt::registry& registry) {
+    auto** world_state_ptr = registry.ctx().find<game::world::WorldState*>();
+    if (!world_state_ptr || !*world_state_ptr) {
+        return entt::null;
+    }
+    return (*world_state_ptr)->getCurrentMap();
+}
+
+[[nodiscard]] std::string currentMapName(entt::registry& registry, const entt::id_type map_id) {
+    if (map_id == entt::null) {
+        return {};
+    }
+
+    auto** world_state_ptr = registry.ctx().find<game::world::WorldState*>();
+    if (!world_state_ptr || !*world_state_ptr) {
+        return {};
+    }
+
+    const auto* map_state = (*world_state_ptr)->getMapState(map_id);
+    return map_state ? map_state->info.name : std::string{};
+}
+
 } // namespace
 
 ScriptEventBridge::ScriptEventBridge(engine::script::ScriptHost& host,
@@ -138,6 +198,38 @@ void ScriptEventBridge::onInteract(const game::defs::InteractCommand& event) {
     setEventName(payload, "interact");
     setEntityHandle(host_, registry_, payload, "player", event.player);
     setEntityHandle(host_, registry_, payload, "target", event.target);
+    const bool target_valid = event.target != entt::null && registry_.valid(event.target);
+    payload["target_kind"] = std::string{targetKind(registry_, event.target)};
+
+    if (const auto* identity = target_valid
+                                   ? registry_.try_get<game::component::ActorIdentityComponent>(event.target)
+                                   : nullptr) {
+        setOptionalString(payload, "target_actor_id", identity->actor_id_);
+        if (identity->actor_id_hash_ != entt::null) {
+            setIdHash(payload, "target_actor_id_hash", identity->actor_id_hash_);
+        } else {
+            payload["target_actor_id_hash"] = sol::lua_nil;
+        }
+        setOptionalString(payload, "target_blueprint_id", identity->blueprint_id_);
+    } else {
+        payload["target_actor_id"] = sol::lua_nil;
+        payload["target_actor_id_hash"] = sol::lua_nil;
+        payload["target_blueprint_id"] = sol::lua_nil;
+    }
+
+    if (const auto* name = target_valid ? registry_.try_get<engine::component::NameComponent>(event.target) : nullptr) {
+        setOptionalString(payload, "target_name", name->name_);
+    } else {
+        payload["target_name"] = sol::lua_nil;
+    }
+
+    const entt::id_type map_id = currentMapId(registry_);
+    setOptionalString(payload, "map_id", currentMapName(registry_, map_id));
+    if (map_id != entt::null) {
+        setIdHash(payload, "map_id_hash", map_id);
+    } else {
+        payload["map_id_hash"] = sol::lua_nil;
+    }
     (void)host_.emitEvent("interact", payload);
 }
 

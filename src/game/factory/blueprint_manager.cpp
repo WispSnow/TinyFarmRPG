@@ -252,7 +252,8 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
         const entt::id_type name_id = entt::hashed_string(actor_key.c_str());
         const auto common = parseMobBlueprintCommon(actor_obj, 100.0f);
         actor_blueprints_.emplace(name_id,
-                                  ActorBlueprint{common.name,
+                                  ActorBlueprint{actor_key,
+                                                common.name,
                                                 common.description,
                                                 common.speed,
                                                 common.sprite,
@@ -261,7 +262,8 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
                                                 common.wander_radius,
                                                 common.dialogue_id,
                                                 common.interact_distance,
-                                                parseAppearanceBlueprint(actor_obj.value("appearance", nlohmann::json{}))});
+                                                parseAppearanceBlueprint(actor_obj.value("appearance", nlohmann::json{})),
+                                                actor_obj.value("scripted_interaction", false)});
     }
     return true;
 }
@@ -277,7 +279,8 @@ bool BlueprintManager::loadAnimalBlueprints(std::string_view file_path) {
         const entt::id_type name_id = entt::hashed_string(animal_key.c_str());
         const auto common = parseMobBlueprintCommon(animal_obj, 80.0f);
         animal_blueprints_.emplace(name_id,
-                                   AnimalBlueprint{common.name,
+                                   AnimalBlueprint{animal_key,
+                                                   common.name,
                                                    common.description,
                                                    common.speed,
                                                    common.sprite,
@@ -286,7 +289,8 @@ bool BlueprintManager::loadAnimalBlueprints(std::string_view file_path) {
                                                    common.wander_radius,
                                                    common.dialogue_id,
                                                    common.interact_distance,
-                                                   animal_obj.value("sleep_at_night", true)});
+                                                   animal_obj.value("sleep_at_night", true),
+                                                   animal_obj.value("scripted_interaction", false)});
     }
 
     return true;

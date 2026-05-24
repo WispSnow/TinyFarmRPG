@@ -157,6 +157,9 @@ void QuestInteractionSystem::onInteractCommand(const game::defs::InteractCommand
     if (event.target == entt::null || !registry_.valid(event.target)) {
         return;
     }
+    if (helpers::isScriptedInteraction(registry_, event.target)) {
+        return;
+    }
     if (registry_.all_of<game::component::MerchantComponent>(event.target)) {
         return;
     }

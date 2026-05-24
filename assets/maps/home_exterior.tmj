@@ -272,7 +272,7 @@
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                }, 
+                },
                 {
                  "height":0,
                  "id":2,
@@ -645,6 +645,25 @@
                  "width":0,
                  "x":238.25,
                  "y":359
+                },
+                {
+                 "height":0,
+                 "id":54,
+                 "name":"npc.greeter",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
+                        }],
+                 "rotation":0,
+                 "type":"actor",
+                 "visible":true,
+                 "width":0,
+                 "x":430,
+                 "y":248
                 }],
          "opacity":1,
          "properties":[
@@ -935,7 +954,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":54,
+ "nextobjectid":55,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

@@ -38,6 +38,12 @@ public:
     [[nodiscard]] std::optional<engine::script::ScriptEntityHandle> playerHandle() const;
     [[nodiscard]] std::tuple<float, float> playerPosition() const;
 
+    [[nodiscard]] std::optional<std::string> entityActorId(const engine::script::ScriptEntityHandle& handle) const;
+    [[nodiscard]] std::optional<std::string> entityName(const engine::script::ScriptEntityHandle& handle) const;
+    [[nodiscard]] std::tuple<float, float> entityPosition(const engine::script::ScriptEntityHandle& handle) const;
+    [[nodiscard]] bool entityHasComponent(const engine::script::ScriptEntityHandle& handle,
+                                          std::string_view kind) const;
+
     [[nodiscard]] bool addItem(std::string_view item_id,
                                int count,
                                const std::optional<engine::script::ScriptEntityHandle>& target_handle,

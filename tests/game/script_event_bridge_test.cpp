@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 
 #include "engine/component/transform_component.h"
+#include "engine/component/name_component.h"
 #include "engine/script/script_host.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/inventory_component.h"
+#include "game/component/npc_component.h"
+#include "game/component/recruitable_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands_interaction.h"
@@ -11,6 +15,7 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/script/script_event_bridge.h"
 #include "game/system/inventory_system.h"
+#include "game/world/world_state.h"
 #include "script_test_utils.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -186,6 +191,60 @@ TEST(ScriptEventBridgeTest, LargeHashedIdsAreExposedAsStrings) {
         assert(item_used_id_type == "string")
         assert(quest_hash_type == "string")
     )"));
+}
+
+TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
+    ScriptEventBridgeTestEnv env{};
+    game::world::WorldState world_state{};
+    const entt::id_type map_id = world_state.ensureExternalMap("home_exterior");
+    world_state.setCurrentMap(map_id);
+    env.registry.ctx().emplace<game::world::WorldState*>(&world_state);
+
+    env.registry.emplace<engine::component::NameComponent>(
+        env.target,
+        entt::hashed_string{"Lyria"}.value(),
+        "Lyria");
+    env.registry.emplace<game::component::NPCTag>(env.target);
+    env.registry.emplace<game::component::ActorIdentityComponent>(
+        env.target,
+        game::component::ActorIdentityComponent{
+            .actor_id_ = "actor.lyria",
+            .actor_id_hash_ = entt::hashed_string{"actor.lyria"}.value(),
+            .blueprint_id_ = "lyria",
+        });
+    env.registry.emplace<game::component::RecruitableComponent>(
+        env.target,
+        game::component::RecruitableComponent{
+            .actor_id_ = "actor.lyria",
+            .actor_id_hash_ = entt::hashed_string{"actor.lyria"}.value(),
+        });
+
+    ASSERT_TRUE(env.host.exec(R"(
+        seen_interact_metadata = false
+        assert(tf.event.on("interact", function(evt)
+            assert(evt.name == "interact")
+            assert(evt.target ~= nil)
+            assert(evt.target_actor_id == "actor.lyria")
+            assert(evt.target_name == "Lyria")
+            assert(evt.target_kind == "recruitable")
+            assert(evt.target_blueprint_id == "lyria")
+            assert(evt.map_id == "home_exterior")
+            assert(type(evt.map_id_hash) == "string")
+            assert(tf.entity.actor_id(evt.target) == "actor.lyria")
+            assert(tf.entity.name(evt.target) == "Lyria")
+            local x, y = tf.entity.position(evt.target)
+            assert(x == 16.0)
+            assert(y == 0.0)
+            assert(tf.entity.has_component(evt.target, "actor_identity") == true)
+            assert(tf.entity.has_component(evt.target, "recruitable") == true)
+            assert(tf.entity.has_component(evt.target, "merchant") == false)
+            seen_interact_metadata = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::InteractCommand{env.player, env.target});
+
+    EXPECT_TRUE(env.host.exec("assert(seen_interact_metadata == true)"));
 }
 
 } // namespace game::script

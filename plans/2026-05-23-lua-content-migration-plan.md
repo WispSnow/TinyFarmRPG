@@ -96,17 +96,17 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 
 ### 待办
 
-- [ ] **新增 `ActorIdentityComponent`**：
+- [x] **新增 `ActorIdentityComponent`**：
   - 字段：`std::string actor_id_`、`entt::id_type actor_id_hash_`、`std::string blueprint_id_`
   - 在 [entity_factory](../src/game/factory) 给所有 NPC 蓝图实例化时挂上（不止 Recruitable）
   - 兼容现有 `RecruitableComponent::actor_id_`：迁移期间二者保持同步，后续把 Recruitable 的 actor_id 字段废弃
-- [ ] **丰富 `interact` 事件 payload**：在 [script_event_bridge.cpp:136](../src/game/script/script_event_bridge.cpp) 的 `onInteract` 中补充：
+- [x] **丰富 `interact` 事件 payload**：在 [script_event_bridge.cpp:136](../src/game/script/script_event_bridge.cpp) 的 `onInteract` 中补充：
   - `target_actor_id`（统一从 `ActorIdentityComponent` 读取）
   - `target_name`（从 `NameComponent` 读取）
   - `target_kind`（枚举字符串：`npc` / `merchant` / `quest_giver` / `recruitable` / `chest` / `unknown`，按组件存在性判断）
   - `map_id`（当前地图）
-- [ ] **新增 `tf.entity` 只读查询**：`actor_id(handle)` / `name(handle)` / `position(handle)` / `has_component(handle, kind)`；脚本可以用同一套 API 查 `evt.target` 或任意 handle。
-- [ ] **新增 `ScriptedInteractionComponent`**：
+- [x] **新增 `tf.entity` 只读查询**：`actor_id(handle)` / `name(handle)` / `position(handle)` / `has_component(handle, kind)`；脚本可以用同一套 API 查 `evt.target` 或任意 handle。
+- [x] **新增 `ScriptedInteractionComponent`**：
   - 标记"该实体的交互由 Lua 完全独占"
   - 在 [entity_factory](../src/game/factory) 和 [tiled loader](../src/game/loader) 添加属性读取（Tiled 属性 `scripted_interaction = true`）
   - 写一个共享 helper `helpers::isScriptedInteraction(registry, target)`，**7 个 InteractCommand 订阅者**统一调用
@@ -118,8 +118,8 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
     - [chest_system.cpp:72](../src/game/system/chest_system.cpp)
     - [rest_system.cpp:32](../src/game/system/rest_system.cpp)
     - [closet_interaction_system.cpp:26](../src/game/system/closet_interaction_system.cpp)
-- [ ] **`tf.event.on("interact", fn)` 的 payload 测试**：写 fixture，构造一个带 `ActorIdentityComponent` + `NameComponent` 的实体，从 Lua 端 `assert` payload 字段齐全。
-- [ ] **更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md)** 的事件 payload 章节，补充新字段。
+- [x] **`tf.event.on("interact", fn)` 的 payload 测试**：写 fixture，构造一个带 `ActorIdentityComponent` + `NameComponent` 的实体，从 Lua 端 `assert` payload 字段齐全。
+- [x] **更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md)** 的事件 payload 章节，补充新字段。
 
 ### 验收
 
@@ -145,19 +145,19 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 
 ### 待办
 
-- [ ] **`tf.dialogue` 保持现状**（只有 `show/hide`），不引入 `sequence`/`choice` 绑定。
-- [ ] **新建 [scripts/lib/dialogue.lua](../scripts/lib/dialogue.lua) 状态机式 helper**：
+- [x] **`tf.dialogue` 保持现状**（只有 `show/hide`），不引入 `sequence`/`choice` 绑定。
+- [x] **新建 [scripts/lib/dialogue.lua](../scripts/lib/dialogue.lua) 状态机式 helper**：
   - `dialogue.start(target, lines, on_done)`：在 module-local 表里登记 `{target → {lines, cursor}}`，立刻 `tf.dialogue.show(lines[1])`
   - 注册 `tf.event.on("interact", ...)` 全局监听：每次 interact 命中已登记的 target 时，`cursor + 1`，再 show 下一行；走到末尾时 `tf.dialogue.hide` + 触发 `on_done(interrupted=false)`，并清理状态
   - `dialogue.cancel(target)`：手动中断，触发 `on_done(interrupted=true)` 并清理
   - **不依赖 `tf.state`**，全部在 Lua module-local 变量中
-- [ ] **新增测试 NPC**：
+- [x] **新增测试 NPC**：
   - 在合适地图（如 home_exterior 或 town）放一个 `npc.greeter` 测试 NPC
   - 挂 `DialogueComponent` + `ActorIdentityComponent{actor_id="npc.greeter"}` + `ScriptedInteractionComponent`
   - 新建 [scripts/npcs/greeter.lua](../scripts/npcs/greeter.lua)，注册 interact 回调，第一次说"Hi"，第二次说"Bye"
 - [ ] **`choice` 推迟到 Phase 1.5**：补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗后再加；写一份 follow-up issue 卡，不挂在 Phase 1 里。
-- [ ] **保留 `DialogueSystem` 作为 fallback**：未挂 `ScriptedInteractionComponent` 的 NPC 仍走 C++ 路径，不破坏现有非脚本 NPC。
-- [ ] **端到端测试**：在 `tests/scripts/` 加 `dialogue_sequence_smoke_test`：模拟 3 次 `InteractCommand`，断言依次显示 line1 → line2 → 关闭。
+- [x] **保留 `DialogueSystem` 作为 fallback**：未挂 `ScriptedInteractionComponent` 的 NPC 仍走 C++ 路径，不破坏现有非脚本 NPC。
+- [x] **端到端测试**：在 [script_dialogue_helper_test.cpp](../tests/game/script_dialogue_helper_test.cpp) 模拟 3 次 `InteractCommand`，断言依次显示 line1 → line2 → 关闭。
 
 ### 已知限制（首版接受）
 

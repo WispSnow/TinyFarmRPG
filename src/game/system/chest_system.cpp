@@ -100,6 +100,7 @@ void ChestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
     const entt::entity player = helpers::getPlayerEntity(registry_);
     if (player == entt::null || event.player != player) return;
     if (event.target == entt::null || !registry_.valid(event.target)) return;
+    if (helpers::isScriptedInteraction(registry_, event.target)) return;
     if (!registry_.any_of<game::component::ChestComponent>(event.target)) return;
 
     tryOpenChest(event.player, event.target);
