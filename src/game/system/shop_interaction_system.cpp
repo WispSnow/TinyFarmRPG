@@ -144,6 +144,7 @@ void ShopInteractionSystem::onOpenShopCommand(const game::defs::OpenShopCommand&
         return;
     }
 
+    // Scripted shop openings skip the C++ merchant greeting; Lua owns that presentation.
     if (active_merchant_ != entt::null) {
         closeMerchantGreeting(active_merchant_);
     }

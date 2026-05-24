@@ -167,11 +167,12 @@ tf
 │   ├── members()                                 → { actor_id, ... }
 │   ├── is_recruited(actor_id)                    → bool
 │   ├── request_recruit(actor_id [, handle])      → { ok, reason }
-│   └── level(actor_id)                           → int
+│   ├── level(actor_id)                           → int
+│   └── initial_level(actor_id)                   → int
 ├── shop
 │   └── open(shop_id [, merchant_handle])         → { ok, reason }
 ├── battle
-│   └── start([troop_id] [, opts])                → { ok, reason }
+│   └── start(troop_id [, opts])                  → { ok, reason }
 ├── map
 │   └── current()                                 → string
 ├── command
@@ -205,22 +206,33 @@ tf
 
 `tf.quest.accept`、`tf.quest.turn_in`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
 
-`tf.battle.start` 的 `opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`；省略 `troop_id` 时沿用 C++ 战斗单位工厂的默认敌群选择。
+`tf.party.members()` 返回 `PartyComponent::recruited_actor_ids_` 原样，因此包含玩家本人（默认 `actor.player`）。`tf.party.level(actor_id)` 只表示已招募角色的当前等级；未招募或未知角色返回 `0`。如果脚本需要读取 catalog 中的初始等级，使用 `tf.party.initial_level(actor_id)`。
+
+`tf.shop.open` 会直接打开指定商店，不播放 C++ 商人 greeting；脚本侧如果需要开店前对白，应先用 `tf.dialogue` 或 `lib.dialogue` 自行编排。
+
+`tf.battle.start` 要求显式传入非空 `troop_id`；`opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`。
+
+任务内容脚本约定用 `scripts/quests/*.lua` 承载剧情分支，quest id 保持数据侧 dot 命名，例如 `quest.village.goblin_cleanup`；Lua module path 去掉 `quest.` 前缀后把余下的 `.` 压平成 `_`，例如 `quests.village_goblin_cleanup`。脚本侧使用 `lib.quest.module_for(quest_id)` 生成 module path，避免手写 require 路径：
+
+```lua
+local quest = tf.script.require("lib.quest")
+tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
+```
 
 `tf.event.on("interact", fn)` 的 payload 会提供稳定目标信息，脚本不需要反查 ECS 细节：
 
 - `player` / `target`：`ScriptEntityHandle | nil`
-- `target_actor_id`：来自 `ActorIdentityComponent`，例如 `actor.lyria`；普通蓝图 NPC 至少会有蓝图 ID
+- `target_actor_id`：来自 `ActorIdentityComponent`，例如 `actor.lyria` 或 `npc.manu`；Tiled actor 可用 `actor_id` 属性覆盖蓝图默认身份
 - `target_name`：来自 `NameComponent`
 - `target_kind`：`npc` / `merchant` / `quest_giver` / `recruitable` / `chest` / `unknown`
-- `target_blueprint_id`：地图 actor 的蓝图 ID，如 `lyria`
+- `target_blueprint_id`：地图 actor 的蓝图 ID，如 `lyria` 或 `quest`
 - `map_id` / `map_id_hash`：当前地图名称与哈希字符串；无 `WorldState` 时为 `nil`
 
 挂 `ScriptedInteractionComponent` 或 Tiled 属性 `scripted_interaction = true` 的实体由 Lua 独占交互，默认 C++ 对话、任务、招募、商店、宝箱、休息、衣柜系统都会早退。
 
 脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 会在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
 
-使用 `lib.dialogue` 的 NPC 回调还应在开头检查 `evt.dialogue_handled`。当 helper 已经推进或关闭当前对话时会把这个字段设为 `true`，NPC 脚本据此避免在"关闭对话的同一次按键"里立刻重新开始同一段对话。
+`evt.dialogue_handled` 是 Lua 脚本之间约定的协调标志，不来自 C++ payload。`lib.dialogue` 在同一次按键推进或关闭当前对话时会把它设为 `true`；NPC/quest 脚本应在回调开头检查并尽早 `return`。脚本自己成功认领一次交互并调用 `dialogue.start(...)` 后，也可以把该字段设为 `true`，避免后续监听器再处理同一按键。
 
 ---
 

@@ -246,7 +246,9 @@ void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestC
         .quest_id_hash = quest->id_hash_,
         .quest_id = quest->id_,
     });
-    showQuestText(command.giver, *quest, InteractionState::Offerable);
+    if (!helpers::isScriptedInteraction(registry_, command.giver)) {
+        showQuestText(command.giver, *quest, InteractionState::Offerable);
+    }
 }
 
 void QuestInteractionSystem::onTurnInQuestCommand(const game::defs::TurnInQuestCommand& command) {
@@ -303,7 +305,9 @@ void QuestInteractionSystem::turnInQuest(const entt::entity player,
         .quest_id_hash = quest.id_hash_,
         .quest_id = quest.id_,
     });
-    showText(giver, formatTurnInSuccessText(quest, turn_in_result));
+    if (!helpers::isScriptedInteraction(registry_, giver)) {
+        showText(giver, formatTurnInSuccessText(quest, turn_in_result));
+    }
 }
 
 } // namespace game::system

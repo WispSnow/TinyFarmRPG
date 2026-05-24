@@ -508,13 +508,28 @@ int ScriptGameApi::partyLevel(const std::string_view actor_id) const {
     }
 
     const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
-    if (player != entt::null) {
-        if (const auto* stats = registry_.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
-            if (const auto found = stats->states_by_actor_id_.find(std::string{actor_id});
-                found != stats->states_by_actor_id_.end()) {
-                return found->second.level;
-            }
+    if (player == entt::null) {
+        return 0;
+    }
+
+    const auto* party = registry_.try_get<game::component::PartyComponent>(player);
+    if (!party || !containsString(party->recruited_actor_ids_, actor_id)) {
+        return 0;
+    }
+
+    if (const auto* stats = registry_.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
+        if (const auto found = stats->states_by_actor_id_.find(std::string{actor_id});
+            found != stats->states_by_actor_id_.end()) {
+            return found->second.level;
         }
+    }
+
+    return partyInitialLevel(actor_id);
+}
+
+int ScriptGameApi::partyInitialLevel(const std::string_view actor_id) const {
+    if (actor_id.empty()) {
+        return 0;
     }
 
     const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
@@ -561,14 +576,16 @@ ScriptCommandResult ScriptGameApi::shopOpen(
 ScriptCommandResult ScriptGameApi::battleStart(const std::string_view troop_id,
                                                std::vector<std::string> actor_ids,
                                                const std::string_view battle_background_id) {
-    if (!troop_id.empty()) {
-        const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
-        if (!rpg_catalog) {
-            return commandFailure("catalog_unavailable");
-        }
-        if (!rpg_catalog->findTroop(troop_id)) {
-            return commandFailure("unknown_troop");
-        }
+    if (troop_id.empty()) {
+        return commandFailure("invalid_troop_id");
+    }
+
+    const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
+    if (!rpg_catalog) {
+        return commandFailure("catalog_unavailable");
+    }
+    if (!rpg_catalog->findTroop(troop_id)) {
+        return commandFailure("unknown_troop");
     }
 
     triggerFromScript(host_, dispatcher_, game::defs::EnterBattleCommand{

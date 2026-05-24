@@ -185,6 +185,8 @@ TEST(ScriptPhase2ApiTest, QuestPartyAndMapQueriesExposeGameplayState) {
         assert(tf.party.is_recruited("actor.lyria") == true)
         assert(tf.party.is_recruited("actor.tori") == false)
         assert(tf.party.level("actor.lyria") == 7)
+        assert(tf.party.level("actor.tori") == 0)
+        assert(tf.party.initial_level("actor.tori") == 1)
         assert(tf.map.current() == "home_exterior")
     )"));
 
@@ -291,6 +293,10 @@ TEST(ScriptPhase2ApiTest, TriggerApisReturnFailureReasonsBeforeDispatch) {
         local battle = tf.battle.start("troop.missing")
         assert(battle.ok == false)
         assert(battle.reason == "unknown_troop")
+
+        local empty_battle = tf.battle.start()
+        assert(empty_battle.ok == false)
+        assert(empty_battle.reason == "invalid_troop_id")
     )"));
 }
 

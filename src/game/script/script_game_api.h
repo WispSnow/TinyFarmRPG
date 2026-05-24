@@ -72,6 +72,7 @@ public:
         std::string_view actor_id,
         const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle);
     [[nodiscard]] int partyLevel(std::string_view actor_id) const;
+    [[nodiscard]] int partyInitialLevel(std::string_view actor_id) const;
 
     [[nodiscard]] ScriptCommandResult shopOpen(
         std::string_view shop_id,

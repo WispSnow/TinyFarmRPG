@@ -392,6 +392,7 @@ void EntityBuilder::decorateExternalEntity(entt::entity entity) {
 void EntityBuilder::buildActor(entt::id_type name_id) {
     auto position = glm::vec2(object_json_->value("x", 0.0f), object_json_->value("y", 0.0f));
 
+    const auto actor_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_ACTOR_ID);
     const auto shop_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_SHOP_ID);
     const auto quest_offer_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_QUEST_OFFER_ID);
     const auto recruit_actor_id = findObjectStringProperty(object_json_, tiled::ACTOR_PROP_RECRUIT_ACTOR_ID);
@@ -481,6 +482,10 @@ void EntityBuilder::buildActor(entt::id_type name_id) {
                 .actor_id_ = *recruit_actor_id,
                 .actor_id_hash_ = entt::hashed_string{recruit_actor_id->c_str()}.value()});
         setActorIdentity(registry_, entity_id_, *recruit_actor_id);
+    }
+
+    if (actor_id) {
+        setActorIdentity(registry_, entity_id_, *actor_id);
     }
 
     if (wander_radius_override) {

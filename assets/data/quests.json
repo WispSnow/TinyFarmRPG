@@ -26,12 +26,6 @@
             "count": 2
           }
         ]
-      },
-      "giver_text": {
-        "offer": "Can you help us drive away the slimes?",
-        "progress": "We still need more help.",
-        "ready_to_turn_in": "You did it? That's a relief.",
-        "completed": "Thank you again."
       }
     }
   ]
