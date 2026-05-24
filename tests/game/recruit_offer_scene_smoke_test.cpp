@@ -46,6 +46,7 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(header.find("const game::data::ActorData& actor_"), std::string::npos);
     EXPECT_NE(header.find("void onAccept()"), std::string::npos);
     EXPECT_NE(header.find("void onDecline()"), std::string::npos);
+    EXPECT_NE(header.find("SceneUiCoverage uiCoverage() const override"), std::string::npos);
 
     const std::string init_block = test_source_utils::extractFunctionBlock(source, "bool RecruitOfferScene::init()");
     const std::string init_ui_block =
@@ -65,6 +66,8 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(init_ui_block.find("\"decline\""), std::string::npos);
     EXPECT_NE(source.find("\"menu_cancel\"_hs"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
+    EXPECT_NE(source.find("RecruitOfferScene::uiCoverage()"), std::string::npos);
+    EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi"), std::string::npos);
     EXPECT_NE(accept_block.find("RecruitPartyMemberCommand"), std::string::npos);
     EXPECT_NE(accept_block.find("requestPopScene()"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getInputManager().popContext();"), std::string::npos);

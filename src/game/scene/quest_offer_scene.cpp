@@ -151,6 +151,10 @@ void QuestOfferScene::clean() {
     Scene::clean();
 }
 
+engine::scene::SceneUiCoverage QuestOfferScene::uiCoverage() const {
+    return engine::scene::SceneUiCoverage::HideUnderlyingSceneUi;
+}
+
 bool QuestOfferScene::initUI() {
     auto* runtime = context_.getRmlUi();
     if (!runtime) {
