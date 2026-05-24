@@ -10,6 +10,7 @@
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands_interaction.h"
+#include "game/defs/events_battle.h"
 #include "game/defs/events_inventory.h"
 #include "game/defs/events_quest.h"
 #include "game/domain/inventory_domain_service.h"
@@ -245,6 +246,42 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
     env.dispatcher.trigger(game::defs::InteractCommand{env.player, env.target});
 
     EXPECT_TRUE(env.host.exec("assert(seen_interact_metadata == true)"));
+}
+
+TEST(ScriptEventBridgeTest, BattleEndedPayloadIncludesRewardSummary) {
+    ScriptEventBridgeTestEnv env{};
+    constexpr entt::id_type seed_item_id = entt::hashed_string{"strawberry_seed"}.value();
+
+    ASSERT_TRUE(env.host.exec(R"(
+        battle_reward_seen = false
+        assert(tf.callbacks.on_battle_end(function(evt)
+            assert(evt.name == "battle_ended")
+            assert(evt.outcome == "Victory")
+            assert(evt.has_rewards == true)
+            assert(evt.rewards.gold == 7)
+            assert(evt.rewards.exp == 11)
+            assert(#evt.rewards.items == 1)
+            assert(evt.rewards.items[1].item_id == "strawberry_seed")
+            assert(type(evt.rewards.items[1].item_id_hash) == "string")
+            assert(evt.rewards.items[1].count == 2)
+            battle_reward_seen = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::BattleEndedEvent{
+        .outcome = game::battle::BattleOutcome::Victory,
+        .reward_summary = game::battle::BattleRewardSummary{
+            .gold_total = 7,
+            .exp_total = 11,
+            .item_drops = {game::battle::BattleRewardItemDrop{
+                .item_id = "strawberry_seed",
+                .item_id_hash = seed_item_id,
+                .count = 2,
+            }},
+        },
+    });
+
+    EXPECT_TRUE(env.host.exec("assert(battle_reward_seen == true)"));
 }
 
 } // namespace game::script

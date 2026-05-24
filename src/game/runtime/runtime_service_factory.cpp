@@ -11,6 +11,9 @@
 #include "engine/vfx/null_vfx_backend.h"
 #include "engine/vfx/vfx_service.h"
 #include "game/data/game_time.h"
+#include "game/data/quest_catalog.h"
+#include "game/data/rpg_catalog.h"
+#include "game/data/shop_catalog.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
 #include "game/runtime/game_content_manifest.h"
@@ -226,6 +229,24 @@ void injectResourceManager(engine::core::Context& context, entt::registry& regis
     }
 }
 
+template <typename T>
+void injectRegistryContextPointer(entt::registry& registry, T* pointer) {
+    if (!pointer) {
+        return;
+    }
+    if (auto** current = registry.ctx().find<T*>()) {
+        *current = pointer;
+    } else {
+        registry.ctx().emplace<T*>(pointer);
+    }
+}
+
+void injectCatalogPointers(entt::registry& registry, game::runtime::GameRuntimeServices& services) {
+    injectRegistryContextPointer(registry, services.rpg_catalog.get());
+    injectRegistryContextPointer(registry, services.quest_catalog.get());
+    injectRegistryContextPointer(registry, services.shop_catalog.get());
+}
+
 } // namespace
 
 namespace game::runtime {
@@ -267,6 +288,7 @@ bool RuntimeServiceFactory::assemble(GameRuntimeAssembler::ServiceBuildParams pa
     if (!ContentCatalogLoader::ensureShopCatalog(params.services)) {
         return false;
     }
+    injectCatalogPointers(params.registry, params.services);
     ContentCatalogLoader::ensureAudioCueCatalog(params.services, asset_registry);
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(

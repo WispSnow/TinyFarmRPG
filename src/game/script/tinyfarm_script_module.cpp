@@ -20,6 +20,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -90,6 +91,13 @@ void warnScriptStateTypeMismatch(const std::string& key, std::string_view expect
     spdlog::warn("tf.state: key '{}' is not {}", key, expected_type);
 }
 
+[[nodiscard]] sol::table commandResultToLua(sol::state& lua, const game::script::ScriptCommandResult& result) {
+    sol::table table = lua.create_table();
+    table["ok"] = result.ok;
+    table["reason"] = result.reason;
+    return table;
+}
+
 } // namespace
 
 namespace game::script {
@@ -156,6 +164,110 @@ void installTinyFarmScriptModule(sol::state& lua,
         return api->entityHasComponent(handle, kind);
     });
     tf_impl["entity"] = engine::script::createReadOnlyProxy(lua, entity_impl, "tf.entity");
+
+    // ── tf.quest ──
+    sol::table quest_impl = lua.create_table();
+    quest_impl.set_function("status", [api](const std::string& quest_id) -> std::string {
+        return api->questStatus(quest_id);
+    });
+    quest_impl.set_function(
+        "progress",
+        [&lua, api](const std::string& quest_id, const std::string& objective_id) -> sol::table {
+            const auto progress = api->questProgress(quest_id, objective_id);
+            sol::table table = lua.create_table();
+            table["current"] = progress.current;
+            table["required"] = progress.required;
+            return table;
+        });
+    quest_impl.set_function("is_available", [api](const std::string& quest_id) -> bool {
+        return api->questIsAvailable(quest_id);
+    });
+    quest_impl.set_function(
+        "accept",
+        [&lua, api](const std::string& quest_id, sol::optional<ScriptEntityHandle> giver_handle) -> sol::table {
+            return commandResultToLua(lua, api->questAccept(quest_id, toStdOptional(giver_handle)));
+        });
+    quest_impl.set_function(
+        "turn_in",
+        [&lua, api](const std::string& quest_id, sol::optional<ScriptEntityHandle> giver_handle) -> sol::table {
+            return commandResultToLua(lua, api->questTurnIn(quest_id, toStdOptional(giver_handle)));
+        });
+    tf_impl["quest"] = engine::script::createReadOnlyProxy(lua, quest_impl, "tf.quest");
+
+    // ── tf.party ──
+    sol::table party_impl = lua.create_table();
+    party_impl.set_function("members", [&lua, api]() -> sol::table {
+        const std::vector<std::string> members = api->partyMembers();
+        sol::table table = lua.create_table();
+        int index = 1;
+        for (const auto& actor_id : members) {
+            table[index++] = actor_id;
+        }
+        return table;
+    });
+    party_impl.set_function("is_recruited", [api](const std::string& actor_id) -> bool {
+        return api->partyIsRecruited(actor_id);
+    });
+    party_impl.set_function(
+        "request_recruit",
+        [&lua, api](const std::string& actor_id,
+                    sol::optional<ScriptEntityHandle> recruiter_handle) -> sol::table {
+            return commandResultToLua(lua, api->partyRequestRecruit(actor_id, toStdOptional(recruiter_handle)));
+        });
+    party_impl.set_function("level", [api](const std::string& actor_id) -> int {
+        return api->partyLevel(actor_id);
+    });
+    tf_impl["party"] = engine::script::createReadOnlyProxy(lua, party_impl, "tf.party");
+
+    // ── tf.shop ──
+    sol::table shop_impl = lua.create_table();
+    shop_impl.set_function(
+        "open",
+        [&lua, api](const std::string& shop_id, sol::optional<ScriptEntityHandle> merchant_handle) -> sol::table {
+            return commandResultToLua(lua, api->shopOpen(shop_id, toStdOptional(merchant_handle)));
+        });
+    tf_impl["shop"] = engine::script::createReadOnlyProxy(lua, shop_impl, "tf.shop");
+
+    // ── tf.battle ──
+    sol::table battle_impl = lua.create_table();
+    battle_impl.set_function(
+        "start",
+        [&lua, api](sol::optional<std::string> troop_id, sol::optional<sol::table> options) -> sol::table {
+            std::vector<std::string> actor_ids{};
+            std::string battle_background_id{};
+            if (options.has_value()) {
+                const sol::object actor_ids_obj = options.value().get<sol::object>("actor_ids");
+                if (actor_ids_obj.is<sol::table>()) {
+                    sol::table actor_ids_table = actor_ids_obj.as<sol::table>();
+                    for (int index = 1;; ++index) {
+                        const sol::object actor_id_obj = actor_ids_table.get<sol::object>(index);
+                        if (!actor_id_obj.valid() || actor_id_obj.get_type() == sol::type::lua_nil) {
+                            break;
+                        }
+                        if (actor_id_obj.is<std::string>()) {
+                            actor_ids.push_back(actor_id_obj.as<std::string>());
+                        }
+                    }
+                }
+
+                const sol::object background_obj = options.value().get<sol::object>("battle_background_id");
+                if (background_obj.is<std::string>()) {
+                    battle_background_id = background_obj.as<std::string>();
+                }
+            }
+
+            return commandResultToLua(
+                lua,
+                api->battleStart(troop_id.value_or(""), std::move(actor_ids), battle_background_id));
+        });
+    tf_impl["battle"] = engine::script::createReadOnlyProxy(lua, battle_impl, "tf.battle");
+
+    // ── tf.map ──
+    sol::table map_impl = lua.create_table();
+    map_impl.set_function("current", [api]() -> std::string {
+        return api->currentMap();
+    });
+    tf_impl["map"] = engine::script::createReadOnlyProxy(lua, map_impl, "tf.map");
 
     // ── tf.command ──
     sol::table command_impl = lua.create_table();

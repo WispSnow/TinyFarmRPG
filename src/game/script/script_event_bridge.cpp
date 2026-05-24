@@ -303,6 +303,24 @@ void ScriptEventBridge::onBattleEnded(const game::defs::BattleEndedEvent& event)
     payload["outcome"] = std::string{game::battle::toString(event.outcome)};
     payload["final_unit_count"] = static_cast<int>(event.final_units.size());
     payload["has_rewards"] = event.reward_summary.has_value();
+    if (event.reward_summary.has_value()) {
+        sol::table rewards = host_.luaState().create_table();
+        rewards["gold"] = event.reward_summary->gold_total;
+        rewards["exp"] = event.reward_summary->exp_total;
+
+        sol::table items = host_.luaState().create_table();
+        for (const auto& item : event.reward_summary->item_drops) {
+            sol::table item_payload = host_.luaState().create_table();
+            item_payload["item_id"] = item.item_id;
+            item_payload["item_id_hash"] = std::to_string(item.item_id_hash);
+            item_payload["count"] = item.count;
+            items.add(item_payload);
+        }
+        rewards["items"] = items;
+        payload["rewards"] = rewards;
+    } else {
+        payload["rewards"] = sol::lua_nil;
+    }
     (void)host_.emitEvent("battle_ended", payload);
 }
 

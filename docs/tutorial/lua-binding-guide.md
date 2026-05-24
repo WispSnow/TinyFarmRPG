@@ -157,6 +157,23 @@ tf
 │   ├── name(handle)                → string | nil
 │   ├── position(handle)            → float, float
 │   └── has_component(handle, kind) → bool
+├── quest
+│   ├── status(quest_id)                          → string
+│   ├── progress(quest_id, objective_id)          → { current, required }
+│   ├── is_available(quest_id)                    → bool
+│   ├── accept(quest_id, giver_handle)            → { ok, reason }
+│   └── turn_in(quest_id, giver_handle)           → { ok, reason }
+├── party
+│   ├── members()                                 → { actor_id, ... }
+│   ├── is_recruited(actor_id)                    → bool
+│   ├── request_recruit(actor_id [, handle])      → { ok, reason }
+│   └── level(actor_id)                           → int
+├── shop
+│   └── open(shop_id [, merchant_handle])         → { ok, reason }
+├── battle
+│   └── start([troop_id] [, opts])                → { ok, reason }
+├── map
+│   └── current()                                 → string
 ├── command
 │   ├── add_item(item_id, count [, target_handle] [, slot])     → bool
 │   ├── remove_item(item_id, count [, target_handle] [, slot])  → bool
@@ -185,6 +202,10 @@ tf
 `[ ]` 表示可选参数，用 `sol::optional` 实现。
 
 `tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
+
+`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
+
+`tf.battle.start` 的 `opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`；省略 `troop_id` 时沿用 C++ 战斗单位工厂的默认敌群选择。
 
 `tf.event.on("interact", fn)` 的 payload 会提供稳定目标信息，脚本不需要反查 ECS 细节：
 

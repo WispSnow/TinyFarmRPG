@@ -61,6 +61,7 @@ ShopInteractionSystem::ShopInteractionSystem(entt::registry& registry,
       item_catalog_(item_catalog),
       shop_transaction_service_(shop_transaction_service) {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&ShopInteractionSystem::onInteractCommand>(this);
+    dispatcher_.sink<game::defs::OpenShopCommand>().connect<&ShopInteractionSystem::onOpenShopCommand>(this);
 }
 
 ShopInteractionSystem::~ShopInteractionSystem() {
@@ -120,6 +121,33 @@ void ShopInteractionSystem::onInteractCommand(const game::defs::InteractCommand&
 
     closeMerchantGreeting(event.target);
     openShopMenu(event.player, *shop);
+}
+
+void ShopInteractionSystem::onOpenShopCommand(const game::defs::OpenShopCommand& command) {
+    if (context_.getGameState().isPaused()) {
+        return;
+    }
+    if (command.player == entt::null || !registry_.valid(command.player)) {
+        return;
+    }
+    if (command.merchant != entt::null && !registry_.valid(command.merchant)) {
+        return;
+    }
+    if (command.shop_id_hash == entt::null || command.shop_id.empty()) {
+        return;
+    }
+
+    const auto* shop = shop_catalog_.findShop(command.shop_id_hash);
+    if (!shop) {
+        spdlog::warn("ShopInteractionSystem: OpenShopCommand 引用的 shop_id='{}' 未在 ShopCatalog 中找到。",
+                     command.shop_id);
+        return;
+    }
+
+    if (active_merchant_ != entt::null) {
+        closeMerchantGreeting(active_merchant_);
+    }
+    openShopMenu(command.player, *shop);
 }
 
 void ShopInteractionSystem::update(float) {

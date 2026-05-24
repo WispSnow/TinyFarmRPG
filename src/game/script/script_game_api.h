@@ -11,12 +11,23 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <vector>
 
 namespace engine::script {
 class ScriptHost;
 }
 
 namespace game::script {
+
+struct ScriptCommandResult {
+    bool ok{false};
+    std::string reason{};
+};
+
+struct QuestProgressSnapshot {
+    int current{0};
+    int required{0};
+};
 
 /// @brief 游戏脚本 API 的 C++ facade。
 ///
@@ -43,6 +54,34 @@ public:
     [[nodiscard]] std::tuple<float, float> entityPosition(const engine::script::ScriptEntityHandle& handle) const;
     [[nodiscard]] bool entityHasComponent(const engine::script::ScriptEntityHandle& handle,
                                           std::string_view kind) const;
+
+    [[nodiscard]] std::string questStatus(std::string_view quest_id) const;
+    [[nodiscard]] QuestProgressSnapshot questProgress(std::string_view quest_id,
+                                                      std::string_view objective_id) const;
+    [[nodiscard]] bool questIsAvailable(std::string_view quest_id) const;
+    [[nodiscard]] ScriptCommandResult questAccept(
+        std::string_view quest_id,
+        const std::optional<engine::script::ScriptEntityHandle>& giver_handle);
+    [[nodiscard]] ScriptCommandResult questTurnIn(
+        std::string_view quest_id,
+        const std::optional<engine::script::ScriptEntityHandle>& giver_handle);
+
+    [[nodiscard]] std::vector<std::string> partyMembers() const;
+    [[nodiscard]] bool partyIsRecruited(std::string_view actor_id) const;
+    [[nodiscard]] ScriptCommandResult partyRequestRecruit(
+        std::string_view actor_id,
+        const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle);
+    [[nodiscard]] int partyLevel(std::string_view actor_id) const;
+
+    [[nodiscard]] ScriptCommandResult shopOpen(
+        std::string_view shop_id,
+        const std::optional<engine::script::ScriptEntityHandle>& merchant_handle);
+
+    [[nodiscard]] ScriptCommandResult battleStart(std::string_view troop_id,
+                                                  std::vector<std::string> actor_ids,
+                                                  std::string_view battle_background_id);
+
+    [[nodiscard]] std::string currentMap() const;
 
     [[nodiscard]] bool addItem(std::string_view item_id,
                                int count,

@@ -361,6 +361,40 @@ TEST(QuestInteractionSystemTest, ReadyToTurnInCompletesQuestAndShowsRewardSummar
     EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.\nGained Gold 4\nGained Strawberry Seed x2");
 }
 
+TEST(QuestInteractionSystemTest, TurnInQuestCommandCompletesReadyQuest) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    auto catalog = loadQuestCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    game::domain::QuestTurnInService turn_in_service(registry, item_catalog, inventory_domain_service);
+
+    QuestInteractionSystem system(registry, dispatcher, catalog, turn_in_service);
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(registry);
+    const entt::entity giver = createQuestGiver(registry);
+
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    quest_log.active_quests.push_back(std::string(QUEST_ID));
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "slime_hunt")] = 2;
+    quest_log.objective_progress[game::data::makeQuestObjectiveProgressKey(QUEST_ID, "bat_hunt")] = 1;
+
+    dispatcher.trigger(game::defs::TurnInQuestCommand{
+        .player = player,
+        .giver = giver,
+        .quest_id_hash = entt::hashed_string{QUEST_ID.data(), QUEST_ID.size()}.value(),
+        .quest_id = std::string(QUEST_ID)});
+
+    EXPECT_TRUE(quest_log.active_quests.empty());
+    ASSERT_EQ(quest_log.completed_quests.size(), 1u);
+    EXPECT_EQ(quest_log.completed_quests.front(), QUEST_ID);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 4);
+    ASSERT_EQ(capture.shows.size(), 1u);
+    EXPECT_EQ(capture.shows.front().text, "Thanks for finishing the hunt.\nGained Gold 4\nGained Strawberry Seed x2");
+}
+
 TEST(QuestInteractionSystemTest, ReadyToTurnInFailureKeepsQuestReadyAndShowsFailureMessage) {
     entt::registry registry;
     entt::dispatcher dispatcher;
