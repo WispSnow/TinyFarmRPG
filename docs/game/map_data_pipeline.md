@@ -43,6 +43,7 @@
 | object layer（`.tmj`）rect object | `type="rest"` | `game::component::RestArea` + 进 `SpatialIndex` | 休息交互 | `EntityBuilder::buildRestArea` |
 | object layer（`.tmj`）rect object | `type="closet"` | `game::component::ClosetArea` + 进 `SpatialIndex` | 衣柜换装交互 | `EntityBuilder::buildClosetArea` |
 | object layer（`.tmj`）light | `type="light" + name="point/spot/emissive"` | `PointLight/SpotLight/EmissiveRect` 组件 | 光照系统 | `EntityBuilder::buildPointLight/buildSpotLight/buildEmissiveRect` |
+| object layer（`.tmj`）任意可交互 object | `scripted_interaction=true + script_event="..."` | `ScriptedInteractionComponent` + `ScriptTriggerComponent` | Lua 独占宝箱/机关/地图事件 | `EntityBuilder::attachScriptMetadata` |
 | map properties（`.tmj`） | `ambient={red,green,blue}` | `WorldState::MapInfo.ambient_override` | 室内环境光覆盖 | `MapManager::loadMap` → `loadAmbientOverride` |
 | map properties（`.tmj`） | `battle_background_id="Grassland"` | `WorldState::MapInfo.battle_background_id` | 战斗场景默认背景 | `MapManager::loadMap` → `loadBattleBackgroundId` |
 | tile properties（`.tsj`） | `obj_type="crop/tree/rock/chest"` | 生成对应组件（`CropComponent`/`ResourceNodeComponent` 等）与空间层语义 | 作物/资源点/宝箱等 | `EntityBuilder::buildFarmTag` |
@@ -63,6 +64,9 @@
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
 | `actor_id` | string | 覆盖该 actor 实例暴露给 Lua 的稳定身份；不影响 blueprint lookup | `scripts/**/*.lua` |
 | `scripted_interaction` | bool | 让 Lua 独占该实例的 interact；默认 C++ 对话/任务/招募/商店等入口早退 | `scripts/bootstrap.lua` |
+| `script_module` | string | 可选脚本模块提示；进入 Lua payload 的 `target_script_module`。当前是 forward-looking 元数据，首版不自动 require | `scripts/**/*.lua` |
+| `script_event` | string | 可选脚本事件名；进入 Lua payload 的 `target_script_event` | `scripts/**/*.lua` |
+| `script_once_key` | string | 可选一次性状态 key；进入 Lua payload 的 `target_script_once_key`，通常配合 `lib.once` | `tf.state` / 存档 |
 | `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色；脚本化时由 Lua 请求入队，非脚本化时走 C++ 兜底确认 | `assets/data/rpg/actors.json` |
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
@@ -76,6 +80,7 @@
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
 - `actor_id` 只覆盖 `ActorIdentityComponent.actor_id_`；object `name` 仍用于查找 actor blueprint
 - `scripted_interaction=true` 会让 loader 给该实体附加 `ScriptedInteractionComponent`
+- 任一 `script_*` 属性会让 loader 附加 `ScriptTriggerComponent`，Lua 可从 interact payload 读取
 - `recruit_actor_id` 会让 loader 给该实体附加 `RecruitableComponent`
 - `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
 - `battle_background_id` 只允许 `[A-Za-z0-9_]+`，例如 `Grassland`；实际资源路径按 `BattleBg/battlebacks1/<id>.png` 与 `BattleBg/battlebacks2/<id>.png` 解析
@@ -213,6 +218,24 @@
 - **必需字段**：`type="closet"` + `width/height > 0`
 - **语义**：创建 `ClosetArea`，并把覆盖到的瓦片注册为 `INTERACT`（静态网格）。玩家面向该区域按交互键时打开主角外观自定义界面。
 - **制作注意**：`closet` object 只是交互矩形，地图可视层仍需要摆放衣柜或家具图块，避免玩家对不可见区域交互。
+
+#### 脚本化宝箱 / 机关（任意 object）
+- **推荐字段**：`scripted_interaction=true` + `script_event="<map>.<event>"` + `script_once_key="<domain.key>"`
+- **语义**：`scripted_interaction=true` 让默认 C++ 交互系统早退；`script_event` / `script_once_key` 只作为 Lua payload 元数据，不直接改变 ECS。脚本化宝箱不会再消费原有 `ChestComponent` reward 属性，奖励内容应以 Lua 脚本为唯一真相。
+- **脚本约定**：地图脚本放在 `scripts/maps/<map_id>.lua`，用 `evt.target_script_event` 过滤目标，用 `lib.once` 写入 `tf.state` 防止读档或重复交互重放奖励。
+
+最小示例：
+
+```json
+{
+  "name": "seed_cache",
+  "properties": [
+    { "name": "scripted_interaction", "type": "bool", "value": true },
+    { "name": "script_event", "type": "string", "value": "home_exterior.seed_cache" },
+    { "name": "script_once_key", "type": "string", "value": "map.home_exterior.seed_cache.opened" }
+  ]
+}
+```
 
 #### `light`（object type 固定为 `light`；具体由 `name` 决定）
 - `name="point"`（point object）

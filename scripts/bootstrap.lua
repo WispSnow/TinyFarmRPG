@@ -9,6 +9,8 @@ local quest = tf.script.require("lib.quest")
 -- before NPC/quest scripts start new dialogue sequences.
 tf.script.require("lib.dialogue")
 tf.script.require("lib.state")
+tf.script.require("lib.once")
+tf.script.require("maps.home_exterior")
 tf.script.require("quests.first_delivery")
 tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 tf.script.require("npcs.greeter")

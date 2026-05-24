@@ -4,14 +4,19 @@
 #include "engine/component/name_component.h"
 #include "engine/script/script_host.h"
 #include "game/component/actor_identity_component.h"
+#include "game/component/chest_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/npc_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/component/script_trigger_component.h"
+#include "game/component/scripted_interaction_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_battle.h"
+#include "game/defs/events_dialogue.h"
 #include "game/defs/events_inventory.h"
+#include "game/defs/events_map.h"
 #include "game/defs/events_quest.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/script/script_event_bridge.h"
@@ -24,6 +29,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <filesystem>
+#include <vector>
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -33,6 +39,10 @@ namespace {
 
 [[nodiscard]] std::string itemConfigPath() {
     return (std::filesystem::path{PROJECT_SOURCE_DIR} / "tests/data/item_use_items.json").string();
+}
+
+[[nodiscard]] std::string projectScriptRoot() {
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / "scripts").string();
 }
 
 [[nodiscard]] int countItem(const entt::registry& registry, const entt::entity player, const entt::id_type item_id) {
@@ -76,7 +86,16 @@ struct ScriptEventBridgeTestEnv {
         target = registry.create();
         registry.emplace<engine::component::TransformComponent>(target, glm::vec2{16.0f, 0.0f});
 
+        host.setScriptRoot(projectScriptRoot());
         EXPECT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
+    }
+};
+
+struct DialogueCapture {
+    std::vector<game::defs::DialogueShowEvent> shows{};
+
+    void onShow(const game::defs::DialogueShowEvent& event) {
+        shows.push_back(event);
     }
 };
 
@@ -219,6 +238,13 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
             .actor_id_ = "actor.lyria",
             .actor_id_hash_ = entt::hashed_string{"actor.lyria"}.value(),
         });
+    env.registry.emplace<game::component::ScriptTriggerComponent>(
+        env.target,
+        game::component::ScriptTriggerComponent{
+            .module_ = "npcs.lyria",
+            .event_ = "lyria.intro",
+            .once_key_ = "npc.lyria.intro",
+        });
 
     ASSERT_TRUE(env.host.exec(R"(
         seen_interact_metadata = false
@@ -229,6 +255,9 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
             assert(evt.target_name == "Lyria")
             assert(evt.target_kind == "recruitable")
             assert(evt.target_blueprint_id == "lyria")
+            assert(evt.target_script_module == "npcs.lyria")
+            assert(evt.target_script_event == "lyria.intro")
+            assert(evt.target_script_once_key == "npc.lyria.intro")
             assert(evt.map_id == "home_exterior")
             assert(type(evt.map_id_hash) == "string")
             assert(tf.entity.actor_id(evt.target) == "actor.lyria")
@@ -238,6 +267,7 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
             assert(y == 0.0)
             assert(tf.entity.has_component(evt.target, "actor_identity") == true)
             assert(tf.entity.has_component(evt.target, "recruitable") == true)
+            assert(tf.entity.has_component(evt.target, "script_trigger") == true)
             assert(tf.entity.has_component(evt.target, "merchant") == false)
             seen_interact_metadata = true
         end) == true)
@@ -246,6 +276,116 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
     env.dispatcher.trigger(game::defs::InteractCommand{env.player, env.target});
 
     EXPECT_TRUE(env.host.exec("assert(seen_interact_metadata == true)"));
+}
+
+TEST(ScriptEventBridgeTest, MapEnterAndExitEventsExposeStableMapIds) {
+    ScriptEventBridgeTestEnv env{};
+    constexpr entt::id_type home_id = entt::hashed_string{"home_exterior"}.value();
+    constexpr entt::id_type town_id = entt::hashed_string{"town"}.value();
+
+    ASSERT_TRUE(env.host.exec(R"(
+        seen_map_exit = false
+        seen_map_enter = false
+        assert(tf.event.on("map_exit", function(evt)
+            assert(evt.name == "map_exit")
+            assert(evt.map_id == "home_exterior")
+            assert(type(evt.map_id_hash) == "string")
+            assert(evt.next_map_id == "town")
+            assert(type(evt.next_map_id_hash) == "string")
+            seen_map_exit = true
+        end) == true)
+        assert(tf.event.on("map_enter", function(evt)
+            assert(evt.name == "map_enter")
+            assert(evt.map_id == "town")
+            assert(type(evt.map_id_hash) == "string")
+            assert(evt.previous_map_id == "home_exterior")
+            assert(type(evt.previous_map_id_hash) == "string")
+            seen_map_enter = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::MapExitedEvent{
+        .map_id = home_id,
+        .map_name = "home_exterior",
+        .next_map_id = town_id,
+        .next_map_name = "town",
+    });
+    env.dispatcher.trigger(game::defs::MapEnteredEvent{
+        .map_id = town_id,
+        .map_name = "town",
+        .previous_map_id = home_id,
+        .previous_map_name = "home_exterior",
+    });
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(seen_map_exit == true)
+        assert(seen_map_enter == true)
+    )"));
+}
+
+TEST(ScriptEventBridgeTest, HomeExteriorScriptHandlesFirstEnterAndScriptedSeedCacheOnce) {
+    ScriptEventBridgeTestEnv env{};
+    DialogueCapture dialogue_capture{};
+    env.dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&dialogue_capture);
+
+    game::world::WorldState world_state{};
+    const entt::id_type map_id = world_state.ensureExternalMap("home_exterior");
+    world_state.setCurrentMap(map_id);
+    env.registry.ctx().emplace<game::world::WorldState*>(&world_state);
+
+    const entt::entity chest = env.registry.create();
+    env.registry.emplace<engine::component::TransformComponent>(chest, glm::vec2{32.0F, 16.0F});
+    env.registry.emplace<game::component::ChestComponent>(chest);
+    env.registry.emplace<game::component::ScriptedInteractionComponent>(chest);
+    env.registry.emplace<game::component::ScriptTriggerComponent>(
+        chest,
+        game::component::ScriptTriggerComponent{
+            .event_ = "home_exterior.seed_cache",
+            .once_key_ = "map.home_exterior.seed_cache.opened",
+        });
+
+    ASSERT_TRUE(env.host.exec(R"(
+        assert(tf.script.require("maps.home_exterior") ~= nil)
+        assert(tf.state.get_bool("map.home_exterior.first_enter", false) == true)
+    )"));
+    env.bridge.drainDeferredCommands();
+    env.dispatcher.update();
+    ASSERT_EQ(dialogue_capture.shows.size(), 1U);
+    EXPECT_EQ(dialogue_capture.shows.back().text,
+              "The farm road is quiet today. Check the seed cache before heading out.");
+
+    env.dispatcher.trigger(game::defs::MapEnteredEvent{
+        .map_id = map_id,
+        .map_name = "home_exterior",
+    });
+    env.bridge.drainDeferredCommands();
+    env.dispatcher.update();
+    EXPECT_EQ(dialogue_capture.shows.size(), 1U);
+
+    env.dispatcher.trigger(game::defs::InteractCommand{env.player, chest});
+    env.bridge.drainDeferredCommands();
+    env.dispatcher.update();
+
+    constexpr entt::id_type potato_seed = entt::hashed_string{"potato_seed"}.value();
+    constexpr entt::id_type strawberry_seed = entt::hashed_string{"strawberry_seed"}.value();
+    EXPECT_EQ(countItem(env.registry, env.player, potato_seed), 2);
+    EXPECT_EQ(countItem(env.registry, env.player, strawberry_seed), 3);
+    ASSERT_EQ(dialogue_capture.shows.size(), 2U);
+    EXPECT_EQ(dialogue_capture.shows.back().text, "You found a few starter seeds.");
+
+    env.dispatcher.trigger(game::defs::InteractCommand{env.player, chest});
+    env.bridge.drainDeferredCommands();
+    env.dispatcher.update();
+
+    EXPECT_EQ(countItem(env.registry, env.player, potato_seed), 2);
+    EXPECT_EQ(countItem(env.registry, env.player, strawberry_seed), 3);
+    ASSERT_EQ(dialogue_capture.shows.size(), 3U);
+    EXPECT_EQ(dialogue_capture.shows.back().text, "The seed cache is empty.");
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(tf.state.get_bool("map.home_exterior.seed_cache.opened", false) == true)
+    )"));
+
+    env.dispatcher.disconnect(&dialogue_capture);
 }
 
 TEST(ScriptEventBridgeTest, BattleEndedPayloadIncludesRewardSummary) {

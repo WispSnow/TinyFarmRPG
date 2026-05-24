@@ -11,10 +11,12 @@
 #include "game/component/npc_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/component/script_trigger_component.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_battle.h"
 #include "game/defs/events_dialogue.h"
 #include "game/defs/events_inventory.h"
+#include "game/defs/events_map.h"
 #include "game/defs/events_quest.h"
 #include "game/world/world_state.h"
 
@@ -148,6 +150,24 @@ void setOptionalString(sol::table& payload, const char* key, const std::string& 
     return map_state ? map_state->info.name : std::string{};
 }
 
+void setMapIdentity(entt::registry& registry,
+                    sol::table& payload,
+                    const char* name_key,
+                    const char* hash_key,
+                    const entt::id_type map_id,
+                    const std::string& map_name) {
+    if (!map_name.empty()) {
+        payload[name_key] = map_name;
+    } else {
+        setOptionalString(payload, name_key, currentMapName(registry, map_id));
+    }
+    if (map_id != entt::null) {
+        setIdHash(payload, hash_key, map_id);
+    } else {
+        payload[hash_key] = sol::lua_nil;
+    }
+}
+
 } // namespace
 
 ScriptEventBridge::ScriptEventBridge(engine::script::ScriptHost& host,
@@ -174,6 +194,8 @@ void ScriptEventBridge::subscribe() {
     dispatcher_.sink<game::defs::ItemUsedEvent>().connect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().connect<&ScriptEventBridge::onBattleStarted>(this);
     dispatcher_.sink<game::defs::BattleEndedEvent>().connect<&ScriptEventBridge::onBattleEnded>(this);
+    dispatcher_.sink<game::defs::MapEnteredEvent>().connect<&ScriptEventBridge::onMapEntered>(this);
+    dispatcher_.sink<game::defs::MapExitedEvent>().connect<&ScriptEventBridge::onMapExited>(this);
     dispatcher_.sink<engine::utils::DayChangedEvent>().connect<&ScriptEventBridge::onDayChanged>(this);
     dispatcher_.sink<engine::utils::TimeOfDayChangedEvent>().connect<&ScriptEventBridge::onTimeOfDayChanged>(this);
     dispatcher_.sink<game::defs::QuestAcceptedEvent>().connect<&ScriptEventBridge::onQuestAccepted>(this);
@@ -187,6 +209,8 @@ void ScriptEventBridge::unsubscribe() {
     dispatcher_.sink<game::defs::ItemUsedEvent>().disconnect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().disconnect<&ScriptEventBridge::onBattleStarted>(this);
     dispatcher_.sink<game::defs::BattleEndedEvent>().disconnect<&ScriptEventBridge::onBattleEnded>(this);
+    dispatcher_.sink<game::defs::MapEnteredEvent>().disconnect<&ScriptEventBridge::onMapEntered>(this);
+    dispatcher_.sink<game::defs::MapExitedEvent>().disconnect<&ScriptEventBridge::onMapExited>(this);
     dispatcher_.sink<engine::utils::DayChangedEvent>().disconnect<&ScriptEventBridge::onDayChanged>(this);
     dispatcher_.sink<engine::utils::TimeOfDayChangedEvent>().disconnect<&ScriptEventBridge::onTimeOfDayChanged>(this);
     dispatcher_.sink<game::defs::QuestAcceptedEvent>().disconnect<&ScriptEventBridge::onQuestAccepted>(this);
@@ -221,6 +245,18 @@ void ScriptEventBridge::onInteract(const game::defs::InteractCommand& event) {
         setOptionalString(payload, "target_name", name->name_);
     } else {
         payload["target_name"] = sol::lua_nil;
+    }
+
+    if (const auto* script = target_valid
+                                 ? registry_.try_get<game::component::ScriptTriggerComponent>(event.target)
+                                 : nullptr) {
+        setOptionalString(payload, "target_script_module", script->module_);
+        setOptionalString(payload, "target_script_event", script->event_);
+        setOptionalString(payload, "target_script_once_key", script->once_key_);
+    } else {
+        payload["target_script_module"] = sol::lua_nil;
+        payload["target_script_event"] = sol::lua_nil;
+        payload["target_script_once_key"] = sol::lua_nil;
     }
 
     const entt::id_type map_id = currentMapId(registry_);
@@ -322,6 +358,32 @@ void ScriptEventBridge::onBattleEnded(const game::defs::BattleEndedEvent& event)
         payload["rewards"] = sol::lua_nil;
     }
     (void)host_.emitEvent("battle_ended", payload);
+}
+
+void ScriptEventBridge::onMapEntered(const game::defs::MapEnteredEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "map_enter");
+    setMapIdentity(registry_, payload, "map_id", "map_id_hash", event.map_id, event.map_name);
+    setMapIdentity(registry_,
+                   payload,
+                   "previous_map_id",
+                   "previous_map_id_hash",
+                   event.previous_map_id,
+                   event.previous_map_name);
+    (void)host_.emitEvent("map_enter", payload);
+}
+
+void ScriptEventBridge::onMapExited(const game::defs::MapExitedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "map_exit");
+    setMapIdentity(registry_, payload, "map_id", "map_id_hash", event.map_id, event.map_name);
+    setMapIdentity(registry_,
+                   payload,
+                   "next_map_id",
+                   "next_map_id_hash",
+                   event.next_map_id,
+                   event.next_map_name);
+    (void)host_.emitEvent("map_exit", payload);
 }
 
 void ScriptEventBridge::onDayChanged(const engine::utils::DayChangedEvent& event) {

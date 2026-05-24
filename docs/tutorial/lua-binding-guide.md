@@ -231,9 +231,18 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 - `target_name`：来自 `NameComponent`
 - `target_kind`：`npc` / `merchant` / `quest_giver` / `recruitable` / `chest` / `unknown`
 - `target_blueprint_id`：地图 actor 的蓝图 ID，如 `lyria` 或 `quest`
+- `target_script_module` / `target_script_event` / `target_script_once_key`：来自 Tiled `script_*` 属性，用于脚本化宝箱、机关等地图事件；未配置时为 `nil`
 - `map_id` / `map_id_hash`：当前地图名称与哈希字符串；无 `WorldState` 时为 `nil`
 
 挂 `ScriptedInteractionComponent` 或 Tiled 属性 `scripted_interaction = true` 的实体由 Lua 独占交互，默认 C++ 对话、任务、招募、商店、宝箱、休息、衣柜系统都会早退。
+
+`tf.event.on("map_enter", fn)` 和 `tf.event.on("map_exit", fn)` 用于地图级剧情触发：
+
+- `map_enter` payload：`map_id` / `map_id_hash`，以及 `previous_map_id` / `previous_map_id_hash`
+- `map_exit` payload：`map_id` / `map_id_hash`，以及 `next_map_id` / `next_map_id_hash`
+- `map_id` 字段是地图名字符串，例如 `home_exterior`；`*_hash` 字段是字符串化哈希，避免 Lua number 精度问题
+
+一次性地图触发建议使用 `lib.once` 包装 `tf.state`，例如 `once.run("map.home_exterior.first_enter", function() ... end)`。它采用 at-most-once 语义：先写入完成标记再执行回调，因此回调失败也不会自动重试，适合避免读档或重复交互重发奖励。`scripts/maps/<map_id>.lua` 是地图专属脚本目录约定；`scripts/maps/home_exterior.lua` 展示了首次进入提示和脚本化宝箱。由于启动时初始地图会先于 Lua bootstrap 加载，地图脚本若要处理“当前已在本地图”的首次进入逻辑，应在注册 `map_enter` 后用 `tf.map.current()` 主动调用同一个 handler。
 
 脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 使用 `Conversation` channel，并在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
 

@@ -4,12 +4,14 @@
 #include "game/world/map_manager.h"
 #include "game/component/tags.h"
 #include "game/component/map_component.h"
+#include "game/defs/events_map.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/collider_component.h"
 #include "engine/spatial/collision_resolver.h"
 #include "engine/ui/screen_fade_interface.h"
 #include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 
@@ -18,11 +20,13 @@ using namespace entt::literals;
 namespace game::system {
 
 MapTransitionSystem::MapTransitionSystem(entt::registry& registry,
+                                         entt::dispatcher& dispatcher,
                                          game::world::WorldState& world_state,
                                          game::world::MapManager& map_manager,
                                          engine::spatial::CollisionResolver* collision_resolver,
                                          float edge_offset)
     : registry_(registry),
+      dispatcher_(dispatcher),
       world_state_(world_state),
       map_manager_(map_manager),
       collision_resolver_(collision_resolver),
@@ -114,6 +118,7 @@ bool MapTransitionSystem::commitPendingTransition() {
         return false;
     }
 
+    const entt::id_type previous_map_id = map_manager_.currentMapId();
     if (!map_manager_.loadMap(pending_.target_map_id)) {
         spdlog::error("MapTransitionSystem: 切换地图失败 (map_id={})", pending_.target_map_id);
         return false;
@@ -155,6 +160,7 @@ bool MapTransitionSystem::commitPendingTransition() {
     transform.position_ = spawn_pos;
     registry_.emplace_or_replace<engine::component::TransformDirtyTag>(pending_.player);
     map_manager_.snapCameraTo(spawn_pos);
+    emitMapTransitionEvents(previous_map_id, pending_.target_map_id);
     return true;
 }
 
@@ -222,6 +228,7 @@ bool MapTransitionSystem::handleEdgeTransition(entt::entity player, const glm::v
     glm::vec2 new_pos = computeEdgeSpawnPos(dir, pos, target_size);
 
     if (!fade_) {
+        const entt::id_type previous_map_id = current_map;
         if (!map_manager_.loadMap(neighbor_state->info.id)) {
             spdlog::error("MapTransitionSystem: 切换到邻接地图失败");
             return false;
@@ -233,6 +240,7 @@ bool MapTransitionSystem::handleEdgeTransition(entt::entity player, const glm::v
         transform.position_ = new_pos;
         registry_.emplace_or_replace<engine::component::TransformDirtyTag>(player);
         map_manager_.snapCameraTo(new_pos);
+        emitMapTransitionEvents(previous_map_id, neighbor_state->info.id);
         return true;
     }
 
@@ -288,6 +296,7 @@ bool MapTransitionSystem::handleTriggerTransition(entt::entity player, const glm
         if (target_map_id == entt::null) continue;
 
         if (!fade_) {
+            const entt::id_type previous_map_id = current_map;
             if (!map_manager_.loadMap(target_map_id)) {
                 spdlog::error("MapTransitionSystem: 通过触发器切换地图失败");
                 return false;
@@ -309,6 +318,7 @@ bool MapTransitionSystem::handleTriggerTransition(entt::entity player, const glm
             transform.position_ = spawn_pos;
             registry_.emplace_or_replace<engine::component::TransformDirtyTag>(player);
             map_manager_.snapCameraTo(spawn_pos);
+            emitMapTransitionEvents(previous_map_id, target_map_id);
             return true;
         }
 
@@ -388,6 +398,39 @@ glm::vec2 MapTransitionSystem::clampToMap(const glm::vec2& pos, const glm::vec2&
     clamped.x = std::clamp(clamped.x, 0.0f, size.x);
     clamped.y = std::clamp(clamped.y, 0.0f, size.y);
     return clamped;
+}
+
+std::string MapTransitionSystem::mapName(const entt::id_type map_id) const {
+    if (map_id == entt::null) {
+        return {};
+    }
+    const auto* map_state = world_state_.getMapState(map_id);
+    return map_state ? map_state->info.name : std::string{};
+}
+
+void MapTransitionSystem::emitMapTransitionEvents(const entt::id_type previous_map_id,
+                                                  const entt::id_type next_map_id) {
+    if (next_map_id == entt::null || previous_map_id == next_map_id) {
+        return;
+    }
+
+    const std::string previous_map_name = mapName(previous_map_id);
+    const std::string next_map_name = mapName(next_map_id);
+
+    if (previous_map_id != entt::null) {
+        dispatcher_.trigger(game::defs::MapExitedEvent{
+            .map_id = previous_map_id,
+            .map_name = previous_map_name,
+            .next_map_id = next_map_id,
+            .next_map_name = next_map_name,
+        });
+    }
+    dispatcher_.trigger(game::defs::MapEnteredEvent{
+        .map_id = next_map_id,
+        .map_name = next_map_name,
+        .previous_map_id = previous_map_id,
+        .previous_map_name = previous_map_name,
+    });
 }
 
 } // namespace game::system

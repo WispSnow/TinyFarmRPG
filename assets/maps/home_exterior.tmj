@@ -264,7 +264,7 @@
                  "gid":2401,
                  "height":112,
                  "id":1,
-                 "name":"",
+                 "name":"seed_cache",
                  "opacity":1,
                  "rotation":0,
                  "type":"",
@@ -290,7 +290,7 @@
                  "gid":2840,
                  "height":48,
                  "id":11,
-                 "name":"",
+                 "name":"seed_cache",
                  "opacity":1,
                  "rotation":0,
                  "type":"",
@@ -578,14 +578,19 @@
                  "opacity":1,
                  "properties":[
                         {
-                         "name":"potato_seed",
-                         "type":"int",
-                         "value":2
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         },
                         {
-                         "name":"strawberry_seed",
-                         "type":"int",
-                         "value":3
+                         "name":"script_event",
+                         "type":"string",
+                         "value":"home_exterior.seed_cache"
+                        },
+                        {
+                         "name":"script_once_key",
+                         "type":"string",
+                         "value":"map.home_exterior.seed_cache.opened"
                         }],
                  "rotation":0,
                  "type":"",
