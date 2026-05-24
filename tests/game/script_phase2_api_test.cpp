@@ -15,6 +15,7 @@
 #include "game/defs/commands_quest.h"
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
+#include "game/defs/events_recruit.h"
 #include "game/runtime/rpg_catalog_loader.h"
 #include "game/world/world_state.h"
 #include "script_test_utils.h"
@@ -77,6 +78,7 @@ constexpr std::string_view TROOP_ID = "troop.slime";
 struct CommandCapture {
     std::vector<game::defs::AcceptQuestCommand> accept_quests{};
     std::vector<game::defs::TurnInQuestCommand> turn_in_quests{};
+    std::vector<game::defs::RecruitOfferRequestedEvent> recruit_offers{};
     std::vector<game::defs::RecruitPartyMemberCommand> recruits{};
     std::vector<game::defs::OpenShopCommand> open_shops{};
     std::vector<game::defs::EnterBattleCommand> battles{};
@@ -87,6 +89,10 @@ struct CommandCapture {
 
     void onTurnInQuest(const game::defs::TurnInQuestCommand& command) {
         turn_in_quests.push_back(command);
+    }
+
+    void onRecruitOffer(const game::defs::RecruitOfferRequestedEvent& event) {
+        recruit_offers.push_back(event);
     }
 
     void onRecruit(const game::defs::RecruitPartyMemberCommand& command) {
@@ -215,6 +221,7 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     CommandCapture capture{};
     env.dispatcher.sink<game::defs::AcceptQuestCommand>().connect<&CommandCapture::onAcceptQuest>(&capture);
     env.dispatcher.sink<game::defs::TurnInQuestCommand>().connect<&CommandCapture::onTurnInQuest>(&capture);
+    env.dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&CommandCapture::onRecruitOffer>(&capture);
     env.dispatcher.sink<game::defs::RecruitPartyMemberCommand>().connect<&CommandCapture::onRecruit>(&capture);
     env.dispatcher.sink<game::defs::OpenShopCommand>().connect<&CommandCapture::onOpenShop>(&capture);
     env.dispatcher.sink<game::defs::EnterBattleCommand>().connect<&CommandCapture::onBattle>(&capture);
@@ -223,6 +230,9 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
         local accept = tf.quest.accept("quest.test.hunter_trial", test_giver)
         assert(accept.ok == true)
         assert(accept.reason == "")
+
+        local offer = tf.party.offer_recruit("actor.lyria", test_recruiter)
+        assert(offer.ok == true)
 
         local recruit = tf.party.request_recruit("actor.lyria", test_recruiter)
         assert(recruit.ok == true)
@@ -240,6 +250,10 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     ASSERT_EQ(capture.accept_quests.size(), 1U);
     EXPECT_EQ(capture.accept_quests.front().quest_id, QUEST_ID);
     EXPECT_EQ(capture.accept_quests.front().giver, env.giver);
+
+    ASSERT_EQ(capture.recruit_offers.size(), 1U);
+    EXPECT_EQ(capture.recruit_offers.front().actor_id, ACTOR_ID);
+    EXPECT_EQ(capture.recruit_offers.front().recruiter, env.recruiter);
 
     ASSERT_EQ(capture.recruits.size(), 1U);
     EXPECT_EQ(capture.recruits.front().actor_id, ACTOR_ID);
@@ -285,6 +299,10 @@ TEST(ScriptPhase2ApiTest, TriggerApisReturnFailureReasonsBeforeDispatch) {
         local recruit = tf.party.request_recruit("actor.missing", test_recruiter)
         assert(recruit.ok == false)
         assert(recruit.reason == "unknown_actor")
+
+        local offer = tf.party.offer_recruit("actor.missing", test_recruiter)
+        assert(offer.ok == false)
+        assert(offer.reason == "unknown_actor")
 
         local shop = tf.shop.open("shop.missing", test_merchant)
         assert(shop.ok == false)

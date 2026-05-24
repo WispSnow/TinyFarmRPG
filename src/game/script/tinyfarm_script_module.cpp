@@ -210,6 +210,12 @@ void installTinyFarmScriptModule(sol::state& lua,
         return api->partyIsRecruited(actor_id);
     });
     party_impl.set_function(
+        "offer_recruit",
+        [&lua, api](const std::string& actor_id,
+                    sol::optional<ScriptEntityHandle> recruiter_handle) -> sol::table {
+            return commandResultToLua(lua, api->partyOfferRecruit(actor_id, toStdOptional(recruiter_handle)));
+        });
+    party_impl.set_function(
         "request_recruit",
         [&lua, api](const std::string& actor_id,
                     sol::optional<ScriptEntityHandle> recruiter_handle) -> sol::table {

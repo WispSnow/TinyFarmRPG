@@ -166,6 +166,7 @@ tf
 ├── party
 │   ├── members()                                 → { actor_id, ... }
 │   ├── is_recruited(actor_id)                    → bool
+│   ├── offer_recruit(actor_id [, handle])        → { ok, reason }
 │   ├── request_recruit(actor_id [, handle])      → { ok, reason }
 │   ├── level(actor_id)                           → int
 │   └── initial_level(actor_id)                   → int
@@ -213,13 +214,13 @@ tf
 
 `tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
 
-`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
+`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.offer_recruit`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command/event；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
 
 `tf.party.members()` 返回 `PartyComponent::recruited_actor_ids_` 原样，因此包含玩家本人（默认 `actor.player`）。`tf.party.level(actor_id)` 只表示已招募角色的当前等级；未招募或未知角色返回 `0`。如果脚本需要读取 catalog 中的初始等级，使用 `tf.party.initial_level(actor_id)`。
 
-脚本化招募 NPC 通常在 Tiled 同时配置 `recruit_actor_id = "actor.lyria"` 与 `scripted_interaction = true`。Lua 负责对白分支，在对白结束回调里调用 `tf.party.request_recruit(actor_id, evt.target)`；C++ 的 `PartyRecruitmentSystem` 仍负责校验 recruitable 实体、写入 `PartyComponent` / 运行时状态并移除地图上的招募 NPC。未脚本化的 recruitable 只保留为 fallback，会直接触发 C++ 入队确认，正式内容优先使用 Lua。
+脚本化招募 NPC 通常在 Tiled 同时配置 `recruit_actor_id = "actor.lyria"` 与 `scripted_interaction = true`。Lua 负责对白分支，在对白结束回调里调用 `tf.party.offer_recruit(actor_id, evt.target)` 打开 C++ 入队确认；玩家确认后才会由 `PartyRecruitmentSystem` 校验 recruitable 实体、写入 `PartyComponent` / 运行时状态并移除地图上的招募 NPC。`tf.party.request_recruit` 是确认后的底层提交入口，只有明确想跳过确认时才应直接调用。未脚本化的 recruitable 只保留为 fallback，会直接触发 C++ 入队确认，正式内容优先使用 Lua。
 
-重复的招募 NPC 样板放在 `lib.recruit_npc`：内容脚本只需传 `actor_id`、`intro_lines` 和 `recruited_line`，helper 会按 `evt.target_actor_id` 过滤目标、尊重 `evt.dialogue_handled`，并在对白结束后请求入队。
+重复的招募 NPC 样板放在 `lib.recruit_npc`：内容脚本只需传 `actor_id`、`intro_lines` 和 `recruited_line`，helper 会按 `evt.target_actor_id` 过滤目标、尊重 `evt.dialogue_handled`，并在对白结束后请求入队确认。
 
 `tf.shop.open` 会直接打开指定商店，不播放 C++ 商人 greeting；脚本侧如果需要开店前对白，应先用 `tf.dialogue` 或 `lib.dialogue` 自行编排。动态商店首版采用"多个静态 `shop_id` 预设"模式：在 `assets/data/shops.json` 预先定义 day / night / post-quest 等商店，Lua 根据 `lib.time.is_night()`、`tf.quest.status(...)` 等条件选择其中一个传给 `tf.shop.open`。例如 `scripts/npcs/merchant.lua` 会让 Josh 在白天打开 `shop.village.general.day`，夜晚打开 `shop.village.general.night`，完成清理史莱姆任务后打开 `shop.village.general.post_slime_cleanup`。当前不要在 Lua 中临时生成库存或价格；交易 UI 与 `ShopTransactionService` 都读取同一份 `ShopCatalog`。
 

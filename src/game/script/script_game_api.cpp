@@ -28,6 +28,7 @@
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
 #include "game/defs/events_dialogue.h"
+#include "game/defs/events_recruit.h"
 #include "game/domain/quest_log_ops.h"
 #include "game/system/system_helpers.h"
 #include "game/world/world_state.h"
@@ -115,6 +116,51 @@ void enqueueFromScript(engine::script::ScriptHost& host, entt::dispatcher& dispa
     host.enqueueDeferredCommand([&dispatcher, event = std::move(event)]() mutable {
         dispatcher.enqueue(std::move(event));
     });
+}
+
+struct RecruitRequestResolution {
+    ScriptCommandResult status{};
+    entt::entity player{entt::null};
+    entt::entity recruiter{entt::null};
+    entt::id_type actor_id_hash{entt::null};
+    std::string actor_id{};
+};
+
+[[nodiscard]] RecruitRequestResolution resolveRecruitRequest(
+    engine::script::ScriptHost& host,
+    entt::registry& registry,
+    const std::string_view actor_id,
+    const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle,
+    const std::string_view api_name) {
+    if (actor_id.empty()) {
+        return {.status = commandFailure("invalid_actor_id")};
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry);
+    if (player == entt::null) {
+        return {.status = commandFailure("no_player")};
+    }
+
+    const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry);
+    if (rpg_catalog && !rpg_catalog->findActor(actor_id)) {
+        return {.status = commandFailure("unknown_actor")};
+    }
+
+    entt::entity recruiter = entt::null;
+    if (recruiter_handle.has_value()) {
+        const std::string validation_source = std::string{api_name} + ".recruiter";
+        if (!host.validateHandle(recruiter_handle.value(), recruiter, validation_source)) {
+            return {.status = commandFailure("invalid_recruiter")};
+        }
+    }
+
+    return RecruitRequestResolution{
+        .status = commandOk(),
+        .player = player,
+        .recruiter = recruiter,
+        .actor_id_hash = hashId(actor_id),
+        .actor_id = std::string{actor_id},
+    };
 }
 
 } // namespace
@@ -474,34 +520,46 @@ bool ScriptGameApi::partyIsRecruited(const std::string_view actor_id) const {
     return party && containsString(party->recruited_actor_ids_, actor_id);
 }
 
+ScriptCommandResult ScriptGameApi::partyOfferRecruit(
+    const std::string_view actor_id,
+    const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle) {
+    const auto request = resolveRecruitRequest(
+        host_,
+        registry_,
+        actor_id,
+        recruiter_handle,
+        "tf.party.offer_recruit");
+    if (!request.status.ok) {
+        return request.status;
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::RecruitOfferRequestedEvent{
+        .player = request.player,
+        .recruiter = request.recruiter,
+        .actor_id_hash = request.actor_id_hash,
+        .actor_id = request.actor_id,
+    });
+    return commandOk();
+}
+
 ScriptCommandResult ScriptGameApi::partyRequestRecruit(
     const std::string_view actor_id,
     const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle) {
-    if (actor_id.empty()) {
-        return commandFailure("invalid_actor_id");
-    }
-
-    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
-    if (player == entt::null) {
-        return commandFailure("no_player");
-    }
-
-    const auto* rpg_catalog = findRegistryContextPointer<game::data::RpgCatalog>(registry_);
-    if (rpg_catalog && !rpg_catalog->findActor(actor_id)) {
-        return commandFailure("unknown_actor");
-    }
-
-    entt::entity recruiter = entt::null;
-    if (recruiter_handle.has_value() &&
-        !host_.validateHandle(recruiter_handle.value(), recruiter, "tf.party.request_recruit.recruiter")) {
-        return commandFailure("invalid_recruiter");
+    const auto request = resolveRecruitRequest(
+        host_,
+        registry_,
+        actor_id,
+        recruiter_handle,
+        "tf.party.request_recruit");
+    if (!request.status.ok) {
+        return request.status;
     }
 
     triggerFromScript(host_, dispatcher_, game::defs::RecruitPartyMemberCommand{
-        .player = player,
-        .recruiter = recruiter,
-        .actor_id_hash = hashId(actor_id),
-        .actor_id = std::string{actor_id},
+        .player = request.player,
+        .recruiter = request.recruiter,
+        .actor_id_hash = request.actor_id_hash,
+        .actor_id = request.actor_id,
     });
     return commandOk();
 }
