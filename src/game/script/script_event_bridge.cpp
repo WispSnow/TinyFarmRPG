@@ -27,8 +27,10 @@
 #include <sol/sol.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace game::script {
 
@@ -77,6 +79,36 @@ namespace {
     return "unknown";
 }
 
+[[nodiscard]] std::string_view battleActionTypeName(const game::battle::BattleActionType type) {
+    switch (type) {
+        case game::battle::BattleActionType::Attack:
+            return "Attack";
+        case game::battle::BattleActionType::Skill:
+            return "Skill";
+        case game::battle::BattleActionType::Item:
+            return "Item";
+        case game::battle::BattleActionType::Guard:
+            return "Guard";
+        case game::battle::BattleActionType::Escape:
+            return "Escape";
+        case game::battle::BattleActionType::EndTurn:
+            return "EndTurn";
+    }
+
+    return "Unknown";
+}
+
+[[nodiscard]] std::string_view battleActionStatusName(const game::battle::BattleActionStatus status) {
+    switch (status) {
+        case game::battle::BattleActionStatus::Applied:
+            return "Applied";
+        case game::battle::BattleActionStatus::Rejected:
+            return "Rejected";
+    }
+
+    return "Unknown";
+}
+
 void setEntityHandle(engine::script::ScriptHost& host,
                      const entt::registry& registry,
                      sol::table& payload,
@@ -104,6 +136,96 @@ void setOptionalString(sol::table& payload, const char* key, const std::string& 
         return;
     }
     payload[key] = value;
+}
+
+void setOptionalString(sol::table& payload, const char* key, const std::optional<std::string>& value) {
+    if (!value.has_value() || value->empty()) {
+        payload[key] = sol::lua_nil;
+        return;
+    }
+    payload[key] = *value;
+}
+
+void setOptionalUnitId(sol::table& payload,
+                       const char* key,
+                       const std::optional<game::battle::BattleUnitId>& value) {
+    if (!value.has_value()) {
+        payload[key] = sol::lua_nil;
+        return;
+    }
+    payload[key] = static_cast<int>(*value);
+}
+
+[[nodiscard]] sol::table stringListToLua(sol::state& lua, const std::vector<std::string>& values) {
+    sol::table payload = lua.create_table();
+    for (const auto& value : values) {
+        payload.add(value);
+    }
+    return payload;
+}
+
+[[nodiscard]] std::string_view battleUnitKindName(const game::battle::BattleUnit& unit) {
+    if (unit.source_actor_id.has_value()) {
+        return "actor";
+    }
+    if (unit.source_enemy_id.has_value()) {
+        return "enemy";
+    }
+    // Synthetic or test units may not carry catalog ids; side keeps the payload usable while actor_id/enemy_id stay nil.
+    return unit.side == game::battle::BattleSide::Player ? "player" : "enemy";
+}
+
+[[nodiscard]] sol::table battleUnitToLua(sol::state& lua, const game::battle::BattleUnit& unit) {
+    sol::table payload = lua.create_table();
+    payload["unit_id"] = static_cast<int>(unit.id);
+    payload["name"] = unit.name;
+    payload["side"] = std::string{game::battle::toString(unit.side)};
+    payload["unit_kind"] = std::string{battleUnitKindName(unit)};
+    setOptionalString(payload, "actor_id", unit.source_actor_id);
+    setOptionalString(payload, "enemy_id", unit.source_enemy_id);
+    payload["hp"] = unit.hp;
+    payload["max_hp"] = unit.max_hp;
+    payload["mp"] = unit.mp;
+    payload["max_mp"] = unit.max_mp;
+    payload["alive"] = unit.isAlive();
+    return payload;
+}
+
+void populateBattleUnitFields(sol::table& payload,
+                              sol::state& lua,
+                              const game::battle::BattleUnit& unit,
+                              const std::uint32_t round_index) {
+    payload["round_index"] = round_index;
+    payload["unit"] = battleUnitToLua(lua, unit);
+    payload["unit_id"] = static_cast<int>(unit.id);
+    setOptionalString(payload, "actor_id", unit.source_actor_id);
+    setOptionalString(payload, "enemy_id", unit.source_enemy_id);
+    payload["unit_kind"] = std::string{battleUnitKindName(unit)};
+}
+
+[[nodiscard]] sol::table battleActionResultToLua(sol::state& lua, const game::battle::BattleActionResult& result) {
+    sol::table payload = lua.create_table();
+    payload["status"] = std::string{battleActionStatusName(result.status)};
+    payload["action_type"] = std::string{battleActionTypeName(result.action_type)};
+    payload["actor_unit_id"] = static_cast<int>(result.actor_id);
+    setOptionalUnitId(payload, "target_unit_id", result.target_id);
+    setOptionalString(payload, "skill_id", result.skill_id);
+    setOptionalString(payload, "item_id", result.item_id);
+    payload["damage"] = result.damage;
+    payload["hp_recovered"] = result.hp_recovered;
+    payload["mp_recovered"] = result.mp_recovered;
+    payload["mp_spent"] = result.mp_spent;
+    payload["missed"] = result.missed;
+    payload["critical"] = result.critical;
+    payload["target_guarded"] = result.target_guarded;
+    payload["target_defeated"] = result.target_defeated;
+    payload["escape_succeeded"] = result.escape_succeeded;
+    setOptionalString(payload, "failure_reason", result.failure_reason);
+    payload["outcome_after"] = std::string{game::battle::toString(result.outcome_after)};
+    payload["snapshot_round_index"] = result.snapshot.round_index;
+    payload["states_added"] = stringListToLua(lua, result.states_added);
+    payload["states_removed"] = stringListToLua(lua, result.states_removed);
+    return payload;
 }
 
 [[nodiscard]] std::string_view targetKind(const entt::registry& registry, const entt::entity target) {
@@ -193,6 +315,10 @@ void ScriptEventBridge::subscribe() {
     dispatcher_.sink<game::defs::InventoryChanged>().connect<&ScriptEventBridge::onInventoryChanged>(this);
     dispatcher_.sink<game::defs::ItemUsedEvent>().connect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().connect<&ScriptEventBridge::onBattleStarted>(this);
+    dispatcher_.sink<game::defs::BattleTurnStartedEvent>().connect<&ScriptEventBridge::onBattleTurnStarted>(this);
+    dispatcher_.sink<game::defs::BattleTurnEndedEvent>().connect<&ScriptEventBridge::onBattleTurnEnded>(this);
+    dispatcher_.sink<game::defs::BattleUnitDiedEvent>().connect<&ScriptEventBridge::onBattleUnitDied>(this);
+    dispatcher_.sink<game::defs::BattleSkillUsedEvent>().connect<&ScriptEventBridge::onBattleSkillUsed>(this);
     dispatcher_.sink<game::defs::BattleEndedEvent>().connect<&ScriptEventBridge::onBattleEnded>(this);
     dispatcher_.sink<game::defs::MapEnteredEvent>().connect<&ScriptEventBridge::onMapEntered>(this);
     dispatcher_.sink<game::defs::MapExitedEvent>().connect<&ScriptEventBridge::onMapExited>(this);
@@ -208,6 +334,10 @@ void ScriptEventBridge::unsubscribe() {
     dispatcher_.sink<game::defs::InventoryChanged>().disconnect<&ScriptEventBridge::onInventoryChanged>(this);
     dispatcher_.sink<game::defs::ItemUsedEvent>().disconnect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().disconnect<&ScriptEventBridge::onBattleStarted>(this);
+    dispatcher_.sink<game::defs::BattleTurnStartedEvent>().disconnect<&ScriptEventBridge::onBattleTurnStarted>(this);
+    dispatcher_.sink<game::defs::BattleTurnEndedEvent>().disconnect<&ScriptEventBridge::onBattleTurnEnded>(this);
+    dispatcher_.sink<game::defs::BattleUnitDiedEvent>().disconnect<&ScriptEventBridge::onBattleUnitDied>(this);
+    dispatcher_.sink<game::defs::BattleSkillUsedEvent>().disconnect<&ScriptEventBridge::onBattleSkillUsed>(this);
     dispatcher_.sink<game::defs::BattleEndedEvent>().disconnect<&ScriptEventBridge::onBattleEnded>(this);
     dispatcher_.sink<game::defs::MapEnteredEvent>().disconnect<&ScriptEventBridge::onMapEntered>(this);
     dispatcher_.sink<game::defs::MapExitedEvent>().disconnect<&ScriptEventBridge::onMapExited>(this);
@@ -331,6 +461,42 @@ void ScriptEventBridge::onBattleStarted(const game::defs::BattleStartedEvent& ev
     }
     payload["actor_ids"] = actors;
     (void)host_.emitEvent("battle_started", payload);
+}
+
+void ScriptEventBridge::onBattleTurnStarted(const game::defs::BattleTurnStartedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "battle_turn_started");
+    populateBattleUnitFields(payload, host_.luaState(), event.unit, event.round_index);
+    (void)host_.emitEvent("battle_turn_started", payload);
+}
+
+void ScriptEventBridge::onBattleTurnEnded(const game::defs::BattleTurnEndedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "battle_turn_ended");
+    populateBattleUnitFields(payload, host_.luaState(), event.unit, event.round_index);
+    payload["result"] = battleActionResultToLua(host_.luaState(), event.result);
+    (void)host_.emitEvent("battle_turn_ended", payload);
+}
+
+void ScriptEventBridge::onBattleUnitDied(const game::defs::BattleUnitDiedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "battle_unit_died");
+    populateBattleUnitFields(payload, host_.luaState(), event.unit, event.round_index);
+    payload["source_unit_id"] = static_cast<int>(event.source_unit_id);
+    payload["source_action_type"] = std::string{battleActionTypeName(event.source_action_type)};
+    setOptionalString(payload, "skill_id", event.skill_id);
+    setOptionalString(payload, "item_id", event.item_id);
+    (void)host_.emitEvent("battle_unit_died", payload);
+}
+
+void ScriptEventBridge::onBattleSkillUsed(const game::defs::BattleSkillUsedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "battle_skill_used");
+    populateBattleUnitFields(payload, host_.luaState(), event.unit, event.round_index);
+    payload["skill_id"] = event.result.skill_id;
+    setOptionalUnitId(payload, "target_unit_id", event.result.target_id);
+    payload["result"] = battleActionResultToLua(host_.luaState(), event.result);
+    (void)host_.emitEvent("battle_skill_used", payload);
 }
 
 void ScriptEventBridge::onBattleEnded(const game::defs::BattleEndedEvent& event) {

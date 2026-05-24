@@ -429,11 +429,12 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 待办
 
-- [ ] **回调扩面**：
+- [x] **回调扩面**：
   - `tf.battle.on_turn_start(fn)` / `on_turn_end(fn)`
   - `tf.battle.on_unit_died(fn)`：payload 含 actor_id / unit_kind
   - `tf.battle.on_skill_used(fn)`
-- [ ] **`battle_started` payload 补充**：encounter_id / 自定义 metadata，让 Lua 知道"这是哪场战斗"。
+- [x] **`battle_started` payload 补充 encounter_id**：`battle_started` 已包含 `troop_id` / `actor_ids` / `battle_background_id` / `from_encounter` / `encounter_id`。
+- [ ] **战斗自定义 metadata**：让 Lua 更稳定地区分剧情战、Boss 战和普通遭遇。
 - [ ] **特殊胜利条件**：`tf.battle.set_victory_condition(fn)`（fn 每回合结束被调用，返回 true 触发胜利），用于剧情战"撑过 5 回合"等需求。
 - [ ] **样板**：做一个 boss 战，HP 低于 50% 时切阶段 + 加 buff。
 

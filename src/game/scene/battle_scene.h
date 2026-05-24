@@ -186,6 +186,10 @@ private:
     void beginCurrentTurnFlow() override;
     [[nodiscard]] const game::battle::BattleUnit* currentActor() const;
     [[nodiscard]] game::battle::BattleAction buildEnemyAction(const game::battle::BattleUnit& actor) const;
+    void emitBattleTurnStarted(const game::battle::BattleUnit& unit);
+    void emitBattleActionScriptEvents(const game::battle::BattleActionResult& result,
+                                      const std::vector<game::battle::BattleUnit>& before_units,
+                                      std::uint32_t round_index);
     void updateResultAnimation(float delta_time) override;
     [[nodiscard]] bool resultAnimationFinished() const override;
     [[nodiscard]] game::battle::BattleOutcome battleOutcome() const override;

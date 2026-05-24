@@ -25,7 +25,7 @@ TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的
 - Shop MVP 已落地：支持 `ShopCatalog`、地图实例 `shop_id` merchant、`ShopTransactionService` preview/commit 原子交易、`ShopMenuScene` 的 buy / sell 双模式，以及 `InventoryChanged -> HotbarSystem` 同步。脚本化商人由 Lua 编排 greeting，并通过 `tf.shop.open` 选择 day / night / quest-completed 等静态商店预设。
 - 队伍与招募已落地：`PartyComponent` 记录已招募和参战成员；地图实例 `recruit_actor_id` 负责标记可入队角色，脚本化 NPC 由 Lua 编排对白并调用 `tf.party.request_recruit`，最终仍由 `PartyRecruitmentSystem` 写入队伍。
 - 装备 MVP 已落地：`ItemCategory::Equipment`、`assets/data/rpg/equipment.json`、`PartyEquipmentComponent`、`EquipmentDomainService`、`EquipmentSystem` 与 `EquipmentTabContent` 已接通；战斗单位构建会读取装备加成。
-- 回合制战斗已不再是原型骨架：`BattleScene` 已具备 RmlUi 菜单、队伍指令、`Attack / Skill / Item / Guard / Escape / End Turn`、`SkillList / ItemList / TargetSelect`、敌方 AI、Side View 战斗精灵、伤害弹字、敌方 HP 条、胜利奖励、经验升级与战斗物品写回。
+- 回合制战斗已不再是原型骨架：`BattleScene` 已具备 RmlUi 菜单、队伍指令、`Attack / Skill / Item / Guard / Escape / End Turn`、`SkillList / ItemList / TargetSelect`、敌方 AI、Side View 战斗精灵、伤害弹字、敌方 HP 条、胜利奖励、经验升级与战斗物品写回；Lua 可观察回合开始/结束、技能使用和单位死亡等战斗钩子，但核心解算仍由 C++ 领域层负责。
 - 玩家成长已落地：`ClassData` 提供 RPG Maker 风格经验曲线和等级属性曲线；`PartyRuntimeStatsComponent` 持久化 actor 的 `level / total_exp / current_hp / current_mp`，战斗胜利经验会写回参战 actor 并影响后续战斗属性。
 - 玩家偏好已落地：`UserSettingsService` 统一管理音量、全局倍速、战斗动画速度、伤害飘字、敌方 HP 条、光标记忆等偏好；Inventory 菜单 Options 标签暴露 4 项战斗体验设置，UI 字号固定 Normal；持久化到 `config/user_settings.json`（不进 source repo）。
 - 存档当前 schema 为 v7：除基础世界状态外，还包含 `quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state` 与 `script_state`；其中 `party_runtime_state.actor_states` 保存队伍成员当前 HP/MP、等级与累计经验，`script_state` 保存 Lua 剧本变量的 JSON 兼容基元。
