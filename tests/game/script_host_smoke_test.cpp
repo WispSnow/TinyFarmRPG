@@ -97,12 +97,15 @@ TEST(ScriptHostSmokeTest, DialogueApiValidatesChannelAndCarriesSpeakerActorId) {
     ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
 
     EXPECT_TRUE(host.exec(R"(
-        assert(tf.dialogue.show("Hello", "Lyria", 0, nil, "actor.lyria") == true)
-        assert(tf.dialogue.show("Notice", "", 1) == true)
-        assert(tf.dialogue.show("Item notice", "", 2) == true)
+        assert(tf.dialogue.CHANNEL_CONVERSATION == 0)
+        assert(tf.dialogue.CHANNEL_NOTICE == 1)
+        assert(tf.dialogue.CHANNEL_ITEM_NOTICE == 2)
+        assert(tf.dialogue.show("Hello", "Lyria", tf.dialogue.CHANNEL_CONVERSATION, nil, "actor.lyria") == true)
+        assert(tf.dialogue.show("Notice", "", tf.dialogue.CHANNEL_NOTICE) == true)
+        assert(tf.dialogue.show("Item notice", "", tf.dialogue.CHANNEL_ITEM_NOTICE) == true)
         assert(tf.dialogue.show("Bad", "Narrator", 99) == false)
         assert(tf.dialogue.show("Bad negative", "Narrator", -1) == false)
-        assert(tf.dialogue.hide(1) == true)
+        assert(tf.dialogue.hide(tf.dialogue.CHANNEL_NOTICE) == true)
         assert(tf.dialogue.hide(-1) == false)
     )"));
 

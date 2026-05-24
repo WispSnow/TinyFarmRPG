@@ -206,11 +206,6 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
         params.registry,
         dispatcher,
         *services.rpg_catalog);
-    const bool recruitment_dialogue_loaded =
-        systems.recruitment_interaction_system->loadDialogueFile(GameContentManifest::DialogueScript);
-    if (!recruitment_dialogue_loaded) {
-        spdlog::warn("GameRuntimeAssembler: 招募对话脚本加载失败，将使用兜底招募文案。");
-    }
     systems.party_recruitment_system = std::make_unique<game::system::PartyRecruitmentSystem>(
         params.registry,
         dispatcher,

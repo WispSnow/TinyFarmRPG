@@ -178,7 +178,7 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 - **不能依赖 `dialogue_closed` 推进**：那是"关闭"信号，不是"下一行"信号；而且脚本对话当前根本拿不到这个信号（见已知限制）。必须用 interact 事件计数。
 - **多 NPC 并发**：玩家正在和 A 说话时按 E 跳到 B 应该怎么办？helper 内部用 `{target → state}` map，切到新 target 时显式 `dialogue.cancel(old_target)`。
 - **不要在 `tf.state` 里存"当前对话行号"**：会污染存档。短期状态用 Lua module-local 变量。
-- Lyria / Tori 迁移延后：保留 `lyria_intro` / `tori_intro` 在 `dialogue_script.json`，等 Phase 4 招募对白迁移时一起处理。
+- Lyria / Tori 迁移延后：Phase 4 已把 `lyria_intro` / `tori_intro` 从 `dialogue_script.json` 迁出到 Lua。
 
 ---
 
@@ -324,16 +324,16 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 待办
 
-- [ ] **Lyria / Tori 完整 Lua 化**：
+- [x] **Lyria / Tori 完整 Lua 化**：
   - 给地图上的 Lyria / Tori 加 `ScriptedInteractionComponent`
-  - [scripts/npcs/lyria.lua](../scripts/npcs/lyria.lua) 注册完整 interact 回调：先说几句话 → 询问"是否加入" → 玩家确认后调 `tf.party.request_recruit`
+  - [scripts/npcs/lyria.lua](../scripts/npcs/lyria.lua) 注册完整 interact 回调：先说几句话 → 调 `tf.party.request_recruit`
   - 同样改造 Tori
   - 从 `dialogue_script.json` 移除 `lyria_intro` / `tori_intro`
-- [ ] [RecruitmentInteractionSystem](../src/game/system/recruitment_interaction_system.cpp) 退化：
-  - 删除 `loadDialogueFile` 和 `dialogue_table_`（如果没有未脚本化的 Recruitable NPC 在用，可以直接删；否则保留 fallback）
+- [x] [RecruitmentInteractionSystem](../src/game/system/recruitment_interaction_system.cpp) 退化：
+  - 删除 `loadDialogueFile` 和 `dialogue_table_`
   - 保留"判断是否可以招募 + 触发 `RecruitOfferScene`" 职责（响应非 scripted 实体）
-- [ ] **Lua 端"询问/确认"流程**：目前没有 choice UI，可以用"按 Z 确认 / 按 X 取消"的双输入模式（监听 `interact` + 一个额外的 cancel action）。具体设计延后到 Phase 1.5 choice UI 落地后再优化；Phase 4 首版可以简化为"interact 直接入队"。
-- [ ] **端到端测试**：Lyria 招募流程在 Lua 驱动下走完，存档/读档后状态一致。
+- [x] **Lua 端"询问/确认"流程**：目前没有 choice UI，Phase 4 首版采用"对白结束后直接请求入队"；choice UI 落地后再扩展确认/取消。
+- [x] **端到端测试**：Lyria 招募流程在 Lua 驱动下走完，覆盖 party 写入、运行时状态初始化、recruiter 移除，以及 scripted 实体不触发 C++ fallback。
 
 ### 验收
 

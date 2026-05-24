@@ -62,7 +62,8 @@
 | `shop_id` | string | 把该 actor 实例挂成商人，交互时打开 `ShopMenuScene` | `assets/data/shops.json` |
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
 | `actor_id` | string | 覆盖该 actor 实例暴露给 Lua 的稳定身份；不影响 blueprint lookup | `scripts/**/*.lua` |
-| `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色，对话结束后弹出入队确认框 | `assets/data/rpg/actors.json` |
+| `scripted_interaction` | bool | 让 Lua 独占该实例的 interact；默认 C++ 对话/任务/招募/商店等入口早退 | `scripts/bootstrap.lua` |
+| `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色；脚本化时由 Lua 请求入队，非脚本化时走 C++ 兜底确认 | `assets/data/rpg/actors.json` |
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
 | `encounter_id` | int | 战斗遭遇实例 ID；同一地图内必须唯一 | 地图存档 |
@@ -74,6 +75,7 @@
 - `shop_id` 会让 loader 给该实体附加 `MerchantComponent`
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
 - `actor_id` 只覆盖 `ActorIdentityComponent.actor_id_`；object `name` 仍用于查找 actor blueprint
+- `scripted_interaction=true` 会让 loader 给该实体附加 `ScriptedInteractionComponent`
 - `recruit_actor_id` 会让 loader 给该实体附加 `RecruitableComponent`
 - `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
 - `battle_background_id` 只允许 `[A-Za-z0-9_]+`，例如 `Grassland`；实际资源路径按 `BattleBg/battlebacks1/<id>.png` 与 `BattleBg/battlebacks2/<id>.png` 解析
@@ -135,6 +137,7 @@
 3. 设置 `name="<actor blueprint key>"`，例如 `lyria` 或 `tori`
 4. 给该 object 新增一个 **string property**：`recruit_actor_id`
 5. `recruit_actor_id` 的值填写 `RpgCatalog` 里的 actor id，例如 `actor.lyria`
+6. Lua 驱动的招募 NPC 再新增 **bool property**：`scripted_interaction = true`
 
 最小示例：
 
@@ -144,7 +147,8 @@
   "type": "actor",
   "name": "tori",
   "properties": [
-    { "name": "recruit_actor_id", "type": "string", "value": "actor.tori" }
+    { "name": "recruit_actor_id", "type": "string", "value": "actor.tori" },
+    { "name": "scripted_interaction", "type": "bool", "value": true }
   ]
 }
 ```
@@ -181,7 +185,7 @@
 
 - `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店
 - `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
-- `recruit_actor_id`：玩家面向该 NPC 按 `F`，会由 `RecruitmentInteractionSystem` 展示对话；对话结束后弹出入队确认框
+- `recruit_actor_id`：玩家面向该 NPC 按 `F`，可进入招募流程；若该实体带 `scripted_interaction=true`，对白和 `tf.party.request_recruit` 调用由 Lua 负责，否则由 `RecruitmentInteractionSystem` 触发 C++ 入队确认。非脚本路径只是 fallback，正式 NPC 推荐脚本化
 - `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利且 `respawn_on_map_reload=false` 的遭遇会写入 `defeated_encounters`
 - 交互优先级当前固定为 `Merchant > QuestGiver > Recruitable > Dialogue NPC > Chest > Rest`
 
