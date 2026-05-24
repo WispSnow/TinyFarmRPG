@@ -576,7 +576,7 @@
                          "name":"potato_seed",
                          "type":"int",
                          "value":2
-                        }, 
+                        },
                         {
                          "name":"strawberry_seed",
                          "type":"int",
@@ -616,9 +616,19 @@
                  "point":true,
                  "properties":[
                         {
+                         "name":"actor_id",
+                         "type":"string",
+                         "value":"npc.manu"
+                        },
+                        {
                          "name":"quest_offer_id",
                          "type":"string",
                          "value":"quest.village.goblin_cleanup"
+                        },
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"actor",

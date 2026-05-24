@@ -61,6 +61,7 @@
 | --- | --- | --- | --- |
 | `shop_id` | string | 把该 actor 实例挂成商人，交互时打开 `ShopMenuScene` | `assets/data/shops.json` |
 | `quest_offer_id` | string | 把该 actor 实例挂成任务发布者，交互时进入任务领取/交付状态机 | `assets/data/quests.json` |
+| `actor_id` | string | 覆盖该 actor 实例暴露给 Lua 的稳定身份；不影响 blueprint lookup | `scripts/**/*.lua` |
 | `recruit_actor_id` | string | 把该 actor 实例挂成可入队角色，对话结束后弹出入队确认框 | `assets/data/rpg/actors.json` |
 | `battle_troop_id` | string | 把该 actor 实例挂成接触战斗敌人，玩家碰到后进入 `BattleScene` | `assets/data/rpg/troops.json` |
 | `battle_background_id` | string | 可选覆盖该遭遇的战斗背景；为空时使用地图默认 / troop fallback / `Grassland` | `assets/textures/BattleBg` |
@@ -72,6 +73,7 @@
 
 - `shop_id` 会让 loader 给该实体附加 `MerchantComponent`
 - `quest_offer_id` 会让 loader 给该实体附加 `QuestGiverComponent`
+- `actor_id` 只覆盖 `ActorIdentityComponent.actor_id_`；object `name` 仍用于查找 actor blueprint
 - `recruit_actor_id` 会让 loader 给该实体附加 `RecruitableComponent`
 - `battle_troop_id` + 合法 `encounter_id` 会让 loader 给该实体附加 `EnemyEncounterComponent`
 - `battle_background_id` 只允许 `[A-Za-z0-9_]+`，例如 `Grassland`；实际资源路径按 `BattleBg/battlebacks1/<id>.png` 与 `BattleBg/battlebacks2/<id>.png` 解析
@@ -110,6 +112,7 @@
 3. 设置 `name="<actor blueprint key>"`
 4. 给该 object 新增一个 **string property**：`quest_offer_id`
 5. `quest_offer_id` 的值填写 `QuestCatalog` 里的任务 id，例如 `quest.village.goblin_cleanup`
+6. 脚本化任务 NPC 推荐再新增 **string property**：`actor_id`，例如 `npc.manu`，供 Lua 稳定识别
 
 最小示例：
 
@@ -119,6 +122,7 @@
   "type": "actor",
   "name": "quest",
   "properties": [
+    { "name": "actor_id", "type": "string", "value": "npc.manu" },
     { "name": "quest_offer_id", "type": "string", "value": "quest.village.goblin_cleanup" }
   ]
 }

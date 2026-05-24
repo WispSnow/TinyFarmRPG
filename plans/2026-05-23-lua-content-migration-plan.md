@@ -279,16 +279,16 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 待办
 
-- [ ] **`giver_text` 字段从 `quests.json` 移除**（或保留作 fallback，仅供未挂 `ScriptedInteractionComponent` 的 quest giver 使用）。
-- [ ] **样板任务全 Lua 化**：把 `quest.village.goblin_cleanup` 改为：
+- [x] **`giver_text` 字段从 `quests.json` 移除**（或保留作 fallback，仅供未挂 `ScriptedInteractionComponent` 的 quest giver 使用）。
+- [x] **样板任务全 Lua 化**：把 `quest.village.goblin_cleanup` 改为：
   - C++ 仍按 `quests.json` 加载 objective / reward（数据真相不动）
   - Lua [scripts/quests/village_goblin_cleanup.lua](../scripts/quests/village_goblin_cleanup.lua) 提供：
     - 监听 interact + 按 `tf.quest.status()` 分支选对白
     - 监听 `quest_accepted` 触发"NPC 表情变化"等副作用
     - 监听 `quest_completed` 触发完成剧情
   - 给地图上的 quest giver 加 `ScriptedInteractionComponent`
-- [ ] **测试**：完整跑一遍接任务 → 击败 slime × 3 → 回 NPC 交付的链路，含 Lua 副作用断言。
-- [ ] **quest 脚本命名规范**：[script_host.cpp:76-78](../src/engine/script/script_host.cpp) 把 `.` 映射成 `/`，所以 quest id `quest.village.goblin_cleanup` 不能直接当 require 路径（会变 `quests/quest/village/goblin_cleanup.lua`）。约定：
+- [x] **测试**：完整跑一遍接任务 → 击败 slime × 3 → 回 NPC 交付的链路，含 Lua 副作用断言。
+- [x] **quest 脚本命名规范**：[script_host.cpp:76-78](../src/engine/script/script_host.cpp) 把 `.` 映射成 `/`，所以 quest id `quest.village.goblin_cleanup` 不能直接当 require 路径（会变 `quests/quest/village/goblin_cleanup.lua`）。约定：
   - Quest id：dot 命名，保留业务含义（`quest.village.goblin_cleanup`）
   - Lua module path：下划线压平（`quests.village_goblin_cleanup` → `quests/village_goblin_cleanup.lua`）
   - 在 `scripts/lib/quest.lua` 提供 `quest.module_for(quest_id) -> module_path` 工具函数

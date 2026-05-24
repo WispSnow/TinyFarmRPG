@@ -66,7 +66,7 @@ graph TD
 
 | 类型 | 关键字段 |
 |---|---|
-| `QuestData` | `id_ / id_hash_ / title_ / description_ / objectives_ / rewards_ / giver_text_` |
+| `QuestData` | `id_ / id_hash_ / title_ / description_ / objectives_ / rewards_ / giver_text_(optional fallback)` |
 | `QuestObjectiveData` | `id_ / kind_(DefeatEnemyCount) / enemy_id_ / enemy_id_hash_ / required_count_` |
 | `QuestRewardData` | `gold_ / items_` |
 | `QuestRewardItemData` | `item_id_ / item_id_hash_ / count_` |
@@ -111,17 +111,13 @@ key = quest_id + "::" + objective_id
       "rewards": {
         "gold": 50,
         "items": [{ "item_id": "potion", "count": 2 }]
-      },
-      "giver_text": {
-        "offer": "Can you help us drive away the slimes?",
-        "progress": "We still need more help.",
-        "ready_to_turn_in": "You did it? That's a relief.",
-        "completed": "Thank you again."
       }
     }
   ]
 }
 ```
+
+`giver_text` 仍可作为未脚本化 quest giver 的 C++ fallback 文本；脚本化任务把 offer/progress/ready/completed 分支放在 `scripts/quests/*.lua` 中，JSON 只保留 objective/reward 这类规则数据。
 
 ### 主要 API
 
@@ -224,7 +220,7 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 
 ### QuestInteractionSystem 状态机
 
-`QuestInteractionSystem` 订阅 `InteractCommand`，根据玩家任务状态做出对应响应：
+`QuestInteractionSystem` 订阅 `InteractCommand`，根据玩家任务状态做出对应响应；带 `ScriptedInteractionComponent` 的 quest giver 会在交互入口早退，由 Lua 脚本主动调用 `tf.quest.accept` / `tf.quest.turn_in`，C++ 只继续处理状态迁移与奖励写回。
 
 ```mermaid
 stateDiagram-v2

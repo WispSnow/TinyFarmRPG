@@ -217,6 +217,9 @@ void installTinyFarmScriptModule(sol::state& lua,
     party_impl.set_function("level", [api](const std::string& actor_id) -> int {
         return api->partyLevel(actor_id);
     });
+    party_impl.set_function("initial_level", [api](const std::string& actor_id) -> int {
+        return api->partyInitialLevel(actor_id);
+    });
     tf_impl["party"] = engine::script::createReadOnlyProxy(lua, party_impl, "tf.party");
 
     // ── tf.shop ──

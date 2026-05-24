@@ -33,6 +33,7 @@ inline constexpr std::string_view LIGHT_NAME_EMISSIVE = "emissive";
 // ----------------------------
 inline constexpr std::string_view ACTOR_PROP_QUEST_OFFER_ID = "quest_offer_id";
 inline constexpr std::string_view ACTOR_PROP_SHOP_ID = "shop_id";
+inline constexpr std::string_view ACTOR_PROP_ACTOR_ID = "actor_id";
 inline constexpr std::string_view ACTOR_PROP_RECRUIT_ACTOR_ID = "recruit_actor_id";
 inline constexpr std::string_view ACTOR_PROP_BATTLE_TROOP_ID = "battle_troop_id";
 inline constexpr std::string_view ACTOR_PROP_BATTLE_BACKGROUND_ID = "battle_background_id";
