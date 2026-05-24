@@ -68,6 +68,9 @@ public:
 
     [[nodiscard]] std::vector<std::string> partyMembers() const;
     [[nodiscard]] bool partyIsRecruited(std::string_view actor_id) const;
+    [[nodiscard]] ScriptCommandResult partyOfferRecruit(
+        std::string_view actor_id,
+        const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle);
     [[nodiscard]] ScriptCommandResult partyRequestRecruit(
         std::string_view actor_id,
         const std::optional<engine::script::ScriptEntityHandle>& recruiter_handle);

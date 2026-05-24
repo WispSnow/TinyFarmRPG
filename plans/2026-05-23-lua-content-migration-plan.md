@@ -88,7 +88,7 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 这是"该实体由 Lua 独占交互"的统一语义，不限于 NPC，也覆盖宝箱、休息点、衣柜等机关。Phase 6 脚本化宝箱/区域触发器时直接复用此机制。
 
 - Lua 想知道"这是个任务 NPC"，自己调 `tf.quest.status(quest_id)` 查
-- Lua 想触发招募，自己调 `tf.party.request_recruit(actor_id, handle)`
+- Lua 想触发招募确认，自己调 `tf.party.offer_recruit(actor_id, handle)`
 - Lua 想打开商店，自己调 `tf.shop.open(shop_id, handle)`
 - Lua 想模拟宝箱，自己调 `tf.command.add_item(...)` 并演对白
 
@@ -188,7 +188,7 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 
 ### 前置：脚本 API 依赖注入策略（必须先定）
 
-当前 [ScriptModuleInstaller](../src/engine/script/script_module.h:13) 只接收 `lua/host/registry/dispatcher`，[ScriptGameApi](../src/game/script/script_game_api.h:28) 也只持有这三个引用——没有 catalog、没有 domain service、没有 Context。Phase 2 要做的 `tf.quest.turn_in`（需要 `QuestTurnInService`）、`tf.shop.open`（创建 `ShopMenuScene` 需要 Context）、`tf.party.request_recruit`（需要 `PartyRecruitmentSystem` 路径）现状没法直接拿到这些依赖。
+当前 [ScriptModuleInstaller](../src/engine/script/script_module.h:13) 只接收 `lua/host/registry/dispatcher`，[ScriptGameApi](../src/game/script/script_game_api.h:28) 也只持有这三个引用——没有 catalog、没有 domain service、没有 Context。Phase 2 要做的 `tf.quest.turn_in`（需要 `QuestTurnInService`）、`tf.shop.open`（创建 `ShopMenuScene` 需要 Context）、`tf.party.offer_recruit / request_recruit`（需要招募事件/命令路径）现状没法直接拿到这些依赖。
 
 **采纳策略 A：命令优先（推荐）**
 
@@ -225,6 +225,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 - [x] **`tf.party`**：
   - `members() -> {actor_id, ...}`（已招募列表）
   - `is_recruited(actor_id) -> bool`
+  - `offer_recruit(actor_id, recruiter_handle)` → 内部发 `RecruitOfferRequestedEvent`，打开入队确认
   - `request_recruit(actor_id, recruiter_handle)` → 内部发 `RecruitPartyMemberCommand`
   - `level(actor_id) -> int`
 - [x] **`tf.shop`**：
@@ -319,20 +320,20 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 1. 注册 interact 回调，按 `target_actor_id` 过滤
 2. 自己用 `dialogue.start(...)` helper 演招募对白
-3. 玩家选择"加入"时调 `tf.party.request_recruit(actor_id, recruiter_handle)`
-4. `PartyRecruitmentSystem` 收到 command 后照常处理（弹 `RecruitOfferScene` 或直接入队，由 C++ 决定）
+3. 对白结束时调 `tf.party.offer_recruit(actor_id, recruiter_handle)` 打开 `RecruitOfferScene`
+4. 玩家确认后由 `RecruitOfferScene` 发 `RecruitPartyMemberCommand`，`PartyRecruitmentSystem` 照常写入队伍
 
 ### 待办
 
 - [x] **Lyria / Tori 完整 Lua 化**：
   - 给地图上的 Lyria / Tori 加 `ScriptedInteractionComponent`
-  - [scripts/npcs/lyria.lua](../scripts/npcs/lyria.lua) 注册完整 interact 回调：先说几句话 → 调 `tf.party.request_recruit`
+  - [scripts/npcs/lyria.lua](../scripts/npcs/lyria.lua) 注册完整 interact 回调：先说几句话 → 调 `tf.party.offer_recruit`
   - 同样改造 Tori
   - 从 `dialogue_script.json` 移除 `lyria_intro` / `tori_intro`
 - [x] [RecruitmentInteractionSystem](../src/game/system/recruitment_interaction_system.cpp) 退化：
   - 删除 `loadDialogueFile` 和 `dialogue_table_`
   - 保留"判断是否可以招募 + 触发 `RecruitOfferScene`" 职责（响应非 scripted 实体）
-- [x] **Lua 端"询问/确认"流程**：目前没有 choice UI，Phase 4 首版采用"对白结束后直接请求入队"；choice UI 落地后再扩展确认/取消。
+- [x] **Lua 端"询问/确认"流程**：Lua 负责编排对白，确认弹窗继续复用 C++ `RecruitOfferScene`；`tf.party.request_recruit` 只作为确认后的底层提交入口。
 - [x] **端到端测试**：Lyria 招募流程在 Lua 驱动下走完，覆盖 party 写入、运行时状态初始化、recruiter 移除，以及 scripted 实体不触发 C++ fallback。
 
 ### 验收
@@ -344,8 +345,8 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 ### 容易踩的坑
 
 - **招募资格判定**：是否能加入（等级要求、是否已满员）放在 `tf.party.is_recruitable(actor_id) -> bool, reason` 之类的查询里，Lua 只读不算，规则留 C++。
-- **RecruitOfferScene** 弹出是 UI 决策，由 C++ 保留；Lua 通过 `request_recruit` 触发后不应再控制 Scene 生命周期。
-- **首版无 choice UI**：Phase 4 不要为了"是/否"做临时 UI。先做"interact = 同意"，Phase 1.5 加 choice UI 后再升级。
+- **RecruitOfferScene** 弹出是 UI 决策，由 C++ 保留；Lua 通过 `offer_recruit` 发起确认，不直接控制 Scene 生命周期。
+- **首版无 Lua choice UI**：Phase 4 不做临时 Lua 选项弹窗，招募确认复用现有 C++ `RecruitOfferScene`。
 - Lua 化 Lyria 前**确认 Phase 1 测试 NPC 已经稳定运行**，否则两边问题混在一起难定位。
 
 ---

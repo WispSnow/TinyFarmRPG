@@ -157,6 +157,10 @@ void ShopMenuScene::clean() {
     Scene::clean();
 }
 
+engine::scene::SceneUiCoverage ShopMenuScene::uiCoverage() const {
+    return engine::scene::SceneUiCoverage::HideUnderlyingSceneUi;
+}
+
 bool ShopMenuScene::initUI() {
     auto* runtime = context_.getRmlUi();
     if (!runtime) {

@@ -55,7 +55,7 @@ function recruit_npc.register(opts)
         end
 
         handle(evt, intro_lines, function()
-            return tf.party.request_recruit(actor_id, evt.target)
+            return tf.party.offer_recruit(actor_id, evt.target)
         end)
     end)
 

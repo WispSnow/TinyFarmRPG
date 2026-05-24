@@ -175,11 +175,11 @@ struct ScriptRecruitmentFlowEnv {
 
 namespace game::script {
 
-TEST(ScriptRecruitmentFlowTest, LyriaLuaDialogueRecruitsAndRemovesMapNpc) {
+TEST(ScriptRecruitmentFlowTest, LyriaLuaDialogueRequestsOfferThenAcceptsAndRemovesMapNpc) {
     ScriptRecruitmentFlowEnv env{};
-    RecruitOfferCapture fallback_offers{};
+    RecruitOfferCapture offers{};
     env.dispatcher.sink<game::defs::RecruitOfferRequestedEvent>()
-        .connect<&RecruitOfferCapture::onRequest>(&fallback_offers);
+        .connect<&RecruitOfferCapture::onRequest>(&offers);
 
     env.loadLyriaScript();
 
@@ -187,7 +187,7 @@ TEST(ScriptRecruitmentFlowTest, LyriaLuaDialogueRecruitsAndRemovesMapNpc) {
     EXPECT_EQ(env.capture.textsFor(game::defs::DialogueChannel::Conversation),
               std::vector<std::string>({"Hey there! Welcome to the valley."}));
     EXPECT_FALSE(containsString(env.party().recruited_actor_ids_, LYRIA_ACTOR_ID));
-    EXPECT_TRUE(fallback_offers.requests.empty());
+    EXPECT_TRUE(offers.requests.empty());
 
     env.interact();
     EXPECT_EQ(env.capture.textsFor(game::defs::DialogueChannel::Conversation),
@@ -196,14 +196,27 @@ TEST(ScriptRecruitmentFlowTest, LyriaLuaDialogueRecruitsAndRemovesMapNpc) {
                   "I can help if you are heading into danger.",
               }));
     EXPECT_FALSE(containsString(env.party().recruited_actor_ids_, LYRIA_ACTOR_ID));
-    EXPECT_TRUE(fallback_offers.requests.empty());
+    EXPECT_TRUE(offers.requests.empty());
 
     env.interact();
+
+    ASSERT_EQ(offers.requests.size(), 1U);
+    EXPECT_EQ(offers.requests.front().player, env.player);
+    EXPECT_EQ(offers.requests.front().recruiter, env.recruiter);
+    EXPECT_EQ(offers.requests.front().actor_id, LYRIA_ACTOR_ID);
+    EXPECT_TRUE(env.registry.valid(env.recruiter));
+    EXPECT_FALSE(containsString(env.party().recruited_actor_ids_, LYRIA_ACTOR_ID));
+
+    env.dispatcher.trigger(game::defs::RecruitPartyMemberCommand{
+        .player = offers.requests.front().player,
+        .recruiter = offers.requests.front().recruiter,
+        .actor_id_hash = offers.requests.front().actor_id_hash,
+        .actor_id = offers.requests.front().actor_id,
+    });
 
     EXPECT_TRUE(containsString(env.party().recruited_actor_ids_, LYRIA_ACTOR_ID));
     EXPECT_TRUE(containsString(env.party().active_actor_ids_, LYRIA_ACTOR_ID));
     EXPECT_FALSE(env.registry.valid(env.recruiter));
-    EXPECT_TRUE(fallback_offers.requests.empty());
 
     const auto* runtime_stats =
         env.registry.try_get<game::component::PartyRuntimeStatsComponent>(env.player);

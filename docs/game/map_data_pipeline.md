@@ -193,7 +193,7 @@
 
 - `shop_id`：玩家面向该 NPC 按 `F`，会由 `ShopInteractionSystem` 打开商店；若该实体带 `scripted_interaction=true`，C++ 商人 greeting 会早退，Lua 负责对白并调用 `tf.shop.open(shop_id, evt.target)`。正式商人推荐脚本化，用多个静态 `shop_id` 预设表达日夜 / 任务后库存变化
 - `quest_offer_id`：玩家面向该 NPC 按 `F`，会由 `QuestInteractionSystem` 处理接任务 / 进度提示 / 交付
-- `recruit_actor_id`：玩家面向该 NPC 按 `F`，可进入招募流程；若该实体带 `scripted_interaction=true`，对白和 `tf.party.request_recruit` 调用由 Lua 负责，否则由 `RecruitmentInteractionSystem` 触发 C++ 入队确认。非脚本路径只是 fallback，正式 NPC 推荐脚本化
+- `recruit_actor_id`：玩家面向该 NPC 按 `F`，可进入招募流程；若该实体带 `scripted_interaction=true`，对白和 `tf.party.offer_recruit` 调用由 Lua 负责，否则由 `RecruitmentInteractionSystem` 触发 C++ 入队确认。非脚本路径只是 fallback，正式 NPC 推荐脚本化
 - `battle_troop_id`：玩家碰到该敌人，会发布 `EnterBattleCommand` 并进入战斗；胜利且 `respawn_on_map_reload=false` 的遭遇会写入 `defeated_encounters`
 - 交互优先级当前固定为 `Merchant > QuestGiver > Recruitable > Dialogue NPC > Chest > Rest`
 

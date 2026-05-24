@@ -45,6 +45,7 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(header.find("ShopBuyPreview active_buy_preview_"), std::string::npos);
     EXPECT_NE(header.find("ShopSellPreview active_sell_preview_"), std::string::npos);
     EXPECT_NE(header.find("ShopMenuFocusArea current_focus_area_"), std::string::npos);
+    EXPECT_NE(header.find("SceneUiCoverage uiCoverage() const override"), std::string::npos);
 
     const std::string init_block = test_source_utils::extractFunctionBlock(source, "bool ShopMenuScene::init()");
     const std::string init_ui_block = test_source_utils::extractFunctionBlock(source, "bool ShopMenuScene::initUI()");
@@ -92,6 +93,8 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(source.find("shop_transaction_service_->commitSell"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"buy_entries\")"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"sell_entries\")"), std::string::npos);
+    EXPECT_NE(source.find("ShopMenuScene::uiCoverage()"), std::string::npos);
+    EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi"), std::string::npos);
     EXPECT_NE(focus_block.find("\"is_mode_toggle_focused\""), std::string::npos);
     EXPECT_NE(focus_block.find("\"is_entry_list_focused\""), std::string::npos);
     EXPECT_NE(focus_block.find("\"is_quantity_focused\""), std::string::npos);

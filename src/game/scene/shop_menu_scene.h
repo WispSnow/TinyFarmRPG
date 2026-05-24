@@ -113,6 +113,7 @@ public:
 
     [[nodiscard]] bool init() override;
     void clean() override;
+    [[nodiscard]] engine::scene::SceneUiCoverage uiCoverage() const override;
 
 private:
     [[nodiscard]] bool initUI();
