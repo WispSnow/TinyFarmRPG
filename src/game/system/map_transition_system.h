@@ -1,7 +1,9 @@
 #pragma once
 
 #include <entt/entity/fwd.hpp>
+#include <entt/signal/fwd.hpp>
 #include <glm/vec2.hpp>
+#include <string>
 #include "game/component/map_component.h"
 #include "engine/utils/math.h"
 
@@ -44,6 +46,7 @@ class MapTransitionSystem {
     };
 
     entt::registry& registry_;
+    entt::dispatcher& dispatcher_;
     game::world::WorldState& world_state_;
     game::world::MapManager& map_manager_;
     engine::spatial::CollisionResolver* collision_resolver_{nullptr};
@@ -55,6 +58,7 @@ class MapTransitionSystem {
 
 public:
     MapTransitionSystem(entt::registry& registry,
+                        entt::dispatcher& dispatcher,
                         game::world::WorldState& world_state,
                         game::world::MapManager& map_manager,
                         engine::spatial::CollisionResolver* collision_resolver,
@@ -74,6 +78,8 @@ private:
     glm::vec2 computeEdgeSpawnPos(engine::spatial::Direction dir, const glm::vec2& pos, const glm::vec2& target_size) const;
     glm::vec2 computeOffsetPosition(const engine::utils::Rect& rect, game::component::StartOffset offset) const;
     glm::vec2 clampToMap(const glm::vec2& pos, const glm::vec2& size) const;
+    [[nodiscard]] std::string mapName(entt::id_type map_id) const;
+    void emitMapTransitionEvents(entt::id_type previous_map_id, entt::id_type next_map_id);
 
     void beginTransition(PendingTransition pending);
     void updateTransition();

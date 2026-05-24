@@ -279,6 +279,7 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
 
     systems.map_transition_system = std::make_unique<game::system::MapTransitionSystem>(
         params.registry,
+        dispatcher,
         *services.world_state,
         *services.map_manager,
         services.collision_resolver.get());

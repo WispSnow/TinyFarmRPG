@@ -14,6 +14,7 @@
 #include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/scripted_interaction_component.h"
+#include "game/component/script_trigger_component.h"
 #include "game/component/tags.h"
 #include "game/data/game_time.h"
 #include "game/data/quest_catalog.h"
@@ -263,6 +264,9 @@ bool ScriptGameApi::entityHasComponent(const engine::script::ScriptEntityHandle&
     }
     if (kind == "scripted_interaction") {
         return registry_.any_of<game::component::ScriptedInteractionComponent>(entity);
+    }
+    if (kind == "script_trigger") {
+        return registry_.any_of<game::component::ScriptTriggerComponent>(entity);
     }
     if (kind == "map_id") {
         return registry_.any_of<game::component::MapId>(entity);

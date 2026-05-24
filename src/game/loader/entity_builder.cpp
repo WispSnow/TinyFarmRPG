@@ -13,6 +13,7 @@
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/scripted_interaction_component.h"
+#include "game/component/script_trigger_component.h"
 #include "game/data/battle_background_id.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
@@ -378,7 +379,7 @@ EntityBuilder* EntityBuilder::build() {
         }
     }
     attachMapId();
-    attachScriptedInteraction();
+    attachScriptMetadata();
     return this;
 }
 
@@ -766,9 +767,21 @@ void EntityBuilder::attachMapId() {
     registry_.emplace_or_replace<game::component::MapId>(entity_id_, map_id_);
 }
 
-void EntityBuilder::attachScriptedInteraction() {
+void EntityBuilder::attachScriptMetadata() {
     if (entity_id_ == entt::null) {
         return;
+    }
+    const auto script_module = findObjectStringProperty(object_json_, tiled::OBJECT_PROP_SCRIPT_MODULE);
+    const auto script_event = findObjectStringProperty(object_json_, tiled::OBJECT_PROP_SCRIPT_EVENT);
+    const auto script_once_key = findObjectStringProperty(object_json_, tiled::OBJECT_PROP_SCRIPT_ONCE_KEY);
+    if (script_module || script_event || script_once_key) {
+        registry_.emplace_or_replace<game::component::ScriptTriggerComponent>(
+            entity_id_,
+            game::component::ScriptTriggerComponent{
+                .module_ = script_module.value_or(std::string{}),
+                .event_ = script_event.value_or(std::string{}),
+                .once_key_ = script_once_key.value_or(std::string{}),
+            });
     }
     if (!findObjectBoolProperty(object_json_, tiled::OBJECT_PROP_SCRIPTED_INTERACTION).value_or(false)) {
         return;

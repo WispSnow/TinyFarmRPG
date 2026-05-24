@@ -19,6 +19,8 @@ struct DialogueHideEvent;
 struct InteractCommand;
 struct InventoryChanged;
 struct ItemUsedEvent;
+struct MapEnteredEvent;
+struct MapExitedEvent;
 struct QuestAcceptedEvent;
 struct QuestCompletedEvent;
 }
@@ -50,6 +52,8 @@ private:
     void onItemUsed(const game::defs::ItemUsedEvent& event);
     void onBattleStarted(const game::defs::BattleStartedEvent& event);
     void onBattleEnded(const game::defs::BattleEndedEvent& event);
+    void onMapEntered(const game::defs::MapEnteredEvent& event);
+    void onMapExited(const game::defs::MapExitedEvent& event);
     void onDayChanged(const engine::utils::DayChangedEvent& event);
     void onTimeOfDayChanged(const engine::utils::TimeOfDayChangedEvent& event);
     void onQuestAccepted(const game::defs::QuestAcceptedEvent& event);
