@@ -16,6 +16,7 @@ body, div, h1, h2, h3, h4, p, hr {
     top: 26dp;
     width: 580dp;
     height: 308dp;
+    box-sizing: border-box;
     padding: 10dp;
     decorator: ninepatch(inventory-panel-bg, inventory-panel-bg-inner, 1.0);
     pointer-events: auto;
