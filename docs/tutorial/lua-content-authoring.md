@@ -362,21 +362,30 @@ tf.event.on("interact", function(evt)
     end
 
     local once_key = evt.target_script_once_key or "map.home_exterior.seed_cache.opened"
+    if once.is_done(once_key) then
+        dialogue.show("The seed cache is empty.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        evt.dialogue_handled = true
+        return
+    end
+
+    local result = tf.command.open_chest(evt.target, "You found a few starter seeds.")
+    if result == nil or result.ok ~= true then
+        dialogue.show("The seed cache is stuck.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        evt.dialogue_handled = true
+        return
+    end
+
     if once.run(once_key, function()
-        dialogue.show("You found a few starter seeds.", nil, tf.dialogue.CHANNEL_ITEM_NOTICE, evt.target)
         tf.command.add_item("potato_seed", 2)
         tf.command.add_item("strawberry_seed", 3)
     end) then
         evt.dialogue_handled = true
         return
     end
-
-    dialogue.show("The seed cache is empty.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
-    evt.dialogue_handled = true
 end)
 ```
 
-`lib.once.run` 采用 at-most-once 语义：先写入完成标记再执行回调，因此回调失败也不会自动重试。这适合奖励发放，能避免读档或重复触发导致重复领奖。
+`tf.command.open_chest` 只负责宝箱表现和持久状态：播放 open 动画、标记 `ChestComponent.opened_`、写入地图 `opened_chests`，并显示会自动消失的短提示；奖励仍由 Lua 自己发。`lib.once.run` 采用 at-most-once 语义：先写入完成标记再执行回调，因此回调失败也不会自动重试。这适合奖励发放，能避免读档或重复触发导致重复领奖。
 
 ### 5.7 首次进入地图
 

@@ -1,5 +1,7 @@
 #include "dialogue_presentation_controller.h"
 
+#include "engine/component/sprite_component.h"
+#include "engine/component/transform_component.h"
 #include "engine/component/name_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/data/rpg_catalog.h"
@@ -15,6 +17,7 @@
 namespace {
 
 constexpr std::string_view NONE_DECORATOR = "none";
+constexpr float NOTICE_SECONDS = 2.0F;
 
 [[nodiscard]] std::string portraitDecoratorForActor(const game::data::ActorData& actor) {
     if (actor.portrait_.decorator_.empty()) {
@@ -53,6 +56,11 @@ DialoguePresentationController::~DialoguePresentationController() {
     dispatcher_.sink<game::defs::DialogueShowEvent>().disconnect<&DialoguePresentationController::onShow>(this);
     dispatcher_.sink<game::defs::DialogueMoveEvent>().disconnect<&DialoguePresentationController::onMove>(this);
     dispatcher_.sink<game::defs::DialogueHideEvent>().disconnect<&DialoguePresentationController::onHide>(this);
+}
+
+void DialoguePresentationController::update(const float delta_time) {
+    updateNoticeSlot(notice_slot_, delta_time);
+    updateNoticeSlot(item_notice_slot_, delta_time);
 }
 
 void DialoguePresentationController::buildPortraitCache() {
@@ -94,6 +102,8 @@ void DialoguePresentationController::onShow(const game::defs::DialogueShowEvent&
     if (!slot || !slot->view) {
         return;
     }
+    slot->target = evt.target;
+    slot->remaining_seconds = NOTICE_SECONDS;
     slot->view->setWorldAnchor(evt.world_position, slot->screen_offset);
     slot->view->setText(formatNoticeText(evt.speaker, evt.text));
     slot->view->setVisible(true);
@@ -122,6 +132,8 @@ void DialoguePresentationController::onHide(const game::defs::DialogueHideEvent&
     }
     slot->view->clearWorldAnchor();
     slot->view->setVisible(false);
+    slot->target = entt::null;
+    slot->remaining_seconds = 0.0F;
 }
 
 void DialoguePresentationController::hideHotbarForConversation() {
@@ -146,6 +158,42 @@ void DialoguePresentationController::restoreHotbarAfterConversation() {
         hotbar_ui_->show();
     }
     restore_hotbar_after_conversation_ = false;
+}
+
+void DialoguePresentationController::updateNoticeSlot(NoticeSlot& slot, const float delta_time) {
+    if (!slot.view || slot.remaining_seconds <= 0.0F) {
+        return;
+    }
+
+    slot.remaining_seconds -= delta_time;
+    if (slot.target != entt::null && registry_.valid(slot.target)) {
+        slot.view->setWorldAnchor(noticeAnchor(slot.target, glm::vec2{0.0F}), slot.screen_offset);
+    }
+
+    if (slot.remaining_seconds <= 0.0F) {
+        slot.view->clearWorldAnchor();
+        slot.view->setVisible(false);
+        slot.target = entt::null;
+        slot.remaining_seconds = 0.0F;
+    }
+}
+
+glm::vec2 DialoguePresentationController::noticeAnchor(const entt::entity target,
+                                                       const glm::vec2 fallback_position) const {
+    if (target == entt::null || !registry_.valid(target)) {
+        return fallback_position;
+    }
+
+    const auto* transform = registry_.try_get<engine::component::TransformComponent>(target);
+    if (!transform) {
+        return fallback_position;
+    }
+
+    glm::vec2 offset{0.0F, -16.0F};
+    if (const auto* sprite = registry_.try_get<engine::component::SpriteComponent>(target)) {
+        offset.y = -sprite->size_.y * sprite->pivot_.y;
+    }
+    return transform->position_ + offset;
 }
 
 std::string DialoguePresentationController::resolvePortraitDecorator(const game::defs::DialogueShowEvent& evt) const {

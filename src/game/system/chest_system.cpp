@@ -70,6 +70,7 @@ ChestSystem::ChestSystem(entt::registry& registry,
       inventory_domain_service_(inventory_domain_service) {
     dispatcher_.sink<engine::utils::AnimationFinishedEvent>().connect<&ChestSystem::onAnimationFinished>(this);
     dispatcher_.sink<game::defs::InteractCommand>().connect<&ChestSystem::onInteractCommand>(this);
+    dispatcher_.sink<game::defs::OpenScriptedChestCommand>().connect<&ChestSystem::onOpenScriptedChestCommand>(this);
 }
 
 ChestSystem::~ChestSystem() {
@@ -107,6 +108,28 @@ void ChestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
 }
 
 bool ChestSystem::tryOpenChest(entt::entity player, entt::entity chest_entity) {
+    return openChest(player, chest_entity, std::string{}, true);
+}
+
+void ChestSystem::onOpenScriptedChestCommand(const game::defs::OpenScriptedChestCommand& event) {
+    const entt::entity player = helpers::getPlayerEntity(registry_);
+    if (player == entt::null || event.player != player) return;
+    if (event.chest == entt::null || !registry_.valid(event.chest)) return;
+    if (!helpers::isScriptedInteraction(registry_, event.chest)) return;
+
+    (void)tryOpenScriptedChest(event.player, event.chest, event.notification_text);
+}
+
+bool ChestSystem::tryOpenScriptedChest(entt::entity player,
+                                       entt::entity chest_entity,
+                                       std::string notification_text) {
+    return openChest(player, chest_entity, std::move(notification_text), false);
+}
+
+bool ChestSystem::openChest(entt::entity player,
+                            entt::entity chest_entity,
+                            std::string notification_text,
+                            const bool grant_rewards) {
     if (player == entt::null || chest_entity == entt::null) return false;
 
     const entt::id_type current_map = world_state_.getCurrentMap();
@@ -119,14 +142,18 @@ bool ChestSystem::tryOpenChest(entt::entity player, entt::entity chest_entity) {
         return false;
     }
 
-    const auto loot_text = buildLootText(item_catalog_, chest->rewards_);
-    if (!loot_text.empty()) {
-        showNotification(player, loot_text);
+    if (grant_rewards) {
+        notification_text = buildLootText(item_catalog_, chest->rewards_);
+    }
+    if (!notification_text.empty()) {
+        showNotification(player, std::move(notification_text));
     }
 
-    for (const auto& reward : chest->rewards_) {
-        if (reward.item_id_ == entt::null || reward.count_ <= 0) continue;
-        (void)inventory_domain_service_.addItem(player, reward.item_id_, reward.count_);
+    if (grant_rewards) {
+        for (const auto& reward : chest->rewards_) {
+            if (reward.item_id_ == entt::null || reward.count_ <= 0) continue;
+            (void)inventory_domain_service_.addItem(player, reward.item_id_, reward.count_);
+        }
     }
 
     dispatcher_.enqueue(engine::utils::PlayAnimationEvent{chest_entity, CHEST_OPEN_ANIM, false});

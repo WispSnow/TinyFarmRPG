@@ -402,6 +402,12 @@ void installTinyFarmScriptModule(sol::state& lua,
               sol::optional<ScriptEntityHandle> player_handle) -> bool {
             return api->interact(target_handle, toStdOptional(player_handle));
         });
+    command_impl.set_function(
+        "open_chest",
+        [&lua, api](const ScriptEntityHandle& chest_handle,
+                    sol::optional<std::string> notification_text) -> sol::table {
+            return commandResultToLua(lua, api->openChest(chest_handle, notification_text.value_or("")));
+        });
     tf_impl["command"] = engine::script::createReadOnlyProxy(lua, command_impl, "tf.command");
 
     // ── tf.dialogue ──

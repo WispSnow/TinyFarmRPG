@@ -333,6 +333,35 @@ TEST(DialoguePresentationControllerUnitTest, ConversationLeavesInitiallyHiddenHo
     EXPECT_EQ(hotbar.show_calls, 0);
 }
 
+TEST(DialoguePresentationControllerUnitTest, NoticeAutoHidesAfterDefaultDuration) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher, registry, &box, &notice, &item_notice, &hotbar, nullptr);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = game::defs::DialogueChannel::Notice;
+    show_evt.text = "Short notice";
+    show_evt.world_position = {12.0F, 24.0F};
+    dispatcher.trigger(show_evt);
+
+    ASSERT_TRUE(notice.visible);
+    EXPECT_TRUE(notice.has_world_anchor);
+    expectVec2Near(notice.world_position, {12.0F, 24.0F});
+
+    controller.update(1.0F);
+    EXPECT_TRUE(notice.visible);
+
+    controller.update(1.0F);
+    EXPECT_FALSE(notice.visible);
+    EXPECT_FALSE(notice.has_world_anchor);
+}
+
 TEST_F(DialoguePresentationControllerTest, ConversationShowHideDrivesDialogueBox) {
     if (!context_->getRmlUi()) {
         GTEST_SKIP() << "RmlUiRuntime not available in dialogue presentation test environment.";

@@ -28,15 +28,24 @@ end
 
 local function open_seed_cache(evt)
     local once_key = evt.target_script_once_key or "map.home_exterior.seed_cache.opened"
+    if once.is_done(once_key) then
+        dialogue.show("The seed cache is empty.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        return
+    end
+
+    local result = tf.command.open_chest(evt.target, "You found a few starter seeds.")
+    if result == nil or result.ok ~= true then
+        print("[tf] scripted chest open failed: " .. tostring(result and result.reason))
+        dialogue.show("The seed cache is stuck.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        return
+    end
+
     if once.run(once_key, function()
-        dialogue.show("You found a few starter seeds.", nil, tf.dialogue.CHANNEL_ITEM_NOTICE, evt.target)
         tf.command.add_item("potato_seed", 2)
         tf.command.add_item("strawberry_seed", 3)
     end) then
         return
     end
-
-    dialogue.show("The seed cache is empty.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
 end
 
 local function on_interact(evt)

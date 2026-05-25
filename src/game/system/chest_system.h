@@ -14,6 +14,7 @@ struct AnimationFinishedEvent;
 
 namespace game::defs {
 struct InteractCommand;
+struct OpenScriptedChestCommand;
 }
 
 namespace game::data {
@@ -54,7 +55,10 @@ private:
     void showNotification(entt::entity player, std::string text);
 
     void onInteractCommand(const game::defs::InteractCommand& event);
+    void onOpenScriptedChestCommand(const game::defs::OpenScriptedChestCommand& event);
     bool tryOpenChest(entt::entity player, entt::entity chest_entity);
+    bool tryOpenScriptedChest(entt::entity player, entt::entity chest_entity, std::string notification_text);
+    bool openChest(entt::entity player, entt::entity chest_entity, std::string notification_text, bool grant_rewards);
     void onAnimationFinished(const engine::utils::AnimationFinishedEvent& event);
 };
 

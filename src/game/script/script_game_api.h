@@ -112,6 +112,8 @@ public:
                                   bool full_sync);
     [[nodiscard]] bool interact(const engine::script::ScriptEntityHandle& target_handle,
                                 const std::optional<engine::script::ScriptEntityHandle>& player_handle);
+    [[nodiscard]] ScriptCommandResult openChest(const engine::script::ScriptEntityHandle& chest_handle,
+                                                std::string_view notification_text);
 
     [[nodiscard]] bool showDialogue(std::string_view text,
                                     std::string_view speaker,

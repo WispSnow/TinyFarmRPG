@@ -31,10 +31,14 @@ public:
                                    glm::vec2 item_notice_offset = {0.0F, -56.0F});
     ~DialoguePresentationController();
 
+    void update(float delta_time);
+
 private:
     struct NoticeSlot {
         FloatingNoticeViewPort* view{nullptr};
         glm::vec2 screen_offset{0.0F, -4.0F};
+        entt::entity target{entt::null};
+        float remaining_seconds{0.0F};
     };
 
     entt::dispatcher& dispatcher_;
@@ -55,7 +59,9 @@ private:
 
     void hideHotbarForConversation();
     void restoreHotbarAfterConversation();
+    void updateNoticeSlot(NoticeSlot& slot, float delta_time);
     void buildPortraitCache();
+    [[nodiscard]] glm::vec2 noticeAnchor(entt::entity target, glm::vec2 fallback_position) const;
     [[nodiscard]] std::string resolvePortraitDecorator(const game::defs::DialogueShowEvent& evt) const;
     [[nodiscard]] const NoticeSlot* noticeSlot(game::defs::DialogueChannel channel) const;
     [[nodiscard]] NoticeSlot* noticeSlot(game::defs::DialogueChannel channel);
