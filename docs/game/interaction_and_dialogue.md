@@ -18,6 +18,7 @@ flowchart TD
     SIS -->|DialogueShow<br/>Conversation| DPC["DialoguePresentationController"]
     SIS -->|PushSceneEvent| Shop["Scene Stack<br/>(ShopMenuScene)"]
     DS -->|DialogueShow/Hide<br/>Conversation| DPC
+    SDL["ScriptedDialogueLifecycleSystem<br/>Lua conversation 生命周期"] -->|DialogueHide<br/>Conversation| DPC
     CS -->|DialogueShow/Move/Hide<br/>Notice| DPC
     IU["ItemUseSystem<br/>UseItemCommand"] -->|DialogueShow/Move/Hide<br/>ItemNotice| DPC
 
@@ -32,6 +33,7 @@ flowchart TD
 - `InteractionSystem` 只做两件事：根据玩家朝向做一次空间 probe，挑出目标实体；然后发出 `InteractCommand`
 - 具体玩法不写在 `InteractionSystem`：对话、开箱、休息分别由各自系统订阅 `InteractCommand` 并处理
 - UI 是事件驱动：`DialoguePresentationController` 监听 `DialogueShow/Move/HideEvent`，并按 `DialogueChannel` 区分主对话与短提示，避免互相覆盖
+- 脚本化实体的主对话由 `ScriptedDialogueLifecycleSystem` 负责走远自动关闭；Lua helper 收到 `dialogue_closed` 后清理自身状态
 
 ## 2) `InteractCommand`：总线式扩展点
 
@@ -77,6 +79,11 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 - `Notice` 与 `ItemNotice` 走 `FloatingNoticeView`，文本排版和尺寸由 RmlUi 自动完成
 - 浮动通知的世界锚点位置会在 `GameScene::prepareUi(alpha)` 阶段刷新
 - `DialogueMoveEvent` 对 `Conversation` 会被忽略，因为底部对话框不依赖世界坐标
+
+脚本化对话补充约定：
+- `tf.dialogue.show(..., target_handle)` 发出的 `Conversation` 如果目标带 `ScriptedInteractionComponent`，会被 `ScriptedDialogueLifecycleSystem` 记录为 Lua-owned conversation
+- 玩家离开目标超过较近的像素风关闭阈值后，系统发 `DialogueHideEvent`；当前阈值为 `min(DialogueComponent::interact_distance_ * 0.75, 48px)`
+- `lib.dialogue` 监听 `dialogue_closed`，把外部关闭视为 `interrupted = true`
 
 ## 4) DialogueChannel 约定
 

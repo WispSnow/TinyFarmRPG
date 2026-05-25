@@ -58,6 +58,7 @@
 #include "game/system/recruitment_interaction_system.h"
 #include "game/system/render_target_system.h"
 #include "game/system/rest_system.h"
+#include "game/system/scripted_dialogue_lifecycle_system.h"
 #include "game/system/shop_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_of_day_light_system.h"
@@ -197,6 +198,8 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
     systems.animal_behavior_system = std::make_unique<game::system::AnimalBehaviorSystem>(params.registry);
     systems.dialogue_system = std::make_unique<game::system::DialogueSystem>(params.registry, dispatcher);
     systems.dialogue_system->loadDialogueFile(GameContentManifest::DialogueScript);
+    systems.scripted_dialogue_lifecycle_system =
+        std::make_unique<game::system::ScriptedDialogueLifecycleSystem>(params.registry, dispatcher);
     systems.quest_interaction_system = std::make_unique<game::system::QuestInteractionSystem>(
         params.registry,
         dispatcher,

@@ -257,6 +257,7 @@ list(APPEND GAME_TEST_SOURCES
     game/script_host_command_bridge_test.cpp
     game/script_event_bridge_test.cpp
     game/script_dialogue_helper_test.cpp
+    game/scripted_dialogue_lifecycle_system_test.cpp
     game/script_phase2_api_test.cpp
     game/script_quest_flow_test.cpp
     game/script_recruitment_flow_test.cpp

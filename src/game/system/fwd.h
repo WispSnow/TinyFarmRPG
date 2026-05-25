@@ -20,6 +20,7 @@ class ItemUseSystem;
 class NPCWanderSystem;
 class AnimalBehaviorSystem;
 class DialogueSystem;
+class ScriptedDialogueLifecycleSystem;
 class EnemyEncounterSystem;
 class QuestInteractionSystem;
 class RecruitmentInteractionSystem;

@@ -44,6 +44,7 @@
 #include "game/system/player_control_system.h"
 #include "game/system/quest_interaction_system.h"
 #include "game/system/recruitment_interaction_system.h"
+#include "game/system/scripted_dialogue_lifecycle_system.h"
 #include "game/system/shop_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_system.h"
@@ -512,6 +513,9 @@ void run_item_use(const SystemScheduler::TickParams& params) {
 void run_dialogue(const SystemScheduler::TickParams& params) {
     if (params.systems.dialogue_system) {
         params.systems.dialogue_system->update(params.delta_time);
+    }
+    if (params.systems.scripted_dialogue_lifecycle_system) {
+        params.systems.scripted_dialogue_lifecycle_system->update(params.delta_time);
     }
 }
 

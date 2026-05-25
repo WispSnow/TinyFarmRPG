@@ -280,6 +280,7 @@ target_sources(game PRIVATE
     game/system/animal_behavior_system.cpp
     game/system/wander_runtime.cpp
     game/system/dialogue_system.cpp
+    game/system/scripted_dialogue_lifecycle_system.cpp
     game/system/quest_interaction_system.cpp
     game/system/recruitment_interaction_system.cpp
     game/system/party_recruitment_system.cpp

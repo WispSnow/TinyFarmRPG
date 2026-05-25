@@ -159,23 +159,22 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 - [x] **保留 `DialogueSystem` 作为 fallback**：未挂 `ScriptedInteractionComponent` 的 NPC 仍走 C++ 路径，不破坏现有非脚本 NPC。
 - [x] **端到端测试**：在 [script_dialogue_helper_test.cpp](../tests/game/script_dialogue_helper_test.cpp) 模拟 3 次 `InteractCommand`，断言依次显示 line1 → line2 → 关闭。
 
-### 已知限制（首版接受）
+### 生命周期补强
 
-- **走远不会自动关闭脚本对话**：[DialogueSystem](../src/game/system/dialogue_system.cpp:79) 的距离关闭逻辑只处理它自己设置的 `active_entity_`；脚本对话经 `tf.dialogue.show` 走的是 `DialogueShowEvent`，DialogueSystem 早退后不会再触发 `dialogue_closed`。首版接受这个限制——玩家走远后对话气泡会留在屏幕上，直到再按 E（命中其他 target 或同一 target 推进末尾）。
-- **后续补救**（不在 Phase 1 范围）：新增轻量 `ScriptedDialogueLifecycleSystem`，订阅 `DialogueShowEvent`，记录 `{entity → show_position}`，每 tick 检查距离，超出阈值发 `DialogueHideEvent` 让 Lua 收到 `dialogue_closed`。作为 Phase 1.5 单独 issue。
+- **已补强：脚本对话走远自动关闭**：`ScriptedDialogueLifecycleSystem` 订阅脚本化实体的 `DialogueShowEvent`，记录当前 conversation 目标，每 tick 检查玩家距离；超出阈值后发 `DialogueHideEvent`，Lua 端 `lib.dialogue` 通过 `dialogue_closed` 清理 module-local 状态并以 `interrupted=true` 调用回调。
 
 ### 验收
 
 - 测试 NPC 走完整 Lua 对话流程：按一次 E 显示首行、再按一次 E 显示第二行、再按一次 E 关闭，`on_done(interrupted=false)` 触发。
 - 调用 `dialogue.cancel(target)` 能正确清理 module-local 状态并触发 `on_done(interrupted=true)`。
 - 端到端测试覆盖：正常推进路径 + 手动 cancel 路径。
-- **不验收"走远自动关闭"**——见已知限制。
+- 脚本化对话走远自动关闭，并且 `dialogue_closed` 能中断 Lua helper 内部 sequence。
 
 ### 容易踩的坑
 
 - **不要尝试做 `choice`**：当前 RmlUi 没有选项弹窗，`DialogueChoiceRequestedEvent` 也不存在。强行做会引入"假 UI"，硬币的两面都难看。
 - **协程暂时不要碰**：先用 module-local 状态机把流程跑通。3 层嵌套以内能接受；遇到深嵌套再考虑协程包装。
-- **不能依赖 `dialogue_closed` 推进**：那是"关闭"信号，不是"下一行"信号；而且脚本对话当前根本拿不到这个信号（见已知限制）。必须用 interact 事件计数。
+- **不能依赖 `dialogue_closed` 推进**：那是"关闭/中断"信号，不是"下一行"信号；多行对话仍必须用 interact 事件计数推进，`dialogue_closed` 只用于外部关闭时清理状态。
 - **多 NPC 并发**：玩家正在和 A 说话时按 E 跳到 B 应该怎么办？helper 内部用 `{target → state}` map，切到新 target 时显式 `dialogue.cancel(old_target)`。
 - **不要在 `tf.state` 里存"当前对话行号"**：会污染存档。短期状态用 Lua module-local 变量。
 - Lyria / Tori 迁移延后：Phase 4 已把 `lyria_intro` / `tori_intro` 从 `dialogue_script.json` 迁出到 Lua。
@@ -484,36 +483,63 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 平行的辅助 issue（不阻塞主线）
 
-- **Phase 1.5：脚本对话生命周期补强** —— 新增 `ScriptedDialogueLifecycleSystem` 处理走远自动关闭；补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗。
+- **Phase 1.5：脚本对话生命周期补强** —— `ScriptedDialogueLifecycleSystem` 走远自动关闭已完成；`DialogueChoiceRequestedEvent` + RmlUi 选项弹窗仍待做。
 - **Phase 2.5：地图切换 command** —— 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 加 `WarpToMapCommand`，再补 `tf.map.warp` 绑定。
 - **Phase 5.5：商店运行时库存** —— 抽 `ShopListingProvider` / `ShopRuntimeCatalog`，UI 与 transaction service 共享运行时商品数据，再加 `tf.shop.set_stock`。
 
-## 首个建议任务切片
+## 主线完成后的后续切片
+
+7 个主 Phase 已完成后，继续按小切片推进，不再回头执行下方历史起步切片。
+
+**Polish PR 1：脚本对话生命周期**
+
+- [x] 新增 `ScriptedDialogueLifecycleSystem`，只接管 `ScriptedInteractionComponent` 目标的 `Conversation` 对话。
+- [x] 走远、玩家缺失或目标失效时发 `DialogueHideEvent`。
+- [x] `lib.dialogue` 监听 `dialogue_closed`，外部关闭时清理 sequence，并以 `interrupted=true` 通知调用方。
+- [x] 补 C++ 生命周期测试与 Lua helper 回归测试。
+- [ ] 后续补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗，再开放 `tf.dialogue.choice`。
+
+**Polish PR 2：地图切换 command**
+
+- [ ] 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 增加 `WarpToMapCommand` 入口。
+- [ ] 补 `tf.map.warp(map_id, x, y)` 绑定与端到端测试。
+
+**Polish PR 3：区域触发**
+
+- [ ] 新增 `ZoneEnteredEvent` / `ZoneExitedEvent` 与低频去抖的 `ZoneTriggerSystem`。
+- [ ] 开放 `tf.event.on("zone_enter" / "zone_exit", fn)`。
+
+**较大后续：商店运行时库存**
+
+- [ ] 先抽 `ShopListingProvider` / `ShopRuntimeCatalog`，保证 UI preview 与交易 commit 读同一份运行时商品数据。
+- [ ] 再加 `tf.shop.set_stock`。
+
+## 历史：首个建议任务切片（已完成）
 
 **Phase 0 + Phase 1 的最小闭环**（建议拆 2-3 个 PR）：
 
 **PR 1：身份组件 + payload 扩展**
 
-- [ ] 新增 `ActorIdentityComponent{actor_id_, actor_id_hash_, blueprint_id_}`
-- [ ] [entity_factory](../src/game/factory) 给所有 NPC 蓝图挂 `ActorIdentityComponent`；与 `RecruitableComponent::actor_id_` 同步
-- [ ] `onInteract` payload 补 `target_actor_id` / `target_name` / `target_kind` / `map_id`
-- [ ] `tf.entity` 只读查询（`actor_id` / `name` / `position`）
-- [ ] payload 端到端测试
+- [x] 新增 `ActorIdentityComponent{actor_id_, actor_id_hash_, blueprint_id_}`
+- [x] [entity_factory](../src/game/factory) 给所有 NPC 蓝图挂 `ActorIdentityComponent`；与 `RecruitableComponent::actor_id_` 同步
+- [x] `onInteract` payload 补 `target_actor_id` / `target_name` / `target_kind` / `map_id`
+- [x] `tf.entity` 只读查询（`actor_id` / `name` / `position`）
+- [x] payload 端到端测试
 
 **PR 2：Lua 独占交互机制**
 
-- [ ] 新增 `ScriptedInteractionComponent`（仅作 marker，不持有数据）
-- [ ] 新增共享 helper `helpers::isScriptedInteraction(registry, target)`
-- [ ] 4 个 InteractionSystem（Dialogue/Quest/Recruitment/Shop）在 `onInteractCommand` 最前面统一早退
-- [ ] Tiled 属性 `scripted_interaction = true` 解析
-- [ ] 验收测试：挂此组件的实体，4 个 system 都不响应
+- [x] 新增 `ScriptedInteractionComponent`（仅作 marker，不持有数据）
+- [x] 新增共享 helper `helpers::isScriptedInteraction(registry, target)`
+- [x] 4 个 InteractionSystem（Dialogue/Quest/Recruitment/Shop）在 `onInteractCommand` 最前面统一早退
+- [x] Tiled 属性 `scripted_interaction = true` 解析
+- [x] 验收测试：挂此组件的实体，4 个 system 都不响应
 
 **PR 3：纯对话样板**
 
-- [ ] [scripts/lib/dialogue.lua](../scripts/lib/dialogue.lua) 实现 `dialogue.start(target, lines, on_done)` 状态机式 helper（interact 推进 + dialogue_closed 中断处理）
-- [ ] 在地图上新增 `npc.greeter` 测试 NPC（DialogueComponent + ActorIdentityComponent + ScriptedInteractionComponent）
-- [ ] 新建 [scripts/npcs/greeter.lua](../scripts/npcs/greeter.lua)，注册 interact 回调走完整 sequence
-- [ ] 端到端测试 + 手动跑一遍
-- [ ] 更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md)
+- [x] [scripts/lib/dialogue.lua](../scripts/lib/dialogue.lua) 实现 `dialogue.start(target, lines, on_done)` 状态机式 helper（interact 推进 + dialogue_closed 中断处理）
+- [x] 在地图上新增 `npc.greeter` 测试 NPC（DialogueComponent + ActorIdentityComponent + ScriptedInteractionComponent）
+- [x] 新建 [scripts/npcs/greeter.lua](../scripts/npcs/greeter.lua)，注册 interact 回调走完整 sequence
+- [x] 端到端测试 + 手动跑一遍
+- [x] 更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md)
 
 这个切片不动 Lyria / Tori / 任务 / 招募 / 商店任何业务规则，只验证 Lua 内容层的基本工作流，是最稳的起点。Lyria/Tori 留到 Phase 4 一起处理（因为她们是 Recruitable）。

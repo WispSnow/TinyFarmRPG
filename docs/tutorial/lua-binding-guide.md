@@ -264,6 +264,8 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 
 脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 使用 `Conversation` channel，并在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
 
+脚本化实体的 conversation 生命周期由 C++ 的 `ScriptedDialogueLifecycleSystem` 补齐：当玩家离开当前对话目标超过交互距离阈值时，系统会发出 `dialogue_closed`。`lib.dialogue` 会把这视为外部中断，清理内部 sequence，并以 `interrupted = true` 调用 `on_done`。
+
 `evt.dialogue_handled` 是 Lua 脚本之间约定的协调标志，不来自 C++ payload。`lib.dialogue` 在同一次按键推进或关闭当前对话时会把它设为 `true`；NPC/quest 脚本应在回调开头检查并尽早 `return`。脚本自己成功认领一次交互并调用 `dialogue.start(...)` 后，也可以把该字段设为 `true`，避免后续监听器再处理同一按键。
 
 ---

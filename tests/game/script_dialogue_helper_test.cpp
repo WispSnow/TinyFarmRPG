@@ -175,6 +175,31 @@ TEST(ScriptDialogueHelperTest, CancelClearsSequenceAndReportsInterrupted) {
     EXPECT_EQ(env.capture.hide_count, 1);
 }
 
+TEST(ScriptDialogueHelperTest, DialogueClosedEventInterruptsActiveSequence) {
+    ScriptDialogueHelperEnv env{};
+
+    ASSERT_TRUE(env.host.exec(R"(
+        local dialogue = tf.script.require("lib.dialogue")
+        closed_done = nil
+        assert(dialogue.start(test_target, {"Hi", "Bye"}, function(interrupted)
+            closed_done = interrupted
+        end) == true)
+    )"));
+
+    ASSERT_EQ(env.capture.shown_texts.size(), 1U);
+    EXPECT_EQ(env.capture.shown_texts[0], "Hi");
+
+    game::defs::DialogueHideEvent hide{};
+    hide.target = env.target;
+    hide.channel = game::defs::DialogueChannel::Conversation;
+    env.dispatcher.trigger(hide);
+
+    EXPECT_TRUE(env.host.exec("assert(closed_done == true)"));
+
+    env.interact();
+    EXPECT_EQ(env.capture.shown_texts.size(), 1U);
+}
+
 TEST(ScriptDialogueHelperTest, SwitchingTargetsCancelsActiveSequence) {
     ScriptDialogueHelperEnv env{};
 
