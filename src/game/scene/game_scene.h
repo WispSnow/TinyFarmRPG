@@ -23,6 +23,7 @@ namespace game::data {
 namespace game::defs {
     struct EnterBattleCommand;
     struct BattleEndedEvent;
+    struct DialogueChoiceRequestedEvent;
     struct QuestOfferRequestedEvent;
     struct RecruitOfferRequestedEvent;
 }
@@ -110,6 +111,7 @@ private:
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);
     void onBattleEnded(const game::defs::BattleEndedEvent& evt);
+    void onDialogueChoiceRequested(const game::defs::DialogueChoiceRequestedEvent& evt);
     void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
     void onRecruitOfferRequested(const game::defs::RecruitOfferRequestedEvent& evt);
     void playGameplayMusicCue();

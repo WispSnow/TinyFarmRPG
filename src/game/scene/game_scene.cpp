@@ -1,6 +1,7 @@
 #include "game_scene.h"
 
 #include "battle_scene.h"
+#include "dialogue_choice_scene.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/runtime/game_runtime_assembler.h"
 #include "game/runtime/system_scheduler.h"
@@ -307,6 +308,8 @@ GameScene::~GameScene() noexcept {
     context_.getDispatcher().sink<game::defs::HotbarSlotChanged>().disconnect<&GameScene::onHotbarSlotChanged>(this);
     context_.getDispatcher().sink<game::defs::EnterBattleCommand>().disconnect<&GameScene::onEnterBattleCommand>(this);
     context_.getDispatcher().sink<game::defs::BattleEndedEvent>().disconnect<&GameScene::onBattleEnded>(this);
+    context_.getDispatcher().sink<game::defs::DialogueChoiceRequestedEvent>()
+        .disconnect<&GameScene::onDialogueChoiceRequested>(this);
     context_.getDispatcher().sink<game::defs::QuestOfferRequestedEvent>().disconnect<&GameScene::onQuestOfferRequested>(this);
     context_.getDispatcher().sink<game::defs::RecruitOfferRequestedEvent>().disconnect<&GameScene::onRecruitOfferRequested>(this);
 }
@@ -348,6 +351,7 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::HotbarSlotChanged>().connect<&GameScene::onHotbarSlotChanged>(this);
     dispatcher.sink<game::defs::EnterBattleCommand>().connect<&GameScene::onEnterBattleCommand>(this);
     dispatcher.sink<game::defs::BattleEndedEvent>().connect<&GameScene::onBattleEnded>(this);
+    dispatcher.sink<game::defs::DialogueChoiceRequestedEvent>().connect<&GameScene::onDialogueChoiceRequested>(this);
     dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&GameScene::onQuestOfferRequested>(this);
     dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&GameScene::onRecruitOfferRequested>(this);
 
@@ -892,6 +896,23 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         std::move(units),
         std::move(session_options),
         std::move(presentation_options)));
+}
+
+void GameScene::onDialogueChoiceRequested(const game::defs::DialogueChoiceRequestedEvent& evt) {
+    if (context_.getGameState().isPaused()) {
+        return;
+    }
+    if (systems_ && systems_->map_transition_system && systems_->map_transition_system->isTransitionActive()) {
+        return;
+    }
+    if (evt.request_id == 0 || evt.prompt.empty() || evt.options.empty()) {
+        return;
+    }
+
+    requestPushScene(std::make_unique<game::scene::DialogueChoiceScene>(
+        "DialogueChoiceScene",
+        context_,
+        evt));
 }
 
 void GameScene::onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt) {

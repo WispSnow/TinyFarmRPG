@@ -41,6 +41,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <utility>
 
 namespace game::script {
@@ -873,6 +874,47 @@ bool ScriptGameApi::hideDialogue(const int channel,
     evt.channel = *resolved_channel;
     enqueueFromScript(host_, dispatcher_, std::move(evt));
     return true;
+}
+
+std::uint32_t ScriptGameApi::requestDialogueChoice(
+    const std::string_view prompt,
+    std::vector<ScriptDialogueChoiceOption> options,
+    const std::optional<engine::script::ScriptEntityHandle>& target_handle,
+    const std::string_view speaker,
+    const std::string_view speaker_actor_id,
+    const bool allow_cancel) {
+    if (prompt.empty() || options.empty()) {
+        return 0;
+    }
+
+    entt::entity target = entt::null;
+    if (!resolveTargetEntity(target_handle, "tf.dialogue.choice", target, false)) {
+        return 0;
+    }
+
+    const std::uint32_t request_id = next_dialogue_choice_request_id_++;
+    if (next_dialogue_choice_request_id_ == 0) {
+        next_dialogue_choice_request_id_ = 1;
+    }
+
+    game::defs::DialogueChoiceRequestedEvent event{};
+    event.request_id = request_id;
+    event.target = target;
+    event.prompt = std::string{prompt};
+    event.speaker = std::string{speaker};
+    event.speaker_actor_id = std::string{speaker_actor_id};
+    event.speaker_actor_id_hash = hashId(speaker_actor_id);
+    event.allow_cancel = allow_cancel;
+    event.options.reserve(options.size());
+    for (auto& option : options) {
+        event.options.push_back(game::defs::DialogueChoiceOption{
+            .id = std::move(option.id),
+            .label = std::move(option.label),
+        });
+    }
+
+    triggerFromScript(host_, dispatcher_, std::move(event));
+    return request_id;
 }
 
 bool ScriptGameApi::resolveTargetEntity(

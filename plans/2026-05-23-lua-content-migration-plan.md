@@ -37,7 +37,7 @@ Lua 扩展前的框架体检（`plans/archive/lua/2026-05-22-lua-expansion-prefl
 
 5. **对话推进无 advance 事件**：[dialogue_system.cpp:112-122](../src/game/system/dialogue_system.cpp) 的"按键推进"是通过下一次 `InteractCommand` 触发的，没有 `dialogue_advanced` 事件可供 Lua 订阅。`dialogue_closed` 只在最后关闭时发。Lua 端如果想做 sequence，必须自己拦截 interact 事件计数推进，而不是等"下一行"信号。
 
-6. **无 Choice UI**：当前 RmlUi 没有"选项弹窗"组件，也没有 `DialogueChoiceRequestedEvent`。`tf.dialogue.choice` 不能在第一版实现，需要先补 UI 与事件。
+6. **无 Choice UI（已在 Phase 1.5 补齐）**：第一版 RmlUi 没有"选项弹窗"组件，也没有 `DialogueChoiceRequestedEvent`。`tf.dialogue.choice` 未挂在 Phase 1 临时实现，后续通过独立切片补 UI 与事件。
 
 ## 设计原则
 
@@ -155,7 +155,7 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
   - 在合适地图（如 home_exterior 或 town）放一个 `npc.greeter` 测试 NPC
   - 挂 `DialogueComponent` + `ActorIdentityComponent{actor_id="npc.greeter"}` + `ScriptedInteractionComponent`
   - 新建 [scripts/npcs/greeter.lua](../scripts/npcs/greeter.lua)，注册 interact 回调，第一次说"Hi"，第二次说"Bye"
-- [ ] **`choice` 推迟到 Phase 1.5**：补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗后再加；写一份 follow-up issue 卡，不挂在 Phase 1 里。
+- [x] **`choice` 推迟到 Phase 1.5**：Phase 1 不引入临时假 UI；后续已补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗，并开放 `tf.dialogue.choice`。
 - [x] **保留 `DialogueSystem` 作为 fallback**：未挂 `ScriptedInteractionComponent` 的 NPC 仍走 C++ 路径，不破坏现有非脚本 NPC。
 - [x] **端到端测试**：在 [script_dialogue_helper_test.cpp](../tests/game/script_dialogue_helper_test.cpp) 模拟 3 次 `InteractCommand`，断言依次显示 line1 → line2 → 关闭。
 
@@ -172,7 +172,7 @@ Phase 3 / 4 / 5 之间相对独立，可按需并行或重排。Phase 6 / 7 需�
 
 ### 容易踩的坑
 
-- **不要尝试做 `choice`**：当前 RmlUi 没有选项弹窗，`DialogueChoiceRequestedEvent` 也不存在。强行做会引入"假 UI"，硬币的两面都难看。
+- **Phase 1 不做临时 `choice`**：选项 UI 已作为 Phase 1.5 独立切片补齐，脚本侧通过 `tf.dialogue.choice` / `lib.dialogue.choice` 使用。
 - **协程暂时不要碰**：先用 module-local 状态机把流程跑通。3 层嵌套以内能接受；遇到深嵌套再考虑协程包装。
 - **不能依赖 `dialogue_closed` 推进**：那是"关闭/中断"信号，不是"下一行"信号；多行对话仍必须用 interact 事件计数推进，`dialogue_closed` 只用于外部关闭时清理状态。
 - **多 NPC 并发**：玩家正在和 A 说话时按 E 跳到 B 应该怎么办？helper 内部用 `{target → state}` map，切到新 target 时显式 `dialogue.cancel(old_target)`。
@@ -246,7 +246,6 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 | 延后项 | 阻塞原因 | 何时做 |
 |---|---|---|
 | `tf.shop.set_stock` 动态库存 | [ShopMenuScene](../src/game/scene/shop_menu_scene.h) 和 [ShopTransactionService](../src/game/domain/shop_transaction_service.h) 都直接持有 `ShopCatalog*`，运行时覆盖会让 UI / preview / commit 不一致 | 先抽 `ShopListingProvider` / `ShopRuntimeCatalog` 让 UI 与交易服务共享同一份运行时库存数据，再加 `set_stock` |
-| `tf.dialogue.choice` | 无选项 RmlUi 组件，无 `DialogueChoiceRequestedEvent` | Phase 1.5 单独 issue，补 UI + 事件后再加绑定 |
 | `tf.map.warp` | `MapTransitionSystem` 无 command 入口 | 独立子任务补 `WarpToMapCommand` |
 
 ### 验收
@@ -483,7 +482,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 ### 平行的辅助 issue（不阻塞主线）
 
-- **Phase 1.5：脚本对话生命周期补强** —— `ScriptedDialogueLifecycleSystem` 走远自动关闭已完成；`DialogueChoiceRequestedEvent` + RmlUi 选项弹窗仍待做。
+- **Phase 1.5：脚本对话生命周期补强** —— `ScriptedDialogueLifecycleSystem` 走远自动关闭已完成；`DialogueChoiceRequestedEvent` + RmlUi 选项弹窗也已补齐。
 - **Phase 2.5：地图切换 command** —— 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 加 `WarpToMapCommand`，再补 `tf.map.warp` 绑定。
 - **Phase 5.5：商店运行时库存** —— 抽 `ShopListingProvider` / `ShopRuntimeCatalog`，UI 与 transaction service 共享运行时商品数据，再加 `tf.shop.set_stock`。
 
@@ -497,7 +496,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 - [x] 走远、玩家缺失或目标失效时发 `DialogueHideEvent`。
 - [x] `lib.dialogue` 监听 `dialogue_closed`，外部关闭时清理 sequence，并以 `interrupted=true` 通知调用方。
 - [x] 补 C++ 生命周期测试与 Lua helper 回归测试。
-- [ ] 后续补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗，再开放 `tf.dialogue.choice`。
+- [x] 补 `DialogueChoiceRequestedEvent` + RmlUi 选项弹窗，再开放 `tf.dialogue.choice`。
 
 **Polish PR 2：地图切换 command**
 

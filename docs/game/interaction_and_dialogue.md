@@ -84,6 +84,7 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 - `tf.dialogue.show(..., target_handle)` 发出的 `Conversation` 如果目标带 `ScriptedInteractionComponent`，会被 `ScriptedDialogueLifecycleSystem` 记录为 Lua-owned conversation
 - 玩家离开目标超过较近的像素风关闭阈值后，系统发 `DialogueHideEvent`；当前阈值为 `min(DialogueComponent::interact_distance_ * 0.75, 48px)`
 - `lib.dialogue` 监听 `dialogue_closed`，把外部关闭视为 `interrupted = true`
+- `tf.dialogue.choice` 发 `DialogueChoiceRequestedEvent`，由 `DialogueChoiceScene` 打开 RmlUi 选项弹窗；选择完成后发 `DialogueChoiceSelectedEvent`，再桥接回 Lua 的 `dialogue_choice_selected`
 
 ## 4) DialogueChannel 约定
 

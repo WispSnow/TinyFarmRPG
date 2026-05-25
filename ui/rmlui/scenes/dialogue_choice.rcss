@@ -1,0 +1,55 @@
+body, div, h1, h2, h3, h4, p, hr {
+    display: block;
+}
+
+#dialogue-choice-overlay {
+    background-color: #1a1b26c0;
+}
+
+#dialogue-choice-panel {
+    left: 160dp;
+    top: 58dp;
+    width: 320dp;
+    height: 244dp;
+    padding: 14dp;
+}
+
+#dialogue-choice-speaker {
+    width: 100%;
+    height: 18dp;
+    line-height: 18dp;
+}
+
+#dialogue-choice-prompt {
+    margin-top: 6dp;
+    width: 100%;
+    height: 38dp;
+    line-height: 19dp;
+}
+
+#dialogue-choice-options {
+    margin-top: 10dp;
+    width: 292dp;
+    height: 112dp;
+    padding: 8dp;
+}
+
+.dialogue-choice-option {
+    width: 292dp;
+    height: 24dp;
+    line-height: 24dp;
+    margin-bottom: 4dp;
+    text-align: left;
+}
+
+#dialogue-choice-actions {
+    margin-top: 12dp;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.dialogue-choice-action-button {
+    width: 116dp;
+}

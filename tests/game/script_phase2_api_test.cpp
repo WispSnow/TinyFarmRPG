@@ -15,6 +15,7 @@
 #include "game/defs/commands_quest.h"
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
+#include "game/defs/events_dialogue.h"
 #include "game/defs/events_quest.h"
 #include "game/defs/events_recruit.h"
 #include "game/runtime/rpg_catalog_loader.h"
@@ -84,6 +85,7 @@ struct CommandCapture {
     std::vector<game::defs::RecruitPartyMemberCommand> recruits{};
     std::vector<game::defs::OpenShopCommand> open_shops{};
     std::vector<game::defs::EnterBattleCommand> battles{};
+    std::vector<game::defs::DialogueChoiceRequestedEvent> dialogue_choices{};
 
     void onAcceptQuest(const game::defs::AcceptQuestCommand& command) {
         accept_quests.push_back(command);
@@ -111,6 +113,10 @@ struct CommandCapture {
 
     void onBattle(const game::defs::EnterBattleCommand& command) {
         battles.push_back(command);
+    }
+
+    void onDialogueChoice(const game::defs::DialogueChoiceRequestedEvent& event) {
+        dialogue_choices.push_back(event);
     }
 };
 
@@ -232,6 +238,7 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     env.dispatcher.sink<game::defs::RecruitPartyMemberCommand>().connect<&CommandCapture::onRecruit>(&capture);
     env.dispatcher.sink<game::defs::OpenShopCommand>().connect<&CommandCapture::onOpenShop>(&capture);
     env.dispatcher.sink<game::defs::EnterBattleCommand>().connect<&CommandCapture::onBattle>(&capture);
+    env.dispatcher.sink<game::defs::DialogueChoiceRequestedEvent>().connect<&CommandCapture::onDialogueChoice>(&capture);
 
     EXPECT_TRUE(env.host.exec(R"(
         local quest_offer = tf.quest.offer("quest.test.hunter_trial", test_giver)
@@ -256,6 +263,17 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
             battle_background_id = "Grassland"
         })
         assert(battle.ok == true)
+
+        local choice_id = tf.dialogue.choice("Pick a seed?", {
+            "Potato",
+            { id = "strawberry", label = "Strawberry" },
+        }, {
+            target = test_merchant,
+            speaker = "Josh",
+            speaker_actor_id = "npc.josh",
+            allow_cancel = false,
+        })
+        assert(choice_id > 0)
     )"));
 
     ASSERT_EQ(capture.quest_offers.size(), 1U);
@@ -283,6 +301,19 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     ASSERT_EQ(capture.battles.front().actor_ids.size(), 1U);
     EXPECT_EQ(capture.battles.front().actor_ids.front(), ACTOR_ID);
     EXPECT_EQ(capture.battles.front().battle_background_id, "Grassland");
+
+    ASSERT_EQ(capture.dialogue_choices.size(), 1U);
+    const auto& choice = capture.dialogue_choices.front();
+    EXPECT_EQ(choice.prompt, "Pick a seed?");
+    EXPECT_EQ(choice.target, env.merchant);
+    EXPECT_EQ(choice.speaker, "Josh");
+    EXPECT_EQ(choice.speaker_actor_id, "npc.josh");
+    EXPECT_FALSE(choice.allow_cancel);
+    ASSERT_EQ(choice.options.size(), 2U);
+    EXPECT_EQ(choice.options[0].id, "1");
+    EXPECT_EQ(choice.options[0].label, "Potato");
+    EXPECT_EQ(choice.options[1].id, "strawberry");
+    EXPECT_EQ(choice.options[1].label, "Strawberry");
 
     auto& quest_log = env.registry.get<game::component::QuestLogComponent>(env.player);
     quest_log.active_quests.push_back(std::string{QUEST_ID});
