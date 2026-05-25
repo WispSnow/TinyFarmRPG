@@ -205,6 +205,9 @@ void installTinyFarmScriptModule(sol::state& lua,
         return handle.value();
     });
     player_impl.set_function("position", [api]() -> std::tuple<float, float> { return api->playerPosition(); });
+    player_impl.set_function("gold", [api]() -> int { return api->playerGold(); });
+    player_impl.set_function("set_gold", [api](const int gold) -> bool { return api->playerSetGold(gold); });
+    player_impl.set_function("add_gold", [api](const int amount) -> bool { return api->playerAddGold(amount); });
     tf_impl["player"] = engine::script::createReadOnlyProxy(lua, player_impl, "tf.player");
 
     // ── tf.entity ──

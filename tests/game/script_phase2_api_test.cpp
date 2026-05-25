@@ -4,6 +4,7 @@
 #include "engine/script/script_host.h"
 #include "game/component/party_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
@@ -153,6 +154,7 @@ struct ScriptPhase2ApiEnv {
         player = registry.create();
         registry.emplace<game::component::PlayerTag>(player);
         registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0F, 0.0F});
+        registry.emplace<game::component::PlayerWalletComponent>(player);
         registry.emplace<game::component::QuestLogComponent>(player);
         registry.emplace<game::component::PartyComponent>(
             player,
@@ -212,7 +214,15 @@ TEST(ScriptPhase2ApiTest, QuestPartyAndMapQueriesExposeGameplayState) {
         assert(tf.party.level("actor.tori") == 0)
         assert(tf.party.initial_level("actor.tori") == 1)
         assert(tf.map.current() == "home_exterior")
+
+        assert(tf.player.gold() == 0)
+        assert(tf.player.set_gold(300) == true)
+        assert(tf.player.gold() == 300)
+        assert(tf.player.add_gold(-50) == true)
+        assert(tf.player.gold() == 250)
     )"));
+
+    EXPECT_EQ(env.registry.get<game::component::PlayerWalletComponent>(env.player).gold_, 250);
 
     auto& quest_log = env.registry.get<game::component::QuestLogComponent>(env.player);
     quest_log.active_quests.push_back(std::string{QUEST_ID});

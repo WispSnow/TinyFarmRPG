@@ -2,8 +2,11 @@
 
 #include "engine/component/transform_component.h"
 #include "engine/script/script_host.h"
+#include "game/component/player_wallet_component.h"
+#include "game/component/tags.h"
 #include "game/defs/commands_interaction.h"
 #include "game/script/script_event_bridge.h"
+#include "game/script/script_state.h"
 #include "script_test_utils.h"
 
 #include <entt/entity/registry.hpp>
@@ -11,6 +14,7 @@
 
 #include <filesystem>
 #include <string>
+#include <variant>
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -80,6 +84,34 @@ TEST(ScriptModuleRequireTest, ProjectBootstrapLoadsModuleTree) {
     ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
 
     EXPECT_TRUE(host.loadFile(projectBootstrapPath()));
+}
+
+TEST(ScriptModuleRequireTest, ProjectBootstrapSeedsInitialGoldOnce) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0f, 0.0f});
+    registry.emplace<game::component::PlayerWalletComponent>(player);
+
+    engine::script::ScriptHost host(registry);
+    host.setScriptRoot(projectScriptRoot());
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
+
+    ASSERT_TRUE(host.loadFile(projectBootstrapPath()));
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 300);
+
+    const auto* script_state = registry.ctx().find<game::script::ScriptStateStore>();
+    ASSERT_NE(script_state, nullptr);
+    const auto* seeded = script_state->find("player.initial_gold_300_seeded");
+    ASSERT_NE(seeded, nullptr);
+    ASSERT_TRUE(std::holds_alternative<bool>(*seeded));
+    EXPECT_TRUE(std::get<bool>(*seeded));
+
+    registry.get<game::component::PlayerWalletComponent>(player).gold_ = 42;
+    ASSERT_TRUE(host.loadFile(projectBootstrapPath()));
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 42);
 }
 
 TEST(ScriptModuleRequireTest, ReloadClearsModuleCacheAndPreviouslyRegisteredCallbacks) {
