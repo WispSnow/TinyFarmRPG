@@ -77,6 +77,7 @@ TEST(SystemSchedulerTransitionGateTest, Gate2SkipsPostGameplayWhenTransitionActi
     EXPECT_TRUE(contains(stages, SchedulerStage::LightTogglePost));
     EXPECT_FALSE(result.gate1_triggered);
     EXPECT_TRUE(result.gate2_triggered);
+    EXPECT_FALSE(contains(stages, SchedulerStage::ZoneTrigger));
     EXPECT_FALSE(contains(stages, SchedulerStage::SpatialIndex));
     EXPECT_FALSE(contains(stages, SchedulerStage::EnemyEncounter));
     EXPECT_FALSE(contains(stages, SchedulerStage::Animation));
@@ -100,6 +101,7 @@ TEST(SystemSchedulerTransitionGateTest, NormalPathReachesPostGameplayStages) {
     const auto stages = traceStages(result);
     EXPECT_FALSE(result.gate1_triggered);
     EXPECT_FALSE(result.gate2_triggered);
+    EXPECT_TRUE(contains(stages, SchedulerStage::ZoneTrigger));
     EXPECT_TRUE(contains(stages, SchedulerStage::SpatialIndex));
     EXPECT_TRUE(contains(stages, SchedulerStage::EnemyEncounter));
     EXPECT_TRUE(contains(stages, SchedulerStage::Pickup));

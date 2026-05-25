@@ -28,6 +28,7 @@ class PartyRecruitmentSystem;
 class ChestSystem;
 class InteractionSystem;
 class MapTransitionSystem;
+class ZoneTriggerSystem;
 class TimeOfDayLightSystem;
 class PickupSystem;
 class RestSystem;

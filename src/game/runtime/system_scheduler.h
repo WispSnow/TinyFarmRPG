@@ -45,6 +45,7 @@ enum class SchedulerStage {
     Movement,
     TransitionUpdatePost,
     LightTogglePost,
+    ZoneTrigger,
     SpatialIndex,
     EnemyEncounter,
     Pickup,

@@ -20,4 +20,22 @@ struct MapExitedEvent {
     std::string next_map_name{};
 };
 
+struct ZoneEnteredEvent {
+    entt::entity player{entt::null};
+    entt::entity zone{entt::null};
+    entt::id_type map_id{entt::null};
+    std::string map_name{};
+    std::string zone_id{};
+    entt::id_type zone_id_hash{entt::null};
+};
+
+struct ZoneExitedEvent {
+    entt::entity player{entt::null};
+    entt::entity zone{entt::null};
+    entt::id_type map_id{entt::null};
+    std::string map_name{};
+    std::string zone_id{};
+    entt::id_type zone_id_hash{entt::null};
+};
+
 } // namespace game::defs

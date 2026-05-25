@@ -45,6 +45,18 @@ TEST(SystemSchedulerProfileTest, ExplorationKeepsMovementBeforeSpatialIndex) {
     EXPECT_LT(movement, spatial_index);
 }
 
+TEST(SystemSchedulerProfileTest, ExplorationRunsZoneTriggerAfterTransitionBeforeSpatialIndex) {
+    const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
+    ASSERT_FALSE(stages.empty());
+
+    const size_t transition_post = indexOf(stages, SchedulerStage::TransitionUpdatePost);
+    const size_t zone_trigger = indexOf(stages, SchedulerStage::ZoneTrigger);
+    const size_t spatial_index = indexOf(stages, SchedulerStage::SpatialIndex);
+
+    EXPECT_LT(transition_post, zone_trigger);
+    EXPECT_LT(zone_trigger, spatial_index);
+}
+
 TEST(SystemSchedulerProfileTest, ExplorationKeepsTimeBeforeDayNight) {
     const auto& stages = SystemScheduler::profileStages(GameMode::Exploration);
     ASSERT_FALSE(stages.empty());

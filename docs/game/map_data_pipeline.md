@@ -40,6 +40,7 @@
 | tile layer data（`.tmj`） | `layers[].type="tilelayer" + data[] gid` | 每个非空瓦片一个实体；并在 `StaticTileGrid` 按 layer 分桶保存实体 | 渲染/自动图块/地块实体（游戏逻辑） | `LevelLoader::loadTileLayer` |
 | object layer（`.tmj`）point object | `type="actor" + point=true + name="player"` | 生成角色实体 | 角色/动物出现在地图上 | `EntityBuilder::build` → `buildActor/buildAnimal` |
 | object layer（`.tmj`）rect object | `type="map_trigger" + properties{...}` | `game::component::MapTrigger` + 同步到 `WorldState::MapState::triggers` | 过图/邻接触发 | `EntityBuilder::buildMapTrigger` |
+| object layer（`.tmj`）rect object | `type="script_zone" + zone_id="..."` | `game::component::ScriptZoneComponent` + 可选 `ScriptTriggerComponent` | Lua 区域进入/离开触发 | `EntityBuilder::buildScriptZone` + `ZoneTriggerSystem` |
 | object layer（`.tmj`）rect object | `type="rest"` | `game::component::RestArea` + 进 `SpatialIndex` | 休息交互 | `EntityBuilder::buildRestArea` |
 | object layer（`.tmj`）rect object | `type="closet"` | `game::component::ClosetArea` + 进 `SpatialIndex` | 衣柜换装交互 | `EntityBuilder::buildClosetArea` |
 | object layer（`.tmj`）light | `type="light" + name="point/spot/emissive"` | `PointLight/SpotLight/EmissiveRect` 组件 | 光照系统 | `EntityBuilder::buildPointLight/buildSpotLight/buildEmissiveRect` |
@@ -209,6 +210,32 @@
   - `target_map`（string，地图名**不含** `.tmj`，例如 `home_exterior`；实际文件路径由 `WorldState` 统一拼接）
   - `start_offset`（string）：`left/right/top/up/bottom/down`
 - **语义**：创建 `MapTrigger`，并同步 `TriggerInfo` 到 `WorldState::MapState::triggers`（用于预加载/跨地图查询）。
+
+#### `script_zone`（rect object）
+- **必需字段**：`type="script_zone"` + `width/height > 0`
+- **推荐 properties**：
+  - `zone_id`（string）：稳定区域 ID，例如 `zone.home.seed_hint`
+  - `script_event`（string）：地图脚本过滤用事件名，例如 `home_exterior.seed_hint`
+  - `script_once_key`（string）：一次性触发状态 key，例如 `map.home_exterior.seed_hint`
+- **语义**：创建 `ScriptZoneComponent`。`ZoneTriggerSystem` 在玩家进入/离开区域边界时发布 `zone_enter` / `zone_exit`，停留区域内不会每帧重复触发。
+- **脚本约定**：区域脚本通常放在 `scripts/maps/<map_id>.lua`，用 `evt.zone_id` 或 `evt.zone_script_event` 过滤目标；一次性区域剧情用 `lib.once` 写入 `tf.state`。
+
+最小示例：
+
+```json
+{
+  "type": "script_zone",
+  "x": 160,
+  "y": 96,
+  "width": 48,
+  "height": 32,
+  "properties": [
+    { "name": "zone_id", "type": "string", "value": "zone.home.seed_hint" },
+    { "name": "script_event", "type": "string", "value": "home_exterior.seed_hint" },
+    { "name": "script_once_key", "type": "string", "value": "map.home_exterior.seed_hint" }
+  ]
+}
+```
 
 #### `rest`（rect object）
 - **必需字段**：`type="rest"` + `width/height > 0`

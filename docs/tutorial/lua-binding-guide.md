@@ -265,6 +265,13 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 - `map_exit` payload：`map_id` / `map_id_hash`，以及 `next_map_id` / `next_map_id_hash`
 - `map_id` 字段是地图名字符串，例如 `home_exterior`；`*_hash` 字段是字符串化哈希，避免 Lua number 精度问题
 
+`tf.event.on("zone_enter", fn)` 和 `tf.event.on("zone_exit", fn)` 用于矩形区域触发。Tiled 中使用 `type="script_zone"` 的 rect object，并设置 `zone_id` 以及可选 `script_event` / `script_once_key`：
+
+- `zone_enter` / `zone_exit` payload：`player` / `zone` handle、`map_id` / `map_id_hash`、`zone_id` / `zone_id_hash`
+- `zone_script_module` / `zone_script_event` / `zone_script_once_key` 来自同一 object 的 `script_*` 属性；未配置时为 `nil`
+- 事件只在边界变化时触发：进入区域触发一次，停留区域内不会每帧重放，离开区域再触发一次
+- `tf.entity.has_component(evt.zone, "script_zone")` 可用于确认 handle 类型
+
 一次性地图触发建议使用 `lib.once` 包装 `tf.state`，例如 `once.run("map.home_exterior.first_enter", function() ... end)`。它采用 at-most-once 语义：先写入完成标记再执行回调，因此回调失败也不会自动重试，适合避免读档或重复交互重发奖励。`scripts/maps/<map_id>.lua` 是地图专属脚本目录约定；`scripts/maps/home_exterior.lua` 展示了首次进入提示和脚本化宝箱。由于启动时初始地图会先于 Lua bootstrap 加载，地图脚本若要处理“当前已在本地图”的首次进入逻辑，应在注册 `map_enter` 后用 `tf.map.current()` 主动调用同一个 handler。
 
 脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 使用 `Conversation` channel，并在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。

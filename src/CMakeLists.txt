@@ -290,6 +290,7 @@ target_sources(game PRIVATE
     game/system/closet_interaction_system.cpp
     game/system/interaction_system.cpp
     game/system/map_transition_system.cpp
+    game/system/zone_trigger_system.cpp
     game/system/pickup_system.cpp
     game/system/rest_system.cpp
     # World

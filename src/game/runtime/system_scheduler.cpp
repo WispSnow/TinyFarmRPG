@@ -48,6 +48,7 @@
 #include "game/system/shop_interaction_system.h"
 #include "game/system/state_system.h"
 #include "game/system/time_system.h"
+#include "game/system/zone_trigger_system.h"
 #include "game/script/script_event_bridge.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -136,6 +137,7 @@ void run_auto_tile(const SystemScheduler::TickParams& params);
 void run_state(const SystemScheduler::TickParams& params);
 void run_script_commands(const SystemScheduler::TickParams& params);
 void run_movement(const SystemScheduler::TickParams& params);
+void run_zone_trigger(const SystemScheduler::TickParams& params);
 void run_spatial_index(const SystemScheduler::TickParams& params);
 void run_enemy_encounter(const SystemScheduler::TickParams& params);
 void run_pickup(const SystemScheduler::TickParams& params);
@@ -304,6 +306,13 @@ void run_animation(const SystemScheduler::TickParams& params);
             .mode_mask = MODE_EXPLORATION | MODE_CUTSCENE,
             .block = StageBlock::PostTransition,
             .run_main = run_light_toggle
+        },
+        {
+            .stage = SchedulerStage::ZoneTrigger,
+            .name = "ZoneTrigger",
+            .mode_mask = MODE_EXPLORATION,
+            .block = StageBlock::PostGate,
+            .run_main = run_zone_trigger
         },
         {
             .stage = SchedulerStage::SpatialIndex,
@@ -561,6 +570,12 @@ void run_script_commands(const SystemScheduler::TickParams& params) {
 void run_movement(const SystemScheduler::TickParams& params) {
     if (params.systems.movement_system) {
         params.systems.movement_system->update(params.registry, params.delta_time);
+    }
+}
+
+void run_zone_trigger(const SystemScheduler::TickParams& params) {
+    if (params.systems.zone_trigger_system) {
+        params.systems.zone_trigger_system->update(params.delta_time);
     }
 }
 

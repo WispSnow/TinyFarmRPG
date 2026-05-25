@@ -12,6 +12,7 @@
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/script_trigger_component.h"
+#include "game/component/script_zone_component.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_battle.h"
 #include "game/defs/events_dialogue.h"
@@ -290,6 +291,31 @@ void setMapIdentity(entt::registry& registry,
     }
 }
 
+void setScriptTriggerFields(const entt::registry& registry,
+                            sol::table& payload,
+                            const entt::entity entity,
+                            const char* module_key,
+                            const char* event_key,
+                            const char* once_key) {
+    if (entity == entt::null || !registry.valid(entity)) {
+        payload[module_key] = sol::lua_nil;
+        payload[event_key] = sol::lua_nil;
+        payload[once_key] = sol::lua_nil;
+        return;
+    }
+
+    if (const auto* script = registry.try_get<game::component::ScriptTriggerComponent>(entity)) {
+        setOptionalString(payload, module_key, script->module_);
+        setOptionalString(payload, event_key, script->event_);
+        setOptionalString(payload, once_key, script->once_key_);
+        return;
+    }
+
+    payload[module_key] = sol::lua_nil;
+    payload[event_key] = sol::lua_nil;
+    payload[once_key] = sol::lua_nil;
+}
+
 } // namespace
 
 ScriptEventBridge::ScriptEventBridge(engine::script::ScriptHost& host,
@@ -324,6 +350,8 @@ void ScriptEventBridge::subscribe() {
     dispatcher_.sink<game::defs::BattleEndedEvent>().connect<&ScriptEventBridge::onBattleEnded>(this);
     dispatcher_.sink<game::defs::MapEnteredEvent>().connect<&ScriptEventBridge::onMapEntered>(this);
     dispatcher_.sink<game::defs::MapExitedEvent>().connect<&ScriptEventBridge::onMapExited>(this);
+    dispatcher_.sink<game::defs::ZoneEnteredEvent>().connect<&ScriptEventBridge::onZoneEntered>(this);
+    dispatcher_.sink<game::defs::ZoneExitedEvent>().connect<&ScriptEventBridge::onZoneExited>(this);
     dispatcher_.sink<engine::utils::DayChangedEvent>().connect<&ScriptEventBridge::onDayChanged>(this);
     dispatcher_.sink<engine::utils::TimeOfDayChangedEvent>().connect<&ScriptEventBridge::onTimeOfDayChanged>(this);
     dispatcher_.sink<game::defs::QuestAcceptedEvent>().connect<&ScriptEventBridge::onQuestAccepted>(this);
@@ -345,6 +373,8 @@ void ScriptEventBridge::unsubscribe() {
     dispatcher_.sink<game::defs::BattleEndedEvent>().disconnect<&ScriptEventBridge::onBattleEnded>(this);
     dispatcher_.sink<game::defs::MapEnteredEvent>().disconnect<&ScriptEventBridge::onMapEntered>(this);
     dispatcher_.sink<game::defs::MapExitedEvent>().disconnect<&ScriptEventBridge::onMapExited>(this);
+    dispatcher_.sink<game::defs::ZoneEnteredEvent>().disconnect<&ScriptEventBridge::onZoneEntered>(this);
+    dispatcher_.sink<game::defs::ZoneExitedEvent>().disconnect<&ScriptEventBridge::onZoneExited>(this);
     dispatcher_.sink<engine::utils::DayChangedEvent>().disconnect<&ScriptEventBridge::onDayChanged>(this);
     dispatcher_.sink<engine::utils::TimeOfDayChangedEvent>().disconnect<&ScriptEventBridge::onTimeOfDayChanged>(this);
     dispatcher_.sink<game::defs::QuestAcceptedEvent>().disconnect<&ScriptEventBridge::onQuestAccepted>(this);
@@ -381,17 +411,13 @@ void ScriptEventBridge::onInteract(const game::defs::InteractCommand& event) {
         payload["target_name"] = sol::lua_nil;
     }
 
-    if (const auto* script = target_valid
-                                 ? registry_.try_get<game::component::ScriptTriggerComponent>(event.target)
-                                 : nullptr) {
-        setOptionalString(payload, "target_script_module", script->module_);
-        setOptionalString(payload, "target_script_event", script->event_);
-        setOptionalString(payload, "target_script_once_key", script->once_key_);
-    } else {
-        payload["target_script_module"] = sol::lua_nil;
-        payload["target_script_event"] = sol::lua_nil;
-        payload["target_script_once_key"] = sol::lua_nil;
-    }
+    setScriptTriggerFields(
+        registry_,
+        payload,
+        event.target,
+        "target_script_module",
+        "target_script_event",
+        "target_script_once_key");
 
     const entt::id_type map_id = currentMapId(registry_);
     setOptionalString(payload, "map_id", currentMapName(registry_, map_id));
@@ -574,6 +600,50 @@ void ScriptEventBridge::onMapExited(const game::defs::MapExitedEvent& event) {
                    event.next_map_id,
                    event.next_map_name);
     (void)host_.emitEvent("map_exit", payload);
+}
+
+void ScriptEventBridge::onZoneEntered(const game::defs::ZoneEnteredEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "zone_enter");
+    setEntityHandle(host_, registry_, payload, "player", event.player);
+    setEntityHandle(host_, registry_, payload, "zone", event.zone);
+    setMapIdentity(registry_, payload, "map_id", "map_id_hash", event.map_id, event.map_name);
+    setOptionalString(payload, "zone_id", event.zone_id);
+    if (event.zone_id_hash != entt::null) {
+        setIdHash(payload, "zone_id_hash", event.zone_id_hash);
+    } else {
+        payload["zone_id_hash"] = sol::lua_nil;
+    }
+    setScriptTriggerFields(
+        registry_,
+        payload,
+        event.zone,
+        "zone_script_module",
+        "zone_script_event",
+        "zone_script_once_key");
+    (void)host_.emitEvent("zone_enter", payload);
+}
+
+void ScriptEventBridge::onZoneExited(const game::defs::ZoneExitedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "zone_exit");
+    setEntityHandle(host_, registry_, payload, "player", event.player);
+    setEntityHandle(host_, registry_, payload, "zone", event.zone);
+    setMapIdentity(registry_, payload, "map_id", "map_id_hash", event.map_id, event.map_name);
+    setOptionalString(payload, "zone_id", event.zone_id);
+    if (event.zone_id_hash != entt::null) {
+        setIdHash(payload, "zone_id_hash", event.zone_id_hash);
+    } else {
+        payload["zone_id_hash"] = sol::lua_nil;
+    }
+    setScriptTriggerFields(
+        registry_,
+        payload,
+        event.zone,
+        "zone_script_module",
+        "zone_script_event",
+        "zone_script_once_key");
+    (void)host_.emitEvent("zone_exit", payload);
 }
 
 void ScriptEventBridge::onDayChanged(const engine::utils::DayChangedEvent& event) {

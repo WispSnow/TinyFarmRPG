@@ -18,7 +18,7 @@ TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的
 
 - 基础农场循环仍可用：地图切换、耕地/浇水/作物、资源点、宝箱、休息、昼夜光照、背包、快捷栏、HUD、存档与读档。
 - Lua + Sol2 已落地：`engine::script::ScriptHost` 提供 Lua VM、安全边界、实体句柄、白名单模块加载与事件回调；game 层通过 `tinyfarm_script_module` 暴露 `tf.time / tf.player / tf.command / tf.dialogue / tf.event / tf.callbacks / tf.script / tf.state` 等只读代理表。`scripts/bootstrap.lua` 已作为脚本组合根加载 `scripts/lib`、`quests` 与 `npcs` 模块。
-- 地图脚本首版已落地：`ScriptEventBridge` 桥接 `map_enter / map_exit`，`scripts/maps/<map_id>.lua` 承载地图专属触发，`lib.once` 用 `tf.state` 保存一次性标记；脚本化宝箱通过 Tiled `scripted_interaction + script_event + script_once_key` 让 Lua 独占奖励和对白编排。
+- 地图脚本首版已落地：`ScriptEventBridge` 桥接 `map_enter / map_exit / zone_enter / zone_exit`，`scripts/maps/<map_id>.lua` 承载地图专属触发，`lib.once` 用 `tf.state` 保存一次性标记；脚本化宝箱通过 Tiled `scripted_interaction + script_event + script_once_key` 让 Lua 独占奖励和对白编排，矩形区域用 `type="script_zone"` 驱动进入/离开剧情。
 - 分层外观已落地：`AppearanceCatalog` + `AppearanceComponent` + `LayeredSpriteComponent` 支持皮肤、眼睛、衣服、头发、饰品、武器等部件组合，运行时换装由 `AppearanceSystem` 重建缓存。
 - VFX 已落地：`VfxService` 通过 `VfxBackend` 抽象接入 `EffekseerBackend`，渲染管线区分 world-vfx 与 overlay-vfx 双通道。
 - Quest MVP 已落地：支持 `QuestCatalog`、地图实例 `quest_offer_id`、接任务、战斗击败计数推进、回 NPC 交付，以及存档 roundtrip。

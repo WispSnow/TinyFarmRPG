@@ -63,6 +63,7 @@
 #include "game/system/state_system.h"
 #include "game/system/time_of_day_light_system.h"
 #include "game/system/time_system.h"
+#include "game/system/zone_trigger_system.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
 
@@ -286,6 +287,10 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
         *services.world_state,
         *services.map_manager,
         services.collision_resolver.get());
+    systems.zone_trigger_system = std::make_unique<game::system::ZoneTriggerSystem>(
+        params.registry,
+        dispatcher,
+        *services.world_state);
 
     if (services.script_host) {
         systems.script_event_bridge = std::make_unique<game::script::ScriptEventBridge>(

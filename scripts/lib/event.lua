@@ -16,6 +16,14 @@ function event.on_dialogue_choice_selected(fn)
     return tf.callbacks.on_dialogue_choice_selected(fn)
 end
 
+function event.on_zone_enter(fn)
+    return event.on("zone_enter", fn)
+end
+
+function event.on_zone_exit(fn)
+    return event.on("zone_exit", fn)
+end
+
 function event.on_battle_start(fn)
     return tf.callbacks.on_battle_start(fn)
 end

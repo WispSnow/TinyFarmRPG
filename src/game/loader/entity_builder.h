@@ -37,6 +37,7 @@ private:
     void buildAnimal(entt::id_type name_id);
     void buildFarmTag();
     void buildMapTrigger();
+    void buildScriptZone();
     void buildRestArea();
     void buildClosetArea();
     void attachMapId();
