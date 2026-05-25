@@ -132,6 +132,7 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(rml.find("data-class-focused=\"is_primary_action_focused\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"close\""), std::string::npos);
     EXPECT_NE(rcss.find("display: block;"), std::string::npos);
+    EXPECT_NE(rcss.find("box-sizing: border-box;"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-mode-button"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-buy-entry.selected"), std::string::npos);
     EXPECT_NE(rcss.find(".shop-sell-entry.selected"), std::string::npos);
