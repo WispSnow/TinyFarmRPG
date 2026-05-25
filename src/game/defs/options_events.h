@@ -2,6 +2,8 @@
 
 #include "game/runtime/user_settings.h"
 
+#include <string>
+
 namespace game::defs {
 
 /// @brief 用户设置 change 事件。
@@ -27,6 +29,10 @@ struct CursorMemoryChangedEvent {
 
 struct UiFontScaleChangedEvent {
     game::runtime::UiFontScale scale{game::runtime::UiFontScale::Normal};
+};
+
+struct LanguageChangedEvent {
+    std::string language_tag{"en-US"};
 };
 
 } // namespace game::defs

@@ -100,6 +100,7 @@ void RmlUiRuntime::clean() {
         }
     }
     documents_.clear();
+    document_loaded_callback_ = {};
     visible_scene_owners_.clear();
     active_scene_id_ = 0;
     input_mode_ = InputMode::Mouse;
@@ -203,12 +204,12 @@ bool RmlUiRuntime::ensureDebuggerInitialized() {
 #endif
 }
 
-bool RmlUiRuntime::loadFontFace(std::string_view path) const {
+bool RmlUiRuntime::loadFontFace(std::string_view path, bool fallback_face) const {
     if (path.empty()) {
         return false;
     }
     const Rml::String font_path{path.data(), path.size()};
-    return Rml::LoadFontFace(font_path);
+    return Rml::LoadFontFace(font_path, fallback_face);
 }
 
 bool RmlUiRuntime::processEvent(SDL_Event& event) {
@@ -275,6 +276,9 @@ Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path,
     });
     applyInputModeClass(doc);
     applyFontScaleClassToBody(doc, body_font_scale_class_);
+    if (document_loaded_callback_) {
+        document_loaded_callback_(*doc, owner_scene_id, documents_.back().path);
+    }
     applyDocumentVisibility(documents_.back());
 
     if (active_scene_id_ != 0) {
@@ -524,6 +528,10 @@ void RmlUiRuntime::applyBodyFontScaleClassToAllDocuments(std::string_view next_c
     for (auto& entry : documents_) {
         applyFontScaleClassToBody(entry.doc, body_font_scale_class_);
     }
+}
+
+void RmlUiRuntime::setDocumentLoadedCallback(DocumentLoadedCallback callback) {
+    document_loaded_callback_ = std::move(callback);
 }
 
 void RmlUiRuntime::applyFontScaleClassToBody(Rml::ElementDocument* doc, std::string_view next_class) {

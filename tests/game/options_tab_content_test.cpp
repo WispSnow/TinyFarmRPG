@@ -1,5 +1,5 @@
 // Source-level regression：在 options_tab_content.cpp 与 inventory_menu.rml 中
-// 断言 4 项配置的绑定字段、event 名与 RML 元素都按预期存在。
+// 断言 options 页配置的绑定字段、event 名与 RML 元素都按预期存在。
 // 不引入 RmlUi runtime fixture（与 shop_menu_*_flow_test 风格一致）。
 //
 // 当模块文件被重命名或重大重构时，本测试会失败提示更新；目的是防止"标签页内
@@ -27,9 +27,10 @@ namespace {
     return std::filesystem::path{PROJECT_SOURCE_DIR};
 }
 
-TEST(OptionsTabContentSourceTest, CppBindsAllFourModelFields) {
+TEST(OptionsTabContentSourceTest, CppBindsAllModelFields) {
     const std::string src = slurp(projectRoot() / "src" / "game" / "ui" / "options_tab_content.cpp");
     for (const std::string_view field : {
+        "options_language_text",
         "options_battle_speed_text",
         "options_damage_popup_text",
         "options_enemy_hp_bar_text",
@@ -50,6 +51,8 @@ TEST(OptionsTabContentSourceTest, CppBindsAllEventCallbacks) {
     for (const std::string_view event : {
         "options_battle_speed_prev",
         "options_battle_speed_next",
+        "options_language_prev",
+        "options_language_next",
         "options_toggle_damage_popup",
         "options_toggle_enemy_hp_bar",
         "options_toggle_cursor_memory",
@@ -61,13 +64,14 @@ TEST(OptionsTabContentSourceTest, CppBindsAllEventCallbacks) {
     EXPECT_EQ(src.find("options_font_scale_next"), std::string::npos);
 }
 
-TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithFourRows) {
+TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithExpectedRows) {
     const std::string rml = slurp(projectRoot() / "ui" / "rmlui" / "scenes" / "inventory_menu.rml");
     EXPECT_NE(rml.find("panel-options"), std::string::npos);
     EXPECT_NE(rml.find("options-content"), std::string::npos);
 
-    // 四个 binding 字段都应出现在 RML 上（来自 {{ ... }} 表达式）。
+    // binding 字段都应出现在 RML 上（来自 {{ ... }} 表达式）。
     for (const std::string_view field : {
+        "options_language_text",
         "options_battle_speed_text",
         "options_damage_popup_text",
         "options_enemy_hp_bar_text",
@@ -79,8 +83,10 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithFourRows) {
     EXPECT_EQ(rml.find("options_font_scale_text"), std::string::npos);
     EXPECT_EQ(rml.find("UI Font Size"), std::string::npos);
 
-    // 4 项 event 的 click 绑定都应出现。
+    // click 绑定都应出现。
     for (const std::string_view event : {
+        "options_language_prev",
+        "options_language_next",
         "options_battle_speed_prev",
         "options_battle_speed_next",
         "options_toggle_damage_popup",
@@ -96,19 +102,22 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithFourRows) {
     EXPECT_NE(rml.find("options-control options-stepper"), std::string::npos);
 }
 
-TEST(OptionsTabContentSourceTest, RmlOrdersTogglesBeforeStepperAndUsesShopArrowIcons) {
+TEST(OptionsTabContentSourceTest, RmlOrdersLanguageBeforeTogglesAndBattleStepper) {
     const std::string rml = slurp(projectRoot() / "ui" / "rmlui" / "scenes" / "inventory_menu.rml");
 
+    const auto language = rml.find("options_language_prev");
     const auto damage = rml.find("options_toggle_damage_popup");
     const auto enemy_hp = rml.find("options_toggle_enemy_hp_bar");
     const auto cursor = rml.find("options_toggle_cursor_memory");
     const auto battle_speed = rml.find("options_battle_speed_prev");
 
+    ASSERT_NE(language, std::string::npos);
     ASSERT_NE(damage, std::string::npos);
     ASSERT_NE(enemy_hp, std::string::npos);
     ASSERT_NE(cursor, std::string::npos);
     ASSERT_NE(battle_speed, std::string::npos);
 
+    EXPECT_LT(language, damage);
     EXPECT_LT(damage, enemy_hp);
     EXPECT_LT(enemy_hp, cursor);
     EXPECT_LT(cursor, battle_speed);

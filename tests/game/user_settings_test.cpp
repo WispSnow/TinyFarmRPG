@@ -17,6 +17,7 @@ TEST(UserSettingsTest, DefaultsHaveExpectedValues) {
     EXPECT_TRUE(s.show_enemy_hp_bar);
     EXPECT_TRUE(s.cursor_memory);
     EXPECT_EQ(s.ui_font_scale, gr::UiFontScale::Normal);
+    EXPECT_EQ(s.language_tag, "en-US");
 }
 
 TEST(UserSettingsTest, RoundTripPreservesAllFields) {
@@ -29,6 +30,7 @@ TEST(UserSettingsTest, RoundTripPreservesAllFields) {
     original.show_enemy_hp_bar = false;
     original.cursor_memory = false;
     original.ui_font_scale = gr::UiFontScale::Large;
+    original.language_tag = "zh-Hans";
 
     const nlohmann::json json = gr::serializeUserSettings(original);
 
@@ -43,6 +45,7 @@ TEST(UserSettingsTest, RoundTripPreservesAllFields) {
     EXPECT_FALSE(parsed.show_enemy_hp_bar);
     EXPECT_FALSE(parsed.cursor_memory);
     EXPECT_EQ(parsed.ui_font_scale, gr::UiFontScale::Large);
+    EXPECT_EQ(parsed.language_tag, "zh-Hans");
 }
 
 TEST(UserSettingsTest, MissingFieldsFallBackToDefaults) {
@@ -57,6 +60,7 @@ TEST(UserSettingsTest, MissingFieldsFallBackToDefaults) {
     EXPECT_FLOAT_EQ(parsed.battle_animation_speed, 1.0f);       // fallback
     EXPECT_TRUE(parsed.show_damage_popup);                      // fallback
     EXPECT_EQ(parsed.ui_font_scale, gr::UiFontScale::Normal);   // fallback
+    EXPECT_EQ(parsed.language_tag, "en-US");                    // fallback
 }
 
 TEST(UserSettingsTest, OutOfRangeFieldsAreClamped) {

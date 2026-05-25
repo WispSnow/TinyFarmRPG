@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -28,6 +29,9 @@ class RenderInterface_GL3_STB;
 /// 以及显式的 `Update()` 阶段。渲染细节不在这里处理。
 class RmlUiRuntime final {
 public:
+    using DocumentLoadedCallback =
+        std::function<void(Rml::ElementDocument&, uint64_t owner_scene_id, const std::string& path)>;
+
     enum class InputMode : std::uint8_t {
         Mouse,
         Navigation,
@@ -45,7 +49,7 @@ public:
 
     void clean();
 
-    [[nodiscard]] bool loadFontFace(std::string_view path) const;
+    [[nodiscard]] bool loadFontFace(std::string_view path, bool fallback_face = false) const;
     [[nodiscard]] bool processEvent(SDL_Event& event);
     void update();
     void syncViewport(const RmlUiViewport& viewport);
@@ -61,6 +65,8 @@ public:
     ///        同时记录为"默认字号 class"，新加载的文档会自动应用该 class，无需对单一服务句柄
     ///        保留任何引用（避免外部 service 销毁后产生悬空 lambda）。
     void applyBodyFontScaleClassToAllDocuments(std::string_view next_class);
+    /// @brief 设置文档加载回调。owner_scene_id 是 Scene 实例 id，path 是 RML 文档路径。
+    void setDocumentLoadedCallback(DocumentLoadedCallback callback);
     void unloadDocumentsByOwner(uint64_t owner_scene_id);
     void showDocument(Rml::ElementDocument* doc);
     void hideDocument(Rml::ElementDocument* doc);
@@ -87,7 +93,9 @@ public:
     template<typename Fn>
     void forEachDocument(Fn&& fn) const {
         for (const auto& entry : documents_) {
-            fn(entry.path, entry.owner);
+            if (entry.doc) {
+                fn(*entry.doc, entry.owner, entry.path);
+            }
         }
     }
 
@@ -130,6 +138,7 @@ private:
     bool debugger_initialized_{false};
 
     std::vector<DocumentEntry> documents_;
+    DocumentLoadedCallback document_loaded_callback_{};
     std::vector<uint64_t> visible_scene_owners_;
     uint64_t active_scene_id_{0};
     InputMode input_mode_{InputMode::Mouse};

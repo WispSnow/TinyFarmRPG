@@ -46,6 +46,7 @@ constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
 constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
 constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
+constexpr char FALLBACK_RMLUI_FONT_PATH[] = "assets/fonts/LXGWBright-Regular.ttf";
 
 [[nodiscard]] engine::ui::rmlui::RmlUiViewport toRmlUiViewport(const engine::utils::Rect& viewport) {
     return engine::ui::rmlui::RmlUiViewport{
@@ -418,6 +419,9 @@ bool GameApp::initRmlUi() {
 
     if (!rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
         spdlog::warn("GameApp::initRmlUi failed to load default font {}.", DEFAULT_RMLUI_FONT_PATH);
+    }
+    if (!rmlui_runtime_->loadFontFace(FALLBACK_RMLUI_FONT_PATH, true)) {
+        spdlog::warn("GameApp::initRmlUi failed to load fallback font {}.", FALLBACK_RMLUI_FONT_PATH);
     }
 
     // GLRenderer 只知道“在 present() 的 retained UI 阶段执行渲染”。

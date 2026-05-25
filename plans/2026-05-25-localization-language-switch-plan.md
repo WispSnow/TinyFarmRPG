@@ -4,9 +4,28 @@
 
 - 任务标题：新增中文语言支持，并在设置菜单中切换语言
 - 计划日期：2026-05-25
-- 状态：Reviewed Draft
+- 状态：Partially Implemented
 - 目标语言：`en-US`、`zh-Hans`
 - 设计原则：以稳定 key 为文本真源；运行时服务统一解析；RmlUi 只负责显示；不考虑向后兼容，可直接迁移现有英文文案。
+
+## 实施记录
+
+- 2026-05-25：首版语言切换闭环已实现并通过构建 / 单测验证。
+  - 已新增 `LocalizationService`、语言 manifest 与中英文本表，fallback 使用 `languages.json::fallback`。
+  - 已新增 `ui.language` 用户设置，并由 `UserSettingsService` 同步 `LocalizationService`、`TextRenderer` 与已加载 RmlUi 文档。
+  - 已在 Options 标签页增加 Language row，支持 `English` / `简体中文` 循环切换。
+  - 已扩展 `RmlUiRuntime::loadFontFace`、`forEachDocument` 与文档加载回调，并接入 RmlUi `data-i18n` applier。
+  - 已加载中文 fallback 字体，并将 TextRenderer 默认 UI 字体切到 `LXGWBright-Regular.ttf`。
+  - 已通过 `ScriptRuntimeFactory` 给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
+  - 已完成 `SaveData` / `SaveService` 与 component 字段初步 grep 审计，当前仅发现地图名、slot 名等稳定 id / 名称路径，未发现新 schema 持久化已翻译显示文本。
+  - 已验证：`ninja -C build`、`./build/tests/game_tests`、`./build/tests/engine_tests`、`git diff --check`。
+- 2026-05-25：按代码 review 修正首版实现。
+  - 已去掉 Options stepper 中依赖 `std::size_t(-1)` 的 wraparound 写法。
+  - 已明确 `LocalizationService::setLanguage` fallback 成功时返回成功，并让 `UserSettingsService::setLanguage` 只在实际语言改变后 dirty / dispatch。
+  - 已实现 `LocalizationService::format` 残留占位符去重 warn。
+  - 已新增 i18n key parity 测试与 RML `data-i18n` key source-level 回归测试。
+  - 已合并 TinyFarm 脚本模块安装 API，并修正 Lua 浮点 i18n 参数格式。
+- 仍待完成：全量 RML 静态文本迁移、全量 C++ 动态文案迁移、catalog 数据 key 化、Lua 对白迁移、source-level 英文硬编码扫描，以及更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -399,31 +418,31 @@ ninja -C build/debug engine_tests game_tests
 
 ## 可追踪待办
 
-- [ ] 新增 `LocalizationService` 与语言表加载测试。
-- [ ] 新增 `assets/i18n/languages.json`、`en-US.json`、`zh-Hans.json`。
-- [ ] 新增 i18n key parity 测试，保证中英 key 集合一致。
-- [ ] `LocalizationService::format` 对残留占位符输出去重 warn。
-- [ ] `LocalizationService` 使用 `languages.json::fallback`，不硬编码 fallback tag。
-- [ ] `UserSettings` 增加 `ui.language` 持久化。
-- [ ] `UserSettingsService` 增加 `setLanguage`、语言 apply、`TextRenderer` 同步与 `LanguageChangedEvent`。
-- [ ] Runtime 在 `initUserSettings` 前加载本地化服务，并把 `LocalizationService*` 注入 `registry.ctx()`。
-- [ ] `GameRuntimeServices` 中 `localization_service` 声明在 `script_host` 与 `user_settings_service` 之前，保证析构顺序安全。
-- [ ] Options 标签页增加 Language row。
-- [ ] RmlUi 加载中文 fallback 字体。
-- [ ] TextRenderer 默认字体与默认语言跟随语言设置。
-- [ ] 扩展现有 `RmlUiRuntime::forEachDocument` 签名、增加文档加载回调并适配 debug panel。
-- [ ] 新增 RmlUi `data-i18n` 静态文本 applier。
-- [ ] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
-- [ ] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
-- [ ] 迁移核心 C++ 动态文案。
-- [ ] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
+- [x] 新增 `LocalizationService` 与语言表加载测试。
+- [x] 新增 `assets/i18n/languages.json`、`en-US.json`、`zh-Hans.json`。
+- [x] 新增 i18n key parity 测试，保证中英 key 集合一致。
+- [x] `LocalizationService::format` 对残留占位符输出去重 warn。
+- [x] `LocalizationService` 使用 `languages.json::fallback`，不硬编码 fallback tag。
+- [x] `UserSettings` 增加 `ui.language` 持久化。
+- [x] `UserSettingsService` 增加 `setLanguage`、语言 apply、`TextRenderer` 同步与 `LanguageChangedEvent`。
+- [x] Runtime 在 `initUserSettings` 前加载本地化服务，并把 `LocalizationService*` 注入 `registry.ctx()`。
+- [x] `GameRuntimeServices` 中 `localization_service` 声明在 `script_host` 与 `user_settings_service` 之前，保证析构顺序安全。
+- [x] Options 标签页增加 Language row。
+- [x] RmlUi 加载中文 fallback 字体。
+- [x] TextRenderer 默认字体与默认语言跟随语言设置。
+- [x] 扩展现有 `RmlUiRuntime::forEachDocument` 签名、增加文档加载回调并适配 debug panel。
+- [x] 新增 RmlUi `data-i18n` 静态文本 applier。
+- [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
+- [ ] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。（部分完成：`inventory_menu.rml`、`dialogue_choice.rml`；inventory tab title / sort / trash / unequip / empty candidate 已补 key）
+- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`）
+- [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
 - [ ] 将数据 catalog 的名称与描述字段值迁移为本地化 key。
 - [ ] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建。
-- [ ] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
+- [x] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
 - [ ] 迁移 Lua 对白与选项文本。
 - [ ] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。
-- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。
-- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。
+- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描）
+- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`）
 - [ ] 完成中英切换手动验收。
 
 ## 风险与处理

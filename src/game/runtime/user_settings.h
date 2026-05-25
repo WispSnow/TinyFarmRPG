@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace game::runtime {
@@ -36,6 +37,7 @@ struct UserSettings {
 
     // UI
     UiFontScale ui_font_scale{UiFontScale::Normal};
+    std::string language_tag{"en-US"};
 };
 
 /// @brief 战斗动画速度可选档位。

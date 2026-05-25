@@ -16,8 +16,14 @@ void ScriptRuntimeFactory::tryInitScriptHost(entt::registry& registry,
                                              engine::core::Context& context,
                                              GameRuntimeServices& services) {
     services.script_host = std::make_unique<engine::script::ScriptHost>(registry);
+    auto* localization = services.localization_service.get();
     const std::vector<engine::script::ScriptModuleInstaller> installers{
-        game::script::installTinyFarmScriptModule,
+        [localization](sol::state& lua,
+                       engine::script::ScriptHost& host,
+                       entt::registry& registry,
+                       entt::dispatcher& dispatcher) {
+            game::script::installTinyFarmScriptModule(lua, host, registry, dispatcher, localization);
+        },
     };
     if (!services.script_host->init(context.getDispatcher(), installers)) {
         spdlog::warn("ScriptHost 初始化失败，脚本功能将禁用。");

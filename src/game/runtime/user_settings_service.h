@@ -10,6 +10,10 @@ namespace engine::audio {
 class AudioPlayer;
 }
 
+namespace engine::render {
+class TextRenderer;
+}
+
 namespace engine::ui::rmlui {
 class RmlUiRuntime;
 }
@@ -19,6 +23,8 @@ struct GameTime;
 }
 
 namespace game::runtime {
+
+class LocalizationService;
 
 /// @brief 玩家偏好设置的唯一真源。
 ///
@@ -40,7 +46,10 @@ public:
     UserSettingsService(entt::dispatcher& dispatcher,
                         engine::audio::AudioPlayer& audio_player,
                         game::data::GameTime& game_time,
-                        engine::ui::rmlui::RmlUiRuntime& rml_runtime) noexcept;
+                        LocalizationService& localization,
+                        engine::render::TextRenderer& text_renderer,
+                        engine::ui::rmlui::RmlUiRuntime& rml_runtime);
+    ~UserSettingsService() noexcept;
 
     UserSettingsService(const UserSettingsService&) = delete;
     UserSettingsService& operator=(const UserSettingsService&) = delete;
@@ -67,6 +76,7 @@ public:
 
     [[nodiscard]] const UserSettings& snapshot() const noexcept { return settings_; }
     [[nodiscard]] bool isDirty() const noexcept { return dirty_; }
+    [[nodiscard]] const LocalizationService& localization() const noexcept { return localization_; }
 
     // ----- Setters：写值 + apply + 派发事件 + mark dirty -----
     void setMusicVolume(float value);
@@ -77,15 +87,20 @@ public:
     void setShowEnemyHpBar(bool visible);
     void setCursorMemory(bool enabled);
     void setUiFontScale(UiFontScale scale);
+    void setLanguage(std::string_view language_tag);
 
 private:
     void applyAudio();
     void applyTimeScale();
     void applyUiFontScale();
+    [[nodiscard]] bool applyLanguage();
+    void applyRmlLocalizationToAllDocuments();
 
     entt::dispatcher& dispatcher_;
     engine::audio::AudioPlayer& audio_player_;
     game::data::GameTime& game_time_;
+    LocalizationService& localization_;
+    engine::render::TextRenderer& text_renderer_;
     engine::ui::rmlui::RmlUiRuntime& rml_runtime_;
 
     UserSettings settings_{};

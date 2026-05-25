@@ -63,6 +63,7 @@
 #include "engine/vfx/vfx_service.h"
 #include "engine/script/script_host.h"
 #include "game/script/script_event_bridge.h"
+#include "game/runtime/localization_service.h"
 #include "game/runtime/user_settings_service.h"
 
 namespace game::runtime {
