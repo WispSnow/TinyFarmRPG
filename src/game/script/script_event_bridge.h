@@ -19,6 +19,7 @@ struct BattleStartedEvent;
 struct BattleTurnEndedEvent;
 struct BattleTurnStartedEvent;
 struct BattleUnitDiedEvent;
+struct DialogueChoiceSelectedEvent;
 struct DialogueHideEvent;
 struct InteractCommand;
 struct InventoryChanged;
@@ -52,6 +53,7 @@ private:
 
     void onInteract(const game::defs::InteractCommand& event);
     void onDialogueClosed(const game::defs::DialogueHideEvent& event);
+    void onDialogueChoiceSelected(const game::defs::DialogueChoiceSelectedEvent& event);
     void onInventoryChanged(const game::defs::InventoryChanged& event);
     void onItemUsed(const game::defs::ItemUsedEvent& event);
     void onBattleStarted(const game::defs::BattleStartedEvent& event);

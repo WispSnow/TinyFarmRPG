@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace game::defs {
 
@@ -34,6 +35,33 @@ struct DialogueMoveEvent {
 struct DialogueHideEvent {
     entt::entity target{entt::null};
     DialogueChannel channel{DialogueChannel::Conversation};
+};
+
+struct DialogueChoiceOption {
+    std::string id{};
+    std::string label{};
+};
+
+/// @brief 请求打开一组剧情选项；UI 选择完成后发 DialogueChoiceSelectedEvent。
+struct DialogueChoiceRequestedEvent {
+    std::uint32_t request_id{0};
+    entt::entity target{entt::null};
+    std::string prompt{};
+    std::string speaker{};
+    std::string speaker_actor_id{};
+    entt::id_type speaker_actor_id_hash{entt::null};
+    std::vector<DialogueChoiceOption> options{};
+    bool allow_cancel{true};
+};
+
+/// @brief 剧情选项 UI 的结果。option_index 为 0-based；cancelled=true 时为 -1。
+struct DialogueChoiceSelectedEvent {
+    std::uint32_t request_id{0};
+    entt::entity target{entt::null};
+    int option_index{-1};
+    std::string choice_id{};
+    std::string choice_label{};
+    bool cancelled{false};
 };
 
 } // namespace game::defs

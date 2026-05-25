@@ -308,6 +308,7 @@ target_sources(game PRIVATE
     game/scene/save_slot_select_scene.cpp
     game/scene/pause_menu_scene.cpp
     game/scene/rest_dialog_scene.cpp
+    game/scene/dialogue_choice_scene.cpp
     game/scene/quest_offer_scene.cpp
     game/scene/recruit_offer_scene.cpp
     game/scene/shop_menu_transaction_presenter.cpp

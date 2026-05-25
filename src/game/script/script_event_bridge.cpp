@@ -312,6 +312,8 @@ void ScriptEventBridge::drainDeferredCommands() {
 void ScriptEventBridge::subscribe() {
     dispatcher_.sink<game::defs::InteractCommand>().connect<&ScriptEventBridge::onInteract>(this);
     dispatcher_.sink<game::defs::DialogueHideEvent>().connect<&ScriptEventBridge::onDialogueClosed>(this);
+    dispatcher_.sink<game::defs::DialogueChoiceSelectedEvent>()
+        .connect<&ScriptEventBridge::onDialogueChoiceSelected>(this);
     dispatcher_.sink<game::defs::InventoryChanged>().connect<&ScriptEventBridge::onInventoryChanged>(this);
     dispatcher_.sink<game::defs::ItemUsedEvent>().connect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().connect<&ScriptEventBridge::onBattleStarted>(this);
@@ -331,6 +333,8 @@ void ScriptEventBridge::subscribe() {
 void ScriptEventBridge::unsubscribe() {
     dispatcher_.sink<game::defs::InteractCommand>().disconnect<&ScriptEventBridge::onInteract>(this);
     dispatcher_.sink<game::defs::DialogueHideEvent>().disconnect<&ScriptEventBridge::onDialogueClosed>(this);
+    dispatcher_.sink<game::defs::DialogueChoiceSelectedEvent>()
+        .disconnect<&ScriptEventBridge::onDialogueChoiceSelected>(this);
     dispatcher_.sink<game::defs::InventoryChanged>().disconnect<&ScriptEventBridge::onInventoryChanged>(this);
     dispatcher_.sink<game::defs::ItemUsedEvent>().disconnect<&ScriptEventBridge::onItemUsed>(this);
     dispatcher_.sink<game::defs::BattleStartedEvent>().disconnect<&ScriptEventBridge::onBattleStarted>(this);
@@ -406,6 +410,26 @@ void ScriptEventBridge::onDialogueClosed(const game::defs::DialogueHideEvent& ev
     payload["channel"] = static_cast<int>(event.channel);
     payload["channel_name"] = std::string{dialogueChannelName(event.channel)};
     (void)host_.emitEvent("dialogue_closed", payload);
+}
+
+void ScriptEventBridge::onDialogueChoiceSelected(const game::defs::DialogueChoiceSelectedEvent& event) {
+    sol::table payload = host_.luaState().create_table();
+    setEventName(payload, "dialogue_choice_selected");
+    setEntityHandle(host_, registry_, payload, "target", event.target);
+    payload["request_id"] = event.request_id;
+    payload["cancelled"] = event.cancelled;
+    if (event.cancelled || event.option_index < 0) {
+        payload["choice_index"] = sol::lua_nil;
+        payload["choice_zero_index"] = sol::lua_nil;
+        payload["choice_id"] = sol::lua_nil;
+        payload["choice_label"] = sol::lua_nil;
+    } else {
+        payload["choice_index"] = event.option_index + 1;
+        payload["choice_zero_index"] = event.option_index;
+        setOptionalString(payload, "choice_id", event.choice_id);
+        setOptionalString(payload, "choice_label", event.choice_label);
+    }
+    (void)host_.emitEvent("dialogue_choice_selected", payload);
 }
 
 void ScriptEventBridge::onInventoryChanged(const game::defs::InventoryChanged& event) {

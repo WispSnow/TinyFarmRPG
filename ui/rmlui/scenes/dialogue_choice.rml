@@ -1,0 +1,33 @@
+<rml>
+<head>
+    <link type="text/rcss" href="../theme/base.rcss"/>
+    <link type="text/rcss" href="../theme/reset.rcss"/>
+    <link type="text/rcss" href="../theme/modal.rcss"/>
+    <link type="text/rcss" href="../theme/nav.rcss"/>
+    <link type="text/rcss" href="../theme/spritesheet.rcss"/>
+    <link type="text/rcss" href="../theme/menu_widgets.rcss"/>
+    <link type="text/rcss" href="../theme/overlay_scene.rcss"/>
+    <link type="text/rcss" href="dialogue_choice.rcss"/>
+</head>
+<body class="tf-screen-root tf-nav-root" data-model="dialogue_choice">
+    <div id="dialogue-choice-overlay" class="tf-modal-overlay"></div>
+
+    <div id="dialogue-choice-panel" class="tf-scene-panel">
+        <div id="dialogue-choice-speaker" class="tf-scene-title-gold" data-if="has_speaker">{{ speaker_text }}</div>
+        <div id="dialogue-choice-prompt" class="tf-scene-title">{{ prompt_text }}</div>
+
+        <div id="dialogue-choice-options" class="tf-scene-card-frame">
+            <button class="dialogue-choice-option tf-scene-list-entry tf-nav-auto tf-focus-ring-gold"
+                    data-for="choice : choices"
+                    data-choice-index="{{ choice.option_index }}"
+                    data-event-click="choose">{{ choice.label }}</button>
+        </div>
+
+        <div id="dialogue-choice-actions" data-if="allow_cancel">
+            <button id="dialogue-choice-cancel-button"
+                    class="tf-button-light dialogue-choice-action-button"
+                    data-event-click="cancel">Cancel</button>
+        </div>
+    </div>
+</body>
+</rml>

@@ -2,6 +2,7 @@ local dialogue = {}
 
 local CHANNEL_CONVERSATION = tf.dialogue.CHANNEL_CONVERSATION
 local active = {}
+local choice_callbacks = {}
 local current_key = nil
 
 local function handle_key(target)
@@ -150,6 +151,30 @@ function dialogue.cancel(target)
     return complete(key, true)
 end
 
+function dialogue.choice(target, prompt, choices, opts_or_done, maybe_done)
+    local opts, on_done = start_args(opts_or_done, maybe_done)
+    local speaker, speaker_actor_id = resolve_speaker(
+        target,
+        opts.speaker,
+        opts.speaker_actor_id,
+        CHANNEL_CONVERSATION)
+
+    local request_id = tf.dialogue.choice(prompt, choices, {
+        target = target,
+        speaker = speaker,
+        speaker_actor_id = speaker_actor_id,
+        allow_cancel = opts.allow_cancel ~= false,
+    })
+    if request_id == nil or request_id == 0 then
+        return false
+    end
+
+    if type(on_done) == "function" then
+        choice_callbacks[tostring(request_id)] = on_done
+    end
+    return true
+end
+
 tf.event.on("interact", function(evt)
     if advance(evt.target) then
         evt.dialogue_handled = true
@@ -170,6 +195,24 @@ tf.event.on("dialogue_closed", function(evt)
     end
 
     complete(key, true, false)
+end)
+
+tf.event.on("dialogue_choice_selected", function(evt)
+    local callback = choice_callbacks[tostring(evt.request_id)]
+    if callback == nil then
+        return
+    end
+
+    choice_callbacks[tostring(evt.request_id)] = nil
+    callback({
+        request_id = evt.request_id,
+        target = evt.target,
+        cancelled = evt.cancelled == true,
+        index = evt.choice_index,
+        zero_index = evt.choice_zero_index,
+        id = evt.choice_id,
+        label = evt.choice_label,
+    })
 end)
 
 return dialogue

@@ -175,6 +175,7 @@ set(GAME_TEST_SOURCES
     game/quest_battle_progress_resolver_test.cpp
     game/quest_debug_panel_helpers_test.cpp
     game/quest_debug_panel_registration_test.cpp
+    game/dialogue_choice_scene_smoke_test.cpp
     game/quest_offer_scene_smoke_test.cpp
     game/recruit_offer_scene_smoke_test.cpp
     game/shop_debug_panel_helpers_test.cpp

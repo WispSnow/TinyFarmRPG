@@ -33,6 +33,71 @@ namespace {
     return std::nullopt;
 }
 
+[[nodiscard]] std::string stringFieldOrEmpty(const sol::table& table, const char* key) {
+    const sol::object value = table[key];
+    return value.is<std::string>() ? value.as<std::string>() : std::string{};
+}
+
+[[nodiscard]] bool boolFieldOr(const sol::table& table, const char* key, const bool fallback) {
+    const sol::object value = table[key];
+    return value.is<bool>() ? value.as<bool>() : fallback;
+}
+
+[[nodiscard]] std::optional<engine::script::ScriptEntityHandle> handleFieldOrNullopt(const sol::table& table,
+                                                                                     const char* key) {
+    const sol::object value = table[key];
+    if (value.is<engine::script::ScriptEntityHandle>()) {
+        return value.as<engine::script::ScriptEntityHandle>();
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::vector<game::script::ScriptDialogueChoiceOption> dialogueChoiceOptionsFromLua(
+    const sol::object& raw_choices) {
+    std::vector<game::script::ScriptDialogueChoiceOption> options{};
+    if (!raw_choices.is<sol::table>()) {
+        return options;
+    }
+
+    sol::table choices = raw_choices.as<sol::table>();
+    for (int index = 1; index <= 4; ++index) {
+        const sol::object entry = choices[index];
+        if (!entry.valid() || entry.get_type() == sol::type::lua_nil) {
+            break;
+        }
+
+        std::string id = std::to_string(index);
+        std::string label{};
+        if (entry.is<std::string>()) {
+            label = entry.as<std::string>();
+        } else if (entry.is<sol::table>()) {
+            sol::table choice = entry.as<sol::table>();
+            id = stringFieldOrEmpty(choice, "id");
+            const sol::object label_field = choice["label"];
+            if (label_field.is<std::string>()) {
+                label = label_field.as<std::string>();
+            } else {
+                const sol::object first_field = choice[1];
+                if (first_field.is<std::string>()) {
+                    label = first_field.as<std::string>();
+                }
+            }
+        }
+
+        if (id.empty()) {
+            id = std::to_string(index);
+        }
+        if (!label.empty()) {
+            options.push_back(game::script::ScriptDialogueChoiceOption{
+                .id = std::move(id),
+                .label = std::move(label),
+            });
+        }
+    }
+
+    return options;
+}
+
 [[nodiscard]] bool registerEventCallback(engine::script::ScriptHost& host,
                                          const std::string_view event_name,
                                          const sol::object& callback) {
@@ -358,6 +423,29 @@ void installTinyFarmScriptModule(sol::state& lua,
               sol::optional<ScriptEntityHandle> target_handle) -> bool {
             return api->hideDialogue(channel.value_or(1), toStdOptional(target_handle));
         });
+    dialogue_impl.set_function(
+        "choice",
+        [api](const std::string& prompt,
+              const sol::object& choices,
+              sol::optional<sol::table> opts) -> std::uint32_t {
+            std::optional<ScriptEntityHandle> target_handle{};
+            std::string speaker{};
+            std::string speaker_actor_id{};
+            bool allow_cancel = true;
+            if (opts.has_value()) {
+                target_handle = handleFieldOrNullopt(opts.value(), "target");
+                speaker = stringFieldOrEmpty(opts.value(), "speaker");
+                speaker_actor_id = stringFieldOrEmpty(opts.value(), "speaker_actor_id");
+                allow_cancel = boolFieldOr(opts.value(), "allow_cancel", true);
+            }
+            return api->requestDialogueChoice(
+                prompt,
+                dialogueChoiceOptionsFromLua(choices),
+                target_handle,
+                speaker,
+                speaker_actor_id,
+                allow_cancel);
+        });
     tf_impl["dialogue"] = engine::script::createReadOnlyProxy(lua, dialogue_impl, "tf.dialogue");
 
     // ── tf.event / tf.callbacks ──
@@ -373,6 +461,9 @@ void installTinyFarmScriptModule(sol::state& lua,
     });
     callbacks_impl.set_function("on_dialogue_closed", [&host](const sol::object& callback) -> bool {
         return registerEventCallback(host, "dialogue_closed", callback);
+    });
+    callbacks_impl.set_function("on_dialogue_choice_selected", [&host](const sol::object& callback) -> bool {
+        return registerEventCallback(host, "dialogue_choice_selected", callback);
     });
     callbacks_impl.set_function("on_battle_start", [&host](const sol::object& callback) -> bool {
         return registerEventCallback(host, "battle_started", callback);

@@ -44,6 +44,14 @@ struct DialogueCapture {
     }
 };
 
+struct DialogueChoiceCapture {
+    std::vector<game::defs::DialogueChoiceRequestedEvent> requests{};
+
+    void onRequest(const game::defs::DialogueChoiceRequestedEvent& event) {
+        requests.push_back(event);
+    }
+};
+
 struct ScriptDialogueHelperEnv {
     entt::registry registry{};
     entt::dispatcher dispatcher{};
@@ -53,6 +61,7 @@ struct ScriptDialogueHelperEnv {
     entt::entity target{entt::null};
     entt::entity other_target{entt::null};
     DialogueCapture capture{};
+    DialogueChoiceCapture choice_capture{};
 
     ScriptDialogueHelperEnv()
         : host(registry),
@@ -81,6 +90,8 @@ struct ScriptDialogueHelperEnv {
 
         dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
         dispatcher.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&capture);
+        dispatcher.sink<game::defs::DialogueChoiceRequestedEvent>()
+            .connect<&DialogueChoiceCapture::onRequest>(&choice_capture);
 
         host.setScriptRoot(projectScriptRoot());
         EXPECT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
@@ -90,6 +101,7 @@ struct ScriptDialogueHelperEnv {
 
     ~ScriptDialogueHelperEnv() {
         dispatcher.disconnect(&capture);
+        dispatcher.disconnect(&choice_capture);
     }
 
     void interact() {
@@ -256,6 +268,51 @@ TEST(ScriptDialogueHelperTest, CompletionEventIsMarkedHandledToAvoidImmediateRes
     EXPECT_TRUE(env.host.exec(R"(
         assert(restart_guard_starts == 1)
         assert(restart_guard_done == false)
+    )"));
+}
+
+TEST(ScriptDialogueHelperTest, ChoiceHelperRoutesSelectionResultToCallback) {
+    ScriptDialogueHelperEnv env{};
+
+    ASSERT_TRUE(env.host.exec(R"(
+        local dialogue = tf.script.require("lib.dialogue")
+        choice_result = nil
+        assert(dialogue.choice(test_target, "Pick one?", {
+            "Yes",
+            { id = "no", label = "No" },
+        }, function(result)
+            choice_result = result
+        end) == true)
+    )"));
+
+    ASSERT_EQ(env.choice_capture.requests.size(), 1U);
+    const auto& request = env.choice_capture.requests.front();
+    EXPECT_EQ(request.prompt, "Pick one?");
+    EXPECT_EQ(request.target, env.target);
+    EXPECT_EQ(request.speaker, "Lyria");
+    EXPECT_EQ(request.speaker_actor_id, "actor.lyria");
+    ASSERT_EQ(request.options.size(), 2U);
+    EXPECT_EQ(request.options[0].label, "Yes");
+    EXPECT_EQ(request.options[1].id, "no");
+    EXPECT_EQ(request.options[1].label, "No");
+
+    env.dispatcher.trigger(game::defs::DialogueChoiceSelectedEvent{
+        .request_id = request.request_id,
+        .target = env.target,
+        .option_index = 1,
+        .choice_id = "no",
+        .choice_label = "No",
+        .cancelled = false,
+    });
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(choice_result ~= nil)
+        assert(choice_result.cancelled == false)
+        assert(choice_result.index == 2)
+        assert(choice_result.zero_index == 1)
+        assert(choice_result.id == "no")
+        assert(choice_result.label == "No")
+        assert(choice_result.target.entity_id == test_target.entity_id)
     )"));
 }
 

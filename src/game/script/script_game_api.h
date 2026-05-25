@@ -29,6 +29,11 @@ struct QuestProgressSnapshot {
     int required{0};
 };
 
+struct ScriptDialogueChoiceOption {
+    std::string id{};
+    std::string label{};
+};
+
 /// @brief 游戏脚本 API 的 C++ facade。
 ///
 /// 该类型负责把 Lua 绑定层的调用转译为稳定的游戏 command/event。
@@ -111,6 +116,13 @@ public:
                                     std::string_view speaker_actor_id);
     [[nodiscard]] bool hideDialogue(int channel,
                                     const std::optional<engine::script::ScriptEntityHandle>& target_handle);
+    [[nodiscard]] std::uint32_t requestDialogueChoice(
+        std::string_view prompt,
+        std::vector<ScriptDialogueChoiceOption> options,
+        const std::optional<engine::script::ScriptEntityHandle>& target_handle,
+        std::string_view speaker,
+        std::string_view speaker_actor_id,
+        bool allow_cancel);
 
 private:
     [[nodiscard]] bool resolveTargetEntity(const std::optional<engine::script::ScriptEntityHandle>& raw_target,
@@ -121,6 +133,7 @@ private:
     engine::script::ScriptHost& host_;
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
+    std::uint32_t next_dialogue_choice_request_id_{1};
 };
 
 } // namespace game::script

@@ -12,6 +12,10 @@ function event.on_dialogue_closed(fn)
     return tf.callbacks.on_dialogue_closed(fn)
 end
 
+function event.on_dialogue_choice_selected(fn)
+    return tf.callbacks.on_dialogue_choice_selected(fn)
+end
+
 function event.on_battle_start(fn)
     return tf.callbacks.on_battle_start(fn)
 end

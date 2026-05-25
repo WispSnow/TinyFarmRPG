@@ -190,11 +190,13 @@ tf
 ├── dialogue
 │   ├── CHANNEL_CONVERSATION / CHANNEL_NOTICE / CHANNEL_ITEM_NOTICE
 │   ├── show(text [, speaker] [, channel] [, target_handle])    → bool
-│   └── hide([channel] [, target_handle])                       → bool
+│   ├── hide([channel] [, target_handle])                       → bool
+│   └── choice(prompt, choices [, opts])                        → request_id | 0
 ├── event
 │   └── on(event_name, fn)                                      → bool
 ├── callbacks
 │   ├── on_interact(fn)                                         → bool
+│   ├── on_dialogue_choice_selected(fn)                         → bool
 │   ├── on_day_changed(fn)                                      → bool
 │   ├── on_battle_end(fn)                                       → bool
 │   ├── on_battle_turn_start(fn)                                → bool
@@ -265,6 +267,22 @@ tf.script.require(quest.module_for("quest.village.goblin_cleanup"))
 脚本化多行对话请先加载 `lib.dialogue`，再加载 NPC 模块。该 helper 使用 `Conversation` channel，并在 `require("lib.dialogue")` 时注册全局 `interact` 推进器；NPC 脚本应在它之后注册自己的 `interact` 回调，避免同一次交互里刚 `dialogue.start(...)` 就被推进到下一行。`scripts/bootstrap.lua` 已按这个顺序组织模块。
 
 脚本化实体的 conversation 生命周期由 C++ 的 `ScriptedDialogueLifecycleSystem` 补齐：当玩家离开当前对话目标超过交互距离阈值时，系统会发出 `dialogue_closed`。`lib.dialogue` 会把这视为外部中断，清理内部 sequence，并以 `interrupted = true` 调用 `on_done`。
+
+`tf.dialogue.choice(prompt, choices, opts)` 会请求打开一个 RmlUi 选项弹窗，并返回非零 `request_id`；失败时返回 `0`。`choices` 支持字符串数组或 `{ id = "...", label = "..." }` 条目，首版 UI 适合 2-4 个选项。`opts` 支持 `target`、`speaker`、`speaker_actor_id`、`allow_cancel`。玩家选择后会发 `dialogue_choice_selected`，payload 含 `request_id`、`target`、`cancelled`、1-based `choice_index`、0-based `choice_zero_index`、`choice_id` 与 `choice_label`。
+
+常规内容脚本建议使用 `lib.dialogue.choice(target, prompt, choices, callback)`，helper 会自动按目标补 speaker / actor_id，并把 result table 路由回对应 callback：
+
+```lua
+dialogue.choice(evt.target, "Take a seed?", {
+    { id = "potato", label = "Potato" },
+    { id = "strawberry", label = "Strawberry" },
+}, function(result)
+    if result.cancelled then
+        return
+    end
+    print("picked " .. tostring(result.id))
+end)
+```
 
 `evt.dialogue_handled` 是 Lua 脚本之间约定的协调标志，不来自 C++ payload。`lib.dialogue` 在同一次按键推进或关闭当前对话时会把它设为 `true`；NPC/quest 脚本应在回调开头检查并尽早 `return`。脚本自己成功认领一次交互并调用 `dialogue.start(...)` 后，也可以把该字段设为 `true`，避免后续监听器再处理同一按键。
 
