@@ -359,6 +359,9 @@ void installTinyFarmScriptModule(sol::state& lua,
     map_impl.set_function("current", [api]() -> std::string {
         return api->currentMap();
     });
+    map_impl.set_function("warp", [&lua, api](const std::string& map_id, float x, float y) -> sol::table {
+        return commandResultToLua(lua, api->mapWarp(map_id, x, y));
+    });
     tf_impl["map"] = engine::script::createReadOnlyProxy(lua, map_impl, "tf.map");
 
     // ── tf.command ──

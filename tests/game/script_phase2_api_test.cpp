@@ -12,6 +12,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands_battle.h"
+#include "game/defs/commands_map.h"
 #include "game/defs/commands_quest.h"
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
@@ -85,6 +86,7 @@ struct CommandCapture {
     std::vector<game::defs::RecruitPartyMemberCommand> recruits{};
     std::vector<game::defs::OpenShopCommand> open_shops{};
     std::vector<game::defs::EnterBattleCommand> battles{};
+    std::vector<game::defs::WarpToMapCommand> warps{};
     std::vector<game::defs::DialogueChoiceRequestedEvent> dialogue_choices{};
 
     void onAcceptQuest(const game::defs::AcceptQuestCommand& command) {
@@ -113,6 +115,10 @@ struct CommandCapture {
 
     void onBattle(const game::defs::EnterBattleCommand& command) {
         battles.push_back(command);
+    }
+
+    void onWarp(const game::defs::WarpToMapCommand& command) {
+        warps.push_back(command);
     }
 
     void onDialogueChoice(const game::defs::DialogueChoiceRequestedEvent& event) {
@@ -238,6 +244,7 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     env.dispatcher.sink<game::defs::RecruitPartyMemberCommand>().connect<&CommandCapture::onRecruit>(&capture);
     env.dispatcher.sink<game::defs::OpenShopCommand>().connect<&CommandCapture::onOpenShop>(&capture);
     env.dispatcher.sink<game::defs::EnterBattleCommand>().connect<&CommandCapture::onBattle>(&capture);
+    env.dispatcher.sink<game::defs::WarpToMapCommand>().connect<&CommandCapture::onWarp>(&capture);
     env.dispatcher.sink<game::defs::DialogueChoiceRequestedEvent>().connect<&CommandCapture::onDialogueChoice>(&capture);
 
     EXPECT_TRUE(env.host.exec(R"(
@@ -263,6 +270,10 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
             battle_background_id = "Grassland"
         })
         assert(battle.ok == true)
+
+        local warp = tf.map.warp("home_interior", 96, 144)
+        assert(warp.ok == true)
+        assert(warp.reason == "")
 
         local choice_id = tf.dialogue.choice("Pick a seed?", {
             "Potato",
@@ -301,6 +312,12 @@ TEST(ScriptPhase2ApiTest, TriggerApisEmitTypedCommands) {
     ASSERT_EQ(capture.battles.front().actor_ids.size(), 1U);
     EXPECT_EQ(capture.battles.front().actor_ids.front(), ACTOR_ID);
     EXPECT_EQ(capture.battles.front().battle_background_id, "Grassland");
+
+    ASSERT_EQ(capture.warps.size(), 1U);
+    EXPECT_EQ(capture.warps.front().player, env.player);
+    EXPECT_EQ(capture.warps.front().map_id, "home_interior");
+    EXPECT_FLOAT_EQ(capture.warps.front().position.x, 96.0F);
+    EXPECT_FLOAT_EQ(capture.warps.front().position.y, 144.0F);
 
     ASSERT_EQ(capture.dialogue_choices.size(), 1U);
     const auto& choice = capture.dialogue_choices.front();
@@ -365,6 +382,14 @@ TEST(ScriptPhase2ApiTest, TriggerApisReturnFailureReasonsBeforeDispatch) {
         local empty_battle = tf.battle.start()
         assert(empty_battle.ok == false)
         assert(empty_battle.reason == "invalid_troop_id")
+
+        local empty_warp = tf.map.warp("", 0, 0)
+        assert(empty_warp.ok == false)
+        assert(empty_warp.reason == "invalid_map_id")
+
+        local bad_position = tf.map.warp("home_exterior", math.huge, 0)
+        assert(bad_position.ok == false)
+        assert(bad_position.reason == "invalid_position")
     )"));
 }
 

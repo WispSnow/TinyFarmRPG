@@ -180,7 +180,8 @@ tf
 │   ├── on_unit_died(fn)                          → bool
 │   └── on_skill_used(fn)                         → bool
 ├── map
-│   └── current()                                 → string
+│   ├── current()                                 → string
+│   └── warp(map_id, x, y)                        → { ok, reason }
 ├── command
 │   ├── add_item(item_id, count [, target_handle] [, slot])     → bool
 │   ├── remove_item(item_id, count [, target_handle] [, slot])  → bool
@@ -217,7 +218,7 @@ tf
 
 `tf.state` 的 key 推荐使用 `domain.object.field` 命名，例如 `quest.first_delivery.stage`、`npc.lyria.mood`。它只接受 JSON 兼容基元：`nil`、`boolean`、`number`、`string`；`table`、`function`、entity handle 等值会被拒绝并记录日志。Lua 的 `number` 在存档中统一保存为 JSON number，不区分 int/float，脚本侧用 `get_int` 或 `get_number` 表达读取意图。
 
-`tf.quest.offer`、`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.offer_recruit`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command/event；真正的库存、奖励、招募、战斗装配等规则仍由对应 C++ system / domain service 决定。
+`tf.quest.offer`、`tf.quest.accept`、`tf.quest.turn_in`、`tf.party.offer_recruit`、`tf.party.request_recruit`、`tf.shop.open`、`tf.battle.start`、`tf.map.warp` 返回 `{ ok, reason }`。这里的 `ok = true` 表示请求已通过脚本层校验并发出 command/event；真正的库存、奖励、招募、战斗装配、地图加载与安全落点修正等规则仍由对应 C++ system / domain service 决定。
 
 脚本化任务 NPC 通常在 offerable 分支对白结束后调用 `tf.quest.offer(quest_id, evt.target)` 打开 C++ 任务确认弹窗；玩家确认后才由 `QuestOfferScene` 调用 `tf.quest.accept` 对应的底层 command。`tf.quest.accept` 只适合确认按钮或明确想跳过确认的脚本直接使用。
 
@@ -230,6 +231,8 @@ tf
 `tf.shop.open` 会直接打开指定商店，不播放 C++ 商人 greeting；脚本侧如果需要开店前对白，应先用 `tf.dialogue` 或 `lib.dialogue` 自行编排。动态商店首版采用"多个静态 `shop_id` 预设"模式：在 `assets/data/shops.json` 预先定义 day / night / post-quest 等商店，Lua 根据 `lib.time.is_night()`、`tf.quest.status(...)` 等条件选择其中一个传给 `tf.shop.open`。例如 `scripts/npcs/merchant.lua` 会让 Josh 在白天打开 `shop.village.general.day`，夜晚打开 `shop.village.general.night`，完成清理史莱姆任务后打开 `shop.village.general.post_slime_cleanup`。当前不要在 Lua 中临时生成库存或价格；交易 UI 与 `ShopTransactionService` 都读取同一份 `ShopCatalog`。
 
 `tf.battle.start` 要求显式传入非空 `troop_id`；`opts` 当前支持 `actor_ids = {"actor.lyria"}` 与 `battle_background_id = "Grassland"`。`battle_started` payload 会包含 `troop_id`、`battle_background_id`、`actor_ids`、`from_encounter` 与 `encounter_id`；`battle_ended` payload 包含 `outcome` 与胜利奖励摘要。
+
+`tf.map.warp(map_id, x, y)` 会发出 `WarpToMapCommand`，由 `MapTransitionSystem` 统一执行地图加载、fade、玩家锁定、安全落点搜索、相机吸附以及 `map_exit` / `map_enter` 事件。`map_id` 使用不带 `.tmj` 的地图名，例如 `"home_interior"`；`x` / `y` 是目标地图内的像素坐标。空 map id 返回 `invalid_map_id`，非有限坐标返回 `invalid_position`，缺少玩家或玩家 Transform 返回 `no_player`。跨地图 warp 会触发 map enter/exit；同地图 warp 只移动玩家，不重复发布地图切换事件。
 
 战斗回调首版只做观察，不允许 Lua 直接改写单位 HP、回合队列，或在战斗回调内调用 `tf.battle.start` 叠开新战斗；如果需要胜利后接下一场战斗，应在 `battle_ended` 后编排。`tf.battle.on_*` 与 `tf.callbacks.on_battle_*` 是同一组事件的两套注册入口，根据脚本风格选一种即可。
 

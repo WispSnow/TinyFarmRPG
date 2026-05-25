@@ -94,6 +94,7 @@ public:
                                                   std::string_view battle_background_id);
 
     [[nodiscard]] std::string currentMap() const;
+    [[nodiscard]] ScriptCommandResult mapWarp(std::string_view map_id, float x, float y);
 
     [[nodiscard]] bool addItem(std::string_view item_id,
                                int count,

@@ -210,6 +210,7 @@ set(GAME_TEST_SOURCES
     game/save_slot_summary_test.cpp
     game/light_toggle_system_test.cpp
     game/game_scene_light_toggle_hook_test.cpp
+    game/map_transition_system_warp_source_test.cpp
     game/game_scene_battle_entry_test.cpp
     game/game_scene_battle_audio_test.cpp
     game/game_scene_battle_reward_writeback_test.cpp

@@ -24,6 +24,7 @@
 #include "game/defs/commands_battle.h"
 #include "game/defs/commands_inventory.h"
 #include "game/defs/commands_interaction.h"
+#include "game/defs/commands_map.h"
 #include "game/defs/commands_quest.h"
 #include "game/defs/commands_recruit.h"
 #include "game/defs/commands_shop.h"
@@ -41,6 +42,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <utility>
 
@@ -730,6 +732,32 @@ std::string ScriptGameApi::currentMap() const {
 
     const auto* map_state = world_state->getMapState(current_map);
     return map_state ? map_state->info.name : std::string{};
+}
+
+ScriptCommandResult ScriptGameApi::mapWarp(const std::string_view map_id, const float x, const float y) {
+    if (map_id.empty()) {
+        return commandFailure("invalid_map_id");
+    }
+    if (!std::isfinite(x) || !std::isfinite(y)) {
+        return commandFailure("invalid_position");
+    }
+
+    const auto* world_state = findRegistryContextPointer<game::world::WorldState>(registry_);
+    if (!world_state) {
+        return commandFailure("world_unavailable");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null || !registry_.all_of<engine::component::TransformComponent>(player)) {
+        return commandFailure("no_player");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::WarpToMapCommand{
+        .player = player,
+        .map_id = std::string{map_id},
+        .position = glm::vec2{x, y},
+    });
+    return commandOk();
 }
 
 bool ScriptGameApi::addItem(const std::string_view item_id,
