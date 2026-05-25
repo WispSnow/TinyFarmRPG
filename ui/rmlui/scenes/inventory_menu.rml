@@ -34,7 +34,8 @@
                                 data-event-click="sort"></button>
                         <button class="tf-nav-auto tf-focus-ring-danger"
                                 id="trash-btn"
-                                data-event-click="trash"></button>
+                                data-event-click="trash"
+                                data-event-dragdrop="trash_drag_drop"></button>
                     </div>
 
                     <div id="slot-region">

@@ -54,7 +54,8 @@ class ItemTooltipUI;
  *   - 右键点击：弹出上下文操作菜单（Use / Discard / Activate / Unbind）。
  *   - 悬停：通过 ItemTooltipUI 显示物品提示框。
  * - **拖放**：背包↔背包触发 InventoryMoveCommand；背包→快捷栏触发
- *   HotbarBindCommand；快捷栏槽位拖出空白区触发 HotbarUnbindCommand。
+ *   HotbarBindCommand；快捷栏槽位拖出空白区触发 HotbarUnbindCommand；
+ *   背包/快捷栏拖到垃圾桶会打开丢弃确认。
  * - **操作菜单**：浮动上下文菜单，定位时自动检测边界防止溢出，
  *   选择动作后通过 ECS Dispatcher 分发对应命令。
  *
@@ -191,6 +192,7 @@ private:
     // --- 工具栏按钮回调 ---
 
     void onTrashClicked();
+    void onTrashDragDrop(Rml::Event& event);
     void onSortClicked();
 
     // --- ECS 事件处理 ---
