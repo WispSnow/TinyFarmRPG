@@ -78,7 +78,11 @@
             "param_bonuses": {
                 "def": 3,
                 "mdf": 1
-            }
+            },
+            "allowed_classes": [
+                "class.swordsman",
+                "class.monk"
+            ]
         },
         {
             "item_id": "equip_iron_armor",
@@ -86,7 +90,11 @@
             "param_bonuses": {
                 "def": 5,
                 "mdf": 2
-            }
+            },
+            "allowed_classes": [
+                "class.swordsman",
+                "class.monk"
+            ]
         },
         {
             "item_id": "equip_iron_boots",
@@ -94,7 +102,11 @@
             "param_bonuses": {
                 "def": 1,
                 "agi": 3
-            }
+            },
+            "allowed_classes": [
+                "class.swordsman",
+                "class.monk"
+            ]
         },
         {
             "item_id": "equip_iron_accessory",
