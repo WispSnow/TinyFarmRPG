@@ -38,6 +38,8 @@ struct FixturePaths {
   "items": [
     { "id": "equip.alpha_sword", "display_name": "Alpha Sword", "category": "equipment", "stack_limit": 1 },
     { "id": "equip.beta_sword", "display_name": "Beta Sword", "category": "equipment", "stack_limit": 1 },
+    { "id": "equip.hero_armor", "display_name": "Hero Armor", "category": "equipment", "stack_limit": 1 },
+    { "id": "equip.open_accessory", "display_name": "Open Accessory", "category": "equipment", "stack_limit": 1 },
     { "id": "filler.stone", "display_name": "Stone", "category": "material", "stack_limit": 1 }
   ]
 })json");
@@ -46,7 +48,8 @@ struct FixturePaths {
         data_root / "classes.json",
         R"json({
   "classes": [
-    { "id": "class.hero", "display_name": "Hero", "base_params": [100, 20, 10, 10, 10, 10, 10, 10] }
+    { "id": "class.hero", "display_name": "Hero", "base_params": [100, 20, 10, 10, 10, 10, 10, 10] },
+    { "id": "class.mage", "display_name": "Mage", "base_params": [80, 40, 5, 14, 7, 12, 12, 10] }
   ]
 })json");
 
@@ -54,7 +57,8 @@ struct FixturePaths {
         data_root / "actors.json",
         R"json({
   "actors": [
-    { "id": "actor.hero", "display_name": "Hero", "class_id": "class.hero", "initial_level": 1, "max_level": 99 }
+    { "id": "actor.hero", "display_name": "Hero", "class_id": "class.hero", "initial_level": 1, "max_level": 99 },
+    { "id": "actor.mage", "display_name": "Mage", "class_id": "class.mage", "initial_level": 1, "max_level": 99 }
   ]
 })json");
 
@@ -63,7 +67,9 @@ struct FixturePaths {
         R"json({
   "equipment": [
     { "item_id": "equip.alpha_sword", "slot": "weapon", "param_bonuses": { "atk": 2 } },
-    { "item_id": "equip.beta_sword", "slot": "weapon", "param_bonuses": { "atk": 5 } }
+    { "item_id": "equip.beta_sword", "slot": "weapon", "param_bonuses": { "atk": 5 } },
+    { "item_id": "equip.hero_armor", "slot": "body", "param_bonuses": { "def": 4 }, "allowed_classes": ["class.hero"] },
+    { "item_id": "equip.open_accessory", "slot": "accessory", "param_bonuses": { "luk": 2 } }
   ]
 })json");
 
@@ -161,6 +167,51 @@ TEST(EquipmentDomainServiceTest, ReplaceItemReturnsOldEquipmentToInventory) {
     EXPECT_EQ(
         equipment.loadouts_by_actor_id_.at("actor.hero").equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon),
         entt::hashed_string{"equip.beta_sword"}.value());
+}
+
+TEST(EquipmentDomainServiceTest, EquipItemRejectsDisallowedClassAndAllowsUnrestrictedEquipment) {
+    const auto paths = createEquipmentFixture();
+    auto catalogs = loadCatalogs(paths);
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+
+    const entt::entity player = createPlayer(registry);
+    auto& party = registry.get<game::component::PartyComponent>(player);
+    party.recruited_actor_ids_.push_back("actor.mage");
+    party.active_actor_ids_.push_back("actor.mage");
+
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = entt::hashed_string{"equip.hero_armor"}.value();
+    inventory.slot(0).count_ = 1;
+    inventory.slot(1).item_id_ = entt::hashed_string{"equip.open_accessory"}.value();
+    inventory.slot(1).count_ = 1;
+
+    const auto armor_result = equipment_domain.equipItem(
+        player,
+        "actor.mage",
+        0,
+        game::data::EquipmentSlotId::Body);
+
+    EXPECT_FALSE(armor_result.success);
+    EXPECT_EQ(armor_result.message, "actor cannot equip this item");
+    EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"equip.hero_armor"}.value());
+    EXPECT_EQ(inventory.slot(0).count_, 1);
+    EXPECT_FALSE(registry.all_of<game::component::PartyEquipmentComponent>(player));
+
+    const auto accessory_result = equipment_domain.equipItem(
+        player,
+        "actor.mage",
+        1,
+        game::data::EquipmentSlotId::Accessory);
+
+    ASSERT_TRUE(accessory_result.success) << accessory_result.message;
+    EXPECT_TRUE(inventory.slot(1).empty());
+    const auto& equipment = registry.get<game::component::PartyEquipmentComponent>(player);
+    EXPECT_EQ(
+        equipment.loadouts_by_actor_id_.at("actor.mage").equipped_item_ids_.at(game::data::EquipmentSlotId::Accessory),
+        entt::hashed_string{"equip.open_accessory"}.value());
 }
 
 TEST(EquipmentDomainServiceTest, UnequipItemReturnsItemAndClearsLoadout) {

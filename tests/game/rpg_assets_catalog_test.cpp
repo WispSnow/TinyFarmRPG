@@ -13,6 +13,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <initializer_list>
 #include <string>
 #include <string_view>
 
@@ -91,6 +92,26 @@ TEST(RpgAssetsCatalogTest, ProjectRpgAssetsLoadAndResolveBattlePresentationRefer
         ASSERT_NE(equipment, nullptr);
         EXPECT_NE(equipment->slot_, EquipmentSlotId::Offhand) << equipment->item_id_;
     }
+    const auto expect_allowed_classes =
+        [&catalog](std::string_view item_id, std::initializer_list<std::string_view> expected_classes) {
+            const auto* equipment = catalog.findEquipmentByItem(item_id);
+            ASSERT_NE(equipment, nullptr) << item_id;
+            ASSERT_EQ(equipment->allowed_classes_.size(), expected_classes.size()) << item_id;
+
+            std::size_t index = 0;
+            for (const auto expected_class : expected_classes) {
+                EXPECT_EQ(equipment->allowed_classes_[index], expected_class) << item_id;
+                ++index;
+            }
+        };
+    expect_allowed_classes("equip_iron_sword", {"class.swordsman", "class.monk"});
+    expect_allowed_classes("equip_iron_staff", {"class.mage"});
+    expect_allowed_classes("equip_iron_helmet", {"class.swordsman", "class.monk"});
+    expect_allowed_classes("equip_iron_armor", {"class.swordsman", "class.monk"});
+    expect_allowed_classes("equip_iron_boots", {"class.swordsman", "class.monk"});
+    const auto* iron_accessory = catalog.findEquipmentByItem("equip_iron_accessory");
+    ASSERT_NE(iron_accessory, nullptr);
+    EXPECT_TRUE(iron_accessory->allowed_classes_.empty());
 
     engine::vfx::VfxCatalog vfx_catalog;
     ASSERT_TRUE(vfx_catalog.loadFromFile((project_root / "assets/data/vfx_catalog.json").string()));
