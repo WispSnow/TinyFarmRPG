@@ -9,6 +9,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/script_trigger_component.h"
+#include "game/component/script_zone_component.h"
 #include "game/component/scripted_interaction_component.h"
 #include "game/component/tags.h"
 #include "game/data/item_catalog.h"
@@ -321,6 +322,76 @@ TEST(ScriptEventBridgeTest, MapEnterAndExitEventsExposeStableMapIds) {
     EXPECT_TRUE(env.host.exec(R"(
         assert(seen_map_exit == true)
         assert(seen_map_enter == true)
+    )"));
+}
+
+TEST(ScriptEventBridgeTest, ZoneEnterAndExitEventsExposeStableZoneMetadata) {
+    ScriptEventBridgeTestEnv env{};
+    constexpr entt::id_type map_id = entt::hashed_string{"home_exterior"}.value();
+    constexpr entt::id_type zone_hash = entt::hashed_string{"zone.home.seed_hint"}.value();
+
+    const entt::entity zone = env.registry.create();
+    env.registry.emplace<game::component::ScriptZoneComponent>(
+        zone,
+        game::component::ScriptZoneComponent{
+            .rect_ = engine::utils::Rect{glm::vec2{10.0F, 10.0F}, glm::vec2{20.0F, 20.0F}},
+            .map_id_ = map_id,
+            .zone_id_ = "zone.home.seed_hint",
+            .zone_id_hash_ = zone_hash,
+        });
+    env.registry.emplace<game::component::ScriptTriggerComponent>(
+        zone,
+        game::component::ScriptTriggerComponent{
+            .module_ = "maps.home_exterior",
+            .event_ = "home_exterior.seed_hint",
+            .once_key_ = "map.home_exterior.seed_hint",
+        });
+
+    ASSERT_TRUE(env.host.exec(R"(
+        seen_zone_enter = false
+        seen_zone_exit = false
+        assert(tf.event.on("zone_enter", function(evt)
+            assert(evt.name == "zone_enter")
+            assert(evt.player ~= nil)
+            assert(evt.zone ~= nil)
+            assert(evt.map_id == "home_exterior")
+            assert(type(evt.map_id_hash) == "string")
+            assert(evt.zone_id == "zone.home.seed_hint")
+            assert(type(evt.zone_id_hash) == "string")
+            assert(evt.zone_script_module == "maps.home_exterior")
+            assert(evt.zone_script_event == "home_exterior.seed_hint")
+            assert(evt.zone_script_once_key == "map.home_exterior.seed_hint")
+            assert(tf.entity.has_component(evt.zone, "script_zone") == true)
+            seen_zone_enter = true
+        end) == true)
+        assert(tf.event.on("zone_exit", function(evt)
+            assert(evt.name == "zone_exit")
+            assert(evt.zone_id == "zone.home.seed_hint")
+            assert(evt.zone_script_event == "home_exterior.seed_hint")
+            seen_zone_exit = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::ZoneEnteredEvent{
+        .player = env.player,
+        .zone = zone,
+        .map_id = map_id,
+        .map_name = "home_exterior",
+        .zone_id = "zone.home.seed_hint",
+        .zone_id_hash = zone_hash,
+    });
+    env.dispatcher.trigger(game::defs::ZoneExitedEvent{
+        .player = env.player,
+        .zone = zone,
+        .map_id = map_id,
+        .map_name = "home_exterior",
+        .zone_id = "zone.home.seed_hint",
+        .zone_id_hash = zone_hash,
+    });
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(seen_zone_enter == true)
+        assert(seen_zone_exit == true)
     )"));
 }
 

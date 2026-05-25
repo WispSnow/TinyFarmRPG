@@ -134,6 +134,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::RestSystem> rest_system;
     std::unique_ptr<game::system::ClosetInteractionSystem> closet_interaction_system;
     std::unique_ptr<game::system::MapTransitionSystem> map_transition_system;
+    std::unique_ptr<game::system::ZoneTriggerSystem> zone_trigger_system;
     std::unique_ptr<game::system::AppearanceSystem> appearance_system;
     std::unique_ptr<game::script::ScriptEventBridge> script_event_bridge;
     std::unique_ptr<engine::vfx::VfxBridgeSystem> vfx_bridge_system;

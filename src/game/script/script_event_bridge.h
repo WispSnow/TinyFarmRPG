@@ -26,6 +26,8 @@ struct InventoryChanged;
 struct ItemUsedEvent;
 struct MapEnteredEvent;
 struct MapExitedEvent;
+struct ZoneEnteredEvent;
+struct ZoneExitedEvent;
 struct QuestAcceptedEvent;
 struct QuestCompletedEvent;
 }
@@ -64,6 +66,8 @@ private:
     void onBattleEnded(const game::defs::BattleEndedEvent& event);
     void onMapEntered(const game::defs::MapEnteredEvent& event);
     void onMapExited(const game::defs::MapExitedEvent& event);
+    void onZoneEntered(const game::defs::ZoneEnteredEvent& event);
+    void onZoneExited(const game::defs::ZoneExitedEvent& event);
     void onDayChanged(const engine::utils::DayChangedEvent& event);
     void onTimeOfDayChanged(const engine::utils::TimeOfDayChangedEvent& event);
     void onQuestAccepted(const game::defs::QuestAcceptedEvent& event);

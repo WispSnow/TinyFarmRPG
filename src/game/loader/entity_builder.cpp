@@ -14,6 +14,7 @@
 #include "game/component/recruitable_component.h"
 #include "game/component/scripted_interaction_component.h"
 #include "game/component/script_trigger_component.h"
+#include "game/component/script_zone_component.h"
 #include "game/data/battle_background_id.h"
 #include "game/defs/spatial_layers.h"
 #include "game/world/world_state.h"
@@ -349,6 +350,8 @@ EntityBuilder* EntityBuilder::build() {
             }
         } else if (type == tiled::OBJECT_TYPE_MAP_TRIGGER) {
             buildMapTrigger();
+        } else if (type == tiled::OBJECT_TYPE_SCRIPT_ZONE) {
+            buildScriptZone();
         } else if (type == tiled::OBJECT_TYPE_REST) {
             buildRestArea();
         } else if (type == tiled::OBJECT_TYPE_CLOSET) {
@@ -674,6 +677,51 @@ void EntityBuilder::buildMapTrigger() {
         }
     }
     spdlog::info("MapTrigger: 地图切换触发器创建完成，self_id: {}, target_id: {}, target_map_name: {}", self_id, target_id, target_map_name);
+}
+
+void EntityBuilder::buildScriptZone() {
+    if (!object_json_) {
+        return;
+    }
+
+    const glm::vec2 position{
+        object_json_->value("x", 0.0f),
+        object_json_->value("y", 0.0f),
+    };
+    const glm::vec2 size{
+        object_json_->value("width", 0.0f),
+        object_json_->value("height", 0.0f),
+    };
+
+    if (size.x <= 0.0f || size.y <= 0.0f) {
+        spdlog::error("ScriptZone: 创建失败，缺少有效尺寸 width/height: {}, {}", size.x, size.y);
+        return;
+    }
+
+    const std::string name = object_json_->value("name", "");
+    auto zone_id = findObjectStringProperty(object_json_, tiled::OBJECT_PROP_ZONE_ID).value_or(name);
+    if (zone_id.empty()) {
+        zone_id = findObjectStringProperty(object_json_, tiled::OBJECT_PROP_SCRIPT_EVENT).value_or(std::string{});
+    }
+
+    entity_id_ = registry_.create();
+    if (!name.empty()) {
+        registry_.emplace<engine::component::NameComponent>(
+            entity_id_,
+            entt::hashed_string(name.c_str()),
+            name);
+    }
+
+    const engine::utils::Rect rect{position, size};
+    registry_.emplace<engine::component::TransformComponent>(entity_id_, position);
+    registry_.emplace<game::component::ScriptZoneComponent>(
+        entity_id_,
+        game::component::ScriptZoneComponent{
+            .rect_ = rect,
+            .map_id_ = map_id_,
+            .zone_id_ = zone_id,
+            .zone_id_hash_ = zone_id.empty() ? entt::id_type{entt::null} : entt::hashed_string(zone_id.c_str()).value(),
+        });
 }
 
 void EntityBuilder::buildRestArea() {

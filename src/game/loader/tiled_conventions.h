@@ -19,12 +19,14 @@ inline constexpr std::string_view OBJECT_TYPE_MAP_TRIGGER = "map_trigger";
 inline constexpr std::string_view OBJECT_TYPE_REST = "rest";
 inline constexpr std::string_view OBJECT_TYPE_CLOSET = "closet";
 inline constexpr std::string_view OBJECT_TYPE_LIGHT = "light";
+inline constexpr std::string_view OBJECT_TYPE_SCRIPT_ZONE = "script_zone";
 
 // Object layer: shared object properties
 inline constexpr std::string_view OBJECT_PROP_SCRIPTED_INTERACTION = "scripted_interaction";
 inline constexpr std::string_view OBJECT_PROP_SCRIPT_MODULE = "script_module";
 inline constexpr std::string_view OBJECT_PROP_SCRIPT_EVENT = "script_event";
 inline constexpr std::string_view OBJECT_PROP_SCRIPT_ONCE_KEY = "script_once_key";
+inline constexpr std::string_view OBJECT_PROP_ZONE_ID = "zone_id";
 
 // Object layer: light "name"
 inline constexpr std::string_view LIGHT_NAME_POINT = "point";

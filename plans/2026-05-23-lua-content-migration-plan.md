@@ -399,11 +399,11 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 ### 待办
 
 - [x] **Tiled 属性扩展**：`script_event`（触发事件名）、`script_once_key`（一次性标记 key，配合 `tf.state`）已进入 `interact` payload；`script_module` 先作为可选元数据保留。
-- [ ] **新事件类型**：
+- [x] **新事件类型**：
   - [x] C++ 侧新增 `MapEnteredEvent` / `MapExitedEvent`，由 `MapTransitionSystem` 在成功切图后发布
-  - [ ] C++ 侧补 `ZoneEnteredEvent` / `ZoneExitedEvent` 与对应区域检测系统（可能需要新增 `ZoneTriggerSystem`）
+  - [x] C++ 侧补 `ZoneEnteredEvent` / `ZoneExitedEvent` 与对应区域检测系统 `ZoneTriggerSystem`
   - [x] 在 [script_event_bridge.cpp](../src/game/script/script_event_bridge.cpp) 添加桥接：`tf.event.on("map_enter", fn)` / `on("map_exit", fn)`
-  - [ ] 在 [script_event_bridge.cpp](../src/game/script/script_event_bridge.cpp) 添加桥接：`tf.event.on("zone_enter", fn)` / `on("zone_exit", fn)`
+  - [x] 在 [script_event_bridge.cpp](../src/game/script/script_event_bridge.cpp) 添加桥接：`tf.event.on("zone_enter", fn)` / `on("zone_exit", fn)`
 - [x] **`scripts/maps/<map_id>.lua`** 目录约定：每张地图一个 Lua 脚本，注册该地图的特殊触发。
 - [x] **一次性触发 helper**：`scripts/lib/once.lua` 包装 `tf.state` 实现 `once.run(key, fn)`。
 - [x] **脚本化宝箱样板**：选一个现有宝箱挂 `ScriptedInteractionComponent`，Lua 演自定义对白后调 `tf.command.add_item`。
@@ -505,8 +505,8 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 **Polish PR 3：区域触发**
 
-- [ ] 新增 `ZoneEnteredEvent` / `ZoneExitedEvent` 与低频去抖的 `ZoneTriggerSystem`。
-- [ ] 开放 `tf.event.on("zone_enter" / "zone_exit", fn)`。
+- [x] 新增 `ZoneEnteredEvent` / `ZoneExitedEvent` 与低频去重的 `ZoneTriggerSystem`。
+- [x] 开放 `tf.event.on("zone_enter" / "zone_exit", fn)`。
 
 **较大后续：商店运行时库存**
 
