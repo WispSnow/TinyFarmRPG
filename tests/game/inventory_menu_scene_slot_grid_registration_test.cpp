@@ -47,6 +47,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SharedSlotVectorTypeIsRegistere
         << "Hotbar slots reuse the same vector<SlotGridViewModel> array type and should not register it again.";
     EXPECT_NE(bind_model_block.find("Bind(\"backpack_slots\", &backpack_slots_)"), std::string::npos);
     EXPECT_NE(bind_model_block.find("Bind(\"hotbar_slots\", &hotbar_slots_)"), std::string::npos);
+    EXPECT_NE(bind_model_block.find("\"trash_drag_drop\""), std::string::npos);
 
     const std::filesystem::path quest_tab_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/quest_tab_content.cpp").lexically_normal();
@@ -170,6 +171,7 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     EXPECT_EQ(source.find("class=\"menu-separator\""), std::string::npos);
     EXPECT_EQ(source.find(">Sort</button>"), std::string::npos);
     EXPECT_EQ(source.find(">Unequip</button>"), std::string::npos);
+    EXPECT_NE(source.find("data-event-dragdrop=\"trash_drag_drop\""), std::string::npos);
     EXPECT_NE(source.find("equipment-slot-placeholder"), std::string::npos);
     EXPECT_NE(source.find("data-if=\"!eqslot.has_item\""), std::string::npos);
     EXPECT_NE(source.find("data-style-decorator=\"eqslot.placeholder_decorator\""), std::string::npos);
@@ -472,6 +474,41 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, SlotDragControllerPlansHotbarSw
     EXPECT_TRUE(loose_end.handled);
     EXPECT_TRUE(loose_end.unbind_hotbar);
     EXPECT_EQ(loose_end.hotbar_slot_index, 2);
+}
+
+TEST(InventoryMenuSceneSlotGridRegistrationTest, TrashButtonDragDropUsesDraggedSlotForDiscardConfirmation) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/inventory_tab_content.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/ui/inventory_tab_content.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(header.find("void onTrashDragDrop(Rml::Event& event);"), std::string::npos);
+
+    const std::string bind_model_block =
+        test_source_utils::extractFunctionBlock(source, "bool InventoryTabContent::bindModel(Rml::DataModelConstructor& constructor)");
+    const std::string trash_drop_block =
+        test_source_utils::extractFunctionBlock(source, "void InventoryTabContent::onTrashDragDrop(Rml::Event& event)");
+    ASSERT_FALSE(bind_model_block.empty());
+    ASSERT_FALSE(trash_drop_block.empty());
+
+    EXPECT_NE(bind_model_block.find("\"trash_drag_drop\""), std::string::npos);
+    EXPECT_NE(bind_model_block.find("onTrashDragDrop(event)"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("getSlotGridDragInfo(event)"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("drag_info->fromInventory()"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("drag_info->fromHotbar()"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("resolveInventorySlotFromHotbar"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("selectSlot(MenuPanelKind::Backpack, inventory_slot)"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("drag_controller_.clear()"), std::string::npos);
+    EXPECT_NE(trash_drop_block.find("openDiscardConfirmForBackpackSlot(inventory_slot)"), std::string::npos);
+    EXPECT_EQ(trash_drop_block.find("RemoveItemCommand"), std::string::npos)
+        << "Dropping on the trash should still use the existing discard confirmation flow.";
 }
 
 } // namespace

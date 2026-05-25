@@ -165,6 +165,11 @@ bool InventoryTabContent::bindModel(Rml::DataModelConstructor& constructor) {
                 onActionEntryClick(getSingleIntArgument(arguments), event);
             }) ||
         !document_controller_.bindSimpleEvent(constructor, "trash", [this] { onTrashClicked(); }) ||
+        !constructor.BindEventCallback(
+            "trash_drag_drop",
+            [this](Rml::DataModelHandle, Rml::Event& event, const Rml::VariantList&) {
+                onTrashDragDrop(event);
+            }) ||
         !document_controller_.bindSimpleEvent(constructor, "sort", [this] { onSortClicked(); })) {
         spdlog::error("InventoryTabContent: 绑定 event 回调失败。");
         return false;
@@ -742,6 +747,37 @@ void InventoryTabContent::onTrashClicked() {
     }
 
     openDiscardConfirmForBackpackSlot(selected_slot_.index);
+}
+
+void InventoryTabContent::onTrashDragDrop(Rml::Event& event) {
+    if (player_ == entt::null || !drag_controller_.active()) {
+        return;
+    }
+
+    const auto drag_info = getSlotGridDragInfo(event);
+    if (!drag_info) {
+        return;
+    }
+
+    int inventory_slot = -1;
+    if (drag_info->fromInventory()) {
+        inventory_slot = drag_info->slot_index;
+    } else if (drag_info->fromHotbar()) {
+        inventory_slot = resolveInventorySlotFromHotbar(drag_info->slot_index);
+    }
+
+    const auto* inventory = tryGetInventory(game_registry_, player_);
+    if (!inventory || inventory_slot < 0 || inventory_slot >= inventory->slotCount() ||
+        inventory->slot(inventory_slot).empty()) {
+        return;
+    }
+
+    event.StopPropagation();
+    clearTooltip();
+    selectSlot(MenuPanelKind::Backpack, inventory_slot);
+    updateDetailForPanel(MenuPanelKind::Backpack, inventory_slot);
+    drag_controller_.clear();
+    openDiscardConfirmForBackpackSlot(inventory_slot);
 }
 
 void InventoryTabContent::onSortClicked() {
