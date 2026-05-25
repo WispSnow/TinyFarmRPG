@@ -235,9 +235,9 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 - [x] **`tf.battle`**：
   - `start(troop_id, opts)` → 内部发 `EnterBattleCommand`
   - 现有 `battle_started` / `battle_ended` payload 补充 `troop_id`、`actor_ids`（已有）、`rewards` 摘要
-- [x] **`tf.map`**（暂仅查询，不支持 warp）：
+- [x] **`tf.map`**：
   - `current() -> map_id`
-  - **`warp(map, x, y)` 暂不实现**：[MapTransitionSystem](../src/game/system/map_transition_system.h) 当前没有公开 command 入口，仅响应 edge/trigger 检测。要加 Lua warp，先做一个独立子任务"补 `WarpToMapCommand` + MapTransitionSystem 订阅"，再回头补绑定。
+  - `warp(map_id, x, y) -> { ok, reason }` → 内部发 `WarpToMapCommand`，由 [MapTransitionSystem](../src/game/system/map_transition_system.h) 统一执行 fade、地图加载、安全落点与 map_enter/map_exit 事件。
 - [x] 每个子模块配套 smoke 测试 + 一个端到端 fixture。
 - [x] 更新 [lua-binding-guide.md](../docs/tutorial/lua-binding-guide.md) 的 API 树章节。
 
@@ -246,7 +246,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 | 延后项 | 阻塞原因 | 何时做 |
 |---|---|---|
 | `tf.shop.set_stock` 动态库存 | [ShopMenuScene](../src/game/scene/shop_menu_scene.h) 和 [ShopTransactionService](../src/game/domain/shop_transaction_service.h) 都直接持有 `ShopCatalog*`，运行时覆盖会让 UI / preview / commit 不一致 | 先抽 `ShopListingProvider` / `ShopRuntimeCatalog` 让 UI 与交易服务共享同一份运行时库存数据，再加 `set_stock` |
-| `tf.map.warp` | `MapTransitionSystem` 无 command 入口 | 独立子任务补 `WarpToMapCommand` |
+| `tf.map.warp` | 已在 Phase 2.5 完成 | `WarpToMapCommand` + `MapTransitionSystem` 订阅 + Lua 绑定 |
 
 ### 验收
 
@@ -483,7 +483,7 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 ### 平行的辅助 issue（不阻塞主线）
 
 - **Phase 1.5：脚本对话生命周期补强** —— `ScriptedDialogueLifecycleSystem` 走远自动关闭已完成；`DialogueChoiceRequestedEvent` + RmlUi 选项弹窗也已补齐。
-- **Phase 2.5：地图切换 command** —— 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 加 `WarpToMapCommand`，再补 `tf.map.warp` 绑定。
+- **Phase 2.5：地图切换 command** —— 已完成：给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 加 `WarpToMapCommand`，并补 `tf.map.warp` 绑定。
 - **Phase 5.5：商店运行时库存** —— 抽 `ShopListingProvider` / `ShopRuntimeCatalog`，UI 与 transaction service 共享运行时商品数据，再加 `tf.shop.set_stock`。
 
 ## 主线完成后的后续切片
@@ -500,8 +500,8 @@ Lua 只发命令，不直接调 service。新增以下 command（如已存在则
 
 **Polish PR 2：地图切换 command**
 
-- [ ] 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 增加 `WarpToMapCommand` 入口。
-- [ ] 补 `tf.map.warp(map_id, x, y)` 绑定与端到端测试。
+- [x] 给 [MapTransitionSystem](../src/game/system/map_transition_system.h) 增加 `WarpToMapCommand` 入口。
+- [x] 补 `tf.map.warp(map_id, x, y)` 绑定与端到端测试。
 
 **Polish PR 3：区域触发**
 

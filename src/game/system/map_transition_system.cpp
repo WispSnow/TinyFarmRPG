@@ -5,6 +5,7 @@
 #include "game/component/tags.h"
 #include "game/component/map_component.h"
 #include "game/defs/events_map.h"
+#include "game/system/system_helpers.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/collider_component.h"
@@ -14,6 +15,7 @@
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 #include <algorithm>
+#include <filesystem>
 
 using namespace entt::literals;
 
@@ -31,6 +33,11 @@ MapTransitionSystem::MapTransitionSystem(entt::registry& registry,
       map_manager_(map_manager),
       collision_resolver_(collision_resolver),
       edge_offset_(edge_offset) {
+    dispatcher_.sink<game::defs::WarpToMapCommand>().connect<&MapTransitionSystem::onWarpToMapCommand>(this);
+}
+
+MapTransitionSystem::~MapTransitionSystem() {
+    dispatcher_.disconnect(this);
 }
 
 void MapTransitionSystem::update() {
@@ -149,6 +156,14 @@ bool MapTransitionSystem::commitPendingTransition() {
             spawn_pos = computeOffsetPosition(target_trigger.rect_, target_trigger.start_offset_);
             break;
         }
+    } else if (pending_.type == TransitionType::Warp) {
+        glm::vec2 target_size = map_manager_.currentMapPixelSize();
+        if (const auto* state = world_state_.getMapState(pending_.target_map_id)) {
+            target_size = glm::vec2(state->info.size_px);
+        }
+        spawn_pos = target_size == glm::vec2(0.0f)
+            ? pending_.warp_spawn_pos
+            : clampToMap(pending_.warp_spawn_pos, target_size);
     } else {
         spdlog::warn("MapTransitionSystem: 未知 transition 类型，使用地图中心作为落点");
         spawn_pos = map_manager_.currentMapPixelSize() * 0.5f;
@@ -162,6 +177,62 @@ bool MapTransitionSystem::commitPendingTransition() {
     map_manager_.snapCameraTo(spawn_pos);
     emitMapTransitionEvents(previous_map_id, pending_.target_map_id);
     return true;
+}
+
+void MapTransitionSystem::onWarpToMapCommand(const game::defs::WarpToMapCommand& command) {
+    if (transition_phase_ != TransitionPhase::Idle) {
+        spdlog::warn("MapTransitionSystem: 当前已有地图切换，忽略 warp 请求");
+        return;
+    }
+    if (command.map_id.empty()) {
+        return;
+    }
+
+    entt::entity player = command.player;
+    if (player == entt::null) {
+        player = game::system::helpers::getPlayerEntity(registry_);
+    }
+    if (!registry_.valid(player) || !registry_.all_of<engine::component::TransformComponent>(player)) {
+        spdlog::warn("MapTransitionSystem: warp 请求缺少有效玩家实体");
+        return;
+    }
+
+    const auto* target_state = world_state_.getMapState(command.map_id);
+    const entt::id_type target_map_id = target_state
+        ? target_state->info.id
+        : world_state_.ensureExternalMap(command.map_id);
+    target_state = world_state_.getMapState(target_map_id);
+    if (!target_state) {
+        spdlog::warn("MapTransitionSystem: warp 请求目标地图不存在 '{}'", command.map_id);
+        return;
+    }
+    if (!std::filesystem::exists(target_state->info.file_path)) {
+        spdlog::warn("MapTransitionSystem: warp 请求目标地图文件不存在 '{}'", target_state->info.file_path);
+        return;
+    }
+
+    const entt::id_type current_map_id = map_manager_.currentMapId();
+    if (current_map_id == target_map_id) {
+        glm::vec2 spawn_pos = command.position;
+        const glm::vec2 target_size = map_manager_.currentMapPixelSize();
+        if (target_size != glm::vec2(0.0f)) {
+            spawn_pos = clampToMap(spawn_pos, target_size);
+        }
+        spawn_pos = findSafeSpawnPosition(player, spawn_pos);
+
+        auto& transform = registry_.get<engine::component::TransformComponent>(player);
+        transform.position_ = spawn_pos;
+        registry_.emplace_or_replace<engine::component::TransformDirtyTag>(player);
+        map_manager_.snapCameraTo(spawn_pos);
+        return;
+    }
+
+    PendingTransition pending{};
+    pending.type = TransitionType::Warp;
+    pending.player = player;
+    pending.target_map_id = target_map_id;
+    pending.warp_spawn_pos = command.position;
+    beginTransition(pending);
 }
 
 bool MapTransitionSystem::handleEdgeTransition(entt::entity player, const glm::vec2& pos) {

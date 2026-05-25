@@ -4,6 +4,7 @@
 #include <entt/signal/fwd.hpp>
 #include <glm/vec2.hpp>
 #include <string>
+#include "game/defs/commands_map.h"
 #include "game/component/map_component.h"
 #include "engine/utils/math.h"
 
@@ -33,7 +34,8 @@ class MapTransitionSystem {
     enum class TransitionType {
         None,
         Edge,
-        Trigger
+        Trigger,
+        Warp
     };
 
     struct PendingTransition {
@@ -43,6 +45,7 @@ class MapTransitionSystem {
         glm::vec2 edge_spawn_pos{0.0f, 0.0f};
         int target_trigger_id{0};
         glm::vec2 fallback_spawn_pos{0.0f, 0.0f};
+        glm::vec2 warp_spawn_pos{0.0f, 0.0f};
     };
 
     entt::registry& registry_;
@@ -63,12 +66,14 @@ public:
                         game::world::MapManager& map_manager,
                         engine::spatial::CollisionResolver* collision_resolver,
                         float edge_offset = 8.0f);
+    ~MapTransitionSystem();
 
     void update();
     void setFadeOverlay(engine::ui::IScreenFade* fade) { fade_ = fade; }
     [[nodiscard]] bool isTransitionActive() const { return transition_phase_ != TransitionPhase::Idle; }
 
 private:
+    void onWarpToMapCommand(const game::defs::WarpToMapCommand& command);
     bool handleEdgeTransition(entt::entity player, const glm::vec2& pos);
     bool handleTriggerTransition(entt::entity player, const glm::vec2& pos);
     
