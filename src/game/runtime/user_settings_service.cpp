@@ -2,10 +2,14 @@
 
 #include "game/data/game_time.h"
 #include "game/defs/options_events.h"
+#include "game/runtime/localization_service.h"
+#include "game/ui/rml_localization_applier.h"
 
 #include "engine/audio/audio_player.h"
+#include "engine/render/text_renderer.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 
+#include <RmlUi/Core/ElementDocument.h>
 #include <entt/signal/dispatcher.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -19,11 +23,23 @@ namespace game::runtime {
 UserSettingsService::UserSettingsService(entt::dispatcher& dispatcher,
                                          engine::audio::AudioPlayer& audio_player,
                                          game::data::GameTime& game_time,
-                                         engine::ui::rmlui::RmlUiRuntime& rml_runtime) noexcept
+                                         LocalizationService& localization,
+                                         engine::render::TextRenderer& text_renderer,
+                                         engine::ui::rmlui::RmlUiRuntime& rml_runtime)
     : dispatcher_(dispatcher),
       audio_player_(audio_player),
       game_time_(game_time),
-      rml_runtime_(rml_runtime) {}
+      localization_(localization),
+      text_renderer_(text_renderer),
+      rml_runtime_(rml_runtime) {
+    rml_runtime_.setDocumentLoadedCallback([this](Rml::ElementDocument& document, uint64_t, const std::string&) {
+        game::ui::applyRmlLocalization(document, localization_);
+    });
+}
+
+UserSettingsService::~UserSettingsService() noexcept {
+    rml_runtime_.setDocumentLoadedCallback({});
+}
 
 bool UserSettingsService::loadFromFile(std::string_view path) {
     const std::filesystem::path fs_path{path};
@@ -42,6 +58,7 @@ bool UserSettingsService::loadFromFile(std::string_view path) {
     if (!parseUserSettingsJson(root, settings_)) {
         return false;
     }
+    settings_.language_tag = localization_.resolveSupportedLanguageTag(settings_.language_tag);
     spdlog::info("UserSettingsService: 已加载 '{}'", fs_path.string());
     return true;
 }
@@ -88,6 +105,7 @@ void UserSettingsService::applyAll() {
     applyAudio();
     applyTimeScale();
     applyUiFontScale();
+    (void)applyLanguage();
 }
 
 void UserSettingsService::applyAudio() {
@@ -101,6 +119,25 @@ void UserSettingsService::applyTimeScale() {
 
 void UserSettingsService::applyUiFontScale() {
     rml_runtime_.applyBodyFontScaleClassToAllDocuments(uiFontScaleClassName(settings_.ui_font_scale));
+}
+
+bool UserSettingsService::applyLanguage() {
+    if (!localization_.setLanguage(settings_.language_tag)) {
+        settings_.language_tag = std::string{localization_.currentLanguageTag()};
+        text_renderer_.setDefaultLanguage(settings_.language_tag);
+        applyRmlLocalizationToAllDocuments();
+        return false;
+    }
+    settings_.language_tag = std::string{localization_.currentLanguageTag()};
+    text_renderer_.setDefaultLanguage(settings_.language_tag);
+    applyRmlLocalizationToAllDocuments();
+    return true;
+}
+
+void UserSettingsService::applyRmlLocalizationToAllDocuments() {
+    rml_runtime_.forEachDocument([this](Rml::ElementDocument& document, uint64_t, const std::string&) {
+        game::ui::applyRmlLocalization(document, localization_);
+    });
 }
 
 void UserSettingsService::setMusicVolume(float value) {
@@ -169,6 +206,24 @@ void UserSettingsService::setUiFontScale(UiFontScale scale) {
     dirty_ = true;
     applyUiFontScale();
     dispatcher_.trigger(game::defs::UiFontScaleChangedEvent{scale});
+}
+
+void UserSettingsService::setLanguage(std::string_view language_tag) {
+    const std::string old_language = settings_.language_tag;
+    const std::string next_language = localization_.resolveSupportedLanguageTag(language_tag);
+    if (old_language == next_language) {
+        return;
+    }
+
+    settings_.language_tag = next_language;
+    const bool applied = applyLanguage();
+    if (!applied && settings_.language_tag == old_language) {
+        return;
+    }
+    if (settings_.language_tag != old_language) {
+        dirty_ = true;
+        dispatcher_.trigger(game::defs::LanguageChangedEvent{settings_.language_tag});
+    }
 }
 
 } // namespace game::runtime

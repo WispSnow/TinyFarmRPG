@@ -1,5 +1,6 @@
 #include "game/ui/options_tab_content.h"
 
+#include "game/runtime/localization_service.h"
 #include "game/runtime/user_settings.h"
 #include "game/runtime/user_settings_service.h"
 
@@ -8,7 +9,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
 #include <string>
+#include <string_view>
 
 namespace game::ui {
 namespace {
@@ -19,8 +22,8 @@ namespace {
     return std::string{buf};
 }
 
-[[nodiscard]] std::string_view toggleLabel(bool value) noexcept {
-    return value ? "On" : "Off";
+[[nodiscard]] std::string toggleLabel(const game::runtime::LocalizationService& localization, bool value) {
+    return localization.tr(value ? "common.on" : "common.off");
 }
 
 [[nodiscard]] std::size_t indexOfSpeed(float speed) noexcept {
@@ -41,6 +44,17 @@ namespace {
     return choices[index % choices.size()];
 }
 
+[[nodiscard]] std::size_t indexOfLanguage(const game::runtime::LocalizationService& localization,
+                                          std::string_view language_tag) noexcept {
+    const auto& languages = localization.languages();
+    for (std::size_t i = 0; i < languages.size(); ++i) {
+        if (languages[i].tag == language_tag) {
+            return i;
+        }
+    }
+    return 0;
+}
+
 } // namespace
 
 OptionsTabContent::OptionsTabContent(engine::ui::rmlui::RmlDocumentController& document_controller,
@@ -49,7 +63,8 @@ OptionsTabContent::OptionsTabContent(engine::ui::rmlui::RmlDocumentController& d
       settings_(settings) {}
 
 bool OptionsTabContent::bindModel(Rml::DataModelConstructor& constructor) {
-    if (!constructor.Bind("options_battle_speed_text", &options_battle_speed_text_) ||
+    if (!constructor.Bind("options_language_text", &options_language_text_) ||
+        !constructor.Bind("options_battle_speed_text", &options_battle_speed_text_) ||
         !constructor.Bind("options_damage_popup_text", &options_damage_popup_text_) ||
         !constructor.Bind("options_enemy_hp_bar_text", &options_enemy_hp_bar_text_) ||
         !constructor.Bind("options_cursor_memory_text", &options_cursor_memory_text_) ||
@@ -64,6 +79,10 @@ bool OptionsTabContent::bindModel(Rml::DataModelConstructor& constructor) {
                                               [this] { onBattleSpeedStep(-1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "options_battle_speed_next",
                                               [this] { onBattleSpeedStep(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "options_language_prev",
+                                              [this] { onLanguageStep(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "options_language_next",
+                                              [this] { onLanguageStep(1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "options_toggle_damage_popup",
                                               [this] { onToggleDamagePopup(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "options_toggle_enemy_hp_bar",
@@ -102,14 +121,17 @@ void OptionsTabContent::syncFromSettings() {
         return;
     }
     const auto& s = settings_->snapshot();
+    const auto& localization = settings_->localization();
+    options_language_text_ = localization.languageNativeName(s.language_tag);
     options_battle_speed_text_ = formatBattleSpeed(s.battle_animation_speed);
-    options_damage_popup_text_ = std::string{toggleLabel(s.show_damage_popup)};
-    options_enemy_hp_bar_text_ = std::string{toggleLabel(s.show_enemy_hp_bar)};
-    options_cursor_memory_text_ = std::string{toggleLabel(s.cursor_memory)};
+    options_damage_popup_text_ = toggleLabel(localization, s.show_damage_popup);
+    options_enemy_hp_bar_text_ = toggleLabel(localization, s.show_enemy_hp_bar);
+    options_cursor_memory_text_ = toggleLabel(localization, s.cursor_memory);
     options_show_damage_popup_ = s.show_damage_popup;
     options_show_enemy_hp_bar_ = s.show_enemy_hp_bar;
     options_cursor_memory_ = s.cursor_memory;
 
+    document_controller_.markDirty("options_language_text");
     document_controller_.markDirty("options_battle_speed_text");
     document_controller_.markDirty("options_damage_popup_text");
     document_controller_.markDirty("options_enemy_hp_bar_text");
@@ -124,9 +146,13 @@ void OptionsTabContent::onBattleSpeedStep(int direction) {
         return;
     }
     const auto& choices = game::runtime::BATTLE_ANIMATION_SPEED_CHOICES;
+    if (choices.empty()) {
+        return;
+    }
+
     const std::size_t current = indexOfSpeed(settings_->snapshot().battle_animation_speed);
-    const std::size_t next = (current + choices.size() + static_cast<std::size_t>(direction > 0 ? 1 : -1))
-                             % choices.size();
+    const std::size_t delta = direction > 0 ? 1 : choices.size() - 1;
+    const std::size_t next = (current + delta) % choices.size();
     settings_->setBattleAnimationSpeed(speedAtIndex(next));
     syncFromSettings();
 }
@@ -152,6 +178,24 @@ void OptionsTabContent::onToggleCursorMemory() {
         return;
     }
     settings_->setCursorMemory(!settings_->snapshot().cursor_memory);
+    syncFromSettings();
+}
+
+void OptionsTabContent::onLanguageStep(int direction) {
+    if (!settings_) {
+        return;
+    }
+
+    const auto& localization = settings_->localization();
+    const auto& languages = localization.languages();
+    if (languages.empty()) {
+        return;
+    }
+
+    const std::size_t current = indexOfLanguage(localization, settings_->snapshot().language_tag);
+    const std::size_t delta = direction > 0 ? 1 : languages.size() - 1;
+    const std::size_t next = (current + delta) % languages.size();
+    settings_->setLanguage(languages[next].tag);
     syncFromSettings();
 }
 

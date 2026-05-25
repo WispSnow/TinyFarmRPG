@@ -988,11 +988,11 @@
     align-items: center;
     width: 206dp;
     height: 28dp;
-    margin-bottom: 9dp;
+    margin-bottom: 4dp;
 }
 
 .options-row-label {
-    width: 118dp;
+    width: 100dp;
     height: 20dp;
     line-height: 20dp;
     color: #e0af68;
@@ -1000,7 +1000,7 @@
 }
 
 .options-control {
-    width: 80dp;
+    width: 102dp;
     margin-left: 4dp;
 }
 
@@ -1012,6 +1012,11 @@
     color: #ffffff;
     font-size: 0.6875rem;
     font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.options-language-value {
+    width: 54dp;
+    font-size: 0.625rem;
 }
 
 .options-stepper {

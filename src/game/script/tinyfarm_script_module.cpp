@@ -4,11 +4,13 @@
 #include "engine/script/script_entity_handle.h"
 #include "engine/script/script_host.h"
 #include "game/defs/events_dialogue.h"
+#include "game/runtime/localization_service.h"
 #include "game/script/script_game_api.h"
 #include "game/script/script_state.h"
 
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
@@ -20,6 +22,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -164,6 +167,39 @@ void warnScriptStateTypeMismatch(const std::string& key, std::string_view expect
     return table;
 }
 
+[[nodiscard]] std::unordered_map<std::string, std::string> i18nArgsFromLua(const sol::object& raw_args) {
+    std::unordered_map<std::string, std::string> args{};
+    if (!raw_args.is<sol::table>()) {
+        return args;
+    }
+
+    sol::table table = raw_args.as<sol::table>();
+    table.for_each([&args](const sol::object& key, const sol::object& value) {
+        if (!key.is<std::string>()) {
+            return;
+        }
+
+        std::string text_value{};
+        if (value.is<std::string>()) {
+            text_value = value.as<std::string>();
+        } else if (value.is<int>()) {
+            text_value = std::to_string(value.as<int>());
+        } else if (value.is<double>()) {
+            const double number = value.as<double>();
+            if (!std::isfinite(number)) {
+                return;
+            }
+            text_value = fmt::format("{:g}", number);
+        } else if (value.is<bool>()) {
+            text_value = value.as<bool>() ? "true" : "false";
+        } else {
+            return;
+        }
+        args.emplace(key.as<std::string>(), std::move(text_value));
+    });
+    return args;
+}
+
 } // namespace
 
 namespace game::script {
@@ -171,7 +207,8 @@ namespace game::script {
 void installTinyFarmScriptModule(sol::state& lua,
                                  engine::script::ScriptHost& host,
                                  entt::registry& registry,
-                                 entt::dispatcher& dispatcher) {
+                                 entt::dispatcher& dispatcher,
+                                 game::runtime::LocalizationService* localization) {
     using engine::script::ScriptEntityHandle;
     const auto api = std::make_shared<game::script::ScriptGameApi>(host, registry, dispatcher);
 
@@ -185,6 +222,19 @@ void installTinyFarmScriptModule(sol::state& lua,
         [](const ScriptEntityHandle& handle) { return !engine::script::isNullHandle(handle); });
 
     sol::table tf_impl = lua.create_table();
+
+    // ── tf.i18n ──
+    sol::table i18n_impl = lua.create_table();
+    i18n_impl.set_function("tr", [localization](const std::string& key) -> std::string {
+        return localization ? localization->tr(key) : "!" + key + "!";
+    });
+    i18n_impl.set_function("format", [localization](const std::string& key, const sol::object& args) -> std::string {
+        if (!localization) {
+            return "!" + key + "!";
+        }
+        return localization->format(key, i18nArgsFromLua(args));
+    });
+    tf_impl["i18n"] = engine::script::createReadOnlyProxy(lua, i18n_impl, "tf.i18n");
 
     // ── tf.time ──
     sol::table time_impl = lua.create_table();

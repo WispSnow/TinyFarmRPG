@@ -18,6 +18,7 @@
 #include "game/factory/entity_factory.h"
 #include "game/runtime/game_content_manifest.h"
 #include "game/runtime/gameplay_camera_defaults.h"
+#include "game/runtime/localization_service.h"
 #include "game/runtime/script_runtime_factory.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
@@ -202,33 +203,6 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
     context.getGLRenderer().setVfxBackend(services.vfx_service ? services.vfx_service->backend() : nullptr);
 }
 
-void initUserSettings(engine::core::Context& context,
-                      entt::registry& registry,
-                      game::runtime::GameRuntimeServices& services) {
-    auto* rml_runtime = context.getRmlUi();
-    auto* ctx_game_time = registry.ctx().find<game::data::GameTime>();
-    if (rml_runtime && ctx_game_time) {
-        services.user_settings_service = std::make_unique<game::runtime::UserSettingsService>(
-            context.getDispatcher(),
-            context.getAudioPlayer(),
-            *ctx_game_time,
-            *rml_runtime);
-        services.user_settings_service->loadFromFileOrFallback();
-        services.user_settings_service->applyAll();
-    } else {
-        spdlog::warn("GameRuntimeAssembler: 缺少 RmlUiRuntime 或 ctx GameTime，UserSettingsService 跳过初始化。");
-    }
-}
-
-void injectResourceManager(engine::core::Context& context, entt::registry& registry) {
-    auto& resource_manager = context.getResourceManager();
-    if (auto* resource_ptr = registry.ctx().find<engine::resource::ResourceManager*>()) {
-        *resource_ptr = &resource_manager;
-    } else {
-        registry.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
-    }
-}
-
 template <typename T>
 void injectRegistryContextPointer(entt::registry& registry, T* pointer) {
     if (!pointer) {
@@ -238,6 +212,45 @@ void injectRegistryContextPointer(entt::registry& registry, T* pointer) {
         *current = pointer;
     } else {
         registry.ctx().emplace<T*>(pointer);
+    }
+}
+
+void initUserSettings(engine::core::Context& context,
+                      entt::registry& registry,
+                      game::runtime::GameRuntimeServices& services) {
+    auto* rml_runtime = context.getRmlUi();
+    auto* ctx_game_time = registry.ctx().find<game::data::GameTime>();
+    if (rml_runtime && ctx_game_time && services.localization_service) {
+        services.user_settings_service = std::make_unique<game::runtime::UserSettingsService>(
+            context.getDispatcher(),
+            context.getAudioPlayer(),
+            *ctx_game_time,
+            *services.localization_service,
+            context.getTextRenderer(),
+            *rml_runtime);
+        services.user_settings_service->loadFromFileOrFallback();
+        services.user_settings_service->applyAll();
+    } else {
+        spdlog::warn("GameRuntimeAssembler: 缺少 RmlUiRuntime 或 ctx GameTime，UserSettingsService 跳过初始化。");
+    }
+}
+
+void initLocalization(entt::registry& registry, game::runtime::GameRuntimeServices& services) {
+    if (!services.localization_service) {
+        services.localization_service = std::make_unique<game::runtime::LocalizationService>();
+    }
+    if (!services.localization_service->loadLanguageIndex(game::runtime::GameContentManifest::I18nLanguages)) {
+        spdlog::warn("GameRuntimeAssembler: 本地化语言表加载失败，将继续使用内建默认语言。");
+    }
+    injectRegistryContextPointer(registry, services.localization_service.get());
+}
+
+void injectResourceManager(engine::core::Context& context, entt::registry& registry) {
+    auto& resource_manager = context.getResourceManager();
+    if (auto* resource_ptr = registry.ctx().find<engine::resource::ResourceManager*>()) {
+        *resource_ptr = &resource_manager;
+    } else {
+        registry.ctx().emplace<engine::resource::ResourceManager*>(&resource_manager);
     }
 }
 
@@ -289,6 +302,7 @@ bool RuntimeServiceFactory::assemble(GameRuntimeAssembler::ServiceBuildParams pa
         return false;
     }
     injectCatalogPointers(params.registry, params.services);
+    initLocalization(params.registry, params.services);
     ContentCatalogLoader::ensureAudioCueCatalog(params.services, asset_registry);
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(

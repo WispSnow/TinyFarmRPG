@@ -253,6 +253,10 @@ set(GAME_TEST_SOURCES
     game/rml_menu_navigation_style_test.cpp
     game/game_scene_ui_controller_smoke_test.cpp
     game/ui_layout_integration_test.cpp
+    game/i18n_key_parity_test.cpp
+    game/localization_service_test.cpp
+    game/localized_text_test.cpp
+    game/rml_localization_applier_test.cpp
     game/user_settings_test.cpp
     game/options_tab_content_test.cpp
 )
@@ -262,6 +266,7 @@ list(APPEND GAME_TEST_SOURCES
     game/script_host_command_bridge_test.cpp
     game/script_event_bridge_test.cpp
     game/script_dialogue_helper_test.cpp
+    game/script_i18n_test.cpp
     game/scripted_dialogue_lifecycle_system_test.cpp
     game/script_phase2_api_test.cpp
     game/script_quest_flow_test.cpp

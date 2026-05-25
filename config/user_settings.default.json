@@ -13,6 +13,7 @@
     "cursor_memory": true
   },
   "ui": {
-    "font_scale": "normal"
+    "font_scale": "normal",
+    "language": "en-US"
   }
 }

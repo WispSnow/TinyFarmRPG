@@ -175,7 +175,7 @@ void RmlUiDebugPanel::drawLoadedDocuments() {
         ImGui::TableSetupColumn("Owner");
         ImGui::TableHeadersRow();
 
-        layer->forEachDocument([](const std::string& path, uint64_t owner) {
+        layer->forEachDocument([](const Rml::ElementDocument&, uint64_t owner, const std::string& path) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(path.c_str());

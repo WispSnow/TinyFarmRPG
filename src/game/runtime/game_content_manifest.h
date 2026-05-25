@@ -18,6 +18,7 @@ struct GameContentManifest final {
     static constexpr const char* GameTime = "assets/data/game_time_config.json";
     static constexpr const char* LightConfig = "assets/data/light_config.json";
     static constexpr const char* DialogueScript = "assets/data/dialogue_script.json";
+    static constexpr const char* I18nLanguages = "assets/i18n/languages.json";
     static constexpr const char* World = "assets/maps/farm-rpg.world";
     static constexpr const char* MapLoadingConfig = "assets/data/map_loading_config.json";
     static constexpr const char* ScriptBootstrap = "scripts/bootstrap.lua";

@@ -25,15 +25,21 @@
             <tabset id="menu-tabset" data-event-tabchange="switch_tab(ev.tab_index)">
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
                      id="tab-inventory"
+                     title="Inventory"
+                     data-i18n-title="inventory.tab.inventory"
                      data-event-mouseover="tab_shortcut_hover(0)"
                      data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-inventory">
                     <div id="inventory-actions">
                         <button class="tf-nav-auto tf-focus-ring-blue"
                                 id="sort-btn"
+                                title="Sort"
+                                data-i18n-title="inventory.action.sort"
                                 data-event-click="sort"></button>
                         <button class="tf-nav-auto tf-focus-ring-danger"
                                 id="trash-btn"
+                                title="Trash"
+                                data-i18n-title="inventory.action.trash"
                                 data-event-click="trash"
                                 data-event-dragdrop="trash_drag_drop"></button>
                     </div>
@@ -117,6 +123,8 @@
 
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
                      id="tab-equipment"
+                     title="Equipment"
+                     data-i18n-title="inventory.tab.equipment"
                      data-event-mouseover="tab_shortcut_hover(1)"
                      data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-equipment">
@@ -154,13 +162,16 @@
                                         </div>
                                     </button>
                                 </div>
-                                <div id="equipment-candidate-empty" data-if="!has_equipment_candidates">No candidates</div>
+                                <div id="equipment-candidate-empty"
+                                     data-if="!has_equipment_candidates"
+                                     data-i18n="inventory.equipment.no_candidates">No candidates</div>
                             </div>
                         </div>
 
                         <button id="equipment-unequip-btn"
                                 class="tf-nav-auto tf-focus-ring-danger"
                                 title="Unequip"
+                                data-i18n-title="inventory.equipment.unequip"
                                 data-event-click="equipment_unequip"></button>
                     </div>
 
@@ -175,13 +186,15 @@
 
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
                      id="tab-quests"
+                     title="Quests"
+                     data-i18n-title="inventory.tab.quests"
                      data-event-mouseover="tab_shortcut_hover(2)"
                      data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-quests">
                     <div id="quests-content">
                         <div class="quest-section">
-                            <div class="quest-section-title">Active Quests</div>
-                            <div class="quest-empty" data-if="!has_active_quests">No active quests</div>
+                            <div class="quest-section-title" data-i18n="inventory.quest.active_title">Active Quests</div>
+                            <div class="quest-empty" data-if="!has_active_quests" data-i18n="inventory.quest.active_empty">No active quests</div>
                             <div class="quest-list" data-if="has_active_quests">
                                 <div class="quest-entry" data-for="quest : active_quest_entries">
                                     <div class="quest-entry-header">
@@ -195,8 +208,8 @@
                         </div>
 
                         <div class="quest-section quest-section-completed">
-                            <div class="quest-section-title">Completed Quests</div>
-                            <div class="quest-empty" data-if="!has_completed_quests">No completed quests</div>
+                            <div class="quest-section-title" data-i18n="inventory.quest.completed_title">Completed Quests</div>
+                            <div class="quest-empty" data-if="!has_completed_quests" data-i18n="inventory.quest.completed_empty">No completed quests</div>
                             <div class="quest-list" data-if="has_completed_quests">
                                 <div class="quest-entry quest-entry-completed" data-for="quest : completed_quest_entries">
                                     <div class="quest-entry-header">
@@ -211,6 +224,8 @@
 
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
                      id="tab-map"
+                     title="Map"
+                     data-i18n-title="inventory.tab.map"
                      data-event-mouseover="tab_shortcut_hover(3)"
                      data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-map">
@@ -243,7 +258,7 @@
                                     data-event-focus="map_marker_focus(marker.marker_index)"
                                     data-event-mouseover="map_marker_hover(marker.marker_index)"
                                     data-event-click="map_marker_click(marker.marker_index)"></button>
-                            <div id="map-empty-label" data-if="!has_map_preview">No map data</div>
+                            <div id="map-empty-label" data-if="!has_map_preview" data-i18n="inventory.map.empty">No map data</div>
                         </div>
                         <div id="map-detail-panel" data-if="has_map_detail">
                             <div id="map-detail-header">
@@ -258,30 +273,42 @@
 
                 <tab class="tab-icon tf-nav-auto tf-focus-ring-gold"
                      id="tab-options"
+                     title="Options"
+                     data-i18n-title="inventory.tab.options"
                      data-event-mouseover="tab_shortcut_hover(4)"
                      data-event-mouseout="tab_shortcut_exit"></tab>
                 <panel id="panel-options">
                     <div id="options-content">
                         <div class="options-row">
-                            <div class="options-row-label">Damage Popups</div>
+                            <div class="options-row-label" data-i18n="options.language">Language</div>
+                            <div class="options-control options-stepper">
+                                <button class="options-stepper-btn tf-icon-button icon-arrow-left-light"
+                                        data-event-click="options_language_prev"></button>
+                                <div class="options-row-value options-language-value">{{ options_language_text }}</div>
+                                <button class="options-stepper-btn tf-icon-button icon-arrow-right-light"
+                                        data-event-click="options_language_next"></button>
+                            </div>
+                        </div>
+                        <div class="options-row">
+                            <div class="options-row-label" data-i18n="options.damage_popups">Damage Popups</div>
                             <button class="options-control options-toggle tf-nav-auto tf-focus-ring-blue"
                                     data-class-on="options_show_damage_popup"
                                     data-event-click="options_toggle_damage_popup">{{ options_damage_popup_text }}</button>
                         </div>
                         <div class="options-row">
-                            <div class="options-row-label">Enemy HP Bar</div>
+                            <div class="options-row-label" data-i18n="options.enemy_hp_bar">Enemy HP Bar</div>
                             <button class="options-control options-toggle tf-nav-auto tf-focus-ring-blue"
                                     data-class-on="options_show_enemy_hp_bar"
                                     data-event-click="options_toggle_enemy_hp_bar">{{ options_enemy_hp_bar_text }}</button>
                         </div>
                         <div class="options-row">
-                            <div class="options-row-label">Cursor Memory</div>
+                            <div class="options-row-label" data-i18n="options.cursor_memory">Cursor Memory</div>
                             <button class="options-control options-toggle tf-nav-auto tf-focus-ring-blue"
                                     data-class-on="options_cursor_memory"
                                     data-event-click="options_toggle_cursor_memory">{{ options_cursor_memory_text }}</button>
                         </div>
                         <div class="options-row">
-                            <div class="options-row-label">Battle Speed</div>
+                            <div class="options-row-label" data-i18n="options.battle_speed">Battle Speed</div>
                             <div class="options-control options-stepper">
                                 <button class="options-stepper-btn tf-icon-button icon-arrow-left-light"
                                         data-event-click="options_battle_speed_prev"></button>

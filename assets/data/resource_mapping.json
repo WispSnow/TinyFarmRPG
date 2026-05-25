@@ -31,7 +31,7 @@
   },
   "font": {
     "engine/font/ui_default": {
-      "path": "assets/fonts/VonwaonBitmap-16px.ttf",
+      "path": "assets/fonts/LXGWBright-Regular.ttf",
       "sizes": [14, 16]
     }
   }

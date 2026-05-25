@@ -229,6 +229,7 @@ target_sources(game PRIVATE
     game/runtime/script_runtime_factory.cpp
     game/runtime/system_factory.cpp
     game/runtime/system_scheduler.cpp
+    game/runtime/localization_service.cpp
     game/runtime/user_settings.cpp
     game/runtime/user_settings_service.cpp
     # UI
@@ -246,6 +247,7 @@ target_sources(game PRIVATE
     game/ui/inventory_tab_content.cpp
     game/ui/equipment_tab_content.cpp
     game/ui/options_tab_content.cpp
+    game/ui/rml_localization_applier.cpp
     game/ui/map_coordinate_mapper.cpp
     game/ui/map_marker_provider.cpp
     game/ui/map_preview_builder.cpp

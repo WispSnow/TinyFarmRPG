@@ -8,6 +8,10 @@ namespace engine::script {
 class ScriptHost;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::script {
 /// 安装 TinyFarm 的 tf.* 脚本 API 扩展模块。
 ///
@@ -15,6 +19,7 @@ namespace game::script {
 void installTinyFarmScriptModule(sol::state& lua,
                                  engine::script::ScriptHost& host,
                                  entt::registry& registry,
-                                 entt::dispatcher& dispatcher);
+                                 entt::dispatcher& dispatcher,
+                                 game::runtime::LocalizationService* localization = nullptr);
 
 } // namespace game::script

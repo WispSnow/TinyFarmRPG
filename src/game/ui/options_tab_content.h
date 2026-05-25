@@ -34,10 +34,12 @@ private:
     void onToggleDamagePopup();
     void onToggleEnemyHpBar();
     void onToggleCursorMemory();
+    void onLanguageStep(int direction);
 
     engine::ui::rmlui::RmlDocumentController& document_controller_;
     game::runtime::UserSettingsService* settings_{nullptr};
 
+    Rml::String options_language_text_{"English"};
     Rml::String options_battle_speed_text_{"x1.0"};
     Rml::String options_damage_popup_text_{"On"};
     Rml::String options_enemy_hp_bar_text_{"On"};

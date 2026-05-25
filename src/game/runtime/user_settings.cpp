@@ -55,6 +55,7 @@ bool parseUserSettingsJson(const nlohmann::json& root, UserSettings& out) {
         const std::string scale_text = readJson<std::string>(
             *it, "font_scale", std::string{uiFontScaleToString(out.ui_font_scale)});
         out.ui_font_scale = uiFontScaleFromString(scale_text);
+        out.language_tag = readJson<std::string>(*it, "language", out.language_tag);
     }
 
     normalizeUserSettings(out);
@@ -71,6 +72,7 @@ nlohmann::ordered_json serializeUserSettings(const UserSettings& s) {
     out["battle"]["show_enemy_hp_bar"] = s.show_enemy_hp_bar;
     out["battle"]["cursor_memory"] = s.cursor_memory;
     out["ui"]["font_scale"] = std::string{uiFontScaleToString(s.ui_font_scale)};
+    out["ui"]["language"] = s.language_tag;
     return out;
 }
 

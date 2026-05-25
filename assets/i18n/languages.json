@@ -1,0 +1,15 @@
+{
+  "fallback": "en-US",
+  "languages": [
+    {
+      "tag": "en-US",
+      "native_name": "English",
+      "file": "assets/i18n/en-US.json"
+    },
+    {
+      "tag": "zh-Hans",
+      "native_name": "简体中文",
+      "file": "assets/i18n/zh-Hans.json"
+    }
+  ]
+}
