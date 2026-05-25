@@ -94,15 +94,15 @@
     item-equipment-wooden-accessory: 288px 32px 16px 16px;
 }
 
-/* --- 铁制装备图标 (Weapons/RPG/5.png) --- */
+/* --- 铁制装备图标 (Weapons/RPG/3.png) --- */
 @spritesheet ui-items-equipment-iron {
-    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/5.png;
-    item-equipment-iron-sword:     192px  0px 16px 16px;
-    item-equipment-iron-staff:     176px 16px 16px 16px;
-    item-equipment-iron-helmet:    160px 32px 16px 16px;
-    item-equipment-iron-armor:     176px 32px 16px 16px;
-    item-equipment-iron-boots:     208px 32px 16px 16px;
-    item-equipment-iron-accessory: 288px 32px 16px 16px;
+    src: ../../../assets/farm-rpg/Icons/Weapons/RPG/3.png;
+    item-equipment-iron-sword:     176px  0px 16px 16px;
+    item-equipment-iron-staff:     160px 16px 16px 16px;
+    item-equipment-iron-helmet:    144px 32px 16px 16px;
+    item-equipment-iron-armor:     160px 32px 16px 16px;
+    item-equipment-iron-boots:     192px 32px 16px 16px;
+    item-equipment-iron-accessory: 224px 32px 16px 16px;
 }
 
 /* --- 物品图标 (Icons/Crops.png) --- */
