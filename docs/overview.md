@@ -40,7 +40,7 @@ TinyFarmRPG 是一款从 2D 农场经营演示逐步扩展为日式 RPG Demo 的
 - 维持安全边界与生命周期约束：脚本仅通过 `dispatcher` 命令修改 ECS 数据，所有写入仍走 `game::domain::*Service` 入口，错误经 `sol::protected_function` 收口而非抛异常。
 - 测试层补充端到端用例（沿用 `tests/scripts/` 下的辅助脚本模式），保证脚本驱动的玩法可被回归。
 
-具体绑定与扩展节奏请见 `plans/` 下的迭代计划与 `docs/tutorial/lua-binding-guide.md`。
+内容脚本的能力范围、目录约定与常用写法请见 `docs/tutorial/lua-content-authoring.md`；C++ / Sol2 绑定实现细节请见 `docs/tutorial/lua-binding-guide.md`；阶段计划归档在 `plans/` 下。
 
 ## 高层运行链路
 
