@@ -36,6 +36,7 @@
 #include "game/system/recruitment_interaction_system.h"
 #include "game/system/party_recruitment_system.h"
 #include "game/system/shop_interaction_system.h"
+#include "game/system/scripted_dialogue_lifecycle_system.h"
 #include "game/system/chest_system.h"
 #include "game/system/interaction_system.h"
 #include "game/system/rest_system.h"

@@ -123,6 +123,7 @@ struct GameSystemBundle {
     std::unique_ptr<game::system::NPCWanderSystem> npc_wander_system;
     std::unique_ptr<game::system::AnimalBehaviorSystem> animal_behavior_system;
     std::unique_ptr<game::system::DialogueSystem> dialogue_system;
+    std::unique_ptr<game::system::ScriptedDialogueLifecycleSystem> scripted_dialogue_lifecycle_system;
     std::unique_ptr<game::system::QuestInteractionSystem> quest_interaction_system;
     std::unique_ptr<game::system::RecruitmentInteractionSystem> recruitment_interaction_system;
     std::unique_ptr<game::system::PartyRecruitmentSystem> party_recruitment_system;

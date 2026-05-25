@@ -53,7 +53,7 @@ local function show_line(state)
         state.speaker_actor_id)
 end
 
-local function complete(key, interrupted)
+local function complete(key, interrupted, emit_hide)
     local state = active[key]
     if state == nil then
         return false
@@ -64,7 +64,9 @@ local function complete(key, interrupted)
         current_key = nil
     end
 
-    tf.dialogue.hide(CHANNEL_CONVERSATION, state.target)
+    if emit_hide ~= false then
+        tf.dialogue.hide(CHANNEL_CONVERSATION, state.target)
+    end
     if type(state.on_done) == "function" then
         state.on_done(interrupted == true)
     end
@@ -152,6 +154,22 @@ tf.event.on("interact", function(evt)
     if advance(evt.target) then
         evt.dialogue_handled = true
     end
+end)
+
+tf.event.on("dialogue_closed", function(evt)
+    if evt.channel ~= CHANNEL_CONVERSATION then
+        return
+    end
+
+    local key = handle_key(evt.target)
+    if key == nil then
+        key = current_key
+    end
+    if key == nil then
+        return
+    end
+
+    complete(key, true, false)
 end)
 
 return dialogue
