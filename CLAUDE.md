@@ -2,17 +2,6 @@
 
 这是一个农场 RPG 游戏项目，参见 @docs/overview.md
 
-## 初期目标（教学 demo 闭环，已全部完成）
-
-- [x] 添加脚本支持：Lua + Sol2（`engine::script::ScriptHost` + game 层 `tinyfarm_script_module` 暴露 `tf.time / tf.player / tf.command / tf.dialogue`）
-- [x] 可切换角色外观服装（衣服、头发、武器等部件分层）（`AppearanceCatalog` + `AppearanceComponent` + `LayeredSpriteComponent` + `AppearanceSystem`）
-- [x] 特效粒子系统，集成 Effekseer（`engine::vfx::VfxService` + `EffekseerBackend`，world/overlay 双通道）
-- [x] 拓展 RPG 玩法：商店、任务线、回合制战斗（RPGMaker 风格）、技能系统、队伍/招募、装备、角色成长、用户偏好（存档 schema 已迁至 v6）
-
-## 下一阶段：让 Lua 承载更多游戏逻辑
-
-接下来准备把更多剧本式玩法（对话脚本、任务推进、招募对白、商店预设、地图事件等）从 C++ 迁出到 Lua，由 `scripts/bootstrap.lua` 演化为真正的脚本组合根；同时扩展 `tf.*` 绑定（quest/shop/party/battle/event 等命名空间和回调挂载）。详见 `docs/overview.md` 末节与 `docs/tutorial/lua-binding-guide.md`。
-
 ## Note
 
 - 此项目是一个开发中的程序，并未上线。尽量采用最优方案，不必考虑向后兼容。
