@@ -21,8 +21,10 @@
 #include "game/defs/events_quest.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/script/script_event_bridge.h"
+#include "game/system/chest_system.h"
 #include "game/system/inventory_system.h"
 #include "game/world/world_state.h"
+#include "engine/utils/events.h"
 #include "script_test_utils.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -69,6 +71,8 @@ struct ScriptEventBridgeTestEnv {
     game::data::ItemCatalog catalog{};
     game::domain::InventoryDomainService inventory_domain_service;
     game::system::InventorySystem inventory_system;
+    game::world::WorldState world_state{};
+    game::system::ChestSystem chest_system;
     engine::script::ScriptHost host;
     game::script::ScriptEventBridge bridge;
     entt::entity player{entt::null};
@@ -77,6 +81,7 @@ struct ScriptEventBridgeTestEnv {
     ScriptEventBridgeTestEnv()
         : inventory_domain_service(registry, dispatcher, catalog),
           inventory_system(registry, dispatcher, catalog, inventory_domain_service),
+          chest_system(registry, dispatcher, world_state, catalog, inventory_domain_service),
           host(registry),
           bridge(host, registry, dispatcher) {
         EXPECT_TRUE(catalog.loadItemConfig(itemConfigPath()));
@@ -95,9 +100,22 @@ struct ScriptEventBridgeTestEnv {
 
 struct DialogueCapture {
     std::vector<game::defs::DialogueShowEvent> shows{};
+    std::vector<game::defs::DialogueHideEvent> hides{};
 
     void onShow(const game::defs::DialogueShowEvent& event) {
         shows.push_back(event);
+    }
+
+    void onHide(const game::defs::DialogueHideEvent& event) {
+        hides.push_back(event);
+    }
+};
+
+struct AnimationCapture {
+    std::vector<engine::utils::PlayAnimationEvent> plays{};
+
+    void onPlay(const engine::utils::PlayAnimationEvent& event) {
+        plays.push_back(event);
     }
 };
 
@@ -398,16 +416,21 @@ TEST(ScriptEventBridgeTest, ZoneEnterAndExitEventsExposeStableZoneMetadata) {
 TEST(ScriptEventBridgeTest, HomeExteriorScriptHandlesFirstEnterAndScriptedSeedCacheOnce) {
     ScriptEventBridgeTestEnv env{};
     DialogueCapture dialogue_capture{};
+    AnimationCapture animation_capture{};
     env.dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&dialogue_capture);
+    env.dispatcher.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&dialogue_capture);
+    env.dispatcher.sink<engine::utils::PlayAnimationEvent>().connect<&AnimationCapture::onPlay>(&animation_capture);
 
-    game::world::WorldState world_state{};
-    const entt::id_type map_id = world_state.ensureExternalMap("home_exterior");
-    world_state.setCurrentMap(map_id);
-    env.registry.ctx().emplace<game::world::WorldState*>(&world_state);
+    const entt::id_type map_id = env.world_state.ensureExternalMap("home_exterior");
+    env.world_state.setCurrentMap(map_id);
+    env.registry.ctx().emplace<game::world::WorldState*>(&env.world_state);
 
     const entt::entity chest = env.registry.create();
     env.registry.emplace<engine::component::TransformComponent>(chest, glm::vec2{32.0F, 16.0F});
-    env.registry.emplace<game::component::ChestComponent>(chest);
+    env.registry.emplace<game::component::MapId>(chest, map_id);
+    env.registry.emplace<game::component::ChestComponent>(
+        chest,
+        game::component::ChestComponent{.chest_id_ = 42});
     env.registry.emplace<game::component::ScriptedInteractionComponent>(chest);
     env.registry.emplace<game::component::ScriptTriggerComponent>(
         chest,
@@ -444,6 +467,19 @@ TEST(ScriptEventBridgeTest, HomeExteriorScriptHandlesFirstEnterAndScriptedSeedCa
     EXPECT_EQ(countItem(env.registry, env.player, strawberry_seed), 3);
     ASSERT_EQ(dialogue_capture.shows.size(), 2U);
     EXPECT_EQ(dialogue_capture.shows.back().text, "You found a few starter seeds.");
+    EXPECT_EQ(dialogue_capture.shows.back().channel, game::defs::DialogueChannel::Notice);
+    ASSERT_EQ(animation_capture.plays.size(), 1U);
+    EXPECT_EQ(animation_capture.plays.back().entity_, chest);
+    EXPECT_EQ(animation_capture.plays.back().animation_id_, entt::hashed_string{"open"}.value());
+    EXPECT_FALSE(animation_capture.plays.back().loop_);
+    EXPECT_TRUE(env.registry.get<game::component::ChestComponent>(chest).opened_);
+    ASSERT_NE(env.world_state.getMapState(map_id), nullptr);
+    EXPECT_TRUE(env.world_state.getMapState(map_id)->persistent.opened_chests.contains(42));
+
+    env.chest_system.update(2.0F);
+    env.dispatcher.update();
+    ASSERT_FALSE(dialogue_capture.hides.empty());
+    EXPECT_EQ(dialogue_capture.hides.back().channel, game::defs::DialogueChannel::Notice);
 
     env.dispatcher.trigger(game::defs::InteractCommand{env.player, chest});
     env.bridge.drainDeferredCommands();
@@ -458,6 +494,7 @@ TEST(ScriptEventBridgeTest, HomeExteriorScriptHandlesFirstEnterAndScriptedSeedCa
     )"));
 
     env.dispatcher.disconnect(&dialogue_capture);
+    env.dispatcher.disconnect(&animation_capture);
 }
 
 TEST(ScriptEventBridgeTest, BattleEndedPayloadIncludesRewardSummary) {

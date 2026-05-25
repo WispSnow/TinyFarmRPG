@@ -2,6 +2,8 @@
 
 #include <entt/entity/entity.hpp>
 
+#include <string>
+
 namespace game::defs {
 
 // 交互意图命令（InteractionSystem 的“扩展点”）
@@ -11,6 +13,13 @@ namespace game::defs {
 struct InteractCommand {
     entt::entity player{entt::null};
     entt::entity target{entt::null};
+};
+
+/// @brief Script-owned chest opening request; Lua owns rewards, C++ owns chest visual/persistence lifecycle.
+struct OpenScriptedChestCommand {
+    entt::entity player{entt::null};
+    entt::entity chest{entt::null};
+    std::string notification_text{};
 };
 
 } // namespace game::defs

@@ -272,7 +272,7 @@
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                },
+                }, 
                 {
                  "height":0,
                  "id":2,
@@ -557,7 +557,7 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.lyria"
-                        },
+                        }, 
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -578,19 +578,19 @@
                  "opacity":1,
                  "properties":[
                         {
-                         "name":"scripted_interaction",
-                         "type":"bool",
-                         "value":true
-                        },
-                        {
                          "name":"script_event",
                          "type":"string",
                          "value":"home_exterior.seed_cache"
-                        },
+                        }, 
                         {
                          "name":"script_once_key",
                          "type":"string",
                          "value":"map.home_exterior.seed_cache.opened"
+                        }, 
+                        {
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"",
@@ -610,16 +610,16 @@
                          "name":"actor_id",
                          "type":"string",
                          "value":"npc.josh"
-                        },
-                        {
-                         "name":"shop_id",
-                         "type":"string",
-                         "value":"shop.village.general"
-                        },
+                        }, 
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
                          "value":true
+                        }, 
+                        {
+                         "name":"shop_id",
+                         "type":"string",
+                         "value":"shop.village.general"
                         }],
                  "rotation":0,
                  "type":"actor",
@@ -639,12 +639,12 @@
                          "name":"actor_id",
                          "type":"string",
                          "value":"npc.manu"
-                        },
+                        }, 
                         {
                          "name":"quest_offer_id",
                          "type":"string",
                          "value":"quest.village.goblin_cleanup"
-                        },
+                        }, 
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -668,7 +668,7 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.tori"
-                        },
+                        }, 
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -680,25 +680,6 @@
                  "width":0,
                  "x":238.25,
                  "y":359
-                },
-                {
-                 "height":0,
-                 "id":54,
-                 "name":"npc.greeter",
-                 "opacity":1,
-                 "point":true,
-                 "properties":[
-                        {
-                         "name":"scripted_interaction",
-                         "type":"bool",
-                         "value":true
-                        }],
-                 "rotation":0,
-                 "type":"actor",
-                 "visible":true,
-                 "width":0,
-                 "x":430,
-                 "y":248
                 }],
          "opacity":1,
          "properties":[

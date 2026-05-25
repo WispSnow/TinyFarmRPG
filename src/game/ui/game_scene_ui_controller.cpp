@@ -87,6 +87,9 @@ void GameSceneUiController::update(float delta_time) {
     if (rml_screen_fade_) {
         rml_screen_fade_->update(delta_time);
     }
+    if (dialogue_controller_) {
+        dialogue_controller_->update(delta_time);
+    }
     if (item_tooltip_ui_) {
         item_tooltip_ui_->update(delta_time);
     }

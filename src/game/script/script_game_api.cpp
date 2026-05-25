@@ -890,6 +890,35 @@ bool ScriptGameApi::interact(const engine::script::ScriptEntityHandle& target_ha
     return true;
 }
 
+ScriptCommandResult ScriptGameApi::openChest(const engine::script::ScriptEntityHandle& chest_handle,
+                                             const std::string_view notification_text) {
+    entt::entity chest = entt::null;
+    if (!host_.validateHandle(chest_handle, chest, "tf.command.open_chest.chest")) {
+        return commandFailure("invalid_chest");
+    }
+    if (!registry_.any_of<game::component::ChestComponent>(chest)) {
+        return commandFailure("not_chest");
+    }
+    if (!registry_.any_of<game::component::ScriptedInteractionComponent>(chest)) {
+        return commandFailure("not_scripted");
+    }
+    if (const auto* component = registry_.try_get<game::component::ChestComponent>(chest); component->opened_) {
+        return commandFailure("already_opened");
+    }
+
+    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
+    if (player == entt::null) {
+        return commandFailure("no_player");
+    }
+
+    triggerFromScript(host_, dispatcher_, game::defs::OpenScriptedChestCommand{
+        .player = player,
+        .chest = chest,
+        .notification_text = std::string{notification_text},
+    });
+    return commandOk();
+}
+
 bool ScriptGameApi::showDialogue(const std::string_view text,
                                  const std::string_view speaker,
                                  const int channel,

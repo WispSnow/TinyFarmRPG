@@ -248,7 +248,7 @@
 
 #### 脚本化宝箱 / 机关（任意 object）
 - **推荐字段**：`scripted_interaction=true` + `script_event="<map>.<event>"` + `script_once_key="<domain.key>"`
-- **语义**：`scripted_interaction=true` 让默认 C++ 交互系统早退；`script_event` / `script_once_key` 只作为 Lua payload 元数据，不直接改变 ECS。脚本化宝箱不会再消费原有 `ChestComponent` reward 属性，奖励内容应以 Lua 脚本为唯一真相。
+- **语义**：`scripted_interaction=true` 让默认 C++ 交互系统早退；`script_event` / `script_once_key` 只作为 Lua payload 元数据，不直接改变 ECS。脚本化宝箱不会再消费原有 `ChestComponent` reward 属性，奖励内容应以 Lua 脚本为唯一真相；打开状态、动画和地图 `opened_chests` 持久化应通过 `tf.command.open_chest(evt.target, notice_text)` 交回 C++ 处理。
 - **脚本约定**：地图脚本放在 `scripts/maps/<map_id>.lua`，用 `evt.target_script_event` 过滤目标，用 `lib.once` 写入 `tf.state` 防止读档或重复交互重放奖励。
 
 最小示例：
