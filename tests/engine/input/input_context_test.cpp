@@ -71,11 +71,17 @@ TEST(InputEventRoutingTest, SuppressesMenuNavigationKeyboardEventsOnlyInMenuLike
     EXPECT_FALSE(shouldSuppressRmlUiKeyboardEvent(event, InputContextId::Menu, suppressed_scancodes));
 
     event.type = SDL_EVENT_MOUSE_BUTTON_UP;
-    EXPECT_TRUE(shouldAlwaysPropagateAfterUi(event));
+    EXPECT_TRUE(shouldAlwaysPropagateAfterUi(event, InputContextId::Gameplay));
 
     event.type = SDL_EVENT_KEY_DOWN;
     event.key.scancode = SDL_SCANCODE_RETURN;
-    EXPECT_FALSE(shouldAlwaysPropagateAfterUi(event));
+    EXPECT_FALSE(shouldAlwaysPropagateAfterUi(event, InputContextId::Battle));
+
+    event.type = SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+    event.gbutton.button = SDL_GAMEPAD_BUTTON_SOUTH;
+    EXPECT_TRUE(shouldAlwaysPropagateAfterUi(event, InputContextId::Battle));
+    EXPECT_TRUE(shouldAlwaysPropagateAfterUi(event, InputContextId::Menu));
+    EXPECT_FALSE(shouldAlwaysPropagateAfterUi(event, InputContextId::Gameplay));
 }
 
 TEST(InputBindingTokensTest, ConvertsTokensAndSdlEventsToBindingDefinitions) {

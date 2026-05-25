@@ -15,7 +15,7 @@
 
 - `config/input.json` 和 `engine::input::defaultInputMappings()` 已有 `menu_up/down/left/right/confirm/cancel`，并包含键盘与手柄绑定。
 - `InputManager` 已有 `InputContextId::Battle`，Battle context 只允许菜单导航动作，适合战斗覆盖场景使用。
-- `BattleScene` 已推入 Battle context，并存在 `BattleInputRouter`、`BattleMenuState`、`BattleMenuModel`、`syncMenuFocus()` 等菜单输入与焦点基础设施；`confirmBattleMenu()` / `cancelBattleMenu()`、2 列 ActorCommand 步长、RmlUi focus 重试与 `ScrollIntoView()` 也已有实现。
+- `BattleScene` 已推入 Battle context，并存在 `BattleInputRouter`、`BattleMenuState`、`BattleMenuModel`、`syncMenuFocus()` 等菜单输入与焦点基础设施；`confirmBattleMenu()` / `cancelBattleMenu()`、RmlUi focus 重试与 `ScrollIntoView()` 也已有实现。
 - `ui/rmlui/scenes/battle.rml` 的按钮已有稳定 id 和 `tf-nav-auto`，RCSS 也有 `.tf-input-nav .battle-text-button:focus` 的视觉反馈。
 - 玩家反馈仍表现为“只能鼠标操作”，说明问题更可能是运行时链路中的具体短路点、焦点视觉反馈、输入消费或测试缺口，而不是缺少整套战斗输入框架。
 
@@ -26,7 +26,7 @@
 - `BattleScene::init()` / `clean()` 已成对 push/pop `InputContextId::Battle`，初始化失败路径也会恢复 context。
 - `BattleInputRouter` 已接入 `menu_up/down/left/right/confirm/cancel`。
 - `confirmBattleMenu()` / `cancelBattleMenu()` 已覆盖 PartyCommand、ActorCommand、列表、目标选择与 Victory flow。
-- `BattleInputRouter::columnStepFor()` 已让 ActorCommand 按 2 列网格移动。
+- `BattleInputRouter` 已有方向移动路由；步长应与当前战斗 RML 的竖排按钮布局保持一致。
 - `prepareUi()` 已重试 `syncMenuFocus()`，聚焦失败时 `focus_dirty` 会保留下帧继续尝试。
 - `focusElementById()` 已调用 `ScrollIntoView(Nearest, Instant, Closest)`。
 - menu 导航键在 Menu / Dialogue / Battle context 下会绕过 RmlUi raw keyboard path，避免键盘按键被 RmlUi 先消费。
@@ -81,7 +81,7 @@ flowchart LR
    - `menu_cancel`
 3. 验证方向输入按当前状态解释：
    - `PartyCommand`：上下移动，左右按一维列表处理。
-   - `ActorCommand`：2 列网格，左右步长 1，上下步长 2。
+   - `ActorCommand`：当前按钮为竖排布局，上下步长 1；左右按一维列表处理。
    - `SkillList` / `ItemList` / `TargetSelect`：一维列表，上下移动。
 4. 验证所有方向移动跳过 disabled 条目，并允许首尾循环。
 5. 验证 `confirm` 根据当前状态转发到现有处理函数：
@@ -139,7 +139,7 @@ flowchart LR
 
 - 为 `BattleInputRouter` 增加独立测试，使用 fake delegate 覆盖：
   - PartyCommand 上下移动。
-  - ActorCommand 2 列网格移动。
+  - ActorCommand 竖排线性移动。
   - 列表与目标选择移动。
   - confirm/cancel 转发。
   - 长按 repeat 的初始延迟与重复间隔。
@@ -219,3 +219,35 @@ ninja -C build/debug game_tests engine_tests
 - 长列表可用键盘/手柄滚动并保持聚焦条目可见。
 - 自动化测试覆盖键盘、手柄、确认、取消、目标选择和胜利确认。
 - `ninja -C build/debug game_tests engine_tests` 通过。
+
+## 执行记录（2026-05-25）
+
+已完成：
+
+- 在 `BattleInputRouter` 中补齐方向键长按 repeat，并在菜单状态切换、断开监听时清理 repeat state，避免按住方向跨菜单时立刻跳格。
+- 根据实测 UI 布局，将 ActorCommand 从旧的 2 列步长修正为竖排线性步长；上下键与左右键都按相邻按钮移动。
+- 在 `BattleScene::update()` 中驱动 `BattleInputRouter::update()`，让 repeat 按帧生效。
+- 战斗菜单条目增加 `selected` 视图状态，并由 RML/RCSS 绑定到按钮高亮，避免只依赖 RmlUi `:focus` 导致键盘/手柄候选按钮不可见。
+- 扩展 RmlUi 输入转发规则：Battle/Menu/Dialogue 这类菜单上下文中，即使 RmlUi forwarder 消费了 `SDL_EVENT_GAMEPAD_BUTTON_DOWN`，仍允许事件继续进入 `InputManager`，保证手柄南键/东键可稳定派发为 `menu_confirm` / `menu_cancel`；Gameplay context 仍保持原有消费语义。
+- 新增 `BattleInputRouterTest` 覆盖 ActorCommand 竖排线性移动、方向长按 repeat、跨菜单清 repeat、confirm/cancel 转发。
+- 扩展 engine 输入测试，覆盖 menu-like context 下手柄按钮被 RmlUi 消费后的派发行为，以及 Gameplay context 下不强行透传。
+
+已验证：
+
+```bash
+ninja -C build/debug engine_tests game_tests
+./build/debug/tests/engine_tests --gtest_filter='InputEventRoutingTest.*:InputManagerGamepadTest.*RmlUi*:InputContextTest.*'
+./build/debug/tests/game_tests --gtest_filter='BattleInputRouterTest.*:BattleSceneSmokeTest.UsesTypedModelAndSceneLevelMenuInput:BattleSceneSmokeTest.LongSubmenusAreScrollableAndFocusedEntryStaysVisible:BattleSceneSmokeTest.WiresRpgMakerStylePartyAndActorCommands'
+./build/debug/tests/engine_tests
+./build/debug/tests/game_tests
+```
+
+结果：
+
+- `engine_tests` 全量通过：247 passed。
+- `game_tests` 全量通过：660 passed，11 skipped；skip 项为 headless RmlUi 环境下的既有跳过。
+
+尚未完成：
+
+- 未进行真实窗口中的手动战斗验收。
+- 未接入战斗 UI 上的键鼠/手柄 glyph 提示；该项仍建议等 `input_glyphs` 接口形态明确后单独处理。

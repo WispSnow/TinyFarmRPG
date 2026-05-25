@@ -6,10 +6,12 @@
 
 namespace engine::input {
 
-bool shouldAlwaysPropagateAfterUi(const SDL_Event& event) {
+bool shouldAlwaysPropagateAfterUi(const SDL_Event& event,
+                                  const std::optional<InputContextId> current_context) {
     return event.type == SDL_EVENT_KEY_UP
         || event.type == SDL_EVENT_MOUSE_BUTTON_UP
         || event.type == SDL_EVENT_MOUSE_MOTION
+        || (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN && isMenuLikeContext(current_context))
         || event.type == SDL_EVENT_GAMEPAD_BUTTON_UP
         || event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION
         || event.type == SDL_EVENT_GAMEPAD_ADDED

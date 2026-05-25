@@ -25,10 +25,20 @@ public:
 
     void connect(engine::input::InputManager& input_manager, Delegate& delegate);
     void disconnect();
+    void update(float delta_time);
+    void clearRepeat();
 
     [[nodiscard]] bool connected() const { return connected_; }
 
 private:
+    enum class RepeatDirection {
+        None,
+        Up,
+        Down,
+        Left,
+        Right
+    };
+
     [[nodiscard]] bool onMenuUpPressed();
     [[nodiscard]] bool onMenuDownPressed();
     [[nodiscard]] bool onMenuLeftPressed();
@@ -38,10 +48,15 @@ private:
 
     [[nodiscard]] bool moveVertical(int direction);
     [[nodiscard]] bool moveHorizontal(int direction);
+    [[nodiscard]] bool repeatDirectionStillDown() const;
+    [[nodiscard]] bool dispatchRepeatDirection();
+    void beginRepeat(RepeatDirection direction);
 
     engine::input::InputManager* input_manager_{nullptr};
     Delegate* delegate_{nullptr};
     bool connected_{false};
+    RepeatDirection repeat_direction_{RepeatDirection::None};
+    float repeat_timer_seconds_{0.0f};
 };
 
 } // namespace game::scene

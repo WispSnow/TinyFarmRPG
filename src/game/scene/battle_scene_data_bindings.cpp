@@ -12,6 +12,7 @@ bool registerBattleSceneViewModelStructs(Rml::DataModelConstructor& constructor)
         command_handle.RegisterMember("entry_index", &BattleCommandViewModel::entry_index);
         command_handle.RegisterMember("label", &BattleCommandViewModel::label);
         command_handle.RegisterMember("enabled", &BattleCommandViewModel::enabled);
+        command_handle.RegisterMember("selected", &BattleCommandViewModel::selected);
     } else {
         return false;
     }
@@ -22,6 +23,7 @@ bool registerBattleSceneViewModelStructs(Rml::DataModelConstructor& constructor)
         entry_handle.RegisterMember("label", &BattleListEntryViewModel::label);
         entry_handle.RegisterMember("sublabel", &BattleListEntryViewModel::sublabel);
         entry_handle.RegisterMember("enabled", &BattleListEntryViewModel::enabled);
+        entry_handle.RegisterMember("selected", &BattleListEntryViewModel::selected);
     } else {
         return false;
     }
@@ -34,6 +36,7 @@ bool registerBattleSceneViewModelStructs(Rml::DataModelConstructor& constructor)
         target_handle.RegisterMember("enabled", &BattleTargetEntryViewModel::enabled);
         target_handle.RegisterMember("is_ally", &BattleTargetEntryViewModel::is_ally);
         target_handle.RegisterMember("is_dead", &BattleTargetEntryViewModel::is_dead);
+        target_handle.RegisterMember("selected", &BattleTargetEntryViewModel::selected);
     } else {
         return false;
     }

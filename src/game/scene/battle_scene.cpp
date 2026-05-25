@@ -409,6 +409,7 @@ void BattleScene::update(float delta_time) {
     battle_damage_popup_controller_.update(delta_time);
     runStateMachine(delta_time);
     updateScheduledPresentationEvents(delta_time);
+    input_router_.update(delta_time);
     if (vfx_service_) {
         vfx_service_->update(delta_time);
     }
@@ -1027,6 +1028,7 @@ void BattleScene::leaveInputMenu() {
 }
 
 void BattleScene::setMenuState(MenuState next_state) {
+    input_router_.clearRepeat();
     menu_model_.setState(next_state, document_controller_);
     syncEnemyHpBarHighlight();
 }
@@ -1519,6 +1521,8 @@ void BattleScene::handlePartyCommand(int entry_index) {
     }
 
     menu_model_.party_command_cursor = command->entry_index;
+    menu_model_.syncSelectionFlags();
+    menu_model_.markActiveSelectionDirty(document_controller_);
     menu_model_.focus_dirty = true;
     if (!command->enabled) {
         return;
@@ -1548,6 +1552,8 @@ void BattleScene::handleActorCommand(int entry_index) {
     }
 
     menu_model_.actor_command_cursor = command->entry_index;
+    menu_model_.syncSelectionFlags();
+    menu_model_.markActiveSelectionDirty(document_controller_);
     menu_model_.focus_dirty = true;
     if (!command->enabled) {
         return;
@@ -1586,6 +1592,8 @@ void BattleScene::handleListEntry(int entry_index) {
     }
 
     menu_model_.list_entry_cursor = entry->entry_index;
+    menu_model_.syncSelectionFlags();
+    menu_model_.markActiveSelectionDirty(document_controller_);
     menu_model_.focus_dirty = true;
     if (!entry->enabled) {
         return;
@@ -1655,6 +1663,8 @@ void BattleScene::handleTargetEntry(int entry_index) {
     }
 
     menu_model_.target_entry_cursor = entry->entry_index;
+    menu_model_.syncSelectionFlags();
+    menu_model_.markActiveSelectionDirty(document_controller_);
     menu_model_.focus_dirty = true;
     if (!entry->enabled) {
         return;
@@ -1802,6 +1812,8 @@ bool BattleScene::moveMenuCursor(int delta) {
             if (!moveCursorInEntries(menu_model_.party_command_cursor, static_cast<int>(menu_model_.party_commands.size()), delta, enabled_entries)) {
                 return false;
             }
+            menu_model_.syncSelectionFlags();
+            menu_model_.markActiveSelectionDirty(document_controller_);
             menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
@@ -1816,6 +1828,8 @@ bool BattleScene::moveMenuCursor(int delta) {
             if (!moveCursorInEntries(menu_model_.actor_command_cursor, static_cast<int>(menu_model_.actor_commands.size()), delta, enabled_entries)) {
                 return false;
             }
+            menu_model_.syncSelectionFlags();
+            menu_model_.markActiveSelectionDirty(document_controller_);
             menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
@@ -1831,6 +1845,8 @@ bool BattleScene::moveMenuCursor(int delta) {
             if (!moveCursorInEntries(menu_model_.list_entry_cursor, static_cast<int>(menu_model_.list_entries.size()), delta, enabled_entries)) {
                 return false;
             }
+            menu_model_.syncSelectionFlags();
+            menu_model_.markActiveSelectionDirty(document_controller_);
             menu_model_.focus_dirty = true;
             syncMenuFocus();
             return true;
@@ -1845,6 +1861,8 @@ bool BattleScene::moveMenuCursor(int delta) {
             if (!moveCursorInEntries(menu_model_.target_entry_cursor, static_cast<int>(menu_model_.target_entries.size()), delta, enabled_entries)) {
                 return false;
             }
+            menu_model_.syncSelectionFlags();
+            menu_model_.markActiveSelectionDirty(document_controller_);
             menu_model_.focus_dirty = true;
             syncEnemyHpBarHighlight();
             syncMenuFocus();
