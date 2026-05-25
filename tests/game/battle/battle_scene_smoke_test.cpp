@@ -1155,11 +1155,15 @@ TEST(BattleSceneSmokeTest, RcssDefinesStage5BattleMenuStates) {
     ASSERT_FALSE(log_panel_block.empty());
     EXPECT_NE(log_panel_block.find("left: 318dp;"), std::string::npos);
     EXPECT_NE(log_panel_block.find("width: 314dp;"), std::string::npos);
+    EXPECT_NE(log_panel_block.find("height: 54dp;"), std::string::npos);
     EXPECT_NE(log_panel_block.find("background-color: #00000000;"), std::string::npos);
     EXPECT_NE(log_panel_block.find("border-width: 0dp;"), std::string::npos);
     const std::string log_entry_block = snippetFrom(rcss, ".battle-log-entry {");
     ASSERT_FALSE(log_entry_block.empty());
     EXPECT_NE(log_entry_block.find("width: 314dp;"), std::string::npos);
+    EXPECT_NE(log_entry_block.find("height: 18dp;"), std::string::npos);
+    EXPECT_NE(log_entry_block.find("line-height: 18dp;"), std::string::npos);
+    EXPECT_NE(log_entry_block.find("font-size: 0.625rem;"), std::string::npos);
     EXPECT_NE(log_entry_block.find("text-align: right;"), std::string::npos);
     EXPECT_EQ(rcss.find("top: 188dp;"), std::string::npos);
     EXPECT_EQ(rcss.find("height: 60dp;"), std::string::npos);

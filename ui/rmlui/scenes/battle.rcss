@@ -40,7 +40,7 @@ body, div, h1, h2, h3, h4, p, hr {
     left: 318dp;
     top: 42dp;
     width: 314dp;
-    height: 45dp;
+    height: 54dp;
     padding: 0;
     background-color: #00000000;
     border-width: 0dp;
@@ -215,10 +215,10 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .battle-log-entry {
     width: 314dp;
-    height: 15dp;
-    line-height: 15dp;
+    height: 18dp;
+    line-height: 18dp;
     color: #a9b1d6ff;
-    font-size: 0.5rem;
+    font-size: 0.625rem;
     text-align: right;
     font-effect: shadow(1dp 1dp #000000cc);
     overflow: hidden;
