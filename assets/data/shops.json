@@ -88,6 +88,14 @@
                 {
                     "item_id": "equip_wooden_staff",
                     "buy_price": 60
+                },
+                {
+                    "item_id": "equip_iron_sword",
+                    "buy_price": 200
+                },
+                {
+                    "item_id": "equip_iron_staff",
+                    "buy_price": 200
                 }
             ]
         },
@@ -103,6 +111,22 @@
                 {
                     "item_id": "potato_seed",
                     "buy_price": 12
+                },
+                {
+                    "item_id": "equip_wooden_sword",
+                    "buy_price": 60
+                },
+                {
+                    "item_id": "equip_wooden_staff",
+                    "buy_price": 60
+                },
+                {
+                    "item_id": "equip_iron_sword",
+                    "buy_price": 200
+                },
+                {
+                    "item_id": "equip_iron_staff",
+                    "buy_price": 200
                 },
                 {
                     "item_id": "equip_wooden_boots",
@@ -126,6 +150,14 @@
                 {
                     "item_id": "potato_seed",
                     "buy_price": 8
+                },
+                {
+                    "item_id": "equip_wooden_sword",
+                    "buy_price": 60
+                },
+                {
+                    "item_id": "equip_wooden_staff",
+                    "buy_price": 60
                 },
                 {
                     "item_id": "equip_iron_sword",

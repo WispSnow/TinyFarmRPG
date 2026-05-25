@@ -3,12 +3,16 @@
 
 #include "appearance_test_fixture_utils.h"
 #include "game/data/item_catalog.h"
+#include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
+#include "game/runtime/rpg_catalog_loader.h"
 
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace game::data {
 namespace {
@@ -23,6 +27,18 @@ namespace {
 [[nodiscard]] bool loadProjectItemCatalog(ItemCatalog& catalog) {
     const auto root = std::filesystem::path{PROJECT_SOURCE_DIR};
     return catalog.loadItemConfig((root / "assets/data/item_config.json").string());
+}
+
+[[nodiscard]] bool loadProjectRpgCatalog(RpgCatalog& catalog, const ItemCatalog& item_catalog, std::string& out_error) {
+    const auto root = std::filesystem::path{PROJECT_SOURCE_DIR};
+    return game::runtime::loadRpgCatalogFromManifest(
+        catalog,
+        game::runtime::RpgCatalogLoadOptions{
+            .manifest_path = (root / "assets/data/rpg/manifest.json").string(),
+            .root_path = (root / "assets/data/rpg").string(),
+            .item_catalog = &item_catalog,
+        },
+        out_error);
 }
 
 TEST(ShopCatalogTest, LoadsProjectShopAssetAndValidatesReferences) {
@@ -74,6 +90,44 @@ TEST(ShopCatalogTest, LoadsProjectShopAssetAndValidatesReferences) {
         const auto* equipment_sell_rule = catalog.findSellRule(equipment_id);
         ASSERT_NE(equipment_sell_rule, nullptr) << equipment_id;
         EXPECT_LT(equipment_sell_rule->sell_price_, buy_entry_it->buy_price_) << equipment_id;
+    }
+}
+
+TEST(ShopCatalogTest, MerchantPresetsSellEveryWeapon) {
+    const auto root = std::filesystem::path{PROJECT_SOURCE_DIR};
+    ShopCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile((root / "assets/data/shops.json").string()));
+
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+
+    RpgCatalog rpg_catalog;
+    std::string error{};
+    ASSERT_TRUE(loadProjectRpgCatalog(rpg_catalog, item_catalog, error)) << error;
+
+    std::vector<std::string> weapon_item_ids{};
+    for (const auto* equipment : rpg_catalog.listEquipment()) {
+        if (equipment->slot_ == EquipmentSlotId::Weapon) {
+            weapon_item_ids.push_back(equipment->item_id_);
+        }
+    }
+    ASSERT_FALSE(weapon_item_ids.empty());
+
+    constexpr std::array merchant_shop_ids{
+        "shop.village.general",
+        "shop.village.general.day",
+        "shop.village.general.night",
+        "shop.village.general.post_slime_cleanup",
+    };
+
+    for (const std::string_view shop_id : merchant_shop_ids) {
+        const auto* shop = catalog.findShop(shop_id);
+        ASSERT_NE(shop, nullptr) << shop_id;
+
+        for (const auto& weapon_item_id : weapon_item_ids) {
+            EXPECT_NE(catalog.findBuyEntry(shop_id, ShopCatalog::hashId(weapon_item_id)), nullptr)
+                << shop_id << " missing " << weapon_item_id;
+        }
     }
 }
 
