@@ -211,9 +211,7 @@ void InputManager::sampleInputEvents() {
             should_propagate = rmlui_event_callback_(event);
         }
 
-        // Phase 1 有意只强制放行清理型/生命周期型手柄事件；
-        // GAMEPAD_BUTTON_DOWN 仍走现有 UI 路由，后续 Phase 4 再引入手柄 UI 导航消费策略。
-        const bool always_propagate = shouldAlwaysPropagateAfterUi(event);
+        const bool always_propagate = shouldAlwaysPropagateAfterUi(event, currentContext());
 
         if (!should_propagate && !always_propagate) {
             continue;

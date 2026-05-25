@@ -8,23 +8,8 @@ namespace {
 
 using namespace entt::literals;
 
-constexpr int PARTY_COMMAND_COLUMNS = 1;
-constexpr int ACTOR_COMMAND_COLUMNS = 2;
-
-[[nodiscard]] int columnStepFor(const game::scene::BattleMenuState state) {
-    switch (state) {
-        case game::scene::BattleMenuState::ActorCommand:
-            return ACTOR_COMMAND_COLUMNS;
-        case game::scene::BattleMenuState::PartyCommand:
-            return PARTY_COMMAND_COLUMNS;
-        case game::scene::BattleMenuState::SkillList:
-        case game::scene::BattleMenuState::ItemList:
-        case game::scene::BattleMenuState::TargetSelect:
-        case game::scene::BattleMenuState::None:
-            return 1;
-    }
-    return 1;
-}
+constexpr float REPEAT_INITIAL_DELAY_SECONDS = 0.28f;
+constexpr float REPEAT_INTERVAL_SECONDS = 0.08f;
 
 } // namespace
 
@@ -64,21 +49,51 @@ void BattleInputRouter::disconnect() {
     input_manager_ = nullptr;
     delegate_ = nullptr;
     connected_ = false;
+    clearRepeat();
+}
+
+void BattleInputRouter::update(const float delta_time) {
+    if (!connected_ || !input_manager_ || !delegate_ || repeat_direction_ == RepeatDirection::None) {
+        return;
+    }
+
+    if (delegate_->battleMenuState() == BattleMenuState::None || !repeatDirectionStillDown()) {
+        clearRepeat();
+        return;
+    }
+
+    repeat_timer_seconds_ -= delta_time;
+    while (repeat_timer_seconds_ <= 0.0f && repeat_direction_ != RepeatDirection::None) {
+        if (!dispatchRepeatDirection()) {
+            repeat_timer_seconds_ = REPEAT_INTERVAL_SECONDS;
+            return;
+        }
+        repeat_timer_seconds_ += REPEAT_INTERVAL_SECONDS;
+    }
+}
+
+void BattleInputRouter::clearRepeat() {
+    repeat_direction_ = RepeatDirection::None;
+    repeat_timer_seconds_ = 0.0f;
 }
 
 bool BattleInputRouter::onMenuUpPressed() {
+    beginRepeat(RepeatDirection::Up);
     return moveVertical(-1);
 }
 
 bool BattleInputRouter::onMenuDownPressed() {
+    beginRepeat(RepeatDirection::Down);
     return moveVertical(1);
 }
 
 bool BattleInputRouter::onMenuLeftPressed() {
+    beginRepeat(RepeatDirection::Left);
     return moveHorizontal(-1);
 }
 
 bool BattleInputRouter::onMenuRightPressed() {
+    beginRepeat(RepeatDirection::Right);
     return moveHorizontal(1);
 }
 
@@ -96,7 +111,7 @@ bool BattleInputRouter::moveVertical(const int direction) {
     }
 
     const BattleMenuState menu_state = delegate_->battleMenuState();
-    const bool moved = delegate_->moveBattleMenuCursor(direction * columnStepFor(menu_state));
+    const bool moved = delegate_->moveBattleMenuCursor(direction);
     return moved || menu_state != BattleMenuState::None;
 }
 
@@ -108,6 +123,47 @@ bool BattleInputRouter::moveHorizontal(const int direction) {
     const BattleMenuState menu_state = delegate_->battleMenuState();
     const bool moved = delegate_->moveBattleMenuCursor(direction);
     return moved || menu_state != BattleMenuState::None;
+}
+
+bool BattleInputRouter::repeatDirectionStillDown() const {
+    if (!input_manager_) {
+        return false;
+    }
+
+    switch (repeat_direction_) {
+        case RepeatDirection::Up:
+            return input_manager_->isActionDown("menu_up"_hs);
+        case RepeatDirection::Down:
+            return input_manager_->isActionDown("menu_down"_hs);
+        case RepeatDirection::Left:
+            return input_manager_->isActionDown("menu_left"_hs);
+        case RepeatDirection::Right:
+            return input_manager_->isActionDown("menu_right"_hs);
+        case RepeatDirection::None:
+            return false;
+    }
+    return false;
+}
+
+bool BattleInputRouter::dispatchRepeatDirection() {
+    switch (repeat_direction_) {
+        case RepeatDirection::Up:
+            return moveVertical(-1);
+        case RepeatDirection::Down:
+            return moveVertical(1);
+        case RepeatDirection::Left:
+            return moveHorizontal(-1);
+        case RepeatDirection::Right:
+            return moveHorizontal(1);
+        case RepeatDirection::None:
+            return false;
+    }
+    return false;
+}
+
+void BattleInputRouter::beginRepeat(const RepeatDirection direction) {
+    repeat_direction_ = direction;
+    repeat_timer_seconds_ = REPEAT_INITIAL_DELAY_SECONDS;
 }
 
 } // namespace game::scene

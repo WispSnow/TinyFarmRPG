@@ -783,19 +783,22 @@ body, div, h1, h2, h3, h4, p, hr {
 }
 
 .tf-input-mouse .battle-text-button:hover,
-.tf-input-nav .battle-text-button:focus {
+.tf-input-nav .battle-text-button:focus,
+.tf-input-nav .battle-text-button.selected {
     padding-left: 8dp;
     background-color: transparent;
     color: #8b4f1aff;
 }
 
 .tf-input-mouse .battle-text-button:hover .battle-entry-sublabel,
-.tf-input-nav .battle-text-button:focus .battle-entry-sublabel {
+.tf-input-nav .battle-text-button:focus .battle-entry-sublabel,
+.tf-input-nav .battle-text-button.selected .battle-entry-sublabel {
     color: #8b4f1aff;
 }
 
 .tf-input-mouse .battle-text-button:hover .battle-cursor,
-.tf-input-nav .battle-text-button:focus .battle-cursor {
+.tf-input-nav .battle-text-button:focus .battle-cursor,
+.tf-input-nav .battle-text-button.selected .battle-cursor {
     opacity: 1;
     animation: 0.8s linear infinite battle-cursor-blink;
 }
@@ -828,8 +831,10 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .tf-input-mouse .battle-text-button.disabled:hover,
 .tf-input-nav .battle-text-button.disabled:focus,
+.tf-input-nav .battle-text-button.disabled.selected,
 .tf-input-mouse .battle-text-button:disabled:hover,
-.tf-input-nav .battle-text-button:disabled:focus {
+.tf-input-nav .battle-text-button:disabled:focus,
+.tf-input-nav .battle-text-button:disabled.selected {
     padding-left: 4dp;
     background-color: transparent;
     color: #85705a99;
@@ -837,15 +842,19 @@ body, div, h1, h2, h3, h4, p, hr {
 
 .tf-input-mouse .battle-text-button.disabled:hover .battle-entry-sublabel,
 .tf-input-nav .battle-text-button.disabled:focus .battle-entry-sublabel,
+.tf-input-nav .battle-text-button.disabled.selected .battle-entry-sublabel,
 .tf-input-mouse .battle-text-button:disabled:hover .battle-entry-sublabel,
-.tf-input-nav .battle-text-button:disabled:focus .battle-entry-sublabel {
+.tf-input-nav .battle-text-button:disabled:focus .battle-entry-sublabel,
+.tf-input-nav .battle-text-button:disabled.selected .battle-entry-sublabel {
     color: #85705a99;
 }
 
 .tf-input-mouse .battle-text-button.disabled:hover .battle-cursor,
 .tf-input-nav .battle-text-button.disabled:focus .battle-cursor,
+.tf-input-nav .battle-text-button.disabled.selected .battle-cursor,
 .tf-input-mouse .battle-text-button:disabled:hover .battle-cursor,
-.tf-input-nav .battle-text-button:disabled:focus .battle-cursor {
+.tf-input-nav .battle-text-button:disabled:focus .battle-cursor,
+.tf-input-nav .battle-text-button:disabled.selected .battle-cursor {
     opacity: 0;
     animation: none;
 }

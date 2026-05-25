@@ -7,7 +7,8 @@
 
 namespace engine::input {
 
-[[nodiscard]] bool shouldAlwaysPropagateAfterUi(const SDL_Event& event);
+[[nodiscard]] bool shouldAlwaysPropagateAfterUi(const SDL_Event& event,
+                                                std::optional<InputContextId> current_context);
 [[nodiscard]] bool isSystemEventDuringInputCapture(const SDL_Event& event);
 [[nodiscard]] bool shouldSuppressRmlUiKeyboardEvent(const SDL_Event& event,
                                                     std::optional<InputContextId> current_context,

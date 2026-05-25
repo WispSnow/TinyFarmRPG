@@ -130,6 +130,7 @@
                             data-for="command : party_commands"
                             id="battle-party-command-{{ command.entry_index }}"
                             data-class-disabled="!command.enabled"
+                            data-class-selected="command.selected"
                             data-attrif-disabled="!command.enabled"
                             data-event-click="party_command_select(command.entry_index)"><span class="battle-cursor">&gt;</span>{{ command.label }}</button>
                 </div>
@@ -139,6 +140,7 @@
                             data-for="command : actor_commands"
                             id="battle-actor-command-{{ command.entry_index }}"
                             data-class-disabled="!command.enabled"
+                            data-class-selected="command.selected"
                             data-attrif-disabled="!command.enabled"
                             data-event-click="actor_command_select(command.entry_index)"><span class="battle-cursor">&gt;</span>{{ command.label }}</button>
                 </div>
@@ -149,6 +151,7 @@
                         <button class="battle-text-button tf-nav-auto battle-list-entry"
                                 id="battle-list-entry-{{ entry.entry_index }}"
                                 data-class-disabled="!entry.enabled"
+                                data-class-selected="entry.selected"
                                 data-attrif-disabled="!entry.enabled"
                                 data-event-click="list_entry_select(entry.entry_index)"><span class="battle-cursor">&gt;</span><span class="battle-entry-label">{{ entry.label }}</span><span class="battle-entry-sublabel">{{ entry.sublabel }}</span></button>
                     </div>
@@ -160,6 +163,7 @@
                         <button class="battle-text-button tf-nav-auto battle-target-entry"
                                 id="battle-target-entry-{{ target.entry_index }}"
                                 data-class-disabled="!target.enabled"
+                                data-class-selected="target.selected"
                                 data-attrif-disabled="!target.enabled"
                                 data-class-is-ally="target.is_ally"
                                 data-class-is-dead="target.is_dead"

@@ -233,8 +233,11 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(input_router_source.find("onAction(\"menu_cancel\"_hs)"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("focusElementById(\"battle-victory-continue\")"), std::string::npos);
-    EXPECT_NE(input_router_source.find("constexpr int PARTY_COMMAND_COLUMNS = 1;"), std::string::npos);
-    EXPECT_NE(input_router_source.find("constexpr int ACTOR_COMMAND_COLUMNS = 2;"), std::string::npos);
+    const std::string vertical_move_block = snippetFrom(input_router_source, "bool BattleInputRouter::moveVertical", 360U);
+    ASSERT_FALSE(vertical_move_block.empty());
+    EXPECT_NE(vertical_move_block.find("moveBattleMenuCursor(direction)"), std::string::npos);
+    EXPECT_EQ(input_router_source.find("ACTOR_COMMAND_COLUMNS"), std::string::npos);
+    EXPECT_EQ(input_router_source.find("columnStepFor"), std::string::npos);
     EXPECT_NE(source.find("rpg_catalog_(session_options.rpg_catalog)"), std::string::npos);
     EXPECT_NE(source.find("item_catalog_(session_options.item_catalog)"), std::string::npos);
     EXPECT_NE(source.find("populateSkillEntries"), std::string::npos);
@@ -366,6 +369,51 @@ TEST(BattleSceneSmokeTest, LongSubmenusAreScrollableAndFocusedEntryStaysVisible)
     EXPECT_NE(focus_block.find("ScrollIntoView"), std::string::npos);
     EXPECT_NE(focus_block.find("Rml::ScrollAlignment::Nearest"), std::string::npos);
     EXPECT_NE(focus_block.find("Rml::ScrollParentage::Closest"), std::string::npos);
+}
+
+TEST(BattleSceneSmokeTest, BattleMenuCursorSelectionDrivesButtonHighlight) {
+    const std::filesystem::path view_models_header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_view_models.h").lexically_normal();
+    const std::filesystem::path data_bindings_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene_data_bindings.cpp")
+            .lexically_normal();
+    const std::filesystem::path menu_model_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_menu_model.cpp").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/battle_scene.cpp").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rml").lexically_normal();
+    const std::filesystem::path rcss_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/battle.rcss").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(view_models_header_path)) << view_models_header_path;
+    ASSERT_TRUE(std::filesystem::exists(data_bindings_source_path)) << data_bindings_source_path;
+    ASSERT_TRUE(std::filesystem::exists(menu_model_source_path)) << menu_model_source_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+    ASSERT_TRUE(std::filesystem::exists(rcss_path)) << rcss_path;
+
+    const std::string view_models_header = readTextFile(view_models_header_path);
+    const std::string data_bindings_source = readTextFile(data_bindings_source_path);
+    const std::string menu_model_source = readTextFile(menu_model_source_path);
+    const std::string source = readTextFile(source_path);
+    const std::string rml = readTextFile(rml_path);
+    const std::string rcss = readTextFile(rcss_path);
+    ASSERT_FALSE(view_models_header.empty());
+    ASSERT_FALSE(data_bindings_source.empty());
+    ASSERT_FALSE(menu_model_source.empty());
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(rml.empty());
+    ASSERT_FALSE(rcss.empty());
+
+    EXPECT_NE(view_models_header.find("bool selected{false};"), std::string::npos);
+    EXPECT_EQ(countOccurrences(data_bindings_source, "RegisterMember(\"selected\""), 3U);
+    EXPECT_NE(menu_model_source.find("void BattleMenuModel::syncSelectionFlags()"), std::string::npos);
+    EXPECT_NE(menu_model_source.find("void BattleMenuModel::markActiveSelectionDirty"), std::string::npos);
+    EXPECT_NE(source.find("menu_model_.syncSelectionFlags();"), std::string::npos);
+    EXPECT_NE(source.find("menu_model_.markActiveSelectionDirty(document_controller_);"), std::string::npos);
+    EXPECT_EQ(countOccurrences(rml, "data-class-selected="), 4U);
+    EXPECT_NE(rcss.find(".tf-input-nav .battle-text-button.selected"), std::string::npos);
+    EXPECT_NE(rcss.find(".tf-input-nav .battle-text-button.selected .battle-cursor"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {

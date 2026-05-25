@@ -51,9 +51,11 @@ public:
     [[nodiscard]] bool registerArrays(Rml::DataModelConstructor& constructor);
 
     void markDirty(engine::ui::rmlui::RmlDocumentController& document_controller) const;
+    void markActiveSelectionDirty(engine::ui::rmlui::RmlDocumentController& document_controller) const;
     void setState(BattleMenuState next_state, engine::ui::rmlui::RmlDocumentController& document_controller);
     void setHint(std::string_view text, engine::ui::rmlui::RmlDocumentController& document_controller);
     void refreshCommandEnabled(bool enabled, engine::ui::rmlui::RmlDocumentController& document_controller);
+    void syncSelectionFlags();
 };
 
 } // namespace game::scene

@@ -375,6 +375,49 @@ TEST_F(InputManagerGamepadTest, LastInputDeviceTracking) {
     EXPECT_EQ(manager->getLastInputDevice(), InputDevice::Gamepad);
 }
 
+TEST_F(InputManagerGamepadTest, MenuLikeContextGamepadButtonDownPropagatesWhenRmlUiConsumes) {
+    auto manager = createManager({{"menu_confirm", {"GamepadSouth"}}});
+    ASSERT_NE(manager, nullptr);
+
+    auto gamepad = attachVirtualGamepad("MenuLikeRmlConsumedPad");
+    manager->sampleInputEvents();
+
+    int forward_count = 0;
+    manager->setRmlUiEventForwarder([&](SDL_Event&) {
+        ++forward_count;
+        return false;
+    });
+
+    manager->pushContext(InputContextId::Battle);
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_SOUTH, true);
+    manager->sampleInputEvents();
+
+    EXPECT_EQ(forward_count, 1);
+    EXPECT_TRUE(manager->isActionPressed(entt::hashed_string{"menu_confirm"}.value()));
+    EXPECT_EQ(manager->getLastInputDevice(), InputDevice::Gamepad);
+}
+
+TEST_F(InputManagerGamepadTest, GameplayContextGamepadButtonDownRespectsRmlUiConsumption) {
+    auto manager = createManager({{"primary_action", {"GamepadSouth"}}});
+    ASSERT_NE(manager, nullptr);
+
+    auto gamepad = attachVirtualGamepad("GameplayRmlConsumedPad");
+    manager->sampleInputEvents();
+
+    int forward_count = 0;
+    manager->setRmlUiEventForwarder([&](SDL_Event&) {
+        ++forward_count;
+        return false;
+    });
+
+    manager->pushContext(InputContextId::Gameplay);
+    pushGamepadButtonEvent(gamepad.instance_id, SDL_GAMEPAD_BUTTON_SOUTH, true);
+    manager->sampleInputEvents();
+
+    EXPECT_EQ(forward_count, 1);
+    EXPECT_FALSE(manager->isActionPressed(entt::hashed_string{"primary_action"}.value()));
+}
+
 TEST_F(InputManagerGamepadTest, NewestConnectedGamepadBecomesActive) {
     auto manager = createManager({{"interact", {"GamepadSouth"}}});
     ASSERT_NE(manager, nullptr);

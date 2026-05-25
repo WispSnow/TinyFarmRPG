@@ -10,6 +10,7 @@ struct BattleCommandViewModel {
     int entry_index{0};
     Rml::String label{};
     bool enabled{false};
+    bool selected{false};
 
     friend bool operator==(const BattleCommandViewModel& lhs, const BattleCommandViewModel& rhs) = default;
 };
@@ -21,6 +22,7 @@ struct BattleListEntryViewModel {
     Rml::String label{};
     Rml::String sublabel{};
     bool enabled{false};
+    bool selected{false};
 };
 
 /// @brief 目标选择菜单中单个战斗单位的视图模型。
@@ -32,6 +34,7 @@ struct BattleTargetEntryViewModel {
     bool enabled{false};
     bool is_ally{false};
     bool is_dead{false};
+    bool selected{false};
 };
 
 /// @brief 下方 HUD 中单个队友状态条目的视图模型。

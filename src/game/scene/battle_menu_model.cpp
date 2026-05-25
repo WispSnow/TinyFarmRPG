@@ -7,6 +7,16 @@
 #include <algorithm>
 
 namespace game::scene {
+namespace {
+
+template <typename Entry>
+void syncSelectedFlag(std::vector<Entry>& entries, const int cursor) {
+    for (auto& entry : entries) {
+        entry.selected = entry.entry_index == cursor;
+    }
+}
+
+} // namespace
 
 bool BattleMenuModel::bind(Rml::DataModelConstructor& constructor) {
     return constructor.Bind("turn_text", &turn_text) &&
@@ -46,6 +56,26 @@ void BattleMenuModel::markDirty(engine::ui::rmlui::RmlDocumentController& docume
     document_controller.markDirty("actor_commands");
     document_controller.markDirty("list_entries");
     document_controller.markDirty("target_entries");
+}
+
+void BattleMenuModel::markActiveSelectionDirty(engine::ui::rmlui::RmlDocumentController& document_controller) const {
+    switch (state) {
+        case BattleMenuState::PartyCommand:
+            document_controller.markDirty("party_commands");
+            break;
+        case BattleMenuState::ActorCommand:
+            document_controller.markDirty("actor_commands");
+            break;
+        case BattleMenuState::SkillList:
+        case BattleMenuState::ItemList:
+            document_controller.markDirty("list_entries");
+            break;
+        case BattleMenuState::TargetSelect:
+            document_controller.markDirty("target_entries");
+            break;
+        case BattleMenuState::None:
+            break;
+    }
 }
 
 void BattleMenuModel::setState(const BattleMenuState next_state,
@@ -91,6 +121,7 @@ void BattleMenuModel::setState(const BattleMenuState next_state,
             break;
     }
 
+    syncSelectionFlags();
     markDirty(document_controller);
     focus_dirty = true;
 }
@@ -118,10 +149,18 @@ void BattleMenuModel::refreshCommandEnabled(const bool enabled,
     }
 
     if (changed) {
+        syncSelectionFlags();
         document_controller.markDirty("party_commands");
         document_controller.markDirty("actor_commands");
         focus_dirty = true;
     }
+}
+
+void BattleMenuModel::syncSelectionFlags() {
+    syncSelectedFlag(party_commands, party_command_cursor);
+    syncSelectedFlag(actor_commands, actor_command_cursor);
+    syncSelectedFlag(list_entries, list_entry_cursor);
+    syncSelectedFlag(target_entries, target_entry_cursor);
 }
 
 } // namespace game::scene
