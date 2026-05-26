@@ -30,7 +30,6 @@ namespace {
 TEST(OptionsTabContentSourceTest, CppBindsAllModelFields) {
     const std::string src = slurp(projectRoot() / "src" / "game" / "ui" / "options_tab_content.cpp");
     for (const std::string_view field : {
-        "options_language_text",
         "options_battle_speed_text",
         "options_damage_popup_text",
         "options_enemy_hp_bar_text",
@@ -42,6 +41,7 @@ TEST(OptionsTabContentSourceTest, CppBindsAllModelFields) {
         EXPECT_NE(src.find(field), std::string::npos)
             << "options_tab_content.cpp 应包含 binding 字段 " << field;
     }
+    EXPECT_EQ(src.find("options_language_text"), std::string::npos);
     EXPECT_EQ(src.find("options_font_scale_text"), std::string::npos);
     EXPECT_NE(src.find("setUiFontScale(game::runtime::UiFontScale::Normal)"), std::string::npos);
 }
@@ -51,8 +51,6 @@ TEST(OptionsTabContentSourceTest, CppBindsAllEventCallbacks) {
     for (const std::string_view event : {
         "options_battle_speed_prev",
         "options_battle_speed_next",
-        "options_language_prev",
-        "options_language_next",
         "options_toggle_damage_popup",
         "options_toggle_enemy_hp_bar",
         "options_toggle_cursor_memory",
@@ -60,6 +58,8 @@ TEST(OptionsTabContentSourceTest, CppBindsAllEventCallbacks) {
         EXPECT_NE(src.find(event), std::string::npos)
             << "options_tab_content.cpp 应包含 event 名 " << event;
     }
+    EXPECT_EQ(src.find("options_language_prev"), std::string::npos);
+    EXPECT_EQ(src.find("options_language_next"), std::string::npos);
     EXPECT_EQ(src.find("options_font_scale_prev"), std::string::npos);
     EXPECT_EQ(src.find("options_font_scale_next"), std::string::npos);
 }
@@ -71,7 +71,6 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithExpectedRows) {
 
     // binding 字段都应出现在 RML 上（来自 {{ ... }} 表达式）。
     for (const std::string_view field : {
-        "options_language_text",
         "options_battle_speed_text",
         "options_damage_popup_text",
         "options_enemy_hp_bar_text",
@@ -80,13 +79,12 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithExpectedRows) {
         EXPECT_NE(rml.find(field), std::string::npos)
             << "inventory_menu.rml 应绑定 " << field;
     }
+    EXPECT_EQ(rml.find("options_language_text"), std::string::npos);
     EXPECT_EQ(rml.find("options_font_scale_text"), std::string::npos);
     EXPECT_EQ(rml.find("UI Font Size"), std::string::npos);
 
     // click 绑定都应出现。
     for (const std::string_view event : {
-        "options_language_prev",
-        "options_language_next",
         "options_battle_speed_prev",
         "options_battle_speed_next",
         "options_toggle_damage_popup",
@@ -96,28 +94,27 @@ TEST(OptionsTabContentSourceTest, RmlExposesPanelOptionsWithExpectedRows) {
         EXPECT_NE(rml.find(event), std::string::npos)
             << "inventory_menu.rml 应触发 " << event;
     }
+    EXPECT_EQ(rml.find("options_language_prev"), std::string::npos);
+    EXPECT_EQ(rml.find("options_language_next"), std::string::npos);
     EXPECT_EQ(rml.find("options_font_scale_prev"), std::string::npos);
     EXPECT_EQ(rml.find("options_font_scale_next"), std::string::npos);
     EXPECT_NE(rml.find("options-control options-toggle"), std::string::npos);
     EXPECT_NE(rml.find("options-control options-stepper"), std::string::npos);
 }
 
-TEST(OptionsTabContentSourceTest, RmlOrdersLanguageBeforeTogglesAndBattleStepper) {
+TEST(OptionsTabContentSourceTest, RmlOrdersTogglesBeforeBattleStepper) {
     const std::string rml = slurp(projectRoot() / "ui" / "rmlui" / "scenes" / "inventory_menu.rml");
 
-    const auto language = rml.find("options_language_prev");
     const auto damage = rml.find("options_toggle_damage_popup");
     const auto enemy_hp = rml.find("options_toggle_enemy_hp_bar");
     const auto cursor = rml.find("options_toggle_cursor_memory");
     const auto battle_speed = rml.find("options_battle_speed_prev");
 
-    ASSERT_NE(language, std::string::npos);
     ASSERT_NE(damage, std::string::npos);
     ASSERT_NE(enemy_hp, std::string::npos);
     ASSERT_NE(cursor, std::string::npos);
     ASSERT_NE(battle_speed, std::string::npos);
 
-    EXPECT_LT(language, damage);
     EXPECT_LT(damage, enemy_hp);
     EXPECT_LT(enemy_hp, cursor);
     EXPECT_LT(cursor, battle_speed);

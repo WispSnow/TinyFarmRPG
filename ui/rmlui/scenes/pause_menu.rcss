@@ -3,12 +3,11 @@
     top: 8dp;
     width: 160dp;
     height: 296dp;
-    padding: 24dp;
+    padding: 16dp;
 }
 
 #pause-message {
-    height: 22dp;
-    margin-top: 4dp;
+    height: 18dp;
     text-align: center;
     line-height: 18dp;
     font-effect: shadow(1dp 1dp #000000cc);
@@ -25,25 +24,32 @@
 #pause-actions {
     display: flex;
     flex-direction: column;
-    gap: 6dp;
+    gap: 4dp;
 }
 
 .pause-action-button {
     width: 160dp;
+    height: 30dp;
+    line-height: 30dp;
 }
 
 #pause-values {
-    margin-top: 16dp;
+    margin-top: 8dp;
     display: flex;
     flex-direction: column;
-    gap: 6dp;
+    gap: 2dp;
 }
 
 .pause-value-row {
     width: 160dp;
-    height: 32dp;
+    height: 30dp;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+}
+
+#pause-values .tf-icon-button {
+    width: 30dp;
+    height: 30dp;
 }

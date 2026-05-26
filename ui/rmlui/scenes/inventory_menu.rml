@@ -280,16 +280,6 @@
                 <panel id="panel-options">
                     <div id="options-content">
                         <div class="options-row">
-                            <div class="options-row-label" data-i18n="options.language">Language</div>
-                            <div class="options-control options-stepper">
-                                <button class="options-stepper-btn tf-icon-button icon-arrow-left-light"
-                                        data-event-click="options_language_prev"></button>
-                                <div class="options-row-value options-language-value">{{ options_language_text }}</div>
-                                <button class="options-stepper-btn tf-icon-button icon-arrow-right-light"
-                                        data-event-click="options_language_next"></button>
-                            </div>
-                        </div>
-                        <div class="options-row">
                             <div class="options-row-label" data-i18n="options.damage_popups">Damage Popups</div>
                             <button class="options-control options-toggle tf-nav-auto tf-focus-ring-blue"
                                     data-class-on="options_show_damage_popup"

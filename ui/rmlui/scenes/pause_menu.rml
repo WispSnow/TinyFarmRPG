@@ -29,6 +29,18 @@
             </div>
 
             <div class="pause-value-row">
+                <button class="tf-icon-button icon-arrow-left"
+                        data-event-click="language_down"
+                        data-class-disabled="!can_change_language"
+                        data-attrif-disabled="!can_change_language"></button>
+                <div class="tf-value-label" data-i18n-title="options.language">{{ language_text }}</div>
+                <button class="tf-icon-button icon-arrow-right"
+                        data-event-click="language_up"
+                        data-class-disabled="!can_change_language"
+                        data-attrif-disabled="!can_change_language"></button>
+            </div>
+
+            <div class="pause-value-row">
                 <button class="tf-icon-button icon-volume-down" data-event-click="music_down"></button>
                 <div class="tf-value-label">{{ music_text }}</div>
                 <button class="tf-icon-button icon-volume-up" data-event-click="music_up"></button>

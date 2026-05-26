@@ -184,7 +184,6 @@ TEST(RmlLocalizationApplierSourceTest, InventoryMenuKeepsExpectedLocalizedStatic
              "inventory.quest.completed_title",
              "inventory.quest.completed_empty",
              "inventory.map.empty",
-             "options.language",
              "options.damage_popups",
              "options.enemy_hp_bar",
              "options.cursor_memory",
@@ -192,6 +191,8 @@ TEST(RmlLocalizationApplierSourceTest, InventoryMenuKeepsExpectedLocalizedStatic
          }) {
         EXPECT_TRUE(keys.contains(key)) << "inventory_menu.rml should keep data-i18n=" << key;
     }
+    EXPECT_FALSE(keys.contains("options.language"))
+        << "Language switching lives in pause_menu.rml so it is available from TitleScene.";
 }
 
 TEST(RmlLocalizationApplierSourceTest, CoreScenesKeepExpectedLocalizedStaticRefs) {
@@ -215,6 +216,7 @@ TEST(RmlLocalizationApplierSourceTest, CoreScenesKeepExpectedLocalizedStaticRefs
              "common.save",
              "pause.resume",
              "pause.back_to_title",
+             "options.language",
              "quest_offer.accept",
              "quest_offer.decline",
              "quest_offer.objective",

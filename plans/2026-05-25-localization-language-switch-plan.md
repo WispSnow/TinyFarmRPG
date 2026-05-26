@@ -13,7 +13,7 @@
 - 2026-05-25：首版语言切换闭环已实现并通过构建 / 单测验证。
   - 已新增 `LocalizationService`、语言 manifest 与中英文本表，fallback 使用 `languages.json::fallback`。
   - 已新增 `ui.language` 用户设置，并由 `UserSettingsService` 同步 `LocalizationService`、`TextRenderer` 与已加载 RmlUi 文档。
-  - 已在 Options 标签页增加 Language row，支持 `English` / `简体中文` 循环切换。
+  - 语言切换入口已从 Inventory Options 标签页移动到 `PauseMenuScene`，支持 `English` / `简体中文` 循环切换；TitleScene 打开的 PauseMenu 也可使用。
   - 已扩展 `RmlUiRuntime::loadFontFace`、`forEachDocument` 与文档加载回调，并接入 RmlUi `data-i18n` applier。
   - 已加载中文 fallback 字体，并将 TextRenderer 默认 UI 字体切到 `LXGWBright-Regular.ttf`。
   - 已通过 `ScriptRuntimeFactory` 给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
@@ -68,7 +68,11 @@
   - 已迁移 Battle 菜单状态、目标提示、Turn / Result 前缀、阵营、结局和状态 tooltip 回合数；`BattleMenuModel` 不再保存英文默认文本，未同步前显示 `!key!` 占位。
   - 已新增 `LocalizationSourceGuardTest`，扫描 timed notification raw English 与项目 Lua dialogue API raw English；当前覆盖范围明确限制在这两类入口，其它玩家可见 C++ raw English 仍需独立扫描。
   - 已将新增运行时测试的期望值改为读取 i18n key，避免 C++ 测试复制中文文案。
-- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、Title path 早期场景的 LocalizationService 注入、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
+- 2026-05-26：将语言切换入口迁移到 PauseMenu，打通标题页语言切换。
+  - `TitleScene` 现在拥有标题页生命周期内的 `LocalizationService` / `UserSettingsService`，在加载 title RML 前读取用户设置并应用语言。
+  - `TitleScene` 打开的 `PauseMenuScene`、`SaveSlotSelectScene` 与新建角色 `AppearanceCustomizeScene` 都接收当前 localization，标题页切换语言后无需先进游戏。
+  - Inventory Options 标签页移除 Language row，保留战斗速度、伤害飘字、敌方 HP 条与光标记忆等游戏内偏好。
+- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -138,8 +142,8 @@ flowchart LR
 
 ```json
 {
-  "ui.options.language": "Language",
-  "ui.options.damage_popups": "Damage Popups",
+  "options.language": "Language",
+  "options.damage_popups": "Damage Popups",
   "ui.common.on": "On",
   "ui.common.off": "Off",
   "battle.command.attack": "Attack",
@@ -216,8 +220,8 @@ RmlUi 静态文本刷新必须显式、可审计，避免 applier 误改动态�
 | `src/engine/core/game_app.cpp` | RmlUi 初始化时加载中文字体为 fallback face；现有默认字体调用继续使用默认参数 |
 | `src/engine/resource/default_resource_ids.h` | 首版把默认 UI 文本字体切到 `LXGWBright-Regular.ttf`，确保 TextRenderer 能渲染中文 |
 | `config/text_render.json` | 保留静态渲染样式默认值；启动语言和切换语言以 `UserSettingsService` 调用 `TextRenderer::setDefaultLanguage(...)` 为准 |
-| `src/game/ui/options_tab_content.h/.cpp` | 增加语言行、语言显示文本、prev/next 事件；所有 Options 文案改走本地化 |
-| `ui/rmlui/scenes/inventory_menu.rml/.rcss` | Options 中新增 Language row；静态标签改为 `data-i18n` 或绑定字段 |
+| `src/game/scene/pause_menu_scene.h/.cpp` | 增加语言行、语言显示文本、prev/next 事件；PauseMenu 动态文案走本地化 |
+| `ui/rmlui/scenes/pause_menu.rml/.rcss` | PauseMenu 中新增 Language row；静态标签改为 `data-i18n` 或绑定字段 |
 | `src/game/runtime/script_runtime_factory.cpp` | 使用捕获 `LocalizationService*` 的 installer lambda 安装 TinyFarm 脚本模块 |
 | `src/game/script/tinyfarm_script_module.h/.cpp` | 允许 installer 接收 `LocalizationService*`；注册 `tf.i18n` API |
 | `src/game/script/script_game_api.h/.cpp` | 增加本地化服务指针，给 Lua 暴露 `tf.i18n.tr` 与 `tf.i18n.format` |
@@ -253,7 +257,7 @@ RmlUi 静态文本刷新必须显式、可审计，避免 applier 误改动态�
 1. 新增 `LocalizationService`。
    - `loadLanguageIndex("assets/i18n/languages.json")`
    - `setLanguage("zh-Hans")`
-   - `tr("ui.options.language")`
+   - `tr("options.language")`
    - `format("reward.gold_gained", {{"amount", "50"}})`
    - fallback 顺序：当前语言 → `languages.json::fallback` 指定语言 → `!key!`
 2. 加入缺失 key 诊断。
@@ -284,11 +288,11 @@ RmlUi 静态文本刷新必须显式、可审计，避免 applier 误改动态�
    - 构造 `UserSettingsService`，传入 `LocalizationService&`、`TextRenderer&`、`RmlUiRuntime&`。
    - 加载 `user_settings.json`。
    - `applyAll()`，其中包含语言 apply。
-4. Options 标签页新增 Language row。
+4. PauseMenu 新增 Language row，TitleScene 打开的 PauseMenu 也使用同一入口。
    - 显示 native name：`English` / `简体中文`。
    - 左右按钮循环切换。
-   - 切换后立即刷新 Options 页自身文本。
-   - Phase 2 只负责新增 row 和切换逻辑；语言 native name 来自 `languages.json`，不需要再翻译。row label `"Language"` 自身在 Phase 5 与其它 Options 文案一起 key 化，避免本阶段提前铺太多拼接代码。
+   - 切换后立即刷新 PauseMenu 自身文本以及已加载 RML 静态文本。
+   - 语言显示值直接使用 `languages.json` 中的 native name，例如 `English` / `简体中文`。
 5. 扩展 `config/user_settings.default.json`：
 
 ```json
@@ -448,7 +452,7 @@ tf.i18n.format("dialogue.reward.gold", { amount = 50 })
    - source-level 检查用 gtest 实现：`std::filesystem` 遍历 `src/game/scene`、`src/game/ui`、`src/game/battle`、`scripts` 和核心 RML 文件，正则扫描明显玩家可见英文硬编码，并维护 allowlist。首版先覆盖 `dialogue.show("...")`、choice label、RML 裸英文文本、battle log formatter 字符串。
 5. 手动验收：
    - 启动默认英文。
-   - Inventory → Options → Language 切到简体中文，当前界面立即中文化。
+  - Title → Menu → Language 切到简体中文，标题页、PauseMenu 和后续打开的 SaveSlot / Appearance 界面立即中文化。
    - 关闭菜单再打开，仍为中文。
    - 退出重启后仍为中文。
    - 切回 English 后所有已打开/新打开 UI 回到英文。
@@ -471,7 +475,7 @@ ninja -C build/debug engine_tests game_tests
 - [x] `UserSettingsService` 增加 `setLanguage`、语言 apply、`TextRenderer` 同步与 `LanguageChangedEvent`。
 - [x] Runtime 在 `initUserSettings` 前加载本地化服务，并把 `LocalizationService*` 注入 `registry.ctx()`。
 - [x] `GameRuntimeServices` 中 `localization_service` 声明在 `script_host` 与 `user_settings_service` 之前，保证析构顺序安全。
-- [x] Options 标签页增加 Language row。
+- [x] PauseMenu 增加 Language row，并让 TitleScene 路径可用。
 - [x] RmlUi 加载中文 fallback 字体。
 - [x] TextRenderer 默认字体与默认语言跟随语言设置。
 - [x] 扩展现有 `RmlUiRuntime::forEachDocument` 签名、增加文档加载回调并适配 debug panel。
@@ -502,7 +506,7 @@ ninja -C build/debug engine_tests game_tests
 - 存档字段如果包含已翻译显示名，读档后语言切换无法刷新：Phase 6 前必须审计保存 schema，新 schema 只保存稳定 id/key/args。
 - Lua 脚本中硬编码对白可能遗漏：迁移后新增 source-level 检查，至少对 `dialogue.show("...")`、choice label 字符串给出扫描报告。
 - 已显示的 dialogue choice 如果只保存翻译后字符串，无法即时刷新：需要新增 key/args 事件负载或明确首版只刷新后续新打开的 choice。
-- Title path 早期场景目前没有稳定的 gameplay registry 注入：`TitleScene` 打开的 `SaveSlotSelectScene` / `AppearanceCustomizeScene` Create Hero 需要把 `LocalizationService` 上移到 `Context` 或在 GameApp 启动时创建，避免标题页切中文后早期弹窗仍使用英文 fallback。
+- Title path 早期场景不走 gameplay registry：当前由 `TitleScene` 在标题页生命周期内创建轻量 `LocalizationService` / `UserSettingsService`，并把 localization 传给 SaveSlot / Appearance；后续若需要更多标题页服务，可再抽出 dedicated front-end runtime service。
 - 中文文案更长，可能挤压 640x360 UI：迁移每个场景后做一次截图或手动 QA，必要时调整布局宽度、换行或字号。
 
 ## 待确认问题

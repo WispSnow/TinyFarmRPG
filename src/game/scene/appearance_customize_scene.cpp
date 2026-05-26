@@ -177,10 +177,12 @@ namespace game::scene {
 
 AppearanceCustomizeScene::AppearanceCustomizeScene(std::string_view name,
                                                    engine::core::Context& context,
-                                                   SceneFactory on_confirm)
+                                                   SceneFactory on_confirm,
+                                                   const game::runtime::LocalizationService* localization)
     : engine::scene::Scene(name, context),
       mode_(Mode::NewGame),
       on_new_game_confirm_(std::move(on_confirm)),
+      title_localization_(localization),
       rng_(makeAppearanceRandomEngine()) {
 }
 
@@ -456,7 +458,7 @@ void AppearanceCustomizeScene::disconnectRuntimeListeners() {
 }
 
 const game::runtime::LocalizationService* AppearanceCustomizeScene::localization() const {
-    return game_registry_ ? game::runtime::findLocalizationService(*game_registry_) : nullptr;
+    return game_registry_ ? game::runtime::findLocalizationService(*game_registry_) : title_localization_;
 }
 
 void AppearanceCustomizeScene::syncLocalizedText(bool mark_dirty) {

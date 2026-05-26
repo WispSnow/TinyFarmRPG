@@ -41,6 +41,8 @@ TEST(TitleSceneMenuButtonTest, BindsRmlMenuButtonToPauseMenuScene) {
         << "TitleScene RML should expose a menu button data event.";
     EXPECT_NE(source.find("PauseMenuScene"), std::string::npos)
         << "TitleScene should open PauseMenuScene from the menu button.";
+    EXPECT_NE(source.find("user_settings_service_.get()"), std::string::npos)
+        << "TitleScene should pass its settings service so PauseMenu can change language before gameplay starts.";
 }
 
 TEST(TitleSceneMenuButtonTest, StartOpensAppearanceCustomizeBeforeGameScene) {
@@ -59,6 +61,30 @@ TEST(TitleSceneMenuButtonTest, StartOpensAppearanceCustomizeBeforeGameScene) {
         << "TitleScene should preserve title_game_time_ for the GameScene confirm callback.";
     EXPECT_NE(source.find("GameSceneLaunch{std::move(options)}"), std::string::npos)
         << "TitleScene should pass selected new-game options into GameScene.";
+    EXPECT_NE(source.find("localization())"), std::string::npos)
+        << "TitleScene should pass title localization into the new-game appearance picker.";
+}
+
+TEST(TitleSceneMenuButtonTest, OwnsTitleSettingsServiceForLanguageBeforeGameplay) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/title_scene.cpp").lexically_normal();
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/title_scene.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+
+    const std::string source = readTextFile(source_path);
+    const std::string header = readTextFile(header_path);
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(header.empty());
+
+    EXPECT_NE(header.find("std::unique_ptr<game::runtime::LocalizationService>"), std::string::npos);
+    EXPECT_NE(header.find("std::unique_ptr<game::runtime::UserSettingsService>"), std::string::npos);
+    EXPECT_NE(source.find("void TitleScene::initUserSettings()"), std::string::npos);
+    EXPECT_NE(source.find("GameContentManifest::I18nLanguages"), std::string::npos);
+    EXPECT_NE(source.find("user_settings_service_->loadFromFileOrFallback()"), std::string::npos);
+    EXPECT_NE(source.find("user_settings_service_->applyAll()"), std::string::npos);
+    EXPECT_NE(source.find("user_settings_service_->flushIfDirty()"), std::string::npos);
 }
 
 } // namespace
