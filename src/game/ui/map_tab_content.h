@@ -68,13 +68,13 @@ struct MapMarkerViewModel {
 };
 
 struct MapTabViewState {
-    Rml::String map_title{"Map"};
+    Rml::String map_title{"!inventory.tab.map!"};
     Rml::String map_preview_src{};
     Rml::String map_preview_left{"0dp"};
     Rml::String map_preview_top{"0dp"};
     Rml::String map_preview_width{"0dp"};
     Rml::String map_preview_height{"0dp"};
-    Rml::String map_status_text{"No map data"};
+    Rml::String map_status_text{"!inventory.map.empty!"};
     std::vector<MapMarkerViewModel> map_markers{};
     Rml::String map_detail_title{};
     Rml::String map_detail_type{};
@@ -143,13 +143,13 @@ private:
     entt::id_type current_marker_map_id_{entt::null};
     int selected_marker_index_{-1};
 
-    Rml::String map_title_{"Map"};
+    Rml::String map_title_{"!inventory.tab.map!"};
     Rml::String map_preview_src_{};
     Rml::String map_preview_left_{"0dp"};
     Rml::String map_preview_top_{"0dp"};
     Rml::String map_preview_width_{"0dp"};
     Rml::String map_preview_height_{"0dp"};
-    Rml::String map_status_text_{"No map data"};
+    Rml::String map_status_text_{"!inventory.map.empty!"};
     std::vector<MapMarkerViewModel> map_markers_{};
     Rml::String map_detail_title_{};
     Rml::String map_detail_type_{};

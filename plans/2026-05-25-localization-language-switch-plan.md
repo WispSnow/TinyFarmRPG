@@ -4,7 +4,7 @@
 
 - 任务标题：新增中文语言支持，并在设置菜单中切换语言
 - 计划日期：2026-05-25
-- 状态：Partially Implemented
+- 状态：Implemented
 - 目标语言：`en-US`、`zh-Hans`
 - 设计原则：以稳定 key 为文本真源；运行时服务统一解析；RmlUi 只负责显示；不考虑向后兼容，可直接迁移现有英文文案。
 
@@ -72,7 +72,14 @@
   - `TitleScene` 现在拥有标题页生命周期内的 `LocalizationService` / `UserSettingsService`，在加载 title RML 前读取用户设置并应用语言。
   - `TitleScene` 打开的 `PauseMenuScene`、`SaveSlotSelectScene` 与新建角色 `AppearanceCustomizeScene` 都接收当前 localization，标题页切换语言后无需先进游戏。
   - Inventory Options 标签页移除 Language row，保留战斗速度、伤害飘字、敌方 HP 条与光标记忆等游戏内偏好。
-- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
+- 2026-05-26：本地化收尾扫描与漏网修复。
+  - 已迁移 `AppearanceCustomizeScene` slot / variant 动态值，`Skin` / `Eyes` / `Farm Blue` / `Standard Brown` / `none` 等外观选项现在按当前语言显示，并在语言切换时刷新。
+  - 已迁移 `TimeClockHud` 的 Day 标签，左上角时间 HUD 现在显示 `Day {day}` / `第 {day} 天`，并跟随 `LanguageChangedEvent` 刷新。
+  - 已迁移 Battle 胜利结算标题，不再依赖 `Victory!` 默认字符串。
+  - 已迁移读档失败回到标题页的错误消息，`TitleScene` 保存 key / args 并在语言切换时重建错误文本。
+  - 已扩展 `LocalizationSourceGuardTest`，覆盖 timed notification raw English、项目 Lua dialogue API raw English、绑定到 RML 的 `Rml::String` 英文默认值，以及标题页读档失败文案。
+  - 已验证：`ninja -C build tests/game_tests`、本地化 source guard / key parity / 标题页 source 测试、`./build/tests/game_tests` 全量测试、`git diff --check`。
+- 后续可选增强：已显示的 dialogue choice 即时刷新、语言级 font profile、更完整的 RmlUi 截图自动化 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -482,16 +489,16 @@ ninja -C build/debug engine_tests game_tests
 - [x] 新增 RmlUi `data-i18n` 静态文本 applier。
 - [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
 - [x] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
-- [ ] 迁移核心 C++ 动态文案。（大部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、`AppearanceCustomizeScene`、`InventoryMenuScene` / 各 tab、`BattleScene` / battle menu / formatter / view model、GameScene reward feedback、shop / quest / recruitment / farm 交互系统、Chest / ItemUse 通知、Hotbar tooltip）
+- [x] 迁移核心 C++ 动态文案。（已覆盖：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、`AppearanceCustomizeScene` 标题 / slot / variant、`InventoryMenuScene` / 各 tab、`BattleScene` / battle menu / formatter / view model / 胜利结算、`TimeClockHud`、GameScene reward feedback、TitleScene 读档失败反馈、shop / quest / recruitment / farm 交互系统、Chest / ItemUse 通知、Hotbar tooltip）
 - [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
 - [x] 将数据 catalog 的名称与描述字段值迁移为本地化 key。（items、quests、shops、RPG actors/classes/skills/states/enemies/troops；crop config 无玩家可见显示字段，blueprint description 暂按编辑 / debug 元数据处理）
 - [x] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建；重名敌人的显示序号使用独立 `name_ordinal`，避免破坏本地化 key。
 - [x] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
 - [x] 迁移 Lua 对白与选项文本。（home exterior、merchant、lyria、tori、greeter、goblin cleanup quest；脚本 helper 支持交互时惰性解析）
 - [x] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。（首版明确为下一句 / 下一次打开使用新语言）
-- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`、timed notification raw English 扫描、项目 Lua dialogue API raw English 扫描；仍需覆盖其它 C++ data model / `fmt::format` / direct event text 等玩家可见 raw English）
-- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`、Shop / catalog / inventory / map / battle / reward feedback、Farm / Chest / ItemUse、Appearance dynamic title、Lua recruit lazy 文本相关回归）
-- [ ] 完成中英切换手动验收。
+- [x] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（已覆盖：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`、timed notification raw English、项目 Lua dialogue API raw English、绑定到 RML 的 `Rml::String` 英文默认值、标题页读档失败 raw English）
+- [x] 补齐本地化、设置、RmlUi 刷新相关测试。（已覆盖：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`、Shop / catalog / inventory / map / battle / reward feedback、Farm / Chest / ItemUse、Appearance dynamic title / slot / variant、TimeClock HUD、Lua recruit lazy 文本、本地化 source guard）
+- [x] 完成中英切换手动验收。（核心路径已由人工测试确认：标题页语言切换、PauseMenu、SaveSlot、Appearance、主要游戏内 UI；后续截图自动化属于独立视觉 QA 增强）
 
 ## 风险与处理
 

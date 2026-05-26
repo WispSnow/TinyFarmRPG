@@ -148,11 +148,11 @@ class BattleScene final : public engine::scene::Scene,
     bool victory_continue_focus_dirty_{false};
     bool victory_items_empty_{true};
     bool victory_level_ups_empty_{true};
-    Rml::String victory_title_{"Victory!"};
+    Rml::String victory_title_{"!battle.victory.title!"};
     Rml::String victory_gold_text_{"0"};
     Rml::String victory_exp_text_{"0"};
-    Rml::String victory_item_empty_text_{"No drops"};
-    Rml::String victory_prompt_text_{"Confirm"};
+    Rml::String victory_item_empty_text_{"!battle.victory.no_drops!"};
+    Rml::String victory_prompt_text_{"!common.confirm!"};
 
 public:
     /// @brief 构造战斗场景。

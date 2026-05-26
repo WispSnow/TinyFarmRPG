@@ -48,14 +48,15 @@ bool GameSceneUiController::init() {
         return false;
     }
 
-    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, scene_instance_id_);
+    auto* localization = game::runtime::findLocalizationService(registry_);
+    time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, scene_instance_id_, localization);
 
     hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(
         *rml_runtime,
         context_,
         scene_instance_id_,
         item_catalog_,
-        game::runtime::findLocalizationService(registry_));
+        localization);
     if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
         spdlog::error("GameSceneUiController: 创建 HotbarUI 失败。");
         clean();
@@ -132,6 +133,9 @@ void GameSceneUiController::clean() {
 }
 
 void GameSceneUiController::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    if (time_clock_hud_) {
+        time_clock_hud_->onLanguageChanged(registry_.ctx().find<game::data::GameTime>());
+    }
     if (hotbar_ui_) {
         hotbar_ui_->onLanguageChanged();
     }

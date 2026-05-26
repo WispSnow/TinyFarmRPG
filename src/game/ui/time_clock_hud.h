@@ -14,6 +14,10 @@ namespace game::data {
 struct GameTime;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 /**
@@ -26,7 +30,8 @@ class TimeClockHud final {
 public:
     /// @param owner_scene_id 场景实例 ID，用于 RmlUiRuntime 文档归属管理
     TimeClockHud(engine::ui::rmlui::RmlUiRuntime& runtime,
-                 uint64_t owner_scene_id);
+                 uint64_t owner_scene_id,
+                 const game::runtime::LocalizationService* localization);
     ~TimeClockHud();
 
     TimeClockHud(const TimeClockHud&) = delete;
@@ -34,12 +39,14 @@ public:
 
     /// 每帧从 GameTime 刷新 data model
     void update(const game::data::GameTime* game_time);
+    void onLanguageChanged(const game::data::GameTime* game_time);
 
 private:
     engine::ui::rmlui::RmlDocumentController document_controller_{};
+    const game::runtime::LocalizationService* localization_{nullptr};
 
     // 绑定数据
-    Rml::String day_text_{"Day --"};
+    Rml::String day_text_{"!hud.day!"};
     Rml::String time_text_{"??:??"};
     Rml::String hand_decorator_{"image(clock-hand-0)"};
 
@@ -50,6 +57,7 @@ private:
 
     [[nodiscard]] static int pickHandIndex(float hour, float minute);
     [[nodiscard]] static std::string formatHandDecorator(int index);
+    [[nodiscard]] std::string formatDayText(std::string_view day) const;
 };
 
 } // namespace game::ui

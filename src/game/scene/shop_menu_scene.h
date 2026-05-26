@@ -75,8 +75,8 @@ private:
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
-    Rml::String shop_title_{"Shop"};
-    Rml::String shop_greeting_{"Welcome."};
+    Rml::String shop_title_{"!shop.title.default!"};
+    Rml::String shop_greeting_{"!shop.greeting.default!"};
     ShopMenuMode current_mode_{ShopMenuMode::Buy};
     game::ui::ShopMenuCategory current_category_{game::ui::ShopMenuCategory::Consumable};
     game::ui::ShopMenuFocusArea current_focus_area_{game::ui::ShopMenuFocusArea::EntryList};
@@ -101,17 +101,17 @@ private:
     int requested_sell_quantity_{1};
     game::domain::ShopSellPreview active_sell_preview_{};
     std::optional<StatusOverride> status_override_{};
-    Rml::String gold_label_{"Gold: 0"};
-    Rml::String status_text_{"Confirm to buy. Left / Right changes quantity."};
-    Rml::String list_title_text_{"Buy"};
-    Rml::String empty_text_{"This shop has no goods available."};
-    Rml::String detail_name_{"No goods available"};
+    Rml::String gold_label_{"!shop.gold_value!"};
+    Rml::String status_text_{"!shop.status.focus.quantity_buy!"};
+    Rml::String list_title_text_{"!shop.mode.buy!"};
+    Rml::String empty_text_{"!shop.empty.buy_consumable!"};
+    Rml::String detail_name_{"!shop.empty.buy_consumable!"};
     Rml::String detail_description_{};
     Rml::String detail_price_text_{"-"};
     Rml::String detail_total_text_{"-"};
     Rml::String detail_after_gold_text_{"-"};
     Rml::String detail_quantity_text_{"x0"};
-    Rml::String detail_owned_label_{"Owned"};
+    Rml::String detail_owned_label_{"!shop.detail.owned!"};
     Rml::String detail_owned_text_{"0"};
     bool has_buy_entries_{false};
     bool has_sell_entries_{false};
@@ -122,7 +122,7 @@ private:
     bool primary_action_enabled_{false};
     bool quantity_decrease_enabled_{false};
     bool quantity_increase_enabled_{false};
-    Rml::String primary_action_text_{"Buy"};
+    Rml::String primary_action_text_{"!shop.mode.buy!"};
 
 public:
     ShopMenuScene(std::string_view name,

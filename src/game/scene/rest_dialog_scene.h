@@ -53,9 +53,9 @@ private:
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
 
-    Rml::String hours_text_{"24h"};
-    Rml::String recovery_summary_text_{"Full recovery"};
-    Rml::String recovery_empty_text_{"No active party members."};
+    Rml::String hours_text_{"!rest.hours!"};
+    Rml::String recovery_summary_text_{"!rest.summary.full!"};
+    Rml::String recovery_empty_text_{"!rest.empty.no_party!"};
     bool has_recovery_members_{false};
     std::vector<RestRecoveryMemberViewModel> recovery_members_{};
     std::vector<game::domain::RestRecoveryPreview> recovery_previews_{};

@@ -65,7 +65,7 @@ private:
 
     std::vector<SlotViewModel> slots_{};          ///< 与 RmlUi data model 绑定的槽列表。
     bool confirm_visible_{false};                 ///< 控制覆盖确认对话框的显示/隐藏。
-    Rml::String confirm_text_{"Overwrite?"};      ///< 确认对话框文本，含具体槽编号。
+    Rml::String confirm_text_{"!save_slot.confirm.overwrite!"}; ///< 确认对话框文本，含具体槽编号。
     bool data_types_registered_{false};
 
 public:
