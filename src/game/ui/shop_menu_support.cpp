@@ -2,6 +2,7 @@
 
 #include "game/data/item_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/rml_item_icon_helpers.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
@@ -11,6 +12,34 @@
 #include <string>
 
 namespace game::ui {
+
+namespace {
+
+[[nodiscard]] std::string formatShopGoldValue(const game::runtime::LocalizationService* localization, const int gold) {
+    return game::ui::formatTextOrFallback(
+        localization,
+        "shop.gold_value",
+        {{"amount", std::to_string(gold)}},
+        [gold] { return std::to_string(gold) + " G"; });
+}
+
+[[nodiscard]] std::string formatShopOwnedCount(const game::runtime::LocalizationService* localization, const int count) {
+    return game::ui::formatTextOrFallback(
+        localization,
+        "shop.detail.owned_count",
+        {{"count", std::to_string(std::max(0, count))}},
+        [count] { return "Owned: " + std::to_string(std::max(0, count)); });
+}
+
+[[nodiscard]] std::string formatShopQuantity(const game::runtime::LocalizationService* localization, const int quantity) {
+    return game::ui::formatTextOrFallback(
+        localization,
+        "shop.quantity",
+        {{"quantity", std::to_string(std::max(0, quantity))}},
+        [quantity] { return "x" + std::to_string(std::max(0, quantity)); });
+}
+
+} // namespace
 
 ShopMenuFocusArea resolvePreferredShopMenuFocus(const bool has_current_entries) {
     return has_current_entries ? ShopMenuFocusArea::EntryList : ShopMenuFocusArea::CategoryTabs;
@@ -212,20 +241,21 @@ void populateShopBuyEntryViewModel(ShopBuyEntryViewModel& view_model,
                                    const int index,
                                    const game::data::ShopBuyEntryData& buy_entry,
                                    const game::data::ItemCatalog* item_catalog,
+                                   const game::runtime::LocalizationService* localization,
                                    const int owned_count,
                                    const bool is_selected,
                                    const bool is_disabled) {
     view_model.index = index;
     view_model.item_id_hash = buy_entry.item_id_hash_;
     view_model.icon_decorator = buildItemIconDecorator(item_catalog, buy_entry.item_id_hash_);
-    view_model.price_text = std::to_string(buy_entry.buy_price_) + " G";
-    view_model.owned_text = "Owned: " + std::to_string(std::max(0, owned_count));
+    view_model.price_text = formatShopGoldValue(localization, buy_entry.buy_price_);
+    view_model.owned_text = formatShopOwnedCount(localization, owned_count);
     view_model.is_selected = is_selected;
     view_model.is_disabled = is_disabled;
 
     if (const auto* item = item_catalog ? item_catalog->findItem(buy_entry.item_id_hash_) : nullptr;
         item != nullptr && !item->display_name_.empty()) {
-        view_model.item_name = item->display_name_;
+        view_model.item_name = tryLocalize(localization, item->display_name_);
     } else {
         view_model.item_name = buy_entry.item_id_;
     }
@@ -237,22 +267,25 @@ void populateShopSellEntryViewModel(ShopSellEntryViewModel& view_model,
                                     const game::component::ItemStack& stack,
                                     const game::data::ShopSellRuleData* sell_rule,
                                     const game::data::ItemCatalog* item_catalog,
+                                    const game::runtime::LocalizationService* localization,
                                     const bool is_selected) {
     view_model.index = index;
     view_model.slot_index = slot_index;
     view_model.item_id_hash = stack.item_id_;
     view_model.icon_decorator = buildItemIconDecorator(item_catalog, stack.item_id_);
-    view_model.count_text = "x" + std::to_string(std::max(0, stack.count_));
+    view_model.count_text = formatShopQuantity(localization, stack.count_);
     view_model.is_selected = is_selected;
     view_model.is_disabled = sell_rule == nullptr;
-    view_model.price_text = sell_rule ? std::to_string(sell_rule->sell_price_) + " G" : "--";
+    view_model.price_text = sell_rule ? formatShopGoldValue(localization, sell_rule->sell_price_) : "--";
 
     if (const auto* item = item_catalog ? item_catalog->findItem(stack.item_id_) : nullptr; item != nullptr) {
-        view_model.item_name = item->display_name_.empty() ? item->id_str_ : item->display_name_;
+        view_model.item_name = item->display_name_.empty()
+            ? item->id_str_
+            : tryLocalize(localization, item->display_name_);
         return;
     }
 
-    view_model.item_name = "Unknown item";
+    view_model.item_name = localizeTextOrFallback(localization, "shop.item.unknown", "Unknown item");
 }
 
 } // namespace game::ui

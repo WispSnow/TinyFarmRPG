@@ -17,6 +17,14 @@ namespace game::data {
 struct ActorData;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 class RecruitOfferScene final : public engine::scene::Scene {
@@ -24,6 +32,7 @@ class RecruitOfferScene final : public engine::scene::Scene {
     entt::entity player_{entt::null};
     entt::entity recruiter_{entt::null};
     const game::data::ActorData& actor_;
+    const game::runtime::LocalizationService* localization_{nullptr};
 
     engine::core::State previous_state_{};
     bool context_pushed_{false};
@@ -58,6 +67,7 @@ private:
     void refreshBindings();
     void focusDefaultAction();
     bool onMenuCancelPressed();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void onAccept();
     void onDecline();
 };

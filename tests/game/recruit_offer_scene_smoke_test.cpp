@@ -44,6 +44,7 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(header.find("class RecruitOfferScene final"), std::string::npos);
     EXPECT_NE(header.find("RmlDocumentController document_controller_"), std::string::npos);
     EXPECT_NE(header.find("const game::data::ActorData& actor_"), std::string::npos);
+    EXPECT_NE(header.find("const game::runtime::LocalizationService* localization_"), std::string::npos);
     EXPECT_NE(header.find("void onAccept()"), std::string::npos);
     EXPECT_NE(header.find("void onDecline()"), std::string::npos);
     EXPECT_NE(header.find("SceneUiCoverage uiCoverage() const override"), std::string::npos);
@@ -65,6 +66,11 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(init_ui_block.find("\"accept\""), std::string::npos);
     EXPECT_NE(init_ui_block.find("\"decline\""), std::string::npos);
     EXPECT_NE(source.find("\"menu_cancel\"_hs"), std::string::npos);
+    EXPECT_NE(source.find("LanguageChangedEvent"), std::string::npos);
+    EXPECT_NE(source.find("void RecruitOfferScene::onLanguageChanged"), std::string::npos);
+    EXPECT_NE(source.find("recruit_offer.prompt"), std::string::npos);
+    EXPECT_NE(source.find("document_controller_.markDirty(\"offer_text\")"), std::string::npos);
+    EXPECT_NE(source.find("document_controller_.markDirty(\"actor_name\")"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("RecruitOfferScene::uiCoverage()"), std::string::npos);
     EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi"), std::string::npos);

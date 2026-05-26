@@ -27,6 +27,14 @@ struct ShopBuyEntryData;
 struct ShopData;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 class ShopMenuScene final : public engine::scene::Scene {
@@ -37,12 +45,28 @@ public:
     };
 
 private:
+    enum class StatusOverrideKind {
+        NoItemSelected,
+        Failure,
+        Success
+    };
+
+    struct StatusOverride {
+        StatusOverrideKind kind{StatusOverrideKind::NoItemSelected};
+        ShopMenuMode mode{ShopMenuMode::Buy};
+        game::domain::ShopTradeFailureReason failure_reason{game::domain::ShopTradeFailureReason::None};
+        std::string item_name_key{};
+        std::string item_name_fallback{};
+        int quantity{1};
+    };
+
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     std::string shop_id_{};
     const game::data::ShopCatalog* shop_catalog_{nullptr};
     game::data::ItemCatalog* item_catalog_{nullptr};
     game::domain::ShopTransactionService* shop_transaction_service_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
     const game::data::ShopData* shop_data_{nullptr};
     engine::core::State previous_state_{};
     bool context_pushed_{false};
@@ -76,7 +100,7 @@ private:
     int selected_sell_index_{0};
     int requested_sell_quantity_{1};
     game::domain::ShopSellPreview active_sell_preview_{};
-    std::optional<std::string> status_override_{};
+    std::optional<StatusOverride> status_override_{};
     Rml::String gold_label_{"Gold: 0"};
     Rml::String status_text_{"Confirm to buy. Left / Right changes quantity."};
     Rml::String list_title_text_{"Buy"};
@@ -120,6 +144,7 @@ private:
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();
+    void syncShopHeaderBindings();
     void syncGoldLabel();
     void syncModeBindings();
     void syncCategoryBindings();
@@ -135,6 +160,11 @@ private:
     void refreshStatusText();
     void refreshAll();
     void clearStatusOverride();
+    [[nodiscard]] std::string formatStatusOverride(const StatusOverride& status) const;
+    [[nodiscard]] std::string localizeCatalogText(std::string_view key_or_text, std::string_view fallback) const;
+    [[nodiscard]] std::string itemNameKey(const game::data::ItemData& item) const;
+    [[nodiscard]] std::string itemNameFallback(const game::data::ItemData& item, std::string_view fallback_id) const;
+    [[nodiscard]] std::string localizedItemName(const game::data::ItemData& item, std::string_view fallback_id) const;
     [[nodiscard]] const game::data::ShopBuyEntryData* currentBuyEntry() const;
     [[nodiscard]] const game::data::ItemData* currentBuyItemData() const;
     [[nodiscard]] const game::ui::ShopSellEntryViewModel* currentSellEntry() const;
@@ -164,6 +194,7 @@ private:
     [[nodiscard]] bool onMenuRightPressed();
     [[nodiscard]] bool onMenuConfirmPressed();
     [[nodiscard]] bool onMenuCancelPressed();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void onClose();
 };
 

@@ -9,6 +9,7 @@
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/runtime/localization_service.h"
 #include "game/scene/shop_menu_transaction_presenter.h"
 #include "game/scene/shop_trade_list_builder.h"
 #include "game/ui/shop_menu_support.h"
@@ -71,7 +72,7 @@ TEST(ShopMenuSupportTest, PopulateShopBuyEntryViewModelFormatsDisplayFields) {
     buy_entry.buy_price_ = 30;
 
     game::ui::ShopBuyEntryViewModel view_model{};
-    game::ui::populateShopBuyEntryViewModel(view_model, 2, buy_entry, &item_catalog, 7, true, false);
+    game::ui::populateShopBuyEntryViewModel(view_model, 2, buy_entry, &item_catalog, nullptr, 7, true, false);
 
     EXPECT_EQ(view_model.index, 2);
     EXPECT_EQ(view_model.item_id_hash, entt::hashed_string{"potion"}.value());
@@ -103,6 +104,7 @@ TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStab
         &shop_data,
         &item_catalog,
         &inventory,
+        nullptr,
         game::ui::ShopMenuCategory::Consumable,
         5,
         "shop.test");
@@ -116,6 +118,7 @@ TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStab
         &shop_data,
         &item_catalog,
         nullptr,
+        nullptr,
         game::ui::ShopMenuCategory::Equipment,
         -3,
         "shop.test");
@@ -125,14 +128,36 @@ TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStab
 }
 
 TEST(ShopMenuSupportTest, TransactionPresenterFormatsCommonOutcomes) {
-    EXPECT_EQ(ShopMenuTransactionPresenter::formatGoldLabel(42), "Gold: 42");
-    EXPECT_EQ(ShopMenuTransactionPresenter::formatQuantityText(3), "x3");
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatGoldLabel(nullptr, 42), "Gold: 42");
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatQuantityText(nullptr, 3), "x3");
     EXPECT_EQ(
         ShopMenuTransactionPresenter::formatFailureText(
             ShopTradeMode::Buy,
-            game::domain::ShopTradeFailureReason::InsufficientGold),
+            game::domain::ShopTradeFailureReason::InsufficientGold,
+            nullptr),
         "Not enough gold.");
-    EXPECT_EQ(ShopMenuTransactionPresenter::formatSuccessText(ShopTradeMode::Sell, "Potion", 2), "Sold Potion x2.");
+    EXPECT_EQ(
+        ShopMenuTransactionPresenter::formatSuccessText(ShopTradeMode::Sell, "Potion", 2, nullptr),
+        "Sold Potion x2.");
+}
+
+TEST(ShopMenuSupportTest, TransactionPresenterFormatsLocalizedOutcomes) {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    ASSERT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    EXPECT_EQ(ShopMenuTransactionPresenter::formatGoldLabel(&localization, 42), "金币：42");
+    EXPECT_EQ(
+        ShopMenuTransactionPresenter::formatFailureText(
+            ShopTradeMode::Buy,
+            game::domain::ShopTradeFailureReason::InsufficientGold,
+            &localization),
+        "金币不足。");
+    EXPECT_EQ(
+        ShopMenuTransactionPresenter::formatSuccessText(ShopTradeMode::Sell, "Potion", 2, &localization),
+        "已出售 Potion x2。");
 }
 
 TEST(ShopMenuBuyFlowSourceTest, ShopMenuSceneWiresPreviewCommitAndStatusRefresh) {

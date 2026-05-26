@@ -39,6 +39,7 @@ TEST(QuestOfferSceneSmokeTest, QuestOfferSceneOwnsConfirmationUiAndAcceptCommand
     EXPECT_NE(header.find("class QuestOfferScene final"), std::string::npos);
     EXPECT_NE(header.find("RmlDocumentController document_controller_"), std::string::npos);
     EXPECT_NE(header.find("const game::data::QuestData& quest_"), std::string::npos);
+    EXPECT_NE(header.find("const game::runtime::LocalizationService* localization_"), std::string::npos);
     EXPECT_NE(header.find("void onAccept()"), std::string::npos);
     EXPECT_NE(header.find("void onDecline()"), std::string::npos);
     EXPECT_NE(header.find("SceneUiCoverage uiCoverage() const override"), std::string::npos);
@@ -59,6 +60,11 @@ TEST(QuestOfferSceneSmokeTest, QuestOfferSceneOwnsConfirmationUiAndAcceptCommand
     EXPECT_NE(init_ui_block.find("\"decline\""), std::string::npos);
     EXPECT_NE(init_ui_block.find("document_controller_.load(DOCUMENT_PATH)"), std::string::npos);
     EXPECT_NE(source.find("\"menu_cancel\"_hs"), std::string::npos);
+    EXPECT_NE(source.find("LanguageChangedEvent"), std::string::npos);
+    EXPECT_NE(source.find("void QuestOfferScene::onLanguageChanged"), std::string::npos);
+    EXPECT_NE(source.find("document_controller_.markDirty(\"quest_title\")"), std::string::npos);
+    EXPECT_NE(source.find("document_controller_.markDirty(\"rewards_text\")"), std::string::npos);
+    EXPECT_NE(source.find("quest_offer.objective.defeat_enemy_count"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("QuestOfferScene::uiCoverage()"), std::string::npos);
     EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi"), std::string::npos);

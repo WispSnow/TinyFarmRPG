@@ -10,36 +10,13 @@ namespace game::ui {
 
 using LocalizedFormatArgs = std::unordered_map<std::string, std::string>;
 
-/// @brief Resolve a catalog text key at the presentation boundary.
-[[nodiscard]] inline std::string localizeKeyOrFallback(const game::runtime::LocalizationService* localization,
-                                                       std::string_view key,
-                                                       std::string_view fallback_id = {}) {
-    if (key.empty()) {
-        return std::string{fallback_id};
+/// @brief Resolve a text key when a data source is being migrated from raw text to keys.
+[[nodiscard]] inline std::string tryLocalize(const game::runtime::LocalizationService* localization,
+                                             std::string_view key_or_text) {
+    if (localization && !key_or_text.empty() && localization->hasText(key_or_text)) {
+        return localization->tr(key_or_text);
     }
-    if (!localization) {
-        return std::string{key};
-    }
-
-    const bool has_text = localization->hasText(key);
-    const std::string text = localization->tr(key);
-    if (!has_text && !fallback_id.empty()) {
-        return std::string{fallback_id};
-    }
-    return text;
-}
-
-/// @brief Resolve a required UI text key. Missing keys intentionally surface as `!key!`.
-[[nodiscard]] inline std::string localizeRequiredText(const game::runtime::LocalizationService* localization,
-                                                      std::string_view key) {
-    return localization ? localization->tr(key) : std::string{"!"} + std::string{key} + "!";
-}
-
-/// @brief Resolve a required formatted UI text key. Missing keys intentionally surface as `!key!`.
-[[nodiscard]] inline std::string formatRequiredText(const game::runtime::LocalizationService* localization,
-                                                    std::string_view key,
-                                                    const LocalizedFormatArgs& args) {
-    return localization ? localization->format(key, args) : std::string{"!"} + std::string{key} + "!";
+    return std::string{key_or_text};
 }
 
 /// @brief Resolve optional UI text for legacy paths that still lack a LocalizationService pointer.

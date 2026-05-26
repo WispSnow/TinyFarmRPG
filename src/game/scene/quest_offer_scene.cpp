@@ -3,6 +3,9 @@
 #include "game/data/item_catalog.h"
 #include "game/data/quest_data.h"
 #include "game/defs/commands.h"
+#include "game/defs/options_events.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 #include "engine/core/context.h"
@@ -38,32 +41,47 @@ void appendSeparated(std::string& text, const std::string_view part) {
     text.append(part);
 }
 
-[[nodiscard]] std::string findSpeakerName(entt::registry& registry, const entt::entity entity) {
+[[nodiscard]] std::string findSpeakerName(entt::registry& registry,
+                                          const entt::entity entity,
+                                          const game::runtime::LocalizationService* localization) {
     if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
         return name->name_;
     }
-    return "Quest";
+    return game::ui::localizeTextOrFallback(localization, "quest_offer.speaker.default", "Quest");
 }
 
-[[nodiscard]] std::string formatObjectivesText(const game::data::QuestData& quest) {
+[[nodiscard]] std::string formatObjectivesText(const game::data::QuestData& quest,
+                                               const game::runtime::LocalizationService* localization) {
     std::string text{};
     for (const auto& objective : quest.objectives_) {
         switch (objective.kind_) {
             case game::data::QuestObjectiveKind::DefeatEnemyCount:
-                appendSeparated(text, "Defeat " + objective.enemy_id_ + " x" + std::to_string(objective.required_count_));
+                appendSeparated(
+                    text,
+                    game::ui::formatTextOrFallback(
+                        localization,
+                        "quest_offer.objective.defeat_enemy_count",
+                        {{"enemy", objective.enemy_id_}, {"count", std::to_string(objective.required_count_)}},
+                        [&objective] {
+                            return "Defeat " + objective.enemy_id_ + " x" +
+                                   std::to_string(objective.required_count_);
+                        }));
                 break;
         }
     }
 
-    return text.empty() ? "No objectives." : text;
+    return text.empty()
+        ? game::ui::localizeTextOrFallback(localization, "quest_offer.objective.none", "No objectives.")
+        : text;
 }
 
 [[nodiscard]] std::string resolveRewardItemName(const game::data::ItemCatalog* item_catalog,
-                                                const game::data::QuestRewardItemData& item) {
+                                                const game::data::QuestRewardItemData& item,
+                                                const game::runtime::LocalizationService* localization) {
     if (item_catalog) {
         if (const auto* item_data = item_catalog->findItem(item.item_id_hash_)) {
             if (!item_data->display_name_.empty()) {
-                return item_data->display_name_;
+                return game::ui::tryLocalize(localization, item_data->display_name_);
             }
         }
     }
@@ -71,27 +89,45 @@ void appendSeparated(std::string& text, const std::string_view part) {
 }
 
 [[nodiscard]] std::string formatRewardsText(const game::data::QuestData& quest,
-                                            const game::data::ItemCatalog* item_catalog) {
+                                            const game::data::ItemCatalog* item_catalog,
+                                            const game::runtime::LocalizationService* localization) {
     std::string text{};
     if (quest.rewards_.gold_ > 0) {
-        appendSeparated(text, "Gold x" + std::to_string(quest.rewards_.gold_));
+        appendSeparated(
+            text,
+            game::ui::formatTextOrFallback(
+                localization,
+                "quest_offer.reward.gold",
+                {{"amount", std::to_string(quest.rewards_.gold_)}},
+                [&quest] { return "Gold x" + std::to_string(quest.rewards_.gold_); }));
     }
 
     for (const auto& item : quest.rewards_.items_) {
-        appendSeparated(text, resolveRewardItemName(item_catalog, item) + " x" + std::to_string(item.count_));
+        const std::string item_name = resolveRewardItemName(item_catalog, item, localization);
+        appendSeparated(
+            text,
+            game::ui::formatTextOrFallback(
+                localization,
+                "quest_offer.reward.item",
+                {{"item", item_name}, {"count", std::to_string(item.count_)}},
+                [&item, &item_name] { return item_name + " x" + std::to_string(item.count_); }));
     }
 
-    return text.empty() ? "No reward." : text;
+    return text.empty() ? game::ui::localizeTextOrFallback(localization, "quest_offer.reward.none", "No reward.") : text;
 }
 
-[[nodiscard]] std::string resolveOfferText(const game::data::QuestData& quest) {
+[[nodiscard]] std::string resolveOfferText(const game::data::QuestData& quest,
+                                           const game::runtime::LocalizationService* localization) {
     if (!quest.giver_text_.offer_.empty()) {
-        return quest.giver_text_.offer_;
+        return game::ui::tryLocalize(localization, quest.giver_text_.offer_);
     }
     if (!quest.description_.empty()) {
-        return quest.description_;
+        return game::ui::tryLocalize(localization, quest.description_);
     }
-    return "Will you accept this quest?";
+    return game::ui::localizeTextOrFallback(
+        localization,
+        "quest_offer.default_offer",
+        "Will you accept this quest?");
 }
 
 } // namespace
@@ -126,6 +162,7 @@ bool QuestOfferScene::init() {
     context_.getGameState().setState(engine::core::State::Paused);
     context_.getInputManager().pushContext(engine::input::InputContextId::Dialogue);
     context_pushed_ = true;
+    localization_ = game::runtime::findLocalizationService(registry_);
 
     refreshBindings();
     if (!initUI()) {
@@ -199,19 +236,22 @@ void QuestOfferScene::shutdownUI() {
 
 void QuestOfferScene::connectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&QuestOfferScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&QuestOfferScene::onLanguageChanged>(this);
 }
 
 void QuestOfferScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&QuestOfferScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&QuestOfferScene::onLanguageChanged>(this);
 }
 
 void QuestOfferScene::refreshBindings() {
-    speaker_text_ = makeRmlString(findSpeakerName(registry_, giver_));
-    offer_text_ = makeRmlString(resolveOfferText(quest_));
-    quest_title_ = makeRmlString(quest_.title_.empty() ? quest_.id_ : quest_.title_);
-    quest_description_ = makeRmlString(quest_.description_);
-    objectives_text_ = makeRmlString(formatObjectivesText(quest_));
-    rewards_text_ = makeRmlString(formatRewardsText(quest_, item_catalog_));
+    speaker_text_ = makeRmlString(findSpeakerName(registry_, giver_, localization_));
+    offer_text_ = makeRmlString(resolveOfferText(quest_, localization_));
+    quest_title_ = makeRmlString(
+        quest_.title_.empty() ? quest_.id_ : game::ui::tryLocalize(localization_, quest_.title_));
+    quest_description_ = makeRmlString(game::ui::tryLocalize(localization_, quest_.description_));
+    objectives_text_ = makeRmlString(formatObjectivesText(quest_, localization_));
+    rewards_text_ = makeRmlString(formatRewardsText(quest_, item_catalog_, localization_));
 }
 
 void QuestOfferScene::focusDefaultAction() {
@@ -229,6 +269,16 @@ void QuestOfferScene::focusDefaultAction() {
 bool QuestOfferScene::onMenuCancelPressed() {
     onDecline();
     return true;
+}
+
+void QuestOfferScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    refreshBindings();
+    document_controller_.markDirty("speaker_text");
+    document_controller_.markDirty("offer_text");
+    document_controller_.markDirty("quest_title");
+    document_controller_.markDirty("quest_description");
+    document_controller_.markDirty("objectives_text");
+    document_controller_.markDirty("rewards_text");
 }
 
 void QuestOfferScene::onAccept() {

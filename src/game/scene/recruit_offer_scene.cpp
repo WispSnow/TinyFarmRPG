@@ -2,7 +2,10 @@
 
 #include "game/data/rpg_data.h"
 #include "game/defs/commands.h"
+#include "game/defs/options_events.h"
 #include "game/defs/party_ids.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 #include "engine/core/context.h"
@@ -27,15 +30,21 @@ constexpr std::string_view MODEL_NAME = "recruit_offer";
     return Rml::String{value.data(), value.size()};
 }
 
-[[nodiscard]] std::string findSpeakerName(entt::registry& registry, const entt::entity entity) {
+[[nodiscard]] std::string findSpeakerName(entt::registry& registry,
+                                          const entt::entity entity,
+                                          const game::runtime::LocalizationService* localization) {
     if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
         return name->name_;
     }
-    return "Recruit";
+    return game::ui::localizeTextOrFallback(localization, "recruit_offer.speaker.default", "Recruit");
 }
 
-[[nodiscard]] std::string displayName(const game::data::ActorData& actor) {
-    return actor.display_name_.empty() ? actor.id_ : actor.display_name_;
+[[nodiscard]] std::string displayName(const game::data::ActorData& actor,
+                                      const game::runtime::LocalizationService* localization) {
+    if (actor.display_name_.empty()) {
+        return actor.id_;
+    }
+    return game::ui::tryLocalize(localization, actor.display_name_);
 }
 
 } // namespace
@@ -68,6 +77,7 @@ bool RecruitOfferScene::init() {
     context_.getGameState().setState(engine::core::State::Paused);
     context_.getInputManager().pushContext(engine::input::InputContextId::Dialogue);
     context_pushed_ = true;
+    localization_ = game::runtime::findLocalizationService(registry_);
 
     refreshBindings();
     if (!initUI()) {
@@ -137,17 +147,23 @@ void RecruitOfferScene::shutdownUI() {
 
 void RecruitOfferScene::connectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&RecruitOfferScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&RecruitOfferScene::onLanguageChanged>(this);
 }
 
 void RecruitOfferScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&RecruitOfferScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&RecruitOfferScene::onLanguageChanged>(this);
 }
 
 void RecruitOfferScene::refreshBindings() {
-    const std::string name = displayName(actor_);
-    speaker_text_ = makeRmlString(findSpeakerName(registry_, recruiter_));
+    const std::string name = displayName(actor_, localization_);
+    speaker_text_ = makeRmlString(findSpeakerName(registry_, recruiter_, localization_));
     actor_name_ = makeRmlString(name);
-    offer_text_ = makeRmlString("Invite " + name + " to join the party?");
+    offer_text_ = makeRmlString(game::ui::formatTextOrFallback(
+        localization_,
+        "recruit_offer.prompt",
+        {{"actor", name}},
+        [&name] { return "Invite " + name + " to join the party?"; }));
 
     portrait_player_ = actor_.id_ == game::defs::kDefaultPlayerActorId;
     portrait_lyria_ = actor_.id_ == "actor.lyria";
@@ -168,6 +184,13 @@ void RecruitOfferScene::focusDefaultAction() {
 bool RecruitOfferScene::onMenuCancelPressed() {
     onDecline();
     return true;
+}
+
+void RecruitOfferScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    refreshBindings();
+    document_controller_.markDirty("speaker_text");
+    document_controller_.markDirty("offer_text");
+    document_controller_.markDirty("actor_name");
 }
 
 void RecruitOfferScene::onAccept() {

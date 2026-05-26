@@ -19,6 +19,14 @@ class ItemCatalog;
 struct QuestData;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 class QuestOfferScene final : public engine::scene::Scene {
@@ -28,6 +36,7 @@ private:
     entt::entity giver_{entt::null};
     const game::data::QuestData& quest_;
     const game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
 
     engine::core::State previous_state_{};
     bool context_pushed_{false};
@@ -63,6 +72,7 @@ private:
     void refreshBindings();
     void focusDefaultAction();
     bool onMenuCancelPressed();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void onAccept();
     void onDecline();
 };
