@@ -496,7 +496,7 @@
     margin-top: 44dp;
     text-align: center;
     color: #a9b1d6;
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
 }
 
 #equipment-detail {
@@ -504,7 +504,7 @@
     left: 0;
     top: 172dp;
     width: 218dp;
-    height: 24dp;
+    height: 28dp;
     border-width: 1dp 0 0 0;
     border-color: #d9a88a44;
     padding-top: 3dp;
@@ -515,19 +515,19 @@
     flex-direction: row;
     justify-content: space-between;
     width: 218dp;
-    height: 9dp;
+    height: 11dp;
 }
 
 #equipment-detail-title {
     width: 126dp;
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
     color: #ffffff;
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
 #equipment-detail-category {
     width: 80dp;
-    font-size: 0.5rem;
+    font-size: 0.5625rem;
     color: #6f78a8;
     text-align: right;
 }
@@ -535,7 +535,8 @@
 #equipment-detail-description {
     margin-top: 1dp;
     width: 218dp;
-    font-size: 0.5rem;
+    font-size: 0.625rem;
+    line-height: 10dp;
     color: #5c6aa0;
 }
 
@@ -739,7 +740,7 @@
     left: 0;
     top: 150dp;
     width: 218dp;
-    height: 32dp;
+    height: 34dp;
 }
 
 #map-detail-header {
@@ -753,7 +754,7 @@
 
 #map-detail-title {
     width: 140dp;
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
     color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
@@ -763,7 +764,7 @@
 
 #map-detail-type {
     width: 74dp;
-    font-size: 0.5rem;
+    font-size: 0.5625rem;
     color: #e0af68;
     text-align: right;
     white-space: nowrap;
@@ -773,10 +774,10 @@
 
 #map-detail-description {
     width: 218dp;
-    height: 18dp;
+    height: 20dp;
     margin-top: 1dp;
-    font-size: 0.5rem;
-    line-height: 9dp;
+    font-size: 0.625rem;
+    line-height: 10dp;
     color: #7888bd;
     white-space: normal;
     word-break: normal;
@@ -788,7 +789,7 @@
     top: 151dp;
     width: 218dp;
     height: 14dp;
-    font-size: 0.5625rem;
+    font-size: 0.625rem;
     color: #7888bd;
     text-align: center;
 }
