@@ -25,6 +25,7 @@ namespace game::scene {
 ShopBuyListSnapshot ShopTradeListBuilder::buildBuyList(const game::data::ShopData* shop_data,
                                                        const game::data::ItemCatalog* item_catalog,
                                                        const game::component::InventoryComponent* inventory,
+                                                       const game::runtime::LocalizationService* localization,
                                                        const game::ui::ShopMenuCategory category,
                                                        const int selected_index,
                                                        const std::string_view shop_id) {
@@ -55,6 +56,7 @@ ShopBuyListSnapshot ShopTradeListBuilder::buildBuyList(const game::data::ShopDat
             static_cast<int>(snapshot.entries.size()),
             buy_entry,
             item_catalog,
+            localization,
             owned_count,
             false,
             false);
@@ -72,6 +74,7 @@ ShopBuyListSnapshot ShopTradeListBuilder::buildBuyList(const game::data::ShopDat
 ShopSellListSnapshot ShopTradeListBuilder::buildSellList(const game::component::InventoryComponent* inventory,
                                                          const game::data::ItemCatalog* item_catalog,
                                                          const game::data::ShopCatalog* shop_catalog,
+                                                         const game::runtime::LocalizationService* localization,
                                                          const game::ui::ShopMenuCategory category,
                                                          const int selected_index) {
     ShopSellListSnapshot snapshot{};
@@ -100,6 +103,7 @@ ShopSellListSnapshot ShopTradeListBuilder::buildSellList(const game::component::
             stack,
             shop_catalog->findSellRule(stack.item_id_),
             item_catalog,
+            localization,
             false);
         snapshot.entries.push_back(std::move(view_model));
     }

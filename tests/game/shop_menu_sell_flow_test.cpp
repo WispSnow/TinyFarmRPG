@@ -54,7 +54,7 @@ TEST(ShopMenuSellSupportTest, PopulateShopSellEntryViewModelFormatsFieldsAndDisa
     sell_rule.sell_price_ = 15;
 
     game::ui::ShopSellEntryViewModel enabled{};
-    game::ui::populateShopSellEntryViewModel(enabled, 1, 5, stack, &sell_rule, &item_catalog, true);
+    game::ui::populateShopSellEntryViewModel(enabled, 1, 5, stack, &sell_rule, &item_catalog, nullptr, true);
     EXPECT_EQ(enabled.index, 1);
     EXPECT_EQ(enabled.slot_index, 5);
     EXPECT_EQ(enabled.item_id_hash, entt::hashed_string{"potion"}.value());
@@ -65,7 +65,7 @@ TEST(ShopMenuSellSupportTest, PopulateShopSellEntryViewModelFormatsFieldsAndDisa
     EXPECT_FALSE(enabled.is_disabled);
 
     game::ui::ShopSellEntryViewModel disabled{};
-    game::ui::populateShopSellEntryViewModel(disabled, 0, 2, stack, nullptr, &item_catalog, false);
+    game::ui::populateShopSellEntryViewModel(disabled, 0, 2, stack, nullptr, &item_catalog, nullptr, false);
     EXPECT_EQ(disabled.slot_index, 2);
     EXPECT_EQ(disabled.price_text, "--");
     EXPECT_FALSE(disabled.is_selected);
@@ -122,7 +122,7 @@ TEST(ShopMenuSellFlowSourceTest, ShopMenuSceneWiresSellPreviewModeSwitchAndExact
     EXPECT_NE(source.find("\"has_consumable_entries\""), std::string::npos);
     EXPECT_NE(source.find("current_mode_ == ShopMenuMode::Buy ? confirmBuy() : confirmSell()"), std::string::npos);
     EXPECT_NE(presenter_source.find("formatFailureText"), std::string::npos);
-    EXPECT_NE(source.find("ShopTransactionPresenter::defaultEmptyText(toTradeMode(current_mode_), current_category_)"),
+    EXPECT_NE(source.find("ShopTransactionPresenter::defaultEmptyText(localization_, toTradeMode(current_mode_), current_category_)"),
               std::string::npos);
     EXPECT_NE(source.find("detail_owned_label_"), std::string::npos);
     EXPECT_NE(source.find("primary_action_text_"), std::string::npos);

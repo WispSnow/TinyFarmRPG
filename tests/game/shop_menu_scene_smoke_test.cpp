@@ -40,6 +40,7 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(header.find("RmlDocumentController document_controller_"), std::string::npos);
     EXPECT_NE(header.find("std::string shop_id_"), std::string::npos);
     EXPECT_NE(header.find("ShopTransactionService* shop_transaction_service_"), std::string::npos);
+    EXPECT_NE(header.find("const game::runtime::LocalizationService* localization_"), std::string::npos);
     EXPECT_NE(header.find("std::vector<game::ui::ShopBuyEntryViewModel> buy_entries_"), std::string::npos);
     EXPECT_NE(header.find("std::vector<game::ui::ShopSellEntryViewModel> sell_entries_"), std::string::npos);
     EXPECT_NE(header.find("ShopBuyPreview active_buy_preview_"), std::string::npos);
@@ -87,6 +88,7 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(connect_block.find("\"menu_right\"_hs"), std::string::npos);
     EXPECT_NE(connect_block.find("\"menu_confirm\"_hs"), std::string::npos);
     EXPECT_NE(connect_block.find("\"menu_cancel\"_hs"), std::string::npos);
+    EXPECT_NE(connect_block.find("LanguageChangedEvent"), std::string::npos);
     EXPECT_NE(buy_preview_block.find("shop_transaction_service_->previewBuy"), std::string::npos);
     EXPECT_NE(sell_preview_block.find("shop_transaction_service_->previewSell"), std::string::npos);
     EXPECT_NE(source.find("shop_transaction_service_->commitBuy"), std::string::npos);
@@ -102,6 +104,8 @@ TEST(ShopMenuSceneSmokeTest, ShopMenuSceneOwnsMinimalSceneAndDocumentController)
     EXPECT_NE(status_block.find("\"status_text\""), std::string::npos);
     EXPECT_NE(status_block.find("active_sell_preview_"), std::string::npos);
     EXPECT_NE(status_block.find("formatFocusStatus"), std::string::npos);
+    EXPECT_NE(source.find("void ShopMenuScene::onLanguageChanged"), std::string::npos);
+    EXPECT_NE(source.find("markTradeListsDirty();"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getInputManager().popContext();"), std::string::npos);
     EXPECT_NE(clean_block.find("context_.getGameState().setState(previous_state_);"), std::string::npos);
 

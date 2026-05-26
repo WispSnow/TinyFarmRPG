@@ -16,21 +16,21 @@ namespace {
 
 } // namespace
 
-TEST(LocalizedTextTest, ResolvesCatalogKeyThroughLocalizationService) {
+TEST(LocalizedTextTest, TryLocalizeResolvesKnownKeyThroughLocalizationService) {
     game::runtime::LocalizationService localization;
     ASSERT_TRUE(localization.loadLanguageIndex(manifestPath()));
     ASSERT_TRUE(localization.setLanguage("zh-Hans"));
 
-    EXPECT_EQ(game::ui::localizeKeyOrFallback(&localization, "options.language", "options"), "语言");
+    EXPECT_EQ(game::ui::tryLocalize(&localization, "options.language"), "语言");
 }
 
-TEST(LocalizedTextTest, MissingKeyCanFallBackToStableId) {
+TEST(LocalizedTextTest, TryLocalizeKeepsUnknownText) {
     game::runtime::LocalizationService localization;
     ASSERT_TRUE(localization.loadLanguageIndex(manifestPath()));
 
-    EXPECT_EQ(game::ui::localizeKeyOrFallback(&localization, "missing.key", "stable_id"), "stable_id");
+    EXPECT_EQ(game::ui::tryLocalize(&localization, "Raw catalog text"), "Raw catalog text");
 }
 
-TEST(LocalizedTextTest, NullLocalizationKeepsRawKey) {
-    EXPECT_EQ(game::ui::localizeKeyOrFallback(nullptr, "item.tool_hoe.name", "tool_hoe"), "item.tool_hoe.name");
+TEST(LocalizedTextTest, TryLocalizeKeepsRawTextWithoutLocalization) {
+    EXPECT_EQ(game::ui::tryLocalize(nullptr, "item.tool_hoe.name"), "item.tool_hoe.name");
 }

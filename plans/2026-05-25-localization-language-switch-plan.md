@@ -38,6 +38,15 @@
   - 已新增 source-level 回归测试，禁止核心 RML 的 `data-for` 模板内再次出现 `data-i18n`。
   - 已把动态文案 helper 收拢到 `game/ui/localized_text.h`，场景不再复制 `formatLocalized` / `translateOrFallback`。
   - 已将 `pause.title` 重命名为语义更明确的 `pause.back_to_title`。
+- 2026-05-25：继续推进 Shop 动态文案迁移。
+  - 已迁移 `ShopMenuScene` 的金币、空状态、详情标签、数量、失败 / 成功状态和焦点提示文案。
+  - `ShopMenuScene` 已从 gameplay registry ctx 读取 `LocalizationService*`，订阅 `LanguageChangedEvent` 后重建商店标题、列表、详情与状态。
+  - Shop 买卖列表 view model 已在展示边界解析“可能已是 key 的 catalog 文本”；当前 catalog 仍保留原英文数据，后续 Phase 6 key 化后可直接显示本地化文本。
+  - 已新增 Shop 本地化 formatter 测试与 source-level 回归，覆盖语言事件监听和关键绑定刷新。
+- 2026-05-25：迁移 Quest / Recruit offer 动态文案。
+  - `QuestOfferScene` 已迁移任务 offer、标题、描述、目标与奖励摘要文本，并订阅语言切换事件刷新 data model。
+  - `RecruitOfferScene` 已迁移招募提示与 actor 名称展示边界，并订阅语言切换事件刷新 data model。
+  - 两个场景均从 gameplay registry ctx 读取 `LocalizationService*`，并使用 optional catalog key helper 兼容当前尚未 key 化的数据。
 - 仍待完成：全量 C++ 动态文案迁移、catalog 数据 key 化、Lua 对白迁移、source-level 英文硬编码扫描，以及更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
@@ -448,7 +457,7 @@ ninja -C build/debug engine_tests game_tests
 - [x] 新增 RmlUi `data-i18n` 静态文本 applier。
 - [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
 - [x] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
-- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、Battle party HP/MP labels）
+- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、Battle party HP/MP labels）
 - [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
 - [ ] 将数据 catalog 的名称与描述字段值迁移为本地化 key。
 - [ ] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建。

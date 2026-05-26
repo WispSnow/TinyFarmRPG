@@ -16,6 +16,10 @@ struct ShopBuyEntryData;
 struct ShopData;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 /// @brief Built buy-list snapshot plus lookup pointers back to catalog entries.
@@ -37,6 +41,7 @@ public:
     [[nodiscard]] static ShopBuyListSnapshot buildBuyList(const game::data::ShopData* shop_data,
                                                           const game::data::ItemCatalog* item_catalog,
                                                           const game::component::InventoryComponent* inventory,
+                                                          const game::runtime::LocalizationService* localization,
                                                           game::ui::ShopMenuCategory category,
                                                           int selected_index,
                                                           std::string_view shop_id);
@@ -44,6 +49,7 @@ public:
     [[nodiscard]] static ShopSellListSnapshot buildSellList(const game::component::InventoryComponent* inventory,
                                                             const game::data::ItemCatalog* item_catalog,
                                                             const game::data::ShopCatalog* shop_catalog,
+                                                            const game::runtime::LocalizationService* localization,
                                                             game::ui::ShopMenuCategory category,
                                                             int selected_index);
 

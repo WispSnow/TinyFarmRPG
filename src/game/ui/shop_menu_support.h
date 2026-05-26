@@ -17,6 +17,10 @@ struct ShopBuyEntryData;
 struct ShopSellRuleData;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 enum class ShopMenuCategory {
@@ -124,6 +128,7 @@ void populateShopBuyEntryViewModel(ShopBuyEntryViewModel& view_model,
                                    int index,
                                    const game::data::ShopBuyEntryData& buy_entry,
                                    const game::data::ItemCatalog* item_catalog,
+                                   const game::runtime::LocalizationService* localization,
                                    int owned_count,
                                    bool is_selected,
                                    bool is_disabled);
@@ -135,6 +140,7 @@ void populateShopSellEntryViewModel(ShopSellEntryViewModel& view_model,
                                     const game::component::ItemStack& stack,
                                     const game::data::ShopSellRuleData* sell_rule,
                                     const game::data::ItemCatalog* item_catalog,
+                                    const game::runtime::LocalizationService* localization,
                                     bool is_selected);
 
 } // namespace game::ui
