@@ -47,6 +47,24 @@ TEST(SaveSlotSelectSceneEnableStateTest, RefreshSlotButtonsPublishesEnabledBindi
         << "Save slot select RML should route slot clicks through the data model event.";
 }
 
+TEST(SaveSlotSelectSceneEnableStateTest, DynamicLabelsUseLocalizationKeys) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/save_slot_select_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("sink<game::defs::LanguageChangedEvent>()"), std::string::npos)
+        << "SaveSlotSelectScene should subscribe language changes for slot labels and confirm text.";
+    EXPECT_NE(source.find("\"save_slot.status.empty\""), std::string::npos)
+        << "Empty slot label should be generated from an i18n key.";
+    EXPECT_NE(source.find("\"save_slot.status.day_with_timestamp\""), std::string::npos)
+        << "Saved slot label with timestamp should be generated from an i18n key.";
+    EXPECT_NE(source.find("\"save_slot.confirm.overwrite\""), std::string::npos)
+        << "Overwrite confirmation text should be generated from an i18n key.";
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

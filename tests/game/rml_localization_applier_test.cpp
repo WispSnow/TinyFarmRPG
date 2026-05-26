@@ -1,12 +1,14 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <regex>
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifndef PROJECT_SOURCE_DIR
@@ -18,6 +20,11 @@ namespace {
 struct RmlI18nRef {
     std::filesystem::path path{};
     std::string key{};
+};
+
+struct RmlTemplateI18nViolation {
+    std::filesystem::path path{};
+    int line{0};
 };
 
 [[nodiscard]] std::filesystem::path projectRoot() {
@@ -70,6 +77,74 @@ struct RmlI18nRef {
     return refs;
 }
 
+[[nodiscard]] int rmlTagDepthDelta(std::string_view line) {
+    int delta = 0;
+    std::size_t pos = 0;
+    while ((pos = line.find('<', pos)) != std::string_view::npos) {
+        if (pos + 1 >= line.size()) {
+            break;
+        }
+        const char next = line[pos + 1];
+        if (next == '!' || next == '?') {
+            ++pos;
+            continue;
+        }
+        const std::size_t close = line.find('>', pos + 1);
+        if (close == std::string_view::npos) {
+            break;
+        }
+        if (next == '/') {
+            --delta;
+        } else {
+            std::size_t end = close;
+            while (end > pos && std::isspace(static_cast<unsigned char>(line[end - 1]))) {
+                --end;
+            }
+            if (end == pos || line[end - 1] != '/') {
+                ++delta;
+            }
+        }
+        pos = close + 1;
+    }
+    return delta;
+}
+
+[[nodiscard]] std::vector<RmlTemplateI18nViolation> collectDataForI18nViolations() {
+    std::vector<RmlTemplateI18nViolation> violations{};
+    const std::filesystem::path scenes_dir = projectRoot() / "ui" / "rmlui" / "scenes";
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(scenes_dir)) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".rml") {
+            continue;
+        }
+
+        std::istringstream lines{slurp(entry.path())};
+        std::string line{};
+        bool inside_template = false;
+        int template_depth = 0;
+        int line_number = 0;
+        while (std::getline(lines, line)) {
+            ++line_number;
+            const bool starts_template = !inside_template && line.find("data-for=") != std::string::npos;
+            if (starts_template) {
+                inside_template = true;
+                template_depth = 0;
+            }
+
+            if (inside_template && line.find("data-i18n") != std::string::npos) {
+                violations.push_back(RmlTemplateI18nViolation{.path = entry.path(), .line = line_number});
+            }
+
+            if (inside_template) {
+                template_depth += rmlTagDepthDelta(line);
+                if (template_depth <= 0) {
+                    inside_template = false;
+                }
+            }
+        }
+    }
+    return violations;
+}
+
 } // namespace
 
 TEST(RmlLocalizationApplierSourceTest, DataI18nKeysExistInAllLanguageTables) {
@@ -116,5 +191,56 @@ TEST(RmlLocalizationApplierSourceTest, InventoryMenuKeepsExpectedLocalizedStatic
              "options.battle_speed",
          }) {
         EXPECT_TRUE(keys.contains(key)) << "inventory_menu.rml should keep data-i18n=" << key;
+    }
+}
+
+TEST(RmlLocalizationApplierSourceTest, CoreScenesKeepExpectedLocalizedStaticRefs) {
+    const std::vector<RmlI18nRef> refs = collectRmlI18nRefs();
+    std::set<std::string> keys{};
+    for (const auto& ref : refs) {
+        keys.insert(ref.key);
+    }
+
+    for (const std::string& key : {
+             "appearance.preview",
+             "appearance.random",
+             "appearance.reset",
+             "common.back",
+             "common.confirm",
+             "common.exp",
+             "common.gold",
+             "common.load",
+             "common.menu",
+             "common.ok",
+             "common.save",
+             "pause.resume",
+             "pause.back_to_title",
+             "quest_offer.accept",
+             "quest_offer.decline",
+             "quest_offer.objective",
+             "quest_offer.reward",
+             "recruit_offer.join",
+             "recruit_offer.not_now",
+             "rest.title",
+             "shop.category.consumable",
+             "shop.category.equipment",
+             "shop.detail.after",
+             "shop.detail.price",
+             "shop.detail.total",
+             "shop.leave",
+             "shop.mode.buy",
+             "shop.mode.sell",
+             "title.exit",
+             "title.start",
+         }) {
+        EXPECT_TRUE(keys.contains(key)) << "Core RML should keep data-i18n marker " << key;
+    }
+}
+
+TEST(RmlLocalizationApplierSourceTest, DataForTemplatesDoNotContainDataI18nMarkers) {
+    const std::vector<RmlTemplateI18nViolation> violations = collectDataForI18nViolations();
+    for (const auto& violation : violations) {
+        ADD_FAILURE() << violation.path << ':' << violation.line
+                      << " has data-i18n inside a data-for template; bind localized text through the view model instead";
     }
 }

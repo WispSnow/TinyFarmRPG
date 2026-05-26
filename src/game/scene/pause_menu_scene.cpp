@@ -5,8 +5,10 @@
 
 #include "game/data/game_time.h"
 #include "game/defs/events.h"
+#include "game/defs/options_events.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/audio/audio_player.h"
 #include "engine/core/context.h"
@@ -39,14 +41,28 @@ constexpr std::string_view MODEL_NAME = "pause_menu";
     return std::clamp(value, 0.0f, 1.0f);
 }
 
-[[nodiscard]] std::string toPercentLabel(std::string_view prefix, float value) {
+[[nodiscard]] std::string toPercentLabel(const game::runtime::LocalizationService* localization,
+                                         std::string_view key,
+                                         std::string_view fallback_prefix,
+                                         float value) {
     const int percent = static_cast<int>(std::lround(clamp01(value) * 100.0f));
-    return std::string(prefix) + " " + std::to_string(percent) + "%";
+    const auto percent_text = std::to_string(percent);
+    return game::ui::formatTextOrFallback(localization,
+                                          key,
+                                          game::ui::LocalizedFormatArgs{{"percent", percent_text}},
+                                          [&] { return std::string(fallback_prefix) + " " + percent_text + "%"; });
 }
 
-[[nodiscard]] std::string toMultiplierLabel(std::string_view prefix, float value) {
+[[nodiscard]] std::string toMultiplierLabel(const game::runtime::LocalizationService* localization,
+                                            std::string_view key,
+                                            std::string_view fallback_prefix,
+                                            float value) {
     const float clamped = std::clamp(value, TIME_SCALE_MIN, TIME_SCALE_MAX);
-    return std::format("{} {:.2f}x", prefix, clamped);
+    const auto value_text = std::format("{:.2f}", clamped);
+    return game::ui::formatTextOrFallback(localization,
+                                          key,
+                                          game::ui::LocalizedFormatArgs{{"value", value_text}},
+                                          [&] { return std::format("{} {}x", fallback_prefix, value_text); });
 }
 
 using engine::ui::rmlui::updateBoundBool;
@@ -86,6 +102,7 @@ bool PauseMenuScene::init() {
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&PauseMenuScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
         .connect<&PauseMenuScene::onAsyncSaveCompleted>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&PauseMenuScene::onLanguageChanged>(this);
 
     if (!Scene::init()) {
         return false;
@@ -168,7 +185,7 @@ bool PauseMenuScene::initUI() {
     refreshVolumeLabels();
     refreshTimeScaleLabel();
     refreshSaveActionButtons();
-    setMessage("", false);
+    clearMessage();
     document_controller_.markAllDirty();
     return true;
 }
@@ -181,15 +198,19 @@ void PauseMenuScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&PauseMenuScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::AsyncSaveCompletedEvent>()
         .disconnect<&PauseMenuScene::onAsyncSaveCompleted>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .disconnect<&PauseMenuScene::onLanguageChanged>(this);
 }
 
 void PauseMenuScene::refreshVolumeLabels() {
     auto& audio = context_.getAudioPlayer();
 
-    if (updateBoundString(music_text_, toPercentLabel("Music", audio.getMusicVolume()))) {
+    if (updateBoundString(music_text_,
+                          toPercentLabel(localization(), "pause.value.music", "Music", audio.getMusicVolume()))) {
         document_controller_.markDirty("music_text");
     }
-    if (updateBoundString(sound_text_, toPercentLabel("SFX", audio.getSoundVolume()))) {
+    if (updateBoundString(sound_text_,
+                          toPercentLabel(localization(), "pause.value.sound", "SFX", audio.getSoundVolume()))) {
         document_controller_.markDirty("sound_text");
     }
 }
@@ -204,7 +225,7 @@ void PauseMenuScene::refreshTimeScaleLabel() {
         scale = 1.0f;
     }
 
-    if (updateBoundString(speed_text_, toMultiplierLabel("Speed", scale))) {
+    if (updateBoundString(speed_text_, toMultiplierLabel(localization(), "pause.value.speed", "Speed", scale))) {
         document_controller_.markDirty("speed_text");
     }
 }
@@ -224,22 +245,69 @@ void PauseMenuScene::refreshSaveActionButtons() {
     }
 }
 
+void PauseMenuScene::refreshLocalizedBindings() {
+    refreshVolumeLabels();
+    refreshTimeScaleLabel();
+    if (!message_key_.empty()) {
+        publishMessage(resolveMessageText(), message_is_error_);
+    }
+}
+
 void PauseMenuScene::onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event) {
     if (event.success) {
-        setMessage("Saved", false);
+        setLocalizedMessage("pause.message.saved", false, {}, "Saved");
         refreshSaveActionButtons();
         return;
     }
 
-    std::string message = "Save failed";
     if (!event.error.empty()) {
-        message += ": " + event.error;
+        setLocalizedMessage("pause.message.save_failed_detail",
+                            true,
+                            {{"error", event.error}},
+                            "Save failed: " + event.error);
+        refreshSaveActionButtons();
+        return;
     }
-    setMessage(std::move(message), true);
+    setLocalizedMessage("pause.message.save_failed", true, {}, "Save failed");
     refreshSaveActionButtons();
 }
 
-void PauseMenuScene::setMessage(std::string message, bool is_error) {
+void PauseMenuScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    refreshLocalizedBindings();
+}
+
+const game::runtime::LocalizationService* PauseMenuScene::localization() const noexcept {
+    return user_settings_service_ ? &user_settings_service_->localization() : nullptr;
+}
+
+std::string PauseMenuScene::resolveMessageText() const {
+    if (message_key_.empty()) {
+        return {};
+    }
+    return game::ui::formatTextOrFallback(localization(),
+                                          message_key_,
+                                          message_args_,
+                                          [this] { return message_fallback_; });
+}
+
+void PauseMenuScene::clearMessage() {
+    message_key_.clear();
+    message_args_.clear();
+    message_fallback_.clear();
+    publishMessage("", false);
+}
+
+void PauseMenuScene::setLocalizedMessage(std::string_view key,
+                                         bool is_error,
+                                         std::unordered_map<std::string, std::string> args,
+                                         std::string fallback) {
+    message_key_ = std::string{key};
+    message_args_ = std::move(args);
+    message_fallback_ = std::move(fallback);
+    publishMessage(resolveMessageText(), is_error);
+}
+
+void PauseMenuScene::publishMessage(std::string message, bool is_error) {
     if (updateBoundString(message_text_, message)) {
         document_controller_.markDirty("message_text");
     }
@@ -261,45 +329,55 @@ void PauseMenuScene::onResumeClicked() {
 }
 
 void PauseMenuScene::onSaveClicked() {
-    setMessage("", false);
+    clearMessage();
 
     if (!save_service_) {
-        setMessage("SaveService unavailable", true);
+        setLocalizedMessage("pause.message.save_service_unavailable", true, {}, "SaveService unavailable");
         return;
     }
 
     auto on_select = [this](int slot) {
         std::string error;
         if (!save_service_->saveToFileAsync(game::save::SaveService::slotPath(slot), error)) {
-            setMessage("Save failed: " + error, true);
+            setLocalizedMessage("pause.message.save_failed_detail",
+                                true,
+                                {{"error", error}},
+                                "Save failed: " + error);
         } else {
-            setMessage("Saving...", false);
+            setLocalizedMessage("pause.message.saving", false, {}, "Saving...");
         }
         refreshSaveActionButtons();
         requestPopScene();
     };
 
     auto select = std::make_unique<game::scene::SaveSlotSelectScene>(
-        "SaveSlotSelect", context_, std::move(on_select), game::scene::SaveSlotSelectScene::Mode::Save);
+        "SaveSlotSelect",
+        context_,
+        std::move(on_select),
+        game::scene::SaveSlotSelectScene::Mode::Save,
+        localization());
     requestPushScene(std::move(select));
 }
 
 void PauseMenuScene::onLoadClicked() {
-    setMessage("", false);
+    clearMessage();
 
     if (!save_service_) {
-        setMessage("SaveService unavailable", true);
+        setLocalizedMessage("pause.message.save_service_unavailable", true, {}, "SaveService unavailable");
         return;
     }
     if (save_service_->isSaving()) {
-        setMessage("Save in progress", true);
+        setLocalizedMessage("pause.message.save_in_progress", true, {}, "Save in progress");
         return;
     }
 
     auto on_select = [this](int slot) {
         std::string error;
         if (!save_service_->loadFromFile(game::save::SaveService::slotPath(slot), error)) {
-            setMessage("Load failed: " + error, true);
+            setLocalizedMessage("pause.message.load_failed_detail",
+                                true,
+                                {{"error", error}},
+                                "Load failed: " + error);
             requestPopScene();
             return;
         }
@@ -310,19 +388,23 @@ void PauseMenuScene::onLoadClicked() {
             user_settings_service_->applyAll();
         }
 
-        setMessage("Loaded", false);
+        setLocalizedMessage("pause.message.loaded", false, {}, "Loaded");
         requestPopScene();
         close_after_load_ = true;
     };
 
     auto select = std::make_unique<game::scene::SaveSlotSelectScene>(
-        "SaveSlotSelect", context_, std::move(on_select), game::scene::SaveSlotSelectScene::Mode::Load);
+        "SaveSlotSelect",
+        context_,
+        std::move(on_select),
+        game::scene::SaveSlotSelectScene::Mode::Load,
+        localization());
     requestPushScene(std::move(select));
 }
 
 void PauseMenuScene::onBackToTitleClicked() {
     if (save_service_ && save_service_->isSaving()) {
-        setMessage("Save in progress", true);
+        setLocalizedMessage("pause.message.save_in_progress", true, {}, "Save in progress");
         return;
     }
     requestReplaceScene(std::make_unique<game::scene::TitleScene>("TitleScene", context_));

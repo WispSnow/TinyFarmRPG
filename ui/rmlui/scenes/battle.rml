@@ -46,11 +46,11 @@
             <div id="battle-victory-title" class="tf-scene-title-gold">{{ victory_title }}</div>
             <div id="battle-victory-rewards" class="tf-scene-card-frame">
                 <div class="battle-victory-row tf-scene-info-row">
-                    <span class="battle-victory-label tf-scene-info-label">Gold</span>
+                    <span class="battle-victory-label tf-scene-info-label" data-i18n="common.gold">Gold</span>
                     <span class="battle-victory-value tf-scene-info-value-gold">{{ victory_gold_text }}</span>
                 </div>
                 <div class="battle-victory-row tf-scene-info-row">
-                    <span class="battle-victory-label tf-scene-info-label">EXP</span>
+                    <span class="battle-victory-label tf-scene-info-label" data-i18n="common.exp">EXP</span>
                     <span class="battle-victory-value tf-scene-info-value-gold">{{ victory_exp_text }}</span>
                 </div>
                 <div id="battle-victory-item-list">
@@ -88,13 +88,13 @@
                         <div class="battle-portrait" data-style-decorator="member.portrait_decorator"></div>
                         <div class="battle-party-stats">
                             <div class="battle-stat-label battle-hp-label">
-                                <span class="battle-stat-kind">HP</span><span class="battle-stat-value">{{ member.hp_text }}</span>
+                                <span class="battle-stat-kind">{{ member.hp_label_text }}</span><span class="battle-stat-value">{{ member.hp_text }}</span>
                             </div>
                             <div class="battle-stat-bar battle-hp-bar">
                                 <div class="battle-stat-fill battle-hp-fill" data-style-width="member.hp_ratio_percent"></div>
                             </div>
                             <div class="battle-stat-label battle-mp-label">
-                                <span class="battle-stat-kind">MP</span><span class="battle-stat-value">{{ member.mp_text }}</span>
+                                <span class="battle-stat-kind">{{ member.mp_label_text }}</span><span class="battle-stat-value">{{ member.mp_text }}</span>
                             </div>
                             <div class="battle-stat-bar battle-mp-bar">
                                 <div class="battle-stat-fill battle-mp-fill" data-style-width="member.mp_ratio_percent"></div>

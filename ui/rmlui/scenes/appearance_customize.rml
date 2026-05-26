@@ -15,7 +15,7 @@
     <div id="appearance-subtitle">{{ subtitle_text }}</div>
 
     <div id="appearance-preview-frame">
-        <div id="appearance-preview-label">Preview</div>
+        <div id="appearance-preview-label" data-i18n="appearance.preview">Preview</div>
     </div>
 
     <div id="appearance-panel">
@@ -36,19 +36,23 @@
         <div id="appearance-tool-actions">
             <button id="appearance-random-button"
                     class="tf-button-light appearance-tool-button"
-                    data-event-click="randomize">Random</button>
+                    data-event-click="randomize"
+                    data-i18n="appearance.random">Random</button>
             <button id="appearance-reset-button"
                     class="tf-button-light appearance-tool-button"
-                    data-event-click="reset">Reset</button>
+                    data-event-click="reset"
+                    data-i18n="appearance.reset">Reset</button>
         </div>
 
         <div id="appearance-main-actions">
             <button id="appearance-confirm-button"
                     class="tf-button-light appearance-main-button"
-                    data-event-click="confirm">Confirm</button>
+                    data-event-click="confirm"
+                    data-i18n="common.confirm">Confirm</button>
             <button id="appearance-cancel-button"
                     class="tf-button-light appearance-main-button"
-                    data-event-click="cancel">Cancel</button>
+                    data-event-click="cancel"
+                    data-i18n="common.cancel">Cancel</button>
         </div>
     </div>
 </body>

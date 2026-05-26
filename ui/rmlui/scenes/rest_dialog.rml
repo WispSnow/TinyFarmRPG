@@ -13,7 +13,7 @@
     <div id="rest-overlay" class="tf-modal-overlay"></div>
 
     <div id="rest-panel" class="tf-scene-panel">
-        <div id="rest-title" class="tf-scene-title">Rest</div>
+        <div id="rest-title" class="tf-scene-title" data-i18n="rest.title">Rest</div>
 
         <div id="rest-selector">
             <button id="rest-hours-down-button" class="tf-icon-button icon-page-left tf-nav-auto" data-event-click="hours_down"></button>
@@ -29,13 +29,13 @@
                 <div class="rest-member-row" data-for="member : recovery_members">
                     <div class="rest-member-name">{{ member.display_name }}</div>
                     <div class="rest-stat-text rest-hp-text">
-                        <div class="rest-stat-label">HP</div>
+                        <div class="rest-stat-label">{{ member.hp_label_text }}</div>
                         <div class="rest-stat-current">{{ member.hp_current_text }}</div>
                         <div class="rest-stat-arrow" data-if="member.has_hp_gain">&gt;</div>
                         <div class="rest-stat-after" data-if="member.has_hp_gain">{{ member.hp_after_text }}</div>
                     </div>
                     <div class="rest-stat-text rest-mp-text">
-                        <div class="rest-stat-label">MP</div>
+                        <div class="rest-stat-label">{{ member.mp_label_text }}</div>
                         <div class="rest-stat-current">{{ member.mp_current_text }}</div>
                         <div class="rest-stat-arrow" data-if="member.has_mp_gain">&gt;</div>
                         <div class="rest-stat-after" data-if="member.has_mp_gain">{{ member.mp_after_text }}</div>
@@ -45,8 +45,8 @@
         </div>
 
         <div id="rest-actions">
-            <button id="rest-confirm-button" class="tf-button-light rest-action-button" data-event-click="confirm">Confirm</button>
-            <button id="rest-cancel-button" class="tf-button-light rest-action-button" data-event-click="cancel">Cancel</button>
+            <button id="rest-confirm-button" class="tf-button-light rest-action-button" data-event-click="confirm" data-i18n="common.confirm">Confirm</button>
+            <button id="rest-cancel-button" class="tf-button-light rest-action-button" data-event-click="cancel" data-i18n="common.cancel">Cancel</button>
         </div>
     </div>
 </body>

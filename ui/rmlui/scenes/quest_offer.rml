@@ -21,12 +21,12 @@
             <div id="quest-offer-description" class="tf-scene-description">{{ quest_description }}</div>
 
             <div class="quest-offer-section tf-scene-info-row">
-                <div class="quest-offer-label tf-scene-info-label">Objective</div>
+                <div class="quest-offer-label tf-scene-info-label" data-i18n="quest_offer.objective">Objective</div>
                 <div class="quest-offer-value">{{ objectives_text }}</div>
             </div>
 
             <div class="quest-offer-section tf-scene-info-row">
-                <div class="quest-offer-label tf-scene-info-label">Reward</div>
+                <div class="quest-offer-label tf-scene-info-label" data-i18n="quest_offer.reward">Reward</div>
                 <div class="quest-offer-value">{{ rewards_text }}</div>
             </div>
         </div>
@@ -34,10 +34,12 @@
         <div id="quest-offer-actions">
             <button id="quest-offer-accept-button"
                     class="tf-button-light quest-offer-action-button"
-                    data-event-click="accept">Accept</button>
+                    data-event-click="accept"
+                    data-i18n="quest_offer.accept">Accept</button>
             <button id="quest-offer-decline-button"
                     class="tf-button-light quest-offer-action-button"
-                    data-event-click="decline">Decline</button>
+                    data-event-click="decline"
+                    data-i18n="quest_offer.decline">Decline</button>
         </div>
     </div>
 </body>

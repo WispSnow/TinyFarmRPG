@@ -1,7 +1,9 @@
 #include "save_slot_select_scene.h"
 
+#include "game/defs/options_events.h"
 #include "game/save/save_service.h"
 #include "game/save/save_slot_summary.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/core/context.h"
 #include "engine/input/input_manager.h"
@@ -10,6 +12,7 @@
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
+#include <entt/signal/dispatcher.hpp>
 #include <spdlog/fmt/chrono.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -73,10 +76,12 @@ namespace game::scene {
 SaveSlotSelectScene::SaveSlotSelectScene(std::string_view name,
                                          engine::core::Context& context,
                                          SlotSelectCallback on_select,
-                                         Mode mode)
+                                         Mode mode,
+                                         const game::runtime::LocalizationService* localization)
     : engine::scene::Scene(name, context),
       on_select_(std::move(on_select)),
-      mode_(mode) {
+      mode_(mode),
+      localization_(localization) {
 }
 
 SaveSlotSelectScene::~SaveSlotSelectScene() {
@@ -93,6 +98,8 @@ bool SaveSlotSelectScene::init() {
     }
 
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&SaveSlotSelectScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .connect<&SaveSlotSelectScene::onLanguageChanged>(this);
     if (!Scene::init()) {
         return false;
     }
@@ -111,6 +118,8 @@ void SaveSlotSelectScene::clean() {
 
 void SaveSlotSelectScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&SaveSlotSelectScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .disconnect<&SaveSlotSelectScene::onLanguageChanged>(this);
 }
 
 void SaveSlotSelectScene::shutdownUI() {
@@ -198,21 +207,32 @@ void SaveSlotSelectScene::refreshSlotButtons() {
         std::string label_text;
         bool enabled = true;
         if (ec) {
-            label_text = "Error";
+            label_text = game::ui::localizeTextOrFallback(localization_, "save_slot.status.error", "Error");
             enabled = false;
         } else if (!exists) {
-            label_text = "Empty";
+            label_text = game::ui::localizeTextOrFallback(localization_, "save_slot.status.empty", "Empty");
             enabled = (mode_ == Mode::Save);
         } else {
             std::string summary_error;
             if (const auto summary = game::save::tryReadSlotSummary(path, summary_error)) {
-                label_text = "Day " + std::to_string(summary->day);
+                const auto day_text = std::to_string(summary->day);
                 if (!summary->timestamp.empty()) {
                     const auto formatted = formatTimestampForDisplay(summary->timestamp);
-                    label_text += " - " + (formatted.empty() ? summary->timestamp : formatted);
+                    const auto timestamp_text = formatted.empty() ? summary->timestamp : formatted;
+                    label_text = game::ui::formatTextOrFallback(
+                        localization_,
+                        "save_slot.status.day_with_timestamp",
+                        {{"day", day_text}, {"timestamp", timestamp_text}},
+                        [&] { return "Day " + day_text + " - " + timestamp_text; });
+                } else {
+                    label_text = game::ui::formatTextOrFallback(
+                        localization_,
+                        "save_slot.status.day",
+                        {{"day", day_text}},
+                        [&] { return "Day " + day_text; });
                 }
             } else {
-                label_text = "Invalid";
+                label_text = game::ui::localizeTextOrFallback(localization_, "save_slot.status.invalid", "Invalid");
                 spdlog::warn("SaveSlotSelectScene: slot {} summary 读取失败: {}", i, summary_error);
             }
         }
@@ -225,6 +245,31 @@ void SaveSlotSelectScene::refreshSlotButtons() {
     }
 
     document_controller_.markDirty("slots");
+}
+
+void SaveSlotSelectScene::refreshLocalizedBindings() {
+    refreshSlotButtons();
+    refreshOverwriteConfirmText();
+}
+
+void SaveSlotSelectScene::refreshOverwriteConfirmText() {
+    if (!pending_overwrite_slot_) {
+        return;
+    }
+
+    const auto slot_text = std::to_string(*pending_overwrite_slot_ + 1);
+    const auto text = game::ui::formatTextOrFallback(
+        localization_,
+        "save_slot.confirm.overwrite",
+        {{"slot", slot_text}},
+        [&] { return "Overwrite slot " + slot_text + "?"; });
+    if (updateBoundString(confirm_text_, text)) {
+        document_controller_.markDirty("confirm_text");
+    }
+}
+
+void SaveSlotSelectScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    refreshLocalizedBindings();
 }
 
 void SaveSlotSelectScene::onSlotClicked(int slot) {
@@ -281,10 +326,7 @@ bool SaveSlotSelectScene::onMenuCancelPressed() {
 void SaveSlotSelectScene::showOverwriteConfirm(int slot) {
     pending_overwrite_slot_ = slot;
 
-    const auto text = "Overwrite slot " + std::to_string(slot + 1) + "?";
-    if (updateBoundString(confirm_text_, text)) {
-        document_controller_.markDirty("confirm_text");
-    }
+    refreshOverwriteConfirmText();
     if (updateBoundBool(confirm_visible_, true)) {
         document_controller_.markDirty("confirm_visible");
     }

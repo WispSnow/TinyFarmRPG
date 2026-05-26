@@ -19,14 +19,24 @@ namespace engine::core {
 enum class State;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 class RestDialogScene final : public engine::scene::Scene {
 private:
     struct RestRecoveryMemberViewModel {
         Rml::String display_name{};
+        Rml::String hp_label_text{};
         Rml::String hp_current_text{};
         Rml::String hp_after_text{};
+        Rml::String mp_label_text{};
         Rml::String mp_current_text{};
         Rml::String mp_after_text{};
         bool has_hp_gain{false};
@@ -36,6 +46,7 @@ private:
     engine::core::State previous_state_{};
     int selected_hours_{8};
     entt::entity player_{entt::null};
+    const game::runtime::LocalizationService* localization_{nullptr};
     bool context_pushed_{false};
     bool data_types_registered_{false};
 
@@ -56,7 +67,8 @@ public:
     RestDialogScene(std::string_view name,
                     engine::core::Context& context,
                     entt::entity player,
-                    std::vector<game::domain::RestRecoveryPreview> recovery_previews);
+                    std::vector<game::domain::RestRecoveryPreview> recovery_previews,
+                    const game::runtime::LocalizationService* localization = nullptr);
     ~RestDialogScene() override;
 
     bool init() override;
@@ -69,6 +81,8 @@ private:
     void disconnectRuntimeListeners();
     void updateHoursLabel();
     void refreshRecoveryPreview();
+    void refreshLocalizedBindings();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void adjustHours(int delta);
     [[nodiscard]] const game::domain::RestRecoveryPreview* currentRecoveryPreview() const;
     bool onMenuCancelPressed();

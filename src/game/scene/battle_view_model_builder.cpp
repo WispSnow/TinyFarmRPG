@@ -7,6 +7,7 @@
 #include "game/factory/blueprint.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/scene/game_scene_reward_feedback.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/rml_item_icon_helpers.h"
 
 #include <RmlUi/Core/Types.h>
@@ -260,10 +261,12 @@ namespace game::scene {
 
 BattleViewModelBuilder::BattleViewModelBuilder(const game::data::RpgCatalog* rpg_catalog,
                                                const game::data::ItemCatalog* item_catalog,
-                                               const game::factory::BlueprintManager* blueprint_manager)
+                                               const game::factory::BlueprintManager* blueprint_manager,
+                                               const game::runtime::LocalizationService* localization)
     : rpg_catalog_(rpg_catalog),
       item_catalog_(item_catalog),
-      blueprint_manager_(blueprint_manager) {
+      blueprint_manager_(blueprint_manager),
+      localization_(localization) {
 }
 
 std::vector<BattleTurnOrderEntryViewModel> BattleViewModelBuilder::buildTurnOrderEntries(
@@ -340,7 +343,9 @@ BattlePartyHudViewModels BattleViewModelBuilder::buildPartyHud(const game::battl
         view_models.party_status.push_back(BattlePartyStatusViewModel{
             .unit_id = static_cast<int>(unit.id),
             .name = makeRmlString(unit.name),
+            .hp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.hp", "HP")),
             .hp_text = makeRmlString(std::to_string(std::max(0, unit.hp)) + "/" + std::to_string(std::max(0, unit.max_hp))),
+            .mp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.mp", "MP")),
             .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + "/" + std::to_string(std::max(0, unit.max_mp))),
             .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
             .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),

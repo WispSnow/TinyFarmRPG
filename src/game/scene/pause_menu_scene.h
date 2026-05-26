@@ -7,6 +7,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 namespace engine::core {
 enum class State;
@@ -22,9 +23,11 @@ struct GameTime;
 
 namespace game::defs {
 struct AsyncSaveCompletedEvent;
+struct LanguageChangedEvent;
 }
 
 namespace game::runtime {
+class LocalizationService;
 class UserSettingsService;
 }
 
@@ -42,14 +45,17 @@ private:
     engine::ui::rmlui::RmlDocumentController document_controller_{};
 
     Rml::String message_text_{};
-    Rml::String music_text_{"Music 0%"};
-    Rml::String sound_text_{"SFX 0%"};
-    Rml::String speed_text_{"Speed 1.00x"};
+    Rml::String music_text_{};
+    Rml::String sound_text_{};
+    Rml::String speed_text_{};
     bool has_message_{false};
     bool message_is_error_{true};
     bool can_save_{false};
     bool can_load_{false};
     bool can_back_title_{true};
+    std::string message_key_{};
+    std::unordered_map<std::string, std::string> message_args_{};
+    std::string message_fallback_{};
 
 public:
     PauseMenuScene(std::string_view name,
@@ -70,8 +76,17 @@ private:
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();
     void refreshSaveActionButtons();
+    void refreshLocalizedBindings();
     void onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event);
-    void setMessage(std::string message, bool is_error);
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
+    [[nodiscard]] const game::runtime::LocalizationService* localization() const noexcept;
+    [[nodiscard]] std::string resolveMessageText() const;
+    void clearMessage();
+    void setLocalizedMessage(std::string_view key,
+                             bool is_error,
+                             std::unordered_map<std::string, std::string> args = {},
+                             std::string fallback = {});
+    void publishMessage(std::string message, bool is_error);
 
     bool onMenuCancelPressed();
 

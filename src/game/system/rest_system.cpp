@@ -6,6 +6,7 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/party_rest_service.h"
+#include "game/runtime/localization_service.h"
 #include "game/scene/rest_dialog_scene.h"
 #include "game/system/system_helpers.h"
 
@@ -75,11 +76,15 @@ void RestSystem::onInteractCommand(const game::defs::InteractCommand& event) {
         }
     }
 
+    auto** localization_ptr = registry_.ctx().find<game::runtime::LocalizationService*>();
+    const auto* localization = localization_ptr ? *localization_ptr : nullptr;
+
     auto scene = std::make_unique<game::scene::RestDialogScene>(
         "RestDialog",
         context_,
         event.player,
-        std::move(recovery_previews));
+        std::move(recovery_previews),
+        localization);
     dispatcher_.trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(scene)});
 }
 

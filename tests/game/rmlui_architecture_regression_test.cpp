@@ -128,16 +128,23 @@ TEST(RmlUiArchitectureRegressionTest, RestDialogExposesRecoveryPreviewBindings) 
     EXPECT_NE(rml_source.find("recovery_empty_text"), std::string::npos);
     EXPECT_NE(rml_source.find("data-for=\"member : recovery_members\""), std::string::npos);
     EXPECT_NE(rml_source.find("member.display_name"), std::string::npos);
+    EXPECT_NE(rml_source.find("member.hp_label_text"), std::string::npos);
     EXPECT_NE(rml_source.find("member.hp_current_text"), std::string::npos);
     EXPECT_NE(rml_source.find("member.hp_after_text"), std::string::npos);
+    EXPECT_NE(rml_source.find("member.mp_label_text"), std::string::npos);
     EXPECT_NE(rml_source.find("member.mp_current_text"), std::string::npos);
     EXPECT_NE(rml_source.find("member.mp_after_text"), std::string::npos);
 
     const std::string scene_source = test_source_utils::readTextFile(rest_scene_path);
     ASSERT_FALSE(scene_source.empty()) << "无法读取: " << rest_scene_path;
     EXPECT_NE(scene_source.find("RegisterArray<decltype(recovery_members_)>()"), std::string::npos);
+    EXPECT_NE(scene_source.find("RegisterMember(\"hp_label_text\""), std::string::npos);
+    EXPECT_NE(scene_source.find("RegisterMember(\"mp_label_text\""), std::string::npos);
     EXPECT_NE(scene_source.find("refreshRecoveryPreview();"), std::string::npos);
     EXPECT_NE(scene_source.find("RestConfirmRequest"), std::string::npos);
+    EXPECT_NE(scene_source.find("sink<game::defs::LanguageChangedEvent>()"), std::string::npos);
+    EXPECT_NE(scene_source.find("\"rest.summary.full_recovery\""), std::string::npos);
+    EXPECT_NE(scene_source.find("\"rest.summary.recovery_percent\""), std::string::npos);
 }
 
 TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {

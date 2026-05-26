@@ -21,15 +21,15 @@
             </div>
         </div>
 
-        <button id="save-slot-back" class="tf-button-secondary save-slot-back-button" data-event-click="back">Back</button>
+        <button id="save-slot-back" class="tf-button-secondary save-slot-back-button" data-event-click="back" data-i18n="common.back">Back</button>
     </div>
 
     <div id="save-slot-confirm-layer" class="tf-fill-layer" data-if="confirm_visible">
         <div id="save-slot-confirm-panel" class="tf-modal-panel-strong">
             <div id="save-slot-confirm-text">{{ confirm_text }}</div>
             <div id="save-slot-confirm-actions">
-                <button id="save-slot-confirm-yes" class="tf-button-primary save-slot-confirm-button" data-event-click="confirm_yes">OK</button>
-                <button id="save-slot-confirm-no" class="tf-button-secondary save-slot-confirm-button" data-event-click="confirm_no">Cancel</button>
+                <button id="save-slot-confirm-yes" class="tf-button-primary save-slot-confirm-button" data-event-click="confirm_yes" data-i18n="common.ok">OK</button>
+                <button id="save-slot-confirm-no" class="tf-button-secondary save-slot-confirm-button" data-event-click="confirm_no" data-i18n="common.cancel">Cancel</button>
             </div>
         </div>
     </div>

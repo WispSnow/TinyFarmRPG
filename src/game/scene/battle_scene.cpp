@@ -346,7 +346,12 @@ BattleScene::BattleScene(std::string_view name,
       blueprint_manager_(presentation_options.blueprint_manager),
       appearance_catalog_(presentation_options.appearance_catalog),
       vfx_service_(presentation_options.vfx_service),
-      view_model_builder_(rpg_catalog_, item_catalog_, blueprint_manager_),
+      view_model_builder_(rpg_catalog_,
+                          item_catalog_,
+                          blueprint_manager_,
+                          presentation_options.user_settings_service
+                              ? &presentation_options.user_settings_service->localization()
+                              : nullptr),
       session_(std::move(units), std::move(session_options)),
       presentation_options_(std::move(presentation_options)),
       battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config) {
@@ -941,7 +946,9 @@ void BattleScene::rebuildPartyStatusView() {
                     [](const PartyStatusViewModel& lhs, const PartyStatusViewModel& rhs) {
                         return lhs.unit_id == rhs.unit_id &&
                             lhs.name == rhs.name &&
+                            lhs.hp_label_text == rhs.hp_label_text &&
                             lhs.hp_text == rhs.hp_text &&
+                            lhs.mp_label_text == rhs.mp_label_text &&
                             lhs.mp_text == rhs.mp_text &&
                             lhs.hp_ratio_percent == rhs.hp_ratio_percent &&
                             lhs.mp_ratio_percent == rhs.mp_ratio_percent &&
@@ -2794,6 +2801,7 @@ void BattleScene::connectUserSettingsListeners() {
         .connect<&BattleScene::onEnemyHpBarVisibilityChanged>(this);
     dispatcher.sink<game::defs::CursorMemoryChangedEvent>()
         .connect<&BattleScene::onCursorMemoryChanged>(this);
+    dispatcher.sink<game::defs::LanguageChangedEvent>().connect<&BattleScene::onLanguageChanged>(this);
 }
 
 void BattleScene::disconnectUserSettingsListeners() {
@@ -2806,6 +2814,7 @@ void BattleScene::disconnectUserSettingsListeners() {
         .disconnect<&BattleScene::onEnemyHpBarVisibilityChanged>(this);
     dispatcher.sink<game::defs::CursorMemoryChangedEvent>()
         .disconnect<&BattleScene::onCursorMemoryChanged>(this);
+    dispatcher.sink<game::defs::LanguageChangedEvent>().disconnect<&BattleScene::onLanguageChanged>(this);
 }
 
 void BattleScene::onBattleAnimationSpeedChanged(const game::defs::BattleAnimationSpeedChangedEvent& evt) {
@@ -2828,6 +2837,10 @@ void BattleScene::onCursorMemoryChanged(const game::defs::CursorMemoryChangedEve
         last_item_id_per_actor_.clear();
         last_target_unit_id_per_actor_.clear();
     }
+}
+
+void BattleScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    rebuildPartyStatusView();
 }
 
 } // namespace game::scene
