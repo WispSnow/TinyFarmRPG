@@ -178,5 +178,22 @@ TEST(AppearanceCustomizeViewModelTest, PreviewIdleAnimationUsesGameplayFrameDura
     EXPECT_EQ(preview_block.find("140.0f"), std::string::npos);
 }
 
+TEST(AppearanceCustomizeViewModelTest, SceneLocalizesDynamicTitleBindings) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/appearance_customize_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("appearance.title.new_game"), std::string::npos);
+    EXPECT_NE(source.find("appearance.title.closet"), std::string::npos);
+    EXPECT_NE(source.find("appearance.subtitle.new_game"), std::string::npos);
+    EXPECT_NE(source.find("appearance.subtitle.closet"), std::string::npos);
+    EXPECT_NE(source.find("sink<game::defs::LanguageChangedEvent>()"), std::string::npos);
+    EXPECT_EQ(source.find("makeRmlString(\"Create Hero\")"), std::string::npos);
+    EXPECT_EQ(source.find("makeRmlString(\"Wardrobe\")"), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene

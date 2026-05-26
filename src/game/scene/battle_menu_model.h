@@ -25,12 +25,12 @@ public:
     BattleMenuState state{BattleMenuState::None};
     bool focus_dirty{true};
 
-    Rml::String turn_text{"Turn: -"};
-    Rml::String result_text{"Result: Choose action"};
+    Rml::String turn_text{"!battle.turn.none!"};
+    Rml::String result_text{"!battle.result.format!"};
     bool actions_enabled{false};
-    std::string status_text{"Choose action"};
-    Rml::String list_empty_text{"No entries available"};
-    Rml::String target_empty_text{"No targets available"};
+    std::string status_text{"!battle.status.choose_action!"};
+    Rml::String list_empty_text{"!battle.list.no_items!"};
+    Rml::String target_empty_text{"!battle.target.none!"};
     bool party_command_visible{false};
     bool actor_command_visible{false};
     bool list_menu_visible{false};

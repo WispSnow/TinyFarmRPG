@@ -832,10 +832,20 @@ game::battle::BattleOutcome BattleScene::battleOutcome() const {
 void BattleScene::refreshView() {
     const auto current_actor_id = session_.currentActorId();
 
-    std::string turn_text = "Turn: -";
+    std::string turn_text = game::ui::localizeTextOrFallback(localization(), "battle.turn.none", "Turn: -");
     if (current_actor_id) {
         if (const auto* actor = session_.findUnit(*current_actor_id)) {
-            turn_text = "Turn: " + actor->name + " (" + std::string(game::battle::toString(actor->side)) + ")";
+            turn_text = game::ui::formatTextOrFallback(
+                localization(),
+                "battle.turn.unit",
+                {
+                    {"unit", game::battle::localizedUnitName(*actor, localization())},
+                    {"side", localizedBattleSide(actor->side)},
+                },
+                [this, actor] {
+                    return "Turn: " + game::battle::localizedUnitName(*actor, localization()) +
+                        " (" + std::string(game::battle::toString(actor->side)) + ")";
+                });
         }
     }
     if (updateBoundString(menu_model_.turn_text, turn_text)) {
@@ -846,12 +856,17 @@ void BattleScene::refreshView() {
     rebuildPartyStatusView();
     rebuildVictoryView();
 
-    std::string result_text = "Result: " + menu_model_.status_text;
+    std::string result_status = menu_model_.status_text;
     if (flow_controller_.isVictoryFlow()) {
-        result_text = "Result: Victory";
+        result_status = localizedBattleOutcome(game::battle::BattleOutcome::Victory);
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
-        result_text = "Result: " + std::string(game::battle::toString(session_.outcome()));
+        result_status = localizedBattleOutcome(session_.outcome());
     }
+    const std::string result_text = game::ui::formatTextOrFallback(
+        localization(),
+        "battle.result.format",
+        {{"status", result_status}},
+        [&result_status] { return "Result: " + result_status; });
     if (updateBoundString(menu_model_.result_text, result_text)) {
         document_controller_.markDirty("result_text");
     }
@@ -1048,7 +1063,41 @@ void BattleScene::leaveInputMenu() {
 void BattleScene::setMenuState(MenuState next_state) {
     input_router_.clearRepeat();
     menu_model_.setState(next_state, document_controller_);
+    syncMenuStateText();
     syncEnemyHpBarHighlight();
+}
+
+void BattleScene::syncMenuStateText() {
+    switch (menu_model_.state) {
+        case MenuState::None:
+        case MenuState::PartyCommand:
+        case MenuState::ActorCommand:
+            menu_model_.status_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.status.choose_action", "Choose action");
+            break;
+        case MenuState::SkillList:
+            menu_model_.status_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.status.choose_skill", "Choose a skill");
+            menu_model_.list_empty_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.list.no_skills", "No skills available");
+            break;
+        case MenuState::ItemList:
+            menu_model_.status_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.status.choose_item", "Choose an item");
+            menu_model_.list_empty_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.list.no_items", "No battle items available");
+            break;
+        case MenuState::TargetSelect:
+            menu_model_.status_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.status.choose_target", "Choose a target");
+            menu_model_.target_empty_text =
+                game::ui::localizeTextOrFallback(localization(), "battle.target.none", "No valid targets");
+            break;
+    }
+
+    document_controller_.markDirty("result_text");
+    document_controller_.markDirty("list_empty_text");
+    document_controller_.markDirty("target_empty_text");
 }
 
 void BattleScene::syncMenuFocus() {
@@ -1456,6 +1505,32 @@ Rml::String BattleScene::targetLabel(const game::battle::BattleUnit& unit) const
     return makeRmlString(game::battle::localizedUnitName(unit, localization()));
 }
 
+std::string BattleScene::localizedBattleSide(const game::battle::BattleSide side) const {
+    switch (side) {
+        case game::battle::BattleSide::Player:
+            return game::ui::localizeTextOrFallback(localization(), "battle.side.player", "Player");
+        case game::battle::BattleSide::Enemy:
+            return game::ui::localizeTextOrFallback(localization(), "battle.side.enemy", "Enemy");
+    }
+
+    return game::ui::localizeTextOrFallback(localization(), "common.unknown", "Unknown");
+}
+
+std::string BattleScene::localizedBattleOutcome(const game::battle::BattleOutcome outcome) const {
+    switch (outcome) {
+        case game::battle::BattleOutcome::Ongoing:
+            return game::ui::localizeTextOrFallback(localization(), "battle.outcome.ongoing", "Ongoing");
+        case game::battle::BattleOutcome::Victory:
+            return game::ui::localizeTextOrFallback(localization(), "battle.outcome.victory", "Victory");
+        case game::battle::BattleOutcome::Defeat:
+            return game::ui::localizeTextOrFallback(localization(), "battle.outcome.defeat", "Defeat");
+        case game::battle::BattleOutcome::Escaped:
+            return game::ui::localizeTextOrFallback(localization(), "battle.outcome.escaped", "Escaped");
+    }
+
+    return game::ui::localizeTextOrFallback(localization(), "common.unknown", "Unknown");
+}
+
 Rml::String BattleScene::targetSublabel(const game::battle::BattleUnit& unit) const {
     if (!unit.isAlive()) {
         return game::ui::localizeTextOrFallback(localization(), "battle.target.ko", "(KO)");
@@ -1482,6 +1557,10 @@ void BattleScene::setMenuHint(std::string_view text) {
     menu_model_.setHint(text, document_controller_);
 }
 
+void BattleScene::setMenuHintKey(const std::string_view key, const std::string_view fallback) {
+    setMenuHint(game::ui::localizeTextOrFallback(localization(), key, fallback));
+}
+
 void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor) {
     action_draft_.requires_target_selection = requiresTargetSelection(scope);
     action_draft_.selected_target_id.reset();
@@ -1498,7 +1577,7 @@ void BattleScene::continueDraftAfterScopeSelected(game::data::Scope scope, const
             (void)submitDraftAction();
             return;
         case game::data::Scope::None:
-            setMenuHint("Action cannot be used.");
+            setMenuHintKey("battle.hint.action_unavailable", "Action cannot be used.");
             return;
     }
 }
@@ -1743,7 +1822,11 @@ void BattleScene::handleStateIconHoverEnter(int unit_id, int entry_index) {
     const StateTooltipViewModel next_tooltip{
         .active_unit_id = icon_it->unit_id,
         .title = icon_it->display_name,
-        .turns = icon_it->turns_text + " Turns",
+        .turns = game::ui::formatTextOrFallback(
+            localization(),
+            "battle.state.turns",
+            {{"count", icon_it->turns_text}},
+            [&icon_it] { return icon_it->turns_text + " Turns"; }),
         .description = icon_it->description,
         .visible = true
     };
@@ -1767,21 +1850,21 @@ void BattleScene::handleStateIconHoverExit(int unit_id, int entry_index) {
 bool BattleScene::submitDraftAction() {
     game::battle::BattleUnitId actor_id = 0;
     if (!prepareActionActor(actor_id)) {
-        setMenuHint("Action is no longer available.");
+        setMenuHintKey("battle.hint.action_unavailable", "Action is no longer available.");
         return false;
     }
 
     actor_command_entered_via_fight_this_step_ = false;
 
     if (action_draft_.requires_target_selection && !action_draft_.selected_target_id) {
-        setMenuHint("Choose a target.");
+        setMenuHintKey("battle.hint.choose_target", "Choose a target.");
         return false;
     }
 
     switch (action_draft_.pending_type) {
         case game::battle::BattleActionType::Attack:
             if (!action_draft_.selected_target_id) {
-                setMenuHint("Choose a target.");
+                setMenuHintKey("battle.hint.choose_target", "Choose a target.");
                 return false;
             }
             submitAction(game::battle::BattleAction{
@@ -1792,7 +1875,7 @@ bool BattleScene::submitDraftAction() {
             return true;
         case game::battle::BattleActionType::Skill:
             if (!action_draft_.selected_skill_id) {
-                setMenuHint("Action is no longer available.");
+                setMenuHintKey("battle.hint.action_unavailable", "Action is no longer available.");
                 return false;
             }
             submitAction(game::battle::BattleAction{
@@ -1804,7 +1887,7 @@ bool BattleScene::submitDraftAction() {
             return true;
         case game::battle::BattleActionType::Item:
             if (!action_draft_.selected_item_id) {
-                setMenuHint("Action is no longer available.");
+                setMenuHintKey("battle.hint.action_unavailable", "Action is no longer available.");
                 return false;
             }
             submitAction(game::battle::BattleAction{
@@ -1817,7 +1900,7 @@ bool BattleScene::submitDraftAction() {
         case game::battle::BattleActionType::Guard:
         case game::battle::BattleActionType::Escape:
         case game::battle::BattleActionType::EndTurn:
-            setMenuHint("Action is no longer available.");
+            setMenuHintKey("battle.hint.action_unavailable", "Action is no longer available.");
             return false;
     }
 
@@ -2901,6 +2984,7 @@ void BattleScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
         case MenuState::None:
             break;
     }
+    syncMenuStateText();
     markMenuDirty();
     rebuildTurnOrderView();
     rebuildPartyStatusView();

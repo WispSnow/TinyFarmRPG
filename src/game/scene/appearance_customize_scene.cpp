@@ -13,7 +13,10 @@
 #include "engine/resource/resource_manager.h"
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
+#include "game/defs/options_events.h"
+#include "game/runtime/service_lookup.h"
 #include "game/system/appearance_layer_cache_builder.h"
+#include "game/ui/localized_text.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Element.h>
@@ -312,8 +315,7 @@ bool AppearanceCustomizeScene::initUI() {
         return false;
     }
 
-    title_text_ = mode_ == Mode::NewGame ? makeRmlString("Create Hero") : makeRmlString("Wardrobe");
-    subtitle_text_ = mode_ == Mode::NewGame ? makeRmlString("Choose a look") : makeRmlString("Change outfit");
+    syncLocalizedText(false);
 
     document_controller_.attach(runtime, instanceId());
     auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
@@ -445,10 +447,34 @@ void AppearanceCustomizeScene::shutdownUI() {
 
 void AppearanceCustomizeScene::connectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&AppearanceCustomizeScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&AppearanceCustomizeScene::onLanguageChanged>(this);
 }
 
 void AppearanceCustomizeScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&AppearanceCustomizeScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&AppearanceCustomizeScene::onLanguageChanged>(this);
+}
+
+const game::runtime::LocalizationService* AppearanceCustomizeScene::localization() const {
+    return game_registry_ ? game::runtime::findLocalizationService(*game_registry_) : nullptr;
+}
+
+void AppearanceCustomizeScene::syncLocalizedText(bool mark_dirty) {
+    const auto* loc = localization();
+    const bool new_game = mode_ == Mode::NewGame;
+    title_text_ = makeRmlString(game::ui::localizeTextOrFallback(
+        loc,
+        new_game ? "appearance.title.new_game" : "appearance.title.closet",
+        new_game ? "Create Hero" : "Wardrobe"));
+    subtitle_text_ = makeRmlString(game::ui::localizeTextOrFallback(
+        loc,
+        new_game ? "appearance.subtitle.new_game" : "appearance.subtitle.closet",
+        new_game ? "Choose a look" : "Change outfit"));
+
+    if (mark_dirty) {
+        document_controller_.markDirty("title_text");
+        document_controller_.markDirty("subtitle_text");
+    }
 }
 
 void AppearanceCustomizeScene::syncSlotViewModels(bool mark_dirty) {
@@ -566,6 +592,10 @@ void AppearanceCustomizeScene::onCancel() {
 bool AppearanceCustomizeScene::onMenuCancelPressed() {
     onCancel();
     return true;
+}
+
+void AppearanceCustomizeScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    syncLocalizedText(true);
 }
 
 void AppearanceCustomizeScene::onSlotPrevEvent(Rml::DataModelHandle,

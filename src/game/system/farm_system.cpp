@@ -14,6 +14,8 @@
 #include "game/domain/inventory_domain_service.h"
 #include "game/factory/entity_factory.h"
 #include "game/factory/blueprint_manager.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 #include "engine/utils/events.h"
 #include "engine/utils/math.h"
 #include "engine/spatial/spatial_index_manager.h"
@@ -387,13 +389,17 @@ bool FarmSystem::harvestCrop(const glm::vec2& world_pos) {
         const auto& inventory = registry_.get<game::component::InventoryComponent>(player);
         const int stack_limit = stackLimitOrDefault(item_catalog_, harvest_item_id);
         if (!inventoryCanAdd(inventory, harvest_item_id, 1, stack_limit)) {
+            const auto* localization = game::runtime::findLocalizationService(registry_);
             helpers::showTimedNotification(registry_,
                                            dispatcher_,
                                            NOTIFICATION_CHANNEL,
                                            notification_,
                                            player,
                                            std::string{},
-                                           "Inventory full, cannot harvest",
+                                           game::ui::localizeTextOrFallback(
+                                               localization,
+                                               "farm.harvest.inventory_full",
+                                               "Inventory full, cannot harvest"),
                                            INVENTORY_FULL_NOTICE_SECONDS);
             return false;
         }

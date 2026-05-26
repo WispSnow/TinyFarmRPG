@@ -90,33 +90,24 @@ void BattleMenuModel::setState(const BattleMenuState next_state,
 
     switch (next_state) {
         case BattleMenuState::None:
-            status_text = "Choose action";
             break;
         case BattleMenuState::PartyCommand:
-            status_text = "Choose action";
             party_command_cursor = party_commands.empty()
                 ? -1
                 : std::clamp(party_command_cursor, 0, static_cast<int>(party_commands.size()) - 1);
             break;
         case BattleMenuState::ActorCommand:
-            status_text = "Choose action";
             actor_command_cursor = actor_commands.empty()
                 ? -1
                 : std::clamp(actor_command_cursor, 0, static_cast<int>(actor_commands.size()) - 1);
             break;
         case BattleMenuState::SkillList:
-            status_text = "Choose a skill";
-            list_empty_text = "No skills available";
             list_entry_cursor = list_entries.empty() ? -1 : std::clamp(list_entry_cursor, 0, static_cast<int>(list_entries.size()) - 1);
             break;
         case BattleMenuState::ItemList:
-            status_text = "Choose an item";
-            list_empty_text = "No battle items available";
             list_entry_cursor = list_entries.empty() ? -1 : std::clamp(list_entry_cursor, 0, static_cast<int>(list_entries.size()) - 1);
             break;
         case BattleMenuState::TargetSelect:
-            status_text = "Choose a target";
-            target_empty_text = "No targets available";
             target_entry_cursor = target_entries.empty() ? -1 : std::clamp(target_entry_cursor, 0, static_cast<int>(target_entries.size()) - 1);
             break;
     }

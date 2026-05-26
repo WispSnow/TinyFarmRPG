@@ -94,6 +94,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     if (!item) return;
 
     if (item->battle_use_ && evt.actor_target_id.has_value()) {
+        const auto* localization = game::runtime::findLocalizationService(registry_);
         const auto& use_cfg = *item->battle_use_;
         if (use_cfg.scope != game::data::Scope::OneAlly || !rpg_catalog_) {
             return;
@@ -164,7 +165,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 notification_,
                 evt.target,
                 std::string{},
-                "Used",
+                game::ui::localizeTextOrFallback(localization, "item.use.used", "Used"),
                 NOTIFICATION_SECONDS);
         }
         return;
@@ -206,6 +207,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
 
     if (!ok) {
         if (evt.show_prompt) {
+            const auto* localization = game::runtime::findLocalizationService(registry_);
             helpers::showTimedNotification(
                 registry_,
                 dispatcher_,
@@ -213,7 +215,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 notification_,
                 evt.target,
                 std::string{},
-                "Inventory full",
+                game::ui::localizeTextOrFallback(localization, "inventory.full", "Inventory full"),
                 NOTIFICATION_SECONDS);
         }
         return;

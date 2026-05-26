@@ -34,6 +34,14 @@ namespace game::data {
 class AppearanceCatalog;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 class AppearanceCustomizeScene final : public engine::scene::Scene {
@@ -104,12 +112,14 @@ private:
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
     [[nodiscard]] bool initMenuPanelImage();
     [[nodiscard]] bool initPreviewEntity();
+    [[nodiscard]] const game::runtime::LocalizationService* localization() const;
     void releaseMenuPanelImage();
     void suspendSceneLighting();
     void restoreSceneLighting();
     void shutdownUI();
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();
+    void syncLocalizedText(bool mark_dirty = true);
     void syncSlotViewModels(bool mark_dirty = true);
     void rebuildPreviewCache();
     void updatePreviewPosition();
@@ -121,6 +131,7 @@ private:
     void onConfirm();
     void onCancel();
     bool onMenuCancelPressed();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void onSlotPrevEvent(Rml::DataModelHandle model, Rml::Event& event, const Rml::VariantList& arguments);
     void onSlotNextEvent(Rml::DataModelHandle model, Rml::Event& event, const Rml::VariantList& arguments);
 };
