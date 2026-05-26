@@ -53,6 +53,7 @@ struct BattleAnimationSpeedChangedEvent;
 struct DamagePopupVisibilityChangedEvent;
 struct EnemyHpBarVisibilityChangedEvent;
 struct CursorMemoryChangedEvent;
+struct LanguageChangedEvent;
 } // namespace game::defs
 
 namespace game::scene {
@@ -318,6 +319,7 @@ private:
     void onDamagePopupVisibilityChanged(const game::defs::DamagePopupVisibilityChangedEvent& evt);
     void onEnemyHpBarVisibilityChanged(const game::defs::EnemyHpBarVisibilityChangedEvent& evt);
     void onCursorMemoryChanged(const game::defs::CursorMemoryChangedEvent& evt);
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& evt);
 };
 
 } // namespace game::scene

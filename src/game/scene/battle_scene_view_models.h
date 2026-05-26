@@ -41,7 +41,9 @@ struct BattleTargetEntryViewModel {
 struct BattlePartyStatusViewModel {
     int unit_id{0};
     Rml::String name{};
+    Rml::String hp_label_text{};
     Rml::String hp_text{};
+    Rml::String mp_label_text{};
     Rml::String mp_text{};
     Rml::String hp_ratio_percent{"0%"};
     Rml::String mp_ratio_percent{"0%"};

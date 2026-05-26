@@ -14,11 +14,15 @@
     <div id="title-error" data-visible="show_error">{{ error_text }}</div>
 
     <div id="title-buttons">
-        <button id="title-start-button" class="tf-button-secondary title-button" data-event-click="start">Start</button>
-        <button id="title-load-button" class="tf-button-secondary title-button" data-event-click="load">Load</button>
-        <button id="title-exit-button" class="tf-button-secondary title-button" data-event-click="exit">Exit</button>
+        <button id="title-start-button" class="tf-button-secondary title-button" data-event-click="start" data-i18n="title.start">Start</button>
+        <button id="title-load-button" class="tf-button-secondary title-button" data-event-click="load" data-i18n="common.load">Load</button>
+        <button id="title-exit-button" class="tf-button-secondary title-button" data-event-click="exit" data-i18n="title.exit">Exit</button>
     </div>
 
-    <button id="title-menu-button" class="tf-icon-button icon-menu" data-event-click="menu"></button>
+    <button id="title-menu-button"
+            class="tf-icon-button icon-menu"
+            title="Menu"
+            data-i18n-title="common.menu"
+            data-event-click="menu"></button>
 </body>
 </rml>

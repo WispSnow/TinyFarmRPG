@@ -89,6 +89,28 @@ TEST(LocalizationServiceTest, MissingCurrentLanguageKeyFallsBackToManifestFallba
     EXPECT_EQ(localization.format("hello", std::unordered_map<std::string, std::string>{{"name", "Ada"}}), "你好 Ada");
 }
 
+TEST(LocalizationServiceTest, HasTextChecksCurrentAndFallbackTables) {
+    const std::filesystem::path dir = testDir();
+    writeFile(dir / "languages.json",
+              R"({
+                "fallback": "en-US",
+                "languages": [
+                  {"tag": "en-US", "native_name": "English", "file": ")" + (dir / "en-US.json").string() + R"("},
+                  {"tag": "zh-Hans", "native_name": "简体中文", "file": ")" + (dir / "zh-Hans.json").string() + R"("}
+                ]
+              })");
+    writeFile(dir / "en-US.json", R"({"fallback.only": "Fallback", "both": "Both"})");
+    writeFile(dir / "zh-Hans.json", R"({"both": "双方"})");
+
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex((dir / "languages.json").string()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    EXPECT_TRUE(localization.hasText("both"));
+    EXPECT_TRUE(localization.hasText("fallback.only"));
+    EXPECT_FALSE(localization.hasText("missing.key"));
+}
+
 TEST(LocalizationServiceTest, UnknownLanguageResolvesToConfiguredFallback) {
     game::runtime::LocalizationService localization;
     ASSERT_TRUE(localization.loadLanguageIndex(manifestPath()));

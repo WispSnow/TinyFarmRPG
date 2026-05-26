@@ -17,6 +17,14 @@ class DataModelHandle;
 class DataModelConstructor;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
 namespace game::scene {
 
 /**
@@ -48,6 +56,7 @@ private:
 
     SlotSelectCallback on_select_{};              ///< 选中槽后的回调。
     Mode mode_{Mode::Load};
+    const game::runtime::LocalizationService* localization_{nullptr};
     std::optional<int> pending_overwrite_slot_{}; ///< 等待覆盖确认的槽编号；无值表示确认框未激活。
     bool context_pushed_{false};
 
@@ -63,7 +72,8 @@ public:
     SaveSlotSelectScene(std::string_view name,
                         engine::core::Context& context,
                         SlotSelectCallback on_select = {},
-                        Mode mode = Mode::Load);
+                        Mode mode = Mode::Load,
+                        const game::runtime::LocalizationService* localization = nullptr);
     ~SaveSlotSelectScene() override;
 
     bool init() override;
@@ -77,6 +87,9 @@ private:
     void disconnectRuntimeListeners();
     /// 重新扫描磁盘并刷新 slots_ 列表及 UI。
     void refreshSlotButtons();
+    void refreshLocalizedBindings();
+    void refreshOverwriteConfirmText();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 
     void onSlotClicked(int slot);
     void onBackClicked();

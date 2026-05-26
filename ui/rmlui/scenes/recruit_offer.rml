@@ -30,10 +30,12 @@
         <div id="recruit-offer-actions">
             <button id="recruit-offer-accept-button"
                     class="tf-button-light recruit-offer-action-button"
-                    data-event-click="accept">Join</button>
+                    data-event-click="accept"
+                    data-i18n="recruit_offer.join">Join</button>
             <button id="recruit-offer-decline-button"
                     class="tf-button-light recruit-offer-action-button"
-                    data-event-click="decline">Not now</button>
+                    data-event-click="decline"
+                    data-i18n="recruit_offer.not_now">Not now</button>
         </div>
     </div>
 </body>

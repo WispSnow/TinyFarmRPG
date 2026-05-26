@@ -44,7 +44,9 @@ bool registerBattleSceneViewModelStructs(Rml::DataModelConstructor& constructor)
     if (auto party_handle = constructor.RegisterStruct<BattlePartyStatusViewModel>()) {
         party_handle.RegisterMember("unit_id", &BattlePartyStatusViewModel::unit_id);
         party_handle.RegisterMember("name", &BattlePartyStatusViewModel::name);
+        party_handle.RegisterMember("hp_label_text", &BattlePartyStatusViewModel::hp_label_text);
         party_handle.RegisterMember("hp_text", &BattlePartyStatusViewModel::hp_text);
+        party_handle.RegisterMember("mp_label_text", &BattlePartyStatusViewModel::mp_label_text);
         party_handle.RegisterMember("mp_text", &BattlePartyStatusViewModel::mp_text);
         party_handle.RegisterMember("hp_ratio_percent", &BattlePartyStatusViewModel::hp_ratio_percent);
         party_handle.RegisterMember("mp_ratio_percent", &BattlePartyStatusViewModel::mp_ratio_percent);

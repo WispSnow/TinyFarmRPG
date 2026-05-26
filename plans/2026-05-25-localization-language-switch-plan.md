@@ -25,7 +25,20 @@
   - 已实现 `LocalizationService::format` 残留占位符去重 warn。
   - 已新增 i18n key parity 测试与 RML `data-i18n` key source-level 回归测试。
   - 已合并 TinyFarm 脚本模块安装 API，并修正 Lua 浮点 i18n 参数格式。
-- 仍待完成：全量 RML 静态文本迁移、全量 C++ 动态文案迁移、catalog 数据 key 化、Lua 对白迁移、source-level 英文硬编码扫描，以及更完整的 RmlUi 运行时刷新 / 视觉验收测试。
+- 2026-05-25：推进核心 RML 静态文本迁移。
+  - 已给 `title.rml`、`pause_menu.rml`、`battle.rml`、`shop_menu.rml`、`quest_offer.rml`、`recruit_offer.rml`、`rest_dialog.rml`、`save_slot_select.rml`、`appearance_customize.rml` 中的纯静态标签、按钮和 tooltip 增加 `data-i18n` / `data-i18n-title`。
+  - 已扩展 RML source-level 回归测试，确保核心场景关键静态 key 不被误删，且所有 RML `data-i18n` key 均存在于中英文文本表。
+- 2026-05-25：开始迁移核心 C++ 动态文案。
+  - 已迁移 `PauseMenuScene` 的音量 / 速度标签和保存 / 读取反馈消息；消息状态保存 key / args，语言切换时重建 data model。
+  - 已迁移 `SaveSlotSelectScene` 的槽位状态、日期标签和覆盖确认文本；由 Pause 菜单打开时传入 `LocalizationService*`。
+  - 已迁移 `RestDialogScene` 的休息时长、恢复摘要和空状态；`RestSystem` 从 registry ctx 传入 `LocalizationService*`。
+  - 已补对应 source-level 回归测试，确保这些场景监听 `LanguageChangedEvent` 并使用 i18n key。
+- 2026-05-25：按二次 review 修正 RmlUi 模板与 helper 问题。
+  - 已移除 `data-for` 模板内的 `data-i18n`，Battle / Rest 的 HP / MP 标签改由 view model 提供，避免 applier 只处理模板原型而漏掉克隆节点。
+  - 已新增 source-level 回归测试，禁止核心 RML 的 `data-for` 模板内再次出现 `data-i18n`。
+  - 已把动态文案 helper 收拢到 `game/ui/localized_text.h`，场景不再复制 `formatLocalized` / `translateOrFallback`。
+  - 已将 `pause.title` 重命名为语义更明确的 `pause.back_to_title`。
+- 仍待完成：全量 C++ 动态文案迁移、catalog 数据 key 化、Lua 对白迁移、source-level 英文硬编码扫描，以及更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -124,6 +137,7 @@ RmlUi 静态文本刷新必须显式、可审计，避免 applier 误改动态�
 - applier 只处理带 `data-i18n`、`data-i18n-title` 等本地化属性的元素，永不扫描或猜测没有标记的普通文本。
 - 全量迁移 RML 时，所有需要随语言切换的静态文本都必须补 `data-i18n="..."`。没有补属性的静态文本不会切换，这是有意设计，便于 source-level 测试发现遗漏。
 - 同一元素禁止同时包含 `data-i18n` 和 `{{ model }}` 动态绑定，避免 applier 与 RmlUi data model 反复覆盖。若需要"前缀 + 变量"或"变量 + 单位"，由 C++ / Lua 调 `LocalizationService::format(...)` 后把完整字符串写入 model。
+- `data-for` 模板内禁止使用 `data-i18n`。模板展开发生在 data model 更新之后，文档加载回调无法覆盖克隆节点；这类文本必须作为 view model 字段由 C++ / Lua 预翻译。
 - 图标按钮的 `title` / tooltip 使用 `data-i18n-title`；按钮可见文本使用 `data-i18n`。
 - 首版只支持元素文本与 `title` 属性。若后续 RML 需要本地化 `alt`、`placeholder` 或其它属性，再扩展统一形式如 `data-i18n-attr-placeholder`；本计划不提前实现未使用属性。
 - 不要求每个 Scene 手写一次"load 后 apply"。`RmlUiRuntime` 增加通用文档加载回调，`UserSettingsService` 注册 game 层 applier；service 析构时清空回调，避免 RmlUi runtime 持有悬空捕获。
@@ -433,16 +447,16 @@ ninja -C build/debug engine_tests game_tests
 - [x] 扩展现有 `RmlUiRuntime::forEachDocument` 签名、增加文档加载回调并适配 debug panel。
 - [x] 新增 RmlUi `data-i18n` 静态文本 applier。
 - [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
-- [ ] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。（部分完成：`inventory_menu.rml`、`dialogue_choice.rml`；inventory tab title / sort / trash / unequip / empty candidate 已补 key）
-- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`）
+- [x] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
+- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、Battle party HP/MP labels）
 - [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
 - [ ] 将数据 catalog 的名称与描述字段值迁移为本地化 key。
 - [ ] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建。
 - [x] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
 - [ ] 迁移 Lua 对白与选项文本。
 - [ ] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。
-- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描）
-- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`）
+- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`）
+- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`）
 - [ ] 完成中英切换手动验收。
 
 ## 风险与处理

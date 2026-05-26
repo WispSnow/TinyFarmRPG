@@ -195,6 +195,8 @@ TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattleListEntryViewModel>"), std::string::npos);
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattleTargetEntryViewModel>"), std::string::npos);
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattlePartyStatusViewModel>"), std::string::npos);
+    EXPECT_NE(data_bindings_source.find("RegisterMember(\"hp_label_text\""), std::string::npos);
+    EXPECT_NE(data_bindings_source.find("RegisterMember(\"mp_label_text\""), std::string::npos);
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattleStateIconViewModel>"), std::string::npos);
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattleStateTooltipViewModel>"), std::string::npos);
     EXPECT_NE(data_bindings_source.find("RegisterStruct<BattleLogEntryViewModel>"), std::string::npos);
@@ -945,7 +947,7 @@ TEST(BattleSceneSmokeTest, UsesEnemyHpBarControllerForEnemyHealthOverlay) {
     EXPECT_NE(header.find("syncEnemyHpBarHighlight"), std::string::npos);
     EXPECT_NE(header.find("renderEnemyHpBars"), std::string::npos);
 
-    const std::string constructor_snippet = snippetFrom(source, "BattleScene::BattleScene", 1100U);
+    const std::string constructor_snippet = snippetFrom(source, "BattleScene::BattleScene", 1500U);
     ASSERT_FALSE(constructor_snippet.empty());
     EXPECT_NE(constructor_snippet.find("battle_enemy_hp_bar_controller_(presentation_options_.enemy_hp_bar_config)"),
               std::string::npos);

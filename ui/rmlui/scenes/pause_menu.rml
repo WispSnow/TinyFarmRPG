@@ -15,10 +15,10 @@
         <div id="pause-message" data-visible="has_message" data-class-is-error="message_is_error" data-class-is-success="!message_is_error">{{ message_text }}</div>
 
         <div id="pause-actions">
-            <button id="pause-resume-button" class="tf-button-primary pause-action-button" data-event-click="resume">Resume</button>
-            <button id="pause-save-button" class="tf-button-primary pause-action-button" data-event-click="save" data-class-disabled="!can_save" data-attrif-disabled="!can_save">Save</button>
-            <button id="pause-load-button" class="tf-button-primary pause-action-button" data-event-click="load" data-class-disabled="!can_load" data-attrif-disabled="!can_load">Load</button>
-            <button id="pause-title-button" class="tf-button-primary pause-action-button" data-event-click="back_to_title" data-class-disabled="!can_back_title" data-attrif-disabled="!can_back_title">Title</button>
+            <button id="pause-resume-button" class="tf-button-primary pause-action-button" data-event-click="resume" data-i18n="pause.resume">Resume</button>
+            <button id="pause-save-button" class="tf-button-primary pause-action-button" data-event-click="save" data-class-disabled="!can_save" data-attrif-disabled="!can_save" data-i18n="common.save">Save</button>
+            <button id="pause-load-button" class="tf-button-primary pause-action-button" data-event-click="load" data-class-disabled="!can_load" data-attrif-disabled="!can_load" data-i18n="common.load">Load</button>
+            <button id="pause-title-button" class="tf-button-primary pause-action-button" data-event-click="back_to_title" data-class-disabled="!can_back_title" data-attrif-disabled="!can_back_title" data-i18n="pause.back_to_title">Title</button>
         </div>
 
         <div id="pause-values">

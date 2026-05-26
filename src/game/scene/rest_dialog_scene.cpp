@@ -1,6 +1,8 @@
 #include "rest_dialog_scene.h"
 
 #include "game/defs/events.h"
+#include "game/defs/options_events.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
@@ -41,10 +43,12 @@ using namespace entt::literals;
 RestDialogScene::RestDialogScene(std::string_view name,
                                  engine::core::Context& context,
                                  const entt::entity player,
-                                 std::vector<game::domain::RestRecoveryPreview> recovery_previews)
+                                 std::vector<game::domain::RestRecoveryPreview> recovery_previews,
+                                 const game::runtime::LocalizationService* localization)
     : engine::scene::Scene(name, context),
       previous_state_(context.getGameState().getCurrentState()),
       player_(player),
+      localization_(localization),
       recovery_previews_(std::move(recovery_previews)) {
 }
 
@@ -63,6 +67,7 @@ bool RestDialogScene::init() {
         return false;
     }
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&RestDialogScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&RestDialogScene::onLanguageChanged>(this);
     if (!Scene::init()) {
         return false;
     }
@@ -138,8 +143,10 @@ bool RestDialogScene::ensureDataTypesRegistered(Rml::DataModelConstructor& const
 
     if (auto member_handle = constructor.RegisterStruct<RestRecoveryMemberViewModel>()) {
         member_handle.RegisterMember("display_name", &RestRecoveryMemberViewModel::display_name);
+        member_handle.RegisterMember("hp_label_text", &RestRecoveryMemberViewModel::hp_label_text);
         member_handle.RegisterMember("hp_current_text", &RestRecoveryMemberViewModel::hp_current_text);
         member_handle.RegisterMember("hp_after_text", &RestRecoveryMemberViewModel::hp_after_text);
+        member_handle.RegisterMember("mp_label_text", &RestRecoveryMemberViewModel::mp_label_text);
         member_handle.RegisterMember("mp_current_text", &RestRecoveryMemberViewModel::mp_current_text);
         member_handle.RegisterMember("mp_after_text", &RestRecoveryMemberViewModel::mp_after_text);
         member_handle.RegisterMember("has_hp_gain", &RestRecoveryMemberViewModel::has_hp_gain);
@@ -162,10 +169,17 @@ void RestDialogScene::shutdownUI() {
 
 void RestDialogScene::disconnectRuntimeListeners() {
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&RestDialogScene::onMenuCancelPressed>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .disconnect<&RestDialogScene::onLanguageChanged>(this);
 }
 
 void RestDialogScene::updateHoursLabel() {
-    const auto text = std::to_string(selected_hours_) + "h";
+    const auto hours_text = std::to_string(selected_hours_);
+    const auto text = game::ui::formatTextOrFallback(
+        localization_,
+        "rest.hours",
+        {{"hours", hours_text}},
+        [&] { return hours_text + "h"; });
     if (updateBoundString(hours_text_, text)) {
         document_controller_.markDirty("hours_text");
     }
@@ -185,27 +199,37 @@ void RestDialogScene::refreshRecoveryPreview() {
     recovery_members_.clear();
 
     const auto* preview = currentRecoveryPreview();
-    std::string summary = "Recovery unavailable";
-    std::string empty_text = "Party status unavailable.";
+    std::string summary =
+        game::ui::localizeTextOrFallback(localization_, "rest.summary.unavailable", "Recovery unavailable");
+    std::string empty_text =
+        game::ui::localizeTextOrFallback(localization_, "rest.empty.status_unavailable", "Party status unavailable.");
 
     if (preview) {
         if (preview->members.empty()) {
-            summary = "No active party";
-            empty_text = "No active party members.";
+            summary = game::ui::localizeTextOrFallback(localization_, "rest.summary.no_active_party", "No active party");
+            empty_text =
+                game::ui::localizeTextOrFallback(localization_, "rest.empty.no_active_party", "No active party members.");
         } else if (!preview->anyRecovered()) {
-            summary = "Already rested";
+            summary = game::ui::localizeTextOrFallback(localization_, "rest.summary.already_rested", "Already rested");
         } else if (preview->full_recovery) {
-            summary = "Full recovery";
+            summary = game::ui::localizeTextOrFallback(localization_, "rest.summary.full_recovery", "Full recovery");
         } else {
-            summary = fmt::format("HP/MP +{}%", preview->recovery_percent);
+            const auto percent = std::to_string(preview->recovery_percent);
+            summary = game::ui::formatTextOrFallback(
+                localization_,
+                "rest.summary.recovery_percent",
+                {{"percent", percent}},
+                [&] { return fmt::format("HP/MP +{}%", preview->recovery_percent); });
         }
 
         recovery_members_.reserve(preview->members.size());
         for (const auto& member : preview->members) {
             RestRecoveryMemberViewModel view_model{};
             view_model.display_name = makeRmlString(member.display_name);
+            view_model.hp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.hp", "HP"));
             view_model.hp_current_text = makeRmlString(formatRestStatValue(member.current_hp, member.max_hp));
             view_model.hp_after_text = makeRmlString(formatRestStatValue(member.after_hp, member.max_hp));
+            view_model.mp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.mp", "MP"));
             view_model.mp_current_text = makeRmlString(formatRestStatValue(member.current_mp, member.max_mp));
             view_model.mp_after_text = makeRmlString(formatRestStatValue(member.after_mp, member.max_mp));
             view_model.has_hp_gain = member.hpGain() > 0;
@@ -224,6 +248,15 @@ void RestDialogScene::refreshRecoveryPreview() {
         document_controller_.markDirty("has_recovery_members");
     }
     document_controller_.markDirty("recovery_members");
+}
+
+void RestDialogScene::refreshLocalizedBindings() {
+    updateHoursLabel();
+    refreshRecoveryPreview();
+}
+
+void RestDialogScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    refreshLocalizedBindings();
 }
 
 void RestDialogScene::adjustHours(int delta) {

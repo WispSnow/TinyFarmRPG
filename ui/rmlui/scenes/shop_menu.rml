@@ -27,22 +27,26 @@
                     <button id="shop-mode-buy"
                             class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-mode-button"
                             data-class-selected="is_buy_mode"
-                            data-event-click="switch_mode_buy">Buy</button>
+                            data-event-click="switch_mode_buy"
+                            data-i18n="shop.mode.buy">Buy</button>
                     <button id="shop-mode-sell"
                             class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-mode-button"
                             data-class-selected="is_sell_mode"
-                            data-event-click="switch_mode_sell">Sell</button>
+                            data-event-click="switch_mode_sell"
+                            data-i18n="shop.mode.sell">Sell</button>
                 </div>
 
                 <div id="shop-category-tabs" data-class-focused="is_category_tabs_focused">
                     <button id="shop-category-consumable"
                             class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-category-button"
                             data-class-selected="is_consumable_category"
-                            data-event-click="switch_category_consumable">Consumable</button>
+                            data-event-click="switch_category_consumable"
+                            data-i18n="shop.category.consumable">Consumable</button>
                     <button id="shop-category-equipment"
                             class="tf-nav-auto tf-focus-ring-gold shop-tab-btn shop-category-button"
                             data-class-selected="is_equipment_category"
-                            data-event-click="switch_category_equipment">Equipment</button>
+                            data-event-click="switch_category_equipment"
+                            data-i18n="shop.category.equipment">Equipment</button>
                 </div>
 
                 <div class="shop-empty-text" data-if="is_buy_mode &amp;&amp; !has_buy_entries">{{ empty_text }}</div>
@@ -88,7 +92,7 @@
 
                 <div id="shop-detail-info">
                     <div class="shop-info-row">
-                        <div class="shop-info-label">Price</div>
+                        <div class="shop-info-label" data-i18n="shop.detail.price">Price</div>
                         <div class="shop-info-value">{{ detail_price_text }}</div>
                     </div>
                     <div class="shop-info-row">
@@ -96,11 +100,11 @@
                         <div class="shop-info-value">{{ detail_owned_text }}</div>
                     </div>
                     <div class="shop-info-row">
-                        <div class="shop-info-label">Total</div>
+                        <div class="shop-info-label" data-i18n="shop.detail.total">Total</div>
                         <div class="shop-info-value">{{ detail_total_text }}</div>
                     </div>
                     <div class="shop-info-row">
-                        <div class="shop-info-label">After</div>
+                        <div class="shop-info-label" data-i18n="shop.detail.after">After</div>
                         <div class="shop-info-value">{{ detail_after_gold_text }}</div>
                     </div>
                 </div>
@@ -127,7 +131,8 @@
                             data-attrif-disabled="!primary_action_enabled"
                             data-event-click="confirm_trade">{{ primary_action_text }}</button>
                     <button class="tf-button-light shop-action-btn shop-action-button"
-                            data-event-click="close">Leave</button>
+                            data-event-click="close"
+                            data-i18n="shop.leave">Leave</button>
                 </div>
             </div>
         </div>
