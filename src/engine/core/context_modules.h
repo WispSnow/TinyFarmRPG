@@ -3,6 +3,7 @@
 
 namespace engine::input {
     class InputManager;
+    class MouseCursorService;
 }
 
 namespace engine::render {
@@ -39,6 +40,7 @@ struct CoreServices {
     engine::core::Time& time;
     engine::input::InputManager& input_manager;
     engine::async::MainThreadCommandQueue& main_thread_command_queue;
+    engine::input::MouseCursorService* mouse_cursor_service{nullptr};
 };
 
 /// @brief 渲染相关服务（GL渲染器、高层渲染器、相机、文本渲染）

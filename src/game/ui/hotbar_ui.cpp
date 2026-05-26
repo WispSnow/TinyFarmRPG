@@ -44,7 +44,8 @@ HotbarUI::HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
       context_(context),
       item_catalog_(catalog),
       localization_(localization),
-      owner_scene_id_(owner_scene_id) {
+      owner_scene_id_(owner_scene_id),
+      drag_state_(context.getMouseCursorService()) {
     hotbar_slots_.resize(SLOT_COUNT);
     slot_items_.resize(SLOT_COUNT);
     slot_inventory_indices_.assign(SLOT_COUNT, -1);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/input/mouse_cursor_service.h"
 #include "engine/ui/ui_types.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
@@ -69,11 +70,17 @@ struct SlotGridDragInfo {
 
 // 单个面板的拖拽生命周期状态：是否活跃、drop 是否已被处理。
 struct SlotGridDragState {
+    explicit SlotGridDragState(engine::input::MouseCursorService* cursor_service = nullptr);
+
     void clear();
     void start();
 
     bool active{false};
     bool drop_handled{false};
+
+private:
+    engine::input::MouseCursorService* cursor_service_{nullptr};
+    std::optional<engine::input::ScopedCursorOverride> cursor_override_{};
 };
 
 // 统一记录当前选中的槽位：面板种类 + 索引。

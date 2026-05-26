@@ -4,6 +4,10 @@
 
 namespace game::ui {
 
+InventorySlotDragController::InventorySlotDragController(engine::input::MouseCursorService* cursor_service)
+    : state_(cursor_service) {
+}
+
 InventorySlotDragCommand InventorySlotDragCommand::inventoryMove(const int source_inventory_slot,
                                                                  const int target_inventory_slot,
                                                                  const bool merge_stacks) {

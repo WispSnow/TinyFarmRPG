@@ -119,7 +119,8 @@ InventoryTabContent::InventoryTabContent(engine::core::Context& context,
       player_(player),
       item_catalog_(item_catalog),
       localization_(game::runtime::findLocalizationService(game_registry)),
-      owner_scene_id_(owner_scene_id) {
+      owner_scene_id_(owner_scene_id),
+      drag_controller_(context.getMouseCursorService()) {
     backpack_slots_.resize(TOTAL_SLOTS);
     for (int i = 0; i < TOTAL_SLOTS; ++i) {
         backpack_slots_[i].slot_index = i;

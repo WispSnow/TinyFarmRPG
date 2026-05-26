@@ -43,6 +43,8 @@ struct InventorySlotDragEndPlan {
 /// @brief Encapsulates inventory slot drag state and command planning.
 class InventorySlotDragController final {
 public:
+    explicit InventorySlotDragController(engine::input::MouseCursorService* cursor_service = nullptr);
+
     [[nodiscard]] bool active() const { return state_.active; }
 
     void start();

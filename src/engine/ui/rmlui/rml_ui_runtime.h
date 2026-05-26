@@ -17,11 +17,14 @@ class Context;
 class ElementDocument;
 }
 
-class SystemInterface_SDL;
+namespace engine::input {
+class MouseCursorService;
+}
 
 namespace engine::ui::rmlui {
 
 class RenderInterface_GL3_STB;
+class RmlSystemInterfaceSdl;
 
 /// @brief RmlUi retained-mode runtime。
 ///
@@ -39,7 +42,8 @@ public:
 
     [[nodiscard]] static std::unique_ptr<RmlUiRuntime> create(SDL_Window* window,
                                                               RenderInterface_GL3_STB& render_interface,
-                                                              const RmlUiViewport& viewport);
+                                                              const RmlUiViewport& viewport,
+                                                              engine::input::MouseCursorService* cursor_service = nullptr);
     ~RmlUiRuntime();
 
     RmlUiRuntime(const RmlUiRuntime&) = delete;
@@ -103,7 +107,8 @@ private:
     RmlUiRuntime() = default;
     [[nodiscard]] bool init(SDL_Window* window,
                             RenderInterface_GL3_STB& render_interface,
-                            const RmlUiViewport& viewport);
+                            const RmlUiViewport& viewport,
+                            engine::input::MouseCursorService* cursor_service);
 
     struct DocumentEntry {
         Rml::ElementDocument* doc{nullptr};
@@ -126,7 +131,7 @@ private:
     [[nodiscard]] bool ensureDebuggerInitialized();
 
     SDL_Window* window_{nullptr};
-    std::unique_ptr<SystemInterface_SDL> system_interface_;
+    std::unique_ptr<RmlSystemInterfaceSdl> system_interface_;
     RenderInterface_GL3_STB* render_interface_{nullptr};
     Rml::Context* context_{nullptr};
     RmlUiViewport viewport_{};

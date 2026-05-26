@@ -69,6 +69,7 @@ target_sources(engine PRIVATE
     engine/input/input_event_routing.cpp
     engine/input/input_glyphs.cpp
     engine/input/input_manager.cpp
+    engine/input/mouse_cursor_service.cpp
     # Loader
     engine/loader/level_loader.cpp
     engine/loader/level_preprocess_service.cpp
@@ -145,6 +146,7 @@ target_sources(engine PRIVATE
     engine/ui/rmlui/rml_data_bridge.cpp
     engine/ui/rmlui/rml_document_controller.cpp
     engine/ui/rmlui/rml_generated_image_registry.cpp
+    engine/ui/rmlui/rml_system_interface_sdl.cpp
     engine/ui/rmlui/rml_screen_fade.cpp
     engine/ui/rmlui/render_interface_gl3_stb.cpp
 )

@@ -11,6 +11,7 @@
 #include "engine/render/text_renderer.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
+#include "engine/input/mouse_cursor_service.h"
 #include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
@@ -45,6 +46,7 @@ namespace {
 constexpr std::size_t MAIN_THREAD_DRAIN_MAX_COMMANDS = 2048;
 constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
+constexpr char DEFAULT_CURSOR_CONFIG_PATH[] = "assets/data/cursor_config.json";
 constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
 constexpr char FALLBACK_RMLUI_FONT_PATH[] = "assets/fonts/LXGWBright-Regular.ttf";
 
@@ -161,6 +163,7 @@ bool GameApp::init() {
     if (!initDispatcher()) return false;
     if (!initConfig()) return false;
     if (!initSDL())  return false;
+    if (!initMouseCursorService()) return false;
     if (!initGLRenderer()) return false;
     if (!initRmlUi()) return false;
 #ifdef TF_ENABLE_DEBUG_UI
@@ -315,6 +318,7 @@ void GameApp::close() {
     // RmlUiRuntime::clean() 会执行 Rml::Shutdown()，必须发生在 render backend 释放之前。
     rmlui_runtime_.reset();
     rmlui_render_backend_.reset();
+    mouse_cursor_service_.reset();
 
     // ImGui 依赖的 OpenGL 上下文必须在窗口销毁前清理
     gl_renderer_.reset();
@@ -365,6 +369,15 @@ bool GameApp::initSDL()
     return true;
 }
 
+bool GameApp::initMouseCursorService()
+{
+    mouse_cursor_service_ = std::make_unique<engine::input::MouseCursorService>();
+    if (!mouse_cursor_service_->loadTheme(DEFAULT_CURSOR_CONFIG_PATH)) {
+        spdlog::warn("GameApp: 自定义鼠标光标加载失败，将使用 SDL 系统光标。");
+    }
+    return true;
+}
+
 bool GameApp::initGLRenderer() {
     // 获取逻辑分辨率 (窗口大小 * 逻辑缩放比例)
     // 💡 为什么要单独计算 logical_size？
@@ -402,7 +415,8 @@ bool GameApp::initRmlUi() {
     rmlui_runtime_ = engine::ui::rmlui::RmlUiRuntime::create(
         window_,
         *rmlui_render_backend_->getRenderInterface(),
-        toRmlUiViewport(viewport));
+        toRmlUiViewport(viewport),
+        mouse_cursor_service_.get());
     if (!rmlui_runtime_) {
         spdlog::error("初始化 RmlUi 失败：创建 RmlUiRuntime 失败。");
         return false;
@@ -605,7 +619,12 @@ bool GameApp::initContext()
     }
 
     engine::core::CoreServices core_services{
-        *dispatcher_, *game_state_, *time_, *input_manager_, *main_thread_command_queue_
+        *dispatcher_,
+        *game_state_,
+        *time_,
+        *input_manager_,
+        *main_thread_command_queue_,
+        mouse_cursor_service_.get(),
     };
     engine::core::RenderServices render_services{
         *gl_renderer_, *renderer_, *camera_, *text_renderer_

@@ -79,6 +79,7 @@ public:
     // --- 便捷 Getters（转发至模块成员，保持现有调用点兼容）---
     [[nodiscard]] entt::dispatcher& getDispatcher() const { return core_.dispatcher; }
     [[nodiscard]] engine::input::InputManager& getInputManager() const { return core_.input_manager; }
+    [[nodiscard]] engine::input::MouseCursorService* getMouseCursorService() const { return core_.mouse_cursor_service; }
     [[nodiscard]] engine::core::GameState& getGameState() const { return core_.game_state; }
     [[nodiscard]] engine::core::Time& getTime() const { return core_.time; }
     [[nodiscard]] engine::async::MainThreadCommandQueue& getMainThreadCommandQueue() const { return core_.main_thread_command_queue; }
