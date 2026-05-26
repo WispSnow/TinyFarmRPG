@@ -39,9 +39,9 @@ private:
     game::runtime::UserSettingsService* settings_{nullptr};
 
     Rml::String options_battle_speed_text_{"x1.0"};
-    Rml::String options_damage_popup_text_{"On"};
-    Rml::String options_enemy_hp_bar_text_{"On"};
-    Rml::String options_cursor_memory_text_{"On"};
+    Rml::String options_damage_popup_text_{"!common.on!"};
+    Rml::String options_enemy_hp_bar_text_{"!common.on!"};
+    Rml::String options_cursor_memory_text_{"!common.on!"};
     bool options_show_damage_popup_{true};
     bool options_show_enemy_hp_bar_{true};
     bool options_cursor_memory_{true};

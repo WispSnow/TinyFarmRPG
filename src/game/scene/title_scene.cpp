@@ -7,9 +7,11 @@
 
 #include "game/data/game_time.h"
 #include "game/defs/audio_ids.h"
+#include "game/defs/options_events.h"
 #include "game/runtime/game_content_manifest.h"
 #include "game/runtime/localization_service.h"
 #include "game/runtime/user_settings_service.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/audio/audio_player.h"
 #include "engine/core/context.h"
@@ -31,12 +33,13 @@ constexpr std::string_view MODEL_NAME = "title_scene";
 
 namespace game::scene {
 
-TitleScene::TitleScene(std::string_view name, engine::core::Context& context, std::string error_message)
+TitleScene::TitleScene(std::string_view name, engine::core::Context& context, TitleSceneMessage error_message)
     : engine::scene::Scene(name, context),
       error_message_(std::move(error_message)) {
 }
 
 TitleScene::~TitleScene() {
+    disconnectRuntimeListeners();
     shutdownUI();
 }
 
@@ -51,6 +54,7 @@ bool TitleScene::init() {
         title_game_time_ = std::make_shared<game::data::GameTime>();
     }
     initUserSettings();
+    connectRuntimeListeners();
 
     if (!initUI()) {
         return false;
@@ -66,6 +70,7 @@ bool TitleScene::init() {
 void TitleScene::clean() {
     flushUserSettings();
     shutdownUI();
+    disconnectRuntimeListeners();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
@@ -106,6 +111,22 @@ const game::runtime::LocalizationService* TitleScene::localization() const noexc
     return user_settings_service_ ? &user_settings_service_->localization() : nullptr;
 }
 
+void TitleScene::connectRuntimeListeners() {
+    if (runtime_listeners_connected_) {
+        return;
+    }
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&TitleScene::onLanguageChanged>(this);
+    runtime_listeners_connected_ = true;
+}
+
+void TitleScene::disconnectRuntimeListeners() {
+    if (!runtime_listeners_connected_) {
+        return;
+    }
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&TitleScene::onLanguageChanged>(this);
+    runtime_listeners_connected_ = false;
+}
+
 bool TitleScene::initUI() {
     auto* runtime = context_.getRmlUi();
     if (!runtime) {
@@ -138,14 +159,32 @@ bool TitleScene::initUI() {
         return false;
     }
 
-    error_text_ = Rml::String{error_message_.data(), error_message_.size()};
-    show_error_ = !error_message_.empty();
+    syncErrorText(false);
     document_controller_.markAllDirty();
     return true;
 }
 
 void TitleScene::shutdownUI() {
     document_controller_.unload();
+}
+
+void TitleScene::syncErrorText(bool mark_dirty) {
+    show_error_ = !error_message_.key.empty();
+    if (!show_error_) {
+        error_text_ = {};
+    } else {
+        const std::string text = game::ui::formatTextOrFallback(
+            localization(),
+            error_message_.key,
+            error_message_.args,
+            [this] { return "!" + error_message_.key + "!"; });
+        error_text_ = Rml::String{text.data(), text.size()};
+    }
+
+    if (mark_dirty) {
+        document_controller_.markDirty("error_text");
+        document_controller_.markDirty("show_error");
+    }
 }
 
 void TitleScene::onStartClicked() {
@@ -196,6 +235,10 @@ void TitleScene::onMenuClicked() {
 
 void TitleScene::onExitClicked() {
     quit();
+}
+
+void TitleScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    syncErrorText(true);
 }
 
 } // namespace game::scene

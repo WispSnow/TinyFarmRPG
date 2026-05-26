@@ -896,6 +896,12 @@ void BattleScene::rebuildVictoryView() {
         document_controller_.markDirty("victory_overlay_visible");
     }
 
+    const std::string title_text =
+        game::ui::localizeTextOrFallback(localization(), "battle.victory.title", "Victory!");
+    if (updateBoundString(victory_title_, title_text)) {
+        document_controller_.markDirty("victory_title");
+    }
+
     const bool continue_enabled = overlay_visible && snapshot.waiting_for_confirm;
     if (updateBoundBool(victory_continue_enabled_, continue_enabled)) {
         document_controller_.markDirty("victory_continue_enabled");

@@ -90,7 +90,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     std::string selected_actor_id_{};
     bool actor_target_mode_{false};
     int pending_actor_target_inventory_slot_{-1};
-    Rml::String gold_label_{"Gold: 0"};
+    Rml::String gold_label_{"!common.gold!"};
     Rml::String farm_label_{"TinyFarm"};
 
 public:

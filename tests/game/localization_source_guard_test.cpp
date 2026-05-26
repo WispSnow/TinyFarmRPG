@@ -75,6 +75,70 @@ struct SourceViolation {
     return false;
 }
 
+[[nodiscard]] bool hasOnlyTechnicalLetters(const std::string_view text) {
+    static constexpr std::string_view kAllowed[] = {
+        "none",
+        "TinyFarm",
+    };
+    for (const std::string_view allowed : kAllowed) {
+        if (text == allowed) {
+            return true;
+        }
+    }
+    if (text.rfind("image(", 0) == 0) {
+        return true;
+    }
+    if (text.size() >= 2 && text[0] == 'x' &&
+        std::all_of(text.begin() + 1, text.end(), [](const char ch) {
+            return std::isdigit(static_cast<unsigned char>(ch)) != 0 || ch == '.';
+        })) {
+        return true;
+    }
+    if (text.size() > 2 && text.substr(text.size() - 2) == "dp") {
+        return std::all_of(text.begin(), text.end() - 2, [](const char ch) {
+            return std::isdigit(static_cast<unsigned char>(ch)) != 0 || ch == '.' || ch == '-';
+        });
+    }
+    return false;
+}
+
+[[nodiscard]] bool isLocalizedPlaceholder(const std::string_view text) {
+    return text.size() >= 2 && text.front() == '!' && text.back() == '!';
+}
+
+[[nodiscard]] std::vector<SourceViolation> collectRmlStringDefaultLiteralViolations() {
+    const std::regex rml_string_regex{R"re(Rml::String\s+\w+\s*\{\s*"([^"\\]*(?:\\.[^"\\]*)*)")re"};
+    std::vector<SourceViolation> violations{};
+    const std::filesystem::path src_dir = projectRoot() / "src" / "game";
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(src_dir)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        if (entry.path().extension() != ".h" && entry.path().extension() != ".cpp") {
+            continue;
+        }
+        if (entry.path().string().find("/debug/") != std::string::npos) {
+            continue;
+        }
+
+        const std::string source = slurp(entry.path());
+        for (std::sregex_iterator it(source.begin(), source.end(), rml_string_regex), last; it != last; ++it) {
+            const std::string literal = (*it)[1].str();
+            if (!hasAsciiLetter(literal) || isLocalizedPlaceholder(literal) || hasOnlyTechnicalLetters(literal)) {
+                continue;
+            }
+            violations.push_back(SourceViolation{
+                .path = entry.path(),
+                .line = lineForOffset(source, static_cast<std::size_t>(it->position())),
+                .text = literal,
+            });
+        }
+    }
+
+    return violations;
+}
+
 [[nodiscard]] std::vector<SourceViolation> collectTimedNotificationLiteralViolations() {
     const std::regex string_literal_regex{R"re("([^"\\]*(?:\\.[^"\\]*)*)")re"};
     std::vector<SourceViolation> violations{};
@@ -156,4 +220,19 @@ TEST(LocalizationSourceGuardTest, ProjectLuaDialogueCallsDoNotUseRawEnglishLiter
         ADD_FAILURE() << violation.path << ':' << violation.line
                       << " passes raw text to dialogue API: " << violation.text;
     }
+}
+
+TEST(LocalizationSourceGuardTest, BoundRmlStringDefaultsDoNotUseRawEnglishLiterals) {
+    const std::vector<SourceViolation> violations = collectRmlStringDefaultLiteralViolations();
+    for (const auto& violation : violations) {
+        ADD_FAILURE() << violation.path << ':' << violation.line
+                      << " initializes a bound Rml::String with raw English: " << violation.text;
+    }
+}
+
+TEST(LocalizationSourceGuardTest, TitleLoadFailureMessageUsesLocalizedKey) {
+    const std::filesystem::path source_path = projectRoot() / "src" / "game" / "scene" / "game_scene.cpp";
+    const std::string source = slurp(source_path);
+    EXPECT_EQ(source.find("Load failed: "), std::string::npos);
+    EXPECT_NE(source.find("title.message.load_failed_detail"), std::string::npos);
 }

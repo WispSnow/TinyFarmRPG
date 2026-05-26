@@ -48,7 +48,7 @@ private:
     Rml::String music_text_{};
     Rml::String sound_text_{};
     Rml::String speed_text_{};
-    Rml::String language_text_{"English"};
+    Rml::String language_text_{"!options.language!"};
     bool has_message_{false};
     bool message_is_error_{true};
     bool can_save_{false};

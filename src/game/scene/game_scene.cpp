@@ -358,9 +358,14 @@ bool GameScene::init() {
     if (const auto* load_options = std::get_if<LoadGameOptions>(&launch_)) {
         std::string load_error;
         if (!services_->save_service->loadFromFile(game::save::SaveService::slotPath(load_options->slot), load_error)) {
-            const std::string message = "Load failed: " + load_error;
             spdlog::error("GameScene: 读档失败 (slot {}): {}", load_options->slot, load_error);
-            requestReplaceScene(std::make_unique<game::scene::TitleScene>("TitleScene", context_, message));
+            requestReplaceScene(std::make_unique<game::scene::TitleScene>(
+                "TitleScene",
+                context_,
+                game::scene::TitleSceneMessage{
+                    .key = "title.message.load_failed_detail",
+                    .args = {{"error", load_error}},
+                }));
             abort_to_title_ = true;
         }
     }
