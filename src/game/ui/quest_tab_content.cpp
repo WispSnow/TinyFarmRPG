@@ -11,7 +11,6 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cctype>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,37 +19,6 @@ namespace game::ui {
 namespace {
 
 using QuestEntryViewModels = std::vector<QuestEntryViewModel>;
-
-[[nodiscard]] std::string humanizeEnemyId(std::string_view enemy_id) {
-    const std::size_t separator = enemy_id.find_last_of(".:/");
-    std::string label = std::string(separator == std::string_view::npos ? enemy_id : enemy_id.substr(separator + 1));
-    std::replace(label.begin(), label.end(), '_', ' ');
-    std::replace(label.begin(), label.end(), '-', ' ');
-
-    bool capitalize = true;
-    for (char& ch : label) {
-        const unsigned char uch = static_cast<unsigned char>(ch);
-        if (std::isspace(uch)) {
-            capitalize = true;
-            continue;
-        }
-        if (capitalize && std::isalpha(uch)) {
-            ch = static_cast<char>(std::toupper(uch));
-        }
-        capitalize = false;
-    }
-
-    return label;
-}
-
-[[nodiscard]] std::string localizedEnemyName(const game::runtime::LocalizationService* localization,
-                                             const std::string_view enemy_id) {
-    const std::string enemy_name_key = std::string{enemy_id} + ".name";
-    if (localization && localization->hasText(enemy_name_key)) {
-        return localization->tr(enemy_name_key);
-    }
-    return humanizeEnemyId(enemy_id);
-}
 
 void appendSummaryLine(std::string& summary, const std::string& line) {
     if (line.empty()) {
@@ -78,12 +46,12 @@ void appendSummaryLine(std::string& summary, const std::string& line) {
                 localization,
                 "inventory.quest.progress.defeat_enemy_count",
                 {
-                    {"enemy", localizedEnemyName(localization, objective.enemy_id_)},
+                    {"enemy", game::ui::localizeIdName(localization, objective.enemy_id_)},
                     {"current", std::to_string(clamped)},
                     {"count", std::to_string(objective.required_count_)},
                 },
                 [&objective, clamped] {
-                    return humanizeEnemyId(objective.enemy_id_) + " " + std::to_string(clamped) + "/" +
+                    return game::ui::localizeIdName(nullptr, objective.enemy_id_) + " " + std::to_string(clamped) + "/" +
                            std::to_string(objective.required_count_);
                 }));
     }

@@ -55,18 +55,20 @@ void appendSeparated(std::string& text, const std::string_view part) {
     std::string text{};
     for (const auto& objective : quest.objectives_) {
         switch (objective.kind_) {
-            case game::data::QuestObjectiveKind::DefeatEnemyCount:
+            case game::data::QuestObjectiveKind::DefeatEnemyCount: {
+                const std::string enemy_name = game::ui::localizeIdName(localization, objective.enemy_id_);
                 appendSeparated(
                     text,
                     game::ui::formatTextOrFallback(
                         localization,
                         "quest_offer.objective.defeat_enemy_count",
-                        {{"enemy", objective.enemy_id_}, {"count", std::to_string(objective.required_count_)}},
-                        [&objective] {
-                            return "Defeat " + objective.enemy_id_ + " x" +
+                        {{"enemy", enemy_name}, {"count", std::to_string(objective.required_count_)}},
+                        [&objective, &enemy_name] {
+                            return "Defeat " + enemy_name + " x" +
                                    std::to_string(objective.required_count_);
                         }));
                 break;
+            }
         }
     }
 

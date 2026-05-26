@@ -42,6 +42,15 @@ namespace {
     return localization;
 }
 
+[[nodiscard]] game::runtime::LocalizationService loadChineseLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest.string()));
+    EXPECT_TRUE(localization.setLanguage("zh-Hans"));
+    return localization;
+}
+
 struct MapMarkerCatalogFixture {
     game::data::QuestCatalog quest_catalog{};
     game::data::ShopCatalog shop_catalog{};
@@ -156,6 +165,33 @@ TEST(MapTabContentTest, BuildsPlayerMarkerFromRuntimeLocalPositionAfterMapSwitch
     EXPECT_EQ(state.map_markers[0].top, "47dp");
     EXPECT_EQ(state.map_markers[0].width, "16dp");
     EXPECT_EQ(state.map_markers[0].height, "16dp");
+}
+
+TEST(MapTabContentTest, LocalizesCurrentMapNameForMapTitleAndPlayerMarkerDescription) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{280.0F, 200.0F});
+    game::world::WorldState world_state = loadWorld();
+    const game::runtime::LocalizationService localization = loadChineseLocalization();
+
+    const MapTabViewState state = buildMapTabViewState(
+        registry,
+        player,
+        &world_state,
+        world_state.getCurrentMap(),
+        MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
+        {},
+        {},
+        nullptr,
+        nullptr,
+        0,
+        &localization);
+
+    EXPECT_EQ(state.map_title, "家园外部");
+    ASSERT_EQ(state.map_markers.size(), 1U);
+    EXPECT_EQ(state.map_markers[0].title, "当前位置");
+    EXPECT_EQ(state.map_markers[0].description, "家园外部");
+    EXPECT_EQ(state.map_detail_description, "家园外部");
 }
 
 TEST(MapTabContentTest, BuildsPlayerMarkerAndClampsOutOfRangePositionToMapBounds) {

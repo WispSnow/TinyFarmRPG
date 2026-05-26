@@ -75,6 +75,15 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
     return false;
 }
 
+[[nodiscard]] std::string localizedMapName(const game::runtime::LocalizationService* localization,
+                                           const std::string_view map_name) {
+    const std::string key = "map." + std::string{map_name} + ".name";
+    if (localization && localization->hasText(key)) {
+        return localization->tr(key);
+    }
+    return humanizeMapName(map_name);
+}
+
 [[nodiscard]] const char* markerKindString(const MapObjectMarkerKind kind) {
     switch (kind) {
         case MapObjectMarkerKind::Shop:
@@ -405,7 +414,7 @@ MapTabViewState buildMapTabViewState(const entt::registry& /*registry*/,
         return state;
     }
 
-    state.map_title = humanizeMapName(map_info->name);
+    state.map_title = localizedMapName(localization, map_info->name);
 
     const bool preview_valid = !preview.source_uri.empty() && preview.width > 0 && preview.height > 0;
     if (!preview_valid) {

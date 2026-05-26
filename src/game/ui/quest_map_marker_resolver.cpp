@@ -25,15 +25,6 @@ inline constexpr const char* kNoTitleFallback = "";
     return std::clamp(progress, 0, objective.required_count_);
 }
 
-[[nodiscard]] std::string localizedEnemyName(const game::runtime::LocalizationService* localization,
-                                             const std::string_view enemy_id) {
-    const std::string key = std::string{enemy_id} + ".name";
-    if (localization && localization->hasText(key)) {
-        return localization->tr(key);
-    }
-    return humanizeId(enemy_id, kNoTitleFallback);
-}
-
 [[nodiscard]] std::string objectiveMarkerTitle(const game::data::QuestObjectiveData& objective,
                                                const game::runtime::LocalizationService* localization) {
     if (objective.marker_ && !objective.marker_->label_.empty()) {
@@ -57,7 +48,7 @@ inline constexpr const char* kNoTitleFallback = "";
 [[nodiscard]] std::string objectiveProgressDescription(const game::data::QuestObjectiveData& objective,
                                                        const int current_progress,
                                                        const game::runtime::LocalizationService* localization) {
-    std::string label = localizedEnemyName(localization, objective.enemy_id_);
+    std::string label = game::ui::localizeIdName(localization, objective.enemy_id_, kNoTitleFallback);
     if (label.empty()) {
         label = objectiveMarkerTitle(objective, localization);
     }

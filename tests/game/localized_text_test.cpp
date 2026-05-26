@@ -34,3 +34,15 @@ TEST(LocalizedTextTest, TryLocalizeKeepsUnknownText) {
 TEST(LocalizedTextTest, TryLocalizeKeepsRawTextWithoutLocalization) {
     EXPECT_EQ(game::ui::tryLocalize(nullptr, "item.tool_hoe.name"), "item.tool_hoe.name");
 }
+
+TEST(LocalizedTextTest, LocalizeIdNameResolvesDotNameKey) {
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex(manifestPath()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    EXPECT_EQ(game::ui::localizeIdName(&localization, "enemy.slime"), "史莱姆");
+}
+
+TEST(LocalizedTextTest, LocalizeIdNameHumanizesIdWithoutLocalization) {
+    EXPECT_EQ(game::ui::localizeIdName(nullptr, "enemy.moss_bat"), "Moss Bat");
+}
