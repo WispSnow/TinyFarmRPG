@@ -6,6 +6,7 @@
 #include "game/data/game_time.h"
 #include "game/defs/events.h"
 #include "game/defs/options_events.h"
+#include "game/runtime/localization_service.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
 #include "game/ui/localized_text.h"
@@ -63,6 +64,17 @@ constexpr std::string_view MODEL_NAME = "pause_menu";
                                           key,
                                           game::ui::LocalizedFormatArgs{{"value", value_text}},
                                           [&] { return std::format("{} {}x", fallback_prefix, value_text); });
+}
+
+[[nodiscard]] std::size_t indexOfLanguage(const game::runtime::LocalizationService& localization,
+                                          const std::string_view language_tag) noexcept {
+    const auto& languages = localization.languages();
+    for (std::size_t i = 0; i < languages.size(); ++i) {
+        if (languages[i].tag == language_tag) {
+            return i;
+        }
+    }
+    return 0;
 }
 
 using engine::ui::rmlui::updateBoundBool;
@@ -157,9 +169,11 @@ bool PauseMenuScene::initUI() {
     constructor.Bind("music_text", &music_text_);
     constructor.Bind("sound_text", &sound_text_);
     constructor.Bind("speed_text", &speed_text_);
+    constructor.Bind("language_text", &language_text_);
     constructor.Bind("can_save", &can_save_);
     constructor.Bind("can_load", &can_load_);
     constructor.Bind("can_back_title", &can_back_title_);
+    constructor.Bind("can_change_language", &can_change_language_);
 
     if (!document_controller_.bindSimpleEvent(constructor, "resume", [this] { onResumeClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "save", [this] { onSaveClicked(); }) ||
@@ -167,6 +181,8 @@ bool PauseMenuScene::initUI() {
         !document_controller_.bindSimpleEvent(constructor, "back_to_title", [this] { onBackToTitleClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "speed_down", [this] { adjustTimeScale(-1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "speed_up", [this] { adjustTimeScale(1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "language_down", [this] { adjustLanguage(-1); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "language_up", [this] { adjustLanguage(1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "music_down", [this] { adjustMusicVolume(-1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "music_up", [this] { adjustMusicVolume(1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "sound_down", [this] { adjustSoundVolume(-1); }) ||
@@ -184,6 +200,7 @@ bool PauseMenuScene::initUI() {
 
     refreshVolumeLabels();
     refreshTimeScaleLabel();
+    refreshLanguageLabel();
     refreshSaveActionButtons();
     clearMessage();
     document_controller_.markAllDirty();
@@ -230,6 +247,26 @@ void PauseMenuScene::refreshTimeScaleLabel() {
     }
 }
 
+void PauseMenuScene::refreshLanguageLabel() {
+    std::string label{"English"};
+    bool can_change = false;
+
+    if (user_settings_service_) {
+        const auto& localization_service = user_settings_service_->localization();
+        const auto& languages = localization_service.languages();
+        const auto& settings = user_settings_service_->snapshot();
+        label = localization_service.languageNativeName(settings.language_tag);
+        can_change = languages.size() > 1;
+    }
+
+    if (updateBoundString(language_text_, label)) {
+        document_controller_.markDirty("language_text");
+    }
+    if (updateBoundBool(can_change_language_, can_change)) {
+        document_controller_.markDirty("can_change_language");
+    }
+}
+
 void PauseMenuScene::refreshSaveActionButtons() {
     const bool has_save_service = (save_service_ != nullptr);
     const bool saving = has_save_service && save_service_->isSaving();
@@ -248,6 +285,7 @@ void PauseMenuScene::refreshSaveActionButtons() {
 void PauseMenuScene::refreshLocalizedBindings() {
     refreshVolumeLabels();
     refreshTimeScaleLabel();
+    refreshLanguageLabel();
     if (!message_key_.empty()) {
         publishMessage(resolveMessageText(), message_is_error_);
     }
@@ -456,6 +494,24 @@ void PauseMenuScene::adjustTimeScale(int step) {
         game_time_->time_scale_ = scale;
     }
     refreshTimeScaleLabel();
+}
+
+void PauseMenuScene::adjustLanguage(int step) {
+    if (!user_settings_service_) {
+        return;
+    }
+
+    const auto& localization_service = user_settings_service_->localization();
+    const auto& languages = localization_service.languages();
+    if (languages.empty()) {
+        return;
+    }
+
+    const std::size_t current = indexOfLanguage(localization_service, user_settings_service_->snapshot().language_tag);
+    const std::size_t delta = step > 0 ? 1 : languages.size() - 1;
+    const std::size_t next = (current + delta) % languages.size();
+    user_settings_service_->setLanguage(languages[next].tag);
+    refreshLanguageLabel();
 }
 
 } // namespace game::scene

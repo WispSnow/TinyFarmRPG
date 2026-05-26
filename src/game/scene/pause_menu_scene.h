@@ -48,11 +48,13 @@ private:
     Rml::String music_text_{};
     Rml::String sound_text_{};
     Rml::String speed_text_{};
+    Rml::String language_text_{"English"};
     bool has_message_{false};
     bool message_is_error_{true};
     bool can_save_{false};
     bool can_load_{false};
     bool can_back_title_{true};
+    bool can_change_language_{false};
     std::string message_key_{};
     std::unordered_map<std::string, std::string> message_args_{};
     std::string message_fallback_{};
@@ -75,6 +77,7 @@ private:
     void disconnectRuntimeListeners();
     void refreshVolumeLabels();
     void refreshTimeScaleLabel();
+    void refreshLanguageLabel();
     void refreshSaveActionButtons();
     void refreshLocalizedBindings();
     void onAsyncSaveCompleted(const game::defs::AsyncSaveCompletedEvent& event);
@@ -98,6 +101,7 @@ private:
     void adjustMusicVolume(int step);
     void adjustSoundVolume(int step);
     void adjustTimeScale(int step);
+    void adjustLanguage(int step);
 };
 
 } // namespace game::scene

@@ -7,6 +7,9 @@
 
 #include "game/data/game_time.h"
 #include "game/defs/audio_ids.h"
+#include "game/runtime/game_content_manifest.h"
+#include "game/runtime/localization_service.h"
+#include "game/runtime/user_settings_service.h"
 
 #include "engine/audio/audio_player.h"
 #include "engine/core/context.h"
@@ -47,6 +50,7 @@ bool TitleScene::init() {
         spdlog::warn("TitleScene: GameTime 加载失败，使用默认配置。");
         title_game_time_ = std::make_shared<game::data::GameTime>();
     }
+    initUserSettings();
 
     if (!initUI()) {
         return false;
@@ -60,12 +64,46 @@ bool TitleScene::init() {
 }
 
 void TitleScene::clean() {
+    flushUserSettings();
     shutdownUI();
     if (context_pushed_) {
         context_.getInputManager().popContext();
         context_pushed_ = false;
     }
     Scene::clean();
+}
+
+void TitleScene::initUserSettings() {
+    auto* rml_runtime = context_.getRmlUi();
+    if (!rml_runtime || !title_game_time_) {
+        spdlog::warn("TitleScene: 缺少 RmlUiRuntime 或 GameTime，标题页设置服务跳过初始化。");
+        return;
+    }
+
+    localization_service_ = std::make_unique<game::runtime::LocalizationService>();
+    if (!localization_service_->loadLanguageIndex(game::runtime::GameContentManifest::I18nLanguages)) {
+        spdlog::warn("TitleScene: 本地化语言表加载失败，将继续使用默认语言。");
+    }
+
+    user_settings_service_ = std::make_unique<game::runtime::UserSettingsService>(
+        context_.getDispatcher(),
+        context_.getAudioPlayer(),
+        *title_game_time_,
+        *localization_service_,
+        context_.getTextRenderer(),
+        *rml_runtime);
+    user_settings_service_->loadFromFileOrFallback();
+    user_settings_service_->applyAll();
+}
+
+void TitleScene::flushUserSettings() {
+    if (user_settings_service_) {
+        (void)user_settings_service_->flushIfDirty();
+    }
+}
+
+const game::runtime::LocalizationService* TitleScene::localization() const noexcept {
+    return user_settings_service_ ? &user_settings_service_->localization() : nullptr;
 }
 
 bool TitleScene::initUI() {
@@ -126,7 +164,8 @@ void TitleScene::onStartClicked() {
     auto next = std::make_unique<game::scene::AppearanceCustomizeScene>(
         "AppearanceCustomize",
         context_,
-        std::move(on_confirm));
+        std::move(on_confirm),
+        localization());
     requestPushScene(std::move(next));
 }
 
@@ -140,13 +179,18 @@ void TitleScene::onLoadClicked() {
         requestReplaceScene(std::move(next));
     };
 
-    auto menu = std::make_unique<game::scene::SaveSlotSelectScene>("SaveSlotSelect", context_, std::move(on_select));
+    auto menu = std::make_unique<game::scene::SaveSlotSelectScene>(
+        "SaveSlotSelect",
+        context_,
+        std::move(on_select),
+        game::scene::SaveSlotSelectScene::Mode::Load,
+        localization());
     requestPushScene(std::move(menu));
 }
 
 void TitleScene::onMenuClicked() {
     auto menu = std::make_unique<game::scene::PauseMenuScene>(
-        "PauseMenu", context_, nullptr, title_game_time_.get(), nullptr);
+        "PauseMenu", context_, nullptr, title_game_time_.get(), user_settings_service_.get());
     requestPushScene(std::move(menu));
 }
 

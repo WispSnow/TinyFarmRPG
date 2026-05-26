@@ -87,6 +87,30 @@ TEST(PauseMenuSceneAsyncSaveUiTest, DynamicStringsRefreshOnLanguageChange) {
         << "Time scale label should be generated from an i18n key.";
 }
 
+TEST(PauseMenuSceneAsyncSaveUiTest, ExposesLanguageStepper) {
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/pause_menu.rml").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+
+    const std::string scene_source = readTextFile(scene_source_path);
+    const std::string rml_source = readTextFile(rml_path);
+    ASSERT_FALSE(scene_source.empty());
+    ASSERT_FALSE(rml_source.empty());
+
+    EXPECT_NE(scene_source.find("constructor.Bind(\"language_text\""), std::string::npos);
+    EXPECT_NE(scene_source.find("constructor.Bind(\"can_change_language\""), std::string::npos);
+    EXPECT_NE(scene_source.find("bindSimpleEvent(constructor, \"language_down\""), std::string::npos);
+    EXPECT_NE(scene_source.find("bindSimpleEvent(constructor, \"language_up\""), std::string::npos);
+    EXPECT_NE(scene_source.find("void PauseMenuScene::adjustLanguage"), std::string::npos);
+    EXPECT_NE(rml_source.find("{{ language_text }}"), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-click=\"language_down\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-click=\"language_up\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_change_language\""), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

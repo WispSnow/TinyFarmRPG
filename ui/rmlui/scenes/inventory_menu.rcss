@@ -1014,11 +1014,6 @@
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
-.options-language-value {
-    width: 54dp;
-    font-size: 0.625rem;
-}
-
 .options-stepper {
     display: flex;
     flex-direction: row;

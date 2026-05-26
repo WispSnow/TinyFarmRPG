@@ -57,6 +57,7 @@ public:
 private:
     Mode mode_{Mode::NewGame};
     SceneFactory on_new_game_confirm_{};
+    const game::runtime::LocalizationService* title_localization_{nullptr};
     entt::registry* game_registry_{nullptr};
     entt::entity player_{entt::null};
     std::shared_ptr<game::data::AppearanceCatalog> catalog_{};
@@ -90,7 +91,8 @@ public:
     /// Creates the pre-new-game appearance picker; cancel pops back to the title scene.
     AppearanceCustomizeScene(std::string_view name,
                              engine::core::Context& context,
-                             SceneFactory on_confirm);
+                             SceneFactory on_confirm,
+                             const game::runtime::LocalizationService* localization = nullptr);
 
     /// Creates the in-game closet editor for the current player entity.
     AppearanceCustomizeScene(std::string_view name,
