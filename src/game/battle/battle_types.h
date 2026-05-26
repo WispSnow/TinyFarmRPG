@@ -84,7 +84,8 @@ struct BattlePortrait {
 /// 目标选择、公式计算与快照序列化路径。
 struct BattleUnit {
     BattleUnitId id{0};                        ///< 会话内单位标识；在 units 列表中必须唯一。
-    std::string name{};                        ///< UI 与战斗日志使用的显示名。
+    std::string name{};                        ///< UI 与战斗日志使用的显示名 key 或非 catalog 文本。
+    int name_ordinal{1};                       ///< 同名敌人的显示序号；1 表示不追加序号。
     BattleSide side{BattleSide::Player};
     int hp{100};
     int max_hp{100};

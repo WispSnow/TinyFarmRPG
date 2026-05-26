@@ -3,6 +3,9 @@ local dialogue = tf.script.require("lib.dialogue")
 local recruit_npc = {}
 
 local function normalize_lines(value)
+    if type(value) == "function" then
+        value = value()
+    end
     if type(value) == "string" and value ~= "" then
         return {value}
     end
@@ -31,15 +34,19 @@ local function handle(evt, lines, action)
     end
 end
 
+local function valid_lines(source)
+    return normalize_lines(source) ~= nil
+end
+
 function recruit_npc.register(opts)
     if type(opts) ~= "table" or type(opts.actor_id) ~= "string" or opts.actor_id == "" then
         return false
     end
 
     local actor_id = opts.actor_id
-    local intro_lines = normalize_lines(opts.intro_lines)
-    local recruited_lines = normalize_lines(opts.recruited_lines or opts.recruited_line)
-    if intro_lines == nil or recruited_lines == nil then
+    local intro_source = opts.intro_lines
+    local recruited_source = opts.recruited_lines or opts.recruited_line
+    if not valid_lines(intro_source) or not valid_lines(recruited_source) then
         return false
     end
 
@@ -50,11 +57,19 @@ function recruit_npc.register(opts)
         end
 
         if tf.party.is_recruited(actor_id) then
-            handle(evt, recruited_lines)
+            local lines = normalize_lines(recruited_source)
+            if lines ~= nil then
+                handle(evt, lines)
+            end
             return
         end
 
-        handle(evt, intro_lines, function()
+        local lines = normalize_lines(intro_source)
+        if lines == nil then
+            return
+        end
+
+        handle(evt, lines, function()
             return tf.party.offer_recruit(actor_id, evt.target)
         end)
     end)

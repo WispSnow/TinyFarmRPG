@@ -18,6 +18,10 @@ namespace game::data {
 class QuestCatalog;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 struct QuestEntryViewModel {
@@ -39,7 +43,8 @@ struct QuestTabViewState {
 [[nodiscard]] bool registerQuestTabDataTypes(Rml::DataModelConstructor& constructor);
 [[nodiscard]] QuestTabViewState buildQuestTabViewState(const entt::registry& registry,
                                                        entt::entity player,
-                                                       const game::data::QuestCatalog* quest_catalog);
+                                                       const game::data::QuestCatalog* quest_catalog,
+                                                       const game::runtime::LocalizationService* localization = nullptr);
 
 class QuestTabContent final : public IMenuTabContent {
 public:
@@ -54,12 +59,14 @@ public:
     void onDeactivated() override;
     void update(float delta_time) override;
     [[nodiscard]] bool onCancel() override;
+    void onLanguageChanged() override;
 
 private:
     engine::ui::rmlui::RmlDocumentController& document_controller_;
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     const game::data::QuestCatalog* quest_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
 
     std::vector<QuestEntryViewModel> active_quest_entries_{};
     std::vector<QuestEntryViewModel> completed_quest_entries_{};

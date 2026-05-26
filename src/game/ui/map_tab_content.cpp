@@ -7,6 +7,8 @@
 #include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/map_coordinate_mapper.h"
 #include "game/ui/slot_grid_support.h"
 #include "game/ui/text_utils.h"
@@ -85,16 +87,17 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
     return "npc";
 }
 
-[[nodiscard]] const char* markerKindTypeLabel(const MapObjectMarkerKind kind) {
+[[nodiscard]] std::string markerKindTypeLabel(const MapObjectMarkerKind kind,
+                                              const game::runtime::LocalizationService* localization) {
     switch (kind) {
         case MapObjectMarkerKind::Shop:
-            return "Shop";
+            return game::ui::localizeTextOrFallback(localization, "map.type.shop", "Shop");
         case MapObjectMarkerKind::Rest:
-            return "Rest Point";
+            return game::ui::localizeTextOrFallback(localization, "map.type.rest", "Rest Point");
         case MapObjectMarkerKind::Npc:
-            return "NPC";
+            return game::ui::localizeTextOrFallback(localization, "map.type.npc", "NPC");
     }
-    return "Place";
+    return game::ui::localizeTextOrFallback(localization, "map.type.place", "Place");
 }
 
 [[nodiscard]] const char* markerDecorator(const MapObjectMarkerKind kind) {
@@ -123,15 +126,18 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
 
 void populateShopDetail(MapMarkerViewModel& marker,
                         const MapObjectMarker& source,
-                        const game::data::ShopCatalog* shop_catalog) {
+                        const game::data::ShopCatalog* shop_catalog,
+                        const game::runtime::LocalizationService* localization) {
     const auto* shop = shop_catalog && !source.shop_id.empty() ? shop_catalog->findShop(source.shop_id) : nullptr;
     if (shop) {
-        marker.title = shop->title_.empty() ? source.shop_id : shop->title_;
-        marker.description = shop->greeting_.empty() ? "Buy and sell supplies." : shop->greeting_;
+        marker.title = shop->title_.empty() ? source.shop_id : game::ui::tryLocalize(localization, shop->title_);
+        marker.description = shop->greeting_.empty()
+                                 ? game::ui::localizeTextOrFallback(localization, "map.shop.default_description", "Buy and sell supplies.")
+                                 : game::ui::tryLocalize(localization, shop->greeting_);
         return;
     }
     marker.title = !source.object_name.empty() ? humanizeId(source.object_name) : humanizeId(source.shop_id);
-    marker.description = "Buy and sell supplies.";
+    marker.description = game::ui::localizeTextOrFallback(localization, "map.shop.default_description", "Buy and sell supplies.");
     if (!source.shop_id.empty()) {
         spdlog::warn("MapTabContent: shop marker references missing shop_id='{}'.", source.shop_id);
     }
@@ -139,36 +145,42 @@ void populateShopDetail(MapMarkerViewModel& marker,
 
 void populateNpcDetail(MapMarkerViewModel& marker,
                        const MapObjectMarker& source,
-                       const game::data::RpgCatalog* rpg_catalog) {
+                       const game::data::RpgCatalog* rpg_catalog,
+                       const game::runtime::LocalizationService* localization) {
     const auto* actor = rpg_catalog && !source.recruit_actor_id.empty()
                             ? rpg_catalog->findActor(source.recruit_actor_id)
                             : nullptr;
     if (actor) {
-        marker.title = actor->display_name_.empty() ? source.recruit_actor_id : actor->display_name_;
+        marker.title = actor->display_name_.empty()
+                           ? source.recruit_actor_id
+                           : game::ui::tryLocalize(localization, actor->display_name_);
     } else {
         marker.title = !source.object_name.empty() ? humanizeId(source.object_name) : humanizeId(source.recruit_actor_id);
         if (!source.recruit_actor_id.empty()) {
             spdlog::warn("MapTabContent: npc marker references missing recruit_actor_id='{}'.", source.recruit_actor_id);
         }
     }
-    marker.description = "Talk to this person.";
+    marker.description = game::ui::localizeTextOrFallback(localization, "map.npc.default_description", "Talk to this person.");
 }
 
 void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                 const MapObjectMarker& source,
                                 const game::data::ShopCatalog* shop_catalog,
-                                const game::data::RpgCatalog* rpg_catalog) {
-    marker.type_label = markerKindTypeLabel(source.kind);
+                                const game::data::RpgCatalog* rpg_catalog,
+                                const game::runtime::LocalizationService* localization) {
+    marker.type_label = markerKindTypeLabel(source.kind, localization);
     switch (source.kind) {
         case MapObjectMarkerKind::Shop:
-            populateShopDetail(marker, source, shop_catalog);
+            populateShopDetail(marker, source, shop_catalog, localization);
             break;
         case MapObjectMarkerKind::Rest:
-            marker.title = source.object_name.empty() ? "Rest Point" : humanizeId(source.object_name);
-            marker.description = "Recover and pass time.";
+            marker.title = source.object_name.empty()
+                               ? game::ui::localizeTextOrFallback(localization, "map.rest.title", "Rest Point")
+                               : humanizeId(source.object_name);
+            marker.description = game::ui::localizeTextOrFallback(localization, "map.rest.description", "Recover and pass time.");
             break;
         case MapObjectMarkerKind::Npc:
-            populateNpcDetail(marker, source, rpg_catalog);
+            populateNpcDetail(marker, source, rpg_catalog, localization);
             break;
     }
 }
@@ -177,7 +189,8 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                                            const glm::vec2 map_local_position,
                                                            const MapPreviewLayout& layout,
                                                            const std::string_view map_title,
-                                                           const bool selected) {
+                                                           const bool selected,
+                                                           const game::runtime::LocalizationService* localization) {
     const float marker_size = selected ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
     const glm::vec2 top_left = mapMarkerBottomCenterTopLeft(
         map_local_position,
@@ -205,8 +218,8 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
         glm::vec2{MAP_TAB_PREVIEW_FRAME_WIDTH, MAP_TAB_PREVIEW_FRAME_HEIGHT},
         glm::vec2{MAP_TAB_MARKER_SELECTED_SIZE, MAP_TAB_MARKER_SELECTED_SIZE});
     marker.normal_z_index = 50;
-    marker.title = "Current Position";
-    marker.type_label = "Player";
+    marker.title = game::ui::localizeTextOrFallback(localization, "map.current_position", "Current Position");
+    marker.type_label = game::ui::localizeTextOrFallback(localization, "map.type.player", "Player");
     marker.description = Rml::String{map_title.data(), map_title.size()};
     marker.is_selected = selected;
     return marker;
@@ -217,7 +230,8 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                                            const MapPreviewLayout& layout,
                                                            const bool selected,
                                                            const game::data::ShopCatalog* shop_catalog,
-                                                           const game::data::RpgCatalog* rpg_catalog) {
+                                                           const game::data::RpgCatalog* rpg_catalog,
+                                                           const game::runtime::LocalizationService* localization) {
     const float marker_size = selected ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
     const glm::vec2 top_left = mapMarkerBottomCenterTopLeft(
         source.map_position,
@@ -246,7 +260,7 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
         glm::vec2{MAP_TAB_MARKER_SELECTED_SIZE, MAP_TAB_MARKER_SELECTED_SIZE});
     marker.normal_z_index = markerBaseZIndex(source.kind);
     marker.is_selected = selected;
-    populateObjectMarkerDetail(marker, source, shop_catalog, rpg_catalog);
+    populateObjectMarkerDetail(marker, source, shop_catalog, rpg_catalog, localization);
     return marker;
 }
 
@@ -341,7 +355,9 @@ struct MarkerPositionKey {
     return marker;
 }
 
-void syncDetailFromSelection(MapTabViewState& state, int selected_marker_index) {
+void syncDetailFromSelection(MapTabViewState& state,
+                             int selected_marker_index,
+                             const game::runtime::LocalizationService* localization) {
     const auto selected_it = std::find_if(
         state.map_markers.begin(),
         state.map_markers.end(),
@@ -358,11 +374,14 @@ void syncDetailFromSelection(MapTabViewState& state, int selected_marker_index) 
     }
 
     if (state.has_map_preview && !state.has_place_markers) {
-        state.map_detail_title = "No places marked";
-        state.map_detail_type = "Map";
-        state.map_detail_description = "Current area has no marked places.";
+        state.map_detail_title = game::ui::localizeTextOrFallback(localization, "map.no_places_title", "No places marked");
+        state.map_detail_type = game::ui::localizeTextOrFallback(localization, "map.type.map", "Map");
+        state.map_detail_description = game::ui::localizeTextOrFallback(
+            localization,
+            "map.no_places_description",
+            "Current area has no marked places.");
         state.has_map_detail = true;
-        state.map_status_text = "No places marked";
+        state.map_status_text = state.map_detail_title;
     }
 }
 
@@ -377,11 +396,12 @@ MapTabViewState buildMapTabViewState(const entt::registry& /*registry*/,
                                      const entt::entity /*player*/,
                                      const game::world::WorldState* world_state,
                                      const entt::id_type map_id,
-                                     const MapTabPreviewInput& preview) {
+                                     const MapTabPreviewInput& preview,
+                                     const game::runtime::LocalizationService* localization) {
     MapTabViewState state{};
     const game::world::MapInfo* map_info = findMapInfo(world_state, map_id);
     if (!map_info) {
-        state.map_status_text = "No map data";
+        state.map_status_text = game::ui::localizeTextOrFallback(localization, "inventory.map.empty", "No map data");
         return state;
     }
 
@@ -389,7 +409,7 @@ MapTabViewState buildMapTabViewState(const entt::registry& /*registry*/,
 
     const bool preview_valid = !preview.source_uri.empty() && preview.width > 0 && preview.height > 0;
     if (!preview_valid) {
-        state.map_status_text = "No map data";
+        state.map_status_text = game::ui::localizeTextOrFallback(localization, "inventory.map.empty", "No map data");
         return state;
     }
 
@@ -403,7 +423,7 @@ MapTabViewState buildMapTabViewState(const entt::registry& /*registry*/,
     state.map_preview_width = formatDp(layout.content_size.x);
     state.map_preview_height = formatDp(layout.content_size.y);
     state.has_map_preview = true;
-    state.map_status_text = "Current Position";
+    state.map_status_text = game::ui::localizeTextOrFallback(localization, "map.current_position", "Current Position");
     return state;
 }
 
@@ -416,8 +436,9 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
                                      const std::vector<QuestRuntimeMarker>& quest_markers,
                                      const game::data::ShopCatalog* shop_catalog,
                                      const game::data::RpgCatalog* rpg_catalog,
-                                     const int selected_marker_index) {
-    MapTabViewState state = buildMapTabViewState(registry, player, world_state, map_id, preview);
+                                     const int selected_marker_index,
+                                     const game::runtime::LocalizationService* localization) {
+    MapTabViewState state = buildMapTabViewState(registry, player, world_state, map_id, preview, localization);
     if (!state.has_map_preview) {
         return state;
     }
@@ -438,7 +459,8 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
                 player_position,
                 layout,
                 std::string_view{state.map_title.data(), state.map_title.size()},
-                marker_index == selected_marker_index));
+                marker_index == selected_marker_index,
+                localization));
             ++marker_index;
         }
     }
@@ -474,13 +496,14 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
             layout,
             marker_index == selected_marker_index,
             shop_catalog,
-            rpg_catalog));
+            rpg_catalog,
+            localization));
         ++marker_index;
     }
 
     state.has_map_markers = !state.map_markers.empty();
     state.has_place_markers = !quest_markers.empty() || !static_place_markers.empty();
-    syncDetailFromSelection(state, selected_marker_index);
+    syncDetailFromSelection(state, selected_marker_index, localization);
     return state;
 }
 
@@ -509,6 +532,7 @@ MapTabContent::MapTabContent(engine::ui::rmlui::RmlDocumentController& document_
       quest_catalog_(quest_catalog),
       shop_catalog_(shop_catalog),
       rpg_catalog_(rpg_catalog),
+      localization_(game::runtime::findLocalizationService(game_registry)),
       generated_images_(generated_images) {
 }
 
@@ -555,6 +579,11 @@ void MapTabContent::update(const float /*delta_time*/) {
 
 bool MapTabContent::onCancel() {
     return false;
+}
+
+void MapTabContent::onLanguageChanged() {
+    localization_ = game::runtime::findLocalizationService(game_registry_);
+    syncViewState();
 }
 
 void MapTabContent::invalidateQuestMarkers() {
@@ -612,7 +641,8 @@ void MapTabContent::syncViewState() {
                 map_id,
                 *quest_log,
                 *quest_catalog_,
-                marker_snapshot.quest_giver_markers);
+                marker_snapshot.quest_giver_markers,
+                localization_);
         }
     }
 
@@ -641,7 +671,8 @@ void MapTabContent::syncViewState() {
         quest_markers,
         shop_catalog_,
         rpg_catalog_,
-        selected_marker_index_);
+        selected_marker_index_,
+        localization_);
 
     map_title_ = std::move(state.map_title);
     map_preview_src_ = std::move(state.map_preview_src);
@@ -698,10 +729,13 @@ void MapTabContent::syncDetailFromSelection() {
     }
 
     if (has_map_preview_ && !has_place_markers_) {
-        map_detail_title_ = "No places marked";
-        map_detail_type_ = "Map";
-        map_detail_description_ = "Current area has no marked places.";
-        map_status_text_ = "No places marked";
+        map_detail_title_ = game::ui::localizeTextOrFallback(localization_, "map.no_places_title", "No places marked");
+        map_detail_type_ = game::ui::localizeTextOrFallback(localization_, "map.type.map", "Map");
+        map_detail_description_ = game::ui::localizeTextOrFallback(
+            localization_,
+            "map.no_places_description",
+            "Current area has no marked places.");
+        map_status_text_ = map_detail_title_;
         has_map_detail_ = true;
     }
 }

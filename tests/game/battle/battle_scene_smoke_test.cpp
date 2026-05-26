@@ -453,7 +453,7 @@ TEST(BattleSceneSmokeTest, WiresRpgMakerStylePartyAndActorCommands) {
     EXPECT_NE(party_block.find("PartyCommandId::Fight"), std::string::npos);
     EXPECT_NE(party_block.find("PartyCommandId::Escape"), std::string::npos);
 
-    const std::string actor_block = snippetFrom(source, "void BattleScene::populateActorCommands()", 900U);
+    const std::string actor_block = snippetFrom(source, "void BattleScene::populateActorCommands()", 1400U);
     ASSERT_FALSE(actor_block.empty());
     EXPECT_NE(actor_block.find("ActorCommandId::Attack"), std::string::npos);
     EXPECT_NE(actor_block.find("ActorCommandId::Skill"), std::string::npos);

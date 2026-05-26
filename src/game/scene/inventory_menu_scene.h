@@ -37,11 +37,16 @@ namespace game::world {
 class WorldState;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
 namespace game::ui {
 class EquipmentTabContent;
 }
 
 namespace game::runtime {
+class LocalizationService;
 class UserSettingsService;
 }
 
@@ -120,6 +125,7 @@ private:
     void switchTabFromTabsetIndex(int tab_index);
     [[nodiscard]] bool activateRmlTab(game::ui::MenuTabId tab_id);
     [[nodiscard]] game::ui::IMenuTabContent* activeTab();
+    [[nodiscard]] const game::runtime::LocalizationService* localization() const noexcept;
     void cacheTabShortcutTooltipElements();
     void showTabShortcutTooltip(int tab_index);
     void hideTabShortcutTooltip();
@@ -133,6 +139,7 @@ private:
     bool onQuestsTabShortcut();
     bool onMapTabShortcut();
     bool onOptionsTabShortcut();
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 };
 
 } // namespace game::scene

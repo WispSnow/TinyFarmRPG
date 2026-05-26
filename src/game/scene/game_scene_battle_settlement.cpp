@@ -293,8 +293,10 @@ void processBattleEndedForGameScene(
     }
 
     const game::data::ItemCatalog* item_catalog = services && services->item_catalog ? services->item_catalog.get() : nullptr;
+    const game::runtime::LocalizationService* localization =
+        services && services->localization_service ? services->localization_service.get() : nullptr;
     const std::string feedback =
-        game::scene::formatBattleSettlementFeedback(reward_result, &experience_result, quest_result, item_catalog);
+        game::scene::formatBattleSettlementFeedback(reward_result, &experience_result, quest_result, item_catalog, localization);
     game::system::helpers::showTimedNotification(
         registry,
         dispatcher,

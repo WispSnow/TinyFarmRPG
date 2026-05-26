@@ -8,6 +8,7 @@
 #include "game/component/player_wallet_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/runtime/localization_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 
 #include <algorithm>
@@ -28,6 +29,15 @@ namespace {
     EXPECT_TRUE(catalog.loadClasses((rpg_root / "classes.json").string()));
     EXPECT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
     return catalog;
+}
+
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
 }
 
 void setParty(entt::registry& registry, entt::entity player, std::vector<std::string> active_actor_ids) {
@@ -54,8 +64,9 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
         game::component::PlayerWalletComponent{.gold_ = 345});
 
     const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
     const InventoryMenuPartyPanelData data =
-        buildInventoryMenuPartyPanelData(registry, player, &catalog, "", false);
+        buildInventoryMenuPartyPanelData(registry, player, &catalog, "", false, &localization);
 
     ASSERT_EQ(data.party_members.size(), 4U);
     EXPECT_EQ(data.party_members[0].actor_id, "actor.player");
@@ -73,6 +84,7 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
 
 TEST(InventoryMenuPartyPanelTest, BuildsStableFourCardSnapshotsForPartySizes) {
     const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
     const std::vector<std::string> actors = {"actor.player", "actor.lyria", "actor.tori", "actor.player"};
 
     for (int size = 1; size <= 4; ++size) {
@@ -81,7 +93,7 @@ TEST(InventoryMenuPartyPanelTest, BuildsStableFourCardSnapshotsForPartySizes) {
         setParty(registry, player, std::vector<std::string>(actors.begin(), actors.begin() + size));
 
         const InventoryMenuPartyPanelData data =
-            buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.lyria", true);
+            buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.lyria", true, &localization);
 
         ASSERT_EQ(data.party_members.size(), 4U);
         EXPECT_EQ(filledMemberCount(data), size);
@@ -100,6 +112,7 @@ TEST(InventoryMenuPartyPanelTest, UsesRuntimeHpMpWhenPresent) {
     const entt::entity player = registry.create();
     setParty(registry, player, {"actor.player"});
     const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
     const auto* actor = catalog.findActor("actor.player");
     ASSERT_NE(actor, nullptr);
     const int level_two_exp =
@@ -116,7 +129,7 @@ TEST(InventoryMenuPartyPanelTest, UsesRuntimeHpMpWhenPresent) {
         });
 
     const InventoryMenuPartyPanelData data =
-        buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.player", false);
+        buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.player", false, &localization);
 
     ASSERT_EQ(data.party_members.size(), 4U);
     EXPECT_EQ(data.party_members[0].level_label, "Lv.2");

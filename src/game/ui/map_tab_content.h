@@ -27,6 +27,10 @@ class RpgCatalog;
 class ShopCatalog;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::world {
 class WorldState;
 struct MapInfo;
@@ -86,7 +90,8 @@ struct MapTabViewState {
                                                    entt::entity player,
                                                    const game::world::WorldState* world_state,
                                                    entt::id_type map_id,
-                                                   const MapTabPreviewInput& preview);
+                                                   const MapTabPreviewInput& preview,
+                                                   const game::runtime::LocalizationService* localization = nullptr);
 [[nodiscard]] MapTabViewState buildMapTabViewState(const entt::registry& registry,
                                                    entt::entity player,
                                                    const game::world::WorldState* world_state,
@@ -96,7 +101,8 @@ struct MapTabViewState {
                                                    const std::vector<QuestRuntimeMarker>& quest_markers,
                                                    const game::data::ShopCatalog* shop_catalog,
                                                    const game::data::RpgCatalog* rpg_catalog,
-                                                   int selected_marker_index);
+                                                   int selected_marker_index,
+                                                   const game::runtime::LocalizationService* localization = nullptr);
 [[nodiscard]] int defaultMapMarkerSelection(bool has_player_marker, std::size_t object_marker_count);
 
 class MapTabContent final : public IMenuTabContent {
@@ -116,6 +122,7 @@ public:
     void onDeactivated() override;
     void update(float delta_time) override;
     [[nodiscard]] bool onCancel() override;
+    void onLanguageChanged() override;
     void invalidateQuestMarkers();
 
 private:
@@ -126,6 +133,7 @@ private:
     const game::data::QuestCatalog* quest_catalog_{nullptr};
     const game::data::ShopCatalog* shop_catalog_{nullptr};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
     engine::ui::rmlui::RmlGeneratedImageRegistry* generated_images_{nullptr};
     MapPreviewBuilder preview_builder_{};
     MapMarkerProvider marker_provider_{};

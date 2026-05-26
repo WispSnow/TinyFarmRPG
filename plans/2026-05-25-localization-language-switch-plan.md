@@ -47,7 +47,22 @@
   - `QuestOfferScene` 已迁移任务 offer、标题、描述、目标与奖励摘要文本，并订阅语言切换事件刷新 data model。
   - `RecruitOfferScene` 已迁移招募提示与 actor 名称展示边界，并订阅语言切换事件刷新 data model。
   - 两个场景均从 gameplay registry ctx 读取 `LocalizationService*`，并使用 optional catalog key helper 兼容当前尚未 key 化的数据。
-- 仍待完成：全量 C++ 动态文案迁移、catalog 数据 key 化、Lua 对白迁移、source-level 英文硬编码扫描，以及更完整的 RmlUi 运行时刷新 / 视觉验收测试。
+- 2026-05-25：推进 catalog key 化与更深层动态内容迁移。
+  - 已将 item、quest、shop、RPG actor / class / skill / state / enemy / troop 等玩家可见 catalog 名称、描述、标题和问候迁移为 i18n key；crop config 当前无独立玩家可见显示字段，blueprint description 仍按编辑 / debug 元数据处理。
+  - 已迁移 `InventoryMenuScene` 及 Backpack / Equipment / Quest / Map / Party panel 的动态文案，物品名、分类、描述、装备槽、队伍状态、任务进度和地图 marker 都在展示边界解析当前语言。
+  - 已迁移 battle 动态 UI、battle log formatter、battle view model builder 与胜利奖励展示，语言切换时重建菜单、日志、目标列表、状态说明和奖励摘要。
+  - 已迁移 shop interaction、quest interaction、recruitment、party recruitment 与 reward feedback 的运行时通知 / 反馈文本，catalog key 在事件展示边界解析。
+  - 已迁移 `scripts/maps/home_exterior.lua`、`scripts/npcs/merchant.lua`、`scripts/npcs/lyria.lua`、`scripts/npcs/tori.lua`、`scripts/npcs/greeter.lua` 与 `scripts/quests/village_goblin_cleanup.lua` 中的对白；已显示的 dialogue / choice 不主动刷新，下一句或下一次打开使用当前语言。
+  - 已让 Hotbar tooltip 经 `LocalizationService` 解析 item 名称、分类和描述，并在语言切换时刷新当前 hover tooltip。
+  - 已同步修正项目 catalog key 化后的相关测试夹具，确保测试在 en-US 环境下验证显示文本而不是直接接受 raw key。
+- 2026-05-25：按三次 review 修正 catalog key 化后的漏网展示边界。
+  - 已修复 `ChestSystem` 与 `ItemUseSystem` 直接显示 catalog `display_name_` raw key 的问题；宝箱拾取和物品使用通知现在按当前语言解析 item 名称。
+  - 已将 Rest 恢复预览成员字段改为 `display_name_key`，并在 `RestDialogScene` 写入 view model 前解析。
+  - 已修复 `recruit_npc.lua` 函数式对白在 register 阶段被提前求值的问题；现在每次 interact 都按当前语言重新取文本。
+  - Inventory sort 已改为按稳定 `id_str_` 排序，不再依赖已迁移为 key 的 `display_name_`，避免排序随 raw key 或翻译变化漂移。
+  - Battle unit 重名序号已从拼接到 `name` 字符串改为独立 `name_ordinal`，避免 `enemy.slime.name 2` 这类拼接 key 无法翻译；显示边界会先翻译 base key 再追加序号。
+  - 已新增宝箱拾取、物品使用、Lua 招募语言切换、Battle 重名敌人显示与 Rest source-level 回归测试。
+- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -457,15 +472,15 @@ ninja -C build/debug engine_tests game_tests
 - [x] 新增 RmlUi `data-i18n` 静态文本 applier。
 - [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
 - [x] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
-- [ ] 迁移核心 C++ 动态文案。（部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、Battle party HP/MP labels）
+- [ ] 迁移核心 C++ 动态文案。（大部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、`InventoryMenuScene` / 各 tab、`BattleScene`、battle formatter / view model、GameScene reward feedback、shop / quest / recruitment 交互系统、Chest / ItemUse 通知、Hotbar tooltip）
 - [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
-- [ ] 将数据 catalog 的名称与描述字段值迁移为本地化 key。
-- [ ] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建。
+- [x] 将数据 catalog 的名称与描述字段值迁移为本地化 key。（items、quests、shops、RPG actors/classes/skills/states/enemies/troops；crop config 无玩家可见显示字段，blueprint description 暂按编辑 / debug 元数据处理）
+- [x] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建；重名敌人的显示序号使用独立 `name_ordinal`，避免破坏本地化 key。
 - [x] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
-- [ ] 迁移 Lua 对白与选项文本。
-- [ ] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。
+- [x] 迁移 Lua 对白与选项文本。（home exterior、merchant、lyria、tori、greeter、goblin cleanup quest；脚本 helper 支持交互时惰性解析）
+- [x] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。（首版明确为下一句 / 下一次打开使用新语言）
 - [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`）
-- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`）
+- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`、Shop / catalog / inventory / map / battle / reward feedback、Chest / ItemUse、Lua recruit lazy 文本相关回归）
 - [ ] 完成中英切换手动验收。
 
 ## 风险与处理

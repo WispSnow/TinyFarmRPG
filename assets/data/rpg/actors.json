@@ -2,7 +2,7 @@
     "actors": [
         {
             "id": "actor.player",
-            "display_name": "Alex",
+            "display_name": "actor.player.name",
             "class_id": "class.swordsman",
             "initial_level": 1,
             "max_level": 99,
@@ -27,7 +27,7 @@
         },
         {
             "id": "actor.lyria",
-            "display_name": "Lyria",
+            "display_name": "actor.lyria.name",
             "class_id": "class.mage",
             "initial_level": 1,
             "max_level": 99,
@@ -53,7 +53,7 @@
         },
         {
             "id": "actor.tori",
-            "display_name": "Tori",
+            "display_name": "actor.tori.name",
             "class_id": "class.monk",
             "initial_level": 1,
             "max_level": 99,

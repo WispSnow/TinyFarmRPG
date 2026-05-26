@@ -3,8 +3,8 @@
   "quests": [
     {
       "id": "quest.village.goblin_cleanup",
-      "title": "Slime Cleanup",
-      "description": "Defeat slimes near the village.",
+      "title": "quest.village.goblin_cleanup.title",
+      "description": "quest.village.goblin_cleanup.description",
       "objectives": [
         {
           "id": "kill_slimes",
@@ -13,8 +13,11 @@
           "required_count": 3,
           "marker": {
             "map": "town",
-            "position": [532, 296],
-            "label": "Slime Targets"
+            "position": [
+              532,
+              296
+            ],
+            "label": "quest.village.goblin_cleanup.objective.kill_slimes.marker"
           }
         }
       ],

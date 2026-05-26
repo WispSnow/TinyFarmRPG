@@ -12,6 +12,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/runtime/localization_service.h"
 #include "game/script/script_event_bridge.h"
 #include "game/system/party_recruitment_system.h"
 #include "game/system/recruitment_interaction_system.h"
@@ -57,6 +58,15 @@ constexpr std::string_view LYRIA_ACTOR_ID = "actor.lyria";
     return catalog;
 }
 
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (projectRoot() / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
+}
+
 [[nodiscard]] bool containsString(const std::vector<std::string>& values, std::string_view value) {
     return std::any_of(values.begin(), values.end(), [value](const std::string& current) {
         return current == value;
@@ -98,6 +108,7 @@ struct ScriptRecruitmentFlowEnv {
     entt::registry registry{};
     entt::dispatcher dispatcher{};
     game::data::RpgCatalog rpg_catalog{loadRpgCatalog()};
+    game::runtime::LocalizationService localization{loadEnglishLocalization()};
     game::system::RecruitmentInteractionSystem recruitment_interaction_system;
     game::system::PartyRecruitmentSystem party_recruitment_system;
     engine::script::ScriptHost host;
@@ -112,6 +123,7 @@ struct ScriptRecruitmentFlowEnv {
           host(registry),
           bridge(host, registry, dispatcher) {
         registry.ctx().emplace<game::data::RpgCatalog*>(&rpg_catalog);
+        registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
 
         player = registry.create();
         registry.emplace<game::component::PlayerTag>(player);
@@ -145,7 +157,7 @@ struct ScriptRecruitmentFlowEnv {
         dispatcher.sink<game::defs::DialogueHideEvent>().connect<&DialogueCapture::onHide>(&capture);
 
         host.setScriptRoot(projectScriptRoot());
-        EXPECT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
+        EXPECT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers(&localization)));
     }
 
     ~ScriptRecruitmentFlowEnv() {
@@ -227,6 +239,18 @@ TEST(ScriptRecruitmentFlowTest, LyriaLuaDialogueRequestsOfferThenAcceptsAndRemov
     ASSERT_FALSE(notice_texts.empty());
     EXPECT_EQ(notice_texts.back(), "Lyria joined the party.");
     EXPECT_GE(env.capture.hide_count, 1);
+}
+
+TEST(ScriptRecruitmentFlowTest, RecruitNpcLazyLinesUseCurrentLanguageOnInteract) {
+    ScriptRecruitmentFlowEnv env{};
+    env.loadLyriaScript();
+    ASSERT_TRUE(env.localization.setLanguage("zh-Hans"));
+
+    env.interact();
+
+    EXPECT_EQ(
+        env.capture.textsFor(game::defs::DialogueChannel::Conversation),
+        std::vector<std::string>({"嗨，欢迎来到山谷。"}));
 }
 
 } // namespace game::script

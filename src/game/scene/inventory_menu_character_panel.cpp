@@ -9,6 +9,7 @@
 #include "game/data/rpg_data.h"
 #include "game/defs/party_ids.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/ui/localized_text.h"
 
 #include <entt/entity/registry.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -73,13 +74,26 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
     entt::entity player,
     const game::data::RpgCatalog* rpg_catalog,
     const std::string_view selected_actor_id,
-    const bool target_mode) {
+    const bool target_mode,
+    const game::runtime::LocalizationService* localization) {
     InventoryMenuPartyPanelData data{};
-    data.gold_label = "Gold: 0";
+    data.gold_label = game::ui::formatTextOrFallback(
+        localization,
+        "inventory.party.gold_label",
+        {{"amount", "0"}},
+        [] {
+            return std::string{"Gold: 0"};
+        });
     data.farm_label = "TinyFarm";
 
     if (const auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {
-        data.gold_label = fmt::format("Gold: {}", wallet->gold_);
+        data.gold_label = game::ui::formatTextOrFallback(
+            localization,
+            "inventory.party.gold_label",
+            {{"amount", std::to_string(wallet->gold_)}},
+            [wallet] {
+                return fmt::format("Gold: {}", wallet->gold_);
+            });
     } else {
         spdlog::warn("InventoryMenuScene: 玩家缺少 PlayerWalletComponent，金币显示回退为 0。");
     }
@@ -96,7 +110,7 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
 
         if (i >= actor_ids.size()) {
             member.display_name = "---";
-            member.class_label = "Empty";
+            member.class_label = game::ui::localizeTextOrFallback(localization, "inventory.party.empty", "Empty");
             member.level_label = "";
             member.exp_label = "";
             member.hp_text = "";
@@ -116,8 +130,12 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
             spdlog::warn("InventoryMenuScene: actor_id='{}' 未在 RpgCatalog 中找到。", member.actor_id);
         }
 
-        member.display_name = actor && !actor->display_name_.empty() ? actor->display_name_ : member.actor_id;
-        member.class_label = klass && !klass->display_name_.empty() ? klass->display_name_ : "Adventurer";
+        member.display_name = actor && !actor->display_name_.empty()
+                                  ? game::ui::tryLocalize(localization, actor->display_name_)
+                                  : member.actor_id;
+        member.class_label = klass && !klass->display_name_.empty()
+                                 ? game::ui::tryLocalize(localization, klass->display_name_)
+                                 : game::ui::localizeTextOrFallback(localization, "inventory.party.class_fallback", "Adventurer");
         game::component::ActorRuntimeState runtime_snapshot{};
         const auto* runtime_state = findRuntimeState(registry, player, member.actor_id);
         if (actor && rpg_catalog) {
@@ -135,11 +153,25 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
             runtime_snapshot.level = 1;
         }
         const int level = runtime_snapshot.level;
-        member.level_label = fmt::format("Lv.{}", level);
+        member.level_label = game::ui::formatTextOrFallback(
+            localization,
+            "inventory.party.level",
+            {{"level", std::to_string(level)}},
+            [level] {
+                return fmt::format("Lv.{}", level);
+            });
         if (actor && rpg_catalog) {
             const int exp_to_next =
                 game::domain::ActorProgressionService::expToNextLevel(*rpg_catalog, *actor, runtime_snapshot.total_exp);
-            member.exp_label = exp_to_next > 0 ? fmt::format("Next {}", exp_to_next) : "Max";
+            member.exp_label = exp_to_next > 0
+                                   ? game::ui::formatTextOrFallback(
+                                         localization,
+                                         "inventory.party.exp_next",
+                                         {{"amount", std::to_string(exp_to_next)}},
+                                         [exp_to_next] {
+                                             return fmt::format("Next {}", exp_to_next);
+                                         })
+                                   : game::ui::localizeTextOrFallback(localization, "inventory.party.exp_max", "Max");
         }
         member.portrait_decorator = portraitDecoratorForActor(actor);
 
@@ -156,8 +188,20 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
         }
         const int current_hp = actor && rpg_catalog ? std::clamp(runtime_snapshot.current_hp, 0, max_hp) : max_hp;
         const int current_mp = actor && rpg_catalog ? std::clamp(runtime_snapshot.current_mp, 0, max_mp) : max_mp;
-        member.hp_text = fmt::format("HP {}/{}", current_hp, max_hp);
-        member.mp_text = fmt::format("MP {}/{}", current_mp, max_mp);
+        member.hp_text = game::ui::formatTextOrFallback(
+            localization,
+            "inventory.party.hp",
+            {{"current", std::to_string(current_hp)}, {"max", std::to_string(max_hp)}},
+            [current_hp, max_hp] {
+                return fmt::format("HP {}/{}", current_hp, max_hp);
+            });
+        member.mp_text = game::ui::formatTextOrFallback(
+            localization,
+            "inventory.party.mp",
+            {{"current", std::to_string(current_mp)}, {"max", std::to_string(max_mp)}},
+            [current_mp, max_mp] {
+                return fmt::format("MP {}/{}", current_mp, max_mp);
+            });
 
         data.party_members.push_back(std::move(member));
     }

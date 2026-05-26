@@ -333,7 +333,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
 
     const auto* enemy = catalog.findEnemy("enemy.slime");
     ASSERT_NE(enemy, nullptr);
-    EXPECT_EQ(enemy->display_name_, "Slime");
+    EXPECT_EQ(enemy->display_name_, "enemy.slime.name");
     EXPECT_EQ(enemy->actions_.front().skill_id_, "skill.attack");
     EXPECT_TRUE(enemy->battle_visual_.valid());
     EXPECT_EQ(enemy->battle_visual_.sprite_blueprint_id_, "slime");
@@ -363,7 +363,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
 
     const auto* player = catalog.findActor("actor.player");
     ASSERT_NE(player, nullptr);
-    EXPECT_EQ(player->display_name_, "Alex");
+    EXPECT_EQ(player->display_name_, "actor.player.name");
     EXPECT_EQ(player->map_actor_id_, "player");
     EXPECT_TRUE(player->battle_visual_.valid());
     EXPECT_EQ(player->battle_visual_.sprite_blueprint_id_, "player");

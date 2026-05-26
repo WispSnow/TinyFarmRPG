@@ -6,6 +6,7 @@
 #include "game/component/hotbar_component.h"
 #include "game/defs/commands.h"
 #include "game/ui/item_tooltip_ui.h"
+#include "game/ui/localized_text.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -23,6 +24,13 @@ constexpr int SLOT_COUNT = game::component::HotbarComponent::SLOT_COUNT;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/hud/hotbar.rml";
 constexpr std::string_view MODEL_NAME = "hotbar_ui";
 
+[[nodiscard]] std::string itemCategoryKey(const game::data::ItemData& item) {
+    if (item.category_str_.empty()) {
+        return "item.category.unknown";
+    }
+    return "item.category." + item.category_str_;
+}
+
 } // namespace
 
 namespace game::ui {
@@ -30,10 +38,12 @@ namespace game::ui {
 HotbarUI::HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
                    engine::core::Context& context,
                    uint64_t owner_scene_id,
-                   game::data::ItemCatalog* catalog)
+                   game::data::ItemCatalog* catalog,
+                   const game::runtime::LocalizationService* localization)
     : runtime_(runtime),
       context_(context),
       item_catalog_(catalog),
+      localization_(localization),
       owner_scene_id_(owner_scene_id) {
     hotbar_slots_.resize(SLOT_COUNT);
     slot_items_.resize(SLOT_COUNT);
@@ -180,7 +190,10 @@ void HotbarUI::showTooltipForSlot(int slot_index) {
         return;
     }
 
-    tooltip_ui_->showItem(data->display_name_, data->category_str_, data->description_);
+    tooltip_ui_->showItem(
+        game::ui::tryLocalize(localization_, data->display_name_),
+        game::ui::localizeTextOrFallback(localization_, itemCategoryKey(*data), data->category_str_),
+        game::ui::tryLocalize(localization_, data->description_));
 }
 
 void HotbarUI::refreshTooltipForHoveredSlot() {
@@ -321,6 +334,10 @@ void HotbarUI::syncState(entt::entity target,
 void HotbarUI::syncActiveSlot(entt::entity target, int slot_index) {
     setTarget(target);
     setActiveSlot(slot_index);
+}
+
+void HotbarUI::onLanguageChanged() {
+    refreshTooltipForHoveredSlot();
 }
 
 void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {

@@ -243,6 +243,7 @@ set(GAME_TEST_SOURCES
     game/shop_menu_sell_flow_test.cpp
     game/shop_save_roundtrip_test.cpp
     game/time_of_day_light_system_test.cpp
+    game/chest_system_test.cpp
     game/item_use_system_test.cpp
     game/npc_animal_parallel_domain_test.cpp
     game/map_loading_settings_test.cpp

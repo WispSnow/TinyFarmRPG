@@ -22,6 +22,7 @@ class Context;
 }
 
 namespace game::data {
+struct ItemData;
 class ItemCatalog;
 class RpgCatalog;
 }
@@ -29,6 +30,10 @@ class RpgCatalog;
 namespace game::defs {
 struct EquipmentChanged;
 struct InventoryChanged;
+}
+
+namespace game::runtime {
+class LocalizationService;
 }
 
 namespace game::ui {
@@ -70,6 +75,7 @@ public:
     void onDeactivated() override;
     void update(float delta_time) override;
     [[nodiscard]] bool onCancel() override;
+    void onLanguageChanged() override;
 
     void setSelectedActor(std::string_view actor_id);
 
@@ -80,6 +86,7 @@ private:
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
     std::string selected_actor_id_{};
 
     std::vector<EquipmentSlotViewModel> equipment_slots_{};
@@ -102,6 +109,10 @@ private:
     void syncCandidates();
     void syncDetail();
     void markEquipmentDirty();
+    [[nodiscard]] std::string localizedSlotLabel(game::data::EquipmentSlotId slot) const;
+    [[nodiscard]] std::string localizedItemName(const game::data::ItemData& item) const;
+    [[nodiscard]] std::string localizedItemCategory(const game::data::ItemData& item) const;
+    [[nodiscard]] std::string localizedItemDescription(const game::data::ItemData& item) const;
 
     [[nodiscard]] entt::id_type equippedItemForSelectedSlot() const;
     void selectSlotByIndex(int slot_index);

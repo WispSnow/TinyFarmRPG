@@ -13,6 +13,8 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -237,6 +239,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     });
 
     if (evt.show_prompt) {
+        const auto* localization = game::runtime::findLocalizationService(registry_);
         std::ostringstream oss;
         bool first = true;
         for (const auto& effect : use_cfg.effects) {
@@ -244,14 +247,22 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
             const int add_total = effect.count * use_times;
             if (effect.item_id == entt::null || add_total <= 0) continue;
             const auto* out_item = catalog_.findItem(effect.item_id);
-            const std::string name = out_item ? out_item->display_name_ : std::to_string(static_cast<unsigned long long>(effect.item_id));
+            const std::string name = out_item
+                ? game::ui::tryLocalize(localization, out_item->display_name_)
+                : std::to_string(static_cast<unsigned long long>(effect.item_id));
             if (!first) {
                 oss << "\n";
             }
             first = false;
-            oss << "Gained " << name << " x" << add_total;
+            oss << game::ui::formatTextOrFallback(
+                localization,
+                "reward.item_gained",
+                {{"item", name}, {"count", std::to_string(add_total)}},
+                [&name, add_total] { return "Gained " + name + " x" + std::to_string(add_total); });
         }
-        const std::string text = first ? "Used" : oss.str();
+        const std::string text = first
+            ? game::ui::localizeTextOrFallback(localization, "item.use.used", "Used")
+            : oss.str();
 
         helpers::showTimedNotification(
             registry_,

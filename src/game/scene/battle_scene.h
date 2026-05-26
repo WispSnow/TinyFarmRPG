@@ -56,6 +56,10 @@ struct CursorMemoryChangedEvent;
 struct LanguageChangedEvent;
 } // namespace game::defs
 
+namespace game::runtime {
+class LocalizationService;
+} // namespace game::runtime
+
 namespace game::scene {
 
 /// @brief 回合制战斗表现层场景。
@@ -174,6 +178,7 @@ private:
     [[nodiscard]] bool initUI();
     void shutdownUI();
     [[nodiscard]] bool ensureDataTypesRegistered(Rml::DataModelConstructor& constructor);
+    [[nodiscard]] const game::runtime::LocalizationService* localization() const noexcept;
 
     void connectInputListeners();
     void disconnectInputListeners();

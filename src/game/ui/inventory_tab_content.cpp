@@ -9,7 +9,9 @@
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/runtime/service_lookup.h"
 #include "game/ui/item_tooltip_ui.h"
+#include "game/ui/localized_text.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Element.h>
@@ -97,6 +99,10 @@ findItemAtInventorySlot(const entt::registry& registry,
            item->battle_use_->scope == game::data::Scope::OneAlly;
 }
 
+[[nodiscard]] std::string itemCategoryKey(const game::data::ItemData& item) {
+    return "item.category." + item.category_str_;
+}
+
 } // namespace
 
 namespace game::ui {
@@ -112,6 +118,7 @@ InventoryTabContent::InventoryTabContent(engine::core::Context& context,
       game_registry_(game_registry),
       player_(player),
       item_catalog_(item_catalog),
+      localization_(game::runtime::findLocalizationService(game_registry)),
       owner_scene_id_(owner_scene_id) {
     backpack_slots_.resize(TOTAL_SLOTS);
     for (int i = 0; i < TOTAL_SLOTS; ++i) {
@@ -296,6 +303,32 @@ void InventoryTabContent::disconnectRuntimeListeners() {
     listeners_connected_ = false;
 }
 
+std::string InventoryTabContent::localizedItemName(const game::data::ItemData& item) const {
+    return item.display_name_.empty() ? item.id_str_ : game::ui::tryLocalize(localization_, item.display_name_);
+}
+
+std::string InventoryTabContent::localizedItemCategory(const game::data::ItemData& item) const {
+    return game::ui::localizeTextOrFallback(localization_, itemCategoryKey(item), item.category_str_);
+}
+
+std::string InventoryTabContent::localizedItemDescription(const game::data::ItemData& item) const {
+    return game::ui::tryLocalize(localization_, item.description_);
+}
+
+void InventoryTabContent::onLanguageChanged() {
+    localization_ = game::runtime::findLocalizationService(game_registry_);
+    closeActionMenu();
+    clearTooltip();
+    syncFromInventory();
+    syncHotbarFromInventory();
+    if (selected_slot_.valid()) {
+        updateDetailForPanel(selected_slot_.panel, selected_slot_.index);
+    } else {
+        clearDetail();
+    }
+    markSlotsDirty();
+}
+
 void InventoryTabContent::syncFromInventory() {
     const auto* inventory = tryGetInventory(game_registry_, player_);
     if (!inventory) {
@@ -392,7 +425,7 @@ void InventoryTabContent::showTooltipForPanel(MenuPanelKind kind, int slot_index
         return;
     }
 
-    tooltip_ui_->showItem(item->display_name_, item->category_str_, item->description_);
+    tooltip_ui_->showItem(localizedItemName(*item), localizedItemCategory(*item), localizedItemDescription(*item));
 }
 
 void InventoryTabContent::clearTooltip() {
@@ -404,9 +437,9 @@ void InventoryTabContent::clearTooltip() {
 }
 
 void InventoryTabContent::setDetailFromItem(const game::data::ItemData& item) {
-    detail_name_ = item.display_name_;
-    detail_category_ = item.category_str_;
-    detail_description_ = item.description_;
+    detail_name_ = localizedItemName(item);
+    detail_category_ = localizedItemCategory(item);
+    detail_description_ = localizedItemDescription(item);
     has_detail_ = true;
     document_controller_.markDirty("detail_name");
     document_controller_.markDirty("detail_category");
@@ -584,23 +617,27 @@ void InventoryTabContent::openBackpackActionMenu(int slot_index) {
     if (hasUsableItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index)) {
         entries.push_back(InventoryActionEntryViewModel{
             .action_id = static_cast<int>(MenuActionId::Use),
-            .label = "Use",
+            .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.use", "Use"),
             .is_destructive = false,
         });
     }
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Discard),
-        .label = "Discard",
+        .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.discard", "Discard"),
         .is_destructive = true,
     });
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Cancel),
-        .label = "Cancel",
+        .label = game::ui::localizeTextOrFallback(localization_, "common.cancel", "Cancel"),
         .is_destructive = false,
     });
 
     const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, slot_index);
-    showActionMenu(item ? item->display_name_ : Rml::String{"Backpack"}, std::move(entries), "backpack-grid", slot_index);
+    showActionMenu(
+        item ? localizedItemName(*item) : game::ui::localizeTextOrFallback(localization_, "inventory.menu.backpack", "Backpack"),
+        std::move(entries),
+        "backpack-grid",
+        slot_index);
 }
 
 void InventoryTabContent::openHotbarActionMenu(int slot_index) {
@@ -615,29 +652,33 @@ void InventoryTabContent::openHotbarActionMenu(int slot_index) {
     std::vector<InventoryActionEntryViewModel> entries;
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Activate),
-        .label = "Activate",
+        .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.activate", "Activate"),
         .is_destructive = false,
     });
     if (hasUsableItemAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot)) {
         entries.push_back(InventoryActionEntryViewModel{
             .action_id = static_cast<int>(MenuActionId::Use),
-            .label = "Use",
+            .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.use", "Use"),
             .is_destructive = false,
         });
     }
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Unbind),
-        .label = "Unbind",
+        .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.unbind", "Unbind"),
         .is_destructive = false,
     });
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Cancel),
-        .label = "Cancel",
+        .label = game::ui::localizeTextOrFallback(localization_, "common.cancel", "Cancel"),
         .is_destructive = false,
     });
 
     const auto* item = findItemAtInventorySlot(game_registry_, player_, item_catalog_, inventory_slot);
-    showActionMenu(item ? item->display_name_ : Rml::String{"Hotbar"}, std::move(entries), "hotbar-grid", slot_index);
+    showActionMenu(
+        item ? localizedItemName(*item) : game::ui::localizeTextOrFallback(localization_, "inventory.menu.hotbar", "Hotbar"),
+        std::move(entries),
+        "hotbar-grid",
+        slot_index);
 }
 
 void InventoryTabContent::openDiscardConfirmForBackpackSlot(int slot_index) {
@@ -654,18 +695,26 @@ void InventoryTabContent::openDiscardConfirmForBackpackSlot(int slot_index) {
     std::vector<InventoryActionEntryViewModel> entries;
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::ConfirmDiscard),
-        .label = "Discard",
+        .label = game::ui::localizeTextOrFallback(localization_, "inventory.action.discard", "Discard"),
         .is_destructive = true,
     });
     entries.push_back(InventoryActionEntryViewModel{
         .action_id = static_cast<int>(MenuActionId::Cancel),
-        .label = "Cancel",
+        .label = game::ui::localizeTextOrFallback(localization_, "common.cancel", "Cancel"),
         .is_destructive = false,
     });
 
-    Rml::String title{"Discard stack?"};
+    Rml::String title{game::ui::localizeTextOrFallback(localization_, "inventory.action.discard_stack", "Discard stack?")};
     if (const auto* item = item_catalog_ ? item_catalog_->findItem(stack.item_id_) : nullptr) {
-        title = "Discard " + item->display_name_ + " x" + std::to_string(stack.count_) + "?";
+        const std::string item_name = localizedItemName(*item);
+        const std::string count = std::to_string(stack.count_);
+        title = game::ui::formatTextOrFallback(
+            localization_,
+            "inventory.action.discard_item_count",
+            {{"item", item_name}, {"count", count}},
+            [&item_name, &count] {
+                return "Discard " + item_name + " x" + count + "?";
+            });
     }
 
     showActionMenu(std::move(title), std::move(entries), "backpack-grid", slot_index);

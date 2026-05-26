@@ -17,6 +17,7 @@
 #include "engine/vfx/vfx_service.h"
 #include "engine/vfx/vfx_types.h"
 #include "game/battle/battle_ai_planner.h"
+#include "game/battle/battle_display_text.h"
 #include "game/component/appearance_component.h"
 #include "game/defs/events.h"
 #include "game/defs/options_events.h"
@@ -32,6 +33,7 @@
 #include "game/factory/blueprint.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/system/appearance_layer_cache_builder.h"
+#include "game/ui/localized_text.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -604,6 +606,10 @@ bool BattleScene::ensureDataTypesRegistered(Rml::DataModelConstructor& construct
     return true;
 }
 
+const game::runtime::LocalizationService* BattleScene::localization() const noexcept {
+    return presentation_options_.user_settings_service ? &presentation_options_.user_settings_service->localization() : nullptr;
+}
+
 void BattleScene::connectInputListeners() {
     input_router_.connect(context_.getInputManager(), *this);
 }
@@ -674,7 +680,8 @@ void BattleScene::executePendingAction() {
         *last_action_result_,
         game::battle::BattleLogFormatterContext{
             .rpg_catalog = rpg_catalog_,
-            .item_catalog = item_catalog_
+            .item_catalog = item_catalog_,
+            .localization = localization()
         }));
     const auto unit_anchors = collectBattlePresentationUnitAnchors();
     const BattleActionPresentationPlan presentation_plan =
@@ -892,7 +899,9 @@ void BattleScene::rebuildVictoryView() {
         document_controller_.markDirty("victory_exp_text");
     }
 
-    const std::string prompt_text = snapshot.waiting_for_confirm ? "Continue" : "Confirm";
+    const std::string prompt_text = snapshot.waiting_for_confirm
+                                        ? game::ui::localizeTextOrFallback(localization(), "battle.victory.continue", "Continue")
+                                        : game::ui::localizeTextOrFallback(localization(), "common.confirm", "Confirm");
     if (updateBoundString(victory_prompt_text_, prompt_text)) {
         document_controller_.markDirty("victory_prompt_text");
     }
@@ -919,7 +928,9 @@ void BattleScene::rebuildVictoryView() {
         document_controller_.markDirty("victory_level_ups_empty");
     }
 
-    const std::string empty_text = snapshot.waiting_for_confirm ? "No drops" : "Resolving...";
+    const std::string empty_text = snapshot.waiting_for_confirm
+                                       ? game::ui::localizeTextOrFallback(localization(), "battle.victory.no_drops", "No drops")
+                                       : game::ui::localizeTextOrFallback(localization(), "battle.victory.resolving", "Resolving...");
     if (updateBoundString(victory_item_empty_text_, empty_text)) {
         document_controller_.markDirty("victory_item_empty_text");
     }
@@ -1114,8 +1125,16 @@ bool BattleScene::focusElementById(std::string_view element_id) {
 void BattleScene::populatePartyCommands() {
     const bool enabled = menu_model_.actions_enabled;
     menu_model_.party_commands = {
-        CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Fight), .entry_index = 0, .label = "Fight", .enabled = enabled},
-        CommandViewModel{.command_id = static_cast<int>(PartyCommandId::Escape), .entry_index = 1, .label = "Escape", .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(PartyCommandId::Fight),
+            .entry_index = 0,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.fight", "Fight"),
+            .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(PartyCommandId::Escape),
+            .entry_index = 1,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.escape", "Escape"),
+            .enabled = enabled},
     };
     menu_model_.party_command_cursor = firstEnabledPartyCommandIndex();
 }
@@ -1123,10 +1142,26 @@ void BattleScene::populatePartyCommands() {
 void BattleScene::populateActorCommands() {
     const bool enabled = menu_model_.actions_enabled;
     menu_model_.actor_commands = {
-        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Attack), .entry_index = 0, .label = "Attack", .enabled = enabled},
-        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Skill), .entry_index = 1, .label = "Skill", .enabled = enabled},
-        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Guard), .entry_index = 2, .label = "Guard", .enabled = enabled},
-        CommandViewModel{.command_id = static_cast<int>(ActorCommandId::Item), .entry_index = 3, .label = "Item", .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(ActorCommandId::Attack),
+            .entry_index = 0,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.attack", "Attack"),
+            .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(ActorCommandId::Skill),
+            .entry_index = 1,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.skill", "Skill"),
+            .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(ActorCommandId::Guard),
+            .entry_index = 2,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.guard", "Guard"),
+            .enabled = enabled},
+        CommandViewModel{
+            .command_id = static_cast<int>(ActorCommandId::Item),
+            .entry_index = 3,
+            .label = game::ui::localizeTextOrFallback(localization(), "battle.command.item", "Item"),
+            .enabled = enabled},
     };
 
     const int fallback = firstEnabledActorCommandIndex();
@@ -1149,7 +1184,10 @@ void BattleScene::populateActorCommands() {
 void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
     menu_model_.list_entries.clear();
     menu_model_.list_entry_cursor = -1;
-    menu_model_.list_empty_text = "No skills available";
+    menu_model_.list_empty_text = game::ui::localizeTextOrFallback(
+        localization(),
+        "battle.list.no_skills",
+        "No skills available");
 
     if (!rpg_catalog_) {
         spdlog::warn("BattleScene: RPG catalog 不可用，无法生成技能列表。");
@@ -1168,9 +1206,9 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
             continue;
         }
 
-        const std::string_view label = skill->display_name_.empty()
-            ? std::string_view{skill->id_}
-            : std::string_view{skill->display_name_};
+        const std::string label = skill->display_name_.empty()
+                                      ? skill->id_
+                                      : game::ui::tryLocalize(localization(), skill->display_name_);
         menu_model_.list_entries.push_back(ListEntryViewModel{
             .entry_index = entry_index++,
             .entry_id = skill->id_,
@@ -1204,7 +1242,10 @@ void BattleScene::populateSkillEntries(const game::battle::BattleUnit& actor) {
 void BattleScene::populateItemEntries() {
     menu_model_.list_entries.clear();
     menu_model_.list_entry_cursor = -1;
-    menu_model_.list_empty_text = "No battle items available";
+    menu_model_.list_empty_text = game::ui::localizeTextOrFallback(
+        localization(),
+        "battle.list.no_items",
+        "No battle items available");
 
     if (!item_catalog_) {
         spdlog::warn("BattleScene: Item catalog 不可用，无法生成物品列表。");
@@ -1217,13 +1258,14 @@ void BattleScene::populateItemEntries() {
     }
 
     auto items = item_catalog_->listItems();
-    std::sort(items.begin(), items.end(), [](const game::data::ItemData* lhs, const game::data::ItemData* rhs) {
-        const std::string_view lhs_label = lhs && !lhs->display_name_.empty()
-            ? std::string_view{lhs->display_name_}
-            : (lhs ? std::string_view{lhs->id_str_} : std::string_view{});
-        const std::string_view rhs_label = rhs && !rhs->display_name_.empty()
-            ? std::string_view{rhs->display_name_}
-            : (rhs ? std::string_view{rhs->id_str_} : std::string_view{});
+    const auto* localization = this->localization();
+    std::sort(items.begin(), items.end(), [localization](const game::data::ItemData* lhs, const game::data::ItemData* rhs) {
+        const std::string lhs_label = lhs && !lhs->display_name_.empty()
+                                          ? game::ui::tryLocalize(localization, lhs->display_name_)
+                                          : (lhs ? lhs->id_str_ : std::string{});
+        const std::string rhs_label = rhs && !rhs->display_name_.empty()
+                                          ? game::ui::tryLocalize(localization, rhs->display_name_)
+                                          : (rhs ? rhs->id_str_ : std::string{});
         if (lhs_label == rhs_label) {
             return (lhs ? lhs->id_str_ : std::string{}) < (rhs ? rhs->id_str_ : std::string{});
         }
@@ -1241,9 +1283,9 @@ void BattleScene::populateItemEntries() {
             continue;
         }
 
-        const std::string_view label = item->display_name_.empty()
-            ? std::string_view{item->id_str_}
-            : std::string_view{item->display_name_};
+        const std::string label = item->display_name_.empty()
+                                      ? item->id_str_
+                                      : game::ui::tryLocalize(localization, item->display_name_);
         menu_model_.list_entries.push_back(ListEntryViewModel{
             .entry_index = entry_index++,
             .entry_id = item->id_str_,
@@ -1349,7 +1391,7 @@ int BattleScene::firstEnabledListEntryIndex() const {
 void BattleScene::populateTargetEntries(game::data::Scope scope, const game::battle::BattleUnit& actor) {
     menu_model_.target_entries.clear();
     menu_model_.target_entry_cursor = -1;
-    menu_model_.target_empty_text = "No valid targets";
+    menu_model_.target_empty_text = game::ui::localizeTextOrFallback(localization(), "battle.target.none", "No valid targets");
 
     int entry_index = 0;
     for (const auto& unit : session_.units()) {
@@ -1411,12 +1453,12 @@ int BattleScene::firstEnabledTargetEntryIndex() const {
 }
 
 Rml::String BattleScene::targetLabel(const game::battle::BattleUnit& unit) const {
-    return unit.name;
+    return makeRmlString(game::battle::localizedUnitName(unit, localization()));
 }
 
 Rml::String BattleScene::targetSublabel(const game::battle::BattleUnit& unit) const {
     if (!unit.isAlive()) {
-        return "(KO)";
+        return game::ui::localizeTextOrFallback(localization(), "battle.target.ko", "(KO)");
     }
     return std::to_string(unit.hp) + "/" + std::to_string(unit.max_hp);
 }
@@ -2840,7 +2882,31 @@ void BattleScene::onCursorMemoryChanged(const game::defs::CursorMemoryChangedEve
 }
 
 void BattleScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    switch (menu_model_.state) {
+        case MenuState::PartyCommand:
+            populatePartyCommands();
+            break;
+        case MenuState::ActorCommand:
+            populateActorCommands();
+            break;
+        case MenuState::SkillList:
+            if (const auto* actor = currentActor()) {
+                populateSkillEntries(*actor);
+            }
+            break;
+        case MenuState::ItemList:
+            populateItemEntries();
+            break;
+        case MenuState::TargetSelect:
+        case MenuState::None:
+            break;
+    }
+    markMenuDirty();
+    rebuildTurnOrderView();
     rebuildPartyStatusView();
+    rebuildBattleLogView();
+    rebuildVictoryView();
+    hideStateTooltip();
 }
 
 } // namespace game::scene

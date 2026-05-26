@@ -2,7 +2,7 @@
     "skills": [
         {
             "id": "skill.attack",
-            "display_name": "Attack",
+            "display_name": "skill.attack.name",
             "description": "",
             "scope": "one_enemy",
             "hit_type": "physical",
@@ -20,18 +20,21 @@
                 "motion_style": "weapon_attack",
                 "duration": 0.72,
                 "impact_time": 0.22,
-                "recovery_duration": 0.30,
+                "recovery_duration": 0.3,
                 "target_vfx_tail": 0.45,
                 "target_vfx_id": "battle.hit_physical",
                 "target_sfx_id": "sfx.battle.physical_hit",
                 "target_vfx_scale": 4.0,
-                "target_vfx_offset": {"x": 0.0, "y": -18.0}
+                "target_vfx_offset": {
+                    "x": 0.0,
+                    "y": -18.0
+                }
             }
         },
         {
             "id": "skill.bash",
-            "display_name": "Bash",
-            "description": "Deals damage to one enemy and knocks it off balance.",
+            "display_name": "skill.bash.name",
+            "description": "skill.bash.description",
             "scope": "one_enemy",
             "hit_type": "physical",
             "mp_cost": 3,
@@ -54,8 +57,8 @@
         },
         {
             "id": "skill.fire_1",
-            "display_name": "Fire",
-            "description": "Deals fire damage to one enemy.",
+            "display_name": "skill.fire_1.name",
+            "description": "skill.fire_1.description",
             "scope": "one_enemy",
             "hit_type": "magical",
             "mp_cost": 4,
@@ -72,18 +75,21 @@
                 "motion_style": "cast",
                 "duration": 0.92,
                 "impact_time": 0.46,
-                "recovery_duration": 0.30,
+                "recovery_duration": 0.3,
                 "target_vfx_tail": 0.45,
                 "target_vfx_id": "battle.fire_one_1",
                 "target_sfx_id": "sfx.battle.fire_1",
                 "target_vfx_scale": 6.0,
-                "target_vfx_offset": {"x": 0.0, "y": -36.0}
+                "target_vfx_offset": {
+                    "x": 0.0,
+                    "y": -36.0
+                }
             }
         },
         {
             "id": "skill.thunder_1",
-            "display_name": "Thunder",
-            "description": "Deals lightning damage to one enemy.",
+            "display_name": "skill.thunder_1.name",
+            "description": "skill.thunder_1.description",
             "scope": "one_enemy",
             "hit_type": "magical",
             "mp_cost": 5,
@@ -100,18 +106,21 @@
                 "motion_style": "cast",
                 "duration": 0.92,
                 "impact_time": 0.46,
-                "recovery_duration": 0.30,
+                "recovery_duration": 0.3,
                 "target_vfx_tail": 0.45,
                 "target_vfx_id": "battle.thunder_one_1",
                 "target_sfx_id": "sfx.battle.thunder_1",
                 "target_vfx_scale": 6.0,
-                "target_vfx_offset": {"x": 0.0, "y": -36.0}
+                "target_vfx_offset": {
+                    "x": 0.0,
+                    "y": -36.0
+                }
             }
         },
         {
             "id": "skill.heal_1",
-            "display_name": "Heal",
-            "description": "Restores HP to one living ally.",
+            "display_name": "skill.heal_1.name",
+            "description": "skill.heal_1.description",
             "scope": "one_ally",
             "hit_type": "certain",
             "mp_cost": 4,
@@ -128,18 +137,21 @@
                 "motion_style": "cast",
                 "duration": 0.84,
                 "impact_time": 0.42,
-                "recovery_duration": 0.30,
+                "recovery_duration": 0.3,
                 "target_vfx_tail": 0.42,
                 "target_vfx_id": "battle.heal_all_1",
                 "target_sfx_id": "sfx.battle.heal_1",
                 "target_vfx_scale": 2.0,
-                "target_vfx_offset": {"x": 0.0, "y": -18.0}
+                "target_vfx_offset": {
+                    "x": 0.0,
+                    "y": -18.0
+                }
             }
         },
         {
             "id": "skill.poison_spit",
-            "display_name": "Poison Spit",
-            "description": "Poisons one enemy.",
+            "display_name": "skill.poison_spit.name",
+            "description": "skill.poison_spit.description",
             "scope": "one_enemy",
             "hit_type": "certain",
             "mp_cost": 0,

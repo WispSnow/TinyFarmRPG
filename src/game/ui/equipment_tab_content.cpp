@@ -10,6 +10,8 @@
 #include "game/data/rpg_data.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/rml_item_icon_helpers.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -65,6 +67,30 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
         return def.id == slot;
     });
     return it == kEquipmentSlots.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] std::string_view equipmentSlotKey(const game::data::EquipmentSlotId slot) {
+    switch (slot) {
+        case game::data::EquipmentSlotId::Weapon:
+            return "inventory.equipment.slot.weapon";
+        case game::data::EquipmentSlotId::Offhand:
+            return "inventory.equipment.slot.offhand";
+        case game::data::EquipmentSlotId::Head:
+            return "inventory.equipment.slot.head";
+        case game::data::EquipmentSlotId::Body:
+            return "inventory.equipment.slot.body";
+        case game::data::EquipmentSlotId::Boot:
+            return "inventory.equipment.slot.boot";
+        case game::data::EquipmentSlotId::Accessory:
+            return "inventory.equipment.slot.accessory";
+        case game::data::EquipmentSlotId::Unknown:
+            break;
+    }
+    return "inventory.equipment.slot.unknown";
+}
+
+[[nodiscard]] std::string itemCategoryKey(const game::data::ItemData& item) {
+    return "item.category." + item.category_str_;
 }
 
 [[nodiscard]] std::optional<game::data::EquipmentSlotId> slotFromIndex(int slot_index) {
@@ -135,7 +161,8 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
 
 [[nodiscard]] std::string makeActorSummary(const game::data::RpgCatalog* catalog,
                                            const game::data::ActorData* actor,
-                                           const game::component::ActorEquipmentLoadout* loadout) {
+                                           const game::component::ActorEquipmentLoadout* loadout,
+                                           const game::runtime::LocalizationService* localization) {
     if (!catalog || !actor) {
         return {};
     }
@@ -147,14 +174,23 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
     const auto atk = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Atk)];
     const auto def = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Def)];
 
-    return fmt::format(
-        "{} Lv.{}  HP {}  MP {}  ATK {}  DEF {}",
-        klass && !klass->display_name_.empty() ? klass->display_name_ : "Adventurer",
-        actor->initial_level_,
-        hp,
-        mp,
-        atk,
-        def);
+    const std::string class_name = klass && !klass->display_name_.empty()
+                                       ? game::ui::tryLocalize(localization, klass->display_name_)
+                                       : game::ui::localizeTextOrFallback(localization, "inventory.party.class_fallback", "Adventurer");
+    return game::ui::formatTextOrFallback(
+        localization,
+        "inventory.equipment.actor_summary",
+        {
+            {"class", class_name},
+            {"level", std::to_string(actor->initial_level_)},
+            {"hp", std::to_string(hp)},
+            {"mp", std::to_string(mp)},
+            {"atk", std::to_string(atk)},
+            {"def", std::to_string(def)},
+        },
+        [&class_name, actor, hp, mp, atk, def] {
+            return fmt::format("{} Lv.{}  HP {}  MP {}  ATK {}  DEF {}", class_name, actor->initial_level_, hp, mp, atk, def);
+        });
 }
 
 [[nodiscard]] bool registerEquipmentSlotViewModelType(Rml::DataModelConstructor& constructor) {
@@ -208,6 +244,7 @@ EquipmentTabContent::EquipmentTabContent(engine::core::Context& context,
       player_(player),
       item_catalog_(item_catalog),
       rpg_catalog_(rpg_catalog),
+      localization_(game::runtime::findLocalizationService(game_registry)),
       selected_actor_id_(selected_actor_id) {
     equipment_slots_.resize(kEquipmentSlots.size());
 }
@@ -264,6 +301,11 @@ bool EquipmentTabContent::onCancel() {
     return false;
 }
 
+void EquipmentTabContent::onLanguageChanged() {
+    localization_ = game::runtime::findLocalizationService(game_registry_);
+    syncViewState();
+}
+
 void EquipmentTabContent::setSelectedActor(std::string_view actor_id) {
     selected_actor_id_ = actor_id;
     syncViewState();
@@ -301,11 +343,14 @@ void EquipmentTabContent::syncViewState() {
 
 void EquipmentTabContent::syncActorHeader() {
     const auto* actor = rpg_catalog_ ? rpg_catalog_->findActor(selected_actor_id_) : nullptr;
-    equipment_actor_name_ = actor && !actor->display_name_.empty() ? actor->display_name_ : selected_actor_id_;
+    equipment_actor_name_ = actor && !actor->display_name_.empty()
+                                ? game::ui::tryLocalize(localization_, actor->display_name_)
+                                : selected_actor_id_;
     equipment_actor_summary_ = makeActorSummary(
         rpg_catalog_,
         actor,
-        findLoadout(game_registry_, player_, selected_actor_id_));
+        findLoadout(game_registry_, player_, selected_actor_id_),
+        localization_);
 }
 
 void EquipmentTabContent::syncSlots() {
@@ -313,8 +358,8 @@ void EquipmentTabContent::syncSlots() {
         const auto& def = kEquipmentSlots[i];
         auto& vm = equipment_slots_[i];
         vm.slot_index = static_cast<int>(i);
-        vm.label = Rml::String{def.label.data(), def.label.size()};
-        vm.item_name = "Empty";
+        vm.label = localizedSlotLabel(def.id);
+        vm.item_name = game::ui::localizeTextOrFallback(localization_, "inventory.equipment.empty", "Empty");
         vm.placeholder_decorator = Rml::String{def.placeholder_decorator.data(), def.placeholder_decorator.size()};
         vm.icon_decorator = std::string{kNoDecorator};
         vm.has_item = false;
@@ -326,7 +371,7 @@ void EquipmentTabContent::syncSlots() {
             continue;
         }
 
-        vm.item_name = item->display_name_;
+        vm.item_name = localizedItemName(*item);
         vm.icon_decorator = buildItemIconDecorator(item_catalog_, item_id);
         vm.has_item = hasDecorator(vm.icon_decorator);
     }
@@ -360,8 +405,8 @@ void EquipmentTabContent::syncCandidates() {
         const std::string delta = makeParamDeltaText(*equipment, equipped);
         equipment_candidates_.push_back(EquipmentCandidateViewModel{
             .inventory_slot_index = slot_index,
-            .item_name = item->display_name_,
-            .category_label = item->category_str_,
+            .item_name = localizedItemName(*item),
+            .category_label = localizedItemCategory(*item),
             .icon_decorator = buildItemIconDecorator(item_catalog_, stack.item_id_),
             .delta_text = delta,
             .has_delta = !delta.empty(),
@@ -377,16 +422,19 @@ void EquipmentTabContent::syncDetail() {
     const auto* item = item_catalog_ ? item_catalog_->findItem(item_id) : nullptr;
 
     if (!item) {
-        equipment_detail_name_ = def ? Rml::String{def->label.data(), def->label.size()} : "Equipment";
-        equipment_detail_category_ = "Slot";
-        equipment_detail_description_ = "No equipment equipped.";
+        equipment_detail_name_ = def ? localizedSlotLabel(def->id) : game::ui::localizeTextOrFallback(localization_, "inventory.tab.equipment", "Equipment");
+        equipment_detail_category_ = game::ui::localizeTextOrFallback(localization_, "inventory.equipment.slot", "Slot");
+        equipment_detail_description_ = game::ui::localizeTextOrFallback(
+            localization_,
+            "inventory.equipment.no_equipped",
+            "No equipment equipped.");
         has_equipment_detail_ = true;
         return;
     }
 
-    equipment_detail_name_ = item->display_name_;
-    equipment_detail_category_ = item->category_str_;
-    equipment_detail_description_ = item->description_;
+    equipment_detail_name_ = localizedItemName(*item);
+    equipment_detail_category_ = localizedItemCategory(*item);
+    equipment_detail_description_ = localizedItemDescription(*item);
     has_equipment_detail_ = true;
 }
 
@@ -400,6 +448,24 @@ void EquipmentTabContent::markEquipmentDirty() {
     document_controller_.markDirty("equipment_detail_description");
     document_controller_.markDirty("has_equipment_candidates");
     document_controller_.markDirty("has_equipment_detail");
+}
+
+std::string EquipmentTabContent::localizedSlotLabel(const game::data::EquipmentSlotId slot) const {
+    const auto* def = findSlotDef(slot);
+    const std::string_view fallback = def ? def->label : std::string_view{"Equipment"};
+    return game::ui::localizeTextOrFallback(localization_, equipmentSlotKey(slot), fallback);
+}
+
+std::string EquipmentTabContent::localizedItemName(const game::data::ItemData& item) const {
+    return item.display_name_.empty() ? item.id_str_ : game::ui::tryLocalize(localization_, item.display_name_);
+}
+
+std::string EquipmentTabContent::localizedItemCategory(const game::data::ItemData& item) const {
+    return game::ui::localizeTextOrFallback(localization_, itemCategoryKey(item), item.category_str_);
+}
+
+std::string EquipmentTabContent::localizedItemDescription(const game::data::ItemData& item) const {
+    return game::ui::tryLocalize(localization_, item.description_);
 }
 
 entt::id_type EquipmentTabContent::equippedItemForSelectedSlot() const {

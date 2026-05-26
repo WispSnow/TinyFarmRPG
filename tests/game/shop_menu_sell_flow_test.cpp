@@ -9,6 +9,7 @@
 #include "game/component/inventory_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/runtime/localization_service.h"
 #include "game/ui/shop_menu_support.h"
 
 #include "../engine/render/test_source_utils.h"
@@ -28,6 +29,15 @@ namespace {
     return catalog;
 }
 
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
+}
+
 TEST(ShopMenuSellSupportTest, ResolveSellQuantityUiMaxTracksCurrentSlotCount) {
     game::component::ItemStack stack{};
     stack.item_id_ = entt::hashed_string{"potion"}.value();
@@ -43,6 +53,7 @@ TEST(ShopMenuSellSupportTest, ResolveSellQuantityUiMaxTracksCurrentSlotCount) {
 
 TEST(ShopMenuSellSupportTest, PopulateShopSellEntryViewModelFormatsFieldsAndDisabledState) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::component::ItemStack stack{};
     stack.item_id_ = entt::hashed_string{"potion"}.value();
@@ -54,7 +65,7 @@ TEST(ShopMenuSellSupportTest, PopulateShopSellEntryViewModelFormatsFieldsAndDisa
     sell_rule.sell_price_ = 15;
 
     game::ui::ShopSellEntryViewModel enabled{};
-    game::ui::populateShopSellEntryViewModel(enabled, 1, 5, stack, &sell_rule, &item_catalog, nullptr, true);
+    game::ui::populateShopSellEntryViewModel(enabled, 1, 5, stack, &sell_rule, &item_catalog, &localization, true);
     EXPECT_EQ(enabled.index, 1);
     EXPECT_EQ(enabled.slot_index, 5);
     EXPECT_EQ(enabled.item_id_hash, entt::hashed_string{"potion"}.value());
@@ -65,7 +76,7 @@ TEST(ShopMenuSellSupportTest, PopulateShopSellEntryViewModelFormatsFieldsAndDisa
     EXPECT_FALSE(enabled.is_disabled);
 
     game::ui::ShopSellEntryViewModel disabled{};
-    game::ui::populateShopSellEntryViewModel(disabled, 0, 2, stack, nullptr, &item_catalog, nullptr, false);
+    game::ui::populateShopSellEntryViewModel(disabled, 0, 2, stack, nullptr, &item_catalog, &localization, false);
     EXPECT_EQ(disabled.slot_index, 2);
     EXPECT_EQ(disabled.price_text, "--");
     EXPECT_FALSE(disabled.is_selected);

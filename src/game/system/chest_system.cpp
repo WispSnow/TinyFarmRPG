@@ -8,6 +8,8 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 #include "game/world/world_state.h"
 #include "engine/component/animation_component.h"
 #include "engine/component/sprite_component.h"
@@ -30,13 +32,16 @@ constexpr game::defs::DialogueChannel NOTIFICATION_CHANNEL = game::defs::Dialogu
 constexpr entt::id_type CHEST_OPEN_ANIM = "open"_hs;
 
 std::string buildLootText(const game::data::ItemCatalog& catalog,
+                          const game::runtime::LocalizationService* localization,
                           const std::vector<game::component::ItemReward>& rewards) {
     std::ostringstream out;
     bool first = true;
     for (const auto& reward : rewards) {
         if (reward.item_id_ == entt::null || reward.count_ <= 0) continue;
         const auto* item = catalog.findItem(reward.item_id_);
-        const std::string_view name = item ? std::string_view(item->display_name_) : std::string_view("Unknown");
+        const std::string name = item
+            ? game::ui::tryLocalize(localization, item->display_name_)
+            : game::ui::localizeTextOrFallback(localization, "shop.item.unknown", "Unknown");
         if (!first) out << '\n';
         first = false;
         out << name << " x" << reward.count_;
@@ -143,7 +148,10 @@ bool ChestSystem::openChest(entt::entity player,
     }
 
     if (grant_rewards) {
-        notification_text = buildLootText(item_catalog_, chest->rewards_);
+        notification_text = buildLootText(
+            item_catalog_,
+            game::runtime::findLocalizationService(registry_),
+            chest->rewards_);
     }
     if (!notification_text.empty()) {
         showNotification(player, std::move(notification_text));

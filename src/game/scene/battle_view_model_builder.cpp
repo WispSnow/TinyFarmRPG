@@ -1,5 +1,6 @@
 #include "game/scene/battle_view_model_builder.h"
 
+#include "game/battle/battle_display_text.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
@@ -316,7 +317,7 @@ std::vector<BattleTurnOrderEntryViewModel> BattleViewModelBuilder::buildTurnOrde
         entries.push_back(BattleTurnOrderEntryViewModel{
             .unit_id = static_cast<int>(unit.id),
             .entry_index = static_cast<int>(entries.size()),
-            .name = makeRmlString(unit.name),
+            .name = makeRmlString(game::battle::localizedUnitName(unit, localization_)),
             .short_label = fallback_label,
             .badge_label = badge_label,
             .portrait_decorator = portrait_decorator,
@@ -342,7 +343,7 @@ BattlePartyHudViewModels BattleViewModelBuilder::buildPartyHud(const game::battl
 
         view_models.party_status.push_back(BattlePartyStatusViewModel{
             .unit_id = static_cast<int>(unit.id),
-            .name = makeRmlString(unit.name),
+            .name = makeRmlString(game::battle::localizedUnitName(unit, localization_)),
             .hp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.hp", "HP")),
             .hp_text = makeRmlString(std::to_string(std::max(0, unit.hp)) + "/" + std::to_string(std::max(0, unit.max_hp))),
             .mp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.mp", "MP")),
@@ -371,10 +372,12 @@ BattlePartyHudViewModels BattleViewModelBuilder::buildPartyHud(const game::battl
         int state_entry_index = 0;
         for (const auto& state_snapshot : states_it->states) {
             const auto* state = rpg_catalog_ ? rpg_catalog_->findState(state_snapshot.state_id) : nullptr;
-            const Rml::String display_name = state ? makeRmlString(state->display_name_) : makeRmlString(state_snapshot.state_id);
+            const Rml::String display_name = state
+                ? makeRmlString(game::ui::tryLocalize(localization_, state->display_name_))
+                : makeRmlString(state_snapshot.state_id);
             const Rml::String description = state && !state->description_.empty()
-                ? makeRmlString(state->description_)
-                : Rml::String{"No description"};
+                ? makeRmlString(game::ui::tryLocalize(localization_, state->description_))
+                : makeRmlString(game::ui::localizeTextOrFallback(localization_, "battle.state.no_description", "No description"));
             const Rml::String icon_decorator = battleStateIconDecorator(state);
             view_models.party_state_icons.push_back(BattleStateIconViewModel{
                 .unit_id = static_cast<int>(unit.id),
@@ -426,7 +429,7 @@ std::vector<BattleVictoryRewardItemViewModel> BattleViewModelBuilder::buildVicto
         if (item_catalog_) {
             if (const auto* item = item_catalog_->findItem(drop.item_id_hash);
                 item && !item->display_name_.empty()) {
-                label = makeRmlString(item->display_name_);
+                label = makeRmlString(game::ui::tryLocalize(localization_, item->display_name_));
             }
         }
 
@@ -452,7 +455,7 @@ std::vector<BattleVictoryLevelUpViewModel> BattleViewModelBuilder::buildVictoryL
         }
         level_ups.push_back(BattleVictoryLevelUpViewModel{
             .entry_index = level_entry_index++,
-            .label = makeRmlString(grant.display_name + " Lv." + std::to_string(grant.new_level)),
+            .label = makeRmlString(game::ui::tryLocalize(localization_, grant.display_name) + " Lv." + std::to_string(grant.new_level)),
             .stat_text = makeRmlString(game::scene::formatLevelUpStatText(grant)),
         });
     }

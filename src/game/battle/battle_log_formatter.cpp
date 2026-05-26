@@ -1,9 +1,11 @@
 #include "game/battle/battle_log_formatter.h"
 
+#include "game/battle/battle_display_text.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/data/rpg_types.h"
+#include "game/ui/localized_text.h"
 
 #include <entt/entity/entity.hpp>
 
@@ -35,36 +37,39 @@ struct LogSubject {
 
 [[nodiscard]] std::string unitLabel(const BattleActionResult& result,
                                     const std::optional<BattleUnitId> unit_id,
-                                    std::string_view fallback_prefix) {
+                                    std::string_view fallback_prefix,
+                                    const game::runtime::LocalizationService* localization) {
     if (!unit_id.has_value()) {
         return std::string{fallback_prefix};
     }
 
     if (const auto* unit = findSnapshotUnit(result, *unit_id)) {
-        return unit->name.empty() ? std::string{fallback_prefix} + " #" + std::to_string(*unit_id) : unit->name;
+        return game::battle::localizedUnitName(*unit, localization, fallback_prefix);
     }
 
     return std::string{fallback_prefix} + " #" + std::to_string(*unit_id);
 }
 
-[[nodiscard]] std::string actorLabel(const BattleActionResult& result) {
-    return unitLabel(result, result.actor_id, "Actor");
+[[nodiscard]] std::string actorLabel(const BattleActionResult& result,
+                                     const game::runtime::LocalizationService* localization) {
+    return unitLabel(result, result.actor_id, "Actor", localization);
 }
 
-[[nodiscard]] std::string targetLabel(const BattleActionResult& result) {
-    return unitLabel(result, result.target_id, "Target");
+[[nodiscard]] std::string targetLabel(const BattleActionResult& result,
+                                      const game::runtime::LocalizationService* localization) {
+    return unitLabel(result, result.target_id, "Target", localization);
 }
 
 [[nodiscard]] LogSubject effectSubject(const BattleActionResult& result,
                                        const BattleLogFormatterContext& context) {
     if (result.target_id.has_value()) {
-        return LogSubject{.label = targetLabel(result), .plural = false};
+        return LogSubject{.label = targetLabel(result, context.localization), .plural = false};
     }
 
     if (result.action_type == BattleActionType::Skill && context.rpg_catalog) {
         if (const auto* skill = context.rpg_catalog->findSkill(result.skill_id)) {
             if (skill->scope_ == game::data::Scope::Self) {
-                return LogSubject{.label = actorLabel(result), .plural = false};
+                return LogSubject{.label = actorLabel(result, context.localization), .plural = false};
             }
         }
     }
@@ -73,7 +78,7 @@ struct LogSubject {
         const entt::id_type item_id_hash = game::data::RpgCatalog::hashId(result.item_id);
         if (const auto* item = context.item_catalog->findItem(item_id_hash);
             item && item->battle_use_ && item->battle_use_->scope == game::data::Scope::Self) {
-            return LogSubject{.label = actorLabel(result), .plural = false};
+            return LogSubject{.label = actorLabel(result, context.localization), .plural = false};
         }
     }
 
@@ -87,46 +92,46 @@ struct LogSubject {
     return std::string{subject.plural ? plural : singular};
 }
 
-[[nodiscard]] std::string skillLabel(const std::string& skill_id, const game::data::RpgCatalog* catalog) {
+[[nodiscard]] std::string skillLabel(const std::string& skill_id, const BattleLogFormatterContext& context) {
     if (skill_id.empty()) {
         return "skill";
     }
 
-    if (catalog) {
-        if (const auto* skill = catalog->findSkill(skill_id);
+    if (context.rpg_catalog) {
+        if (const auto* skill = context.rpg_catalog->findSkill(skill_id);
             skill && !skill->display_name_.empty()) {
-            return skill->display_name_;
+            return game::ui::tryLocalize(context.localization, skill->display_name_);
         }
     }
 
     return skill_id;
 }
 
-[[nodiscard]] std::string itemLabel(const std::string& item_id, const game::data::ItemCatalog* catalog) {
+[[nodiscard]] std::string itemLabel(const std::string& item_id, const BattleLogFormatterContext& context) {
     if (item_id.empty()) {
         return "item";
     }
 
-    if (catalog) {
+    if (context.item_catalog) {
         const entt::id_type item_id_hash = game::data::RpgCatalog::hashId(item_id);
-        if (const auto* item = catalog->findItem(item_id_hash);
+        if (const auto* item = context.item_catalog->findItem(item_id_hash);
             item && !item->display_name_.empty()) {
-            return item->display_name_;
+            return game::ui::tryLocalize(context.localization, item->display_name_);
         }
     }
 
     return item_id;
 }
 
-[[nodiscard]] std::string stateLabel(const std::string& state_id, const game::data::RpgCatalog* catalog) {
+[[nodiscard]] std::string stateLabel(const std::string& state_id, const BattleLogFormatterContext& context) {
     if (state_id.empty()) {
         return "state";
     }
 
-    if (catalog) {
-        if (const auto* state = catalog->findState(state_id);
+    if (context.rpg_catalog) {
+        if (const auto* state = context.rpg_catalog->findState(state_id);
             state && !state->display_name_.empty()) {
-            return state->display_name_;
+            return game::ui::tryLocalize(context.localization, state->display_name_);
         }
     }
 
@@ -145,11 +150,11 @@ struct LogSubject {
 }
 
 [[nodiscard]] std::vector<std::string> stateLabels(const std::vector<std::string>& state_ids,
-                                                   const game::data::RpgCatalog* catalog) {
+                                                   const BattleLogFormatterContext& context) {
     std::vector<std::string> labels;
     labels.reserve(state_ids.size());
     for (const auto& state_id : state_ids) {
-        labels.push_back(stateLabel(state_id, catalog));
+        labels.push_back(stateLabel(state_id, context));
     }
     return labels;
 }
@@ -196,7 +201,7 @@ void pushLogLine(std::vector<BattleLogLine>& out_lines,
 void pushPrimaryFeedback(const BattleActionResult& result,
                          const BattleLogFormatterContext& context,
                          std::vector<BattleLogLine>& out_lines) {
-    const std::string target = targetLabel(result);
+    const std::string target = targetLabel(result, context.localization);
     const LogSubject subject = effectSubject(result, context);
     const std::size_t line_limit = primaryFeedbackLineLimit(result);
 
@@ -234,20 +239,22 @@ void pushPrimaryFeedback(const BattleActionResult& result,
     if (!result.states_added.empty()) {
         pushLogLine(
             out_lines,
-            subject.label + subjectVerb(subject, " gains ", " gain ") + joinLabels(stateLabels(result.states_added, context.rpg_catalog)) + ".",
+            subject.label + subjectVerb(subject, " gains ", " gain ") + joinLabels(stateLabels(result.states_added, context)) + ".",
             BattleLogTone::State,
             line_limit);
     }
     if (!result.states_removed.empty()) {
         pushLogLine(
             out_lines,
-            subject.label + subjectVerb(subject, " loses ", " lose ") + joinLabels(stateLabels(result.states_removed, context.rpg_catalog)) + ".",
+            subject.label + subjectVerb(subject, " loses ", " lose ") + joinLabels(stateLabels(result.states_removed, context)) + ".",
             BattleLogTone::State,
             line_limit);
     }
 }
 
-void pushTerminalFeedback(const BattleActionResult& result, std::vector<BattleLogLine>& out_lines) {
+void pushTerminalFeedback(const BattleActionResult& result,
+                          const game::runtime::LocalizationService* localization,
+                          std::vector<BattleLogLine>& out_lines) {
     if (result.action_type == BattleActionType::Escape) {
         pushLogLine(
             out_lines,
@@ -259,21 +266,21 @@ void pushTerminalFeedback(const BattleActionResult& result, std::vector<BattleLo
     if (result.target_defeated) {
         pushLogLine(
             out_lines,
-            result.target_id.has_value() ? targetLabel(result) + " was defeated!" : "A target was defeated!",
+            result.target_id.has_value() ? targetLabel(result, localization) + " was defeated!" : "A target was defeated!",
             BattleLogTone::System);
     }
 }
 
 [[nodiscard]] std::string actionStartText(const BattleActionResult& result,
                                           const BattleLogFormatterContext& context) {
-    const std::string actor = actorLabel(result);
+    const std::string actor = actorLabel(result, context.localization);
     switch (result.action_type) {
         case BattleActionType::Attack:
-            return actor + " attacks " + targetLabel(result) + "!";
+            return actor + " attacks " + targetLabel(result, context.localization) + "!";
         case BattleActionType::Skill:
-            return actor + " uses " + skillLabel(result.skill_id, context.rpg_catalog) + "!";
+            return actor + " uses " + skillLabel(result.skill_id, context) + "!";
         case BattleActionType::Item:
-            return actor + " uses " + itemLabel(result.item_id, context.item_catalog) + "!";
+            return actor + " uses " + itemLabel(result.item_id, context) + "!";
         case BattleActionType::Guard:
             return actor + " guards.";
         case BattleActionType::Escape:
@@ -302,7 +309,7 @@ std::vector<BattleLogLine> formatBattleLogLines(const BattleActionResult& result
 
     pushLogLine(lines, actionStartText(result, context), BattleLogTone::Normal);
     pushPrimaryFeedback(result, context, lines);
-    pushTerminalFeedback(result, lines);
+    pushTerminalFeedback(result, context.localization, lines);
     return lines;
 }
 

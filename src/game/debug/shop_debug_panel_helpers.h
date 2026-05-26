@@ -20,6 +20,10 @@ namespace game::domain {
 enum class ShopTradeFailureReason : std::uint8_t;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::debug {
 
 enum class ShopDebugTradeMode : std::uint8_t {
@@ -47,11 +51,13 @@ struct ShopDebugSellRow {
 
 [[nodiscard]] ShopDebugBuyRow buildShopDebugBuyRow(const game::data::ShopBuyEntryData& buy_entry,
                                                    const game::data::ItemCatalog* item_catalog,
+                                                   const game::runtime::LocalizationService* localization,
                                                    int owned_count);
 [[nodiscard]] ShopDebugSellRow buildShopDebugSellRow(int slot_index,
                                                      const game::component::ItemStack& stack,
                                                      const game::data::ShopSellRuleData* sell_rule,
-                                                     const game::data::ItemCatalog* item_catalog);
+                                                     const game::data::ItemCatalog* item_catalog,
+                                                     const game::runtime::LocalizationService* localization);
 [[nodiscard]] bool isShopDebugSellable(const game::component::ItemStack& stack,
                                        const game::data::ShopSellRuleData* sell_rule);
 [[nodiscard]] int clampShopDebugQuantity(int requested_quantity, int max_quantity);

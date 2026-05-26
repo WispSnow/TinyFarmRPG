@@ -6,11 +6,15 @@ local tori = {
 
 assert(recruit_npc.register({
     actor_id = tori.actor_id,
-    intro_lines = {
-        "The road out there looks rough.",
-        "Let me join you. I can hold my own.",
-    },
-    recruited_line = "You know where to find me when the road gets rough.",
+    intro_lines = function()
+        return {
+            tf.i18n.tr("dialogue.tori.intro.1"),
+            tf.i18n.tr("dialogue.tori.intro.2"),
+        }
+    end,
+    recruited_line = function()
+        return tf.i18n.tr("dialogue.tori.recruited")
+    end,
 }))
 
 return tori

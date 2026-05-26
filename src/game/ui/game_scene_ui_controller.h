@@ -30,6 +30,10 @@ class ItemCatalog;
 class RpgCatalog;
 }
 
+namespace game::defs {
+struct LanguageChangedEvent;
+}
+
 namespace game::ui {
 
 class DialogueBoxView;
@@ -66,6 +70,7 @@ public:
 
 private:
     [[nodiscard]] entt::entity findPlayerEntity() const;
+    void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 
     engine::core::Context& context_;
     entt::registry& registry_;

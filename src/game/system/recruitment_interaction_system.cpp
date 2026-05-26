@@ -9,7 +9,9 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/defs/party_ids.h"
+#include "game/runtime/service_lookup.h"
 #include "game/system/system_helpers.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 
@@ -88,8 +90,17 @@ void RecruitmentInteractionSystem::onInteractCommand(const game::defs::InteractC
     }
 
     if (isRecruited(recruitable->actor_id_)) {
-        const std::string name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
-        showNotification(event.target, name + " is already in the party.");
+        const auto* localization = game::runtime::findLocalizationService(registry_);
+        const std::string name = actor->display_name_.empty()
+                                     ? actor->id_
+                                     : game::ui::tryLocalize(localization, actor->display_name_);
+        showNotification(
+            event.target,
+            game::ui::formatTextOrFallback(
+                localization,
+                "recruitment.already_in_party",
+                {{"actor", name}},
+                [&name] { return name + " is already in the party."; }));
         return;
     }
 

@@ -44,6 +44,7 @@
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/localization_service.h"
 #include "game/scene/shop_menu_scene.h"
 #include "game/system/shop_interaction_system.h"
 
@@ -74,6 +75,15 @@ namespace {
     std::string validation_error{};
     EXPECT_TRUE(catalog.validateReferences(&item_catalog, validation_error)) << validation_error;
     return catalog;
+}
+
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
 }
 
 struct PushSceneCapture {
@@ -291,6 +301,8 @@ TEST_F(ShopInteractionSystemTest, ValidMerchantShowsGreetingBeforePushingShopMen
     entt::registry registry;
     auto item_catalog = loadProjectItemCatalog();
     auto shop_catalog = loadProjectShopCatalog();
+    auto localization = loadEnglishLocalization();
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher_, item_catalog);
     game::domain::ShopTransactionService shop_transaction_service(
         registry,

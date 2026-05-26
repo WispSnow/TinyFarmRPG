@@ -30,6 +30,10 @@ namespace engine::ui::rmlui {
 class RmlUiRuntime;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 class ItemTooltipUI;
@@ -44,6 +48,7 @@ class HotbarUI final : public HotbarVisibilityPort {
     engine::ui::rmlui::RmlUiRuntime& runtime_;
     engine::core::Context& context_;
     game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
     uint64_t owner_scene_id_{0};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
@@ -68,7 +73,8 @@ public:
     HotbarUI(engine::ui::rmlui::RmlUiRuntime& runtime,
              engine::core::Context& context,
              uint64_t owner_scene_id,
-             game::data::ItemCatalog* catalog = nullptr);
+             game::data::ItemCatalog* catalog = nullptr,
+             const game::runtime::LocalizationService* localization = nullptr);
     ~HotbarUI() override;
 
     HotbarUI(const HotbarUI&) = delete;
@@ -117,6 +123,7 @@ public:
     /// @brief 同步当前激活槽位到 HUD 高亮。
     /// @details 同样由上层把事件拆散后调用，避免 HotbarUI 暴露出事件回调风格签名。
     void syncActiveSlot(entt::entity target, int slot_index);
+    void onLanguageChanged();
 
 private:
     /// 创建 data model、绑定事件、加载 RML 文档。

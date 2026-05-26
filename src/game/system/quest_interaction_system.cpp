@@ -9,6 +9,8 @@
 #include "game/defs/events.h"
 #include "game/domain/quest_log_ops.h"
 #include "game/domain/quest_turn_in_service.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 
@@ -48,19 +50,37 @@ constexpr float NOTIFICATION_SECONDS = 2.0f;
 }
 
 [[nodiscard]] std::string makeFallbackQuestText(const game::data::QuestData& quest,
-                                                const QuestInteractionSystem::InteractionState state) {
+                                                const QuestInteractionSystem::InteractionState state,
+                                                const game::runtime::LocalizationService* localization) {
+    const std::string title = quest.title_.empty() ? quest.id_ : game::ui::tryLocalize(localization, quest.title_);
     switch (state) {
         case QuestInteractionSystem::InteractionState::Offerable:
-            return "Accept Quest: " + quest.title_;
+            return game::ui::formatTextOrFallback(
+                localization,
+                "quest_interaction.accept",
+                {{"quest", title}},
+                [&title] { return "Accept Quest: " + title; });
         case QuestInteractionSystem::InteractionState::InProgress:
-            return "Quest In Progress: " + quest.title_;
+            return game::ui::formatTextOrFallback(
+                localization,
+                "quest_interaction.in_progress",
+                {{"quest", title}},
+                [&title] { return "Quest In Progress: " + title; });
         case QuestInteractionSystem::InteractionState::ReadyToTurnIn:
-            return "Ready to Turn In: " + quest.title_;
+            return game::ui::formatTextOrFallback(
+                localization,
+                "quest_interaction.ready",
+                {{"quest", title}},
+                [&title] { return "Ready to Turn In: " + title; });
         case QuestInteractionSystem::InteractionState::Completed:
-            return "Quest Completed: " + quest.title_;
+            return game::ui::formatTextOrFallback(
+                localization,
+                "quest_interaction.completed",
+                {{"quest", title}},
+                [&title] { return "Quest Completed: " + title; });
     }
 
-    return quest.title_;
+    return title;
 }
 
 void appendLine(std::string& text, const std::string& line) {
@@ -74,17 +94,31 @@ void appendLine(std::string& text, const std::string& line) {
 }
 
 [[nodiscard]] std::string formatTurnInSuccessText(const game::data::QuestData& quest,
-                                                  const game::domain::QuestTurnInResult& result) {
-    std::string text = quest.giver_text_.completed_;
+                                                  const game::domain::QuestTurnInResult& result,
+                                                  const game::runtime::LocalizationService* localization) {
+    std::string text = game::ui::tryLocalize(localization, quest.giver_text_.completed_);
     if (text.empty()) {
-        text = makeFallbackQuestText(quest, QuestInteractionSystem::InteractionState::Completed);
+        text = makeFallbackQuestText(quest, QuestInteractionSystem::InteractionState::Completed, localization);
     }
 
     if (result.gold_reward > 0) {
-        appendLine(text, fmt::format("Gained Gold {}", result.gold_reward));
+        appendLine(
+            text,
+            game::ui::formatTextOrFallback(
+                localization,
+                "reward.gold_gained",
+                {{"amount", std::to_string(result.gold_reward)}},
+                [&result] { return fmt::format("Gained Gold {}", result.gold_reward); }));
     }
     for (const auto& item_reward : result.item_rewards) {
-        appendLine(text, fmt::format("Gained {} x{}", item_reward.item_name, item_reward.count));
+        const std::string item_name = game::ui::tryLocalize(localization, item_reward.item_name);
+        appendLine(
+            text,
+            game::ui::formatTextOrFallback(
+                localization,
+                "reward.item_gained",
+                {{"item", item_name}, {"count", std::to_string(item_reward.count)}},
+                [&item_name, &item_reward] { return fmt::format("Gained {} x{}", item_name, item_reward.count); }));
     }
 
     return text;
@@ -144,8 +178,10 @@ void QuestInteractionSystem::showQuestText(const entt::entity giver,
                                            const game::data::QuestData& quest,
                                            const InteractionState state) {
     std::string text = selectQuestText(quest, state);
+    const auto* localization = game::runtime::findLocalizationService(registry_);
+    text = game::ui::tryLocalize(localization, text);
     if (text.empty()) {
-        text = makeFallbackQuestText(quest, state);
+        text = makeFallbackQuestText(quest, state, localization);
     }
     showText(giver, std::move(text));
 }
@@ -306,7 +342,7 @@ void QuestInteractionSystem::turnInQuest(const entt::entity player,
         .quest_id = quest.id_,
     });
     if (!helpers::isScriptedInteraction(registry_, giver)) {
-        showText(giver, formatTurnInSuccessText(quest, turn_in_result));
+        showText(giver, formatTurnInSuccessText(quest, turn_in_result, game::runtime::findLocalizationService(registry_)));
     }
 }
 

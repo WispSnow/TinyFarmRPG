@@ -2,7 +2,7 @@
     "troops": [
         {
             "id": "troop.goblin_pair",
-            "display_name": "Goblin x2",
+            "display_name": "troop.goblin_pair.name",
             "battle_background_id": "Grassland",
             "members": [
                 {
@@ -19,7 +19,7 @@
         },
         {
             "id": "troop.gnome_pair",
-            "display_name": "Gnome x2",
+            "display_name": "troop.gnome_pair.name",
             "battle_background_id": "Grassland",
             "members": [
                 {
@@ -36,7 +36,7 @@
         },
         {
             "id": "troop.slime",
-            "display_name": "Slime",
+            "display_name": "troop.slime.name",
             "battle_background_id": "Grassland",
             "members": [
                 {

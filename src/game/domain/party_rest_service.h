@@ -16,7 +16,7 @@ namespace game::domain {
 
 struct RestRecoveryMemberPreview {
     std::string actor_id{};
-    std::string display_name{};
+    std::string display_name_key{};
     int current_hp{0};
     int after_hp{0};
     int max_hp{1};

@@ -11,6 +11,10 @@ namespace game::data {
 class RpgCatalog;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 struct PartyMemberPanelViewModel {
@@ -41,6 +45,7 @@ struct InventoryMenuPartyPanelData {
     entt::entity player,
     const game::data::RpgCatalog* rpg_catalog,
     std::string_view selected_actor_id,
-    bool target_mode);
+    bool target_mode,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 } // namespace game::scene
