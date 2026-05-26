@@ -90,3 +90,34 @@ TEST(I18nKeyParityTest, EveryLanguageHasFallbackKeySet) {
             << tag << " has keys that fallback language does not have";
     }
 }
+
+TEST(I18nKeyParityTest, EveryProjectMapHasDisplayNameKey) {
+    const nlohmann::json english = parseJsonFile(projectRoot() / "assets" / "i18n" / "en-US.json");
+    ASSERT_TRUE(english.is_object());
+
+    const std::filesystem::path maps_dir = projectRoot() / "assets" / "maps";
+    ASSERT_TRUE(std::filesystem::exists(maps_dir)) << maps_dir;
+
+    std::vector<std::string> missing_keys{};
+    for (const auto& entry : std::filesystem::directory_iterator{maps_dir}) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".tmj") {
+            continue;
+        }
+
+        const std::string key = "map." + entry.path().stem().string() + ".name";
+        if (!english.contains(key)) {
+            missing_keys.push_back(key);
+        }
+    }
+
+    EXPECT_TRUE(missing_keys.empty()) << "Missing map display name keys: " << [&] {
+        std::ostringstream out;
+        for (const std::string& key : missing_keys) {
+            if (out.tellp() > 0) {
+                out << ", ";
+            }
+            out << key;
+        }
+        return out.str();
+    }();
+}
