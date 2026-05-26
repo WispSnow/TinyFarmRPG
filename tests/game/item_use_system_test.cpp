@@ -109,6 +109,41 @@ TEST(ItemUseSystemTest, UseCropItem_CountTwo_NoSpace_DoesNotConsume) {
     EXPECT_EQ(inv.slot(1).count_, 1);
 }
 
+TEST(ItemUseSystemTest, UseCropItem_CountTwo_NoSpaceLocalizesPrompt) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
+    auto localization = loadLocalization("zh-Hans");
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
+
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+
+    const entt::id_type dummy_id = entt::hashed_string{"dummy_full"}.value();
+    for (int i = 0; i < inv.slotCount(); ++i) {
+        inv.slot(i).item_id_ = dummy_id;
+        inv.slot(i).count_ = 1;
+    }
+
+    inv.slot(0).item_id_ = entt::hashed_string{"strawberry_item"}.value();
+    inv.slot(0).count_ = 2;
+
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, true});
+    dispatcher.update();
+
+    ASSERT_EQ(capture.shows.size(), 1u);
+    EXPECT_EQ(capture.shows[0].text, localization.tr("inventory.full"));
+}
+
 TEST(ItemUseSystemTest, UseCropItem_CountOne_FullInventoryStillSucceeds) {
     entt::registry registry;
     entt::dispatcher dispatcher;
@@ -188,7 +223,12 @@ TEST(ItemUseSystemTest, UseProjectCatalogKeyLocalizesPromptNotification) {
     dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, true});
 
     ASSERT_EQ(capture.shows.size(), 1u);
-    EXPECT_EQ(capture.shows[0].text, "获得 草莓种子 x3");
+    const auto* seed = catalog.findItem(entt::hashed_string{"strawberry_seed"}.value());
+    ASSERT_NE(seed, nullptr);
+    EXPECT_EQ(capture.shows[0].text,
+              localization.format(
+                  "reward.item_gained",
+                  {{"item", localization.tr(seed->display_name_)}, {"count", "3"}}));
 }
 
 TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {

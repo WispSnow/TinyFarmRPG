@@ -213,6 +213,7 @@ private:
     void enterInputMenu();
     void leaveInputMenu() override;
     void setMenuState(MenuState next_state);
+    void syncMenuStateText();
     void syncMenuFocus();
     void syncVictoryContinueFocus();
     [[nodiscard]] bool focusElementById(std::string_view element_id);
@@ -245,10 +246,13 @@ private:
     void populateTargetEntries(game::data::Scope scope, const game::battle::BattleUnit& actor);
     [[nodiscard]] const TargetEntryViewModel* findTargetEntry(int entry_index) const;
     [[nodiscard]] int firstEnabledTargetEntryIndex() const;
+    [[nodiscard]] std::string localizedBattleSide(game::battle::BattleSide side) const;
+    [[nodiscard]] std::string localizedBattleOutcome(game::battle::BattleOutcome outcome) const;
     [[nodiscard]] Rml::String targetLabel(const game::battle::BattleUnit& unit) const;
     [[nodiscard]] Rml::String targetSublabel(const game::battle::BattleUnit& unit) const;
     [[nodiscard]] MenuState menuStateForActionDraftSource() const;
     void setMenuHint(std::string_view text);
+    void setMenuHintKey(std::string_view key, std::string_view fallback);
     void continueDraftAfterScopeSelected(game::data::Scope scope, const game::battle::BattleUnit& actor);
     void handlePartyCommand(int entry_index);
     void handleActorCommand(int entry_index);

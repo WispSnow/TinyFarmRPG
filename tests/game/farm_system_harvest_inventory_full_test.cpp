@@ -16,6 +16,7 @@
 #include "game/defs/spatial_layers.h"
 #include "game/factory/blueprint_manager.h"
 #include "game/factory/entity_factory.h"
+#include "game/runtime/localization_service.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -53,6 +54,10 @@ namespace game::system {
 TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAndKeepsCrop) {
     entt::registry registry;
     entt::dispatcher dispatcher;
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex(std::string(PROJECT_SOURCE_DIR) + "/assets/i18n/languages.json"));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     engine::spatial::SpatialIndexManager spatial;
     spatial.initialize(registry,
                        /*map_size*/ MAP_SIZE,
@@ -108,7 +113,7 @@ TEST(FarmSystemHarvestInventoryFullTest, HarvestWhenInventoryFull_ShowsBubbleAnd
 
     ASSERT_FALSE(dialogue.shows.empty());
     EXPECT_EQ(dialogue.shows.back().target, player);
-    EXPECT_NE(dialogue.shows.back().text.find("Inventory full"), std::string::npos);
+    EXPECT_EQ(dialogue.shows.back().text, localization.tr("farm.harvest.inventory_full"));
 
     farm.update(2.0F);
     dispatcher.update();

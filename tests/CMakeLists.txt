@@ -256,6 +256,7 @@ set(GAME_TEST_SOURCES
     game/ui_layout_integration_test.cpp
     game/i18n_key_parity_test.cpp
     game/localization_service_test.cpp
+    game/localization_source_guard_test.cpp
     game/localized_text_test.cpp
     game/rml_localization_applier_test.cpp
     game/user_settings_test.cpp

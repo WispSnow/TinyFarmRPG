@@ -62,7 +62,13 @@
   - Inventory sort 已改为按稳定 `id_str_` 排序，不再依赖已迁移为 key 的 `display_name_`，避免排序随 raw key 或翻译变化漂移。
   - Battle unit 重名序号已从拼接到 `name` 字符串改为独立 `name_ordinal`，避免 `enemy.slime.name 2` 这类拼接 key 无法翻译；显示边界会先翻译 base key 再追加序号。
   - 已新增宝箱拾取、物品使用、Lua 招募语言切换、Battle 重名敌人显示与 Rest source-level 回归测试。
-- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
+- 2026-05-26：继续收敛剩余玩家可见硬编码与 source-level 防回归。
+  - 已迁移农场收获满包提示、物品使用满包 / 已使用提示，通知文本改由 i18n key 提供。
+  - 已迁移 `AppearanceCustomizeScene` 的动态标题 / 副标题，并订阅 `LanguageChangedEvent` 刷新已打开的衣柜界面。
+  - 已迁移 Battle 菜单状态、目标提示、Turn / Result 前缀、阵营、结局和状态 tooltip 回合数；`BattleMenuModel` 不再保存英文默认文本，未同步前显示 `!key!` 占位。
+  - 已新增 `LocalizationSourceGuardTest`，扫描 timed notification raw English 与项目 Lua dialogue API raw English；当前覆盖范围明确限制在这两类入口，其它玩家可见 C++ raw English 仍需独立扫描。
+  - 已将新增运行时测试的期望值改为读取 i18n key，避免 C++ 测试复制中文文案。
+- 仍待完成：剩余零散 C++ 硬编码扫描与收敛、Title path 早期场景的 LocalizationService 注入、dialogue choice key/args 事件负载（若需要即时刷新）、更完整的 RmlUi 运行时刷新 / 视觉验收测试。
 
 ## 当前上下文
 
@@ -472,15 +478,15 @@ ninja -C build/debug engine_tests game_tests
 - [x] 新增 RmlUi `data-i18n` 静态文本 applier。
 - [x] 新增 `localized_text` 展示层 helper，统一 catalog key fallback。
 - [x] 迁移核心 RML 静态文案，所有静态文本显式加 `data-i18n`。
-- [ ] 迁移核心 C++ 动态文案。（大部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、`InventoryMenuScene` / 各 tab、`BattleScene`、battle formatter / view model、GameScene reward feedback、shop / quest / recruitment 交互系统、Chest / ItemUse 通知、Hotbar tooltip）
+- [ ] 迁移核心 C++ 动态文案。（大部分完成：`OptionsTabContent`、`PauseMenuScene`、`SaveSlotSelectScene`、`RestDialogScene`、`ShopMenuScene`、`QuestOfferScene`、`RecruitOfferScene`、`AppearanceCustomizeScene`、`InventoryMenuScene` / 各 tab、`BattleScene` / battle menu / formatter / view model、GameScene reward feedback、shop / quest / recruitment / farm 交互系统、Chest / ItemUse 通知、Hotbar tooltip）
 - [x] 通过 `ScriptRuntimeFactory` 捕获 `LocalizationService*`，给 Lua 暴露 `tf.i18n.tr` / `tf.i18n.format`。
 - [x] 将数据 catalog 的名称与描述字段值迁移为本地化 key。（items、quests、shops、RPG actors/classes/skills/states/enemies/troops；crop config 无玩家可见显示字段，blueprint description 暂按编辑 / debug 元数据处理）
 - [x] 战斗日志、战斗单位名、奖励结果等长期结构改为保存 id/key/args 或在语言切换时可重建；重名敌人的显示序号使用独立 `name_ordinal`，避免破坏本地化 key。
 - [x] 迁移 assets 前审计 `SaveData` / `SaveService`，确认新 schema 不持久化已翻译显示文本。
 - [x] 迁移 Lua 对白与选项文本。（home exterior、merchant、lyria、tori、greeter、goblin cleanup quest；脚本 helper 支持交互时惰性解析）
 - [x] Phase 6 首版不刷新已显示的 dialogue choice，或新增 key/args 事件负载后再支持即时刷新；二选一写入实现说明。（首版明确为下一句 / 下一次打开使用新语言）
-- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`）
-- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`、Shop / catalog / inventory / map / battle / reward feedback、Chest / ItemUse、Lua recruit lazy 文本相关回归）
+- [ ] 新增 source-level gtest 扫描玩家可见英文硬编码与 Lua dialogue 字符串。（部分完成：RML `data-i18n` key 存在性扫描、核心 RML key 保留测试、`data-for` 模板内禁止 `data-i18n`、timed notification raw English 扫描、项目 Lua dialogue API raw English 扫描；仍需覆盖其它 C++ data model / `fmt::format` / direct event text 等玩家可见 raw English）
+- [ ] 补齐本地化、设置、RmlUi 刷新相关测试。（部分完成：`LocalizationService`、i18n key parity、RML `data-i18n` key 回归、核心 RML key 保留测试、`localized_text`、Lua i18n、`UserSettings`、`OptionsTabContent`、Shop / catalog / inventory / map / battle / reward feedback、Farm / Chest / ItemUse、Appearance dynamic title、Lua recruit lazy 文本相关回归）
 - [ ] 完成中英切换手动验收。
 
 ## 风险与处理
@@ -496,6 +502,7 @@ ninja -C build/debug engine_tests game_tests
 - 存档字段如果包含已翻译显示名，读档后语言切换无法刷新：Phase 6 前必须审计保存 schema，新 schema 只保存稳定 id/key/args。
 - Lua 脚本中硬编码对白可能遗漏：迁移后新增 source-level 检查，至少对 `dialogue.show("...")`、choice label 字符串给出扫描报告。
 - 已显示的 dialogue choice 如果只保存翻译后字符串，无法即时刷新：需要新增 key/args 事件负载或明确首版只刷新后续新打开的 choice。
+- Title path 早期场景目前没有稳定的 gameplay registry 注入：`TitleScene` 打开的 `SaveSlotSelectScene` / `AppearanceCustomizeScene` Create Hero 需要把 `LocalizationService` 上移到 `Context` 或在 GameApp 启动时创建，避免标题页切中文后早期弹窗仍使用英文 fallback。
 - 中文文案更长，可能挤压 640x360 UI：迁移每个场景后做一次截图或手动 QA，必要时调整布局宽度、换行或字号。
 
 ## 待确认问题
