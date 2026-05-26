@@ -31,16 +31,25 @@ constexpr char kSlotGridIndexAttribute[] = "slot_index";
 
 } // namespace
 
+SlotGridDragState::SlotGridDragState(engine::input::MouseCursorService* cursor_service)
+    : cursor_service_(cursor_service) {
+}
+
 void SlotGridDragState::clear() {
     // 重置到“无拖拽进行中”的默认状态。
     active = false;
     drop_handled = false;
+    cursor_override_.reset();
 }
 
 void SlotGridDragState::start() {
     // 开始一次新的拖拽流程，drop 标记需要重新计数。
+    cursor_override_.reset();
     active = true;
     drop_handled = false;
+    if (cursor_service_) {
+        cursor_override_ = cursor_service_->scopedOverride(engine::input::MouseCursorKind::Dragging);
+    }
 }
 
 bool registerSlotGridViewModelType(Rml::DataModelConstructor& constructor) {

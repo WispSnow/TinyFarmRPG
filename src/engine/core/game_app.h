@@ -25,6 +25,7 @@ class GLRenderer;
 
 namespace engine::input {
 class InputManager;
+class MouseCursorService;
 }
 
 namespace engine::scene {
@@ -81,6 +82,7 @@ private:
     std::unique_ptr<engine::render::TextRenderer> text_renderer_;
     std::unique_ptr<engine::core::Config> config_;
     std::unique_ptr<engine::input::InputManager> input_manager_;
+    std::unique_ptr<engine::input::MouseCursorService> mouse_cursor_service_;
     std::unique_ptr<engine::core::Context> context_;
     std::unique_ptr<engine::scene::SceneManager> scene_manager_;
     std::unique_ptr<engine::audio::AudioPlayer> audio_player_;
@@ -132,6 +134,7 @@ private:
     [[nodiscard]] bool initDispatcher();
     [[nodiscard]] bool initConfig();
     [[nodiscard]] bool initSDL();
+    [[nodiscard]] bool initMouseCursorService();
     [[nodiscard]] bool initGLRenderer();
     [[nodiscard]] bool initRmlUi();
 #ifdef TF_ENABLE_DEBUG_UI

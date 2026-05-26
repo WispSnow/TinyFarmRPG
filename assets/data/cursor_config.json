@@ -1,0 +1,25 @@
+{
+    "sheet": "assets/farm-rpg/UI/HUD.png",
+    "theme_id": "warm_light",
+    "hotspot_policy": "stable_origin",
+    "tile_size": 16,
+    "scale": 2,
+    "states": {
+        "default": {
+            "source": [16, 0, 16, 16],
+            "hotspot": [1, 1]
+        },
+        "pointer": {
+            "source": [32, 48, 16, 16],
+            "hotspot": [1, 1]
+        },
+        "grab": {
+            "source": [0, 48, 16, 16],
+            "hotspot": [1, 1]
+        },
+        "dragging": {
+            "source": [16, 48, 16, 16],
+            "hotspot": [1, 1]
+        }
+    }
+}

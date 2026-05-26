@@ -37,6 +37,7 @@ set(TEST_SOURCES
     engine/input/input_manager_rmlui_routing_test.cpp
     engine/input/input_manager_rumble_test.cpp
     engine/input/input_manager_no_exceptions_test.cpp
+    engine/input/mouse_cursor_service_test.cpp
     engine/scene/entry_to_first_frame_safety_test.cpp
     engine/scene/scene_manager_safety_test.cpp
     engine/scene/render_interpolation_pipeline_test.cpp

@@ -1,6 +1,7 @@
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include "engine/ui/rmlui/render_interface_gl3_stb.h"
+#include "engine/ui/rmlui/rml_system_interface_sdl.h"
 
 #include "RmlUi_Platform_SDL.h"
 
@@ -36,9 +37,10 @@ constexpr char INPUT_MODE_NAV_CLASS[] = "tf-input-nav";
 
 std::unique_ptr<RmlUiRuntime> RmlUiRuntime::create(SDL_Window* window,
                                                    RenderInterface_GL3_STB& render_interface,
-                                                   const RmlUiViewport& viewport) {
+                                                   const RmlUiViewport& viewport,
+                                                   engine::input::MouseCursorService* cursor_service) {
     auto runtime = std::unique_ptr<RmlUiRuntime>(new RmlUiRuntime());
-    if (!runtime->init(window, render_interface, viewport)) {
+    if (!runtime->init(window, render_interface, viewport, cursor_service)) {
         return nullptr;
     }
     return runtime;
@@ -50,7 +52,8 @@ RmlUiRuntime::~RmlUiRuntime() {
 
 bool RmlUiRuntime::init(SDL_Window* window,
                         RenderInterface_GL3_STB& render_interface,
-                        const RmlUiViewport& viewport) {
+                        const RmlUiViewport& viewport,
+                        engine::input::MouseCursorService* cursor_service) {
     clean();
 
     if (!window) {
@@ -62,7 +65,7 @@ bool RmlUiRuntime::init(SDL_Window* window,
     render_interface_ = &render_interface;
     render_interface_->setGeneratedImageRegistry(&generated_images_);
     viewport_ = sanitizeViewport(viewport);
-    system_interface_ = std::make_unique<SystemInterface_SDL>();
+    system_interface_ = std::make_unique<RmlSystemInterfaceSdl>(cursor_service);
 
     if (!system_interface_) {
         spdlog::error("RmlUiRuntime::init failed: system interface creation failed.");
@@ -70,7 +73,7 @@ bool RmlUiRuntime::init(SDL_Window* window,
         return false;
     }
 
-    system_interface_->SetWindow(window_);
+    system_interface_->setWindow(window_);
 
     Rml::SetSystemInterface(system_interface_.get());
     Rml::SetRenderInterface(render_interface_);
