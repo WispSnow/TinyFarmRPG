@@ -85,6 +85,6 @@ body {
 
 .label-bg span {
     color: white;
-    font-effect: shadow(2dp 2dp #00000088);
+    font-effect: shadow(1dp 1dp #00000088);
     pointer-events: none;
 }
