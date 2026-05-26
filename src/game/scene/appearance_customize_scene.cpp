@@ -483,7 +483,7 @@ void AppearanceCustomizeScene::syncSlotViewModels(bool mark_dirty) {
     if (!catalog_) {
         return;
     }
-    slot_view_models_ = game::ui::buildAppearanceSlotViewModels(*catalog_, draft_selection_);
+    slot_view_models_ = game::ui::buildAppearanceSlotViewModels(*catalog_, draft_selection_, localization());
     if (mark_dirty) {
         document_controller_.markDirty("slots");
     }
@@ -598,6 +598,7 @@ bool AppearanceCustomizeScene::onMenuCancelPressed() {
 
 void AppearanceCustomizeScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
     syncLocalizedText(true);
+    syncSlotViewModels(true);
 }
 
 void AppearanceCustomizeScene::onSlotPrevEvent(Rml::DataModelHandle,
