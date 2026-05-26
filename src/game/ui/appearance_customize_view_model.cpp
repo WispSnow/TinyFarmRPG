@@ -2,10 +2,12 @@
 
 #include "game/data/appearance_catalog.h"
 #include "game/scene/appearance_customize_types.h"
+#include "game/ui/localized_text.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 
 #include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace game::ui {
@@ -22,6 +24,72 @@ namespace {
         return 0U;
     }
     return static_cast<std::size_t>(std::distance(variants.begin(), it));
+}
+
+[[nodiscard]] std::string fallbackSlotLabel(std::string_view slot) {
+    if (slot == "skin") {
+        return "Skin";
+    }
+    if (slot == "eyes") {
+        return "Eyes";
+    }
+    if (slot == "clothes") {
+        return "Clothes";
+    }
+    if (slot == "hair") {
+        return "Hair";
+    }
+    if (slot == "acc") {
+        return "Accessory";
+    }
+    return std::string(slot);
+}
+
+[[nodiscard]] std::string slotLabelKey(std::string_view slot) {
+    return "appearance.slot." + std::string(slot);
+}
+
+[[nodiscard]] bool isDigits(std::string_view value) {
+    return !value.empty() && std::all_of(value.begin(), value.end(), [](const char ch) {
+        return std::isdigit(static_cast<unsigned char>(ch)) != 0;
+    });
+}
+
+[[nodiscard]] std::string variantPartKey(std::string_view part) {
+    std::string key{"appearance.variant_part."};
+    bool separator_pending = false;
+    for (const char ch : part) {
+        const auto c = static_cast<unsigned char>(ch);
+        if (std::isalnum(c) != 0) {
+            key.push_back(static_cast<char>(std::tolower(c)));
+            separator_pending = false;
+        } else if (!separator_pending) {
+            key.push_back('_');
+            separator_pending = true;
+        }
+    }
+    if (key.back() == '_') {
+        key.pop_back();
+    }
+    return key;
+}
+
+[[nodiscard]] std::string localizeVariantPart(const game::runtime::LocalizationService* localization,
+                                              std::string_view part) {
+    if (isDigits(part)) {
+        return std::string(part);
+    }
+    return localizeTextOrFallback(localization, variantPartKey(part), part);
+}
+
+[[nodiscard]] std::string joinVariantParts(const game::runtime::LocalizationService* localization,
+                                           const std::string& left,
+                                           const std::string& right) {
+    return formatTextOrFallback(
+        localization,
+        "appearance.variant.join",
+        {{"left", left}, {"right", right}},
+        [&left, &right] { return left + " " + right; });
 }
 
 } // namespace
@@ -41,7 +109,8 @@ bool registerAppearanceCustomizeDataTypes(Rml::DataModelConstructor& constructor
 }
 
 AppearanceSlotViewModels buildAppearanceSlotViewModels(const game::data::AppearanceCatalog& catalog,
-                                                       const game::scene::AppearanceSelection& selection) {
+                                                       const game::scene::AppearanceSelection& selection,
+                                                       const game::runtime::LocalizationService* localization) {
     AppearanceSlotViewModels view_models;
     const auto slots = game::scene::runtimeAppearanceSlots(catalog);
     view_models.reserve(slots.size());
@@ -61,8 +130,8 @@ AppearanceSlotViewModels buildAppearanceSlotViewModels(const game::data::Appeara
         AppearanceSlotViewModel model{};
         model.slot_index = static_cast<int>(index);
         model.slot_id = toRmlString(slot);
-        model.label = toRmlString(displayLabelForAppearanceSlot(slot));
-        model.variant_label = toRmlString(displayLabelForAppearanceVariant(resolved_variant));
+        model.label = toRmlString(displayLabelForAppearanceSlot(slot, localization));
+        model.variant_label = toRmlString(displayLabelForAppearanceVariant(resolved_variant, localization));
         model.index_label = toRmlString(index_label);
         view_models.push_back(std::move(model));
     }
@@ -70,32 +139,32 @@ AppearanceSlotViewModels buildAppearanceSlotViewModels(const game::data::Appeara
     return view_models;
 }
 
-std::string displayLabelForAppearanceSlot(std::string_view slot) {
-    if (slot == "skin") {
-        return "Skin";
-    }
-    if (slot == "eyes") {
-        return "Eyes";
-    }
-    if (slot == "clothes") {
-        return "Clothes";
-    }
-    if (slot == "hair") {
-        return "Hair";
-    }
-    if (slot == "acc") {
-        return "Accessory";
-    }
-    return std::string(slot);
+std::string displayLabelForAppearanceSlot(std::string_view slot,
+                                          const game::runtime::LocalizationService* localization) {
+    return localizeTextOrFallback(localization, slotLabelKey(slot), fallbackSlotLabel(slot));
 }
 
-std::string displayLabelForAppearanceVariant(std::string_view variant) {
-    std::string label;
-    label.reserve(variant.size());
-    for (const char ch : variant) {
-        label.push_back(ch == '/' ? ' ' : ch);
+std::string displayLabelForAppearanceVariant(std::string_view variant,
+                                             const game::runtime::LocalizationService* localization) {
+    if (variant.empty() || variant == "none") {
+        return localizeTextOrFallback(localization, "appearance.variant.none", "none");
     }
-    return label.empty() ? std::string{"None"} : label;
+
+    std::string label{};
+    std::size_t start = 0U;
+    while (start <= variant.size()) {
+        const std::size_t end = variant.find('/', start);
+        const std::string_view part = end == std::string_view::npos
+                                          ? variant.substr(start)
+                                          : variant.substr(start, end - start);
+        const std::string localized_part = localizeVariantPart(localization, part);
+        label = label.empty() ? localized_part : joinVariantParts(localization, label, localized_part);
+        if (end == std::string_view::npos) {
+            break;
+        }
+        start = end + 1U;
+    }
+    return label;
 }
 
 } // namespace game::ui

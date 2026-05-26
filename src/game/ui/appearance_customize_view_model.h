@@ -14,6 +14,10 @@ namespace game::data {
 class AppearanceCatalog;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 struct AppearanceSelection;
 }
@@ -33,8 +37,13 @@ using AppearanceSlotViewModels = std::vector<AppearanceSlotViewModel>;
 [[nodiscard]] bool registerAppearanceCustomizeDataTypes(Rml::DataModelConstructor& constructor);
 [[nodiscard]] AppearanceSlotViewModels buildAppearanceSlotViewModels(
     const game::data::AppearanceCatalog& catalog,
-    const game::scene::AppearanceSelection& selection);
-[[nodiscard]] std::string displayLabelForAppearanceSlot(std::string_view slot);
-[[nodiscard]] std::string displayLabelForAppearanceVariant(std::string_view variant);
+    const game::scene::AppearanceSelection& selection,
+    const game::runtime::LocalizationService* localization);
+[[nodiscard]] std::string displayLabelForAppearanceSlot(
+    std::string_view slot,
+    const game::runtime::LocalizationService* localization);
+[[nodiscard]] std::string displayLabelForAppearanceVariant(
+    std::string_view variant,
+    const game::runtime::LocalizationService* localization);
 
 } // namespace game::ui

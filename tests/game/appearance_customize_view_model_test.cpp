@@ -2,11 +2,13 @@
 
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
+#include "game/runtime/localization_service.h"
 #include "game/scene/appearance_customize_types.h"
 #include "game/ui/appearance_customize_view_model.h"
 #include "appearance_test_fixture_utils.h"
 #include "../engine/render/test_source_utils.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <random>
 #include <utility>
@@ -17,6 +19,17 @@
 
 namespace game::scene {
 namespace {
+
+std::filesystem::path projectPath(std::string_view relative_path) {
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_path).lexically_normal();
+}
+
+game::runtime::LocalizationService loadProjectLocalization(std::string_view language_tag) {
+    game::runtime::LocalizationService localization;
+    EXPECT_TRUE(localization.loadLanguageIndex(projectPath("assets/i18n/languages.json").string()));
+    EXPECT_TRUE(localization.setLanguage(language_tag));
+    return localization;
+}
 
 std::filesystem::path createCatalogFixture() {
     const auto temp_root = game::test::createUniqueTempDir("appearance_customize_fixture");
@@ -103,13 +116,71 @@ TEST(AppearanceCustomizeViewModelTest, BuildsSlotViewModelsInLayerOrder) {
     auto selection = makeDefaultAppearanceSelection(catalog);
     EXPECT_TRUE(stepAppearanceSlot(selection, catalog, "hair", 1));
 
-    const auto view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection);
+    const auto view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection, nullptr);
     ASSERT_EQ(view_models.size(), 2U);
     EXPECT_EQ(view_models[0].slot_id, "skin");
     EXPECT_EQ(view_models[0].label, "Skin");
     EXPECT_EQ(view_models[1].slot_id, "hair");
     EXPECT_EQ(view_models[1].variant_label, "Lyria Brown");
     EXPECT_EQ(view_models[1].index_label, "2/2");
+}
+
+TEST(AppearanceCustomizeViewModelTest, BuildsLocalizedProjectSlotViewModels) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+    auto localization = loadProjectLocalization("zh-Hans");
+
+    const auto selection = makeDefaultAppearanceSelection(catalog);
+    const auto view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection, &localization);
+    ASSERT_EQ(view_models.size(), 5U);
+
+    EXPECT_EQ(view_models[0].slot_id, "skin");
+    EXPECT_EQ(view_models[0].label, localization.tr("appearance.slot.skin"));
+    EXPECT_EQ(view_models[0].variant_label, "1");
+
+    EXPECT_EQ(view_models[1].slot_id, "eyes");
+    EXPECT_EQ(view_models[1].label, localization.tr("appearance.slot.eyes"));
+    EXPECT_EQ(view_models[1].variant_label, localization.tr("appearance.variant_part.blue"));
+
+    EXPECT_EQ(view_models[2].slot_id, "clothes");
+    EXPECT_EQ(view_models[2].label, localization.tr("appearance.slot.clothes"));
+    EXPECT_EQ(view_models[2].variant_label,
+              localization.format(
+                  "appearance.variant.join",
+                  {{"left", localization.tr("appearance.variant_part.farm")},
+                   {"right", localization.tr("appearance.variant_part.blue")}}));
+
+    EXPECT_EQ(view_models[3].slot_id, "hair");
+    EXPECT_EQ(view_models[3].label, localization.tr("appearance.slot.hair"));
+    EXPECT_EQ(view_models[3].variant_label,
+              localization.format(
+                  "appearance.variant.join",
+                  {{"left", localization.tr("appearance.variant_part.standard")},
+                   {"right", localization.tr("appearance.variant_part.brown")}}));
+
+    EXPECT_EQ(view_models[4].slot_id, "acc");
+    EXPECT_EQ(view_models[4].label, localization.tr("appearance.slot.acc"));
+    EXPECT_EQ(view_models[4].variant_label, localization.tr("appearance.variant.none"));
+}
+
+TEST(AppearanceCustomizeViewModelTest, ProjectAppearanceVariantsHaveLocalizedLabels) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+    auto localization = loadProjectLocalization("zh-Hans");
+
+    auto selection = makeDefaultAppearanceSelection(catalog);
+    for (const auto& slot : runtimeAppearanceSlots(catalog)) {
+        for (const auto& variant : catalog.variantsForSlot(slot)) {
+            selection.slot_variants[slot] = variant;
+            const auto view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection, &localization);
+            const auto it = std::find_if(view_models.begin(), view_models.end(), [&slot](const auto& model) {
+                return model.slot_id == slot;
+            });
+            ASSERT_NE(it, view_models.end()) << slot;
+            EXPECT_EQ(it->label.find('!'), Rml::String::npos) << slot;
+            EXPECT_EQ(it->variant_label.find('!'), Rml::String::npos) << slot << "=" << variant;
+        }
+    }
 }
 
 TEST(AppearanceCustomizeViewModelTest, ApplySelectionUpdatesAppearanceComponent) {
@@ -191,6 +262,10 @@ TEST(AppearanceCustomizeViewModelTest, SceneLocalizesDynamicTitleBindings) {
     EXPECT_NE(source.find("appearance.subtitle.new_game"), std::string::npos);
     EXPECT_NE(source.find("appearance.subtitle.closet"), std::string::npos);
     EXPECT_NE(source.find("sink<game::defs::LanguageChangedEvent>()"), std::string::npos);
+    const std::string language_block =
+        test_source_utils::extractFunctionBlock(source, "void AppearanceCustomizeScene::onLanguageChanged");
+    ASSERT_FALSE(language_block.empty());
+    EXPECT_NE(language_block.find("syncSlotViewModels(true);"), std::string::npos);
     EXPECT_EQ(source.find("makeRmlString(\"Create Hero\")"), std::string::npos);
     EXPECT_EQ(source.find("makeRmlString(\"Wardrobe\")"), std::string::npos);
 }
