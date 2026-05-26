@@ -2,6 +2,7 @@
 
 #include "game/data/quest_data.h"
 #include "game/domain/quest_log_ops.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/text_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -24,9 +25,19 @@ inline constexpr const char* kNoTitleFallback = "";
     return std::clamp(progress, 0, objective.required_count_);
 }
 
-[[nodiscard]] std::string objectiveMarkerTitle(const game::data::QuestObjectiveData& objective) {
+[[nodiscard]] std::string localizedEnemyName(const game::runtime::LocalizationService* localization,
+                                             const std::string_view enemy_id) {
+    const std::string key = std::string{enemy_id} + ".name";
+    if (localization && localization->hasText(key)) {
+        return localization->tr(key);
+    }
+    return humanizeId(enemy_id, kNoTitleFallback);
+}
+
+[[nodiscard]] std::string objectiveMarkerTitle(const game::data::QuestObjectiveData& objective,
+                                               const game::runtime::LocalizationService* localization) {
     if (objective.marker_ && !objective.marker_->label_.empty()) {
-        return objective.marker_->label_;
+        return game::ui::tryLocalize(localization, objective.marker_->label_);
     }
 
     std::string title = humanizeId(objective.id_, kNoTitleFallback);
@@ -44,13 +55,24 @@ inline constexpr const char* kNoTitleFallback = "";
 }
 
 [[nodiscard]] std::string objectiveProgressDescription(const game::data::QuestObjectiveData& objective,
-                                                       const int current_progress) {
-    std::string label = humanizeId(objective.enemy_id_, kNoTitleFallback);
+                                                       const int current_progress,
+                                                       const game::runtime::LocalizationService* localization) {
+    std::string label = localizedEnemyName(localization, objective.enemy_id_);
     if (label.empty()) {
-        label = objectiveMarkerTitle(objective);
+        label = objectiveMarkerTitle(objective, localization);
     }
 
-    return label + " " + std::to_string(current_progress) + "/" + std::to_string(objective.required_count_);
+    return game::ui::formatTextOrFallback(
+        localization,
+        "inventory.quest.progress.defeat_enemy_count",
+        {
+            {"enemy", label},
+            {"current", std::to_string(current_progress)},
+            {"count", std::to_string(objective.required_count_)},
+        },
+        [&label, current_progress, &objective] {
+            return label + " " + std::to_string(current_progress) + "/" + std::to_string(objective.required_count_);
+        });
 }
 
 [[nodiscard]] int questMarkerSortRank(const QuestRuntimeMarkerKind kind) {
@@ -68,19 +90,22 @@ inline constexpr const char* kNoTitleFallback = "";
 void appendGiverMarker(std::vector<QuestRuntimeMarker>& out_markers,
                        const QuestGiverLocation& giver,
                        const game::data::QuestData& quest,
-                       const QuestRuntimeMarkerKind kind) {
+                       const QuestRuntimeMarkerKind kind,
+                       const game::runtime::LocalizationService* localization) {
     QuestRuntimeMarker marker{};
     marker.kind = kind;
     marker.object_id = giver.object_id;
     marker.quest_id = quest.id_;
     marker.map_position = giver.map_position;
-    marker.title = quest.title_.empty() ? quest.id_ : quest.title_;
+    marker.title = quest.title_.empty() ? quest.id_ : game::ui::tryLocalize(localization, quest.title_);
     if (kind == QuestRuntimeMarkerKind::TurnIn) {
-        marker.type_label = "Ready to Turn In";
-        marker.description = "Return to the quest giver.";
+        marker.type_label = game::ui::localizeTextOrFallback(localization, "map.quest.ready_to_turn_in", "Ready to Turn In");
+        marker.description = game::ui::localizeTextOrFallback(localization, "map.quest.return_to_giver", "Return to the quest giver.");
     } else {
-        marker.type_label = "Quest Available";
-        marker.description = quest.description_.empty() ? "Talk to the quest giver." : quest.description_;
+        marker.type_label = game::ui::localizeTextOrFallback(localization, "map.quest.available", "Quest Available");
+        marker.description = quest.description_.empty()
+                                 ? game::ui::localizeTextOrFallback(localization, "map.quest.talk_to_giver", "Talk to the quest giver.")
+                                 : game::ui::tryLocalize(localization, quest.description_);
     }
     out_markers.push_back(std::move(marker));
 }
@@ -88,7 +113,8 @@ void appendGiverMarker(std::vector<QuestRuntimeMarker>& out_markers,
 void appendObjectiveMarkers(std::vector<QuestRuntimeMarker>& out_markers,
                             const entt::id_type current_map_id,
                             const game::component::QuestLogComponent& quest_log,
-                            const game::data::QuestData& quest) {
+                            const game::data::QuestData& quest,
+                            const game::runtime::LocalizationService* localization) {
     for (const auto& objective : quest.objectives_) {
         if (!objective.marker_ || objective.marker_->map_id_hash_ != current_map_id) {
             continue;
@@ -106,9 +132,9 @@ void appendObjectiveMarkers(std::vector<QuestRuntimeMarker>& out_markers,
         marker.quest_id = quest.id_;
         marker.objective_id = objective.id_;
         marker.map_position = objective.marker_->position_;
-        marker.title = objectiveMarkerTitle(objective);
-        marker.type_label = "Quest Objective";
-        marker.description = objectiveProgressDescription(objective, current_progress);
+        marker.title = objectiveMarkerTitle(objective, localization);
+        marker.type_label = game::ui::localizeTextOrFallback(localization, "map.quest.objective", "Quest Objective");
+        marker.description = objectiveProgressDescription(objective, current_progress, localization);
         out_markers.push_back(std::move(marker));
     }
 }
@@ -119,7 +145,8 @@ std::vector<QuestRuntimeMarker> resolveQuestMapMarkers(
     const entt::id_type current_map_id,
     const game::component::QuestLogComponent& quest_log,
     const game::data::QuestCatalog& quest_catalog,
-    const std::span<const QuestGiverLocation> quest_givers) {
+    const std::span<const QuestGiverLocation> quest_givers,
+    const game::runtime::LocalizationService* localization) {
     std::vector<QuestRuntimeMarker> markers{};
     if (current_map_id == entt::null) {
         return markers;
@@ -139,12 +166,12 @@ std::vector<QuestRuntimeMarker> resolveQuestMapMarkers(
         }
 
         if (game::domain::quest_log_ops::isQuestReadyToTurnIn(quest_log, *quest)) {
-            appendGiverMarker(markers, giver, *quest, QuestRuntimeMarkerKind::TurnIn);
+            appendGiverMarker(markers, giver, *quest, QuestRuntimeMarkerKind::TurnIn, localization);
             continue;
         }
 
         if (!game::domain::quest_log_ops::isQuestActive(quest_log, quest->id_hash_)) {
-            appendGiverMarker(markers, giver, *quest, QuestRuntimeMarkerKind::Offer);
+            appendGiverMarker(markers, giver, *quest, QuestRuntimeMarkerKind::Offer, localization);
         }
     }
 
@@ -166,7 +193,7 @@ std::vector<QuestRuntimeMarker> resolveQuestMapMarkers(
             continue;
         }
 
-        appendObjectiveMarkers(markers, current_map_id, quest_log, *quest);
+        appendObjectiveMarkers(markers, current_map_id, quest_log, *quest, localization);
     }
 
     std::sort(markers.begin(), markers.end(), [](const QuestRuntimeMarker& lhs, const QuestRuntimeMarker& rhs) {

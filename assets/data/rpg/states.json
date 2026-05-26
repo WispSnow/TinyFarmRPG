@@ -2,8 +2,8 @@
     "states": [
         {
             "id": "state.stun",
-            "display_name": "Stun",
-            "description": "Briefly unable to act.",
+            "display_name": "state.stun.name",
+            "description": "state.stun.description",
             "icon_key": "stun",
             "priority": 90,
             "min_turns": 1,
@@ -12,8 +12,8 @@
         },
         {
             "id": "state.poison",
-            "display_name": "Poison",
-            "description": "Takes poison damage over time.",
+            "display_name": "state.poison.name",
+            "description": "state.poison.description",
             "icon_key": "poison",
             "priority": 50,
             "min_turns": 1,

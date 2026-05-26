@@ -8,8 +8,10 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/service_lookup.h"
 #include "game/scene/shop_menu_scene.h"
 #include "game/system/system_helpers.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
@@ -32,10 +34,12 @@ namespace {
 
 constexpr game::defs::DialogueChannel MERCHANT_DIALOGUE_CHANNEL = game::defs::DialogueChannel::Conversation;
 constexpr float MERCHANT_DIALOGUE_CLOSE_DISTANCE_PX = 64.0F;
-constexpr std::string_view DEFAULT_MERCHANT_GREETING = "Welcome to the shop";
 
-[[nodiscard]] std::string merchantGreeting(const game::data::ShopData& shop) {
-    return shop.greeting_.empty() ? std::string{DEFAULT_MERCHANT_GREETING} : shop.greeting_;
+[[nodiscard]] std::string merchantGreeting(const game::data::ShopData& shop,
+                                           const game::runtime::LocalizationService* localization) {
+    return shop.greeting_.empty()
+               ? game::ui::localizeTextOrFallback(localization, "shop.greeting.default", "Welcome to the shop")
+               : game::ui::tryLocalize(localization, shop.greeting_);
 }
 
 [[nodiscard]] std::string merchantSpeaker(entt::registry& registry, const entt::entity merchant) {
@@ -191,7 +195,7 @@ void ShopInteractionSystem::showMerchantGreeting(entt::entity merchant,
         MERCHANT_DIALOGUE_CHANNEL,
         merchant,
         merchantSpeaker(registry_, merchant),
-        merchantGreeting(shop));
+        merchantGreeting(shop, game::runtime::findLocalizationService(registry_)));
 
     registry_.emplace_or_replace<game::component::StateDirtyTag>(merchant);
     if (auto* state = registry_.try_get<game::component::StateComponent>(merchant)) {

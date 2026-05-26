@@ -8,6 +8,8 @@
 #include "game/defs/commands.h"
 #include "game/defs/party_ids.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/runtime/service_lookup.h"
+#include "game/ui/localized_text.h"
 
 #include "engine/component/name_component.h"
 #include "engine/spatial/spatial_index_manager.h"
@@ -102,9 +104,18 @@ void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::Recru
     auto& party = registry_.get_or_emplace<game::component::PartyComponent>(player);
     ensureDefaultPartyActor(party);
 
-    const std::string display_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+    const auto* localization = game::runtime::findLocalizationService(registry_);
+    const std::string display_name = actor->display_name_.empty()
+                                         ? actor->id_
+                                         : game::ui::tryLocalize(localization, actor->display_name_);
     if (containsString(party.recruited_actor_ids_, actor->id_)) {
-        showNotification(command.recruiter, display_name + " is already in the party.");
+        showNotification(
+            command.recruiter,
+            game::ui::formatTextOrFallback(
+                localization,
+                "recruitment.already_in_party",
+                {{"actor", display_name}},
+                [&display_name] { return display_name + " is already in the party."; }));
         return;
     }
 
@@ -120,7 +131,13 @@ void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::Recru
         game::domain::ActorProgressionService::initialState(rpg_catalog_, *actor, nullptr));
     ++runtime_stats.revision_;
 
-    showNotification(player, display_name + " joined the party.");
+    showNotification(
+        player,
+        game::ui::formatTextOrFallback(
+            localization,
+            "recruitment.joined_party",
+            {{"actor", display_name}},
+            [&display_name] { return display_name + " joined the party."; }));
     removeRecruiterFromMap(command.recruiter);
 }
 

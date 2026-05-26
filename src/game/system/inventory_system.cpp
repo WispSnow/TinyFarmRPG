@@ -198,10 +198,10 @@ void InventorySystem::onSort(const game::defs::InventorySortCommand& evt) {
             return lhs_category < rhs_category;
         }
 
-        const std::string_view lhs_name = lhs_item ? std::string_view{lhs_item->display_name_} : std::string_view{};
-        const std::string_view rhs_name = rhs_item ? std::string_view{rhs_item->display_name_} : std::string_view{};
-        if (lhs_name != rhs_name) {
-            return lhs_name < rhs_name;
+        const std::string_view lhs_id = lhs_item ? std::string_view{lhs_item->id_str_} : std::string_view{};
+        const std::string_view rhs_id = rhs_item ? std::string_view{rhs_item->id_str_} : std::string_view{};
+        if (lhs_id != rhs_id) {
+            return lhs_id < rhs_id;
         }
 
         return lhs.original_index < rhs.original_index;

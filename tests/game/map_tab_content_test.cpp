@@ -5,6 +5,7 @@
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
+#include "game/runtime/localization_service.h"
 #include "game/ui/map_tab_content.h"
 #include "game/world/world_state.h"
 #include "../engine/render/test_source_utils.h"
@@ -30,6 +31,15 @@ namespace {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/maps/farm-rpg.world").lexically_normal();
     EXPECT_TRUE(world_state.loadFromWorldFile(world_path.string(), initial_map_id, "assets/maps/"));
     return world_state;
+}
+
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
 }
 
 struct MapMarkerCatalogFixture {
@@ -215,6 +225,7 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/shops.json").lexically_normal().string()));
     ASSERT_TRUE(rpg_catalog.loadActors(
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").lexically_normal().string()));
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
 
     const std::vector<MapObjectMarker> static_place_markers{
         MapObjectMarker{
@@ -258,7 +269,8 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
         quest_markers,
         &shop_catalog,
         &rpg_catalog,
-        selected);
+        selected,
+        &localization);
 
     ASSERT_EQ(state.map_markers.size(), 4U);
     EXPECT_EQ(selected, 1);

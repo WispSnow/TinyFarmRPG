@@ -145,6 +145,7 @@ TEST(RmlUiArchitectureRegressionTest, RestDialogExposesRecoveryPreviewBindings) 
     EXPECT_NE(scene_source.find("sink<game::defs::LanguageChangedEvent>()"), std::string::npos);
     EXPECT_NE(scene_source.find("\"rest.summary.full_recovery\""), std::string::npos);
     EXPECT_NE(scene_source.find("\"rest.summary.recovery_percent\""), std::string::npos);
+    EXPECT_NE(scene_source.find("tryLocalize(localization_, member.display_name_key)"), std::string::npos);
 }
 
 TEST(RmlUiArchitectureRegressionTest, BattleSceneUsesPlainButtonsAndDivBars) {

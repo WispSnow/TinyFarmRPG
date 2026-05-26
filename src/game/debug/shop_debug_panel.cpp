@@ -8,6 +8,7 @@
 #include "game/data/shop_data.h"
 #include "game/debug/shop_debug_panel_helpers.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/service_lookup.h"
 #include "game/scene/shop_menu_scene.h"
 #include "game/ui/shop_menu_support.h"
 
@@ -185,6 +186,7 @@ void ShopDebugPanel::draw(bool& is_open) {
     syncSelectedShopId(selected_shop_id_, shops);
     const game::data::ShopData* selected_shop = shop_catalog_->findShop(selected_shop_id_);
     const bool scene_launch_blocked = context_.getGameState().isPaused();
+    const auto* localization = game::runtime::findLocalizationService(registry_);
 
     std::vector<ShopDebugBuyRow> buy_rows{};
     if (selected_shop != nullptr) {
@@ -193,6 +195,7 @@ void ShopDebugPanel::draw(bool& is_open) {
             buy_rows.push_back(buildShopDebugBuyRow(
                 buy_entry,
                 item_catalog_,
+                localization,
                 game::ui::countOwnedItems(*inventory, buy_entry.item_id_hash_)));
         }
     }
@@ -206,7 +209,7 @@ void ShopDebugPanel::draw(bool& is_open) {
         }
 
         const auto* sell_rule = shop_catalog_->findSellRule(stack.item_id_);
-        const auto row = buildShopDebugSellRow(slot_index, stack, sell_rule, item_catalog_);
+        const auto row = buildShopDebugSellRow(slot_index, stack, sell_rule, item_catalog_, localization);
         if (!show_unsellable_slots_ && !row.is_sellable) {
             continue;
         }

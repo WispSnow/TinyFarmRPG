@@ -117,7 +117,7 @@ constexpr int kFullRecoveryPercent = 100;
         : game::domain::ActorProgressionService::initialState(rpg_catalog, *actor, loadout);
     const auto resolved = game::battle::resolveActorStats(rpg_catalog, *actor, state.level, loadout);
 
-    member.display_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+    member.display_name_key = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
     member.max_hp = std::max(1, paramValue(resolved.params, game::data::ParamIndex::Mhp));
     member.max_mp = std::max(1, paramValue(resolved.params, game::data::ParamIndex::Mmp));
     member.current_hp = std::clamp(state.current_hp, 0, member.max_hp);

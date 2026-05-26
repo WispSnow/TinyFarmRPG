@@ -6,8 +6,8 @@
             "icon_id": "tools/hoe",
             "stack_limit": 1,
             "tool": "hoe",
-            "display_name": "Hoe",
-            "description": "A tool for tilling the soil"
+            "display_name": "item.tool_hoe.name",
+            "description": "item.tool_hoe.description"
         },
         {
             "id": "tool_watering_can",
@@ -15,8 +15,8 @@
             "icon_id": "tools/watering_can",
             "stack_limit": 1,
             "tool": "watering_can",
-            "display_name": "Watering Can",
-            "description": "A tool for watering the crops"
+            "display_name": "item.tool_watering_can.name",
+            "description": "item.tool_watering_can.description"
         },
         {
             "id": "tool_pickaxe",
@@ -24,8 +24,8 @@
             "icon_id": "tools/pickaxe",
             "stack_limit": 1,
             "tool": "pickaxe",
-            "display_name": "Pickaxe",
-            "description": "A tool for mining resources"
+            "display_name": "item.tool_pickaxe.name",
+            "description": "item.tool_pickaxe.description"
         },
         {
             "id": "tool_axe",
@@ -33,8 +33,8 @@
             "icon_id": "tools/axe",
             "stack_limit": 1,
             "tool": "axe",
-            "display_name": "Axe",
-            "description": "A tool for chopping trees"
+            "display_name": "item.tool_axe.name",
+            "description": "item.tool_axe.description"
         },
         {
             "id": "tool_sickle",
@@ -42,8 +42,8 @@
             "icon_id": "tools/sickle",
             "stack_limit": 1,
             "tool": "sickle",
-            "display_name": "Sickle",
-            "description": "A tool for harvesting crops"
+            "display_name": "item.tool_sickle.name",
+            "description": "item.tool_sickle.description"
         },
         {
             "id": "strawberry_item",
@@ -61,8 +61,8 @@
                     }
                 ]
             },
-            "display_name": "Strawberry",
-            "description": "harvested from strawberry plants, consume to get 3 strawberry seeds"
+            "display_name": "item.strawberry_item.name",
+            "description": "item.strawberry_item.description"
         },
         {
             "id": "potato_item",
@@ -80,8 +80,8 @@
                     }
                 ]
             },
-            "display_name": "Potato",
-            "description": "harvested from potato plants, consume to get 3 potato seeds"
+            "display_name": "item.potato_item.name",
+            "description": "item.potato_item.description"
         },
         {
             "id": "strawberry_seed",
@@ -89,8 +89,8 @@
             "icon_id": "seeds/strawberry_seed",
             "stack_limit": 999,
             "crop_type": "strawberry",
-            "display_name": "Strawberry Seed",
-            "description": "A seed for producing strawberries"
+            "display_name": "item.strawberry_seed.name",
+            "description": "item.strawberry_seed.description"
         },
         {
             "id": "potato_seed",
@@ -98,8 +98,8 @@
             "icon_id": "seeds/potato_seed",
             "stack_limit": 999,
             "crop_type": "potato",
-            "display_name": "Potato Seed",
-            "description": "A seed for producing potatoes"
+            "display_name": "item.potato_seed.name",
+            "description": "item.potato_seed.description"
         },
         {
             "id": "potion",
@@ -116,120 +116,120 @@
                     }
                 ]
             },
-            "display_name": "Potion",
-            "description": "Restores a small amount of HP in battle"
+            "display_name": "item.potion.name",
+            "description": "item.potion.description"
         },
         {
             "id": "equip_wooden_sword",
             "category": "equipment",
             "icon_id": "equipment/wooden_sword",
             "stack_limit": 1,
-            "display_name": "Wooden Sword",
-            "description": "A light practice sword for front-line allies."
+            "display_name": "item.equip_wooden_sword.name",
+            "description": "item.equip_wooden_sword.description"
         },
         {
             "id": "equip_wooden_staff",
             "category": "equipment",
             "icon_id": "equipment/wooden_staff",
             "stack_limit": 1,
-            "display_name": "Wooden Staff",
-            "description": "A simple staff that helps focus basic magic."
+            "display_name": "item.equip_wooden_staff.name",
+            "description": "item.equip_wooden_staff.description"
         },
         {
             "id": "equip_wooden_helmet",
             "category": "equipment",
             "icon_id": "equipment/wooden_helmet",
             "stack_limit": 1,
-            "display_name": "Wooden Helmet",
-            "description": "Basic head protection made from light wood."
+            "display_name": "item.equip_wooden_helmet.name",
+            "description": "item.equip_wooden_helmet.description"
         },
         {
             "id": "equip_wooden_armor",
             "category": "equipment",
             "icon_id": "equipment/wooden_armor",
             "stack_limit": 1,
-            "display_name": "Wooden Armor",
-            "description": "Light armor assembled from reinforced boards."
+            "display_name": "item.equip_wooden_armor.name",
+            "description": "item.equip_wooden_armor.description"
         },
         {
             "id": "equip_wooden_boots",
             "category": "equipment",
             "icon_id": "equipment/wooden_boots",
             "stack_limit": 1,
-            "display_name": "Wooden Boots",
-            "description": "Sturdy boots for rough farm roads."
+            "display_name": "item.equip_wooden_boots.name",
+            "description": "item.equip_wooden_boots.description"
         },
         {
             "id": "equip_wooden_accessory",
             "category": "equipment",
             "icon_id": "equipment/wooden_accessory",
             "stack_limit": 1,
-            "display_name": "Wooden Charm",
-            "description": "A small charm carved from polished wood."
+            "display_name": "item.equip_wooden_accessory.name",
+            "description": "item.equip_wooden_accessory.description"
         },
         {
             "id": "equip_iron_sword",
             "category": "equipment",
             "icon_id": "equipment/iron_sword",
             "stack_limit": 1,
-            "display_name": "Iron Sword",
-            "description": "A reliable iron blade for front-line allies."
+            "display_name": "item.equip_iron_sword.name",
+            "description": "item.equip_iron_sword.description"
         },
         {
             "id": "equip_iron_staff",
             "category": "equipment",
             "icon_id": "equipment/iron_staff",
             "stack_limit": 1,
-            "display_name": "Iron Staff",
-            "description": "A reinforced staff that channels stronger magic."
+            "display_name": "item.equip_iron_staff.name",
+            "description": "item.equip_iron_staff.description"
         },
         {
             "id": "equip_iron_helmet",
             "category": "equipment",
             "icon_id": "equipment/iron_helmet",
             "stack_limit": 1,
-            "display_name": "Iron Helmet",
-            "description": "A sturdy helmet with dependable protection."
+            "display_name": "item.equip_iron_helmet.name",
+            "description": "item.equip_iron_helmet.description"
         },
         {
             "id": "equip_iron_armor",
             "category": "equipment",
             "icon_id": "equipment/iron_armor",
             "stack_limit": 1,
-            "display_name": "Iron Armor",
-            "description": "Solid armor for dangerous field work."
+            "display_name": "item.equip_iron_armor.name",
+            "description": "item.equip_iron_armor.description"
         },
         {
             "id": "equip_iron_boots",
             "category": "equipment",
             "icon_id": "equipment/iron_boots",
             "stack_limit": 1,
-            "display_name": "Iron Boots",
-            "description": "Heavy boots that keep footing steady."
+            "display_name": "item.equip_iron_boots.name",
+            "description": "item.equip_iron_boots.description"
         },
         {
             "id": "equip_iron_accessory",
             "category": "equipment",
             "icon_id": "equipment/iron_accessory",
             "stack_limit": 1,
-            "display_name": "Iron Charm",
-            "description": "A small iron charm carried for good fortune."
+            "display_name": "item.equip_iron_accessory.name",
+            "description": "item.equip_iron_accessory.description"
         },
         {
             "id": "material_timber",
             "category": "material",
             "icon_id": "materials/timber",
             "stack_limit": 999,
-            "display_name": "Timber",
-            "description": "A material for building structures, generated from trees."
+            "display_name": "item.material_timber.name",
+            "description": "item.material_timber.description"
         },
         {
             "id": "material_stone",
             "category": "material",
             "icon_id": "materials/stone",
             "stack_limit": 999,
-            "display_name": "Stone",
-            "description": "A material for building structures, generated from rocks."
+            "display_name": "item.material_stone.name",
+            "description": "item.material_stone.description"
         }
     ]
 }

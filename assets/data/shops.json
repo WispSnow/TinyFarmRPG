@@ -3,8 +3,8 @@
     "shops": [
         {
             "id": "shop.village.general",
-            "title": "Village General Store",
-            "greeting": "Welcome to the shop",
+            "title": "shop.village.general.title",
+            "greeting": "shop.village.general.greeting",
             "buy_entries": [
                 {
                     "item_id": "potion",
@@ -66,8 +66,8 @@
         },
         {
             "id": "shop.village.general.day",
-            "title": "Josh's Day Shelf",
-            "greeting": "Good timing. The day shelf is stocked.",
+            "title": "shop.village.general.day.title",
+            "greeting": "shop.village.general.day.greeting",
             "buy_entries": [
                 {
                     "item_id": "potion",
@@ -101,8 +101,8 @@
         },
         {
             "id": "shop.village.general.night",
-            "title": "Josh's Night Shelf",
-            "greeting": "Evening stock is lighter, but I keep a few essentials ready.",
+            "title": "shop.village.general.night.title",
+            "greeting": "shop.village.general.night.greeting",
             "buy_entries": [
                 {
                     "item_id": "potion",
@@ -136,8 +136,8 @@
         },
         {
             "id": "shop.village.general.post_slime_cleanup",
-            "title": "Josh's Road-Clearance Stock",
-            "greeting": "You cleared the road? That deserves the better shelf.",
+            "title": "shop.village.general.post_slime_cleanup.title",
+            "greeting": "shop.village.general.post_slime_cleanup.greeting",
             "buy_entries": [
                 {
                     "item_id": "potion",

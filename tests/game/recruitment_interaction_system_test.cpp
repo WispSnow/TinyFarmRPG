@@ -9,6 +9,7 @@
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/runtime/localization_service.h"
 #include "game/system/recruitment_interaction_system.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -46,6 +47,15 @@ struct NotificationCapture {
     return catalog;
 }
 
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
+}
+
 [[nodiscard]] entt::entity createPlayer(entt::registry& registry) {
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
@@ -74,6 +84,8 @@ TEST(RecruitmentInteractionSystemTest, RequestsRecruitOfferImmediatelyForNonScri
     entt::registry registry;
     entt::dispatcher dispatcher;
     auto catalog = loadProjectActorCatalog();
+    auto localization = loadEnglishLocalization();
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     const entt::entity player = createPlayer(registry);
     const entt::entity npc = createRecruitableNpc(registry);
 
@@ -114,6 +126,8 @@ TEST(RecruitmentInteractionSystemTest, AlreadyRecruitedShowsNotificationWithoutO
     entt::registry registry;
     entt::dispatcher dispatcher;
     auto catalog = loadProjectActorCatalog();
+    auto localization = loadEnglishLocalization();
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     const entt::entity player = createPlayer(registry);
     const entt::entity npc = createRecruitableNpc(registry);
     registry.get<game::component::PartyComponent>(player).recruited_actor_ids_.push_back("actor.tori");

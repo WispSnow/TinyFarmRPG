@@ -8,12 +8,16 @@
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
 #include "game/domain/inventory_domain_service.h"
+#include "game/runtime/localization_service.h"
 #include "game/system/inventory_system.h"
 #include "game/system/item_use_system.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+
+#include <filesystem>
+#include <string_view>
 
 namespace {
 
@@ -36,6 +40,15 @@ game::data::RpgCatalog loadProjectActorCatalog() {
     EXPECT_TRUE(catalog.loadClasses(rpg_root + "/classes.json"));
     EXPECT_TRUE(catalog.loadActors(rpg_root + "/actors.json"));
     return catalog;
+}
+
+game::runtime::LocalizationService loadLocalization(const std::string_view language_tag) {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage(language_tag));
+    return localization;
 }
 
 } // namespace
@@ -149,6 +162,33 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
 
     ASSERT_EQ(capture.shows.size(), 1u);
     EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::ItemNotice);
+}
+
+TEST(ItemUseSystemTest, UseProjectCatalogKeyLocalizesPromptNotification) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto localization = loadLocalization("zh-Hans");
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+
+    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
+
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    inv.slot(0).item_id_ = entt::hashed_string{"strawberry_item"}.value();
+    inv.slot(0).count_ = 1;
+
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, true});
+
+    ASSERT_EQ(capture.shows.size(), 1u);
+    EXPECT_EQ(capture.shows[0].text, "获得 草莓种子 x3");
 }
 
 TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {

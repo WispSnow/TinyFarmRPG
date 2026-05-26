@@ -13,7 +13,7 @@ end
 
 local function show_first_enter_hint()
     dialogue.show(
-        "The farm road is quiet today. Check the seed cache before heading out.",
+        tf.i18n.tr("dialogue.home_exterior.first_enter"),
         nil,
         tf.dialogue.CHANNEL_NOTICE)
 end
@@ -29,14 +29,14 @@ end
 local function open_seed_cache(evt)
     local once_key = evt.target_script_once_key or "map.home_exterior.seed_cache.opened"
     if once.is_done(once_key) then
-        dialogue.show("The seed cache is empty.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        dialogue.show(tf.i18n.tr("dialogue.home_exterior.seed_cache.empty"), nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
         return
     end
 
-    local result = tf.command.open_chest(evt.target, "You found a few starter seeds.")
+    local result = tf.command.open_chest(evt.target, tf.i18n.tr("dialogue.home_exterior.seed_cache.found"))
     if result == nil or result.ok ~= true then
         print("[tf] scripted chest open failed: " .. tostring(result and result.reason))
-        dialogue.show("The seed cache is stuck.", nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
+        dialogue.show(tf.i18n.tr("dialogue.home_exterior.seed_cache.stuck"), nil, tf.dialogue.CHANNEL_NOTICE, evt.target)
         return
     end
 

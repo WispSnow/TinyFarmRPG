@@ -25,6 +25,7 @@ public:
     virtual void onDeactivated() = 0;
     virtual void update(float delta_time) = 0;
     [[nodiscard]] virtual bool onCancel() = 0;
+    virtual void onLanguageChanged() {}
 };
 
 } // namespace game::ui

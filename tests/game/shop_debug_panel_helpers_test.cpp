@@ -11,6 +11,7 @@
 #include "game/data/shop_data.h"
 #include "game/debug/shop_debug_panel_helpers.h"
 #include "game/domain/shop_transaction_service.h"
+#include "game/runtime/localization_service.h"
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -26,6 +27,15 @@ namespace {
     return catalog;
 }
 
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage("en-US"));
+    return localization;
+}
+
 } // namespace
 
 namespace game::debug {
@@ -33,13 +43,14 @@ namespace {
 
 TEST(ShopDebugPanelHelpersTest, BuildShopDebugBuyRowShowsOwnedCountAndPrice) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::data::ShopBuyEntryData buy_entry{};
     buy_entry.item_id_ = "potion";
     buy_entry.item_id_hash_ = entt::hashed_string{"potion"}.value();
     buy_entry.buy_price_ = 30;
 
-    const auto row = buildShopDebugBuyRow(buy_entry, &item_catalog, 7);
+    const auto row = buildShopDebugBuyRow(buy_entry, &item_catalog, &localization, 7);
 
     EXPECT_EQ(row.item_id_hash, entt::hashed_string{"potion"}.value());
     EXPECT_EQ(row.item_id, "potion");
@@ -50,6 +61,7 @@ TEST(ShopDebugPanelHelpersTest, BuildShopDebugBuyRowShowsOwnedCountAndPrice) {
 
 TEST(ShopDebugPanelHelpersTest, BuildShopDebugSellRowPreservesSlotIndexAndSellableState) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::component::ItemStack stack{};
     stack.item_id_ = entt::hashed_string{"potion"}.value();
@@ -60,7 +72,7 @@ TEST(ShopDebugPanelHelpersTest, BuildShopDebugSellRowPreservesSlotIndexAndSellab
     sell_rule.item_id_hash_ = stack.item_id_;
     sell_rule.sell_price_ = 15;
 
-    const auto row = buildShopDebugSellRow(5, stack, &sell_rule, &item_catalog);
+    const auto row = buildShopDebugSellRow(5, stack, &sell_rule, &item_catalog, &localization);
 
     EXPECT_EQ(row.slot_index, 5);
     EXPECT_EQ(row.item_id_hash, entt::hashed_string{"potion"}.value());
@@ -73,12 +85,13 @@ TEST(ShopDebugPanelHelpersTest, BuildShopDebugSellRowPreservesSlotIndexAndSellab
 
 TEST(ShopDebugPanelHelpersTest, BuildShopDebugSellRowMarksUnsellableWhenRuleMissingOrMismatched) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::component::ItemStack stack{};
     stack.item_id_ = entt::hashed_string{"material_timber"}.value();
     stack.count_ = 4;
 
-    const auto missing_rule_row = buildShopDebugSellRow(2, stack, nullptr, &item_catalog);
+    const auto missing_rule_row = buildShopDebugSellRow(2, stack, nullptr, &item_catalog, &localization);
     EXPECT_FALSE(missing_rule_row.is_sellable);
     EXPECT_EQ(missing_rule_row.sell_price, 0);
 
@@ -88,7 +101,7 @@ TEST(ShopDebugPanelHelpersTest, BuildShopDebugSellRowMarksUnsellableWhenRuleMiss
     mismatched_rule.sell_price_ = 15;
 
     EXPECT_FALSE(isShopDebugSellable(stack, &mismatched_rule));
-    const auto mismatched_row = buildShopDebugSellRow(2, stack, &mismatched_rule, &item_catalog);
+    const auto mismatched_row = buildShopDebugSellRow(2, stack, &mismatched_rule, &item_catalog, &localization);
     EXPECT_FALSE(mismatched_row.is_sellable);
 }
 

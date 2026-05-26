@@ -8,6 +8,8 @@
 #include "game/data/game_time.h"
 #include "game/data/item_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/options_events.h"
+#include "game/runtime/service_lookup.h"
 #include "game/ui/dialogue_box_view.h"
 #include "game/ui/dialogue_presentation_controller.h"
 #include "game/ui/floating_notice_view.h"
@@ -48,7 +50,12 @@ bool GameSceneUiController::init() {
 
     time_clock_hud_ = std::make_unique<game::ui::TimeClockHud>(*rml_runtime, scene_instance_id_);
 
-    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(*rml_runtime, context_, scene_instance_id_, item_catalog_);
+    hotbar_ui_ = std::make_unique<game::ui::HotbarUI>(
+        *rml_runtime,
+        context_,
+        scene_instance_id_,
+        item_catalog_,
+        game::runtime::findLocalizationService(registry_));
     if (!hotbar_ui_ || !hotbar_ui_->isReady()) {
         spdlog::error("GameSceneUiController: 创建 HotbarUI 失败。");
         clean();
@@ -72,6 +79,8 @@ bool GameSceneUiController::init() {
     if (const entt::entity player = findPlayerEntity(); player != entt::null) {
         hotbar_ui_->setTarget(player);
     }
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .connect<&GameSceneUiController::onLanguageChanged>(this);
 
     rml_screen_fade_ = std::make_unique<engine::ui::rmlui::RmlScreenFade>(*rml_runtime, scene_instance_id_);
     screen_fade_ = rml_screen_fade_.get();
@@ -105,6 +114,7 @@ void GameSceneUiController::refreshAnchoredWidgets(const engine::render::Camera&
 
 void GameSceneUiController::clean() {
     auto& dispatcher = context_.getDispatcher();
+    dispatcher.sink<game::defs::LanguageChangedEvent>().disconnect<&GameSceneUiController::onLanguageChanged>(this);
     dispatcher.clear<game::defs::DialogueShowEvent>();
     dispatcher.clear<game::defs::DialogueMoveEvent>();
     dispatcher.clear<game::defs::DialogueHideEvent>();
@@ -119,6 +129,12 @@ void GameSceneUiController::clean() {
     item_tooltip_ui_.reset();
     screen_fade_ = nullptr;
     rml_screen_fade_.reset();
+}
+
+void GameSceneUiController::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
+    if (hotbar_ui_) {
+        hotbar_ui_->onLanguageChanged();
+    }
 }
 
 bool GameSceneUiController::toggleHotbar() {

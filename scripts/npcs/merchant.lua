@@ -12,18 +12,18 @@ local merchant = {
 local function choose_shop()
     if tf.quest.status(merchant.quest_id) == "completed" then
         return merchant.post_quest_shop_id, {
-            "Welcome back. I've set aside better stock.",
+            tf.i18n.tr("dialogue.merchant.post_quest"),
         }
     end
 
     if time.is_night() then
         return merchant.night_shop_id, {
-            "Welcome. Let me open the night shelf.",
+            tf.i18n.tr("dialogue.merchant.night"),
         }
     end
 
     return merchant.day_shop_id, {
-        "Welcome. Let me open the day shelf.",
+        tf.i18n.tr("dialogue.merchant.day"),
     }
 end
 
@@ -41,7 +41,7 @@ tf.event.on("interact", function(evt)
         local result = tf.shop.open(shop_id, evt.target)
         if result ~= nil and result.ok ~= true then
             print("[tf] shop open failed: " .. tostring(result.reason))
-            dialogue.show("Sorry, the shop is closed.", nil, tf.dialogue.CHANNEL_CONVERSATION, evt.target)
+            dialogue.show(tf.i18n.tr("dialogue.merchant.closed"), nil, tf.dialogue.CHANNEL_CONVERSATION, evt.target)
         end
     end) then
         evt.dialogue_handled = true

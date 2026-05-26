@@ -18,7 +18,10 @@ tf.event.on("interact", function(evt)
     end
 
     active = true
-    if dialogue.start(evt.target, {"Hi", "Bye"}, function()
+    if dialogue.start(evt.target, {
+        tf.i18n.tr("dialogue.greeter.hi"),
+        tf.i18n.tr("dialogue.greeter.bye"),
+    }, function()
         active = false
     end) then
         evt.dialogue_handled = true

@@ -39,25 +39,28 @@ tf.event.on("interact", function(evt)
     local status = tf.quest.status(quest.id)
     if status == "offerable" and tf.quest.is_available(quest.id) then
         handle(evt, {
-            "Can you help us drive away the slimes?",
-            "The old path is crawling with them. Three should be enough.",
+            tf.i18n.tr("dialogue.quest.goblin_cleanup.offer.1"),
+            tf.i18n.tr("dialogue.quest.goblin_cleanup.offer.2"),
         }, function()
             return tf.quest.offer(quest.id, evt.target)
         end)
     elseif status == "in_progress" then
         local progress = tf.quest.progress(quest.id, quest.objective_id)
         handle(evt, {
-            "Still seeing slimes out there. " .. progress.current .. "/" .. progress.required .. " cleared.",
+            tf.i18n.format("dialogue.quest.goblin_cleanup.in_progress", {
+                current = progress.current,
+                required = progress.required,
+            }),
         })
     elseif status == "ready_to_turn_in" then
         handle(evt, {
-            "You did it? That's a relief.",
-            "Here, take this for the trouble.",
+            tf.i18n.tr("dialogue.quest.goblin_cleanup.ready.1"),
+            tf.i18n.tr("dialogue.quest.goblin_cleanup.ready.2"),
         }, function()
             return tf.quest.turn_in(quest.id, evt.target)
         end)
     elseif status == "completed" then
-        handle(evt, {"Thank you again. The village path feels safe now."})
+        handle(evt, {tf.i18n.tr("dialogue.quest.goblin_cleanup.completed")})
     end
 end)
 

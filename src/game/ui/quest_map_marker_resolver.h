@@ -13,6 +13,10 @@
 
 #include <entt/core/fwd.hpp>
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 enum class QuestRuntimeMarkerKind : std::uint8_t {
@@ -44,6 +48,7 @@ struct QuestRuntimeMarker {
     entt::id_type current_map_id,
     const game::component::QuestLogComponent& quest_log,
     const game::data::QuestCatalog& quest_catalog,
-    std::span<const QuestGiverLocation> quest_givers);
+    std::span<const QuestGiverLocation> quest_givers,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 } // namespace game::ui

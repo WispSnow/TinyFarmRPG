@@ -10,6 +10,10 @@ class ItemCatalog;
 class RpgCatalog;
 } // namespace game::data
 
+namespace game::runtime {
+class LocalizationService;
+} // namespace game::runtime
+
 namespace game::battle {
 
 /// @brief 战斗日志行的轻量语义，用于表现层映射颜色。
@@ -34,6 +38,7 @@ struct BattleLogLine {
 struct BattleLogFormatterContext {
     const game::data::RpgCatalog* rpg_catalog{nullptr};
     const game::data::ItemCatalog* item_catalog{nullptr};
+    const game::runtime::LocalizationService* localization{nullptr};
 };
 
 /// @brief 将单次行动结果格式化为可显示的短战斗日志行。

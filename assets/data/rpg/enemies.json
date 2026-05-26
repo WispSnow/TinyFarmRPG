@@ -2,7 +2,7 @@
     "enemies": [
         {
             "id": "enemy.goblin",
-            "display_name": "Goblin",
+            "display_name": "enemy.goblin.name",
             "params": [
                 200,
                 0,
@@ -39,7 +39,7 @@
         },
         {
             "id": "enemy.gnome",
-            "display_name": "Gnome",
+            "display_name": "enemy.gnome.name",
             "params": [
                 250,
                 0,
@@ -71,7 +71,7 @@
         },
         {
             "id": "enemy.slime",
-            "display_name": "Slime",
+            "display_name": "enemy.slime.name",
             "params": [
                 120,
                 0,

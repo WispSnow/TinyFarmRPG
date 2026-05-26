@@ -35,6 +35,10 @@ struct InventoryChanged;
 struct HotbarChanged;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::ui {
 
 class ItemTooltipUI;
@@ -73,6 +77,7 @@ private:
     entt::registry& game_registry_;
     entt::entity player_{entt::null};
     game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::runtime::LocalizationService* localization_{nullptr};
     uint64_t owner_scene_id_{0};
 
     // --- RmlUi 数据模型绑定字段 ---
@@ -117,6 +122,7 @@ public:
     void update(float delta_time) override;
     /// 若操作菜单开启则关闭并消费取消事件，否则返回 false 交由上层处理。
     [[nodiscard]] bool onCancel() override;
+    void onLanguageChanged() override;
     void setActorTargetRequestHandler(ActorTargetRequestHandler handler);
 
 private:
@@ -134,6 +140,9 @@ private:
 
     void ensureTooltip();
     void disconnectRuntimeListeners();
+    [[nodiscard]] std::string localizedItemName(const game::data::ItemData& item) const;
+    [[nodiscard]] std::string localizedItemCategory(const game::data::ItemData& item) const;
+    [[nodiscard]] std::string localizedItemDescription(const game::data::ItemData& item) const;
 
     // --- 数据同步 ---
 

@@ -49,7 +49,7 @@ TEST(ShopCatalogTest, LoadsProjectShopAssetAndValidatesReferences) {
 
     const auto* shop = catalog.findShop("shop.village.general");
     ASSERT_NE(shop, nullptr);
-    EXPECT_EQ(shop->title_, "Village General Store");
+    EXPECT_EQ(shop->title_, "shop.village.general.title");
     ASSERT_EQ(shop->buy_entries_.size(), 14U);
     EXPECT_EQ(shop->buy_entries_[0].item_id_, "potion");
     EXPECT_EQ(shop->buy_entries_[0].buy_price_, 30);

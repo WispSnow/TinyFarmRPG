@@ -25,14 +25,16 @@ constexpr std::uint32_t kEnemyBattleUnitIdStart = 1001U;
     return params[static_cast<std::size_t>(index)];
 }
 
-[[nodiscard]] std::string buildEnemyDisplayName(const game::data::EnemyData& enemy,
-                                                std::unordered_map<std::string, int>& name_counts) {
+struct EnemyDisplayName {
+    std::string name{};
+    int ordinal{1};
+};
+
+[[nodiscard]] EnemyDisplayName buildEnemyDisplayName(const game::data::EnemyData& enemy,
+                                                     std::unordered_map<std::string, int>& name_counts) {
     const std::string base_name = enemy.display_name_.empty() ? enemy.id_ : enemy.display_name_;
     const int ordinal = ++name_counts[base_name];
-    if (ordinal <= 1) {
-        return base_name;
-    }
-    return base_name + " " + std::to_string(ordinal);
+    return EnemyDisplayName{.name = base_name, .ordinal = ordinal};
 }
 
 [[nodiscard]] std::vector<std::string> collectEnemySkillIds(const game::data::EnemyData& enemy) {
@@ -175,9 +177,11 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
         const int mdf = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Mdf));
         const int agi = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Agi));
         const int luk = clampPositiveStat(paramValue(enemy->params_, game::data::ParamIndex::Luk));
+        const EnemyDisplayName display_name = buildEnemyDisplayName(*enemy, enemy_name_counts);
         enemy_units.push_back(BattleUnit{
             .id = next_enemy_id++,
-            .name = buildEnemyDisplayName(*enemy, enemy_name_counts),
+            .name = display_name.name,
+            .name_ordinal = display_name.ordinal,
             .side = BattleSide::Enemy,
             .hp = max_hp,
             .max_hp = max_hp,

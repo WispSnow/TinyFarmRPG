@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 #include <entt/core/hashed_string.hpp>
 
@@ -29,6 +30,19 @@ namespace {
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/item_config.json").lexically_normal();
     EXPECT_TRUE(catalog.loadItemConfig(config_path.string()));
     return catalog;
+}
+
+[[nodiscard]] game::runtime::LocalizationService loadLocalization(const std::string_view language_tag) {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    EXPECT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    EXPECT_TRUE(localization.setLanguage(language_tag));
+    return localization;
+}
+
+[[nodiscard]] game::runtime::LocalizationService loadEnglishLocalization() {
+    return loadLocalization("en-US");
 }
 
 TEST(ShopMenuSupportTest, CountOwnedItemsAggregatesAcrossMatchingStacks) {
@@ -65,6 +79,7 @@ TEST(ShopMenuSupportTest, ResolveBuyQuantityUiMaxRespectsStackLimitAnd99Cap) {
 
 TEST(ShopMenuSupportTest, PopulateShopBuyEntryViewModelFormatsDisplayFields) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::data::ShopBuyEntryData buy_entry{};
     buy_entry.item_id_ = "potion";
@@ -72,7 +87,7 @@ TEST(ShopMenuSupportTest, PopulateShopBuyEntryViewModelFormatsDisplayFields) {
     buy_entry.buy_price_ = 30;
 
     game::ui::ShopBuyEntryViewModel view_model{};
-    game::ui::populateShopBuyEntryViewModel(view_model, 2, buy_entry, &item_catalog, nullptr, 7, true, false);
+    game::ui::populateShopBuyEntryViewModel(view_model, 2, buy_entry, &item_catalog, &localization, 7, true, false);
 
     EXPECT_EQ(view_model.index, 2);
     EXPECT_EQ(view_model.item_id_hash, entt::hashed_string{"potion"}.value());
@@ -85,6 +100,7 @@ TEST(ShopMenuSupportTest, PopulateShopBuyEntryViewModelFormatsDisplayFields) {
 
 TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStable) {
     const auto item_catalog = loadProjectItemCatalog();
+    const auto localization = loadEnglishLocalization();
 
     game::component::InventoryComponent inventory;
     inventory.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
@@ -104,7 +120,7 @@ TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStab
         &shop_data,
         &item_catalog,
         &inventory,
-        nullptr,
+        &localization,
         game::ui::ShopMenuCategory::Consumable,
         5,
         "shop.test");
@@ -118,7 +134,7 @@ TEST(ShopMenuSupportTest, TradeListBuilderFiltersBuyEntriesAndKeepsSelectionStab
         &shop_data,
         &item_catalog,
         nullptr,
-        nullptr,
+        &localization,
         game::ui::ShopMenuCategory::Equipment,
         -3,
         "shop.test");
@@ -142,11 +158,7 @@ TEST(ShopMenuSupportTest, TransactionPresenterFormatsCommonOutcomes) {
 }
 
 TEST(ShopMenuSupportTest, TransactionPresenterFormatsLocalizedOutcomes) {
-    game::runtime::LocalizationService localization;
-    const auto manifest_path =
-        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
-    ASSERT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
-    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+    const auto localization = loadLocalization("zh-Hans");
 
     EXPECT_EQ(ShopMenuTransactionPresenter::formatGoldLabel(&localization, 42), "金币：42");
     EXPECT_EQ(

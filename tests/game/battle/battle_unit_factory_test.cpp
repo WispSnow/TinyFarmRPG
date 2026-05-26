@@ -2,12 +2,18 @@
 #include <gtest/gtest.h>
 
 #include "appearance_test_fixture_utils.h"
+#include "game/battle/battle_display_text.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/data/rpg_catalog.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/runtime/localization_service.h"
 
 #include <filesystem>
 #include <string>
+
+#ifndef PROJECT_SOURCE_DIR
+#define PROJECT_SOURCE_DIR "."
+#endif
 
 namespace game::battle {
 namespace {
@@ -174,6 +180,7 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
 
     ASSERT_EQ(units.size(), 4U);
     EXPECT_EQ(units[0].name, "Hero");
+    EXPECT_EQ(units[0].name_ordinal, 1);
     EXPECT_EQ(units[0].max_hp, 140);
     EXPECT_EQ(units[0].max_mp, 30);
     EXPECT_EQ(units[0].attack, 28);
@@ -212,6 +219,7 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
 
     EXPECT_EQ(units[2].side, BattleSide::Enemy);
     EXPECT_EQ(units[2].name, "Goblin");
+    EXPECT_EQ(units[2].name_ordinal, 1);
     EXPECT_EQ(units[2].max_mp, 1);
     EXPECT_EQ(units[2].defense, 8);
     EXPECT_EQ(units[2].magic_attack, 5);
@@ -223,7 +231,8 @@ TEST(BattleUnitFactoryTest, BuildsUnitsFromDefaultSelection) {
     EXPECT_FALSE(units[2].source_actor_id.has_value());
     ASSERT_TRUE(units[2].source_enemy_id.has_value());
     EXPECT_EQ(*units[2].source_enemy_id, "enemy.goblin");
-    EXPECT_EQ(units[3].name, "Goblin 2");
+    EXPECT_EQ(units[3].name, "Goblin");
+    EXPECT_EQ(units[3].name_ordinal, 2);
     ASSERT_EQ(units[3].skill_ids.size(), 2U);
     EXPECT_EQ(units[3].skill_ids[0], "skill.attack");
     EXPECT_EQ(units[3].skill_ids[1], "skill.bash");
@@ -263,6 +272,23 @@ TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
     EXPECT_FALSE(units[1].source_actor_id.has_value());
     ASSERT_TRUE(units[1].source_enemy_id.has_value());
     EXPECT_EQ(*units[1].source_enemy_id, "enemy.wolf");
+}
+
+TEST(BattleUnitFactoryTest, LocalizedUnitNameTranslatesBaseKeyBeforeOrdinal) {
+    game::runtime::LocalizationService localization;
+    const auto manifest_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").lexically_normal();
+    ASSERT_TRUE(localization.loadLanguageIndex(manifest_path.string()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    const BattleUnit slime{
+        .id = 1002,
+        .name = "enemy.slime.name",
+        .name_ordinal = 2,
+        .side = BattleSide::Enemy,
+    };
+
+    EXPECT_EQ(localizedUnitName(slime, &localization), "史莱姆 2");
 }
 
 TEST(BattleUnitFactoryTest, FailsWhenRequestedActorIsMissing) {

@@ -44,7 +44,7 @@ TEST(QuestCatalogTest, LoadsProjectQuestAssetAndValidatesReferences) {
 
     const auto* quest = catalog.findQuest("quest.village.goblin_cleanup");
     ASSERT_NE(quest, nullptr);
-    EXPECT_EQ(quest->title_, "Slime Cleanup");
+    EXPECT_EQ(quest->title_, "quest.village.goblin_cleanup.title");
     ASSERT_EQ(quest->objectives_.size(), 1U);
     EXPECT_EQ(quest->objectives_[0].id_, "kill_slimes");
     EXPECT_EQ(quest->objectives_[0].enemy_id_, "enemy.slime");
@@ -54,7 +54,7 @@ TEST(QuestCatalogTest, LoadsProjectQuestAssetAndValidatesReferences) {
     EXPECT_EQ(quest->objectives_[0].marker_->map_id_hash_, QuestCatalog::hashId("town"));
     EXPECT_EQ(quest->objectives_[0].marker_->position_.x, 532.0F);
     EXPECT_EQ(quest->objectives_[0].marker_->position_.y, 296.0F);
-    EXPECT_EQ(quest->objectives_[0].marker_->label_, "Slime Targets");
+    EXPECT_EQ(quest->objectives_[0].marker_->label_, "quest.village.goblin_cleanup.objective.kill_slimes.marker");
 
     ItemCatalog item_catalog;
     ASSERT_TRUE(loadProjectItemCatalog(item_catalog));

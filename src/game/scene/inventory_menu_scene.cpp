@@ -15,6 +15,7 @@
 #include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/options_events.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
@@ -207,6 +208,8 @@ bool InventoryMenuScene::init() {
         .connect<&InventoryMenuScene::onMapTabShortcut>(this);
     context_.getInputManager().onAction("inventory_tab_options"_hs)
         .connect<&InventoryMenuScene::onOptionsTabShortcut>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .connect<&InventoryMenuScene::onLanguageChanged>(this);
 
     return Scene::init();
 }
@@ -427,6 +430,8 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
         .disconnect<&InventoryMenuScene::onMapTabShortcut>(this);
     context_.getInputManager().onAction("inventory_tab_options"_hs)
         .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
+    context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
+        .disconnect<&InventoryMenuScene::onLanguageChanged>(this);
 }
 
 void InventoryMenuScene::clearPartyPortraitImages() {
@@ -493,7 +498,8 @@ void InventoryMenuScene::syncPartyPanel() {
         player_,
         rpg_catalog_,
         selected_actor_id_,
-        actor_target_mode_);
+        actor_target_mode_,
+        localization());
     registerPartyPortraitImages(data.party_members);
     party_members_ = data.party_members;
     gold_label_ = data.gold_label;
@@ -658,6 +664,18 @@ game::ui::IMenuTabContent* InventoryMenuScene::activeTab() {
         return it->second.get();
     }
     return nullptr;
+}
+
+const game::runtime::LocalizationService* InventoryMenuScene::localization() const noexcept {
+    return user_settings_service_ ? &user_settings_service_->localization() : nullptr;
+}
+
+void InventoryMenuScene::onLanguageChanged(const game::defs::LanguageChangedEvent& /*event*/) {
+    syncPartyPanel();
+    if (auto* tab = activeTab()) {
+        tab->onLanguageChanged();
+    }
+    hideTabShortcutTooltip();
 }
 
 void InventoryMenuScene::cacheTabShortcutTooltipElements() {

@@ -225,7 +225,7 @@ void RestDialogScene::refreshRecoveryPreview() {
         recovery_members_.reserve(preview->members.size());
         for (const auto& member : preview->members) {
             RestRecoveryMemberViewModel view_model{};
-            view_model.display_name = makeRmlString(member.display_name);
+            view_model.display_name = makeRmlString(game::ui::tryLocalize(localization_, member.display_name_key));
             view_model.hp_label_text = makeRmlString(game::ui::localizeTextOrFallback(localization_, "common.hp", "HP"));
             view_model.hp_current_text = makeRmlString(formatRestStatValue(member.current_hp, member.max_hp));
             view_model.hp_after_text = makeRmlString(formatRestStatValue(member.after_hp, member.max_hp));

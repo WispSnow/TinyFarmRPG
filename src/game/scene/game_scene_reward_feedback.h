@@ -11,6 +11,10 @@ namespace game::data {
 class ItemCatalog;
 }
 
+namespace game::runtime {
+class LocalizationService;
+}
+
 namespace game::scene {
 
 /// @brief 单个掉落条目的实际写回结果。
@@ -33,7 +37,8 @@ struct BattleRewardWritebackResult {
     int gold_written_back,
     const std::vector<BattleRewardWritebackItemResult>& item_results,
     const game::data::ItemCatalog* item_catalog,
-    const game::domain::PartyExperienceGrantResult* experience_result = nullptr);
+    const game::domain::PartyExperienceGrantResult* experience_result = nullptr,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 /// @brief 格式化升级时展示的 HP/MP 上限变化文本，不包含 actor 名称与等级。
 [[nodiscard]] std::string formatLevelUpStatText(const game::domain::ActorExperienceGrant& grant);
@@ -43,12 +48,14 @@ struct BattleRewardWritebackResult {
     const BattleRewardWritebackResult& reward_result,
     const game::domain::PartyExperienceGrantResult* experience_result,
     const game::domain::QuestBattleProgressSummary& quest_progress_summary,
-    const game::data::ItemCatalog* item_catalog);
+    const game::data::ItemCatalog* item_catalog,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 /// @brief 兼容旧调用点：无经验结果时只格式化金币、掉落与任务。
 [[nodiscard]] std::string formatBattleSettlementFeedback(
     const BattleRewardWritebackResult& reward_result,
     const game::domain::QuestBattleProgressSummary& quest_progress_summary,
-    const game::data::ItemCatalog* item_catalog);
+    const game::data::ItemCatalog* item_catalog,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 } // namespace game::scene
