@@ -58,42 +58,41 @@ body {
 #appearance-preview-frame {
     position: absolute;
     left: 42dp;
-    top: 86dp;
+    top: 104dp;
     width: 220dp;
-    height: 224dp;
+    height: 204dp;
     border: 1dp #d9a88aaa;
     background-color: transparent;
     pointer-events: auto;
 }
 
-#appearance-preview-label {
-    position: absolute;
-    left: 6dp;
-    top: 6dp;
-    color: #a9b1d6cc;
-    font-size: 0.5625rem;
-    font-effect: shadow(1dp 1dp #000000cc);
-    pointer-events: none;
-}
-
 #appearance-portrait-preview {
     position: absolute;
-    right: 12dp;
-    bottom: 12dp;
-    width: 64dp;
-    height: 64dp;
+    left: 14dp;
+    top: 6dp;
+    width: 192dp;
+    height: 192dp;
     image-color: #ffffffff;
     pointer-events: none;
 }
 
 /* ===== Control panel (ninepatch on the right) ===== */
 
-#appearance-panel {
+#appearance-panel-region {
     position: absolute;
     left: 292dp;
-    top: 34dp;
+    top: 0;
+    width: 312dp;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    pointer-events: none;
+}
+
+#appearance-panel {
     width: 292dp;
-    height: 260dp;
+    height: auto;
     padding: 10dp;
     decorator: ninepatch(menu-party-card-bg, menu-party-card-bg-inner, 1.0);
     pointer-events: auto;
@@ -105,8 +104,8 @@ body {
 
 .appearance-slot-row {
     width: 100%;
-    height: 30dp;
-    margin-bottom: 2dp;
+    height: 28dp;
+    margin-bottom: 1dp;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -114,8 +113,8 @@ body {
 
 .appearance-slot-label {
     width: 70dp;
-    height: 28dp;
-    line-height: 28dp;
+    height: 26dp;
+    line-height: 26dp;
     color: #2a1f17ff;
     font-size: 0.6875rem;
     font-effect: shadow(1dp 1dp #ffffff44);
@@ -133,7 +132,7 @@ body {
 
 .appearance-slot-value {
     flex-grow: 1;
-    height: 28dp;
+    height: 26dp;
     padding-left: 6dp;
     padding-right: 6dp;
     text-align: center;
@@ -161,7 +160,7 @@ body {
 }
 
 #appearance-tool-actions {
-    margin-top: 12dp;
+    margin-top: 10dp;
     width: 100%;
     display: flex;
     flex-direction: row;
@@ -171,6 +170,8 @@ body {
 .appearance-tool-button {
     /* Navigation tab-index comes from tf-button-light. */
     width: 142dp;
+    height: 30dp;
+    line-height: 30dp;
     nav-up: auto;
     nav-down: auto;
     nav-left: auto;
@@ -178,7 +179,7 @@ body {
 }
 
 #appearance-main-actions {
-    margin-top: 6dp;
+    margin-top: 5dp;
     width: 100%;
     display: flex;
     flex-direction: row;
@@ -188,6 +189,8 @@ body {
 .appearance-main-button {
     /* Navigation tab-index comes from tf-button-light. */
     width: 142dp;
+    height: 30dp;
+    line-height: 30dp;
     nav-up: auto;
     nav-down: auto;
     nav-left: auto;

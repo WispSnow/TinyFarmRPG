@@ -52,11 +52,11 @@ constexpr engine::render::NineSliceMargins MENU_PANEL_MARGINS{
     .bottom = 10.0f,
 };
 const engine::utils::Rect MENU_PANEL_SCREEN_RECT{{30.0f, 26.0f}, {580.0f, 308.0f}};
-// Tuned against #appearance-preview-frame in appearance_customize.rcss. The transform
-// position is the sprite pivot; keep the idle preview left/up of the portrait overlay.
-constexpr float PREVIEW_SCREEN_PIVOT_X = 122.0f;
-constexpr float PREVIEW_SCREEN_PIVOT_Y = 214.0f;
-constexpr float PREVIEW_SIZE_PX = 160.0f;
+// Tuned against the left header area in appearance_customize.rcss. The transform
+// position is the sprite pivot; keep the idle preview to the right of the title text.
+constexpr float PREVIEW_SCREEN_PIVOT_X = 230.0f;
+constexpr float PREVIEW_SCREEN_PIVOT_Y = 76.0f;
+constexpr float PREVIEW_SIZE_PX = 64.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
 constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;
 
