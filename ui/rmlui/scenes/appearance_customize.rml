@@ -15,47 +15,48 @@
     <div id="appearance-subtitle">{{ subtitle_text }}</div>
 
     <div id="appearance-preview-frame">
-        <div id="appearance-preview-label" data-i18n="appearance.preview">Preview</div>
         <img id="appearance-portrait-preview"
              data-if="portrait_src != ''"
              data-attr-src="portrait_src"/>
     </div>
 
-    <div id="appearance-panel">
-        <div id="appearance-slot-list">
-            <div class="appearance-slot-row" data-for="slot : slots">
-                <div class="appearance-slot-label">{{ slot.label }}</div>
-                <button class="tf-icon-button icon-arrow-left-light appearance-step-button"
-                        data-event-click="slot_prev(slot.slot_index)"></button>
-                <div class="appearance-slot-value">
-                    <div class="appearance-variant-name">{{ slot.variant_label }}</div>
-                    <div class="appearance-variant-index">{{ slot.index_label }}</div>
+    <div id="appearance-panel-region">
+        <div id="appearance-panel">
+            <div id="appearance-slot-list">
+                <div class="appearance-slot-row" data-for="slot : slots">
+                    <div class="appearance-slot-label">{{ slot.label }}</div>
+                    <button class="tf-icon-button icon-arrow-left-light appearance-step-button"
+                            data-event-click="slot_prev(slot.slot_index)"></button>
+                    <div class="appearance-slot-value">
+                        <div class="appearance-variant-name">{{ slot.variant_label }}</div>
+                        <div class="appearance-variant-index">{{ slot.index_label }}</div>
+                    </div>
+                    <button class="tf-icon-button icon-arrow-right-light appearance-step-button"
+                            data-event-click="slot_next(slot.slot_index)"></button>
                 </div>
-                <button class="tf-icon-button icon-arrow-right-light appearance-step-button"
-                        data-event-click="slot_next(slot.slot_index)"></button>
             </div>
-        </div>
 
-        <div id="appearance-tool-actions">
-            <button id="appearance-random-button"
-                    class="tf-button-light appearance-tool-button"
-                    data-event-click="randomize"
-                    data-i18n="appearance.random">Random</button>
-            <button id="appearance-reset-button"
-                    class="tf-button-light appearance-tool-button"
-                    data-event-click="reset"
-                    data-i18n="appearance.reset">Reset</button>
-        </div>
+            <div id="appearance-tool-actions">
+                <button id="appearance-random-button"
+                        class="tf-button-light appearance-tool-button"
+                        data-event-click="randomize"
+                        data-i18n="appearance.random">Random</button>
+                <button id="appearance-reset-button"
+                        class="tf-button-light appearance-tool-button"
+                        data-event-click="reset"
+                        data-i18n="appearance.reset">Reset</button>
+            </div>
 
-        <div id="appearance-main-actions">
-            <button id="appearance-confirm-button"
-                    class="tf-button-light appearance-main-button"
-                    data-event-click="confirm"
-                    data-i18n="common.confirm">Confirm</button>
-            <button id="appearance-cancel-button"
-                    class="tf-button-light appearance-main-button"
-                    data-event-click="cancel"
-                    data-i18n="common.cancel">Cancel</button>
+            <div id="appearance-main-actions">
+                <button id="appearance-confirm-button"
+                        class="tf-button-light appearance-main-button"
+                        data-event-click="confirm"
+                        data-i18n="common.confirm">Confirm</button>
+                <button id="appearance-cancel-button"
+                        class="tf-button-light appearance-main-button"
+                        data-event-click="cancel"
+                        data-i18n="common.cancel">Cancel</button>
+            </div>
         </div>
     </div>
 </body>
