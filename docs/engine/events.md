@@ -53,7 +53,7 @@ flowchart LR
 4. `SceneManager::update()` 的末尾调用 `processPendingActions()`，统一执行改栈，并在 push 时调用新 Scene 的 `init()`（见 `src/engine/scene/scene_manager.cpp`）。
 5. 本帧 render 会叠加渲染整栈，因此 PauseMenu 可以覆盖在游戏画面之上；而下一帧 update 只更新栈顶（PauseMenu），底层游戏逻辑被冻结（见 `src/engine/scene/scene_manager.cpp`）。
 
-> Scene 栈的调度与切换策略（update/top + render/all、Push/Pop/Replace）详见：`docs/scenes.md`
+> Scene 栈的调度与切换策略（update/top + render/all、Push/Pop/Replace）详见：`docs/engine/scenes.md`
 
 ### 案例 3：enqueue（时间事件链路：TimeSystem → DayChangedEvent → 作物/地图系统）
 这是一个典型“数据类事件帧尾结算”的例子（不要求立刻改变控制流，且可能在一帧内批量产生）：

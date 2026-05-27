@@ -225,11 +225,11 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 ```mermaid
 stateDiagram-v2
     [*] --> Offerable : 未接取
-    Offerable --> InProgress : tryAcceptQuest() 成功\n显示 offer 文本
+    Offerable --> InProgress : tryAcceptQuest() 成功<br/>显示 offer 文本
     InProgress --> ReadyToTurnIn : 所有 objective 达成
     InProgress --> InProgress : 交互 → 显示 progress 文本
-    ReadyToTurnIn --> Completed : turnIn() 成功\n显示 completed + 奖励文本
-    ReadyToTurnIn --> ReadyToTurnIn : turnIn() 失败\n显示 failure_message
+    ReadyToTurnIn --> Completed : turnIn() 成功<br/>显示 completed + 奖励文本
+    ReadyToTurnIn --> ReadyToTurnIn : turnIn() 失败<br/>显示 failure_message
     Completed --> Completed : 交互 → 显示 completed 文本
 ```
 

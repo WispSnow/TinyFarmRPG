@@ -56,7 +56,7 @@ flowchart LR
 
 ## 与存档系统的关系
 
-Options 偏好**不**入存档（save schema v4 没有相关字段）；偏好是 global 的，跨 save slot 共享。
+Options 偏好**不**入存档；存档只保存具体游戏进度，偏好是 global 的，跨 save slot 共享。
 
 ## 代码入口
 

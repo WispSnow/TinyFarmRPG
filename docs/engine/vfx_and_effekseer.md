@@ -525,14 +525,14 @@ flowchart TD
 
     subgraph F["CMake 配置"]
         direction TB
-        F1["BUILD_GL=ON\n其余图形后端 OFF"]
+        F1["BUILD_GL=ON<br/>其余图形后端 OFF"]
         F2["音频全部 OFF"]
         F3["Viewer/Editor/Test OFF"]
     end
 
     F --> G["link: Effekseer + EffekseerRendererGL"]
     D --> G
-    G --> H["compile define:\nTF_ENABLE_EFFEKSEER"]
+    G --> H["compile define:<br/>TF_ENABLE_EFFEKSEER"]
 ```
 
 - 使用本地源码树 `external/Effekseer-1.7.3.0`（版本 1.7.3.0）
