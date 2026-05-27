@@ -19,6 +19,7 @@ namespace game::ui {
 
 enum class PortraitImageKind {
     Standard64,
+    Standard64Linear,
     Battle48,
 };
 

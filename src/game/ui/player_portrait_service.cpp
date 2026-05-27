@@ -17,10 +17,35 @@ namespace {
     switch (kind) {
         case PortraitImageKind::Standard64:
             return "standard64";
+        case PortraitImageKind::Standard64Linear:
+            return "standard64-linear";
         case PortraitImageKind::Battle48:
             return "battle48";
     }
     return "standard64";
+}
+
+[[nodiscard]] engine::ui::rmlui::RmlUiTextureFilterMode filterModeForKind(const PortraitImageKind kind) {
+    switch (kind) {
+        case PortraitImageKind::Standard64Linear:
+            return engine::ui::rmlui::RmlUiTextureFilterMode::Linear;
+        case PortraitImageKind::Standard64:
+        case PortraitImageKind::Battle48:
+            return engine::ui::rmlui::RmlUiTextureFilterMode::Nearest;
+    }
+    return engine::ui::rmlui::RmlUiTextureFilterMode::Nearest;
+}
+
+[[nodiscard]] engine::resource::DecodedImage imageForKind(const AppearancePortraitImages& images,
+                                                          const PortraitImageKind kind) {
+    switch (kind) {
+        case PortraitImageKind::Standard64:
+        case PortraitImageKind::Standard64Linear:
+            return images.standard64;
+        case PortraitImageKind::Battle48:
+            return images.battle48;
+    }
+    return images.standard64;
 }
 
 } // namespace
@@ -71,8 +96,12 @@ bool PlayerPortraitService::refresh() {
         return false;
     }
 
-    const std::array<PortraitImageKind, 2> kinds{PortraitImageKind::Standard64, PortraitImageKind::Battle48};
-    std::array<std::string, 2> next_source_uris{};
+    const std::array<PortraitImageKind, 3> kinds{
+        PortraitImageKind::Standard64,
+        PortraitImageKind::Standard64Linear,
+        PortraitImageKind::Battle48,
+    };
+    std::array<std::string, 3> next_source_uris{};
     for (const auto kind : kinds) {
         const std::size_t index = kindIndex(kind);
         next_source_uris[index] = source_prefix_ + "/" + images.selection_key + "/" + kindSuffix(kind);
@@ -94,14 +123,13 @@ bool PlayerPortraitService::refresh() {
         }
     }
 
-    std::array<engine::ui::rmlui::RmlGeneratedImageRegistry::Registration, 2> next_registrations{};
+    std::array<engine::ui::rmlui::RmlGeneratedImageRegistry::Registration, 3> next_registrations{};
     for (const auto kind : kinds) {
         const std::size_t index = kindIndex(kind);
-        auto image = kind == PortraitImageKind::Standard64 ? std::move(images.standard64) : std::move(images.battle48);
         next_registrations[index] = generated_images_.registerImage(
             next_source_uris[index],
-            std::move(image),
-            engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
+            imageForKind(images, kind),
+            filterModeForKind(kind));
         if (!next_registrations[index].valid()) {
             return false;
         }
@@ -139,8 +167,10 @@ std::size_t PlayerPortraitService::kindIndex(const PortraitImageKind kind) noexc
     switch (kind) {
         case PortraitImageKind::Standard64:
             return 0U;
-        case PortraitImageKind::Battle48:
+        case PortraitImageKind::Standard64Linear:
             return 1U;
+        case PortraitImageKind::Battle48:
+            return 2U;
     }
     return 0U;
 }
