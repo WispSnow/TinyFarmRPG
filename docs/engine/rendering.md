@@ -15,7 +15,7 @@ TinyFarm 的 2D 渲染可以用一句话概括：
 - `src/game/scene/game_scene.cpp`：`GameScene::render(alpha)`：组织 world 渲染系统（YSort → Render → Lighting → UI/Debug）
 - `src/engine/system/render_system.cpp`：`RenderSystem::render(..., alpha)`：排序并遍历 view，逐个 `drawSprite`
 - `src/engine/render/renderer.cpp`：`Renderer::drawSprite()`：纹理获取 + 视口剔除 + 提交给 GLRenderer
-- `src/engine/render/opengl/gl_renderer.cpp`：底层绘制与 pass（更深入内容见 `docs/resolution_and_viewport.md` 等相关文档）
+- `src/engine/render/opengl/gl_renderer.cpp`：底层绘制与 pass（更深入内容见 `docs/engine/resolution_and_viewport.md` 等相关文档）
 
 ---
 
@@ -140,7 +140,7 @@ Sprite 的纹理裁剪通常以“像素矩形”表达（更直观），最终�
    - 线索：`GLRenderer` 的 Pixel Snap（`src/engine/render/opengl/gl_renderer.cpp`）
    - 调试：`OpenGL Renderer` 面板切 `Pixel Snap`，对比缓慢移动时的稳定性
 2) **非整数缩放**：logical 到 window 的缩放不是整数倍时，像素会出现“大小不均”。  
-   - 线索：逻辑分辨率与 letterbox（`docs/resolution_and_viewport.md`）
+   - 线索：逻辑分辨率与 letterbox（`docs/engine/resolution_and_viewport.md`）
    - 实践建议：优先选择窗口尺寸为 logical 的整数倍（或用 `window_scale` 控制初始倍数）
 3) **线性采样与边缘渗色**：贴图/图集用 LINEAR 时，边缘会采到相邻像素产生 bleeding。  
    - 线索：`TextureManager` 默认使用 `GL_NEAREST + GL_CLAMP_TO_EDGE`（`src/engine/resource/texture_manager.cpp`）
@@ -176,7 +176,7 @@ Sprite 的纹理裁剪通常以“像素矩形”表达（更直观），最终�
 你可以把它理解为：
 > Scene/Lighting/Emissive 在同一张“逻辑画布（Logical）”上各画各的；Composite 再把这张画布缩放/信箱到窗口 viewport。
 
-前置文档：`docs/resolution_and_viewport.md`
+前置文档：`docs/engine/resolution_and_viewport.md`
 
 ### 8.3 光照数据从哪来（ECS → Renderer → Pass）
 核心链路：

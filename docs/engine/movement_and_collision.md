@@ -36,7 +36,7 @@ TinyFarm 的移动链路可以按三段式理解：
 - `src/engine/component/tilelayer_component.h`
 
 ## 3) 动态阻挡：broadphase 候选 → narrowphase 相交
-动态实体阻挡来自动态网格（详见 `docs/spatial_index.md`）：
+动态实体阻挡来自动态网格（详见 `docs/engine/spatial_index.md`）：
 - broadphase：`SpatialIndexManager::queryColliderCandidates*`（返回候选实体）
 - narrowphase：基于真实形状做相交判断（AABB/圆）
 
@@ -69,4 +69,3 @@ TinyFarm 的移动链路可以按三段式理解：
 4. **“离墙一段距离停住”或“贴边抖动”**
    - 检查 dt 波动与速度是否过大（大步长更容易暴露边界/epsilon 问题）
    - 用调试面板对比 candidates（broadphase）与 overlaps（narrowphase）是否异常
-

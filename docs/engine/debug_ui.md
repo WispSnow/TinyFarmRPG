@@ -66,7 +66,7 @@ TinyFarm 的 Debug UI 可以用一句话概括：
 flowchart LR
   A[Renderer.clear] --> B[GLRenderer.beginDebugUI]
   B --> C[scene_manager.render]
-  C --> D[GLRenderer.endDebugUI\nDebugUIManager.draw]
+  C --> D[GLRenderer.endDebugUI<br/>DebugUIManager.draw]
   D --> E[present]
 ```
 

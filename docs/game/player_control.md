@@ -89,7 +89,7 @@ flowchart LR
 ### 4.3 主操作没有触发动作
 1. 若 `ActionLockTag` 存在：主操作会被忽略（动作锁期间只等待动画驱动的命中事件）
 2. 若当前目标超出范围：目标解析失败，会直接 return
-3. 若 UI 吃掉输入：检查 UI 是否占用 `primary_action`（参见 `docs/input_system.md` 的“占用/转发规则”）
+3. 若 UI 吃掉输入：检查 UI 是否占用 `primary_action`（参见 `docs/engine/input_system.md` 的“占用/转发规则”）
 
 ### 4.4 相机缩放/边界表现异常
 1. 缩放 clamp：检查 `Camera::min_zoom/max_zoom`

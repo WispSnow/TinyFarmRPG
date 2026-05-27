@@ -4,7 +4,7 @@
 
 本章深入分析这个问题——先看大引擎实际怎么做，再看我们的架构为什么不需要（也不适合）这么做。
 
-> 对应计划：`plans/multi-thread/phase6-logic-render-split-deferred-plan.md`（状态：Deferred）
+> 对应计划：`plans/archive/multi-thread/phase6-logic-render-split-deferred-plan.md`（状态：Deferred）
 
 ---
 
@@ -93,9 +93,9 @@ graph LR
 
 ```mermaid
 graph LR
-    Front["Front\n显示器正在扫描"]
-    Back["Back\nGPU 正在绘制"]
-    Spare["Spare\nGPU 画完后写这里"]
+    Front["Front<br/>显示器正在扫描"]
+    Back["Back<br/>GPU 正在绘制"]
+    Spare["Spare<br/>GPU 画完后写这里"]
 
     Front ~~~ Back ~~~ Spare
 
@@ -120,9 +120,9 @@ graph TB
     R["渲染线程（消费者）"] --> C
 
     subgraph Ring Buffer
-        A["Slot A\n写入中"]
-        B["Slot B\n最新已发布"]
-        C["Slot C\n渲染中读取"]
+        A["Slot A<br/>写入中"]
+        B["Slot B<br/>最新已发布"]
+        C["Slot C<br/>渲染中读取"]
     end
 
     A -.->|"写完后标记为最新"| B
@@ -198,8 +198,8 @@ graph LR
 
 ```mermaid
 graph TB
-    GL2["GameLogic\n（逻辑线程）"] -- "写" --> REG2["entt::registry"]
-    REG2 -- "增量命令队列" --> RSCN["RenderScene\n（独立数据结构）"]
+    GL2["GameLogic<br/>（逻辑线程）"] -- "写" --> REG2["entt::registry"]
+    REG2 -- "增量命令队列" --> RSCN["RenderScene<br/>（独立数据结构）"]
     RT2["RenderThread"] -- "读" --> RSCN
 
     style REG2 fill:#e95,color:#fff
@@ -249,6 +249,6 @@ Phase 6 计划标注"Deferred / 不推荐"是完全正确的判断。只有当 p
 
 ## 延伸阅读
 
-- `plans/multi-thread/phase6-logic-render-split-deferred-plan.md` — Phase 6 完整计划
+- `plans/archive/multi-thread/phase6-logic-render-split-deferred-plan.md` — Phase 6 完整计划
 - `src/game/scene/game_scene.cpp` — 当前渲染路径
 - `src/engine/system/render_system.cpp` — RenderSystem 直接查询 registry 的实现

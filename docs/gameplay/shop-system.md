@@ -253,14 +253,14 @@ ShopMenuFocusArea:
 
 ```mermaid
 flowchart TD
-    A["进入商店 (Buy 模式)"] --> B["EntryList 有焦点\nUp/Down 选条目"]
+    A["进入商店 (Buy 模式)"] --> B["EntryList 有焦点<br/>Up/Down 选条目"]
     B --> C["Right 移焦到 Quantity"]
-    C --> D["Left/Right 调数量\n(可堆叠物品)"]
-    D --> E["Down 或 Confirm\n移焦到 PrimaryAction"]
+    C --> D["Left/Right 调数量<br/>(可堆叠物品)"]
+    D --> E["Down 或 Confirm<br/>移焦到 PrimaryAction"]
     E --> F["Confirm → commitBuy()"]
-    F -->|"成功"| G["刷新金币/持有量\n显示 'Purchased xxx'"]
+    F -->|"成功"| G["刷新金币/持有量<br/>显示 'Purchased xxx'"]
     F -->|"失败"| H["显示失败原因文本"]
-    B --> I["Confirm 直接提交\n(quantity=1)"]
+    B --> I["Confirm 直接提交<br/>(quantity=1)"]
 ```
 
 ### Sell 模式操作流

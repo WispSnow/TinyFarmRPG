@@ -34,7 +34,7 @@
    - `applyPendingResourceNodes / applyOpenedChests`：处理“资源/宝箱”这类需要与地图文件合并的状态
 
 5. **预加载阶段（preloading）**
-   - 如果配置为 `neighbors`：预加载邻接地图与触发器目标地图（依赖 WorldState 的世界图信息，详见 `docs/world_state.md`）
+   - 如果配置为 `neighbors`：预加载邻接地图与触发器目标地图（依赖 WorldState 的世界图信息，详见 `docs/game/world_state.md`）
 
 ## 3) 预加载（Preload）：降低切图卡顿
 配置文件：`assets/data/map_loading_config.json`
@@ -106,6 +106,5 @@
 - 检查 `assets/data/map_loading_config.json` 的 `preload.mode` 是否为期望值
 - 开启 `log_timings` 对比 `off/neighbors/all` 的加载耗时差异
 - 确认“目标地图”是否属于预加载集合：
-  - `neighbors` 只预热邻接与触发器目标（依赖 WorldState 的 world graph 信息，详见 `docs/world_state.md`）
+  - `neighbors` 只预热邻接与触发器目标（依赖 WorldState 的 world graph 信息，详见 `docs/game/world_state.md`）
   - external map 可能需要先被 `ensureExternalMap` 注册，才会进入 `maps()` 遍历
-

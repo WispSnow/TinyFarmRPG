@@ -213,9 +213,9 @@ void GameScene::snapshotInterpolationState() {
 
 ```mermaid
 graph LR
-    F1["帧 1\n逻辑 50ms + 渲染 2ms\n= 52ms"] --> F2["帧 2\n累加器 52ms → 3 次 tick\n3×50ms = 150ms"]
-    F2 --> F3["帧 3\n累加器 150ms → 9 次 tick\n9×50ms = 450ms"]
-    F3 --> F4["帧 4\n越来越多 tick\n→ 无限恶化"]
+    F1["帧 1<br/>逻辑 50ms + 渲染 2ms<br/>= 52ms"] --> F2["帧 2<br/>累加器 52ms → 3 次 tick<br/>3×50ms = 150ms"]
+    F2 --> F3["帧 3<br/>累加器 150ms → 9 次 tick<br/>9×50ms = 450ms"]
+    F3 --> F4["帧 4<br/>越来越多 tick<br/>→ 无限恶化"]
 
     style F1 fill:#e95,color:#fff
     style F2 fill:#c44,color:#fff
@@ -352,6 +352,6 @@ sequenceDiagram
 
 - `src/engine/core/game_app.cpp` — 主循环实现
 - `src/engine/core/time.h` / `time.cpp` — 时间管理与累加器
-- `docs/loop_timing_contract.md` — 循环时序契约文档
+- `docs/engine/loop_timing_contract.md` — 循环时序契约文档
 - `src/game/scene/game_scene.cpp` — 快照与插值
 - Glenn Fiedler, ["Fix Your Timestep!"](https://gafferongames.com/post/fix_your_timestep/) — 本模式的经典出处

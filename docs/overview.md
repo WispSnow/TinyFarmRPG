@@ -136,7 +136,7 @@ TinyFarmRPG/
 ├── cmake/                       # CMake 构建模块（依赖管理/编译器设置/RmlUi 与 ImGui 集成等）
 ├── external/                    # 第三方库源码（SDL/EnTT/RmlUi/ImGui/Lua/Sol2/Effekseer 等）
 ├── tests/                       # Google Test（engine/game/shared/data/scripts 分层测试）
-├── tools/                       # 调试与验证工具（visual_tester/ui_tester/rmlui_tester/battle_tester/scheduler_dot_dump/rpg_importer）
+├── tools/                       # 调试与验证工具（visual_tester/rmlui_tester/battle_tester/scheduler_dot_dump/rpg_importer）
 ├── plans/                       # 开发计划文档与归档方案
 ├── docs/                        # 项目文档（引擎/玩法/测试/教程）
 └── for_agent/                   # AI Agent 编码规范
