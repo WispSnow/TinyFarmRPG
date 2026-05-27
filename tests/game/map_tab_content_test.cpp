@@ -2,6 +2,7 @@
 
 #include "appearance_test_fixture_utils.h"
 #include "engine/component/transform_component.h"
+#include "game/component/party_component.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
@@ -323,6 +324,75 @@ TEST(MapTabContentTest, BuildsObjectMarkersAndDefaultsSelectionToFirstPlaceMarke
     EXPECT_TRUE(state.has_map_detail);
     EXPECT_EQ(state.map_detail_title, "Slime Cleanup");
     EXPECT_EQ(state.map_detail_type, "Quest Available");
+}
+
+TEST(MapTabContentTest, HidesRecruitableNpcMarkersForAlreadyRecruitedActors) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{280.0F, 200.0F});
+    registry.emplace<game::component::PartyComponent>(
+        player,
+        game::component::PartyComponent{
+            .recruited_actor_ids_ = {"actor.player", "actor.lyria"},
+            .active_actor_ids_ = {"actor.player", "actor.lyria"},
+        });
+    game::world::WorldState world_state = loadWorld();
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadActors(
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").lexically_normal().string()));
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
+
+    const std::vector<MapObjectMarker> static_place_markers{
+        MapObjectMarker{
+            .kind = MapObjectMarkerKind::Rest,
+            .object_id = 1,
+            .object_name = "bed",
+            .shop_id = "",
+            .recruit_actor_id = "",
+            .map_position = {370.0F, 197.0F},
+        },
+        MapObjectMarker{
+            .kind = MapObjectMarkerKind::Npc,
+            .object_id = 2,
+            .object_name = "lyria",
+            .shop_id = "",
+            .recruit_actor_id = "actor.lyria",
+            .map_position = {95.0F, 274.5F},
+        },
+        MapObjectMarker{
+            .kind = MapObjectMarkerKind::Npc,
+            .object_id = 3,
+            .object_name = "tori",
+            .shop_id = "",
+            .recruit_actor_id = "actor.tori",
+            .map_position = {238.25F, 359.0F},
+        },
+    };
+
+    const int selected = defaultMapMarkerSelection(true, 2U);
+    const MapTabViewState state = buildMapTabViewState(
+        registry,
+        player,
+        &world_state,
+        world_state.getCurrentMap(),
+        MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
+        static_place_markers,
+        {},
+        nullptr,
+        &rpg_catalog,
+        selected,
+        &localization);
+
+    ASSERT_EQ(state.map_markers.size(), 3U);
+    EXPECT_EQ(state.map_markers[0].kind, "player");
+    EXPECT_EQ(state.map_markers[1].kind, "rest");
+    EXPECT_EQ(state.map_markers[2].kind, "npc");
+    EXPECT_EQ(state.map_markers[2].title, "Tori");
+    EXPECT_TRUE(state.has_place_markers);
+    EXPECT_EQ(state.map_detail_title, "Bed");
+    for (const MapMarkerViewModel& marker : state.map_markers) {
+        EXPECT_NE(marker.title, "Lyria");
+    }
 }
 
 TEST(MapTabContentTest, PlayerOnlyMapShowsNoPlacesMarkedDetailAfterSelectionFallback) {

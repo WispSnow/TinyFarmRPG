@@ -1,6 +1,7 @@
 #include "game/ui/map_tab_content.h"
 
 #include "engine/component/transform_component.h"
+#include "game/component/party_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
@@ -82,6 +83,41 @@ using MapMarkerViewModels = std::vector<MapMarkerViewModel>;
         return localization->tr(key);
     }
     return humanizeMapName(map_name);
+}
+
+[[nodiscard]] bool containsActorId(const std::vector<std::string>& actor_ids, const std::string_view actor_id) {
+    return std::any_of(actor_ids.begin(), actor_ids.end(), [actor_id](const std::string& current) {
+        return current == actor_id;
+    });
+}
+
+[[nodiscard]] bool isAlreadyRecruitedMarker(const entt::registry& registry,
+                                            const entt::entity player,
+                                            const MapObjectMarker& marker) {
+    if (marker.kind != MapObjectMarkerKind::Npc ||
+        marker.recruit_actor_id.empty() ||
+        player == entt::null ||
+        !registry.valid(player)) {
+        return false;
+    }
+
+    const auto* party = registry.try_get<game::component::PartyComponent>(player);
+    return party && containsActorId(party->recruited_actor_ids_, marker.recruit_actor_id);
+}
+
+[[nodiscard]] std::vector<MapObjectMarker> visibleStaticPlaceMarkers(
+    const entt::registry& registry,
+    const entt::entity player,
+    const std::vector<MapObjectMarker>& markers) {
+    std::vector<MapObjectMarker> visible_markers{};
+    visible_markers.reserve(markers.size());
+    for (const MapObjectMarker& marker : markers) {
+        if (isAlreadyRecruitedMarker(registry, player, marker)) {
+            continue;
+        }
+        visible_markers.push_back(marker);
+    }
+    return visible_markers;
 }
 
 [[nodiscard]] const char* markerKindString(const MapObjectMarkerKind kind) {
@@ -493,7 +529,9 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
         ++marker_index;
     }
 
-    for (const MapObjectMarker& object_marker : static_place_markers) {
+    const std::vector<MapObjectMarker> visible_static_place_markers =
+        visibleStaticPlaceMarkers(registry, player, static_place_markers);
+    for (const MapObjectMarker& object_marker : visible_static_place_markers) {
         MapObjectMarker clamped_marker = object_marker;
         clamped_marker.map_position = glm::clamp(
             object_marker.map_position,
@@ -511,7 +549,7 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
     }
 
     state.has_map_markers = !state.map_markers.empty();
-    state.has_place_markers = !quest_markers.empty() || !static_place_markers.empty();
+    state.has_place_markers = !quest_markers.empty() || !visible_static_place_markers.empty();
     syncDetailFromSelection(state, selected_marker_index, localization);
     return state;
 }
@@ -654,6 +692,8 @@ void MapTabContent::syncViewState() {
                 localization_);
         }
     }
+    const std::vector<MapObjectMarker> visible_static_place_markers =
+        visibleStaticPlaceMarkers(game_registry_, player_, marker_snapshot.static_place_markers);
 
     const bool rebuilt_for_new_map = current_marker_map_id_ != map_id;
     if (rebuilt_for_new_map) {
@@ -664,7 +704,7 @@ void MapTabContent::syncViewState() {
     const bool has_preview = !preview.source_uri.empty() && preview.width > 0 && preview.height > 0;
     const bool has_player_marker = has_preview && player_ != entt::null && game_registry_.valid(player_) &&
                                    game_registry_.try_get<engine::component::TransformComponent>(player_) != nullptr;
-    const std::size_t place_marker_count = quest_markers.size() + marker_snapshot.static_place_markers.size();
+    const std::size_t place_marker_count = quest_markers.size() + visible_static_place_markers.size();
     const int marker_count = static_cast<int>(place_marker_count) + (has_player_marker ? 1 : 0);
     if (selected_marker_index_ < 0 || selected_marker_index_ >= marker_count) {
         selected_marker_index_ = defaultMapMarkerSelection(has_player_marker, place_marker_count);
@@ -676,7 +716,7 @@ void MapTabContent::syncViewState() {
         world_state_,
         map_id,
         preview,
-        marker_snapshot.static_place_markers,
+        visible_static_place_markers,
         quest_markers,
         shop_catalog_,
         rpg_catalog_,
