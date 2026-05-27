@@ -464,7 +464,8 @@ void InventoryMenuScene::registerPartyPortraitImages(std::vector<PartyMemberPane
 
         if (member.actor_id == game::defs::kDefaultPlayerActorId && player_portrait_service &&
             player_portrait_service->ready()) {
-            member.portrait_src = std::string(player_portrait_service->sourceUri(game::ui::PortraitImageKind::Standard64));
+            member.portrait_src = std::string(
+                player_portrait_service->sourceUri(game::ui::PortraitImageKind::Standard64Linear));
             member.has_portrait = !member.portrait_src.empty();
             continue;
         }

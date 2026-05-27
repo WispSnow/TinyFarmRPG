@@ -37,7 +37,7 @@ public:
     /// @brief Rebuilds and registers generated portrait images for the current player appearance.
     /// @return True when a fresh image set was registered; false when refresh failed and any previous images were kept.
     [[nodiscard]] bool refresh();
-    /// @brief Returns true once both standard and battle portrait images are registered.
+    /// @brief Returns true once all generated portrait image variants are registered.
     [[nodiscard]] bool ready() const noexcept { return ready_; }
     /// @brief Returns a generated image URI for `<img src>` bindings, or empty when unavailable.
     [[nodiscard]] std::string_view sourceUri(PortraitImageKind kind) const;
@@ -53,8 +53,8 @@ private:
     std::string source_prefix_{};
     AppearancePortraitBuilder builder_{};
     bool ready_{false};
-    std::array<std::string, 2> source_uris_{};
-    std::array<engine::ui::rmlui::RmlGeneratedImageRegistry::Registration, 2> registrations_{};
+    std::array<std::string, 3> source_uris_{};
+    std::array<engine::ui::rmlui::RmlGeneratedImageRegistry::Registration, 3> registrations_{};
 
     void onAppearanceChanged(const game::defs::AppearanceChangedEvent& event);
     [[nodiscard]] static std::size_t kindIndex(PortraitImageKind kind) noexcept;

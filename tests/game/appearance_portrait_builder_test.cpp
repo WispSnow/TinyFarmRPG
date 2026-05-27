@@ -98,14 +98,24 @@ TEST(PlayerPortraitServiceTest, RegistersImagesAndRefreshesOnAppearanceChangedEv
 
     ASSERT_TRUE(service.ready());
     const std::string initial_standard_uri{service.sourceUri(PortraitImageKind::Standard64)};
+    const std::string initial_standard_linear_uri{service.sourceUri(PortraitImageKind::Standard64Linear)};
     const std::string initial_battle_uri{service.sourceUri(PortraitImageKind::Battle48)};
     EXPECT_FALSE(initial_standard_uri.empty());
+    EXPECT_FALSE(initial_standard_linear_uri.empty());
     EXPECT_FALSE(initial_battle_uri.empty());
     EXPECT_EQ(service.decoratorString(PortraitImageKind::Standard64), "image(" + initial_standard_uri + ")");
     ASSERT_NE(generated_images.find(initial_standard_uri), nullptr);
+    ASSERT_NE(generated_images.find(initial_standard_linear_uri), nullptr);
     ASSERT_NE(generated_images.find(initial_battle_uri), nullptr);
     EXPECT_EQ(generated_images.find(initial_standard_uri)->width, 64);
+    EXPECT_EQ(generated_images.find(initial_standard_linear_uri)->width, 64);
     EXPECT_EQ(generated_images.find(initial_battle_uri)->width, 48);
+    ASSERT_TRUE(generated_images.textureFilterOverrideFor(initial_standard_uri).has_value());
+    ASSERT_TRUE(generated_images.textureFilterOverrideFor(initial_standard_linear_uri).has_value());
+    EXPECT_EQ(*generated_images.textureFilterOverrideFor(initial_standard_uri),
+              engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
+    EXPECT_EQ(*generated_images.textureFilterOverrideFor(initial_standard_linear_uri),
+              engine::ui::rmlui::RmlUiTextureFilterMode::Linear);
 
     dispatcher.trigger(game::defs::AppearanceChangedEvent{registry.create()});
     EXPECT_EQ(service.sourceUri(PortraitImageKind::Standard64), initial_standard_uri);
