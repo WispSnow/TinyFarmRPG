@@ -40,18 +40,6 @@ body, div, h1, h2, h3, h4, p, hr {
     decorator: image(portrait-player);
 }
 
-#recruit-offer-portrait.portrait-player {
-    decorator: image(portrait-player);
-}
-
-#recruit-offer-portrait.portrait-lyria {
-    decorator: image(portrait-lyria);
-}
-
-#recruit-offer-portrait.portrait-tori {
-    decorator: image(portrait-tori);
-}
-
 #recruit-offer-copy {
     margin-left: 12dp;
     width: 222dp;

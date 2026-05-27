@@ -39,11 +39,22 @@ struct AppearanceSelection {
 /// Lists catalog slots that are safe to switch at runtime, preserving layer order.
 [[nodiscard]] std::vector<std::string> runtimeAppearanceSlots(const game::data::AppearanceCatalog& catalog);
 
+/// Lists editable appearance controls for the customization scene.
+[[nodiscard]] std::vector<std::string> appearanceControlSlots(const game::data::AppearanceCatalog& catalog,
+                                                              bool include_gender);
+
 /// Steps one runtime-switchable slot forward or backward through its variant list.
 [[nodiscard]] bool stepAppearanceSlot(AppearanceSelection& selection,
                                       const game::data::AppearanceCatalog& catalog,
                                       std::string_view slot,
                                       int direction);
+
+/// Steps an appearance control, including the gender pseudo-slot when enabled.
+[[nodiscard]] bool stepAppearanceControl(AppearanceSelection& selection,
+                                         const game::data::AppearanceCatalog& catalog,
+                                         std::string_view slot,
+                                         int direction,
+                                         bool allow_gender);
 
 /// Resets runtime-switchable slots to the selected profile defaults.
 [[nodiscard]] bool resetSelectionToProfile(AppearanceSelection& selection,
@@ -52,7 +63,8 @@ struct AppearanceSelection {
 /// Chooses a random variant for each runtime-switchable slot.
 [[nodiscard]] bool randomizeSelection(AppearanceSelection& selection,
                                       const game::data::AppearanceCatalog& catalog,
-                                      std::mt19937& rng);
+                                      std::mt19937& rng,
+                                      bool include_gender = false);
 
 /// Copies a selection onto an AppearanceComponent and marks it dirty for cache rebuild.
 void applySelectionToComponent(const AppearanceSelection& selection,

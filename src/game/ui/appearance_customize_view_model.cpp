@@ -33,6 +33,9 @@ namespace {
     if (slot == "eyes") {
         return "Eyes";
     }
+    if (slot == "gender") {
+        return "Gender";
+    }
     if (slot == "clothes") {
         return "Clothes";
     }
@@ -110,17 +113,21 @@ bool registerAppearanceCustomizeDataTypes(Rml::DataModelConstructor& constructor
 
 AppearanceSlotViewModels buildAppearanceSlotViewModels(const game::data::AppearanceCatalog& catalog,
                                                        const game::scene::AppearanceSelection& selection,
-                                                       const game::runtime::LocalizationService* localization) {
+                                                       const game::runtime::LocalizationService* localization,
+                                                       const bool include_gender) {
     AppearanceSlotViewModels view_models;
-    const auto slots = game::scene::runtimeAppearanceSlots(catalog);
+    const auto slots = game::scene::appearanceControlSlots(catalog, include_gender);
     view_models.reserve(slots.size());
 
     for (std::size_t index = 0; index < slots.size(); ++index) {
         const auto& slot = slots[index];
-        const auto& variants = catalog.variantsForSlot(slot);
+        const auto& variants = slot == "gender" ? catalog.genderVariants() : catalog.variantsForSlot(slot);
         const auto current_it = selection.slot_variants.find(slot);
-        const std::string_view current_variant =
-            current_it == selection.slot_variants.end() ? std::string_view{} : std::string_view(current_it->second);
+        const std::string_view current_variant = slot == "gender"
+                                                     ? std::string_view(selection.gender)
+                                                     : (current_it == selection.slot_variants.end()
+                                                            ? std::string_view{}
+                                                            : std::string_view(current_it->second));
         const std::size_t current_index = variantIndex(variants, current_variant);
         const std::string resolved_variant = variants.empty() ? std::string{} : variants[current_index];
         const std::string index_label = variants.empty()

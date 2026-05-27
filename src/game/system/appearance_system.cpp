@@ -4,6 +4,7 @@
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/events.h"
 #include "game/system/appearance_layer_cache_builder.h"
 
 #include <entt/entity/registry.hpp>
@@ -66,6 +67,7 @@ void AppearanceSystem::rebuildLayerCache(entt::entity entity) {
     auto** resource_manager_ptr = registry_.ctx().find<engine::resource::ResourceManager*>();
     engine::resource::ResourceManager* resource_manager = resource_manager_ptr ? *resource_manager_ptr : nullptr;
     AppearanceLayerCacheBuilder::rebuild(registry_, entity, catalog_, resource_manager);
+    dispatcher_.trigger(game::defs::AppearanceChangedEvent{entity});
 }
 
 } // namespace game::system

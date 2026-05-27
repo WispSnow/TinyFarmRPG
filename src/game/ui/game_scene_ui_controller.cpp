@@ -2,6 +2,7 @@
 
 #include "engine/core/context.h"
 #include "engine/render/camera.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_screen_fade.h"
 #include "game/component/hotbar_component.h"
 #include "game/component/tags.h"
@@ -15,6 +16,7 @@
 #include "game/ui/floating_notice_view.h"
 #include "game/ui/hotbar_ui.h"
 #include "game/ui/item_tooltip_ui.h"
+#include "game/ui/player_portrait_service.h"
 #include "game/ui/time_clock_hud.h"
 
 #include <entt/entity/registry.hpp>
@@ -27,11 +29,13 @@ GameSceneUiController::GameSceneUiController(engine::core::Context& context,
                                              entt::registry& registry,
                                              uint64_t scene_instance_id,
                                              game::data::ItemCatalog* item_catalog,
+                                             const game::data::AppearanceCatalog* appearance_catalog,
                                              const game::data::RpgCatalog* rpg_catalog)
     : context_(context),
       registry_(registry),
       scene_instance_id_(scene_instance_id),
       item_catalog_(item_catalog),
+      appearance_catalog_(appearance_catalog),
       rpg_catalog_(rpg_catalog) {
 }
 
@@ -67,6 +71,21 @@ bool GameSceneUiController::init() {
     dialogue_box_ = std::make_unique<game::ui::DialogueBoxView>(context_, scene_instance_id_);
     floating_notices_[0] = std::make_unique<game::ui::FloatingNoticeView>(context_, scene_instance_id_);
     floating_notices_[1] = std::make_unique<game::ui::FloatingNoticeView>(context_, scene_instance_id_);
+    const entt::entity player = findPlayerEntity();
+    if (appearance_catalog_ && player != entt::null) {
+        player_portrait_service_ = std::make_unique<game::ui::PlayerPortraitService>(
+            context_.getDispatcher(),
+            registry_,
+            rml_runtime->generatedImages(),
+            *appearance_catalog_,
+            player,
+            "generated://player-portrait/" + std::to_string(scene_instance_id_));
+        if (auto** current = registry_.ctx().find<game::ui::PlayerPortraitService*>()) {
+            *current = player_portrait_service_.get();
+        } else {
+            registry_.ctx().emplace<game::ui::PlayerPortraitService*>(player_portrait_service_.get());
+        }
+    }
     dialogue_controller_ = std::make_unique<game::ui::DialoguePresentationController>(
         context_.getDispatcher(),
         registry_,
@@ -74,10 +93,13 @@ bool GameSceneUiController::init() {
         floating_notices_[0].get(),
         floating_notices_[1].get(),
         hotbar_ui_.get(),
-        rpg_catalog_);
+        rpg_catalog_,
+        glm::vec2{0.0F, -4.0F},
+        glm::vec2{0.0F, -56.0F},
+        player_portrait_service_.get());
 
     hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
-    if (const entt::entity player = findPlayerEntity(); player != entt::null) {
+    if (player != entt::null) {
         hotbar_ui_->setTarget(player);
     }
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
@@ -128,6 +150,12 @@ void GameSceneUiController::clean() {
     }
     hotbar_ui_.reset();
     item_tooltip_ui_.reset();
+    if (auto** current = registry_.ctx().find<game::ui::PlayerPortraitService*>()) {
+        if (*current == player_portrait_service_.get()) {
+            registry_.ctx().erase<game::ui::PlayerPortraitService*>();
+        }
+    }
+    player_portrait_service_.reset();
     screen_fade_ = nullptr;
     rml_screen_fade_.reset();
 }

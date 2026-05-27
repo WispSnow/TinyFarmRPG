@@ -5,9 +5,19 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
+#include <algorithm>
+
+#ifndef PROJECT_SOURCE_DIR
+#define PROJECT_SOURCE_DIR "."
+#endif
 
 namespace game::data {
 namespace {
+
+std::filesystem::path projectPath(std::string_view relative_path) {
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_path).lexically_normal();
+}
 
 std::filesystem::path createCatalogFixture() {
     const auto temp_root = game::test::createUniqueTempDir("appearance_catalog_fixture");
@@ -113,6 +123,104 @@ TEST(AppearanceCatalogTest, RejectsUnknownActionOrVariant) {
 
     EXPECT_FALSE(catalog.resolveLayerTexture("unknown_action", "hair", "Standard/Brown", "male").has_value());
     EXPECT_FALSE(catalog.resolveLayerTexture("idle", "hair", "NotExists/Variant", "male").has_value());
+}
+
+TEST(AppearanceCatalogTest, ProjectCatalogResolvesNewMappedAccessoryVariants) {
+    AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+
+    const auto& acc_variants = catalog.variantsForSlot("acc");
+    EXPECT_NE(std::find(acc_variants.begin(), acc_variants.end(), "Pirate eyepatch"), acc_variants.end());
+    EXPECT_NE(std::find(acc_variants.begin(), acc_variants.end(), "Santa Hat"), acc_variants.end());
+    EXPECT_EQ(std::find(acc_variants.begin(), acc_variants.end(), "Beret"), acc_variants.end());
+
+    for (const auto& [action_key, _] : catalog.actionDirs()) {
+        if (!catalog.isSlotAvailableForAction(action_key, "acc")) {
+            continue;
+        }
+        EXPECT_TRUE(catalog.resolveLayerTexture(action_key, "acc", "Pirate eyepatch", "male").has_value())
+            << action_key;
+        EXPECT_TRUE(catalog.resolveLayerTexture(action_key, "acc", "Santa Hat", "male").has_value())
+            << action_key;
+    }
+}
+
+TEST(AppearanceCatalogTest, ProjectCatalogResolvesEveryRuntimeVariantForCharacterActions) {
+    AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+
+    for (const auto& slot : catalog.layerOrder()) {
+        if (!catalog.isRuntimeSwitchableSlot(slot)) {
+            continue;
+        }
+        for (const auto& variant : catalog.variantsForSlot(slot)) {
+            if (variant == "none") {
+                continue;
+            }
+            for (const auto& gender : catalog.genderVariants()) {
+                for (const auto& [action_key, _] : catalog.actionDirs()) {
+                    if (!catalog.isSlotAvailableForAction(action_key, slot)) {
+                        continue;
+                    }
+                    EXPECT_TRUE(catalog.resolveLayerTexture(action_key, slot, variant, gender).has_value())
+                        << "action=" << action_key << " slot=" << slot << " variant=" << variant
+                        << " gender=" << gender;
+                }
+            }
+        }
+    }
+}
+
+TEST(AppearanceCatalogTest, ProjectCatalogResolvesPortraitLayerMappings) {
+    AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("skin", "1", "male").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("skin", "1", "female").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("ears", "Human/1", "male").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("ears", "Elf/1", "male").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("clothes", "Farm/Blue", "female").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("hair", "Standard/Brown", "male").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("acc", "Pirate eyepatch", "male").has_value());
+    EXPECT_TRUE(catalog.resolvePortraitLayerTexture("acc", "Santa Hat", "male").has_value());
+}
+
+TEST(AppearanceCatalogTest, ProjectCatalogResolvesEveryRuntimeVariantForPortraitLayers) {
+    AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+
+    for (const auto& gender : catalog.genderVariants()) {
+        for (const auto& variant : catalog.variantsForSlot("skin")) {
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("skin", variant, gender).has_value())
+                << "skin=" << variant << " gender=" << gender;
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("ears", "Human/" + variant, gender).has_value())
+                << "human ears for skin=" << variant << " gender=" << gender;
+        }
+        for (const auto& variant : catalog.variantsForSlot("clothes")) {
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("clothes", variant, gender).has_value())
+                << "clothes=" << variant << " gender=" << gender;
+        }
+        for (const auto& variant : catalog.variantsForSlot("eyes")) {
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("eyes", variant, gender).has_value())
+                << "eyes=" << variant << " gender=" << gender;
+        }
+        for (const auto& variant : catalog.variantsForSlot("hair")) {
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("hair", variant, gender).has_value())
+                << "hair=" << variant << " gender=" << gender;
+        }
+        for (const auto& variant : catalog.variantsForSlot("acc")) {
+            if (variant == "none") {
+                continue;
+            }
+            if (variant.rfind("Elf/", 0) == 0) {
+                EXPECT_TRUE(catalog.resolvePortraitLayerTexture("ears", variant, gender).has_value())
+                    << "elf ears=" << variant << " gender=" << gender;
+                continue;
+            }
+            EXPECT_TRUE(catalog.resolvePortraitLayerTexture("acc", variant, gender).has_value())
+                << "acc=" << variant << " gender=" << gender;
+        }
+    }
 }
 
 } // namespace

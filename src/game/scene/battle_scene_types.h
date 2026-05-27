@@ -26,6 +26,10 @@ namespace game::runtime {
 class UserSettingsService;
 }
 
+namespace game::ui {
+class PlayerPortraitService;
+}
+
 namespace game::scene {
 
 struct AppearanceSnapshot {
@@ -52,6 +56,7 @@ struct BattleScenePresentationOptions {
     std::string battle_background_id{};
     BattleEnemyHpBarConfig enemy_hp_bar_config{};
     game::runtime::UserSettingsService* user_settings_service{nullptr};
+    const game::ui::PlayerPortraitService* player_portrait_service{nullptr};
 };
 
 } // namespace game::scene

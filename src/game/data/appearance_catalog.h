@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <cstddef>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -43,6 +44,9 @@ public:
     [[nodiscard]] const AppearanceProfile* defaultProfile() const;
 
     [[nodiscard]] const std::vector<std::string>& layerOrder() const { return layer_order_; }
+    [[nodiscard]] const std::vector<std::string>& selectionOrder() const { return selection_order_; }
+    [[nodiscard]] const std::vector<std::string>& genderVariants() const { return gender_variants_; }
+    [[nodiscard]] const std::vector<std::string>& portraitLayerOrder() const { return portrait_layer_order_; }
     [[nodiscard]] const std::unordered_map<std::string, std::string>& actionDirs() const { return action_dirs_; }
     [[nodiscard]] const std::unordered_map<std::string, std::string>& slotDirs() const { return slot_dirs_; }
 
@@ -58,6 +62,9 @@ public:
                                                                   std::string_view slot,
                                                                   std::string_view variant,
                                                                   std::string_view gender) const;
+    [[nodiscard]] std::optional<LayerTexture> resolvePortraitLayerTexture(std::string_view layer,
+                                                                          std::string_view variant,
+                                                                          std::string_view gender) const;
 
     [[nodiscard]] std::vector<std::string> collectPreloadTexturePaths(
         const AppearanceProfile& profile,
@@ -80,10 +87,21 @@ private:
                                                                  std::string_view slot,
                                                                  std::string_view variant,
                                                                  std::string_view gender) const;
+    [[nodiscard]] std::optional<std::string> resolveTexturePathFromBase(const std::filesystem::path& base_path,
+                                                                        std::string_view alias_scope,
+                                                                        std::string_view slot,
+                                                                        std::string_view variant) const;
+    [[nodiscard]] std::vector<std::string> variantPathCandidates(std::string_view alias_scope,
+                                                                  std::string_view slot,
+                                                                  std::string_view variant) const;
 
     std::string texture_root_{};
+    std::string portrait_texture_root_{};
     std::string default_profile_id_{};
     std::vector<std::string> layer_order_{};
+    std::vector<std::string> selection_order_{};
+    std::vector<std::string> gender_variants_{"male", "female"};
+    std::vector<std::string> portrait_layer_order_{"skin", "ears", "clothes", "eyes", "hair", "acc"};
     std::unordered_map<std::string, std::string> slot_dirs_{};
     std::unordered_map<std::string, std::string> action_dirs_{};
     std::unordered_map<std::string, ActionLayoutConfig> action_layouts_{};
@@ -92,6 +110,10 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> slot_variants_{};
     std::unordered_set<std::string> runtime_switchable_slots_{};
     std::unordered_map<std::string, std::string> weapon_action_variants_{};
+    std::unordered_map<std::string,
+                       std::unordered_map<std::string,
+                                          std::unordered_map<std::string, std::vector<std::string>>>>
+        variant_path_aliases_{};
 };
 
 } // namespace game::data

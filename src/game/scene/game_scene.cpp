@@ -51,6 +51,7 @@
 #include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
 #include "game/ui/menu_tab_content.h"
+#include "game/ui/player_portrait_service.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
 #include "engine/vfx/vfx_service.h"
@@ -669,6 +670,7 @@ bool GameScene::initUI() {
         registry_,
         instance_id_,
         services_ ? services_->item_catalog.get() : nullptr,
+        services_ ? services_->appearance_catalog.get() : nullptr,
         services_ ? services_->rpg_catalog.get() : nullptr);
     if (!ui_controller_ || !ui_controller_->init()) {
         spdlog::error("GameScene: 创建 GameSceneUiController 失败。");
@@ -883,6 +885,9 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         presentation_options.appearance_catalog = services_->appearance_catalog.get();
         presentation_options.vfx_service = services_->vfx_service.get();
         presentation_options.user_settings_service = services_->user_settings_service.get();
+    }
+    if (auto** portrait_service = registry_.ctx().find<game::ui::PlayerPortraitService*>()) {
+        presentation_options.player_portrait_service = *portrait_service;
     }
 
     playBattleMusicCue();

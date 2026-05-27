@@ -9,6 +9,7 @@
 #include "game/factory/blueprint_manager.h"
 #include "game/scene/game_scene_reward_feedback.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_portrait_service.h"
 #include "game/ui/rml_item_icon_helpers.h"
 
 #include <RmlUi/Core/Types.h>
@@ -61,9 +62,13 @@ struct BattleEnemyIconDescriptor {
     return "normal";
 }
 
-[[nodiscard]] Rml::String portraitDecoratorForUnit(const game::battle::BattleUnit& unit) {
+[[nodiscard]] Rml::String portraitDecoratorForUnit(const game::battle::BattleUnit& unit,
+                                                   const game::ui::PlayerPortraitService* player_portrait_service) {
     if (unit.source_actor_id) {
         if (*unit.source_actor_id == game::defs::kDefaultPlayerActorId) {
+            if (player_portrait_service && player_portrait_service->ready()) {
+                return player_portrait_service->decoratorString(game::ui::PortraitImageKind::Standard64);
+            }
             return "image(portrait-player)";
         }
         if (*unit.source_actor_id == "actor.lyria") {
@@ -89,9 +94,14 @@ struct BattleEnemyIconDescriptor {
     return "none";
 }
 
-[[nodiscard]] Rml::String battlePartyPortraitDecoratorForUnit(const game::battle::BattleUnit& unit) {
+[[nodiscard]] Rml::String battlePartyPortraitDecoratorForUnit(
+    const game::battle::BattleUnit& unit,
+    const game::ui::PlayerPortraitService* player_portrait_service) {
     if (unit.source_actor_id) {
         if (*unit.source_actor_id == game::defs::kDefaultPlayerActorId) {
+            if (player_portrait_service && player_portrait_service->ready()) {
+                return player_portrait_service->decoratorString(game::ui::PortraitImageKind::Battle48);
+            }
             return "image(battle-party-portrait-player)";
         }
         if (*unit.source_actor_id == "actor.lyria") {
@@ -114,7 +124,7 @@ struct BattleEnemyIconDescriptor {
         }
     }
 
-    return portraitDecoratorForUnit(unit);
+    return portraitDecoratorForUnit(unit, player_portrait_service);
 }
 
 [[nodiscard]] Rml::String turnOrderFallbackLabel(const game::battle::BattleSide side, const std::size_t side_index) {
@@ -263,10 +273,12 @@ namespace game::scene {
 BattleViewModelBuilder::BattleViewModelBuilder(const game::data::RpgCatalog* rpg_catalog,
                                                const game::data::ItemCatalog* item_catalog,
                                                const game::factory::BlueprintManager* blueprint_manager,
+                                               const game::ui::PlayerPortraitService* player_portrait_service,
                                                const game::runtime::LocalizationService* localization)
     : rpg_catalog_(rpg_catalog),
       item_catalog_(item_catalog),
       blueprint_manager_(blueprint_manager),
+      player_portrait_service_(player_portrait_service),
       localization_(localization) {
 }
 
@@ -297,7 +309,7 @@ std::vector<BattleTurnOrderEntryViewModel> BattleViewModelBuilder::buildTurnOrde
         const auto& unit = *unit_ptr;
         const bool enemy = unit.side == game::battle::BattleSide::Enemy;
         const std::size_t side_index = enemy ? enemy_index++ : player_index++;
-        Rml::String portrait_decorator = portraitDecoratorForUnit(unit);
+        Rml::String portrait_decorator = portraitDecoratorForUnit(unit, player_portrait_service_);
         Rml::String badge_label{};
         if (enemy) {
             const BattleEnemyIconDescriptor icon =
@@ -350,7 +362,7 @@ BattlePartyHudViewModels BattleViewModelBuilder::buildPartyHud(const game::battl
             .mp_text = makeRmlString(std::to_string(std::max(0, unit.mp)) + "/" + std::to_string(std::max(0, unit.max_mp))),
             .hp_ratio_percent = ratioPercentString(unit.hp, unit.max_hp),
             .mp_ratio_percent = ratioPercentString(unit.mp, unit.max_mp),
-            .portrait_decorator = battlePartyPortraitDecoratorForUnit(unit),
+            .portrait_decorator = battlePartyPortraitDecoratorForUnit(unit, player_portrait_service_),
             .active = current_actor_id.has_value() && *current_actor_id == unit.id,
             .ko = !unit.isAlive()
         });

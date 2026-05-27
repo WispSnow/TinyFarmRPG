@@ -16,6 +16,9 @@
 
     <div id="appearance-preview-frame">
         <div id="appearance-preview-label" data-i18n="appearance.preview">Preview</div>
+        <img id="appearance-portrait-preview"
+             data-if="portrait_src != ''"
+             data-attr-src="portrait_src"/>
     </div>
 
     <div id="appearance-panel">

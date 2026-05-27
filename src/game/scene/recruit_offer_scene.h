@@ -42,9 +42,7 @@ class RecruitOfferScene final : public engine::scene::Scene {
     Rml::String speaker_text_{};
     Rml::String offer_text_{};
     Rml::String actor_name_{};
-    bool portrait_player_{false};
-    bool portrait_lyria_{false};
-    bool portrait_tori_{false};
+    Rml::String portrait_decorator_{"none"};
 
 public:
     RecruitOfferScene(std::string_view name,

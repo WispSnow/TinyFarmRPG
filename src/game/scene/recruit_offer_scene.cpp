@@ -6,6 +6,7 @@
 #include "game/defs/party_ids.h"
 #include "game/runtime/service_lookup.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_portrait_service.h"
 
 #include "engine/component/name_component.h"
 #include "engine/core/context.h"
@@ -120,9 +121,7 @@ bool RecruitOfferScene::initUI() {
     constructor.Bind("speaker_text", &speaker_text_);
     constructor.Bind("offer_text", &offer_text_);
     constructor.Bind("actor_name", &actor_name_);
-    constructor.Bind("portrait_player", &portrait_player_);
-    constructor.Bind("portrait_lyria", &portrait_lyria_);
-    constructor.Bind("portrait_tori", &portrait_tori_);
+    constructor.Bind("portrait_decorator", &portrait_decorator_);
 
     if (!document_controller_.bindSimpleEvent(constructor, "accept", [this] { onAccept(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "decline", [this] { onDecline(); })) {
@@ -165,9 +164,22 @@ void RecruitOfferScene::refreshBindings() {
         {{"actor", name}},
         [&name] { return "Invite " + name + " to join the party?"; }));
 
-    portrait_player_ = actor_.id_ == game::defs::kDefaultPlayerActorId;
-    portrait_lyria_ = actor_.id_ == "actor.lyria";
-    portrait_tori_ = actor_.id_ == "actor.tori";
+    const bool portrait_player = actor_.id_ == game::defs::kDefaultPlayerActorId;
+    const bool portrait_lyria = actor_.id_ == "actor.lyria";
+    const bool portrait_tori = actor_.id_ == "actor.tori";
+    portrait_decorator_ = "none";
+    if (portrait_player) {
+        if (auto** service_ptr = registry_.ctx().find<game::ui::PlayerPortraitService*>();
+            service_ptr && *service_ptr && (*service_ptr)->ready()) {
+            portrait_decorator_ = makeRmlString((*service_ptr)->decoratorString(game::ui::PortraitImageKind::Standard64));
+        } else {
+            portrait_decorator_ = "image(portrait-player)";
+        }
+    } else if (portrait_lyria) {
+        portrait_decorator_ = "image(portrait-lyria)";
+    } else if (portrait_tori) {
+        portrait_decorator_ = "image(portrait-tori)";
+    }
 }
 
 void RecruitOfferScene::focusDefaultAction() {
@@ -191,6 +203,7 @@ void RecruitOfferScene::onLanguageChanged(const game::defs::LanguageChangedEvent
     document_controller_.markDirty("speaker_text");
     document_controller_.markDirty("offer_text");
     document_controller_.markDirty("actor_name");
+    document_controller_.markDirty("portrait_decorator");
 }
 
 void RecruitOfferScene::onAccept() {

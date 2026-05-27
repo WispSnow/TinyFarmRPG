@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/defs/events_appearance.h"
 #include "game/defs/events_battle.h"
 #include "game/defs/events_dialogue.h"
 #include "game/defs/events_equipment.h"

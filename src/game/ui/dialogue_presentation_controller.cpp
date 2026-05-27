@@ -6,7 +6,10 @@
 #include "game/component/recruitable_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
+#include "game/defs/party_ids.h"
+#include "game/ui/player_portrait_service.h"
 
+#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 
@@ -38,14 +41,16 @@ DialoguePresentationController::DialoguePresentationController(entt::dispatcher&
                                                                HotbarVisibilityPort* hotbar_ui,
                                                                const game::data::RpgCatalog* rpg_catalog,
                                                                glm::vec2 notice_offset,
-                                                               glm::vec2 item_notice_offset)
+                                                               glm::vec2 item_notice_offset,
+                                                               const PlayerPortraitService* player_portrait_service)
     : dispatcher_(dispatcher),
       registry_(registry),
       conversation_box_(conversation_box),
       hotbar_ui_(hotbar_ui),
       notice_slot_{.view = notice_view, .screen_offset = notice_offset},
       item_notice_slot_{.view = item_notice_view, .screen_offset = item_notice_offset},
-      rpg_catalog_(rpg_catalog) {
+      rpg_catalog_(rpg_catalog),
+      player_portrait_service_(player_portrait_service) {
     buildPortraitCache();
     dispatcher_.sink<game::defs::DialogueShowEvent>().connect<&DialoguePresentationController::onShow>(this);
     dispatcher_.sink<game::defs::DialogueMoveEvent>().connect<&DialoguePresentationController::onMove>(this);
@@ -197,7 +202,20 @@ glm::vec2 DialoguePresentationController::noticeAnchor(const entt::entity target
 }
 
 std::string DialoguePresentationController::resolvePortraitDecorator(const game::defs::DialogueShowEvent& evt) const {
+    const auto dynamic_player_portrait = [this]() -> std::string {
+        if (player_portrait_service_ && player_portrait_service_->ready()) {
+            return player_portrait_service_->decoratorString(game::ui::PortraitImageKind::Standard64);
+        }
+        return std::string{NONE_DECORATOR};
+    };
+
     if (evt.speaker_actor_id_hash != entt::null) {
+        if (evt.speaker_actor_id_hash == entt::hashed_string{game::defs::kDefaultPlayerActorId.data()}.value()) {
+            const std::string decorator = dynamic_player_portrait();
+            if (decorator != NONE_DECORATOR) {
+                return decorator;
+            }
+        }
         if (const auto it = portrait_by_actor_id_hash_.find(evt.speaker_actor_id_hash);
             it != portrait_by_actor_id_hash_.end()) {
             return it->second;

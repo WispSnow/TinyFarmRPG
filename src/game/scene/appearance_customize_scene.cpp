@@ -11,6 +11,8 @@
 #include "engine/render/camera.h"
 #include "engine/render/renderer.h"
 #include "engine/resource/resource_manager.h"
+#include "engine/ui/rmlui/rml_ui_runtime.h"
+#include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/options_events.h"
@@ -51,9 +53,9 @@ constexpr engine::render::NineSliceMargins MENU_PANEL_MARGINS{
 };
 const engine::utils::Rect MENU_PANEL_SCREEN_RECT{{30.0f, 26.0f}, {580.0f, 308.0f}};
 // Tuned against #appearance-preview-frame in appearance_customize.rcss. The transform
-// position is the sprite pivot, so Y sits below the frame's geometric center.
-constexpr float PREVIEW_SCREEN_PIVOT_X = 152.0f;
-constexpr float PREVIEW_SCREEN_PIVOT_Y = 238.0f;
+// position is the sprite pivot; keep the idle preview left/up of the portrait overlay.
+constexpr float PREVIEW_SCREEN_PIVOT_X = 122.0f;
+constexpr float PREVIEW_SCREEN_PIVOT_Y = 214.0f;
 constexpr float PREVIEW_SIZE_PX = 160.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
 constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;
@@ -216,7 +218,7 @@ bool AppearanceCustomizeScene::init() {
         return false;
     }
 
-    runtime_slots_ = runtimeAppearanceSlots(*catalog_);
+    runtime_slots_ = appearanceControlSlots(*catalog_, mode_ == Mode::NewGame);
     if (mode_ == Mode::Closet && game_registry_ && game_registry_->valid(player_)) {
         if (const auto* appearance = game_registry_->try_get<game::component::AppearanceComponent>(player_)) {
             original_selection_ = makeSelectionFromComponent(*appearance, *catalog_);
@@ -333,9 +335,11 @@ bool AppearanceCustomizeScene::initUI() {
     }
 
     syncSlotViewModels(false);
+    syncPortraitPreview(false);
     if (!constructor.Bind("slots", &slot_view_models_) ||
         !constructor.Bind("title_text", &title_text_) ||
-        !constructor.Bind("subtitle_text", &subtitle_text_)) {
+        !constructor.Bind("subtitle_text", &subtitle_text_) ||
+        !constructor.Bind("portrait_src", &portrait_src_)) {
         spdlog::error("AppearanceCustomizeScene: 绑定 data model 变量失败。");
         document_controller_.unload();
         return false;
@@ -444,6 +448,8 @@ void AppearanceCustomizeScene::restoreSceneLighting() {
 }
 
 void AppearanceCustomizeScene::shutdownUI() {
+    portrait_preview_registration_.reset();
+    portrait_src_.clear();
     document_controller_.unload();
 }
 
@@ -483,9 +489,40 @@ void AppearanceCustomizeScene::syncSlotViewModels(bool mark_dirty) {
     if (!catalog_) {
         return;
     }
-    slot_view_models_ = game::ui::buildAppearanceSlotViewModels(*catalog_, draft_selection_, localization());
+    slot_view_models_ = game::ui::buildAppearanceSlotViewModels(
+        *catalog_,
+        draft_selection_,
+        localization(),
+        mode_ == Mode::NewGame);
     if (mark_dirty) {
         document_controller_.markDirty("slots");
+    }
+}
+
+void AppearanceCustomizeScene::syncPortraitPreview(bool mark_dirty) {
+    auto* runtime = context_.getRmlUi();
+    if (!runtime || !catalog_) {
+        return;
+    }
+
+    portrait_preview_registration_.reset();
+    portrait_src_.clear();
+    auto images = portrait_builder_.build(*catalog_, draft_selection_);
+    if (images.valid()) {
+        const std::string source_uri =
+            "generated://appearance-preview/" + std::to_string(instanceId()) + "/" + images.selection_key;
+        auto registration = runtime->generatedImages().registerImage(
+            source_uri,
+            std::move(images.standard64),
+            engine::ui::rmlui::RmlUiTextureFilterMode::Nearest);
+        if (registration.valid()) {
+            portrait_src_ = makeRmlString(source_uri);
+            portrait_preview_registration_ = std::move(registration);
+        }
+    }
+
+    if (mark_dirty) {
+        document_controller_.markDirty("portrait_src");
     }
 }
 
@@ -538,19 +575,26 @@ void AppearanceCustomizeScene::onSlotStep(int slot_index, int direction) {
     if (slot_index < 0 || static_cast<std::size_t>(slot_index) >= runtime_slots_.size() || !catalog_) {
         return;
     }
-    if (!stepAppearanceSlot(draft_selection_, *catalog_, runtime_slots_[static_cast<std::size_t>(slot_index)], direction)) {
+    if (!stepAppearanceControl(
+            draft_selection_,
+            *catalog_,
+            runtime_slots_[static_cast<std::size_t>(slot_index)],
+            direction,
+            mode_ == Mode::NewGame)) {
         return;
     }
     syncSlotViewModels();
     rebuildPreviewCache();
+    syncPortraitPreview();
 }
 
 void AppearanceCustomizeScene::onRandomize() {
-    if (!catalog_ || !randomizeSelection(draft_selection_, *catalog_, rng_)) {
+    if (!catalog_ || !randomizeSelection(draft_selection_, *catalog_, rng_, mode_ == Mode::NewGame)) {
         return;
     }
     syncSlotViewModels();
     rebuildPreviewCache();
+    syncPortraitPreview();
 }
 
 void AppearanceCustomizeScene::onReset() {
@@ -559,6 +603,7 @@ void AppearanceCustomizeScene::onReset() {
     }
     syncSlotViewModels();
     rebuildPreviewCache();
+    syncPortraitPreview();
 }
 
 void AppearanceCustomizeScene::onConfirm() {
