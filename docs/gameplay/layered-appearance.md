@@ -170,7 +170,7 @@ classDiagram
         +map~string,string~ slot_variants_
         +bool dirty_
     }
-    note for AppearanceComponent "Game 层：逻辑状态\n记录当前每个槽位选了什么变体"
+    note for AppearanceComponent "Game 层：逻辑状态<br/>记录当前每个槽位选了什么变体"
 
     class LayeredSpriteComponent {
         +bool enabled_
@@ -194,7 +194,7 @@ classDiagram
         +vector~uint16~ source_frame_index_by_runtime_frame_
         +bool use_animation_flip_
     }
-    note for LayeredAnimationLayout "Engine 层：纯渲染数据\nRenderSystem 唯一数据源"
+    note for LayeredAnimationLayout "Engine 层：纯渲染数据<br/>RenderSystem 唯一数据源"
 
     LayeredSpriteComponent "1" *-- "*" LayeredSpriteLayer
     LayeredSpriteLayer "1" *-- "*" LayeredAnimationLayout

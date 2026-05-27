@@ -1,6 +1,6 @@
 # C++ 绑定 Lua 教程：以 TinyFarm ScriptHost 为例
 
-本文档以 FND-006 的实际代码为素材，从零讲解 C++ 如何通过 Sol2 与 Lua 交互。
+本文档以当前 TinyFarm 脚本宿主为素材，从零讲解 C++ 如何通过 Sol2 与 Lua 交互。
 
 > 如果你的目标是“写游戏内容脚本”，例如新增 NPC 对话、任务分支、招募对白、商店预设、地图触发或战斗回调，请先读 [Lua 内容编写指南](lua-content-authoring.md)。本文更偏 C++ 绑定实现与测试策略。
 
@@ -32,7 +32,7 @@
 ├─────────────────────────────────────────────┤
 │  Lua C库   (lua_static, 从 .c 编译)          │   ← Lua 虚拟机本体
 ├─────────────────────────────────────────────┤
-│  你的 C++  (ScriptHost, ScriptBindings)      │   ← 游戏逻辑
+│  你的 C++  (ScriptHost, TinyFarmScriptModule)│   ← 游戏逻辑
 └─────────────────────────────────────────────┘
 ```
 
@@ -49,7 +49,7 @@
 `sol::state` 是对 `lua_State*` 的 RAII 封装。它在构造时创建 Lua 虚拟机，析构时销毁。
 
 ```cpp
-// script_host.h
+// engine/script/script_host.h
 class ScriptHost final {
     sol::state lua_;   // ← 拥有一个完整的 Lua 虚拟机
     // ...
@@ -61,7 +61,7 @@ class ScriptHost final {
 Lua 虚拟机刚创建时是"空白"的——连 `print`、`string.format` 都没有。需要手动加载标准库：
 
 ```cpp
-// script_host.cpp — init()
+// engine/script/script_host.cpp — init()
 lua_.open_libraries(
     sol::lib::base,     // print, assert, type, pairs ...
     sol::lib::math,     // math.floor, math.random ...
@@ -116,21 +116,20 @@ Sol2 自动处理了这些事情：
 如果所有函数都注册在全局空间，脚本会很混乱。Sol2 用 `sol::table` 来模拟命名空间：
 
 ```cpp
-// script_bindings.cpp — bindScriptAPI()
+// game/script/tinyfarm_script_module.cpp — installTinyFarmScriptModule()
 
 // 创建顶层命名空间 "tf"
-sol::table tf = lua.create_named_table("tf");
+sol::table tf_impl = lua.create_table();
 
 // 创建子表 "time"
-sol::table time_api = lua.create_table();
-time_api.set_function("day", [&registry]() -> std::uint32_t {
-    const auto* game_time = registry.ctx().find<game::data::GameTime>();
-    return game_time ? game_time->day_ : 0u;
-});
-time_api.set_function("hour", [&registry]() -> float { /* ... */ });
+auto api = std::make_shared<game::script::ScriptGameApi>(host, registry, dispatcher);
+sol::table time_impl = lua.create_table();
+time_impl.set_function("day", [api]() -> std::uint32_t { return api->day(); });
+time_impl.set_function("hour", [api]() -> float { return api->hour(); });
 
 // 将子表挂到命名空间
-tf["time"] = time_api;
+tf_impl["time"] = engine::script::createReadOnlyProxy(lua, time_impl, "tf.time");
+lua["tf"] = engine::script::createReadOnlyProxy(lua, tf_impl, "tf");
 ```
 
 这样在 Lua 中就有了层次化的 API：
@@ -682,11 +681,17 @@ end
 | 文件 | 职责 |
 |------|------|
 | `cmake/ScriptingDependencies.cmake` | Lua/Sol2 依赖管理（构建 or 下载） |
-| `src/game/script/script_host.h` | ScriptHost 类声明 |
-| `src/game/script/script_host.cpp` | 虚拟机生命周期管理、脚本加载/执行 |
-| `src/game/script/script_bindings.h` | 绑定函数声明 |
-| `src/game/script/script_bindings.cpp` | 所有 C++ → Lua 绑定的注册 |
+| `src/engine/script/script_host.h` | `ScriptHost` 类声明、脚本句柄与模块加载入口 |
+| `src/engine/script/script_host.cpp` | 虚拟机生命周期管理、脚本加载/执行、安全边界、事件回调与延迟命令 |
+| `src/engine/script/script_entity_handle.h` | Lua 可持有的实体句柄与 scene token 校验 |
+| `src/engine/script/script_module.h` | 可注入脚本模块的 installer 类型 |
+| `src/game/script/tinyfarm_script_module.h/.cpp` | 安装 `tf.*` API、注册 `ScriptEntityHandle` usertype、创建只读 API proxy |
+| `src/game/script/script_game_api.h/.cpp` | `tf.*` 背后的游戏查询、command/event 发起与参数校验 |
+| `src/game/script/script_event_bridge.h/.cpp` | C++ 事件转 Lua payload，再发给 `tf.event` / `tf.callbacks` |
+| `src/game/runtime/script_runtime_factory.h/.cpp` | 把 TinyFarm 脚本模块 installer 注入 `ScriptHost` |
 | `scripts/bootstrap.lua` | 运行时启动脚本示例 |
 | `tests/game/script_host_smoke_test.cpp` | 绑定正确性测试 |
 | `tests/game/script_host_command_bridge_test.cpp` | 端到端链路测试 |
+| `tests/game/script_event_bridge_test.cpp` | C++ 事件桥接 Lua payload 的测试 |
+| `tests/game/script_phase2_api_test.cpp` | 常用 `tf.*` API 行为测试 |
 | `tests/scripts/test_command.lua` | 测试用 Lua 辅助脚本 |

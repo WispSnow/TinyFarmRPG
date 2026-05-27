@@ -67,14 +67,14 @@ std::for_each(std::execution::par_unseq,
 
 ```mermaid
 graph TD
-    M["主线程"] --> PWS["ParallelWaveScheduler\nThreadPool（4 workers）"]
+    M["主线程"] --> PWS["ParallelWaveScheduler<br/>ThreadPool（4 workers）"]
 
     PWS --> W1["Worker 1: NPCWanderSystem"]
     PWS --> W2["Worker 2: AnimalBehavior"]
     PWS --> W3["Worker 3: DayNightSystem"]
 
-    W1 --> P1["par_unseq → 标准库线程池\n把 20 个实体再分 N 个线程"]
-    W2 --> P2["par_unseq → 又启线程\n把 30 个实体再分 N 个线程"]
+    W1 --> P1["par_unseq → 标准库线程池<br/>把 20 个实体再分 N 个线程"]
+    W2 --> P2["par_unseq → 又启线程<br/>把 30 个实体再分 N 个线程"]
     W3 --> P3["par_unseq → 把 1 个实体分到 N 个线程"]
 
     style P1 fill:#c44,color:#fff
@@ -184,16 +184,16 @@ void npc_wander_tick(entt::basic_view<
 ```mermaid
 graph LR
     subgraph entt["entt 提供（2/8）"]
-        R1["1. 依赖图构建\nentt::flow"]
-        R8["8. DOT 图导出\nentt::dot"]
+        R1["1. 依赖图构建<br/>entt::flow"]
+        R8["8. DOT 图导出<br/>entt::dot"]
     end
 
     subgraph custom["自己实现（6/8）"]
-        R2["2. 波次提取\n拓扑排序分层"]
-        R3["3. 并行执行\n+ 串行回退"]
-        R4["4. DeferredCommands\ndrain"]
-        R5["5. TaskEventBuffer\nflush"]
-        R6["6. ExecutionPolicy\n判断"]
+        R2["2. 波次提取<br/>拓扑排序分层"]
+        R3["3. 并行执行<br/>+ 串行回退"]
+        R4["4. DeferredCommands<br/>drain"]
+        R5["5. TaskEventBuffer<br/>flush"]
+        R6["6. ExecutionPolicy<br/>判断"]
         R7["7. 每任务计时"]
     end
 

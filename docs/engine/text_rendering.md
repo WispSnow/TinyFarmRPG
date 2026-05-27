@@ -49,7 +49,7 @@ TinyFarm 的文本渲染可以用一句话概括：
 
 ```mermaid
 flowchart TD
-  UI["UI Elements\nUILabel / UIButton"] -->|getTextSize / drawUIText| TR["TextRenderer"]
+  UI["UI Elements<br/>UILabel / UIButton"] -->|getTextSize / drawUIText| TR["TextRenderer"]
   World["World/Scene"] -->|drawText| TR
 
   TR -->|"getFont(font_id, size)"| RM["ResourceManager"]
@@ -57,7 +57,7 @@ flowchart TD
 
   TR -->|hb_shape| HB["HarfBuzz"]
   FM -->|FT_Load_Glyph| FT["FreeType"]
-  FM --> Atlas["Glyph Atlas\n(GL textures + UV)"]
+  FM --> Atlas["Glyph Atlas<br/>(GL textures + UV)"]
 
   TR -->|drawUITexture/drawTexture| GLR["GLRenderer"]
   GLR --> FB["Framebuffer"]

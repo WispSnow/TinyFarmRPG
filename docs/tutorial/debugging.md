@@ -12,6 +12,8 @@
 | `release` | Release 优化构建 |
 | `relwithdebinfo` | Release 优化但保留调试符号 |
 
+所有 configure preset 都继承自 `base`，使用 Ninja 生成器，构建目录为 `build/<预设名>`。
+
 ```bash
 # 配置
 cmake --preset <预设名>
@@ -20,8 +22,8 @@ cmake --preset <预设名>
 cmake --build --preset <预设名>
 
 # 可执行文件位置
-./build-<预设名>/TinyFarm-Darwin      # macOS
-./build-<预设名>/TinyFarm-Linux       # Linux
+./build/<预设名>/TinyFarm-Darwin      # macOS
+./build/<预设名>/TinyFarm-Linux       # Linux
 ```
 
 ## AddressSanitizer (ASan)
@@ -30,7 +32,7 @@ cmake --build --preset <预设名>
 
 ```bash
 cmake --preset debug-asan && cmake --build --preset debug-asan
-./build-debug-asan/TinyFarm-Darwin
+./build/debug-asan/TinyFarm-Darwin
 ```
 
 崩溃时 ASan 会自动在终端输出报告，包含文件名和行号：
@@ -45,10 +47,10 @@ cmake --preset debug-asan && cmake --build --preset debug-asan
 
 ```bash
 # 检测内存泄漏（macOS 默认关闭）
-ASAN_OPTIONS=detect_leaks=1 ./build-debug-asan/TinyFarm-Darwin
+ASAN_OPTIONS=detect_leaks=1 ./build/debug-asan/TinyFarm-Darwin
 
 # 崩溃时不立即终止，尽可能多报告错误
-ASAN_OPTIONS=halt_on_error=0 ./build-debug-asan/TinyFarm-Darwin
+ASAN_OPTIONS=halt_on_error=0 ./build/debug-asan/TinyFarm-Darwin
 ```
 
 > **注意**：ASan 不支持 MSVC，且不能与 TSan 同时使用。
@@ -59,7 +61,7 @@ ASAN_OPTIONS=halt_on_error=0 ./build-debug-asan/TinyFarm-Darwin
 
 ```bash
 cmake --preset debug-tsan && cmake --build --preset debug-tsan
-./build-debug-tsan/TinyFarm-Darwin
+./build/debug-tsan/TinyFarm-Darwin
 ```
 
 TSan 检测到竞争时输出示例：
@@ -81,7 +83,7 @@ macOS 自带的调试器，适合交互式定位崩溃。
 ### 基本用法
 
 ```bash
-lldb ./build-debug/TinyFarm-Darwin
+lldb ./build/debug/TinyFarm-Darwin
 (lldb) run                    # 启动程序
 # 崩溃后自动暂停
 (lldb) bt                     # 当前线程调用栈
