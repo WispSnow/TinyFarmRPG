@@ -55,7 +55,7 @@ flowchart TD
 
 ## 3) 回到库存：闭环的“落地点”
 
-农场玩法最终要回到库存闭环（详见 `docs/inventory_hotbar.md`）：
+农场玩法最终要回到库存闭环（详见 `docs/game/inventory_hotbar.md`）：
 
 - **种植成功**：`FarmSystem` 触发 `RemoveItemRequest` 扣种子
 - **收获/拾取**：触发 `AddItemRequest` 把物品放入背包
@@ -76,4 +76,3 @@ flowchart TD
 3. `src/game/system/farm_system.cpp`：锄地/浇水/种植/收获/资源点/掉落
 4. `src/game/system/crop_system.cpp`：DayChangedEvent → 生长推进/贴图更新/湿润层清理
 5. `src/game/system/pickup_system.cpp` + `src/game/system/inventory_system.cpp`：掉落拾取与库存结算
-

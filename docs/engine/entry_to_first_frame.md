@@ -20,20 +20,20 @@ sequenceDiagram
   App->>App: init() (Config/SDL/Renderer/...)
   App->>Ctx: create(...)
   App->>SM: SceneManager(context)
-  App->>Entry: scene_setup_func_(context)\n(emit PushSceneEvent)
+  App->>Entry: scene_setup_func_(context)<br/>(emit PushSceneEvent)
   App->>App: enter loop
-  App->>Input: handleEvents()\nsampleInputEvents()
-  App->>Time: update()\nframe_delta -> accumulator
+  App->>Input: handleEvents()<br/>sampleInputEvents()
+  App->>Time: update()<br/>frame_delta -> accumulator
   loop fixed ticks (0..max_ticks_per_frame)
     App->>Input: dispatchActionCallbacks()
     App->>SM: fixedUpdate(fixed_dt)
     SM->>Scene: init()/switch (pending actions)
     App->>Input: consumeTick()
   end
-  App->>SM: update(frame_dt)\n(frame presentation update)
-  App->>SM: render(alpha)\n(alpha from Time/config)
+  App->>SM: update(frame_dt)<br/>(frame presentation update)
+  App->>SM: render(alpha)<br/>(alpha from Time/config)
   SM->>Scene: render(alpha) (first frame)
-  App->>App: dispatcher.update()\n(render tail, once per render frame)
+  App->>App: dispatcher.update()<br/>(render tail, once per render frame)
 ```
 
 ## 每帧节拍（数据流）
@@ -70,4 +70,4 @@ flowchart TD
 - 回调拿到 `Context` 后，通过 dispatcher 触发 `PushSceneEvent/ReplaceSceneEvent` 把 Scene 交给 `SceneManager` 管理；
 - 这样引擎层不需要知道 `TitleScene/GameScene/...`，也更便于以后替换启动流程（例如直接进调试场景、跳过标题、从存档启动等）。
 
-> 事件分发的约定（`trigger`/`enqueue`/`dispatcher.update`）见：`docs/events.md`
+> 事件分发的约定（`trigger`/`enqueue`/`dispatcher.update`）见：`docs/engine/events.md`

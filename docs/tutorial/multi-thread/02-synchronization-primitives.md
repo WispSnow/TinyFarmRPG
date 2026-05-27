@@ -516,12 +516,12 @@ class AsyncPreloadPipeline {
 flowchart LR
     subgraph MT["主线程（owner）"]
         A[schedule / clearTasks<br/>getTaskState]
-        A -->|无锁访问| B[(async_preload_tasks_\n unordered_map)]
+        A -->|无锁访问| B[(async_preload_tasks_<br/> unordered_map)]
     end
 
     subgraph WT["Worker 线程"]
         C[lambda]
-        C -->|原子写| D[shared->state\nshared->generation]
+        C -->|原子写| D[shared->state<br/>shared->generation]
     end
 
     B --- |shared_ptr| D
