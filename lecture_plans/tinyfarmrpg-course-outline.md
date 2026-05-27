@@ -5,6 +5,8 @@
 ## 课程原则
 
 - **不从零开始**：默认学生已经完成或理解上一套 TinyFarm 教程，具备 C++20、ECS、Scene、Tiled、OpenGL 渲染、资源系统、存档和基础 UI 的上下文。
+  - 上一套课程的文字教程入口： https://cppgamedev.top/courses/opengl-tiny-farm
+  - 上一套课程的代码仓库： https://github.com/WispSnow/TinyFarm
 - **架构优先**：以模块边界、数据流、事件流、系统拆分、调试方法为主，不逐行讲实现细节。
 - **代码细节留阅读清单**：每讲只挑关键类、关键数据结构和关键流程讲透，其余通过文档、源码入口和练习引导学生自读。
 - **聚焦新增能力**：上一套已经覆盖的知识点只在需要建立上下文时快速回顾，不重复展开。
@@ -12,22 +14,77 @@
 - **先看再讲**：架构类讲次尽量在开头给可运行的演示或调试视角，避免"纯架构图"过载。
 - **外链子教程**：RmlUi、多线程这两块本身已有独立子教程（`learn/lectures/rmlui/`、`docs/tutorial/multi-thread/`），主线只讲"项目里如何用"，原理细节外链。
 
+## 单讲模板
+
+每讲按以下顺序组织（可酌情省略「开课演示」或合并「小结/预告」）：
+
+1. **本讲目标** — 一句话说清"读完之后你能做什么"。
+2. **开课演示（可选）** — 先跑 demo / 看图 / 设断点观察，给出可观察到的现象。
+3. **关键链路（可选）** — 一张 mermaid 小图，说明本讲跨模块的数据流或事件流。
+4. **核心知识点** — 3-6 条，每条围绕一个具体决策点（"为什么这样做"，而不仅是"做了什么"）。
+5. **阅读清单** — 项目内 docs + 上一套相关章节 + 子教程外链。
+6. **源码入口** — 3-5 个文件，按"读这几个就能动手改"的优先级排列。
+7. **自测问题** — 3-4 个开放问题，学生能口头回答即视为理解。
+8. **最小练习** — 30-60 分钟工作量的小改动或观察任务。
+9. **小结与下节预告** — 一两句话。
+
+教程正文落地时按此模板展开；本大纲为节省篇幅，对每讲只给出"目标 / (可选)开课演示 / 知识点 / 阅读清单 / 源码入口 / 自测问题 / 最小练习 / 小结预告"八块的精简形式。
+
+## 先修与配套子教程
+
+本套不是从零开始。开始 L01 之前请确认以下先修条件已就位：
+
+| 资源 | 角色 | 范围 |
+| --- | --- | --- |
+| 上一套「OpenGL 与迷你农场」教程 | **完整先修** | intro + part-01..part-33 全部；本套不重讲基础 |
+| RmlUi 子教程 `learn/lectures/rmlui/` L01-L06 | **前置必修** | 文档结构、盒模型、布局、样式、事件、数据绑定基础 |
+| RmlUi 子教程 `learn/lectures/rmlui/` L07-L15 | **穿插推荐** | 自定义元素、动画、JRPG 实战；主线对应讲次会在阅读清单点名 |
+| 多线程子教程 `docs/tutorial/multi-thread/` | **穿插推荐** | 主线 L22 / L25 / L26 会指明配套章节 |
+
+具体穿插推荐分布：
+
+- **L04 RmlUi 接入** — 假设已读完子教程 L01-L06；本讲只讲项目接入，不重复语法。
+- **L05 HUD 与覆盖式场景** — 配套子教程 L09 spritesheet（HUD 大量用九宫格）。
+- **L19 战斗 Action 生成** — 配套子教程 L14 jrpg-battle。
+- **L20 战斗表现** — 配套子教程 L10 animation。
+- **L22 存档** — 配套多线程子教程 09-background-save-io。
+- **L23 本地化与字号** — 配套子教程 L04 styling 的 rem/字号章节。
+- **L25 异步预加载** — 配套多线程子教程 03 / 05 / 06 / 07。
+- **L26 SystemScheduler 并行** — 配套多线程子教程 10 / 13。
+
+若未读 RmlUi 子教程基础部分直接进入 L04，会因为 RML/RCSS 语法陌生而难以跟上。建议讲师在 L01 末尾再次提醒学生检查先修。
+
 ## 与上一套教程的衔接
 
-上一套「OpenGL 与迷你农场」已经覆盖：
+上一套「OpenGL 与迷你农场」共 1 intro + 33 个 part（part-01..part-33）。本套对其的处理方式如下表，便于学生定位先修知识：
 
-- CMake 构建、项目运行、资源组织、GoogleTest 基础。
-- engine/game 分层、Scene 栈、EnTT ECS、dispatcher 事件系统。
-- OpenGL 2D 渲染、SpriteBatch、Y-sort、灯光、泛光、后处理。
-- ResourceManager、FreeType/HarfBuzz 文本、MiniAudio 音频。
-- 原自研 UIManager、基础 UI 布局、九宫格、UI 预设。
-- 空间索引、碰撞解析、玩家移动、相机跟随。
-- Tiled 地图加载、EntityBuilder、蓝图、MapManager、WorldState。
-- 农场玩法：背包、快捷栏、物品使用、耕种、作物、昼夜、存档。
-
-本套教程只在必要时用一讲或一小节回顾这些内容，主体放在 TinyFarmRPG 新增的架构和玩法闭环上。
-
-> 上一套课程的具体章节号在引用前需核对（教程入口：https://cppgamedev.top/courses/opengl-tiny-farm ；源码：https://github.com/WispSnow/TinyFarm ），写明 `partXX` 时请用最终发布的章节编号。
+| 上一套章节 | 在本套的处理 |
+| --- | --- |
+| intro 开篇 / part-01 构建与运行 | 略过 |
+| part-02 游戏架构设计 | **L01 回顾**：作为新架构地图的对照基线 |
+| part-03 入口到第一帧 / part-04 测试 / part-05 Debug UI | 略过 |
+| part-06 事件系统 | **L03 回顾**：事件总线与命令的边界 |
+| part-07 场景系统 | **L05 回顾**：覆盖式场景在原 Scene 栈上的扩展 |
+| part-08 ECS 落地 | **L02/L03 回顾**：声明式装配 vs 直接 new 系统 |
+| part-09–12 2D 渲染管线 | 略过（L20 表现层与 L24 VFX 会消费但不重讲） |
+| part-13 资源系统 | 略过；L23 / L25 会用到 |
+| part-14 字体与文本 | **L04/L23 回顾**：RmlUi 字体接入与字号策略 |
+| part-15 输入系统 | **L06 升级**：输入上下文与菜单导航 |
+| part-16 音频系统 | 略过；L10 讲 `AudioCueCatalog` 作为数据驱动包装 |
+| part-17 UI 框架基础 / part-18 UI 布局与预设 | **L04/L05 替换**：自研 UIManager → RmlUi |
+| part-19 空间索引 / part-20 碰撞解析 | 略过 |
+| part-21 地图数据管线 / part-22 关卡载入与实体建造 | **L25 升级**：异步化与 generation 失效 |
+| part-23 蓝图与实体工厂 | **L09 扩展**：脚本化实体与 Blueprint 字段约定 |
+| part-24 世界状态 | 略过 |
+| part-25 地图管理器 | **L25 升级**：异步状态机与主线程命令队列 |
+| part-26 游戏场景与系统编排 | **L02/L26 替换**：runtime/service/factory + SystemScheduler |
+| part-27 玩家控制与相机 | 略过 |
+| part-28 交互与对话 | **L09 升级**：脚本事件桥 + DialogueChoice |
+| part-29 物品栏与快捷栏 | **L05 回顾**：HUD 元素生命周期 |
+| part-30 物品使用与农场循环 | 略过 |
+| part-31 游戏时间与昼夜 | 略过 |
+| part-32 存档与流程收尾 | **L22 升级**：domain service 集中写入 + schema 迁移 |
+| part-33 收尾 | 略过 |
 
 ## 总体路线
 
@@ -36,9 +93,9 @@ flowchart LR
     A["项目接续<br/>架构盘点"] --> B["UI 升级<br/>RmlUi + HUD"]
     B --> C["内容层<br/>Lua 脚本"]
     C --> D["RPG 数据<br/>Catalog"]
-    D --> E["探索玩法<br/>任务 商店 招募 装备"]
+    D --> E["探索玩法<br/>任务 商店 招募 装备 外观"]
     E --> F["战斗闭环<br/>回合制战斗"]
-    F --> G["工程化收尾<br/>存档 表现 异步 测试"]
+    F --> G["工程化收尾<br/>存档 i18n VFX 异步 测试"]
 ```
 
 ## 阶段总览
@@ -48,15 +105,13 @@ flowchart LR
 | I. 项目接续与架构基础 | L01-L03 | 项目演示与盘点、运行时装配、领域服务概览 | 建立新项目心智模型 |
 | II. 生产 UI 与输入升级 | L04-L06 | RmlUi 接入、HUD 与覆盖式场景、输入上下文 | 替换自研 UI 的设计路线 |
 | III. Lua 内容层 | L07-L09 | ScriptHost、Sol2 绑定、脚本事件桥 | NPC/地图/剧情可脚本化 |
-| IV. RPG 数据与探索玩法 | L10-L15 | Catalog、任务、商店、队伍、装备成长、剧情战入口 | JRPG 探索侧闭环 |
-| V. 回合制战斗 | L16-L21 | 战斗领域层、动作解析、菜单状态机、AI、表现、结算 | 最小可玩的战斗闭环 |
-| VI. 工程化收尾 | L22-L27 | 存档迁移、分层外观、VFX、异步预加载、并行调度、测试调试 | 项目级质量收尾 |
+| IV. RPG 数据与探索玩法 | L10-L15 | Catalog、任务、商店、队伍、装备成长、分层外观 | JRPG 探索侧闭环 |
+| V. 回合制战斗 | L16-L21 | 战斗入口、领域核心、动作解析、Action 生成、表现、结算 | 最小可玩的战斗闭环 |
+| VI. 工程化收尾 | L22-L27 | 存档迁移、本地化与设置、VFX、异步预加载、并行调度、测试调试 | 项目级质量收尾 |
 
-总计 **27 讲**（备选 22 讲压缩方案见末节）。
+总计 **27 讲**。
 
 ## 逐讲大纲
-
-> 每讲采用统一三段式：**知识点 / 阅读清单 / 源码入口**。架构类讲次额外提供"开课演示"建议，避免开篇过抽象。
 
 ---
 
@@ -69,19 +124,27 @@ flowchart LR
 **开课演示**：现场启动 TinyFarmRPG → 进游戏 → 触发一次对话 → 打开背包 → 与商人交易 → 接任务 → 触发一场遭遇战 → 胜利结算。学生看到的所有新元素都会在后续讲次中拆开。
 
 **知识点**：
-- TinyFarm 已有能力盘点：农场、背包、地图、昼夜、存档、基础交互。
-- TinyFarmRPG 新增目标：RmlUi、脚本内容层、JRPG 数据、任务、商店、队伍、装备、战斗、分层外观、VFX、异步预加载。
+- TinyFarm 已有能力盘点 + TinyFarmRPG 新增目标的对照地图。
 - 大型增量开发的第一步：先识别可复用底座，再决定新增模块落点。
-- 课程阅读方式：架构图、关键链路、阅读清单、源码入口。
+- 课程阅读方式：架构图、关键链路、阅读清单、源码入口、自测问题。
 - 项目目录结构速览：`src/engine` vs `src/game`、`assets/data`、`scripts/`、`ui/rmlui/`。
 
 **阅读清单**：
 - `docs/overview.md`
-- 上一套课程关键章节（章节号需对照课程入口确认）
+- 上一套 part-02 游戏架构设计
 
 **源码入口**：
 - `src/game/game_entry.*`
 - `src/engine/core/*`
+
+**自测问题**：
+1. TinyFarmRPG 相对 TinyFarm 主要多了哪 5 个玩法系统？
+2. 为什么这一次不推倒重来？把"在旧底座上扩"作为前提带来了哪些约束？
+3. 项目目录中 `src/game/domain/` 和 `src/game/system/` 的职责差别是什么？
+
+**最小练习**：跑通 demo，从主菜单到完成一场战斗并存档，对照本讲提到的"7 个新元素"逐一确认你看见了。
+
+**小结与下节预告**：本讲建立全局地图，下一讲深入"装配阶段"——`GameScene` 为什么不再自己 new 所有系统。
 
 ---
 
@@ -94,13 +157,14 @@ flowchart LR
 **知识点**：
 - `GameRuntimeAssembler`、`RuntimeServiceFactory`、`SystemFactory`、`SystemBundle` 的职责分工。
 - `ContentCatalogLoader` 和 `RpgCatalogLoader` 如何集中加载内容数据。
-- `ServiceLookup` 如何避免场景层到处传递零散指针（与上一套教程中"手动传 Context 引用"对比）。
-- Blueprint / EntityFactory 在新项目中的位置（详深留到 L09）。
+- `ServiceLookup` 如何避免场景层到处传递零散指针（与上一套 part-26 中"手动传 Context 引用"对比）。
+- Blueprint / EntityFactory 在新项目中的位置（详深留 L09）。
 - 为什么功能变多后需要从"直接 new 系统"升级到声明式装配。
 
 **阅读清单**：
 - `docs/game/runtime-assembly.md`
 - `docs/game/game_scene.md`
+- 上一套 part-26 游戏场景初始化与系统编排
 
 **源码入口**：
 - `src/game/runtime/game_runtime_assembler.*`
@@ -109,26 +173,45 @@ flowchart LR
 - `src/game/runtime/service_lookup.h`
 - `src/game/factory/blueprint_manager.*`
 
+**自测问题**：
+1. 如果你要新增一个"天气系统"，需要在哪几个文件里登记？登记顺序为什么是这样？
+2. `ServiceLookup` 解决了上一套教程中哪个具体痛点？
+3. 为什么 catalog 加载要在 service 创建之前？
+
+**最小练习**：找出一个现有 service（如 `LocalizationService`），逆向追出它的"被谁注册 / 被谁拿到 / 被谁用"三条链路。
+
+**小结与下节预告**：装配讲完"东西怎么进来"，下一讲讲"东西怎么写回去"——领域服务为什么集中写入。
+
 ---
 
 #### L03: 领域服务概览与命令/事件边界
 
-**目标**：让学生先建立"写入操作集中到领域服务"的直觉印象，记住这是后续所有玩法讲次的共同模式，**不展开**单个服务的实现细节（留到 L11/L12/L14 各自的讲次里再深讲）。
+**目标**：建立"写入操作集中到领域服务"的直觉印象，记住这是后续所有玩法讲次的共同模式，**不展开**单个服务的实现细节（留到 L11/L12/L14）。
 
 **知识点**：
 - ECS 系统、UI、Lua、存档都可能触发玩法状态变化，必须统一规则入口。
 - 领域服务的共同模式：preflight 校验 → 原子写入 → 反馈事件。
-- command / event 与 domain service 的三角分工：请求由 command 进入，规则由 service 校验写入，结果由 event 通告 UI 与脚本。
-- `src/game/domain/` 全景：Inventory / Equipment / Quest / Shop / PartyRest / ActorProgression / QuestBattleProgress 的存在意义。具体实现各自留到对应讲次。
+- command / event / domain service 的三角分工：请求由 command 进入，规则由 service 校验写入，结果由 event 通告 UI 与脚本。
+- `src/game/domain/` 全景：Inventory / Equipment / Quest / Shop / PartyRest / ActorProgression / QuestBattleProgress 的存在意义。
 - 领域服务与测试：每个服务都有一组失败路径测试，这是新增玩法的最低安全网。
 
 **阅读清单**：
 - `docs/game/runtime-assembly.md`（领域服务章节）
+- 上一套 part-06 事件系统 + part-08 ECS 在本项目中的落地
 
 **源码入口**：
 - `src/game/domain/inventory_domain_service.*`（**仅作为模板**通览一遍）
 - `src/game/defs/commands_*.h`
 - `src/game/defs/events_*.h`
+
+**自测问题**：
+1. "把状态写入集中到领域服务"解决了哪些以前散在 system 里的具体问题？
+2. command 与 event 各自承担什么？为什么不直接 system → system 调用？
+3. preflight 与原子写入失败回退在 `InventoryDomainService` 里是如何体现的？
+
+**最小练习**：选一个领域服务，画出它的"入口 command → preflight → 写入 → 事件 → 订阅者"完整图。
+
+**小结与下节预告**：架构基础到此完成，下一阶段进入 UI 升级——为什么砍掉自研 UI 换 RmlUi。
 
 ---
 
@@ -149,10 +232,20 @@ flowchart LR
 - `docs/engine/ui_framework.md`
 - `docs/engine/layout-contract.md`
 - **RmlUi 语法子教程入口**：`learn/lectures/rmlui/syllabus.md`（L01-L11 基础与视觉，L12-L15 JRPG 实战）
+- 上一套 part-17 UI 框架基础 + part-18 UI 布局与预设（作为对照基线）
 
 **源码入口**：
 - `src/engine/ui/*`（重点：runtime、data bridge、document controller）
 - `ui/rmlui/theme/*.rcss`
+
+**自测问题**：
+1. 自研 UIManager 与 RmlUi 在"布局"和"事件"上的根本差异是什么？
+2. RmlUi 怎么共享上一套的字体与图片资源系统，而不重复一套加载？
+3. 调试面板为什么不一起搬到 RmlUi？
+
+**最小练习**：在 `ui/rmlui/learn/` 下新建一个最简文档（一句话 + 按钮），通过现有 runtime 接口加载并显示。
+
+**小结与下节预告**：本讲讲 RmlUi 怎么进来，下一讲讲 UI 文件怎么组织成"常驻 HUD + 覆盖式 Scene"两种形态。
 
 ---
 
@@ -167,17 +260,27 @@ flowchart LR
 - HUD 元素全景：`hotbar`、`dialogue_box`、`item_tooltip`、`time_clock`、`floating_notice`、`game_input_prompt_overlay`。
 - 覆盖式 Scene 全景：Pause、Save、Inventory、Shop、QuestOffer、RecruitOffer、DialogueChoice、Rest、AppearanceCustomize、Battle。
 - UI 场景如何通过 event 请求关闭、提交交易或写回状态。
-- `GameMode` 在 UI 调度中的隐藏作用（详深留到 L26）。
+- `GameMode` 在 UI 调度中的隐藏作用（详深留 L26）。
 
 **阅读清单**：
 - `docs/game/ui-scenes.md`
 - `docs/engine/scenes.md`
+- 上一套 part-07 场景系统 + part-29 物品栏与快捷栏
 
 **源码入口**：
 - `src/game/scene/*_scene.*`
 - `src/game/ui/*`（HUD 控制器）
 - `ui/rmlui/hud/*.rml`
 - `ui/rmlui/scenes/*.rml`
+
+**自测问题**：
+1. HUD 文档与覆盖式 Scene 的"显隐成本"差在哪？什么时候该用哪种？
+2. 打开 InventoryMenu 时，`GameScene` 的 update 是被暂停还是继续？为什么？
+3. `DialogueChoice` 为什么是一个独立 Scene 而不是 HUD？
+
+**最小练习**：在 HUD 里临时加一个 floating debug label，对比"显隐切换"与"push/pop scene"的代码量与延迟。
+
+**小结与下节预告**：UI 形态讲完，下一讲讲玩家怎么操控它们——输入上下文。
 
 ---
 
@@ -189,16 +292,26 @@ flowchart LR
 - Gameplay / Menu / Dialogue / Battle 输入上下文及切换规则。
 - action binding、输入 glyph、重绑定、输入缓冲。
 - RmlUi / ImGui / Gameplay 的事件转发顺序。
-- 为什么 Battle 菜单不直接依赖 RmlUi 原生方向键导航，而要走自己的菜单模型（铺垫 L18）。
+- 为什么 Battle 菜单不直接依赖 RmlUi 原生方向键导航，而要走自己的菜单模型（铺垫 L19）。
 
 **阅读清单**：
 - `docs/engine/input_system.md`
 - `tests/engine/input/*`
 - `tests/game/input_context_scene_stack_test.cpp`
+- 上一套 part-15 输入系统（作为升级前对照）
 
 **源码入口**：
 - `src/engine/input/*`
-- `src/game/scene/battle_input_router.*`（仅作示例，详深在 L18）
+- `src/game/scene/battle_input_router.*`（仅作示例，详深在 L19）
+
+**自测问题**：
+1. 在打开 Inventory 的同时，方向键应该被谁消费？输入上下文是怎么仲裁的？
+2. 重绑定时，输入 glyph 是怎么同步更新的？
+3. 为什么 RmlUi 原生方向键导航不够用？
+
+**最小练习**：把 Gameplay 上下文里的一个 action 绑到一个新按键，验证 HUD glyph 跟着变。
+
+**小结与下节预告**：UI/输入完成，下一阶段进入内容层——Lua 写剧情。
 
 ---
 
@@ -206,13 +319,13 @@ flowchart LR
 
 #### L07: Lua 内容层总览
 
-**目标**：建立"Lua 写内容，C++ 守规则"的核心边界，理解 `scripts/` 目录组织。
+**目标**：建立"Lua 写内容，C++ 守规则"的核心边界，理解 `scripts/` 目录组织，**并掌握脚本顶层幂等与 `tf.state` 持久化两条核心规约**。
 
 **知识点**：
 - `scripts/bootstrap.lua` 作为内容组合根。
 - `scripts/lib`、`scripts/maps`、`scripts/npcs`、`scripts/quests` 的目录约定。
-- `tf.*` API 能力地图：dialogue、quest、party、shop、battle、map、state、command、time、entity、event。
-- **关键规约**（应当出现在目标里，而不是埋在知识点中）：
+- `tf.*` API 能力地图：dialogue、quest、party、shop、battle、map、state、command、time、entity、event、i18n。
+- **关键规约**：
   - 脚本顶层幂等：读档或重进 `GameScene` 会重新加载 `bootstrap.lua`。
   - 持久状态走 `tf.state` 或 `lib.once`，不要依赖 Lua module-local 变量。
 - 何时该写 Lua、何时该写 C++：内容编排 vs 规则真相的判别准则。
@@ -225,6 +338,15 @@ flowchart LR
 **源码入口**：
 - `src/game/script/script_state.h`
 - `src/game/script/tinyfarm_script_module.*`（仅看模块组织，绑定细节留 L08）
+
+**自测问题**：
+1. 为什么 `bootstrap.lua` 必须幂等？什么样的写法会破坏幂等？
+2. `tf.state` 与 module-local 变量在"读档后存活"上有什么差异？
+3. 一个新需求"按任务状态决定 NPC 对白"该写 Lua 还是 C++？理由？
+
+**最小练习**：在 `scripts/lib` 下读 `state.lua` 与 `once.lua`，列出两者的语义差别。
+
+**小结与下节预告**：本讲建立边界，下一讲讲 C++ 怎么把 API 安全暴露给 Lua。
 
 ---
 
@@ -247,6 +369,15 @@ flowchart LR
 - `src/game/script/script_game_api.*`
 - `src/game/script/tinyfarm_script_module.*`
 
+**自测问题**：
+1. 如果脚本里保存了一个 entity 然后该 entity 被销毁，会发生什么？
+2. 给 Lua 暴露一个新 API 需要改哪几个文件？
+3. 脚本里 `error("...")` 抛出后，C++ 侧如何感知与恢复？
+
+**最小练习**：在 `tinyfarm_script_module` 里加一个最简单的 `tf.debug.echo(msg)` API，并在某 NPC 对白里调用。
+
+**小结与下节预告**：API 通了，下一讲讲 Tiled 地图与 NPC 怎么把事件递到 Lua。
+
 ---
 
 #### L09: 脚本事件桥与 Tiled 接入
@@ -264,6 +395,7 @@ flowchart LR
 **阅读清单**：
 - `docs/game/interaction_and_dialogue.md`
 - `docs/game/blueprints.md`
+- 上一套 part-23 蓝图与实体工厂 + part-28 交互与对话
 
 **源码入口**：
 - `src/game/script/script_event_bridge.*`
@@ -271,6 +403,15 @@ flowchart LR
 - `src/game/system/zone_trigger_system.*`
 - `src/game/scene/dialogue_choice_scene.*`
 - `scripts/maps/home_exterior.lua`、`scripts/npcs/greeter.lua`
+
+**自测问题**：
+1. 一个 Tiled 对象同时配 `actor_id` 和默认 C++ 交互组件时，谁优先？为什么？
+2. 区域触发的"一次性"是怎么实现的？放在哪一层最合理？
+3. DialogueChoice 选择回 Lua 时，Lua 怎么辨别"是哪个选项"？
+
+**最小练习**：在 `home_exterior.lua` 里加一个新的区域触发点，进入时弹一行 floating notice。
+
+**小结与下节预告**：内容层完成，下一阶段进入 RPG 数据 catalog。
 
 ---
 
@@ -297,6 +438,15 @@ flowchart LR
 - `src/game/data/rpg_data.h`
 - `src/game/data/audio_cue_catalog.*`
 
+**自测问题**：
+1. 一个新的 skill id 漏在 actor catalog 里被引用，校验会在何时报错？
+2. 为什么 `AudioCueCatalog` 也要独立成 catalog，而不是直接由 system 写死？
+3. 字符串 id 和 hash id 的存活范围分别在哪？
+
+**最小练习**：用 `rpg_importer` 加载现有 catalog，故意改一个引用 id 让校验失败，观察错误位置。
+
+**小结与下节预告**：数据通了，下一讲用任务系统把"领域服务"模式完整跑一遍。
+
 ---
 
 #### L11: 任务系统（领域服务首次深讲）
@@ -321,6 +471,15 @@ flowchart LR
 - `src/game/scene/quest_offer_scene.*`
 - `scripts/quests/*.lua`
 
+**自测问题**：
+1. objective progress key 为什么选这种 schema？换成 "objective index" 会有什么问题？
+2. 交付时背包满了怎么办？preflight 在哪一步检测？
+3. 同一个任务可以同时被 Lua 与 C++ NPC 触发吗？谁拿走优先权？
+
+**最小练习**：给 `village_goblin_cleanup` 加一个新 objective（如"拾取 3 个素材"），跑通到交付。
+
+**小结与下节预告**：任务样板写完，下一讲把同一套模式套到商店。
+
 ---
 
 #### L12: 商店系统
@@ -344,6 +503,15 @@ flowchart LR
 - `src/game/scene/shop_menu_scene.*`
 - `src/game/scene/shop_trade_list_builder.*`
 
+**自测问题**：
+1. preview 与 commit 之间允许哪些状态变化？冲突如何处理？
+2. 一个商人按"夜晚"切换库存，这逻辑该写 Lua 还是 C++？为什么？
+3. Buy/Sell 都要数字输入，UI 状态机怎么避免"卡在数量编辑"导致无法取消？
+
+**最小练习**：给 `merchant.lua` 加一个 "雨天专属商品" 分支（晴/雨切换 `shop_id`）。
+
+**小结与下节预告**：交易闭环完成，下一讲把单人玩家扩成 JRPG 队伍。
+
 ---
 
 #### L13: 队伍与招募
@@ -365,6 +533,15 @@ flowchart LR
 - `src/game/scene/recruit_offer_scene.*`
 - `scripts/npcs/lyria.lua`、`scripts/npcs/tori.lua`
 
+**自测问题**：
+1. 招募成功后，地图上的原 NPC 实体为什么不能直接删？该怎么处理？
+2. `ActorIdentityComponent` 在"探索 NPC"和"队伍成员"两种形态下都存在，它的作用是什么？
+3. 队伍上限是配置驱动还是硬编码？理由？
+
+**最小练习**：在 `lyria.lua` 里加一个"招募后才能触发的支线对白"，验证状态切换。
+
+**小结与下节预告**：队伍有了，下一讲讲他们的装备、成长与休息。
+
 ---
 
 #### L14: 装备、成长与休息
@@ -377,7 +554,7 @@ flowchart LR
 - `ActorProgressionService` 的经验、等级、属性规范化。
 - `PartyRestService` 如何处理队伍恢复（HP/MP/状态清除）。
 - InventoryMenu 中 Character / Equipment tab 的数据来源。
-- **关键设计**：装备系统不直接改战斗单位，战斗入场时通过 `actor_stats_resolver` 解析快照（铺垫 L16/L17）。
+- **关键设计**：装备系统不直接改战斗单位，战斗入场时通过 `actor_stats_resolver` 解析快照（铺垫 L17）。
 
 **阅读清单**：
 - `docs/gameplay/party-equipment-rest-recruitment.md`（装备/休息章节）
@@ -390,9 +567,51 @@ flowchart LR
 - `src/game/scene/inventory_menu_character_panel.*`
 - `src/game/scene/rest_dialog_scene.*`
 
+**自测问题**：
+1. 装备一件武器后，"角色面板"上的攻击力是从哪里读出来的？战斗内呢？
+2. 升级一次后，HP 上限增加，"当前 HP"应该跟着补满吗？这种策略在哪里实现？
+3. 休息恢复为什么不在 system::update 里循环检测，而是显式 service 调用？
+
+**最小练习**：把某件装备的属性提高，验证角色面板与战斗实际数值一致。
+
+**小结与下节预告**：探索侧玩法基本闭合，下一讲处理"角色长什么样"，为战斗 side-view 做准备。
+
 ---
 
-#### L15: 探索↔战斗的过渡 — 遭遇、剧情战与 GameMode
+#### L15: 分层角色外观与头像
+
+**目标**：讲解如何把角色从单一 sprite 升级为可组合、可换装、可生成头像的外观系统。**外观放在战斗之前讲，让 side-view 战斗精灵不再是黑盒。**
+
+**知识点**：
+- `AppearanceCatalog`、profile、slot、gender、layer order。
+- Game 层 `AppearanceComponent` 到 Engine 层 `LayeredSpriteComponent` 的桥接。
+- 预计算布局缓存，渲染帧内只做采样。
+- 战斗外观快照与 portrait builder（直接给 L20 用）。
+- 换装 UI（`AppearanceCustomizeScene`）的数据流。
+
+**阅读清单**：
+- `docs/gameplay/layered-appearance.md`
+- `assets/data/appearance_catalog.json`
+
+**源码入口**：
+- `src/game/system/appearance_system.*`
+- `src/game/ui/appearance_portrait_builder.*`
+- `src/game/scene/appearance_customize_scene.*`
+
+**自测问题**：
+1. 为什么外观布局要预计算？放在每帧 sample 会有什么问题？
+2. 战斗侧的"外观快照"为什么需要独立于探索侧的 AppearanceComponent？
+3. portrait builder 怎么避免每次打开菜单都重画整张图？
+
+**最小练习**：在 `appearance_catalog.json` 里加一个新 slot 部件，并在换装 UI 中切换观察。
+
+**小结与下节预告**：探索侧全部完成，下一阶段进入战斗，第一站是"探索↔战斗过渡"。
+
+---
+
+### Stage V — 回合制战斗
+
+#### L16: 探索↔战斗的过渡 — 遭遇、剧情战与 GameMode
 
 **目标**：连接探索地图与战斗场景，让敌人遭遇、区域触发和 Lua 剧情战都能进入同一个战斗入口；首次引入 `GameMode` 的概念。
 
@@ -413,11 +632,18 @@ flowchart LR
 - `src/game/runtime/game_mode.h`
 - `src/game/scene/game_scene_battle_settlement.*`（仅入口部分）
 
+**自测问题**：
+1. 区域遭遇与剧情战进入战斗的差别在哪？为什么共用同一个 `BattleStartCommand`？
+2. `GameMode` 切换的时机点在哪？过早或过晚分别会导致什么 bug？
+3. 战斗中按 ESC 退到桌面，存档应该捕获哪个 mode？
+
+**最小练习**：在某地图加一个 `EnemyEncounterComponent` 触发点，跑到那里能进入战斗。
+
+**小结与下节预告**：入口建立，下一讲深入战斗领域核心。
+
 ---
 
-### Stage V — 回合制战斗
-
-#### L16: 回合制战斗领域核心
+#### L17: 回合制战斗领域核心
 
 **目标**：先不看 UI，单独讲清楚战斗规则的纯逻辑层。
 
@@ -438,9 +664,18 @@ flowchart LR
 - `src/game/battle/battle_unit_factory.*`
 - `src/game/battle/actor_stats_resolver.*`
 
+**自测问题**：
+1. 一个角色在自己回合开始前死亡，应该如何处理？写在 `TurnCore` 哪一段？
+2. 战斗内修改 HP 不会立刻同步回背包/角色，谁负责回写？什么时机？
+3. 为什么 `BattleSession` 是"唯一入口"？让 UI 直接调 `TurnCore` 会出什么问题？
+
+**最小练习**：跑 `turn_core_test.cpp`，挑一个 case 反向推出测试构造的全部前提。
+
+**小结与下节预告**：核心规则讲完，下一讲讲玩家与 AI 动作如何被解析。
+
 ---
 
-#### L17: 战斗动作解析
+#### L18: 战斗动作解析
 
 **目标**：讲解 Attack / Skill / Item / Guard / Escape 如何被统一建模和结算。
 
@@ -460,19 +695,34 @@ flowchart LR
 - `src/game/data/rpg_catalog_skills.cpp`
 - `src/game/data/rpg_catalog_states.cpp`
 
+**自测问题**：
+1. 同一个 "群体攻击" 技能，scope 与 target 在数据上怎么表达？
+2. 战斗中物品被消耗后中途逃跑，背包的扣减规则如何决定？
+3. 持续伤害状态在 turn order 里何时结算？为什么是这个时机？
+
+**最小练习**：给某技能加一个新的状态效果，跑测试验证伤害链路。
+
+**小结与下节预告**：解算讲完，下一讲讲玩家菜单与敌方 AI 这两个 action 的"生产者"。
+
 ---
 
-#### L18: BattleScene 菜单状态机
+#### L19: 战斗 Action 生成（玩家菜单 + 敌方 AI）
 
-**目标**：理解战斗 UI 如何把玩家输入转换成合法 `BattleAction`。
+**目标**：把"玩家通过菜单选 action"和"AI 自动产生 action"统一作为"action 生产者"讲，理解战斗 UI 如何把玩家输入转换成合法 `BattleAction`，以及敌方如何按 troop 配置自动决策。
 
 **知识点**：
-- `FlowState`（战斗整体流程）与 `MenuState`（菜单内部状态）的双层状态机。
-- MainMenu、SkillList、ItemList、TargetSelect 之间的迁移规则。
-- 鼠标点击与键盘 / 手柄菜单导航双路径。
-- RmlUi data model 与程序化 focus 同步。
-- cursor memory、cancel/back 规则（"记住玩家上次选的格子"）。
-- 为什么不用 RmlUi 原生方向键导航（呼应 L06）。
+- **玩家侧**：
+  - `FlowState`（战斗整体流程）与 `MenuState`（菜单内部状态）的双层状态机。
+  - MainMenu、SkillList、ItemList、TargetSelect 之间的迁移规则。
+  - 鼠标点击与键盘 / 手柄菜单导航双路径。
+  - RmlUi data model 与程序化 focus 同步。
+  - cursor memory、cancel/back 规则（"记住玩家上次选的格子"）。
+  - 为什么不用 RmlUi 原生方向键导航（呼应 L06）。
+- **AI 侧**：
+  - `BattleAiPlanner`：按 rating 选技、scope 选目标、恢复意图检测。
+  - AI 与 troop 配置的关系：哪些行为来自配置、哪些来自硬编码。
+  - AI 测试策略：用 deterministic seed 跑回归。
+- **对称视角**：两者最终都输出 `BattleAction` 进入 L18 的解算管线。
 
 **阅读清单**：
 - `ui/rmlui/scenes/battle.rml` + `battle.rcss`
@@ -484,38 +734,30 @@ flowchart LR
 - `src/game/scene/battle_menu_model.*`
 - `src/game/scene/battle_flow_controller.*`
 - `src/game/scene/battle_cursor_memory.h`
-
----
-
-#### L19: 敌方 AI 与意图
-
-**目标**：讲解敌方行动规划如何与领域层解耦。
-
-**知识点**：
-- `BattleAiPlanner`：按 rating 选技、scope 选目标、恢复意图检测。
-- 敌方意图与玩家可见性（部分游戏会让玩家预读敌方意图，本项目的取舍）。
-- AI 与 troop 配置的关系：哪些行为来自配置、哪些来自硬编码。
-- AI 测试策略：用 deterministic seed 跑回归。
-
-**阅读清单**：
-- 战斗 AI 相关测试（如 `tests/game/battle/*ai*` 若存在）
-
-**源码入口**：
 - `src/game/battle/battle_ai_planner.*`
+
+**自测问题**：
+1. 把"玩家菜单"和"敌方 AI"看作同一个抽象的 action 生产者，它们的接口契约是什么？
+2. cursor memory 跨回合保存有哪些边界情况（如选过的目标已死）？
+3. AI 配置改动后，怎么用最少的测试覆盖回归？
+
+**最小练习**：把某敌人的"rating"配置改高，观察 AI 选技偏好的变化。
+
+**小结与下节预告**：action 怎么产生讲完，下一讲讲战斗"看起来"的部分。
 
 ---
 
 #### L20: 战斗表现与动画导演
 
-**目标**：把战斗"看起来"的部分集中讲清——side-view 精灵、动作播放、飘字、HP 条。
+**目标**：把战斗"看起来"的部分集中讲清——side-view 精灵、动作播放、飘字、HP 条。**本讲只讲"消费表现服务"，外观系统已在 L15 讲过，VFX 命令的接口讲到"提交即可"，VFX 后端在 L24 详深。**
 
 **知识点**：
-- side-view 精灵、站位、战斗专用 registry。
+- side-view 精灵复用 L15 的 LayeredSprite + 战斗专用 anchor。
 - `BattleActionPresentationPlan`：从领域结果生成可播放的步骤序列。
 - `BattleAnimationDirector`：把步骤序列翻成具体的动画/音效/特效请求。
-- 伤害飘字与敌方 HP 条的状态机。
-- 表现只消费 session 返回的结果快照，不修改规则真相（呼应 L16 的"领域不依赖 UI"）。
-- 与 VFX 的接口（详深留 L24）。
+- 伤害飘字与敌方 HP 条的状态机（受 Options 中 "Damage Popups / Enemy HP Bar" 开关影响）。
+- 表现只消费 session 返回的结果快照，不修改规则真相（呼应 L17 的"领域不依赖 UI"）。
+- 与 VFX 的接口：`PlayVfxCommand` 提交即返，背后机制留 L24。
 
 **阅读清单**：
 - `ui/rmlui/theme/battle_enemy_icons.rcss`、`battle_state_icons.rcss`
@@ -526,6 +768,15 @@ flowchart LR
 - `src/game/scene/battle_damage_popup_controller.*`
 - `src/game/scene/battle_enemy_hp_bar_controller.*`
 - `src/game/scene/battle_victory_flow_controller.*`
+
+**自测问题**：
+1. "表现层快照"和"领域真相"分别在何时被读/写？错位会导致什么 bug？
+2. 战斗速度倍率（Battle Speed Option）作用在哪一层？为什么不直接缩放 dt？
+3. 飘字与 HP 条都有 "Off" 开关，关掉时已经在播的视图怎么收尾？
+
+**最小练习**：把 `BattleAnimationDirector` 中某个动作步骤的时长翻倍，观察整体节奏变化。
+
+**小结与下节预告**：表现讲完，下一讲收尾战斗——奖励与写回。
 
 ---
 
@@ -538,7 +789,7 @@ flowchart LR
 - `BattleEndedEvent` 与 GameScene 结算流程。
 - 写回顺序：背包 → 钱包 → 任务进度（`QuestBattleProgressResolver`）→ 角色成长（`ActorProgressionService`）。
 - 失败、逃跑、胜利三类 outcome 的不同处理。
-- 战斗中物品副本如何与真实背包合并（呼应 L17）。
+- 战斗中物品副本如何与真实背包合并（呼应 L18）。
 
 **阅读清单**：
 - `tests/game/game_scene_battle_reward_writeback_test.cpp`
@@ -549,6 +800,15 @@ flowchart LR
 - `src/game/domain/quest_battle_progress_resolver.*`
 - `src/game/scene/game_scene_battle_settlement.*`
 - `src/game/scene/game_scene_reward_feedback.*`
+
+**自测问题**：
+1. 写回顺序为什么是"背包先于任务进度"？反过来会发生什么？
+2. 逃跑成功与战败在"消耗"和"奖励"上的差别？
+3. 等级提升的属性变化什么时候反馈给 UI？
+
+**最小练习**：让某战斗胜利后掉落一件新物品，全链路验证从结算到背包再到 UI 显示。
+
+**小结与下节预告**：战斗闭环完成。进入 Stage VI，先收尾存档。
 
 ---
 
@@ -569,6 +829,7 @@ flowchart LR
 **阅读清单**：
 - `docs/game/save_and_flow.md`
 - `docs/tutorial/multi-thread/09-background-save-io.md`
+- 上一套 part-32 存档与流程收尾（作为升级前对照）
 
 **源码入口**：
 - `src/game/save/save_service.*`
@@ -576,27 +837,56 @@ flowchart LR
 - `src/game/save/save_data.*`
 - `src/game/scene/save_slot_select_scene.*`
 
+**自测问题**：
+1. "原子替换"在文件系统层面是怎么做的？为什么不能直接写原文件？
+2. Schema 从 v6 升 v7 时，旧档加载会发生什么？是否需要写迁移代码？什么前提下可以省略？
+3. 给新功能加一个新组件，存档接入点 checklist 有几项？
+
+**最小练习**：给已有某组件加一个新字段，bump schema 并写最简单的迁移，验证旧档可加载。
+
+**小结与下节预告**：存档收口，下一讲收尾"全局服务"另一大件——本地化与设置。
+
 ---
 
-#### L23: 分层角色外观与头像
+#### L23: 本地化、用户设置与 UI 文案管线
 
-**目标**：讲解如何把角色从单一 sprite 升级为可组合、可换装、可生成头像的外观系统。
+**目标**：把 i18n 与用户偏好作为一组"跨场景全局服务"讲清楚，覆盖 RmlUi 静态文案、C++ 动态文案与 Lua 内容文案三条路径，并理解偏好设置的持久化策略。
 
 **知识点**：
-- `AppearanceCatalog`、profile、slot、gender、layer order。
-- Game 层 `AppearanceComponent` 到 Engine 层 `LayeredSpriteComponent` 的桥接。
-- 预计算布局缓存，渲染帧内只做采样。
-- 战斗外观快照与 portrait builder。
-- 换装 UI（`AppearanceCustomizeScene`）的数据流。
+- **本地化**：
+  - `LocalizationService`：manifest 加载、fallback、`tr` / `format` 入口。
+  - RmlUi `data-i18n` / `data-i18n-title` 静态绑定与 `applyRmlLocalization` 时机。
+  - C++ ViewModel helper：`tryLocalize` / `localizeTextOrFallback` / `formatTextOrFallback`。
+  - Lua 内容文案：`tf.i18n`，规则与 C++ 一致。
+  - `LanguageChangedEvent`：动态文本如何刷新。
+- **用户设置**：
+  - `UserSettingsService` 作为"偏好唯一真源"，PauseMenu / Inventory→Options 两套菜单的协作。
+  - 持久化策略：`config/user_settings.default.json`（进 repo）vs `config/user_settings.json`（runtime 写，不进 repo）。
+  - 四项 Options（Battle Speed / Damage Popups / Enemy HP Bar / Cursor Memory）的作用点。
+  - UI 字号固定 Normal 的当前策略与 body class 管线的保留理由。
+  - 偏好**不**入存档：跨 save slot 共享。
+- **跨系统协作**：本地化与字号 class 都通过 RmlUi 文档作用，新增 Scene 时需要的最小接入。
 
 **阅读清单**：
-- `docs/gameplay/layered-appearance.md`
-- `assets/data/appearance_catalog.json`
+- `docs/game/localization.md`
+- `docs/gameplay/options-and-user-settings.md`
 
 **源码入口**：
-- `src/game/system/appearance_system.*`
-- `src/game/ui/appearance_portrait_builder.*`
-- `src/game/scene/appearance_customize_scene.*`
+- `src/game/runtime/localization_service.*`
+- `src/game/runtime/user_settings_service.*`
+- `src/game/runtime/user_settings.*`
+- `src/game/defs/options_events.h`
+- `src/game/ui/options_tab_content.*`
+
+**自测问题**：
+1. RML 中保留英文 fallback 文本有什么实际价值？
+2. 偏好"不入存档"是个偶然选择还是有意为之？反过来设计会带来什么后果？
+3. 切换语言时，已加载的 RmlUi 文档与运行中的 C++ ViewModel 各自如何被通知？
+4. 新增一个 Scene，要让它支持 i18n 与字号联动，最少要做哪些事？
+
+**最小练习**：给某 Scene 加一个新文案 key，在 zh-Hans / en-US 都补齐，切换语言验证。
+
+**小结与下节预告**：全局服务收尾，下一讲讲 VFX 这个"插件式后端"如何接入。
 
 ---
 
@@ -619,6 +909,15 @@ flowchart LR
 - `src/engine/vfx/*`
 - `src/game/defs/commands_*.h`（VFX 相关）
 
+**自测问题**：
+1. 把 `EffekseerBackend` 换成 `NullVfxBackend` 之后，谁会立即报错？谁不会？
+2. World 通道与 Overlay 通道的取舍：受光照、深度、相机的影响分别如何？
+3. 战斗里发起一次 VFX，从 command 到画面，经过几跳？
+
+**最小练习**：给某战斗动作挂一个不同的 VFX id，验证 World/Overlay 两种通道的视觉差。
+
+**小结与下节预告**：VFX 完成，下一讲讲项目里另一大块工程实践——异步预加载。
+
 ---
 
 #### L25: 异步地图预加载与主线程命令队列
@@ -635,6 +934,7 @@ flowchart LR
 **阅读清单**：
 - `docs/game/async_preload_pipeline.md`
 - `docs/game/map_manager.md`
+- 上一套 part-21 地图数据管线 + part-25 地图管理器
 - **多线程子教程入口**：`docs/tutorial/multi-thread/README.md`（建议先读 03 / 05 / 06 / 07）
 
 **源码入口**：
@@ -643,11 +943,20 @@ flowchart LR
 - `src/engine/resource/image_decode_service.*`
 - `src/game/world/*`
 
+**自测问题**：
+1. "generation 失效"的具体场景是什么？没有它会出现哪个 bug？
+2. 哪些资源类型可以在 worker 线程完成解码？哪些必须在主线程上传？
+3. 切图取消（如玩家又跑回原图）时，已下发的命令如何被丢弃？
+
+**最小练习**：在 `level_preprocess_service` 加日志，跑一次切图，画出 worker / 主线程的时序。
+
+**小结与下节预告**：异步基础完成，下一讲讲 SystemScheduler 的并行化。
+
 ---
 
 #### L26: SystemScheduler 与并行岛
 
-**目标**：把上一套 GameScene 中的固定顺序系统更新，升级为可观察、可裁剪、可并行的调度器。同时把 L05 / L15 提到的 `GameMode` 收口。
+**目标**：把上一套 GameScene 中的固定顺序系统更新，升级为可观察、可裁剪、可并行的调度器。同时把 L05 / L16 提到的 `GameMode` 收口。
 
 **知识点**：
 - `SchedulerStage`、`GameMode`、transition gate 的完整模型。
@@ -658,6 +967,7 @@ flowchart LR
 
 **阅读清单**：
 - `docs/game/system_scheduler.md`
+- 上一套 part-26 游戏场景与系统编排（升级前对照）
 - **并行调度原理外链**：`docs/tutorial/multi-thread/10-ecs-parallel-scheduling.md`、`13-entt-multithreading-and-scheduler.md`
 
 **源码入口**：
@@ -665,6 +975,15 @@ flowchart LR
 - `src/game/runtime/game_mode.h`
 - `src/engine/system/parallel_wave_scheduler.*`
 - `tools/scheduler_dot_dump`
+
+**自测问题**：
+1. 为什么"资源读写声明"足以推导并行 wave？声明错了会发生什么？
+2. `GameMode` 从 Exploration 切到 Battle，scheduler 内部的具体动作是什么？
+3. 哪些系统在你的判断下应该"绝不并行"？理由？
+
+**最小练习**：用 `scheduler_dot_dump` 导出当前调度图，找出最深的并行 wave。
+
+**小结与下节预告**：工程化主体完成，下一讲做收尾——调试、测试与扩展方向。
 
 ---
 
@@ -678,7 +997,7 @@ flowchart LR
 - 工具链：`visual_tester`、`rmlui_tester`、`battle_tester`、`scheduler_dot_dump`、`rpg_importer`。
 - Catalog validation、脚本测试、UI smoke 在 CI 里的作用。
 - **如何为新增玩法选择测试层级**（实操 checklist）。
-- 后续可扩展方向：更多 objective 类型、限量库存、状态系统、剧情过场、地图事件链、本地化、Options。
+- 后续可扩展方向：更多 objective 类型、限量库存、状态系统、剧情过场、地图事件链、更多语言。
 
 **阅读清单**：
 - `docs/testing/tools.md`
@@ -691,11 +1010,20 @@ flowchart LR
 - `tools/*`
 - `tests/`（按层级抽查示例）
 
+**自测问题**：
+1. 给一个新的领域服务补测试，你会选 domain / system / scene 哪一层先写？为什么？
+2. UI 改动如何被 CI 拦住低级回归？哪些场景不适合 smoke？
+3. 项目继续长大，最可能"先腐烂"的模块是哪个？该怎么提前防御？
+
+**最小练习**：选一个领域服务，给它补一条失败路径测试，提交并确认 CI 通过。
+
+**小结**：到此你已经能在 TinyFarmRPG 上独立增加新玩法、新内容、新 UI，并保持工程不腐烂。课程结束。
+
 ---
 
-## 推荐作业设计
+## 推荐综合作业（跨讲次）
 
-每个作业除了"做出来"，还要求学生能口头解释**为什么这样组织**——这是架构课的核心。
+每讲已含"最小练习"，下表为**跨讲次综合作业**，要求学生能口头解释"为什么这样组织"——这是架构课的核心。
 
 | 作业 | 对应讲次 | 内容 | 自查要点 |
 | --- | --- | --- | --- |
@@ -703,9 +1031,10 @@ flowchart LR
 | 新增一个任务 | L10-L11 | 写 `quests.json` objective/reward，并用 Lua 编写 NPC 分支 | 能画出 command → service → event → UI 的回路 |
 | 新增一个商店预设 | L12 | 添加 `shop_id`，让商人在不同任务状态下切换库存 | 能解释为什么"按时间切换"的逻辑该在 Lua 而非 C++ |
 | 新增一个可招募角色 | L13-L14 | 配置 actor/class/equipment，写招募对白，验证入队和装备页 | 能解释装备如何影响战斗属性而不直接改 BattleUnit |
-| 新增一场剧情战 | L15-L21 | 配置 troop、技能、敌人，并由 Lua 区域触发战斗 | 能解释胜利写回的顺序为什么是固定的 |
-| 为新增组件接入存档 | L22 | 给上一个作业里新增的组件补齐序列化与 schema bump | 能列出"新增组件接入存档"的最小 checklist |
-| 新增一个外观部件 | L23 | 扩展 `appearance_catalog.json` 并在换装界面验证 | 能解释为什么外观布局要预计算 |
+| 新增一个外观部件 | L15 | 扩展 `appearance_catalog.json` 并在换装界面与战斗 side-view 同时验证 | 能解释为什么外观布局要预计算 |
+| 新增一场剧情战 | L16-L21 | 配置 troop、技能、敌人，并由 Lua 区域触发战斗 | 能解释胜利写回的顺序为什么是固定的 |
+| 为新增组件接入存档 | L22 | 给前面作业里新增的组件补齐序列化与 schema bump | 能列出"新增组件接入存档"的最小 checklist |
+| 增加一种语言并接入 Scene | L23 | 加一个语言文件，给某 Scene 补齐 i18n key，切换验证 | 能解释 RmlUi 静态绑定与 ViewModel 动态文案的差异 |
 | 新增一个 VFX 播放点 | L24 | 配置 `vfx_catalog.json`，通过 command 在战斗或地图事件中播放 | 能解释 World/Overlay 两条通道的差别 |
 | 为一个领域服务补测试 | L27 | 选择 Quest/Shop/Equipment 任一服务补充失败路径测试 | 能解释 domain test 比 scene smoke 更值得先写的理由 |
 
@@ -713,28 +1042,17 @@ flowchart LR
 
 如果课程容量允许，可以追加以下专题；如果容量紧张，则作为番外或阅读材料：
 
-- **本地化与 UI 文案**：`LocalizationService`、RmlUi 文本替换、i18n key parity。
-- **Options 与用户设置**：全局偏好、音量、战斗动画速度、UI 字号策略。参考 `docs/gameplay/options-and-user-settings.md`。
 - **RmlUi 专项课**：完整子教程见 `learn/lectures/rmlui/syllabus.md`，主线 L04 只讲项目接入，语法基础由该子教程承担。
 - **多线程专项课**：完整子教程见 `docs/tutorial/multi-thread/`，主线 L25-L26 只讲项目里实际用到的两个模式（异步 preload + 并行 wave）。
+- **可选深入**：本地化的字体回退与混排（已超出 L23 容量）、Save schema 迁移的复杂 case（v3→v7 历史路径）、RmlUi 自定义 element 的实战。
 
-## 首轮课程长度建议
+## 课程节奏
 
 主线 **27 讲**：
 
-- L01-L03 用来建立项目续作心智模型（含开篇 demo 实跑，避免架构空转）。
+- L01-L03 用来建立项目续作心智模型（含开篇 demo 实跑）。
 - L04-L06 解决 UI 与输入，HUD 与覆盖式场景分开讲，输入上下文单独成讲。
-- L07-L09 完成 Lua 内容层，脚本事件桥承担 Tiled 接入和 DialogueChoice。
-- L10-L15 完成探索侧 JRPG 玩法闭环，L15 收尾"探索↔战斗"过渡。
-- L16-L21 集中讲回合制战斗，AI 与表现分讲，结算独立成讲。
-- L22-L27 工程化收尾：存档独立成讲，异步与调度借助子教程外链。
-
-如果要压缩到 **22 讲**，建议按以下方案合并（保留所有主题，但牺牲深度）：
-
-- **L02 + L03** → 运行时装配与领域服务概览。
-- **L05 + L06** → 覆盖式 UI、HUD 与输入上下文。
-- **L13 + L14** → 队伍、招募、装备、成长与休息（一讲爆容量，可接受但学生需提前预习）。
-- **L18 + L19** → BattleScene 菜单状态机与敌方 AI（**注意：不要合并 L19+L20+L21，会爆**）。
-- **L25 + L26** → 异步预加载与并行调度（更要依赖外链子教程）。
-
-如果要压缩到 **18 讲以下**，建议直接砍 Stage VI 中的某些主题（如 VFX、外观）作为选修，而不是继续合并。
+- L07-L09 完成 Lua 内容层。
+- L10-L15 完成探索侧 JRPG 玩法闭环，**L15 外观放在战斗前**作为 side-view 的前置依赖。
+- L16-L21 集中讲回合制战斗，L19 把"玩家菜单 + 敌方 AI"作为对称的 action 生产者合并讲。
+- L22-L27 工程化收尾：存档、本地化与设置、VFX、异步、调度、测试调试。
