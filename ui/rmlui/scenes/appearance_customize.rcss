@@ -9,6 +9,10 @@ body, div, h1, h2, h3, h4, p, hr {
     display: block;
 }
 
+img {
+    display: block;
+}
+
 body {
     overflow: hidden;
     background-color: transparent;
@@ -69,6 +73,16 @@ body {
     color: #a9b1d6cc;
     font-size: 0.5625rem;
     font-effect: shadow(1dp 1dp #000000cc);
+    pointer-events: none;
+}
+
+#appearance-portrait-preview {
+    position: absolute;
+    right: 12dp;
+    bottom: 12dp;
+    width: 64dp;
+    height: 64dp;
+    image-color: #ffffffff;
     pointer-events: none;
 }
 

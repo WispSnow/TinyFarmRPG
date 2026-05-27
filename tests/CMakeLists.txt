@@ -205,6 +205,7 @@ set(GAME_TEST_SOURCES
     game/appearance_catalog_test.cpp
     game/appearance_catalog_layout_test.cpp
     game/appearance_customize_view_model_test.cpp
+    game/appearance_portrait_builder_test.cpp
     game/appearance_layered_direction_mapping_test.cpp
     game/appearance_system_test.cpp
     game/save_migrator_test.cpp

@@ -18,6 +18,8 @@ class RpgCatalog;
 
 namespace game::ui {
 
+class PlayerPortraitService;
+
 class DialoguePresentationController final {
 public:
     DialoguePresentationController(entt::dispatcher& dispatcher,
@@ -28,7 +30,8 @@ public:
                                    HotbarVisibilityPort* hotbar_ui,
                                    const game::data::RpgCatalog* rpg_catalog,
                                    glm::vec2 notice_offset = {0.0F, -4.0F},
-                                   glm::vec2 item_notice_offset = {0.0F, -56.0F});
+                                   glm::vec2 item_notice_offset = {0.0F, -56.0F},
+                                   const PlayerPortraitService* player_portrait_service = nullptr);
     ~DialoguePresentationController();
 
     void update(float delta_time);
@@ -48,6 +51,7 @@ private:
     NoticeSlot notice_slot_{};
     NoticeSlot item_notice_slot_{};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
+    const PlayerPortraitService* player_portrait_service_{nullptr};
     std::unordered_map<entt::id_type, std::string> portrait_by_actor_id_hash_{};
     std::unordered_map<entt::id_type, std::string> portrait_by_map_actor_id_hash_{};
     bool conversation_active_{false};

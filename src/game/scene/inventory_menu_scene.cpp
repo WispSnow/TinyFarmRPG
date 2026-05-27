@@ -16,6 +16,7 @@
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/options_events.h"
+#include "game/defs/party_ids.h"
 #include "game/runtime/user_settings_service.h"
 #include "game/scene/inventory_menu_character_panel.h"
 #include "game/ui/equipment_tab_content.h"
@@ -23,6 +24,7 @@
 #include "game/ui/inventory_tab_content.h"
 #include "game/ui/map_tab_content.h"
 #include "game/ui/options_tab_content.h"
+#include "game/ui/player_portrait_service.h"
 #include "game/ui/quest_tab_content.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -448,11 +450,22 @@ void InventoryMenuScene::registerPartyPortraitImages(std::vector<PartyMemberPane
 
     auto& generated_images = runtime->generatedImages();
     party_portrait_registrations_.reserve(members.size());
+    game::ui::PlayerPortraitService* player_portrait_service = nullptr;
+    if (auto** service_ptr = game_registry_.ctx().find<game::ui::PlayerPortraitService*>()) {
+        player_portrait_service = *service_ptr;
+    }
     for (auto& member : members) {
         member.portrait_src.clear();
         member.has_portrait = false;
 
         if (member.empty || member.actor_id.empty()) {
+            continue;
+        }
+
+        if (member.actor_id == game::defs::kDefaultPlayerActorId && player_portrait_service &&
+            player_portrait_service->ready()) {
+            member.portrait_src = std::string(player_portrait_service->sourceUri(game::ui::PortraitImageKind::Standard64));
+            member.has_portrait = !member.portrait_src.empty();
             continue;
         }
 

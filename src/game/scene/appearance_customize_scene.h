@@ -5,7 +5,9 @@
 #include "engine/system/animation_system.h"
 #include "engine/system/render_system.h"
 #include "engine/ui/rmlui/rml_document_controller.h"
+#include "engine/ui/rmlui/rml_generated_image_registry.h"
 #include "game/scene/appearance_customize_types.h"
+#include "game/ui/appearance_portrait_builder.h"
 #include "game/ui/appearance_customize_view_model.h"
 
 #include <RmlUi/Core/DataTypeRegister.h>
@@ -75,6 +77,7 @@ private:
     game::ui::AppearanceSlotViewModels slot_view_models_{};
     Rml::String title_text_{};
     Rml::String subtitle_text_{};
+    Rml::String portrait_src_{};
 
     entt::registry preview_registry_{};
     entt::dispatcher preview_dispatcher_{};
@@ -86,6 +89,8 @@ private:
     bool lighting_suspended_{false};
     bool previous_lighting_enabled_{true};
     std::mt19937 rng_{};
+    game::ui::AppearancePortraitBuilder portrait_builder_{};
+    engine::ui::rmlui::RmlGeneratedImageRegistry::Registration portrait_preview_registration_{};
 
 public:
     /// Creates the pre-new-game appearance picker; cancel pops back to the title scene.
@@ -123,6 +128,7 @@ private:
     void disconnectRuntimeListeners();
     void syncLocalizedText(bool mark_dirty = true);
     void syncSlotViewModels(bool mark_dirty = true);
+    void syncPortraitPreview(bool mark_dirty = true);
     void rebuildPreviewCache();
     void updatePreviewPosition();
     void focusDefaultAction();

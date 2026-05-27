@@ -8,6 +8,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
+#include <random>
 #include <utility>
 
 namespace game::scene {
@@ -83,6 +84,28 @@ std::vector<std::string> runtimeAppearanceSlots(const game::data::AppearanceCata
     return slots;
 }
 
+std::vector<std::string> appearanceControlSlots(const game::data::AppearanceCatalog& catalog,
+                                                const bool include_gender) {
+    std::vector<std::string> slots;
+    const auto& order = catalog.selectionOrder();
+    for (const auto& slot : order) {
+        if (slot == "gender") {
+            if (include_gender && !catalog.genderVariants().empty()) {
+                slots.push_back(slot);
+            }
+            continue;
+        }
+        if (!catalog.isRuntimeSwitchableSlot(slot)) {
+            continue;
+        }
+        if (catalog.variantsForSlot(slot).empty()) {
+            continue;
+        }
+        slots.push_back(slot);
+    }
+    return slots;
+}
+
 bool stepAppearanceSlot(AppearanceSelection& selection,
                         const game::data::AppearanceCatalog& catalog,
                         std::string_view slot,
@@ -109,6 +132,32 @@ bool stepAppearanceSlot(AppearanceSelection& selection,
     return true;
 }
 
+bool stepAppearanceControl(AppearanceSelection& selection,
+                           const game::data::AppearanceCatalog& catalog,
+                           std::string_view slot,
+                           int direction,
+                           const bool allow_gender) {
+    if (slot != "gender") {
+        return stepAppearanceSlot(selection, catalog, slot, direction);
+    }
+    if (!allow_gender) {
+        return false;
+    }
+
+    const auto& variants = catalog.genderVariants();
+    if (variants.empty()) {
+        return false;
+    }
+
+    const std::size_t current_index = currentVariantIndex(variants, selection.gender);
+    const int normalized_direction = direction < 0 ? -1 : 1;
+    const std::size_t next_index = normalized_direction < 0
+                                       ? (current_index == 0U ? variants.size() - 1U : current_index - 1U)
+                                       : ((current_index + 1U) % variants.size());
+    selection.gender = variants[next_index];
+    return true;
+}
+
 bool resetSelectionToProfile(AppearanceSelection& selection,
                              const game::data::AppearanceCatalog& catalog) {
     const auto* profile = resolveProfile(catalog, selection.profile_id);
@@ -128,7 +177,8 @@ bool resetSelectionToProfile(AppearanceSelection& selection,
 
 bool randomizeSelection(AppearanceSelection& selection,
                         const game::data::AppearanceCatalog& catalog,
-                        std::mt19937& rng) {
+                        std::mt19937& rng,
+                        const bool include_gender) {
     bool changed = false;
     for (const auto& slot : runtimeAppearanceSlots(catalog)) {
         const auto& variants = catalog.variantsForSlot(slot);
@@ -137,6 +187,12 @@ bool randomizeSelection(AppearanceSelection& selection,
         }
         std::uniform_int_distribution<std::size_t> distribution(0U, variants.size() - 1U);
         selection.slot_variants[slot] = variants[distribution(rng)];
+        changed = true;
+    }
+    if (include_gender && !catalog.genderVariants().empty()) {
+        const auto& variants = catalog.genderVariants();
+        std::uniform_int_distribution<std::size_t> distribution(0U, variants.size() - 1U);
+        selection.gender = variants[distribution(rng)];
         changed = true;
     }
     return changed;

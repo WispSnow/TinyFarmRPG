@@ -351,6 +351,7 @@ BattleScene::BattleScene(std::string_view name,
       view_model_builder_(rpg_catalog_,
                           item_catalog_,
                           blueprint_manager_,
+                          presentation_options.player_portrait_service,
                           presentation_options.user_settings_service
                               ? &presentation_options.user_settings_service->localization()
                               : nullptr),

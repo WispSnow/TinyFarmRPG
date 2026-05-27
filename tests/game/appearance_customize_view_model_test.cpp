@@ -163,6 +163,30 @@ TEST(AppearanceCustomizeViewModelTest, BuildsLocalizedProjectSlotViewModels) {
     EXPECT_EQ(view_models[4].variant_label, localization.tr("appearance.variant.none"));
 }
 
+TEST(AppearanceCustomizeViewModelTest, GenderControlOnlyAppearsWhenIncluded) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+    auto localization = loadProjectLocalization("zh-Hans");
+
+    auto selection = makeDefaultAppearanceSelection(catalog);
+    const auto closet_view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection, &localization);
+    EXPECT_EQ(std::find_if(closet_view_models.begin(), closet_view_models.end(), [](const auto& model) {
+                  return model.slot_id == "gender";
+              }),
+              closet_view_models.end());
+
+    const auto new_game_view_models = game::ui::buildAppearanceSlotViewModels(catalog, selection, &localization, true);
+    ASSERT_FALSE(new_game_view_models.empty());
+    EXPECT_EQ(new_game_view_models.front().slot_id, "gender");
+    EXPECT_EQ(new_game_view_models.front().label, localization.tr("appearance.slot.gender"));
+    EXPECT_EQ(new_game_view_models.front().variant_label, localization.tr("appearance.variant_part.male"));
+
+    EXPECT_FALSE(stepAppearanceControl(selection, catalog, "gender", 1, false));
+    EXPECT_EQ(selection.gender, "male");
+    EXPECT_TRUE(stepAppearanceControl(selection, catalog, "gender", 1, true));
+    EXPECT_EQ(selection.gender, "female");
+}
+
 TEST(AppearanceCustomizeViewModelTest, ProjectAppearanceVariantsHaveLocalizedLabels) {
     game::data::AppearanceCatalog catalog;
     ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
@@ -212,6 +236,22 @@ TEST(AppearanceCustomizeViewModelTest, RandomizeTouchesRuntimeSlots) {
     EXPECT_TRUE(selection.slot_variants.contains("skin"));
     EXPECT_TRUE(selection.slot_variants.contains("hair"));
     EXPECT_EQ(selection.slot_variants.at("weapon"), "auto");
+}
+
+TEST(AppearanceCustomizeViewModelTest, RandomizeCanIncludeGenderWhenRequested) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(projectPath("assets/data/appearance_catalog.json").string()));
+
+    auto selection = makeDefaultAppearanceSelection(catalog);
+    std::mt19937 rng{11U};
+
+    selection.gender = "unknown";
+    EXPECT_TRUE(randomizeSelection(selection, catalog, rng, false));
+    EXPECT_EQ(selection.gender, "unknown");
+
+    EXPECT_TRUE(randomizeSelection(selection, catalog, rng, true));
+    const auto& genders = catalog.genderVariants();
+    EXPECT_NE(std::find(genders.begin(), genders.end(), selection.gender), genders.end());
 }
 
 TEST(AppearanceCustomizeViewModelTest, SceneSuspendsLightingForNewGameAndClosetModes) {

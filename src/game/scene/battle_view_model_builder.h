@@ -21,6 +21,10 @@ namespace game::runtime {
 class LocalizationService;
 } // namespace game::runtime
 
+namespace game::ui {
+class PlayerPortraitService;
+}
+
 namespace game::scene {
 
 struct BattlePartyHudViewModels {
@@ -34,6 +38,7 @@ public:
     BattleViewModelBuilder(const game::data::RpgCatalog* rpg_catalog,
                            const game::data::ItemCatalog* item_catalog,
                            const game::factory::BlueprintManager* blueprint_manager,
+                           const game::ui::PlayerPortraitService* player_portrait_service,
                            const game::runtime::LocalizationService* localization = nullptr);
 
     [[nodiscard]] std::vector<BattleTurnOrderEntryViewModel> buildTurnOrderEntries(
@@ -51,6 +56,7 @@ private:
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     const game::data::ItemCatalog* item_catalog_{nullptr};
     const game::factory::BlueprintManager* blueprint_manager_{nullptr};
+    const game::ui::PlayerPortraitService* player_portrait_service_{nullptr};
     const game::runtime::LocalizationService* localization_{nullptr};
 };
 

@@ -1,5 +1,6 @@
 {
     "texture_root": "assets/farm-rpg/Character and Portrait/Character/PNG",
+    "portrait_texture_root": "assets/farm-rpg/Character and Portrait/Portrait/PNG",
     "default_profile": "player_default",
     "layer_order": [
         "skin",
@@ -8,6 +9,26 @@
         "hair",
         "acc",
         "weapon"
+    ],
+    "selection_order": [
+        "gender",
+        "skin",
+        "eyes",
+        "clothes",
+        "hair",
+        "acc"
+    ],
+    "gender_variants": [
+        "male",
+        "female"
+    ],
+    "portrait_layer_order": [
+        "skin",
+        "ears",
+        "clothes",
+        "eyes",
+        "hair",
+        "acc"
     ],
     "runtime_switchable_slots": [
         "skin",
@@ -123,6 +144,29 @@
         "sickle": "Sickle/1",
         "watering": "Watering/1"
     },
+    "variant_path_aliases": {
+        "character": {
+            "acc": {
+                "Pirate eyepatch": [
+                    "Pirate eyepatch",
+                    "pirate eye patch"
+                ],
+                "Santa Hat": [
+                    "Santa Hat",
+                    "Santa hat"
+                ]
+            }
+        },
+        "portrait": {
+            "hair": {
+                "Standard/Brown": "Standart/Brown",
+                "Standard/Black": "Standart/Black",
+                "Standard/Blonde": "Standart/Blonde",
+                "Standard/Ginger": "Standart/Ginger",
+                "Lyria/Blonde": "Lyria/blonde"
+            }
+        }
+    },
     "profiles": {
         "player_default": {
             "gender": "male",
@@ -197,6 +241,8 @@
             "Cook",
             "Cow",
             "Deer",
+            "Pirate eyepatch",
+            "Santa Hat",
             "Beard/Black",
             "Beard/Blonde",
             "Beard/Brown",

@@ -26,6 +26,7 @@ class RmlScreenFade;
 
 namespace game::data {
 struct GameTime;
+class AppearanceCatalog;
 class ItemCatalog;
 class RpgCatalog;
 }
@@ -41,6 +42,7 @@ class DialoguePresentationController;
 class FloatingNoticeView;
 class HotbarUI;
 class ItemTooltipUI;
+class PlayerPortraitService;
 class TimeClockHud;
 
 class GameSceneUiController final {
@@ -49,6 +51,7 @@ public:
                           entt::registry& registry,
                           uint64_t scene_instance_id,
                           game::data::ItemCatalog* item_catalog,
+                          const game::data::AppearanceCatalog* appearance_catalog,
                           const game::data::RpgCatalog* rpg_catalog);
     ~GameSceneUiController();
 
@@ -76,6 +79,7 @@ private:
     entt::registry& registry_;
     uint64_t scene_instance_id_{0};
     game::data::ItemCatalog* item_catalog_{nullptr};
+    const game::data::AppearanceCatalog* appearance_catalog_{nullptr};
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
 
     std::unique_ptr<game::ui::HotbarUI> hotbar_ui_{};
@@ -83,6 +87,7 @@ private:
     std::unique_ptr<game::ui::DialoguePresentationController> dialogue_controller_{};
     std::array<std::unique_ptr<game::ui::FloatingNoticeView>, 2> floating_notices_{};
     std::unique_ptr<game::ui::ItemTooltipUI> item_tooltip_ui_{};
+    std::unique_ptr<game::ui::PlayerPortraitService> player_portrait_service_{};
     std::unique_ptr<game::ui::TimeClockHud> time_clock_hud_{};
     std::unique_ptr<engine::ui::rmlui::RmlScreenFade> rml_screen_fade_{};
 

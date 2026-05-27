@@ -38,7 +38,8 @@ using AppearanceSlotViewModels = std::vector<AppearanceSlotViewModel>;
 [[nodiscard]] AppearanceSlotViewModels buildAppearanceSlotViewModels(
     const game::data::AppearanceCatalog& catalog,
     const game::scene::AppearanceSelection& selection,
-    const game::runtime::LocalizationService* localization);
+    const game::runtime::LocalizationService* localization,
+    bool include_gender = false);
 [[nodiscard]] std::string displayLabelForAppearanceSlot(
     std::string_view slot,
     const game::runtime::LocalizationService* localization);

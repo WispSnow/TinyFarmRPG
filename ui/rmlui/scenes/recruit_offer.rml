@@ -18,9 +18,7 @@
 
         <div id="recruit-offer-card" class="tf-scene-card-frame">
             <div id="recruit-offer-portrait"
-                 data-class-portrait-player="portrait_player"
-                 data-class-portrait-lyria="portrait_lyria"
-                 data-class-portrait-tori="portrait_tori"></div>
+                 data-style-decorator="portrait_decorator"></div>
             <div id="recruit-offer-copy">
                 <div id="recruit-offer-name" class="tf-scene-title">{{ actor_name }}</div>
                 <div id="recruit-offer-line" class="tf-scene-title">{{ offer_text }}</div>

@@ -5,6 +5,7 @@
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/events.h"
 #include "game/system/appearance_system.h"
 #include "appearance_test_fixture_utils.h"
 
@@ -103,6 +104,16 @@ std::filesystem::path createCatalogFixture() {
     }
     return engine::component::LayeredSpriteLayer::INVALID_TEXTURE_ID;
 }
+
+struct AppearanceChangedProbe {
+    int count{0};
+    entt::entity last_target{entt::null};
+
+    void onChanged(const game::defs::AppearanceChangedEvent& event) {
+        ++count;
+        last_target = event.target;
+    }
+};
 
 TEST(AppearanceSystemTest, SetHairSlotRebuildsLayeredSpriteMapping) {
     constexpr entt::id_type kNullTexture{};
@@ -211,6 +222,38 @@ TEST(AppearanceSystemTest, MissingVariantFallsBackToPreviousSelection) {
     const entt::id_type after_texture = resolveLayerTextureId(*after_layer, "idle_down"_hs);
     EXPECT_EQ(after_texture, before_texture);
     EXPECT_EQ(registry.get<game::component::AppearanceComponent>(entity).slot_variants_.at("hair"), "Standard/Brown");
+}
+
+TEST(AppearanceSystemTest, RefreshAppearanceDispatchesAppearanceChangedEvent) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(createCatalogFixture().string()));
+
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    const entt::entity entity = registry.create();
+    std::unordered_map<entt::id_type, engine::component::Animation> animations;
+    animations.emplace("idle_down"_hs, makeAnimation("idle_down"));
+    registry.emplace<engine::component::AnimationComponent>(entity, std::move(animations), "idle_down"_hs);
+
+    game::component::AppearanceComponent appearance{};
+    appearance.gender_ = "male";
+    appearance.slot_variants_ = {
+        {"hair", "Standard/Brown"},
+        {"weapon", "auto"},
+    };
+    registry.emplace<game::component::AppearanceComponent>(entity, std::move(appearance));
+    registry.emplace<engine::component::LayeredSpriteComponent>(entity);
+
+    AppearanceChangedProbe probe{};
+    dispatcher.sink<game::defs::AppearanceChangedEvent>().connect<&AppearanceChangedProbe::onChanged>(&probe);
+
+    AppearanceSystem system(registry, dispatcher, catalog);
+    dispatcher.trigger(game::defs::RefreshAppearanceCommand{entity});
+
+    dispatcher.sink<game::defs::AppearanceChangedEvent>().disconnect<&AppearanceChangedProbe::onChanged>(&probe);
+    EXPECT_EQ(probe.count, 1);
+    EXPECT_EQ(probe.last_target, entity);
 }
 
 } // namespace

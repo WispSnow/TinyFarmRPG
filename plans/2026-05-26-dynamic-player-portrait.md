@@ -96,7 +96,7 @@ RmlUi 的 `@spritesheet src:` 不应依赖 `generated://` 动态 URI，因此主
 - 战斗 party HUD 使用 `decoratorString(Battle48)`，替代 `battle-party-portrait-player`。
 - 背包 party panel 使用 `sourceUri(Standard64)`，直接跳过当前 `actor->portrait_.path_` 的 decode + crop + register 流程。
 
-`portrait.rcss` 与 `battle.rcss` 中的静态 spritesheet 可以保留给 Lyria / Tori 或作为 fallback，但 `actor.player` 的 view model 不再返回 `image(portrait-player)` / `image(battle-party-portrait-player)`。
+`portrait.rcss` 与 `battle.rcss` 中的静态 spritesheet 可以保留给 Lyria / Tori 或作为 fallback。`actor.player` 的 view model 默认返回动态 `generated://` decorator；当 `PlayerPortraitService` 尚不可用时，回退到 `image(portrait-player)` / `image(battle-party-portrait-player)`，避免头像空白。
 
 ### 外观预览场景
 
@@ -106,6 +106,8 @@ RmlUi 的 `@spritesheet src:` 不应依赖 `generated://` 动态 URI，因此主
 - 右/下区域：合成头像 `<img>`。
 - 每次 `onSlotStep()`、`onRandomize()`、`onReset()` 后，同时刷新 idle cache 和 portrait preview。
 - `NewGame` 模式中的 gender 切换也走同一套控制行与刷新流程；`Closet` 模式不提供 gender 控制。
+
+实现后需要人工确认 idle 动画与头像 overlay 不互相遮挡；当前 idle pivot 已向左/上偏移，头像钉在预览框右/下角。
 
 ### 新增配饰策略
 
@@ -189,27 +191,29 @@ RmlUi 的 `@spritesheet src:` 不应依赖 `generated://` 动态 URI，因此主
 ## TODO
 
 - [x] 确认 `Beret` 本轮不加入 catalog，等待 watering 动作素材补齐。
-- [ ] 在 `appearance_catalog.json` 增加 `gender_variants`、`selection_order`、portrait 配置和 variant alias。
-- [ ] 扩展 `AppearanceCatalog` 的角色 sprite alias 解析。
-- [ ] 扩展 `AppearanceCatalog` 的 portrait layer 解析。
-- [ ] 新增 catalog 验证测试，确认候选 alias 可解析所有必需角色动作与 portrait layers。
-- [ ] 验证通过后补入新增配饰 variant：`Pirate eyepatch`、`Santa Hat`。
-- [ ] 保持 `Beret` 不在 catalog 中，补齐素材后再追加。
-- [ ] 新增 `AppearancePortraitBuilder`，实现 RGBA alpha 合成、裁剪 `standard64` / `battle48`、layer decode 缓存。
-- [ ] selection hash 按固定顺序生成，不直接遍历 `unordered_map`。
-- [ ] 新增 `AppearanceChangedEvent`，在 `AppearanceSystem::rebuildLayerCache()` 内派发。
-- [ ] 新增主角头像服务，管理 generated image registration、selection hash URI、`sourceUri(kind)`、`decoratorString(kind)`。
-- [ ] 外观自定义 UI 增加头像预览。
-- [ ] 新游戏外观 UI 增加 gender 控制，默认 `male`。
-- [ ] 衣柜外观 UI 保持当前 gender，不允许切换。
-- [ ] Inventory 中主角头像改用 `sourceUri(Standard64)`，跳过静态 portrait decode/crop/register。
-- [ ] Dialogue / RecruitOffer 中主角头像改用 `decoratorString(Standard64)`。
-- [ ] Battle turn order 中主角头像改用 `decoratorString(Standard64)`。
-- [ ] Battle party HUD 中主角头像改用 `decoratorString(Battle48)`，不再依赖 `battle-party-portrait-player`。
-- [ ] 将 `portrait-player` / `battle-party-portrait-player` 从主角 view model 返回路径中移除，仅保留静态 fallback 或其他角色使用。
-- [ ] 新增 catalog 与头像合成单元测试。
-- [ ] 使用 ninja 构建并运行相关测试。
-- [ ] 人工验证新游戏外观、衣柜换装、读档、背包、对话、战斗中的主角头像同步。
+- [x] 在 `appearance_catalog.json` 增加 `gender_variants`、`selection_order`、portrait 配置和 variant alias。
+- [x] 扩展 `AppearanceCatalog` 的角色 sprite alias 解析。
+- [x] 扩展 `AppearanceCatalog` 的 portrait layer 解析。
+- [x] 新增 catalog 验证测试，确认候选 alias 可解析所有必需角色动作与 portrait layers。
+- [x] 验证通过后补入新增配饰 variant：`Pirate eyepatch`、`Santa Hat`。
+- [x] 保持 `Beret` 不在 catalog 中，补齐素材后再追加。
+- [x] 新增 `AppearancePortraitBuilder`，实现 RGBA alpha 合成、裁剪 `standard64` / `battle48`、layer decode 缓存。
+- [x] selection hash 按固定顺序生成，不直接遍历 `unordered_map`。
+- [x] 新增 `AppearanceChangedEvent`，在 `AppearanceSystem::rebuildLayerCache()` 内派发。
+- [x] 新增主角头像服务，管理 generated image registration、selection hash URI、`sourceUri(kind)`、`decoratorString(kind)`。
+- [x] 外观自定义 UI 增加头像预览。
+- [x] 新游戏外观 UI 增加 gender 控制，默认 `male`。
+- [x] 衣柜外观 UI 保持当前 gender，不允许切换。
+- [x] Inventory 中主角头像改用 `sourceUri(Standard64)`，跳过静态 portrait decode/crop/register。
+- [x] Dialogue / RecruitOffer 中主角头像改用 `decoratorString(Standard64)`。
+- [x] Battle turn order 中主角头像改用 `decoratorString(Standard64)`。
+- [x] Battle party HUD 中主角头像改用 `decoratorString(Battle48)`，不再依赖 `battle-party-portrait-player`。
+- [x] 主角 view model 默认走动态 portrait，`PlayerPortraitService` 不可用时保留 `portrait-player` / `battle-party-portrait-player` 静态 fallback。
+- [x] 新增 catalog 与头像合成单元测试。
+- [x] 使用 ninja 构建并运行相关测试。
+- [ ] 人工验证新游戏外观、衣柜换装、读档、背包、对话、战斗中的主角头像同步，并确认外观预览框内 idle 动画与头像 overlay 不互相遮挡。
+
+备注：当前已完成自动化验证与默认构建；最后一项需要在可用图形窗口环境中进入实际游戏流程确认。
 
 ## 已确认决策
 

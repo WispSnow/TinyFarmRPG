@@ -86,8 +86,12 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
     }
 
     texture_root_.clear();
+    portrait_texture_root_.clear();
     default_profile_id_.clear();
     layer_order_.clear();
+    selection_order_.clear();
+    gender_variants_ = {"male", "female"};
+    portrait_layer_order_ = {"skin", "ears", "clothes", "eyes", "hair", "acc"};
     slot_dirs_.clear();
     action_dirs_.clear();
     action_layouts_.clear();
@@ -96,6 +100,7 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
     slot_variants_.clear();
     runtime_switchable_slots_.clear();
     weapon_action_variants_.clear();
+    variant_path_aliases_.clear();
 
     texture_root_ = root.value("texture_root", std::string{});
     if (texture_root_.empty()) {
@@ -103,6 +108,11 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
         return false;
     }
     texture_root_ = resolveTextureRootPath(texture_root_, file_path);
+
+    portrait_texture_root_ = root.value("portrait_texture_root", std::string{});
+    if (!portrait_texture_root_.empty()) {
+        portrait_texture_root_ = resolveTextureRootPath(portrait_texture_root_, file_path);
+    }
 
     default_profile_id_ = root.value("default_profile", std::string{});
 
@@ -115,6 +125,41 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
     }
     if (layer_order_.empty()) {
         layer_order_ = {"skin", "eyes", "clothes", "hair", "acc", "weapon"};
+    }
+
+    if (const auto it = root.find("selection_order"); it != root.end() && it->is_array()) {
+        for (const auto& value : *it) {
+            if (value.is_string()) {
+                selection_order_.push_back(value.get<std::string>());
+            }
+        }
+    }
+    if (selection_order_.empty()) {
+        selection_order_ = layer_order_;
+    }
+
+    if (const auto it = root.find("gender_variants"); it != root.end() && it->is_array()) {
+        gender_variants_.clear();
+        for (const auto& value : *it) {
+            if (value.is_string()) {
+                gender_variants_.push_back(normalizeGender(value.get<std::string>()));
+            }
+        }
+    }
+    if (gender_variants_.empty()) {
+        gender_variants_ = {"male", "female"};
+    }
+
+    if (const auto it = root.find("portrait_layer_order"); it != root.end() && it->is_array()) {
+        portrait_layer_order_.clear();
+        for (const auto& value : *it) {
+            if (value.is_string()) {
+                portrait_layer_order_.push_back(value.get<std::string>());
+            }
+        }
+    }
+    if (portrait_layer_order_.empty()) {
+        portrait_layer_order_ = {"skin", "ears", "clothes", "eyes", "hair", "acc"};
     }
 
     if (const auto it = root.find("slot_dirs"); it != root.end() && it->is_object()) {
@@ -204,6 +249,33 @@ bool AppearanceCatalog::loadFromFile(std::string_view file_path) {
                 continue;
             }
             weapon_action_variants_.emplace(action_key, variant.get<std::string>());
+        }
+    }
+
+    if (const auto it = root.find("variant_path_aliases"); it != root.end() && it->is_object()) {
+        for (const auto& [scope, scope_json] : it->items()) {
+            if (!scope_json.is_object()) {
+                continue;
+            }
+            auto& aliases_by_slot = variant_path_aliases_[scope];
+            for (const auto& [slot, slot_json] : scope_json.items()) {
+                if (!slot_json.is_object()) {
+                    continue;
+                }
+                auto& aliases_by_variant = aliases_by_slot[slot];
+                for (const auto& [variant, alias_json] : slot_json.items()) {
+                    auto& aliases = aliases_by_variant[variant];
+                    if (alias_json.is_string()) {
+                        aliases.push_back(alias_json.get<std::string>());
+                    } else if (alias_json.is_array()) {
+                        for (const auto& alias_value : alias_json) {
+                            if (alias_value.is_string()) {
+                                aliases.push_back(alias_value.get<std::string>());
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -391,6 +463,60 @@ std::optional<AppearanceCatalog::LayerTexture> AppearanceCatalog::resolveLayerTe
     return LayerTexture{*texture_path, texture_id};
 }
 
+std::optional<AppearanceCatalog::LayerTexture> AppearanceCatalog::resolvePortraitLayerTexture(
+    std::string_view layer,
+    std::string_view variant,
+    std::string_view gender) const {
+    namespace fs = std::filesystem;
+
+    if (portrait_texture_root_.empty() || variant.empty() || variant == "none") {
+        return std::nullopt;
+    }
+
+    fs::path base_path = fs::path(portrait_texture_root_);
+    std::string slot_key(layer);
+    std::string resolved_variant(variant);
+
+    if (layer == "skin") {
+        base_path /= "Skins";
+        base_path /= (normalizeGender(gender) == "female") ? "Female" : "Male";
+    } else if (layer == "ears") {
+        base_path /= "Skins";
+        base_path /= "Ears";
+        const fs::path ear_variant{resolved_variant};
+        if (ear_variant.has_parent_path()) {
+            base_path /= ear_variant.parent_path();
+            resolved_variant = ear_variant.filename().string();
+        } else {
+            base_path /= "Human";
+        }
+    } else if (layer == "clothes") {
+        base_path /= "Clothers";
+        base_path /= (normalizeGender(gender) == "female") ? "Female" : "Male";
+        const fs::path clothes_variant{resolved_variant};
+        resolved_variant = clothes_variant.filename().string();
+    } else if (layer == "eyes") {
+        base_path /= "Eyes";
+    } else if (layer == "hair") {
+        base_path /= "Hair";
+    } else if (layer == "acc") {
+        if (resolved_variant.rfind("Elf/", 0) == 0) {
+            return std::nullopt;
+        }
+        base_path /= "Acc";
+    } else {
+        return std::nullopt;
+    }
+
+    const auto texture_path = resolveTexturePathFromBase(base_path, "portrait", slot_key, resolved_variant);
+    if (!texture_path) {
+        return std::nullopt;
+    }
+
+    const entt::id_type texture_id = entt::hashed_string{texture_path->c_str()}.value();
+    return LayerTexture{*texture_path, texture_id};
+}
+
 std::vector<std::string> AppearanceCatalog::collectPreloadTexturePaths(const AppearanceProfile& profile,
                                                                        std::size_t runtime_variant_limit_per_slot) const {
     std::unordered_set<std::string> unique_paths{};
@@ -507,34 +633,70 @@ std::optional<std::string> AppearanceCatalog::resolveTexturePath(std::string_vie
         return std::nullopt;
     }
 
-    const fs::path variant_path = fs::path(std::string(variant));
-    std::vector<fs::path> candidates{};
-    if (variant_path.has_extension()) {
-        candidates.push_back(base_path / variant_path);
-    } else {
-        candidates.push_back(base_path / variant_path);
-        candidates.push_back(base_path / fs::path(std::string(variant) + ".png"));
+    return resolveTexturePathFromBase(base_path, "character", slot, variant);
+}
+
+std::optional<std::string> AppearanceCatalog::resolveTexturePathFromBase(
+    const std::filesystem::path& base_path,
+    std::string_view alias_scope,
+    std::string_view slot,
+    std::string_view variant) const {
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(base_path) || !fs::is_directory(base_path)) {
+        return std::nullopt;
     }
 
-    for (const auto& candidate : candidates) {
-        if (isPngFile(candidate)) {
-            return candidate.lexically_normal().string();
+    for (const auto& candidate_variant : variantPathCandidates(alias_scope, slot, variant)) {
+        const fs::path variant_path = fs::path(candidate_variant);
+        std::vector<fs::path> candidates{};
+        if (variant_path.has_extension()) {
+            candidates.push_back(base_path / variant_path);
+        } else {
+            candidates.push_back(base_path / variant_path);
+            candidates.push_back(base_path / fs::path(candidate_variant + ".png"));
         }
-        if (fs::exists(candidate) && fs::is_directory(candidate)) {
-            std::vector<fs::path> nested_files{};
-            for (const auto& entry : fs::directory_iterator(candidate)) {
-                if (isPngFile(entry.path())) {
-                    nested_files.push_back(entry.path());
-                }
+
+        for (const auto& candidate : candidates) {
+            if (isPngFile(candidate)) {
+                return candidate.lexically_normal().string();
             }
-            if (!nested_files.empty()) {
-                std::sort(nested_files.begin(), nested_files.end());
-                return nested_files.front().lexically_normal().string();
+            if (fs::exists(candidate) && fs::is_directory(candidate)) {
+                std::vector<fs::path> nested_files{};
+                for (const auto& entry : fs::directory_iterator(candidate)) {
+                    if (isPngFile(entry.path())) {
+                        nested_files.push_back(entry.path());
+                    }
+                }
+                if (!nested_files.empty()) {
+                    std::sort(nested_files.begin(), nested_files.end());
+                    return nested_files.front().lexically_normal().string();
+                }
             }
         }
     }
 
     return std::nullopt;
+}
+
+std::vector<std::string> AppearanceCatalog::variantPathCandidates(std::string_view alias_scope,
+                                                                  std::string_view slot,
+                                                                  std::string_view variant) const {
+    std::vector<std::string> candidates{};
+    if (const auto scope_it = variant_path_aliases_.find(std::string(alias_scope));
+        scope_it != variant_path_aliases_.end()) {
+        if (const auto slot_it = scope_it->second.find(std::string(slot)); slot_it != scope_it->second.end()) {
+            if (const auto variant_it = slot_it->second.find(std::string(variant));
+                variant_it != slot_it->second.end()) {
+                candidates = variant_it->second;
+            }
+        }
+    }
+
+    if (std::find(candidates.begin(), candidates.end(), variant) == candidates.end()) {
+        candidates.push_back(std::string(variant));
+    }
+    return candidates;
 }
 
 } // namespace game::data

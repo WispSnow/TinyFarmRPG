@@ -88,11 +88,12 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(rml.find("data-event-click=\"accept\""), std::string::npos);
     EXPECT_NE(rml.find("id=\"recruit-offer-decline-button\""), std::string::npos);
     EXPECT_NE(rml.find("data-event-click=\"decline\""), std::string::npos);
-    EXPECT_NE(rml.find("data-class-portrait-lyria"), std::string::npos);
-    EXPECT_NE(rml.find("data-class-portrait-tori"), std::string::npos);
+    EXPECT_NE(rml.find("data-style-decorator=\"portrait_decorator\""), std::string::npos);
+    EXPECT_EQ(rml.find("data-class-portrait-"), std::string::npos);
 
     EXPECT_NE(rcss.find("display: block;"), std::string::npos);
     EXPECT_EQ(rcss.find("@spritesheet recruit-portrait-player"), std::string::npos);
+    EXPECT_EQ(rcss.find("#recruit-offer-portrait.portrait-"), std::string::npos);
     EXPECT_NE(rcss.find("#recruit-offer-panel"), std::string::npos);
     EXPECT_NE(rcss.find(".recruit-offer-action-button"), std::string::npos);
     EXPECT_NE(portrait_rcss.find("@spritesheet portrait-player-sheet"), std::string::npos);
