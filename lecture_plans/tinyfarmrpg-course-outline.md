@@ -58,6 +58,8 @@
 
 上一套「OpenGL 与迷你农场」共 1 intro + 33 个 part（part-01..part-33）。本套对其的处理方式如下表，便于学生定位先修知识：
 
+> 注：表中 `part-NN` 编号对应上一套教程目录 `lecture_plans/ref/OpenGL与迷你农场/` 下的文件名序号（`00-开篇.md` = intro 开篇 = part-00，`NN-*.md` = part-NN，NN ∈ 01..33）。上一套大纲文件 `lecture_outline.md` 中的 L 标号（含 L03A/L03B 附加课）是教学口径，对应关系为：L00 = part-00（intro），L01..L03 = part-01..03，L03A = part-04，L03B = part-05，L04..L30 = part-06..32，L31 = part-33。
+
 | 上一套章节 | 在本套的处理 |
 | --- | --- |
 | intro 开篇 / part-01 构建与运行 | **L00 对齐**：用本项目目标、运行方式和学习路径承接上一套开篇 |
@@ -127,6 +129,10 @@ flowchart LR
 - 学习路径：先建立项目全局地图，再按 UI、脚本、玩法数据、战斗、工程化收尾逐层拆开。
 - 课程阅读方式：架构图、关键链路、阅读清单、源码入口、自测问题。
 - 项目目录速览：`src/engine` vs `src/game`、`assets/data`、`scripts/`、`ui/rmlui/`。
+- **先修条件 checklist**（与大纲"先修与配套子教程"小节对齐）：
+  - 上一套「OpenGL 与迷你农场」教程：intro + part-01..part-33（**完整先修**）
+  - RmlUi 子教程 L01-L06：文档结构 / 盒模型 / 布局 / 样式 / 事件 / 数据绑定（**前置必修**，否则 L03 会卡 RML/RCSS 语法）
+  - RmlUi 子教程 L07-L15 与多线程子教程：**穿插推荐**，主线对应讲次会在阅读清单点名
 
 **阅读清单**：
 - `docs/overview.md`
@@ -197,13 +203,16 @@ flowchart LR
 - 领域服务与测试：每个服务都有一组失败路径测试，这是新增玩法的最低安全网。
 
 **阅读清单**：
-- `docs/game/runtime-assembly.md`（领域服务章节）
+- `docs/game/domain-services.md`（领域服务核心阅读材料：本层做什么、谁调、怎么新增）
+- `docs/game/runtime-assembly.md`（领域服务的装配章节）
 - 上一套 part-06 事件系统 + part-08 ECS 在本项目中的落地
 
 **源码入口**：
 - `src/game/domain/inventory_domain_service.*`（**仅作为模板**通览一遍）
 - `src/game/defs/commands_*.h`
 - `src/game/defs/events_*.h`
+
+> 提示（先看再讲）：开讲前打开 `inventory_debug_panel`，做一次加/减物品观察 `InventoryChangedEvent` 触发，再回头看 service 内部如何"preflight → 写入 → 事件"。
 
 **自测问题**：
 1. "把状态写入集中到领域服务"解决了哪些以前散在 system 里的具体问题？
@@ -334,7 +343,8 @@ flowchart LR
 **阅读清单**：
 - `docs/tutorial/lua-content-authoring.md`
 - `scripts/bootstrap.lua`
-- `scripts/lib/state.lua`、`scripts/lib/once.lua`
+- `scripts/lib/state.lua`、`scripts/lib/once.lua`（本讲重点：持久化语义对比）
+- `scripts/lib/` 下还有 `dialogue.lua` / `event.lua` / `quest.lua` / `recruit_npc.lua` / `time.lua`，是共享脚本工具集，后续 L08-L12 用到时再深入
 
 **源码入口**：
 - `src/game/script/script_state.h`
@@ -438,6 +448,7 @@ flowchart LR
 - `src/game/data/rpg_catalog.*`
 - `src/game/data/rpg_data.h`
 - `src/game/data/audio_cue_catalog.*`
+- `tests/game/rpg_catalog_test.cpp`、`tests/game/quest_catalog_test.cpp`、`tests/game/shop_catalog_test.cpp`（catalog 引用校验失败的反向案例）
 
 **自测问题**：
 1. 一个新的 skill id 漏在 actor catalog 里被引用，校验会在何时报错？
@@ -509,7 +520,7 @@ flowchart LR
 2. 一个商人按"夜晚"切换库存，这逻辑该写 Lua 还是 C++？为什么？
 3. Buy/Sell 都要数字输入，UI 状态机怎么避免"卡在数量编辑"导致无法取消？
 
-**最小练习**：给 `merchant.lua` 加一个 "雨天专属商品" 分支（晴/雨切换 `shop_id`）。
+**最小练习**：给 `merchant.lua` 加一个新的 `shop_id` 分支——例如"深夜限定（22:00 之后）"或"完成某任务后解锁"，用 `tf.time` / `tf.quest.status` 触发切换，验证库存随之变化。（注：项目内尚无 weather API，请勿挑"雨天"作为切换条件。）
 
 **小结与下节预告**：交易闭环完成，下一讲把单人玩家扩成 JRPG 队伍。
 
@@ -638,7 +649,7 @@ flowchart LR
 2. `GameMode` 切换的时机点在哪？过早或过晚分别会导致什么 bug？
 3. 战斗中按 ESC 退到桌面，存档应该捕获哪个 mode？
 
-**最小练习**：在某地图加一个 `EnemyEncounterComponent` 触发点，跑到那里能进入战斗。
+**最小练习**：在 `home_exterior` 地图（或任一户外地图）加一个 `EnemyEncounterComponent` 触发点，走过去后能进入 `BattleScene`，胜负任一结束后能写回探索态。
 
 **小结与下节预告**：入口建立，下一讲深入战斗领域核心。
 
@@ -688,6 +699,7 @@ flowchart LR
 - 状态效果（state）与持续伤害的处理。
 
 **阅读清单**：
+- `docs/game/battle-internals.md`（领域核心的"实现者视角"；与 L16 阅读清单的 `turn-based-battle.md` 交叉阅读）
 - `tests/game/battle/battle_action_resolver_test.cpp`
 
 **源码入口**：
@@ -708,6 +720,8 @@ flowchart LR
 ---
 
 #### L18: 战斗 Action 生成（玩家菜单 + 敌方 AI）
+
+> ⚠️ 本讲负载较重（玩家菜单 + AI 双侧）。建议讲师以"对称视角：两者都是 `BattleAction` 生产者"为主线压缩共性、详深各自差异；学生可在听完后分两次消化（先玩家菜单状态机，再 AI Planner）。
 
 **目标**：把"玩家通过菜单选 action"和"AI 自动产生 action"统一作为"action 生产者"讲，理解战斗 UI 如何把玩家输入转换成合法 `BattleAction`，以及敌方如何按 troop 配置自动决策。
 
@@ -907,8 +921,9 @@ flowchart LR
 - `assets/data/vfx_catalog.json`
 
 **源码入口**：
-- `src/engine/vfx/*`
-- `src/game/defs/commands_*.h`（VFX 相关）
+- `src/engine/vfx/vfx_types.h`（`PlayVfxCommand` 定义所在；注意 VFX command 在 engine 层，不在 `src/game/defs/`）
+- `src/engine/vfx/vfx_service.*` + `src/engine/vfx/vfx_bridge_system.*`
+- `src/engine/vfx/effekseer_backend.*` / `src/engine/vfx/null_vfx_backend.*`
 
 **自测问题**：
 1. 把 `EffekseerBackend` 换成 `NullVfxBackend` 之后，谁会立即报错？谁不会？
@@ -968,8 +983,11 @@ flowchart LR
 
 **阅读清单**：
 - `docs/game/system_scheduler.md`
+- `docs/engine/loop_timing_contract.md`（`SchedulerStage` / `GameMode` / transition gate 的契约说明）
 - 上一套 part-26 游戏场景与系统编排（升级前对照）
 - **并行调度原理外链**：`docs/tutorial/multi-thread/10-ecs-parallel-scheduling.md`、`13-entt-multithreading-and-scheduler.md`
+
+> 提示（先看再讲）：先用 `tools/scheduler_dot_dump` 导出 DOT 调度图，或打开 Scheduler Debug Panel 实时观察 wave 划分，再回头看声明式装配如何生成它。
 
 **源码入口**：
 - `src/game/runtime/system_scheduler.*`
@@ -998,7 +1016,6 @@ flowchart LR
 - 工具链：`visual_tester`、`rmlui_tester`、`battle_tester`、`scheduler_dot_dump`、`rpg_importer`。
 - Catalog validation、脚本测试、UI smoke 在 CI 里的作用。
 - **如何为新增玩法选择测试层级**（实操 checklist）。
-- 后续可扩展方向：更多 objective 类型、限量库存、状态系统、剧情过场、地图事件链、更多语言。
 
 **阅读清单**：
 - `docs/testing/tools.md`
@@ -1046,6 +1063,17 @@ flowchart LR
 - **RmlUi 专项课**：完整子教程见 `learn/lectures/rmlui/syllabus.md`，主线 L03 只讲项目接入，语法基础由该子教程承担。
 - **多线程专项课**：完整子教程见 `docs/tutorial/multi-thread/`，主线 L24-L25 只讲项目里实际用到的两个模式（异步 preload + 并行 wave）。
 - **可选深入**：本地化的字体回退与混排（已超出 L22 容量）、Save schema 迁移的复杂 case（v3→v7 历史路径）、RmlUi 自定义 element 的实战。
+
+## 后续可扩展方向
+
+课程结束后，学生可以在已有底座上独立扩展以下方向，全部不需要改动 engine 层即可完成：
+
+- **更多 objective 类型**：在 `QuestCatalog` 中扩展非战斗目标（如"采集 N 个材料"、"在地点 X 停留")。
+- **限量库存**：让 `ShopCatalog` 的条目带 `stock` 字段，售出后递减、按天补货。
+- **状态系统**：扩展 `RpgCatalog` 中的 state 数据，加入更多 buff/debuff 与持续效果。
+- **剧情过场**：用 Lua + DialogueChoice 拼接多步分支剧情，作为新地图入场动画。
+- **地图事件链**：在 Tiled 区域触发器与 `tf.state` 配合下做出"按顺序触发的多段事件"。
+- **更多语言**：参照 `LocalizationService` manifest 加一种语言并完成 Scene 接入。
 
 ## 课程节奏
 

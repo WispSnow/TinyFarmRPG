@@ -1,6 +1,6 @@
 # 领域服务（Domain Services）
 
-> 用途：解释 `src/game/domain/` 这一层"做什么、为什么独立成层、谁调它、怎么新增"。课程 L03 的核心阅读材料。
+> 用途：解释 `src/game/domain/` 这一层"做什么、为什么独立成层、谁调它、怎么新增"。课程 L02 的核心阅读材料。
 
 `src/game/domain/` 是 TinyFarmRPG 里专门用来 **集中规则与原子写入** 的一层。它处于 system / scene / Lua 之上，catalog / component / WorldState 之下。所有"修改背包"、"穿装备"、"完成任务"、"买卖物品"等会改写多个组件并需要保持一致性的操作，都收敛到这里。
 
