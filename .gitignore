@@ -115,3 +115,6 @@ saves/*.json
 
 # ImGui runtime layout
 imgui.ini
+
+# ref
+lecture_plans/ref/
