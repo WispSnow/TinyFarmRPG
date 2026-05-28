@@ -55,9 +55,10 @@ flowchart LR
 4. [MapManager](../game/map_manager.md)
 5. [WorldState](../game/world_state.md)
 6. [运行时装配](../game/runtime-assembly.md)
-7. [交互与对话](../game/interaction_and_dialogue.md)
-8. [物品使用与农场循环](../game/farm_loop.md)
-9. [背包与快捷栏](../game/inventory_hotbar.md)
+7. [领域服务](../game/domain-services.md)
+8. [交互与对话](../game/interaction_and_dialogue.md)
+9. [物品使用与农场循环](../game/farm_loop.md)
+10. [背包与快捷栏](../game/inventory_hotbar.md)
 
 推荐追踪一次完整链路：玩家按交互键，`InteractionSystem` 找目标，目标系统发 UI 或命令，最终状态写回组件或 WorldState。
 
@@ -81,8 +82,9 @@ flowchart LR
 
 1. [Lua 内容编写指南](lua-content-authoring.md)
 2. [C++ 绑定 Lua 教程](lua-binding-guide.md)
-3. [交互与对话](../game/interaction_and_dialogue.md)
-4. [地图数据管线](../game/map_data_pipeline.md)
+3. [ScriptHost 内核](../engine/script_host.md)
+4. [交互与对话](../game/interaction_and_dialogue.md)
+5. [地图数据管线](../game/map_data_pipeline.md)
 
 推荐先读 `scripts/bootstrap.lua`，再读 `scripts/npcs/merchant.lua`、`scripts/quests/village_goblin_cleanup.lua` 和 `scripts/maps/home_exterior.lua`。
 
@@ -108,7 +110,8 @@ flowchart LR
 2. [商店系统](../gameplay/shop-system.md)
 3. [队伍、装备、休息与招募](../gameplay/party-equipment-rest-recruitment.md)
 4. [回合制战斗](../gameplay/turn-based-battle.md)
-5. [存档与流程](../game/save_and_flow.md)
+5. [战斗内部](../game/battle-internals.md)
+6. [存档与流程](../game/save_and_flow.md)
 
 战斗文档较长，建议先读“架构分层”和“完整战斗流程”，再按需要回到菜单、AI、动作执行、奖励写回等章节。
 

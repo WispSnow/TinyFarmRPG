@@ -4,7 +4,7 @@
 
 `SystemScheduler` 是 TinyFarm 游戏逻辑层的**帧调度器**，负责在每个固定时间步（`fixedUpdate`）中按正确顺序执行所有 ECS 系统。它的核心职责包括：
 
-1. **阶段排序** — 定义 22 个 `SchedulerStage`，确保系统之间的数据依赖和执行时序正确
+1. **阶段排序** — 定义 26 个 `SchedulerStage`，确保系统之间的数据依赖和执行时序正确
 2. **模式裁剪** — 根据当前 `GameMode`（探索/战斗/暂停/过场）选择性跳过不需要的阶段
 3. **并行岛** — 将无数据冲突的系统分组，通过 `ParallelWaveScheduler` + `ThreadPool` 并行执行
 4. **过渡门控** — 在地图切换过渡期间，通过两道"门"(Gate) 提前终止 tick，避免无效逻辑运行
@@ -59,7 +59,7 @@ stateDiagram-v2
 
 | 模式 | 说明 | 执行的阶段 |
 |------|------|-----------|
-| `Exploration` | 完整游戏循环 | 全部 22 阶段（受 Gate 裁剪） |
+| `Exploration` | 完整游戏循环 | 全部 26 阶段（受 Gate 裁剪） |
 | `Battle` | 战斗模式（桩） | 仅 `RemoveEntity` |
 | `PauseOverlay` | 暂停覆盖层（桩） | 仅 `RemoveEntity` |
 | `Cutscene` | 过场动画 | `RemoveEntity` → `Time` → `DayNight` → `TransitionUpdatePost` → `LightTogglePost` |
@@ -93,7 +93,8 @@ flowchart TD
     ISLAND1 --> CHEST[Chest<br/>宝箱交互]
     CHEST --> ITEMUSE[ItemUse<br/>物品使用]
     ITEMUSE --> DIALOGUE[Dialogue<br/>对话推进]
-    DIALOGUE --> AUTOTILE[AutoTile<br/>自动贴图]
+    DIALOGUE --> QUESTI[QuestInteraction<br/>任务 NPC 交互]
+    QUESTI --> AUTOTILE[AutoTile<br/>自动贴图]
     AUTOTILE --> ISLAND2
 
     subgraph ISLAND2 [并行岛 2 — 移动前]
@@ -102,14 +103,17 @@ flowchart TD
         ST[State<br/>状态同步]
     end
 
-    ISLAND2 --> MOVE[Movement<br/>物理移动]
+    ISLAND2 --> SCRIPTC[ScriptCommands<br/>排空 Lua deferred 命令]
+    SCRIPTC --> MOVE[Movement<br/>物理移动]
     MOVE --> TRANS_POST[TransitionUpdatePost<br/>更新过渡动画]
     TRANS_POST --> LIGHT_POST[LightTogglePost<br/>更新灯光开关]
     LIGHT_POST --> GATE2{Gate 2<br/>地图过渡中?}
 
     GATE2 -->|是| EARLY2([提前返回<br/>gate2_triggered = true])
 
-    GATE2 -->|否| ISLAND3
+    GATE2 -->|否| ZONET[ZoneTrigger<br/>区域触发器]
+
+    ZONET --> ISLAND3
 
     subgraph ISLAND3 [并行岛 3 — 后门控]
         direction LR
@@ -118,7 +122,8 @@ flowchart TD
         AN[Animation<br/>动画帧推进]
     end
 
-    ISLAND3 --> PICKUP[Pickup<br/>拾取检测]
+    ISLAND3 --> ENC[EnemyEncounter<br/>遭遇判定]
+    ENC --> PICKUP[Pickup<br/>拾取检测]
     PICKUP --> INTERACT[Interaction<br/>交互判定]
     INTERACT --> FIN([tick 结束])
 
@@ -133,6 +138,8 @@ flowchart TD
 
 ## 阶段说明
 
+下表按 `stage_declarations()` 的实际执行顺序排列（与 `enum SchedulerStage` 的声明顺序略有不同：调度器通过 `StageDecl` 数组定义运行顺序，而 enum 仅作为身份标识）。
+
 | # | SchedulerStage | 对应系统 | 职责 |
 |---|---------------|---------|------|
 | 1 | `RemoveEntity` | `RemoveEntitySystem` | 清理上一帧标记了 `NeedRemoveTag` 的实体 |
@@ -140,23 +147,29 @@ flowchart TD
 | 3 | `LightTogglePre` | `LightToggleSystem` | 过渡期间灯光状态更新（Gate 1 内） |
 | 4 | `Time` | `TimeSystem` | 推进游戏内时钟（GameTime） |
 | 5 | `PlayerControl` | `PlayerControlSystem` | 读取输入，设置玩家速度/方向/动作 |
-| 6 | `DayNight` | `DayNightSystem` | 根据时间更新全局光照色调 |
-| 7 | `NPCWander` | `NPCWanderSystem` | NPC 巡游 AI（含睡眠日程） |
-| 8 | `AnimalBehavior` | `AnimalBehaviorSystem` | 动物行为 AI |
+| 6 | `DayNight` | `DayNightSystem` | 根据时间更新全局光照色调（**MidStage 并行岛**） |
+| 7 | `NPCWander` | `NPCWanderSystem` | NPC 巡游 AI，含睡眠日程（**MidStage 并行岛**） |
+| 8 | `AnimalBehavior` | `AnimalBehaviorSystem` | 动物行为 AI（**MidStage 并行岛**） |
 | 9 | `Chest` | `ChestSystem` | 宝箱开关与物品交付 |
 | 10 | `ItemUse` | `ItemUseSystem` | 种植/浇水/收获等物品使用逻辑 |
 | 11 | `Dialogue` | `DialogueSystem` | 对话文本推进 |
-| 12 | `AutoTile` | `AutoTileSystem` | 自动贴图连接规则 |
-| 13 | `ActionSound` | `ActionSoundSystem` | 根据状态变化播放动作音效 |
-| 14 | `State` | `StateSystem` | 同步 `StateComponent` → 动画/渲染状态 |
-| 15 | `Movement` | `MovementSystem` | 应用速度、碰撞检测、更新位置 |
-| 16 | `TransitionUpdatePost` | `MapTransitionSystem` | Movement 触发后的过渡检查 |
-| 17 | `LightTogglePost` | `LightToggleSystem` | 移动后灯光状态更新 |
-| 18 | `SpatialIndex` | `SpatialIndexSystem` | 重建空间分区索引 |
-| 19 | `CameraFollow` | `CameraFollowSystem` | 相机跟随玩家 |
-| 20 | `Animation` | `AnimationSystem` | 动画帧推进与精灵切换 |
-| 21 | `Pickup` | `PickupSystem` | 检测玩家与可拾取物品的碰撞 |
-| 22 | `Interaction` | `InteractionSystem` | 检测玩家与交互对象的碰撞 |
+| 12 | `QuestInteraction` | `QuestInteractionSystem` | 任务 NPC 接取 / 交付分支判定 |
+| 13 | `AutoTile` | `AutoTileSystem` | 自动贴图连接规则 |
+| 14 | `ActionSound` | `ActionSoundSystem` | 根据状态变化播放动作音效（**PreMovement 并行岛**） |
+| 15 | `State` | `StateSystem` | 同步 `StateComponent` → 动画/渲染状态（**PreMovement 并行岛**） |
+| 16 | `ScriptCommands` | `ScriptEventBridge::drainDeferredCommands` | 排空本帧 Lua 通过 `tf.*` 提交的延迟命令 |
+| 17 | `Movement` | `MovementSystem` | 应用速度、碰撞检测、更新位置 |
+| 18 | `TransitionUpdatePost` | `MapTransitionSystem` | Movement 触发后的过渡检查 |
+| 19 | `LightTogglePost` | `LightToggleSystem` | 移动后灯光状态更新 |
+| 20 | `ZoneTrigger` | `ZoneTriggerSystem` | 玩家位置驱动的区域触发器（含剧情 / 脚本 zone） |
+| 21 | `SpatialIndex` | `SpatialIndexSystem` | 重建空间分区索引（**PostGate 并行岛**） |
+| 22 | `CameraFollow` | `CameraFollowSystem` | 相机跟随玩家（**PostGate 并行岛**） |
+| 23 | `Animation` | `AnimationSystem` | 动画帧推进与精灵切换（**PostGate 并行岛**） |
+| 24 | `EnemyEncounter` | `EnemyEncounterSystem` | 遭遇判定与战斗入口（接 BattleScene） |
+| 25 | `Pickup` | `PickupSystem` | 检测玩家与可拾取物品的碰撞 |
+| 26 | `Interaction` | `InteractionSystem` | 检测玩家与交互对象的碰撞 |
+
+> 4 个相对较新的阶段：`QuestInteraction`、`ScriptCommands`、`ZoneTrigger`、`EnemyEncounter`。它们大多是为承接 Lua 内容层和 JRPG 玩法新增的：`ScriptCommands` 把 Lua 在本帧产生的命令统一排空到主线程；`QuestInteraction`、`ZoneTrigger`、`EnemyEncounter` 把任务/区域/遭遇这些原本散落的小逻辑独立成阶段，便于在 SchedulerProfiler / DOT dump 里观察各自耗时。
 
 ## 两道门控 (Gate) 机制
 
@@ -309,6 +322,6 @@ sequenceDiagram
 ## 注意事项
 
 1. **不是所有系统都由 Scheduler 管理** — `RenderSystem`、`LightSystem`、`YSortSystem`、`AudioSystem`、`FarmSystem` 等系统不在 Scheduler 的 tick 中，它们由 `GameScene` 在其他生命周期阶段直接调用
-2. **没有 System 基类** — 每个 System 是独立的具体类，无继承关系。Scheduler 通过 switch-case 在 `execute_stage_main_thread()` 中按 `SchedulerStage` 分发调用
+2. **没有 System 基类** — 每个 System 是独立的具体类，无继承关系。Scheduler 通过 `stage_declarations()` 中每个 `StageDecl.run_main` 函数指针分发调用（`execute_stage_main_thread()` 根据 `find_stage_decl(stage)` 取到 decl 后直接调用其 `run_main`）
 3. **每个系统都有空指针保护** — Scheduler 对每个系统调用前都检查 `if (systems.xxx_system)`，允许部分系统在某些配置下不存在
 4. **tick() 是 const** — 所有可变状态（`ThreadPool`、`ParallelWaveScheduler`、`ParallelIslandContext`）通过 `mutable` 关键字标记

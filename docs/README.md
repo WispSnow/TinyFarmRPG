@@ -18,15 +18,16 @@ flowchart TD
 ```
 
 1. [项目总览](overview.md)
-2. [学习路线](tutorial/learning-path.md)
-3. [启动到第一帧](engine/entry_to_first_frame.md)
-4. [GameScene](game/game_scene.md)
-5. [ECS 约定](engine/ecs.md) 与 [系统调度器](game/system_scheduler.md)
-6. [地图数据管线](game/map_data_pipeline.md) 与 [MapManager](game/map_manager.md)
-7. [数据 Catalog 总览](game/data-catalogs.md)
-8. [Lua 内容编写指南](tutorial/lua-content-authoring.md)
-9. [Game UI Scenes](game/ui-scenes.md)
-10. [调试与崩溃定位](tutorial/debugging.md)
+2. [构建与运行](build_and_run.md)
+3. [学习路线](tutorial/learning-path.md)
+4. [启动到第一帧](engine/entry_to_first_frame.md)
+5. [GameScene](game/game_scene.md)
+6. [ECS 约定](engine/ecs.md) 与 [系统调度器](game/system_scheduler.md)
+7. [地图数据管线](game/map_data_pipeline.md) 与 [MapManager](game/map_manager.md)
+8. [数据 Catalog 总览](game/data-catalogs.md)
+9. [Lua 内容编写指南](tutorial/lua-content-authoring.md)
+10. [Game UI Scenes](game/ui-scenes.md)
+11. [调试与崩溃定位](tutorial/debugging.md)
 
 ## 按主题查找
 
@@ -45,6 +46,7 @@ flowchart TD
 
 | 我想做什么 | 先读 |
 |------------|------|
+| 把项目跑起来 | [构建与运行](build_and_run.md) |
 | 理解程序怎么启动 | [启动到第一帧](engine/entry_to_first_frame.md) |
 | 理解 Scene 栈 | [场景系统](engine/scenes.md) |
 | 理解输入如何到玩家移动 | [输入系统](engine/input_system.md) / [玩家控制](game/player_control.md) |
