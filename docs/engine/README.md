@@ -34,6 +34,7 @@
 | [audio_system.md](audio_system.md) | 查音频资源、播放事件、音量设置 |
 | [vfx_and_effekseer.md](vfx_and_effekseer.md) | 查 Effekseer、VfxService、VfxCatalog、双通道渲染 |
 | [debug_ui.md](debug_ui.md) | 查 ImGui debug panel 注册和使用 |
+| [script_host.md](script_host.md) | 想理解 Lua 脚本宿主的两阶段初始化、安全边界、句柄校验、延迟命令 |
 
 ## 读源码入口
 
