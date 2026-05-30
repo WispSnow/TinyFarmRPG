@@ -126,6 +126,15 @@ TEST(InventoryMenuSceneSlotGridRegistrationTest, InventoryMenuRmlUsesNavigationR
     ASSERT_FALSE(theme.empty()) << "无法读取: " << theme_path;
     ASSERT_FALSE(tab_source.empty()) << "无法读取: " << equipment_tab_source_path;
 
+    const std::string equipment_summary_block =
+        test_source_utils::extractFunctionBlock(tab_source, "std::string makeActorSummary");
+    ASSERT_FALSE(equipment_summary_block.empty());
+    EXPECT_NE(equipment_summary_block.find("ActorProgressionService::normalizeState"), std::string::npos);
+    EXPECT_NE(equipment_summary_block.find("ActorProgressionService::initialState"), std::string::npos);
+    EXPECT_NE(equipment_summary_block.find("runtime_snapshot.level"), std::string::npos);
+    EXPECT_NE(equipment_summary_block.find("resolveActorStats(*catalog, *actor, level, loadout)"), std::string::npos);
+    EXPECT_EQ(equipment_summary_block.find("actor->initial_level_"), std::string::npos);
+
     EXPECT_NE(source.find("tf-screen-root tf-nav-root"), std::string::npos);
     EXPECT_NE(source.find("../theme/portrait.rcss"), std::string::npos);
     EXPECT_NE(source.find("<tabset id=\"menu-tabset\" data-event-tabchange=\"switch_tab(ev.tab_index)\""),

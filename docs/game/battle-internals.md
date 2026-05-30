@@ -36,7 +36,7 @@ flowchart LR
 | **AI 规划** | `battle_ai_planner.{h,cpp}` | `BattleAiPlanner::planEnemyAction` / `planFallbackAction` | 敌方按 `EnemyData.actions` 表挑技能；fallback 普攻 |
 | **奖励聚合** | `battle_reward_resolver.{h,cpp}` | `BattleRewardResolver::resolve` | 战斗结束后把金币 / 经验 / 物品掉落聚合成 `BattleRewardSummary` |
 | **单位工厂** | `battle_unit_factory.{h,cpp}` | `buildBattleUnitsFromCatalog` | 从 `RpgCatalog` 的 actor / class / enemy / troop 数据构建 `BattleUnit` 列表 |
-| **属性解算** | `actor_stats_resolver.{h,cpp}` | `resolveActorStats` | 给定 actor + 等级 + 装备，算出最终 6 个 RPG 属性 |
+| **属性解算** | `actor_stats_resolver.{h,cpp}` | `resolveActorStats` | 给定 actor + 等级 + 装备，算出最终 8 项 RPG 属性 |
 | **日志格式化** | `battle_log_formatter.{h,cpp}` | `formatBattleLogLines` | 把 `BattleActionResult` 翻译成多行可显示日志（含本地化 + tone） |
 | **显示文本** | `battle_display_text.h`（仅头文件） | `localizedUnitName` | "Slime #1" 这类显示名生成 |
 | **领域类型** | `battle_types.h` | `BattleUnit`、`BattleAction`、`BattleSnapshot`、`BattleActionResult` 等 | 跨模块共享的 POD 数据结构 |
@@ -237,7 +237,7 @@ flowchart LR
 
 - `buildBattleUnitsFromCatalog(catalog, options, out_units, out_error)`
 - options 决定玩家 actor 子集（`actor_ids`）、敌方 troop（`troop_id`）、装备 / 运行时状态等。
-- 内部对每个 actor 调用 `actor_stats_resolver::resolveActorStats`（按 actor + class + 装备 + 等级算出最终六项属性），对每个 enemy 直接用 `EnemyData.params`。
+- 内部对每个 actor 调用 `actor_stats_resolver::resolveActorStats`（按 actor + class + 装备 + 等级算出最终 8 项 `ParamArray` 属性：MHP/MMP/ATK/DEF/MAT/MDF/AGI/LUK），对每个 enemy 直接用 `EnemyData.params`。
 - 失败原因通过 `out_error` 字符串返回，BattleScene 据此弹错误。
 
 `actor_stats_resolver` 是一组**静态自由函数**，没有类——它是纯算法，没有任何外部依赖。

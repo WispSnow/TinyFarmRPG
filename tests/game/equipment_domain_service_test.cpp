@@ -7,8 +7,8 @@
 #include "game/component/party_equipment_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/defs/events.h"
 #include "game/domain/equipment_domain_service.h"
-#include "game/domain/inventory_domain_service.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace game::domain {
 namespace {
@@ -110,6 +111,28 @@ struct LoadedCatalogs {
     return player;
 }
 
+struct EquipmentTransactionObserver {
+    entt::registry* registry{nullptr};
+    entt::entity player{entt::null};
+    entt::id_type expected_equipped_item{entt::null};
+    int inventory_event_count{0};
+    bool saw_non_final_loadout{false};
+
+    void onInventoryChanged(const game::defs::InventoryChanged& evt) {
+        if (evt.target != player || !registry) {
+            return;
+        }
+
+        ++inventory_event_count;
+        const auto& equipment = registry->get<game::component::PartyEquipmentComponent>(player);
+        const auto actual = equipment.loadouts_by_actor_id_.at("actor.hero")
+                                .equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon);
+        if (actual != expected_equipped_item) {
+            saw_non_final_loadout = true;
+        }
+    }
+};
+
 } // namespace
 
 TEST(EquipmentDomainServiceTest, EquipItemMovesInventoryItemIntoActorLoadout) {
@@ -117,8 +140,7 @@ TEST(EquipmentDomainServiceTest, EquipItemMovesInventoryItemIntoActorLoadout) {
     auto catalogs = loadCatalogs(paths);
     entt::registry registry;
     entt::dispatcher dispatcher;
-    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
-    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
 
     const entt::entity player = createPlayer(registry);
     auto& inventory = registry.get<game::component::InventoryComponent>(player);
@@ -144,8 +166,7 @@ TEST(EquipmentDomainServiceTest, ReplaceItemReturnsOldEquipmentToInventory) {
     auto catalogs = loadCatalogs(paths);
     entt::registry registry;
     entt::dispatcher dispatcher;
-    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
-    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
 
     const entt::entity player = createPlayer(registry);
     auto& inventory = registry.get<game::component::InventoryComponent>(player);
@@ -154,6 +175,13 @@ TEST(EquipmentDomainServiceTest, ReplaceItemReturnsOldEquipmentToInventory) {
     auto& equipment = registry.emplace<game::component::PartyEquipmentComponent>(player);
     equipment.loadouts_by_actor_id_["actor.hero"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
         entt::hashed_string{"equip.alpha_sword"}.value();
+    EquipmentTransactionObserver observer{
+        .registry = &registry,
+        .player = player,
+        .expected_equipped_item = entt::hashed_string{"equip.beta_sword"}.value(),
+    };
+    dispatcher.sink<game::defs::InventoryChanged>()
+        .connect<&EquipmentTransactionObserver::onInventoryChanged>(&observer);
 
     const auto result = equipment_domain.equipItem(
         player,
@@ -167,6 +195,40 @@ TEST(EquipmentDomainServiceTest, ReplaceItemReturnsOldEquipmentToInventory) {
     EXPECT_EQ(
         equipment.loadouts_by_actor_id_.at("actor.hero").equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon),
         entt::hashed_string{"equip.beta_sword"}.value());
+    EXPECT_EQ(observer.inventory_event_count, 1);
+    EXPECT_FALSE(observer.saw_non_final_loadout);
+    dispatcher.sink<game::defs::InventoryChanged>()
+        .disconnect<&EquipmentTransactionObserver::onInventoryChanged>(&observer);
+}
+
+TEST(EquipmentDomainServiceTest, EquipItemFailsWhenReplacedEquipmentIsUnknownAndKeepsState) {
+    const auto paths = createEquipmentFixture();
+    auto catalogs = loadCatalogs(paths);
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
+
+    const entt::entity player = createPlayer(registry);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = entt::hashed_string{"equip.beta_sword"}.value();
+    inventory.slot(0).count_ = 1;
+    auto& equipment = registry.emplace<game::component::PartyEquipmentComponent>(player);
+    equipment.loadouts_by_actor_id_["actor.hero"].equipped_item_ids_[game::data::EquipmentSlotId::Weapon] =
+        entt::hashed_string{"equip.missing"}.value();
+
+    const auto result = equipment_domain.equipItem(
+        player,
+        "actor.hero",
+        0,
+        game::data::EquipmentSlotId::Weapon);
+
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(result.message, "equipped item is unknown");
+    EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"equip.beta_sword"}.value());
+    EXPECT_EQ(inventory.slot(0).count_, 1);
+    EXPECT_EQ(
+        equipment.loadouts_by_actor_id_.at("actor.hero").equipped_item_ids_.at(game::data::EquipmentSlotId::Weapon),
+        entt::hashed_string{"equip.missing"}.value());
 }
 
 TEST(EquipmentDomainServiceTest, EquipItemRejectsDisallowedClassAndAllowsUnrestrictedEquipment) {
@@ -174,8 +236,7 @@ TEST(EquipmentDomainServiceTest, EquipItemRejectsDisallowedClassAndAllowsUnrestr
     auto catalogs = loadCatalogs(paths);
     entt::registry registry;
     entt::dispatcher dispatcher;
-    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
-    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
 
     const entt::entity player = createPlayer(registry);
     auto& party = registry.get<game::component::PartyComponent>(player);
@@ -219,8 +280,7 @@ TEST(EquipmentDomainServiceTest, UnequipItemReturnsItemAndClearsLoadout) {
     auto catalogs = loadCatalogs(paths);
     entt::registry registry;
     entt::dispatcher dispatcher;
-    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
-    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
 
     const entt::entity player = createPlayer(registry);
     auto& inventory = registry.get<game::component::InventoryComponent>(player);
@@ -245,8 +305,7 @@ TEST(EquipmentDomainServiceTest, UnequipItemFailsWhenInventoryIsFullAndKeepsLoad
     auto catalogs = loadCatalogs(paths);
     entt::registry registry;
     entt::dispatcher dispatcher;
-    InventoryDomainService inventory_domain(registry, dispatcher, catalogs.items);
-    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items, inventory_domain);
+    EquipmentDomainService equipment_domain(registry, dispatcher, catalogs.rpg, catalogs.items);
 
     const entt::entity player = createPlayer(registry);
     auto& inventory = registry.get<game::component::InventoryComponent>(player);

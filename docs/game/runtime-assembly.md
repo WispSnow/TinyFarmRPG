@@ -102,7 +102,7 @@ flowchart LR
 几个典型依赖：
 
 - `InventorySystem` 通过 `InventoryDomainService` 写背包。
-- `EquipmentSystem` 通过 `EquipmentDomainService` 写装备并间接移动物品。
+- `EquipmentSystem` 通过 `EquipmentDomainService` 写装备；service 在背包槽位副本中预演后一次提交背包与 loadout。
 - `ShopInteractionSystem` 读 `ShopCatalog`，交易由 `ShopTransactionService` 执行。
 - `QuestInteractionSystem` 读 `QuestCatalog`，交付由 `QuestTurnInService` 写奖励和状态。
 - `AppearanceSystem` 读 `AppearanceCatalog`，把 game 层外观写入 engine 层 `LayeredSpriteComponent`。

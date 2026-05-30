@@ -14,8 +14,6 @@ class RpgCatalog;
 
 namespace game::domain {
 
-class InventoryDomainService;
-
 struct EquipmentMutationResult {
     bool success{false};
     std::string message{};
@@ -26,14 +24,12 @@ class EquipmentDomainService final {
     entt::dispatcher& dispatcher_;
     const game::data::RpgCatalog& rpg_catalog_;
     const game::data::ItemCatalog& item_catalog_;
-    InventoryDomainService& inventory_domain_service_;
 
 public:
     EquipmentDomainService(entt::registry& registry,
                            entt::dispatcher& dispatcher,
                            const game::data::RpgCatalog& rpg_catalog,
-                           const game::data::ItemCatalog& item_catalog,
-                           InventoryDomainService& inventory_domain_service);
+                           const game::data::ItemCatalog& item_catalog);
 
     [[nodiscard]] EquipmentMutationResult equipItem(entt::entity player,
                                                     const std::string& actor_id,

@@ -32,8 +32,8 @@ flowchart TD
 
 如果每个地方都自己写一遍"找到 InventoryComponent → 合并堆叠 → 触发空槽 → 失败回退 → 发事件"，规则会迅速漂移。领域服务通过几条硬约束消除这个风险：
 
-1. **一致写入**：一次调用由 service 统一结算。`InventoryDomainService::addItem` 允许部分接收，但必须用 `accepted / rejected` 与事件把结果说清楚；`InventoryDomainService::addItemsAtomically` 和 `ShopTransactionService::commitBuy` 这种复合交易则必须全成功或不改真实状态。
-2. **统一事件**：所有写入都从同一处发 `InventoryChanged` / `EquipmentChangedEvent` 等，UI、Hotbar 与脚本桥只需要订阅一处。`SaveService` 保存时读取组件，读档后发 sync command，不订阅 `InventoryChanged`。
+1. **一致写入**：一次调用由 service 统一结算。`InventoryDomainService::addItem` 允许部分接收，但必须用 `accepted / rejected` 与事件把结果说清楚；`InventoryDomainService::addItemsAtomically`、`ShopTransactionService::commitBuy`、`EquipmentDomainService::equipItem` 这种复合交易则必须全成功或不改真实状态。
+2. **统一事件**：所有写入都从同一处发 `InventoryChanged` / `EquipmentChanged` 等，UI、Hotbar 与脚本桥只需要订阅一处。`SaveService` 保存时读取组件，读档后发 sync command，不订阅 `InventoryChanged`。
 3. **唯一规则真相**：catalog（静态规则）+ component（运行时数据）+ domain service（写入逻辑）共同构成"系统真相"。Lua、UI、调试面板都只能通过 service 改写，不绕过。
 
 ## 八个文件总览
@@ -67,13 +67,14 @@ flowchart TD
 - `sortInventory(entity)`：按类别与 id 稳定排序，发 full sync，并携带 `slot_remap_old_to_new` 让 Hotbar 保持绑定。
 - 任何成功的写入都通过 dispatcher 发 `InventoryChanged`（携带 `slots` diff 或 full sync），UI、Hotbar 与脚本桥据此刷新。
 
-下游：`EquipmentDomainService` / `QuestTurnInService` / `ShopTransactionService` 都通过它写入物品，避免重复实现槽位逻辑。
+下游：`QuestTurnInService` / `ShopTransactionService` 通过它写入物品，避免重复实现整批 grant / 精确扣除逻辑。`EquipmentDomainService` 不再调用它做分段 remove/add，而是在自身事务里直接预演并提交背包槽位，避免换装中途事件暴露半提交状态。
 
 ### EquipmentDomainService — 装备穿脱
 
-- `equipItem(player, actor_id, inventory_slot, target_slot)`：从背包取出装备，按 `ActorData.equip_types` 校验槽位与等级，旧装备回流背包。
-- `unequipItem(player, actor_id, slot, preferred_inventory_slot=-1)`：摘下装备，进背包失败时整次操作回滚。
-- 内部复用 `InventoryDomainService` 做物品迁移，自身只负责"哪个 slot 装什么"的规则与 `EquipmentChangedEvent` 发射。
+- `equipItem(player, actor_id, inventory_slot, target_slot)`：校验目标 actor 已招募、源背包槽有效且只有 1 件物品、该 item 在 `RpgCatalog` 中有装备数据且 slot 匹配、`EquipmentData::allowed_classes_ / allowed_actors_` 接受当前 actor。
+- `unequipItem(player, actor_id, slot, preferred_inventory_slot=-1)`：摘下装备前校验目标 actor、loadout、slot 和旧装备 item 定义。
+- 穿 / 脱都会先在 `InventoryComponent::slots_` 副本中模拟最终背包。替换或卸下的旧装备若不在 `ItemCatalog` 中，或旧装备无法放回背包，提交前直接失败。
+- 全部校验通过后，service 才一次写回 `InventoryComponent::slots_` 与 `PartyEquipmentComponent::loadouts_by_actor_id_`，随后按最终状态发 `InventoryChanged` / `EquipmentChanged`。
 
 ### QuestTurnInService — 任务交付
 
@@ -102,7 +103,7 @@ JRPG 经验曲线、等级推导、初始/归一化 `ActorRuntimeState`、队伍
 ### PartyRestService — 休息恢复（静态）
 
 - `previewActivePartyRecovery(registry, player, rpg_catalog, hours)`：算出休息 N 小时每个队员恢复多少 HP/MP，不改状态。
-- `applyActivePartyRecovery`：真正写回。床/旅馆 / Lua `tf.party.rest` 都通过它。
+- `applyActivePartyRecovery`：真正写回。床 / 旅馆这类休息确认路径由 `RestSystem` 调用它；当前 Lua `tf.party` 只提供队伍查询与招募接口，不直接暴露休息写入口。
 
 ### QuestBattleProgressResolver — 战斗→任务推进（无状态对象）
 
@@ -169,7 +170,6 @@ flowchart LR
     DBG --> SH
     SVC --> AP
 
-    EQ --> INV
     QT --> INV
     SH --> INV
 
@@ -187,17 +187,17 @@ flowchart LR
 
 ```
 ItemCatalog / RpgCatalog / ShopCatalog 已加载
-    └─ InventoryDomainService(registry, dispatcher, item_catalog)
-        ├─ EquipmentDomainService(..., rpg_catalog, item_catalog, inventory_domain_service)
-        ├─ QuestTurnInService(registry, item_catalog, inventory_domain_service)
-        └─ ShopTransactionService(registry, item_catalog, shop_catalog, inventory_domain_service)
+    ├─ InventoryDomainService(registry, dispatcher, item_catalog)
+    ├─ EquipmentDomainService(registry, dispatcher, rpg_catalog, item_catalog)
+    ├─ QuestTurnInService(registry, item_catalog, inventory_domain_service)
+    └─ ShopTransactionService(registry, item_catalog, shop_catalog, inventory_domain_service)
 ```
 
 两个 static 算法类（`ActorProgressionService` / `PartyRestService`）不需要构造，直接调用静态方法即可。`QuestBattleProgressResolver` 在战斗结算时 `resolver{};` 临时构造。
 
 ## 关键约定
 
-1. **Preview / Commit 二分**：所有可能"失败但已经改了一半"的操作都拆成 `previewX`（纯查询）和 `commitX`（真正写入）。UI 在玩家点确认前调 preview，避免在已经扣钱后才发现背包满。
+1. **先预演再提交**：所有可能"失败但已经改了一半"的操作，都要先在副本或 preview 结果上确认整笔可提交。商店 / 休息暴露 `previewX` 给 UI，装备穿脱则在 `equipItem` / `unequipItem` 内部预演最终背包后一次提交。
 2. **错误用枚举回报，不抛异常**：`ShopTradeFailureReason`、`QuestTurnInStatus`、`InventoryMutationResult.rejected` 等都用枚举或计数字段报告失败，调用方自己决定 UI 表达。
 3. **写入必须发事件**：任何成功的玩法写入都要发对应的 `*Changed` 事件，UI、Hotbar 与脚本桥据此刷新。这是"绕过 service 直接改组件"会破坏的关键不变量。存档是另一条链路：保存时 capture 组件，读档后发 sync command。
 4. **service 不读 UI / 不开 Scene**：domain 只写组件、返回结果或发必要事件。打开"任务交付完成"弹窗这种是 scene / system 层根据结果或事件决定的。
@@ -230,7 +230,7 @@ ItemCatalog / RpgCatalog / ShopCatalog 已加载
 
 1. `src/game/domain/inventory_domain_service.{h,cpp}` — 看 `addItem` 的 catalog preflight、合并堆叠、空槽分配、部分接收回报，`addItemsAtomically` 的整批提交，以及 `moveItem / sortInventory` 的事件语义。
 2. `src/game/domain/shop_transaction_service.cpp` — 看 preview / commit 的范式、checked arithmetic、买入 atomic grant 与卖出精确槽位扣除。
-3. `src/game/runtime/system_factory.cpp:104-130` — 看 4 个 service 的构造顺序与依赖注入。
+3. `src/game/runtime/system_factory.cpp` — 看 4 个 service 的构造顺序与依赖注入。
 4. `src/game/system/chest_system.cpp` — 看 system 如何调用 `inventory_domain_service.addItem`。
 5. `src/game/script/script_game_api.cpp` — 看 Lua 如何通过 `tf.shop`、`tf.quest` 触发 commit。
 6. `src/game/domain/actor_progression_service.cpp` — 看静态服务的形态（无成员，纯算法 + 写回）。

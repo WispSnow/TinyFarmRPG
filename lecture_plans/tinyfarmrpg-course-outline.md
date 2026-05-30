@@ -574,10 +574,10 @@ flowchart LR
 
 **知识点**：
 - actor / class / equipment 的属性来源与合成顺序。
-- `EquipmentDomainService` 的装备校验与写入。
+- `EquipmentDomainService` 的装备校验、背包槽位副本预演、背包 + loadout 一次提交与事件顺序。
 - `ActorProgressionService` 的经验、等级、属性规范化。
-- `PartyRestService` 如何处理队伍恢复（HP/MP/状态清除）。
-- InventoryMenu 中 Character / Equipment tab 的数据来源。
+- `PartyRestService` 如何预览并写回队伍 HP/MP 恢复，`RestSystem` 如何在状态变化后派发同步事件。
+- InventoryMenu 中 Character / Equipment tab 的数据来源，尤其 Equipment 页摘要如何从当前 `total_exp` 推导等级。
 - **关键设计**：装备系统不直接改战斗单位，战斗入场时通过 `actor_stats_resolver` 解析快照（铺垫 L16）。
 
 **阅读清单**：

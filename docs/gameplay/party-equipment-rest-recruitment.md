@@ -45,9 +45,10 @@ flowchart LR
     UI["EquipmentTabContent"] --> Cmd["EquipItemCommand / UnequipItemCommand"]
     Cmd --> System["EquipmentSystem"]
     System --> Domain["EquipmentDomainService"]
-    Domain --> Inv["InventoryDomainService"]
+    Domain --> Slots["InventoryComponent::slots_"]
     Domain --> Equip["PartyEquipmentComponent"]
-    Domain --> Event["EquipmentChanged"]
+    Domain --> InvEvent["InventoryChanged"]
+    Domain --> EquipEvent["EquipmentChanged"]
 ```
 
 装备服务会处理：
@@ -57,8 +58,11 @@ flowchart LR
 - item 是否在 `RpgCatalog` 中有装备数据。
 - 装备槽位、职业限制、actor 限制是否匹配。
 - 替换下来的旧装备是否能安全回到背包。
+- 替换或卸下的旧装备是否仍在 `ItemCatalog` 中有合法物品定义。
 
-UI 入口在 `InventoryMenuScene` 的 Equipment 标签页。该标签页由 `EquipmentTabContent` 维护装备槽、候选装备、详情文本和点击事件。
+`EquipmentDomainService` 会先在背包槽位副本中模拟最终形态：装备时移出新装备、把旧装备放回背包；卸装时把当前装备放回背包。全部校验通过后，才一次写回 `InventoryComponent::slots_` 和 `PartyEquipmentComponent::loadouts_by_actor_id_`，再派发 `InventoryChanged` / `EquipmentChanged`。这样 UI 在任一事件中刷新时，都能看到已经一致的背包与 loadout。
+
+UI 入口在 `InventoryMenuScene` 的 Equipment 标签页。该标签页由 `EquipmentTabContent` 维护装备槽、候选装备、详情文本和点击事件；顶部角色摘要读取 `PartyRuntimeStatsComponent.total_exp`，通过 `ActorProgressionService::normalizeState` 得到当前等级后再调用 `resolveActorStats`，不会固定显示 actor 的初始等级。
 
 ## 招募
 
@@ -110,7 +114,7 @@ flowchart LR
     Confirm --> Time["AdvanceTimeRequest"]
 ```
 
-`PartyRestService` 读取 active party、RPG actor/class、装备和当前运行时 HP/MP，计算恢复预览。确认后写回 HP/MP，并发 `PartyRuntimeStatsChanged` 让 UI 或其他系统同步。
+`PartyRestService` 读取 active party、RPG actor/class、装备和当前运行时 HP/MP，计算恢复预览。确认后由 `RestSystem` 调 `applyActivePartyRecovery` 写回 HP/MP；若运行时状态变化，`RestSystem` 再发 `PartyRuntimeStatsChanged` 让 UI 或其他系统同步。
 
 ## 存档关系
 

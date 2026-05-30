@@ -112,8 +112,7 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
             params.registry,
             dispatcher,
             *services.rpg_catalog,
-            *services.item_catalog,
-            *services.inventory_domain_service);
+            *services.item_catalog);
     }
     if (!services.quest_turn_in_service) {
         services.quest_turn_in_service = std::make_unique<game::domain::QuestTurnInService>(
