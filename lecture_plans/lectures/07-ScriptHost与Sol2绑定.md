@@ -189,7 +189,7 @@ sol::table tf_impl = lua.create_table();
 sol::table player_impl = lua.create_table();
 player_impl.set_function("exists",   [api]() -> bool { return api->playerExists(); });
 player_impl.set_function("gold",     [api]() -> int  { return api->playerGold(); });
-player_impl.set_function("set_gold", [api](int gold) -> bool { return api->playerSetGold(gold); });
+player_impl.set_function("position", [api]() -> std::tuple<float, float> { return api->playerPosition(); });
 tf_impl["player"] = engine::script::createReadOnlyProxy(lua, player_impl, "tf.player");
 
 // ── tf.time ──
@@ -364,7 +364,7 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 | 2 | [`src/engine/script/script_entity_handle.h`](../../src/engine/script/script_entity_handle.h)（~20 行） | 两字段结构 + 两个 helper 函数——校验整个机制的核心数据 |
 | 3 | [`src/engine/script/script_host.cpp`](../../src/engine/script/script_host.cpp)（`hardenLuaGlobals` / `validateHandle` / `requireScriptModule`） | 沙箱、句柄校验、模块加载三个安全模块的实现 |
 | 4 | [`src/game/script/script_game_api.h`](../../src/game/script/script_game_api.h) | C++ facade 的接口面板——所有 `tf.*` lambda 都委托给它 |
-| 5 | [`src/game/script/tinyfarm_script_module.cpp`](../../src/game/script/tinyfarm_script_module.cpp)（按 `// ── tf.*` 分块阅读） | **绑定模板的样板**——12 个子命名空间的注册全在这里 |
+| 5 | [`src/game/script/tinyfarm_script_module.cpp`](../../src/game/script/tinyfarm_script_module.cpp)（按 `// ── tf.*` 分块阅读） | **绑定模板的样板**——15 个只读子命名空间的注册全在这里 |
 
 ---
 

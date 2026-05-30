@@ -4,6 +4,7 @@
 #include "dialogue_choice_scene.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/runtime/game_runtime_assembler.h"
+#include "game/runtime/script_runtime_factory.h"
 #include "game/runtime/system_scheduler.h"
 #include "game/runtime/system_bundle.h"
 #include "game_scene_battle_settlement.h"
@@ -31,6 +32,7 @@
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_wallet_component.h"
 #include "game/component/tags.h"
 #include "game/data/audio_cue_catalog.h"
 #include "game/data/battle_background_id.h"
@@ -86,6 +88,7 @@ using namespace entt::literals;
 
 namespace {
 constexpr game::defs::DialogueChannel BATTLE_REWARD_NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
+constexpr int NEW_GAME_INITIAL_GOLD = 300;
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -110,6 +113,22 @@ constexpr game::defs::DialogueChannel BATTLE_REWARD_NOTIFICATION_CHANNEL = game:
 [[nodiscard]] entt::entity findPlayer(entt::registry& registry) {
     auto players = registry.view<game::component::PlayerTag>();
     return players.begin() == players.end() ? entt::null : *players.begin();
+}
+
+void initializeNewGameWallet(entt::registry& registry) {
+    const entt::entity player = findPlayer(registry);
+    if (player == entt::null) {
+        spdlog::warn("GameScene: 新游戏金币初始化失败，找不到玩家实体。");
+        return;
+    }
+
+    auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player);
+    if (!wallet) {
+        spdlog::warn("GameScene: 新游戏金币初始化失败，玩家缺少 PlayerWalletComponent。");
+        return;
+    }
+
+    wallet->gold_ = NEW_GAME_INITIAL_GOLD;
 }
 
 [[nodiscard]] std::vector<std::string> resolveBattleActorIds(entt::registry& registry,
@@ -378,7 +397,10 @@ bool GameScene::init() {
 
     if (const auto* new_game_options = std::get_if<NewGameOptions>(&launch_)) {
         applyNewGameAppearance(*new_game_options);
+        initializeNewGameWallet(registry_);
     }
+
+    (void)game::runtime::ScriptRuntimeFactory::tryLoadBootstrapScript(*services_);
 
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (!player_view.empty()) {
@@ -794,7 +816,8 @@ bool GameScene::onPauseToggle() {
         context_,
         services_->save_service.get(),
         game_time,
-        services_->user_settings_service.get());
+        services_->user_settings_service.get(),
+        services_->script_host.get());
     requestPushScene(std::move(menu));
     return true;
 }

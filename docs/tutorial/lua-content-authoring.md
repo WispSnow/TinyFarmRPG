@@ -24,18 +24,19 @@ Lua 现在主要承载“剧本式玩法”：它负责判断条件、组织对�
 | 脚本化交互物 | Tiled `scripted_interaction=true` | 宝箱、机关、特殊家具 |
 | 传送 | `tf.map.warp(map_id, x, y)` | 剧情传送、机关传送 |
 | 战斗启动 | `tf.battle.start(troop_id, opts)` | 剧情战、区域触发战斗 |
-| 战斗观察 | `tf.battle.on_*` / `battle_ended` | 战斗提示、统计、胜利后剧情 |
+| 战斗观察 | `tf.battle.on_unit_died` / `tf.event.on("battle_ended", fn)` / `lib.event.on_battle_end` | 战斗提示、统计、胜利后剧情 |
 
 暂时不建议用 Lua 做这些事：
 
 - 直接改 ECS 组件或角色 HP、回合队列、商店交易结果。
+- 直接改玩家钱包；`tf.player` 只提供查询和 `gold()` 读取，新游戏初始金币由 C++ 初始化。
 - 在战斗回调里再次调用 `tf.battle.start` 叠开战斗。
 - 在 Lua 中临时生成商店库存；当前商店仍使用 `assets/data/shops.json` 中的静态 `shop_id`。
 - 写文件、访问系统命令或加载 `scripts/` 之外的 Lua 模块。
 
 ## 2. 运行模型
 
-游戏进入 `GameScene` 时会加载 `scripts/bootstrap.lua`。`bootstrap.lua` 再用 `tf.script.require(...)` 加载 helper、地图脚本、任务脚本和 NPC 脚本。脚本通常在顶层注册事件回调，之后由 C++ 在交互、切图、区域边界、战斗、背包和任务变化时把事件派发给 Lua。
+游戏进入 `GameScene` 后，先完成读档 apply 或新游戏默认状态初始化，然后加载 `scripts/bootstrap.lua`。`bootstrap.lua` 再用 `tf.script.require(...)` 加载 helper、地图脚本、任务脚本和 NPC 脚本。脚本通常在顶层注册事件回调，之后由 C++ 在交互、切图、区域边界、战斗、背包和任务变化时把事件派发给 Lua。暂停菜单在同一个 `GameScene` 内读档成功后，会让 `ScriptHost` reload，清掉旧回调和 module cache 后重新执行 bootstrap。
 
 ```mermaid
 flowchart TD
@@ -51,7 +52,7 @@ flowchart TD
 
 关键原则：
 
-- **脚本顶层要幂等**：读档或重新进入 `GameScene` 会重新加载 bootstrap；持久剧情状态必须写入 `tf.state`，不要只存在 Lua 局部变量里。
+- **脚本顶层要幂等**：读档或重新进入 `GameScene` 会重新执行 bootstrap；持久剧情状态必须写入 `tf.state`，不要只存在 Lua 局部变量里。
 - **脚本不直接写 ECS**：通过 `tf.quest.*`、`tf.party.*`、`tf.shop.*`、`tf.command.*`、`tf.map.warp` 等 API 发请求。
 - **命令结果看 `{ ok, reason }`**：`ok=true` 表示脚本层请求已发出；实际规则仍由 C++ 校验。
 - **交互对象用稳定 ID 判断**：优先用 `evt.target_actor_id`、`evt.target_script_event`、`evt.zone_id`，不要依赖显示名。
@@ -60,7 +61,7 @@ flowchart TD
 
 ```
 scripts/
-├── bootstrap.lua              # 组合根，每个 GameScene 初始化时加载
+├── bootstrap.lua              # 组合根，GameScene 状态准备好后加载
 ├── lib/                       # 公共 helper
 │   ├── dialogue.lua           # 多行对话、选项、远离关闭协调
 │   ├── event.lua              # 事件注册快捷函数

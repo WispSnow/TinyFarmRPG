@@ -87,6 +87,34 @@ TEST(PauseMenuSceneAsyncSaveUiTest, DynamicStringsRefreshOnLanguageChange) {
         << "Time scale label should be generated from an i18n key.";
 }
 
+TEST(PauseMenuSceneAsyncSaveUiTest, ReloadsScriptHostAfterSuccessfulLoad) {
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.h").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+
+    const std::string scene_source = readTextFile(scene_source_path);
+    const std::string header_source = readTextFile(header_path);
+    ASSERT_FALSE(scene_source.empty());
+    ASSERT_FALSE(header_source.empty());
+
+    const auto load_pos = scene_source.find("save_service_->loadFromFile");
+    const auto settings_pos = scene_source.find("user_settings_service_->applyAll()");
+    const auto reload_pos = scene_source.find("script_host_->reload()");
+
+    ASSERT_NE(load_pos, std::string::npos);
+    ASSERT_NE(settings_pos, std::string::npos);
+    ASSERT_NE(reload_pos, std::string::npos);
+
+    EXPECT_LT(load_pos, reload_pos)
+        << "Pause-menu load must apply saved state before refreshing Lua callbacks.";
+    EXPECT_LT(settings_pos, reload_pos)
+        << "Global user settings should be restored before Lua bootstrap observes runtime services.";
+    EXPECT_NE(header_source.find("engine::script::ScriptHost* script_host_"), std::string::npos);
+}
+
 TEST(PauseMenuSceneAsyncSaveUiTest, ExposesLanguageStepper) {
     const std::filesystem::path scene_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();

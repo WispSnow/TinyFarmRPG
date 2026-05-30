@@ -216,13 +216,11 @@ TEST(ScriptPhase2ApiTest, QuestPartyAndMapQueriesExposeGameplayState) {
         assert(tf.map.current() == "home_exterior")
 
         assert(tf.player.gold() == 0)
-        assert(tf.player.set_gold(300) == true)
-        assert(tf.player.gold() == 300)
-        assert(tf.player.add_gold(-50) == true)
-        assert(tf.player.gold() == 250)
+        assert(tf.player.set_gold == nil)
+        assert(tf.player.add_gold == nil)
     )"));
 
-    EXPECT_EQ(env.registry.get<game::component::PlayerWalletComponent>(env.player).gold_, 250);
+    EXPECT_EQ(env.registry.get<game::component::PlayerWalletComponent>(env.player).gold_, 0);
 
     auto& quest_log = env.registry.get<game::component::QuestLogComponent>(env.player);
     quest_log.active_quests.push_back(std::string{QUEST_ID});

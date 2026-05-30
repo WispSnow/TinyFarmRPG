@@ -46,7 +46,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <utility>
 
 namespace game::script {
@@ -296,34 +295,6 @@ int ScriptGameApi::playerGold() const {
     const auto* wallet =
         player == entt::null ? nullptr : registry_.try_get<game::component::PlayerWalletComponent>(player);
     return wallet ? wallet->gold_ : 0;
-}
-
-bool ScriptGameApi::playerSetGold(const int gold) {
-    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
-    auto* wallet =
-        player == entt::null ? nullptr : registry_.try_get<game::component::PlayerWalletComponent>(player);
-    if (!wallet) {
-        spdlog::warn("ScriptHost: tf.player.set_gold 失败，玩家缺少钱包组件");
-        return false;
-    }
-
-    wallet->gold_ = std::max(0, gold);
-    return true;
-}
-
-bool ScriptGameApi::playerAddGold(const int amount) {
-    const entt::entity player = game::system::helpers::getPlayerEntity(registry_);
-    auto* wallet =
-        player == entt::null ? nullptr : registry_.try_get<game::component::PlayerWalletComponent>(player);
-    if (!wallet) {
-        spdlog::warn("ScriptHost: tf.player.add_gold 失败，玩家缺少钱包组件");
-        return false;
-    }
-
-    const auto next = static_cast<long long>(wallet->gold_) + static_cast<long long>(amount);
-    wallet->gold_ = static_cast<int>(
-        std::clamp(next, 0LL, static_cast<long long>(std::numeric_limits<int>::max())));
-    return true;
 }
 
 std::optional<std::string> ScriptGameApi::entityActorId(
