@@ -439,26 +439,32 @@ flowchart LR
 - 项目所有 catalog 一览：`ItemCatalog`、`AppearanceCatalog`、`AudioCueCatalog`、`QuestCatalog`、`ShopCatalog`、`RpgCatalog`，分别管什么。
 - `assets/data/rpg/manifest.json` 与 actors / classes / skills / states / equipment / enemies / troops。
 - `RpgCatalog` 的拆分加载和引用校验。
+- catalog 加载的提交边界：临时 catalog / 临时 map 成功后才发布，失败不污染旧数据。
 - 字符串 id 与 hash id 的并存理由（性能 vs 可读性）。
 - Lua 只选择和触发规则，不临时伪造第二套规则。
-- catalog 校验工具：`tools/rpg_importer`、catalog validation 测试。
+- catalog 校验工具和测试：运行时 catalog validation 测试为主，`tools/rpg_importer` 是离线导入辅助。
 
 **阅读清单**：
 - `docs/game/data-catalogs.md`
+- `docs/game/audio_cue_catalog.md`
 - `assets/data/rpg/*.json`
+- `tools/rpg_importer/README.md`（可选，理解离线导入边界）
 
 **源码入口**：
 - `src/game/data/rpg_catalog.*`
 - `src/game/data/rpg_data.h`
+- `src/game/runtime/rpg_catalog_loader.cpp`
+- `src/game/runtime/content_catalog_loader.cpp`
 - `src/game/data/audio_cue_catalog.*`
-- `tests/game/rpg_catalog_test.cpp`、`tests/game/quest_catalog_test.cpp`、`tests/game/shop_catalog_test.cpp`（catalog 引用校验失败的反向案例）
+- `tests/game/rpg_catalog_test.cpp`、`tests/game/item_catalog_test.cpp`、`tests/game/quest_catalog_test.cpp`、`tests/game/shop_catalog_test.cpp`（catalog 引用校验失败和失败不污染旧数据的反向案例）
 
 **自测问题**：
 1. 一个新的 skill id 漏在 actor catalog 里被引用，校验会在何时报错？
 2. 为什么 `AudioCueCatalog` 也要独立成 catalog，而不是直接由 system 写死？
 3. 字符串 id 和 hash id 的存活范围分别在哪？
+4. 为什么 RPG manifest loader 要先写临时 catalog，最后才替换外部 catalog？
 
-**最小练习**：用 `rpg_importer` 加载现有 catalog，故意改一个引用 id 让校验失败，观察错误位置。
+**最小练习**：手动改一个真实 RPG JSON 引用 id，运行 catalog validation 测试观察错误位置；`rpg_importer` 只作为进阶阅读的离线导入工具。
 
 **小结与下节预告**：数据通了，下一讲用任务系统把"领域服务"模式完整跑一遍。
 

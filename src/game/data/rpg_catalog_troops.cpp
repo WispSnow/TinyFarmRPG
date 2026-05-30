@@ -24,7 +24,8 @@ bool loadRpgTroopsFile(const std::string_view file_path,
         return false;
     }
 
-    out_troops.clear();
+    std::unordered_map<entt::id_type, TroopData> parsed_troops{};
+    parsed_troops.reserve(troops_it->size());
     for (const auto& troop_node : *troops_it) {
         if (!troop_node.is_object()) {
             spdlog::error("RpgCatalog: troops 文件 '{}' 存在非 object 条目", file_path);
@@ -66,13 +67,14 @@ bool loadRpgTroopsFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_troops.contains(troop.id_hash_)) {
+        if (parsed_troops.contains(troop.id_hash_)) {
             spdlog::error("RpgCatalog: troops 文件 '{}' 存在重复 id '{}'", file_path, troop.id_);
             return false;
         }
-        out_troops.insert_or_assign(troop.id_hash_, std::move(troop));
+        parsed_troops.insert_or_assign(troop.id_hash_, std::move(troop));
     }
 
+    out_troops = std::move(parsed_troops);
     return true;
 }
 

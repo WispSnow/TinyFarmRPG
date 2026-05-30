@@ -26,7 +26,8 @@ bool loadRpgActorsFile(const std::string_view file_path,
         return false;
     }
 
-    out_actors.clear();
+    std::unordered_map<entt::id_type, ActorData> parsed_actors{};
+    parsed_actors.reserve(actors_it->size());
     for (const auto& actor_node : *actors_it) {
         if (!actor_node.is_object()) {
             spdlog::error("RpgCatalog: actors 文件 '{}' 存在非 object 条目", file_path);
@@ -70,13 +71,14 @@ bool loadRpgActorsFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_actors.contains(actor.id_hash_)) {
+        if (parsed_actors.contains(actor.id_hash_)) {
             spdlog::error("RpgCatalog: actors 文件 '{}' 存在重复 id '{}'", file_path, actor.id_);
             return false;
         }
-        out_actors.insert_or_assign(actor.id_hash_, std::move(actor));
+        parsed_actors.insert_or_assign(actor.id_hash_, std::move(actor));
     }
 
+    out_actors = std::move(parsed_actors);
     return true;
 }
 

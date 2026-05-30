@@ -24,7 +24,8 @@ bool loadRpgSkillsFile(const std::string_view file_path,
         return false;
     }
 
-    out_skills.clear();
+    std::unordered_map<entt::id_type, SkillData> parsed_skills{};
+    parsed_skills.reserve(skills_it->size());
     for (const auto& skill_node : *skills_it) {
         if (!skill_node.is_object()) {
             spdlog::error("RpgCatalog: skills 文件 '{}' 存在非 object 条目", file_path);
@@ -95,13 +96,14 @@ bool loadRpgSkillsFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_skills.contains(skill.id_hash_)) {
+        if (parsed_skills.contains(skill.id_hash_)) {
             spdlog::error("RpgCatalog: skills 文件 '{}' 存在重复 id '{}'", file_path, skill.id_);
             return false;
         }
-        out_skills.insert_or_assign(skill.id_hash_, std::move(skill));
+        parsed_skills.insert_or_assign(skill.id_hash_, std::move(skill));
     }
 
+    out_skills = std::move(parsed_skills);
     return true;
 }
 

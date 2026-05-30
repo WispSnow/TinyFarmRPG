@@ -70,6 +70,7 @@ constexpr std::string_view QUEST_OBJECTIVE_ID = "kill_slimes";
     EXPECT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
     EXPECT_TRUE(catalog.loadSkills((rpg_root / "skills.json").string()));
     EXPECT_TRUE(catalog.loadStates((rpg_root / "states.json").string()));
+    EXPECT_TRUE(catalog.loadEquipment((rpg_root / "equipment.json").string()));
     EXPECT_TRUE(catalog.loadEnemies((rpg_root / "enemies.json").string()));
     EXPECT_TRUE(catalog.loadTroops((rpg_root / "troops.json").string()));
     return catalog;

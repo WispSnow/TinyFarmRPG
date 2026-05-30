@@ -92,6 +92,84 @@ TEST(ItemCatalogTest, RejectsInvalidBattleUse) {
     EXPECT_FALSE(catalog.loadItemConfig(config_path.string()));
 }
 
+TEST(ItemCatalogTest, RejectsInvalidBattleUseAndKeepsExistingItems) {
+    const auto valid_path = writeItemConfig(
+        "item_catalog_keep_valid",
+        R"json({
+  "items": [
+    {
+      "id": "item.keep",
+      "display_name": "Keep",
+      "category": "material"
+    }
+  ]
+})json");
+    const auto invalid_path = writeItemConfig(
+        "item_catalog_invalid_battle_use_keep_existing",
+        R"json({
+  "items": [
+    {
+      "id": "item.broken_potion",
+      "display_name": "Broken Potion",
+      "category": "consumable",
+      "battle_use": {
+        "consume": 1,
+        "scope": "one_ally",
+        "effects": [
+          { "type": "recover_hp", "amount": 0 }
+        ]
+      }
+    }
+  ]
+})json");
+
+    ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(valid_path.string()));
+    ASSERT_NE(catalog.findItem(RpgCatalog::hashId("item.keep")), nullptr);
+
+    EXPECT_FALSE(catalog.loadItemConfig(invalid_path.string()));
+    EXPECT_NE(catalog.findItem(RpgCatalog::hashId("item.keep")), nullptr);
+    EXPECT_EQ(catalog.findItem(RpgCatalog::hashId("item.broken_potion")), nullptr);
+}
+
+TEST(ItemCatalogTest, RejectsDuplicateItemIdAndKeepsExistingItems) {
+    const auto valid_path = writeItemConfig(
+        "item_catalog_keep_before_duplicate",
+        R"json({
+  "items": [
+    {
+      "id": "item.keep",
+      "display_name": "Keep",
+      "category": "material"
+    }
+  ]
+})json");
+    const auto duplicate_path = writeItemConfig(
+        "item_catalog_duplicate_id",
+        R"json({
+  "items": [
+    {
+      "id": "item.dup",
+      "display_name": "Duplicate A",
+      "category": "material"
+    },
+    {
+      "id": "item.dup",
+      "display_name": "Duplicate B",
+      "category": "material"
+    }
+  ]
+})json");
+
+    ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(valid_path.string()));
+    ASSERT_NE(catalog.findItem(RpgCatalog::hashId("item.keep")), nullptr);
+
+    EXPECT_FALSE(catalog.loadItemConfig(duplicate_path.string()));
+    EXPECT_NE(catalog.findItem(RpgCatalog::hashId("item.keep")), nullptr);
+    EXPECT_EQ(catalog.findItem(RpgCatalog::hashId("item.dup")), nullptr);
+}
+
 } // namespace
 } // namespace game::data
 // NOLINTEND

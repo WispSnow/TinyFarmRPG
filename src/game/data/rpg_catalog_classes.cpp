@@ -24,7 +24,8 @@ bool loadRpgClassesFile(const std::string_view file_path,
         return false;
     }
 
-    out_classes.clear();
+    std::unordered_map<entt::id_type, ClassData> parsed_classes{};
+    parsed_classes.reserve(classes_it->size());
     for (const auto& class_node : *classes_it) {
         if (!class_node.is_object()) {
             spdlog::error("RpgCatalog: classes 文件 '{}' 存在非 object 条目", file_path);
@@ -59,13 +60,14 @@ bool loadRpgClassesFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_classes.contains(klass.id_hash_)) {
+        if (parsed_classes.contains(klass.id_hash_)) {
             spdlog::error("RpgCatalog: classes 文件 '{}' 存在重复 id '{}'", file_path, klass.id_);
             return false;
         }
-        out_classes.insert_or_assign(klass.id_hash_, std::move(klass));
+        parsed_classes.insert_or_assign(klass.id_hash_, std::move(klass));
     }
 
+    out_classes = std::move(parsed_classes);
     return true;
 }
 

@@ -32,6 +32,7 @@ namespace {
            catalog.loadActors((rpg_root / "actors.json").string()) &&
            catalog.loadSkills((rpg_root / "skills.json").string()) &&
            catalog.loadStates((rpg_root / "states.json").string()) &&
+           catalog.loadEquipment((rpg_root / "equipment.json").string()) &&
            catalog.loadEnemies((rpg_root / "enemies.json").string()) &&
            catalog.loadTroops((rpg_root / "troops.json").string());
 }

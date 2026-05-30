@@ -16,60 +16,66 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace game::runtime {
 
 bool ContentCatalogLoader::ensureBlueprintManager(GameRuntimeServices& services) {
     if (!services.blueprint_manager) {
-        services.blueprint_manager = std::make_shared<game::factory::BlueprintManager>();
-        if (!services.blueprint_manager->loadActorBlueprints(GameContentManifest::ActorBlueprints)) {
+        auto manager = std::make_shared<game::factory::BlueprintManager>();
+        if (!manager->loadActorBlueprints(GameContentManifest::ActorBlueprints)) {
             spdlog::error("加载角色蓝图失败");
             return false;
         }
-        if (!services.blueprint_manager->loadAnimalBlueprints(GameContentManifest::AnimalBlueprints)) {
+        if (!manager->loadAnimalBlueprints(GameContentManifest::AnimalBlueprints)) {
             spdlog::error("加载动物蓝图失败");
             return false;
         }
-        if (!services.blueprint_manager->loadCropBlueprints(GameContentManifest::CropBlueprints)) {
+        if (!manager->loadCropBlueprints(GameContentManifest::CropBlueprints)) {
             spdlog::error("加载作物蓝图失败");
             return false;
         }
+        services.blueprint_manager = std::move(manager);
     }
     return true;
 }
 
 bool ContentCatalogLoader::ensureItemCatalog(GameRuntimeServices& services) {
     if (!services.item_catalog) {
-        services.item_catalog = std::make_shared<game::data::ItemCatalog>();
-        if (!services.item_catalog->loadIconConfig(GameContentManifest::ItemIcons)) {
+        auto catalog = std::make_shared<game::data::ItemCatalog>();
+        if (!catalog->loadIconConfig(GameContentManifest::ItemIcons)) {
             spdlog::error("加载物品图标配置失败");
             return false;
         }
-        if (!services.item_catalog->loadItemConfig(GameContentManifest::Items)) {
+        if (!catalog->loadItemConfig(GameContentManifest::Items)) {
             spdlog::error("加载物品配置失败");
             return false;
         }
+        services.item_catalog = std::move(catalog);
     }
     return true;
 }
 
 bool ContentCatalogLoader::ensureAppearanceCatalog(GameRuntimeServices& services) {
     if (!services.appearance_catalog) {
-        services.appearance_catalog = std::make_shared<game::data::AppearanceCatalog>();
-        if (!services.appearance_catalog->loadFromFile(GameContentManifest::AppearanceCatalog)) {
+        auto catalog = std::make_shared<game::data::AppearanceCatalog>();
+        if (!catalog->loadFromFile(GameContentManifest::AppearanceCatalog)) {
             spdlog::error("加载外观目录配置失败");
             return false;
         }
+        services.appearance_catalog = std::move(catalog);
     }
     return true;
 }
 
 bool ContentCatalogLoader::ensureVfxCatalog(GameRuntimeServices& services) {
     if (!services.vfx_catalog) {
-        services.vfx_catalog = std::make_shared<engine::vfx::VfxCatalog>();
-        if (!services.vfx_catalog->loadFromFile(GameContentManifest::VfxCatalog)) {
+        auto catalog = std::make_shared<engine::vfx::VfxCatalog>();
+        if (!catalog->loadFromFile(GameContentManifest::VfxCatalog)) {
             spdlog::warn("加载 VFX 目录配置失败，将继续运行但禁用 catalog 驱动播放。");
+            return true;
         }
+        services.vfx_catalog = std::move(catalog);
     }
     return true;
 }
@@ -79,15 +85,16 @@ bool ContentCatalogLoader::ensureRpgCatalog(GameRuntimeServices& services) {
         return true;
     }
 
-    services.rpg_catalog = std::make_shared<game::data::RpgCatalog>();
+    auto catalog = std::make_shared<game::data::RpgCatalog>();
     game::runtime::RpgCatalogLoadOptions options{};
     options.item_catalog = services.item_catalog.get();
     std::string load_error{};
-    if (!game::runtime::loadRpgCatalogFromManifest(*services.rpg_catalog, options, load_error)) {
+    if (!game::runtime::loadRpgCatalogFromManifest(*catalog, options, load_error)) {
         spdlog::error("{}", load_error);
         return false;
     }
 
+    services.rpg_catalog = std::move(catalog);
     return true;
 }
 
@@ -101,20 +108,19 @@ bool ContentCatalogLoader::ensureQuestCatalog(GameRuntimeServices& services) {
         return false;
     }
 
-    services.quest_catalog = std::make_shared<game::data::QuestCatalog>();
-    if (!services.quest_catalog->loadFromFile(GameContentManifest::Quests)) {
+    auto catalog = std::make_shared<game::data::QuestCatalog>();
+    if (!catalog->loadFromFile(GameContentManifest::Quests)) {
         spdlog::error("加载 QuestCatalog 失败: {}", GameContentManifest::Quests);
         return false;
     }
 
     std::string reference_error{};
-    if (!services.quest_catalog->validateReferences(services.rpg_catalog.get(),
-                                                    services.item_catalog.get(),
-                                                    reference_error)) {
+    if (!catalog->validateReferences(services.rpg_catalog.get(), services.item_catalog.get(), reference_error)) {
         spdlog::error("QuestCatalog 引用校验失败: {}", reference_error);
         return false;
     }
 
+    services.quest_catalog = std::move(catalog);
     return true;
 }
 
@@ -128,18 +134,19 @@ bool ContentCatalogLoader::ensureShopCatalog(GameRuntimeServices& services) {
         return false;
     }
 
-    services.shop_catalog = std::make_shared<game::data::ShopCatalog>();
-    if (!services.shop_catalog->loadFromFile(GameContentManifest::Shops)) {
+    auto catalog = std::make_shared<game::data::ShopCatalog>();
+    if (!catalog->loadFromFile(GameContentManifest::Shops)) {
         spdlog::error("加载 ShopCatalog 失败: {}", GameContentManifest::Shops);
         return false;
     }
 
     std::string reference_error{};
-    if (!services.shop_catalog->validateReferences(services.item_catalog.get(), reference_error)) {
+    if (!catalog->validateReferences(services.item_catalog.get(), reference_error)) {
         spdlog::error("ShopCatalog 引用校验失败: {}", reference_error);
         return false;
     }
 
+    services.shop_catalog = std::move(catalog);
     return true;
 }
 
