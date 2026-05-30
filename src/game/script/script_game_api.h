@@ -54,8 +54,6 @@ public:
     [[nodiscard]] std::optional<engine::script::ScriptEntityHandle> playerHandle() const;
     [[nodiscard]] std::tuple<float, float> playerPosition() const;
     [[nodiscard]] int playerGold() const;
-    [[nodiscard]] bool playerSetGold(int gold);
-    [[nodiscard]] bool playerAddGold(int amount);
 
     [[nodiscard]] std::optional<std::string> entityActorId(const engine::script::ScriptEntityHandle& handle) const;
     [[nodiscard]] std::optional<std::string> entityName(const engine::script::ScriptEntityHandle& handle) const;

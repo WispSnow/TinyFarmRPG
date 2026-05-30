@@ -88,25 +88,37 @@ TEST(GameSceneRuntimeAssemblyTest, CleanResetsCameraInterpolationState) {
         << "GameScene::clean should reset camera interpolation state.";
 }
 
-TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerExecutesBootstrapScript) {
+TEST(GameSceneRuntimeAssemblyTest, RuntimeAssemblerInitializesScriptHostWithoutRunningBootstrap) {
     const std::filesystem::path script_factory_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/runtime/script_runtime_factory.cpp").lexically_normal();
+    const std::filesystem::path runtime_factory_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/runtime/runtime_service_factory.cpp").lexically_normal();
     const std::filesystem::path manifest_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/runtime/game_content_manifest.h").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(script_factory_source_path)) << script_factory_source_path;
+    ASSERT_TRUE(std::filesystem::exists(runtime_factory_source_path)) << runtime_factory_source_path;
     ASSERT_TRUE(std::filesystem::exists(manifest_source_path)) << manifest_source_path;
 
     const std::string script_factory_source = readTextFile(script_factory_source_path);
+    const std::string runtime_factory_source = readTextFile(runtime_factory_source_path);
     const std::string manifest_source = readTextFile(manifest_source_path);
     ASSERT_FALSE(script_factory_source.empty());
+    ASSERT_FALSE(runtime_factory_source.empty());
     ASSERT_FALSE(manifest_source.empty());
 
     EXPECT_NE(script_factory_source.find("GameContentManifest::ScriptBootstrap"), std::string::npos)
-        << "Bootstrap script should be executed in runtime assembler.";
+        << "Bootstrap script path should stay centralized in the script runtime factory.";
+    EXPECT_NE(script_factory_source.find("tryLoadBootstrapScript"), std::string::npos);
+    EXPECT_EQ(script_factory_source.find("loadFile(bootstrap_script.string())"),
+              script_factory_source.rfind("loadFile(bootstrap_script.string())"))
+        << "Bootstrap loading should be isolated to tryLoadBootstrapScript, not mixed into host init.";
+    EXPECT_NE(runtime_factory_source.find("ScriptRuntimeFactory::tryInitScriptHost"), std::string::npos);
+    EXPECT_EQ(runtime_factory_source.find("ScriptRuntimeFactory::tryLoadBootstrapScript"), std::string::npos)
+        << "Service assembly must not run bootstrap before save data can be applied.";
     EXPECT_NE(manifest_source.find("scripts/bootstrap.lua"), std::string::npos);
 }
 
-TEST(GameSceneRuntimeAssemblyTest, GameSceneInitDoesNotExecuteBootstrapScript) {
+TEST(GameSceneRuntimeAssemblyTest, GameSceneLoadsBootstrapAfterSaveAndNewGameStateAreApplied) {
     const std::filesystem::path scene_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
@@ -114,8 +126,18 @@ TEST(GameSceneRuntimeAssemblyTest, GameSceneInitDoesNotExecuteBootstrapScript) {
     const std::string scene_source = readTextFile(scene_source_path);
     ASSERT_FALSE(scene_source.empty());
 
-    EXPECT_EQ(scene_source.find("tryRunBootstrapScript("), std::string::npos)
-        << "GameScene::init should not execute bootstrap script directly.";
+    const auto load_save_pos = scene_source.find("save_service->loadFromFile");
+    const auto new_game_wallet_pos = scene_source.find("initializeNewGameWallet(registry_)");
+    const auto bootstrap_pos = scene_source.find("ScriptRuntimeFactory::tryLoadBootstrapScript");
+
+    ASSERT_NE(load_save_pos, std::string::npos);
+    ASSERT_NE(new_game_wallet_pos, std::string::npos);
+    ASSERT_NE(bootstrap_pos, std::string::npos);
+
+    EXPECT_LT(load_save_pos, bootstrap_pos)
+        << "Load-game launch must apply saved script_state before bootstrap top-level code runs.";
+    EXPECT_LT(new_game_wallet_pos, bootstrap_pos)
+        << "New-game defaults should be visible to Lua bootstrap code.";
 }
 
 } // namespace

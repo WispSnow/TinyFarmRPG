@@ -30,18 +30,26 @@ void ScriptRuntimeFactory::tryInitScriptHost(entt::registry& registry,
         services.script_host.reset();
         return;
     }
+}
 
+bool ScriptRuntimeFactory::tryLoadBootstrapScript(GameRuntimeServices& services) {
+    if (!services.script_host) {
+        spdlog::info("ScriptHost: 启动脚本跳过，脚本宿主未初始化。");
+        return false;
+    }
     const std::filesystem::path bootstrap_script = GameContentManifest::ScriptBootstrap;
     if (!std::filesystem::exists(bootstrap_script)) {
         spdlog::info("ScriptHost: 未找到启动脚本 {}", bootstrap_script.string());
-        return;
+        return false;
     }
 
     if (!services.script_host->loadFile(bootstrap_script.string())) {
         spdlog::warn("ScriptHost: 启动脚本执行失败，将继续游戏主流程。");
+        return false;
     } else {
         spdlog::info("ScriptHost: 启动脚本执行成功 {}", bootstrap_script.string());
     }
+    return true;
 }
 
 } // namespace game::runtime

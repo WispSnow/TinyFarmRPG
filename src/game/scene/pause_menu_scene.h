@@ -13,6 +13,10 @@ namespace engine::core {
 enum class State;
 }
 
+namespace engine::script {
+class ScriptHost;
+}
+
 namespace game::save {
 class SaveService;
 }
@@ -38,6 +42,7 @@ private:
     game::save::SaveService* save_service_{nullptr};
     game::data::GameTime* game_time_{nullptr};
     game::runtime::UserSettingsService* user_settings_service_{nullptr};
+    engine::script::ScriptHost* script_host_{nullptr};
     engine::core::State previous_state_{};
     bool close_after_load_{false};
     bool context_pushed_{false};
@@ -64,7 +69,8 @@ public:
                    engine::core::Context& context,
                    game::save::SaveService* save_service,
                    game::data::GameTime* game_time,
-                   game::runtime::UserSettingsService* user_settings_service);
+                   game::runtime::UserSettingsService* user_settings_service,
+                   engine::script::ScriptHost* script_host);
     ~PauseMenuScene() override;
 
     bool init() override;

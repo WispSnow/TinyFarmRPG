@@ -15,6 +15,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/script/script_host.h"
 #include "engine/ui/rmlui/rml_bind_helpers.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -88,11 +89,13 @@ PauseMenuScene::PauseMenuScene(std::string_view name,
                                engine::core::Context& context,
                                game::save::SaveService* save_service,
                                game::data::GameTime* game_time,
-                               game::runtime::UserSettingsService* user_settings_service)
+                               game::runtime::UserSettingsService* user_settings_service,
+                               engine::script::ScriptHost* script_host)
     : engine::scene::Scene(name, context),
       save_service_(save_service),
       game_time_(game_time),
       user_settings_service_(user_settings_service),
+      script_host_(script_host),
       previous_state_(context.getGameState().getCurrentState()) {
 }
 
@@ -424,6 +427,9 @@ void PauseMenuScene::onLoadClicked() {
         // 用户偏好是 global 概念，不应被存档覆盖，所以这里立即把当前偏好重新 apply 一次。
         if (user_settings_service_) {
             user_settings_service_->applyAll();
+        }
+        if (script_host_ && !script_host_->reload()) {
+            spdlog::warn("PauseMenuScene: 读档后重新加载脚本失败。");
         }
 
         setLocalizedMessage("pause.message.loaded", false, {}, "Loaded");

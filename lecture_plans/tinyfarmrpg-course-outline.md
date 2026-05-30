@@ -335,7 +335,7 @@ flowchart LR
 **知识点**：
 - `scripts/bootstrap.lua` 作为内容组合根。
 - `scripts/lib`、`scripts/maps`、`scripts/npcs`、`scripts/quests` 的目录约定。
-- `tf.*` API 能力地图：dialogue、quest、party、shop、battle、map、state、command、time、entity、event、i18n。
+- `tf.*` API 能力地图：dialogue、quest、party、shop、battle、map、state、command、time、entity、event、callbacks、i18n、player、script。
 - **关键规约**：
   - 脚本顶层幂等：读档或重进 `GameScene` 会重新加载 `bootstrap.lua`。
   - 持久状态走 `tf.state` 或 `lib.once`，不要依赖 Lua module-local 变量。

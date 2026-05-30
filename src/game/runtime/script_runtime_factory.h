@@ -15,6 +15,7 @@ public:
     static void tryInitScriptHost(entt::registry& registry,
                                   engine::core::Context& context,
                                   GameRuntimeServices& services);
+    [[nodiscard]] static bool tryLoadBootstrapScript(GameRuntimeServices& services);
 };
 
 } // namespace game::runtime
