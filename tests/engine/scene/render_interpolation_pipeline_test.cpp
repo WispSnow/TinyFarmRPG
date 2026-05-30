@@ -45,6 +45,17 @@ TEST(RenderInterpolationPipelineTest, SceneAndManagerExposeAlphaRenderPath) {
         << "SceneManager should expose prepareUi(alpha) entry.";
     EXPECT_NE(manager_source.find("scene->prepareUi(interpolation_alpha);"), std::string::npos)
         << "SceneManager should forward alpha to the top scene prepareUi path.";
+    const std::string prepare_ui_block =
+        test_source_utils::extractFunctionBlock(manager_source, "void SceneManager::prepareUi(float interpolation_alpha)");
+    ASSERT_FALSE(prepare_ui_block.empty());
+    EXPECT_NE(prepare_ui_block.find("const size_t top_index = scene_stack_.size() - 1;"), std::string::npos)
+        << "SceneManager should identify the top scene before preparing retained UI.";
+    EXPECT_NE(prepare_ui_block.find("for (size_t i = 0; i < scene_stack_.size(); ++i)"), std::string::npos)
+        << "SceneManager should prepare retained UI for every stacked scene, not just the top scene.";
+    EXPECT_NE(prepare_ui_block.find("scene->prepareUi(interpolation_alpha);"), std::string::npos)
+        << "The top scene should receive the current render interpolation alpha.";
+    EXPECT_NE(prepare_ui_block.find("scene->prepareUi(1.0f);"), std::string::npos)
+        << "Covered scenes should refresh retained UI against a frozen interpolation snapshot.";
     EXPECT_NE(manager_source.find("void SceneManager::render(float interpolation_alpha)"), std::string::npos)
         << "SceneManager should expose render(alpha) entry.";
     EXPECT_NE(manager_source.find("scene->render(interpolation_alpha);"), std::string::npos)

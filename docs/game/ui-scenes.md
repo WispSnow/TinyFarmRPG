@@ -7,7 +7,7 @@
 | 目录 | 用途 |
 |------|------|
 | `ui/rmlui/theme/` | 共享主题、按钮、slot、modal、spritesheet、portrait |
-| `ui/rmlui/hud/` | GameScene 常驻 HUD：hotbar、tooltip、dialogue、notice、clock |
+| `ui/rmlui/hud/` | GameScene 常驻 HUD：hotbar、tooltip、dialogue、notice、clock、menu button、input prompt |
 | `ui/rmlui/scenes/` | 覆盖式或主流程 Scene：title、pause、inventory、shop、battle 等 |
 | `ui/rmlui/overlay/` | 全局 overlay，如 screen fade |
 | `ui/rmlui/learn/` | RmlUi 学习示例 |
@@ -50,19 +50,22 @@ sequenceDiagram
 - 通过 `uiCoverage()` 声明是否覆盖底层 UI。
 - 在 clean/destructor 中断开 dispatcher/input 监听并 unload RML 文档。
 
+Scene 栈调度上，`fixedUpdate()` / `update()` 只给栈顶 Scene；`prepareUi(alpha)` / `render(alpha)` 会遍历整栈，栈顶使用当前 alpha，被覆盖的底层 Scene 使用 `1.0f` 保持冻结快照。RmlUi 文档可见性由 `SceneManager::syncRmlActiveScene()` 根据 `uiCoverage()` 计算 visible owners 后交给 `RmlUiRuntime` 批量 `Show()` / `Hide()`。
+
 常见覆盖式 Scene：
 
-| Scene | RML |
-|-------|-----|
-| `PauseMenuScene` | `ui/rmlui/scenes/pause_menu.rml` |
-| `InventoryMenuScene` | `ui/rmlui/scenes/inventory_menu.rml` |
-| `ShopMenuScene` | `ui/rmlui/scenes/shop_menu.rml` |
-| `QuestOfferScene` | `ui/rmlui/scenes/quest_offer.rml` |
-| `RecruitOfferScene` | `ui/rmlui/scenes/recruit_offer.rml` |
-| `RestDialogScene` | `ui/rmlui/scenes/rest_dialog.rml` |
-| `SaveSlotSelectScene` | `ui/rmlui/scenes/save_slot_select.rml` |
-| `DialogueChoiceScene` | `ui/rmlui/scenes/dialogue_choice.rml` |
-| `BattleScene` | `ui/rmlui/scenes/battle.rml` |
+| Scene | RML | `uiCoverage()` |
+|-------|-----|----------------|
+| `PauseMenuScene` | `ui/rmlui/scenes/pause_menu.rml` | `Overlay`（默认） |
+| `InventoryMenuScene` | `ui/rmlui/scenes/inventory_menu.rml` | `Overlay`（默认） |
+| `SaveSlotSelectScene` | `ui/rmlui/scenes/save_slot_select.rml` | `Overlay`（默认） |
+| `RestDialogScene` | `ui/rmlui/scenes/rest_dialog.rml` | `Overlay`（默认） |
+| `ShopMenuScene` | `ui/rmlui/scenes/shop_menu.rml` | `HideUnderlyingSceneUi` |
+| `QuestOfferScene` | `ui/rmlui/scenes/quest_offer.rml` | `HideUnderlyingSceneUi` |
+| `RecruitOfferScene` | `ui/rmlui/scenes/recruit_offer.rml` | `HideUnderlyingSceneUi` |
+| `DialogueChoiceScene` | `ui/rmlui/scenes/dialogue_choice.rml` | `HideUnderlyingSceneUi` |
+| `AppearanceCustomizeScene` | `ui/rmlui/scenes/appearance_customize.rml` | `HideUnderlyingSceneUi` |
+| `BattleScene` | `ui/rmlui/scenes/battle.rml` | `HideUnderlyingSceneUi` |
 
 ## InventoryMenu 的 tab 架构
 

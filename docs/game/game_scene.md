@@ -3,7 +3,7 @@
 > 目标：把 `GameScene` 看作“游戏玩法 + 世界服务 + RmlUi HUD”的组合根，用明确的装配顺序和更新阶段表达依赖，避免 UI 不同步、锚点抖动、切图时序错乱等问题。
 
 ## 1) GameScene 的职责边界
-`GameScene` 负责装配一个可运行的 gameplay 闭环：world、services、scheduler、输入绑定，以及 gameplay HUD 的组合控制器 `GameSceneUiController`。
+`GameScene` 负责装配一个可运行的 gameplay 闭环：world、services、scheduler、输入绑定，以及 gameplay HUD 的组合对象（`GameSceneUiController`、`GameOverlay`、`GameInputPromptOverlay`）。
 
 不属于它的职责：
 - 不直接实现玩法细节
@@ -34,12 +34,15 @@
    - 由它进一步创建：
      - `HotbarUI`
      - `TimeClockHud`
-     - overlay prompt bar
      - `ItemTooltipUI`
      - `DialoguePresentationController`
      - `DialogueBoxView`
      - 2 个 `FloatingNoticeView`
+     - `PlayerPortraitService`
      - `RmlScreenFade`
+   - `GameScene` 直接创建：
+     - `GameOverlay`
+     - `GameInputPromptOverlay`
 
 这里要特别注意：
 - 这些 UI 不是必须合并进同一个 `.rml`
@@ -75,6 +78,7 @@
 - 这里只做帧表现层更新
 - 当前主要包括：
   - `VfxService::update(delta_time)`
+  - `GameInputPromptOverlay::update()`
   - `GameSceneUiController::update(delta_time)`
   - `Scene::update(delta_time)`
 
@@ -96,6 +100,7 @@
 
 因此：
 - 世界锚点 UI 的位置刷新必须发生在 `prepareUi()`，而不是 `render()`
+- 如果 `GameScene` 被覆盖式 Scene 盖住，`SceneManager` 仍会调用 `GameScene::prepareUi(1.0f)`，但不会调用 `GameScene::update()` / `fixedUpdate()`
 
 ## 4) UI 相关的关键链路
 
@@ -139,6 +144,6 @@
 - `DialogueBoxView` 是屏幕固定 HUD，不应参与 world-anchor 刷新
 
 ### 5.4 切图或过渡时 UI 状态错乱
-- 确认 HUD 的 frame update 仍在运行
+- 确认 `GameScene` 当前确实是栈顶；被覆盖式 Scene 盖住时，HUD 的 frame update 不会运行
 - 确认 `RmlScreenFade` phase 与 `transitionend` 正常推进
 - 确认过渡期间输入上下文和 Scene 栈状态符合预期

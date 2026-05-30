@@ -8,18 +8,20 @@ TinyFarm 的 Scene 系统由两部分组成：
 
 ---
 
-## 1) Scene 栈的核心约定：fixedUpdate/update 只更新栈顶，render 叠加渲染整栈
+## 1) Scene 栈的核心约定：fixedUpdate/update 只更新栈顶，prepareUi/render 叠加整栈
 `SceneManager` 对场景栈的调度规则是：
 - `fixedUpdate()`：只更新栈顶（fixed timestep 逻辑）
 - `update()`：只更新栈顶（frame presentation 更新）
-- `render(alpha)`：从栈底到栈顶依次渲染（叠加渲染）
+- `prepareUi(alpha)`：从栈底到栈顶依次准备 retained UI；栈顶使用当前 alpha，底层 Scene 使用 `1.0f` 冻结快照
+- `render(alpha)`：从栈底到栈顶依次渲染；栈顶使用当前 alpha，底层 Scene 使用 `1.0f`
 
 这样做的直接收益是：
 - **覆盖式 Scene（PauseMenu/模态对话框）** 可以冻结底层逻辑（底层 Scene 不再 update）
-- 同时仍能显示底层画面（底层 Scene 仍会 render），覆盖层 Scene 的 UI 叠在上面
+- 同时仍能显示底层画面与需要保留的 retained UI（底层 Scene 仍会 prepareUi/render），覆盖层 Scene 的 UI 叠在上面
+- 被覆盖 Scene 不会在缺少 fixedUpdate 的情况下继续插值，避免画面或世界锚点 UI 抖动
 
 对应实现线索：
-- `src/engine/scene/scene_manager.cpp`：`SceneManager::fixedUpdate()` / `SceneManager::update()` / `SceneManager::render(float)`
+- `src/engine/scene/scene_manager.cpp`：`SceneManager::fixedUpdate()` / `SceneManager::update()` / `SceneManager::prepareUi(float)` / `SceneManager::render(float)`
 
 ---
 
@@ -28,6 +30,7 @@ TinyFarm 的 Scene 系统由两部分组成：
 - `init()`：一次性初始化（创建 UI、注册输入/事件回调、初始化 registry 等）
 - `fixedUpdate(fixed_dt)`：固定步长逻辑更新（仅栈顶会被调用）
 - `update(frame_dt)`：帧表现更新（仅栈顶会被调用）
+- `prepareUi(alpha)`：retained UI 渲染前刷新（整栈都会被调用，底层使用 `alpha=1.0f`）
 - `render(alpha)`：每渲染帧渲染（整栈都会被调用，用于叠加）
 - `clean()`：退出/弹出前的清理（清空 registry、释放 UI、取消订阅等）
 

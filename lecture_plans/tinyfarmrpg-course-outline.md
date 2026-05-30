@@ -264,17 +264,18 @@ flowchart LR
 **目标**：讲清楚 HUD（常驻）与 Inventory/Shop/Quest/Recruit/Battle 等弹出场景（覆盖式）这两种 UI 形态如何并存，以及它们与 `GameScene`、`SceneManager` 的关系。
 
 **知识点**：
-- HUD 文档生命周期：随 `GameScene` 入场创建、退场销毁，update 永不被覆盖式场景剥夺。
-- 覆盖式 Scene 复用：底层探索场景保持渲染，栈顶菜单独占 update 与输入。
+- HUD 文档生命周期：随 `GameScene` 入场创建、退场销毁；被覆盖时文档可继续保留或被 owner 可见性策略隐藏。
+- 覆盖式 Scene 复用：底层探索场景保持 `prepareUi` / `render` 冻结快照，栈顶菜单独占 `fixedUpdate` / `update` 与输入。
 - 文档显隐 vs Scene push/pop 的取舍。
-- HUD 元素全景：`hotbar`、`dialogue_box`、`item_tooltip`、`time_clock`、`floating_notice`、`game_input_prompt_overlay`。
+- HUD 元素全景：`hotbar`、`dialogue_box`、`item_tooltip`、`time_clock`、`floating_notice`、`game_overlay`、`game_input_prompt_overlay`、`screen_fade`、玩家头像生成图。
 - 覆盖式 Scene 全景：Pause、Save、Inventory、Shop、QuestOffer、RecruitOffer、DialogueChoice、Rest、AppearanceCustomize、Battle。
 - UI 场景如何通过 event 请求关闭、提交交易或写回状态。
-- `GameMode` 在 UI 调度中的隐藏作用（详深留 L25）。
+- `GameMode` 是 scheduler 接口线索；当前覆盖式 UI 冻结主要由 Scene 栈规则完成，详深与真实联动留 L25 复核。
 
 **阅读清单**：
 - `docs/game/ui-scenes.md`
 - `docs/engine/scenes.md`
+- `docs/game/game_scene.md`
 - 上一套 part-07 场景系统 + part-29 物品栏与快捷栏
 
 **源码入口**：
