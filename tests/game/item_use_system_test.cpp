@@ -63,7 +63,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountOne_ReplacesWithSeeds) {
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     const entt::entity player = registry.create();
@@ -85,7 +85,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountTwo_NoSpace_DoesNotConsume) {
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     const entt::entity player = registry.create();
@@ -119,7 +119,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountTwo_NoSpaceLocalizesPrompt) {
     registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     DialogueCapture capture{};
@@ -152,7 +152,7 @@ TEST(ItemUseSystemTest, UseCropItem_CountOne_FullInventoryStillSucceeds) {
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     const entt::entity player = registry.create();
@@ -181,7 +181,7 @@ TEST(ItemUseSystemTest, UseCropItem_ShowPrompt_EnqueuesNotification) {
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     DialogueCapture capture{};
@@ -209,7 +209,7 @@ TEST(ItemUseSystemTest, UseProjectCatalogKeyLocalizesPromptNotification) {
     registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 
     DialogueCapture capture{};
@@ -240,7 +240,7 @@ TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {
     auto rpg_catalog = loadProjectActorCatalog();
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service, &rpg_catalog);
 
     const entt::entity player = registry.create();

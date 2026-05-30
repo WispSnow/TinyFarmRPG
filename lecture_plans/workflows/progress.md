@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | L00 | `lecture_plans/lectures/00-开篇.md` | 完成 | 旧流程完成 | 2026-05-30 | 无代码改动 | 已校准项目规模、技术栈版本、源码入口和自测提示 | 路径检查通过；源码入口存在；Mermaid 人工检查（`mmdc` 未安装） | 无 |
 | L01 | `lecture_plans/lectures/01-游戏架构设计.md` | 完成 | 旧流程完成 | 2026-05-30 | 无代码改动 | 已校准 TinyFarm 规模、system 数量、装配顺序、ScriptHost/domain service 时序、ServiceLookup 口径和练习说明 | 路径检查通过；关键源码片段已核对；Mermaid 人工检查（`mmdc` 未安装）；`git diff --check` 通过 | 无 |
-| L02 | `lecture_plans/lectures/02-领域服务与命令事件边界.md` | 阶段 1 | 未开始 |  |  |  |  |  |
+| L02 | `lecture_plans/lectures/02-领域服务与命令事件边界.md` | 阶段 2 | 待用户测试 / 审阅 | 2026-05-30 | 已收紧 `InventoryDomainService::addItem()` catalog preflight；move/sort 写入收敛到 domain；`InventorySystem` 薄壳化 | 未改正文；阶段 3 需校准 command / event 示例口径和新增排序 remap 事实 | `ninja -C build/debug game_tests` 通过；L02 相关扩展 76 项 CTest 通过 | 复合事务异常提交回滚仍建议后续单独处理 |
 | L03 | `lecture_plans/lectures/03-RmlUi接入.md` | 阶段 1 | 未开始 |  |  |  |  |  |
 | L04 | `lecture_plans/lectures/04-HUD与覆盖式场景.md` | 阶段 1 | 未开始 |  |  |  |  |  |
 | L05 | `lecture_plans/lectures/05-输入上下文与菜单导航.md` | 阶段 1 | 未开始 |  |  |  |  |  |

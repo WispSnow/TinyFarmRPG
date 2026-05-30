@@ -80,7 +80,7 @@ struct ScriptEventBridgeTestEnv {
 
     ScriptEventBridgeTestEnv()
         : inventory_domain_service(registry, dispatcher, catalog),
-          inventory_system(registry, dispatcher, catalog, inventory_domain_service),
+          inventory_system(registry, dispatcher, inventory_domain_service),
           chest_system(registry, dispatcher, world_state, catalog, inventory_domain_service),
           host(registry),
           bridge(host, registry, dispatcher) {

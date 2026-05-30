@@ -10,9 +10,20 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 namespace {
+
+std::string testItemConfigPath() {
+    return std::string(PROJECT_SOURCE_DIR) + "/tests/data/item_use_items.json";
+}
+
+game::data::ItemCatalog loadItemCatalog() {
+    game::data::ItemCatalog catalog;
+    EXPECT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
+    return catalog;
+}
 
 struct InventoryChangedCapture {
     std::vector<game::defs::InventoryChanged> events{};
@@ -37,18 +48,18 @@ namespace game::domain {
 TEST(InventoryDomainServiceTest, AddItemPartial_EmitsChangedAndFullEvent) {
     entt::registry registry;
     entt::dispatcher dispatcher;
-    game::data::ItemCatalog catalog;
+    auto catalog = loadItemCatalog();
     InventoryDomainService service(registry, dispatcher, catalog);
 
     const entt::entity player = registry.create();
     auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
 
-    const entt::id_type item_id = entt::hashed_string{"apple_item"}.value();
-    const entt::id_type filler_id = entt::hashed_string{"full_slot"}.value();
+    const entt::id_type item_id = entt::hashed_string{"strawberry_seed"}.value();
+    const entt::id_type filler_id = entt::hashed_string{"dummy_full"}.value();
 
     for (int i = 0; i < inventory.slotCount(); ++i) {
         inventory.slot(i).item_id_ = filler_id;
-        inventory.slot(i).count_ = 999;
+        inventory.slot(i).count_ = 1;
     }
     inventory.slot(0).item_id_ = item_id;
     inventory.slot(0).count_ = 998;
@@ -78,13 +89,13 @@ TEST(InventoryDomainServiceTest, AddItemPartial_EmitsChangedAndFullEvent) {
 TEST(InventoryDomainServiceTest, RemoveItemFromSpecificSlot_OnlyUpdatesThatSlot) {
     entt::registry registry;
     entt::dispatcher dispatcher;
-    game::data::ItemCatalog catalog;
+    auto catalog = loadItemCatalog();
     InventoryDomainService service(registry, dispatcher, catalog);
 
     const entt::entity player = registry.create();
     auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
 
-    const entt::id_type item_id = entt::hashed_string{"apple_item"}.value();
+    const entt::id_type item_id = entt::hashed_string{"strawberry_seed"}.value();
     inventory.slot(0).item_id_ = item_id;
     inventory.slot(0).count_ = 5;
     inventory.slot(1).item_id_ = item_id;
@@ -111,11 +122,11 @@ TEST(InventoryDomainServiceTest, RemoveItemFromSpecificSlot_OnlyUpdatesThatSlot)
 TEST(InventoryDomainServiceTest, AddItemCreatesInventoryWhenMissing) {
     entt::registry registry;
     entt::dispatcher dispatcher;
-    game::data::ItemCatalog catalog;
+    auto catalog = loadItemCatalog();
     InventoryDomainService service(registry, dispatcher, catalog);
 
     const entt::entity player = registry.create();
-    const entt::id_type item_id = entt::hashed_string{"apple_item"}.value();
+    const entt::id_type item_id = entt::hashed_string{"strawberry_seed"}.value();
 
     InventoryChangedCapture changed_capture{};
     dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&changed_capture);
@@ -132,6 +143,32 @@ TEST(InventoryDomainServiceTest, AddItemCreatesInventoryWhenMissing) {
     ASSERT_EQ(changed_capture.events.size(), 1u);
     EXPECT_TRUE(changed_capture.events[0].from_add);
     EXPECT_TRUE(hasSlotUpdate(changed_capture.events[0], 0, item_id, 2));
+}
+
+TEST(InventoryDomainServiceTest, AddItemRejectsUnknownCatalogItemWithoutMutatingInventory) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto catalog = loadItemCatalog();
+    InventoryDomainService service(registry, dispatcher, catalog);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = entt::hashed_string{"strawberry_seed"}.value();
+    inventory.slot(0).count_ = 4;
+
+    InventoryChangedCapture changed_capture{};
+    InventoryFullCapture full_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&changed_capture);
+    dispatcher.sink<game::defs::InventoryFullEvent>().connect<&InventoryFullCapture::onEvent>(&full_capture);
+
+    const auto result = service.addItem(player, entt::hashed_string{"missing_item"}.value(), 3);
+
+    EXPECT_EQ(result.accepted, 0);
+    EXPECT_EQ(result.rejected, 3);
+    EXPECT_EQ(inventory.slot(0).item_id_, entt::hashed_string{"strawberry_seed"}.value());
+    EXPECT_EQ(inventory.slot(0).count_, 4);
+    EXPECT_TRUE(changed_capture.events.empty());
+    EXPECT_TRUE(full_capture.events.empty());
 }
 
 } // namespace game::domain

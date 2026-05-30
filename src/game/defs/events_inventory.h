@@ -26,6 +26,7 @@ enum class InventoryMoveKind : std::uint8_t {
 struct InventoryChanged {
     entt::entity target{entt::null};
     std::vector<InventorySlotUpdate> slots{};
+    std::vector<int> slot_remap_old_to_new{}; ///< @brief full sync 排序事件中，旧背包槽位到新槽位的映射。
     bool full_sync{false};
     bool from_add{false};   ///< @brief 是否由“加物品”语义触发，用于保持 Hotbar 自动绑定策略稳定
     InventoryMoveKind move_kind{InventoryMoveKind::None}; ///< @brief move 语义（仅 onMoveItem 路径设置）

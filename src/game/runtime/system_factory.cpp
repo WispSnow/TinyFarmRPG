@@ -252,7 +252,6 @@ bool SystemFactory::assemble(GameRuntimeAssembler::SystemBuildParams params) {
     systems.inventory_system = std::make_unique<game::system::InventorySystem>(
         params.registry,
         dispatcher,
-        *services.item_catalog,
         *services.inventory_domain_service);
     systems.equipment_system = std::make_unique<game::system::EquipmentSystem>(
         dispatcher,

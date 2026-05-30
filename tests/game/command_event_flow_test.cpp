@@ -58,7 +58,7 @@ TEST(CommandEventFlowTest, UseItemCommand_EmitsDomainEventsAndUpdatesHotbarView)
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
 
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
     ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service);
 

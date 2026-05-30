@@ -22,6 +22,9 @@
 | L01 | 内容路径集中常量 | `src/game/runtime/game_content_manifest.h` | `GameContentManifest` | 节选 | 2026-05-30 | 讲义省略部分字段，并用“等等”说明 |
 | L01 | catalog 指针注入 | `src/game/runtime/runtime_service_factory.cpp` | `injectCatalogPointers()` | 完整 | 2026-05-30 | 当前注入 `RpgCatalog*` / `QuestCatalog*` / `ShopCatalog*` |
 | L01 | 本地化服务查找 helper | `src/game/runtime/service_lookup.h` | `findLocalizationService()` | 核心形态 | 2026-05-30 | 讲义省略 Doxygen 与命名空间 |
+| L02 | 背包领域服务统一写入 | `src/game/domain/inventory_domain_service.cpp` | `InventoryDomainService::addItem()` / `removeItem()` / `moveItem()` / `sortInventory()` | 节选 | 2026-05-30 | `addItem()` 先校验 `ItemCatalog`；move/sort 写入已从 `InventorySystem` 收敛到 domain |
+| L02 | 背包 system 薄壳转发 | `src/game/system/inventory_system.cpp` | `onAddItem()` / `onRemoveItem()` / `onMoveItem()` / `onSort()` | 核心形态 | 2026-05-30 | system 只处理 command 到 domain service 的转发；`InventorySyncCommand` 仍只发 full sync 事件 |
+| L02 | 背包排序快捷栏 remap | `src/game/defs/events_inventory.h` / `src/game/system/hotbar_system.cpp` | `InventoryChanged::slot_remap_old_to_new` / `HotbarSystem::onInventoryChanged()` | 节选 | 2026-05-30 | 排序事件由 domain 发 full sync + old-to-new 映射，HotbarSystem 订阅后更新快捷栏映射 |
 
 ## 跨讲承诺
 

@@ -41,7 +41,7 @@ TEST(ScriptHostCommandBridgeTest, ScriptCanEmitCommandAndProduceDomainEffect) {
     game::data::ItemCatalog catalog;
     ASSERT_TRUE(catalog.loadItemConfig(itemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
-    game::system::InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    game::system::InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
 
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
