@@ -80,6 +80,40 @@ TEST(RmlUiTextureFilterPipelineTest, GeneratedTexturesCanOverrideGlobalSampling)
     EXPECT_NE(source.find("texture_filter_overrides_.erase(texture_handle);"), std::string::npos);
 }
 
+TEST(RmlUiTextureFilterPipelineTest, RuntimeReloadKeepsOldDocumentUntilReplacementLoads) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.cpp")
+            .lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string content = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(content.empty()) << "无法读取: " << source_path;
+
+    const std::string reload_block =
+        test_source_utils::extractFunctionBlock(content, "Rml::ElementDocument* RmlUiRuntime::reloadDocument(");
+    ASSERT_FALSE(reload_block.empty());
+
+    const std::size_t pos_load = reload_block.find("auto* replacement = context_->LoadDocument(path_string);");
+    const std::size_t pos_failure = reload_block.find("if (!replacement)");
+    const std::size_t pos_replace = reload_block.find("entry.doc = replacement;");
+    const std::size_t pos_visibility = reload_block.find("applyDocumentVisibility(entry);");
+    const std::size_t pos_policy = reload_block.find("applyInteractionPolicy();");
+    const std::size_t pos_close = reload_block.find("old_doc->Close();");
+
+    ASSERT_NE(pos_load, std::string::npos);
+    ASSERT_NE(pos_failure, std::string::npos);
+    ASSERT_NE(pos_replace, std::string::npos);
+    ASSERT_NE(pos_visibility, std::string::npos);
+    ASSERT_NE(pos_policy, std::string::npos);
+    ASSERT_NE(pos_close, std::string::npos);
+
+    EXPECT_LT(pos_load, pos_failure);
+    EXPECT_LT(pos_failure, pos_replace);
+    EXPECT_LT(pos_replace, pos_visibility);
+    EXPECT_LT(pos_visibility, pos_close);
+    EXPECT_LT(pos_policy, pos_close);
+}
+
 TEST(RmlUiTextureFilterPipelineTest, SaveLayerAsTextureStillUsesDedicatedEffectPath) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "external/RmlUi-6.2/Backends/RmlUi_Renderer_GL3.cpp").lexically_normal();
@@ -129,6 +163,9 @@ TEST(RmlUiTextureFilterPipelineTest, RmlUiDebugPanelExposesRuntimeToggle) {
     EXPECT_NE(content.find("Linear (Smooth)"), std::string::npos);
     EXPECT_NE(content.find("render_backend_.setTextureFilterMode("), std::string::npos);
     EXPECT_NE(content.find("context_.getRmlUi()"), std::string::npos);
+    EXPECT_NE(content.find("SmallButton(\"Reload\")"), std::string::npos);
+    EXPECT_NE(content.find("reloadDebugDocument(idx)"), std::string::npos);
+    EXPECT_NE(content.find("layer->reloadDocument(entry.doc)"), std::string::npos);
 }
 
 } // namespace

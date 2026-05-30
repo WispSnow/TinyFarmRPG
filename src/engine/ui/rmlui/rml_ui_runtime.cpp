@@ -290,6 +290,48 @@ Rml::ElementDocument* RmlUiRuntime::loadDocument(std::string_view document_path,
     return doc;
 }
 
+Rml::ElementDocument* RmlUiRuntime::reloadDocument(Rml::ElementDocument* doc) {
+    if (!context_ || !doc) {
+        return nullptr;
+    }
+
+    auto it = std::find_if(documents_.begin(), documents_.end(), [doc](const DocumentEntry& entry) {
+        return entry.doc == doc;
+    });
+    if (it == documents_.end()) {
+        spdlog::warn("RmlUiRuntime::reloadDocument ignored unmanaged document.");
+        return nullptr;
+    }
+
+    DocumentEntry& entry = *it;
+    const std::string path = entry.path;
+    const Rml::String path_string{path.data(), path.size()};
+    auto* replacement = context_->LoadDocument(path_string);
+    if (!replacement) {
+        spdlog::error("RmlUiRuntime::reloadDocument failed: {}", path);
+        return nullptr;
+    }
+
+    replacement->Show();
+    Rml::ElementDocument* old_doc = entry.doc;
+    entry.doc = replacement;
+    entry.currently_visible = true;
+
+    applyInputModeClass(replacement);
+    applyFontScaleClassToBody(replacement, body_font_scale_class_);
+    if (document_loaded_callback_) {
+        document_loaded_callback_(*replacement, entry.owner, entry.path);
+    }
+    applyDocumentVisibility(entry);
+
+    if (active_scene_id_ != 0) {
+        applyInteractionPolicy();
+    }
+
+    old_doc->Close();
+    return replacement;
+}
+
 void RmlUiRuntime::unloadDocument(Rml::ElementDocument* doc) {
     if (!doc) {
         return;
@@ -381,12 +423,7 @@ bool RmlUiRuntime::reloadLastDocument() {
         return false;
     }
 
-    auto& last = documents_.back();
-    const std::string path = last.path;
-    const uint64_t owner = last.owner;
-
-    unloadDocument(last.doc);
-    return loadDocument(path, owner) != nullptr;
+    return reloadDocument(documents_.back().doc) != nullptr;
 }
 
 void RmlUiRuntime::applyContextDimensions() {
