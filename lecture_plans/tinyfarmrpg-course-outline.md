@@ -511,7 +511,7 @@ flowchart LR
 **知识点**：
 - `ShopCatalog`：买入条目按商店隔离，卖出规则全局共享。
 - `MerchantComponent` 与地图实例属性。
-- `previewBuy/commitBuy`、`previewSell/commitSell` 与 `ShopTransactionService` 的原子性。
+- `previewBuy/commitBuy`、`previewSell/commitSell` 与 `ShopTransactionService` 的原子性：commit 重新 preview，买入通过 `InventoryDomainService::addItemsAtomically()` 原子 grant，金额溢出拒绝提交。
 - 脚本商人按日夜和任务状态选择 `shop_id`（呼应 L06 的内容/规则边界）。
 - ShopMenuScene 的 Buy/Sell、列表、数量、确认状态机。
 
@@ -522,6 +522,7 @@ flowchart LR
 
 **源码入口**：
 - `src/game/domain/shop_transaction_service.*`
+- `src/game/domain/inventory_domain_service.*`
 - `src/game/scene/shop_menu_scene.*`
 - `src/game/scene/shop_trade_list_builder.*`
 

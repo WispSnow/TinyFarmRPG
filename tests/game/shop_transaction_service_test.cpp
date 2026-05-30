@@ -10,6 +10,7 @@
 #include "game/domain/shop_transaction_service.h"
 
 #include <filesystem>
+#include <limits>
 #include <string_view>
 
 #include <entt/core/hashed_string.hpp>
@@ -67,6 +68,22 @@ constexpr std::string_view kShopConfig = R"json({
   "sell_rules": [
     { "item_id": "potion", "sell_price": 15 },
     { "item_id": "material_timber", "sell_price": 5 }
+  ]
+})json";
+
+constexpr std::string_view kOverflowShopConfig = R"json({
+  "schema_version": 1,
+  "shops": [
+    {
+      "id": "shop.overflow",
+      "title": "Overflow",
+      "buy_entries": [
+        { "item_id": "potion", "buy_price": 2147483647 }
+      ]
+    }
+  ],
+  "sell_rules": [
+    { "item_id": "potion", "sell_price": 2147483647 }
   ]
 })json";
 
@@ -146,6 +163,32 @@ TEST(ShopTransactionServiceTest, BuyPreviewFailsWhenItemNotSoldHere) {
 
     EXPECT_FALSE(preview.canCommit());
     EXPECT_EQ(preview.failure_reason, ShopTradeFailureReason::ItemNotSoldHere);
+}
+
+TEST(ShopTransactionServiceTest, BuyCommitRejectsOverflowedTotalPriceWithoutMutatingState) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    auto shop_catalog = loadShopCatalog(kOverflowShopConfig, "shop_transaction_buy_overflow");
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, std::numeric_limits<int>::max());
+
+    const auto preview = service.previewBuy(player, "shop.overflow", "potion"_hs, 2);
+    EXPECT_FALSE(preview.canCommit());
+    EXPECT_EQ(preview.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+
+    const auto result = service.commitBuy(player, "shop.overflow", "potion"_hs, 2);
+
+    EXPECT_FALSE(result.completed());
+    EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, std::numeric_limits<int>::max());
+    const auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        EXPECT_TRUE(inventory.slot(i).empty()) << "slot=" << i;
+    }
 }
 
 TEST(ShopTransactionServiceTest, SellPreviewSucceedsForMatchingSlotAndRule) {
@@ -231,6 +274,60 @@ TEST(ShopTransactionServiceTest, SellPreviewFailsWhenSlotCountInsufficient) {
     EXPECT_EQ(preview.failure_reason, ShopTradeFailureReason::InsufficientItemCount);
 }
 
+TEST(ShopTransactionServiceTest, SellCommitRejectsOverflowedTotalPriceWithoutMutatingState) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    auto shop_catalog = loadShopCatalog(kOverflowShopConfig, "shop_transaction_sell_total_overflow");
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, 0);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = "potion"_hs;
+    inventory.slot(0).count_ = 2;
+
+    const auto preview = service.previewSell(player, "potion"_hs, 2, 0);
+    EXPECT_FALSE(preview.canCommit());
+    EXPECT_EQ(preview.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+
+    const auto result = service.commitSell(player, "potion"_hs, 2, 0);
+
+    EXPECT_FALSE(result.completed());
+    EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 0);
+    EXPECT_EQ(inventory.slot(0).item_id_, "potion"_hs);
+    EXPECT_EQ(inventory.slot(0).count_, 2);
+}
+
+TEST(ShopTransactionServiceTest, SellCommitRejectsOverflowedFinalGoldWithoutMutatingState) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    auto shop_catalog = loadShopCatalog(kOverflowShopConfig, "shop_transaction_sell_gold_overflow");
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, 1);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = "potion"_hs;
+    inventory.slot(0).count_ = 1;
+
+    const auto preview = service.previewSell(player, "potion"_hs, 1, 0);
+    EXPECT_FALSE(preview.canCommit());
+    EXPECT_EQ(preview.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+
+    const auto result = service.commitSell(player, "potion"_hs, 1, 0);
+
+    EXPECT_FALSE(result.completed());
+    EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InvalidQuantity);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 1);
+    EXPECT_EQ(inventory.slot(0).item_id_, "potion"_hs);
+    EXPECT_EQ(inventory.slot(0).count_, 1);
+}
+
 TEST(ShopTransactionServiceTest, BuyCommitWritesInventoryAndGold) {
     entt::registry registry;
     entt::dispatcher dispatcher;
@@ -301,6 +398,37 @@ TEST(ShopTransactionServiceTest, BuyCommitFailsWhenStateChangesAfterPreview) {
     EXPECT_FALSE(result.completed());
     EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InventoryFull);
     EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 100);
+}
+
+TEST(ShopTransactionServiceTest, BuyCommitRejectsPartialCapacityWithoutMutatingInventoryOrGold) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    game::data::ItemCatalog item_catalog;
+    ASSERT_TRUE(loadProjectItemCatalog(item_catalog));
+    auto shop_catalog = loadShopCatalog(kShopConfig, "shop_transaction_buy_commit_partial_capacity");
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
+
+    const entt::entity player = createPlayer(registry, 100);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+    inventory.slot(0).item_id_ = "potion"_hs;
+    inventory.slot(0).count_ = 98;
+    for (int i = 1; i < inventory.slotCount(); ++i) {
+        inventory.slot(i).item_id_ = "strawberry_seed"_hs;
+        inventory.slot(i).count_ = 999;
+    }
+
+    const auto result = service.commitBuy(player, "shop.alpha", "potion"_hs, 2);
+
+    EXPECT_FALSE(result.completed());
+    EXPECT_EQ(result.failure_reason, ShopTradeFailureReason::InventoryFull);
+    EXPECT_EQ(registry.get<game::component::PlayerWalletComponent>(player).gold_, 100);
+    EXPECT_EQ(inventory.slot(0).item_id_, "potion"_hs);
+    EXPECT_EQ(inventory.slot(0).count_, 98);
+    for (int i = 1; i < inventory.slotCount(); ++i) {
+        EXPECT_EQ(inventory.slot(i).item_id_, "strawberry_seed"_hs) << "slot=" << i;
+        EXPECT_EQ(inventory.slot(i).count_, 999) << "slot=" << i;
+    }
 }
 
 TEST(ShopTransactionServiceTest, SellCommitFailsWhenStateChangesAfterPreview) {
