@@ -43,6 +43,7 @@ private:
     void updateSelectedIndex();
 
     [[nodiscard]] bool loadDocument(std::string_view path);
+    void reloadDebugDocument(size_t index);
     void unloadDebugDocument(size_t index);
     void unloadAllDebugDocuments();
 

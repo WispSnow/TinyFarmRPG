@@ -63,6 +63,8 @@ public:
 
     [[nodiscard]] Rml::ElementDocument* loadDocument(std::string_view document_path,
                                                      uint64_t owner_scene_id = 0);
+    /// @brief 重新加载已由 runtime 托管的文档；加载失败时保留旧文档。
+    [[nodiscard]] Rml::ElementDocument* reloadDocument(Rml::ElementDocument* doc);
     void unloadDocument(Rml::ElementDocument* doc);
 
     /// @brief 把指定 class 互斥地写到所有已加载文档的 <body>（移除其它两个 tf-font-* class）。

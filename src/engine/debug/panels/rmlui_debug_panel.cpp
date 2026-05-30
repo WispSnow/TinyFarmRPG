@@ -149,6 +149,10 @@ void RmlUiDebugPanel::drawDebugDocuments() {
         ImGui::SameLine();
         ImGui::TextUnformatted(entry.path.c_str());
         ImGui::SameLine();
+        if (ImGui::SmallButton("Reload")) {
+            reloadDebugDocument(idx);
+        }
+        ImGui::SameLine();
         if (ImGui::SmallButton("X")) {
             unloadDebugDocument(idx);
         }
@@ -368,6 +372,31 @@ bool RmlUiDebugPanel::loadDocument(std::string_view path) {
     status_message_ = "Loaded: " + std::string(path);
     status_is_error_ = false;
     return true;
+}
+
+void RmlUiDebugPanel::reloadDebugDocument(size_t index) {
+    if (index >= debug_documents_.size()) {
+        return;
+    }
+
+    auto* layer = context_.getRmlUi();
+    if (!layer) {
+        status_message_ = "Reload failed: RmlUiRuntime not available.";
+        status_is_error_ = true;
+        return;
+    }
+
+    auto& entry = debug_documents_[index];
+    auto* replacement = layer->reloadDocument(entry.doc);
+    if (!replacement) {
+        status_message_ = "Reload failed: " + entry.path;
+        status_is_error_ = true;
+        return;
+    }
+
+    entry.doc = replacement;
+    status_message_ = "Reloaded: " + entry.path;
+    status_is_error_ = false;
 }
 
 void RmlUiDebugPanel::unloadDebugDocument(size_t index) {

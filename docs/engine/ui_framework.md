@@ -14,6 +14,7 @@
   - 持有全局 `Rml::Context`
   - 接收 SDL 事件并转发给 RmlUi
   - 按 `owner_scene_id` 加载/卸载文档，避免跨 Scene 泄漏
+  - 为调试加载的文档提供安全 reload：先加载替换文档，成功后再关闭旧文档
   - 在每个渲染帧显式执行 `update()`
 
 关于 `owner_scene_id`，有两个容易混淆的点：
@@ -120,6 +121,17 @@ document_controller_.bindSimpleEvent(constructor, "back_to_title", [this] { onBa
 document_controller_.load("ui/rmlui/scenes/pause_menu.rml");
 document_controller_.markAllDirty();
 ```
+
+### 2.1 调试文档 reload
+
+`RmlUiRuntime::reloadDocument(doc)` 用于调用方直接持有并能更新 document 指针的场景，典型入口是 ImGui 的 `RmlUiDebugPanel`。它的行为约定是：
+
+- 先按原路径加载替换文档。
+- 加载失败时返回 `nullptr`，旧文档保持显示和可交互状态。
+- 加载成功后继承 owner、显示请求、输入模式 class、字号 class，并触发 document loaded callback。
+- 调用方必须保存返回的新 document 指针。
+
+通过 `RmlDocumentController` 管理的生产 UI 不应绕过 controller 直接 reload 底层 document；生产 Scene / HUD 的正常路径仍是 `load()` / `unload()` 与 data model 生命周期绑定。
 
 ## 3) 布局、逻辑与样式的分工
 
