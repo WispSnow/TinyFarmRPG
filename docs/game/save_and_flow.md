@@ -32,7 +32,7 @@ flowchart LR
   SaveData -->|serialize| JSON["slotX.json"]
 
   %% Load path
-  JSON -->|migrateToLatest| Migrator["SaveMigrator<br/>(v2 -> v7)"]
+  JSON -->|migrateToLatest| Migrator["SaveMigrator<br/>(v2 -> v8)"]
   Migrator -->|deserialize| SaveData2["SaveData"]
   SaveData2 -->|apply| SaveSvcLoad["SaveService"]
   SaveSvcLoad --> World
@@ -43,10 +43,11 @@ flowchart LR
 
 读图要点：
 - `SaveService`：流程层唯一入口（保存/加载），内部做 `capture/apply + 文件读写`。
-- `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v7`）。
+- `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v8`）。
 - `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节。
 - `MapManager::snapshotCurrentMap()`：把“当前地图的动态实体”写回持久层（否则存档可能漏掉当前地图状态）。
-- `schema v7` 当前字段：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`、`script_state`。
+- `schema v8` 当前字段：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`、`script_state`。
+- `party_state` 保存 `recruited_actor_ids / active_actor_ids / max_active_members`；旧 schema 缺 `max_active_members` 时迁移默认补 4。
 - `party_runtime_state.actor_states` 保存 actor 的 `current_hp / current_mp / level / total_exp`；读档应用时 `total_exp` 作为等级真源，`level` 会按 actor 曲线重新推导。
 - `appearance_state` 保存 `profile_id / gender / slots`（slot -> variant，如 `hair: "Lyria/Brown"`）。
 - `script_state` 保存 Lua `tf.state` 的 JSON 兼容基元，用于一次性地图事件、剧情 flag、脚本化宝箱等内容层状态。

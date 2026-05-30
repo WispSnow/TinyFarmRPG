@@ -13,7 +13,7 @@ Stage V 把战斗闭环讲完了。现在进入 **Stage VI 工程化收尾**—�
 读完之后，你应该能回答：
 
 1. "原子替换"在文件系统层面具体怎么做？为什么不能直接往原存档文件里写？
-2. schema 从 v6 升到 v7，旧档加载时会发生什么？什么情况下必须写迁移代码、什么情况下可以省？
+2. schema 从 v7 升到 v8，旧档加载时会发生什么？什么情况下必须写迁移代码、什么情况下可以省？
 3. 给一个新功能加一个新组件，要让它进存档，接入点有哪几处？
 4. 异步保存时，"抓取游戏状态"和"写文件"分别在哪个线程做？为什么必须这样分？
 
@@ -25,7 +25,7 @@ Stage V 把战斗闭环讲完了。现在进入 **Stage VI 工程化收尾**—�
 
 ```jsonc
 {
-  "schema_version": 7,            // ← 版本号，迁移和拒载都看它
+  "schema_version": 8,            // ← 版本号，迁移和拒载都看它
   "timestamp": "...",
   "game_time": { "day": 3, "hour": 9.5, ... },
   "player": { "map_name": "home_exterior", "position": {...}, "inventory": {...}, "gold": 120 },
@@ -56,7 +56,7 @@ flowchart LR
   end
 
   subgraph LOAD["加载路径"]
-    JSON2["slotX.json"] -->|migrateToLatest| MIG["SaveMigrator<br/>v2→…→v7"]
+    JSON2["slotX.json"] -->|migrateToLatest| MIG["SaveMigrator<br/>v2→…→v8"]
     MIG -->|deserialize| SD2["SaveData"]
     SD2 -->|apply + 触发 sync 命令| WORLD["registry + WorldState"]
   end
@@ -75,7 +75,7 @@ flowchart LR
 
 ### 1. 存档 = 全项目状态快照，`SaveData` 只管格式
 
-存档涵盖的范围由 `save_data.h` 的 `json_keys` 一目了然——schema v7 当前的状态块：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`、`script_state`，外加玩家/时间/世界。
+存档涵盖的范围由 `save_data.h` 的 `json_keys` 一目了然——schema v8 当前的状态块：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`、`script_state`，外加玩家/时间/世界。`party_state` 里包含 `recruited_actor_ids`、`active_actor_ids` 和队伍上限 `max_active_members`。
 
 关键设计：`SaveData` 是个**纯数据结构，只关心"格式与版本"，完全不碰 ECS / 系统 / 地图加载**。它和真实游戏状态之间隔着两个翻译函数：
 
@@ -127,9 +127,9 @@ if (json[KEY] == 6u) { migrateV6ToV7(json, out_error); }
 // 到这里 == SAVE_SCHEMA_VERSION，迁移完成
 ```
 
-精髓是：**每个 `migrateVNToVN+1` 只懂"从 N 到 N+1"这一步**，链式调用就能把任意中间版本一路升到最新。一个 v4 的旧档会依次流过 v4→v5→v6→v7。两道护栏也很关键：`schema_version == 0`（缺失）拒载、`> SAVE_SCHEMA_VERSION`（来自未来的版本）拒载——**宁可拒绝，也不误读成更坏的状态**。注意链条从 v2 起步，更早的版本不支持——这正是"未上线项目可重置"的边界：只维护一个近期版本窗口，太老的直接弃。
+精髓是：**每个 `migrateVNToVN+1` 只懂"从 N 到 N+1"这一步**，链式调用就能把任意中间版本一路升到最新。一个 v4 的旧档会依次流过 v4→v5→v6→v7→v8。两道护栏也很关键：`schema_version == 0`（缺失）拒载、`> SAVE_SCHEMA_VERSION`（来自未来的版本）拒载——**宁可拒绝，也不误读成更坏的状态**。注意链条从 v2 起步，更早的版本不支持——这正是"未上线项目可重置"的边界：只维护一个近期版本窗口，太老的直接弃。
 
-这是自测题 2 的答案：v6 升 v7，`migrateV6ToV7` 会跑、把 JSON 补成 v7 的样子再 deserialize。**什么时候必须写迁移代码？** 当 schema 变化是**破坏性**的（字段改名、删除、结构重组）——旧档的 JSON 形状对不上新 `deserialize`，必须用迁移函数把它转换过来。**什么时候能省？** 当变化是**纯加性**的——只新增一个带合理默认值的字段，`deserialize` 用 `json.value(key, default)` 读不到就取默认，旧档照样能加载（甚至可以不 bump）。
+这是自测题 2 的答案：v7 升 v8，`migrateV7ToV8` 会跑，给 `party_state.max_active_members` 补默认 4，再 deserialize。**什么时候必须写迁移代码？** 当 schema 变化是**破坏性**的（字段改名、删除、结构重组）——旧档的 JSON 形状对不上新 `deserialize`，必须用迁移函数把它转换过来。**什么时候能省？** 当变化是**纯加性**的——只新增一个带合理默认值的字段，`deserialize` 用默认值读不到就取默认，旧档照样能加载；本项目仍倾向 bump schema，把"版本号"和"格式"保持对应。
 
 ### 5. 新增组件接入存档的 checklist
 
@@ -139,7 +139,7 @@ if (json[KEY] == 6u) { migrateV6ToV7(json, out_error); }
 2. **序列化**：在 `save_data.cpp` 的 `serialize` / `deserialize` 里加这个字段的读写（`deserialize` 给默认值）。
 3. **抓取**：在 `save_service.cpp` 的 `capture()` 里从 ECS / WorldState 读出来填进 `SaveData`。
 4. **应用**：在 `apply()` 里写回 ECS，**并触发必要的 sync 命令**——`apply` 不只是填组件，还要发 `InventorySyncCommand` / `RefreshAppearanceCommand` / `HotbarSyncCommand` 之类，让 HUD/UI 跟着刷新（这和 L20 写回后发 `PartyRuntimeStatsChanged` 是同一个道理：改了真相要通知表现）。
-5. **版本**：破坏性改动则 bump `SAVE_SCHEMA_VERSION` 并加一个 `migrateV7ToV8` 步骤；纯加性可只靠 deserialize 默认值。
+5. **版本**：破坏性改动则 bump `SAVE_SCHEMA_VERSION` 并加一个 `migrateV8ToV9` 步骤；纯加性字段也可以 bump，以保持版本号和格式对应。
 6. **地图实体**：若新组件挂在地图动态实体上，确认它进了 `snapshotCurrentMap`（§3）。
 
 `apply()` 末尾这串命令值得一看（[`save_service.cpp`](../../src/game/save/save_service.cpp)）：
@@ -200,7 +200,7 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 ## ❓ 自测问题
 
 1. 用一句话说清"临时文件 + rename"为什么能保证存档永不半写。如果某平台 `rename` 在目标已存在时会失败，代码怎么兜底？
-2. schema 从 v6 升 v7，`migrateToLatest` 里发生了什么？现在你想给某组件加一个带默认值的新字段——必须写迁移函数吗？如果改成把某字段改名，又必须吗？
+2. schema 从 v7 升 v8，`migrateToLatest` 里发生了什么？现在你想给某组件加一个带默认值的新字段——必须写迁移函数吗？如果改成把某字段改名，又必须吗？
 3. 加一个新组件进存档，从"格式"到"应用"一共要碰哪几处？为什么 `apply()` 光把数据写回组件还不够、还得发 sync 命令？
 4. 异步保存为什么 `capture()` 在主线程做、`writeSaveFile()` 在 worker 线程做？如果把 `capture()` 也丢进 worker 线程会出什么问题？
 
@@ -212,9 +212,9 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 
 1. **加字段**：选一个已进存档的结构（如 `PlayerSaveData`），加一个新字段，比如 `int play_time_seconds{0};`。在 `save_data.h` 的相应 `json_keys` 加键名，在 `save_data.cpp` 的 `serialize`/`deserialize` 里读写它（`deserialize` 用 `json.value(key, 0)` 给默认）。
 2. **接 capture/apply**：在 `capture()` 里填值（先填 0 也行），在 `apply()` 里读回。
-3. **bump + 迁移**：把 `SAVE_SCHEMA_VERSION` 从 7 改成 8；在 `save_migrator.cpp` 加一个 `migrateV7ToV8`——它什么实质转换都不用做（新字段是加性的），只需 `json[KEY_SCHEMA_VERSION] = 8u;`，并在 `migrateToLatest` 链尾接上 `if (json[KEY] == 7u) migrateV7ToV8(...)`。
-4. **验证旧档**：拿一个**改动前存的 v7 旧档**（或手动把某存档的 `schema_version` 改回 7）去加载——确认它顺利升到 v8、新字段取默认值 0、游戏正常进。
-5. **想清楚**：既然新字段是加性的、deserialize 有默认值，这个 `migrateV7ToV8` **几乎是空的**。那它存在的意义是什么？（提示：让"版本号"和"格式"始终对应，未来真要做破坏性迁移时链条不断档。）
+3. **bump + 迁移**：把 `SAVE_SCHEMA_VERSION` 从 8 改成 9；在 `save_migrator.cpp` 加一个 `migrateV8ToV9`。如果新字段是加性的，可以只在迁移中补默认值并设置 `json[KEY_SCHEMA_VERSION] = 9u`，再在 `migrateToLatest` 链尾接上 `if (json[KEY] == 8u) migrateV8ToV9(...)`。
+4. **验证旧档**：拿一个**改动前存的 v8 旧档**（或手动把某存档的 `schema_version` 改回 8）去加载——确认它顺利升到 v9、新字段取默认值 0、游戏正常进。
+5. **想清楚**：既然新字段是加性的、deserialize 有默认值，这个 `migrateV8ToV9` 可能很薄。那它存在的意义是什么？（提示：让"版本号"和"格式"始终对应，未来真要做破坏性迁移时链条不断档。）
 
 **进阶**：故意把一个存档的 `schema_version` 改成 `999`（伪造未来版本），加载它，观察 `migrateToLatest` 的"拒载未来版本"护栏如何报错——并解释为什么"拒绝加载"比"尽力读"更安全。
 
@@ -222,7 +222,7 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 
 ## 📌 小结
 
-- **存档 = 全项目状态快照**：schema v7 涵盖 quest/skill/appearance/party/equipment/party_runtime/combat/script_state；`SaveData` 只管格式，`capture`/`apply` 在它与 ECS 之间翻译；`total_exp` 是等级真源、`script_state` 即 `tf.state`。
+- **存档 = 全项目状态快照**：schema v8 涵盖 quest/skill/appearance/party/equipment/party_runtime/combat/script_state；`party_state.max_active_members` 保存队伍上限；`SaveData` 只管格式，`capture`/`apply` 在它与 ECS 之间翻译；`total_exp` 是等级真源、`script_state` 即 `tf.state`。
 - **原子替换**：写 `.tmp` → `rename` 覆盖，真档永远非旧即新；直接写原文件会在崩溃时尽毁存档。
 - **不变量**：保存前必须 `snapshotCurrentMap`，否则静默丢当前地图的动态实体变化。
 - **迁移链**：`migrateToLatest` 顺序累积、每步只管 N→N+1；缺失/未来版本一律拒载；加性字段可靠 deserialize 默认值省迁移，破坏性改动必须写迁移 + bump。

@@ -32,7 +32,7 @@ flowchart TD
     CMD --> SCHED
     RPG --> OVERLAY["覆盖式 Scene<br/>Inventory / Shop / Quest / Recruit / Battle"]
     OVERLAY --> DATA["Catalogs + Lua scripts<br/>Item / RPG / Quest / Shop / Appearance"]
-    OVERLAY --> SAVE["SaveService<br/>schema v7"]
+    OVERLAY --> SAVE["SaveService<br/>schema v8"]
     DATA --> SAVE
 ```
 

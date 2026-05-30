@@ -32,6 +32,7 @@ constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
 constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
 constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
+constexpr std::string_view KEY_MAX_ACTIVE_MEMBERS = json_keys::MAX_ACTIVE_MEMBERS;
 constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
 constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
 constexpr std::string_view KEY_CURRENT_HP = json_keys::CURRENT_HP;
@@ -391,6 +392,7 @@ nlohmann::json serialize(const SaveData& data) {
     root[KEY_PARTY_STATE] = nlohmann::json{
         {KEY_RECRUITED_ACTOR_IDS, data.party_state.recruited_actor_ids},
         {KEY_ACTIVE_ACTOR_IDS, data.party_state.active_actor_ids},
+        {KEY_MAX_ACTIVE_MEMBERS, data.party_state.max_active_members},
     };
     {
         nlohmann::json loadouts = nlohmann::json::object();
@@ -665,6 +667,14 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
         }
         if (!readStringArrayField(party_state, KEY_ACTIVE_ACTOR_IDS, out.party_state.active_actor_ids, out_error)) {
             return false;
+        }
+        if (party_state.contains(KEY_MAX_ACTIVE_MEMBERS)) {
+            if (!party_state[KEY_MAX_ACTIVE_MEMBERS].is_number_unsigned()) {
+                out_error = "SaveData: party_state.max_active_members is not an unsigned int";
+                return false;
+            }
+            const auto max_active_members = party_state[KEY_MAX_ACTIVE_MEMBERS].get<std::size_t>();
+            out.party_state.max_active_members = max_active_members == 0U ? 1U : max_active_members;
         }
     }
     if (!readPlaceholderObject(json, KEY_EQUIPMENT_STATE, out_error)) {

@@ -8,7 +8,7 @@
 
 | 组件 | 作用 |
 |------|------|
-| `PartyComponent` | 已招募 actor 列表、当前 active party、最大参战人数 |
+| `PartyComponent` | 已招募 actor 列表、当前 active party、最大参战人数（新建默认来自 `kDefaultMaxActivePartyMembers`，当前为 4） |
 | `PartyRuntimeStatsComponent` | 按 actor id 保存 `current_hp / current_mp / level / total_exp` |
 | `PartyEquipmentComponent` | 按 actor id 保存装备槽位到 item id 的映射 |
 | `RecruitableComponent` | 标记地图 actor 可被招募，记录 `actor_id` |
@@ -22,6 +22,8 @@ flowchart TD
     Stats --> Progression["ActorProgressionService"]
     Equip --> Equipment["EquipmentDomainService"]
 ```
+
+`PartyComponent::max_active_members_` 是运行时字段，不是编译期常量。`SaveService` 会把它写入 `party_state.max_active_members` 并在读档时恢复；旧存档缺这个字段时，`SaveMigrator` 会补默认 4。读档 normalize 会保证上限至少为 1，并按该上限裁剪 active party。
 
 ## 角色成长
 
@@ -87,9 +89,11 @@ flowchart TD
 - 确保默认玩家 actor 存在。
 - 防止重复招募。
 - 把新 actor 加入 `recruited_actor_ids_`。
-- 如果 active party 未满，加入 `active_actor_ids_`。
+- 如果 active party 未满 `max_active_members_`，加入 `active_actor_ids_`；满员时只入花名册。
 - 为新 actor 创建初始 `ActorRuntimeState`。
 - 从当前地图移除 recruiter 实体。
+
+地图加载时，如果 `recruit_actor_id` 已在玩家花名册中，`EntityBuilder` 会跳过该 recruitable actor 的实体生成，避免已招募 NPC 在地图上重复出现。
 
 ## 休息
 
@@ -112,11 +116,13 @@ flowchart LR
 
 | Save 字段 | 来源 |
 |-----------|------|
-| `party_state` | `PartyComponent` |
-| `party_runtime_state` | `PartyRuntimeStatsComponent` |
-| `equipment_state` | `PartyEquipmentComponent` |
+| `party_state.recruited_actor_ids` | `PartyComponent::recruited_actor_ids_` |
+| `party_state.active_actor_ids` | `PartyComponent::active_actor_ids_` |
+| `party_state.max_active_members` | `PartyComponent::max_active_members_` |
+| `party_runtime_state.actor_states` | `PartyRuntimeStatsComponent::states_by_actor_id_` |
+| `equipment_state.loadouts` | `PartyEquipmentComponent::loadouts_by_actor_id_` |
 
-这些字段与 catalog 分离。存档保存 actor id 和 item id，读档时再用当前 `RpgCatalog` / `ItemCatalog` 恢复语义。
+这些字段与 catalog 分离。存档保存 actor id、item id 和队伍上限，读档时再用当前 `RpgCatalog` / `ItemCatalog` 恢复语义。当前保存格式为 schema v8；v7 及更早存档迁移到最新版本时会补 `party_state.max_active_members = 4`。
 
 ## 新增一个可招募角色
 

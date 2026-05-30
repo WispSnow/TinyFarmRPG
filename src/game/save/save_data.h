@@ -2,6 +2,7 @@
 
 #include "game/defs/party_ids.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -15,7 +16,7 @@
 
 namespace game::save {
 
-constexpr std::uint32_t SAVE_SCHEMA_VERSION = 7;
+constexpr std::uint32_t SAVE_SCHEMA_VERSION = 8;
 
 namespace json_keys {
 inline constexpr std::string_view SCHEMA_VERSION = "schema_version";
@@ -42,6 +43,7 @@ inline constexpr std::string_view TROOP_ID = "troop_id";
 inline constexpr std::string_view ACTOR_IDS = "actor_ids";
 inline constexpr std::string_view RECRUITED_ACTOR_IDS = "recruited_actor_ids";
 inline constexpr std::string_view ACTIVE_ACTOR_IDS = "active_actor_ids";
+inline constexpr std::string_view MAX_ACTIVE_MEMBERS = "max_active_members";
 inline constexpr std::string_view LOADOUTS = "loadouts";
 inline constexpr std::string_view ACTOR_STATES = "actor_states";
 inline constexpr std::string_view CURRENT_HP = "current_hp";
@@ -149,6 +151,7 @@ struct AppearanceStateSaveData {
 struct PartyStateSaveData {
     std::vector<std::string> recruited_actor_ids{std::string{game::defs::kDefaultPlayerActorId}};
     std::vector<std::string> active_actor_ids{std::string{game::defs::kDefaultPlayerActorId}};
+    std::size_t max_active_members{game::defs::kDefaultMaxActivePartyMembers};
 };
 
 struct ActorEquipmentSaveData {

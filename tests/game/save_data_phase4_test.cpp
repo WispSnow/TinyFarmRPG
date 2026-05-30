@@ -48,6 +48,7 @@ TEST(SaveDataPhase4Test, DeserializeSupportsDefaultExtendedStateFields) {
     EXPECT_TRUE(data.skill_state.skill_levels.empty());
     EXPECT_TRUE(data.skill_state.skill_cooldowns.empty());
     EXPECT_EQ(data.appearance_state.profile_id, "player_default");
+    EXPECT_EQ(data.party_state.max_active_members, game::defs::kDefaultMaxActivePartyMembers);
     EXPECT_TRUE(data.equipment_state.loadouts.empty());
     EXPECT_TRUE(data.party_runtime_state.actor_states.empty());
     EXPECT_FALSE(data.combat_state.pending_battle);
@@ -60,6 +61,7 @@ TEST(SaveDataPhase4Test, DeserializeSupportsDefaultExtendedStateFields) {
 TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
     SaveData source{};
     source.appearance_state.profile_id = "player_default";
+    source.party_state.max_active_members = 3;
     source.equipment_state.loadouts["actor.player"].slots["weapon"] = 1234U;
     source.equipment_state.loadouts["actor.lyria"].slots["body"] = 5678U;
     source.party_runtime_state.actor_states["actor.player"] = ActorRuntimeStateSaveData{
@@ -82,6 +84,7 @@ TEST(SaveDataPhase4Test, RoundtripPreservesEquipmentAndPartyRuntimeState) {
     ASSERT_TRUE(deserialize(json, loaded, error)) << error;
 
     EXPECT_EQ(loaded.appearance_state.profile_id, "player_default");
+    EXPECT_EQ(loaded.party_state.max_active_members, 3U);
     EXPECT_EQ(loaded.equipment_state.loadouts.at("actor.player").slots.at("weapon"), 1234U);
     EXPECT_EQ(loaded.equipment_state.loadouts.at("actor.lyria").slots.at("body"), 5678U);
     EXPECT_EQ(loaded.party_runtime_state.actor_states.at("actor.player").current_hp, 321);
