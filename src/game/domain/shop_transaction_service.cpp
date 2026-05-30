@@ -10,6 +10,8 @@
 #include <entt/entity/registry.hpp>
 #include <spdlog/spdlog.h>
 
+#include <array>
+#include <limits>
 #include <vector>
 
 namespace game::domain {
@@ -38,6 +40,36 @@ void fillTradeFields(TPreviewOrResult& out,
     if (item.stack_limit_ <= 1 && quantity > 1) {
         return false;
     }
+    return true;
+}
+
+[[nodiscard]] bool checkedMultiplyNonNegative(const int lhs, const int rhs, int& out) {
+    if (lhs < 0 || rhs < 0) {
+        return false;
+    }
+    if (lhs != 0 && rhs > std::numeric_limits<int>::max() / lhs) {
+        return false;
+    }
+
+    out = lhs * rhs;
+    return true;
+}
+
+[[nodiscard]] bool checkedAddNonNegative(const int lhs, const int rhs, int& out) {
+    if (rhs < 0 || lhs > std::numeric_limits<int>::max() - rhs) {
+        return false;
+    }
+
+    out = lhs + rhs;
+    return true;
+}
+
+[[nodiscard]] bool checkedSubtractNonNegative(const int lhs, const int rhs, int& out) {
+    if (rhs < 0 || lhs < std::numeric_limits<int>::min() + rhs) {
+        return false;
+    }
+
+    out = lhs - rhs;
     return true;
 }
 
@@ -131,11 +163,19 @@ ShopBuyPreview ShopTransactionService::previewBuy(const entt::entity player,
 
     preview.resolved_quantity = quantity;
     preview.unit_price = buy_entry->buy_price_;
-    preview.total_price = preview.unit_price * preview.resolved_quantity;
-    preview.final_gold_after = wallet->gold_ - preview.total_price;
+    if (!checkedMultiplyNonNegative(preview.unit_price, preview.resolved_quantity, preview.total_price)) {
+        preview.failure_reason = ShopTradeFailureReason::InvalidQuantity;
+        return preview;
+    }
+
     preview.can_afford = wallet->gold_ >= preview.total_price;
     if (!preview.can_afford) {
+        static_cast<void>(checkedSubtractNonNegative(wallet->gold_, preview.total_price, preview.final_gold_after));
         preview.failure_reason = ShopTradeFailureReason::InsufficientGold;
+        return preview;
+    }
+    if (!checkedSubtractNonNegative(wallet->gold_, preview.total_price, preview.final_gold_after)) {
+        preview.failure_reason = ShopTradeFailureReason::InvalidQuantity;
         return preview;
     }
 
@@ -172,7 +212,11 @@ ShopBuyResult ShopTransactionService::commitBuy(const entt::entity player,
         return makeBuyResultFromFailure(failed_preview, 0);
     }
 
-    const auto mutation = inventory_domain_service_.addItem(player, item_id, preview.resolved_quantity);
+    const std::array<InventoryItemGrant, 1> grants{InventoryItemGrant{
+        .item_id = item_id,
+        .count = preview.resolved_quantity,
+    }};
+    const auto mutation = inventory_domain_service_.addItemsAtomically(player, grants);
     if (mutation.accepted != preview.resolved_quantity || mutation.rejected != 0) {
         spdlog::warn("ShopTransactionService: buy commit 结果异常 item_id={}, requested={}, accepted={}, rejected={}",
                      item_id,
@@ -252,11 +296,14 @@ ShopSellPreview ShopTransactionService::previewSell(const entt::entity player,
 
     preview.resolved_quantity = quantity;
     preview.unit_price = sell_rule->sell_price_;
-    preview.total_price = preview.unit_price * preview.resolved_quantity;
-    preview.final_gold_after = wallet->gold_ + preview.total_price;
 
     if (stack.count_ < preview.resolved_quantity) {
         preview.failure_reason = ShopTradeFailureReason::InsufficientItemCount;
+        return preview;
+    }
+    if (!checkedMultiplyNonNegative(preview.unit_price, preview.resolved_quantity, preview.total_price) ||
+        !checkedAddNonNegative(wallet->gold_, preview.total_price, preview.final_gold_after)) {
+        preview.failure_reason = ShopTradeFailureReason::InvalidQuantity;
         return preview;
     }
 

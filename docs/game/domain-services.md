@@ -32,7 +32,7 @@ flowchart TD
 
 如果每个地方都自己写一遍"找到 InventoryComponent → 合并堆叠 → 触发空槽 → 失败回退 → 发事件"，规则会迅速漂移。领域服务通过几条硬约束消除这个风险：
 
-1. **一致写入**：一次调用由 service 统一结算。`InventoryDomainService::addItem` 允许部分接收，但必须用 `accepted / rejected` 与事件把结果说清楚；`ShopTransactionService::commitBuy` 这种复合交易则必须全成功或回滚。
+1. **一致写入**：一次调用由 service 统一结算。`InventoryDomainService::addItem` 允许部分接收，但必须用 `accepted / rejected` 与事件把结果说清楚；`InventoryDomainService::addItemsAtomically` 和 `ShopTransactionService::commitBuy` 这种复合交易则必须全成功或不改真实状态。
 2. **统一事件**：所有写入都从同一处发 `InventoryChanged` / `EquipmentChangedEvent` 等，UI、Hotbar 与脚本桥只需要订阅一处。`SaveService` 保存时读取组件，读档后发 sync command，不订阅 `InventoryChanged`。
 3. **唯一规则真相**：catalog（静态规则）+ component（运行时数据）+ domain service（写入逻辑）共同构成"系统真相"。Lua、UI、调试面板都只能通过 service 改写，不绕过。
 
@@ -85,8 +85,10 @@ flowchart TD
 ### ShopTransactionService — 商店交易
 
 - `previewBuy / previewSell`：纯查询，不改任何状态，给 UI 显示总价、剩余金币、能否提交。
-- `commitBuy / commitSell`：真正写入。失败时通过 `ShopTradeFailureReason` 报告，已扣的金币 / 已加的物品保证回滚。
-- 商品来源由 `ShopCatalog` 决定，价格与可售性由 `ItemCatalog` 决定。
+- `commitBuy`：重新 preview 后通过 `InventoryDomainService::addItemsAtomically()` 原子 grant 买入物品，成功后才扣金币；grant 失败时背包和钱包都不变。
+- `commitSell`：重新 preview 指定槽位，`removeItem()` 成功后才加金币；槽位变化或数量不足会拒绝交易，钱包不变。
+- 买卖总价与钱包加减都做 checked arithmetic；溢出通过 `ShopTradeFailureReason::InvalidQuantity` 报告。
+- 商品来源、买入价格、卖出规则由 `ShopCatalog` 决定；`ItemCatalog` 提供物品存在性和堆叠规则。
 
 ### ActorProgressionService — 经验与等级（静态）
 
@@ -227,7 +229,7 @@ ItemCatalog / RpgCatalog / ShopCatalog 已加载
 按下面顺序读，能在 1 小时内建立完整心智模型：
 
 1. `src/game/domain/inventory_domain_service.{h,cpp}` — 看 `addItem` 的 catalog preflight、合并堆叠、空槽分配、部分接收回报，`addItemsAtomically` 的整批提交，以及 `moveItem / sortInventory` 的事件语义。
-2. `src/game/domain/shop_transaction_service.cpp` — 看 preview / commit 的范式（依赖 InventoryDomainService）。
+2. `src/game/domain/shop_transaction_service.cpp` — 看 preview / commit 的范式、checked arithmetic、买入 atomic grant 与卖出精确槽位扣除。
 3. `src/game/runtime/system_factory.cpp:104-130` — 看 4 个 service 的构造顺序与依赖注入。
 4. `src/game/system/chest_system.cpp` — 看 system 如何调用 `inventory_domain_service.addItem`。
 5. `src/game/script/script_game_api.cpp` — 看 Lua 如何通过 `tf.shop`、`tf.quest` 触发 commit。

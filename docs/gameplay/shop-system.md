@@ -5,7 +5,7 @@
 商店系统实现了"与 NPC 商人交互 → 进入买卖场景 → 原子交易 → 背包/金币更新"的最小 JRPG 商店闭环。脚本化商人可以先由 Lua 播放 greeting，再按时间或任务状态选择一个静态 `shop_id` 预设交给 C++ 打开。核心设计原则：
 
 - **覆盖式场景**：商店作为独立的 `ShopMenuScene` 叠加在探索场景之上，交易完成或取消后 pop 回探索。
-- **原子交易**：每笔交易都先 preview（不修改状态），只有 `canCommit()` 为真时才 commit（原子写入）。
+- **原子交易**：每笔交易都先 preview（不修改状态），commit 会重新 preview；金额计算溢出会被拒绝，背包写入和金币写入保持全有全无。
 - **目录分离**：买入目录（`buy_entries`）按商店隔离；卖出规则（`sell_rules`）全局共享，任何商店都适用同一套规则。
 - **不引入新存档 schema**：商店交易的所有状态改变（背包、金币）直接复用现有 `InventoryComponent` 与 `PlayerWalletComponent` 存档路径。
 
@@ -24,7 +24,7 @@ graph TD
 
     subgraph "领域层"
         STS["ShopTransactionService<br/>previewBuy / commitBuy<br/>previewSell / commitSell"]
-        INV["InventoryDomainService<br/>addItem / removeItem"]
+        INV["InventoryDomainService<br/>addItemsAtomically / removeItem"]
         WAL["PlayerWalletComponent<br/>金币真相"]
     end
 
@@ -181,23 +181,25 @@ sequenceDiagram
     STS-->>UI: ShopBuyPreview{can_afford, has_space, total_price, ...}
     Note over UI: 实时展示价格预览
     UI->>STS: commitBuy(player, shop_id, item_id, qty)
-    STS->>STS: 再次执行 previewBuy 校验
-    STS->>INV: addItem(player, item_id, qty)
-    STS->>WAL: gold -= total_price
+    STS->>STS: 再次执行 previewBuy 校验<br/>checked price / wallet
+    STS->>INV: addItemsAtomically(player, grant)
+    STS->>WAL: grant 成功后 gold -= total_price
     STS-->>UI: ShopBuyResult{completed(), final_gold_after}
 ```
 
-Sell 方向完全对称：`previewSell / commitSell`，`removeItem + gold +=`。
+Sell 方向同样是 `previewSell / commitSell`：提交时重新 preview 精确槽位，`removeItem` 成功后才 `gold += total_price`。买卖双方的 `unit_price * quantity` 与钱包加减都使用 checked arithmetic；溢出统一返回 `InvalidQuantity`，背包和金币不变。
 
 ### Buy 校验顺序
 
 1. player 有效、有 `PlayerWalletComponent` + `InventoryComponent`
-2. quantity > 0 且符合物品的 `stack_limit_` 规则
+2. quantity > 0
 3. shop_id 在 `ShopCatalog` 中存在
-4. item_id 在 `ItemCatalog` 中存在
+4. item_id 在 `ItemCatalog` 中存在，且不可堆叠物品不能一次买多个
 5. buy_entry 在该商店的条目列表中存在（`ItemNotSoldHere`）
-6. `wallet.gold_ >= total_price`（`InsufficientGold`）
-7. 模拟背包写入后有空间（`InventoryFull`）
+6. `unit_price * quantity` 可安全计算（`InvalidQuantity`）
+7. `wallet.gold_ >= total_price`（`InsufficientGold`）
+8. `wallet.gold_ - total_price` 可安全计算（`InvalidQuantity`）
+9. 模拟背包写入后有空间（`InventoryFull`）
 
 ### Sell 校验顺序
 
@@ -207,6 +209,7 @@ Sell 方向完全对称：`previewSell / commitSell`，`removeItem + gold +=`。
 4. item_id 在全局 `sell_rules` 中有记录（`ItemNotSellable`）
 5. slot_index 有效且该槽确实持有 item_id（`SlotMismatch`）
 6. slot 中的数量 >= requested_quantity（`InsufficientItemCount`）
+7. `unit_price * quantity` 与 `wallet.gold_ + total_price` 可安全计算（`InvalidQuantity`）
 
 ### 失败原因枚举
 
@@ -216,7 +219,7 @@ Sell 方向完全对称：`previewSell / commitSell`，`removeItem + gold +=`。
 | `InvalidPlayer` | 玩家实体无效或缺少组件 |
 | `InvalidShop` | shop_id 不存在 |
 | `InvalidItem` | item_id 不存在 |
-| `InvalidQuantity` | 数量 ≤ 0 或超出堆叠限制 |
+| `InvalidQuantity` | 数量 ≤ 0、不可堆叠物品一次买多个，或价格 / 钱包计算溢出 |
 | `ItemNotSoldHere` | 该物品不在此商店出售 |
 | `ItemNotSellable` | 该物品没有卖出规则 |
 | `InsufficientGold` | 金币不足 |
@@ -235,6 +238,7 @@ ShopMenuMode:   Buy  /  Sell
 
 ShopMenuFocusArea:
   ModeToggle    — Buy / Sell 切换控件
+  CategoryTabs   — 类别分页标签
   EntryList     — 商品列表（买入条目或背包槽位）
   Quantity      — 数量调节区
   PrimaryAction — 确认买入 / 卖出按钮
@@ -350,7 +354,7 @@ struct ShopSellEntryViewModel {
 | 测试文件 | 覆盖内容 |
 |---|---|
 | `tests/game/shop_catalog_test.cpp` | 目录加载、shop/entry/sell_rule 查找、`validateReferences` |
-| `tests/game/shop_transaction_service_test.cpp` | previewBuy/Sell 各失败路径、commitBuy/Sell 原子性、金币与背包状态 |
+| `tests/game/shop_transaction_service_test.cpp` | previewBuy/Sell 各失败路径、commitBuy/Sell 原子性、金额溢出拒绝、金币与背包状态 |
 | `tests/game/shop_interaction_system_test.cpp` | `InteractCommand` → `PushSceneEvent` 触发、merchant 缺失/无效时静默跳过 |
 | `tests/game/shop_menu_navigation_test.cpp` | `resolveShopMenuNavigation()` 各焦点区域的导航决策 |
 | `tests/game/shop_menu_buy_flow_test.cpp` | Buy 模式选条目 → 调整数量 → 提交完整 UI 流程 |
@@ -367,6 +371,7 @@ struct ShopSellEntryViewModel {
 | `src/game/data/shop_data.h` | 数据 | 商店静态数据类型（`ShopData / ShopBuyEntryData / ShopSellRuleData`） |
 | `src/game/data/shop_catalog.h/.cpp` | 数据 | 商店目录加载、buy_entry / sell_rule 查询 |
 | `src/game/component/merchant_component.h` | 组件 | NPC 商人实例绑定（`shop_id_`） |
+| `src/game/domain/inventory_domain_service.h/.cpp` | 领域 | `addItemsAtomically` / `removeItem` 提供交易背包写入语义 |
 | `src/game/domain/shop_transaction_service.h/.cpp` | 领域 | preview/commit 原子交易逻辑 |
 | `src/game/system/shop_interaction_system.h/.cpp` | 系统 | 订阅 `InteractCommand`，push `ShopMenuScene` |
 | `src/game/scene/shop_menu_scene.h/.cpp` | 场景 | 商店 UI 场景、模式切换、输入状态机 |
