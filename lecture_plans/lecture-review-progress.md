@@ -4,8 +4,8 @@
 
 | 讲次 | 文件 | 状态 | 最近处理 | 代码改动 | 文本改动 | 验证 | Backlog |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| L00 | `lecture_plans/lectures/00-开篇.md` | 未开始 |  |  |  |  |  |
-| L01 | `lecture_plans/lectures/01-游戏架构设计.md` | 未开始 |  |  |  |  |  |
+| L00 | `lecture_plans/lectures/00-开篇.md` | 已完成 | 2026-05-30 | 无 | 校准项目规模、技术栈版本、源码入口和自测提示；更新事实账本 | 路径检查通过；源码入口存在；Mermaid 人工检查（`mmdc` 未安装） | 无 |
+| L01 | `lecture_plans/lectures/01-游戏架构设计.md` | 已完成 | 2026-05-30 | 无 | 校准 TinyFarm 规模、system 数量、装配顺序、ScriptHost/domain service 时序、ServiceLookup 口径和练习说明；更新事实账本 | 路径检查通过；关键源码片段已核对；Mermaid 人工检查（`mmdc` 未安装）；`git diff --check` 通过 | 无 |
 | L02 | `lecture_plans/lectures/02-领域服务与命令事件边界.md` | 未开始 |  |  |  |  |  |
 | L03 | `lecture_plans/lectures/03-RmlUi接入.md` | 未开始 |  |  |  |  |  |
 | L04 | `lecture_plans/lectures/04-HUD与覆盖式场景.md` | 未开始 |  |  |  |  |  |
