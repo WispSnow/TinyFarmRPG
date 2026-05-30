@@ -43,6 +43,34 @@ collectInventoryUpdates(const game::component::InventoryComponent& inventory) {
     return updates;
 }
 
+[[nodiscard]] std::vector<game::defs::InventorySlotUpdate>
+collectChangedSlots(const std::vector<game::component::ItemStack>& before,
+                    const std::vector<game::component::ItemStack>& after) {
+    std::vector<game::defs::InventorySlotUpdate> updates{};
+    updates.reserve(after.size());
+    for (std::size_t i = 0; i < after.size(); ++i) {
+        if (before[i].item_id_ == after[i].item_id_ && before[i].count_ == after[i].count_) {
+            continue;
+        }
+        updates.push_back(game::defs::InventorySlotUpdate{
+            .slot_index = static_cast<int>(i),
+            .item_id = after[i].item_id_,
+            .count = after[i].count_});
+    }
+    return updates;
+}
+
+[[nodiscard]] int totalRequestedCount(std::span<const InventoryItemGrant> grants) {
+    int total = 0;
+    for (const auto& grant : grants) {
+        if (grant.item_id == entt::null || grant.count <= 0) {
+            continue;
+        }
+        total += grant.count;
+    }
+    return total;
+}
+
 } // namespace
 
 InventoryDomainService::InventoryDomainService(entt::registry& registry,
@@ -147,6 +175,55 @@ InventoryMutationResult InventoryDomainService::addItem(entt::entity target,
         dispatcher_.trigger(full_evt);
     }
 
+    return result;
+}
+
+InventoryMutationResult InventoryDomainService::addItemsAtomically(
+    const entt::entity target,
+    const std::span<const InventoryItemGrant> grants) {
+    InventoryMutationResult result{};
+    result.target = target;
+    const int requested_count = totalRequestedCount(grants);
+    if (requested_count <= 0) {
+        return result;
+    }
+    if (target == entt::null) {
+        result.rejected = requested_count;
+        return result;
+    }
+    if (!ensureInventory(target)) {
+        result.rejected = requested_count;
+        return result;
+    }
+
+    auto& inventory = registry_.get<game::component::InventoryComponent>(target);
+    std::vector<game::component::ItemStack> simulated_slots = inventory.slots_;
+    for (const auto& grant : grants) {
+        if (grant.item_id == entt::null || grant.count <= 0) {
+            continue;
+        }
+
+        const auto* item = catalog_.findItem(grant.item_id);
+        if (item == nullptr) {
+            result.rejected = requested_count;
+            return result;
+        }
+
+        const int stack_limit = std::max(1, item->stack_limit_);
+        if (!game::system::detail::simulateAdd(simulated_slots, -1, grant.item_id, grant.count, stack_limit)) {
+            result.rejected = requested_count;
+            return result;
+        }
+    }
+
+    auto diff = collectChangedSlots(inventory.slots_, simulated_slots);
+    if (!diff.empty()) {
+        inventory.slots_ = std::move(simulated_slots);
+        emitChanged(target, diff, true);
+    }
+
+    result.changed_slots = std::move(diff);
+    result.accepted = requested_count;
     return result;
 }
 

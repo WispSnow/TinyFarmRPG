@@ -61,6 +61,7 @@ flowchart TD
 
 - `ensureInventory(entity)`：实体没有 `InventoryComponent` 就按 catalog 默认尺寸创建。
 - `addItem(entity, item_id, count, preferred_slot=-1)`：先校验 `ItemCatalog`，再合并堆叠 / 占用空槽 / 回报未接收数量。
+- `addItemsAtomically(entity, grants)`：整批物品先在同一份槽位副本中模拟，全部可放入才一次性替换真实背包并发 `InventoryChanged`；任一物品不存在或容量不足则整批拒绝、真实背包不变。
 - `removeItem(entity, item_id, count, slot=-1)`：按槽或按总量扣减。
 - `moveItem(entity, from_slot, to_slot, allow_merge=true)`：移动 / 交换 / 合并槽位，并在事件里标注 move 语义。
 - `sortInventory(entity)`：按类别与 id 稳定排序，发 full sync，并携带 `slot_remap_old_to_new` 让 Hotbar 保持绑定。
@@ -77,6 +78,7 @@ flowchart TD
 ### QuestTurnInService — 任务交付
 
 - `turnIn(player, quest, quest_log)`：把任务从 `Active` 推进到 `Completed`，给金币、给物品、写 `QuestLogComponent`。
+- item reward 通过 `InventoryDomainService::addItemsAtomically()` 批量提交；只有背包奖励整批成功后，才加金币并替换真实 `QuestLogComponent`。
 - 失败原因通过 `QuestTurnInStatus` 枚举回传（背包满、缺钱包组件、objective 未达成等），调用方据此弹提示。
 - 任务接取分支（`tryAcceptQuest`）走 [quest_log_ops](#quest_log_ops--quest_log-自由函数)，不走 service。
 
@@ -224,7 +226,7 @@ ItemCatalog / RpgCatalog / ShopCatalog 已加载
 
 按下面顺序读，能在 1 小时内建立完整心智模型：
 
-1. `src/game/domain/inventory_domain_service.{h,cpp}` — 看 `addItem` 的 catalog preflight、合并堆叠、空槽分配、部分接收回报，以及 `moveItem / sortInventory` 的事件语义。
+1. `src/game/domain/inventory_domain_service.{h,cpp}` — 看 `addItem` 的 catalog preflight、合并堆叠、空槽分配、部分接收回报，`addItemsAtomically` 的整批提交，以及 `moveItem / sortInventory` 的事件语义。
 2. `src/game/domain/shop_transaction_service.cpp` — 看 preview / commit 的范式（依赖 InventoryDomainService）。
 3. `src/game/runtime/system_factory.cpp:104-130` — 看 4 个 service 的构造顺序与依赖注入。
 4. `src/game/system/chest_system.cpp` — 看 system 如何调用 `inventory_domain_service.addItem`。

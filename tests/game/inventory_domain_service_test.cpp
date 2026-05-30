@@ -171,4 +171,107 @@ TEST(InventoryDomainServiceTest, AddItemRejectsUnknownCatalogItemWithoutMutating
     EXPECT_TRUE(full_capture.events.empty());
 }
 
+TEST(InventoryDomainServiceTest, AddItemsAtomicallyCommitsAllRewardsInSingleMutation) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto catalog = loadItemCatalog();
+    InventoryDomainService service(registry, dispatcher, catalog);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    const entt::id_type strawberry_seed = entt::hashed_string{"strawberry_seed"}.value();
+    const entt::id_type potato_seed = entt::hashed_string{"potato_seed"}.value();
+    inventory.slot(0).item_id_ = strawberry_seed;
+    inventory.slot(0).count_ = 998;
+
+    InventoryChangedCapture changed_capture{};
+    InventoryFullCapture full_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&changed_capture);
+    dispatcher.sink<game::defs::InventoryFullEvent>().connect<&InventoryFullCapture::onEvent>(&full_capture);
+
+    const std::vector<InventoryItemGrant> grants{
+        InventoryItemGrant{.item_id = strawberry_seed, .count = 1},
+        InventoryItemGrant{.item_id = potato_seed, .count = 2}};
+    const auto result = service.addItemsAtomically(player, grants);
+
+    EXPECT_EQ(result.accepted, 3);
+    EXPECT_EQ(result.rejected, 0);
+    EXPECT_EQ(inventory.slot(0).item_id_, strawberry_seed);
+    EXPECT_EQ(inventory.slot(0).count_, 999);
+    EXPECT_EQ(inventory.slot(1).item_id_, potato_seed);
+    EXPECT_EQ(inventory.slot(1).count_, 2);
+    ASSERT_EQ(changed_capture.events.size(), 1u);
+    EXPECT_TRUE(changed_capture.events[0].from_add);
+    EXPECT_TRUE(hasSlotUpdate(changed_capture.events[0], 0, strawberry_seed, 999));
+    EXPECT_TRUE(hasSlotUpdate(changed_capture.events[0], 1, potato_seed, 2));
+    EXPECT_TRUE(full_capture.events.empty());
+}
+
+TEST(InventoryDomainServiceTest, AddItemsAtomicallyRejectsWholeBatchWhenAnyRewardDoesNotFit) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto catalog = loadItemCatalog();
+    InventoryDomainService service(registry, dispatcher, catalog);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    const entt::id_type strawberry_seed = entt::hashed_string{"strawberry_seed"}.value();
+    const entt::id_type potato_seed = entt::hashed_string{"potato_seed"}.value();
+    const entt::id_type filler = entt::hashed_string{"dummy_full"}.value();
+    for (int i = 0; i < inventory.slotCount(); ++i) {
+        inventory.slot(i).item_id_ = filler;
+        inventory.slot(i).count_ = 1;
+    }
+    inventory.slot(0).clear();
+
+    InventoryChangedCapture changed_capture{};
+    InventoryFullCapture full_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&changed_capture);
+    dispatcher.sink<game::defs::InventoryFullEvent>().connect<&InventoryFullCapture::onEvent>(&full_capture);
+
+    const std::vector<InventoryItemGrant> grants{
+        InventoryItemGrant{.item_id = strawberry_seed, .count = 1},
+        InventoryItemGrant{.item_id = potato_seed, .count = 1}};
+    const auto result = service.addItemsAtomically(player, grants);
+
+    EXPECT_EQ(result.accepted, 0);
+    EXPECT_EQ(result.rejected, 2);
+    EXPECT_TRUE(result.changed_slots.empty());
+    EXPECT_TRUE(inventory.slot(0).empty());
+    EXPECT_EQ(inventory.slot(1).item_id_, filler);
+    EXPECT_EQ(inventory.slot(1).count_, 1);
+    EXPECT_TRUE(changed_capture.events.empty());
+    EXPECT_TRUE(full_capture.events.empty());
+}
+
+TEST(InventoryDomainServiceTest, AddItemsAtomicallyRejectsUnknownItemWithoutMutatingInventory) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto catalog = loadItemCatalog();
+    InventoryDomainService service(registry, dispatcher, catalog);
+
+    const entt::entity player = registry.create();
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    const entt::id_type strawberry_seed = entt::hashed_string{"strawberry_seed"}.value();
+    inventory.slot(0).item_id_ = strawberry_seed;
+    inventory.slot(0).count_ = 4;
+
+    InventoryChangedCapture changed_capture{};
+    InventoryFullCapture full_capture{};
+    dispatcher.sink<game::defs::InventoryChanged>().connect<&InventoryChangedCapture::onEvent>(&changed_capture);
+    dispatcher.sink<game::defs::InventoryFullEvent>().connect<&InventoryFullCapture::onEvent>(&full_capture);
+
+    const std::vector<InventoryItemGrant> grants{
+        InventoryItemGrant{.item_id = strawberry_seed, .count = 1},
+        InventoryItemGrant{.item_id = entt::hashed_string{"missing_item"}.value(), .count = 1}};
+    const auto result = service.addItemsAtomically(player, grants);
+
+    EXPECT_EQ(result.accepted, 0);
+    EXPECT_EQ(result.rejected, 2);
+    EXPECT_EQ(inventory.slot(0).item_id_, strawberry_seed);
+    EXPECT_EQ(inventory.slot(0).count_, 4);
+    EXPECT_TRUE(changed_capture.events.empty());
+    EXPECT_TRUE(full_capture.events.empty());
+}
+
 } // namespace game::domain

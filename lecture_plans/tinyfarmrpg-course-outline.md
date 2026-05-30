@@ -477,7 +477,7 @@ flowchart LR
 **知识点**：
 - `QuestCatalog` 与 `QuestLogComponent` 的静态 / 运行时分离。
 - objective progress key 规则与 `QuestBattleProgressResolver` 如何从战斗结果推进任务（铺垫 L20）。
-- `QuestTurnInService` 的 preflight、原子写入与奖励事件回流，作为**领域服务的样板**详细拆解。
+- `QuestTurnInService` 的 preflight、`InventoryDomainService::addItemsAtomically()` 批量奖励提交与奖励事件回流，作为**领域服务的样板**详细拆解。
 - 脚本化任务 NPC 与 C++ fallback 的协作。
 - 任务系统的测试层级：domain test（service）、system test（流程）、scene smoke（UI）。
 
@@ -488,6 +488,7 @@ flowchart LR
 
 **源码入口**：
 - `src/game/domain/quest_turn_in_service.*`
+- `src/game/domain/inventory_domain_service.*`
 - `src/game/domain/quest_log_ops.*`
 - `src/game/scene/quest_offer_scene.*`
 - `scripts/quests/*.lua`
@@ -497,7 +498,7 @@ flowchart LR
 2. 交付时背包满了怎么办？preflight 在哪一步检测？
 3. 同一个任务可以同时被 Lua 与 C++ NPC 触发吗？谁拿走优先权？
 
-**最小练习**：给 `village_goblin_cleanup` 加一个新 objective（如"拾取 3 个素材"），跑通到交付。
+**最小练习**：给 `village_goblin_cleanup` 加一个新的 `DefeatEnemyCount` objective（如"击败 2 只哥布林"），跑通到交付；采集类 objective 作为进阶思考，需要新增 C++ objective kind / resolver。
 
 **小结与下节预告**：任务样板写完，下一讲把同一套模式套到商店。
 
