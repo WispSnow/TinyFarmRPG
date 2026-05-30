@@ -301,7 +301,7 @@ flowchart LR
 
 **知识点**：
 - Gameplay / Menu / Dialogue / Battle 输入上下文及切换规则。
-- action binding、输入 glyph、重绑定、输入缓冲。
+- action binding、Action Prompt / glyph 元数据、重绑定、输入缓冲。
 - RmlUi / ImGui / Gameplay 的事件转发顺序。
 - 为什么 Battle 菜单不直接依赖 RmlUi 原生方向键导航，而要走自己的菜单模型（铺垫 L18）。
 
@@ -317,10 +317,10 @@ flowchart LR
 
 **自测问题**：
 1. 在打开 Inventory 的同时，方向键应该被谁消费？输入上下文是怎么仲裁的？
-2. 重绑定时，输入 glyph 是怎么同步更新的？
+2. 重绑定时，HUD prompt 文本和 glyph 元数据是怎么同步更新的？
 3. 为什么 RmlUi 原生方向键导航不够用？
 
-**最小练习**：把 Gameplay 上下文里的一个 action 绑到一个新按键，验证 HUD glyph 跟着变。
+**最小练习**：把 HUD prompt 条正在显示的 Gameplay action 绑到一个新按键，验证 HUD prompt 文本和 Input Debug 中的 glyph 元数据跟着变。
 
 **小结与下节预告**：UI/输入完成，下一阶段进入内容层——Lua 写剧情。
 

@@ -34,6 +34,8 @@ public:
     int confirm_count{0};
     int cancel_count{0};
     bool move_result{true};
+    bool confirm_result{true};
+    bool cancel_result{true};
 
     [[nodiscard]] BattleMenuState battleMenuState() const override {
         return state;
@@ -46,12 +48,12 @@ public:
 
     bool confirmBattleMenu() override {
         ++confirm_count;
-        return true;
+        return confirm_result;
     }
 
     bool cancelBattleMenu() override {
         ++cancel_count;
-        return true;
+        return cancel_result;
     }
 };
 
@@ -223,6 +225,67 @@ TEST_F(BattleInputRouterTest, ConfirmAndCancelForwardToDelegate) {
 
     EXPECT_EQ(delegate.confirm_count, 1);
     EXPECT_EQ(delegate.cancel_count, 1);
+}
+
+TEST_F(BattleInputRouterTest, BufferedConfirmReplaysWhenMenuBecomesReady) {
+    auto manager = createManager();
+    ASSERT_NE(manager, nullptr);
+    FakeBattleInputDelegate delegate;
+    delegate.state = BattleMenuState::None;
+    delegate.confirm_result = false;
+    BattleInputRouter router;
+    router.connect(*manager, delegate);
+
+    pressAndDispatch(*manager, SDL_SCANCODE_RETURN);
+    EXPECT_EQ(delegate.confirm_count, 1);
+
+    manager->consumeTick();
+    delegate.state = BattleMenuState::ActorCommand;
+    delegate.confirm_result = true;
+    router.update(0.016f);
+
+    EXPECT_EQ(delegate.confirm_count, 2);
+
+    router.update(0.016f);
+    EXPECT_EQ(delegate.confirm_count, 2);
+}
+
+TEST_F(BattleInputRouterTest, ImmediateConfirmDrainsBufferedPress) {
+    auto manager = createManager();
+    ASSERT_NE(manager, nullptr);
+    FakeBattleInputDelegate delegate;
+    delegate.state = BattleMenuState::ActorCommand;
+    BattleInputRouter router;
+    router.connect(*manager, delegate);
+
+    pressAndDispatch(*manager, SDL_SCANCODE_RETURN);
+    manager->consumeTick();
+    router.update(0.016f);
+
+    EXPECT_EQ(delegate.confirm_count, 1);
+}
+
+TEST_F(BattleInputRouterTest, BufferedCancelReplaysWhenMenuBecomesReady) {
+    auto manager = createManager();
+    ASSERT_NE(manager, nullptr);
+    FakeBattleInputDelegate delegate;
+    delegate.state = BattleMenuState::None;
+    delegate.cancel_result = false;
+    BattleInputRouter router;
+    router.connect(*manager, delegate);
+
+    pressAndDispatch(*manager, SDL_SCANCODE_ESCAPE);
+    EXPECT_EQ(delegate.cancel_count, 1);
+
+    manager->consumeTick();
+    delegate.state = BattleMenuState::SkillList;
+    delegate.cancel_result = true;
+    router.update(0.016f);
+
+    EXPECT_EQ(delegate.cancel_count, 2);
+
+    router.update(0.016f);
+    EXPECT_EQ(delegate.cancel_count, 2);
 }
 
 } // namespace
