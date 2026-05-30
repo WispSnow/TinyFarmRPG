@@ -316,4 +316,42 @@ TEST(ScriptDialogueHelperTest, ChoiceHelperRoutesSelectionResultToCallback) {
     )"));
 }
 
+TEST(ScriptDialogueHelperTest, ChoiceHelperRoutesCancelResultToCallback) {
+    ScriptDialogueHelperEnv env{};
+
+    ASSERT_TRUE(env.host.exec(R"(
+        local dialogue = tf.script.require("lib.dialogue")
+        cancel_choice_result = nil
+        assert(dialogue.choice(test_target, "Pick one?", {
+            { id = "yes", label = "Yes" },
+            { id = "no", label = "No" },
+        }, function(result)
+            cancel_choice_result = result
+        end) == true)
+    )"));
+
+    ASSERT_EQ(env.choice_capture.requests.size(), 1U);
+    const auto& request = env.choice_capture.requests.front();
+    EXPECT_TRUE(request.allow_cancel);
+
+    env.dispatcher.trigger(game::defs::DialogueChoiceSelectedEvent{
+        .request_id = request.request_id,
+        .target = env.target,
+        .option_index = -1,
+        .choice_id = {},
+        .choice_label = {},
+        .cancelled = true,
+    });
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(cancel_choice_result ~= nil)
+        assert(cancel_choice_result.cancelled == true)
+        assert(cancel_choice_result.index == nil)
+        assert(cancel_choice_result.zero_index == nil)
+        assert(cancel_choice_result.id == nil)
+        assert(cancel_choice_result.label == nil)
+        assert(cancel_choice_result.target.entity_id == test_target.entity_id)
+    )"));
+}
+
 } // namespace game::script

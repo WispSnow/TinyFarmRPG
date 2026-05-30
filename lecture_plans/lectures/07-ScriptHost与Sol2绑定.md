@@ -31,7 +31,7 @@ tf.player.gold()
 
 1. Lua 引擎查 `tf.player.gold` 是不是一个可调用值。
 2. Sol2 把 lua 栈上的调用翻译成 C++ lambda 调用。
-3. lambda 通过 `ScriptGameApi::playerGold()` 查 `WalletComponent`。
+3. lambda 通过 `ScriptGameApi::playerGold()` 查 `PlayerWalletComponent`。
 4. Sol2 把 `int` 返回值压回 Lua 栈。
 
 每个 `tf.*` API 都走这条路径。本讲拆开这条路径的每一段。
@@ -45,11 +45,11 @@ flowchart TB
     SCN["GameScene"] --> RSF["RuntimeServiceFactory"]
     RSF --> SH["ScriptHost::init<br/>(installers)"]
     SH --> SL["sol::state<br/>Lua VM"]
-    SH --> HARD["hardenLuaGlobals<br/>禁 dofile/load/rawset"]
+    SH --> HARD["hardenLuaGlobals<br/>禁危险全局"]
     SH --> HOOK["lua_sethook<br/>指令上限"]
     INSTALLER["installTinyFarmScriptModule"] --> TF["tf.* 命名空间<br/>read-only proxy"]
     TF --> API["ScriptGameApi<br/>C++ facade"]
-    API --> DOM["domain service /<br/>dispatcher.enqueue&lt;Command&gt;"]
+    API --> DOM["domain service /<br/>dispatcher command/event"]
     SH -.持有.-> CB["event_callbacks_<br/>map&lt;name, [protected_function]&gt;"]
     SH -.持有.-> DEF["deferred_commands_<br/>script 内部排队的 C++ 操作"]
 ```
@@ -70,7 +70,7 @@ flowchart TB
 | **软失败模式** | 未就绪时所有公共方法 `ensureReady()` 早退记日志，**不抛异常、不崩溃** |
 | **生命周期约束** | `registry_` 引用由 Scene 持有，`ScriptHost` 作为 runtime services 成员**先于 registry 析构** |
 | **shutdown 幂等** | 可重复调用，便于场景退出时统一回收 |
-| **`scene_token_` 单调递增** | 每次 init 时分配一个新 token，作为"脚本会话代际"标识（详见知识点 3） |
+| **`scene_token_` 单调递增** | 构造 / init 或 reload 推进 token、shutdown 失效 token，作为"脚本会话代际"标识（详见知识点 3） |
 
 ```cpp
 class ScriptHost final {
@@ -91,7 +91,7 @@ private:
 };
 ```
 
-> **`sol::state` 是关键**——它是 RAII 封装的 `lua_State*`，**析构时自动释放 VM**。这就是 L06 提到的"每次 `GameScene::init` 重建 Lua VM"在 C++ 一侧的体现：构造新 `ScriptHost` → 旧 `sol::state` 析构 → 全部 Lua 状态丢弃。
+> **`sol::state` 是关键**——它是 RAII 封装的 `lua_State*`，**析构时自动释放 VM**。这就是 L06 提到的"每次 `GameScene::init` 重建 Lua VM"在 C++ 一侧的体现：构造新 `ScriptHost` → 旧 `sol::state` 析构 → 全部 Lua 状态丢弃。暂停菜单在同一 `GameScene` 内读档时不会重建 VM，而是调用 `reload()`：清掉事件回调、deferred command、`tf.script.require` 模块缓存，推进 `scene_token_`，再重新执行上次成功 `loadFile()` 的脚本。
 
 ### 2. Sol2 是什么：Lua C API 的现代 C++ 封装
 
@@ -173,7 +173,7 @@ flowchart TD
 
 **两层各防什么**：
 
-- **scene_token**：防止"读档前缓存的 handle 在新存档里被误用"。每次 `ScriptHost::init` 分配新 token；handle 在创建时记下当时的 token。重新 init 后，旧 handle 的 token 与当前 token 不匹配，校验失败。
+- **scene_token**：防止"读档前缓存的 handle 在新存档里被误用"。`ScriptHost` 构造 / `init` 会拿到当前脚本会话 token，`reload()` 会重新分配 token，`shutdown()` 会把 token 失效为 0；handle 在创建时记下当时的 token。重新 init 或 reload 后，旧 handle 的 token 与当前 token 不匹配，校验失败。
 - **`registry.valid(entity)`**：含 EnTT 的 version 字段比对，**能区分 ABA**。同一槽位被销毁后又分配出来，新实体的 version 一定不同，所以旧 handle 仍会校验失败。
 
 **任何 `tf.*` API 接收 handle 时都必须先 `validateHandle`**，绑定层不暴露任何能绕过校验的入口。即使 Lua 试图"伪造一个 handle"，因为 `usertype` 注册时是 `sol::no_constructor`，**Lua 根本无法构造 ScriptEntityHandle**——只能拿到 C++ 派过去的。
@@ -217,7 +217,7 @@ tf.player.gold = function() return 999999 end  -- 改写 API，整个游戏挂�
 
 `createReadOnlyProxy` 用 Lua metatable 把 `__newindex` 拦截掉，让 Lua 脚本**无法覆盖** API 定义。这是脚本安全沙箱的一部分。
 
-**`ScriptGameApi` 是 C++ facade**：所有 lambda 捕获 `api: std::shared_ptr<ScriptGameApi>`，函数体只做一件事——把 Lua 参数翻译成 `api` 的成员调用。**`api` 内部该查询的查询、该 `dispatcher.enqueue<Command>` 的就 enqueue**。
+**`ScriptGameApi` 是 C++ facade**：所有 lambda 捕获 `api: std::shared_ptr<ScriptGameApi>`，函数体只做一件事——把 Lua 参数翻译成 `api` 的成员调用。**`api` 内部该查询的查询、该发 command / event 的就走 dispatcher；若当前正在 Lua 回调中，还会通过 ScriptHost 的 deferred queue 避免重入**。
 
 **关键约定**：`ScriptGameApi` 不直接承载新玩法规则。只有当操作需要多步原子写入或共享校验时，它才委托给 domain service。其余都是简单的"查 component / 发 command" 转译。
 
@@ -248,6 +248,7 @@ void ScriptHost::hardenLuaGlobals() {
     lua_["load"]     = sol::lua_nil;  // 阻止动态编译字节码
     lua_["rawset"]   = sol::lua_nil;  // 阻止绕过 read-only proxy
     lua_["rawget"]   = sol::lua_nil;
+    lua_["collectgarbage"] = sol::lua_nil;  // 阻止脚本主动干预 VM GC
     lua_["string"]["dump"] = sol::lua_nil;  // 阻止导出字节码
 }
 ```
@@ -311,11 +312,13 @@ flowchart LR
 
 ### 8. 测试策略：脚本绑定的可测试性
 
-打开 [`tests/game/`](../../tests/game) 搜 `script_`，有 10+ 个测试文件覆盖：
+打开 [`tests/engine/script/`](../../tests/engine/script) 与 [`tests/game/`](../../tests/game) 搜 `script_`，有 10+ 个测试文件覆盖：
 
 | 测试文件 | 验证什么 |
 | --- | --- |
 | `script_host_smoke_test.cpp` | `loadFile` / `exec` 的端到端 |
+| `script_host_security_test.cpp` | 标准库白名单、危险全局禁用、指令上限 |
+| `script_host_lifecycle_test.cpp` | `shutdown` 幂等、reload 后旧 handle 失效 |
 | `script_module_require_test.cpp` | `tf.script.require` 的循环 / 失败 / 缓存 |
 | `script_i18n_test.cpp` | `tf.i18n.tr` / `format` |
 | `script_quest_flow_test.cpp` | `tf.quest.status` / `offer` / `turn_in` |
@@ -370,12 +373,13 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 
 ## ❓ 自测问题
 
-1. **handle 校验**：脚本在第 1 天保存了一个 `npc_handle` 局部变量，玩家睡觉到第 2 天（同一存档不重进 Scene）—— handle 还能用吗？玩家退到标题再读档进同一存档——还能用吗？为什么？
+1. **handle 校验**：脚本在第 1 天保存了一个 `npc_handle` 局部变量，玩家睡觉到第 2 天（同一 `GameScene`，不 reload bootstrap）—— handle 还能用吗？暂停菜单在同一 `GameScene` 内读档并触发 `ScriptHost::reload()` 后呢？玩家退到标题再读档进同一存档呢？为什么？
 2. **加新 API 工作量**：要新增 `tf.weather.is_raining()`，最少改几个文件？最多改几个（包含测试）？
 3. **沙箱**：以下脚本在项目里能成功执行吗？为什么？
    - `os.execute("ls /")`
    - `require("io")`
    - `tf.player.gold = 999999`
+   - `collectgarbage("stop")`
    - `while true do end`
 4. **错误传播**：NPC A 的脚本在 `interact` 回调里写了 `local x = nil + 1`——这次 interact 会发生什么？NPC B 的 interact 回调会被影响吗？
 
@@ -395,7 +399,7 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
    });
    tf_impl["debug"] = engine::script::createReadOnlyProxy(lua, debug_impl, "tf.debug");
    ```
-2. **重编 game_lib**：构建项目（用 ninja 加速：`cmake --build build -G Ninja`）。
+2. **重编测试与游戏目标**：构建项目（用 ninja 加速：`ninja -C build/debug game_tests engine_tests TinyFarmRPG-Darwin`；主程序目标名来自 `CMakeLists.txt` 的 `${PROJECT_NAME}-${CMAKE_SYSTEM_NAME}`）。
 3. **在某个 NPC 脚本里调用**：打开 [`scripts/npcs/greeter.lua`](../../scripts/npcs/greeter.lua)，在 `interact` 回调里加一行：
    ```lua
    tf.debug.echo("hello from greeter")
@@ -415,7 +419,7 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 - `ScriptHost` 用 `sol::state` RAII 持有 Lua VM；两阶段 init + 软失败模式让脚本错误不传染 C++。
 - `ScriptEntityHandle` 用 **scene_token（跨代际） + entity version（防 ABA）** 双层校验，所有 `tf.*` API 接收 handle 时强制走 `validateHandle`。
 - `installTinyFarmScriptModule` 用统一模板注册 `tf.*` 命名空间：`create_table` → `set_function` lambdas → `createReadOnlyProxy` → 挂到 `tf_impl`。
-- 安全沙箱三层防御：**选择性加载库**（无 io/os/package） + **`hardenLuaGlobals`**（禁 dofile / loadfile / load / rawset） + **指令上限**（200000 指令打断死循环）。
+- 安全沙箱三层防御：**选择性加载库**（无 io/os/package） + **`hardenLuaGlobals`**（禁 dofile / loadfile / load / rawset / rawget / collectgarbage / string.dump） + **指令上限**（200000 指令打断死循环）。
 - `sol::protected_function` 把 Lua 异常翻译成 C++ 端的 `sol::error`，脚本错误只产生日志，**不会让游戏崩溃**。
 - 测试通过最小 fixture（registry + dispatcher + ScriptHost + installer）覆盖几乎所有绑定，**不需要拉起 GameScene**。
 

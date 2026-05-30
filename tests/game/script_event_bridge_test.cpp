@@ -298,6 +298,30 @@ TEST(ScriptEventBridgeTest, InteractPayloadIncludesStableTargetMetadata) {
     EXPECT_TRUE(env.host.exec("assert(seen_interact_metadata == true)"));
 }
 
+TEST(ScriptEventBridgeTest, InteractPayloadSharesLuaOwnedHandledFlagAcrossCallbacks) {
+    ScriptEventBridgeTestEnv env{};
+
+    ASSERT_TRUE(env.host.exec(R"(
+        first_callback_saw_nil = false
+        second_callback_saw_handled = false
+        assert(tf.event.on("interact", function(evt)
+            assert(evt.dialogue_handled == nil)
+            first_callback_saw_nil = true
+            evt.dialogue_handled = true
+        end) == true)
+        assert(tf.event.on("interact", function(evt)
+            second_callback_saw_handled = evt.dialogue_handled == true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::InteractCommand{env.player, env.target});
+
+    EXPECT_TRUE(env.host.exec(R"(
+        assert(first_callback_saw_nil == true)
+        assert(second_callback_saw_handled == true)
+    )"));
+}
+
 TEST(ScriptEventBridgeTest, MapEnterAndExitEventsExposeStableMapIds) {
     ScriptEventBridgeTestEnv env{};
     constexpr entt::id_type home_id = entt::hashed_string{"home_exterior"}.value();

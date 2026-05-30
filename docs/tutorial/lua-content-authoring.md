@@ -91,7 +91,7 @@ tf.script.require("quests.village_goblin_cleanup")
 
 ### 4.1 脚本化 NPC
 
-在 actor object 上设置：
+在 actor object 上设置。注意：object 自身的 `name` 是 actor blueprint key，例如 `name="merchant"` 或 `name="npc.greeter"`；Lua 侧稳定身份由 `actor_id` 提供，二者不要混用。
 
 | property | 说明 |
 | --- | --- |
@@ -100,7 +100,10 @@ tf.script.require("quests.village_goblin_cleanup")
 | `quest_offer_id` | 可选，让实体成为任务 NPC |
 | `shop_id` | 可选，让实体成为商人 |
 | `recruit_actor_id` | 可选，让实体成为可招募角色 |
+| `script_module` | 可选，进入 `evt.target_script_module`，用于标记脚本归属 |
 | `script_event` / `script_once_key` | 可选，进入 interact payload，供特殊交互过滤和一次性状态使用 |
+
+`shop_id` 优先于 `quest_offer_id`。`recruit_actor_id` 不建议和商店、任务发布或战斗遭遇字段混在同一个 actor 实例上；这类角色最好拆成清晰的单一交互入口，或交给 Lua 独占处理。
 
 脚本化 NPC 的 interact payload 会带上：
 
@@ -208,7 +211,7 @@ tf.event.on("interact", function(evt)
 end)
 ```
 
-首版选项 UI 适合 2-4 个选项。`result.index` 是 1-based，`result.zero_index` 是 0-based。
+首版选项 UI 适合 2-4 个选项。`result.index` 是 1-based，`result.zero_index` 是 0-based；优先用稳定的 `result.id` 判断分支。玩家取消时 `result.cancelled == true`，且 `result.index` / `result.zero_index` / `result.id` / `result.label` 都是 `nil`。
 
 ### 5.3 任务 NPC
 
@@ -481,9 +484,9 @@ end)
 
 | 事件名 | 何时触发 | 常用字段 |
 | --- | --- | --- |
-| `interact` | 玩家交互实体 | `target`、`target_actor_id`、`target_kind`、`target_script_event` |
+| `interact` | 玩家交互实体 | `target`、`target_actor_id`、`target_kind`、`target_script_module`、`target_script_event` |
 | `dialogue_closed` | 对话被关闭或远离目标 | `target`、`channel` |
-| `dialogue_choice_selected` | 玩家选择选项 | `request_id`、`cancelled`、`choice_id`、`choice_label` |
+| `dialogue_choice_selected` | 玩家选择或取消选项 | `request_id`、`cancelled`、`choice_index`、`choice_zero_index`、`choice_id`、`choice_label` |
 | `map_enter` | 进入新地图 | `map_id`、`previous_map_id` |
 | `map_exit` | 离开当前地图 | `map_id`、`next_map_id` |
 | `zone_enter` | 玩家进入脚本区域 | `zone`、`zone_id`、`zone_script_event` |

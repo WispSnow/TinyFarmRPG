@@ -47,6 +47,7 @@ TEST(ScriptHostSecurityTest, OnlyWhitelistedGlobalApiIsExposed) {
         assert(package == nil)
         assert(rawset == nil)
         assert(rawget == nil)
+        assert(collectgarbage == nil)
     )"));
 }
 

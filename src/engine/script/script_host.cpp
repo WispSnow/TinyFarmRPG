@@ -175,6 +175,7 @@ bool ScriptHost::reload() {
     }
 
     const std::string path = last_loaded_file_;
+    scene_token_ = allocateSceneToken();
     clearScriptRuntimeState();
     return loadFile(path);
 }
@@ -411,6 +412,7 @@ void ScriptHost::hardenLuaGlobals() {
     // 避免绕过只读代理表（rawset 不触发 __newindex）。
     lua_["rawset"] = sol::lua_nil;
     lua_["rawget"] = sol::lua_nil;
+    lua_["collectgarbage"] = sol::lua_nil;
 
     // 可选进一步收敛：避免脚本导出字节码。
     sol::object string_obj = lua_["string"];
