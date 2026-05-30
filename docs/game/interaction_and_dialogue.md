@@ -58,7 +58,8 @@ Merchant > QuestGiver > Dialogue NPC > Chest > Rest
 
 - `MerchantComponent` 来自 Tiled actor point object 的 `shop_id` string property
 - `QuestGiverComponent` 来自 Tiled actor point object 的 `quest_offer_id` string property
-- 目前还没有对应的 `BattleStarterComponent` 或 Tiled 战斗触发器；战斗仍主要通过 `EnterBattleCommand` / `BattleDebugPanel` 进入
+- `EnemyEncounterComponent` 来自 Tiled actor point object 的 `battle_troop_id` + 合法 `encounter_id`；它不走 `InteractCommand`，而是由 `EnemyEncounterSystem` 在玩家碰撞接触时发布 `EnterBattleCommand`
+- Lua 剧情战和 Battle Debug Panel 也发布 `EnterBattleCommand`，区别是它们没有地图遭遇的 `encounter_context`
 
 ## 3) Dialogue Presentation 的运行时结构
 

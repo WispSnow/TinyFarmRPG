@@ -104,12 +104,15 @@ TEST(PlayerPortraitServiceTest, RegistersImagesAndRefreshesOnAppearanceChangedEv
     EXPECT_FALSE(initial_standard_linear_uri.empty());
     EXPECT_FALSE(initial_battle_uri.empty());
     EXPECT_EQ(service.decoratorString(PortraitImageKind::Standard64), "image(" + initial_standard_uri + ")");
-    ASSERT_NE(generated_images.find(initial_standard_uri), nullptr);
-    ASSERT_NE(generated_images.find(initial_standard_linear_uri), nullptr);
-    ASSERT_NE(generated_images.find(initial_battle_uri), nullptr);
-    EXPECT_EQ(generated_images.find(initial_standard_uri)->width, 64);
-    EXPECT_EQ(generated_images.find(initial_standard_linear_uri)->width, 64);
-    EXPECT_EQ(generated_images.find(initial_battle_uri)->width, 48);
+    const auto* initial_standard_image = generated_images.find(initial_standard_uri);
+    const auto* initial_standard_linear_image = generated_images.find(initial_standard_linear_uri);
+    const auto* initial_battle_image = generated_images.find(initial_battle_uri);
+    ASSERT_NE(initial_standard_image, nullptr);
+    ASSERT_NE(initial_standard_linear_image, nullptr);
+    ASSERT_NE(initial_battle_image, nullptr);
+    EXPECT_EQ(initial_standard_image->width, 64);
+    EXPECT_EQ(initial_standard_linear_image->width, 64);
+    EXPECT_EQ(initial_battle_image->width, 48);
     ASSERT_TRUE(generated_images.textureFilterOverrideFor(initial_standard_uri).has_value());
     ASSERT_TRUE(generated_images.textureFilterOverrideFor(initial_standard_linear_uri).has_value());
     EXPECT_EQ(*generated_images.textureFilterOverrideFor(initial_standard_uri),
@@ -119,6 +122,12 @@ TEST(PlayerPortraitServiceTest, RegistersImagesAndRefreshesOnAppearanceChangedEv
 
     dispatcher.trigger(game::defs::AppearanceChangedEvent{registry.create()});
     EXPECT_EQ(service.sourceUri(PortraitImageKind::Standard64), initial_standard_uri);
+
+    dispatcher.trigger(game::defs::AppearanceChangedEvent{player});
+    EXPECT_EQ(service.sourceUri(PortraitImageKind::Standard64), initial_standard_uri);
+    EXPECT_EQ(generated_images.find(initial_standard_uri), initial_standard_image);
+    EXPECT_EQ(generated_images.find(initial_standard_linear_uri), initial_standard_linear_image);
+    EXPECT_EQ(generated_images.find(initial_battle_uri), initial_battle_image);
 
     registry.get<game::component::AppearanceComponent>(player).slot_variants_["hair"] = "Fawn/Black";
     dispatcher.trigger(game::defs::AppearanceChangedEvent{player});

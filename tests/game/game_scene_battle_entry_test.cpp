@@ -91,6 +91,41 @@ TEST(GameSceneBattleEntryTest, SupportsTroopAndActorSelectionInBattleCommand) {
     EXPECT_NE(source.find("PartyComponent"), std::string::npos);
 }
 
+TEST(GameSceneBattleEntryTest, GuardsAgainstNestedBattleEntries) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("bool battle_in_progress_{false};"), std::string::npos);
+    EXPECT_NE(source.find("if (battle_in_progress_ || active_encounter_context_)"), std::string::npos);
+    EXPECT_NE(source.find("releaseEnemyEncounterEntryFailure(*cmd.encounter_context);"), std::string::npos);
+    EXPECT_NE(source.find("battle_in_progress_ = true;"), std::string::npos);
+    EXPECT_NE(source.find("battle_in_progress_ = false;"), std::string::npos);
+}
+
+TEST(GameSceneBattleEntryTest, BattleStartedEventUsesResolvedPlayerActorIds) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("std::vector<std::string> battle_actor_ids = cmd.actor_ids;"), std::string::npos);
+    EXPECT_NE(source.find("collectPlayerActorIdsFromUnits(units)"), std::string::npos);
+    EXPECT_NE(source.find("battle_actor_ids = resolveBattleActorIds(registry_, cmd.actor_ids);"), std::string::npos);
+    EXPECT_NE(source.find(".actor_ids = battle_actor_ids,"), std::string::npos);
+    EXPECT_EQ(source.find(".actor_ids = cmd.actor_ids,"), std::string::npos);
+}
+
 TEST(GameSceneBattleEntryTest, ResolvesEnemyEncounterBeforeBattleRewardSettlement) {
     const std::filesystem::path source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/game_scene.cpp").lexically_normal();

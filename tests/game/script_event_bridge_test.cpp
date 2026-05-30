@@ -557,6 +557,35 @@ TEST(ScriptEventBridgeTest, BattleEndedPayloadIncludesRewardSummary) {
     EXPECT_TRUE(env.host.exec("assert(battle_reward_seen == true)"));
 }
 
+TEST(ScriptEventBridgeTest, BattleStartedPayloadIncludesActorsAndEncounterMetadata) {
+    ScriptEventBridgeTestEnv env{};
+
+    ASSERT_TRUE(env.host.exec(R"(
+        battle_start_seen = false
+        assert(tf.callbacks.on_battle_start(function(evt)
+            assert(evt.name == "battle_started")
+            assert(evt.troop_id == "troop.slime")
+            assert(evt.battle_background_id == "Grassland")
+            assert(evt.from_encounter == true)
+            assert(evt.encounter_id == 1001)
+            assert(#evt.actor_ids == 2)
+            assert(evt.actor_ids[1] == "actor.player")
+            assert(evt.actor_ids[2] == "actor.lyria")
+            battle_start_seen = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::BattleStartedEvent{
+        .actor_ids = {"actor.player", "actor.lyria"},
+        .troop_id = "troop.slime",
+        .battle_background_id = "Grassland",
+        .from_encounter = true,
+        .encounter_id = 1001,
+    });
+
+    EXPECT_TRUE(env.host.exec("assert(battle_start_seen == true)"));
+}
+
 TEST(ScriptEventBridgeTest, BattleHookPayloadsExposeUnitsAndActionResult) {
     ScriptEventBridgeTestEnv env{};
 

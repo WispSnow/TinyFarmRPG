@@ -11,12 +11,12 @@
 - `BattleActionResolver` 负责技能、物品、防御、逃跑等具体结算
 - `BattleRewardResolver` 负责胜利后的金币、掉落与经验汇总
 - `TurnCore` 负责行动顺序推进与胜负判定
-- `GameScene` 负责战斗入口、场景 push/pop、战斗库存写回与胜利奖励落地
+- `GameScene` 负责战斗入口、防止嵌套战斗、场景 push/pop、战斗库存写回与胜利奖励落地
 
 核心设计原则：
 
 - **领域逻辑与表现分离**：`TurnCore` / `BattleSession` / `BattleActionResolver` 不依赖 ECS UI。
-- **场景栈切换**：战斗通过 push/pop 叠加在探索场景之上，结束后直接恢复探索。
+- **场景栈切换**：战斗通过 push/pop 叠加在探索场景之上，结束后直接恢复探索；当前入口不通过翻 `GameMode::Battle` 驱动切换。
 - **表现快照独立于领域数据**：角色外观快照通过 `BattleSpriteSeed` 传给战斗表现层，不写入 `BattleUnit` / `BattleSessionOptions`。
 - **子状态机驱动菜单**：`BattleScene` 在 `FlowState::WaitingForInput` 内部再维护 `MenuState`。
 - **目录驱动动作**：技能从 `RpgCatalog` 读取，战斗物品从 `ItemCatalog::battle_use` 读取。
@@ -415,8 +415,9 @@ sequenceDiagram
 
 | 契约 | 当前形态 |
 |---|---|
-| `EnterBattleCommand` | 可携带 `actor_ids / troop_id`，也可直接携带预构建 `player_units / enemy_units` |
-| `BattleEndedEvent` | `outcome / final_units / remaining_item_stocks` |
+| `EnterBattleCommand` | 可携带 `actor_ids / troop_id`，也可直接携带预构建 `player_units / enemy_units`；地图遭遇会额外携带 `encounter_context` |
+| `BattleStartedEvent` | `troop_id / battle_background_id / actor_ids / from_encounter / encounter_id`；`actor_ids` 是实际参战玩家 actor ids |
+| `BattleEndedEvent` | `outcome / final_units / remaining_item_stocks / reward_summary` |
 | `SubmitBattleActionCommand` | 目前保留为通用契约类型；当前 `BattleScene` 自己直接调 `BattleSession::submitAction()`，不经 dispatcher |
 
 ## 完整战斗流程
@@ -434,8 +435,10 @@ sequenceDiagram
 
     DBG->>D: EnterBattleCommand{}
     D->>GS: onEnterBattleCommand()
+    GS->>GS: 检查 battle_in_progress_
     GS->>GS: collectPlayerItemStocks()
     GS->>BUF: buildBattleUnitsFromCatalog(...)
+    GS->>D: BattleStartedEvent{actor_ids, troop_id}
     GS->>GS: requestPushScene(BattleScene)
 
     loop 每个行动者回合
@@ -487,7 +490,7 @@ sequenceDiagram
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
 | `tests/game/rmlui_architecture_regression_test.cpp` | Battle RML 不引用素材按钮 class、不使用 `<progress>` |
 | `tests/game/blueprint_manager_smoke_test.cpp` | Side View 所需 goblin / gnome / slime 蓝图与镜像方向 |
-| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback |
+| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback、防嵌套和实际 actor ids |
 | `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存、奖励、经验与升级写回 |
 | `tests/game/save_service_async_test.cpp` | 钱包金币、装备与队伍 runtime state 的 roundtrip 恢复 |
 | `tests/game/ui_layout_integration_test.cpp` | InventoryMenuScene 的真实金币展示 |

@@ -68,6 +68,7 @@ class GameScene : public engine::scene::Scene {
     bool has_previous_camera_position_{false};
     std::unordered_map<entt::id_type, int> active_battle_initial_item_stocks_{};
     bool has_active_battle_item_stocks_{false};
+    bool battle_in_progress_{false};
     std::optional<game::defs::EnemyEncounterBattleContext> active_encounter_context_{};
     game::system::helpers::NotificationTimer battle_reward_notification_{};
 

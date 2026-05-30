@@ -608,9 +608,9 @@ flowchart LR
 
 **知识点**：
 - `AppearanceCatalog`、profile、slot、gender、layer order。
-- Game 层 `AppearanceComponent` 到 Engine 层 `LayeredSpriteComponent` 的桥接。
+- `AppearanceLayerCacheBuilder` 如何把 Game 层 `AppearanceComponent` 预计算成 Engine 层 `LayeredSpriteComponent`，以及 `AppearanceSystem` 作为探索态 command/event 壳的分工。
 - 预计算布局缓存，渲染帧内只做采样。
-- 战斗外观快照与 portrait builder（直接给 L19 用）。
+- 战斗外观快照、`AppearanceLayerCacheBuilder` 复用与 portrait builder / `PlayerPortraitService`（直接给 L19 用）。
 - 换装 UI（`AppearanceCustomizeScene`）的数据流。
 
 **阅读清单**：
@@ -618,16 +618,18 @@ flowchart LR
 - `assets/data/appearance_catalog.json`
 
 **源码入口**：
+- `src/game/system/appearance_layer_cache_builder.*`
 - `src/game/system/appearance_system.*`
 - `src/game/ui/appearance_portrait_builder.*`
+- `src/game/ui/player_portrait_service.*`
 - `src/game/scene/appearance_customize_scene.*`
 
 **自测问题**：
 1. 为什么外观布局要预计算？放在每帧 sample 会有什么问题？
 2. 战斗侧的"外观快照"为什么需要独立于探索侧的 AppearanceComponent？
-3. portrait builder 怎么避免每次打开菜单都重画整张图？
+3. `PlayerPortraitService` 怎么让连续打开菜单时复用已注册头像，而不是每次都重画整张图？
 
-**最小练习**：在 `appearance_catalog.json` 里加一个新 slot 部件，并在换装 UI 中切换观察。
+**最小练习**：在 `appearance_catalog.json` 里给已有槽加一个新部件变体，并在换装 UI 中切换观察。
 
 **小结与下节预告**：探索侧全部完成，下一阶段进入战斗，第一站是"探索↔战斗过渡"。
 
@@ -637,29 +639,33 @@ flowchart LR
 
 #### L15: 探索↔战斗的过渡 — 遭遇、剧情战与 GameMode
 
-**目标**：连接探索地图与战斗场景，让敌人遭遇、区域触发和 Lua 剧情战都能进入同一个战斗入口；首次引入 `GameMode` 的概念。
+**目标**：连接探索地图与战斗场景，让敌人遭遇、Lua 区域脚本触发的剧情战和调试入口都能进入同一个战斗入口；首次引入 `GameMode` 的概念。
 
 **知识点**：
 - `EnemyEncounterComponent` 与地图对象配置。
-- `BattleStartCommand` / `BattleEndedEvent` 的契约。
-- `GameScene` 如何 push `BattleScene`，并在结束后写回探索态（先讲框架，结算细节留 L20）。
+- `EnterBattleCommand` / `BattleStartedEvent` / `BattleEndedEvent` 的契约。
+- `GameScene` 如何防止嵌套战斗、push `BattleScene`，并在结束后写回探索态（先讲框架，结算细节留 L20）。
 - Lua `tf.battle.start(troop_id, opts)` 的适用场景与限制。
-- `GameMode`：Exploration / Battle / Menu 切换如何影响 SystemScheduler、Audio、Input（详深留 L25）。
+- `GameMode`：Exploration / Battle / PauseOverlay / Cutscene 作为 SystemScheduler profile 词汇表；当前探索↔战斗实际靠场景栈 push/pop，详深留 L25。
 
 **阅读清单**：
 - `docs/gameplay/turn-based-battle.md`（入口章节）
+- `docs/game/system_scheduler.md`（GameMode profile 边界）
 
 **源码入口**：
 - `src/game/system/enemy_encounter_system.*`
+- `src/game/scene/game_scene.cpp`
 - `src/game/defs/commands_battle.h`
 - `src/game/defs/events_battle.h`
+- `src/game/script/script_game_api.cpp`
+- `src/game/debug/battle_debug_panel.cpp`
 - `src/game/runtime/game_mode.h`
 - `src/game/scene/game_scene_battle_settlement.*`（仅入口部分）
 
 **自测问题**：
-1. 区域遭遇与剧情战进入战斗的差别在哪？为什么共用同一个 `BattleStartCommand`？
-2. `GameMode` 切换的时机点在哪？过早或过晚分别会导致什么 bug？
-3. 战斗中按 ESC 退到桌面，存档应该捕获哪个 mode？
+1. 区域遭遇与剧情战进入战斗的差别在哪？为什么共用同一个 `EnterBattleCommand`？
+2. 当前探索↔战斗由什么驱动？为什么 `GameMode::Battle` 目前不是进入战斗的开关？
+3. `BattleStartedEvent.actor_ids` 为什么要回传实际参战 actor ids，而不是直接照抄原始 command？
 
 **最小练习**：在 `home_exterior` 地图（或任一户外地图）加一个 `EnemyEncounterComponent` 触发点，走过去后能进入 `BattleScene`，胜负任一结束后能写回探索态。
 

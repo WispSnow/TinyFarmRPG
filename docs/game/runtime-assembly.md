@@ -105,7 +105,7 @@ flowchart LR
 - `EquipmentSystem` 通过 `EquipmentDomainService` 写装备；service 在背包槽位副本中预演后一次提交背包与 loadout。
 - `ShopInteractionSystem` 读 `ShopCatalog`，交易由 `ShopTransactionService` 执行。
 - `QuestInteractionSystem` 读 `QuestCatalog`，交付由 `QuestTurnInService` 写奖励和状态。
-- `AppearanceSystem` 读 `AppearanceCatalog`，把 game 层外观写入 engine 层 `LayeredSpriteComponent`。
+- `AppearanceSystem` 处理探索态外观 command / event，并调用 `AppearanceLayerCacheBuilder` 把 game 层外观写入 engine 层 `LayeredSpriteComponent`。
 - `ScriptEventBridge` 把 C++ 事件转成 Lua payload。
 - `VfxBridgeSystem` 把 `PlayVfxCommand` 转给 `VfxService`。
 
