@@ -3,6 +3,7 @@
 #include "engine/component/name_component.h"
 #include "engine/component/transform_component.h"
 #include "game/component/party_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
@@ -69,6 +70,37 @@ TEST(PartyRecruitmentSystemTest, AddsRecruitToRecruitedAndActiveParty) {
     const auto& party = registry.get<game::component::PartyComponent>(player);
     EXPECT_EQ(party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_EQ(party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    ASSERT_TRUE(registry.all_of<game::component::PartyRuntimeStatsComponent>(player));
+    const auto& runtime_stats = registry.get<game::component::PartyRuntimeStatsComponent>(player);
+    EXPECT_TRUE(runtime_stats.states_by_actor_id_.contains("actor.lyria"));
+    EXPECT_EQ(runtime_stats.revision_, 1U);
+    EXPECT_FALSE(registry.valid(recruiter));
+}
+
+TEST(PartyRecruitmentSystemTest, AddsRecruitToRosterOnlyWhenActivePartyIsFull) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto catalog = loadProjectActorCatalog();
+    const entt::entity player = createPlayer(registry);
+    auto& party = registry.get<game::component::PartyComponent>(player);
+    party.max_active_members_ = 1;
+    const entt::entity recruiter = createRecruiter(registry, "actor.lyria");
+
+    PartyRecruitmentSystem system(registry, dispatcher, catalog);
+    dispatcher.trigger(game::defs::RecruitPartyMemberCommand{
+        .player = player,
+        .recruiter = recruiter,
+        .actor_id_hash = entt::hashed_string{"actor.lyria"}.value(),
+        .actor_id = "actor.lyria"});
+
+    const auto& updated_party = registry.get<game::component::PartyComponent>(player);
+    EXPECT_EQ(updated_party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_EQ(updated_party.active_actor_ids_, std::vector<std::string>({"actor.player"}));
+    EXPECT_EQ(updated_party.max_active_members_, 1U);
+    ASSERT_TRUE(registry.all_of<game::component::PartyRuntimeStatsComponent>(player));
+    const auto& runtime_stats = registry.get<game::component::PartyRuntimeStatsComponent>(player);
+    EXPECT_TRUE(runtime_stats.states_by_actor_id_.contains("actor.lyria"));
+    EXPECT_EQ(runtime_stats.revision_, 1U);
     EXPECT_FALSE(registry.valid(recruiter));
 }
 

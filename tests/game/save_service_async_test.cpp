@@ -346,7 +346,8 @@ protected:
             player,
             game::component::PartyComponent{
                 .recruited_actor_ids_ = {"actor.player", "actor.lyria"},
-                .active_actor_ids_ = {"actor.player", "actor.lyria"}});
+                .active_actor_ids_ = {"actor.player", "actor.lyria"},
+                .max_active_members_ = 3});
         registry.emplace<game::component::StateComponent>(player);
 
         const entt::id_type initial_map_id = entt::hashed_string{"home_exterior"}.value();
@@ -503,6 +504,8 @@ TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileWritesPhase4ExtendedStateContaine
     EXPECT_TRUE(party_state.at("recruited_actor_ids").is_array());
     EXPECT_TRUE(party_state.contains("active_actor_ids"));
     EXPECT_TRUE(party_state.at("active_actor_ids").is_array());
+    EXPECT_TRUE(party_state.contains("max_active_members"));
+    EXPECT_EQ(party_state.at("max_active_members").get<std::size_t>(), 3U);
     ASSERT_EQ(party_state.at("active_actor_ids").size(), 2U);
     EXPECT_EQ(party_state.at("active_actor_ids").at(0).get<std::string>(), "actor.player");
     EXPECT_EQ(party_state.at("active_actor_ids").at(1).get<std::string>(), "actor.lyria");
@@ -625,6 +628,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
     auto& party = player_view.get<game::component::PartyComponent>(player);
     party.recruited_actor_ids_ = {"actor.player"};
     party.active_actor_ids_ = {"actor.player"};
+    party.max_active_members_ = 1;
 
     std::string load_error;
     ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
@@ -635,6 +639,7 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
     const auto& loaded_party = player_view.get<game::component::PartyComponent>(loaded_player);
     EXPECT_EQ(loaded_party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
     EXPECT_EQ(loaded_party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_EQ(loaded_party.max_active_members_, 3U);
     EXPECT_FALSE(hasRecruitableActor(scene_->getRegistry(), "actor.lyria"));
 }
 

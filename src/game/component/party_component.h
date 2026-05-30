@@ -12,7 +12,7 @@ namespace game::component {
 struct PartyComponent {
     std::vector<std::string> recruited_actor_ids_{std::string{game::defs::kDefaultPlayerActorId}};
     std::vector<std::string> active_actor_ids_{std::string{game::defs::kDefaultPlayerActorId}};
-    std::size_t max_active_members_{4};
+    std::size_t max_active_members_{game::defs::kDefaultMaxActivePartyMembers};
 };
 
 } // namespace game::component

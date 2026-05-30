@@ -30,6 +30,7 @@ constexpr std::string_view KEY_TROOP_ID = json_keys::TROOP_ID;
 constexpr std::string_view KEY_ACTOR_IDS = json_keys::ACTOR_IDS;
 constexpr std::string_view KEY_RECRUITED_ACTOR_IDS = json_keys::RECRUITED_ACTOR_IDS;
 constexpr std::string_view KEY_ACTIVE_ACTOR_IDS = json_keys::ACTIVE_ACTOR_IDS;
+constexpr std::string_view KEY_MAX_ACTIVE_MEMBERS = json_keys::MAX_ACTIVE_MEMBERS;
 constexpr std::string_view KEY_LOADOUTS = json_keys::LOADOUTS;
 constexpr std::string_view KEY_ACTOR_STATES = json_keys::ACTOR_STATES;
 constexpr std::string_view KEY_LEVEL = json_keys::LEVEL;
@@ -39,6 +40,10 @@ constexpr std::string_view KEY_ESCAPE_ATTEMPT_COUNT = json_keys::ESCAPE_ATTEMPT_
 constexpr std::string_view KEY_PROFILE_ID = json_keys::PROFILE_ID;
 constexpr std::string_view KEY_GENDER = "gender";
 constexpr std::string_view KEY_SLOTS = "slots";
+constexpr std::uint32_t SCHEMA_VERSION_SCRIPT_STATE = 7u;
+constexpr std::uint32_t SCHEMA_VERSION_PARTY_MAX_ACTIVE_MEMBERS = 8u;
+constexpr std::uint32_t DEFAULT_MAX_ACTIVE_MEMBERS =
+    static_cast<std::uint32_t>(game::defs::kDefaultMaxActivePartyMembers);
 
 bool ensureObjectField(nlohmann::json& json, std::string_view key, std::string& out_error) {
     if (!json.contains(key)) {
@@ -151,6 +156,12 @@ bool normalizePartyState(nlohmann::json& party_state, std::string& out_error) {
     }
     if (!ensureArrayField(party_state, KEY_ACTIVE_ACTOR_IDS, out_error)) {
         return false;
+    }
+    if (!ensureUIntField(party_state, KEY_MAX_ACTIVE_MEMBERS, DEFAULT_MAX_ACTIVE_MEMBERS, out_error)) {
+        return false;
+    }
+    if (party_state[KEY_MAX_ACTIVE_MEMBERS].get<std::uint32_t>() == 0u) {
+        party_state[KEY_MAX_ACTIVE_MEMBERS] = 1u;
     }
     return true;
 }
@@ -296,7 +307,18 @@ bool migrateV6ToV7(nlohmann::json& json, std::string& out_error) {
     if (!normalizeScriptState(json[KEY_SCRIPT_STATE], out_error)) {
         return false;
     }
-    json[KEY_SCHEMA_VERSION] = SAVE_SCHEMA_VERSION;
+    json[KEY_SCHEMA_VERSION] = SCHEMA_VERSION_SCRIPT_STATE;
+    return true;
+}
+
+bool migrateV7ToV8(nlohmann::json& json, std::string& out_error) {
+    if (!ensureObjectField(json, KEY_PARTY_STATE, out_error)) {
+        return false;
+    }
+    if (!normalizePartyState(json[KEY_PARTY_STATE], out_error)) {
+        return false;
+    }
+    json[KEY_SCHEMA_VERSION] = SCHEMA_VERSION_PARTY_MAX_ACTIVE_MEMBERS;
     return true;
 }
 
@@ -341,6 +363,12 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
 
     if (json[KEY_SCHEMA_VERSION] == 6u) {
         if (!migrateV6ToV7(json, out_error)) {
+            return false;
+        }
+    }
+
+    if (json[KEY_SCHEMA_VERSION] == SCHEMA_VERSION_SCRIPT_STATE) {
+        if (!migrateV7ToV8(json, out_error)) {
             return false;
         }
     }

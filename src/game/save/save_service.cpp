@@ -114,6 +114,7 @@ void ensureDefaultPartyActor(std::vector<std::string>& actor_ids) {
 }
 
 void normalizeParty(game::component::PartyComponent& party) {
+    party.max_active_members_ = std::max(std::size_t{1}, party.max_active_members_);
     ensureDefaultPartyActor(party.recruited_actor_ids_);
     if (party.active_actor_ids_.empty()) {
         party.active_actor_ids_.push_back(std::string(game::defs::kDefaultPlayerActorId));
@@ -545,6 +546,7 @@ SaveData SaveService::capture(std::string& out_error) const {
         normalizeParty(*party);
         out.party_state.recruited_actor_ids = party->recruited_actor_ids_;
         out.party_state.active_actor_ids = party->active_actor_ids_;
+        out.party_state.max_active_members = party->max_active_members_;
     } else {
         spdlog::warn("SaveService: 玩家缺少 PartyComponent，队伍存档将只包含 actor.player。");
         out.party_state = PartyStateSaveData{};
@@ -901,7 +903,8 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         player,
         game::component::PartyComponent{
             .recruited_actor_ids_ = data.party_state.recruited_actor_ids,
-            .active_actor_ids_ = data.party_state.active_actor_ids});
+            .active_actor_ids_ = data.party_state.active_actor_ids,
+            .max_active_members_ = data.party_state.max_active_members});
     normalizeParty(party);
     removeRecruitedRecruitableActors(registry_, context_.getSpatialIndexManager(), party);
 

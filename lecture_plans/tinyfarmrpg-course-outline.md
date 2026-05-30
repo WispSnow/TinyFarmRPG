@@ -546,6 +546,7 @@ flowchart LR
 - 招募 offer 场景与脚本化招募对白。
 - 已招募角色的地图隐藏或去重。
 - 招募事件流：脚本请求 → C++ 校验 → 入队事件 → UI / 存档同步。
+- 队伍上限作为运行时存档字段：默认值、`party_state.max_active_members` 与 schema v8 迁移。
 
 **阅读清单**：
 - `docs/gameplay/party-equipment-rest-recruitment.md`（招募章节）
@@ -558,8 +559,8 @@ flowchart LR
 
 **自测问题**：
 1. 招募成功后，地图上的原 NPC 实体为什么不能直接删？该怎么处理？
-2. `ActorIdentityComponent` 在"探索 NPC"和"队伍成员"两种形态下都存在，它的作用是什么？
-3. 队伍上限是配置驱动还是硬编码？理由？
+2. `ActorIdentityComponent` 与 `RecruitableComponent` 都带 `actor_id`，为什么仍要分开？真正跨越"地图 NPC"和"队伍成员"两种形态的是什么？
+3. 队伍上限默认 4 是硬编码常量、配置值还是运行时存档字段？读档和旧存档迁移如何处理？
 
 **最小练习**：在 `lyria.lua` 里加一个"招募后才能触发的支线对白"，验证状态切换。
 
