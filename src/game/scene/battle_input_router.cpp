@@ -10,6 +10,7 @@ using namespace entt::literals;
 
 constexpr float REPEAT_INITIAL_DELAY_SECONDS = 0.28f;
 constexpr float REPEAT_INTERVAL_SECONDS = 0.08f;
+constexpr Uint64 BUFFERED_MENU_ACTION_WINDOW_MS = 150;
 
 } // namespace
 
@@ -53,23 +54,26 @@ void BattleInputRouter::disconnect() {
 }
 
 void BattleInputRouter::update(const float delta_time) {
-    if (!connected_ || !input_manager_ || !delegate_ || repeat_direction_ == RepeatDirection::None) {
+    if (!connected_ || !input_manager_ || !delegate_) {
         return;
     }
 
-    if (delegate_->battleMenuState() == BattleMenuState::None || !repeatDirectionStillDown()) {
-        clearRepeat();
-        return;
-    }
-
-    repeat_timer_seconds_ -= delta_time;
-    while (repeat_timer_seconds_ <= 0.0f && repeat_direction_ != RepeatDirection::None) {
-        if (!dispatchRepeatDirection()) {
-            repeat_timer_seconds_ = REPEAT_INTERVAL_SECONDS;
-            return;
+    if (repeat_direction_ != RepeatDirection::None) {
+        if (delegate_->battleMenuState() == BattleMenuState::None || !repeatDirectionStillDown()) {
+            clearRepeat();
+        } else {
+            repeat_timer_seconds_ -= delta_time;
+            while (repeat_timer_seconds_ <= 0.0f && repeat_direction_ != RepeatDirection::None) {
+                if (!dispatchRepeatDirection()) {
+                    repeat_timer_seconds_ = REPEAT_INTERVAL_SECONDS;
+                    break;
+                }
+                repeat_timer_seconds_ += REPEAT_INTERVAL_SECONDS;
+            }
         }
-        repeat_timer_seconds_ += REPEAT_INTERVAL_SECONDS;
     }
+
+    dispatchBufferedMenuActions();
 }
 
 void BattleInputRouter::clearRepeat() {
@@ -98,11 +102,11 @@ bool BattleInputRouter::onMenuRightPressed() {
 }
 
 bool BattleInputRouter::onMenuConfirmPressed() {
-    return delegate_ ? delegate_->confirmBattleMenu() : false;
+    return dispatchMenuAction("menu_confirm"_hs, &Delegate::confirmBattleMenu);
 }
 
 bool BattleInputRouter::onMenuCancelPressed() {
-    return delegate_ ? delegate_->cancelBattleMenu() : false;
+    return dispatchMenuAction("menu_cancel"_hs, &Delegate::cancelBattleMenu);
 }
 
 bool BattleInputRouter::moveVertical(const int direction) {
@@ -159,6 +163,51 @@ bool BattleInputRouter::dispatchRepeatDirection() {
             return false;
     }
     return false;
+}
+
+bool BattleInputRouter::dispatchMenuAction(entt::id_type action_id, DelegateAction action) {
+    if (!delegate_) {
+        return false;
+    }
+
+    const bool handled = (delegate_->*action)();
+    if (handled) {
+        consumeBufferedMenuAction(action_id);
+    }
+    return handled;
+}
+
+bool BattleInputRouter::dispatchBufferedMenuAction(entt::id_type action_id, DelegateAction action) {
+    if (!input_manager_ || !delegate_ || delegate_->battleMenuState() == BattleMenuState::None) {
+        return false;
+    }
+
+    if (!input_manager_->peekBufferedPress(action_id, BUFFERED_MENU_ACTION_WINDOW_MS)) {
+        return false;
+    }
+
+    const bool handled = (delegate_->*action)();
+    if (handled) {
+        consumeBufferedMenuAction(action_id);
+    }
+    return handled;
+}
+
+void BattleInputRouter::consumeBufferedMenuAction(entt::id_type action_id) {
+    if (!input_manager_) {
+        return;
+    }
+
+    while (input_manager_->consumeBufferedPress(action_id, BUFFERED_MENU_ACTION_WINDOW_MS)) {
+        // Drain the short action window so a handled press cannot replay on the next update.
+    }
+}
+
+void BattleInputRouter::dispatchBufferedMenuActions() {
+    if (dispatchBufferedMenuAction("menu_confirm"_hs, &Delegate::confirmBattleMenu)) {
+        return;
+    }
+    static_cast<void>(dispatchBufferedMenuAction("menu_cancel"_hs, &Delegate::cancelBattleMenu));
 }
 
 void BattleInputRouter::beginRepeat(const RepeatDirection direction) {

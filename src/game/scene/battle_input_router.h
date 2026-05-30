@@ -2,6 +2,8 @@
 
 #include "game/scene/battle_scene_state.h"
 
+#include <entt/core/fwd.hpp>
+
 namespace engine::input {
 class InputManager;
 }
@@ -31,6 +33,8 @@ public:
     [[nodiscard]] bool connected() const { return connected_; }
 
 private:
+    using DelegateAction = bool (Delegate::*)();
+
     enum class RepeatDirection {
         None,
         Up,
@@ -50,6 +54,10 @@ private:
     [[nodiscard]] bool moveHorizontal(int direction);
     [[nodiscard]] bool repeatDirectionStillDown() const;
     [[nodiscard]] bool dispatchRepeatDirection();
+    [[nodiscard]] bool dispatchMenuAction(entt::id_type action_id, DelegateAction action);
+    [[nodiscard]] bool dispatchBufferedMenuAction(entt::id_type action_id, DelegateAction action);
+    void consumeBufferedMenuAction(entt::id_type action_id);
+    void dispatchBufferedMenuActions();
     void beginRepeat(RepeatDirection direction);
 
     engine::input::InputManager* input_manager_{nullptr};

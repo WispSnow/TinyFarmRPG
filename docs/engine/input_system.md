@@ -1,4 +1,4 @@
-# 输入系统：InputManager / 动作映射 / 多设备 / 上下文 / Rebind（TinyFarm）
+# 输入系统：InputManager / 动作映射 / 多设备 / 上下文 / Rebind（TinyFarmRPG）
 
 > 统一项目内"输入系统"的心智模型与约定。
 
@@ -20,13 +20,13 @@ graph TB
 
     subgraph InputManager
         direction TB
-        EF["事件转发<br/>(ImGui → RmlUi → processEvent)"]
+        EF["事件转发<br/>(Rebind → ImGui → RmlUi → processEvent)"]
         BM["Binding Map<br/>PhysicalInput → Action ID"]
         SM["Action State Machine<br/>PRESSED / HELD / RELEASED / INACTIVE"]
         CTX["Context Stack<br/>动作白名单过滤"]
         BUF["Input Buffer<br/>时间戳环形缓冲"]
         RB["Rebind Capture<br/>运行时按键重绑"]
-        GL["Glyph / Prompt<br/>设备感知图标"]
+        GL["Glyph / Prompt<br/>设备感知元数据"]
     end
 
     SDL --> EF --> BM --> CTX --> SM
@@ -294,10 +294,10 @@ sequenceDiagram
     participant Player as 玩家
     participant IM as InputManager
     participant Anim as 动画系统
-    participant Battle as 战斗系统
+    participant Battle as BattleInputRouter
 
     Note over IM: ── 渲染帧 ──
-    Player->>IM: 按下确认键
+    Player->>IM: 按下 menu_confirm
     IM->>IM: sampleInputEvents()<br/>state = PRESSED<br/>press_buffer.push(t=200ms)
 
     rect rgb(255, 230, 230)
@@ -315,11 +315,11 @@ sequenceDiagram
 
     rect rgb(230, 255, 230)
         Note over Anim,Battle: tick N+4 — 动画播完
-        Battle->>IM: isActionPressed("confirm")?
+        Battle->>IM: isActionPressed("menu_confirm")?
         IM-->>Battle: ❌ false（已是 HELD）
         Note over Battle: 没有 buffer → 按键被吞掉！
 
-        Battle->>IM: consumeBufferedPress("confirm", 150ms)?
+        Battle->>IM: consumeBufferedPress("menu_confirm", 150ms)?
         IM-->>Battle: ✅ true（t=200ms 在窗口内）
         Note over Battle: 有 buffer → 按键正确响应
     end
@@ -379,6 +379,8 @@ bool consumeBufferedPress(entt::id_type action_name_id, Uint64 window_ms);
 - `consume`：大多数场景使用——确认、攻击等"按一次触发一次"的动作
 - `peek`：需要多个系统共同检查同一次按键时使用（不消耗记录）
 
+当前生产路径中，`BattleInputRouter` 会消费 `menu_confirm` / `menu_cancel` 的 150ms buffered press：菜单状态为 `None` 时先保留窗口内按键，恢复为可输入菜单后回放；直接处理成功的 confirm/cancel 会清掉同窗口 buffer，避免同一次按键重复触发。
+
 ### 3.7 Prompt / Glyph
 
 ```cpp
@@ -393,7 +395,7 @@ Glyph 构建函数（`input_glyphs.h`）：
 - `buildPromptFallbackText()`：生成人类可读文本
 - `makeActionPrompt()`：从 `BindingDefinition` 构建 `ActionPrompt`
 
-> 它们只是用于界面显示，不参与按键触发逻辑
+> 它们只是用于界面显示，不参与按键触发逻辑。当前 `GameInputPromptOverlay` 渲染的是 `fallback_text`；`icon_id` 已经进入 `ActionPrompt` 和 Input Debug 面板，后续可以接入 spritesheet class 做真实图标。
 
 ---
 
@@ -475,10 +477,10 @@ void popContext();
 
 | 上下文 | 允许的动作 |
 |---|---|
-| **Gameplay** | 移动、primary/secondary action、interact、pause、inventory、hotbar 1-10 + prev/next、rotate、player_light、camera_reset_zoom、toggle_prompt_bar |
-| **Menu** | menu_left/right/up/down、menu_confirm、menu_cancel |
-| **Dialogue** | 同 Menu |
-| **Battle** | 同 Menu |
+| **Gameplay** | 移动、primary/secondary action、interact、pause、inventory、inventory_tab_equipment/quests/map/options、hotbar 1-10 + prev/next、rotate、player_light、camera_reset_zoom、toggle_prompt_bar |
+| **Menu** | menu_left/right/up/down、menu_confirm、menu_cancel、inventory、inventory_tab_equipment/quests/map/options |
+| **Dialogue** | menu_left/right/up/down、menu_confirm、menu_cancel |
+| **Battle** | menu_left/right/up/down、menu_confirm、menu_cancel |
 
 ### 场景中的使用
 
@@ -489,15 +491,16 @@ graph LR
         TS["TitleScene"] -->|Menu| CTX
         PM["PauseMenuScene"] -->|Menu| CTX
         SS["SaveSlotSelectScene"] -->|Menu| CTX
-        RD["RestDialogScene"] -->|Menu| CTX
+        RD["RestDialogScene"] -->|Dialogue| CTX
         BS["BattleScene"] -->|Battle| CTX
     end
     CTX["Context Stack"]
 ```
 
 - `GameScene` → `Gameplay`（移动、交互、物品栏等）
-- `TitleScene` / `PauseMenuScene` / `SaveSlotSelectScene` / `RestDialogScene` → `Menu`（方向导航、确认、取消）
-- `BattleScene` → `Battle`（同 Menu）
+- `TitleScene` / `PauseMenuScene` / `SaveSlotSelectScene` / `InventoryMenuScene` / `ShopMenuScene` / `AppearanceCustomizeScene` → `Menu`（方向导航、确认、取消，并保留背包/页签快捷键）
+- `DialogueChoiceScene` / `QuestOfferScene` / `RecruitOfferScene` / `RestDialogScene` → `Dialogue`（纯菜单动作）
+- `BattleScene` → `Battle`（纯菜单动作；confirm/cancel 额外使用 buffered press）
 
 ---
 
@@ -572,7 +575,7 @@ stateDiagram-v2
     [*] --> Idle : 正常输入模式
 
     Idle --> Capturing : beginRebindCapture(action, slot)
-    note right of Capturing : 所有 SDL 事件路由到<br/>handleRebindCaptureEvent()<br/>阻断正常分发 + UI 转发
+    note right of Capturing : 普通输入事件路由到<br/>handleRebindCaptureEvent()<br/>阻断正常分发 + UI 转发
 
     Capturing --> Idle : Escape（取消）
     Capturing --> Captured : 检测到有效物理输入
@@ -598,7 +601,7 @@ void discardPendingRebindConflict();
 ### 流程
 
 1. `beginRebindCapture()` 进入捕获模式，清空所有输入状态
-2. 捕获期间 `sampleInputEvents()` 将事件路由到 `handleRebindCaptureEvent()`，阻断正常动作分发和 RmlUi/ImGui 转发
+2. 捕获期间 `sampleInputEvents()` 将普通输入事件路由到 `handleRebindCaptureEvent()`，阻断正常动作分发和 RmlUi/ImGui 转发；窗口、quit、手柄热插拔等系统事件仍会继续处理
 3. `Escape` 无条件取消捕获
 4. 检测到有效物理输入后进行冲突检测
 5. 若存在冲突 → 存储 `PendingRebindConflict`，调用方需调用 `confirm` 或 `discard`
@@ -679,11 +682,11 @@ flowchart LR
 ```mermaid
 flowchart TD
     SDL["SDL Event"] --> RBC{"Rebind Capture<br/>活跃?"}
-    RBC -->|是| RBH["handleRebindCaptureEvent()<br/>（吞掉所有事件）"]
+    RBC -->|是| RBH["handleRebindCaptureEvent()<br/>（普通输入不再转发 UI）"]
     RBC -->|否| IMGUI
 
     IMGUI["ImGui callback<br/>(仅 TF_ENABLE_DEBUG_UI)"] --> IGCAP{"ImGui<br/>WantCapture?"}
-    IGCAP -->|"是 (键盘/鼠标)"| ALWAYS{"总是放行?<br/>KEY_UP / MOUSE_UP<br/>MOTION / GAMEPAD_*"}
+    IGCAP -->|"是 (键盘/鼠标)"| ALWAYS{"总是放行?<br/>KEY_UP / MOUSE_UP / MOUSE_MOTION<br/>GAMEPAD_UP / GAMEPAD_AXIS<br/>menu-like GAMEPAD_DOWN"}
     IGCAP -->|否| RMLUI
 
     RMLUI["RmlUi callback"] --> SUP{"shouldSuppress<br/>RmlUiKeyboard?"}
@@ -702,19 +705,21 @@ flowchart TD
 在菜单类上下文（Menu / Dialogue / Battle）中，绑定到 `menu_*` 动作的扫描码（Tab 除外）会被 `shouldSuppressRmlUiKeyboardEvent()` 拦截，不转发给 RmlUi，防止双重处理。
 
 当前约定是：
-- 原始 SDL 键盘/鼠标事件仍会尽量转发给 RmlUi
-- 当前阶段不再把 `menu_up/down/left/right/confirm` 这些逻辑动作桥接到 RmlUi
-- 菜单与弹层交互以鼠标 hover / click 为主
+- 原始 SDL 键盘/鼠标事件仍会尽量转发给 RmlUi；但 menu-like 上下文中，绑定到 `menu_*` 的键盘扫描码会先被抑制，避免 RmlUi 原生 focus 与游戏侧 `menu_*` 同时响应。
+- `GameApp` 不统一把 `menu_up/down/left/right/confirm` 这些逻辑动作桥接到 RmlUi；需要键盘/手柄导航的 Scene 自己监听 `menu_*` 动作。
+- 简单菜单多半只监听 `menu_cancel`，Shop / Battle 这类复杂菜单会把 `menu_*` 路由到自己的菜单模型。
 
 因此当前行为是：
 - 鼠标 UI 交互保持可用
-- 键盘/手柄菜单导航在菜单上下文中处于关闭状态
-- `menu_*` 动作保留为未来恢复导航时的输入语义
+- 键盘/手柄菜单输入由具体 Scene 决定如何消费
+- `menu_*` 动作是菜单语义的统一入口，而不是 RmlUi 原生方向键导航的直接替代品
 
 ### 总是放行的事件
 
 以下事件类型即使 RmlUi 声称已处理，也会继续传递给 `processEvent()`：
-`KEY_UP`, `MOUSE_BUTTON_UP`, `MOUSE_MOTION`, `GAMEPAD_BUTTON_UP`, `GAMEPAD_AXIS_MOTION`, `GAMEPAD_ADDED`, `GAMEPAD_REMOVED`, `GAMEPAD_REMAPPED`
+`KEY_UP`, `MOUSE_BUTTON_UP`, `MOUSE_MOTION`, `GAMEPAD_BUTTON_UP`, `GAMEPAD_AXIS_MOTION`, `GAMEPAD_ADDED`, `GAMEPAD_REMOVED`, `GAMEPAD_REMAPPED`。
+
+另外，`GAMEPAD_BUTTON_DOWN` 只在 Menu / Dialogue / Battle 这类 menu-like 上下文中总是放行；Gameplay 下如果 RmlUi 消费了该 button down，就不会继续触发世界动作。
 
 ---
 
@@ -785,7 +790,7 @@ struct CoreServices {
 ## 13) 常见坑
 
 1. **调试 UI 打字时游戏动作被误触发**
-   - 原因：ImGui 捕获键盘时仍把 KEY_DOWN 映射成动作
+   - 原因：通常是 ImGui observer / `WantCaptureKeyboard` 时序错乱，导致 KEY_DOWN 没有被 `processEvent()` 拦住
    - 排查：看 Input 面板状态变化 + 日志
 
 2. **UI 点击与世界点击同时触发**

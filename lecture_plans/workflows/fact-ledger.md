@@ -10,6 +10,7 @@
 | TinyFarmRPG 技术栈版本 | C++20、RmlUi 6.2、Lua 5.4.8、Sol2 3.5.0、Effekseer 1.7.3.0、FreeType 2.14.1、HarfBuzz 12.1.0 等 | `docs/overview.md` 技术栈；`external/` 目录；`cmake/*Dependencies.cmake` | L00 / L03 / L07 / L22 / L23 | 2026-05-30 | L00 技术栈速览以 `docs/overview.md` 为主口径 |
 | RmlUi 资源加载边界 | RmlUi 字体由 `GameApp::initRmlUi()` 直接调用 `Rml::LoadFontFace` 注册字体文件；ImGui 也加载 `assets/fonts/VonwaonBitmap-16px.ttf`。RmlUi 图片由 `RenderInterface_GL3_STB::LoadTexture()` 通过 RmlUi `FileInterface` 读文件并用 `stb_image` 解码，或通过 `generated://` 查询 `RmlGeneratedImageRegistry`；不共享 `ResourceManager / TextureManager` 的纹理缓存 | `src/engine/core/game_app.cpp`；`src/engine/render/opengl/imgui_layer.cpp`；`src/engine/ui/rmlui/render_interface_gl3_stb.cpp`；`src/engine/ui/rmlui/rml_generated_image_registry.cpp` | L03 / L14 / L22 | 2026-05-30 | L03 讲义应写成“共享字体文件 / stb 解码栈”，避免写成“共享 ResourceManager 缓存” |
 | Scene 栈与 RmlUi 可见性调度 | `SceneManager::update()` / `fixedUpdate()` 只调用栈顶 Scene；`prepareUi()` / `render()` 遍历整栈，栈顶使用当前 interpolation alpha，底层覆盖场景使用 `1.0f` 保持冻结快照；`syncRmlActiveScene()` 从栈顶向下找第一个 `HideUnderlyingSceneUi`，并把该 Scene 及其上方 Scene 的 owner 传给 `RmlUiRuntime::setVisibleSceneOwners()` | `src/engine/scene/scene_manager.cpp`；`src/engine/ui/rmlui/rml_ui_runtime.cpp`；`tests/engine/scene/render_interpolation_pipeline_test.cpp` | L04 / L05 / L15 / L25 | 2026-05-30 | L04 讲义需避免写成 `prepareUi()` 仅栈顶；`GameMode` 是否驱动底层 scheduler 另在 L25 复核 |
+| 输入上下文与战斗缓冲输入 | `Gameplay` 上下文允许移动/交互/背包/快捷栏等动作但不允许 `menu_*`；`Menu` 允许 `menu_*` 与 inventory/tab shortcuts；`Dialogue` / `Battle` 只允许 `menu_*`。`BattleInputRouter` 监听 `menu_up/down/left/right/confirm/cancel`，方向键负责 repeat，`menu_confirm` / `menu_cancel` 会在菜单状态非 `None` 时消费 150ms 内的 buffered press；直接成功处理的 confirm/cancel 会清空同窗口 buffer，避免同一次按键重复触发 | `src/engine/input/input_context_registry.cpp`；`src/game/scene/battle_input_router.cpp`；`tests/engine/input/input_context_test.cpp`；`tests/game/battle/battle_input_router_test.cpp` | L05 / L18 | 2026-05-30 | L05 讲义需同步上下文表、调试面板观察与 buffer 真实生产消费路径；L18 深讲战斗菜单时复用该口径 |
 | 上一期 TinyFarm `GameScene` system 数量 | 三十多个 system | `lecture_plans/ref/TinyFarm/src/game/scene/game_scene.h/.cpp` 中 system 字段与 `std::make_unique<...System>` 计数均为 33 | L01 | 2026-05-30 | 用于替代过时的“28 个 system”表述 |
 | TinyFarmRPG `GameSystemBundle` system / bridge 数量 | 40+ system / bridge 实例 | `src/game/runtime/system_bundle.h` 中 `GameSystemBundle` 的 `std::unique_ptr` 字段计数为 45 | L01 / L25 | 2026-05-30 | 含 debug-only 字段和可选 `ScriptEventBridge` / `VfxBridgeSystem` |
 | `RuntimeServiceFactory::assemble` 失败硬停点 | 当前有 13 处 `return false` | `src/game/runtime/runtime_service_factory.cpp` 中 `RuntimeServiceFactory::assemble` 函数体计数 | L01 | 2026-05-30 | 讲义正文不写死数量，只引导学生观察前置失败点 |
@@ -33,6 +34,7 @@
 | L04 | Scene 栈调度与 RmlUi owner 可见性 | `src/engine/scene/scene_manager.cpp` | `update()` / `fixedUpdate()` / `prepareUi()` / `render()` / `syncRmlActiveScene()` | 核心形态 | 2026-05-30 | `prepareUi()` / `render()` 遍历全栈；底层 Scene 用 `1.0f` alpha；可见 owner 列表由第一个 `HideUnderlyingSceneUi` 决定 |
 | L04 | GameScene HUD 组合入口 | `src/game/scene/game_scene.cpp` / `src/game/ui/game_scene_ui_controller.cpp` | `GameScene::initUI()` / `GameSceneUiController::init()` | 核心形态 | 2026-05-30 | `GameScene` 直接持有 `GameSceneUiController`、`GameOverlay`、`GameInputPromptOverlay`；`GameSceneUiController` 持有 hotbar、dialogue、floating notice、tooltip、time clock、screen fade |
 | L04 | 覆盖式 Scene 输入与可见性策略 | `src/game/scene/*_scene.cpp` | `init()` / `clean()` / `uiCoverage()` | 核心形态 | 2026-05-30 | Pause / Inventory / SaveSlot / Rest 使用默认 Overlay；Shop / QuestOffer / RecruitOffer / DialogueChoice / AppearanceCustomize / Battle 返回 `HideUnderlyingSceneUi`；相关源码测试已锁定 |
+| L05 | 输入上下文白名单与战斗菜单输入路由 | `src/engine/input/input_context_registry.cpp` / `src/game/scene/battle_input_router.cpp` | `buildInputContextDefinitions()` / `BattleInputRouter::update()` / `dispatchBufferedMenuAction()` | 核心形态 | 2026-05-30 | `BattleInputRouter` 的 confirm/cancel buffer 窗口为 150ms；buffer 只在菜单状态非 `None` 时回放，成功处理后清空同窗口 buffered press |
 
 ## 跨讲承诺
 
@@ -45,6 +47,7 @@
 | L01 | domain service 的 preflight / 一致写入 / 反馈事件详深留到 L02 与 L10 | L02 / L10 | L02 “preflight → 一致写入 → event”小节；L10 待任务交付深讲 | 部分兑现 | L02 已建立领域服务共同模式；L10 继续以任务交付展开 |
 | L01 | Lua 内容层与 C++ 绑定详深留到 L06-L08 | L06 / L07 / L08 | 待填写 | 待查 | 后续确认 script 层边界一致 |
 | L01 | Blueprint / EntityFactory 的脚本化字段扩展留到 L08 | L08 | 待填写 | 待查 | 包含 `scripted_interaction=true` 等字段 |
+| L05 | 战斗菜单多层状态、cursor memory、repeat 与 buffered confirm/cancel 的深讲留到 L18 | L18 | 待填写 | 待查 | L05 只建立为什么不用 RmlUi 原生导航和 InputBuffer 的上游背景 |
 
 ## 术语表
 
