@@ -32,7 +32,7 @@ struct MoveTestContext {
 
     MoveTestContext()
         : inventory_domain_service(registry, dispatcher, catalog),
-          inventory_system(registry, dispatcher, catalog, inventory_domain_service),
+          inventory_system(registry, dispatcher, inventory_domain_service),
           hotbar_system(registry, dispatcher) {
     }
 };

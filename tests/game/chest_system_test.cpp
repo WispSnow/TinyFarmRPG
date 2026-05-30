@@ -60,7 +60,7 @@ TEST(ChestSystemTest, LootNotificationLocalizesProjectCatalogItemKeys) {
     registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
 
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     game::world::WorldState world_state;
     ChestSystem chest_system(registry, dispatcher, world_state, catalog, inventory_domain_service);
 

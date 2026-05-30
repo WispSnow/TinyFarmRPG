@@ -6,10 +6,6 @@
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 
-namespace game::data {
-class ItemCatalog;
-}
-
 namespace game::domain {
 class InventoryDomainService;
 }
@@ -19,13 +15,11 @@ namespace game::system {
 class InventorySystem final {
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
-    game::data::ItemCatalog& catalog_;
     game::domain::InventoryDomainService& inventory_domain_service_;
 
 public:
     InventorySystem(entt::registry& registry,
                     entt::dispatcher& dispatcher,
-                    game::data::ItemCatalog& catalog,
                     game::domain::InventoryDomainService& inventory_domain_service);
     ~InventorySystem();
 
@@ -39,7 +33,6 @@ private:
     void onMoveItem(const game::defs::InventoryMoveCommand& evt);
     void onSort(const game::defs::InventorySortCommand& evt);
 
-    bool ensureInventory(entt::entity target);
     void emitChanged(entt::entity target,
                      const std::vector<game::defs::InventorySlotUpdate>& diff,
                      bool full_sync,

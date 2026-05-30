@@ -24,10 +24,10 @@ struct InventoryMutationResult {
 class InventoryDomainService final {
     entt::registry& registry_;
     entt::dispatcher& dispatcher_;
-    game::data::ItemCatalog& catalog_;
+    const game::data::ItemCatalog& catalog_;
 
 public:
-    InventoryDomainService(entt::registry& registry, entt::dispatcher& dispatcher, game::data::ItemCatalog& catalog);
+    InventoryDomainService(entt::registry& registry, entt::dispatcher& dispatcher, const game::data::ItemCatalog& catalog);
 
     [[nodiscard]] bool ensureInventory(entt::entity target);
 
@@ -41,10 +41,17 @@ public:
                                                      int count,
                                                      int slot_index = -1);
 
+    [[nodiscard]] bool moveItem(entt::entity target, int from_slot, int to_slot, bool allow_merge = true);
+    [[nodiscard]] bool sortInventory(entt::entity target);
+
 private:
     void emitChanged(entt::entity target,
                      const std::vector<game::defs::InventorySlotUpdate>& diff,
-                     bool from_add) const;
+                     bool from_add,
+                     bool full_sync = false,
+                     game::defs::InventoryMoveKind move_kind = game::defs::InventoryMoveKind::None,
+                     int move_from_slot = -1,
+                     int move_to_slot = -1) const;
 };
 
 } // namespace game::domain

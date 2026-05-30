@@ -86,7 +86,7 @@ TEST(InventoryHotbarConsistencyTest, MergeIntoReferencedSlot_KeepsTargetHotkeyAn
 
     game::data::ItemCatalog catalog;
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
 
     const entt::entity player = registry.create();
@@ -163,7 +163,7 @@ TEST(InventoryHotbarConsistencyTest, MergePartial_KeepsHotbarMappingsUnchanged) 
 
     game::data::ItemCatalog catalog;
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
 
     const entt::entity player = registry.create();
@@ -197,7 +197,7 @@ TEST(InventoryHotbarConsistencyTest, Sort_RemapsHotbarMappingsAndEmitsFullSync) 
     game::data::ItemCatalog catalog;
     ASSERT_TRUE(catalog.loadItemConfig(testItemConfigPath()));
     game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
-    InventorySystem inventory_system(registry, dispatcher, catalog, inventory_domain_service);
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
     HotbarSystem hotbar_system(registry, dispatcher);
 
     const entt::entity player = registry.create();

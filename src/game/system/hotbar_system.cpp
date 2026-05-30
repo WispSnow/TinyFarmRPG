@@ -294,6 +294,36 @@ void HotbarSystem::onInventoryChanged(const game::defs::InventoryChanged& evt) {
     std::vector<game::defs::HotbarSlotUpdate> updates;
     updates.reserve(game::component::HotbarComponent::SLOT_COUNT);
 
+    if (evt.full_sync && !evt.slot_remap_old_to_new.empty()) {
+        for (int hb_index = 0; hb_index < game::component::HotbarComponent::SLOT_COUNT; ++hb_index) {
+            auto& slot = hotbar.slot(hb_index);
+            const int old_inventory_slot = slot.inventory_slot_index_;
+            if (old_inventory_slot < 0 ||
+                old_inventory_slot >= static_cast<int>(evt.slot_remap_old_to_new.size())) {
+                if (slot.inventory_slot_index_ != -1) {
+                    slot.inventory_slot_index_ = -1;
+                    pushSlotUpdate(updates, inventory, hb_index, -1);
+                }
+                continue;
+            }
+
+            const int new_inventory_slot = evt.slot_remap_old_to_new[static_cast<std::size_t>(old_inventory_slot)];
+            const bool valid_new_slot = new_inventory_slot >= 0 && new_inventory_slot < inventory.slotCount();
+            if (!valid_new_slot || inventory.slot(new_inventory_slot).empty()) {
+                if (slot.inventory_slot_index_ != -1) {
+                    slot.inventory_slot_index_ = -1;
+                    pushSlotUpdate(updates, inventory, hb_index, -1);
+                }
+                continue;
+            }
+
+            if (slot.inventory_slot_index_ != new_inventory_slot) {
+                slot.inventory_slot_index_ = new_inventory_slot;
+                pushSlotUpdate(updates, inventory, hb_index, new_inventory_slot);
+            }
+        }
+    }
+
     if (evt.move_kind != game::defs::InventoryMoveKind::None) {
         const bool valid_from = evt.move_from_slot >= 0 && evt.move_from_slot < inventory.slotCount();
         const bool valid_to = evt.move_to_slot >= 0 && evt.move_to_slot < inventory.slotCount();
@@ -396,7 +426,7 @@ void HotbarSystem::onInventoryChanged(const game::defs::InventoryChanged& evt) {
     }
 
     if (!updates.empty()) {
-        emitChanged(evt.target, updates, false);
+        emitChanged(evt.target, updates, evt.full_sync);
     }
 }
 
