@@ -65,6 +65,24 @@ void fillInventory(game::component::InventoryComponent& inventory, entt::id_type
     }
 }
 
+[[nodiscard]] game::data::QuestData makeQuestWithMissingRewardItem() {
+    game::data::QuestData quest{};
+    quest.id_ = "quest.test.turn_in_missing_reward_item";
+    quest.id_hash_ = entt::hashed_string{quest.id_.c_str()}.value();
+    quest.objectives_.push_back(game::data::QuestObjectiveData{
+        .id_ = "slime_hunt",
+        .kind_ = game::data::QuestObjectiveKind::DefeatEnemyCount,
+        .enemy_id_ = "enemy.slime",
+        .enemy_id_hash_ = entt::hashed_string{"enemy.slime"}.value(),
+        .required_count_ = 1});
+    quest.rewards_.gold_ = 7;
+    quest.rewards_.items_.push_back(game::data::QuestRewardItemData{
+        .item_id_ = "missing_reward_item",
+        .item_id_hash_ = entt::hashed_string{"missing_reward_item"}.value(),
+        .count_ = 1});
+    return quest;
+}
+
 } // namespace
 
 namespace game::domain {
@@ -246,6 +264,32 @@ TEST(QuestTurnInServiceTest, RewardPreflightUsesSingleAccumulatedInventoryCopy) 
     ASSERT_EQ(quest_log.active_quests.size(), 1u);
     EXPECT_EQ(inventory.slot(0).item_id_, entt::id_type{entt::null});
     EXPECT_EQ(inventory.slot(1).item_id_, entt::hashed_string{"dummy_full"}.value());
+}
+
+TEST(QuestTurnInServiceTest, RewardWriteFailureKeepsQuestWalletAndInventoryUnchanged) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    auto item_catalog = loadItemCatalog();
+    InventoryDomainService inventory_domain_service(registry, dispatcher, item_catalog);
+    QuestTurnInService service(registry, item_catalog, inventory_domain_service);
+
+    const game::data::QuestData quest = makeQuestWithMissingRewardItem();
+    const entt::entity player = createPlayer(registry);
+    auto& wallet = registry.get<game::component::PlayerWalletComponent>(player);
+    wallet.gold_ = 10;
+    auto& quest_log = registry.get<game::component::QuestLogComponent>(player);
+    markQuestReady(quest_log, quest);
+    auto& inventory = registry.get<game::component::InventoryComponent>(player);
+
+    const auto result = service.turnIn(player, quest, quest_log);
+
+    EXPECT_FALSE(result.completed());
+    EXPECT_EQ(wallet.gold_, 10);
+    EXPECT_TRUE(inventory.slot(0).empty());
+    ASSERT_EQ(quest_log.active_quests.size(), 1u);
+    EXPECT_EQ(quest_log.active_quests.front(), quest.id_);
+    EXPECT_TRUE(quest_log.completed_quests.empty());
+    EXPECT_TRUE(quest_log.objective_progress.contains(game::data::makeQuestObjectiveProgressKey(quest.id_, "slime_hunt")));
 }
 
 } // namespace game::domain

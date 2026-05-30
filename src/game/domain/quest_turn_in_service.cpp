@@ -6,7 +6,6 @@
 #include "game/data/quest_data.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/quest_log_ops.h"
-#include "game/system/inventory_helpers.h"
 
 #include <entt/entity/registry.hpp>
 #include <spdlog/spdlog.h>
@@ -75,13 +74,38 @@ QuestTurnInResult QuestTurnInService::turnIn(entt::entity player,
         return makeFailureResult(QuestTurnInStatus::MissingInventory, kMissingInventoryMessage);
     }
 
-    if (inventory != nullptr && questNeedsInventory(quest)) {
-        std::vector<game::component::ItemStack> simulated_slots = inventory->slots_;
-        for (const auto& reward_item : quest.rewards_.items_) {
-            const int stack_limit = game::system::detail::stackLimitOrDefault(&item_catalog_, reward_item.item_id_hash_);
-            if (!game::system::detail::simulateAdd(simulated_slots, -1, reward_item.item_id_hash_, reward_item.count_, stack_limit)) {
-                return makeFailureResult(QuestTurnInStatus::InventoryFull, kInventoryFullMessage);
-            }
+    game::component::QuestLogComponent next_quest_log = quest_log;
+    if (!game::domain::quest_log_ops::completeQuest(next_quest_log, quest.id_)) {
+        spdlog::warn("QuestTurnInService: 任务 '{}' 未能完成 active -> completed 状态迁移。", quest.id_);
+        return makeFailureResult(QuestTurnInStatus::NotReady, {});
+    }
+    game::domain::quest_log_ops::eraseQuestProgress(next_quest_log, quest.id_);
+
+    std::vector<game::domain::InventoryItemGrant> item_grants{};
+    item_grants.reserve(quest.rewards_.items_.size());
+    std::vector<QuestTurnInItemReward> item_rewards{};
+    item_rewards.reserve(quest.rewards_.items_.size());
+    int requested_item_count = 0;
+    for (const auto& reward_item : quest.rewards_.items_) {
+        item_grants.push_back(game::domain::InventoryItemGrant{
+            .item_id = reward_item.item_id_hash_,
+            .count = reward_item.count_});
+        requested_item_count += reward_item.count_;
+        item_rewards.push_back(QuestTurnInItemReward{
+            .item_id = reward_item.item_id_,
+            .item_name = resolveRewardItemName(reward_item, item_catalog_),
+            .count = reward_item.count_});
+    }
+
+    if (!item_grants.empty()) {
+        const auto mutation = inventory_domain_service_.addItemsAtomically(player, item_grants);
+        if (mutation.accepted != requested_item_count || mutation.rejected != 0) {
+            spdlog::warn("QuestTurnInService: 任务 '{}' 的 reward item 批量写回失败: requested={}, accepted={}, rejected={}",
+                         quest.id_,
+                         requested_item_count,
+                         mutation.accepted,
+                         mutation.rejected);
+            return makeFailureResult(QuestTurnInStatus::InventoryFull, kInventoryFullMessage);
         }
     }
 
@@ -92,28 +116,8 @@ QuestTurnInResult QuestTurnInService::turnIn(entt::entity player,
         wallet->gold_ += quest.rewards_.gold_;
         result.gold_reward = quest.rewards_.gold_;
     }
-
-    result.item_rewards.reserve(quest.rewards_.items_.size());
-    for (const auto& reward_item : quest.rewards_.items_) {
-        result.item_rewards.push_back(QuestTurnInItemReward{
-            .item_id = reward_item.item_id_,
-            .item_name = resolveRewardItemName(reward_item, item_catalog_),
-            .count = reward_item.count_});
-
-        const auto mutation = inventory_domain_service_.addItem(player, reward_item.item_id_hash_, reward_item.count_);
-        if (mutation.accepted != reward_item.count_ || mutation.rejected != 0) {
-            spdlog::warn("QuestTurnInService: 任务 '{}' 的 reward item '{}' 写回结果异常: accepted={}, rejected={}",
-                         quest.id_,
-                         reward_item.item_id_,
-                         mutation.accepted,
-                         mutation.rejected);
-        }
-    }
-
-    if (!game::domain::quest_log_ops::completeQuest(quest_log, quest.id_)) {
-        spdlog::warn("QuestTurnInService: 任务 '{}' 未能完成 active -> completed 状态迁移。", quest.id_);
-    }
-    game::domain::quest_log_ops::eraseQuestProgress(quest_log, quest.id_);
+    result.item_rewards = std::move(item_rewards);
+    quest_log = std::move(next_quest_log);
 
     return result;
 }

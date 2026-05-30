@@ -4,10 +4,12 @@
 #include "appearance_test_fixture_utils.h"
 #include "game/battle/battle_unit_factory.h"
 #include "game/component/quest_log_component.h"
+#include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/domain/quest_battle_progress_resolver.h"
 #include "game/domain/quest_log_ops.h"
+#include "game/runtime/rpg_catalog_loader.h"
 
 #include <filesystem>
 #include <optional>
@@ -120,15 +122,25 @@ namespace {
     return catalog;
 }
 
+[[nodiscard]] game::data::ItemCatalog loadProjectItemCatalog() {
+    const auto item_path = (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/item_config.json").lexically_normal();
+    game::data::ItemCatalog catalog;
+    EXPECT_TRUE(catalog.loadItemConfig(item_path.string()));
+    return catalog;
+}
+
 [[nodiscard]] game::data::RpgCatalog loadProjectRpgCatalog() {
     const auto rpg_root = (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg").lexically_normal();
+    const auto item_catalog = loadProjectItemCatalog();
     game::data::RpgCatalog catalog;
-    EXPECT_TRUE(catalog.loadClasses((rpg_root / "classes.json").string()));
-    EXPECT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
-    EXPECT_TRUE(catalog.loadSkills((rpg_root / "skills.json").string()));
-    EXPECT_TRUE(catalog.loadStates((rpg_root / "states.json").string()));
-    EXPECT_TRUE(catalog.loadEnemies((rpg_root / "enemies.json").string()));
-    EXPECT_TRUE(catalog.loadTroops((rpg_root / "troops.json").string()));
+    std::string load_error{};
+    EXPECT_TRUE(game::runtime::loadRpgCatalogFromManifest(
+        catalog,
+        game::runtime::RpgCatalogLoadOptions{
+            .manifest_path = (rpg_root / "manifest.json").string(),
+            .root_path = rpg_root.string(),
+            .item_catalog = &item_catalog},
+        load_error)) << load_error;
     return catalog;
 }
 

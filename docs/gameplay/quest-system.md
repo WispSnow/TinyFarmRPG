@@ -192,19 +192,18 @@ QuestTurnInResult turnIn(entt::entity player,
 执行顺序：
 
 1. 检查 `isQuestReadyToTurnIn()`，未满足则返回 `NotReady`
-2. 对奖励做 preflight：
-   检查是否缺少 `PlayerWalletComponent` / `InventoryComponent`
-   若存在 item reward，则先复制一份背包槽位并执行 `simulateAdd()`，确认整笔奖励都能放下
-3. 若 preflight 通过，再写入 `PlayerWalletComponent`
-4. 若存在 item reward，通过 `InventoryDomainService::addItem()` 写入
-5. 调用 `completeQuest()` → 移出 active，加入 completed
-6. 调用 `eraseQuestProgress()` → 清理 progress map
-7. 返回 `QuestTurnInResult{status, gold_reward, item_rewards}`
+2. 检查是否缺少 `PlayerWalletComponent` / `InventoryComponent`，缺组件直接失败且不改状态
+3. 复制一份 `QuestLogComponent` 到 `next_quest_log`，在副本上调用 `completeQuest()` 与 `eraseQuestProgress()`
+4. 把 reward items 转成 `InventoryItemGrant` 列表
+5. 若存在 item reward，通过 `InventoryDomainService::addItemsAtomically()` 在同一份背包槽位副本中模拟整批奖励，并在全部可提交时一次性替换真实槽位
+6. 背包批量提交成功后，再写入 `PlayerWalletComponent`
+7. 用 `next_quest_log` 替换真实 `quest_log`
+8. 返回 `QuestTurnInResult{status, gold_reward, item_rewards}`
 
 当前约束：
 
-- 背包满、缺少钱包、缺少背包组件这类 **preflight 失败** 会直接返回 `failure_message`
-- 若 preflight 通过后仍出现异常的部分写入，当前实现会写 `warn log`，但不会回滚已完成的交付
+- 背包满、缺少钱包、缺少背包组件、reward item 无法整批入包都会直接返回 `failure_message`
+- 物品奖励、金币奖励和任务状态迁移按同一笔交易处理：任一 item reward 不存在或放不下时，真实背包、钱包和 quest log 都不变
 
 ## 交互流程
 

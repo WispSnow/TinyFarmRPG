@@ -6,6 +6,7 @@
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 
+#include <span>
 #include <vector>
 
 namespace game::data {
@@ -19,6 +20,11 @@ struct InventoryMutationResult {
     std::vector<game::defs::InventorySlotUpdate> changed_slots{};
     int accepted{0};
     int rejected{0};
+};
+
+struct InventoryItemGrant {
+    entt::id_type item_id{entt::null};
+    int count{0};
 };
 
 class InventoryDomainService final {
@@ -35,6 +41,8 @@ public:
                                                   entt::id_type item_id,
                                                   int count,
                                                   int preferred_slot_index = -1);
+    [[nodiscard]] InventoryMutationResult addItemsAtomically(entt::entity target,
+                                                             std::span<const InventoryItemGrant> grants);
 
     [[nodiscard]] InventoryMutationResult removeItem(entt::entity target,
                                                      entt::id_type item_id,
