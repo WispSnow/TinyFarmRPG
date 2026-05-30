@@ -9,6 +9,7 @@
 | 上一期 TinyFarm 规模 | 接近 5 万行级别 | 对 `lecture_plans/ref/TinyFarm/src` 与 `lecture_plans/ref/TinyFarm/tests` 下 C++ 文件做 `wc -l`，结果为 48132 行 | L00 / L01 | 2026-05-30 | 统计口径为 C++ 源码与测试行数，含空行与注释 |
 | TinyFarmRPG 技术栈版本 | C++20、RmlUi 6.2、Lua 5.4.8、Sol2 3.5.0、Effekseer 1.7.3.0、FreeType 2.14.1、HarfBuzz 12.1.0 等 | `docs/overview.md` 技术栈；`external/` 目录；`cmake/*Dependencies.cmake` | L00 / L03 / L07 / L22 / L23 | 2026-05-30 | L00 技术栈速览以 `docs/overview.md` 为主口径 |
 | RmlUi 资源加载边界 | RmlUi 字体由 `GameApp::initRmlUi()` 直接调用 `Rml::LoadFontFace` 注册字体文件；ImGui 也加载 `assets/fonts/VonwaonBitmap-16px.ttf`。RmlUi 图片由 `RenderInterface_GL3_STB::LoadTexture()` 通过 RmlUi `FileInterface` 读文件并用 `stb_image` 解码，或通过 `generated://` 查询 `RmlGeneratedImageRegistry`；不共享 `ResourceManager / TextureManager` 的纹理缓存 | `src/engine/core/game_app.cpp`；`src/engine/render/opengl/imgui_layer.cpp`；`src/engine/ui/rmlui/render_interface_gl3_stb.cpp`；`src/engine/ui/rmlui/rml_generated_image_registry.cpp` | L03 / L14 / L22 | 2026-05-30 | L03 讲义应写成“共享字体文件 / stb 解码栈”，避免写成“共享 ResourceManager 缓存” |
+| Scene 栈与 RmlUi 可见性调度 | `SceneManager::update()` / `fixedUpdate()` 只调用栈顶 Scene；`prepareUi()` / `render()` 遍历整栈，栈顶使用当前 interpolation alpha，底层覆盖场景使用 `1.0f` 保持冻结快照；`syncRmlActiveScene()` 从栈顶向下找第一个 `HideUnderlyingSceneUi`，并把该 Scene 及其上方 Scene 的 owner 传给 `RmlUiRuntime::setVisibleSceneOwners()` | `src/engine/scene/scene_manager.cpp`；`src/engine/ui/rmlui/rml_ui_runtime.cpp`；`tests/engine/scene/render_interpolation_pipeline_test.cpp` | L04 / L05 / L15 / L25 | 2026-05-30 | L04 讲义需避免写成 `prepareUi()` 仅栈顶；`GameMode` 是否驱动底层 scheduler 另在 L25 复核 |
 | 上一期 TinyFarm `GameScene` system 数量 | 三十多个 system | `lecture_plans/ref/TinyFarm/src/game/scene/game_scene.h/.cpp` 中 system 字段与 `std::make_unique<...System>` 计数均为 33 | L01 | 2026-05-30 | 用于替代过时的“28 个 system”表述 |
 | TinyFarmRPG `GameSystemBundle` system / bridge 数量 | 40+ system / bridge 实例 | `src/game/runtime/system_bundle.h` 中 `GameSystemBundle` 的 `std::unique_ptr` 字段计数为 45 | L01 / L25 | 2026-05-30 | 含 debug-only 字段和可选 `ScriptEventBridge` / `VfxBridgeSystem` |
 | `RuntimeServiceFactory::assemble` 失败硬停点 | 当前有 13 处 `return false` | `src/game/runtime/runtime_service_factory.cpp` 中 `RuntimeServiceFactory::assemble` 函数体计数 | L01 | 2026-05-30 | 讲义正文不写死数量，只引导学生观察前置失败点 |
@@ -29,6 +30,9 @@
 | L02 | 背包排序快捷栏 remap | `src/game/defs/events_inventory.h` / `src/game/system/hotbar_system.cpp` | `InventoryChanged::slot_remap_old_to_new` / `HotbarSystem::onInventoryChanged()` | 节选 | 2026-05-30 | 排序事件由 domain 发 full sync + old-to-new 映射，HotbarSystem 订阅后更新快捷栏映射 |
 | L03 | RmlUi runtime 文档生命周期 | `src/engine/ui/rmlui/rml_ui_runtime.cpp` | `loadDocument()` / `reloadDocument()` / `unloadDocument()` / `unloadDocumentsByOwner()` | 节选 | 2026-05-30 | `reloadDocument()` 先加载替换文档，成功后继承 owner / 可见性 / 输入模式 / 字号 class，再关闭旧文档；失败时保留旧文档 |
 | L03 | RmlUi Debug Panel 文档调试入口 | `src/engine/debug/panels/rmlui_debug_panel.cpp` | `drawFileBrowser()` / `drawDebugDocuments()` / `loadDocument()` / `reloadDebugDocument()` | 核心形态 | 2026-05-30 | Debug Panel 可加载、隐藏、Reload、卸载 `ui/rmlui` 下的调试文档；Reload 使用 runtime 的安全 reload 接口并更新面板持有的 document 指针 |
+| L04 | Scene 栈调度与 RmlUi owner 可见性 | `src/engine/scene/scene_manager.cpp` | `update()` / `fixedUpdate()` / `prepareUi()` / `render()` / `syncRmlActiveScene()` | 核心形态 | 2026-05-30 | `prepareUi()` / `render()` 遍历全栈；底层 Scene 用 `1.0f` alpha；可见 owner 列表由第一个 `HideUnderlyingSceneUi` 决定 |
+| L04 | GameScene HUD 组合入口 | `src/game/scene/game_scene.cpp` / `src/game/ui/game_scene_ui_controller.cpp` | `GameScene::initUI()` / `GameSceneUiController::init()` | 核心形态 | 2026-05-30 | `GameScene` 直接持有 `GameSceneUiController`、`GameOverlay`、`GameInputPromptOverlay`；`GameSceneUiController` 持有 hotbar、dialogue、floating notice、tooltip、time clock、screen fade |
+| L04 | 覆盖式 Scene 输入与可见性策略 | `src/game/scene/*_scene.cpp` | `init()` / `clean()` / `uiCoverage()` | 核心形态 | 2026-05-30 | Pause / Inventory / SaveSlot / Rest 使用默认 Overlay；Shop / QuestOffer / RecruitOffer / DialogueChoice / AppearanceCustomize / Battle 返回 `HideUnderlyingSceneUi`；相关源码测试已锁定 |
 
 ## 跨讲承诺
 
@@ -36,7 +40,7 @@
 | --- | --- | --- | --- | --- | --- |
 | L00 | 下一讲展开 `GameRuntimeAssembler`、`RuntimeServiceFactory`、`SystemFactory` 声明式装配 | L01 | L01 关键链路与“装配模式”小节 | 已兑现 | L01 已覆盖三个角色与 `GameSystemBundle` |
 | L00 | RmlUi 基础为前置必修，主线 L03 只讲项目接入 | L03 | L03 开头说明只回答“为什么要换、接入点在哪里”；阅读清单外链 `learn/lectures/rmlui/syllabus.md`；正文不展开 RML/RCSS 语法基础 | 已兑现 | L03 聚焦 runtime / controller / data bridge / render interface / 资源与 Debug Panel 接入 |
-| L00 | RmlUi L07-L15 与 L04 / L18 等讲次穿插关联 | L04 / L18 | 待填写 | 待查 | 与大纲先修分布保持一致 |
+| L00 | RmlUi L07-L15 与 L04 / L18 等讲次穿插关联 | L04 / L18 | L04 阅读清单关联 RmlUi L09 spritesheet；L18 待复核 | 部分兑现 | 与大纲先修分布保持一致 |
 | L00 | 多线程子教程在 L21 / L24 / L25 指明具体章节 | L21 / L24 / L25 | 待填写 | 待查 | 后续工程化讲次修订时确认 |
 | L01 | domain service 的 preflight / 一致写入 / 反馈事件详深留到 L02 与 L10 | L02 / L10 | L02 “preflight → 一致写入 → event”小节；L10 待任务交付深讲 | 部分兑现 | L02 已建立领域服务共同模式；L10 继续以任务交付展开 |
 | L01 | Lua 内容层与 C++ 绑定详深留到 L06-L08 | L06 / L07 / L08 | 待填写 | 待查 | 后续确认 script 层边界一致 |

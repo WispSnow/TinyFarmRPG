@@ -109,6 +109,48 @@ void expectSceneContextHooks(std::string_view relative_path, std::string_view co
         << source_path;
 }
 
+void expectDefaultUiCoverage(std::string_view relative_header_path,
+                             std::string_view relative_source_path,
+                             std::string_view class_name) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_header_path).lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_source_path).lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_EQ(header.find("uiCoverage() const override"), std::string::npos) << header_path;
+    EXPECT_EQ(source.find(std::string{class_name} + "::uiCoverage()"), std::string::npos) << source_path;
+}
+
+void expectHideUnderlyingSceneUi(std::string_view relative_header_path,
+                                 std::string_view relative_source_path,
+                                 std::string_view class_name) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_header_path).lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / relative_source_path).lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("uiCoverage() const override"), std::string::npos) << header_path;
+    const std::string function_name = std::string{class_name} + "::uiCoverage()";
+    const std::size_t function_pos = source.find(function_name);
+    ASSERT_NE(function_pos, std::string::npos) << source_path;
+    EXPECT_NE(source.find("SceneUiCoverage::HideUnderlyingSceneUi", function_pos), std::string::npos)
+        << source_path;
+}
+
 } // namespace
 
 namespace game::scene {
@@ -357,9 +399,58 @@ TEST(InputContextSceneSourceHookTest, ModalAndGameplayScenesPairPushAndPopHooks)
     expectSceneContextHooks("src/game/scene/game_scene.cpp", "Gameplay");
     expectSceneContextHooks("src/game/scene/pause_menu_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/save_slot_select_scene.cpp", "Menu");
+    expectSceneContextHooks("src/game/scene/inventory_menu_scene.cpp", "Menu");
+    expectSceneContextHooks("src/game/scene/shop_menu_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/rest_dialog_scene.cpp", "Dialogue");
     expectSceneContextHooks("src/game/scene/quest_offer_scene.cpp", "Dialogue");
+    expectSceneContextHooks("src/game/scene/recruit_offer_scene.cpp", "Dialogue");
+    expectSceneContextHooks("src/game/scene/dialogue_choice_scene.cpp", "Dialogue");
+    expectSceneContextHooks("src/game/scene/appearance_customize_scene.cpp", "Menu");
     expectSceneContextHooks("src/game/scene/battle_scene.cpp", "Battle");
+}
+
+TEST(InputContextSceneSourceHookTest, L04UiCoveragePoliciesMatchCurrentSceneResponsibilities) {
+    expectDefaultUiCoverage(
+        "src/game/scene/pause_menu_scene.h",
+        "src/game/scene/pause_menu_scene.cpp",
+        "PauseMenuScene");
+    expectDefaultUiCoverage(
+        "src/game/scene/inventory_menu_scene.h",
+        "src/game/scene/inventory_menu_scene.cpp",
+        "InventoryMenuScene");
+    expectDefaultUiCoverage(
+        "src/game/scene/save_slot_select_scene.h",
+        "src/game/scene/save_slot_select_scene.cpp",
+        "SaveSlotSelectScene");
+    expectDefaultUiCoverage(
+        "src/game/scene/rest_dialog_scene.h",
+        "src/game/scene/rest_dialog_scene.cpp",
+        "RestDialogScene");
+
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/shop_menu_scene.h",
+        "src/game/scene/shop_menu_scene.cpp",
+        "ShopMenuScene");
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/quest_offer_scene.h",
+        "src/game/scene/quest_offer_scene.cpp",
+        "QuestOfferScene");
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/recruit_offer_scene.h",
+        "src/game/scene/recruit_offer_scene.cpp",
+        "RecruitOfferScene");
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/dialogue_choice_scene.h",
+        "src/game/scene/dialogue_choice_scene.cpp",
+        "DialogueChoiceScene");
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/appearance_customize_scene.h",
+        "src/game/scene/appearance_customize_scene.cpp",
+        "AppearanceCustomizeScene");
+    expectHideUnderlyingSceneUi(
+        "src/game/scene/battle_scene.h",
+        "src/game/scene/battle_scene.cpp",
+        "BattleScene");
 }
 
 TEST(InputContextSceneSourceHookTest, MenuScenesUseMenuCancelInsteadOfPause) {

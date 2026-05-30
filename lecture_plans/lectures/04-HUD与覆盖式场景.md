@@ -4,8 +4,8 @@ L03 我们把 RmlUi 接入到了项目里。这一讲回答一个紧接着的问
 
 打开 TinyFarmRPG 玩一会儿，你会看到至少两种截然不同的 UI 形态：
 
-- **常驻 HUD**：左下角的快捷栏、右上角的时钟、底部对话气泡、屏幕中央的提示文字——它们**始终都在**，玩家做什么都不打断。
-- **覆盖式弹出**：按 ESC 出来的暂停菜单、按 I 出来的背包、走到商人面前打开的商店——它们**会盖住游戏**，关上之后世界才继续。
+- **常驻 HUD**：左下角的快捷栏、右上角的时钟、底部对话气泡、屏幕中央的提示文字——它们随 `GameScene` 入场创建，不通过 Scene push/pop 来开关。
+- **覆盖式弹出**：按 ESC 出来的暂停菜单、按 I 出来的背包、走到商人面前打开的商店——它们压在 `GameScene` 上方，通常会冻结底层世界逻辑。
 
 这两种形态用了**两套完全不同的机制**：HUD 是 `GameScene` 内部组合的多份独立 RmlUi 文档；覆盖式弹出是 `SceneManager` 栈上的独立 `Scene`。本讲讲清楚它们的边界、什么时候用哪种，以及它们怎么协作。
 
@@ -29,7 +29,8 @@ L03 我们把 RmlUi 接入到了项目里。这一讲回答一个紧接着的问
 1. 注意 HUD：快捷栏、时钟、提示条都在屏幕边缘显示。
 2. 按 `Esc` 打开暂停菜单——**注意 HUD 还在**，暂停菜单半透明叠在上面。
 3. 按 `I` 打开背包菜单（或按对应键）——**HUD 依然在**。
-4. 找一个剧情战入口让战斗开始——**HUD 整套消失了**，只剩战斗界面。
+4. 找商人打开商店——**底层 HUD 被隐藏**，商店界面独占视觉焦点。
+5. 找一个剧情战入口让战斗开始——**HUD 整套消失了**，只剩战斗界面。
 
 这就是本讲要解释的现象：**有的覆盖式场景会保留底层 HUD，有的会隐藏**。背后是 `uiCoverage()` 这个一行接口的策略决定。
 
@@ -39,12 +40,15 @@ L03 我们把 RmlUi 接入到了项目里。这一讲回答一个紧接着的问
 
 ```mermaid
 flowchart TB
-    SM["SceneManager 栈顶<br/>独占 update / fixedUpdate / 输入"]
+    SM["SceneManager<br/>update / fixedUpdate 只给栈顶"]
+    RML["RmlUiRuntime<br/>按 owner 控制可见与交互"]
     subgraph STK["Scene 栈"]
         GS["GameScene<br/>常驻底层"]
         IM["InventoryMenuScene<br/>覆盖层"]
     end
-    GS -.持有.-> HUD["GameSceneUiController<br/>多份 RmlUi HUD 文档"]
+    GS -.持有.-> HUD["GameSceneUiController<br/>HUD 组合控制器"]
+    GS -.持有.-> GO["GameOverlay<br/>game_overlay.rml"]
+    GS -.持有.-> PROMPT["GameInputPromptOverlay<br/>game_input_prompt_overlay.rml"]
     HUD --> HotbarDoc["hotbar.rml"]
     HUD --> ClockDoc["time_clock.rml"]
     HUD --> DialogDoc["dialogue_box.rml"]
@@ -52,13 +56,15 @@ flowchart TB
     HUD --> TipDoc["item_tooltip.rml"]
     HUD --> FadeDoc["screen_fade.rml"]
     IM -.持有.-> MenuDoc["inventory_menu.rml"]
-    SM -.- IM
+    SM --> IM
+    SM --> RML
 ```
 
 关键约定：
 
 - **栈顶 Scene 独占 `update` / `fixedUpdate` / 输入**——底层 `GameScene` 在打开覆盖式菜单时被"冻结"。
-- **HUD 文档归属底层 `GameScene`**，它的"显隐"由 `uiCoverage()` 决定，**不**随栈顶 Scene 的生命周期销毁。
+- **`prepareUi` / `render` 会遍历整栈**——栈顶用当前插值 alpha，底层 Scene 用 `1.0f` 保持冻结快照。
+- **HUD 文档归属底层 `GameScene`**，它们是否可见由 `uiCoverage()` 通过 `owner_scene_id` 批量决定，**不**随栈顶 Scene 的生命周期销毁。
 - **覆盖式 Scene 自己持有自己的 RmlUi 文档**，进入时 `load`、退出时 `unload`。
 
 ---
@@ -67,7 +73,21 @@ flowchart TB
 
 ### 1. HUD 是 "Scene 内部的多份文档"，不是 Scene
 
-打开 [`src/game/ui/game_scene_ui_controller.h`](../../src/game/ui/game_scene_ui_controller.h)：
+先看 [`src/game/scene/game_scene.h`](../../src/game/scene/game_scene.h) 里的成员：
+
+```cpp
+std::unique_ptr<game::ui::GameSceneUiController> ui_controller_{};
+std::unique_ptr<game::ui::GameOverlay> game_overlay_{};
+std::unique_ptr<game::ui::GameInputPromptOverlay> input_prompt_overlay_{};
+```
+
+`GameScene` 直接持有三块 UI 组合：
+
+- `GameSceneUiController`：负责 gameplay HUD 的主要组合。
+- `GameOverlay`：右上角菜单按钮，对应 `game_overlay.rml`。
+- `GameInputPromptOverlay`：输入提示条，对应 `game_input_prompt_overlay.rml`。
+
+再打开 [`src/game/ui/game_scene_ui_controller.h`](../../src/game/ui/game_scene_ui_controller.h)：
 
 ```cpp
 class GameSceneUiController final {
@@ -78,15 +98,16 @@ class GameSceneUiController final {
     std::unique_ptr<DialoguePresentationController> dialogue_controller_;
     std::array<std::unique_ptr<FloatingNoticeView>, 2> floating_notices_;
     std::unique_ptr<ItemTooltipUI> item_tooltip_ui_;
+    std::unique_ptr<PlayerPortraitService> player_portrait_service_;
     std::unique_ptr<TimeClockHud> time_clock_hud_;
     std::unique_ptr<RmlScreenFade> rml_screen_fade_;
     // ...
 };
 ```
 
-**`GameSceneUiController` 是 `GameScene` 的成员**，里面挂了 **7 个独立的 HUD 控件**——每个控件**持有一份**自己的 RmlUi 文档，全部用同一个 `owner_scene_id`（`GameScene::instanceId()`）。
+**`GameSceneUiController` 是 `GameScene` 的成员**，里面挂了多份彼此独立的 HUD 控件。文档型控件都使用同一个 `owner_scene_id`（`GameScene::instanceId()`）；`PlayerPortraitService` 则把玩家头像注册成 `generated://player-portrait/...` 图片，供 HUD、背包、战斗等 UI 引用。
 
-关键点：**HUD 不是单独的 Scene**。它们就是"`GameScene` 入场时一次性 `load` 出来的 7 份文档"。退场时由 `RmlUiRuntime::unloadDocumentsByOwner(scene_id)` 一次性回收，完全不需要每个 HUD 写自己的 cleanup。
+关键点：**HUD 不是单独的 Scene**。它们是 `GameScene::initUI()` 期间创建的一组 RmlUi 文档和服务。退场时 `GameScene::clean()` 先销毁这些对象，基类 `Scene::clean()` 还会调用 `RmlUiRuntime::unloadDocumentsByOwner(scene_id)` 兜底回收同 owner 的文档。
 
 > **回顾 L03 的 `owner_scene_id`**：它不是"单文档槽位"而是"归属分组标签"——HUD 这种"一个 Scene 同时挂多份"的形态，正是 `owner_scene_id` 设计的核心用途。
 
@@ -101,8 +122,10 @@ class GameSceneUiController final {
 | [`dialogue_box.rml`](../../ui/rmlui/hud/dialogue_box.rml) | `DialogueBoxView` + `DialoguePresentationController` | NPC 对白底部固定栏，逐字打字效果 |
 | [`floating_notice.rml`](../../ui/rmlui/hud/floating_notice.rml) | `FloatingNoticeView` ×2 | 世界锚点浮动提示（"已拾取"、"任务进度+1"等），同时挂 2 份避免冲突 |
 | [`item_tooltip.rml`](../../ui/rmlui/hud/item_tooltip.rml) | `ItemTooltipUI` | 悬停物品时的描述气泡，定位跟随鼠标 |
-| [`game_input_prompt_overlay.rml`](../../ui/rmlui/hud/game_input_prompt_overlay.rml) | overlay prompt bar（在 controller 内直接管） | "[E] 互动 [Esc] 暂停"这类操作提示条 |
+| [`game_overlay.rml`](../../ui/rmlui/hud/game_overlay.rml) | `GameOverlay`（`GameScene` 直接持有） | 右上角菜单按钮 |
+| [`game_input_prompt_overlay.rml`](../../ui/rmlui/hud/game_input_prompt_overlay.rml) | `GameInputPromptOverlay`（`GameScene` 直接持有） | "[E] 互动 [Esc] 暂停"这类操作提示条 |
 | [`overlay/screen_fade.rml`](../../ui/rmlui/overlay/screen_fade.rml) | `RmlScreenFade` | 切图时的淡入淡出黑屏 |
+| `generated://player-portrait/...` | `PlayerPortraitService` | 玩家头像运行时生成图，供多个 UI 消费 |
 
 **这些控件全部在 `GameScene::initUI()` 里一次性创建**，它们之间没有从属关系——`HotbarUI` 不知道 `TimeClockHud` 的存在。彼此独立的好处：哪个出了 bug 单独排查，加新 HUD 只是再 `make_unique` 一个。
 
@@ -123,7 +146,7 @@ class GameSceneUiController final {
 | `AppearanceCustomizeScene` | [`appearance_customize.rml`](../../ui/rmlui/scenes/appearance_customize.rml) | 衣柜互动换装 |
 | `BattleScene` | [`battle.rml`](../../ui/rmlui/scenes/battle.rml) | 遭遇敌人 / 剧情战入口 |
 
-**每个覆盖式 Scene 都是一个完整的 `engine::scene::Scene` 子类**——有自己的 `init` / `update` / `clean`、有自己的 `entt::registry`、有自己的 `RmlDocumentController`、退出时通过 `requestPopScene()` 让 `SceneManager` 把自己弹掉。
+**每个覆盖式 Scene 都是一个完整的 `engine::scene::Scene` 子类**——有自己的 `init` / `update` / `clean`、有自己的 `RmlDocumentController`，退出时通过 `requestPopScene()` 让 `SceneManager` 把自己弹掉。它们也继承了 Scene 自带的 `registry_`；需要读写底层玩法状态时，则会显式拿到 `GameScene` 注入的 registry / service 非拥有引用，而不是假装自己就是主世界。
 
 ### 4. `uiCoverage()`：栈顶决定底层 HUD 是否可见
 
@@ -142,6 +165,8 @@ enum class SceneUiCoverage : std::uint8_t {
 | --- | --- | --- |
 | `PauseMenuScene` | `Overlay`（默认） | 暂停菜单只是"叠加一层菜单"，玩家应该能看到自己暂停时的世界画面与 HUD |
 | `InventoryMenuScene` | `Overlay`（默认） | 玩家打开背包时，仍能瞥见时钟、对话条等 |
+| `SaveSlotSelectScene` / `RestDialogScene` | `Overlay`（默认） | 保存与休息确认体量较小，保留底层 UI 能帮助玩家保持上下文 |
+| `ShopMenuScene` | `HideUnderlyingSceneUi` | 商店是全屏交易界面，当前实现会隐藏底层 HUD |
 | `BattleScene` | `HideUnderlyingSceneUi` | 战斗界面要独占视觉焦点，HUD（hotbar / clock / 浮动提示）必须隐藏 |
 | `DialogueChoiceScene` | `HideUnderlyingSceneUi` | 选项弹窗本身有 modal 背板，HUD 露出来会乱 |
 | `QuestOfferScene` / `RecruitOfferScene` | `HideUnderlyingSceneUi` | 同上，进入时是全屏 modal 风格 |
@@ -160,7 +185,7 @@ for (size_t i = stack.size(); i > 0; --i) {
 }
 ```
 
-**`RmlUiRuntime::setVisibleSceneOwners()` 接收这个列表后，按 `owner_scene_id` 批量切换文档可见性**。HUD 不需要被销毁——只是被设为 invisible，开战后回到主世界再变可见。**显隐成本 ≈ 一次 `display` 属性切换**，远低于"销毁文档 / 重建文档"。
+**`RmlUiRuntime::setVisibleSceneOwners()` 接收这个列表后，按 `owner_scene_id` 批量切换文档可见性**。HUD 不需要被销毁——只是对文档调用 `Show()` / `Hide()`，开战或打开商店后回到主世界再变可见。**显隐成本**远低于"销毁文档 / 重建文档"。
 
 ### 5. 栈顶独占 update，底层"冻结"
 
@@ -170,13 +195,14 @@ for (size_t i = stack.size(); i > 0; --i) {
 | --- | --- |
 | `fixedUpdate()` | 仅栈顶 |
 | `update()` | 仅栈顶 |
-| `prepareUi()` | 仅栈顶（被覆盖场景传入 `alpha=1.0` 保证 retained UI 不重复插值） |
-| `render()` | 整栈（从底到顶叠加） |
+| `prepareUi()` | 整栈；栈顶用当前 alpha，底层用 `1.0f` |
+| `render()` | 整栈；栈顶用当前 alpha，底层用 `1.0f` |
 
 这条规则的**直接后果**：
 
-- 玩家按 ESC 打开 `PauseMenuScene`，`GameScene::update` **停止被调用**——农场里的作物不再生长、NPC 不再走动、时间不再前进。
-- 暂停菜单本身可以正常 update（动画、按钮 hover）。
+- 玩家按 ESC 打开 `PauseMenuScene`，`GameScene::update` / `fixedUpdate` **停止被调用**——农场里的作物不再生长、NPC 不再走动，`GameSceneUiController::update()` 里的时钟、tooltip、对话逐字表现也不再推进。
+- 暂停菜单本身可以正常 update（按钮 hover、菜单状态、自己的 RmlUi 文档）。
+- `GameScene::prepareUi(1.0f)` 仍会在底层执行，用冻结快照刷新 retained UI 的世界锚点位置；`GameScene::render(1.0f)` 也仍会画出底层世界。
 - 关闭暂停菜单后 `GameScene` 重新成为栈顶，update 立刻恢复，无缝衔接。
 
 **这就是 Scene 栈相对于"显隐文档"的核心价值**——它**冻结**底层逻辑，而不仅仅是隐藏画面。
@@ -187,9 +213,9 @@ for (size_t i = stack.size(); i > 0; --i) {
 
 | 维度 | HUD 显隐切换 | Scene push/pop |
 | --- | --- | --- |
-| **生命周期成本** | 极低（一次 `display` 切换） | 高（init / clean、文档 load / unload、registry 隔离） |
+| **生命周期成本** | 极低（一次显隐切换） | 高（init / clean、文档 load / unload、registry 隔离） |
 | **底层是否冻结** | 否（底层 Scene 继续 update） | 是（栈顶独占 update） |
-| **状态隔离** | 共享 `GameScene::registry` | 独立 `registry`，独立 `RmlDocumentController` |
+| **状态隔离** | 共享 `GameScene::registry` | 独立 Scene 生命周期；必要时显式注入底层 registry / service |
 | **输入独占** | 否（仍是 `Gameplay` context） | 是（通常 `pushContext(Menu)`） |
 | **典型场景** | hotbar、tooltip、对话气泡、提示条 | 暂停菜单、背包、商店、战斗 |
 
@@ -210,12 +236,12 @@ flowchart TD
 
 - ✅ **Tooltip 用 HUD**：玩家鼠标过物品图标的瞬间就要显示，关掉也要立刻——频率高、世界不该停。
 - ✅ **背包菜单用 Scene**：玩家打开后会停下来看半分钟、做多步操作（拖、换装、丢弃）——必须冻结世界、必须独占输入。
-- ✅ **对话气泡用 HUD**：NPC 说话的时候玩家还能走动看四周（虽然实际操作受限，但表现层不停）。
-- ✅ **对话**选项**`DialogueChoiceScene` 用 Scene**：选项是确认链、有 `:focus` 焦点管理、必须独占输入——所以独立成 Scene。**这是为什么对话气泡（展示）与对话选项（交互）分了两套机制**。
+- ✅ **对话气泡用 HUD**：它是 gameplay 过程中的展示层，跟 hotbar、tooltip 一样属于主世界 HUD。
+- ✅ **对话选项 `DialogueChoiceScene` 用 Scene**：选项是确认链、有 `:focus` 焦点管理、必须独占输入——所以独立成 Scene。**这是为什么对话气泡（展示）与对话选项（交互）分了两套机制**。
 
 ### 7. 覆盖式 Scene 怎么"写回"主世界
 
-覆盖式 Scene 不能直接修改主世界的状态——它们的 `registry` 是独立的。**唯一通道是 `dispatcher` 事件**。
+覆盖式 Scene 不应该在 UI 回调里散落修改主世界组件。当前项目采用的做法是：**需要读取或提交 gameplay 状态时，由 `GameScene` 显式注入底层 registry / domain service；真正写入仍收敛到 domain service 或事件处理器**。
 
 典型流程（以"商店买物品"为例）：
 
@@ -223,34 +249,40 @@ flowchart TD
 sequenceDiagram
     participant U as 玩家
     participant SMS as ShopMenuScene
-    participant DOM as ShopTransactionService<br/>（domain 层）
+    participant STS as ShopTransactionService
+    participant IDS as InventoryDomainService
     participant DISP as dispatcher
+    participant HS as HotbarSystem
     participant GS as GameScene<br/>（底层）
 
     U->>SMS: 点"购买"按钮
-    SMS->>DOM: commitBuy(player, item_id, count)
-    DOM->>DOM: 扣金币 + 加物品（原子写入）
-    DOM->>DISP: trigger InventoryChangedEvent
-    DOM->>DISP: trigger WalletChangedEvent
-    DISP-->>GS: 底层 HotbarUI 订阅<br/>自动刷新格子（如果该物品在快捷栏）
-    SMS-->>SMS: 自己也订阅 InventoryChangedEvent<br/>刷新"已拥有数量"
+    SMS->>STS: commitBuy(player, shop_id, item_id, count)
+    STS->>IDS: addItem(player, item_id, count)
+    IDS->>DISP: trigger InventoryChanged
+    DISP->>HS: onInventoryChanged
+    HS->>DISP: trigger HotbarChanged
+    DISP->>GS: GameScene::onHotbarChanged
+    STS->>STS: wallet.gold -= total_price
+    STS-->>SMS: ShopBuyResult<br/>final_gold_after
+    SMS->>SMS: markTradeListsDirty<br/>refreshAll
     Note over SMS: 玩家点"关闭"
     SMS->>DISP: requestPopScene()
 ```
 
 **几个关键约定**：
 
-- **覆盖式 Scene 不直接改 `GameScene::registry`** 中的组件——所有写入走 domain service。
+- **`ShopMenuScene` 持有底层 `game_registry_` 的非拥有引用**，但买卖提交不在 UI 层手写组件变更，而是调用 `ShopTransactionService::commitBuy/commitSell()`。
+- **当前没有 `WalletChangedEvent`**。金币由 `ShopTransactionService` 直接改 `PlayerWalletComponent`，商店界面随后 `refreshAll()` 重读钱包；背包变化则由 `InventoryDomainService` 发 `InventoryChanged`，再由 `HotbarSystem` 转成 `HotbarChanged`。
 - **关闭自己用 `requestPopScene()`**——内部 trigger `PopSceneEvent`，由 `SceneManager` 在 update 末尾统一落地，避免在 update 中途改栈。
-- **写回主世界全部走 event**——这条规则在 L02 已经讲过，覆盖式 Scene 是这条规则最大的受益者。
+- **跨 Scene 的写回要有单一入口**——要么是 domain service，要么是 dispatcher command/event。不要让 RmlUi 回调直接变成"到处找组件然后改字段"。
 
-### 8. `GameMode` 在背后协同（详深留 L25）
+### 8. `GameMode`：这讲只留接口线索
 
-你可能注意到 `BattleScene` 进入时不仅切了 UI 可见性、push 了输入上下文，**底层的 `GameScene::fixedUpdate` 行为也变了**——`SystemScheduler` 跳过了 farm / NPC wander / 一些 gameplay 系统，但保留了 audio / animation 等帧表现系统。
+代码里确实有 `game::runtime::GameMode` 和 `SystemScheduler::profileStages(GameMode)`，`GameScene::fixedUpdate()` 也会把 `game_mode_` 传给 scheduler。但在当前 L04 相关路径里，`BattleScene` / 菜单 push 并没有自动调用 `GameScene::setGameMode()`；`setGameMode()` 目前只是一个可用接口。
 
-这是 `GameMode`（Exploration / Battle / Menu）在背后协同。它由 `SystemScheduler` 在固定步开始前查询，决定**栈顶 Scene 是哪种模式 → 哪些系统该跑**。
+因此，本讲不要把"进入战斗时底层 `GameScene` scheduler 切到 Battle profile"当作已接通事实。当前覆盖式 UI 的冻结主要来自 `SceneManager` 的"只 update 栈顶"规则；`BattleScene` 自己是独立场景，并通过 `uiCoverage()` 隐藏底层 HUD。
 
-> 本讲只标记它的存在。**详深留 L25 SystemScheduler 与并行岛**——那一讲会把 `GameMode` / `SchedulerStage` / transition gate 完整收口。
+> `GameMode` 的完整模型留到 L25 SystemScheduler 与并行岛复核。那一讲再判断它是否应该和探索 / 战斗过渡建立更强的运行时联动。
 
 ---
 
@@ -260,9 +292,10 @@ sequenceDiagram
 | :---: | --- | --- |
 | 1 | [`docs/game/ui-scenes.md`](../../docs/game/ui-scenes.md) | UI 资源目录约定、覆盖式 Scene 列表、生命周期模板 |
 | 2 | [`docs/engine/scenes.md`](../../docs/engine/scenes.md) | Scene 栈调度规则、pending action、`uiCoverage` 语义 |
-| 3 | 上一期 [part-07 场景系统](../ref/OpenGL与迷你农场/07-场景系统.md) | Scene 栈的基础（push / pop / replace） |
-| 4 | 上一期 [part-29 物品栏与快捷栏](../ref/OpenGL与迷你农场/29-物品栏与快捷栏.md) | HotbarUI 作为常驻 HUD 的原型 |
-| 5 | **RmlUi 子教程**：[L09 spritesheet](../../learn/lectures/rmlui/) | HUD 大量用九宫格背景；提前过一遍语法 |
+| 3 | [`docs/game/game_scene.md`](../../docs/game/game_scene.md) | `GameScene` 装配顺序、`prepareUi(alpha)` 与常驻 HUD 边界 |
+| 4 | 上一期 [part-07 场景系统](../ref/OpenGL与迷你农场/07-场景系统.md) | Scene 栈的基础（push / pop / replace） |
+| 5 | 上一期 [part-29 物品栏与快捷栏](../ref/OpenGL与迷你农场/29-物品栏与快捷栏.md) | HotbarUI 作为常驻 HUD 的原型 |
+| 6 | **RmlUi 子教程**：[L09 spritesheet](../../learn/lectures/rmlui/) | HUD 大量用九宫格背景；提前过一遍语法 |
 
 ---
 
@@ -271,11 +304,13 @@ sequenceDiagram
 | 顺序 | 文件 | 你会看到什么 |
 | :---: | --- | --- |
 | 1 | [`src/engine/scene/scene.h`](../../src/engine/scene/scene.h)（`SceneUiCoverage` 与 `uiCoverage()`） | 两行 enum + 一个虚函数——整套覆盖策略的总开关 |
-| 2 | [`src/engine/scene/scene_manager.cpp`](../../src/engine/scene/scene_manager.cpp)（`syncRmlActiveScene`） | 从栈顶向下找第一个 `HideUnderlyingSceneUi`，决定 visible owners 列表 |
-| 3 | [`src/game/ui/game_scene_ui_controller.h`](../../src/game/ui/game_scene_ui_controller.h) | **HUD 全景**：一个 controller 持有 7 个独立 HUD 控件 |
-| 4 | [`src/game/scene/pause_menu_scene.cpp`](../../src/game/scene/pause_menu_scene.cpp) | 最简覆盖式 Scene 模板：attach controller → load → bind event → pop |
-| 5 | [`src/game/scene/inventory_menu_scene.cpp`](../../src/game/scene/inventory_menu_scene.cpp)（`pushContext(Menu)`） | 复杂覆盖式 Scene 样例：tab 架构 + 多 view model |
-| 6 | [`src/game/scene/dialogue_choice_scene.cpp`](../../src/game/scene/dialogue_choice_scene.cpp)（`uiCoverage` 返回 `HideUnderlyingSceneUi`） | 与对话气泡（HUD）形成对比的"对话选项独立 Scene"案例 |
+| 2 | [`src/engine/scene/scene_manager.cpp`](../../src/engine/scene/scene_manager.cpp)（`prepareUi` / `render` / `syncRmlActiveScene`） | 全栈 prepare/render、底层 `alpha=1.0f`、visible owners 列表 |
+| 3 | [`src/game/scene/game_scene.cpp`](../../src/game/scene/game_scene.cpp)（`initUI` / `update` / `prepareUi`） | `GameSceneUiController`、`GameOverlay`、`GameInputPromptOverlay` 的装配与刷新分工 |
+| 4 | [`src/game/ui/game_scene_ui_controller.h`](../../src/game/ui/game_scene_ui_controller.h) | **HUD 全景**：主要 HUD 控件、头像生成服务、screen fade |
+| 5 | [`src/game/scene/pause_menu_scene.cpp`](../../src/game/scene/pause_menu_scene.cpp) | 最简覆盖式 Scene 模板：attach controller → load → bind event → pop |
+| 6 | [`src/game/scene/inventory_menu_scene.cpp`](../../src/game/scene/inventory_menu_scene.cpp)（`pushContext(Menu)`） | 复杂覆盖式 Scene 样例：tab 架构 + 多 view model |
+| 7 | [`src/game/scene/shop_menu_scene.cpp`](../../src/game/scene/shop_menu_scene.cpp)（`uiCoverage` / `confirmBuy` / `confirmSell`） | 全屏商店、domain service 写回、交易后自刷新 |
+| 8 | [`src/game/scene/dialogue_choice_scene.cpp`](../../src/game/scene/dialogue_choice_scene.cpp)（`uiCoverage` 返回 `HideUnderlyingSceneUi`） | 与对话气泡（HUD）形成对比的"对话选项独立 Scene"案例 |
 
 ---
 
@@ -284,12 +319,14 @@ sequenceDiagram
 1. **生命周期成本**：玩家在主世界 5 秒内反复打开 / 关闭背包 10 次。如果背包是 HUD 显隐、如果是 Scene push/pop，分别会发生多少次"文档 load / unload"？哪种更便宜？
 2. **栈顶冻结**：打开 `InventoryMenuScene` 时，下列功能各是停止还是继续？为什么？
    - 农场作物生长
-   - 角色头顶气泡的"逐字打字"动画
+   - `GameSceneUiController::update()` 驱动的对话逐字表现
    - HUD 时钟指针走动
-   - HUD 屏幕淡入淡出（`RmlScreenFade`）
+   - `GameScene::prepareUi(1.0f)` 中的世界锚点位置刷新
+   - `InventoryMenuScene` 自己的菜单焦点与按钮 hover
 3. **DialogueChoice 独立成 Scene 的理由**：为什么"NPC 说话"是 HUD 而"NPC 让你选回答"是独立 Scene？至少给出两个理由。
 4. **`uiCoverage` 决策**：假设要新增一个"剧情过场动画 Scene"，全屏黑边 + 字幕，玩家可以按空格跳过。你会让它返回 `Overlay` 还是 `HideUnderlyingSceneUi`？为什么？
 5. **隐藏的输入边界**：覆盖式 Scene 在 `init` 时通常会 `pushContext(InputContextId::Menu)`，退出时 `popContext()`。如果某个新 Scene 忘了 push，会出什么问题？（提示：玩家按 WASD 会发生什么）
+6. **交易写回**：商店购买成功后，为什么讲义不能写成 `WalletChangedEvent` 触发 HUD 刷新？当前金币和快捷栏分别靠什么路径更新？
 
 ---
 
@@ -311,12 +348,14 @@ sequenceDiagram
 ## 📌 小结
 
 - HUD 文档是 `GameScene` 内部一次性 `load` 的多份 RmlUi 文档，**通过 `owner_scene_id` 分组、随 Scene 入退场统一回收**。
-- 覆盖式 Scene 是 `SceneManager` 栈上的独立 `Scene` 子类，**有自己的 registry、自己的输入上下文、自己的 RmlDocumentController**。
+- `GameSceneUiController` 负责主要 HUD 组合；`GameOverlay` 与 `GameInputPromptOverlay` 由 `GameScene` 直接持有。
+- 覆盖式 Scene 是 `SceneManager` 栈上的独立 `Scene` 子类，**有自己的生命周期、输入上下文和 RmlDocumentController**。
 - 栈顶 Scene 独占 `update` / `fixedUpdate` / 输入——**底层 `GameScene` 在覆盖时会被冻结**。
-- `uiCoverage()` 是一行接口的策略开关：`Overlay`（默认）保留底层 HUD 可见、`HideUnderlyingSceneUi` 隐藏底层 HUD（战斗、对话选项、招募确认走这种）。
+- `prepareUi()` / `render()` 会遍历整栈；底层 Scene 使用 `alpha=1.0f`，避免冻结期间重复插值。
+- `uiCoverage()` 是一行接口的策略开关：`Overlay`（默认）保留底层 HUD 可见、`HideUnderlyingSceneUi` 隐藏底层 HUD（商店、战斗、对话选项、招募确认走这种）。
 - 选择规则：**世界逻辑该停 / 状态机复杂 / 频率不高 → Scene；纯展示 / 频率高 / 不影响逻辑 → HUD**。
-- 覆盖式 Scene 不直接改主世界状态，**所有写回走 dispatcher 事件 + domain service**。
-- `GameMode`（Exploration / Battle / Menu）在背后协同 SystemScheduler 跳过 / 启用特定系统，详深留 L25。
+- 覆盖式 Scene 的主世界写回要收敛到 domain service 或 dispatcher command/event；当前商店没有 `WalletChangedEvent`，金币由交易服务直接改组件并由商店自刷新。
+- `GameMode` 目前只是 L25 要复核的 scheduler 接口线索，不是 L04 覆盖式 Scene 的已接通调度机制。
 
 ## 🚀 下节课预告
 
