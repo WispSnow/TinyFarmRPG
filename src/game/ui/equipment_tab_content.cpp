@@ -5,11 +5,13 @@
 #include "game/component/inventory_component.h"
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/defs/commands.h"
 #include "game/defs/events.h"
+#include "game/domain/actor_progression_service.h"
 #include "game/runtime/service_lookup.h"
 #include "game/ui/localized_text.h"
 #include "game/ui/rml_item_icon_helpers.h"
@@ -117,6 +119,17 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
     return it == equipment->loadouts_by_actor_id_.end() ? nullptr : &it->second;
 }
 
+[[nodiscard]] const game::component::ActorRuntimeState* findRuntimeState(const entt::registry& registry,
+                                                                         entt::entity player,
+                                                                         std::string_view actor_id) {
+    const auto* runtime = registry.try_get<game::component::PartyRuntimeStatsComponent>(player);
+    if (!runtime) {
+        return nullptr;
+    }
+    const auto it = runtime->states_by_actor_id_.find(std::string{actor_id});
+    return it == runtime->states_by_actor_id_.end() ? nullptr : &it->second;
+}
+
 [[nodiscard]] entt::id_type findEquippedItem(const entt::registry& registry,
                                              entt::entity player,
                                              std::string_view actor_id,
@@ -161,6 +174,7 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
 
 [[nodiscard]] std::string makeActorSummary(const game::data::RpgCatalog* catalog,
                                            const game::data::ActorData* actor,
+                                           const game::component::ActorRuntimeState* runtime_state,
                                            const game::component::ActorEquipmentLoadout* loadout,
                                            const game::runtime::LocalizationService* localization) {
     if (!catalog || !actor) {
@@ -168,7 +182,11 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
     }
 
     const auto* klass = catalog->findClass(actor->class_id_);
-    const auto resolved = game::battle::resolveActorStats(*catalog, *actor, loadout);
+    const auto runtime_snapshot = runtime_state
+        ? game::domain::ActorProgressionService::normalizeState(*catalog, *actor, *runtime_state, loadout)
+        : game::domain::ActorProgressionService::initialState(*catalog, *actor, loadout);
+    const int level = runtime_snapshot.level;
+    const auto resolved = game::battle::resolveActorStats(*catalog, *actor, level, loadout);
     const auto hp = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Mhp)];
     const auto mp = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Mmp)];
     const auto atk = resolved.params[static_cast<std::size_t>(game::data::ParamIndex::Atk)];
@@ -182,14 +200,14 @@ constexpr std::array<std::string_view, game::data::kParamCount> kParamLabels{{
         "inventory.equipment.actor_summary",
         {
             {"class", class_name},
-            {"level", std::to_string(actor->initial_level_)},
+            {"level", std::to_string(level)},
             {"hp", std::to_string(hp)},
             {"mp", std::to_string(mp)},
             {"atk", std::to_string(atk)},
             {"def", std::to_string(def)},
         },
-        [&class_name, actor, hp, mp, atk, def] {
-            return fmt::format("{} Lv.{}  HP {}  MP {}  ATK {}  DEF {}", class_name, actor->initial_level_, hp, mp, atk, def);
+        [&class_name, level, hp, mp, atk, def] {
+            return fmt::format("{} Lv.{}  HP {}  MP {}  ATK {}  DEF {}", class_name, level, hp, mp, atk, def);
         });
 }
 
@@ -349,6 +367,7 @@ void EquipmentTabContent::syncActorHeader() {
     equipment_actor_summary_ = makeActorSummary(
         rpg_catalog_,
         actor,
+        findRuntimeState(game_registry_, player_, selected_actor_id_),
         findLoadout(game_registry_, player_, selected_actor_id_),
         localization_);
 }

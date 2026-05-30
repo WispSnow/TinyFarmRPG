@@ -6,7 +6,6 @@
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
-#include "game/domain/inventory_domain_service.h"
 #include "game/system/inventory_helpers.h"
 
 #include <entt/entity/registry.hpp>
@@ -14,6 +13,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <string_view>
 #include <vector>
@@ -39,18 +39,47 @@ namespace {
     return game::system::detail::stackLimitOrDefault(&catalog, item_id);
 }
 
+[[nodiscard]] std::vector<game::defs::InventorySlotUpdate>
+collectChangedSlots(const std::vector<game::component::ItemStack>& before,
+                    const std::vector<game::component::ItemStack>& after) {
+    std::vector<game::defs::InventorySlotUpdate> updates{};
+    updates.reserve(after.size());
+    for (std::size_t i = 0; i < after.size(); ++i) {
+        if (before[i].item_id_ == after[i].item_id_ && before[i].count_ == after[i].count_) {
+            continue;
+        }
+        updates.push_back(game::defs::InventorySlotUpdate{
+            .slot_index = static_cast<int>(i),
+            .item_id = after[i].item_id_,
+            .count = after[i].count_,
+        });
+    }
+    return updates;
+}
+
+void triggerInventoryChanged(entt::dispatcher& dispatcher,
+                             const entt::entity player,
+                             const std::vector<game::defs::InventorySlotUpdate>& diff) {
+    if (diff.empty()) {
+        return;
+    }
+
+    game::defs::InventoryChanged evt{};
+    evt.target = player;
+    evt.slots = diff;
+    dispatcher.trigger(evt);
+}
+
 } // namespace
 
 EquipmentDomainService::EquipmentDomainService(entt::registry& registry,
                                                entt::dispatcher& dispatcher,
                                                const game::data::RpgCatalog& rpg_catalog,
-                                               const game::data::ItemCatalog& item_catalog,
-                                               InventoryDomainService& inventory_domain_service)
+                                               const game::data::ItemCatalog& item_catalog)
     : registry_(registry),
       dispatcher_(dispatcher),
       rpg_catalog_(rpg_catalog),
-      item_catalog_(item_catalog),
-      inventory_domain_service_(inventory_domain_service) {}
+      item_catalog_(item_catalog) {}
 
 EquipmentMutationResult EquipmentDomainService::equipItem(entt::entity player,
                                                           const std::string& actor_id,
@@ -92,12 +121,27 @@ EquipmentMutationResult EquipmentDomainService::equipItem(entt::entity player,
         return {.message = "actor cannot equip this item"};
     }
 
-    auto& equipment_component = registry_.get_or_emplace<game::component::PartyEquipmentComponent>(player);
-    auto& loadout = equipment_component.loadouts_by_actor_id_[actor_id];
-    const auto equipped_it = loadout.equipped_item_ids_.find(target_slot);
-    const entt::id_type old_item_id =
-        equipped_it == loadout.equipped_item_ids_.end() ? entt::null : equipped_it->second;
+    const auto* equipment_component = registry_.try_get<game::component::PartyEquipmentComponent>(player);
+    const game::component::ActorEquipmentLoadout* current_loadout = nullptr;
+    if (equipment_component) {
+        const auto loadout_it = equipment_component->loadouts_by_actor_id_.find(actor_id);
+        if (loadout_it != equipment_component->loadouts_by_actor_id_.end()) {
+            current_loadout = &loadout_it->second;
+        }
+    }
 
+    entt::id_type old_item_id = entt::null;
+    if (current_loadout) {
+        const auto equipped_it = current_loadout->equipped_item_ids_.find(target_slot);
+        if (equipped_it != current_loadout->equipped_item_ids_.end()) {
+            old_item_id = equipped_it->second;
+        }
+    }
+    if (old_item_id != entt::null && item_catalog_.findItem(old_item_id) == nullptr) {
+        return {.message = "equipped item is unknown"};
+    }
+
+    const auto before_slots = inventory.slots_;
     std::vector<game::component::ItemStack> simulated = inventory.slots_;
     auto& simulated_source = simulated[static_cast<std::size_t>(inventory_slot_index)];
     if (simulated_source.item_id_ != source_stack.item_id_ || simulated_source.count_ <= 0) {
@@ -118,32 +162,13 @@ EquipmentMutationResult EquipmentDomainService::equipItem(entt::entity player,
         return {.message = "inventory is full"};
     }
 
-    const auto remove_result =
-        inventory_domain_service_.removeItem(player, source_stack.item_id_, 1, inventory_slot_index);
-    if (remove_result.accepted != 1 || remove_result.rejected != 0) {
-        spdlog::error(
-            "EquipmentDomainService: simulated equip removal failed during commit actor='{}' item_id={} slot={}",
-            actor_id,
-            static_cast<std::uint64_t>(source_stack.item_id_),
-            inventory_slot_index);
-        return {.message = "failed to remove equipment item"};
-    }
+    inventory.slots_ = std::move(simulated);
+    auto& mutable_equipment = registry_.get_or_emplace<game::component::PartyEquipmentComponent>(player);
+    auto& mutable_loadout = mutable_equipment.loadouts_by_actor_id_[actor_id];
+    mutable_loadout.equipped_item_ids_[target_slot] = source_stack.item_id_;
+    ++mutable_equipment.revision_;
 
-    loadout.equipped_item_ids_[target_slot] = source_stack.item_id_;
-    ++equipment_component.revision_;
-
-    if (old_item_id != entt::null) {
-        const auto add_result =
-            inventory_domain_service_.addItem(player, old_item_id, 1, inventory_slot_index);
-        if (add_result.accepted != 1 || add_result.rejected != 0) {
-            spdlog::error(
-                "EquipmentDomainService: simulated replaced-equipment return failed during commit actor='{}' old_item_id={}",
-                actor_id,
-                static_cast<std::uint64_t>(old_item_id));
-            return {.message = "failed to return replaced equipment"};
-        }
-    }
-
+    triggerInventoryChanged(dispatcher_, player, collectChangedSlots(before_slots, inventory.slots_));
     emitChanged(player, actor_id, target_slot, source_stack.item_id_);
     return {.success = true};
 }
@@ -182,10 +207,15 @@ EquipmentMutationResult EquipmentDomainService::unequipItem(entt::entity player,
     }
 
     const entt::id_type item_id = equipped_it->second;
+    if (item_catalog_.findItem(item_id) == nullptr) {
+        return {.message = "equipped item is unknown"};
+    }
+
     const auto& inventory = registry_.get<game::component::InventoryComponent>(player);
     if (preferred_inventory_slot < -1 || preferred_inventory_slot >= inventory.slotCount()) {
         return {.message = "invalid preferred inventory slot"};
     }
+    const auto before_slots = inventory.slots_;
     std::vector<game::component::ItemStack> simulated = inventory.slots_;
     if (!game::system::detail::simulateAdd(
             simulated,
@@ -196,17 +226,12 @@ EquipmentMutationResult EquipmentDomainService::unequipItem(entt::entity player,
         return {.message = "inventory is full"};
     }
 
-    const auto add_result = inventory_domain_service_.addItem(player, item_id, 1, preferred_inventory_slot);
-    if (add_result.accepted != 1 || add_result.rejected != 0) {
-        spdlog::error(
-            "EquipmentDomainService: simulated unequip return failed during commit actor='{}' item_id={}",
-            actor_id,
-            static_cast<std::uint64_t>(item_id));
-        return {.message = "failed to return equipment item"};
-    }
-
+    auto& mutable_inventory = registry_.get<game::component::InventoryComponent>(player);
+    mutable_inventory.slots_ = std::move(simulated);
     loadout.equipped_item_ids_.erase(equipped_it);
     ++equipment_component->revision_;
+
+    triggerInventoryChanged(dispatcher_, player, collectChangedSlots(before_slots, mutable_inventory.slots_));
     emitChanged(player, actor_id, slot, entt::null);
     return {.success = true};
 }
