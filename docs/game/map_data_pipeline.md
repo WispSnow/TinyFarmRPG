@@ -52,7 +52,7 @@
 ### 4.1 Object Types 速查（`EntityBuilder` 扩展点）
 
 #### `actor`（point object）
-- **必需字段**：`type="actor"` + `point=true` + `name="<actor-id>"`
+- **必需字段**：`type="actor"` + `point=true` + `name="<blueprint-key>"`
 - **语义**：创建角色实体；其中 `name="player"` 会触发“复用玩家实体”的分支（如果启用该策略）。
 
 ##### `actor` 的 JRPG 扩展实例属性

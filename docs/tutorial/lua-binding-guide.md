@@ -73,6 +73,8 @@ lua_.open_libraries(
 每个 `sol::lib` 对应 Lua 标准库的一个模块。你可以按需选择——不加载的库在脚本中就不可用（这也是安全沙箱的基础）。
 
 > **项目选择**：没有加载 `sol::lib::io`（文件操作）、`sol::lib::os`（系统命令）和 `sol::lib::package`（Lua 原生 `require`）。脚本模块通过白名单式 `tf.script.require("module.name")` 加载，只能解析到 `scripts/` 下的 `.lua` 文件。
+>
+> `ScriptHost::hardenLuaGlobals()` 还会把 `dofile`、`loadfile`、`load`、`rawset`、`rawget`、`collectgarbage` 和 `string.dump` 设为 `nil`。标准库白名单解决"没有入口"，危险全局清理解决"base/string 库里仍残留可绕路入口"。
 
 ---
 
@@ -144,6 +146,9 @@ print(tf.time.formatted())      -- "Day 3, 07:15"
 
 ```
 tf
+├── i18n
+│   ├── tr(key)                              → string
+│   └── format(key, args)                    → string
 ├── time
 │   ├── day()          → uint32
 │   ├── hour()         → float
@@ -152,6 +157,7 @@ tf
 ├── player
 │   ├── exists()       → bool
 │   ├── handle()       → ScriptEntityHandle | nil
+│   ├── gold()         → int
 │   └── position()     → float, float  (多返回值)
 ├── entity
 │   ├── actor_id(handle)            → string | nil
@@ -349,17 +355,17 @@ Lua 是动态类型语言，函数参数可以省略（省略的参数值为 `ni
 ```cpp
 command_api.set_function(
     "add_item",
-    [&registry, &dispatcher](
+    [api](
         const std::string& item_id,              // 必填
         int count,                                // 必填
-        sol::optional<std::uint32_t> target_id,   // 可选
+        sol::optional<ScriptEntityHandle> target_handle, // 可选
         sol::optional<int> preferred_slot          // 可选
     ) -> bool {
-        // target_id 没传时默认用 player 实体
-        const entt::entity target = resolveTargetEntity(registry, target_id);
-        // preferred_slot 没传时默认 -1（表示自动选择）
-        int slot = preferred_slot.value_or(-1);
-        // ...
+        return api->addItem(
+            item_id,
+            count,
+            toStdOptional(target_handle),
+            preferred_slot.value_or(-1));
     });
 ```
 
@@ -370,8 +376,11 @@ Lua 调用时可以这样：
 tf.command.add_item("wheat_seed", 5)
 
 -- 传全部参数
-tf.command.add_item("wheat_seed", 5, player_id, 0)
+local player = tf.player.handle()
+tf.command.add_item("wheat_seed", 5, player, 0)
 ```
+
+这里的 `target_handle` 不是 raw entity id，而是 `ScriptEntityHandle`。绑定层先用 `toStdOptional` 把 Sol2 的可选值转换为 `std::optional<ScriptEntityHandle>`，再交给 `ScriptGameApi::addItem` 做默认玩家解析、scene token 校验和 `registry.valid` 校验。
 
 ### sol::optional vs std::optional
 
@@ -480,6 +489,20 @@ host.exec(R"(
 | 是否需要先调用另一个 | 否，独立使用 | 否，独立使用 |
 | 性能 | 有磁盘 I/O 开销 | 无 I/O |
 
+### `reload`：同一个 VM 内重跑 bootstrap
+
+`reload()` 只在已经成功 `loadFile()` 过脚本时可用。它不会销毁整个 `sol::state`，但会清理脚本运行时状态并推进句柄代际：
+
+```mermaid
+flowchart LR
+    A["loadFile 成功<br/>记录 last_loaded_file"] --> B["reload()"]
+    B --> C["scene_token_ 分配新值"]
+    C --> D["清事件回调<br/>清 deferred command<br/>清 require 缓存"]
+    D --> E["重新 loadFile<br/>执行同一路径脚本"]
+```
+
+这正是暂停菜单"在同一 `GameScene` 内读档后重新加载 bootstrap"使用的路径。旧 Lua 全局变量不应该被当作持久化状态；需要跨读档保留的剧情状态应写进 `tf.state`，需要在 reload 后继续使用的 handle 必须重新从 C++ payload 或 `tf.player.handle()` 取得。
+
 ---
 
 ## 9. 错误处理：不崩溃的秘诀
@@ -526,60 +549,56 @@ if (!result.valid()) {
 
 以"脚本给玩家添加物品"为例，跟踪完整的调用链：
 
+```mermaid
+flowchart LR
+    L["Lua<br/>tf.command.add_item"] --> S["Sol2<br/>参数转换"]
+    S --> B["绑定 lambda<br/>tinyfarm_script_module"]
+    B --> A["ScriptGameApi::addItem"]
+    A --> R["resolveTargetEntity<br/>默认玩家或校验 handle"]
+    R --> T["triggerFromScript<br/>触发或延迟 command"]
+    T --> I["InventorySystem"]
+    I --> D["InventoryDomainService"]
+    D --> E["InventoryChanged<br/>HotbarChanged"]
+    E --> U["UI 刷新"]
 ```
- Lua 脚本                          Sol2 桥梁                  C++ 游戏逻辑
- ─────────                         ─────────                  ─────────────
 
- tf.command.add_item(               │
-   "wheat_seed", 5)                 │
-         │                          │
-         ▼                          ▼
-                              Sol2 自动将 Lua 参数
-                              转换为 C++ 类型:
-                              · "wheat_seed" → const std::string&
-                              · 5 → int
-                              · (省略) → sol::optional 无值
-                                    │
-                                    ▼
-                              调用注册时的 lambda:
-                              ─────────────────────────────────────
-                              [&registry, &dispatcher]
-                              (const std::string& item_id,       ← "wheat_seed"
-                               int count,                        ← 5
-                               sol::optional<uint32_t> target_id,← 无值
-                               sol::optional<int> slot)          ← 无值
-                              {
-                                  // target_id 无值 → 找 player 实体
-                                  entt::entity target = resolveTargetEntity(...);
+绑定层的真实代码大致是：
 
-                                  // "wheat_seed" → hashed_string → entt::id_type
-                                  auto id = entt::hashed_string{"wheat_seed"}.value();
+```cpp
+command_impl.set_function(
+    "add_item",
+    [api](const std::string& item_id,
+          int count,
+          sol::optional<ScriptEntityHandle> target_handle,
+          sol::optional<int> preferred_slot) -> bool {
+        return api->addItem(item_id, count, toStdOptional(target_handle), preferred_slot.value_or(-1));
+    });
+```
 
-                                  // 发射命令（同步触发）
-                                  dispatcher.trigger(AddItemCommand{
-                                      target, id, 5, -1
-                                  });                                │
-                              }                                      │
-                                                                     ▼
-                                                        InventorySystem 订阅了
-                                                        AddItemCommand，执行:
-                                                        · 查找玩家 InventoryComponent
-                                                        · 找到空槽位或同类堆叠
-                                                        · 写入 item_id 和 count
-                                                        · 发射 InventoryChanged 事件
-                                                                     │
-                                                                     ▼
-                                                              UI 层响应事件
-                                                              更新物品栏显示
+`ScriptGameApi::addItem` 继续做三件事：
+
+```cpp
+if (!resolveTargetEntity(target_handle, "tf.command.add_item", target, true)) {
+    return false;
+}
+
+triggerFromScript(host_, dispatcher_, game::defs::AddItemCommand{
+    target,
+    hashId(item_id),
+    count,
+    preferred_slot});
+return true;
 ```
 
 ### 关键设计决策
 
-1. **脚本不直接修改 ECS 数据**。脚本通过 `dispatcher.trigger` 发射命令（Command），由已有的 C++ 系统处理。这保证了数据一致性——所有修改都走统一的领域服务。
+1. **脚本不直接修改 ECS 数据**。脚本通过 `ScriptGameApi` 发出 command，由已有的 C++ system / domain service 处理。这保证了数据一致性——所有修改都走统一的领域服务。
 
-2. **trigger vs enqueue**。命令用 `trigger`（同步立即执行），对话事件用 `enqueue`（延迟到下一帧处理）。这是因为命令需要立即生效以便脚本检查结果，而 UI 事件在当前帧结束后处理更安全。
+2. **trigger vs deferred trigger**。`triggerFromScript` 在普通脚本执行中直接 `dispatcher.trigger`；如果当前正在 Lua 回调里处理事件，则把 command 放进 `ScriptHost` 的 deferred queue，等回调结束后再触发，避免事件回调重入时改动 dispatcher / ECS 状态。
 
-3. **字符串 → hash**。Lua 传递的物品名称是字符串 `"wheat_seed"`，但 ECS 系统使用 `entt::id_type`（整数 hash）标识物品。转换在绑定层完成：`entt::hashed_string{item_id.c_str()}.value()`。
+3. **字符串 → hash**。Lua 传递的物品名称是字符串 `"wheat_seed"`，但 ECS 系统使用 `entt::id_type`（整数 hash）标识物品。转换收口在 `script_game_api.cpp` 的 `hashId(item_id)` helper，Lua 不需要知道底层 hash 规则。
+
+4. **handle 先校验再落到 entity**。如果脚本传了 `target_handle`，`resolveTargetEntity` 会通过 `ScriptHost::validateHandle` 检查 scene token 和 `registry.valid`；如果省略，则按 `require_default_player = true` 找当前玩家实体。
 
 ---
 
@@ -600,14 +619,17 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScriptWithoutCrash) {
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
     registry.emplace<engine::component::TransformComponent>(player, glm::vec2{32.0f, 48.0f});
+    auto& wallet = registry.emplace<game::component::PlayerWalletComponent>(player);
+    wallet.gold_ = 300;
 
     // 2. 初始化 ScriptHost
-    ScriptHost host(registry, dispatcher);
-    ASSERT_TRUE(host.init());
+    ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
 
     // 3. 用 Lua 的 assert 验证绑定返回值
     EXPECT_TRUE(host.exec(R"(
         assert(tf.player.exists() == true)
+        assert(tf.player.gold() == 300)
         assert(tf.time.day() == 3)
         assert(tf.time.hour() == 7)
     )"));
@@ -626,16 +648,17 @@ TEST(ScriptHostCommandBridgeTest, ScriptCanEmitCommandAndProduceDomainEffect) {
     game::data::ItemCatalog catalog;
     ASSERT_TRUE(catalog.loadItemConfig(itemConfigPath()));
     game::domain::InventoryDomainService domain(registry, dispatcher, catalog);
-    game::system::InventorySystem inv_sys(registry, dispatcher, catalog, domain);
+    game::system::InventorySystem inv_sys(registry, dispatcher, domain);
 
     // 2. 创建有背包的 player 实体
     const entt::entity player = registry.create();
     registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{0.0f, 0.0f});
     registry.emplace<game::component::InventoryComponent>(player);
 
     // 3. 通过脚本添加物品
-    ScriptHost host(registry, dispatcher);
-    ASSERT_TRUE(host.init());
+    ScriptHost host(registry);
+    ASSERT_TRUE(host.init(dispatcher, game::script::test::tinyFarmInstallers()));
     ASSERT_TRUE(host.loadFile(commandScriptPath()));   // 加载 test_command.lua
     ASSERT_TRUE(host.exec("assert(issue_add_item('strawberry_seed', 2))"));
 
@@ -646,16 +669,16 @@ TEST(ScriptHostCommandBridgeTest, ScriptCanEmitCommandAndProduceDomainEffect) {
 }
 ```
 
-这个测试验证了完整链路：**Lua 函数 → C++ lambda → dispatcher.trigger → InventorySystem 处理 → InventoryComponent 更新**。
+这个测试验证了完整链路：**Lua 函数 → C++ lambda → `ScriptGameApi` → `triggerFromScript` → InventorySystem / domain service → InventoryComponent 更新**。
 
 辅助的 `test_command.lua` 提供了一个薄包装函数：
 
 ```lua
-function issue_add_item(item_id, count, target_id)
-    if target_id == nil then
+function issue_add_item(item_id, count, target_handle)
+    if target_handle == nil then
         return tf.command.add_item(item_id, count)
     end
-    return tf.command.add_item(item_id, count, target_id)
+    return tf.command.add_item(item_id, count, target_handle)
 end
 ```
 
@@ -690,8 +713,11 @@ end
 | `src/game/script/script_event_bridge.h/.cpp` | C++ 事件转 Lua payload，再发给 `tf.event` / `tf.callbacks` |
 | `src/game/runtime/script_runtime_factory.h/.cpp` | 把 TinyFarm 脚本模块 installer 注入 `ScriptHost` |
 | `scripts/bootstrap.lua` | 运行时启动脚本示例 |
+| `tests/engine/script/script_host_security_test.cpp` | ScriptHost 沙箱与指令上限测试 |
+| `tests/engine/script/script_host_lifecycle_test.cpp` | shutdown / reload / handle 代际测试 |
 | `tests/game/script_host_smoke_test.cpp` | 绑定正确性测试 |
 | `tests/game/script_host_command_bridge_test.cpp` | 端到端链路测试 |
+| `tests/game/script_module_require_test.cpp` | `tf.script.require` 白名单、缓存、循环 require 测试 |
 | `tests/game/script_event_bridge_test.cpp` | C++ 事件桥接 Lua payload 的测试 |
 | `tests/game/script_phase2_api_test.cpp` | 常用 `tf.*` API 行为测试 |
 | `tests/scripts/test_command.lua` | 测试用 Lua 辅助脚本 |

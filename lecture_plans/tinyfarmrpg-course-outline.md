@@ -367,11 +367,11 @@ flowchart LR
 **目标**：讲解 C++ 如何嵌入 Lua，并把安全、稳定的 API 暴露给内容脚本。
 
 **知识点**：
-- `ScriptHost` 生命周期、模块加载、错误处理与日志。
+- `ScriptHost` 生命周期、reload 代际、模块加载、错误处理与日志。
 - `ScriptEntityHandle`：脚本侧不要直接保存裸 ECS 实体，句柄校验机制。
 - Sol2 绑定工具、模块安装、`tf.*` 命名空间组织。
 - 安全边界：脚本不能写文件、不能执行系统命令、不能直接改 ECS。
-- 与 C++ 测试的边界：`tests/game/script_*` 怎么测脚本绑定。
+- 与 C++ 测试的边界：`tests/engine/script/*` 怎么测宿主安全 / 生命周期，`tests/game/script_*` 怎么测游戏绑定。
 
 **阅读清单**：
 - `docs/tutorial/lua-binding-guide.md`
@@ -380,6 +380,7 @@ flowchart LR
 - `src/engine/script/*`
 - `src/game/script/script_game_api.*`
 - `src/game/script/tinyfarm_script_module.*`
+- `tests/engine/script/*`、`tests/game/script_*`
 
 **自测问题**：
 1. 如果脚本里保存了一个 entity 然后该 entity 被销毁，会发生什么？
@@ -398,15 +399,16 @@ flowchart LR
 
 **知识点**：
 - `scripted_interaction=true` 的含义与默认 C++ 交互早退规则。
-- Tiled 属性约定：`actor_id`、`script_event`、`script_once_key`、`zone_id`。
+- Tiled actor object 约定：`name` 是 blueprint key；`actor_id` 是 Lua 稳定身份；`scripted_interaction`、`script_module`、`script_event`、`script_once_key`、`zone_id` 进入脚本化交互 / 区域触发链路。
 - `ScriptEventBridge` 如何生成 interact / map / zone / battle payload。
-- `DialogueChoiceScene` 与脚本选项的对接（Lua 推选项 → C++ 弹场景 → 选择事件回到 Lua）。
+- `DialogueChoiceScene` 与脚本选项的对接（`tf.dialogue.choice` 返回 request_id；`lib.dialogue.choice` 保存 callback；选择 / 取消事件回到 Lua）。
 - 典型用例：一次性宝箱、首次进图提示、剧情传送、剧情战入口、招募 NPC 隐藏。
-- Blueprint / EntityFactory：脚本化 NPC 与商人在 blueprint 中怎么标注。
+- Blueprint / EntityFactory：blueprint 默认组件与 Tiled 实例属性如何分工。
 
 **阅读清单**：
 - `docs/game/interaction_and_dialogue.md`
 - `docs/game/blueprints.md`
+- `docs/game/map_data_pipeline.md`
 - 上一套 part-23 蓝图与实体工厂 + part-28 交互与对话
 
 **源码入口**：
@@ -417,9 +419,9 @@ flowchart LR
 - `scripts/maps/home_exterior.lua`、`scripts/npcs/greeter.lua`
 
 **自测问题**：
-1. 一个 Tiled 对象同时配 `actor_id` 和默认 C++ 交互组件时，谁优先？为什么？
+1. 一个 Tiled 对象同时配 `scripted_interaction=true`、`actor_id` 和默认 C++ 交互组件时，谁优先？为什么？
 2. 区域触发的"一次性"是怎么实现的？放在哪一层最合理？
-3. DialogueChoice 选择回 Lua 时，Lua 怎么辨别"是哪个选项"？
+3. DialogueChoice 选择 / 取消回 Lua 时，`lib.dialogue.choice` 怎么用 `request_id` 找回原 callback？
 
 **最小练习**：在 `home_exterior.lua` 里加一个新的区域触发点，进入时弹一行 floating notice。
 
