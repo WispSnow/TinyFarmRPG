@@ -24,7 +24,8 @@ bool loadRpgEquipmentFile(const std::string_view file_path,
         return false;
     }
 
-    out_equipment.clear();
+    std::unordered_map<entt::id_type, EquipmentData> parsed_equipment{};
+    parsed_equipment.reserve(equipment_it->size());
     for (const auto& equipment_node : *equipment_it) {
         if (!equipment_node.is_object()) {
             spdlog::error("RpgCatalog: equipment 文件 '{}' 存在非 object 条目", file_path);
@@ -64,13 +65,14 @@ bool loadRpgEquipmentFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_equipment.contains(equipment.item_id_hash_)) {
+        if (parsed_equipment.contains(equipment.item_id_hash_)) {
             spdlog::error("RpgCatalog: equipment 文件 '{}' 存在重复 item_id '{}'", file_path, equipment.item_id_);
             return false;
         }
-        out_equipment.insert_or_assign(equipment.item_id_hash_, std::move(equipment));
+        parsed_equipment.insert_or_assign(equipment.item_id_hash_, std::move(equipment));
     }
 
+    out_equipment = std::move(parsed_equipment);
     return true;
 }
 

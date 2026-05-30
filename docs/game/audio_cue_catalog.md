@@ -1,6 +1,6 @@
 # AudioCueCatalog — 数据驱动音频
 
-> 用途：解释"为什么 TinyFarmRPG 不直接调 `playMusic("battle.ogg")`，而要中间夹一层 cue catalog"。是课程 L10 的核心阅读材料。
+> 用途：解释"为什么 TinyFarmRPG 不直接调 `playMusic("battle.ogg")`，而要中间夹一层 cue catalog"。是课程 L09 的核心阅读材料。
 >
 > 与 [engine/audio_system.md](../engine/audio_system.md) 的分工：底层 `engine::audio::AudioPlayer` 负责"按 music_id 真的播放一段音频"，本篇讲游戏层把"播放策略 / 默认值 / 引用校验"独立到 `AudioCueCatalog` 这一层。
 
@@ -121,7 +121,8 @@ sequenceDiagram
     AR-->>CAT: 路径存在？
     CAT-->>CL: 校验通过？
     alt 任意一步失败
-        CL->>CL: spdlog::error + services.audio_cue_catalog.reset()
+        CL->>CL: spdlog::error；新 catalog 不发布
+        CL->>CL: 已有 catalog 复校失败时 reset
     end
 ```
 
@@ -132,7 +133,7 @@ sequenceDiagram
 
 > 第二层校验放在 catalog **加载完之后** 单独执行，是因为 catalog 本身可以独立单元测试（不依赖 AssetRegistry）。
 
-加载失败的兜底：catalog reset 为空指针。游戏仍能跑，但 `GameScene::resolveAndPlayGameplayMusic` 等会早退（"无 catalog → 不播放音乐"），便于通过日志直接定位问题。
+加载失败的兜底：新 catalog 不会发布到 `GameRuntimeServices`；如果已有 catalog 后续复校失败，则会 reset 为空指针。游戏仍能跑，但 `GameScene::resolveAndPlayGameplayMusic` 等会早退（"无 catalog → 不播放音乐"），便于通过日志直接定位问题。
 
 ## 五、运行时使用
 

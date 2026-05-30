@@ -2,6 +2,8 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <fstream>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 #include <glm/vec2.hpp>
 #include <algorithm>
@@ -156,8 +158,9 @@ bool ItemCatalog::loadIconConfig(std::string_view file_path) {
     nlohmann::json json;
     file >> json;
 
-    icons_.clear();
-    icon_keys_.clear();
+    std::unordered_map<entt::id_type, engine::render::Image> parsed_icons{};
+    std::unordered_map<entt::id_type, std::string> parsed_icon_keys{};
+    engine::render::Image parsed_fallback_icon{};
 
     for (const auto& [category, icon_group] : json.items()) {
         if (!icon_group.is_object()) continue;
@@ -168,19 +171,30 @@ bool ItemCatalog::loadIconConfig(std::string_view file_path) {
             }
             const std::string full_key = category + "/" + icon_name;
             auto icon_id = makeId(full_key);
-            icons_.insert_or_assign(icon_id, image);
-            icon_keys_.insert_or_assign(icon_id, full_key);
-            if (full_key == "indicator/cursor" || fallback_icon_.getTexturePath().empty()) {
-                fallback_icon_ = image;  // 设置默认占位图标
+            if (parsed_icons.contains(icon_id)) {
+                spdlog::error("icon 配置存在重复 id: {}", full_key);
+                return false;
+            }
+            parsed_icons.insert_or_assign(icon_id, image);
+            parsed_icon_keys.insert_or_assign(icon_id, full_key);
+            if (full_key == "indicator/cursor" || parsed_fallback_icon.getTexturePath().empty()) {
+                parsed_fallback_icon = image;  // 设置默认占位图标
             }
         }
     }
 
-    if (fallback_icon_.getTexturePath().empty() && !icons_.empty()) {
-        fallback_icon_ = icons_.begin()->second;
+    if (parsed_fallback_icon.getTexturePath().empty() && !parsed_icons.empty()) {
+        parsed_fallback_icon = parsed_icons.begin()->second;
     }
 
-    return !icons_.empty();
+    if (parsed_icons.empty()) {
+        return false;
+    }
+
+    icons_ = std::move(parsed_icons);
+    icon_keys_ = std::move(parsed_icon_keys);
+    fallback_icon_ = std::move(parsed_fallback_icon);
+    return true;
 }
 
 bool ItemCatalog::loadItemConfig(std::string_view file_path) {
@@ -198,7 +212,8 @@ bool ItemCatalog::loadItemConfig(std::string_view file_path) {
         return false;
     }
 
-    items_.clear();
+    std::unordered_map<entt::id_type, ItemData> parsed_items{};
+    parsed_items.reserve(json["items"].size());
 
     for (const auto& item_obj : json["items"]) {
         const std::string id_str = item_obj.value("id", "");
@@ -274,10 +289,19 @@ bool ItemCatalog::loadItemConfig(std::string_view file_path) {
             data.battle_use_ = std::move(battle_use);
         }
 
-        items_.insert_or_assign(data.id_, std::move(data));
+        if (parsed_items.contains(data.id_)) {
+            spdlog::error("item 配置存在重复 id: {}", id_str);
+            return false;
+        }
+        parsed_items.insert_or_assign(data.id_, std::move(data));
     }
 
-    return !items_.empty();
+    if (parsed_items.empty()) {
+        return false;
+    }
+
+    items_ = std::move(parsed_items);
+    return true;
 }
 
 const ItemData* ItemCatalog::findItem(entt::id_type item_id) const {

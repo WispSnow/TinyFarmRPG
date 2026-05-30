@@ -24,7 +24,8 @@ bool loadRpgEnemiesFile(const std::string_view file_path,
         return false;
     }
 
-    out_enemies.clear();
+    std::unordered_map<entt::id_type, EnemyData> parsed_enemies{};
+    parsed_enemies.reserve(enemies_it->size());
     for (const auto& enemy_node : *enemies_it) {
         if (!enemy_node.is_object()) {
             spdlog::error("RpgCatalog: enemies 文件 '{}' 存在非 object 条目", file_path);
@@ -97,13 +98,14 @@ bool loadRpgEnemiesFile(const std::string_view file_path,
             }
         }
 
-        if (out_enemies.contains(enemy.id_hash_)) {
+        if (parsed_enemies.contains(enemy.id_hash_)) {
             spdlog::error("RpgCatalog: enemies 文件 '{}' 存在重复 id '{}'", file_path, enemy.id_);
             return false;
         }
-        out_enemies.insert_or_assign(enemy.id_hash_, std::move(enemy));
+        parsed_enemies.insert_or_assign(enemy.id_hash_, std::move(enemy));
     }
 
+    out_enemies = std::move(parsed_enemies);
     return true;
 }
 

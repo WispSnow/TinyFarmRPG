@@ -24,7 +24,8 @@ bool loadRpgStatesFile(const std::string_view file_path,
         return false;
     }
 
-    out_states.clear();
+    std::unordered_map<entt::id_type, StateData> parsed_states{};
+    parsed_states.reserve(states_it->size());
     for (const auto& state_node : *states_it) {
         if (!state_node.is_object()) {
             spdlog::error("RpgCatalog: states 文件 '{}' 存在非 object 条目", file_path);
@@ -55,13 +56,14 @@ bool loadRpgStatesFile(const std::string_view file_path,
             return false;
         }
 
-        if (out_states.contains(state.id_hash_)) {
+        if (parsed_states.contains(state.id_hash_)) {
             spdlog::error("RpgCatalog: states 文件 '{}' 存在重复 id '{}'", file_path, state.id_);
             return false;
         }
-        out_states.insert_or_assign(state.id_hash_, std::move(state));
+        parsed_states.insert_or_assign(state.id_hash_, std::move(state));
     }
 
+    out_states = std::move(parsed_states);
     return true;
 }
 

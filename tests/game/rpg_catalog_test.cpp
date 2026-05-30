@@ -3,6 +3,7 @@
 #include "appearance_test_fixture_utils.h"
 #include "game/data/item_catalog.h"
 #include "game/data/rpg_catalog.h"
+#include "game/runtime/rpg_catalog_loader.h"
 
 #include <filesystem>
 #include <string>
@@ -17,6 +18,7 @@ struct FixturePaths {
     std::filesystem::path actors{};
     std::filesystem::path skills{};
     std::filesystem::path states{};
+    std::filesystem::path equipment{};
     std::filesystem::path enemies{};
     std::filesystem::path troops{};
 };
@@ -35,6 +37,7 @@ FixturePaths createValidRpgFixture() {
     "actors": 1,
     "skills": 1,
     "states": 1,
+    "equipment": 1,
     "enemies": 1,
     "troops": 1
   },
@@ -47,6 +50,7 @@ FixturePaths createValidRpgFixture() {
     "actors": "actors.json",
     "skills": "skills.json",
     "states": "states.json",
+    "equipment": "equipment.json",
     "enemies": "enemies.json",
     "troops": "troops.json"
   }
@@ -60,6 +64,11 @@ FixturePaths createValidRpgFixture() {
       "id": "item.slime_gel",
       "display_name": "Slime Gel",
       "category": "material"
+    },
+    {
+      "id": "equip.training_sword",
+      "display_name": "Training Sword",
+      "category": "equipment"
     }
   ]
 })json");
@@ -152,6 +161,18 @@ FixturePaths createValidRpgFixture() {
 })json");
 
     game::test::writeTextFile(
+        data_root / "equipment.json",
+        R"json({
+  "equipment": [
+    {
+      "item_id": "equip.training_sword",
+      "slot": "weapon",
+      "allowed_classes": ["class.adventurer"]
+    }
+  ]
+})json");
+
+    game::test::writeTextFile(
         data_root / "enemies.json",
         R"json({
   "enemies": [
@@ -209,6 +230,7 @@ FixturePaths createValidRpgFixture() {
         .actors = data_root / "actors.json",
         .skills = data_root / "skills.json",
         .states = data_root / "states.json",
+        .equipment = data_root / "equipment.json",
         .enemies = data_root / "enemies.json",
         .troops = data_root / "troops.json"};
 }
@@ -222,6 +244,7 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
     ASSERT_TRUE(catalog.loadSkills(paths.skills.string()));
     ASSERT_TRUE(catalog.loadStates(paths.states.string()));
+    ASSERT_TRUE(catalog.loadEquipment(paths.equipment.string()));
     ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
     ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
 
@@ -270,6 +293,12 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     EXPECT_EQ(state->description_, "Weakens physical attacks.");
     EXPECT_EQ(state->icon_key_, "poison");
 
+    const auto* equipment = catalog.findEquipmentByItem("equip.training_sword");
+    ASSERT_NE(equipment, nullptr);
+    EXPECT_EQ(equipment->slot_, EquipmentSlotId::Weapon);
+    ASSERT_EQ(equipment->allowed_classes_.size(), 1U);
+    EXPECT_EQ(equipment->allowed_classes_[0], "class.adventurer");
+
     const auto* enemy = catalog.findEnemy("enemy.slime");
     ASSERT_NE(enemy, nullptr);
     EXPECT_EQ(enemy->exp_reward_, 10);
@@ -283,6 +312,78 @@ TEST(RpgCatalogTest, LoadsCoreFilesAndPassesReferenceValidation) {
     ASSERT_NE(troop, nullptr);
     EXPECT_EQ(troop->battle_background_id_, "Grassland");
     ASSERT_EQ(troop->members_.size(), 2U);
+}
+
+TEST(RpgCatalogTest, LoadClassesFailureKeepsExistingCatalogData) {
+    const FixturePaths paths = createValidRpgFixture();
+    RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_NE(catalog.findClass("class.adventurer"), nullptr);
+
+    game::test::writeTextFile(
+        paths.classes,
+        R"json({
+  "classes": [
+    {
+      "id": "class.partial",
+      "display_name": "Partial",
+      "base_params": [100, 20, 10, 10, 10, 10, 10, 10]
+    },
+    42
+  ]
+})json");
+
+    EXPECT_FALSE(catalog.loadClasses(paths.classes.string()));
+    EXPECT_NE(catalog.findClass("class.adventurer"), nullptr);
+    EXPECT_EQ(catalog.findClass("class.partial"), nullptr);
+}
+
+TEST(RpgCatalogTest, LoadFromManifestFailureKeepsExistingCatalogData) {
+    const FixturePaths paths = createValidRpgFixture();
+    ItemCatalog item_catalog;
+    ASSERT_TRUE(item_catalog.loadItemConfig(paths.items.string()));
+
+    game::runtime::RpgCatalogLoadOptions options{};
+    options.manifest_path = paths.manifest.string();
+    options.root_path = paths.manifest.parent_path().string();
+    options.item_catalog = &item_catalog;
+
+    RpgCatalog catalog;
+    std::string error{};
+    ASSERT_TRUE(game::runtime::loadRpgCatalogFromManifest(catalog, options, error)) << error;
+    ASSERT_NE(catalog.findActor("actor.hero"), nullptr);
+    ASSERT_NE(catalog.findEquipmentByItem("equip.training_sword"), nullptr);
+
+    game::test::writeTextFile(
+        paths.manifest,
+        R"json({
+  "schema_version": 1,
+  "content_versions": {
+    "classes": 1,
+    "actors": 1,
+    "skills": 1,
+    "states": 1,
+    "enemies": 1,
+    "troops": 1
+  },
+  "features": {
+    "quest": false,
+    "shop": false
+  },
+  "files": {
+    "classes": "classes.json",
+    "actors": "actors.json",
+    "skills": "skills.json",
+    "states": "states.json",
+    "enemies": "enemies.json",
+    "troops": "troops.json"
+  }
+})json");
+
+    EXPECT_FALSE(game::runtime::loadRpgCatalogFromManifest(catalog, options, error));
+    EXPECT_NE(error.find("equipment"), std::string::npos);
+    EXPECT_NE(catalog.findActor("actor.hero"), nullptr);
+    EXPECT_NE(catalog.findEquipmentByItem("equip.training_sword"), nullptr);
 }
 
 TEST(RpgCatalogTest, RejectsInvalidTroopBattleBackgroundId) {
@@ -325,6 +426,7 @@ TEST(RpgCatalogTest, ProjectAssetsExposeSlimeTroopForMapEncounter) {
     ASSERT_TRUE(catalog.loadActors((rpg_root / "actors.json").string()));
     ASSERT_TRUE(catalog.loadSkills((rpg_root / "skills.json").string()));
     ASSERT_TRUE(catalog.loadStates((rpg_root / "states.json").string()));
+    ASSERT_TRUE(catalog.loadEquipment((rpg_root / "equipment.json").string()));
     ASSERT_TRUE(catalog.loadEnemies((rpg_root / "enemies.json").string()));
     ASSERT_TRUE(catalog.loadTroops((rpg_root / "troops.json").string()));
 

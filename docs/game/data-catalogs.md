@@ -46,6 +46,8 @@ RPG 数据通过 `assets/data/rpg/manifest.json` 间接加载。manifest 必须�
 
 `RpgCatalogLoader` 会按 manifest 中的文件名从 `assets/data/rpg` 解析，并在最后调用 `RpgCatalog::validateReferences(...)`。装备还会结合 `ItemCatalog` 校验，因为装备数据和普通物品显示、库存堆叠、商店买卖共享 item id。
 
+加载提交边界也在这里收紧：`loadRpgCatalogFromManifest()` 先写入临时 `RpgCatalog`，完整加载 classes / actors / skills / states / equipment / enemies / troops 并通过引用校验后，才替换调用方传入的 catalog。各 RPG 子文件 loader 和 `ItemCatalog` 也先解析到临时 map，失败时保留旧数据；重复 item id / icon id 会直接拒载。
+
 ## 引用校验
 
 几个 catalog 会在加载后做引用校验：
@@ -60,6 +62,8 @@ RPG 数据通过 `assets/data/rpg/manifest.json` 间接加载。manifest 必须�
   - 检查 cue 引用的 music/sfx 是否已在资源注册表中。
 
 这也是为什么 `RuntimeServiceFactory` 先加载 Item/RPG，再加载 Quest/Shop。
+
+`ContentCatalogLoader` 发布 service 指针时同样遵循"成功后提交"：Item、RPG、Quest、Shop 等 catalog 会先在局部对象中完成加载和引用校验，成功后才写入 `GameRuntimeServices`。VFX 与 AudioCue 属于可降级内容：加载失败会记录日志并保持对应指针为空，调用方看到空 catalog 后跳过 catalog 驱动播放。
 
 ## 资源预加载
 
