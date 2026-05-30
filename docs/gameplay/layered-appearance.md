@@ -17,9 +17,11 @@ graph TD
         JSON["appearance_catalog.json"]
         CAT["AppearanceCatalog<br/><i>解析配置 / 路径解析 / 布局查询</i>"]
         AC["AppearanceComponent<br/><i>slot_variants / gender / profile_id</i>"]
-        AS["AppearanceSystem<br/><i>rebuildLayerCache</i>"]
+        BUILDER["AppearanceLayerCacheBuilder<br/><i>无状态缓存构建入口</i>"]
+        AS["AppearanceSystem<br/><i>探索态 command / event 壳</i>"]
         CMD["SetAppearanceSlotCommand<br/>RefreshAppearanceCommand"]
-        PANEL["PlayerDebugPanel<br/><i>运行时换装 UI</i>"]
+        UI["AppearanceCustomizeScene / PlayerDebugPanel<br/><i>运行时换装入口</i>"]
+        BATTLE["BattleScene<br/><i>AppearanceSnapshot 表现入口</i>"]
     end
 
     subgraph "Engine 层"
@@ -29,17 +31,20 @@ graph TD
     end
 
     JSON --> CAT
-    PANEL -->|trigger| CMD
+    UI -->|trigger| CMD
     CMD --> AS
-    AS -->|读| CAT
-    AS -->|读| AC
-    AS -->|读| ANIM
-    AS -->|写| LSC
+    AS --> BUILDER
+    UI -->|preview_registry 直接调用| BUILDER
+    BATTLE -->|battle_registry 直接调用| BUILDER
+    BUILDER -->|读| CAT
+    BUILDER -->|读| AC
+    BUILDER -->|读| ANIM
+    BUILDER -->|写| LSC
     RS -->|读| LSC
     RS -->|读| ANIM
 ```
 
-**关键边界**：`AppearanceSystem` 是唯一跨越 game/engine 边界的桥梁。它读取 game 层数据（`AppearanceCatalog` + `AppearanceComponent`），将结果写入 engine 层组件（`LayeredSpriteComponent`）。`RenderSystem` 对 game 层完全无感。
+**关键边界**：`AppearanceLayerCacheBuilder` 是把 game 层外观选择转换成 engine 层 `LayeredSpriteComponent` 缓存的无状态入口。探索侧 `AppearanceSystem` 负责订阅 command、更新 `AppearanceComponent`、调用构建器并派发 `AppearanceChangedEvent`；换装预览和战斗表现层直接复用构建器，不重复实例化第二套 `AppearanceSystem`。`RenderSystem` 对 game 层完全无感。
 
 ## 图集布局模型
 
@@ -69,30 +74,32 @@ sequenceDiagram
     participant RM as ResourceManager
     participant EF as EntityFactory
     participant AS as AppearanceSystem
+    participant ALC as AppearanceLayerCacheBuilder
     participant LSC as LayeredSpriteComponent
     participant RS as RenderSystem
 
-    Note over JSON,CAT: 1. 启动加载配置
+    Note over JSON,CAT: 启动加载配置
     JSON->>CAT: loadFromFile()
     CAT->>CAT: 解析 action_layouts / profiles / slot_variants<br/>扫描文件系统 → action_available_slots
 
-    Note over GRA,RM: 2. 预加载纹理
+    Note over GRA,RM: 预加载纹理
     GRA->>CAT: collectPreloadTexturePaths(default_profile, limit=3)
     CAT-->>GRA: 纹理路径列表
     GRA->>RM: registerTexturePath() × N
 
-    Note over EF,AS: 3. 创建玩家实体
+    Note over EF,AS: 创建玩家实体
     EF->>EF: 创建 AppearanceComponent + LayeredSpriteComponent
     EF->>AS: trigger RefreshAppearanceCommand
 
-    Note over AS,LSC: 4. 预计算布局缓存
-    AS->>CAT: actionKeyFromAnimationName() / directionKeyFromAnimationName()
-    AS->>CAT: resolveLayerLayout(action, direction)
-    AS->>CAT: resolveLayerTexture(action, slot, variant, gender)
-    AS->>RM: loadTexture()（按需加载未预加载的纹理）
-    AS->>LSC: 写入 layers[slot].layout_by_animation_id[anim_id]
+    Note over AS,LSC: 预计算布局缓存
+    AS->>ALC: rebuild(entity)
+    ALC->>CAT: actionKeyFromAnimationName() / directionKeyFromAnimationName()
+    ALC->>CAT: resolveLayerLayout(action, direction)
+    ALC->>CAT: resolveLayerTexture(action, slot, variant, gender)
+    ALC->>RM: loadTexture()（按需加载未预加载的纹理）
+    ALC->>LSC: 写入 layers[slot].layout_by_animation_id[anim_id]
 
-    Note over RS: 5. 每帧渲染
+    Note over RS: 每帧渲染
     RS->>LSC: resolveLayout(current_animation_id)
     RS->>RS: atlas_column = direction_block_index × frames_per_direction<br/>+ source_frame_index_by_runtime_frame[current_frame_index]
     RS->>RS: src_rect = (atlas_column × frame_width, 0, frame_width, frame_height)
@@ -103,9 +110,10 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant UI as Debug Panel
+    participant UI as Appearance UI
     participant D as Dispatcher
     participant AS as AppearanceSystem
+    participant ALC as AppearanceLayerCacheBuilder
     participant AC as AppearanceComponent
     participant LSC as LayeredSpriteComponent
     participant RM as ResourceManager
@@ -114,9 +122,10 @@ sequenceDiagram
     D->>AS: onSetAppearanceSlotCommand()
     AS->>AS: 校验 slot 可切换 & variant 合法
     AS->>AC: slot_variants_["hair"] = "Lyria/Brown"
-    AS->>AS: rebuildLayerCache(entity)
-    AS->>RM: loadTexture()（若 Lyria/Brown 未预加载）
-    AS->>LSC: 重建全部 layers（含新 hair 纹理）
+    AS->>ALC: rebuild(entity)
+    ALC->>RM: loadTexture()（若 Lyria/Brown 未预加载）
+    ALC->>LSC: 重建全部 layers（含新 hair 纹理）
+    AS->>D: trigger AppearanceChangedEvent{entity}
     Note over LSC: 下一帧 RenderSystem 自动采用新缓存
 ```
 
@@ -227,7 +236,7 @@ flowchart TD
 
 ### 计算方法
 
-在 `AppearanceSystem::rebuildLayerCache` 中：
+在 `AppearanceLayerCacheBuilder::rebuild()` 中：
 
 ```
 对于每个 animation_frame：
@@ -254,7 +263,7 @@ flowchart LR
         B["每个 runtime_switchable_slot<br/>的前 3 个 variant 的纹理"]
     end
     subgraph "运行时按需加载"
-        C["面板切换到未预加载的 variant 时<br/>rebuildLayerCache → ResourceManager.loadTexture"]
+        C["面板切换到未预加载的 variant 时<br/>AppearanceLayerCacheBuilder → ResourceManager.loadTexture"]
     end
     A --> D["AssetRegistry 预注册"]
     B --> D
@@ -263,6 +272,22 @@ flowchart LR
 
 `kRuntimeVariantPreloadLimitPerSlot = 3` 控制每个可切换槽位的启动预加载上限，防止大量变体导致启动时间线性膨胀。
 
+## 头像生成与 generated image
+
+菜单和战斗 HUD 使用的玩家头像不是 RmlUi 静态文件，而是由 `AppearancePortraitBuilder` 把正面 portrait 层合成出来，再交给 `PlayerPortraitService` 注册为 `generated://` 图片：
+
+```mermaid
+flowchart LR
+    AC["AppearanceComponent<br/>当前外观选择"] --> BUILDER["AppearancePortraitBuilder<br/>合成 Standard64 / Battle48"]
+    BUILDER --> CACHE["decoded_layer_cache<br/>按路径缓存解码层"]
+    BUILDER --> SERVICE["PlayerPortraitService<br/>稳定 selection_key"]
+    SERVICE --> REG["RmlGeneratedImageRegistry<br/>generated://player-portrait/..."]
+    MENU["菜单 / HUD 打开"] -.->|"复用已注册 URI"| REG
+    EVENT["AppearanceChangedEvent"] --> SERVICE
+```
+
+`PlayerPortraitService` 在初始化和收到 `AppearanceChangedEvent` 时尝试刷新头像。若外观选择对应的 `selection_key` 没变，且 registration 仍有效，它会保留现有 URI / registration；普通菜单打开只读取 `sourceUri()` 或 `decoratorString()`，不会触发整张头像重新合成。
+
 ## 涉及文件
 
 | 文件 | 层 | 职责 |
@@ -270,8 +295,12 @@ flowchart LR
 | `assets/data/appearance_catalog.json` | 数据 | 外观配置：层序、槽位目录、动作布局、profile、变体列表 |
 | `src/game/data/appearance_catalog.h/.cpp` | Game | 解析配置、路径解析、布局查询、预加载路径收集 |
 | `src/game/component/appearance_component.h` | Game | 逻辑状态：当前 profile、gender、slot_variants |
-| `src/game/system/appearance_system.h/.cpp` | Game | 桥梁：监听 command → 预计算布局 → 写入 engine 组件 |
+| `src/game/system/appearance_layer_cache_builder.h/.cpp` | Game | 无状态缓存构建入口：读 appearance / catalog / animation，写 `LayeredSpriteComponent` |
+| `src/game/system/appearance_system.h/.cpp` | Game | 探索态壳：监听 command → 更新组件 → 调用 cache builder → 派发 `AppearanceChangedEvent` |
+| `src/game/ui/appearance_portrait_builder.h/.cpp` | Game UI | 分层 portrait 合成、标准头像 / 战斗头像裁剪、解码层缓存 |
+| `src/game/ui/player_portrait_service.h/.cpp` | Game UI | 订阅 `AppearanceChangedEvent`，注册并复用 `generated://` 玩家头像 |
 | `src/game/defs/commands.h` | Game | `SetAppearanceSlotCommand` / `RefreshAppearanceCommand` |
+| `src/game/scene/appearance_customize_scene.h/.cpp` | Game | 换装界面：草稿选择、隔离预览 registry、确认提交 |
 | `src/game/debug/player_debug_panel.cpp` | Game | 调试面板：多槽位切换、Reset、Refresh |
 | `src/game/runtime/game_runtime_assembler.cpp` | Game | 启动装配：预加载纹理、注入 ResourceManager 到 registry context |
 | `src/engine/component/layered_sprite_component.h` | Engine | 渲染数据：`LayeredAnimationLayout` / `LayeredSpriteLayer` |

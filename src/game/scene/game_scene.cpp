@@ -149,6 +149,20 @@ void initializeNewGameWallet(entt::registry& registry) {
     return {std::string(game::scene::DEFAULT_BATTLE_PLAYER_ACTOR_ID)};
 }
 
+[[nodiscard]] std::vector<std::string> collectPlayerActorIdsFromUnits(
+    const std::vector<game::battle::BattleUnit>& units) {
+    std::vector<std::string> actor_ids{};
+    for (const auto& unit : units) {
+        if (unit.side != game::battle::BattleSide::Player || !unit.source_actor_id || unit.source_actor_id->empty()) {
+            continue;
+        }
+        if (std::find(actor_ids.begin(), actor_ids.end(), *unit.source_actor_id) == actor_ids.end()) {
+            actor_ids.push_back(*unit.source_actor_id);
+        }
+    }
+    return actor_ids;
+}
+
 void populateBattlePartyState(entt::registry& registry,
                               game::battle::BattleUnitBuildOptions& build_options) {
     const entt::entity player = findPlayer(registry);
@@ -844,17 +858,29 @@ void GameScene::onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt) {
 }
 
 void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) {
-    if (cmd.encounter_context && active_encounter_context_) {
-        spdlog::warn("GameScene: 收到地图遭遇战斗请求，但已有未结算遭遇 encounter_id={}。",
-                     active_encounter_context_->encounter_id);
-        releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+    if (battle_in_progress_ || active_encounter_context_) {
+        if (active_encounter_context_) {
+            spdlog::warn("GameScene: 收到战斗请求，但已有未结算遭遇 encounter_id={}。",
+                         active_encounter_context_->encounter_id);
+        } else {
+            spdlog::warn("GameScene: 收到战斗请求，但当前已有战斗流程未结束。");
+        }
+        if (cmd.encounter_context) {
+            releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+        }
         return;
     }
 
     std::vector<game::battle::BattleUnit> units{};
+    std::vector<std::string> battle_actor_ids = cmd.actor_ids;
     units.reserve(cmd.player_units.size() + cmd.enemy_units.size());
     units.insert(units.end(), cmd.player_units.begin(), cmd.player_units.end());
     units.insert(units.end(), cmd.enemy_units.begin(), cmd.enemy_units.end());
+    if (!units.empty()) {
+        if (auto unit_actor_ids = collectPlayerActorIdsFromUnits(units); !unit_actor_ids.empty()) {
+            battle_actor_ids = std::move(unit_actor_ids);
+        }
+    }
 
     const auto initial_item_stocks = collectPlayerItemStocks(registry_);
 
@@ -877,7 +903,8 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         // GameScene 负责将 command 适配为 battle factory 的输入结构，
         // 保持 battle 层不依赖 defs::EnterBattleCommand。
         game::battle::BattleUnitBuildOptions build_options{};
-        build_options.actor_ids = resolveBattleActorIds(registry_, cmd.actor_ids);
+        battle_actor_ids = resolveBattleActorIds(registry_, cmd.actor_ids);
+        build_options.actor_ids = battle_actor_ids;
         build_options.troop_id = cmd.troop_id;
         populateBattlePartyState(registry_, build_options);
         std::string build_error{};
@@ -892,6 +919,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
 
     active_battle_initial_item_stocks_ = initial_item_stocks;
     has_active_battle_item_stocks_ = true;
+    battle_in_progress_ = true;
     active_encounter_context_ = cmd.encounter_context;
 
     game::scene::BattleScenePresentationOptions presentation_options{};
@@ -916,7 +944,7 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
     playBattleMusicCue();
 
     context_.getDispatcher().trigger(game::defs::BattleStartedEvent{
-        .actor_ids = cmd.actor_ids,
+        .actor_ids = battle_actor_ids,
         .troop_id = cmd.troop_id,
         .battle_background_id = presentation_options.battle_background_id,
         .from_encounter = cmd.encounter_context.has_value(),
@@ -1007,6 +1035,7 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
     spdlog::info("GameScene: Battle ended, outcome={}, final_units={}.",
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
+    battle_in_progress_ = false;
     writeBackBattleRuntimeStats(registry_, services_.get(), evt.final_units);
     resolveActiveEnemyEncounter(evt);
     game::scene::processBattleEndedForGameScene(

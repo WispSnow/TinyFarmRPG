@@ -2,11 +2,15 @@
 
 #include "game/component/appearance_component.h"
 #include "game/data/appearance_catalog.h"
+#include "game/defs/commands.h"
 #include "game/runtime/localization_service.h"
 #include "game/scene/appearance_customize_types.h"
 #include "game/ui/appearance_customize_view_model.h"
 #include "appearance_test_fixture_utils.h"
 #include "../engine/render/test_source_utils.h"
+
+#include <entt/entity/registry.hpp>
+#include <entt/signal/dispatcher.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -30,6 +34,16 @@ game::runtime::LocalizationService loadProjectLocalization(std::string_view lang
     EXPECT_TRUE(localization.setLanguage(language_tag));
     return localization;
 }
+
+struct RefreshAppearanceProbe {
+    int count{0};
+    entt::entity last_target{entt::null};
+
+    void onRefresh(const game::defs::RefreshAppearanceCommand& command) {
+        ++count;
+        last_target = command.target;
+    }
+};
 
 std::filesystem::path createCatalogFixture() {
     const auto temp_root = game::test::createUniqueTempDir("appearance_customize_fixture");
@@ -223,6 +237,62 @@ TEST(AppearanceCustomizeViewModelTest, ApplySelectionUpdatesAppearanceComponent)
     EXPECT_EQ(appearance.gender_, "female");
     EXPECT_EQ(appearance.slot_variants_.at("skin"), "2");
     EXPECT_TRUE(appearance.dirty_);
+}
+
+TEST(AppearanceCustomizeViewModelTest, ApplySelectionToEntityBatchWritesAndEmitsOneRefresh) {
+    game::data::AppearanceCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(createCatalogFixture().string()));
+
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    RefreshAppearanceProbe probe{};
+    dispatcher.sink<game::defs::RefreshAppearanceCommand>().connect<&RefreshAppearanceProbe::onRefresh>(&probe);
+
+    const entt::entity entity = registry.create();
+    auto& appearance = registry.emplace<game::component::AppearanceComponent>(entity);
+    appearance.profile_id_ = "player_default";
+    appearance.gender_ = "male";
+    appearance.slot_variants_ = {
+        {"skin", "1"},
+        {"hair", "Standard/Brown"},
+        {"weapon", "auto"},
+    };
+
+    auto selection = makeDefaultAppearanceSelection(catalog);
+    selection.gender = "female";
+    selection.slot_variants["skin"] = "2";
+    selection.slot_variants["hair"] = "Lyria/Brown";
+
+    EXPECT_TRUE(applySelectionToEntity(registry, dispatcher, entity, selection));
+    dispatcher.sink<game::defs::RefreshAppearanceCommand>().disconnect<&RefreshAppearanceProbe::onRefresh>(&probe);
+
+    const auto& updated = registry.get<game::component::AppearanceComponent>(entity);
+    EXPECT_EQ(updated.gender_, "female");
+    EXPECT_EQ(updated.slot_variants_.at("skin"), "2");
+    EXPECT_EQ(updated.slot_variants_.at("hair"), "Lyria/Brown");
+    EXPECT_EQ(updated.slot_variants_.at("weapon"), "auto");
+    EXPECT_TRUE(updated.dirty_);
+    EXPECT_EQ(probe.count, 1);
+    EXPECT_EQ(probe.last_target, entity);
+}
+
+TEST(AppearanceCustomizeViewModelTest, ApplySelectionToEntityRejectsInvalidTargetsWithoutRefresh) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    RefreshAppearanceProbe probe{};
+    dispatcher.sink<game::defs::RefreshAppearanceCommand>().connect<&RefreshAppearanceProbe::onRefresh>(&probe);
+
+    AppearanceSelection selection{};
+    selection.gender = "female";
+    selection.slot_variants["skin"] = "2";
+
+    EXPECT_FALSE(applySelectionToEntity(registry, dispatcher, entt::null, selection));
+
+    const entt::entity missing_component = registry.create();
+    EXPECT_FALSE(applySelectionToEntity(registry, dispatcher, missing_component, selection));
+    dispatcher.sink<game::defs::RefreshAppearanceCommand>().disconnect<&RefreshAppearanceProbe::onRefresh>(&probe);
+
+    EXPECT_EQ(probe.count, 0);
 }
 
 TEST(AppearanceCustomizeViewModelTest, RandomizeTouchesRuntimeSlots) {

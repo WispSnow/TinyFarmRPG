@@ -5,7 +5,7 @@
 `SystemScheduler` 是 TinyFarm 游戏逻辑层的**帧调度器**，负责在每个固定时间步（`fixedUpdate`）中按正确顺序执行所有 ECS 系统。它的核心职责包括：
 
 1. **阶段排序** — 定义 26 个 `SchedulerStage`，确保系统之间的数据依赖和执行时序正确
-2. **模式裁剪** — 根据当前 `GameMode`（探索/战斗/暂停/过场）选择性跳过不需要的阶段
+2. **模式裁剪** — 根据传入的 `GameMode`（探索/战斗/暂停/过场）选择性跳过不需要的阶段
 3. **并行岛** — 将无数据冲突的系统分组，通过 `ParallelWaveScheduler` + `ThreadPool` 并行执行
 4. **过渡门控** — 在地图切换过渡期间，通过两道"门"(Gate) 提前终止 tick，避免无效逻辑运行
 
@@ -46,22 +46,24 @@ graph LR
 
 ## GameMode — 执行模式
 
+注意：这里的 `GameMode` 是 scheduler 支持的**执行 profile 词汇表**，不等于当前玩法流程一定会主动翻到对应 mode。当前 `GameScene::fixedUpdate()` 每帧把 `game_mode_` 传给 `SystemScheduler::tick()`，但 `GameScene::setGameMode()` 还没有生产调用者；探索↔战斗实际由 `GameScene::onEnterBattleCommand()` push 覆盖式 `BattleScene`、`BattleScene` 结束时 pop 自己来完成。`GameMode::Battle` profile 目前是预留的裁剪配置，完整联动留给后续调度器收口。
+
 ```mermaid
 stateDiagram-v2
     [*] --> Exploration : 游戏启动
-    Exploration --> Battle : 进入战斗
-    Exploration --> PauseOverlay : 打开暂停
-    Exploration --> Cutscene : 触发过场
-    Battle --> Exploration : 战斗结束
-    PauseOverlay --> Exploration : 关闭暂停
-    Cutscene --> Exploration : 过场结束
+    Exploration --> Battle : 预留战斗 profile
+    Exploration --> PauseOverlay : 预留暂停 profile
+    Exploration --> Cutscene : 预留过场 profile
+    Battle --> Exploration : profile 返回
+    PauseOverlay --> Exploration : profile 返回
+    Cutscene --> Exploration : profile 返回
 ```
 
 | 模式 | 说明 | 执行的阶段 |
 |------|------|-----------|
 | `Exploration` | 完整游戏循环 | 全部 26 阶段（受 Gate 裁剪） |
-| `Battle` | 战斗模式（桩） | 仅 `RemoveEntity` |
-| `PauseOverlay` | 暂停覆盖层（桩） | 仅 `RemoveEntity` |
+| `Battle` | 战斗模式 profile（当前战斗入口未切换到该 mode） | 仅 `RemoveEntity` |
+| `PauseOverlay` | 暂停覆盖层 profile（当前菜单覆盖主要靠 Scene 栈） | 仅 `RemoveEntity` |
 | `Cutscene` | 过场动画 | `RemoveEntity` → `Time` → `DayNight` → `TransitionUpdatePost` → `LightTogglePost` |
 
 非 `Exploration` 模式直接顺序执行 `profileStages(mode)` 返回的阶段列表，不触发并行岛也不检查 Gate。
