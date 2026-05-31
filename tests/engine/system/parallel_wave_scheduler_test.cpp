@@ -52,6 +52,14 @@ TEST(ParallelWaveSchedulerTest, NoDependenciesShareSingleWave) {
     EXPECT_EQ(wave[1], 1U);
 }
 
+TEST(ParallelWaveSchedulerTest, EnTTAtomicModeIsEnabledForWorkerRegistryAccess) {
+#ifdef ENTT_USE_ATOMIC
+    SUCCEED();
+#else
+    FAIL() << "SystemScheduler worker islands require EnTT atomic mode for cross-thread registry access.";
+#endif
+}
+
 TEST(ParallelWaveSchedulerTest, WriteReadDependencySplitsWaves) {
     std::vector<SystemTaskDecl> tasks;
     tasks.push_back(SystemTaskDecl{

@@ -82,7 +82,7 @@ flowchart LR
 cmake --preset debug -DENABLE_DEBUG_UI=OFF -DBUILD_LEARN=OFF
 ```
 
-另外，`CMakeLists.txt:26` 把 EnTT 的 ID 类型强制设为 64 位（`ENTT_ID_TYPE=std::uint64_t`），降低哈希冲突风险——所有 catalog / cue / resource 的 hash 都跑在这个前提上。
+另外，顶层 `CMakeLists.txt` 会为 EnTT 全局定义两项构建前提：`ENTT_ID_TYPE=std::uint64_t` 把 ID 类型强制设为 64 位，降低 catalog / cue / resource 哈希冲突风险；`ENTT_USE_ATOMIC` 让 EnTT 在多线程访问时使用 atomic 内部共享状态，配合 SystemScheduler 的并行岛使用。
 
 ## 五、构建产物结构
 

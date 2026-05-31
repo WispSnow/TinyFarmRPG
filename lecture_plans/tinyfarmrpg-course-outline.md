@@ -1012,10 +1012,10 @@ flowchart LR
 **目标**：把上一套 GameScene 中的固定顺序系统更新，升级为可观察、可裁剪、可并行的调度器。同时把 L04 / L15 提到的 `GameMode` 收口。
 
 **知识点**：
-- `SchedulerStage`、`GameMode`、transition gate 的完整模型。
+- `SchedulerStage`、复合 stage、`GameMode`、transition gate 的完整模型。
 - `ParallelWaveScheduler` 与 `SystemTaskDecl`。
 - 用资源读写声明推导并行 wave。
-- 哪些系统适合并行，哪些必须顺序执行。
+- 哪些系统适合并行，哪些必须顺序执行；`ENTT_USE_ATOMIC`、deferred command 与 event buffer 的边界。
 - DOT 调度图导出与可视化排查。
 
 **阅读清单**：
@@ -1024,7 +1024,7 @@ flowchart LR
 - 上一套 part-26 游戏场景与系统编排（升级前对照）
 - **并行调度原理外链**：`docs/tutorial/multi-thread/10-ecs-parallel-scheduling.md`、`13-entt-multithreading-and-scheduler.md`
 
-> 提示（先看再讲）：先用 `tools/scheduler_dot_dump` 导出 DOT 调度图，或打开 Scheduler Debug Panel 实时观察 wave 划分，再回头看声明式装配如何生成它。
+> 提示（先看再讲）：先用 `tools/scheduler_dot_dump` 导出 post-gate DOT 调度图，确认 `SpatialIndex / CameraFollow / Animation` 三个无边节点；再打开 Scheduler Debug Panel 观察 mode、gate 和 stage timing。Debug Panel 不显示 wave 拓扑，wave 结构以 DOT / 测试为准。
 
 **源码入口**：
 - `src/game/runtime/system_scheduler.*`
@@ -1037,7 +1037,7 @@ flowchart LR
 2. `GameMode` 从 Exploration 切到 Battle，scheduler 内部的具体动作是什么？
 3. 哪些系统在你的判断下应该"绝不并行"？理由？
 
-**最小练习**：用 `scheduler_dot_dump` 导出当前调度图，找出最深的并行 wave。
+**最小练习**：用 `scheduler_dot_dump` 导出 post-gate DOT，确认当前是单层 3 宽无边 wave；再临时给 `Animation` 声明一个与 `SpatialIndex` 冲突的资源，观察 DOT 多出依赖边后还原。
 
 **小结与下节预告**：工程化主体完成，下一讲做收尾——调试、测试与扩展方向。
 

@@ -90,7 +90,7 @@ macOS/Linux 下，工具通常位于：
 
 ## scheduler_dot_dump
 
-用途：导出 SystemScheduler 中 post-gate parallel island 的 DOT 图。
+用途：导出 SystemScheduler 中 post-gate parallel island 的 DOT 图。当前工具只导出这一座岛，不是完整 tick 时序图。
 
 ```bash
 ./build/debug/tools/scheduler_dot_dump
@@ -105,7 +105,7 @@ dot -Tpng post_gate_parallel_island.dot -o post_gate_parallel_island.png
 
 适合场景：
 
-- 调整系统并行声明后，检查依赖图是否符合预期。
+- 调整系统并行声明后，检查依赖图是否符合预期；当前默认图应包含 `SpatialIndex`、`CameraFollow`、`Animation` 三个无边节点。
 - 给教学材料展示 ECS 并行波次。
 
 ## rpg_importer

@@ -23,8 +23,12 @@ option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ON)
 option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
-# EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
-add_compile_definitions(ENTT_ID_TYPE=std::uint64_t)
+# EnTT 资源/哈希 ID 使用 64 位；并行 ECS worker 会跨线程访问 EnTT storage，
+# 因此启用 EnTT 文档建议的 atomic 内部状态。
+add_compile_definitions(
+    ENTT_ID_TYPE=std::uint64_t
+    ENTT_USE_ATOMIC
+)
 
 # ============================================
 # 引入模块化配置

@@ -443,17 +443,18 @@ flowchart TD
 
     PC --> I1["🏝️ 并行岛 1<br/>DayNight ∥ NPCWander ∥ AnimalBehavior"]
 
-    I1 --> CHEST["Chest / ItemUse / Dialogue (串行)"]
-    CHEST --> AT["AutoTile (串行)"]
+    I1 --> MIDSEQ["Chest → ItemUse(+Farm)<br/>→ Dialogue(+script lifecycle)<br/>→ QuestInteraction(+recruit/shop)<br/>→ AutoTile (串行)"]
 
-    AT --> I2["🏝️ 并行岛 2<br/>ActionSound ∥ State"]
+    MIDSEQ --> I2["🏝️ 并行岛 2<br/>ActionSound ∥ State"]
 
-    I2 --> MOV["Movement (串行)"]
+    I2 --> SCMD["ScriptCommands (串行)"]
+    SCMD --> MOV["Movement (串行)"]
     MOV --> G2{"Gate 2<br/>transition active?"}
     G2 -->|是| RETURN["提前返回"]
-    G2 -->|否| I3["🏝️ 并行岛 3<br/>SpatialIndex ∥ CameraFollow ∥ Animation"]
+    G2 -->|否| ZONE["ZoneTrigger (串行)"]
+    ZONE --> I3["🏝️ 并行岛 3<br/>SpatialIndex ∥ CameraFollow ∥ Animation"]
 
-    I3 --> FINAL["Pickup / Interaction (串行)"]
+    I3 --> FINAL["EnemyEncounter / Pickup / Interaction (串行)"]
 
     style I1 fill:#e3f2fd
     style I2 fill:#e3f2fd

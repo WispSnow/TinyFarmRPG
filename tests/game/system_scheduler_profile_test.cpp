@@ -118,6 +118,8 @@ TEST(SystemSchedulerProfileTest, PostGateDotDumpComesFromDeclaredParallelStages)
     EXPECT_NE(dot.find("SpatialIndex"), std::string::npos);
     EXPECT_NE(dot.find("CameraFollow"), std::string::npos);
     EXPECT_NE(dot.find("Animation"), std::string::npos);
+    EXPECT_EQ(dot.find("->"), std::string::npos)
+        << "Post-gate island should remain a single dependency-free wave.";
 }
 
 TEST(SystemSchedulerProfileTest, ExplorationTickMatchesProfileOrderWhenNoTransition) {
