@@ -74,6 +74,11 @@ BattleEnemyHpBarController::BattleEnemyHpBarController(BattleEnemyHpBarConfig co
     : config_(config) {}
 
 void BattleEnemyHpBarController::syncFromSnapshot(const game::battle::BattleSnapshot& snapshot) {
+    syncFromSnapshotWithDelay(snapshot, config_.change_delay_seconds);
+}
+
+void BattleEnemyHpBarController::syncFromSnapshotWithDelay(const game::battle::BattleSnapshot& snapshot,
+                                                           const float change_delay_seconds) {
     std::vector<BattleEnemyHpBarState> next_bars;
     next_bars.reserve(snapshot.units.size());
 
@@ -86,7 +91,7 @@ void BattleEnemyHpBarController::syncFromSnapshot(const game::battle::BattleSnap
         if (const auto* existing = findBar(unit.id); existing) {
             bar = *existing;
         }
-        syncBarFromUnit(bar, unit);
+        syncBarFromUnit(bar, unit, change_delay_seconds);
         next_bars.push_back(bar);
     }
 
@@ -120,7 +125,7 @@ void BattleEnemyHpBarController::applyStagedSnapshotAndReveal(const game::battle
     if (staged_snapshot_) {
         const game::battle::BattleSnapshot snapshot = *staged_snapshot_;
         staged_snapshot_.reset();
-        syncFromSnapshot(snapshot);
+        syncFromSnapshotWithDelay(snapshot, 0.0f);
     }
     revealFromResult(result);
 }
@@ -186,7 +191,8 @@ BattleEnemyHpBarState* BattleEnemyHpBarController::findMutableBar(
 }
 
 void BattleEnemyHpBarController::syncBarFromUnit(BattleEnemyHpBarState& bar,
-                                                const game::battle::BattleUnit& unit) {
+                                                const game::battle::BattleUnit& unit,
+                                                const float change_delay_seconds) {
     const float next_ratio = hpRatio(unit.hp, unit.max_hp);
     const bool was_initialized = bar.initialized;
 
@@ -204,7 +210,7 @@ void BattleEnemyHpBarController::syncBarFromUnit(BattleEnemyHpBarState& bar,
 
     if (std::abs(bar.target_ratio - next_ratio) > RATIO_EPSILON) {
         bar.target_ratio = next_ratio;
-        bar.ratio_change_delay_seconds_remaining = std::max(config_.change_delay_seconds, 0.0f);
+        bar.ratio_change_delay_seconds_remaining = std::max(change_delay_seconds, 0.0f);
     }
 }
 

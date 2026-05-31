@@ -33,6 +33,12 @@ TEST(BattleAnimationSpeedTest, SpeedOneIsNoOp) {
     EXPECT_FLOAT_EQ(config.weapon_lunge_seconds, original.weapon_lunge_seconds);
 }
 
+TEST(BattleAnimationSpeedTest, SinglePresentationTimeUsesSameSpeedScale) {
+    EXPECT_FLOAT_EQ(scaledAnimationSeconds(0.46f, 2.0f), 0.23f);
+    EXPECT_FLOAT_EQ(scaledAnimationSeconds(0.22f, 1.0f), 0.22f);
+    EXPECT_FLOAT_EQ(scaledAnimationSeconds(0.22f, 0.0f), 0.22f);
+}
+
 TEST(BattleAnimationSpeedTest, SpeedTwoHalvesAllSecondsFields) {
     auto config = makeReferenceConfig();
     scaleAnimationTimeline(config, 2.0f);

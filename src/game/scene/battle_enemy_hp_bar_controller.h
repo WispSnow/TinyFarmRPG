@@ -80,7 +80,10 @@ public:
 
 private:
     [[nodiscard]] BattleEnemyHpBarState* findMutableBar(game::battle::BattleUnitId unit_id);
-    void syncBarFromUnit(BattleEnemyHpBarState& bar, const game::battle::BattleUnit& unit);
+    void syncFromSnapshotWithDelay(const game::battle::BattleSnapshot& snapshot, float change_delay_seconds);
+    void syncBarFromUnit(BattleEnemyHpBarState& bar,
+                         const game::battle::BattleUnit& unit,
+                         float change_delay_seconds);
 
     BattleEnemyHpBarConfig config_{};
     std::vector<BattleEnemyHpBarState> bars_{};
