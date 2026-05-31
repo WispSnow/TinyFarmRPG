@@ -410,6 +410,46 @@ TEST(BattleActionResolverTest, SkillConsumesMpAndRejectsWhenInsufficient) {
     EXPECT_NE(second_cast.failure_reason.find("mp"), std::string::npos);
 }
 
+TEST(BattleActionResolverTest, SkillMissConsumesMpAdvancesTurnAndSkipsEffects) {
+    const auto fixture = testdata::createCatalogFixture("battle_action_resolver_miss_fixture");
+
+    game::data::RpgCatalog rpg_catalog;
+    ASSERT_TRUE(rpg_catalog.loadSkills(fixture.skills.string()));
+
+    auto units = makeUnits();
+    units[0].mp = 5;
+    units[0].max_mp = 5;
+    TurnCore turn_core(std::move(units));
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{BattleActionResolver::Dependencies{
+        .rpg_catalog = &rpg_catalog,
+        .item_catalog = nullptr}};
+
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Skill,
+        .actor_id = 1,
+        .target_id = 101,
+        .skill_id = "skill.whiff"
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_TRUE(result.missed);
+    EXPECT_EQ(result.mp_spent, 4);
+    EXPECT_EQ(result.damage, 0);
+    EXPECT_FALSE(result.target_defeated);
+    EXPECT_TRUE(result.states_added.empty());
+    EXPECT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{2});
+
+    const auto* hero = turn_core.findUnit(1);
+    ASSERT_NE(hero, nullptr);
+    EXPECT_EQ(hero->mp, 1);
+
+    const auto* slime = turn_core.findUnit(101);
+    ASSERT_NE(slime, nullptr);
+    EXPECT_EQ(slime->hp, 40);
+    EXPECT_TRUE(runtime_state.units[101].state_turns_left.empty());
+}
+
 TEST(BattleActionResolverTest, ItemConsumesStockAndRecoversHp) {
     const auto fixture = testdata::createCatalogFixture("battle_action_resolver_item_fixture");
 
