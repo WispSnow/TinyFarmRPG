@@ -29,7 +29,8 @@ flowchart LR
   %% Save path
   World["registry + WorldState + MapManager"] -->|capture| SaveSvcSave["SaveService"]
   SaveSvcSave --> SaveData["SaveData"]
-  SaveData -->|serialize| JSON["slotX.json"]
+  SaveData -->|serialize| Tmp["slotX.json.tmp"]
+  Tmp -->|replaceSaveFile| JSON["slotX.json"]
 
   %% Load path
   JSON -->|migrateToLatest| Migrator["SaveMigrator<br/>(v2 -> v8)"]
@@ -43,14 +44,16 @@ flowchart LR
 
 读图要点：
 - `SaveService`：流程层唯一入口（保存/加载），内部做 `capture/apply + 文件读写`。
+- `writeSaveFile / replaceSaveFile`：先写 `.tmp`，再 rename 到目标；若平台不支持覆盖 rename，则把旧档移到 `.bak`，替换失败时尝试恢复旧档。
 - `SaveMigrator`：读档前置迁移入口，负责把旧版本 JSON 规范化到当前版本（当前为 `v2 -> v8`）。
-- `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节。
+- `SaveData`：只关心“格式与版本”，不关心 ECS/系统/地图加载细节；反序列化 scalar 字段时显式检查类型和范围，坏字段返回错误而不是依赖异常。
 - `MapManager::snapshotCurrentMap()`：把“当前地图的动态实体”写回持久层（否则存档可能漏掉当前地图状态）。
 - `schema v8` 当前字段：`quest_state`、`skill_state`、`appearance_state`、`party_state`、`equipment_state`、`party_runtime_state`、`combat_state`、`script_state`。
 - `party_state` 保存 `recruited_actor_ids / active_actor_ids / max_active_members`；旧 schema 缺 `max_active_members` 时迁移默认补 4。
 - `party_runtime_state.actor_states` 保存 actor 的 `current_hp / current_mp / level / total_exp`；读档应用时 `total_exp` 作为等级真源，`level` 会按 actor 曲线重新推导。
 - `appearance_state` 保存 `profile_id / gender / slots`（slot -> variant，如 `hair: "Lyria/Brown"`）。
 - `script_state` 保存 Lua `tf.state` 的 JSON 兼容基元，用于一次性地图事件、剧情 flag、脚本化宝箱等内容层状态。
+- `SaveSlotSelectScene` 只用 `tryReadSlotSummary()` 读取 `SlotSummary{day,timestamp}` 展示槽位；摘要读取失败时，Load 模式禁用该槽位，Save 模式允许覆盖。
 
 ## 3) 关键不变量：保存前必须 snapshot 当前地图
 
@@ -71,8 +74,8 @@ flowchart LR
 ## 5) 快速排错 checklist（读档失败从哪看）
 
 - 文件不存在 / 无法打开：检查 `saves/slotX.json` 路径与权限。
-- JSON 解析失败：文件损坏/半写入（可优先看 SaveService 是否使用临时文件替换）。
-- 存档迁移失败：检查 `schema_version` 与新增状态字段类型（容器应为 object/array，runtime `level / total_exp` 应为 int）。
+- JSON 解析失败：文件损坏/半写入（可优先看 SaveService 是否使用 `.tmp` + `replaceSaveFile` 替换）。
+- 存档迁移/反序列化失败：检查 `schema_version` 与新增状态字段类型（容器应为 object/array，scalar 字段必须类型正确且不越界，runtime `level / total_exp` 应为 int）。
 - `schema_version` 不支持：新版本存档拒绝加载（避免误读导致更坏状态）。
 - 地图加载失败：`player.map_name` 不存在或 world 文件不包含对应地图。
 - UI 不同步：确认 `SaveService::apply` 是否触发了必要的 `InventorySyncCommand/HotbarSyncCommand/HotbarActivateCommand`。

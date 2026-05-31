@@ -334,6 +334,7 @@ TEST(SaveMigratorTest, RejectsMissingOrInvalidSchemaVersion) {
 
     expect_reject(nlohmann::json::parse(R"({"game_time":{"day":1}})"));
     expect_reject(nlohmann::json::parse(R"({"schema_version":0,"game_time":{"day":1}})"));
+    expect_reject(nlohmann::json::parse(R"({"schema_version":"8","game_time":{"day":1}})"));
     expect_reject(nlohmann::json::parse(R"({"schema_version":99,"game_time":{"day":1}})"));
     expect_reject(nlohmann::json::array());
 }

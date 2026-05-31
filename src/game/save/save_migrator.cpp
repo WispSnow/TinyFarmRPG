@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
+#include <limits>
 #include <string_view>
 
 namespace game::save {
@@ -45,6 +46,35 @@ constexpr std::uint32_t SCHEMA_VERSION_PARTY_MAX_ACTIVE_MEMBERS = 8u;
 constexpr std::uint32_t DEFAULT_MAX_ACTIVE_MEMBERS =
     static_cast<std::uint32_t>(game::defs::kDefaultMaxActivePartyMembers);
 
+bool readUnsignedJsonValue(const nlohmann::json& value,
+                           std::uint32_t& out,
+                           std::string_view path,
+                           std::string& out_error) {
+    if (!value.is_number_integer()) {
+        out_error = "SaveMigrator: field '" + std::string(path) + "' is not an unsigned int";
+        return false;
+    }
+
+    if (value.is_number_unsigned()) {
+        const auto raw = value.get<std::uint64_t>();
+        if (raw > static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())) {
+            out_error = "SaveMigrator: field '" + std::string(path) + "' is out of range";
+            return false;
+        }
+        out = static_cast<std::uint32_t>(raw);
+        return true;
+    }
+
+    const auto raw = value.get<std::int64_t>();
+    if (raw < 0 ||
+        static_cast<std::uint64_t>(raw) > static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())) {
+        out_error = "SaveMigrator: field '" + std::string(path) + "' is out of range";
+        return false;
+    }
+    out = static_cast<std::uint32_t>(raw);
+    return true;
+}
+
 bool ensureObjectField(nlohmann::json& json, std::string_view key, std::string& out_error) {
     if (!json.contains(key)) {
         json[key] = nlohmann::json::object();
@@ -74,11 +104,8 @@ bool ensureUIntField(nlohmann::json& json, std::string_view key, std::uint32_t d
         json[key] = default_value;
         return true;
     }
-    if (!json[key].is_number_unsigned()) {
-        out_error = "SaveMigrator: field '" + std::string(key) + "' is not an unsigned int";
-        return false;
-    }
-    return true;
+    std::uint32_t ignored = 0;
+    return readUnsignedJsonValue(json[key], ignored, key, out_error);
 }
 
 bool ensureBoolField(nlohmann::json& json, std::string_view key, bool default_value, std::string& out_error) {
@@ -160,7 +187,11 @@ bool normalizePartyState(nlohmann::json& party_state, std::string& out_error) {
     if (!ensureUIntField(party_state, KEY_MAX_ACTIVE_MEMBERS, DEFAULT_MAX_ACTIVE_MEMBERS, out_error)) {
         return false;
     }
-    if (party_state[KEY_MAX_ACTIVE_MEMBERS].get<std::uint32_t>() == 0u) {
+    std::uint32_t max_active_members = 0;
+    if (!readUnsignedJsonValue(party_state[KEY_MAX_ACTIVE_MEMBERS], max_active_members, KEY_MAX_ACTIVE_MEMBERS, out_error)) {
+        return false;
+    }
+    if (max_active_members == 0u) {
         party_state[KEY_MAX_ACTIVE_MEMBERS] = 1u;
     }
     return true;
@@ -332,7 +363,14 @@ bool migrateToLatest(nlohmann::json& json, std::string& out_error) {
         return false;
     }
 
-    const std::uint32_t schema_version = json.value<std::uint32_t>(KEY_SCHEMA_VERSION.data(), 0u);
+    if (!json.contains(KEY_SCHEMA_VERSION)) {
+        out_error = "SaveMigrator: missing schema_version";
+        return false;
+    }
+    std::uint32_t schema_version = 0;
+    if (!readUnsignedJsonValue(json[KEY_SCHEMA_VERSION], schema_version, KEY_SCHEMA_VERSION, out_error)) {
+        return false;
+    }
     if (schema_version == 0u) {
         out_error = "SaveMigrator: missing schema_version";
         return false;

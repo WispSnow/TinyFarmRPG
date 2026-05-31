@@ -233,6 +233,7 @@ void SaveSlotSelectScene::refreshSlotButtons() {
                 }
             } else {
                 label_text = game::ui::localizeTextOrFallback(localization_, "save_slot.status.invalid", "Invalid");
+                enabled = (mode_ == Mode::Save);
                 spdlog::warn("SaveSlotSelectScene: slot {} summary 读取失败: {}", i, summary_error);
             }
         }

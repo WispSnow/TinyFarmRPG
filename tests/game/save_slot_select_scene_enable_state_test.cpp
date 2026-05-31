@@ -37,6 +37,8 @@ TEST(SaveSlotSelectSceneEnableStateTest, RefreshSlotButtonsPublishesEnabledBindi
 
     EXPECT_NE(source.find("slot.enabled = enabled;"), std::string::npos)
         << "SaveSlotSelectScene should publish per-slot enabled state into the RmlUi data model.";
+    EXPECT_NE(source.find("enabled = (mode_ == Mode::Save);"), std::string::npos)
+        << "Invalid slots should remain overwritable in save mode but disabled in load mode.";
     EXPECT_NE(source.find("document_controller_.markDirty(\"slots\")"), std::string::npos)
         << "SaveSlotSelectScene should mark slots dirty after rebuilding slot view models.";
     EXPECT_NE(rml_source.find("data-class-disabled=\"!slot.enabled\""), std::string::npos)

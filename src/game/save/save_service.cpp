@@ -277,6 +277,66 @@ bool parseJsonFileNoExceptions(const std::filesystem::path& file_path,
     return true;
 }
 
+[[nodiscard]] bool replaceSaveFile(const std::filesystem::path& tmp_path,
+                                   const std::filesystem::path& file_path,
+                                   std::string& out_error) {
+    std::error_code ec;
+    std::filesystem::rename(tmp_path, file_path, ec);
+    if (!ec) {
+        return true;
+    }
+
+    const std::string first_error = ec.message();
+    std::error_code exists_ec;
+    const bool target_exists = std::filesystem::exists(file_path, exists_ec);
+    if (exists_ec || !target_exists) {
+        out_error = "Failed to replace save file: " + first_error;
+        return false;
+    }
+
+    auto backup_path = file_path;
+    backup_path += ".bak";
+
+    std::error_code backup_remove_ec;
+    std::filesystem::remove(backup_path, backup_remove_ec);
+    if (backup_remove_ec) {
+        out_error = "Failed to prepare save backup: " + backup_remove_ec.message();
+        return false;
+    }
+
+    std::error_code backup_ec;
+    std::filesystem::rename(file_path, backup_path, backup_ec);
+    if (backup_ec) {
+        out_error = "Failed to backup existing save file after rename failed ('" +
+                    first_error +
+                    "'): " +
+                    backup_ec.message();
+        return false;
+    }
+
+    std::error_code replace_ec;
+    std::filesystem::rename(tmp_path, file_path, replace_ec);
+    if (!replace_ec) {
+        std::error_code cleanup_ec;
+        std::filesystem::remove(backup_path, cleanup_ec);
+        if (cleanup_ec) {
+            spdlog::warn("SaveService: 无法清理旧存档备份 '{}': {}", backup_path.string(), cleanup_ec.message());
+        }
+        return true;
+    }
+
+    std::error_code restore_ec;
+    std::filesystem::rename(backup_path, file_path, restore_ec);
+    if (restore_ec) {
+        out_error = "Failed to replace save file: " + replace_ec.message() +
+                    "; failed to restore previous save: " + restore_ec.message();
+        return false;
+    }
+
+    out_error = "Failed to replace save file: " + replace_ec.message();
+    return false;
+}
+
 } // namespace
 
 SaveService::SaveService(engine::core::Context& context,
@@ -330,16 +390,8 @@ bool SaveService::writeSaveFile(const SaveData& data,
         }
     }
 
-    std::filesystem::rename(tmp_path, file_path, ec);
-    if (ec) {
-        std::error_code remove_ec;
-        std::filesystem::remove(file_path, remove_ec);
-        ec.clear();
-        std::filesystem::rename(tmp_path, file_path, ec);
-        if (ec) {
-            out_error = "Failed to replace save file: " + ec.message();
-            return false;
-        }
+    if (!replaceSaveFile(tmp_path, file_path, out_error)) {
+        return false;
     }
 
     return true;
@@ -543,10 +595,11 @@ SaveData SaveService::capture(std::string& out_error) const {
     }
 
     if (auto* party = registry_.try_get<game::component::PartyComponent>(player)) {
-        normalizeParty(*party);
-        out.party_state.recruited_actor_ids = party->recruited_actor_ids_;
-        out.party_state.active_actor_ids = party->active_actor_ids_;
-        out.party_state.max_active_members = party->max_active_members_;
+        auto party_snapshot = *party;
+        normalizeParty(party_snapshot);
+        out.party_state.recruited_actor_ids = party_snapshot.recruited_actor_ids_;
+        out.party_state.active_actor_ids = party_snapshot.active_actor_ids_;
+        out.party_state.max_active_members = party_snapshot.max_active_members_;
     } else {
         spdlog::warn("SaveService: 玩家缺少 PartyComponent，队伍存档将只包含 actor.player。");
         out.party_state = PartyStateSaveData{};
