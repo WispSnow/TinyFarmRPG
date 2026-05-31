@@ -41,7 +41,8 @@
 - `preload.mode`：
   - `off`：不预热（切图时更可能卡顿，但启动更快）
   - `neighbors`：只预热“当前地图的邻接 + 触发器目标”
-  - `all`：启动期把 `WorldState` 里已知地图全部预热
+  - `all`：启动期把 `WorldState` 里已知地图全部预热（默认资产配置）
+- `preload.async_enabled`：启用异步管线后，worker 做 I/O / JSON / 图片 CPU 解码，GPU 上传通过主线程命令队列回到主线程；关闭时退回同步预热
 - `log_timings`：打印加载阶段计时（用于对比策略差异）
 
 关键入口：
@@ -50,7 +51,9 @@
 - `MapManager::preloadRelatedMaps(map_id)`：邻接/触发器目标预热
 
 预加载的本质：
-> 提前让 `.tmj/.tsj` 的 JSON、tileset、纹理等进入缓存，减少“第一次切换到某地图”的尖峰成本。
+> 提前让 `.tmj/.tsj` 的 JSON、tileset、纹理等进入缓存；异步模式下还会提前完成 CPU 侧预处理与解码，并把 GPU 上传排进主线程队列，减少“第一次切换到某地图”的尖峰成本。
+
+注意：`MapManager::waitForAsyncPreloadReady()` 只在极小预算内轮询状态，不直接 `drain()` 主线程命令队列。常规执行点是 `GameApp::drainMainThreadCommands()` 每帧统一 drain，所以预热要发生在真正 `loadMap()` 之前的若干帧；同一帧 schedule 后立刻 load 通常会超时并降级同步加载。
 
 ## 4) 快照（Snapshot）：保存“地图动态状态”
 本项目把“地图内会变化的状态”作为快照的一部分，写入 `WorldState::MapState::persistent.snapshot`：
@@ -103,8 +106,10 @@
 - 确认该地图有有效快照（`snapshot.valid=true`），且 `last_updated_day` 合理
 
 ### 6.4 预加载看不到效果/仍然卡顿
-- 检查 `assets/data/map_loading_config.json` 的 `preload.mode` 是否为期望值
+- 检查 `assets/data/map_loading_config.json` 的 `preload.mode` 是否为期望值；默认应为 `all`
+- 检查 `preload.async_enabled` 是否为 `true`
 - 开启 `log_timings` 对比 `off/neighbors/all` 的加载耗时差异
 - 确认“目标地图”是否属于预加载集合：
   - `neighbors` 只预热邻接与触发器目标（依赖 WorldState 的 world graph 信息，详见 `docs/game/world_state.md`）
   - external map 可能需要先被 `ensureExternalMap` 注册，才会进入 `maps()` 遍历
+- 如果日志显示同一帧才调度并马上切图，优先把预热触发点提前，而不是增大 `async_wait_budget_ms`

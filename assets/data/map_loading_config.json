@@ -1,7 +1,7 @@
 {
     "comment": "地图加载/预加载配置",
     "preload": {
-        "mode": "on",
+        "mode": "all",
         "comment": "off | neighbors | all",
         "async_enabled": true,
         "async_wait_budget_ms": 3,

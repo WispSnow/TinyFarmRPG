@@ -975,6 +975,7 @@ flowchart LR
 **知识点**：
 - Worker 线程做 I/O、JSON 解析、图片 CPU 解码。
 - 主线程命令队列负责 GPU 上传。
+- 默认 `preload.mode=all` 触发启动期全量预热；`MapLoadingSettings` 用无异常 typed 解析守住坏配置 / 超大数边界。
 - generation 防止过期结果污染。
 - owner thread 契约、析构安全顺序。
 - 与 `MapManager` 状态机的对接。
@@ -982,6 +983,7 @@ flowchart LR
 **阅读清单**：
 - `docs/game/async_preload_pipeline.md`
 - `docs/game/map_manager.md`
+- `assets/data/map_loading_config.json`
 - 上一套 part-21 地图数据管线 + part-25 地图管理器
 - **多线程子教程入口**：`docs/tutorial/multi-thread/README.md`（建议先读 03 / 05 / 06 / 07）
 
@@ -989,14 +991,17 @@ flowchart LR
 - `src/engine/async/*`
 - `src/engine/loader/level_preprocess_service.*`
 - `src/engine/resource/image_decode_service.*`
+- `src/game/world/map_loading_settings.*`
 - `src/game/world/*`
+- `tests/game/map_loading_settings_test.cpp`
 
 **自测问题**：
 1. "generation 失效"的具体场景是什么？没有它会出现哪个 bug？
 2. 哪些资源类型可以在 worker 线程完成解码？哪些必须在主线程上传？
 3. 切图取消（如玩家又跑回原图）时，已下发的命令如何被丢弃？
+4. 坏 JSON / 类型不符 / 超大无符号配置应该如何回退？为什么默认配置要锁住 `preload.mode=all`？
 
-**最小练习**：在 `level_preprocess_service` 加日志，跑一次切图，画出 worker / 主线程的时序。
+**最小练习**：确认 `preload.mode=all` 后，在 `level_preprocess_service` 加日志，跑一次切图，画出 worker / 主线程的时序。
 
 **小结与下节预告**：异步基础完成，下一讲讲 SystemScheduler 的并行化。
 
