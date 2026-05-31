@@ -1,4 +1,6 @@
 #include "day_night_system.h"
+#include "engine/utils/json_file_loader.h"
+#include "engine/utils/json_helpers.h"
 #include "game/data/game_time.h"
 #include "engine/render/lighting_state.h"
 #include "game/world/world_state.h"
@@ -8,31 +10,27 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/common.hpp>
 #include <cmath>
-#include <filesystem>
-#include <fstream>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
+#include <utility>
 
 namespace {
     constexpr entt::id_type SUN_DIRECTIONAL_LIGHT = entt::hashed_string{"sun"}.value();
     constexpr entt::id_type MOON_DIRECTIONAL_LIGHT = entt::hashed_string{"moon"}.value();
 
-    /// @brief 从 JSON 对象安全获取值，若不存在则返回默认值
     template <typename T>
-    [[nodiscard]] T getOrDefault(const nlohmann::json& j, const char* key, T default_value) {
-        return j.contains(key) ? j[key].get<T>() : default_value;
-    }
-
-    /// @brief 从嵌套 JSON 路径安全获取值 (path1/path2/key)
-    template <typename T>
-    [[nodiscard]] T getNestedOrDefault(const nlohmann::json& j, const char* path1, const char* path2, T default_value) {
-        if (j.contains(path1) && j[path1].contains(path2)) {
-            return j[path1][path2].get<T>();
+    [[nodiscard]] T nestedNumberOr(const nlohmann::json& json,
+                                   std::string_view path,
+                                   std::string_view key,
+                                   T fallback) {
+        const auto* section = engine::utils::json::findMember(json, path);
+        if (!section || !section->is_object()) {
+            return fallback;
         }
-        return default_value;
+        return engine::utils::json::numberOr(*section, key, fallback);
     }
 
     /**
@@ -83,67 +81,67 @@ namespace {
 namespace game::system {
 
 bool LightingConfig::loadFromFile(std::string_view config_path) {
-    try {
-        std::ifstream file{std::filesystem::path{config_path}};
-        if (!file.is_open()) {
-            spdlog::error("无法打开光照配置文件: {}", config_path);
-            return false;
-        }
-
-        nlohmann::json json;
-        file >> json;
-
-        // 加载过渡时段配置
-        if (json.contains("transition_periods")) {
-            const auto& tp = json["transition_periods"];
-            transition_periods.sunrise_start = getNestedOrDefault(tp, "sunrise", "start", transition_periods.sunrise_start);
-            transition_periods.sunrise_end = getNestedOrDefault(tp, "sunrise", "end", transition_periods.sunrise_end);
-            transition_periods.sunset_start = getNestedOrDefault(tp, "sunset", "start", transition_periods.sunset_start);
-            transition_periods.sunset_end = getNestedOrDefault(tp, "sunset", "end", transition_periods.sunset_end);
-        }
-
-        // 加载太阳配置
-        if (json.contains("sun")) {
-            const auto& s = json["sun"];
-            sun.warmth_variation = getNestedOrDefault(s, "color", "warmth_variation", sun.warmth_variation);
-            sun.intensity_base_min = getNestedOrDefault(s, "intensity", "base_min", sun.intensity_base_min);
-            sun.intensity_base_max = getNestedOrDefault(s, "intensity", "base_max", sun.intensity_base_max);
-            sun.offset_min = getNestedOrDefault(s, "offset", "min", sun.offset_min);
-            sun.offset_max = getNestedOrDefault(s, "offset", "max", sun.offset_max);
-            sun.softness = getOrDefault(s, "softness", sun.softness);
-        }
-
-        // 加载月亮配置
-        if (json.contains("moon")) {
-            const auto& m = json["moon"];
-            moon.color.r = getNestedOrDefault(m, "color", "r", moon.color.r);
-            moon.color.g = getNestedOrDefault(m, "color", "g", moon.color.g);
-            moon.color.b = getNestedOrDefault(m, "color", "b", moon.color.b);
-            moon.intensity = getOrDefault(m, "intensity", moon.intensity);
-            moon.offset = getOrDefault(m, "offset", moon.offset);
-            moon.softness = getOrDefault(m, "softness", moon.softness);
-        }
-
-        // 加载环境光关键帧
-        if (json.contains("ambient") && json["ambient"].contains("keyframes")) {
-            ambient_keyframes.clear();
-            for (const auto& kf : json["ambient"]["keyframes"]) {
-                AmbientKeyframe keyframe;
-                keyframe.hour = kf["hour"].get<float>();
-                keyframe.color.r = kf["color"]["r"].get<float>();
-                keyframe.color.g = kf["color"]["g"].get<float>();
-                keyframe.color.b = kf["color"]["b"].get<float>();
-                ambient_keyframes.push_back(keyframe);
-            }
-        }
-
-        spdlog::info("成功加载光照配置: {}", config_path);
-        return true;
-
-    } catch (const std::exception& e) {
-        spdlog::error("加载光照配置失败: {} - {}", config_path, e.what());
+    nlohmann::json json;
+    if (!engine::utils::loadJsonObjectFile(config_path, json, "LightingConfig", spdlog::level::err)) {
         return false;
     }
+
+    LightingConfig next = *this;
+
+    if (const auto* tp = engine::utils::json::findMember(json, "transition_periods"); tp && tp->is_object()) {
+        next.transition_periods.sunrise_start =
+            nestedNumberOr(*tp, "sunrise", "start", next.transition_periods.sunrise_start);
+        next.transition_periods.sunrise_end =
+            nestedNumberOr(*tp, "sunrise", "end", next.transition_periods.sunrise_end);
+        next.transition_periods.sunset_start =
+            nestedNumberOr(*tp, "sunset", "start", next.transition_periods.sunset_start);
+        next.transition_periods.sunset_end =
+            nestedNumberOr(*tp, "sunset", "end", next.transition_periods.sunset_end);
+    }
+
+    if (const auto* sun_json = engine::utils::json::findMember(json, "sun"); sun_json && sun_json->is_object()) {
+        next.sun.warmth_variation = nestedNumberOr(*sun_json, "color", "warmth_variation", next.sun.warmth_variation);
+        next.sun.intensity_base_min = nestedNumberOr(*sun_json, "intensity", "base_min", next.sun.intensity_base_min);
+        next.sun.intensity_base_max = nestedNumberOr(*sun_json, "intensity", "base_max", next.sun.intensity_base_max);
+        next.sun.offset_min = nestedNumberOr(*sun_json, "offset", "min", next.sun.offset_min);
+        next.sun.offset_max = nestedNumberOr(*sun_json, "offset", "max", next.sun.offset_max);
+        next.sun.softness = engine::utils::json::numberOr(*sun_json, "softness", next.sun.softness);
+    }
+
+    if (const auto* moon_json = engine::utils::json::findMember(json, "moon"); moon_json && moon_json->is_object()) {
+        next.moon.color.r = nestedNumberOr(*moon_json, "color", "r", next.moon.color.r);
+        next.moon.color.g = nestedNumberOr(*moon_json, "color", "g", next.moon.color.g);
+        next.moon.color.b = nestedNumberOr(*moon_json, "color", "b", next.moon.color.b);
+        next.moon.intensity = engine::utils::json::numberOr(*moon_json, "intensity", next.moon.intensity);
+        next.moon.offset = engine::utils::json::numberOr(*moon_json, "offset", next.moon.offset);
+        next.moon.softness = engine::utils::json::numberOr(*moon_json, "softness", next.moon.softness);
+    }
+
+    if (const auto* ambient = engine::utils::json::findMember(json, "ambient"); ambient && ambient->is_object()) {
+        if (const auto* keyframes = engine::utils::json::findMember(*ambient, "keyframes"); keyframes && keyframes->is_array()) {
+            next.ambient_keyframes.clear();
+            for (const auto& keyframe_json : *keyframes) {
+                if (!keyframe_json.is_object()) {
+                    continue;
+                }
+                const auto* color = engine::utils::json::findMember(keyframe_json, "color");
+                if (!color || !color->is_object()) {
+                    continue;
+                }
+
+                AmbientKeyframe keyframe{};
+                keyframe.hour = engine::utils::json::numberOr(keyframe_json, "hour", keyframe.hour);
+                keyframe.color.r = engine::utils::json::numberOr(*color, "r", keyframe.color.r);
+                keyframe.color.g = engine::utils::json::numberOr(*color, "g", keyframe.color.g);
+                keyframe.color.b = engine::utils::json::numberOr(*color, "b", keyframe.color.b);
+                next.ambient_keyframes.push_back(keyframe);
+            }
+        }
+    }
+
+    *this = std::move(next);
+    spdlog::info("成功加载光照配置: {}", config_path);
+    return true;
 }
 
 DayNightSystem::DayNightSystem(entt::registry& registry)

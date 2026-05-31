@@ -203,7 +203,7 @@ setup_windows_dll_copy(${TARGET})
 option(BUILD_TOOLS "是否构建工具" ON)
 option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
 
-if(BUILD_TOOLS AND ENABLE_DEBUG_UI)
+if(BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
 

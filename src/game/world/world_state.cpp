@@ -1,61 +1,66 @@
 #include "world_state.h"
 
+#include "engine/utils/json_file_loader.h"
+#include "engine/utils/json_helpers.h"
+
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <fstream>
-#include <filesystem>
 
 namespace game::world {
 
 bool WorldState::loadFromWorldFile(std::string_view world_path, entt::id_type initial_map_id, std::string_view maps_root) {
-    maps_.clear();
-    name_to_id_.clear();
-    current_map_id_ = initial_map_id;
-    maps_root_ = maps_root;
-
-    std::ifstream file{std::filesystem::path{std::string{world_path}}};
-    if (!file.is_open()) {
-        spdlog::error("WorldState: 无法打开 world 文件: {}", world_path);
-        return false;
-    }
-
     nlohmann::json json;
-    try {
-        file >> json;
-    } catch (const std::exception& e) {
-        spdlog::error("WorldState: 解析 world 文件失败: {}", e.what());
+    if (!engine::utils::loadJsonObjectFile(world_path, json, "WorldState", spdlog::level::err)) {
         return false;
     }
 
-    if (!json.contains("maps") || !json["maps"].is_array()) {
+    const auto* maps_value = engine::utils::json::findMember(json, "maps");
+    if (!maps_value || !maps_value->is_array()) {
         spdlog::error("WorldState: world 文件缺少 maps 数组");
         return false;
     }
 
-    const auto& maps_json = json["maps"];
-    for (const auto& entry : maps_json) {
-        if (!entry.contains("fileName")) {
+    std::unordered_map<entt::id_type, MapState> next_maps{};
+    std::unordered_map<std::string, entt::id_type, StringHash, std::equal_to<>> next_name_to_id{};
+
+    for (const auto& entry : *maps_value) {
+        if (!entry.is_object()) {
             continue;
         }
+        const std::string file_name = engine::utils::json::stringOr(entry, "fileName", "");
+        if (file_name.empty()) {
+            continue;
+        }
+
         MapState state{};
-        std::string file_name = entry.value("fileName", "");
         state.info.name = stripExtension(file_name);
         state.info.file_path = std::string(maps_root) + file_name;
-        state.info.world_pos_px = {entry.value("x", 0), entry.value("y", 0)};
-        state.info.size_px = {entry.value("width", 0), entry.value("height", 0)};
+        state.info.world_pos_px = {
+            engine::utils::json::numberOr(entry, "x", 0),
+            engine::utils::json::numberOr(entry, "y", 0),
+        };
+        state.info.size_px = {
+            engine::utils::json::numberOr(entry, "width", 0),
+            engine::utils::json::numberOr(entry, "height", 0),
+        };
         state.info.id = entt::hashed_string(state.info.name.c_str()).value();
         state.info.in_world = true;
 
-        name_to_id_.emplace(state.info.name, state.info.id);
-        maps_.emplace(state.info.id, std::move(state));
+        next_name_to_id.emplace(state.info.name, state.info.id);
+        next_maps.emplace(state.info.id, std::move(state));
     }
 
-    resolveAdjacency();
-
-    if (maps_.empty()) {
+    if (next_maps.empty()) {
         spdlog::error("WorldState: 加载 world 文件失败，地图数量为0");
         return false;
     }
+
+    maps_ = std::move(next_maps);
+    name_to_id_ = std::move(next_name_to_id);
+    current_map_id_ = initial_map_id;
+    maps_root_ = maps_root;
+    resolveAdjacency();
+
     spdlog::info("WorldState: 成功加载 world 文件 '{}', 地图数量: {}", world_path, maps_.size());
     return true;
 }

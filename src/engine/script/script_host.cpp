@@ -5,7 +5,6 @@
 #include <spdlog/spdlog.h>
 
 #include <cctype>
-#include <exception>
 #include <functional>
 #include <iterator>
 #include <string>
@@ -95,26 +94,21 @@ bool ScriptHost::init(entt::dispatcher& dispatcher, const std::vector<ScriptModu
         scene_token_ = allocateSceneToken();
     }
 
-    try {
-        // 选择性加载标准库：不加载 io / os / package。
-        lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
-        hardenLuaGlobals();
-        configureInstructionLimit();
-        script_modules_ = lua_.create_table();
+    // 选择性加载标准库：不加载 io / os / package。
+    lua_.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
+    hardenLuaGlobals();
+    configureInstructionLimit();
+    script_modules_ = lua_.create_table();
 
-        for (const auto& installer : installers) {
-            if (!installer) {
-                continue;
-            }
-            installer(lua_, *this, registry_, dispatcher);
+    for (const auto& installer : installers) {
+        if (!installer) {
+            continue;
         }
-        ready_ = true;
-        return true;
-    } catch (const std::exception& e) {
-        spdlog::error("ScriptHost: 初始化失败: {}", e.what());
-        ready_ = false;
-        return false;
+        installer(lua_, *this, registry_, dispatcher);
     }
+
+    ready_ = true;
+    return true;
 }
 
 void ScriptHost::shutdown() {

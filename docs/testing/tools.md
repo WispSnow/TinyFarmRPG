@@ -4,7 +4,11 @@
 
 ## 构建
 
-工具目标由 `tools/CMakeLists.txt` 定义。默认 `BUILD_TOOLS=ON` 时会加入工具目录，`BUILD_RMLUI_TESTER=ON` 时会构建 `rmlui_tester`。
+工具目标由 `tools/CMakeLists.txt` 定义。默认 `BUILD_TOOLS=ON` 时会加入工具目录。
+
+- `visual_tester` 依赖 Debug UI，只有 `ENABLE_DEBUG_UI=ON` 时构建。
+- `rmlui_tester` 依赖 Debug UI，且需要 `BUILD_RMLUI_TESTER=ON`。
+- `battle_tester` 与 `scheduler_dot_dump` 不依赖 Debug UI；`ENABLE_DEBUG_UI=OFF` 时仍应构建。
 
 ```bash
 cmake --preset debug

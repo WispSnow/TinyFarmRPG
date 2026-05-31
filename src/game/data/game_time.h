@@ -63,7 +63,7 @@ struct GameTime {
      * @brief 从配置文件加载并创建 GameTime 实例
      * 
      * @param config_path 配置文件路径
-     * @return std::shared_ptr<GameTime> 创建的 GameTime 实例，失败返回 nullptr
+     * @return std::shared_ptr<GameTime> 创建的 GameTime 实例，失败时使用默认配置
      */
     static std::shared_ptr<GameTime> loadFromConfig(std::string_view config_path);
 

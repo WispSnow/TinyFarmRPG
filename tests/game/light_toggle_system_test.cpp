@@ -96,6 +96,38 @@ TEST(LightToggleSystemTest, TogglesPlayerLightWithIndoorOrDarkGate) {
     EXPECT_TRUE(registry.all_of<engine::component::LightDisabledTag>(player));
 }
 
+TEST(LightToggleSystemTest, InvalidConfigKeepsDefaultPlayerLightOptions) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    auto& time = registry.ctx().emplace<game::data::GameTime>();
+    time.hour_ = 19.0f;
+    time.minute_ = 0.0f;
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{100.0f, 200.0f});
+
+    const std::filesystem::path tmp_cfg = std::filesystem::temp_directory_path() / "light_toggle_system_invalid_test.json";
+    {
+        std::ofstream out(tmp_cfg);
+        ASSERT_TRUE(out.is_open());
+        out << R"({"player_follow_light": )";
+    }
+
+    LightToggleSystem system(registry, dispatcher, tmp_cfg.string());
+    system.update();
+
+    ASSERT_TRUE(registry.all_of<engine::component::PointLightComponent>(player));
+    const auto& light = registry.get<engine::component::PointLightComponent>(player);
+    EXPECT_FLOAT_EQ(light.radius, 128.0F);
+    EXPECT_FLOAT_EQ(light.offset.x, 0.0F);
+    EXPECT_FLOAT_EQ(light.offset.y, -10.0F);
+    EXPECT_TRUE(registry.all_of<engine::component::LightDisabledTag>(player));
+
+    std::error_code ec;
+    std::filesystem::remove(tmp_cfg, ec);
+}
+
 } // namespace game::system
 // NOLINTEND
-

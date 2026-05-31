@@ -1051,7 +1051,8 @@ flowchart LR
 - 调试面板全景：Battle / Quest / Shop / Inventory / Map / Save / Scheduler / RmlUi / VFX。
 - 测试层级与选择标准：domain test、system test、scene smoke、source guard。
 - 工具链：`visual_tester`、`rmlui_tester`、`battle_tester`、`scheduler_dot_dump`、`rpg_importer`。
-- Catalog validation、脚本测试、UI smoke 在 CI 里的作用。
+- 无异常配置读取、source guard 与工具构建门禁。
+- Catalog validation、脚本测试、UI smoke 在本地门禁 / 未来 CI 里的作用。
 - **如何为新增玩法选择测试层级**（实操 checklist）。
 
 **阅读清单**：
@@ -1067,10 +1068,11 @@ flowchart LR
 
 **自测问题**：
 1. 给一个新的领域服务补测试，你会选 domain / system / scene 哪一层先写？为什么？
-2. UI 改动如何被 CI 拦住低级回归？哪些场景不适合 smoke？
-3. 项目继续长大，最可能"先腐烂"的模块是哪个？该怎么提前防御？
+2. UI 改动如何被本地测试门禁拦住低级回归？哪些场景不适合 smoke？
+3. 为什么配置 loader 要避免 `try/catch` 和类型不明的 JSON 读取？
+4. 项目继续长大，最可能"先腐烂"的模块是哪个？该怎么提前防御？
 
-**最小练习**：选一个领域服务，给它补一条失败路径测试，提交并确认 CI 通过。
+**最小练习**：选一个领域服务，给它补一条失败路径测试，本地运行 `ninja -C build/debug game_tests` 与对应 `ctest --test-dir build/debug -R ... --output-on-failure` 确认通过。
 
 **小结**：到此你已经能在 TinyFarmRPG 上独立增加新玩法、新内容、新 UI，并保持工程不腐烂。课程结束。
 
