@@ -26,6 +26,8 @@ set(TEST_SOURCES
     engine/core/game_app_dispatcher_trace_test.cpp
     engine/core/game_app_rmlui_frame_loop_test.cpp
     engine/core/ecs_safety_test.cpp
+    engine/core/source_no_exceptions_guard_test.cpp
+    engine/core/tools_cmake_source_test.cpp
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp
@@ -164,6 +166,8 @@ set(GAME_TEST_SOURCES
     game/battle/battle_scene_entry_test.cpp
     game/battle/battle_scene_smoke_test.cpp
     game/action_sound_system_test.cpp
+    game/day_night_system_config_test.cpp
+    game/game_time_config_test.cpp
     game/farm_system_hoe_blocking_test.cpp
     game/farm_system_harvest_inventory_full_test.cpp
     game/command_event_flow_test.cpp

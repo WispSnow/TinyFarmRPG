@@ -18,8 +18,8 @@ namespace engine::script {
 
 /// Lua 脚本宿主——管理 sol::state 生命周期并提供脚本加载/执行接口。
 ///
-/// 采用两阶段初始化（构造 + init()），init 失败时宿主进入"未就绪"状态，
-/// 后续所有操作安全跳过，不会导致崩溃（soft-failure 模式）。
+/// 采用两阶段初始化（构造 + init()），公共脚本加载/执行接口在宿主未就绪时
+/// 安全跳过，不会导致崩溃（soft-failure 模式）。
 ///
 /// 生命周期约束：registry 的引用由场景持有，
 /// ScriptHost 作为 runtime services 的成员始终先于 registry 析构。
@@ -27,7 +27,7 @@ class ScriptHost final {
 public:
     explicit ScriptHost(entt::registry& registry);
 
-    /// 打开 Lua 标准库并安装模块扩展（由调用方注入）。
+    /// 打开 Lua 标准库并安装模块扩展（由调用方注入），成功后宿主进入就绪状态。
     [[nodiscard]] bool init(entt::dispatcher& dispatcher,
                             const std::vector<ScriptModuleInstaller>& installers = {});
     /// 清理脚本上下文并失效化当前会话 token，可重复调用（幂等）。

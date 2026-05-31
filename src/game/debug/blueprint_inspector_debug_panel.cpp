@@ -2,10 +2,10 @@
 
 #include "game/factory/blueprint_manager.h"
 #include "game/defs/crop_defs.h"
+#include "engine/utils/json_file_loader.h"
 
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -47,21 +47,8 @@ void BlueprintInspectorDebugPanel::reloadResourceMapping() {
     mapped_sound_ids_.clear();
     mapping_loaded_ = false;
 
-    std::ifstream file{std::filesystem::path(resource_mapping_path_)};
-    if (!file.is_open()) {
-        spdlog::warn("BlueprintInspector: resource mapping not found: {}", resource_mapping_path_);
-        return;
-    }
-
     nlohmann::json json;
-    try {
-        file >> json;
-    } catch (const nlohmann::json::exception& e) {
-        spdlog::warn("BlueprintInspector: resource mapping invalid json: {} ({})", resource_mapping_path_, e.what());
-        return;
-    }
-    if (!json.is_object()) {
-        spdlog::warn("BlueprintInspector: resource mapping root must be an object: {}", resource_mapping_path_);
+    if (!engine::utils::loadJsonObjectFile(resource_mapping_path_, json, "BlueprintInspector")) {
         return;
     }
 

@@ -7,6 +7,8 @@
 #include "engine/component/light_component.h"
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
+#include "engine/utils/json_file_loader.h"
+#include "engine/utils/json_helpers.h"
 
 #include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
@@ -14,9 +16,6 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-
-#include <filesystem>
-#include <fstream>
 
 using namespace entt::literals;
 
@@ -45,38 +44,41 @@ void LightToggleSystem::unsubscribe() {
 }
 
 bool LightToggleSystem::loadConfig(std::string_view config_path) {
-    std::ifstream file(std::filesystem::path(config_path.data()));
-    if (!file.is_open()) {
+    nlohmann::json json;
+    if (!engine::utils::loadJsonObjectFile(config_path, json, "LightToggleSystem")) {
         return false;
     }
 
-    try {
-        nlohmann::json json;
-        file >> json;
-
-        const auto& cfg = json.value("player_follow_light", nlohmann::json::object());
-        wanted_on_ = cfg.value("enabled_by_default", wanted_on_);
-        radius_ = cfg.value("radius", radius_);
-        options_.intensity = cfg.value("intensity", options_.intensity);
-
-        if (cfg.contains("color")) {
-            const auto& color = cfg.at("color");
-            options_.color.r = color.value("r", options_.color.r);
-            options_.color.g = color.value("g", options_.color.g);
-            options_.color.b = color.value("b", options_.color.b);
-        }
-
-        if (cfg.contains("offset")) {
-            const auto& offset = cfg.at("offset");
-            offset_.x = offset.value("x", offset_.x);
-            offset_.y = offset.value("y", offset_.y);
-        }
-
+    const auto* cfg = engine::utils::json::findMember(json, "player_follow_light");
+    if (!cfg || !cfg->is_object()) {
         return true;
-    } catch (const std::exception& e) {
-        spdlog::error("LightToggleSystem: 读取配置失败 {} - {}", config_path, e.what());
-        return false;
     }
+
+    bool next_wanted_on = wanted_on_;
+    float next_radius = radius_;
+    glm::vec2 next_offset = offset_;
+    engine::utils::PointLightOptions next_options = options_;
+
+    next_wanted_on = engine::utils::json::boolOr(*cfg, "enabled_by_default", next_wanted_on);
+    next_radius = engine::utils::json::numberOr(*cfg, "radius", next_radius);
+    next_options.intensity = engine::utils::json::numberOr(*cfg, "intensity", next_options.intensity);
+
+    if (const auto* color = engine::utils::json::findMember(*cfg, "color"); color && color->is_object()) {
+        next_options.color.r = engine::utils::json::numberOr(*color, "r", next_options.color.r);
+        next_options.color.g = engine::utils::json::numberOr(*color, "g", next_options.color.g);
+        next_options.color.b = engine::utils::json::numberOr(*color, "b", next_options.color.b);
+    }
+
+    if (const auto* offset = engine::utils::json::findMember(*cfg, "offset"); offset && offset->is_object()) {
+        next_offset.x = engine::utils::json::numberOr(*offset, "x", next_offset.x);
+        next_offset.y = engine::utils::json::numberOr(*offset, "y", next_offset.y);
+    }
+
+    wanted_on_ = next_wanted_on;
+    radius_ = next_radius;
+    offset_ = next_offset;
+    options_ = next_options;
+    return true;
 }
 
 void LightToggleSystem::onToggleLightRequest(const game::defs::ToggleLightRequest& evt) {

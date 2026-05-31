@@ -6,6 +6,7 @@
 #include "game/component/recruitable_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
+#include "engine/utils/json_file_loader.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/sprite_component.h"
 #include "engine/component/name_component.h"
@@ -14,7 +15,6 @@
 #include <nlohmann/json.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/core/hashed_string.hpp>
-#include <fstream>
 #include <spdlog/spdlog.h>
 #include <glm/geometric.hpp>
 #include <limits>
@@ -36,27 +36,32 @@ DialogueSystem::~DialogueSystem() {
 }
 
 bool DialogueSystem::loadDialogueFile(std::string_view file_path) {
-    std::ifstream file(std::string{file_path});
-    if (!file.is_open()) {
-        spdlog::warn("DialogueSystem: 无法打开对话文件 {}", file_path);
+    nlohmann::json json;
+    if (!engine::utils::loadJsonObjectFile(file_path, json, "DialogueSystem")) {
         return false;
     }
-    try {
-        nlohmann::json json;
-        file >> json;
-        for (auto& [key, value] : json.items()) {
-            if (!value.is_array()) continue;
-            std::vector<std::string> lines;
-            for (const auto& line : value) {
-                lines.push_back(line.get<std::string>());
-            }
-            dialogue_table_.emplace(entt::hashed_string(key.c_str()), std::move(lines));
+
+    std::unordered_map<entt::id_type, std::vector<std::string>> next_dialogue_table{};
+    for (auto& [key, value] : json.items()) {
+        if (!value.is_array()) {
+            continue;
         }
-        return true;
-    } catch (const std::exception& e) {
-        spdlog::error("DialogueSystem: 解析对话文件失败 {} - {}", file_path, e.what());
-        return false;
+
+        std::vector<std::string> lines;
+        lines.reserve(value.size());
+        for (const auto& line : value) {
+            if (const auto* text = line.get_ptr<const nlohmann::json::string_t*>()) {
+                lines.push_back(*text);
+                continue;
+            }
+            spdlog::error("DialogueSystem: 对话 '{}' 包含非字符串行", key);
+            return false;
+        }
+        next_dialogue_table.emplace(entt::hashed_string(key.c_str()), std::move(lines));
     }
+
+    dialogue_table_ = std::move(next_dialogue_table);
+    return true;
 }
 
 void DialogueSystem::update(float delta_time) {

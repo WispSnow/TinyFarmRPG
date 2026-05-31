@@ -1,28 +1,30 @@
 # Developer tools targets
 
-add_executable(visual_tester
-    visual_tester/main.cpp
-    visual_tester/visual_test_cases.cpp
-    visual_tester/visual_test_suite_scene.cpp
-)
+if(ENABLE_DEBUG_UI)
+    add_executable(visual_tester
+        visual_tester/main.cpp
+        visual_tester/visual_test_cases.cpp
+        visual_tester/visual_test_suite_scene.cpp
+    )
 
-target_link_libraries(visual_tester
-    PRIVATE
-        engine
-)
+    target_link_libraries(visual_tester
+        PRIVATE
+            engine
+    )
 
-target_include_directories(visual_tester
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/visual_tester
-)
+    target_include_directories(visual_tester
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/visual_tester
+    )
 
-setup_compiler_options(visual_tester)
-setup_asset_copy(visual_tester)
-setup_config_copy(visual_tester)
-setup_windows_dll_copy(visual_tester)
+    setup_compiler_options(visual_tester)
+    setup_asset_copy(visual_tester)
+    setup_config_copy(visual_tester)
+    setup_windows_dll_copy(visual_tester)
+endif()
 
-if(BUILD_RMLUI_TESTER)
+if(ENABLE_DEBUG_UI AND BUILD_RMLUI_TESTER)
     add_executable(rmlui_tester
         rmlui_tester/main.cpp
         rmlui_tester/rmlui_test_scene.cpp
