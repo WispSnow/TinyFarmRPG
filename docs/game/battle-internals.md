@@ -33,7 +33,7 @@ flowchart LR
 | **回合核心** | `turn_core.{h,cpp}` | `TurnCore` | 行动顺序、轮次推进、胜负判定；不知道"技能 / 道具"是什么 |
 | **动作结算** | `battle_action_resolver.{h,cpp}` | `BattleActionResolver` | 校验 `BattleAction` 合法性、目录查表、公式求值、状态/库存扣减 |
 | **公式求值** | `battle_formula_evaluator.{h,cpp}` | `BattleFormulaEvaluator` | 用一个独立 sol::state 计算 `a.atk` 或技能配置里的 Lua 公式表达式 |
-| **AI 规划** | `battle_ai_planner.{h,cpp}` | `BattleAiPlanner::planEnemyAction` / `planFallbackAction` | 敌方按 `EnemyData.actions` 表挑技能；fallback 普攻 |
+| **AI 规划** | `battle_ai_planner.{h,cpp}` | `BattleAiPlanner::planEnemyAction` / `planFallbackAction` | 敌方按 `EnemyData.actions` 的 rating 挑可执行技能；fallback 普攻 |
 | **奖励聚合** | `battle_reward_resolver.{h,cpp}` | `BattleRewardResolver::resolve` | 战斗结束后把金币 / 经验 / 物品掉落聚合成 `BattleRewardSummary` |
 | **单位工厂** | `battle_unit_factory.{h,cpp}` | `buildBattleUnitsFromCatalog` | 从 `RpgCatalog` 的 actor / class / enemy / troop 数据构建 `BattleUnit` 列表 |
 | **属性解算** | `actor_stats_resolver.{h,cpp}` | `resolveActorStats` | 给定 actor + 等级 + 装备，算出最终 8 项 RPG 属性 |
@@ -207,12 +207,12 @@ stateDiagram-v2
 
 `BattleAiPlanner` 只有两个静态方法：
 
-- `planEnemyAction(actor, enemy_data, units, catalog, random_engine)`：从 `EnemyData.actions` 表里挑一条（按权重 / 条件），如果是治疗类挑最缺血的队友，否则单体攻击随机选活着的敌方。
-- `planFallbackAction(actor, units, random_engine)`：没目录数据或没有可用 action 时的兜底——一次普通攻击。
+- `planEnemyAction(actor, enemy_data, units, catalog, random_engine)`：从 `EnemyData.actions` 表里筛选当前可执行技能，取最高 rating；rating 并列保留先出现项。单体敌方技能只在最终候选确认后随机选存活对手，治疗类按 HP / MP 缺口挑友军。
+- `planFallbackAction(actor, units, random_engine)`：没目录数据或没有可用 action 时的兜底——一次随机目标的普通攻击；没有存活对手时返回 EndTurn。
 
 设计要点：
 - 输入是只读数据，输出是 `BattleAction` 结构。**不修改任何状态**，也不直接调 `BattleSession::submitAction`——BattleScene 拿到 action 再决定何时提交（通常让动画播完再交）。
-- 测试很简单：构造几个 `BattleUnit` 和一个 `EnemyData`，调 `planEnemyAction`，断言返回的 action target 在存活集合中。
+- 测试很简单：构造几个 `BattleUnit` 和一个 `EnemyData`，调 `planEnemyAction`，断言返回的 action target 在存活集合中，并用固定 seed 锁定随机目标和 RNG 提交点。
 
 ## 九、奖励聚合
 

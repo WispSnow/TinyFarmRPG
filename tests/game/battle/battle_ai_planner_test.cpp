@@ -93,6 +93,63 @@ TEST(BattleAiPlannerTest, OneEnemySkillRandomizesTargetAmongAliveOpponents) {
     EXPECT_EQ(action.target_id, std::optional<BattleUnitId>{2});
 }
 
+TEST(BattleAiPlannerTest, LowerRatedRandomCandidateDoesNotAdvanceRngBeforeBestSkill) {
+    const auto fixture = testdata::createCatalogFixture("battle_ai_rng_commit_point");
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(fixture.skills.string()));
+
+    const std::vector<BattleUnit> units{
+        makeUnit(1, "Hero A", BattleSide::Player, 80, 100),
+        makeUnit(2, "Hero B", BattleSide::Player, 80, 100),
+        makeUnit(3, "Hero C", BattleSide::Player, 80, 100),
+        makeUnit(101, "Goblin Mage", BattleSide::Enemy, 60, 60, 10, 10)};
+
+    game::data::EnemyData enemy_with_lower_candidate{};
+    enemy_with_lower_candidate.actions_ = {
+        game::data::EnemyActionData{.skill_id_ = "skill.costly", .rating_ = 10},
+        game::data::EnemyActionData{.skill_id_ = "skill.fire", .rating_ = 100}};
+    game::data::EnemyData enemy_best_only{};
+    enemy_best_only.actions_ = {
+        game::data::EnemyActionData{.skill_id_ = "skill.fire", .rating_ = 100}};
+
+    std::mt19937 rng_with_lower_candidate{1};
+    std::mt19937 rng_best_only{1};
+    const BattleAction action_with_lower_candidate =
+        BattleAiPlanner::planEnemyAction(
+            units[3],
+            enemy_with_lower_candidate,
+            units,
+            catalog,
+            &rng_with_lower_candidate);
+    const BattleAction action_best_only =
+        BattleAiPlanner::planEnemyAction(units[3], enemy_best_only, units, catalog, &rng_best_only);
+
+    EXPECT_EQ(action_with_lower_candidate.type, BattleActionType::Skill);
+    EXPECT_EQ(action_with_lower_candidate.skill_id, "skill.fire");
+    EXPECT_EQ(action_with_lower_candidate.target_id, action_best_only.target_id);
+}
+
+TEST(BattleAiPlannerTest, EqualRatingKeepsFirstExecutableAction) {
+    const auto fixture = testdata::createCatalogFixture("battle_ai_equal_rating_first_action");
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadSkills(fixture.skills.string()));
+
+    const std::vector<BattleUnit> units{
+        makeUnit(1, "Hero", BattleSide::Player, 80, 100),
+        makeUnit(101, "Goblin Mage", BattleSide::Enemy, 60, 60, 10, 10)};
+
+    game::data::EnemyData enemy{};
+    enemy.actions_ = {
+        game::data::EnemyActionData{.skill_id_ = "skill.fire", .rating_ = 50},
+        game::data::EnemyActionData{.skill_id_ = "skill.costly", .rating_ = 50}};
+
+    std::mt19937 rng{1};
+    const BattleAction action = BattleAiPlanner::planEnemyAction(units[1], enemy, units, catalog, &rng);
+
+    EXPECT_EQ(action.type, BattleActionType::Skill);
+    EXPECT_EQ(action.skill_id, "skill.fire");
+}
+
 TEST(BattleAiPlannerTest, OneAllyRecoveryTargetsMostInjuredAllyInsteadOfSelf) {
     const auto fixture = testdata::createCatalogFixture("battle_ai_one_ally_heal");
     game::data::RpgCatalog catalog;

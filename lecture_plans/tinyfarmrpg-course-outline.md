@@ -745,19 +745,19 @@ flowchart LR
 
 > ⚠️ 本讲负载较重（玩家菜单 + AI 双侧）。建议讲师以"对称视角：两者都是 `BattleAction` 生产者"为主线压缩共性、详深各自差异；学生可在听完后分两次消化（先玩家菜单状态机，再 AI Planner）。
 
-**目标**：把"玩家通过菜单选 action"和"AI 自动产生 action"统一作为"action 生产者"讲，理解战斗 UI 如何把玩家输入转换成合法 `BattleAction`，以及敌方如何按 troop 配置自动决策。
+**目标**：把"玩家通过菜单选 action"和"AI 自动产生 action"统一作为"action 生产者"讲，理解战斗 UI 如何把玩家输入转换成合法 `BattleAction`，以及敌方如何按 enemy / skill catalog 自动决策。
 
 **知识点**：
 - **玩家侧**：
   - `FlowState`（战斗整体流程）与 `MenuState`（菜单内部状态）的双层状态机。
-  - MainMenu、SkillList、ItemList、TargetSelect 之间的迁移规则。
+  - PartyCommand、ActorCommand、SkillList、ItemList、TargetSelect 之间的迁移规则。
   - 鼠标点击与键盘 / 手柄菜单导航双路径。
   - RmlUi data model 与程序化 focus 同步。
   - cursor memory、cancel/back 规则（"记住玩家上次选的格子"）。
   - 为什么不用 RmlUi 原生方向键导航（呼应 L05）。
 - **AI 侧**：
-  - `BattleAiPlanner`：按 rating 选技、scope 选目标、恢复意图检测。
-  - AI 与 troop 配置的关系：哪些行为来自配置、哪些来自硬编码。
+  - `BattleAiPlanner`：按 rating 预筛选技、scope 选目标、恢复意图检测、随机源提交点。
+  - AI 与 enemy / skill catalog 的关系：哪些行为来自配置、哪些来自硬编码。
   - AI 测试策略：用 deterministic seed 跑回归。
 - **对称视角**：两者最终都输出 `BattleAction` 进入 L17 的解算管线。
 

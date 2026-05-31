@@ -793,26 +793,28 @@ void BattleScene::emitBattleActionScriptEvents(const game::battle::BattleActionR
 }
 
 game::battle::BattleAction BattleScene::buildEnemyAction(const game::battle::BattleUnit& actor) const {
-    const auto fallback_action = game::battle::BattleAiPlanner::planFallbackAction(actor, session_.units());
+    const auto make_fallback_action = [this, &actor] {
+        return game::battle::BattleAiPlanner::planFallbackAction(actor, session_.units());
+    };
 
     if (actor.side != game::battle::BattleSide::Enemy) {
-        return fallback_action;
+        return make_fallback_action();
     }
 
     if (!rpg_catalog_) {
         spdlog::warn("BattleScene: enemy actor '{}' 缺少 RPG catalog，回退为基础行动。", actor.name);
-        return fallback_action;
+        return make_fallback_action();
     }
 
     if (!actor.source_enemy_id.has_value()) {
         spdlog::warn("BattleScene: enemy actor '{}' 缺少 source_enemy_id，回退为基础行动。", actor.name);
-        return fallback_action;
+        return make_fallback_action();
     }
 
     const auto* enemy = rpg_catalog_->findEnemy(*actor.source_enemy_id);
     if (!enemy) {
         spdlog::warn("BattleScene: enemy source '{}' 不存在于 RPG catalog，回退为基础行动。", *actor.source_enemy_id);
-        return fallback_action;
+        return make_fallback_action();
     }
 
     return game::battle::BattleAiPlanner::planEnemyAction(actor, *enemy, session_.units(), *rpg_catalog_);
