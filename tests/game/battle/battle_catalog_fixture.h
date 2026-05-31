@@ -107,6 +107,19 @@ inline CatalogFixturePaths createCatalogFixture(std::string_view prefix) {
       "effects": []
     },
     {
+      "id": "skill.whiff",
+      "display_name": "Whiff",
+      "scope": "one_enemy",
+      "hit_type": "certain",
+      "mp_cost": 4,
+      "success_rate": 0,
+      "repeats": 1,
+      "damage": { "type": "hp_damage", "formula": "99", "variance": 0, "critical": false },
+      "effects": [
+        { "type": "add_state", "target_id": "state.burn", "value1": 1.0 }
+      ]
+    },
+    {
       "id": "skill.multi_state",
       "display_name": "Multi State",
       "scope": "one_enemy",

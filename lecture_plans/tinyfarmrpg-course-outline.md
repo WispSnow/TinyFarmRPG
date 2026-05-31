@@ -717,7 +717,7 @@ flowchart LR
 - `BattleActionResolver` 与 `BattleFormulaEvaluator` 的分工。
 - 技能、物品、状态、恢复、伤害的 catalog 驱动。
 - 战斗物品使用的是运行时副本，结束后再写回真实背包（呼应 L10/L13 的"原子写入"主线）。
-- 状态效果（state）与持续伤害的处理。
+- 状态效果（state）的回合计数、当前无 DoT 的实现边界，以及后续持续伤害扩展点。
 
 **阅读清单**：
 - `docs/game/battle-internals.md`（领域核心的"实现者视角"；与 L16 阅读清单的 `turn-based-battle.md` 交叉阅读）
@@ -726,13 +726,14 @@ flowchart LR
 **源码入口**：
 - `src/game/battle/battle_action_resolver.*`
 - `src/game/battle/battle_formula_evaluator.*`
+- `src/game/battle/battle_session.*`
 - `src/game/data/rpg_catalog_skills.cpp`
 - `src/game/data/rpg_catalog_states.cpp`
 
 **自测问题**：
 1. 同一个 "群体攻击" 技能，scope 与 target 在数据上怎么表达？
 2. 战斗中物品被消耗后中途逃跑，背包的扣减规则如何决定？
-3. 持续伤害状态在 turn order 里何时结算？为什么是这个时机？
+3. 当前状态回合数在 turn order 里何时递减？如果未来要加持续伤害，为什么这个时机是自然扩展点？
 
 **最小练习**：给某技能加一个新的状态效果，跑测试验证伤害链路。
 
