@@ -47,6 +47,11 @@ std::optional<BattleUnitId> TurnCore::currentActorId() const {
 }
 
 bool TurnCore::advanceTurn() {
+    if (forced_outcome_.has_value()) {
+        outcome_ = *forced_outcome_;
+        return false;
+    }
+
     evaluateOutcome();
     if (outcome_ != BattleOutcome::Ongoing || turn_order_.empty()) {
         return false;
@@ -83,11 +88,21 @@ void TurnCore::setRoundHooks(RoundHook on_round_begin, RoundHook on_round_end) {
 }
 
 void TurnCore::refresh() {
+    if (forced_outcome_.has_value()) {
+        outcome_ = *forced_outcome_;
+        return;
+    }
+
     evaluateOutcome();
     alignCurrentActor();
 }
 
 void TurnCore::forceOutcome(const BattleOutcome outcome) {
+    if (outcome == BattleOutcome::Ongoing) {
+        forced_outcome_.reset();
+    } else {
+        forced_outcome_ = outcome;
+    }
     outcome_ = outcome;
 }
 
@@ -119,6 +134,11 @@ void TurnCore::buildTurnOrder() {
 }
 
 void TurnCore::evaluateOutcome() {
+    if (forced_outcome_.has_value()) {
+        outcome_ = *forced_outcome_;
+        return;
+    }
+
     bool has_alive_player = false;
     bool has_alive_enemy = false;
 

@@ -32,7 +32,7 @@ flowchart LR
 | **门面** | `battle_session.{h,cpp}` | `BattleSession` | 表现层与领域核心的唯一入口；持有 `TurnCore` + `BattleActionResolver` + `BattleRuntimeState` |
 | **回合核心** | `turn_core.{h,cpp}` | `TurnCore` | 行动顺序、轮次推进、胜负判定；不知道"技能 / 道具"是什么 |
 | **动作结算** | `battle_action_resolver.{h,cpp}` | `BattleActionResolver` | 校验 `BattleAction` 合法性、目录查表、公式求值、状态/库存扣减 |
-| **公式求值** | `battle_formula_evaluator.{h,cpp}` | `BattleFormulaEvaluator` | 用一个独立 sol::state 计算 `a.atk - b.def/2` 这类 Lua 公式表达式 |
+| **公式求值** | `battle_formula_evaluator.{h,cpp}` | `BattleFormulaEvaluator` | 用一个独立 sol::state 计算 `a.atk` 或技能配置里的 Lua 公式表达式 |
 | **AI 规划** | `battle_ai_planner.{h,cpp}` | `BattleAiPlanner::planEnemyAction` / `planFallbackAction` | 敌方按 `EnemyData.actions` 表挑技能；fallback 普攻 |
 | **奖励聚合** | `battle_reward_resolver.{h,cpp}` | `BattleRewardResolver::resolve` | 战斗结束后把金币 / 经验 / 物品掉落聚合成 `BattleRewardSummary` |
 | **单位工厂** | `battle_unit_factory.{h,cpp}` | `buildBattleUnitsFromCatalog` | 从 `RpgCatalog` 的 actor / class / enemy / troop 数据构建 `BattleUnit` 列表 |
@@ -101,13 +101,13 @@ flowchart TD
 |------|------|
 | `BattleUnitId = uint32_t` | 战斗内单位身份证；和 `entt::entity` 无关 |
 | `BattleSide` | `Player / Enemy` |
-| `BattleActionType` | `Attack / Skill / Item / Guard / Escape` |
+| `BattleActionType` | `Attack / Skill / Item / Guard / Escape / EndTurn` |
 | `BattleOutcome` | `Ongoing / Victory / Defeat / Escaped` |
-| `BattleActionStatus` | `Resolved / Invalid / NotReady`，给 UI 看动作有没有被接受 |
-| `BattleUnit` | 一个战斗单位的全部静态+动态数据：阵营、HP/MP、属性、技能列表、状态、speed、portrait |
+| `BattleActionStatus` | `Applied / Rejected`，给 UI 看动作有没有被接受 |
+| `BattleUnit` | 一个战斗单位的全部静态+动态数据：阵营、HP/MP、属性、技能列表、speed、portrait、来源 id |
 | `BattleAction` | 玩家或 AI 提交的行动意图：`actor / type / target / skill_id / item_id` |
-| `BattleSnapshot` | 当前战斗的全量只读视图：units、turn_order、current_actor、round、outcome、HUD 状态 |
-| `BattleActionResult` | submitAction 的返回值：status、damage/recovery 列表、状态变化、日志行、snapshot |
+| `BattleSnapshot` | 当前战斗的全量只读视图：units、turn_order、current_actor、round、outcome、HUD 状态快照 |
+| `BattleActionResult` | submitAction 的返回值：status、damage/recovery、状态变化、失败原因、snapshot |
 | `BattleStateSnapshot` / `BattleUnitStateSnapshot` | 状态 buff / debuff 的轻量视图（HUD 头顶图标用） |
 
 设计要点：**所有跨模块传递的数据都是普通结构体**，没有继承、没有虚函数、不持有资源。这让单元测试构造场景变得平凡——直接 `BattleUnit{...}` 字面量即可。
@@ -131,10 +131,10 @@ sequenceDiagram
     Note over AR: 校验回合归属、目标合法性
     AR->>AR: collectTargets / collectSkillTargets
     alt 行动类型 = Attack
-        AR->>FE: evaluate('a.atk - b.def/2', source, target)
+        AR->>FE: evaluate('a.atk', source, target)
         FE-->>AR: damage 数值
         AR->>RT: 检查防御标记<br/>对方有 guarding = true 时减半
-        AR->>TC: target.hp -= damage
+        AR->>TC: target.hp -= actual_hp_loss<br/>result.damage = actual_hp_loss
     else 行动类型 = Skill
         AR->>FE: evaluate(skill.damage_formula, ...)
         AR->>AR: applySkillEffects（回复 / 状态 / 移除状态）
@@ -148,15 +148,16 @@ sequenceDiagram
         AR->>AR: nextEscapeRoll()
         AR->>TC: forceOutcome(Escaped) (成功时)
     end
-    AR-->>SESS: BattleActionResult（含 damage / heal / state diff / log）
-    SESS->>TC: advanceTurn() （除非战斗已结束）
+    AR->>TC: refresh() / advanceTurn()
+    AR-->>SESS: BattleActionResult（含 damage / heal / state diff）
     SESS->>SESS: rebuildActiveUnitStates / fillSnapshot
     SESS-->>SCN: BattleActionResult（已含完整 BattleSnapshot）
     SCN->>SCN: 触发表现（动画、音效、HUD 刷新、日志滚动）
 ```
 
 关键细节：
-- **校验失败不修改状态**：`resolve` 在任何步骤失败都把 `result.status = BattleActionStatus::Invalid` 并直接返回。`TurnCore` 不会推进，玩家可以重选。
+- **校验失败不修改状态**：`resolve` 在任何步骤失败都把 `result.status = BattleActionStatus::Rejected` 并直接返回。`TurnCore` 不会推进，玩家可以重选。
+- **伤害结果汇报实际扣血**：HP 伤害的 `result.damage` 按目标 HP 实际减少量填写；普通攻击 overkill 时不会把超过剩余 HP 的理论值交给 UI。
 - **公式 Lua 状态隔离**：`BattleFormulaEvaluator` 自己开一个最小 `sol::state`，与 `ScriptHost` 完全无关。每次求值前刷新 `a` / `b` 表，避免污染。
 - **道具库存独立副本**：进入战斗时 `BattleSessionOptions::item_stocks` 复制一份玩家背包的可用道具数量，战斗中扣减只改这个副本；战斗结束后 `GameScene` 会按 `remaining_item_stocks` 写回消耗差额，胜利时再额外落地金币、掉落、经验和任务进度。
 - **rebuildActiveUnitStates**：每次 submitAction 之后重建一份"存活单位 + 状态列表"快照，HUD 头顶图标按它绘制，避免直接读运行时状态。
@@ -178,7 +179,8 @@ stateDiagram-v2
 ```
 
 - `round_index_` 从 1 开始（在选到首个可行动单位后）；`RoundHook on_round_begin / on_round_end` 回调用于刷新"防御标记清除"、"状态回合 -1"这类回合边界规则。
-- `evaluateOutcome` 在每次 `advanceTurn` 之后重新评估胜负，**不**在每次 HP 变化时评估——更便于测试 setup（直接 `findUnitMutable(id)->hp = 0` 后调 `refresh()`）。
+- `evaluateOutcome` 由 `refresh()` / `advanceTurn()` 触发，**不**在每次 HP 变化时自动评估——更便于测试 setup（直接 `findUnitMutable(id)->hp = 0` 后调 `refresh()`）。
+- `Escaped` 不由存活集合推导，而是通过 `forceOutcome(Escaped)` 强制写入。`forced_outcome_` 会保持该终局，避免后续 `refresh()` / `advanceTurn()` 因双方仍存活而重算回 `Ongoing`。
 - 没有 dispatcher，没有 entt 引用。100% 可单元测试。
 
 ## 七、Resolver — 规则真相
@@ -229,7 +231,7 @@ flowchart LR
 
 - **掉落判定**走 `DropRollFn`（可注入），测试用固定回调验证边界（`return 0.0f` / `return 0.99f`）。
 - **Victory 以外不发奖励**：Defeat / Escaped 调用同函数返回 `empty()` 摘要。
-- 后续由 `game_scene_battle_settlement.cpp` 把摘要交给 `InventoryDomainService::addItem` / `ActorProgressionService::grantExperience` 等真正写回。
+- 后续由 `GameScene::onBattleEnded()` 先写回玩家 HP/MP，再由 `game_scene_battle_settlement.cpp` 把奖励摘要交给 `InventoryDomainService::addItem` / `ActorProgressionService::grantExperience` 等真正写回。
 
 ## 十、单位 / 属性的构造
 
@@ -263,6 +265,8 @@ flowchart TD
     SESS -- "BattleActionResult" --> BSCENE
     BSCENE --> LF["formatBattleLogLines"]
     LF --> HUD["战斗日志 UI"]
+    BSCENE -- "BattleEndedEvent.final_units" --> GSEND["GameScene::onBattleEnded<br/>HP/MP 写回"]
+    GSEND --> EVT["PartyRuntimeStatsChanged<br/>full_sync"]
     BSCENE -- "outcome != Ongoing" --> RWD["BattleRewardResolver::resolve"]
     RWD --> SETTLE["game_scene_battle_settlement<br/>把奖励交给 domain services"]
     SETTLE --> QBP["QuestBattleProgressResolver<br/>推进任务"]
@@ -270,7 +274,7 @@ flowchart TD
     SETTLE --> PROG["ActorProgressionService<br/>给经验"]
 ```
 
-`BattleScene` 不直接读 `TurnCore`，所有访问都通过 `BattleSession` 转发。结算时 `game_scene_battle_settlement.cpp` 调三个 domain service（见 [领域服务](domain-services.md)）。
+`BattleScene` 不直接读 `TurnCore`，所有访问都通过 `BattleSession` 转发。战斗结束后，`GameScene::onBattleEnded()` 先按 `final_units.source_actor_id` 写回玩家 HP/MP，并在变化时触发 `PartyRuntimeStatsChanged{full_sync=true}`；Victory 奖励再由 `game_scene_battle_settlement.cpp` 调 domain service 落地（见 [领域服务](domain-services.md)）。
 
 ## 十三、扩展点
 
@@ -304,6 +308,7 @@ flowchart TD
 3. **随机源可注入**：`BattleActionResolver`、`BattleRewardResolver`、`BattleAiPlanner` 都接受 callback / random_engine 参数。生产代码用默认 `mt19937{random_device{}()}`，测试用固定 seed 或显式回调。
 4. **战斗内库存与背包隔离**：战斗内消耗道具改 `BattleRuntimeState::item_stocks`，不直接改背包 `InventoryComponent`。差额由结算阶段写回。
 5. **快照是只读视图**：`BattleSnapshot` 给 UI 看，不应被 UI 改回再 submit。所有写入都走 `submitAction`。
+6. **探索态刷新事件在外层发**：HP/MP 写回后的 `PartyRuntimeStatsChanged` 由 `GameScene` 触发，不进入 battle 领域层。
 
 ## 十五、推荐代码阅读路径
 
@@ -317,7 +322,7 @@ flowchart TD
 6. `src/game/battle/battle_ai_planner.{h,cpp}` — 看 AI 选择（10 分钟）。
 7. `src/game/battle/battle_reward_resolver.{h,cpp}` — 看奖励聚合（10 分钟）。
 8. `src/game/battle/battle_unit_factory.{h,cpp}` + `actor_stats_resolver.{h,cpp}` — 看 catalog → BattleUnit（15 分钟）。
-9. `src/game/scene/battle_scene.{h,cpp}` 的 `submitAction` 调用处和 `game_scene_battle_settlement.cpp` — 看结果如何回到主世界（20 分钟）。
+9. `src/game/scene/battle_scene.{h,cpp}` 的 `submitAction` 调用处、`src/game/scene/game_scene.cpp` 的 `onBattleEnded`，以及 `game_scene_battle_settlement.cpp` — 看结果如何回到主世界（20 分钟）。
 
 ## 相关文档
 

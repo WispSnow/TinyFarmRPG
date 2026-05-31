@@ -190,16 +190,22 @@ void populateBattlePartyState(entt::registry& registry,
     return it == equipment->loadouts_by_actor_id_.end() ? nullptr : &it->second;
 }
 
-void writeBackBattleRuntimeStats(entt::registry& registry,
-                                 const game::runtime::GameRuntimeServices* services,
-                                 const std::vector<game::battle::BattleUnit>& final_units) {
+struct BattleRuntimeStatsWritebackResult {
+    entt::entity player{entt::null};
+    bool changed{false};
+};
+
+[[nodiscard]] BattleRuntimeStatsWritebackResult writeBackBattleRuntimeStats(
+    entt::registry& registry,
+    const game::runtime::GameRuntimeServices* services,
+    const std::vector<game::battle::BattleUnit>& final_units) {
     const entt::entity player = findPlayer(registry);
     if (player == entt::null) {
-        return;
+        return {};
     }
 
+    BattleRuntimeStatsWritebackResult result{.player = player};
     auto& runtime_stats = registry.get_or_emplace<game::component::PartyRuntimeStatsComponent>(player);
-    bool changed = false;
     for (const auto& unit : final_units) {
         if (unit.side != game::battle::BattleSide::Player || !unit.source_actor_id) {
             continue;
@@ -220,7 +226,7 @@ void writeBackBattleRuntimeStats(entt::registry& registry,
                 *unit.source_actor_id,
                 game::domain::ActorProgressionService::initialState(*services->rpg_catalog, *actor, loadout));
             state_it = inserted_it;
-            changed = changed || inserted;
+            result.changed = result.changed || inserted;
         }
 
         auto& state = state_it->second;
@@ -229,12 +235,13 @@ void writeBackBattleRuntimeStats(entt::registry& registry,
         if (state.current_hp != next_hp || state.current_mp != next_mp) {
             state.current_hp = next_hp;
             state.current_mp = next_mp;
-            changed = true;
+            result.changed = true;
         }
     }
-    if (changed) {
+    if (result.changed) {
         ++runtime_stats.revision_;
     }
+    return result;
 }
 
 [[nodiscard]] std::string sanitizeBattleBackgroundId(std::string_view id, std::string_view source_label) {
@@ -1036,7 +1043,14 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
                  game::battle::toString(evt.outcome),
                  evt.final_units.size());
     battle_in_progress_ = false;
-    writeBackBattleRuntimeStats(registry_, services_.get(), evt.final_units);
+    const auto runtime_stats_writeback = writeBackBattleRuntimeStats(registry_, services_.get(), evt.final_units);
+    if (runtime_stats_writeback.changed && runtime_stats_writeback.player != entt::null) {
+        context_.getDispatcher().trigger(game::defs::PartyRuntimeStatsChanged{
+            .player = runtime_stats_writeback.player,
+            .actor_id = {},
+            .full_sync = true,
+        });
+    }
     resolveActiveEnemyEncounter(evt);
     game::scene::processBattleEndedForGameScene(
         registry_,

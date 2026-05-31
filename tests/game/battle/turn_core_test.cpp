@@ -163,6 +163,20 @@ TEST(TurnCoreTest, EmitsRoundHooksOnWrap) {
     EXPECT_EQ(events, expected);
 }
 
+TEST(TurnCoreTest, ForcedEscapeOutcomeSurvivesRefreshAndAdvance) {
+    TurnCore turn_core(makeUnits());
+    ASSERT_EQ(turn_core.outcome(), BattleOutcome::Ongoing);
+    ASSERT_TRUE(turn_core.currentActorId().has_value());
+
+    turn_core.forceOutcome(BattleOutcome::Escaped);
+    turn_core.refresh();
+
+    EXPECT_EQ(turn_core.outcome(), BattleOutcome::Escaped);
+    EXPECT_FALSE(turn_core.currentActorId().has_value());
+    EXPECT_FALSE(turn_core.advanceTurn());
+    EXPECT_EQ(turn_core.outcome(), BattleOutcome::Escaped);
+}
+
 } // namespace
 } // namespace game::battle
 // NOLINTEND

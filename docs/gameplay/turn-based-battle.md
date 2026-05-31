@@ -11,7 +11,7 @@
 - `BattleActionResolver` 负责技能、物品、防御、逃跑等具体结算
 - `BattleRewardResolver` 负责胜利后的金币、掉落与经验汇总
 - `TurnCore` 负责行动顺序推进与胜负判定
-- `GameScene` 负责战斗入口、防止嵌套战斗、场景 push/pop、战斗库存写回与胜利奖励落地
+- `GameScene` 负责战斗入口、防止嵌套战斗、场景 push/pop、玩家 HP/MP 出场写回、战斗库存写回与胜利奖励落地
 
 核心设计原则：
 
@@ -56,7 +56,7 @@ graph TD
 
     subgraph "探索侧 — GameScene"
         PUSH["requestPushScene(BattleScene)"]
-        WRITEBACK["BattleEndedEvent + 库存/奖励写回"]
+        WRITEBACK["BattleEndedEvent + HP/MP / 库存 / 奖励写回"]
         WALLET["PlayerWalletComponent"]
     end
 
@@ -106,6 +106,8 @@ graph TD
 | `Victory` | 玩家方胜利 |
 | `Defeat` | 玩家方失败 |
 | `Escaped` | 玩家方成功逃跑 |
+
+`Victory` / `Defeat` 来自双方存活状态；`Escaped` 不由 `evaluateOutcome()` 推导，而是在逃跑行动成功时由 resolver 调 `TurnCore::forceOutcome(BattleOutcome::Escaped)`。该强制终局会被 `TurnCore` 保持住，后续 `refresh()` / `advanceTurn()` 不会因为双方仍有存活单位而把结果重算回 `Ongoing`。
 
 ## BattleScene 菜单与输入
 
@@ -311,6 +313,8 @@ sequenceDiagram
 - Escape：成功 / 失败
 - Guard / EndTurn：短文本反馈
 
+对于 HP 伤害类反馈，`BattleActionResult::damage` 表示目标实际失去的 HP。普通攻击打出过量伤害时，返回值会按目标当前 HP 截断，而不是汇报理论公式值。
+
 ### 战斗结算通知反馈
 
 战斗结束后，`game_scene_reward_feedback` 模块负责将写回结果格式化为可见文本：
@@ -320,6 +324,27 @@ sequenceDiagram
 - 若本场 Victory 没有金币、掉落或任务推进，反馈会回退为单行 `战斗胜利`
 
 ## 战斗库存与结算协议
+
+### HP / MP 出场写回
+
+战斗中的 `BattleUnit` 是入场快照，不会在每次扣血时直接写探索态。战斗结束后，`BattleEndedEvent.final_units` 会回到 `GameScene::onBattleEnded()`，由 `writeBackBattleRuntimeStats()` 按 `source_actor_id` 找回玩家 actor 的 runtime state：
+
+```mermaid
+sequenceDiagram
+    participant BS as BattleScene
+    participant EVT as BattleEndedEvent
+    participant GS as GameScene
+    participant D as Dispatcher
+
+    BS->>EVT: final_units
+    EVT->>GS: onBattleEnded()
+    GS->>GS: writeBackBattleRuntimeStats(source_actor_id)
+    alt HP / MP changed
+        GS->>D: PartyRuntimeStatsChanged{full_sync=true}
+    end
+```
+
+敌方单位没有 `source_actor_id`，因此不会写回任何持久 runtime state。这个写回与奖励无关：`Victory`、`Defeat`、`Escaped` 都会保留战斗结束时玩家 HP/MP 的最终值。
 
 ### 战斗物品库存
 
@@ -359,10 +384,13 @@ sequenceDiagram
     participant INV as InventoryDomainService
     participant WALLET as PlayerWalletComponent
     participant PROG as ActorProgressionService
+    participant D as Dispatcher
 
     BS->>EVT: BattleEndedEvent{outcome, final_units, remaining_item_stocks, reward_summary}
     EVT->>GS: onBattleEnded()
-    GS->>GS: 先写回 battle item delta
+    GS->>GS: 先按 final_units 写回玩家 HP/MP
+    GS->>D: HP/MP 变化时 PartyRuntimeStatsChanged{full_sync=true}
+    GS->>GS: 再写回 battle item delta
     alt outcome == Victory
         GS->>WALLET: gold += gold_total
         GS->>INV: addItem(item_drops)
@@ -375,6 +403,7 @@ sequenceDiagram
 
 当前规则：
 
+- `BattleEndedEvent.final_units` 会先按玩家单位的 `source_actor_id` 写回当前 HP/MP；如有变化，触发 `PartyRuntimeStatsChanged{full_sync=true}`
 - `Victory`：写回金币、掉落与参战 actor 经验，并显示奖励与升级反馈
 - `Defeat`：不发金币/掉落/经验，但保留战斗中已发生的物品消耗
 - `Escaped`：不发金币/掉落/经验，但同样保留战斗中已发生的物品消耗
@@ -394,6 +423,8 @@ sequenceDiagram
 | `BattleSnapshot` | `units / current_actor_id / round_index / outcome` |
 | `BattleSessionOptions` | `rpg_catalog / item_catalog / item_stocks` |
 | `BattleScenePresentationOptions` | `sprite_seeds / blueprint_manager / appearance_catalog / actor_runtime_states / actor_equipment` |
+
+`BattleActionResult::damage` 对 HP 伤害表示实际扣掉的 HP。若公式值超过目标剩余 HP，结果字段按剩余 HP 截断，便于 UI、日志和测试对齐同一套可见事实。
 
 ### 关键辅助类型
 
@@ -418,6 +449,7 @@ sequenceDiagram
 | `EnterBattleCommand` | 可携带 `actor_ids / troop_id`，也可直接携带预构建 `player_units / enemy_units`；地图遭遇会额外携带 `encounter_context` |
 | `BattleStartedEvent` | `troop_id / battle_background_id / actor_ids / from_encounter / encounter_id`；`actor_ids` 是实际参战玩家 actor ids |
 | `BattleEndedEvent` | `outcome / final_units / remaining_item_stocks / reward_summary` |
+| `PartyRuntimeStatsChanged` | HP/MP、等级或经验等队伍 runtime state 变化后的刷新事件；战后 HP/MP 写回使用 `full_sync=true` |
 | `SubmitBattleActionCommand` | 目前保留为通用契约类型；当前 `BattleScene` 自己直接调 `BattleSession::submitAction()`，不经 dispatcher |
 
 ## 完整战斗流程
@@ -456,6 +488,8 @@ sequenceDiagram
     BS->>D: BattleEndedEvent{outcome, final_units, remaining_item_stocks}
     BS->>GS: requestPopScene()
     D->>GS: onBattleEnded()
+    GS->>GS: 按 final_units 写回玩家 HP/MP
+    GS->>D: HP/MP 变化时 PartyRuntimeStatsChanged{full_sync=true}
     GS->>GS: 写回 battle item delta
     GS->>GS: Victory 时写回金币/掉落/经验
 ```
@@ -480,8 +514,8 @@ sequenceDiagram
 
 | 测试文件 | 覆盖内容 |
 |---|---|
-| `tests/game/battle/turn_core_test.cpp` | 速度排序、死亡跳过、胜负判定 |
-| `tests/game/battle/battle_action_resolver_test.cpp` | Attack / Skill / Item / Guard / Escape 的规则与 scope |
+| `tests/game/battle/turn_core_test.cpp` | 速度排序、死亡跳过、胜负判定、强制逃跑终局保持 |
+| `tests/game/battle/battle_action_resolver_test.cpp` | Attack / Skill / Item / Guard / Escape 的规则与 scope；普通攻击 overkill 时汇报实际扣血 |
 | `tests/game/battle/battle_unit_factory_test.cpp` | `BattleUnit` 来源信息与 catalog 构建路径 |
 | `tests/game/battle/battle_ai_planner_test.cpp` | 敌方最小 AI 选技与目标选择 |
 | `tests/game/battle/battle_reward_resolver_test.cpp` | Victory 奖励汇总、掉落合并、非 Victory 空摘要 |
@@ -490,7 +524,7 @@ sequenceDiagram
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
 | `tests/game/rmlui_architecture_regression_test.cpp` | Battle RML 不引用素材按钮 class、不使用 `<progress>` |
 | `tests/game/blueprint_manager_smoke_test.cpp` | Side View 所需 goblin / gnome / slime 蓝图与镜像方向 |
-| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback、防嵌套和实际 actor ids |
+| `tests/game/game_scene_battle_entry_test.cpp` | `EnterBattleCommand` 入口、push、catalog fallback、防嵌套、实际 actor ids，以及战后 HP/MP 写回触发队伍统计刷新事件的源码护栏 |
 | `tests/game/game_scene_battle_reward_writeback_test.cpp` | `Victory / Defeat / Escaped` 的库存、奖励、经验与升级写回 |
 | `tests/game/save_service_async_test.cpp` | 钱包金币、装备与队伍 runtime state 的 roundtrip 恢复 |
 | `tests/game/ui_layout_integration_test.cpp` | InventoryMenuScene 的真实金币展示 |

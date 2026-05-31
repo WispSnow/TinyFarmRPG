@@ -28,6 +28,7 @@ private:
     std::size_t current_turn_index_{0};                                     ///< 当前存活行动者在 turn_order_ 中的下标。
     std::uint32_t round_index_{0};                                          ///< 存在可行动单位后从 1 开始计数的轮次索引。
     BattleOutcome outcome_{BattleOutcome::Ongoing};                         ///< 最近一次判定后的战斗结果缓存。
+    std::optional<BattleOutcome> forced_outcome_{};                          ///< Escape 等非 HP 终局覆盖；设置后不再自动重算。
     RoundHook on_round_begin_{};                                            ///< round_index_ 递增后触发的可选回调。
     RoundHook on_round_end_{};                                              ///< 离开已完成轮次前触发的可选回调。
 

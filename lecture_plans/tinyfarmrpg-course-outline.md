@@ -678,9 +678,9 @@ flowchart LR
 **目标**：先不看 UI，单独讲清楚战斗规则的纯逻辑层。
 
 **知识点**：
-- `TurnCore`：速度排序、行动推进、死亡跳过、胜负判定。
+- `TurnCore`：速度排序、行动推进、死亡跳过、胜负判定；`Escaped` 通过 `forceOutcome` 强制进入终局，并保持到后续 `refresh()` / `advanceTurn()`。
 - `BattleSession`：表现层进入战斗逻辑的唯一入口，会话级状态。
-- `BattleUnit` 与战斗运行时状态（与持久 actor 的关系：入场快照、出场写回）。
+- `BattleUnit` 与战斗运行时状态（与持久 actor 的关系：入场快照、出场写回；HP/MP 写回后触发 `PartyRuntimeStatsChanged{full_sync=true}`）。
 - `ActorStatsResolver` 如何把 actor + class + equipment 合成战斗属性。
 - 为什么战斗核心不依赖 ECS UI（便于单元测试与可移植）。
 
@@ -693,13 +693,16 @@ flowchart LR
 - `src/game/battle/battle_session.*`
 - `src/game/battle/battle_unit_factory.*`
 - `src/game/battle/actor_stats_resolver.*`
+- `src/game/scene/game_scene.cpp`（只看 `onBattleEnded` 的 HP/MP 写回与队伍统计刷新事件）
 
 **自测问题**：
-1. 一个角色在自己回合开始前死亡，应该如何处理？写在 `TurnCore` 哪一段？
-2. 战斗内修改 HP 不会立刻同步回背包/角色，谁负责回写？什么时机？
+1. 一个角色在自己回合开始前死亡，应该如何处理？写在 `TurnCore` 哪几处协作逻辑里？
+2. 战斗内修改 HP 不会立刻同步回角色，谁负责回写？什么时机？靠什么字段对上 actor？
 3. 为什么 `BattleSession` 是"唯一入口"？让 UI 直接调 `TurnCore` 会出什么问题？
+4. `Escaped` 为什么不走 `evaluateOutcome`？成功逃跑后为什么还要防住后续 `refresh()` / `advanceTurn()` 的重算？
+5. HP/MP 已写回探索态后，为什么还要额外触发 `PartyRuntimeStatsChanged{full_sync=true}`？
 
-**最小练习**：跑 `turn_core_test.cpp`，挑一个 case 反向推出测试构造的全部前提。
+**最小练习**：跑 `turn_core_test.cpp`，挑一个 case 反向推出测试构造的全部前提；再仿照新增一个 `BothSidesWipedCountsAsDefeat` 测试，锁住双方同归于尽时玩家方失败的规则。
 
 **小结与下节预告**：核心规则讲完，下一讲讲玩家与 AI 动作如何被解析。
 
