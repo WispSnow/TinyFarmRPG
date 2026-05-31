@@ -6,6 +6,7 @@
 #include "game/data/rpg_catalog.h"
 
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -193,6 +194,43 @@ TEST(BattleRewardResolverTest, ReturnsEmptySummaryWhenOutcomeIsNotVictory) {
 
     const BattleRewardSummary ongoing_summary = resolver.resolve(BattleOutcome::Ongoing, final_units, catalog);
     EXPECT_TRUE(ongoing_summary.empty());
+}
+
+TEST(BattleRewardResolverTest, CapsGoldAndExpWhenAggregateWouldOverflow) {
+    const auto enemies_path = writeEnemyCatalog(
+        "battle_reward_resolver_overflow",
+        R"json({
+  "enemies": [
+    {
+      "id": "enemy.rich",
+      "display_name": "Rich",
+      "params": { "mhp": 10, "mmp": 0, "atk": 1, "def": 1, "mat": 1, "mdf": 1, "agi": 1, "luk": 1 },
+      "exp": 2147483647,
+      "gold": 2147483647
+    },
+    {
+      "id": "enemy.bonus",
+      "display_name": "Bonus",
+      "params": { "mhp": 10, "mmp": 0, "atk": 1, "def": 1, "mat": 1, "mdf": 1, "agi": 1, "luk": 1 },
+      "exp": 1,
+      "gold": 1
+    }
+  ]
+})json");
+
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadEnemies(enemies_path.string()));
+
+    const std::vector<BattleUnit> final_units{
+        makeUnit(1, "Hero", BattleSide::Player, 100, 100),
+        makeUnit(101, "Rich", BattleSide::Enemy, 0, 10, std::string{"enemy.rich"}),
+        makeUnit(102, "Bonus", BattleSide::Enemy, 0, 10, std::string{"enemy.bonus"})};
+
+    BattleRewardResolver resolver{};
+    const BattleRewardSummary summary = resolver.resolve(BattleOutcome::Victory, final_units, catalog);
+
+    EXPECT_EQ(summary.gold_total, std::numeric_limits<int>::max());
+    EXPECT_EQ(summary.exp_total, std::numeric_limits<int>::max());
 }
 
 } // namespace

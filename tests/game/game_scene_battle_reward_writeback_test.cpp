@@ -21,6 +21,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -564,6 +565,40 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryReportsRejectedDropsWhenInvent
 
     ASSERT_EQ(capture.shows.size(), 1U);
     EXPECT_EQ(capture.shows[0].text, "Gained Gold 4\nInventory full, missed Herb x1");
+
+    sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
+TEST_F(GameSceneBattleRewardWritebackTest, VictoryRejectsOverflowedGoldWithoutMutatingWallet) {
+    DialogueCapture capture;
+    auto sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    sink.connect<&DialogueCapture::onShow>(&capture);
+
+    const int initial_gold = std::numeric_limits<int>::max() - 1;
+    const entt::entity player = createPlayer(initial_gold, 0);
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Hero", game::battle::BattleSide::Player, 30, 30),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = game::battle::BattleRewardSummary{
+        .gold_total = 2,
+    };
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    EXPECT_EQ(registry_.get<game::component::PlayerWalletComponent>(player).gold_, initial_gold);
+    ASSERT_EQ(capture.shows.size(), 1U);
+    EXPECT_EQ(capture.shows[0].text, "Victory");
 
     sink.disconnect<&DialogueCapture::onShow>(&capture);
 }

@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
@@ -42,6 +43,14 @@ constexpr float NOTIFICATION_SECONDS = 2.0f;
         return entt::null;
     }
     return *players.begin();
+}
+
+[[nodiscard]] bool checkedAddGold(const int current_gold, const int reward_gold, int& out_gold) {
+    if (reward_gold < 0 || current_gold > std::numeric_limits<int>::max() - reward_gold) {
+        return false;
+    }
+    out_gold = current_gold + reward_gold;
+    return true;
 }
 
 void applyBattleItemStockDelta(entt::registry& registry,
@@ -144,8 +153,15 @@ void applyBattleItemStockDelta(entt::registry& registry,
 
     if (reward_summary.gold_total > 0) {
         if (auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {
-            wallet->gold_ += reward_summary.gold_total;
-            writeback_result.gold_written_back = reward_summary.gold_total;
+            int next_gold = wallet->gold_;
+            if (!checkedAddGold(wallet->gold_, reward_summary.gold_total, next_gold)) {
+                spdlog::warn("GameScene: 战斗金币写回溢出，current={}, reward={}，跳过金币写回。",
+                             wallet->gold_,
+                             reward_summary.gold_total);
+            } else {
+                wallet->gold_ = next_gold;
+                writeback_result.gold_written_back = reward_summary.gold_total;
+            }
         } else {
             spdlog::warn("GameScene: 玩家缺少 PlayerWalletComponent，跳过金币写回。");
         }

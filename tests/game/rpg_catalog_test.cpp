@@ -529,6 +529,43 @@ TEST(RpgCatalogTest, ValidateFailsOnMissingSkillReference) {
     EXPECT_NE(error.find("skill.missing"), std::string::npos);
 }
 
+TEST(RpgCatalogTest, LoadEnemiesRejectsNegativeRewards) {
+    const FixturePaths paths = createValidRpgFixture();
+    game::test::writeTextFile(
+        paths.enemies,
+        R"json({
+  "enemies": [
+    {
+      "id": "enemy.slime",
+      "display_name": "Slime",
+      "params": [50, 0, 10, 8, 1, 2, 6, 5],
+      "exp": -1,
+      "gold": 5
+    }
+  ]
+})json");
+
+    RpgCatalog catalog;
+    EXPECT_FALSE(catalog.loadEnemies(paths.enemies.string()));
+
+    game::test::writeTextFile(
+        paths.enemies,
+        R"json({
+  "enemies": [
+    {
+      "id": "enemy.slime",
+      "display_name": "Slime",
+      "params": [50, 0, 10, 8, 1, 2, 6, 5],
+      "exp": 10,
+      "gold": -1
+    }
+  ]
+})json");
+
+    RpgCatalog catalog_with_negative_gold;
+    EXPECT_FALSE(catalog_with_negative_gold.loadEnemies(paths.enemies.string()));
+}
+
 TEST(RpgCatalogTest, ValidateFailsOnMissingActorSkillReference) {
     const FixturePaths paths = createValidRpgFixture();
     game::test::writeTextFile(
