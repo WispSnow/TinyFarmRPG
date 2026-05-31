@@ -158,6 +158,9 @@ bool AsyncPreloadPipeline::schedule(entt::id_type map_id, std::string_view level
                 });
             }
             auto decode_end_at = std::chrono::steady_clock::now();
+            if (is_stale()) {
+                return;
+            }
 
             const bool enqueued = main_thread_queue->enqueueWithWait(
                 [map_id,

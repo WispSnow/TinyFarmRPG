@@ -171,15 +171,18 @@ void MapManager::scheduleAsyncPreloadTask(entt::id_type map_id, const std::strin
         std::vector<DecodedEntry> decoded_textures;
 
         for (const auto& tex_path : preprocess.data.texture_paths) {
+            if (shared->generation.load(std::memory_order_acquire) != generation) {
+                return;  // 解码前发现过期，避免继续做 CPU 重活
+            }
             auto decoded = ImageDecodeService::decodeRGBA(tex_path);
             if (decoded && decoded->valid()) {
                 decoded_textures.push_back({tex_path, std::move(*decoded)});
             }
         }
 
-        // 3d. 再次检查 generation
+        // 3d. 解码后、入队命令前再次检查 generation
         if (shared->generation.load(std::memory_order_acquire) != generation) {
-            return;
+            return;  // 避免把过期 command 塞进主线程队列
         }
 
         // 3e. 投递主线程命令
@@ -247,44 +250,55 @@ sequenceDiagram
 auto generation = ++preload_generation_counter_;
 shared->generation.store(generation, std::memory_order_release);
 
-// Worker 执行前/后都检查
+// Worker 预处理后、每张贴图解码前、入队命令前都检查
 if (shared->generation.load(std::memory_order_acquire) != generation) {
     return;  // generation 不匹配 → 已被新任务覆盖 → 丢弃结果
 }
 
-// 主线程命令执行时再次检查
+// 主线程命令执行时和写 Ready 前再次检查
 if (shared->generation.load(std::memory_order_acquire) != generation) {
     return;  // 确保不会上传过期纹理
 }
 ```
 
-**三次检查**：
+**关键检查点**：
 
 ```mermaid
 flowchart LR
     subgraph Worker线程
         A["预处理完成"] --> B{"检查 ①<br/>generation 匹配？"}
         B -->|否| X1["丢弃结果 🗑️"]
-        B -->|是| C["解码图片"]
-        C --> D{"检查 ②<br/>generation 匹配？"}
-        D -->|否| X2["丢弃结果 🗑️"]
-        D -->|是| E["投递到命令队列"]
+        B -->|是| C{"每张图解码前<br/>检查 ②"}
+        C -->|否| X2["丢弃结果 🗑️"]
+        C -->|是| D["解码图片"]
+        D --> E{"入队前<br/>检查 ③"}
+        E -->|否| X3["丢弃结果 🗑️"]
+        E -->|是| F["投递到命令队列"]
     end
 
     subgraph 主线程
-        E --> F{"检查 ③<br/>generation 匹配？"}
-        F -->|否| X3["丢弃命令 🗑️"]
-        F -->|是| G["上传纹理 ✅"]
+        F --> G{"执行命令前<br/>检查 ④"}
+        G -->|否| X4["丢弃命令 🗑️"]
+        G -->|是| H["上传纹理"]
+        H --> I{"写 Ready 前<br/>检查 ⑤"}
+        I -->|否| X5["丢弃完成写入 🗑️"]
+        I -->|是| J["state = Ready ✅"]
     end
 
     style B fill:#fff3e0
-    style D fill:#fff3e0
-    style F fill:#fff3e0
+    style C fill:#fff3e0
+    style E fill:#fff3e0
+    style G fill:#fff3e0
+    style I fill:#fff3e0
 ```
 
-1. 预处理完成后（丢弃已过期的解码工作）
-2. 投递命令前（避免不必要的队列占用）
-3. 命令执行时（最后一道防线，因为命令在队列中可能等了几帧）
+1. 预处理完成后（丢弃已过期的后续解码工作）
+2. 每张贴图解码前（玩家已经离开时，不再做下一张图片的 CPU 解码）
+3. 投递命令前（避免不必要的队列占用）
+4. 命令执行时（命令可能在队列中等了几帧）
+5. GPU 上传后、写 `Ready` 前（最后一道防线）
+
+旧版教材里常写成“三次检查”，便于入门理解；项目当前实现把粒度收得更细，尤其多了“解码后、入队前”的短路。
 
 ### 清除所有任务
 
@@ -361,6 +375,7 @@ bool MapManager::loadMap(entt::id_type map_id) {
 
         if (state == MapPreloadTaskState::NotScheduled) {
             preloadMap(map_id);  // 来不及了，现在开始预加载
+            state = mapPreloadTaskState(map_id);
         }
 
         if (state == MapPreloadTaskState::Running) {
@@ -389,17 +404,17 @@ bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
         if (isAsyncReadyState(state)) return true;
         if (state == Failed || state == NotScheduled) return false;
 
-        // 关键：在等待期间顺便 drain 命令队列！
-        (void)main_queue.drain();
+        // 注意：这里不 drain 主线程命令队列。
+        // 常规提交点只在 GameApp::drainMainThreadCommands()。
         std::this_thread::sleep_for(1ms);
     }
     return isAsyncReadyState(mapPreloadTaskState(map_id));
 }
 ```
 
-**为什么在等待中 drain？** 异步任务可能已经完成了 worker 部分，命令正在队列中等待执行。如果只是 sleep 等待 state 变为 Ready，但不执行命令，Ready 永远不会到来——因为是命令执行后才设置 Ready 的。
+**为什么等待中不 drain？** 异步任务可能已经完成 worker 部分，但 GPU 上传命令应由游戏循环的固定提交点统一执行：`GameApp::drainMainThreadCommands()`。`MapManager` 只做状态轮询，避免 `loadMap()` 内部隐藏一段可能很长、也可能引入重入风险的 command 执行。
 
-这是一个经典的**轮询 + drain** 模式：等待的同时顺手做有用的工作。
+因此，同一帧里“刚 schedule 又立刻 load”通常来不及变成 Ready，会在极小预算后降级同步加载。不卡的关键不是把等待预算调大，而是提前预热：`preloadAllMaps()` 或 `preloadRelatedMaps()` 要在玩家真正踩上传送点之前的若干帧就把任务排出去。
 
 ---
 
@@ -495,22 +510,29 @@ sequenceDiagram
 
 ```json
 {
-    "async_preload_enabled": true,
-    "async_wait_budget_ms": 3,
-    "async_submit_wait_ms": 1,
-    "async_command_wait_ms": 8,
-    "async_worker_count": 1,
-    "async_queue_capacity": 32
+    "preload": {
+        "mode": "all",
+        "async_enabled": true,
+        "async_wait_budget_ms": 3,
+        "async_submit_wait_ms": 1,
+        "async_command_wait_ms": 8,
+        "async_worker_count": 1,
+        "async_queue_capacity": 32
+    },
+    "log_timings": true
 }
 ```
 
 | 参数 | 含义 | 调优方向 |
 |------|------|----------|
-| `async_wait_budget_ms` | `loadMap` 等待异步结果的最大时间 | 太大会卡渲染，太小经常降级 |
-| `async_submit_wait_ms` | 提交到线程池的超时 | 通常 1ms 足够 |
-| `async_command_wait_ms` | 投递主线程命令的超时 | 命令队列满时等待时间 |
-| `async_worker_count` | worker 线程数量 | IO 密集型任务 1-2 个够用 |
-| `async_queue_capacity` | 任务队列容量 | 地图数量的 2 倍是合理上限 |
+| `preload.mode` | `off` / `neighbors` / `all` | 默认资产为 `all`，启动期预热全部已知地图 |
+| `preload.async_enabled` | 是否启用异步预加载 | 关闭后退回同步预热 |
+| `preload.async_wait_budget_ms` | `loadMap` 等待异步结果的最大时间 | 太大会卡渲染，太小经常降级；它只轮询，不 drain |
+| `preload.async_submit_wait_ms` | 提交到线程池的超时 | 通常 1ms 足够 |
+| `preload.async_command_wait_ms` | 投递主线程命令的超时 | 命令队列满时等待时间 |
+| `preload.async_worker_count` | worker 线程数量 | IO 密集型任务 1-2 个够用；`stb_image` 解码仍有全局锁 |
+| `preload.async_queue_capacity` | 任务队列容量 | 地图数量的 2 倍是合理上限 |
+| `log_timings` | 输出计时日志 | 对比 `off/neighbors/all` 与异步命中率 |
 
 ---
 
@@ -519,10 +541,10 @@ sequenceDiagram
 | 概念 | 说明 |
 |------|------|
 | 三层流水线 | Worker（CPU/IO）→ 命令队列（GPU 上传）→ 主线程（ECS/游戏逻辑） |
-| Generation 防过期 | 原子计数器，三次检查，避免过期结果浪费资源 |
+| Generation 防过期 | 原子计数器，多处检查，避免过期结果浪费资源 |
 | 降级回退 | 异步是加速层，失败时回退到同步，保证正确性 |
-| 轮询 + drain | 等待异步结果的同时执行命令队列，避免死等 |
-| 预加载触发 | 加载当前地图后，异步预加载邻居和触发目标 |
+| 轮询不 drain | `MapManager` 只等状态；命令队列由 `GameApp` 每帧统一 drain |
+| 预加载触发 | 默认启动期全量预热；`neighbors` 模式在加载当前地图后预热邻居和触发目标 |
 
 ## 下一篇
 

@@ -74,12 +74,13 @@ public:
 std::size_t drain(std::size_t max_commands) {
     if (!isOnOwnerThread()) {
         spdlog::warn("drain() called from non-owner thread!");
+        return 0;
     }
     // ...
 }
 ```
 
-这是一个**调试时断言**：不会阻止执行，但会在日志中留下警告。如果你看到了这个警告，说明有代码在错误的线程调用了 `drain()`，需要修复。
+这是一个**所有权护栏**：会在日志中留下警告，并且直接早退，不执行队列里的命令。如果你看到了这个警告，说明有代码在错误的线程调用了 `drain()`，需要修复到 owner 线程（通常是 `GameApp::drainMainThreadCommands()`）统一提交。
 
 ---
 

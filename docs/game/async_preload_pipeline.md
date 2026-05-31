@@ -6,7 +6,7 @@
 
 ## 1. 为什么需要它？
 
-切换地图主要包含两个耗时操作：
+切换地图主要包含三类耗时操作：
 
 | 操作 | 耗时原因 | 能否在后台线程完成？ |
 |------|----------|---------------------|
@@ -30,13 +30,14 @@ sequenceDiagram
     MT->>TP: schedule(map_id, level_path)<br/>提交后台任务
 
     activate TP
-    TP->>TP: 1. LevelLoader::preprocessLevelDataWorker()<br/>   读文件 + 解析 JSON + 提取贴图路径
-    TP->>TP: 2. ImageDecodeService::decodeRGBA()<br/>   CPU 解码所有贴图（像素数据）
+    TP->>TP: LevelLoader::preprocessLevelDataWorker()<br/>读文件 + 解析 JSON + 提取贴图路径
+    TP->>TP: ImageDecodeService::decodeRGBA()<br/>CPU 解码所有贴图（像素数据）
+    TP->>TP: is_stale 检查<br/>过期任务不入队
     TP->>MQ: enqueueWithWait(commit_lambda)<br/>把 GPU 上传命令投递到主线程队列
     deactivate TP
 
     Note over MT: 下一帧主线程 drain() 时执行
-    MQ->>GPU: 3. resource_manager->loadTextureFromDecoded()<br/>   GPU 纹理上传（OpenGL）
+    MQ->>GPU: resource_manager->loadTextureFromDecoded()<br/>GPU 纹理上传（OpenGL）
 
     GPU-->>MT: state = Ready
 
@@ -138,7 +139,7 @@ sequenceDiagram
     Note over W: 过期结果被静默丢弃，不写入 state
 ```
 
-Worker lambda 捕获的 `generation` 值是**值拷贝**，与当前 `shared->generation` 比对，不一致则静默退出。
+Worker lambda 捕获的 `generation` 值是**值拷贝**，与当前 `shared->generation` 比对，不一致则静默退出。当前实现会在预处理后、每张贴图解码前、解码循环结束且准备入队前，以及主线程 command 执行前后检查 generation；过期 worker 不会再把无效 command 塞进主线程队列。
 
 ---
 
@@ -185,14 +186,14 @@ sequenceDiagram
     D->>Tasks: bump 所有 generation<br/>state = NotScheduled
     Note over Tasks: 所有飞行中 Worker 的 is_stale() 会在<br/>下一次检查时返回 true，提前 return
 
-    D->>TP: stop() + join()<br/>等待所有 Worker 线程退出
-    Note over TP: Worker 全部退出后，<br/>context_ / resource_manager 引用才失效
+    D->>Tasks: 清空 map，释放 pipeline 侧 shared_ptr
+    Note over Tasks: Worker / command lambda 已捕获自己的 shared_ptr，<br/>不会访问被清空的 map 容器
 
-    D->>Tasks: 清空 map，释放 shared_ptr
-    Note over D: 所有 Worker 已退出，无悬空引用
+    D->>TP: stop() + join()<br/>等待所有 Worker 线程退出
+    Note over TP: Worker 全部退出后，<br/>context_ / resource_manager / main_queue 引用才可失效
 ```
 
-**顺序约束**：必须先 bump generation → 再 join workers → 再销毁数据。否则 Worker 可能在 `context_` 被析构后还在访问它。
+**顺序约束**：必须先 bump generation，让飞行中的 worker 尽快短路；之后必须在 `Context` 子系统析构前 stop + join workers。pipeline 侧 map 条目可以在 join 前清空，因为 worker / command lambda 持有自己的 `shared_ptr<AsyncPreloadTaskState>`；真正不能提前销毁的是 worker 捕获的 `resource_manager` 与 `main_thread_queue` 所属的 `Context` 子系统。
 
 ---
 
@@ -202,14 +203,16 @@ sequenceDiagram
 
 | 字段 | 含义 | 默认影响 |
 |------|------|---------|
-| `async_preload_enabled` | 是否启用异步预加载 | false → ThreadPool 不创建 |
-| `async_worker_count` | Worker 线程数 | 通常 1 即可（I/O 密集） |
-| `async_queue_capacity` | 任务队列容量 | 防止无限堆积 |
-| `async_submit_wait_ms` | submit 入队超时（ms）| 队满时等待上限 |
-| `async_command_wait_ms` | 主线程 Command 入队超时（ms）| MQ 满时等待上限 |
+| `preload.mode` | 预热策略：`off` / `neighbors` / `all` | 默认资产为 `all`，启动装配会预热全部已知地图 |
+| `preload.async_enabled` | 是否启用异步预加载 | false → 不创建 ThreadPool，降级同步预热 |
+| `preload.async_worker_count` | Worker 线程数 | 通常 1 即可（I/O 密集，且 `stb_image` 仍有全局锁） |
+| `preload.async_queue_capacity` | 任务队列容量 | 防止无限堆积 |
+| `preload.async_submit_wait_ms` | submit 入队超时（ms）| 队满时等待上限 |
+| `preload.async_command_wait_ms` | 主线程 Command 入队超时（ms）| MQ 满时等待上限 |
+| `preload.async_wait_budget_ms` | `loadMap` 等待异步结果的预算（ms） | 只轮询状态，不直接 drain 主线程命令队列 |
 | `log_timings` | 打印各阶段计时 | 用于性能调优 |
 
-代码入口：[game_scene.cpp](../../src/game/scene/game_scene.cpp) → `initMapManager()`
+配置读取由 [`MapLoadingSettings::loadFromFile`](../../src/game/world/map_loading_settings.cpp) 完成：它使用无异常 JSON parse 和 typed helper，坏 JSON / 类型不符保留默认值，超大无符号字段先 clamp 再转换。启动装配入口：[runtime_service_factory.cpp](../../src/game/runtime/runtime_service_factory.cpp) → `initMapManager()`；当 `preload.mode == all` 时会调用 `MapManager::preloadAllMaps()`。
 
 ---
 
@@ -218,6 +221,7 @@ sequenceDiagram
 ### 预加载状态一直 Running，没有变成 Ready
 - 检查主线程的 `MainThreadCommandQueue::drain()` 是否被调用（每帧必须 drain）
 - 开启 `log_timings` 查看 Worker 是否真的执行完了（有无 "worker done" 日志）
+- 注意 `MapManager::waitForAsyncPreloadReady()` 只轮询状态，不会直接 drain；如果同一帧才 schedule 又立刻 load，很可能超时降级同步。预热应提前几帧发生。
 
 ### 状态变成 Failed
 - 查看 `spdlog::warn` 日志：`preprocess failed` / `worker decode failed` / `main-thread upload failed`
@@ -225,4 +229,8 @@ sequenceDiagram
 
 ### clearTasks() 后新调度的地图状态不对
 - 确认 `schedule()` 成功返回 `true`（返回 `false` 说明 ThreadPool 未创建或提交失败）
-- 检查 `async_preload_enabled` 是否为 `true`
+- 检查 `preload.async_enabled` 是否为 `true`
+
+### 启动后没有看到全量预热
+- 检查 `assets/data/map_loading_config.json` 的 `preload.mode` 是否仍为 `all`
+- 跑 `MapLoadingSettingsTest.LoadsCheckedDefaultsFromRuntimeAssetConfig`，确认默认资产配置没有漂移

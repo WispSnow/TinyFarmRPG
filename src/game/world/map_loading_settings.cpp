@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <limits>
 
 #include <nlohmann/json.hpp>
@@ -34,25 +34,67 @@ namespace {
     return MapPreloadMode::Off;
 }
 
+[[nodiscard]] const nlohmann::json* findMember(const nlohmann::json& json, std::string_view key) {
+    if (!json.is_object()) {
+        return nullptr;
+    }
+    const auto it = json.find(std::string(key));
+    if (it == json.end()) {
+        return nullptr;
+    }
+    return &(*it);
+}
+
+[[nodiscard]] std::string stringOr(const nlohmann::json& json, std::string_view key, std::string_view fallback) {
+    const auto* value = findMember(json, key);
+    if (!value) {
+        return std::string(fallback);
+    }
+    if (const auto* text = value->get_ptr<const nlohmann::json::string_t*>()) {
+        return *text;
+    }
+    return std::string(fallback);
+}
+
+[[nodiscard]] bool boolOr(const nlohmann::json& json, std::string_view key, bool fallback) {
+    const auto* value = findMember(json, key);
+    if (!value) {
+        return fallback;
+    }
+    if (const auto* flag = value->get_ptr<const nlohmann::json::boolean_t*>()) {
+        return *flag;
+    }
+    return fallback;
+}
+
 template <typename T>
 [[nodiscard]] T parseUnsigned(const nlohmann::json& json,
                               std::string_view key,
                               T fallback,
                               T max_value = std::numeric_limits<T>::max()) {
-    if (!json.contains(std::string(key))) {
+    const auto* value = findMember(json, key);
+    if (!value) {
         return fallback;
     }
 
-    const auto& value = json.at(std::string(key));
-    if (value.is_number_unsigned()) {
-        return std::min<T>(static_cast<T>(value.get<nlohmann::json::number_unsigned_t>()), max_value);
+    using JsonUnsigned = nlohmann::json::number_unsigned_t;
+    const auto max_unsigned = static_cast<JsonUnsigned>(max_value);
+
+    if (const auto* unsigned_value = value->get_ptr<const JsonUnsigned*>()) {
+        if (*unsigned_value > max_unsigned) {
+            return max_value;
+        }
+        return static_cast<T>(*unsigned_value);
     }
-    if (value.is_number_integer()) {
-        const auto signed_value = value.get<nlohmann::json::number_integer_t>();
-        if (signed_value < 0) {
+    if (const auto* signed_value = value->get_ptr<const nlohmann::json::number_integer_t*>()) {
+        if (*signed_value < 0) {
             return fallback;
         }
-        return std::min<T>(static_cast<T>(signed_value), max_value);
+        const auto unsigned_value = static_cast<JsonUnsigned>(*signed_value);
+        if (unsigned_value > max_unsigned) {
+            return max_value;
+        }
+        return static_cast<T>(unsigned_value);
     }
     return fallback;
 }
@@ -62,46 +104,43 @@ MapLoadingSettings MapLoadingSettings::loadFromFile(std::string_view path) {
     MapLoadingSettings settings{};
     settings.source_path = std::string(path);
 
-    if (!std::filesystem::exists(std::filesystem::path(path))) {
-        spdlog::warn("MapLoadingSettings: 配置文件不存在，使用默认值: {}", path);
-        return settings;
-    }
-
-    std::ifstream file{std::filesystem::path(path)};
+    std::ifstream file{std::string(path)};
     if (!file.is_open()) {
         spdlog::warn("MapLoadingSettings: 无法打开配置文件，使用默认值: {}", path);
         return settings;
     }
 
-    nlohmann::json json;
-    try {
-        file >> json;
-    } catch (const std::exception& e) {
-        spdlog::warn("MapLoadingSettings: 解析配置失败，使用默认值: {} ({})", path, e.what());
+    const std::string file_content(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+
+    const nlohmann::json json = nlohmann::json::parse(file_content, nullptr, false);
+    if (json.is_discarded() || !json.is_object()) {
+        spdlog::warn("MapLoadingSettings: 解析配置失败，使用默认值: {}", path);
         return settings;
     }
 
     // preload.mode（优先）
-    if (json.contains("preload") && json["preload"].is_object()) {
-        const auto& preload = json["preload"];
-        settings.preload_mode = parseMode(preload.value("mode", "all"));
-        settings.async_preload_enabled = preload.value("async_enabled", settings.async_preload_enabled);
+    if (const auto* preload = findMember(json, "preload"); preload && preload->is_object()) {
+        settings.preload_mode = parseMode(stringOr(*preload, "mode", "all"));
+        settings.async_preload_enabled = boolOr(*preload, "async_enabled", settings.async_preload_enabled);
         settings.async_wait_budget_ms = parseUnsigned<std::uint32_t>(
-            preload, "async_wait_budget_ms", settings.async_wait_budget_ms, 2000U);
+            *preload, "async_wait_budget_ms", settings.async_wait_budget_ms, 2000U);
         settings.async_submit_wait_ms = parseUnsigned<std::uint32_t>(
-            preload, "async_submit_wait_ms", settings.async_submit_wait_ms, 2000U);
+            *preload, "async_submit_wait_ms", settings.async_submit_wait_ms, 2000U);
         settings.async_command_wait_ms = parseUnsigned<std::uint32_t>(
-            preload, "async_command_wait_ms", settings.async_command_wait_ms, 2000U);
+            *preload, "async_command_wait_ms", settings.async_command_wait_ms, 2000U);
         settings.async_worker_count = parseUnsigned<std::size_t>(
-            preload, "async_worker_count", settings.async_worker_count, 64U);
+            *preload, "async_worker_count", settings.async_worker_count, 64U);
         settings.async_queue_capacity = parseUnsigned<std::size_t>(
-            preload, "async_queue_capacity", settings.async_queue_capacity, 4096U);
+            *preload, "async_queue_capacity", settings.async_queue_capacity, 4096U);
     } else {
         // 兼容顶层字段
-        settings.preload_mode = parseMode(json.value("mode", "all"));
+        settings.preload_mode = parseMode(stringOr(json, "mode", "all"));
     }
 
-    settings.log_timings = json.value("log_timings", settings.log_timings);
+    settings.log_timings = boolOr(json, "log_timings", settings.log_timings);
     return settings;
 }
 
