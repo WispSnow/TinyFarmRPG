@@ -139,6 +139,35 @@ TEST(LocalizationServiceTest, TargetLanguageFileFailureFallsBackAndStillSucceeds
     EXPECT_EQ(localization.tr("hello"), "Hello");
 }
 
+TEST(LocalizationServiceTest, FallbackLanguageFileFailureRejectsManifestAndKeepsPreviousState) {
+    const std::filesystem::path dir = testDir();
+    const std::filesystem::path good_dir = dir / "good";
+    const std::filesystem::path bad_dir = dir / "bad";
+    writeFile(good_dir / "languages.json",
+              R"({
+                "fallback": "en-US",
+                "languages": [
+                  {"tag": "en-US", "native_name": "English", "file": ")" + (good_dir / "en-US.json").string() + R"("}
+                ]
+              })");
+    writeFile(good_dir / "en-US.json", R"({"hello": "Hello"})");
+    writeFile(bad_dir / "languages.json",
+              R"({
+                "fallback": "en-US",
+                "languages": [
+                  {"tag": "en-US", "native_name": "English", "file": ")" + (bad_dir / "missing.json").string() + R"("}
+                ]
+              })");
+
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex((good_dir / "languages.json").string()));
+    ASSERT_EQ(localization.tr("hello"), "Hello");
+
+    EXPECT_FALSE(localization.loadLanguageIndex((bad_dir / "languages.json").string()));
+    EXPECT_EQ(localization.currentLanguageTag(), "en-US");
+    EXPECT_EQ(localization.tr("hello"), "Hello");
+}
+
 TEST(LocalizationServiceTest, FormatWarnsOnceForUnresolvedPlaceholders) {
     const std::filesystem::path dir = testDir();
     writeFile(dir / "languages.json",

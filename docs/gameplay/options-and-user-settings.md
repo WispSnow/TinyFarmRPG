@@ -46,9 +46,9 @@ Inventory Options 标签激活时会把 `UserSettingsService` 中的 UI 字号�
 flowchart LR
   Setting["UserSettingsService::setUiFontScale"] --> Apply["applyUiFontScale"]
   Apply --> Runtime["RmlUiRuntime::applyBody<br/>FontScaleClassToAllDocuments"]
-  Runtime --> Body["每个文档的 body 上互斥替换<br/>tf-font-small / -normal / -large"]
-  Runtime --> Resolver["body_font_scale_class_resolver_<br/>注入 RmlDocumentController"]
-  Resolver --> NewDoc["新文档 load 时<br/>自动加上当前 class"]
+  Runtime --> Body["已加载文档的 body 上互斥替换<br/>tf-font-small / -normal / -large"]
+  Runtime --> Stored["记录 body_font_scale_class_"]
+  Stored --> NewDoc["新文档 loadDocument 时<br/>自动加上当前 class"]
 ```
 
 - 所有正式 `.rcss`（scenes / theme / hud）的 `font-size: Xdp` 已批量迁移到 `font-size: (X/16)rem`，确保字号随 body 联动。
@@ -64,7 +64,7 @@ Options 偏好**不**入存档；存档只保存具体游戏进度，偏好是 g
 |------|------|
 | `src/game/runtime/user_settings.h` | `UserSettings` POD + clamp / 序列化 helper |
 | `src/game/runtime/user_settings.cpp` | JSON parse / serialize 实现 |
-| `src/game/runtime/user_settings_service.{h,cpp}` | service：load/save、apply、setter、事件派发 |
+| `src/game/runtime/user_settings_service.{h,cpp}` | service：load/save、apply、setter、需要订阅者的偏好事件 |
 | `src/game/defs/options_events.h` | Options / UI 偏好相关 `*ChangedEvent` |
 | `src/game/ui/options_tab_content.{h,cpp}` | Options 标签 UI 逻辑 |
 | `src/game/scene/battle_cursor_memory.h` | `resolveCursorMemoryDefaultIndex` 纯函数 |

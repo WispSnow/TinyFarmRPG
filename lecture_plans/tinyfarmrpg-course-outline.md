@@ -900,7 +900,7 @@ flowchart LR
 
 **知识点**：
 - **本地化**：
-  - `LocalizationService`：manifest 加载、fallback、`tr` / `format` 入口。
+  - `LocalizationService`：manifest 加载、fallback 原子提交、`tr` / `format` 入口。
   - RmlUi `data-i18n` / `data-i18n-title` 静态绑定与 `applyRmlLocalization` 时机。
   - C++ ViewModel helper：`tryLocalize` / `localizeTextOrFallback` / `formatTextOrFallback`。
   - Lua 内容文案：`tf.i18n`，规则与 C++ 一致。
@@ -908,7 +908,7 @@ flowchart LR
 - **用户设置**：
   - `UserSettingsService` 作为"偏好唯一真源"，PauseMenu / Inventory→Options 两套菜单的协作。
   - 持久化策略：`config/user_settings.default.json`（进 repo）vs `config/user_settings.json`（runtime 写，不进 repo）。
-  - 四项 Options（Battle Speed / Damage Popups / Enemy HP Bar / Cursor Memory）的作用点。
+  - 四项 Options（Battle Speed / Damage Popups / Enemy HP Bar / Cursor Memory）的作用点与 typed event 订阅边界。
   - UI 字号固定 Normal 的当前策略与 body class 管线的保留理由。
   - 偏好**不**入存档：跨 save slot 共享。
 - **跨系统协作**：本地化与字号 class 都通过 RmlUi 文档作用，新增 Scene 时需要的最小接入。
