@@ -111,6 +111,29 @@ TEST(BattleActionResolverTest, AttackAppliesDamageAndAdvancesTurn) {
     EXPECT_EQ(slime->hp, 10);
 }
 
+TEST(BattleActionResolverTest, AttackReportsActualDamageWhenOverkillingTarget) {
+    auto units = makeUnits();
+    units[2].hp = 10;
+    TurnCore turn_core(std::move(units));
+    ASSERT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{1});
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+
+    BattleActionResolver resolver{};
+    const BattleActionResult result = resolver.resolve(BattleAction{
+        .type = BattleActionType::Attack,
+        .actor_id = 1,
+        .target_id = 101
+    }, turn_core, runtime_state);
+
+    EXPECT_EQ(result.status, BattleActionStatus::Applied);
+    EXPECT_EQ(result.damage, 10);
+    EXPECT_TRUE(result.target_defeated);
+
+    const auto* slime = turn_core.findUnit(101);
+    ASSERT_NE(slime, nullptr);
+    EXPECT_EQ(slime->hp, 0);
+}
+
 TEST(BattleActionResolverTest, EndTurnAdvancesToNextActor) {
     TurnCore turn_core(makeUnits());
     ASSERT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{1});

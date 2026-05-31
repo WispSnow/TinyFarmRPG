@@ -561,10 +561,11 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
                 damage = std::max(1, damage / 2);
             }
 
+            const int target_hp_before = target->hp;
             target->hp = std::max(0, target->hp - damage);
 
             result.status = BattleActionStatus::Applied;
-            result.damage = damage;
+            result.damage = target_hp_before - target->hp;
             result.target_defeated = !target->isAlive();
 
             // 攻击可能结束战斗；若仍在进行，才交给 TurnCore 选择下一个存活行动者。
