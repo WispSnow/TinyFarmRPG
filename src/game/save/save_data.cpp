@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <limits>
 #include <string_view>
 #include <type_traits>
 
@@ -92,6 +93,171 @@ constexpr std::string_view KEY_Y = "y";
 constexpr std::string_view KEY_PROFILE_ID = json_keys::PROFILE_ID;
 constexpr std::string_view KEY_GENDER = "gender";
 
+template <typename T>
+bool readUnsignedValue(const nlohmann::json& value,
+                       T& out,
+                       std::string_view path,
+                       std::string& out_error) {
+    static_assert(std::is_unsigned_v<T>);
+    if (!value.is_number_integer()) {
+        out_error = "SaveData: " + std::string(path) + " is not an unsigned int";
+        return false;
+    }
+
+    if (value.is_number_unsigned()) {
+        const auto raw = value.get<std::uint64_t>();
+        if (raw > static_cast<std::uint64_t>(std::numeric_limits<T>::max())) {
+            out_error = "SaveData: " + std::string(path) + " is out of range";
+            return false;
+        }
+        out = static_cast<T>(raw);
+        return true;
+    }
+
+    const auto raw = value.get<std::int64_t>();
+    if (raw < 0 ||
+        static_cast<std::uint64_t>(raw) > static_cast<std::uint64_t>(std::numeric_limits<T>::max())) {
+        out_error = "SaveData: " + std::string(path) + " is out of range";
+        return false;
+    }
+    out = static_cast<T>(raw);
+    return true;
+}
+
+template <typename T>
+bool readSignedValue(const nlohmann::json& value,
+                     T& out,
+                     std::string_view path,
+                     std::string& out_error) {
+    static_assert(std::is_signed_v<T>);
+    if (!value.is_number_integer()) {
+        out_error = "SaveData: " + std::string(path) + " is not an int";
+        return false;
+    }
+
+    if (value.is_number_unsigned()) {
+        const auto raw = value.get<std::uint64_t>();
+        if (raw > static_cast<std::uint64_t>(std::numeric_limits<T>::max())) {
+            out_error = "SaveData: " + std::string(path) + " is out of range";
+            return false;
+        }
+        out = static_cast<T>(raw);
+        return true;
+    }
+
+    const auto raw = value.get<std::int64_t>();
+    if (raw < static_cast<std::int64_t>(std::numeric_limits<T>::min()) ||
+        raw > static_cast<std::int64_t>(std::numeric_limits<T>::max())) {
+        out_error = "SaveData: " + std::string(path) + " is out of range";
+        return false;
+    }
+    out = static_cast<T>(raw);
+    return true;
+}
+
+bool readFloatValue(const nlohmann::json& value,
+                    float& out,
+                    std::string_view path,
+                    std::string& out_error) {
+    if (!value.is_number()) {
+        out_error = "SaveData: " + std::string(path) + " is not a number";
+        return false;
+    }
+    out = value.get<float>();
+    return true;
+}
+
+bool readBoolValue(const nlohmann::json& value,
+                   bool& out,
+                   std::string_view path,
+                   std::string& out_error) {
+    if (!value.is_boolean()) {
+        out_error = "SaveData: " + std::string(path) + " is not a boolean";
+        return false;
+    }
+    out = value.get<bool>();
+    return true;
+}
+
+bool readStringValue(const nlohmann::json& value,
+                     std::string& out,
+                     std::string_view path,
+                     std::string& out_error) {
+    if (!value.is_string()) {
+        out_error = "SaveData: " + std::string(path) + " is not a string";
+        return false;
+    }
+    out = value.get<std::string>();
+    return true;
+}
+
+template <typename T>
+bool readOptionalUnsignedField(const nlohmann::json& json,
+                               std::string_view key,
+                               T& out,
+                               T default_value,
+                               std::string_view path,
+                               std::string& out_error) {
+    if (!json.contains(key)) {
+        out = default_value;
+        return true;
+    }
+    return readUnsignedValue(json[key], out, path, out_error);
+}
+
+template <typename T>
+bool readOptionalSignedField(const nlohmann::json& json,
+                             std::string_view key,
+                             T& out,
+                             T default_value,
+                             std::string_view path,
+                             std::string& out_error) {
+    if (!json.contains(key)) {
+        out = default_value;
+        return true;
+    }
+    return readSignedValue(json[key], out, path, out_error);
+}
+
+bool readOptionalFloatField(const nlohmann::json& json,
+                            std::string_view key,
+                            float& out,
+                            float default_value,
+                            std::string_view path,
+                            std::string& out_error) {
+    if (!json.contains(key)) {
+        out = default_value;
+        return true;
+    }
+    return readFloatValue(json[key], out, path, out_error);
+}
+
+bool readOptionalBoolField(const nlohmann::json& json,
+                           std::string_view key,
+                           bool& out,
+                           bool default_value,
+                           std::string_view path,
+                           std::string& out_error) {
+    if (!json.contains(key)) {
+        out = default_value;
+        return true;
+    }
+    return readBoolValue(json[key], out, path, out_error);
+}
+
+bool readOptionalStringField(const nlohmann::json& json,
+                             std::string_view key,
+                             std::string& out,
+                             std::string_view default_value,
+                             std::string_view path,
+                             std::string& out_error) {
+    if (!json.contains(key)) {
+        out = std::string{default_value};
+        return true;
+    }
+    return readStringValue(json[key], out, path, out_error);
+}
+
 nlohmann::json vec2ToJson(Vec2f value) {
     return nlohmann::json{{KEY_X, value.x}, {KEY_Y, value.y}};
 }
@@ -100,22 +266,28 @@ nlohmann::json vec2ToJson(Vec2i value) {
     return nlohmann::json{{KEY_X, value.x}, {KEY_Y, value.y}};
 }
 
-bool readVec2f(const nlohmann::json& json, Vec2f& out) {
+bool readVec2f(const nlohmann::json& json,
+               Vec2f& out,
+               std::string_view path,
+               std::string& out_error) {
     if (!json.is_object()) {
+        out_error = "SaveData: " + std::string(path) + " is not an object";
         return false;
     }
-    out.x = json.value<float>(KEY_X.data(), 0.0f);
-    out.y = json.value<float>(KEY_Y.data(), 0.0f);
-    return true;
+    return readOptionalFloatField(json, KEY_X, out.x, 0.0f, std::string{path} + ".x", out_error) &&
+           readOptionalFloatField(json, KEY_Y, out.y, 0.0f, std::string{path} + ".y", out_error);
 }
 
-bool readVec2i(const nlohmann::json& json, Vec2i& out) {
+bool readVec2i(const nlohmann::json& json,
+               Vec2i& out,
+               std::string_view path,
+               std::string& out_error) {
     if (!json.is_object()) {
+        out_error = "SaveData: " + std::string(path) + " is not an object";
         return false;
     }
-    out.x = json.value<int>(KEY_X.data(), 0);
-    out.y = json.value<int>(KEY_Y.data(), 0);
-    return true;
+    return readOptionalSignedField(json, KEY_X, out.x, 0, std::string{path} + ".x", out_error) &&
+           readOptionalSignedField(json, KEY_Y, out.y, 0, std::string{path} + ".y", out_error);
 }
 
 bool readPlaceholderObject(const nlohmann::json& json, std::string_view key, std::string& out_error) {
@@ -151,11 +323,11 @@ bool readStringArrayField(const nlohmann::json& json,
     }
 
     for (const auto& value : json[key]) {
-        if (!value.is_string()) {
-            out_error = "SaveData: " + std::string(key) + " contains a non-string entry";
+        std::string entry;
+        if (!readStringValue(value, entry, std::string{key} + "[]", out_error)) {
             return false;
         }
-        out_values.push_back(value.get<std::string>());
+        out_values.push_back(std::move(entry));
     }
     return true;
 }
@@ -174,11 +346,11 @@ bool readStringIntMapField(const nlohmann::json& json,
     }
 
     for (const auto& [name, value] : json[key].items()) {
-        if (!value.is_number_integer()) {
-            out_error = "SaveData: " + std::string(key) + "." + name + " is not an int";
+        int entry = 0;
+        if (!readSignedValue(value, entry, std::string{key} + "." + name, out_error)) {
             return false;
         }
-        out_values.insert_or_assign(name, value.get<int>());
+        out_values.insert_or_assign(name, entry);
     }
     return true;
 }
@@ -202,11 +374,10 @@ bool readEquipmentLoadouts(const nlohmann::json& json,
         }
         ActorEquipmentSaveData loadout{};
         for (const auto& [slot, item_id_json] : loadout_json.items()) {
-            if (!item_id_json.is_number_unsigned()) {
-                out_error = "SaveData: equipment_state.loadouts." + actor_id + "." + slot + " is not an unsigned int";
+            std::uint64_t item_id = 0;
+            if (!readUnsignedValue(item_id_json, item_id, "equipment_state.loadouts." + actor_id + "." + slot, out_error)) {
                 return false;
             }
-            const auto item_id = item_id_json.get<std::uint64_t>();
             if (item_id != 0U) {
                 loadout.slots.emplace(slot, item_id);
             }
@@ -234,10 +405,12 @@ bool readPartyRuntimeState(const nlohmann::json& json,
             return false;
         }
         ActorRuntimeStateSaveData state{};
-        state.current_hp = state_json.value<int>(KEY_CURRENT_HP.data(), 0);
-        state.current_mp = state_json.value<int>(KEY_CURRENT_MP.data(), 0);
-        state.level = state_json.value<int>(KEY_LEVEL.data(), 1);
-        state.total_exp = state_json.value<int>(KEY_TOTAL_EXP.data(), 0);
+        if (!readOptionalSignedField(state_json, KEY_CURRENT_HP, state.current_hp, 0, "party_runtime_state.actor_states." + actor_id + ".current_hp", out_error) ||
+            !readOptionalSignedField(state_json, KEY_CURRENT_MP, state.current_mp, 0, "party_runtime_state.actor_states." + actor_id + ".current_mp", out_error) ||
+            !readOptionalSignedField(state_json, KEY_LEVEL, state.level, 1, "party_runtime_state.actor_states." + actor_id + ".level", out_error) ||
+            !readOptionalSignedField(state_json, KEY_TOTAL_EXP, state.total_exp, 0, "party_runtime_state.actor_states." + actor_id + ".total_exp", out_error)) {
+            return false;
+        }
         out_state.actor_states.emplace(actor_id, state);
     }
     return true;
@@ -269,11 +442,19 @@ bool readScriptState(const nlohmann::json& json,
         if (value.is_null()) {
             out_state.values.emplace(key, nullptr);
         } else if (value.is_boolean()) {
-            out_state.values.emplace(key, value.get<bool>());
+            bool stored_value = false;
+            if (!readBoolValue(value, stored_value, "script_state." + key, out_error)) {
+                return false;
+            }
+            out_state.values.emplace(key, stored_value);
         } else if (value.is_number()) {
             out_state.values.emplace(key, value.get<double>());
         } else if (value.is_string()) {
-            out_state.values.emplace(key, value.get<std::string>());
+            std::string stored_value;
+            if (!readStringValue(value, stored_value, "script_state." + key, out_error)) {
+                return false;
+            }
+            out_state.values.emplace(key, std::move(stored_value));
         } else {
             out_error = "SaveData: script_state." + key + " is not a JSON primitive";
             return false;
@@ -442,7 +623,13 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
 
     out = SaveData{};
-    out.schema_version = json.value<std::uint32_t>(KEY_SCHEMA_VERSION.data(), 0u);
+    if (!json.contains(KEY_SCHEMA_VERSION)) {
+        out_error = "SaveData: missing schema_version";
+        return false;
+    }
+    if (!readUnsignedValue(json[KEY_SCHEMA_VERSION], out.schema_version, KEY_SCHEMA_VERSION, out_error)) {
+        return false;
+    }
     if (out.schema_version == 0u) {
         out_error = "SaveData: missing schema_version";
         return false;
@@ -452,11 +639,19 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
         return false;
     }
 
-    if (json.contains(KEY_TIMESTAMP) && json[KEY_TIMESTAMP].is_string()) {
-        out.timestamp = json[KEY_TIMESTAMP].get<std::string>();
+    if (json.contains(KEY_TIMESTAMP)) {
+        std::string timestamp;
+        if (!readStringValue(json[KEY_TIMESTAMP], timestamp, KEY_TIMESTAMP, out_error)) {
+            return false;
+        }
+        out.timestamp = std::move(timestamp);
     }
-    if (json.contains(KEY_WORLD_FILE) && json[KEY_WORLD_FILE].is_string()) {
-        out.world_file = json[KEY_WORLD_FILE].get<std::string>();
+    if (json.contains(KEY_WORLD_FILE)) {
+        std::string world_file;
+        if (!readStringValue(json[KEY_WORLD_FILE], world_file, KEY_WORLD_FILE, out_error)) {
+            return false;
+        }
+        out.world_file = std::move(world_file);
     }
 
     if (!json.contains(KEY_GAME_TIME) || !json[KEY_GAME_TIME].is_object()) {
@@ -465,11 +660,13 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     {
         const auto& time = json[KEY_GAME_TIME];
-        out.game_time.day = time.value<std::uint32_t>(KEY_DAY.data(), 1u);
-        out.game_time.hour = time.value<float>(KEY_HOUR.data(), 6.0f);
-        out.game_time.minute = time.value<float>(KEY_MINUTE.data(), 0.0f);
-        out.game_time.time_scale = time.value<float>(KEY_TIME_SCALE.data(), 1.0f);
-        out.game_time.paused = time.value<bool>(KEY_PAUSED.data(), false);
+        if (!readOptionalUnsignedField(time, KEY_DAY, out.game_time.day, 1u, "game_time.day", out_error) ||
+            !readOptionalFloatField(time, KEY_HOUR, out.game_time.hour, 6.0f, "game_time.hour", out_error) ||
+            !readOptionalFloatField(time, KEY_MINUTE, out.game_time.minute, 0.0f, "game_time.minute", out_error) ||
+            !readOptionalFloatField(time, KEY_TIME_SCALE, out.game_time.time_scale, 1.0f, "game_time.time_scale", out_error) ||
+            !readOptionalBoolField(time, KEY_PAUSED, out.game_time.paused, false, "game_time.paused", out_error)) {
+            return false;
+        }
     }
 
     if (!json.contains(KEY_PLAYER) || !json[KEY_PLAYER].is_object()) {
@@ -478,18 +675,29 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     {
         const auto& player = json[KEY_PLAYER];
-        out.player.map_name = player.value<std::string>(KEY_MAP_NAME.data(), "");
-        if (!player.contains(KEY_POSITION) || !readVec2f(player[KEY_POSITION], out.player.position)) {
-            out_error = "SaveData: invalid player.position";
+        if (!readOptionalStringField(player, KEY_MAP_NAME, out.player.map_name, "", "player.map_name", out_error)) {
             return false;
         }
-        out.player.hp = player.value<int>(KEY_HP.data(), 100);
-        out.player.gold = player.value<int>(KEY_GOLD.data(), 0);
+        if (!player.contains(KEY_POSITION) || !readVec2f(player[KEY_POSITION], out.player.position, "player.position", out_error)) {
+            if (out_error.empty()) {
+                out_error = "SaveData: invalid player.position";
+            }
+            return false;
+        }
+        if (!readOptionalSignedField(player, KEY_HP, out.player.hp, 100, "player.hp", out_error) ||
+            !readOptionalSignedField(player, KEY_GOLD, out.player.gold, 0, "player.gold", out_error)) {
+            return false;
+        }
 
         if (player.contains(KEY_STATE) && player[KEY_STATE].is_object()) {
             const auto& state = player[KEY_STATE];
-            out.player.state.action = state.value<std::string>(KEY_ACTION.data(), "idle");
-            out.player.state.direction = state.value<std::string>(KEY_DIRECTION.data(), "down");
+            if (!readOptionalStringField(state, KEY_ACTION, out.player.state.action, "idle", "player.state.action", out_error) ||
+                !readOptionalStringField(state, KEY_DIRECTION, out.player.state.direction, "down", "player.state.direction", out_error)) {
+                return false;
+            }
+        } else if (player.contains(KEY_STATE)) {
+            out_error = "SaveData: player.state is not an object";
+            return false;
         }
 
         if (player.contains(KEY_INVENTORY) && player[KEY_INVENTORY].is_object()) {
@@ -499,21 +707,46 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                 for (const auto& slot_json : inv[KEY_SLOTS]) {
                     ItemStackSaveData slot{};
                     if (slot_json.is_object()) {
-                        slot.item_id = slot_json.value<std::uint64_t>(KEY_ITEM_ID.data(), 0u);
-                        slot.count = slot_json.value<int>(KEY_COUNT.data(), 0);
+                        if (!readOptionalUnsignedField(slot_json, KEY_ITEM_ID, slot.item_id, std::uint64_t{0}, "player.inventory.slots[].item_id", out_error) ||
+                            !readOptionalSignedField(slot_json, KEY_COUNT, slot.count, 0, "player.inventory.slots[].count", out_error)) {
+                            return false;
+                        }
+                    } else {
+                        out_error = "SaveData: player.inventory.slots[] is not an object";
+                        return false;
                     }
                     out.player.inventory.slots.push_back(slot);
                 }
+            } else if (inv.contains(KEY_SLOTS)) {
+                out_error = "SaveData: player.inventory.slots is not an array";
+                return false;
             }
+        } else if (player.contains(KEY_INVENTORY)) {
+            out_error = "SaveData: player.inventory is not an object";
+            return false;
         }
 
         if (player.contains(KEY_HOTBAR) && player[KEY_HOTBAR].is_object()) {
             const auto& hotbar = player[KEY_HOTBAR];
-            out.player.hotbar.active_slot = hotbar.value<int>(KEY_ACTIVE_SLOT.data(), 0);
+            if (!readOptionalSignedField(hotbar, KEY_ACTIVE_SLOT, out.player.hotbar.active_slot, 0, "player.hotbar.active_slot", out_error)) {
+                return false;
+            }
             out.player.hotbar.inventory_slot_indices.clear();
             if (hotbar.contains(KEY_INVENTORY_SLOT_INDICES) && hotbar[KEY_INVENTORY_SLOT_INDICES].is_array()) {
-                out.player.hotbar.inventory_slot_indices = hotbar[KEY_INVENTORY_SLOT_INDICES].get<std::vector<int>>();
+                for (const auto& index_json : hotbar[KEY_INVENTORY_SLOT_INDICES]) {
+                    int index = -1;
+                    if (!readSignedValue(index_json, index, "player.hotbar.inventory_slot_indices[]", out_error)) {
+                        return false;
+                    }
+                    out.player.hotbar.inventory_slot_indices.push_back(index);
+                }
+            } else if (hotbar.contains(KEY_INVENTORY_SLOT_INDICES)) {
+                out_error = "SaveData: player.hotbar.inventory_slot_indices is not an array";
+                return false;
             }
+        } else if (player.contains(KEY_HOTBAR)) {
+            out_error = "SaveData: player.hotbar is not an object";
+            return false;
         }
     }
 
@@ -524,41 +757,61 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                 continue;
             }
             MapSaveData map{};
-            map.map_name = map_json.value<std::string>(KEY_MAP_NAME.data(), "");
-            map.last_updated_day = map_json.value<std::uint32_t>(KEY_LAST_UPDATED_DAY.data(), 0u);
+            if (!readOptionalStringField(map_json, KEY_MAP_NAME, map.map_name, "", "maps[].map_name", out_error) ||
+                !readOptionalUnsignedField(map_json, KEY_LAST_UPDATED_DAY, map.last_updated_day, 0u, "maps[].last_updated_day", out_error)) {
+                return false;
+            }
 
             if (map_json.contains(KEY_OPENED_CHESTS) && map_json[KEY_OPENED_CHESTS].is_array()) {
                 for (const auto& id_json : map_json[KEY_OPENED_CHESTS]) {
-                    if (id_json.is_number_integer()) {
-                        map.opened_chests.push_back(id_json.get<int>());
+                    int id = 0;
+                    if (!readSignedValue(id_json, id, "maps[].opened_chests[]", out_error)) {
+                        return false;
                     }
+                    map.opened_chests.push_back(id);
                 }
+            } else if (map_json.contains(KEY_OPENED_CHESTS)) {
+                out_error = "SaveData: maps[].opened_chests is not an array";
+                return false;
             }
 
             if (map_json.contains(KEY_DEFEATED_ENCOUNTERS) && map_json[KEY_DEFEATED_ENCOUNTERS].is_array()) {
                 for (const auto& id_json : map_json[KEY_DEFEATED_ENCOUNTERS]) {
-                    if (id_json.is_number_integer()) {
-                        map.defeated_encounters.push_back(id_json.get<int>());
+                    int id = 0;
+                    if (!readSignedValue(id_json, id, "maps[].defeated_encounters[]", out_error)) {
+                        return false;
                     }
+                    map.defeated_encounters.push_back(id);
                 }
+            } else if (map_json.contains(KEY_DEFEATED_ENCOUNTERS)) {
+                out_error = "SaveData: maps[].defeated_encounters is not an array";
+                return false;
             }
 
             if (map_json.contains(KEY_TILLED_TILES) && map_json[KEY_TILLED_TILES].is_array()) {
                 for (const auto& tile_json : map_json[KEY_TILLED_TILES]) {
                     Vec2i tile{};
-                    if (readVec2i(tile_json, tile)) {
-                        map.tilled_tiles.push_back(tile);
+                    if (!readVec2i(tile_json, tile, "maps[].tilled_tiles[]", out_error)) {
+                        return false;
                     }
+                    map.tilled_tiles.push_back(tile);
                 }
+            } else if (map_json.contains(KEY_TILLED_TILES)) {
+                out_error = "SaveData: maps[].tilled_tiles is not an array";
+                return false;
             }
 
             if (map_json.contains(KEY_WET_TILES) && map_json[KEY_WET_TILES].is_array()) {
                 for (const auto& tile_json : map_json[KEY_WET_TILES]) {
                     Vec2i tile{};
-                    if (readVec2i(tile_json, tile)) {
-                        map.wet_tiles.push_back(tile);
+                    if (!readVec2i(tile_json, tile, "maps[].wet_tiles[]", out_error)) {
+                        return false;
                     }
+                    map.wet_tiles.push_back(tile);
                 }
+            } else if (map_json.contains(KEY_WET_TILES)) {
+                out_error = "SaveData: maps[].wet_tiles is not an array";
+                return false;
             }
 
             if (map_json.contains(KEY_CROPS) && map_json[KEY_CROPS].is_array()) {
@@ -568,14 +821,24 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                     }
                     CropSaveData crop{};
                     if (crop_json.contains(KEY_TILE) && crop_json[KEY_TILE].is_object()) {
-                        readVec2i(crop_json[KEY_TILE], crop.tile);
+                        if (!readVec2i(crop_json[KEY_TILE], crop.tile, "maps[].crops[].tile", out_error)) {
+                            return false;
+                        }
+                    } else if (crop_json.contains(KEY_TILE)) {
+                        out_error = "SaveData: maps[].crops[].tile is not an object";
+                        return false;
                     }
-                    crop.crop_type = crop_json.value<std::string>(KEY_CROP_TYPE.data(), "unknown");
-                    crop.growth_stage = crop_json.value<std::string>(KEY_GROWTH_STAGE.data(), "seed");
-                    crop.planted_day = crop_json.value<std::uint32_t>(KEY_PLANTED_DAY.data(), 0u);
-                    crop.stage_countdown = crop_json.value<int>(KEY_STAGE_COUNTDOWN.data(), 0);
+                    if (!readOptionalStringField(crop_json, KEY_CROP_TYPE, crop.crop_type, "unknown", "maps[].crops[].crop_type", out_error) ||
+                        !readOptionalStringField(crop_json, KEY_GROWTH_STAGE, crop.growth_stage, "seed", "maps[].crops[].growth_stage", out_error) ||
+                        !readOptionalUnsignedField(crop_json, KEY_PLANTED_DAY, crop.planted_day, 0u, "maps[].crops[].planted_day", out_error) ||
+                        !readOptionalSignedField(crop_json, KEY_STAGE_COUNTDOWN, crop.stage_countdown, 0, "maps[].crops[].stage_countdown", out_error)) {
+                        return false;
+                    }
                     map.crops.push_back(std::move(crop));
                 }
+            } else if (map_json.contains(KEY_CROPS)) {
+                out_error = "SaveData: maps[].crops is not an array";
+                return false;
             }
 
             if (map_json.contains(KEY_RESOURCE_NODES)) {
@@ -590,12 +853,19 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                     }
                     ResourceNodeSaveData node{};
                     if (node_json.contains(KEY_TILE) && node_json[KEY_TILE].is_object()) {
-                        readVec2i(node_json[KEY_TILE], node.tile);
+                        if (!readVec2i(node_json[KEY_TILE], node.tile, "maps[].resource_nodes[].tile", out_error)) {
+                            return false;
+                        }
+                    } else if (node_json.contains(KEY_TILE)) {
+                        out_error = "SaveData: maps[].resource_nodes[].tile is not an object";
+                        return false;
                     }
-                    node.node_type = node_json.value<std::string>(KEY_NODE_TYPE.data(), "unknown");
-                    node.hit_count = node_json.value<int>(KEY_HIT_COUNT.data(), 0);
-                    node.hits_to_break = node_json.value<int>(KEY_HITS_TO_BREAK.data(), 0);
-                    node.drop_item_id = node_json.value<std::uint64_t>(KEY_DROP_ITEM_ID.data(), 0u);
+                    if (!readOptionalStringField(node_json, KEY_NODE_TYPE, node.node_type, "unknown", "maps[].resource_nodes[].node_type", out_error) ||
+                        !readOptionalSignedField(node_json, KEY_HIT_COUNT, node.hit_count, 0, "maps[].resource_nodes[].hit_count", out_error) ||
+                        !readOptionalSignedField(node_json, KEY_HITS_TO_BREAK, node.hits_to_break, 0, "maps[].resource_nodes[].hits_to_break", out_error) ||
+                        !readOptionalUnsignedField(node_json, KEY_DROP_ITEM_ID, node.drop_item_id, std::uint64_t{0}, "maps[].resource_nodes[].drop_item_id", out_error)) {
+                        return false;
+                    }
                     nodes.push_back(std::move(node));
                 }
                 map.resource_nodes = std::move(nodes);
@@ -642,8 +912,10 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     if (json.contains(KEY_APPEARANCE_STATE)) {
         const auto& appearance = json[KEY_APPEARANCE_STATE];
-        out.appearance_state.profile_id = appearance.value<std::string>(KEY_PROFILE_ID.data(), "player_default");
-        out.appearance_state.gender = appearance.value<std::string>(KEY_GENDER.data(), "male");
+        if (!readOptionalStringField(appearance, KEY_PROFILE_ID, out.appearance_state.profile_id, "player_default", "appearance_state.profile_id", out_error) ||
+            !readOptionalStringField(appearance, KEY_GENDER, out.appearance_state.gender, "male", "appearance_state.gender", out_error)) {
+            return false;
+        }
         out.appearance_state.slots.clear();
         if (appearance.contains(KEY_SLOTS)) {
             if (!appearance[KEY_SLOTS].is_object()) {
@@ -651,9 +923,11 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
                 return false;
             }
             for (const auto& [slot, variant] : appearance[KEY_SLOTS].items()) {
-                if (variant.is_string()) {
-                    out.appearance_state.slots.emplace(slot, variant.get<std::string>());
+                std::string variant_id;
+                if (!readStringValue(variant, variant_id, "appearance_state.slots." + slot, out_error)) {
+                    return false;
                 }
+                out.appearance_state.slots.emplace(slot, std::move(variant_id));
             }
         }
     }
@@ -669,12 +943,11 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
             return false;
         }
         if (party_state.contains(KEY_MAX_ACTIVE_MEMBERS)) {
-            if (!party_state[KEY_MAX_ACTIVE_MEMBERS].is_number_unsigned()) {
-                out_error = "SaveData: party_state.max_active_members is not an unsigned int";
+            std::uint64_t max_active_members = 0;
+            if (!readUnsignedValue(party_state[KEY_MAX_ACTIVE_MEMBERS], max_active_members, "party_state.max_active_members", out_error)) {
                 return false;
             }
-            const auto max_active_members = party_state[KEY_MAX_ACTIVE_MEMBERS].get<std::size_t>();
-            out.party_state.max_active_members = max_active_members == 0U ? 1U : max_active_members;
+            out.party_state.max_active_members = max_active_members == 0U ? 1U : static_cast<std::size_t>(max_active_members);
         }
     }
     if (!readPlaceholderObject(json, KEY_EQUIPMENT_STATE, out_error)) {
@@ -696,10 +969,11 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     }
     if (json.contains(KEY_COMBAT_STATE)) {
         const auto& combat_state = json[KEY_COMBAT_STATE];
-        out.combat_state.pending_battle = combat_state.value<bool>(KEY_PENDING_BATTLE.data(), false);
-        out.combat_state.troop_id = combat_state.value<std::string>(KEY_TROOP_ID.data(), std::string{});
-        out.combat_state.escape_attempt_count =
-            combat_state.value<std::uint32_t>(KEY_ESCAPE_ATTEMPT_COUNT.data(), 0u);
+        if (!readOptionalBoolField(combat_state, KEY_PENDING_BATTLE, out.combat_state.pending_battle, false, "combat_state.pending_battle", out_error) ||
+            !readOptionalStringField(combat_state, KEY_TROOP_ID, out.combat_state.troop_id, "", "combat_state.troop_id", out_error) ||
+            !readOptionalUnsignedField(combat_state, KEY_ESCAPE_ATTEMPT_COUNT, out.combat_state.escape_attempt_count, 0u, "combat_state.escape_attempt_count", out_error)) {
+            return false;
+        }
         if (!readStringArrayField(combat_state, KEY_ACTOR_IDS, out.combat_state.actor_ids, out_error)) {
             return false;
         }

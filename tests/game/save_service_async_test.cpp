@@ -643,6 +643,30 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPartyState) {
     EXPECT_FALSE(hasRecruitableActor(scene_->getRegistry(), "actor.lyria"));
 }
 
+TEST_F(SaveServiceAsyncBehaviorTest, SaveToFileCapturesNormalizedPartyWithoutMutatingRuntimeParty) {
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag, game::component::PartyComponent>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+    auto& party = player_view.get<game::component::PartyComponent>(player);
+    party.recruited_actor_ids_ = {"actor.player", "actor.lyria"};
+    party.active_actor_ids_ = {"actor.player", "actor.lyria"};
+    party.max_active_members_ = 1;
+
+    const auto file_path = tempFilePath("save_party_capture_no_mutation.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    EXPECT_EQ(party.recruited_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_EQ(party.active_actor_ids_, std::vector<std::string>({"actor.player", "actor.lyria"}));
+    EXPECT_EQ(party.max_active_members_, 1U);
+
+    const auto json = nlohmann::json::parse(readTextFile(file_path));
+    const auto& saved_party = json.at("party_state");
+    ASSERT_EQ(saved_party.at("active_actor_ids").size(), 1U);
+    EXPECT_EQ(saved_party.at("active_actor_ids").at(0).get<std::string>(), "actor.player");
+    EXPECT_EQ(saved_party.at("max_active_members").get<std::size_t>(), 1U);
+}
+
 TEST_F(SaveServiceAsyncBehaviorTest, RoundtripRestoresEquipmentAndPartyRuntimeState) {
     auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
     ASSERT_NE(player_view.begin(), player_view.end());
@@ -850,6 +874,24 @@ TEST(SaveServiceAsyncTest, SaveToFileReusesExtractedWriteHelper) {
         << "SaveService should extract JSON dump + tmp write + rename into writeSaveFile.";
     EXPECT_NE(source.find("return writeSaveFile(data, file_path, out_error);"), std::string::npos)
         << "saveToFile should reuse writeSaveFile to keep sync/async behavior consistent.";
+}
+
+TEST(SaveServiceAsyncTest, WriteReplaceFallbackUsesBackupInsteadOfDeletingTarget) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/save/save_service.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(source.find("bool replaceSaveFile"), std::string::npos)
+        << "SaveService should centralize tmp-to-target replacement policy.";
+    EXPECT_NE(source.find("backup_path += \".bak\""), std::string::npos)
+        << "Replacement fallback should preserve the previous save through a backup path.";
+    EXPECT_NE(source.find("std::filesystem::rename(backup_path, file_path"), std::string::npos)
+        << "Replacement fallback should attempt to restore the previous save on failure.";
+    EXPECT_EQ(source.find("std::filesystem::remove(file_path"), std::string::npos)
+        << "Replacement fallback should not directly delete the target save before proving replacement succeeds.";
 }
 
 } // namespace

@@ -45,6 +45,32 @@ TEST(SaveSlotSummaryTest, FailsWhenGameTimeMissing) {
     EXPECT_FALSE(error.empty());
 }
 
+TEST(SaveSlotSummaryTest, FailsWhenScalarTypesAreInvalid) {
+    {
+        const auto path = writeTempJsonFile(R"({"schema_version":"2","timestamp":"1700000000","game_time":{"day":3}})");
+
+        std::string error;
+        const auto summary = tryReadSlotSummary(path, error);
+
+        std::error_code ec;
+        std::filesystem::remove(path, ec);
+
+        EXPECT_FALSE(summary.has_value());
+        EXPECT_NE(error.find("schema_version"), std::string::npos);
+    }
+    {
+        const auto path = writeTempJsonFile(R"({"schema_version":2,"timestamp":"1700000000","game_time":{"day":"three"}})");
+
+        std::string error;
+        const auto summary = tryReadSlotSummary(path, error);
+
+        std::error_code ec;
+        std::filesystem::remove(path, ec);
+
+        EXPECT_FALSE(summary.has_value());
+        EXPECT_NE(error.find("game_time.day"), std::string::npos);
+    }
+}
+
 } // namespace
 } // namespace game::save
-

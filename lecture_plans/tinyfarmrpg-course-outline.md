@@ -866,9 +866,10 @@ flowchart LR
 - `SaveService` 的写入流程：组件序列化、原子替换、错误恢复。
 - 存档涵盖哪些状态：玩家、背包、队伍、任务、商店、世界、脚本状态（`tf.state`）。
 - 新增组件 / 服务时，存档需要修改的接入点（checklist）。
+- `SaveData` / `SaveMigrator` / `SaveSlotSummary` 的 typed read 护栏：坏 scalar 返回错误，不靠异常穿透。
 - `SaveMigrator` 与 schema 版本号：项目"无需向后兼容"的边界——开发阶段可重置，但 schema bump 仍要走流程。
 - save slot 概述与 `SaveSlotSummary` 的快照字段。
-- 后台异步保存（呼应 L24 的异步管线）。
+- 后台异步保存：主线程 capture、worker 写盘、`MainThreadCommandQueue` 回派完成事件（呼应 L24 的异步管线）。
 
 **阅读清单**：
 - `docs/game/save_and_flow.md`
@@ -883,8 +884,9 @@ flowchart LR
 
 **自测问题**：
 1. "原子替换"在文件系统层面是怎么做的？为什么不能直接写原文件？
-2. Schema 从 v6 升 v7 时，旧档加载会发生什么？是否需要写迁移代码？什么前提下可以省略？
+2. Schema 从 v7 升 v8 时，旧档加载会发生什么？是否需要写迁移代码？什么前提下可以省略？
 3. 给新功能加一个新组件，存档接入点 checklist 有几项？
+4. 为什么坏 slot 在 Load 模式要禁用，在 Save 模式可以覆盖？
 
 **最小练习**：给已有某组件加一个新字段，bump schema 并写最简单的迁移，验证旧档可加载。
 

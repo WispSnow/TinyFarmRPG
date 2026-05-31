@@ -4,10 +4,23 @@
 
 #include <nlohmann/json.hpp>
 
+#include <string_view>
 #include <variant>
 
 namespace game::save {
 namespace {
+
+[[nodiscard]] nlohmann::json minimalValidSaveJson() {
+    return nlohmann::json{
+        {"schema_version", SAVE_SCHEMA_VERSION},
+        {"game_time", nlohmann::json{{"day", 1}}},
+        {"player", nlohmann::json{
+            {"map_name", "farm"},
+            {"position", nlohmann::json{{"x", 0.0}, {"y", 0.0}}},
+        }},
+        {"maps", nlohmann::json::array()},
+    };
+}
 
 TEST(SaveDataPhase4Test, DeserializeSupportsDefaultExtendedStateFields) {
     const auto json = nlohmann::json::parse(R"json(
@@ -195,6 +208,40 @@ TEST(SaveDataPhase4Test, DeserializeRejectsNonPrimitiveScriptStateValue) {
     std::string error{};
     EXPECT_FALSE(deserialize(json, data, error));
     EXPECT_NE(error.find("script_state.bad.table"), std::string::npos);
+}
+
+TEST(SaveDataPhase4Test, DeserializeRejectsInvalidScalarTypesWithoutThrowing) {
+    auto expect_reject = [](nlohmann::json json, std::string_view expected_error) {
+        SaveData data{};
+        std::string error{};
+
+        EXPECT_FALSE(deserialize(json, data, error));
+        EXPECT_NE(error.find(expected_error), std::string::npos) << error;
+    };
+
+    {
+        auto json = minimalValidSaveJson();
+        json["schema_version"] = "8";
+        expect_reject(std::move(json), "schema_version");
+    }
+    {
+        auto json = minimalValidSaveJson();
+        json["game_time"]["day"] = "first";
+        expect_reject(std::move(json), "game_time.day");
+    }
+    {
+        auto json = minimalValidSaveJson();
+        json["player"]["position"]["x"] = "left";
+        expect_reject(std::move(json), "player.position.x");
+    }
+    {
+        auto json = minimalValidSaveJson();
+        json["player"]["hotbar"] = nlohmann::json{
+            {"active_slot", 0},
+            {"inventory_slot_indices", nlohmann::json::array({0, "bad"})},
+        };
+        expect_reject(std::move(json), "inventory_slot_indices");
+    }
 }
 
 } // namespace
