@@ -126,9 +126,14 @@ target_sources(engine PRIVATE
 )
 
 target_sources(engine PRIVATE
-    engine/vfx/effekseer_backend.cpp
     engine/vfx/effekseer_backend_factory.cpp
 )
+
+if(ENABLE_EFFEKSEER)
+    target_sources(engine PRIVATE
+        engine/vfx/effekseer_backend.cpp
+    )
+endif()
 
 set(_rmlui_source_root "${CMAKE_SOURCE_DIR}/external/RmlUi-6.2")
 if(DEFINED RMLUI_SOURCE_DIR_RESOLVED AND EXISTS "${RMLUI_SOURCE_DIR_RESOLVED}")

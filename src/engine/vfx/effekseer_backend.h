@@ -2,6 +2,8 @@
 
 #include "engine/vfx/vfx_backend.h"
 
+#ifdef TF_ENABLE_EFFEKSEER
+
 #include <Effekseer.h>
 #include <EffekseerRendererGL.h>
 
@@ -48,5 +50,7 @@ private:
     std::uint32_t last_draw_call_count_{0u};
     std::uint32_t last_instance_count_{0u};
 };
+
+#endif
 
 } // namespace engine::vfx

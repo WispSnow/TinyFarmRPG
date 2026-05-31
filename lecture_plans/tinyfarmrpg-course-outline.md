@@ -944,7 +944,7 @@ flowchart LR
 - `VfxBackend`、`EffekseerBackend`、`NullVfxBackend` 的抽象层次。
 - `VfxService` 请求队列与帧同步。
 - World / Overlay 双通道渲染。
-- `PlayVfxCommand` 和 `VfxBridgeSystem` 在战斗、地图事件、UI 里的触发点。
+- `PlayVfxCommand` 和 `VfxBridgeSystem` 的战斗触发链；地图事件 / UI 复用同一 command 是开放扩展点，当前未内置接线。
 - AudioCue 与 VFX 的联动（呼应 L09）。
 
 **阅读清单**：
@@ -953,15 +953,16 @@ flowchart LR
 
 **源码入口**：
 - `src/engine/vfx/vfx_types.h`（`PlayVfxCommand` 定义所在；注意 VFX command 在 engine 层，不在 `src/game/defs/`）
-- `src/engine/vfx/vfx_service.*` + `src/engine/vfx/vfx_bridge_system.*`
+- `src/engine/vfx/vfx_service.*` + `src/engine/vfx/vfx_bridge_system.*` + `src/engine/vfx/vfx_catalog.*`
 - `src/engine/vfx/effekseer_backend.*` / `src/engine/vfx/null_vfx_backend.*`
+- `CMakeLists.txt` / `src/CMakeLists.txt`（`ENABLE_EFFEKSEER` 可选构建）
 
 **自测问题**：
 1. 把 `EffekseerBackend` 换成 `NullVfxBackend` 之后，谁会立即报错？谁不会？
 2. World 通道与 Overlay 通道的取舍：受光照、深度、相机的影响分别如何？
 3. 战斗里发起一次 VFX，从 command 到画面，经过几跳？
 
-**最小练习**：给某战斗动作挂一个不同的 VFX id，验证 World/Overlay 两种通道的视觉差。
+**最小练习**：给某战斗动作挂一个不同的 VFX id，并用调试面板验证 World/Overlay 两种通道的视觉差。
 
 **小结与下节预告**：VFX 完成，下一讲讲项目里另一大块工程实践——异步预加载。
 
@@ -1084,7 +1085,7 @@ flowchart LR
 | 新增一场剧情战 | L15-L20 | 配置 troop、技能、敌人，并由 Lua 区域触发战斗 | 能解释胜利写回的顺序为什么是固定的 |
 | 为新增组件接入存档 | L21 | 给前面作业里新增的组件补齐序列化与 schema bump | 能列出"新增组件接入存档"的最小 checklist |
 | 增加一种语言并接入 Scene | L22 | 加一个语言文件，给某 Scene 补齐 i18n key，切换验证 | 能解释 RmlUi 静态绑定与 ViewModel 动态文案的差异 |
-| 新增一个 VFX 播放点 | L23 | 配置 `vfx_catalog.json`，通过 command 在战斗或地图事件中播放 | 能解释 World/Overlay 两条通道的差别 |
+| 新增一个 VFX 播放点 | L23 | 配置 `vfx_catalog.json`，先通过战斗 `target_vfx_id` 播放；进阶再自行为地图事件接入 `PlayVfxCommand` | 能解释 World/Overlay 两条通道的差别 |
 | 为一个领域服务补测试 | L26 | 选择 Quest/Shop/Equipment 任一服务补充失败路径测试 | 能解释 domain test 比 scene smoke 更值得先写的理由 |
 
 ## 备选与外链章节

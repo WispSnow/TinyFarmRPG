@@ -82,6 +82,7 @@ set(TEST_SOURCES
     engine/render/bloom_precision_regression_test.cpp
     engine/vfx/vfx_service_test.cpp
     engine/vfx/vfx_bridge_system_test.cpp
+    engine/vfx/vfx_optional_backend_source_test.cpp
     engine/ui/rml_mouse_buttons_test.cpp
     engine/ui/rml_document_controller_source_test.cpp
     engine/ui/rml_element_helpers_source_test.cpp
