@@ -27,6 +27,8 @@ entt 不提供"开箱即用的多线程 ECS"。它提供的是**安全保证 + �
 
 **这就是 Phase 5 整个并行调度的理论基础。** `ParallelWaveScheduler` 保证同一个 Wave 内的任务不会同时读写同一个组件类型，从而满足这条规则。
 
+还有一个容易漏掉的构建前提：EnTT 文档建议多线程使用时定义 `ENTT_USE_ATOMIC`，让内部共享静态状态走 atomic 路径。本项目已经在顶层 `CMakeLists.txt` 全局定义它；`tests/engine/system/parallel_wave_scheduler_test.cpp` 也有护栏测试锁住这个宏。它不是 registry 的万能锁，只是 EnTT 多线程使用的底层配置，真正的系统间同步仍然靠资源声明、`DeferredCommands` 和 `TaskEventBuffer`。
+
 ### 层次二：并行友好的迭代器
 
 entt 的 view/group 迭代器满足 `RandomAccessIterator`，可以直接配合标准库并行算法：
@@ -261,6 +263,7 @@ graph TB
 | 我们重复造轮子了吗？ | 没有。依赖图构建已复用 `entt::flow`，其余 6 项职责 entt 不提供 |
 | 能用 organizer 替代吗？ | 不能。签名不兼容，且 organizer 也不提供执行调度 |
 | par_unseq 在 worker 内有用吗？ | 对我们的实体规模：负优化（嵌套并行 + 调度开销 > 计算） |
+| `ENTT_USE_ATOMIC` 解决什么？ | 解决 EnTT 内部共享静态状态的 atomic 配置，不替代 registry 访问契约或项目自己的同步屏障 |
 
 ---
 

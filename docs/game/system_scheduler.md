@@ -2,9 +2,9 @@
 
 ## 概述
 
-`SystemScheduler` 是 TinyFarm 游戏逻辑层的**帧调度器**，负责在每个固定时间步（`fixedUpdate`）中按正确顺序执行所有 ECS 系统。它的核心职责包括：
+`SystemScheduler` 是 TinyFarm 游戏逻辑层的**帧调度器**，负责在每个固定时间步（`fixedUpdate`）中按正确顺序执行 gameplay 调度阶段。它的核心职责包括：
 
-1. **阶段排序** — 定义 26 个 `SchedulerStage`，确保系统之间的数据依赖和执行时序正确
+1. **阶段排序** — 定义 26 个 `SchedulerStage`，确保系统之间的数据依赖和执行时序正确；多数 stage 只封装一个调用入口，少数 stage 是复合入口
 2. **模式裁剪** — 根据传入的 `GameMode`（探索/战斗/暂停/过场）选择性跳过不需要的阶段
 3. **并行岛** — 将无数据冲突的系统分组，通过 `ParallelWaveScheduler` + `ThreadPool` 并行执行
 4. **过渡门控** — 在地图切换过渡期间，通过两道"门"(Gate) 提前终止 tick，避免无效逻辑运行
@@ -46,7 +46,7 @@ graph LR
 
 ## GameMode — 执行模式
 
-注意：这里的 `GameMode` 是 scheduler 支持的**执行 profile 词汇表**，不等于当前玩法流程一定会主动翻到对应 mode。当前 `GameScene::fixedUpdate()` 每帧把 `game_mode_` 传给 `SystemScheduler::tick()`，但 `GameScene::setGameMode()` 还没有生产调用者；探索↔战斗实际由 `GameScene::onEnterBattleCommand()` push 覆盖式 `BattleScene`、`BattleScene` 结束时 pop 自己来完成。`GameMode::Battle` profile 目前是预留的裁剪配置，完整联动留给后续调度器收口。
+注意：这里的 `GameMode` 是 scheduler 支持的**执行 profile 词汇表**，不等于当前玩法流程一定会主动翻到对应 mode。当前 `GameScene::fixedUpdate()` 每帧把 `game_mode_` 传给 `SystemScheduler::tick()`，但 `GameScene::setGameMode()` 还没有生产调用者；探索↔战斗实际由 `GameScene::onEnterBattleCommand()` push 覆盖式 `BattleScene`、`BattleScene` 结束时 pop 自己来完成。`GameMode::Battle` profile 目前是预留且被测试覆盖的裁剪配置。
 
 ```mermaid
 stateDiagram-v2
@@ -93,9 +93,9 @@ flowchart TD
     end
 
     ISLAND1 --> CHEST[Chest<br/>宝箱交互]
-    CHEST --> ITEMUSE[ItemUse<br/>物品使用]
-    ITEMUSE --> DIALOGUE[Dialogue<br/>对话推进]
-    DIALOGUE --> QUESTI[QuestInteraction<br/>任务 NPC 交互]
+    CHEST --> ITEMUSE[ItemUse<br/>物品使用 + Farm]
+    ITEMUSE --> DIALOGUE[Dialogue<br/>对话推进 + 脚本生命周期]
+    DIALOGUE --> QUESTI[QuestInteraction<br/>任务 / 招募 / 商店交互]
     QUESTI --> AUTOTILE[AutoTile<br/>自动贴图]
     AUTOTILE --> ISLAND2
 
@@ -142,7 +142,7 @@ flowchart TD
 
 下表按 `stage_declarations()` 的实际执行顺序排列（与 `enum SchedulerStage` 的声明顺序略有不同：调度器通过 `StageDecl` 数组定义运行顺序，而 enum 仅作为身份标识）。
 
-| # | SchedulerStage | 对应系统 | 职责 |
+| # | SchedulerStage | 调用入口 | 职责 |
 |---|---------------|---------|------|
 | 1 | `RemoveEntity` | `RemoveEntitySystem` | 清理上一帧标记了 `NeedRemoveTag` 的实体 |
 | 2 | `TransitionUpdatePre` | `MapTransitionSystem` | 地图切换过渡动画更新（Gate 1 内） |
@@ -153,9 +153,9 @@ flowchart TD
 | 7 | `NPCWander` | `NPCWanderSystem` | NPC 巡游 AI，含睡眠日程（**MidStage 并行岛**） |
 | 8 | `AnimalBehavior` | `AnimalBehaviorSystem` | 动物行为 AI（**MidStage 并行岛**） |
 | 9 | `Chest` | `ChestSystem` | 宝箱开关与物品交付 |
-| 10 | `ItemUse` | `ItemUseSystem` | 种植/浇水/收获等物品使用逻辑 |
-| 11 | `Dialogue` | `DialogueSystem` | 对话文本推进 |
-| 12 | `QuestInteraction` | `QuestInteractionSystem` | 任务 NPC 接取 / 交付分支判定 |
+| 10 | `ItemUse` | `ItemUseSystem` + `FarmSystem` | 物品使用请求、种植/浇水/收获与农场交互逻辑 |
+| 11 | `Dialogue` | `DialogueSystem` + `ScriptedDialogueLifecycleSystem` | 对话文本推进与脚本对话生命周期 |
+| 12 | `QuestInteraction` | `QuestInteractionSystem` + `RecruitmentInteractionSystem` + `PartyRecruitmentSystem` + `ShopInteractionSystem` | 任务 NPC、招募、队伍招募与商店交互分支判定 |
 | 13 | `AutoTile` | `AutoTileSystem` | 自动贴图连接规则 |
 | 14 | `ActionSound` | `ActionSoundSystem` | 根据状态变化播放动作音效（**PreMovement 并行岛**） |
 | 15 | `State` | `StateSystem` | 同步 `StateComponent` → 动画/渲染状态（**PreMovement 并行岛**） |
@@ -171,7 +171,7 @@ flowchart TD
 | 25 | `Pickup` | `PickupSystem` | 检测玩家与可拾取物品的碰撞 |
 | 26 | `Interaction` | `InteractionSystem` | 检测玩家与交互对象的碰撞 |
 
-> 4 个相对较新的阶段：`QuestInteraction`、`ScriptCommands`、`ZoneTrigger`、`EnemyEncounter`。它们大多是为承接 Lua 内容层和 JRPG 玩法新增的：`ScriptCommands` 把 Lua 在本帧产生的命令统一排空到主线程；`QuestInteraction`、`ZoneTrigger`、`EnemyEncounter` 把任务/区域/遭遇这些原本散落的小逻辑独立成阶段，便于在 SchedulerProfiler / DOT dump 里观察各自耗时。
+> 4 个相对较新的阶段：`QuestInteraction`、`ScriptCommands`、`ZoneTrigger`、`EnemyEncounter`。它们大多是为承接 Lua 内容层和 JRPG 玩法新增的：`ScriptCommands` 把 Lua 在本帧产生的命令统一排空到主线程；`QuestInteraction`、`ZoneTrigger`、`EnemyEncounter` 把任务/区域/遭遇这些原本散落的小逻辑独立成阶段，便于在 SchedulerProfiler 里观察各自耗时。DOT dump 当前只导出 post-gate 并行岛，不是完整 tick 时序图。
 
 ## 两道门控 (Gate) 机制
 
@@ -260,6 +260,8 @@ graph TD
 3. **TaskEventBuffer** — 工作线程不直接触发 `entt::dispatcher` 事件，而是将事件推入线程安全缓冲区，波次结束后在主线程统一 `flushTo()`
 4. **ParallelIslandContext** — 由于并行 lambda 必须可拷贝（`std::function`），不能直接捕获 `TickParams&`。调度器通过 `mutable` 成员 `parallel_island_context_` 传递上下文指针，执行完毕后立即清空
 
+构建层还有一个前提：顶层 `CMakeLists.txt` 全局定义 `ENTT_USE_ATOMIC`，让 EnTT 在多线程访问时使用 atomic 内部共享状态。它不替代资源声明和主线程 drain/flush，只是满足 EnTT 多线程使用的基础配置。
+
 ### 降级回退
 
 如果 `ParallelWaveScheduler::valid()` 返回 `false`（图构建失败或无线程池），该并行岛内的所有任务自动降级为主线程顺序执行，功能不受影响。
@@ -319,11 +321,14 @@ sequenceDiagram
 `SchedulerProfiler` 通过环形缓冲区收集每帧的 `TickTrace`（每个阶段的耗时），支持：
 - 计算最近 N 帧的 avg/max 耗时
 - 集成 `spdlog::trace` 输出
-- 通过 `SchedulerDebugPanel`（ImGui 调试面板）实时可视化
+- 通过 `SchedulerDebugPanel`（`F6` → Game Debug Panels → Scheduler）查看当前 mode、latest gate 标志、latest stage 耗时和近期 avg/max
+
+`SchedulerDebugPanel` 不展示 wave 拓扑；并行依赖图需要用 `tools/scheduler_dot_dump` 导出 post-gate DOT，或从 `ParallelWaveScheduler` 测试读取 wave 结构。
 
 ## 注意事项
 
-1. **不是所有系统都由 Scheduler 管理** — `RenderSystem`、`LightSystem`、`YSortSystem`、`AudioSystem`、`FarmSystem` 等系统不在 Scheduler 的 tick 中，它们由 `GameScene` 在其他生命周期阶段直接调用
-2. **没有 System 基类** — 每个 System 是独立的具体类，无继承关系。Scheduler 通过 `stage_declarations()` 中每个 `StageDecl.run_main` 函数指针分发调用（`execute_stage_main_thread()` 根据 `find_stage_decl(stage)` 取到 decl 后直接调用其 `run_main`）
-3. **每个系统都有空指针保护** — Scheduler 对每个系统调用前都检查 `if (systems.xxx_system)`，允许部分系统在某些配置下不存在
-4. **tick() 是 const** — 所有可变状态（`ThreadPool`、`ParallelWaveScheduler`、`ParallelIslandContext`）通过 `mutable` 关键字标记
+1. **不是所有系统都由 Scheduler 管理** — `RenderSystem`、`LightSystem`、`YSortSystem`、`AudioSystem` 等系统不在 Scheduler 的 tick 中，它们由 `GameScene` 在其他生命周期阶段直接调用
+2. **`SchedulerStage` 不是永远一对一系统映射** — `ItemUse` stage 会顺序调用 `ItemUseSystem` 和 `FarmSystem`；`Dialogue` stage 会顺序调用 `DialogueSystem` 和 `ScriptedDialogueLifecycleSystem`；`QuestInteraction` stage 会顺序调用任务、招募、队伍招募和商店交互系统
+3. **没有 System 基类** — 每个 System 是独立的具体类，无继承关系。Scheduler 通过 `stage_declarations()` 中每个 `StageDecl.run_main` 函数指针分发调用（`execute_stage_main_thread()` 根据 `find_stage_decl(stage)` 取到 decl 后直接调用其 `run_main`）
+4. **每个系统都有空指针保护** — Scheduler 对每个系统调用前都检查 `if (systems.xxx_system)`，允许部分系统在某些配置下不存在
+5. **tick() 是 const** — 所有可变状态（`ThreadPool`、`ParallelWaveScheduler`、`ParallelIslandContext`）通过 `mutable` 关键字标记

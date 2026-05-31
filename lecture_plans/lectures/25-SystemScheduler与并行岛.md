@@ -2,7 +2,7 @@
 
 上一套教程里，`GameScene` 的 gameplay 系统是"挨个 `new`、固定顺序 `update`"的——清晰，但僵硬：系统之间谁依赖谁藏在调用顺序里看不见，互不相干的系统也只能一个接一个串行跑。本讲讲项目怎么把它升级成一个**声明式、可观察、可裁剪、可并行**的调度器 `SystemScheduler`。
 
-它干四件事：① 用 26 个 `SchedulerStage` 钉死系统的执行顺序；② 按 `GameMode` 裁剪这一帧要跑哪些阶段；③ 把数据**无冲突**的系统抽成"并行岛"，用 `entt::flow` 从每个系统声明的"读写哪些资源"自动推导出哪些能并行；④ 地图过渡期用两道 Gate 提前终止 tick，避免在"半个地图"上跑逻辑。本讲也终于把 L04 / L15 反复提到却一直没展开的 `GameMode` 收口。并行的底层原理（线程池、依赖图、拓扑分层）外链多线程子教程，主线只讲项目这套调度器怎么搭、怎么看。
+它干四件事：① 用 26 个 `SchedulerStage` 钉死系统的执行顺序（少数 stage 是复合入口，会顺序调用多个系统）；② 按 `GameMode` 裁剪这一帧要跑哪些阶段；③ 把数据**无冲突**的系统抽成"并行岛"，用 `entt::flow` 从每个系统声明的"读写哪些资源"自动推导出哪些能并行；④ 地图过渡期用两道 Gate 提前终止 tick，避免在"半个地图"上跑逻辑。本讲也终于把 L04 / L15 反复提到却一直没展开的 `GameMode` 收口。并行的底层原理（线程池、依赖图、拓扑分层）外链多线程子教程，主线只讲项目这套调度器怎么搭、怎么看。
 
 ---
 
@@ -12,7 +12,7 @@
 
 1. 为什么光凭每个系统"声明自己读写哪些资源"，就足以**自动**推导出哪些系统能并行？声明漏了会出什么事？
 2. `GameMode` 从 Exploration 切到 Battle，调度器内部具体做什么？（以及一个反转：这个切换在当前项目里**真的会发生吗**？）
-3. 三个并行岛里的 worker 系统凭什么能并发跑而不打架？保证线程安全的"四件套"是什么？
+3. 三个并行岛里的 worker 系统凭什么能并发跑而不打架？保证线程安全的"四件套"是什么？为什么还要在构建层启用 `ENTT_USE_ATOMIC`？
 4. 哪些系统"绝不该进并行岛"？为什么 `Movement`、`ScriptCommands` 这类必须独占主线程？
 
 ---
@@ -28,7 +28,7 @@ ninja scheduler_dot_dump          # 在你的 build 目录构建该 target
 
 打开 `post_gate.dot`（或 `dot -Tpng post_gate.dot -o post_gate.png` 渲染），你会看到三个 box 节点——`SpatialIndex`、`CameraFollow`、`Animation`——**彼此之间没有任何连线**。没有连线，意味着 `entt::flow` 根据它们声明的读写资源**推不出任何依赖边**，于是三者落进同一个 wave，可以并行执行。
 
-再按 `F5` 打开 **Scheduler Debug Panel**，能实时看到每个阶段的耗时和当前 `GameMode`。这张"没有边的图"就是本讲的核心命题：**依赖不是写在代码顺序里，而是从资源声明里算出来的**。
+再按 `F6` 打开 **Game Debug Panels → Scheduler**，能实时看到当前 `GameMode`、Gate 是否触发、最新一帧阶段耗时和近期 avg/max。注意：Debug Panel **不显示 wave 拓扑**；wave 结构要看 `scheduler_dot_dump` 导出的 DOT，或读 `ParallelWaveScheduler::waves()` 相关测试。这张"没有边的图"就是本讲的核心命题：**依赖不是写在代码顺序里，而是从资源声明里算出来的**。
 
 ---
 
@@ -60,9 +60,11 @@ flowchart TD
 升级前的痛点：系统逐个 `new`、固定顺序 `update`，依赖关系全藏在"谁先谁后"里，既不可观察、也无法并行。现在 `SystemScheduler` 换了套组织方式：
 
 - **调度器不拥有系统**：所有系统由 `GameSystemBundle` 持有，通过 `TickParams` 引用传入；`tick()` 本身是 `const`、无状态，只有并行设施用 `mutable` 惰性初始化。
-- **26 个 `SchedulerStage` 定义顺序**：enum 仅作身份标识，真正的运行顺序由 `StageDecl` 数组定；每个阶段对应一个系统的 `update`。
+- **26 个 `SchedulerStage` 定义顺序**：enum 仅作身份标识，真正的运行顺序由 `StageDecl` 数组定；多数阶段只调用一个系统的 `update`，少数阶段是为了保持调度观测粒度而合并的复合入口。
 - **没有 System 基类**：每个系统是独立具体类、无继承，调度器靠 `StageDecl` 里的函数指针分发；每次调用前都 `if (systems.xxx_system)` 空指针保护，允许某些配置下部分系统缺席。
-- **不是所有系统都归它管**：`Render` / `Light` / `YSort` / `Audio` / `Farm` 由 `GameScene` 在 `render()` 等别处直接调用，不进 tick——调度器只管 fixedUpdate 里的 gameplay 逻辑。
+- **不是所有系统都归它管**：`Render` / `Light` / `YSort` / `Audio` 由 `GameScene` 在 `render()` / frame update 等别处直接调用，不进 scheduler tick；但 `FarmSystem` 当前会在 `ItemUse` stage 里跟 `ItemUseSystem` 顺序执行，所以它是 tick 路径的一部分，只是没有单独的 `SchedulerStage`。
+
+复合 stage 现在有三处最容易误读：`ItemUse` 先跑 `ItemUseSystem` 再跑 `FarmSystem`；`Dialogue` 先跑 `DialogueSystem` 再跑 `ScriptedDialogueLifecycleSystem`；`QuestInteraction` 会串起任务、招募、队伍招募和商店交互几个系统。`SchedulerStage` 的名字因此更像"调度槽位"：它服务于顺序、Gate、profile 和 profiler 记录，不等于永远一对一映射到一个 C++ system 类。
 
 ### 2. 资源读写声明 → `entt::flow` → 并行 wave（核心机制）
 
@@ -109,14 +111,16 @@ matrix_ = builder.graph();         // flow 按冲突规则自动连依赖边
 
 三个岛各自惰性建一个 `ParallelWaveScheduler`，共用一个名为 `"SystemSchedulerParallel"` 的 `ThreadPool`。一个 wave **真正并行**的条件是：`thread_pool != nullptr && 整个 wave 都是 WorkerEligible && wave.size() > 1`——否则 inline 顺序跑。当前实现假设任务图运行期静态不变，所以三个 scheduler 长期缓存、没有 invalidate 机制。
 
-### 4. 并行安全四件套
+### 4. 并行安全四件套 + EnTT 构建前提
 
-worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线程安全操作会炸（自测题 3）。靠四个机制兜住：
+worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线程安全操作会炸（自测题 3）。代码层靠四个机制兜住：
 
 1. **Registry storage 预热**：每个岛执行前，主线程先调 `prepare_*_parallel_island_registry()` 强制初始化 EnTT 的惰性 component storage，避免 worker 首次访问触发隐式创建导致竞态。
 2. **`DeferredCommands`**：worker 不直接改 registry，把"建/删实体、增/删组件"推进线程安全队列，wave 结束后**主线程** `drain(registry)` 统一落地。
 3. **`TaskEventBuffer`**：worker 不直接 `trigger` dispatcher，把事件推进线程安全 buffer，wave 结束后主线程 `flushTo(dispatcher)`。而且 `drain` 一定在 `flush` 之前（测试 `DeferredDrainHappensBeforeTaskEventFlush` 守这个顺序）。
 4. **`ParallelIslandContext`**：并行 lambda 必须可拷贝（`std::function`），不能捕获 `TickParams&`，于是调度器用 `mutable` 成员传上下文指针，执行完立即清空。
+
+还有一个**构建层前提**：项目在顶层 `CMakeLists.txt` 全局定义了 `ENTT_USE_ATOMIC`。它不会把整个 registry 变成"随便怎么并发都安全"，但会让 EnTT 文档要求的内部共享静态状态走 atomic 路径；资源声明、storage 预热、deferred drain 和事件缓冲仍然是并行岛正确性的主体。
 
 还有一道**降级保险**：如果 `ParallelWaveScheduler::valid()` 返回 `false`（图坏了或没线程池），整个岛自动降级为主线程顺序执行，功能不受影响（测试 `SubmitFailureFallsBackToInlineExecution`）。**并行是优化，不是正确性前提**——这是这套设计敢用的底气。
 
@@ -175,7 +179,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 1. "资源读写声明足以推导并行 wave"背后的冲突规则是什么（rw / ro 怎么组合算冲突）？如果一个系统实际写了某资源却漏声明 `rw`，会发生什么？用 `entt::flow` 的视角解释。
 2. 把 `GameMode` 切到 Battle，`profileStages` 返回什么、tick 怎么退化？再答：当前项目里这个切换真的会在运行时发生吗？如果不会，战斗时 `GameScene` 的 scheduler 为什么自然就停了？
-3. 一个并行岛里的 worker 想"删一个实体"和"发一个事件"，它能直接动 `registry` / `dispatcher` 吗？这两件事分别走哪条安全通道、在什么时机、由哪个线程落地？
+3. 一个并行岛里的 worker 想"删一个实体"和"发一个事件"，它能直接动 `registry` / `dispatcher` 吗？这两件事分别走哪条安全通道、在什么时机、由哪个线程落地？`ENTT_USE_ATOMIC` 解决的是哪一层问题、又不负责哪一层同步？
 4. 给你 `Movement` 和 `SpatialIndex` 两个系统，为什么 `Movement` 不在任何并行岛、`SpatialIndex` 却可以？从"它读写什么、谁依赖它的结果"角度论证。
 
 ---
@@ -196,7 +200,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 - **从顺序 update 到声明式调度**：`SystemScheduler` 不拥有系统（`GameSystemBundle` 持有）、`tick()` 是 const；26 个 `SchedulerStage` 定义顺序，无 System 基类、靠函数指针分发 + 空指针保护。
 - **资源声明 → `entt::flow` → wave**：每个任务声明 `ro`/`rw` 资源，flow 按"写与任意访问冲突、读读不冲突"连依赖边，拓扑分层成 wave，同 wave 可并行。**声明是契约，漏声明 = 数据竞争**。
 - **三个并行岛**：中段 / 移动前 / 后门控，各自把无冲突系统并起来；真正并行需 `thread_pool && 全 WorkerEligible && size>1`，否则 inline。
-- **安全四件套**：storage 预热、`DeferredCommands`（drain）、`TaskEventBuffer`（flush，且 drain 先于 flush）、`ParallelIslandContext`；`valid()` 失败整岛降级主线程——并行是优化不是正确性前提。
+- **安全四件套 + 构建前提**：storage 预热、`DeferredCommands`（drain）、`TaskEventBuffer`（flush，且 drain 先于 flush）、`ParallelIslandContext`，外加全局 `ENTT_USE_ATOMIC`；`valid()` 失败整岛降级主线程——并行是优化不是正确性前提。
 - **两道 Gate**：`RemoveEntity` 永远先跑；Gate1 起始查过渡、Gate2 Movement 后查过渡，过渡中提前返回，避免在"半个地图"上跑逻辑。
 - **GameMode 收口**：`profileStages` 按模式裁剪阶段（Battle 仅 RemoveEntity）——但 `setGameMode` 当前无调用者，runtime 恒为 Exploration，真正切换靠 Scene 栈；这套裁剪是就位、被测试驱动、随时可启用的基础设施。
 
