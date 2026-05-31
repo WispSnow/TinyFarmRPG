@@ -28,16 +28,19 @@ cmake --build build/debug --target game_tests
 ctest --test-dir build/debug -R BattleAiPlannerTest --output-on-failure
 ```
 
-[`battle_ai_planner_test.cpp`](../../tests/game/battle/battle_ai_planner_test.cpp) 八个 case，名字就是 AI 的全部行为规格：
+[`battle_ai_planner_test.cpp`](../../tests/game/battle/battle_ai_planner_test.cpp) 十个 case，名字就是 AI 的全部行为规格：
 
 | 测试名 | 锁定的 AI 规则 |
 | --- | --- |
 | `ChoosesHighestRatedExecutableSkillAndRandomAliveEnemy` | 选 **rating 最高**且能用的技能 |
 | `OneEnemySkillRandomizesTargetAmongAliveOpponents` | 单体攻击在存活敌人里**随机**选 |
+| `LowerRatedRandomCandidateDoesNotAdvanceRngBeforeBestSkill` | 未选中的低 rating 随机候选**不提前消耗随机源** |
+| `EqualRatingKeepsFirstExecutableAction` | rating 并列时保留配置表里**先出现**的可执行项 |
 | `OneAllyRecoveryTargetsMostInjuredAllyInsteadOfSelf` | 治疗选**最缺血**的队友 |
-| `AllAlliesMpRecoveryUsesMpDeficitInsteadOfHp` | 回 MP 技按 MP 缺口选目标 |
 | `SelfRecoveryFromDamageTypeFallsBackWhenAlreadyFull` | 自疗但满血 → 放弃，走 fallback |
 | `FallbackAttackRandomizesTargetAmongAliveOpponents` | 无可用技能 → 普攻随机目标 |
+| `SelfRecoveryFromEffectListFallsBackWhenAlreadyFull` | effects 里的自疗满血时也会放弃，走 fallback |
+| `AllAlliesMpRecoveryUsesMpDeficitInsteadOfHp` | 回 MP 技按 MP 缺口选目标 |
 | `FallsBackToEndTurnWhenNoOpponentsAreAlive` | 没活敌人 → EndTurn 兜底 |
 
 玩家侧也有可单测的纯逻辑核——`resolveCursorMemoryDefaultIndex`（光标记忆落点）。本讲就讲：这两个生产者各自怎么造出一个 `BattleAction`。
@@ -58,7 +61,7 @@ flowchart TD
     end
 
     subgraph AI["敌方侧生产者"]
-        PLAN["BattleAiPlanner::planEnemyAction<br/>rating 选技 / scope 选目标"]
+        PLAN["BattleAiPlanner::planEnemyAction<br/>rating 预筛 / 最终目标随机"]
         PLAN -->|"直接返回 BattleAction"| CONV
     end
 
@@ -174,22 +177,40 @@ int resolveCursorMemoryDefaultIndex(int remembered_index,
 
 ### 5. AI 侧：按 rating 选技、按 scope 选目标、按缺口选治疗
 
-敌方生产者是 `BattleAiPlanner::planEnemyAction`（[`battle_ai_planner.cpp`](../../src/game/battle/battle_ai_planner.cpp)），纯静态函数。它的选技算法很直白——**遍历敌人的 `actions` 表，挑 rating 最高且当前能用的那条**：
+敌方生产者是 `BattleAiPlanner::planEnemyAction`（[`battle_ai_planner.cpp`](../../src/game/battle/battle_ai_planner.cpp)），纯静态函数。它的选技算法分两步：**先遍历敌人的 `actions` 表，筛掉不可执行项，只记住 rating 最高的 skill；确定最终 skill 后，再构造 `BattleAction` 并消耗随机源**。
 
 ```cpp
 for (const auto& enemy_action : enemy.actions_) {
     const auto* skill = rpg_catalog.findSkill(enemy_action.skill_id_);
     if (!skill || skill->scope_ == Scope::None || actor.mp < skill->mp_cost_) continue;  // 滤掉不可用
-    const auto planned_action = buildSkillAction(actor, *skill, units, rng);
-    if (!planned_action) continue;                                    // 滤掉没合法目标的
-    if (!best_planned_action || enemy_action.rating_ > best_rating) { // 取 rating 最高
-        best_planned_action = planned_action;
+    if (!canBuildSkillAction(actor, *skill, units)) continue;          // 只做无随机的合法性预检
+    if (!best_skill || enemy_action.rating_ > best_rating) {           // 取 rating 最高
+        best_skill = skill;
         best_rating = enemy_action.rating_;
     }
 }
+if (best_skill) {
+    if (const auto action = buildSkillAction(actor, *best_skill, units, rng)) {
+        return *action;                                                // 最终候选才真正抽目标
+    }
+}
+return planFallbackAction(actor, units, random_engine);
 ```
 
-注意比较用的是 `>` 而非 `>=`——**rating 相同时保留先遇到的**（配置表里靠前的优先）。选完技能，目标由 `buildSkillAction` 按 `scope_` 决定，这里 AI 比玩家"聪明"一点：
+注意两个细节。第一，比较用的是 `>` 而非 `>=`——**rating 相同时保留先遇到的**（配置表里靠前的优先）。第二，`canBuildSkillAction` 只判断"这个技能现在有没有合法目标 / 恢复缺口"，不会随机选目标；真正随机发生在最终候选的 `buildSkillAction` 里。这样一个低 rating 的随机技能排在前面，也不会悄悄推进 RNG，改变后面高 rating 技能的目标。
+
+```mermaid
+flowchart TD
+    A["EnemyData.actions"] --> B["静态筛选<br/>skill 存在 / MP 足够 / scope 有合法对象"]
+    B --> C["rating 比较<br/>保留最高候选"]
+    C --> D{"找到候选?"}
+    D -->|"有"| E["buildSkillAction<br/>最终候选消耗随机源"]
+    D -->|"无"| F["planFallbackAction<br/>普攻随机目标"]
+    E --> G["BattleAction"]
+    F --> G
+```
+
+选完技能后，目标由 `buildSkillAction` 按 `scope_` 决定，这里 AI 比玩家"聪明"一点：
 
 - `OneEnemy` → 在存活对手里**随机**挑（避免老打第一个）。
 - `OneAlly` → 若是治疗技（`detectRecoveryIntent`：`damage.type` 是 HpRecover/MpRecover，或 effects 含 RecoverHp/MpRecover），挑**最缺血/最缺蓝**的队友；否则挑 HP 最低的。
@@ -201,7 +222,7 @@ for (const auto& enemy_action : enemy.actions_) {
 
 `planEnemyAction` 任何一步走不通（没目录、没 `source_enemy_id`、没可用技能），都回退到 `planFallbackAction`——一次随机目标的普攻；连活敌人都没有就 `EndTurn`。`buildEnemyAction`（场景侧）层层设防，每个缺失分支都 warn + fallback，保证 AI **永远能产出一个合法 `BattleAction`**，不会卡住回合。
 
-为什么 AI 这么好测（自测题 4 的回归策略）？因为两个 planner 函数都接受 `std::mt19937*` 随机源参数——测试注入固定 seed，随机就变确定，于是"rating 选择""目标随机""恢复优先"全都能写成稳定断言。**改了 AI 配置或逻辑后，最小回归就是跑 `BattleAiPlannerTest` 那 8 个 case**：它们用裸 `BattleUnit` 数组 + 固定 seed，不开 BattleScene，几毫秒覆盖全部决策分支。
+为什么 AI 这么好测（自测题 4 的回归策略）？因为两个 planner 函数都接受 `std::mt19937*` 随机源参数——测试注入固定 seed，随机就变确定，于是"rating 选择""目标随机""恢复优先""未选中候选不消耗随机源"全都能写成稳定断言。**改了 AI 配置或逻辑后，最小回归就是跑 `BattleAiPlannerTest` 那 10 个 case**：它们用裸 `BattleUnit` 数组 + 固定 seed，不开 BattleScene，几毫秒覆盖全部决策分支。
 
 ---
 
@@ -259,7 +280,7 @@ for (const auto& enemy_action : enemy.actions_) {
 - **双层状态机**：`BattleFlowState` 管整场战斗节拍（敌我共用），`BattleMenuState` 只在等输入时管玩家在哪层菜单；`BattleActionDraft` 是逐层填写的行动草稿，确认时翻译成 `BattleAction`。
 - **键鼠双路径、不走原生导航**：鼠标走 `data-event-click`，方向键走 `BattleInputRouter`→游标；多层 cancel、cursor memory、目标高亮等游戏菜单语义 RmlUi 原生 focus 表达不了，故游戏侧持有光标、`focus_dirty` 程序化同步焦点。
 - **cursor memory 是纯函数**：`resolveCursorMemoryDefaultIndex` 处理"开关关/越界/已禁用"三类边界，统一回退 fallback，四个菜单层共用、可单测。
-- **AI = rating 选技 + scope 选目标 + 恢复意图**：rating/skill/scope 来自 catalog 数据，"随机选敌/选最缺血友军/满血放弃/fallback"是硬编码策略；纯函数 + 注入 seed → 8 个 case 确定性回归。
+- **AI = rating 选技 + scope 选目标 + 恢复意图**：rating/skill/scope 来自 catalog 数据，"随机选敌/选最缺血友军/满血放弃/fallback"是硬编码策略；只有最终候选会消耗随机源；纯函数 + 注入 seed → 10 个 case 确定性回归。
 
 ## 🚀 下节课预告
 

@@ -210,6 +210,31 @@ struct ResourceMetric {
     });
 }
 
+[[nodiscard]] bool canBuildSkillAction(const BattleUnit& actor,
+                                       const game::data::SkillData& skill,
+                                       const std::vector<BattleUnit>& units) {
+    const RecoveryIntent recovery_intent = detectRecoveryIntent(skill);
+    switch (skill.scope_) {
+        case game::data::Scope::OneEnemy:
+        case game::data::Scope::AllEnemies:
+            return hasAliveUnitOnSide(units, opposingSide(actor.side));
+        case game::data::Scope::OneAlly:
+            return recovery_intent.any()
+                ? hasRecoveryTargetOnSide(units, actor.side, recovery_intent)
+                : hasAliveUnitOnSide(units, actor.side);
+        case game::data::Scope::AllAllies:
+            return hasAliveUnitOnSide(units, actor.side) &&
+                (!recovery_intent.any() || hasRecoveryTargetOnSide(units, actor.side, recovery_intent));
+        case game::data::Scope::Self:
+            return actor.isAlive() &&
+                (!recovery_intent.any() || hasRelevantRecoveryDeficit(actor, recovery_intent));
+        case game::data::Scope::None:
+            return false;
+    }
+
+    return false;
+}
+
 [[nodiscard]] std::optional<BattleAction> buildSkillAction(const BattleUnit& actor,
                                                            const game::data::SkillData& skill,
                                                            const std::vector<BattleUnit>& units,
@@ -287,10 +312,8 @@ BattleAction BattleAiPlanner::planEnemyAction(const BattleUnit& actor,
                                               const std::vector<BattleUnit>& units,
                                               const game::data::RpgCatalog& rpg_catalog,
                                               std::mt19937* random_engine) {
-    const game::data::EnemyActionData* best_action = nullptr;
-    std::optional<BattleAction> best_planned_action{};
+    const game::data::SkillData* best_skill = nullptr;
     int best_rating = 0;
-    auto& rng = random_engine ? *random_engine : defaultRandomEngine();
 
     for (const auto& enemy_action : enemy.actions_) {
         if (enemy_action.skill_id_.empty()) {
@@ -302,20 +325,22 @@ BattleAction BattleAiPlanner::planEnemyAction(const BattleUnit& actor,
             continue;
         }
 
-        const auto planned_action = buildSkillAction(actor, *skill, units, rng);
-        if (!planned_action.has_value()) {
+        if (!canBuildSkillAction(actor, *skill, units)) {
             continue;
         }
 
-        if (!best_planned_action.has_value() || enemy_action.rating_ > best_rating) {
-            best_action = &enemy_action;
-            best_planned_action = planned_action;
+        if (!best_skill || enemy_action.rating_ > best_rating) {
+            best_skill = skill;
             best_rating = enemy_action.rating_;
         }
     }
 
-    if (best_action && best_planned_action.has_value()) {
-        return *best_planned_action;
+    if (best_skill) {
+        auto& rng = random_engine ? *random_engine : defaultRandomEngine();
+        if (const auto planned_action = buildSkillAction(actor, *best_skill, units, rng);
+            planned_action.has_value()) {
+            return *planned_action;
+        }
     }
 
     return planFallbackAction(actor, units, random_engine);

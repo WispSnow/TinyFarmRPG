@@ -132,7 +132,8 @@ stateDiagram-v2
 
 `FlowState::WaitingForInput` 内再维护 `MenuState`：
 
-- `MainMenu`
+- `PartyCommand`
+- `ActorCommand`
 - `SkillList`
 - `ItemList`
 - `TargetSelect`
@@ -152,25 +153,23 @@ stateDiagram-v2
 
 这点很重要：Battle 输入上下文会抑制原生菜单方向键事件转发给 RmlUi，所以当前实现**不依赖** RmlUi 原生方向键导航。
 
-### 主菜单动作集
+### 队伍命令与角色命令
 
-当前主菜单包含：
+每轮玩家方第一次行动先显示 `PartyCommand`，后续同轮玩家行动者直接进入 `ActorCommand`：
 
-- `Attack`
-- `Skill`
-- `Item`
-- `Guard`
-- `Escape`
-- `End Turn`
+- `PartyCommand`：`Fight` / `Escape`
+- `ActorCommand`：`Attack` / `Skill` / `Guard` / `Item`
 
 ### 技能 / 物品 / 目标流
 
 ```mermaid
 flowchart TD
-    A["MainMenu"] --> B["Attack"]
+    P["PartyCommand"] -->|"Fight"| A["ActorCommand"]
+    P -->|"Escape"| S["submitAction()"]
+    A --> B["Attack"]
     A --> C["SkillList"]
     A --> D["ItemList"]
-    A --> E["Guard / Escape / End Turn"]
+    A --> E["Guard"]
 
     B --> T["TargetSelect (OneEnemy)"]
     C -->|"OneEnemy / OneAlly"| T
@@ -203,8 +202,9 @@ flowchart TD
 | 当前菜单 | `menu_cancel` 行为 |
 |---|---|
 | `TargetSelect` | 回到动作来源菜单，并保留技能/物品列表 |
-| `SkillList` / `ItemList` | 回到 `MainMenu` |
-| `MainMenu` | 吃掉输入，不退出战斗 |
+| `SkillList` / `ItemList` | 回到 `ActorCommand` |
+| `ActorCommand` | 如果本次是从 `PartyCommand` 的 `Fight` 进入，则回到 `PartyCommand`；否则吃掉输入 |
+| `PartyCommand` | 吃掉输入，不退出战斗 |
 
 ## Side View 表现与 HUD
 
@@ -231,19 +231,20 @@ HUD 位于屏幕下方 130dp：
 
 ### 选技算法
 
-`planEnemyAction()` 遍历 `EnemyData::actions_` 选出最高 `rating_` 且当前可执行的技能：
+`planEnemyAction()` 遍历 `EnemyData::actions_` 选出最高 `rating_` 且当前可执行的技能。候选筛选阶段只做无随机的合法性预检；最终确认选中的 skill 后，才构造 `BattleAction` 并消耗随机源：
 
 1. 跳过 `skill_id` 为空或 `RpgCatalog` 中不存在的条目
 2. 跳过 MP 不足的技能
-3. 针对该技能的 scope 生成目标，若没有合法目标则跳过
-4. 在所有可生成动作的候选中取 `rating_` 最高者
-5. 若无任何可用技能，调用 `planFallbackAction()`：Attack 指向最低 HP% 存活对手，若无存活对手则 EndTurn
+3. 针对该技能的 scope 做合法目标 / 恢复缺口预检，若没有合法对象则跳过
+4. 在所有可执行候选中取 `rating_` 最高者；并列时保留先出现的候选
+5. 对最终候选调用 `buildSkillAction()` 生成目标；`OneEnemy` 在这里随机选存活对手
+6. 若无任何可用技能，调用 `planFallbackAction()`：Attack 随机指向存活对手，若无存活对手则 EndTurn
 
 ### 目标选择规则（按 scope）
 
 | scope | 目标策略 |
 |---|---|
-| `OneEnemy` | 对手中 HP 百分比最低的存活单位；同比例时优先绝对值更低者，再按 id 稳定 |
+| `OneEnemy` | 在存活对手中随机抽取目标 |
 | `AllEnemies` | 无需选单体，要求对手侧至少有存活单位 |
 | `OneAlly` | 恢复类技能选"资源缺口最大的友军"；其他技能选 HP% 最低的友军 |
 | `AllAllies` | 恢复类技能额外要求友军侧至少有资源缺口，避免对满血/满 MP 全体浪费 |
@@ -475,7 +476,7 @@ sequenceDiagram
 
     loop 每个行动者回合
         alt 当前行动者是玩家
-            BS->>BS: MainMenu / SkillList / ItemList / TargetSelect
+            BS->>BS: PartyCommand / ActorCommand / SkillList / ItemList / TargetSelect
             BS->>SE: submitAction(BattleAction)
         else 当前行动者是敌人
             BS->>BS: BattleAiPlanner 生成动作
