@@ -790,14 +790,16 @@ flowchart LR
 
 **知识点**：
 - side-view 精灵复用 L14 的 LayeredSprite + 战斗专用 anchor。
-- `BattleActionPresentationPlan`：从领域结果生成可播放的步骤序列。
-- `BattleAnimationDirector`：把步骤序列翻成具体的动画/音效/特效请求。
+- `BattleActionPresentationPlan`：从领域结果生成 motion / marker 表现时间轴；普通 Attack 可复用 `skill.attack.presentation`。
+- `BattleAnimationDirector`：按 motion_style 生成逐单位 pose；VFX/SFX/HP reveal 由 plan marker 调度，不混进导演。
+- Battle Speed 通过 `scaledAnimationSeconds` / `scaleAnimationTimeline` 缩放导演时间轴、marker fire time 与飘字 impact delay，不缩放领域 dt。
 - 伤害飘字与敌方 HP 条的状态机（受 Options 中 "Damage Popups / Enemy HP Bar" 开关影响）。
 - 表现只消费 session 返回的结果快照，不修改规则真相（呼应 L16 的"领域不依赖 UI"）。
 - 与 VFX 的接口：`PlayVfxCommand` 提交即返，背后机制留 L23。
 
 **阅读清单**：
 - `ui/rmlui/theme/battle_enemy_icons.rcss`、`battle_state_icons.rcss`
+- `assets/data/rpg/skills.json`
 
 **源码入口**：
 - `src/game/scene/battle_action_presentation_plan.*`
@@ -811,7 +813,7 @@ flowchart LR
 2. 战斗速度倍率（Battle Speed Option）作用在哪一层？为什么不直接缩放 dt？
 3. 飘字与 HP 条都有 "Off" 开关，关掉时已经在播的视图怎么收尾？
 
-**最小练习**：把 `BattleAnimationDirector` 中某个动作步骤的时长翻倍，观察整体节奏变化。
+**最小练习**：把 `assets/data/rpg/skills.json` 中 `skill.attack.presentation.duration / impact_time` 翻倍，观察普攻节奏变化与 Battle Speed 缩放。
 
 **小结与下节预告**：表现讲完，下一讲收尾战斗——奖励与写回。
 

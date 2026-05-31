@@ -184,9 +184,15 @@ BattleActionPresentationPlan buildBattleActionPresentationPlan(
 
     const auto& result = *request.result;
     const auto* skill = request.skill;
-    const auto* presentation = skill && skill->presentation_.configured_ ? &skill->presentation_ : nullptr;
+    const auto* skill_for_presentation = skill;
+    if (!skill_for_presentation && result.action_type == game::battle::BattleActionType::Attack) {
+        skill_for_presentation = request.default_attack_skill;
+    }
+    const auto* presentation = skill_for_presentation && skill_for_presentation->presentation_.configured_
+        ? &skill_for_presentation->presentation_
+        : nullptr;
 
-    plan.motion_style = defaultMotionStyle(result, skill);
+    plan.motion_style = defaultMotionStyle(result, skill_for_presentation);
     plan.actor_start_offset = request.actor_start_offset;
     plan.duration_seconds = defaultDuration(plan.motion_style);
     plan.impact_time_seconds = defaultImpactTime(plan.motion_style, plan.duration_seconds);
@@ -245,7 +251,7 @@ BattleActionPresentationPlan buildBattleActionPresentationPlan(
                     .sound_event = makeSoundEvent(presentation->target_sfx_id_hash_)
                 });
             }
-        } else if (usesPhysicalHitFallback(result, skill)) {
+        } else if (usesPhysicalHitFallback(result, skill_for_presentation)) {
             const auto* default_presentation = request.default_attack_skill
                 ? &request.default_attack_skill->presentation_
                 : nullptr;

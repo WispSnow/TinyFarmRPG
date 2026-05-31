@@ -5,7 +5,7 @@
 回合制战斗系统会把游戏从“实时探索”切换到“策略回合”模式，玩家与敌方单位按速度顺序交替行动，直到一方全灭或玩家成功逃跑。当前实现已经不再是最初的 Attack 原型，而是具备完整战斗菜单闭环的最小 JRPG 战斗骨架：
 
 - `BattleScene` 负责 RmlUi 菜单、输入和表现层状态机
-- `BattleScene` 同时拥有战斗专用 ECS registry，用 Side View idle 动画绘制双方战斗精灵
+- `BattleScene` 同时拥有战斗专用 ECS registry，用 Side View 精灵和表现时间轴绘制动作、飘字与敌方 HP 条反馈
 - `BattleAiPlanner` 负责敌方回合的最小自动行动规划
 - `BattleSession` 负责接收行动并返回全量结果快照
 - `BattleActionResolver` 负责技能、物品、防御、逃跑等具体结算
@@ -28,7 +28,7 @@ graph TD
     subgraph "表现层 — BattleScene"
         UI["RmlUi 菜单与结果文本"]
         HUD["队伍 HP / MP / 头像 HUD"]
-        SPRITE["Side View idle sprites"]
+        SPRITE["Side View sprites<br/>director pose + feedback"]
         FSM["FlowState + MenuState"]
         INPUT["menu_up/down/confirm/cancel"]
         AI["BattleAiPlanner"]
@@ -122,7 +122,7 @@ stateDiagram-v2
     NextTurn --> ExecutingAction : 当前行动者是敌人
     WaitingForInput --> ExecutingAction : 提交 BattleAction
     ExecutingAction --> AnimatingResult : session_.submitAction()
-    AnimatingResult --> CheckVictory : 0.2s 占位计时结束
+    AnimatingResult --> CheckVictory : 表现时间轴完成
     CheckVictory --> NextTurn : outcome == Ongoing
     CheckVictory --> BattleEnd : Victory / Defeat / Escaped
     BattleEnd --> [*]
@@ -215,6 +215,10 @@ flowchart TD
 - 玩家方与敌方都使用 `battle_visual` 指定 actor blueprint、idle 动画与战斗精灵缩放；默认资源中的 `actor.player` / `actor.lyria` / `actor.tori` 和 `enemy.goblin` / `enemy.gnome` / `enemy.slime` 都有显式配置。
 - `BattleScene` 为战斗表现维护独立 `battle_registry_`，并通过 `RenderSystem::renderPrepared()` 在不重置 GameScene 相机的前提下追加战斗精灵绘制。
 - 战斗中 SceneManager 只更新栈顶 scene，因此底层 `GameScene` 的探索 update 会冻结；`GameScene` 在 push `BattleScene` 前同步采集玩家外观快照。
+- 行动结算后，`buildBattleActionPresentationPlan()` 会把 `BattleActionResult` 转成 motion / marker 时间轴；普通 Attack 可复用 `assets/data/rpg/skills.json` 的 `skill.attack.presentation`。
+- `BattleAnimationDirector` 只负责按 motion_style 生成逐单位 pose；VFX、SFX 与 EnemyHpReveal 由 plan marker 调度，伤害飘字按同一 impact 时刻延迟出现。
+- Battle Speed 通过 `scaledAnimationSeconds()` / `scaleAnimationTimeline()` 同步缩放导演时间轴、marker fire time 与飘字 impact delay；它不缩放 resolver、TurnCore 或领域 `dt`。
+- 敌方 HP 条先 `stageSnapshot()` 暂存结果快照，到 EnemyHpReveal marker 时 `applyStagedSnapshotAndReveal()`；staged snapshot 使用 0 延迟同步，避免视觉命中后又等第二段 `change_delay_seconds`。
 
 HUD 位于屏幕下方 130dp：
 
@@ -274,6 +278,10 @@ sequenceDiagram
     AR->>TC: refresh() / advanceTurn()
     SE->>SE: fillSnapshot(result)
     SE-->>BS: BattleActionResult + BattleSnapshot
+    BS->>BS: buildBattleActionPresentationPlan()
+    BS->>BS: BattleAnimationDirector.begin()
+    BS->>BS: schedule VFX / SFX / EnemyHpReveal markers
+    BS->>BS: spawn DamagePopup at scaled impact delay
     BS->>BS: refreshView() / result_text
 ```
 
@@ -483,7 +491,7 @@ sequenceDiagram
             BS->>SE: submitAction(BattleAction)
         end
         SE-->>BS: BattleActionResult + Snapshot
-        BS->>BS: AnimatingResult(0.2s)
+        BS->>BS: AnimatingResult(导演 pose + markers + 飘字 / HP 条)
     end
 
     BS->>D: BattleEndedEvent{outcome, final_units, remaining_item_stocks}
@@ -506,7 +514,7 @@ sequenceDiagram
 | 全体 / 自身动作 | 已通过 scope 直接提交支持 | 后续可补更丰富的结果展示 |
 | 目标 UI | 已支持单体敌/友选择 | 后续可补头像、弱点、预览、复活目标规则 |
 | 战斗日志 | 当前只有简短 `result_text` | 后续可拆独立 log/popup 系统 |
-| 战斗动作表现 | 当前播放 Side View idle，并用高亮标识当前行动者/目标 | 后续可扩展攻击位移、受击闪烁、施法特效 |
+| 战斗动作表现 | 已有 `BattleActionPresentationPlan` + `BattleAnimationDirector`，支持普攻 / 法术 presentation timing、VFX/SFX marker、飘字和敌方 HP 条 impact 对齐 | 后续可扩更多 motion style、状态表现与更完整战斗日志 |
 | 奖励结算 | 已完成 Victory 金币/掉落/经验写回与升级反馈 | 后续可扩任务推进表现、独立结算界面 |
 
 ## 测试策略
@@ -520,6 +528,12 @@ sequenceDiagram
 | `tests/game/battle/battle_unit_factory_test.cpp` | `BattleUnit` 来源信息与 catalog 构建路径 |
 | `tests/game/battle/battle_ai_planner_test.cpp` | 敌方最小 AI 选技与目标选择 |
 | `tests/game/battle/battle_reward_resolver_test.cpp` | Victory 奖励汇总、掉落合并、非 Victory 空摘要 |
+| `tests/game/battle/battle_action_presentation_plan_test.cpp` | 领域结果到 motion / marker 时间轴的转换，含普攻默认 `skill.attack.presentation` |
+| `tests/game/battle/battle_animation_director_test.cpp` | 导演 pose 时间轴、动作偏移和命中反馈 |
+| `tests/game/battle/battle_animation_speed_test.cpp` | Battle Speed 对导演、marker 与飘字 impact delay 的同步缩放 |
+| `tests/game/battle/battle_damage_popup_controller_test.cpp` | 飘字生成、impact 延迟、关闭语义与生命周期 |
+| `tests/game/battle/battle_enemy_hp_bar_controller_test.cpp` | 敌方 HP 条 staged snapshot、0 延迟 reveal、淡出与 target/display ratio 分离 |
+| `tests/game/battle/battle_victory_flow_controller_test.cpp` | Victory overlay 阶段机、奖励 count-up 与确认流程 |
 | `tests/game/actor_progression_service_test.cpp` | RPG Maker 风格经验曲线、等级推导、满级截断、升级 HP/MP 上限增量 |
 | `tests/game/battle/battle_session_test.cpp` | 会话级提交、快照、回合推进 |
 | `tests/game/battle/battle_scene_smoke_test.cpp` | `BattleScene` 状态机、菜单接线、RML/RCSS 关键绑定 |
@@ -547,6 +561,11 @@ sequenceDiagram
 | `src/game/battle/battle_session.h/.cpp` | 应用 | 组织 resolver、runtime_state 与 snapshot |
 | `src/game/battle/battle_unit_factory.cpp` | 应用 | 由 actor/troop/catalog 构建战斗单位 |
 | `src/game/scene/battle_scene.h/.cpp` | 表现 | RmlUi 菜单、输入、Side View 战斗精灵、FlowState / MenuState 编排 |
+| `src/game/scene/battle_action_presentation_plan.h/.cpp` | 表现 | 从 `BattleActionResult` 与 skill presentation 数据生成 motion / marker 时间轴 |
+| `src/game/scene/battle_animation_director.h/.cpp` | 表现 | 按 motion style 生成逐单位 pose，并提供 Battle Speed 时间缩放 helper |
+| `src/game/scene/battle_damage_popup_controller.h/.cpp` | 表现 | 伤害 / 恢复 / miss 飘字的 impact 延迟、生命周期与关闭语义 |
+| `src/game/scene/battle_enemy_hp_bar_controller.h/.cpp` | 表现 | 敌方 HP 条 staged snapshot、impact reveal、target/display ratio 平滑与淡出 |
+| `src/game/scene/battle_victory_flow_controller.h/.cpp` | 表现 | Victory overlay 阶段机和奖励 count-up |
 | `src/game/scene/battle_scene_types.h` | 表现 | 战斗表现选项、sprite seed 与外观快照结构 |
 | `src/game/system/appearance_layer_cache_builder.h/.cpp` | 表现 | 无状态构建分层外观缓存，供 `AppearanceSystem` 与战斗表现复用 |
 | `ui/rmlui/scenes/battle.rml` | UI | 战斗菜单 RML 结构 |

@@ -118,6 +118,34 @@ TEST(BattleActionPresentationPlanTest, AttackUsesConfiguredImpactForVfxSfxAndHpR
     EXPECT_FLOAT_EQ(hp->time_seconds, plan.impact_time_seconds);
 }
 
+TEST(BattleActionPresentationPlanTest, AttackCanUseDefaultAttackSkillPresentationTiming) {
+    const auto anchors = makeAnchors();
+    auto attack = makeAttackSkill();
+    attack.presentation_.duration_seconds_ = 1.20f;
+    attack.presentation_.impact_time_seconds_ = 0.40f;
+    attack.presentation_.recovery_duration_seconds_ = 0.20f;
+    attack.presentation_.target_vfx_tail_seconds_ = 0.30f;
+    const auto result = makeDamageResult();
+
+    const auto plan = buildBattleActionPresentationPlan(BattleActionPresentationPlanRequest{
+        .result = &result,
+        .default_attack_skill = &attack,
+        .unit_anchors = &anchors
+    });
+
+    EXPECT_EQ(plan.motion_style, BattleActionMotionStyle::WeaponAttack);
+    EXPECT_FLOAT_EQ(plan.impact_time_seconds, 0.40f);
+    EXPECT_GE(plan.duration_seconds, 1.20f);
+
+    const auto* vfx = findMarker(plan, BattlePresentationMarkerType::TargetVfx);
+    ASSERT_NE(vfx, nullptr);
+    EXPECT_FLOAT_EQ(vfx->time_seconds, 0.40f);
+
+    const auto* hp = findMarker(plan, BattlePresentationMarkerType::EnemyHpReveal);
+    ASSERT_NE(hp, nullptr);
+    EXPECT_FLOAT_EQ(hp->time_seconds, 0.40f);
+}
+
 TEST(BattleActionPresentationPlanTest, ConfiguredSkillUsesSkillPresentationTiming) {
     const auto anchors = makeAnchors();
     const auto skill = makeFireSkill();

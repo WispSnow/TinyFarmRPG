@@ -152,7 +152,7 @@ sequenceDiagram
     AR-->>SESS: BattleActionResult（含 damage / heal / state diff）
     SESS->>SESS: rebuildActiveUnitStates / fillSnapshot
     SESS-->>SCN: BattleActionResult（已含完整 BattleSnapshot）
-    SCN->>SCN: 触发表现（动画、音效、HUD 刷新、日志滚动）
+    SCN->>SCN: 构建表现 plan / 启动 director / 调度 VFX-SFX-HP reveal marker
 ```
 
 关键细节：
@@ -161,6 +161,7 @@ sequenceDiagram
 - **公式 Lua 状态隔离**：`BattleFormulaEvaluator` 自己开一个最小 `sol::state`，与 `ScriptHost` 完全无关。每次求值前刷新 `a` / `b` 表，避免污染。
 - **道具库存独立副本**：进入战斗时 `BattleSessionOptions::item_stocks` 复制一份玩家背包的可用道具数量，战斗中扣减只改这个副本；战斗结束后 `GameScene` 会按 `remaining_item_stocks` 写回消耗差额，胜利时再额外落地金币、掉落、经验和任务进度。
 - **rebuildActiveUnitStates**：每次 submitAction 之后重建一份"存活单位 + 状态列表"快照，HUD 头顶图标按它绘制，避免直接读运行时状态。
+- **表现时间轴只读快照**：`BattleScene` 在拿到 result/snapshot 后才构建 `BattleActionPresentationPlan`、启动 `BattleAnimationDirector` 并调度 marker；Battle Speed 只缩放表现时间，不影响 resolver 或 `TurnCore`。
 
 ## 六、TurnCore — 回合机制的纯领域
 

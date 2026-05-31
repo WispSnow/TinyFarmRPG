@@ -135,6 +135,31 @@ TEST(BattleEnemyHpBarControllerTest, StagedSnapshotDoesNotChangeBarUntilReveal) 
     EXPECT_LT(controller.findBar(2)->display_ratio, 1.0f);
 }
 
+TEST(BattleEnemyHpBarControllerTest, StagedSnapshotRevealStartsRatioChangeWithoutSecondDelay) {
+    BattleEnemyHpBarConfig config{};
+    config.change_delay_seconds = 0.22f;
+    config.ratio_lerp_speed = 1.0f;
+    BattleEnemyHpBarController controller{config};
+    controller.syncFromSnapshot(makeSnapshot({makeUnit(2, game::battle::BattleSide::Enemy, 100)}));
+
+    auto result = makeDamageResult(2);
+    result.snapshot = makeSnapshot({makeUnit(2, game::battle::BattleSide::Enemy, 50)});
+    controller.stageSnapshot(result.snapshot);
+    controller.applyStagedSnapshotAndReveal(result);
+
+    const auto* revealed = controller.findBar(2);
+    ASSERT_NE(revealed, nullptr);
+    EXPECT_FLOAT_EQ(revealed->ratio_change_delay_seconds_remaining, 0.0f);
+    EXPECT_FLOAT_EQ(revealed->display_ratio, 1.0f);
+
+    controller.update(0.05f);
+
+    const auto* updated = controller.findBar(2);
+    ASSERT_NE(updated, nullptr);
+    EXPECT_LT(updated->display_ratio, 1.0f);
+    EXPECT_GT(updated->display_ratio, 0.5f);
+}
+
 TEST(BattleEnemyHpBarControllerTest, HiddenEnemiesStillTrackRatioAfterSnapshotChange) {
     BattleEnemyHpBarConfig config{};
     config.change_delay_seconds = 0.0f;

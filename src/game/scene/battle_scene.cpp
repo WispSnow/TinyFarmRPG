@@ -690,10 +690,12 @@ void BattleScene::executePendingAction() {
     const BattleAnimationTimelineConfig animation_config = animationConfigForPlan(presentation_plan);
     battle_enemy_hp_bar_controller_.stageSnapshot(last_action_result_->snapshot);
     schedulePresentationPlanEvents(presentation_plan, *last_action_result_);
+    const float popup_impact_time_seconds =
+        scaledAnimationSeconds(presentation_plan.impact_time_seconds, battle_animation_speed_);
     battle_damage_popup_controller_.spawnFromResult(
         *last_action_result_,
         unit_anchors,
-        presentation_plan.impact_time_seconds);
+        popup_impact_time_seconds);
     battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config);
     pending_action_.reset();
 }
@@ -2306,13 +2308,19 @@ void BattleScene::schedulePresentationPlanEvents(
     for (const auto& marker : plan.markers) {
         switch (marker.type) {
             case BattlePresentationMarkerType::TargetVfx:
-                schedulePresentationEvent(marker.vfx_command, marker.time_seconds);
+                schedulePresentationEvent(
+                    marker.vfx_command,
+                    scaledAnimationSeconds(marker.time_seconds, battle_animation_speed_));
                 break;
             case BattlePresentationMarkerType::TargetSfx:
-                schedulePresentationEvent(marker.sound_event, marker.time_seconds);
+                schedulePresentationEvent(
+                    marker.sound_event,
+                    scaledAnimationSeconds(marker.time_seconds, battle_animation_speed_));
                 break;
             case BattlePresentationMarkerType::EnemyHpReveal:
-                scheduleEnemyHpRevealEvent(result, marker.time_seconds);
+                scheduleEnemyHpRevealEvent(
+                    result,
+                    scaledAnimationSeconds(marker.time_seconds, battle_animation_speed_));
                 break;
         }
     }

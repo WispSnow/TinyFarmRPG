@@ -9,21 +9,24 @@
 
 namespace game::scene {
 
-void scaleAnimationTimeline(BattleAnimationTimelineConfig& config, float speed) noexcept {
+float scaledAnimationSeconds(const float seconds, const float speed) noexcept {
     if (!std::isfinite(speed) || speed <= 0.0f || speed == 1.0f) {
-        return;
+        return seconds;
     }
-    const float inv = 1.0f / speed;
-    config.attack_duration_seconds *= inv;
-    config.action_hold_seconds *= inv;
-    config.cast_duration_seconds *= inv;
-    config.minimum_duration_seconds *= inv;
-    config.duration_seconds *= inv;
-    config.impact_time_seconds *= inv;
-    config.hit_feedback_duration_seconds *= inv;
-    config.weapon_windup_seconds *= inv;
-    config.weapon_lunge_seconds *= inv;
-    config.weapon_return_seconds *= inv;
+    return seconds / speed;
+}
+
+void scaleAnimationTimeline(BattleAnimationTimelineConfig& config, float speed) noexcept {
+    config.attack_duration_seconds = scaledAnimationSeconds(config.attack_duration_seconds, speed);
+    config.action_hold_seconds = scaledAnimationSeconds(config.action_hold_seconds, speed);
+    config.cast_duration_seconds = scaledAnimationSeconds(config.cast_duration_seconds, speed);
+    config.minimum_duration_seconds = scaledAnimationSeconds(config.minimum_duration_seconds, speed);
+    config.duration_seconds = scaledAnimationSeconds(config.duration_seconds, speed);
+    config.impact_time_seconds = scaledAnimationSeconds(config.impact_time_seconds, speed);
+    config.hit_feedback_duration_seconds = scaledAnimationSeconds(config.hit_feedback_duration_seconds, speed);
+    config.weapon_windup_seconds = scaledAnimationSeconds(config.weapon_windup_seconds, speed);
+    config.weapon_lunge_seconds = scaledAnimationSeconds(config.weapon_lunge_seconds, speed);
+    config.weapon_return_seconds = scaledAnimationSeconds(config.weapon_return_seconds, speed);
 }
 
 namespace {

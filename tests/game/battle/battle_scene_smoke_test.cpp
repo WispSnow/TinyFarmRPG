@@ -793,6 +793,8 @@ TEST(BattleSceneSmokeTest, UsesDamagePopupControllerForResultNumbers) {
     EXPECT_NE(executing_snippet.find("collectBattlePresentationUnitAnchors()"), std::string::npos);
     EXPECT_NE(executing_snippet.find("battle_damage_popup_controller_.spawnFromResult("), std::string::npos);
     EXPECT_NE(executing_snippet.find("presentation_plan.impact_time_seconds"), std::string::npos);
+    EXPECT_NE(executing_snippet.find("scaledAnimationSeconds(presentation_plan.impact_time_seconds, battle_animation_speed_)"),
+              std::string::npos);
     EXPECT_NE(executing_snippet.find("battle_animation_director_.begin(*last_action_result_, unit_anchors, animation_config)"),
               std::string::npos);
 
@@ -851,6 +853,7 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetPresentationE
     EXPECT_NE(source.find("void BattleScene::schedulePresentationEvent"), std::string::npos);
     EXPECT_NE(source.find("void BattleScene::schedulePresentationPlanEvents"), std::string::npos);
     EXPECT_NE(source.find("void BattleScene::updateScheduledPresentationEvents"), std::string::npos);
+    EXPECT_NE(source.find("scaledAnimationSeconds(marker.time_seconds, battle_animation_speed_)"), std::string::npos);
     EXPECT_EQ(header.find("scheduled_vfx_commands_"), std::string::npos);
 
     const std::string executing_snippet = snippetFrom(source, "last_action_result_ = session_.submitAction", 1800U);
@@ -874,10 +877,10 @@ TEST(BattleSceneSmokeTest, TriggersConfiguredSkillAndPhysicalTargetPresentationE
     EXPECT_NE(vfx_snippet.find("presentation->target_vfx_scale_"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("BattlePresentationMarkerType::TargetVfx"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("BattlePresentationMarkerType::TargetSfx"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("usesPhysicalHitFallback(result, skill)"), std::string::npos);
+    EXPECT_NE(vfx_snippet.find("usesPhysicalHitFallback(result, skill_for_presentation)"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("request.default_attack_skill"), std::string::npos);
     EXPECT_NE(vfx_snippet.find("PHYSICAL_HIT_DEFAULT_VFX_ID"), std::string::npos);
-    EXPECT_NE(vfx_snippet.find("makeTargetVfxCommand(vfx_id, base_position + offset, scale)"), std::string::npos);
+    EXPECT_NE(plan_source.find("makeTargetVfxCommand(vfx_id, base_position + offset, scale)"), std::string::npos);
     EXPECT_NE(plan_source.find("plan.duration_seconds = std::max(plan.duration_seconds, plan.impact_time_seconds + plan.visual_tail_seconds)"),
               std::string::npos);
 
