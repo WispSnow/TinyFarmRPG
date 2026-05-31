@@ -716,7 +716,7 @@ flowchart LR
 - `BattleAction`、scope、target、resource cost。
 - `BattleActionResolver` 与 `BattleFormulaEvaluator` 的分工。
 - 技能、物品、状态、恢复、伤害的 catalog 驱动。
-- 战斗物品使用的是运行时副本，结束后再写回真实背包（呼应 L10/L13 的"原子写入"主线）。
+- 战斗物品使用的是运行时副本，结束后再经领域服务集中写回真实背包（呼应 L20 的结算收口）。
 - 状态效果（state）的回合计数、当前无 DoT 的实现边界，以及后续持续伤害扩展点。
 
 **阅读清单**：
@@ -824,26 +824,31 @@ flowchart LR
 **目标**：完成战斗闭环，理解胜利奖励、任务进度、库存消耗如何回到 GameScene。
 
 **知识点**：
-- `BattleRewardResolver`：金币、掉落、经验。
+- `BattleRewardResolver`：金币、掉落、经验，以及奖励数值护栏。
 - `BattleEndedEvent` 与 GameScene 结算流程。
-- 写回顺序：背包 → 钱包 → 任务进度（`QuestBattleProgressResolver`）→ 角色成长（`ActorProgressionService`）。
+- 写回顺序：物品消耗 → 金币 / 掉落 → 经验（`ActorProgressionService`）→ 任务进度（`QuestBattleProgressResolver`）。
 - 失败、逃跑、胜利三类 outcome 的不同处理。
 - 战斗中物品副本如何与真实背包合并（呼应 L17）。
+- 异常数据与边界：敌人负奖励加载失败，奖励汇总溢出封顶，钱包金币溢出时不污染状态。
 
 **阅读清单**：
 - `tests/game/game_scene_battle_reward_writeback_test.cpp`
+- `tests/game/battle/battle_reward_resolver_test.cpp`
 - `tests/game/quest_battle_progress_resolver_test.cpp`
+- `tests/game/rpg_catalog_test.cpp`
 
 **源码入口**：
 - `src/game/battle/battle_reward_resolver.*`
+- `src/game/data/rpg_catalog_enemies.*`
 - `src/game/domain/quest_battle_progress_resolver.*`
 - `src/game/scene/game_scene_battle_settlement.*`
 - `src/game/scene/game_scene_reward_feedback.*`
 
 **自测问题**：
-1. 写回顺序为什么是"背包先于任务进度"？反过来会发生什么？
+1. 写回顺序为什么是"物品消耗先于掉落入包、经验先于任务进度"？反过来会发生什么？
 2. 逃跑成功与战败在"消耗"和"奖励"上的差别？
 3. 等级提升的属性变化什么时候反馈给 UI？
+4. 金币奖励溢出或敌人负奖励数据分别在哪一层被拦住？
 
 **最小练习**：让某战斗胜利后掉落一件新物品，全链路验证从结算到背包再到 UI 显示。
 

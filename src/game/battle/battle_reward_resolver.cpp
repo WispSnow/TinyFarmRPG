@@ -4,6 +4,7 @@
 #include "game/data/rpg_data.h"
 
 #include <algorithm>
+#include <limits>
 #include <random>
 #include <string_view>
 #include <utility>
@@ -32,6 +33,16 @@ void appendItemDrop(BattleRewardSummary& summary, const std::string_view item_id
         .item_id = std::string{item_id},
         .item_id_hash = game::data::RpgCatalog::hashId(item_id),
         .count = 1});
+}
+
+[[nodiscard]] int checkedRewardSum(const int current, const int reward) {
+    if (reward <= 0) {
+        return current;
+    }
+    if (current > std::numeric_limits<int>::max() - reward) {
+        return std::numeric_limits<int>::max();
+    }
+    return current + reward;
 }
 
 } // namespace
@@ -66,8 +77,8 @@ BattleRewardSummary BattleRewardResolver::resolve(const BattleOutcome outcome,
             continue;
         }
 
-        summary.gold_total += enemy->gold_reward_;
-        summary.exp_total += enemy->exp_reward_;
+        summary.gold_total = checkedRewardSum(summary.gold_total, enemy->gold_reward_);
+        summary.exp_total = checkedRewardSum(summary.exp_total, enemy->exp_reward_);
 
         for (const auto& drop : enemy->drops_) {
             if (nextDropRoll() >= drop.chance_) {

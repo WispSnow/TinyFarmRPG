@@ -49,6 +49,10 @@ bool loadRpgEnemiesFile(const std::string_view file_path,
 
         enemy.exp_reward_ = enemy_node.value("exp", 0);
         enemy.gold_reward_ = enemy_node.value("gold", 0);
+        if (enemy.exp_reward_ < 0 || enemy.gold_reward_ < 0) {
+            spdlog::error("RpgCatalog: enemy '{}' exp/gold 奖励不能为负数", enemy.id_);
+            return false;
+        }
 
         if (const auto visual_it = enemy_node.find("battle_visual");
             visual_it != enemy_node.end() && !parseRpgBattleVisual(*visual_it, enemy.battle_visual_)) {
