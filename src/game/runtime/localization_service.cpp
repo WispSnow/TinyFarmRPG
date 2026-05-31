@@ -106,6 +106,23 @@ void replaceAll(std::string& value, const std::string& needle, const std::string
     return false;
 }
 
+[[nodiscard]] bool loadLanguageTable(const LocalizationLanguageInfo& info,
+                                     std::unordered_map<std::string, std::string>& out_table) {
+    const nlohmann::json root = parseJsonFile(info.file);
+    if (!root.is_object()) {
+        spdlog::warn("LocalizationService: language file '{}' 不是 object", info.file);
+        return false;
+    }
+
+    out_table.clear();
+    for (auto it = root.begin(); it != root.end(); ++it) {
+        if (it.value().is_string()) {
+            out_table.emplace(it.key(), it.value().get<std::string>());
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 bool LocalizationService::loadLanguageIndex(std::string_view manifest_path) {
@@ -143,18 +160,41 @@ bool LocalizationService::loadLanguageIndex(std::string_view manifest_path) {
         return false;
     }
 
+    const auto find_next_language = [&next_languages](std::string_view language_tag)
+        -> const LocalizationLanguageInfo* {
+        for (const auto& info : next_languages) {
+            if (info.tag == language_tag) {
+                return &info;
+            }
+        }
+        return nullptr;
+    };
+
+    const std::string requested_fallback = stringField(root, "fallback", next_languages.front().tag);
+    const auto* next_fallback = find_next_language(requested_fallback);
+    if (!next_fallback) {
+        next_fallback = find_next_language(fallback_language_tag_);
+    }
+    if (!next_fallback) {
+        next_fallback = &next_languages.front();
+    }
+
+    std::unordered_map<std::string, std::string> fallback_table{};
+    if (!loadLanguageTable(*next_fallback, fallback_table)) {
+        spdlog::warn(
+            "LocalizationService: fallback language '{}' 加载失败，language manifest 未提交。",
+            next_fallback->tag);
+        return false;
+    }
+
+    std::string next_fallback_tag = next_fallback->tag;
     languages_ = std::move(next_languages);
     tables_.clear();
+    tables_.emplace(next_fallback_tag, std::move(fallback_table));
     missing_key_warnings_.clear();
     unresolved_placeholder_warnings_.clear();
-    fallback_language_tag_ = stringField(root, "fallback", languages_.front().tag);
-    fallback_language_tag_ = resolveSupportedLanguageTag(fallback_language_tag_);
+    fallback_language_tag_ = std::move(next_fallback_tag);
     current_language_tag_ = fallback_language_tag_;
-
-    const auto* fallback = findLanguage(fallback_language_tag_);
-    if (fallback) {
-        (void)loadLanguageFile(*fallback);
-    }
     return true;
 }
 
@@ -265,17 +305,9 @@ bool LocalizationService::loadLanguageFile(const LocalizationLanguageInfo& info)
         return true;
     }
 
-    const nlohmann::json root = parseJsonFile(info.file);
-    if (!root.is_object()) {
-        spdlog::warn("LocalizationService: language file '{}' 不是 object", info.file);
-        return false;
-    }
-
     std::unordered_map<std::string, std::string> table{};
-    for (auto it = root.begin(); it != root.end(); ++it) {
-        if (it.value().is_string()) {
-            table.emplace(it.key(), it.value().get<std::string>());
-        }
+    if (!loadLanguageTable(info, table)) {
+        return false;
     }
 
     tables_.emplace(info.tag, std::move(table));

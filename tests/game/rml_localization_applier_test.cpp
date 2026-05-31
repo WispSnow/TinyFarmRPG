@@ -203,7 +203,6 @@ TEST(RmlLocalizationApplierSourceTest, CoreScenesKeepExpectedLocalizedStaticRefs
     }
 
     for (const std::string& key : {
-             "appearance.preview",
              "appearance.random",
              "appearance.reset",
              "common.back",

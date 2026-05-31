@@ -45,7 +45,7 @@ flowchart TD
 装配顺序：
 
 1. `RuntimeServiceFactory` 创建 `LocalizationService`。
-2. `LocalizationService::loadLanguageIndex(...)` 加载 manifest 和 fallback 语言。
+2. `LocalizationService::loadLanguageIndex(...)` 加载 manifest 和 fallback 语言；fallback 语言文件加载失败时，本次 manifest 不提交，旧状态保持不变。
 3. `UserSettingsService` 读取用户偏好或默认配置。
 4. `UserSettingsService::applyLanguage()` 设置当前语言、更新 `TextRenderer` 默认语言，并对所有 RmlUi 文档应用本地化。
 5. 用户切换语言时发 `LanguageChangedEvent`，各 Scene 刷新动态 ViewModel 文本。
@@ -64,7 +64,7 @@ RML 中的静态文本使用属性声明：
 - 查找 `[data-i18n]` 并替换 inner RML。
 - 查找 `[data-i18n-title]` 并替换 `title` 属性。
 
-注意：RML 里保留英文 fallback 文本是有价值的。即使本地化服务未加载，文档仍能显示基本内容。
+注意：RML 里保留英文 fallback 文本是有价值的。文档刚加载、`applyRmlLocalization(...)` 还没运行，或本地化服务未接入时，文档仍能显示基本内容。一旦 applier 跑起来，缺失 key 会走 `LocalizationService` 的 fallback 链，最终显示 fallback 译文或 `!key!`。
 
 ## C++ 动态文本
 
@@ -125,8 +125,8 @@ Lua 内容脚本可以直接使用同一套 key。剧情文本是否本地化取
 
 | 文件 | 说明 |
 |------|------|
-| `src/game/runtime/localization_service.*` | 语言 manifest、语言表、fallback、format |
-| `src/game/runtime/user_settings_service.*` | 语言偏好、应用语言、派发事件 |
+| `src/game/runtime/localization_service.*` | 语言 manifest、语言表、fallback 原子加载、format |
+| `src/game/runtime/user_settings_service.*` | 语言偏好、应用语言、派发 `LanguageChangedEvent` |
 | `src/game/ui/rml_localization_applier.*` | RML 静态文本替换 |
 | `src/game/ui/localized_text.h` | C++ UI 文本 helper |
 | `src/game/defs/options_events.h` | `LanguageChangedEvent` |
