@@ -6,6 +6,8 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 namespace engine::vfx {
 
 bool VfxCatalog::loadFromFile(std::string_view file_path) {
@@ -14,14 +16,13 @@ bool VfxCatalog::loadFromFile(std::string_view file_path) {
         return false;
     }
 
-    effect_paths_.clear();
-
     const auto effects_it = root.find("effects");
     if (effects_it == root.end() || !effects_it->is_object()) {
         spdlog::error("VfxCatalog: '{}' 缺少 effects 对象", file_path);
         return false;
     }
 
+    std::unordered_map<entt::id_type, std::string> next_effect_paths{};
     for (const auto& [effect_key, value] : effects_it->items()) {
         if (!value.is_string()) {
             continue;
@@ -32,14 +33,14 @@ bool VfxCatalog::loadFromFile(std::string_view file_path) {
         }
 
         const entt::id_type effect_id = entt::hashed_string{effect_key.c_str(), effect_key.size()}.value();
-        effect_paths_[effect_id] = effect_path;
+        next_effect_paths[effect_id] = effect_path;
     }
 
-    if (effect_paths_.empty()) {
+    if (next_effect_paths.empty()) {
         spdlog::warn("VfxCatalog: '{}' 未解析到任何有效特效路径，将以空目录继续运行", file_path);
-        return true;
     }
 
+    effect_paths_ = std::move(next_effect_paths);
     return true;
 }
 

@@ -27,12 +27,13 @@ flowchart TD
         CP --> VP["VfxPass<br/>(Overlay)"]
     end
 
-    EVB -. "backend::render()" .-> WVP
+    EVB -. "render(World)" .-> WVP
+    EVB -. "render(Overlay)" .-> VP
 ```
 
 核心设计原则：
 - **引擎层不依赖具体特效库**：`VfxBackend` 是纯抽象接口，Effekseer 头文件仅出现在 `effekseer_backend.h/.cpp` 中
-- **编译开关隔离**：所有 Effekseer 代码受 `TF_ENABLE_EFFEKSEER` 宏保护，关闭时只编译 `NullVfxBackend`
+- **编译开关隔离**：CMake `ENABLE_EFFEKSEER` 控制是否配置 / 链接 Effekseer，并通过 `TF_ENABLE_EFFEKSEER` 宏保护后端实现；关闭时仍保留 factory + `NullVfxBackend` 回退路径
 - **游戏逻辑与渲染解耦**：游戏侧通过 `PlayVfxCommand` 事件触发，不直接操作渲染后端
 
 ### 类关系
@@ -99,7 +100,7 @@ classDiagram
 
 ```cpp
 enum class VfxChannel : std::uint8_t {
-    World   = 0,   // 参与世界场景合成，受光照/bloom 后处理影响
+    World   = 0,   // 参与世界场景合成，走相机 VP；当前不参与 bloom
     Overlay = 1    // 合成之后直接画到屏幕，不受后处理影响
 };
 ```
@@ -208,7 +209,7 @@ sequenceDiagram
     Note over GL,BE: frame N+1 ...
 ```
 
-调用时机：`GameScene::update(dt)` 中调用 `services_->vfx_service->update(dt)`。
+调用时机：`GameScene::update(dt)` 和 `BattleScene::update(dt)` 都会调用 `services_->vfx_service->update(dt)`。如果某个请求在本次 update 的 `VfxService::update()` 之前提交，它会同一次 update 被 flush；如果提交点已经在本次 flush 之后，则等下一次 update。
 
 ---
 
@@ -426,6 +427,8 @@ struct PlayVfxCommand {
 
 键名通过 `entt::hashed_string` 哈希为 `entt::id_type`，查找 `O(1)`。
 
+`loadFromFile()` 先解析到临时 `id -> path` map，确认 JSON shape 有效后才替换旧表；失败重载会保留既有映射，避免运行中把 catalog 清空。
+
 ### 7.3 VfxBridgeSystem
 
 线索：`src/engine/vfx/vfx_bridge_system.h/.cpp`
@@ -448,6 +451,8 @@ sequenceDiagram
 ```
 
 无效 effect_id 或 catalog 中未配置的特效会被安全忽略并记录警告日志。
+
+当前 gameplay 内置触发点只有战斗表现层的 `TargetVfx` marker。调试面板会直接调用 `VfxService::submit()` 试播裸 `.efkefc` 文件，绕过 dispatcher / catalog；地图事件和 UI 复用 `PlayVfxCommand` 是开放扩展点，当前没有 Lua `tf.vfx` 绑定，也没有内置地图 / UI 发射点。
 
 ---
 
@@ -475,6 +480,7 @@ sequenceDiagram
     BS->>VC: findEffectPath(effect_id)
     VC-->>BS: effect_path
     BS->>VS: submit(VfxPlayRequest)
+    Note over VS: 若本次 flush 点未过<br/>同一次 update 继续执行
     GL->>VS: update(dt)
     VS->>BE: enqueueBatch(requests)
     Note over BE: loadEffect / Play / SetLayer
@@ -507,9 +513,16 @@ option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)   # 默认开启
 
 开启后：
 - 调用 `cmake/EffekseerDependencies.cmake` 中的 `setup_effekseer_dependencies()`
-- 为 `engine` 和 `game` 目标添加 `TF_ENABLE_EFFEKSEER` 编译定义
+- 为 `engine` 添加 PUBLIC `TF_ENABLE_EFFEKSEER` 编译定义，`game` 作为依赖方继承该定义
 - 链接 `Effekseer` + `EffekseerRendererGL` 库
 - 添加 Effekseer 头文件搜索路径
+- 编译 `src/engine/vfx/effekseer_backend.cpp`
+
+关闭后：
+- 跳过 Effekseer 依赖配置、链接和头文件搜索路径
+- 不编译 `effekseer_backend.cpp`
+- 仍编译 `effekseer_backend_factory.cpp`，但 `createEffekseerBackend()` 返回 `nullptr`
+- 运行时回退到 `NullVfxBackend`
 
 ### Effekseer 源码接入
 
@@ -560,7 +573,8 @@ flowchart TD
 | `tests/engine/vfx/vfx_service_test.cpp` | VfxService 队列/flush/null 回退 |
 | `tests/engine/render/vfx_pipeline_stage_test.cpp` | pass 顺序、present 执行序、clean/setBackend 委派 |
 | `tests/engine/render/vfx_dual_channel_pipeline_test.cpp` | 双通道 FBO 清除、CompositePass 纹理绑定 |
-| `tests/engine/vfx/vfx_bridge_system_test.cpp` | 命令→catalog→service 端到端、缺失 effect_id、null catalog |
+| `tests/engine/vfx/vfx_bridge_system_test.cpp` | 命令→catalog→service 端到端、缺失 effect_id、null catalog、catalog 失败重载保留旧表 |
+| `tests/engine/vfx/vfx_optional_backend_source_test.cpp` | Effekseer 可选构建开关、factory disabled fallback 源码护栏 |
 | `tests/shared/recording_vfx_backend.h` | 测试替身，记录所有后端调用供断言 |
 
 ### Visual Tester

@@ -20,6 +20,7 @@ set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
 option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
 option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ON)
+option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位，降低冲突风险
@@ -69,7 +70,9 @@ include(CTest)
 # 调用依赖配置函数（定义在Dependencies.cmake中）
 setup_project_dependencies()
 setup_scripting_dependencies()
-setup_effekseer_dependencies()
+if(ENABLE_EFFEKSEER)
+    setup_effekseer_dependencies()
+endif()
 setup_rmlui_dependencies()
 
 # ============================================
@@ -84,6 +87,9 @@ if(ENABLE_DEBUG_UI)
 endif()
 if(ENABLE_RMLUI_DEBUGGER)
     target_compile_definitions(engine PUBLIC TF_ENABLE_RMLUI_DEBUGGER)
+endif()
+if(ENABLE_EFFEKSEER)
+    target_compile_definitions(engine PUBLIC TF_ENABLE_EFFEKSEER)
 endif()
 
 # 链接所有依赖库
@@ -122,15 +128,17 @@ target_link_libraries(engine
         sol2::sol2
 )
 
-target_link_libraries(engine
-    PUBLIC
-        Effekseer
-        EffekseerRendererGL
-)
-target_include_directories(engine
-    PUBLIC
-        ${EFFEKSEER_RUNTIME_INCLUDE_DIRS}
-)
+if(ENABLE_EFFEKSEER)
+    target_link_libraries(engine
+        PUBLIC
+            Effekseer
+            EffekseerRendererGL
+    )
+    target_include_directories(engine
+        PUBLIC
+            ${EFFEKSEER_RUNTIME_INCLUDE_DIRS}
+    )
+endif()
 
 target_link_libraries(engine
     PUBLIC

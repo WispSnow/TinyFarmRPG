@@ -13,19 +13,18 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace {
 
-std::string createVfxCatalogFixture() {
-    const auto temp_root = test::utils::createUniqueTempDir("vfx_catalog_fixture");
-    const auto catalog_path = temp_root / "vfx_catalog.json";
-    test::utils::writeTextFile(
-        catalog_path,
-        R"json({
+std::string createVfxCatalogFixture(std::string_view content = R"json({
   "effects": {
     "laser01": "assets/vfx/00_Basic/Laser01.efkefc"
   }
-})json");
+})json") {
+    const auto temp_root = test::utils::createUniqueTempDir("vfx_catalog_fixture");
+    const auto catalog_path = temp_root / "vfx_catalog.json";
+    test::utils::writeTextFile(catalog_path, std::string{content});
     return catalog_path.string();
 }
 
@@ -33,6 +32,24 @@ std::string createVfxCatalogFixture() {
 
 namespace engine::vfx {
 namespace {
+
+TEST(VfxCatalogTest, FailedReloadKeepsExistingMappings) {
+    VfxCatalog catalog;
+    ASSERT_TRUE(catalog.loadFromFile(createVfxCatalogFixture()));
+
+    const auto laser_id = entt::hashed_string{"laser01"}.value();
+    const auto* initial_path = catalog.findEffectPath(laser_id);
+    ASSERT_NE(initial_path, nullptr);
+    EXPECT_EQ(*initial_path, "assets/vfx/00_Basic/Laser01.efkefc");
+
+    ASSERT_FALSE(catalog.loadFromFile(createVfxCatalogFixture(R"json({
+  "not_effects": {}
+})json")));
+
+    const auto* preserved_path = catalog.findEffectPath(laser_id);
+    ASSERT_NE(preserved_path, nullptr);
+    EXPECT_EQ(*preserved_path, "assets/vfx/00_Basic/Laser01.efkefc");
+}
 
 TEST(VfxBridgeSystemTest, PlayCommandSubmitsResolvedRequestToVfxService) {
     entt::dispatcher dispatcher;

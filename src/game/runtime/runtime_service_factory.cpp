@@ -191,9 +191,13 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
     if (!services.vfx_service) {
         std::unique_ptr<engine::vfx::VfxBackend> backend{};
         backend = engine::vfx::createEffekseerBackend();
+#ifdef TF_ENABLE_EFFEKSEER
         if (!backend) {
             spdlog::warn("EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
         }
+#else
+        spdlog::info("Effekseer VFX 后端未启用，将使用 NullVfxBackend。");
+#endif
         if (!backend) {
             backend = std::make_unique<engine::vfx::NullVfxBackend>();
         }
