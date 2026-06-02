@@ -8,20 +8,55 @@ project(TinyFarmRPG VERSION 0.1.0 LANGUAGES C CXX)
 # 基础配置
 # ============================================
 
-# 指定搜索路径（用于find_package在编译期查找库）
-set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/prebuilt)
-list(APPEND CMAKE_PREFIX_PATH $ENV{HOME}/.local)
+option(TF_BUILD_WEB "构建 WebAssembly/WebGL2 walking skeleton" OFF)
+
+if(TF_BUILD_WEB AND NOT EMSCRIPTEN)
+    message(FATAL_ERROR "TF_BUILD_WEB=ON must be configured with emcmake.")
+endif()
+
+if(TF_BUILD_WEB)
+    set(TF_DEFAULT_ENABLE_DEBUG_UI OFF)
+    set(TF_DEFAULT_ENABLE_RMLUI_DEBUGGER OFF)
+    set(TF_DEFAULT_ENABLE_EFFEKSEER OFF)
+    set(TF_DEFAULT_ENABLE_TSAN OFF)
+    set(TF_DEFAULT_BUILD_TOOLS OFF)
+    set(TF_DEFAULT_BUILD_RMLUI_TESTER OFF)
+    set(TF_DEFAULT_BUILD_LEARN OFF)
+    set(TF_DEFAULT_BUILD_TESTING OFF)
+else()
+    set(TF_DEFAULT_ENABLE_DEBUG_UI ON)
+    set(TF_DEFAULT_ENABLE_RMLUI_DEBUGGER ON)
+    set(TF_DEFAULT_ENABLE_EFFEKSEER ON)
+    set(TF_DEFAULT_ENABLE_TSAN OFF)
+    set(TF_DEFAULT_BUILD_TOOLS ON)
+    set(TF_DEFAULT_BUILD_RMLUI_TESTER ON)
+    set(TF_DEFAULT_BUILD_LEARN ON)
+    set(TF_DEFAULT_BUILD_TESTING ON)
+endif()
+
+if(NOT EMSCRIPTEN)
+    # 指定搜索路径（用于find_package在编译期查找库）
+    set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/prebuilt)
+    list(APPEND CMAKE_PREFIX_PATH $ENV{HOME}/.local)
+endif()
 
 # 指定目标名称
 set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
+if(TF_BUILD_WEB)
+    set(TARGET ${PROJECT_NAME}-Web)
+endif()
 
 # 依赖库默认链接类型：ON = 动态链接(.dll/.so/.dylib)，OFF = 静态链接(.lib/.a)
 # 注意：可以在Dependencies.cmake中为每个库单独指定
 option(BUILD_SHARED_LIBS "依赖库默认编译为动态库" OFF)
-option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
-option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ON)
-option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
-option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
+option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ${TF_DEFAULT_ENABLE_DEBUG_UI})
+option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ${TF_DEFAULT_ENABLE_RMLUI_DEBUGGER})
+option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ${TF_DEFAULT_ENABLE_EFFEKSEER})
+option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" ${TF_DEFAULT_ENABLE_TSAN})
+option(BUILD_TOOLS "是否构建工具" ${TF_DEFAULT_BUILD_TOOLS})
+option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ${TF_DEFAULT_BUILD_RMLUI_TESTER})
+option(BUILD_LEARN "构建学习/实验目标" ${TF_DEFAULT_BUILD_LEARN})
+option(BUILD_TESTING "是否构建测试" ${TF_DEFAULT_BUILD_TESTING})
 
 # EnTT 资源/哈希 ID 使用 64 位；并行 ECS worker 会跨线程访问 EnTT storage，
 # 因此启用 EnTT 文档建议的 atomic 内部状态。
@@ -36,6 +71,13 @@ add_compile_definitions(
 
 # 编译器设置（C++标准、编译选项等）
 include(cmake/CompilerSettings.cmake)
+
+if(TF_BUILD_WEB)
+    include(cmake/WebPreload.cmake)
+    add_subdirectory(src/web)
+    message(STATUS "TinyFarmRPG Web target configured: ${TARGET}")
+    return()
+endif()
 
 # 运行时路径配置（RPATH）
 include(cmake/RuntimePath.cmake)
@@ -200,9 +242,6 @@ setup_windows_dll_copy(${TARGET})
 # 工具配置
 # ============================================
 
-option(BUILD_TOOLS "是否构建工具" ON)
-option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
-
 if(BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
@@ -211,8 +250,6 @@ endif()
 # 学习/实验配置
 # ============================================
 
-option(BUILD_LEARN "构建学习/实验目标" ON)
-
 if(BUILD_LEARN)
     add_subdirectory(learn)
 endif()
@@ -220,8 +257,6 @@ endif()
 # ============================================
 # 测试配置
 # ============================================
-
-option(BUILD_TESTING "是否构建测试" ON)
 
 if(BUILD_TESTING)
     enable_testing()

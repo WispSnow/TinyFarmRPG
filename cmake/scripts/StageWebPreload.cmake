@@ -1,0 +1,61 @@
+if(NOT DEFINED TF_SOURCE_DIR OR NOT DEFINED TF_MANIFEST OR NOT DEFINED TF_STAGE_DIR OR NOT DEFINED TF_STAMP)
+    message(FATAL_ERROR "StageWebPreload.cmake requires TF_SOURCE_DIR, TF_MANIFEST, TF_STAGE_DIR, and TF_STAMP.")
+endif()
+
+if(NOT EXISTS "${TF_MANIFEST}")
+    message(FATAL_ERROR "Web preload manifest not found: ${TF_MANIFEST}")
+endif()
+
+file(REMOVE_RECURSE "${TF_STAGE_DIR}")
+file(MAKE_DIRECTORY "${TF_STAGE_DIR}")
+
+file(STRINGS "${TF_MANIFEST}" _preload_lines ENCODING UTF-8)
+set(_count 0)
+
+foreach(_raw_line IN LISTS _preload_lines)
+    string(STRIP "${_raw_line}" _line)
+    if(_line STREQUAL "" OR _line MATCHES "^#")
+        continue()
+    endif()
+
+    if(_line MATCHES "^--preload-file[ \t]+(.+)$")
+        set(_payload "${CMAKE_MATCH_1}")
+    elseif(_line MATCHES "^--preload-file=(.+)$")
+        set(_payload "${CMAKE_MATCH_1}")
+    else()
+        message(FATAL_ERROR "Unsupported web preload arg in ${TF_MANIFEST}: ${_line}")
+    endif()
+
+    if(_payload MATCHES "^(.+)@(.+)$")
+        set(_source_path "${CMAKE_MATCH_1}")
+        set(_mount_path "${CMAKE_MATCH_2}")
+    else()
+        set(_source_path "${_payload}")
+        set(_mount_path "${_payload}")
+    endif()
+
+    if(IS_ABSOLUTE "${_source_path}")
+        set(_resolved_source "${_source_path}")
+    else()
+        set(_resolved_source "${TF_SOURCE_DIR}/${_source_path}")
+    endif()
+
+    if(NOT EXISTS "${_resolved_source}")
+        message(FATAL_ERROR "Web preload source not found: ${_resolved_source}")
+    endif()
+
+    if(_mount_path MATCHES "^/(.*)$")
+        set(_relative_mount "${CMAKE_MATCH_1}")
+    else()
+        set(_relative_mount "${_mount_path}")
+    endif()
+
+    set(_destination "${TF_STAGE_DIR}/${_relative_mount}")
+    get_filename_component(_destination_dir "${_destination}" DIRECTORY)
+    file(MAKE_DIRECTORY "${_destination_dir}")
+    file(COPY "${_resolved_source}" DESTINATION "${_destination_dir}")
+    math(EXPR _count "${_count} + 1")
+endforeach()
+
+file(WRITE "${TF_STAMP}" "TinyFarmRPG web preload staged ${_count} files\n")
+message(STATUS "Staged ${_count} web preload files into ${TF_STAGE_DIR}")
