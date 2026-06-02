@@ -1,5 +1,7 @@
 #include "game/runtime/user_settings_service.h"
 
+#include "engine/platform/filesystem_paths.h"
+
 #include "game/data/game_time.h"
 #include "game/defs/options_events.h"
 #include "game/runtime/localization_service.h"
@@ -64,7 +66,8 @@ bool UserSettingsService::loadFromFile(std::string_view path) {
 }
 
 bool UserSettingsService::loadFromFileOrFallback(std::string_view user_path, std::string_view default_path) {
-    if (loadFromFile(user_path)) {
+    const std::filesystem::path user_override_path = engine::platform::userOverridePathFor(user_path);
+    if (loadFromFile(user_override_path.string())) {
         return true;
     }
     if (loadFromFile(default_path)) {
@@ -76,7 +79,7 @@ bool UserSettingsService::loadFromFileOrFallback(std::string_view user_path, std
 }
 
 bool UserSettingsService::saveToFile(std::string_view path) const {
-    const std::filesystem::path fs_path{path};
+    const std::filesystem::path fs_path = engine::platform::writableConfigPath(path);
     if (auto parent = fs_path.parent_path(); !parent.empty()) {
         std::error_code ec{};
         std::filesystem::create_directories(parent, ec);

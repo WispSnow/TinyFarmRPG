@@ -1,5 +1,7 @@
 #include "save_service.h"
 
+#include "engine/platform/filesystem_paths.h"
+
 #include "save_migrator.h"
 #include "game/world/map_snapshot_serializer.h"
 #include "game/world/map_manager.h"
@@ -358,7 +360,7 @@ SaveService::SaveService(engine::core::Context& context,
 
 std::filesystem::path SaveService::slotPath(int slot) {
     slot = std::clamp(slot, 0, 9);
-    return std::filesystem::path("saves") / ("slot" + std::to_string(slot) + ".json");
+    return engine::platform::saveRoot() / ("slot" + std::to_string(slot) + ".json");
 }
 
 bool SaveService::writeSaveFile(const SaveData& data,

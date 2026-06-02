@@ -1,4 +1,6 @@
 #include "engine/platform/gl_platform.h"
+#include "engine/platform/filesystem_paths.h"
+#include "engine/platform/web_persistent_storage.h"
 
 #include <SDL3/SDL.h>
 #include <emscripten/emscripten.h>
@@ -17,6 +19,8 @@
 #include <charconv>
 #include <cstdio>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,6 +31,7 @@ namespace {
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
 constexpr std::string_view kMapPath = "/assets/maps/home_exterior.tmj";
+constexpr std::string_view kPersistenceSmokePath = "/persistent/saves/web_persistence_smoke.json";
 
 constexpr const char* kTileVertexShader = R"(#version 300 es
 layout(location = 0) in vec2 a_position;
@@ -74,6 +79,13 @@ struct DrawBatch {
     GLsizei vertex_count{};
 };
 
+enum class StartupStage {
+    WaitingPersistentSync,
+    ReadyToInitialize,
+    Failed,
+    Running,
+};
+
 struct TileLayer {
     std::string name;
     int width{};
@@ -118,6 +130,7 @@ struct WebApp {
     int map_height_pixels{};
     std::vector<Tileset> tilesets;
     std::vector<DrawBatch> batches;
+    StartupStage startup_stage{StartupStage::WaitingPersistentSync};
     bool running{true};
 };
 
@@ -174,6 +187,44 @@ std::optional<std::uint32_t> parseUintAfter(std::string_view text,
         return std::nullopt;
     }
     return value;
+}
+
+std::uint32_t readPersistenceSmokeCounter() {
+    std::error_code ec{};
+    if (!std::filesystem::exists(std::filesystem::path{kPersistenceSmokePath}, ec) || ec) {
+        return 0;
+    }
+
+    const std::string text = readFileText(kPersistenceSmokePath);
+    if (text.empty()) {
+        return 0;
+    }
+    return parseUintAfter(text, "\"boot_count\":").value_or(0);
+}
+
+bool writePersistenceSmokeCounter(std::uint32_t boot_count) {
+    const std::filesystem::path smoke_path{kPersistenceSmokePath};
+    if (const auto dir = smoke_path.parent_path(); !dir.empty()) {
+        std::error_code ec{};
+        std::filesystem::create_directories(dir, ec);
+        if (ec) {
+            std::fprintf(stderr, "Failed to create persistent save directory: %s\n", ec.message().c_str());
+            return false;
+        }
+    }
+
+    std::ofstream file(smoke_path, std::ios::binary | std::ios::trunc);
+    if (!file.is_open()) {
+        std::fprintf(stderr, "Failed to write persistent smoke file: %s\n", smoke_path.string().c_str());
+        return false;
+    }
+    file << "{\n"
+         << "  \"schema\": 1,\n"
+         << "  \"boot_count\": " << boot_count << ",\n"
+         << "  \"note\": \"TinyFarmRPG Web IDBFS smoke\"\n"
+         << "}\n";
+    file.flush();
+    return file.good();
 }
 
 std::optional<bool> parseBoolAfter(std::string_view text,
@@ -829,14 +880,76 @@ bool initialize(WebApp& app) {
     return true;
 }
 
+void mainLoop(void* user_data) {
+    auto* app = static_cast<WebApp*>(user_data);
+    if (app == nullptr || !app->running) {
+        emscripten_cancel_main_loop();
+        return;
+    }
+
+    switch (app->startup_stage) {
+    case StartupStage::WaitingPersistentSync:
+        return;
+    case StartupStage::ReadyToInitialize:
+        if (!initialize(*app)) {
+            std::fprintf(stderr, "TinyFarmRPG Web failed to start after persistent FS setup.\n");
+            app->startup_stage = StartupStage::Failed;
+            app->running = false;
+            emscripten_cancel_main_loop();
+            return;
+        }
+        app->startup_stage = StartupStage::Running;
+        break;
+    case StartupStage::Failed:
+        emscripten_cancel_main_loop();
+        return;
+    case StartupStage::Running:
+        break;
+    }
+
+    frame(user_data);
+}
+
+void onPersistentSyncedToBrowser(bool success, void* user_data) {
+    if (!success) {
+        std::fprintf(stderr, "Persistent FS sync-to-browser failed; continuing with in-memory data.\n");
+    }
+
+    auto* app = static_cast<WebApp*>(user_data);
+    if (app != nullptr) {
+        app->startup_stage = StartupStage::ReadyToInitialize;
+    }
+}
+
+void onPersistentSyncedFromBrowser(bool success, void* user_data) {
+    if (!success) {
+        std::fprintf(stderr, "Persistent FS sync-from-browser failed; continuing with in-memory data.\n");
+        onPersistentSyncedToBrowser(false, user_data);
+        return;
+    }
+
+    const std::uint32_t previous_boot_count = readPersistenceSmokeCounter();
+    const std::uint32_t next_boot_count = previous_boot_count + 1;
+    if (!writePersistenceSmokeCounter(next_boot_count)) {
+        std::fprintf(stderr, "Persistent FS smoke write failed; continuing without IDBFS smoke.\n");
+        onPersistentSyncedToBrowser(false, user_data);
+        return;
+    }
+
+    std::printf(
+        "persistent smoke: root=%s path=%s previous_boot_count=%u next_boot_count=%u\n",
+        engine::platform::WEB_PERSISTENT_ROOT.data(),
+        kPersistenceSmokePath.data(),
+        previous_boot_count,
+        next_boot_count);
+    engine::platform::web::syncPersistentStorageToBrowser(onPersistentSyncedToBrowser, user_data);
+}
+
 } // namespace
 
 int main() {
     static WebApp app{};
-    if (!initialize(app)) {
-        return 1;
-    }
-
-    emscripten_set_main_loop_arg(frame, &app, 0, true);
+    engine::platform::web::syncPersistentStorageFromBrowser(onPersistentSyncedFromBrowser, &app);
+    emscripten_set_main_loop_arg(mainLoop, &app, 0, true);
     return 0;
 }

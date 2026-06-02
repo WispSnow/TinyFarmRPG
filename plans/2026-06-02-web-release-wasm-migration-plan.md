@@ -2,7 +2,7 @@
 
 ## 元信息
 - 目标分支：`web-release`
-- 状态：`Phase 4 WebGL2 Tile Smoke Implemented`
+- 状态：`Phase 5 Persistent FS Smoke Implemented`
 - 目标平台：浏览器 WebAssembly + WebGL2
 - 首版策略：单线程、WebGL2、资源包精简、基础玩法闭环
 - 当前工具链：`emsdk latest` 已安装到 `~/.local/emsdk`，当前解析版本为 `5.0.7`
@@ -10,6 +10,7 @@
 - Phase 2 实施记录：`plans/reports/2026-06-02-web-release-phase-2-report.md`
 - Phase 3 实施记录：`plans/reports/2026-06-02-web-release-phase-3-report.md`
 - Phase 4 实施记录：`plans/reports/2026-06-02-web-release-phase-4-report.md`
+- Phase 5 实施记录：`plans/reports/2026-06-02-web-release-phase-5-report.md`
 
 ## 结论与范围收敛
 当前项目可以迁移到 WebAssembly/WebGL2，但不适合直接把桌面端构建一键搬到网页端。审阅后调整为“先在共享发布基线定版资源，再切 `web-release`，随后尽快点亮 Web walking skeleton”的路线：
@@ -417,7 +418,7 @@ cmake --build build/web-release
 - [ ] 增加 `EMSCRIPTEN` CMake 骨架，确保不查找桌面 OpenGL、不硬链 SDL3_image。
 - [ ] 拆分 `GameApp::run()`，优先迁移到 SDL3 main callbacks。
 - [ ] 建立 GLES3 shader 变体，先跑通基础 quad/map。
-- [ ] 接入 `web-poc-assets` preload manifest 和 persistent save root。
+- [x] 接入 `web-poc-assets` preload manifest 和 persistent save root。
 - [ ] 形成第一版 Web POC 验收记录。
 
 ## 参考资料

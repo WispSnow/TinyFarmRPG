@@ -1,4 +1,5 @@
 #include "config.h"
+#include "engine/platform/filesystem_paths.h"
 #include <fstream>
 #include <filesystem>
 #include <limits>
@@ -32,7 +33,11 @@ bool Config::loadFromFile(std::string_view filepath) {
     auto path = std::filesystem::path(filepath);    // 将string_view转换为文件路径 (或std::sring)
     std::ifstream file(path);                       // ifstream 不支持std::string_view 构造
     if (!file.is_open()) {
-        spdlog::warn("配置文件 '{}' 未找到。使用默认设置并创建默认配置文件。", filepath);
+        spdlog::warn("配置文件 '{}' 未找到。使用默认设置。", filepath);
+        if (!engine::platform::shouldWriteMissingReadonlyDefaults()) {
+            return false;
+        }
+        spdlog::info("正在为缺失配置 '{}' 创建默认配置文件。", filepath);
         if (!saveToFile(filepath)) {
             spdlog::error("无法创建默认配置文件 '{}'。", filepath);
             return false;
@@ -57,21 +62,25 @@ bool Config::loadFromFile(std::string_view filepath) {
 }
 
 bool Config::saveToFile(std::string_view filepath) {
-    auto path = std::filesystem::path(filepath);    // 将string_view转换为文件路径
+    auto path = engine::platform::writableConfigPath(filepath);
+    if (auto parent = path.parent_path(); !parent.empty()) {
+        std::error_code ec{};
+        std::filesystem::create_directories(parent, ec);
+    }
     std::ofstream file(path);
     if (!file.is_open()) {
-        spdlog::error("无法打开配置文件 '{}' 进行写入。", filepath);
+        spdlog::error("无法打开配置文件 '{}' 进行写入。", path.string());
         return false;
     }
 
     nlohmann::ordered_json j = toJson();
     file << j.dump(4);
     if (!file.good()) {
-        spdlog::error("写入配置文件 '{}' 时出错。", filepath);
+        spdlog::error("写入配置文件 '{}' 时出错。", path.string());
         return false;
     }
 
-    spdlog::info("成功将配置保存到 '{}'。", filepath);
+    spdlog::info("成功将配置保存到 '{}'。", path.string());
     return true;
 }
 

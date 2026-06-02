@@ -1,5 +1,7 @@
 #include "engine/input/input_binding_config.h"
 
+#include "engine/platform/filesystem_paths.h"
+
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -12,8 +14,14 @@ std::optional<InputMappingTable> loadInputMappingsConfig(const std::string_view 
         return std::nullopt;
     }
 
-    const std::filesystem::path path{config_path};
+    const std::filesystem::path user_override_path = engine::platform::userOverridePathFor(config_path);
+    const bool has_distinct_user_override = user_override_path != std::filesystem::path{config_path};
+    std::filesystem::path path = user_override_path;
     std::ifstream file(path);
+    if (!file.is_open() && has_distinct_user_override) {
+        path = std::filesystem::path{config_path};
+        file.open(path);
+    }
     if (!file.is_open()) {
         spdlog::warn("InputManager: 无法打开输入配置文件 '{}'，使用默认映射。", path.string());
         return std::nullopt;
@@ -96,7 +104,11 @@ bool persistInputBindingsConfig(
     nlohmann::ordered_json root = nlohmann::ordered_json::object();
     root["input_mappings"] = std::move(mappings);
 
-    const std::filesystem::path path{config_path};
+    const std::filesystem::path path = engine::platform::writableConfigPath(config_path);
+    if (auto parent = path.parent_path(); !parent.empty()) {
+        std::error_code ec{};
+        std::filesystem::create_directories(parent, ec);
+    }
     const std::filesystem::path temp_path = path.string() + ".tmp";
     const std::filesystem::path backup_path = path.string() + ".bak";
     {

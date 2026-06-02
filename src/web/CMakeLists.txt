@@ -10,6 +10,8 @@ set(TF_WEB_PRELOAD_ARGS
 
 add_executable(${TARGET}
     web_main.cpp
+    ${CMAKE_SOURCE_DIR}/src/engine/platform/filesystem_paths.cpp
+    ${CMAKE_SOURCE_DIR}/src/engine/platform/web_persistent_storage.cpp
 )
 
 target_compile_features(${TARGET} PRIVATE cxx_std_20)
@@ -37,6 +39,7 @@ target_link_options(${TARGET}
         -sINITIAL_MEMORY=134217728
         -sFORCE_FILESYSTEM=1
         -sEXIT_RUNTIME=0
+        -lidbfs.js
 )
 
 tf_target_web_preload(${TARGET} "${TF_WEB_PRELOAD_ARGS}")
