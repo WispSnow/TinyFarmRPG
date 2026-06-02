@@ -39,6 +39,7 @@ private:
     void buildMapTrigger();
     void buildScriptZone();
     void buildRestArea();
+    void buildRespawnPoint();
     void buildClosetArea();
     void attachMapId();
     void attachScriptMetadata();

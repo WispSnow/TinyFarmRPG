@@ -42,6 +42,8 @@
 #include "game/defs/commands.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/domain/party_rest_service.h"
+#include "game/runtime/game_content_manifest.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/scene/battle_scene_entry.h"
@@ -89,6 +91,9 @@ using namespace entt::literals;
 namespace {
 constexpr game::defs::DialogueChannel BATTLE_REWARD_NOTIFICATION_CHANNEL = game::defs::DialogueChannel::Notice;
 constexpr int NEW_GAME_INITIAL_GOLD = 300;
+constexpr int DEFEAT_RECOVERY_HOURS = 24;
+constexpr std::string_view DEFEAT_RESPAWN_POINT_ID = "respawn";
+const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -242,6 +247,40 @@ struct BattleRuntimeStatsWritebackResult {
         ++runtime_stats.revision_;
     }
     return result;
+}
+
+[[nodiscard]] bool applyDefeatRecovery(entt::registry& registry,
+                                       const game::runtime::GameRuntimeServices* services,
+                                       const entt::entity player) {
+    if (player == entt::null || !registry.valid(player)) {
+        return false;
+    }
+    if (!services || !services->rpg_catalog) {
+        spdlog::warn("GameScene: RPG catalog 不可用，跳过战败恢复。");
+        return false;
+    }
+
+    const auto result = game::domain::PartyRestService::applyActivePartyRecovery(
+        registry,
+        player,
+        *services->rpg_catalog,
+        DEFEAT_RECOVERY_HOURS);
+    return result.runtime_state_changed;
+}
+
+void warpPlayerToDefeatRespawn(entt::registry& registry, entt::dispatcher& dispatcher) {
+    const entt::entity player = findPlayer(registry);
+    if (player == entt::null) {
+        spdlog::warn("GameScene: 战败传送失败，找不到玩家实体。");
+        return;
+    }
+
+    dispatcher.trigger(game::defs::WarpToMapCommand{
+        .player = player,
+        .map_id = game::runtime::GameContentManifest::HomeInteriorMapName,
+        .position = DEFEAT_RESPAWN_FALLBACK_POSITION,
+        .spawn_point = std::string{DEFEAT_RESPAWN_POINT_ID},
+    });
 }
 
 [[nodiscard]] std::string sanitizeBattleBackgroundId(std::string_view id, std::string_view source_label) {
@@ -1044,7 +1083,12 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
                  evt.final_units.size());
     battle_in_progress_ = false;
     const auto runtime_stats_writeback = writeBackBattleRuntimeStats(registry_, services_.get(), evt.final_units);
-    if (runtime_stats_writeback.changed && runtime_stats_writeback.player != entt::null) {
+    bool runtime_stats_changed = runtime_stats_writeback.changed;
+    if (evt.outcome == game::battle::BattleOutcome::Defeat) {
+        runtime_stats_changed = applyDefeatRecovery(registry_, services_.get(), runtime_stats_writeback.player) ||
+            runtime_stats_changed;
+    }
+    if (runtime_stats_changed && runtime_stats_writeback.player != entt::null) {
         context_.getDispatcher().trigger(game::defs::PartyRuntimeStatsChanged{
             .player = runtime_stats_writeback.player,
             .actor_id = {},
@@ -1067,7 +1111,7 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
             playGameplayMusicCue();
             break;
         case game::battle::BattleOutcome::Defeat:
-            // TODO: 接入 GameOver / Defeat scene 后改为对应 defeat cue 或停止音乐。
+            warpPlayerToDefeatRespawn(registry_, context_.getDispatcher());
             playGameplayMusicCue();
             break;
         case game::battle::BattleOutcome::Ongoing:

@@ -35,6 +35,11 @@ struct RestArea {
     engine::utils::Rect rect_{};  ///< 休息区域范围（世界坐标）
 };
 
+struct RespawnPoint {
+    std::string id_{};                             ///< 重生点逻辑 id。
+    entt::id_type id_hash_{entt::null};            ///< 重生点逻辑 id 的哈希值。
+};
+
 struct ClosetArea {
     engine::utils::Rect rect_{};  ///< 衣柜交互区域范围（世界坐标）
 };

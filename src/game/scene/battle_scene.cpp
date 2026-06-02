@@ -400,6 +400,8 @@ bool BattleScene::init() {
 
     if (session_.outcome() == game::battle::BattleOutcome::Victory) {
         flow_controller_.startVictoryFlow(*this);
+    } else if (session_.outcome() == game::battle::BattleOutcome::Defeat) {
+        flow_controller_.startDefeatFlow(*this);
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         flow_controller_.setBattleEnd();
         leaveInputMenu();
@@ -441,6 +443,7 @@ void BattleScene::prepareUi(float interpolation_alpha) {
     Scene::prepareUi(interpolation_alpha);
     syncMenuFocus();
     syncVictoryContinueFocus();
+    syncDefeatContinueFocus();
 }
 
 void BattleScene::clean() {
@@ -502,6 +505,13 @@ bool BattleScene::initUI() {
         !constructor.Bind("victory_exp_text", &victory_exp_text_) ||
         !constructor.Bind("victory_item_empty_text", &victory_item_empty_text_) ||
         !constructor.Bind("victory_prompt_text", &victory_prompt_text_) ||
+        !constructor.Bind("defeat_overlay_visible", &defeat_overlay_visible_) ||
+        !constructor.Bind("defeat_continue_enabled", &defeat_continue_enabled_) ||
+        !constructor.Bind("defeat_title", &defeat_title_) ||
+        !constructor.Bind("defeat_body_text", &defeat_body_text_) ||
+        !constructor.Bind("defeat_losses_text", &defeat_losses_text_) ||
+        !constructor.Bind("defeat_recovery_text", &defeat_recovery_text_) ||
+        !constructor.Bind("defeat_prompt_text", &defeat_prompt_text_) ||
         !constructor.Bind("turn_order_entries", &turn_order_entries_) ||
         !constructor.Bind("party_status", &party_status_) ||
         !constructor.Bind("party_state_icons", &party_state_icons_) ||
@@ -520,6 +530,14 @@ bool BattleScene::initUI() {
             [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
                 if (flow_controller_.isVictoryFlow()) {
                     victory_flow_controller_.confirm();
+                }
+            }) ||
+        !document_controller_.bindEvent(
+            constructor,
+            "defeat_continue",
+            [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
+                if (flow_controller_.isDefeatFlow()) {
+                    defeat_flow_finished_ = true;
                 }
             }) ||
         !document_controller_.bindEvent(
@@ -860,10 +878,13 @@ void BattleScene::refreshView() {
     rebuildTurnOrderView();
     rebuildPartyStatusView();
     rebuildVictoryView();
+    rebuildDefeatView();
 
     std::string result_status = menu_model_.status_text;
     if (flow_controller_.isVictoryFlow()) {
         result_status = localizedBattleOutcome(game::battle::BattleOutcome::Victory);
+    } else if (flow_controller_.isDefeatFlow()) {
+        result_status = localizedBattleOutcome(game::battle::BattleOutcome::Defeat);
     } else if (session_.outcome() != game::battle::BattleOutcome::Ongoing) {
         result_status = localizedBattleOutcome(session_.outcome());
     }
@@ -959,6 +980,56 @@ void BattleScene::rebuildVictoryView() {
                                        : game::ui::localizeTextOrFallback(localization(), "battle.victory.resolving", "Resolving...");
     if (updateBoundString(victory_item_empty_text_, empty_text)) {
         document_controller_.markDirty("victory_item_empty_text");
+    }
+}
+
+void BattleScene::rebuildDefeatView() {
+    const bool overlay_visible = flow_controller_.isDefeatFlow();
+    if (updateBoundBool(defeat_overlay_visible_, overlay_visible)) {
+        document_controller_.markDirty("defeat_overlay_visible");
+    }
+
+    if (updateBoundBool(defeat_continue_enabled_, overlay_visible)) {
+        document_controller_.markDirty("defeat_continue_enabled");
+        if (overlay_visible) {
+            defeat_continue_focus_dirty_ = true;
+        }
+    }
+
+    const std::string title_text =
+        game::ui::localizeTextOrFallback(localization(), "battle.defeat.title", "Defeat");
+    if (updateBoundString(defeat_title_, title_text)) {
+        document_controller_.markDirty("defeat_title");
+    }
+
+    const std::string body_text = game::ui::localizeTextOrFallback(
+        localization(),
+        "battle.defeat.body",
+        "The party retreated to the farmhouse.");
+    if (updateBoundString(defeat_body_text_, body_text)) {
+        document_controller_.markDirty("defeat_body_text");
+    }
+
+    const std::string losses_text = game::ui::localizeTextOrFallback(
+        localization(),
+        "battle.defeat.losses",
+        "No gold, drops, EXP, or quest progress were earned.");
+    if (updateBoundString(defeat_losses_text_, losses_text)) {
+        document_controller_.markDirty("defeat_losses_text");
+    }
+
+    const std::string recovery_text = game::ui::localizeTextOrFallback(
+        localization(),
+        "battle.defeat.recovery",
+        "Consumed battle items are kept spent; HP and MP will be restored at home.");
+    if (updateBoundString(defeat_recovery_text_, recovery_text)) {
+        document_controller_.markDirty("defeat_recovery_text");
+    }
+
+    const std::string prompt_text =
+        game::ui::localizeTextOrFallback(localization(), "battle.defeat.continue", "Continue");
+    if (updateBoundString(defeat_prompt_text_, prompt_text)) {
+        document_controller_.markDirty("defeat_prompt_text");
     }
 }
 
@@ -1158,6 +1229,16 @@ void BattleScene::syncVictoryContinueFocus() {
     // focus 可能早于 RmlUi disabled 属性同步；失败时保留脏标记，下帧重试。
     if (!victory_continue_enabled_ || focusElementById("battle-victory-continue")) {
         victory_continue_focus_dirty_ = false;
+    }
+}
+
+void BattleScene::syncDefeatContinueFocus() {
+    if (!defeat_continue_focus_dirty_) {
+        return;
+    }
+
+    if (!defeat_continue_enabled_ || focusElementById("battle-defeat-continue")) {
+        defeat_continue_focus_dirty_ = false;
     }
 }
 
@@ -2045,6 +2126,10 @@ bool BattleScene::confirmBattleMenu() {
         victory_flow_controller_.confirm();
         return true;
     }
+    if (flow_controller_.isDefeatFlow()) {
+        defeat_flow_finished_ = true;
+        return true;
+    }
 
     if (!isWaitingForActionInput()) {
         return menu_model_.state != MenuState::None;
@@ -2070,7 +2155,7 @@ bool BattleScene::confirmBattleMenu() {
 }
 
 bool BattleScene::cancelBattleMenu() {
-    if (flow_controller_.isVictoryFlow()) {
+    if (flow_controller_.isVictoryFlow() || flow_controller_.isDefeatFlow()) {
         return true;
     }
 
@@ -2240,6 +2325,25 @@ bool BattleScene::victoryFlowFinished() const {
 void BattleScene::playVictoryAudioCue() {
     // 占位 Victory ME；后续替换为专用 fanfare 资源。
     static_cast<void>(context_.getAudioPlayer().playSound(game::defs::audio::BATTLE_VICTORY_ID.value()));
+}
+
+void BattleScene::beginDefeatFlow() {
+    leaveInputMenu();
+    defeat_flow_finished_ = false;
+    defeat_continue_focus_dirty_ = true;
+    battle_enemy_hp_bar_controller_.setHighlightedTarget(std::nullopt);
+}
+
+void BattleScene::updateDefeatFlow(float /*delta_time*/) {
+}
+
+bool BattleScene::defeatFlowFinished() const {
+    return defeat_flow_finished_;
+}
+
+void BattleScene::finishDefeatFlow() {
+    defeat_flow_finished_ = false;
+    defeat_continue_focus_dirty_ = false;
 }
 
 std::vector<BattlePresentationUnitAnchor> BattleScene::collectBattlePresentationUnitAnchors() const {

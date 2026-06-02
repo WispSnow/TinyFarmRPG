@@ -110,7 +110,20 @@
          "draworder":"topdown",
          "id":8,
          "name":"main",
-         "objects":[],
+         "objects":[
+                {
+                 "height":0,
+                 "id":26,
+                 "name":"respawn",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"respawn",
+                 "visible":true,
+                 "width":0,
+                 "x":179.75,
+                 "y":201
+                }],
          "opacity":1,
          "properties":[
                 {
@@ -612,7 +625,7 @@
          "y":0
         }],
  "nextlayerid":11,
- "nextobjectid":26,
+ "nextobjectid":27,
  "orientation":"orthogonal",
  "properties":[
         {

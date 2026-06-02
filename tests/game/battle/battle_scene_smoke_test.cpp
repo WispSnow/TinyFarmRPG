@@ -128,12 +128,18 @@ TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
     EXPECT_NE(header.find("std::optional<game::battle::BattleRewardSummary> victory_reward_summary_{}"), std::string::npos);
     EXPECT_NE(header.find("beginVictoryFlow"), std::string::npos);
     EXPECT_NE(header.find("finishVictoryFlow"), std::string::npos);
+    EXPECT_NE(header.find("beginDefeatFlow"), std::string::npos);
+    EXPECT_NE(header.find("finishDefeatFlow"), std::string::npos);
+    EXPECT_NE(header.find("defeat_overlay_visible_"), std::string::npos);
 
     const std::string check_block = snippetFrom(flow_source, "case BattleFlowState::CheckVictory:", 900U);
     ASSERT_FALSE(check_block.empty());
     EXPECT_NE(check_block.find("startVictoryFlow(delegate);"), std::string::npos);
+    EXPECT_NE(check_block.find("startDefeatFlow(delegate);"), std::string::npos);
     EXPECT_NE(check_block.find("state_ = BattleFlowState::BattleEnd"), std::string::npos);
     EXPECT_LT(check_block.find("startVictoryFlow(delegate);"),
+              check_block.find("startDefeatFlow(delegate);"));
+    EXPECT_LT(check_block.find("startDefeatFlow(delegate);"),
               check_block.find("state_ = BattleFlowState::BattleEnd"));
 
     const std::string victory_block = snippetFrom(flow_source, "case BattleFlowState::VictoryFlow:", 360U);
@@ -142,14 +148,23 @@ TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
     EXPECT_NE(victory_block.find("delegate.finishVictoryFlow();"), std::string::npos);
     EXPECT_EQ(victory_block.find("requestBattleEnd()"), std::string::npos);
 
+    const std::string defeat_block = snippetFrom(flow_source, "case BattleFlowState::DefeatFlow:", 360U);
+    ASSERT_FALSE(defeat_block.empty());
+    EXPECT_NE(defeat_block.find("delegate.updateDefeatFlow(delta_time)"), std::string::npos);
+    EXPECT_NE(defeat_block.find("delegate.finishDefeatFlow();"), std::string::npos);
+    EXPECT_EQ(defeat_block.find("requestBattleEnd()"), std::string::npos);
+
     const std::string confirm_block = snippetFrom(source, "bool BattleScene::confirmBattleMenu()", 600U);
     ASSERT_FALSE(confirm_block.empty());
     EXPECT_NE(confirm_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
     EXPECT_NE(confirm_block.find("victory_flow_controller_.confirm();"), std::string::npos);
+    EXPECT_NE(confirm_block.find("flow_controller_.isDefeatFlow()"), std::string::npos);
+    EXPECT_NE(confirm_block.find("defeat_flow_finished_ = true;"), std::string::npos);
 
     const std::string cancel_block = snippetFrom(source, "bool BattleScene::cancelBattleMenu()", 260U);
     ASSERT_FALSE(cancel_block.empty());
     EXPECT_NE(cancel_block.find("flow_controller_.isVictoryFlow()"), std::string::npos);
+    EXPECT_NE(cancel_block.find("flow_controller_.isDefeatFlow()"), std::string::npos);
     EXPECT_EQ(cancel_block.find("victory_flow_controller_.confirm();"), std::string::npos);
 
     const std::string finish_block = snippetFrom(source, "void BattleScene::finishVictoryFlow()", 260U);
@@ -157,6 +172,7 @@ TEST(BattleSceneSmokeTest, VictoryFlowDelaysBattleEndedEventUntilConfirm) {
     EXPECT_NE(finish_block.find("victory_flow_controller_.reset();"), std::string::npos);
     EXPECT_EQ(finish_block.find("requestBattleEnd()"), std::string::npos);
     EXPECT_NE(victory_block.find("state_ = BattleFlowState::BattleEnd;"), std::string::npos);
+    EXPECT_NE(defeat_block.find("state_ = BattleFlowState::BattleEnd;"), std::string::npos);
 }
 
 TEST(BattleSceneSmokeTest, UsesTypedModelAndSceneLevelMenuInput) {

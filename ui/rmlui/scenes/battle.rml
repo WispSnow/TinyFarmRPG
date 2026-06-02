@@ -76,6 +76,22 @@
         </div>
     </div>
 
+    <div id="battle-defeat-overlay" data-if="defeat_overlay_visible">
+        <div id="battle-defeat-panel" class="tf-scene-panel">
+            <div id="battle-defeat-title" class="tf-scene-title-gold">{{ defeat_title }}</div>
+            <div id="battle-defeat-summary" class="tf-scene-card-frame">
+                <div class="battle-defeat-message battle-defeat-body">{{ defeat_body_text }}</div>
+                <div class="battle-defeat-message battle-defeat-losses">{{ defeat_losses_text }}</div>
+                <div class="battle-defeat-message battle-defeat-recovery">{{ defeat_recovery_text }}</div>
+            </div>
+            <button id="battle-defeat-continue"
+                    class="tf-button-light tf-nav-auto tf-focus-ring-blue"
+                    data-class-disabled="!defeat_continue_enabled"
+                    data-attrif-disabled="!defeat_continue_enabled"
+                    data-event-click="defeat_continue">{{ defeat_prompt_text }}</button>
+        </div>
+    </div>
+
     <div id="battle-hud" class="tf-scene-panel">
         <div id="battle-party-panel">
             <div class="battle-party-card tf-scene-card-frame"

@@ -157,6 +157,9 @@ TEST(GameSceneBattleEntryTest, BattleRuntimeStatsWritebackPublishesPartyStatsCha
     EXPECT_NE(source.find("BattleRuntimeStatsWritebackResult"), std::string::npos);
     EXPECT_NE(source.find("const auto runtime_stats_writeback = writeBackBattleRuntimeStats"), std::string::npos);
     EXPECT_NE(source.find("runtime_stats_writeback.changed"), std::string::npos);
+    EXPECT_NE(source.find("applyDefeatRecovery"), std::string::npos);
+    EXPECT_NE(source.find("warpPlayerToDefeatRespawn"), std::string::npos);
+    EXPECT_NE(source.find(".spawn_point = std::string{DEFEAT_RESPAWN_POINT_ID}"), std::string::npos);
     EXPECT_NE(source.find("game::defs::PartyRuntimeStatsChanged"), std::string::npos);
     EXPECT_NE(source.find(".full_sync = true"), std::string::npos);
 }

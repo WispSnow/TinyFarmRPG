@@ -241,6 +241,11 @@
 - **必需字段**：`type="rest"` + `width/height > 0`
 - **语义**：创建 `RestArea`，并把覆盖到的瓦片注册为 `INTERACT`（静态网格）。
 
+#### `respawn`（point object）
+- **必需字段**：`type="respawn"` + `point=true`
+- **推荐字段**：`name="respawn"`；若需要多个重生点，可通过 string property `respawn_id` 覆盖逻辑 id。
+- **语义**：创建 `RespawnPoint`。`WarpToMapCommand.spawn_point` 指定该 id 时，`MapTransitionSystem` 在目标地图加载后优先使用该点作为落点，找不到时回退到命令里的 `position`。
+
 #### `closet`（rect object）
 - **必需字段**：`type="closet"` + `width/height > 0`
 - **语义**：创建 `ClosetArea`，并把覆盖到的瓦片注册为 `INTERACT`（静态网格）。玩家面向该区域按交互键时打开主角外观自定义界面。
@@ -279,6 +284,7 @@
 - `assets/maps/home_interior.tmj`
   - `map_trigger`：object `id=1`（`target_map="home_exterior"`, `start_offset="top"`）
   - `rest`：object `id=4`
+  - `respawn`：object `id=26`（`name="respawn"`）
   - `light(point)`：object `id=10`（`day_only=true`, `radius=64`）
 - `assets/maps/town.tmj`
   - `light(spot)`：object `id=23`（`night_only=true`, `spot={radius:64, inner_deg:25, outer_deg:45, direction_deg:90}`）

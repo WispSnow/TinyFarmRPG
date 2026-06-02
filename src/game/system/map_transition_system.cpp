@@ -11,11 +11,14 @@
 #include "engine/component/collider_component.h"
 #include "engine/spatial/collision_resolver.h"
 #include "engine/ui/screen_fade_interface.h"
+#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <filesystem>
+#include <optional>
+#include <string>
 
 using namespace entt::literals;
 
@@ -169,6 +172,15 @@ bool MapTransitionSystem::commitPendingTransition() {
         spawn_pos = map_manager_.currentMapPixelSize() * 0.5f;
     }
 
+    if (!pending_.spawn_point.empty()) {
+        if (const auto point = findSpawnPointPosition(pending_.spawn_point, pending_.target_map_id)) {
+            spawn_pos = *point;
+        } else {
+            spdlog::warn("MapTransitionSystem: target map missing spawn_point='{}'; using fallback position.",
+                         pending_.spawn_point);
+        }
+    }
+
     spawn_pos = findSafeSpawnPosition(pending_.player, spawn_pos);
 
     auto& transform = registry_.get<engine::component::TransformComponent>(pending_.player);
@@ -214,6 +226,14 @@ void MapTransitionSystem::onWarpToMapCommand(const game::defs::WarpToMapCommand&
     const entt::id_type current_map_id = map_manager_.currentMapId();
     if (current_map_id == target_map_id) {
         glm::vec2 spawn_pos = command.position;
+        if (!command.spawn_point.empty()) {
+            if (const auto point = findSpawnPointPosition(command.spawn_point, target_map_id)) {
+                spawn_pos = *point;
+            } else {
+                spdlog::warn("MapTransitionSystem: current map missing spawn_point='{}'; using fallback position.",
+                             command.spawn_point);
+            }
+        }
         const glm::vec2 target_size = map_manager_.currentMapPixelSize();
         if (target_size != glm::vec2(0.0f)) {
             spawn_pos = clampToMap(spawn_pos, target_size);
@@ -232,6 +252,7 @@ void MapTransitionSystem::onWarpToMapCommand(const game::defs::WarpToMapCommand&
     pending.player = player;
     pending.target_map_id = target_map_id;
     pending.warp_spawn_pos = command.position;
+    pending.spawn_point = command.spawn_point;
     beginTransition(pending);
 }
 
@@ -445,6 +466,32 @@ glm::vec2 MapTransitionSystem::findSafeSpawnPosition(entt::entity player, glm::v
 
     spdlog::warn("MapTransitionSystem: 未能在附近找到安全位置，强制使用目标位置");
     return target_pos;
+}
+
+std::optional<glm::vec2> MapTransitionSystem::findSpawnPointPosition(
+    const std::string_view spawn_point,
+    const entt::id_type target_map_id) const {
+    if (spawn_point.empty()) {
+        return std::nullopt;
+    }
+
+    const std::string spawn_id{spawn_point};
+    const entt::id_type spawn_hash = entt::hashed_string(spawn_id.c_str()).value();
+    auto view = registry_.view<game::component::RespawnPoint, engine::component::TransformComponent>();
+    for (const entt::entity entity : view) {
+        if (const auto* map_id = registry_.try_get<game::component::MapId>(entity);
+            map_id && map_id->id_ != target_map_id) {
+            continue;
+        }
+
+        const auto& respawn = view.get<game::component::RespawnPoint>(entity);
+        if (respawn.id_hash_ != spawn_hash && respawn.id_ != spawn_id) {
+            continue;
+        }
+
+        return view.get<engine::component::TransformComponent>(entity).position_;
+    }
+    return std::nullopt;
 }
 
 glm::vec2 MapTransitionSystem::computeOffsetPosition(const engine::utils::Rect& rect, game::component::StartOffset offset) const {

@@ -22,12 +22,17 @@ public:
         virtual void updateVictoryFlow(float delta_time) = 0;
         [[nodiscard]] virtual bool victoryFlowFinished() const = 0;
         virtual void finishVictoryFlow() = 0;
+        virtual void beginDefeatFlow() = 0;
+        virtual void updateDefeatFlow(float delta_time) = 0;
+        [[nodiscard]] virtual bool defeatFlowFinished() const = 0;
+        virtual void finishDefeatFlow() = 0;
         virtual void leaveInputMenu() = 0;
         virtual void requestBattleEnd() = 0;
     };
 
     void run(float delta_time, Delegate& delegate);
     void startVictoryFlow(Delegate& delegate);
+    void startDefeatFlow(Delegate& delegate);
 
     void waitForInput();
     void beginExecutingAction();
@@ -36,6 +41,7 @@ public:
     [[nodiscard]] BattleFlowState state() const { return state_; }
     [[nodiscard]] bool isWaitingForInput() const { return state_ == BattleFlowState::WaitingForInput; }
     [[nodiscard]] bool isVictoryFlow() const { return state_ == BattleFlowState::VictoryFlow; }
+    [[nodiscard]] bool isDefeatFlow() const { return state_ == BattleFlowState::DefeatFlow; }
 
 private:
     BattleFlowState state_{BattleFlowState::WaitingForInput};

@@ -352,6 +352,9 @@ EntityBuilder* EntityBuilder::build() {
             buildMapTrigger();
         } else if (type == tiled::OBJECT_TYPE_SCRIPT_ZONE) {
             buildScriptZone();
+        } else if (is_point && (type == tiled::OBJECT_TYPE_RESPAWN ||
+                                (type.empty() && name == tiled::OBJECT_TYPE_RESPAWN))) {
+            buildRespawnPoint();
         } else if (type == tiled::OBJECT_TYPE_REST) {
             buildRestArea();
         } else if (type == tiled::OBJECT_TYPE_CLOSET) {
@@ -764,6 +767,40 @@ void EntityBuilder::buildRestArea() {
                              "RestArea");
 
     spdlog::info("RestArea: 创建完成，pos=({}, {}), size=({}, {})", rect.pos.x, rect.pos.y, rect.size.x, rect.size.y);
+}
+
+void EntityBuilder::buildRespawnPoint() {
+    if (!object_json_) {
+        return;
+    }
+
+    const glm::vec2 position{
+        object_json_->value("x", 0.0f),
+        object_json_->value("y", 0.0f),
+    };
+
+    const std::string name = object_json_->value("name", "");
+    const std::string respawn_id =
+        findObjectStringProperty(object_json_, tiled::OBJECT_PROP_RESPAWN_ID).value_or(
+            name.empty() ? std::string{tiled::OBJECT_TYPE_RESPAWN} : name);
+
+    entity_id_ = registry_.create();
+    if (!name.empty()) {
+        registry_.emplace<engine::component::NameComponent>(
+            entity_id_,
+            entt::hashed_string(name.c_str()),
+            name);
+    }
+
+    registry_.emplace<engine::component::TransformComponent>(entity_id_, position);
+    registry_.emplace<game::component::RespawnPoint>(
+        entity_id_,
+        game::component::RespawnPoint{
+            .id_ = respawn_id,
+            .id_hash_ = respawn_id.empty() ? entt::id_type{entt::null} : entt::hashed_string(respawn_id.c_str()).value(),
+        });
+
+    spdlog::info("RespawnPoint: 创建完成，id='{}', pos=({}, {})", respawn_id, position.x, position.y);
 }
 
 void EntityBuilder::buildClosetArea() {
