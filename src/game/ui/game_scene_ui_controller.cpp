@@ -96,7 +96,8 @@ bool GameSceneUiController::init() {
         rpg_catalog_,
         glm::vec2{0.0F, -4.0F},
         glm::vec2{0.0F, -56.0F},
-        player_portrait_service_.get());
+        player_portrait_service_.get(),
+        localization);
 
     hotbar_ui_->setTooltipUI(item_tooltip_ui_.get());
     if (player != entt::null) {
