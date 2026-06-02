@@ -6,7 +6,7 @@
 
 每一节课程的文本位于 `lecture_plans/lectures` 文件夹中
 
-我正在进行课程审阅修订，参见 @lecture_plans/lecture-review-workflow.md
+我正在进行课程审阅修订
 
 ## Note
 
