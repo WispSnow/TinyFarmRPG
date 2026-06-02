@@ -20,6 +20,7 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     input.game_time.paused = true;
 
     input.player.map_name = "farm";
+    input.player.name = "Mina";
     input.player.position = Vec2f{12.0f, 34.0f};
     input.player.state.action = "walk";
     input.player.state.direction = "left";
@@ -97,6 +98,7 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::ACTIVE_ACTOR_IDS.data()));
     EXPECT_TRUE(json[json_keys::PARTY_STATE.data()].contains(json_keys::MAX_ACTIVE_MEMBERS.data()));
     ASSERT_TRUE(json.contains("player"));
+    EXPECT_EQ(json["player"]["name"].get<std::string>(), "Mina");
     ASSERT_TRUE(json["player"].contains("inventory"));
     EXPECT_FALSE(json["player"]["inventory"].contains("active_page"));
 
@@ -117,6 +119,7 @@ TEST(SaveDataV3RoundTripTest, SerializeThenDeserializePreservesCoreDataAndDefaul
     EXPECT_EQ(output.game_time.paused, input.game_time.paused);
 
     EXPECT_EQ(output.player.map_name, input.player.map_name);
+    EXPECT_EQ(output.player.name, input.player.name);
     EXPECT_FLOAT_EQ(output.player.position.x, input.player.position.x);
     EXPECT_FLOAT_EQ(output.player.position.y, input.player.position.y);
     EXPECT_EQ(output.player.state.action, input.player.state.action);

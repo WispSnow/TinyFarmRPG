@@ -3,6 +3,7 @@
 #include "game/scene/appearance_customize_types.h"
 
 #include <optional>
+#include <string>
 #include <variant>
 
 namespace game::scene {
@@ -11,6 +12,7 @@ namespace game::scene {
 struct NewGameOptions {
     /// Initial player appearance selected before the game world is entered.
     std::optional<AppearanceSelection> initial_appearance{};
+    std::string player_name{};
 };
 
 /// Options for starting GameScene from an existing save slot.

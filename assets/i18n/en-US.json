@@ -2,6 +2,7 @@
   "actor.lyria.name": "Lyria",
   "actor.player.name": "Alex",
   "actor.tori.name": "Tori",
+  "appearance.name_label": "Name:",
   "appearance.random": "Random",
   "appearance.reset": "Reset",
   "appearance.slot.acc": "Accessory",

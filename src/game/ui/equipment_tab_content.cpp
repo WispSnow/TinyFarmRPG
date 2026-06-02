@@ -14,6 +14,7 @@
 #include "game/domain/actor_progression_service.h"
 #include "game/runtime/service_lookup.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_display_name.h"
 #include "game/ui/rml_item_icon_helpers.h"
 #include "game/ui/slot_grid_support.h"
 
@@ -361,9 +362,12 @@ void EquipmentTabContent::syncViewState() {
 
 void EquipmentTabContent::syncActorHeader() {
     const auto* actor = rpg_catalog_ ? rpg_catalog_->findActor(selected_actor_id_) : nullptr;
-    equipment_actor_name_ = actor && !actor->display_name_.empty()
-                                ? game::ui::tryLocalize(localization_, actor->display_name_)
-                                : selected_actor_id_;
+    equipment_actor_name_ = game::ui::resolveActorDisplayName(
+        game_registry_,
+        player_,
+        selected_actor_id_,
+        rpg_catalog_,
+        localization_);
     equipment_actor_summary_ = makeActorSummary(
         rpg_catalog_,
         actor,

@@ -274,6 +274,28 @@ TEST(BattleUnitFactoryTest, SupportsExplicitActorAndTroopSelection) {
     EXPECT_EQ(*units[1].source_enemy_id, "enemy.wolf");
 }
 
+TEST(BattleUnitFactoryTest, AppliesActorDisplayNameOverridesForPlayerUnits) {
+    const FixturePaths paths = createFixture();
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadClasses(paths.classes.string()));
+    ASSERT_TRUE(catalog.loadActors(paths.actors.string()));
+    ASSERT_TRUE(catalog.loadEnemies(paths.enemies.string()));
+    ASSERT_TRUE(catalog.loadTroops(paths.troops.string()));
+
+    BattleUnitBuildOptions options{};
+    options.actor_ids = {"actor.hero", "actor.mage"};
+    options.actor_display_name_overrides["actor.hero"] = "Mina";
+    options.actor_display_name_overrides["actor.mage"] = "";
+
+    std::vector<BattleUnit> units{};
+    std::string error{};
+    ASSERT_TRUE(buildBattleUnitsFromCatalog(catalog, options, units, error)) << error;
+
+    ASSERT_GE(units.size(), 2U);
+    EXPECT_EQ(units[0].name, "Mina");
+    EXPECT_EQ(units[1].name, "Mage");
+}
+
 TEST(BattleUnitFactoryTest, LocalizedUnitNameTranslatesBaseKeyBeforeOrdinal) {
     game::runtime::LocalizationService localization;
     const auto manifest_path =

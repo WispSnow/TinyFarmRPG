@@ -376,8 +376,35 @@ TEST(AppearanceCustomizeViewModelTest, SceneLocalizesDynamicTitleBindings) {
         test_source_utils::extractFunctionBlock(source, "void AppearanceCustomizeScene::onLanguageChanged");
     ASSERT_FALSE(language_block.empty());
     EXPECT_NE(language_block.find("syncSlotViewModels(true);"), std::string::npos);
+    EXPECT_NE(language_block.find("syncDefaultPlayerName(true);"), std::string::npos);
+    EXPECT_NE(source.find("current_name.empty() || current_name == previous_default"), std::string::npos);
     EXPECT_EQ(source.find("makeRmlString(\"Create Hero\")"), std::string::npos);
     EXPECT_EQ(source.find("makeRmlString(\"Wardrobe\")"), std::string::npos);
+}
+
+TEST(AppearanceCustomizeViewModelTest, NewGameSceneBindsPlayerNameInputWithoutAffectingClosetSubtitle) {
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/appearance_customize_scene.cpp").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/appearance_customize.rml").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+
+    const std::string source = test_source_utils::readTextFile(source_path);
+    const std::string rml = test_source_utils::readTextFile(rml_path);
+    ASSERT_FALSE(source.empty());
+    ASSERT_FALSE(rml.empty());
+
+    EXPECT_NE(source.find("show_name_input_ = mode_ == Mode::NewGame"), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"player_name\", &player_name_)"), std::string::npos);
+    EXPECT_NE(source.find("constructor.Bind(\"show_name_input\", &show_name_input_)"), std::string::npos);
+    EXPECT_EQ(source.find("\"player_name_changed\""), std::string::npos);
+    EXPECT_NE(source.find("focused->GetId() == \"appearance-name-input\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"appearance-name-label\""), std::string::npos);
+    EXPECT_NE(rml.find("data-i18n=\"appearance.name_label\""), std::string::npos);
+    EXPECT_NE(rml.find("id=\"appearance-name-input\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"show_name_input\""), std::string::npos);
+    EXPECT_NE(rml.find("data-if=\"!show_name_input\""), std::string::npos);
 }
 
 } // namespace

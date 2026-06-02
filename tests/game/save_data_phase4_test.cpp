@@ -61,6 +61,7 @@ TEST(SaveDataPhase4Test, DeserializeSupportsDefaultExtendedStateFields) {
     EXPECT_TRUE(data.skill_state.skill_levels.empty());
     EXPECT_TRUE(data.skill_state.skill_cooldowns.empty());
     EXPECT_EQ(data.appearance_state.profile_id, "player_default");
+    EXPECT_TRUE(data.player.name.empty());
     EXPECT_EQ(data.party_state.max_active_members, game::defs::kDefaultMaxActivePartyMembers);
     EXPECT_TRUE(data.equipment_state.loadouts.empty());
     EXPECT_TRUE(data.party_runtime_state.actor_states.empty());

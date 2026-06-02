@@ -19,9 +19,11 @@
 #include "game/runtime/service_lookup.h"
 #include "game/system/appearance_layer_cache_builder.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_display_name.h"
 
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
 #include <entt/core/hashed_string.hpp>
@@ -30,6 +32,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cctype>
 #include <cstdint>
 #include <random>
 #include <string>
@@ -59,6 +62,7 @@ constexpr float PREVIEW_SCREEN_PIVOT_Y = 76.0f;
 constexpr float PREVIEW_SIZE_PX = 64.0f;
 constexpr float FRAME_SIZE_PX = 32.0f;
 constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;
+constexpr std::size_t MAX_PLAYER_NAME_CODEPOINTS = 16U;
 
 [[nodiscard]] Rml::String makeRmlString(std::string_view value) {
     return Rml::String{value.data(), value.size()};
@@ -70,6 +74,75 @@ constexpr float PREVIEW_IDLE_FRAME_DURATION_MS = 200.0f;
 
 [[nodiscard]] bool hasPositiveSize(const engine::utils::Rect& rect) {
     return rect.size.x > 0.0f && rect.size.y > 0.0f;
+}
+
+[[nodiscard]] std::string trimAsciiWhitespace(std::string_view value) {
+    auto begin = value.begin();
+    auto end = value.end();
+    while (begin != end && std::isspace(static_cast<unsigned char>(*begin)) != 0) {
+        ++begin;
+    }
+    while (begin != end && std::isspace(static_cast<unsigned char>(*(end - 1))) != 0) {
+        --end;
+    }
+    return std::string{begin, end};
+}
+
+[[nodiscard]] bool isUtf8ContinuationByte(const unsigned char value) {
+    return (value & 0xC0U) == 0x80U;
+}
+
+[[nodiscard]] std::size_t utf8CodepointLength(const unsigned char lead) {
+    if ((lead & 0x80U) == 0U) {
+        return 1U;
+    }
+    if ((lead & 0xE0U) == 0xC0U) {
+        return 2U;
+    }
+    if ((lead & 0xF0U) == 0xE0U) {
+        return 3U;
+    }
+    if ((lead & 0xF8U) == 0xF0U) {
+        return 4U;
+    }
+    return 1U;
+}
+
+[[nodiscard]] std::string limitUtf8Codepoints(std::string_view value, const std::size_t max_codepoints) {
+    std::size_t byte_index = 0U;
+    std::size_t codepoints = 0U;
+    while (byte_index < value.size() && codepoints < max_codepoints) {
+        const auto lead = static_cast<unsigned char>(value[byte_index]);
+        const std::size_t length = utf8CodepointLength(lead);
+        if (byte_index + length > value.size()) {
+            break;
+        }
+        bool valid_sequence = true;
+        for (std::size_t i = 1U; i < length; ++i) {
+            if (!isUtf8ContinuationByte(static_cast<unsigned char>(value[byte_index + i]))) {
+                valid_sequence = false;
+                break;
+            }
+        }
+        if (!valid_sequence) {
+            ++byte_index;
+        } else {
+            byte_index += length;
+        }
+        ++codepoints;
+    }
+    return std::string{value.substr(0U, byte_index)};
+}
+
+[[nodiscard]] std::string normalizePlayerName(std::string_view value, std::string_view default_name) {
+    std::string normalized = trimAsciiWhitespace(value);
+    if (normalized.empty()) {
+        normalized = trimAsciiWhitespace(default_name);
+    }
+    if (normalized.empty()) {
+        normalized = game::ui::defaultPlayerDisplayName(nullptr);
+    }
+    return limitUtf8Codepoints(normalized, MAX_PLAYER_NAME_CODEPOINTS);
 }
 
 [[nodiscard]] std::mt19937 makeAppearanceRandomEngine() {
@@ -218,6 +291,7 @@ bool AppearanceCustomizeScene::init() {
         return false;
     }
 
+    show_name_input_ = mode_ == Mode::NewGame;
     runtime_slots_ = appearanceControlSlots(*catalog_, mode_ == Mode::NewGame);
     if (mode_ == Mode::Closet && game_registry_ && game_registry_->valid(player_)) {
         if (const auto* appearance = game_registry_->try_get<game::component::AppearanceComponent>(player_)) {
@@ -320,6 +394,7 @@ bool AppearanceCustomizeScene::initUI() {
     }
 
     syncLocalizedText(false);
+    syncDefaultPlayerName(false);
 
     document_controller_.attach(runtime, instanceId());
     auto constructor = document_controller_.createModel(MODEL_NAME, &type_register_);
@@ -339,6 +414,8 @@ bool AppearanceCustomizeScene::initUI() {
     if (!constructor.Bind("slots", &slot_view_models_) ||
         !constructor.Bind("title_text", &title_text_) ||
         !constructor.Bind("subtitle_text", &subtitle_text_) ||
+        !constructor.Bind("player_name", &player_name_) ||
+        !constructor.Bind("show_name_input", &show_name_input_) ||
         !constructor.Bind("portrait_src", &portrait_src_)) {
         spdlog::error("AppearanceCustomizeScene: 绑定 data model 变量失败。");
         document_controller_.unload();
@@ -485,6 +562,28 @@ void AppearanceCustomizeScene::syncLocalizedText(bool mark_dirty) {
     }
 }
 
+void AppearanceCustomizeScene::syncDefaultPlayerName(bool mark_dirty) {
+    if (mode_ != Mode::NewGame) {
+        player_name_.clear();
+        default_player_name_.clear();
+        return;
+    }
+
+    const std::string previous_default = default_player_name_;
+    const std::string next_default = game::ui::defaultPlayerDisplayName(localization());
+    const std::string current_name{player_name_};
+    const bool should_follow_default = current_name.empty() || current_name == previous_default;
+
+    default_player_name_ = next_default;
+    if (should_follow_default) {
+        player_name_ = makeRmlString(next_default);
+    }
+
+    if (mark_dirty) {
+        document_controller_.markDirty("player_name");
+    }
+}
+
 void AppearanceCustomizeScene::syncSlotViewModels(bool mark_dirty) {
     if (!catalog_) {
         return;
@@ -619,7 +718,10 @@ void AppearanceCustomizeScene::onConfirm() {
         spdlog::warn("AppearanceCustomizeScene: 新游戏确认回调为空。");
         return;
     }
-    auto next = on_new_game_confirm_(draft_selection_);
+    NewGameCharacterSetup setup{};
+    setup.appearance = draft_selection_;
+    setup.player_name = normalizePlayerName(player_name_, default_player_name_);
+    auto next = on_new_game_confirm_(std::move(setup));
     if (!next) {
         spdlog::warn("AppearanceCustomizeScene: 新游戏确认回调返回空场景。");
         return;
@@ -637,12 +739,23 @@ void AppearanceCustomizeScene::onCancel() {
 }
 
 bool AppearanceCustomizeScene::onMenuCancelPressed() {
+    if (mode_ == Mode::NewGame) {
+        auto* runtime = context_.getRmlUi();
+        auto* rml_context = runtime ? runtime->getContext() : nullptr;
+        auto* focused = rml_context ? rml_context->GetFocusElement() : nullptr;
+        if (focused && focused->GetId() == "appearance-name-input") {
+            focusDefaultAction();
+            return true;
+        }
+    }
+
     onCancel();
     return true;
 }
 
 void AppearanceCustomizeScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
     syncLocalizedText(true);
+    syncDefaultPlayerName(true);
     syncSlotViewModels(true);
 }
 

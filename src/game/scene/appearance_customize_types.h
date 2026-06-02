@@ -26,6 +26,11 @@ struct AppearanceSelection {
     std::unordered_map<std::string, std::string> slot_variants{};
 };
 
+struct NewGameCharacterSetup {
+    AppearanceSelection appearance{};
+    std::string player_name{};
+};
+
 /// Builds a mutable appearance selection from a catalog profile.
 [[nodiscard]] AppearanceSelection makeSelectionFromProfile(const game::data::AppearanceProfile& profile);
 

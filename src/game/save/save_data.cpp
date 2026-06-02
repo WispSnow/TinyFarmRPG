@@ -52,6 +52,7 @@ constexpr std::string_view KEY_TIME_SCALE = "time_scale";
 constexpr std::string_view KEY_PAUSED = "paused";
 
 constexpr std::string_view KEY_MAP_NAME = "map_name";
+constexpr std::string_view KEY_NAME = "name";
 constexpr std::string_view KEY_POSITION = "position";
 constexpr std::string_view KEY_STATE = "state";
 constexpr std::string_view KEY_INVENTORY = "inventory";
@@ -484,6 +485,7 @@ nlohmann::json serialize(const SaveData& data) {
     };
 
     nlohmann::json player = nlohmann::json::object();
+    player[KEY_NAME] = data.player.name;
     player[KEY_MAP_NAME] = data.player.map_name;
     player[KEY_POSITION] = vec2ToJson(data.player.position);
     player[KEY_HP] = data.player.hp;
@@ -676,6 +678,9 @@ bool deserialize(const nlohmann::json& json, SaveData& out, std::string& out_err
     {
         const auto& player = json[KEY_PLAYER];
         if (!readOptionalStringField(player, KEY_MAP_NAME, out.player.map_name, "", "player.map_name", out_error)) {
+            return false;
+        }
+        if (!readOptionalStringField(player, KEY_NAME, out.player.name, "", "player.name", out_error)) {
             return false;
         }
         if (!player.contains(KEY_POSITION) || !readVec2f(player[KEY_POSITION], out.player.position, "player.position", out_error)) {

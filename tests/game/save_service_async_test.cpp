@@ -42,6 +42,7 @@
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
@@ -582,6 +583,38 @@ TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresPlayerWalletGold) {
     const entt::entity loaded_player = *player_view.begin();
     const auto& loaded_wallet = player_view.get<game::component::PlayerWalletComponent>(loaded_player);
     EXPECT_EQ(loaded_wallet.gold_, 345);
+}
+
+TEST_F(SaveServiceAsyncBehaviorTest, SaveAndLoadRoundtripPreservesPlayerIdentityName) {
+    auto player_view = scene_->getRegistry().view<game::component::PlayerTag>();
+    ASSERT_NE(player_view.begin(), player_view.end());
+    const entt::entity player = *player_view.begin();
+    scene_->getRegistry().emplace_or_replace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+
+    const auto file_path = tempFilePath("save_player_identity_roundtrip.json");
+    std::string save_error;
+    ASSERT_TRUE(save_service_->saveToFile(file_path, save_error)) << save_error;
+
+    const auto json = nlohmann::json::parse(readTextFile(file_path));
+    EXPECT_EQ(json.at("player").at("name").get<std::string>(), "Mina");
+
+    scene_->getRegistry().patch<game::component::PlayerIdentityComponent>(
+        player,
+        [](game::component::PlayerIdentityComponent& identity) {
+            identity.display_name_ = "Changed";
+        });
+
+    std::string load_error;
+    ASSERT_TRUE(save_service_->loadFromFile(file_path, load_error)) << load_error;
+
+    auto loaded_player_view =
+        scene_->getRegistry().view<game::component::PlayerTag, game::component::PlayerIdentityComponent>();
+    ASSERT_NE(loaded_player_view.begin(), loaded_player_view.end());
+    const entt::entity loaded_player = *loaded_player_view.begin();
+    const auto& loaded_identity = loaded_player_view.get<game::component::PlayerIdentityComponent>(loaded_player);
+    EXPECT_EQ(loaded_identity.display_name_, "Mina");
 }
 
 TEST_F(SaveServiceAsyncBehaviorTest, LoadFromFileRestoresQuestLogState) {
