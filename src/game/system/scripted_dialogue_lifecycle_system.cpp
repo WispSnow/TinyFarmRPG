@@ -84,6 +84,8 @@ void ScriptedDialogueLifecycleSystem::onDialogueShow(const game::defs::DialogueS
 
     if (auto* mutable_dialogue = registry_.try_get<game::component::DialogueComponent>(event.target)) {
         mutable_dialogue->active_ = true;
+    } else if (registry_.all_of<game::component::NPCTag>(event.target)) {
+        registry_.emplace<game::component::DialogueComponent>(event.target).active_ = true;
     }
 
     active_dialogues_[event.target] = ActiveDialogue{
