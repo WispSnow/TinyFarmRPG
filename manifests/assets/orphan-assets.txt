@@ -1,0 +1,7 @@
+assets/data/dialogue_script_readme.md
+assets/data/light_config_readme.md
+assets/farm-rpg/CHANGELOG.txt
+assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt
+assets/farm-rpg/Documentation.txt
+assets/farm-rpg/Paletta.txt
+assets/maps/farm-rpg.tiled-project
