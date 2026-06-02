@@ -533,7 +533,7 @@
 }
 
 #equipment-detail-description {
-    margin-top: 1dp;
+    margin-top: 4dp;
     width: 218dp;
     font-size: 0.625rem;
     line-height: 10dp;
