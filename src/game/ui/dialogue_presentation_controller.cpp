@@ -3,10 +3,12 @@
 #include "engine/component/sprite_component.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/name_component.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/defs/party_ids.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/player_portrait_service.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -42,7 +44,8 @@ DialoguePresentationController::DialoguePresentationController(entt::dispatcher&
                                                                const game::data::RpgCatalog* rpg_catalog,
                                                                glm::vec2 notice_offset,
                                                                glm::vec2 item_notice_offset,
-                                                               const PlayerPortraitService* player_portrait_service)
+                                                               const PlayerPortraitService* player_portrait_service,
+                                                               const game::runtime::LocalizationService* localization)
     : dispatcher_(dispatcher),
       registry_(registry),
       conversation_box_(conversation_box),
@@ -50,8 +53,9 @@ DialoguePresentationController::DialoguePresentationController(entt::dispatcher&
       notice_slot_{.view = notice_view, .screen_offset = notice_offset},
       item_notice_slot_{.view = item_notice_view, .screen_offset = item_notice_offset},
       rpg_catalog_(rpg_catalog),
-      player_portrait_service_(player_portrait_service) {
-    buildPortraitCache();
+      player_portrait_service_(player_portrait_service),
+      localization_(localization) {
+    buildActorCaches();
     dispatcher_.sink<game::defs::DialogueShowEvent>().connect<&DialoguePresentationController::onShow>(this);
     dispatcher_.sink<game::defs::DialogueMoveEvent>().connect<&DialoguePresentationController::onMove>(this);
     dispatcher_.sink<game::defs::DialogueHideEvent>().connect<&DialoguePresentationController::onHide>(this);
@@ -68,9 +72,10 @@ void DialoguePresentationController::update(const float delta_time) {
     updateNoticeSlot(item_notice_slot_, delta_time);
 }
 
-void DialoguePresentationController::buildPortraitCache() {
+void DialoguePresentationController::buildActorCaches() {
     portrait_by_actor_id_hash_.clear();
     portrait_by_map_actor_id_hash_.clear();
+    display_name_key_by_map_actor_id_hash_.clear();
     if (!rpg_catalog_) {
         return;
     }
@@ -78,6 +83,9 @@ void DialoguePresentationController::buildPortraitCache() {
     for (const auto* actor : rpg_catalog_->listActors()) {
         if (!actor) {
             continue;
+        }
+        if (actor->map_actor_id_hash_ != entt::null && !actor->display_name_.empty()) {
+            display_name_key_by_map_actor_id_hash_.insert_or_assign(actor->map_actor_id_hash_, actor->display_name_);
         }
         const std::string decorator = portraitDecoratorForActor(*actor);
         if (decorator == NONE_DECORATOR) {
@@ -96,7 +104,7 @@ void DialoguePresentationController::onShow(const game::defs::DialogueShowEvent&
             return;
         }
         hideHotbarForConversation();
-        conversation_box_->setSpeaker(evt.speaker);
+        conversation_box_->setSpeaker(resolveSpeakerName(evt));
         conversation_box_->setText(evt.text);
         conversation_box_->setPortraitDecorator(resolvePortraitDecorator(evt));
         conversation_box_->setVisible(true);
@@ -110,7 +118,7 @@ void DialoguePresentationController::onShow(const game::defs::DialogueShowEvent&
     slot->target = evt.target;
     slot->remaining_seconds = NOTICE_SECONDS;
     slot->view->setWorldAnchor(evt.world_position, slot->screen_offset);
-    slot->view->setText(formatNoticeText(evt.speaker, evt.text));
+    slot->view->setText(formatNoticeText(resolveSpeakerName(evt), evt.text));
     slot->view->setVisible(true);
 }
 
@@ -199,6 +207,60 @@ glm::vec2 DialoguePresentationController::noticeAnchor(const entt::entity target
         offset.y = -sprite->size_.y * sprite->pivot_.y;
     }
     return transform->position_ + offset;
+}
+
+std::string DialoguePresentationController::resolveActorNameKey(const std::string_view actor_id) const {
+    if (!localization_ || actor_id.empty()) {
+        return {};
+    }
+
+    const std::string key = std::string{actor_id} + ".name";
+    if (localization_->hasText(key)) {
+        return localization_->tr(key);
+    }
+    return {};
+}
+
+std::string DialoguePresentationController::resolveCatalogActorName(const entt::id_type actor_id_hash) const {
+    if (!localization_ || !rpg_catalog_ || actor_id_hash == entt::null) {
+        return {};
+    }
+
+    const auto* actor = rpg_catalog_->findActor(actor_id_hash);
+    if (!actor || actor->display_name_.empty()) {
+        return {};
+    }
+    return game::ui::tryLocalize(localization_, actor->display_name_);
+}
+
+std::string DialoguePresentationController::resolveSpeakerName(
+    const game::defs::DialogueShowEvent& evt) const {
+    if (std::string actor_name = resolveCatalogActorName(evt.speaker_actor_id_hash); !actor_name.empty()) {
+        return actor_name;
+    }
+    if (std::string actor_name = resolveActorNameKey(evt.speaker_actor_id); !actor_name.empty()) {
+        return actor_name;
+    }
+
+    if (const auto* identity = registry_.try_get<game::component::ActorIdentityComponent>(evt.target)) {
+        if (std::string actor_name = resolveCatalogActorName(identity->actor_id_hash_); !actor_name.empty()) {
+            return actor_name;
+        }
+        if (std::string actor_name = resolveActorNameKey(identity->actor_id_); !actor_name.empty()) {
+            return actor_name;
+        }
+    }
+
+    if (localization_) {
+        if (const auto* name = registry_.try_get<engine::component::NameComponent>(evt.target)) {
+            if (const auto it = display_name_key_by_map_actor_id_hash_.find(name->name_id_);
+                it != display_name_key_by_map_actor_id_hash_.end()) {
+                return game::ui::tryLocalize(localization_, it->second);
+            }
+        }
+    }
+
+    return game::ui::tryLocalize(localization_, evt.speaker);
 }
 
 std::string DialoguePresentationController::resolvePortraitDecorator(const game::defs::DialogueShowEvent& evt) const {

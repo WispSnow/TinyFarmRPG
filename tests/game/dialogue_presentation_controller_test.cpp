@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <SDL3/SDL.h>
+#include <entt/core/hashed_string.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <glm/vec2.hpp>
@@ -13,6 +14,7 @@
 
 #include "engine/audio/audio_player.h"
 #include "engine/async/main_thread_command_queue.h"
+#include "engine/component/name_component.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/core/time.h"
@@ -27,8 +29,10 @@
 #include "engine/resource/auto_tile_library.h"
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
+#include "game/component/actor_identity_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
+#include "game/runtime/localization_service.h"
 #include "game/system/system_helpers.h"
 #include "game/ui/dialogue_box_view.h"
 #include "game/ui/dialogue_presentation_controller.h"
@@ -265,6 +269,10 @@ protected:
     return (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/data/rpg/actors.json").string();
 }
 
+[[nodiscard]] std::string i18nManifestPath() {
+    return (std::filesystem::path{PROJECT_SOURCE_DIR} / "assets/i18n/languages.json").string();
+}
+
 TEST(DialoguePresentationControllerUnitTest, ConversationHidesVisibleHotbarUntilDialogueEnds) {
     entt::registry registry;
     entt::dispatcher dispatcher;
@@ -331,6 +339,91 @@ TEST(DialoguePresentationControllerUnitTest, ConversationLeavesInitiallyHiddenHo
     EXPECT_FALSE(box.visible);
     EXPECT_FALSE(hotbar.visible);
     EXPECT_EQ(hotbar.show_calls, 0);
+}
+
+TEST(DialoguePresentationControllerUnitTest, ConversationSpeakerUsesLocalizedCatalogActorName) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadActors(actorsPath()));
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex(i18nManifestPath()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher,
+        registry,
+        &box,
+        &notice,
+        &item_notice,
+        &hotbar,
+        &catalog,
+        {0.0F, -4.0F},
+        {0.0F, -56.0F},
+        nullptr,
+        &localization);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.speaker = "Lyria";
+    show_evt.text = "Hello";
+    show_evt.speaker_actor_id = "actor.lyria";
+    show_evt.speaker_actor_id_hash = game::data::RpgCatalog::hashId(show_evt.speaker_actor_id);
+    dispatcher.trigger(show_evt);
+
+    EXPECT_EQ(box.speaker, "莉莉娅");
+    EXPECT_EQ(box.text, "Hello");
+}
+
+TEST(DialoguePresentationControllerUnitTest, ConversationSpeakerUsesLocalizedScriptNpcName) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex(i18nManifestPath()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    const entt::entity merchant = registry.create();
+    registry.emplace<engine::component::NameComponent>(
+        merchant,
+        entt::hashed_string{"Josh"}.value(),
+        "Josh");
+    registry.emplace<game::component::ActorIdentityComponent>(
+        merchant,
+        game::component::ActorIdentityComponent{
+            .actor_id_ = "npc.josh",
+            .actor_id_hash_ = entt::hashed_string{"npc.josh"}.value(),
+            .blueprint_id_ = "merchant",
+        });
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher,
+        registry,
+        &box,
+        &notice,
+        &item_notice,
+        &hotbar,
+        nullptr,
+        {0.0F, -4.0F},
+        {0.0F, -56.0F},
+        nullptr,
+        &localization);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.target = merchant;
+    show_evt.channel = game::defs::DialogueChannel::Conversation;
+    show_evt.speaker = "Josh";
+    show_evt.text = "Welcome";
+    dispatcher.trigger(show_evt);
+
+    EXPECT_EQ(box.speaker, "乔希");
 }
 
 TEST(DialoguePresentationControllerUnitTest, NoticeAutoHidesAfterDefaultDuration) {
