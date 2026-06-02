@@ -11,7 +11,7 @@
  * 该机制将每精灵的详细处理与记录工作从 GLRenderer 中解耦，使渲染器更加简洁高效。
  */
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 

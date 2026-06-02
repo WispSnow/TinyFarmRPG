@@ -6,7 +6,7 @@
  * 负责管理场景渲染的 FBO 创建、销毁，以及 sprite 批处理的管理。
  */
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 #include <entt/core/fwd.hpp>

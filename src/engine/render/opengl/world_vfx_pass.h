@@ -3,7 +3,7 @@
 #include "engine/render/opengl/render_pass.h"
 #include "engine/vfx/vfx_types.h"
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 
 #include <cstdint>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 
 namespace engine::render::opengl {
 

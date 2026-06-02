@@ -6,7 +6,7 @@
  * EmissivePass 拥有用于渲染自发光效果的着色器和GL缓冲区。
  * 从而使本通道负责所有着色器 uniform 设定、加法混合与视口管理等细节。
  */
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>

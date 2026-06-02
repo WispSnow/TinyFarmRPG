@@ -16,6 +16,7 @@ target_compile_features(${TARGET} PRIVATE cxx_std_20)
 target_include_directories(${TARGET}
     PRIVATE
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/external/stb
 )
 
 setup_compiler_options(${TARGET})

@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 #include "shader_program.h"
 #include "gl_helper.h"
+#include "engine/platform/gl_platform.h"
 #include <fstream>
 #include <filesystem>
 #include <optional>
@@ -40,6 +41,30 @@ std::optional<std::string> readFileText(std::string_view path) {
     content.assign(std::istreambuf_iterator<char>(ifs),
                     std::istreambuf_iterator<char>());
     return content;
+}
+
+std::string prepareShaderSource(std::string_view source, GLenum shader_type) {
+#if defined(__EMSCRIPTEN__)
+    constexpr std::string_view desktop_version = "#version 330 core";
+    std::string prepared{source};
+    if (prepared.rfind(desktop_version, 0) == 0) {
+        prepared.replace(0, desktop_version.size(), engine::platform::gl::kGlslVersion);
+    }
+
+    const bool is_fragment_shader = shader_type == GL_FRAGMENT_SHADER;
+    const std::string_view precision = is_fragment_shader
+        ? "\nprecision mediump float;\n"
+        : "\nprecision highp float;\n";
+    const auto first_newline = prepared.find('\n');
+    if (first_newline != std::string::npos &&
+        prepared.find("precision ", first_newline) == std::string::npos) {
+        prepared.insert(first_newline + 1, precision);
+    }
+    return prepared;
+#else
+    (void)shader_type;
+    return std::string{source};
+#endif
 }
 
 } // anonymous namespace
@@ -104,13 +129,16 @@ bool ShaderProgram::loadFromFiles(std::string_view vertex_path,
 
 bool ShaderProgram::loadFromSources(std::string_view vertex_source,
                                     std::string_view fragment_source) {
+    const std::string prepared_vertex_source = prepareShaderSource(vertex_source, GL_VERTEX_SHADER);
+    const std::string prepared_fragment_source = prepareShaderSource(fragment_source, GL_FRAGMENT_SHADER);
+
     // 编译
-    GLuint vertex_shader = compileShader(GL_VERTEX_SHADER, vertex_source);
+    GLuint vertex_shader = compileShader(GL_VERTEX_SHADER, prepared_vertex_source);
     if (vertex_shader == 0) {
         spdlog::error("顶点着色器编译失败");
         return false;
     }
-    GLuint fragment_shader = compileShader(GL_FRAGMENT_SHADER, fragment_source);
+    GLuint fragment_shader = compileShader(GL_FRAGMENT_SHADER, prepared_fragment_source);
     if (fragment_shader == 0) {
         spdlog::error("片段着色器编译失败");
         glDeleteShader(vertex_shader);

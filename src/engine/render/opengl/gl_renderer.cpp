@@ -1,4 +1,5 @@
 #include "engine/render/opengl/gl_renderer.h"
+#include "engine/platform/gl_platform.h"
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/render/opengl/render_context.h"
 #ifdef TF_ENABLE_DEBUG_UI
@@ -109,7 +110,9 @@ bool GLRenderer::init(SDL_Window* window,
     vfx_pass_ = std::make_unique<VfxPass>();
 
     // 启用 sRGB 默认帧缓冲输出
-    glEnable(GL_FRAMEBUFFER_SRGB);
+    if constexpr (engine::platform::gl::kSupportsDefaultFramebufferSrgb) {
+        glEnable(GL_FRAMEBUFFER_SRGB);
+    }
     // 启用透明混合
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -537,7 +540,9 @@ void GLRenderer::present() {
     if (rmlui_render_hook_) {
         rmlui_render_hook_(viewport);
         // RmlUi 的 GL3 backend 会关闭 GL_FRAMEBUFFER_SRGB，需在本管线中显式恢复。
-        glEnable(GL_FRAMEBUFFER_SRGB);
+        if constexpr (engine::platform::gl::kSupportsDefaultFramebufferSrgb) {
+            glEnable(GL_FRAMEBUFFER_SRGB);
+        }
     }
 
 #ifdef TF_ENABLE_DEBUG_UI

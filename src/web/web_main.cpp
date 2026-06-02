@@ -3,40 +3,106 @@
 #include <SDL3/SDL.h>
 #include <emscripten/emscripten.h>
 
-#include <array>
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
+#include <algorithm>
+#include <charconv>
 #include <cstdio>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace {
 
 constexpr int kWindowWidth = 960;
 constexpr int kWindowHeight = 540;
+constexpr std::string_view kMapPath = "/assets/maps/home_exterior.tmj";
 
-constexpr const char* kVertexShader = R"(#version 300 es
+constexpr const char* kTileVertexShader = R"(#version 300 es
 layout(location = 0) in vec2 a_position;
-layout(location = 1) in vec3 a_color;
+layout(location = 1) in vec2 a_uv;
 
-uniform float u_time_seconds;
+uniform vec2 u_canvas_size;
+uniform vec2 u_origin_pixels;
+uniform float u_scale;
 
-out vec3 v_color;
+out vec2 v_uv;
 
 void main() {
-    float pulse = sin(u_time_seconds * 1.7) * 0.035;
-    vec2 position = a_position * (0.68 + pulse);
-    gl_Position = vec4(position, 0.0, 1.0);
-    v_color = a_color;
+    vec2 screen_position = a_position * u_scale + u_origin_pixels;
+    vec2 ndc = vec2(
+        (screen_position.x / u_canvas_size.x) * 2.0 - 1.0,
+        1.0 - (screen_position.y / u_canvas_size.y) * 2.0);
+    gl_Position = vec4(ndc, 0.0, 1.0);
+    v_uv = a_uv;
 }
 )";
 
-constexpr const char* kFragmentShader = R"(#version 300 es
+constexpr const char* kTileFragmentShader = R"(#version 300 es
 precision mediump float;
 
-in vec3 v_color;
+in vec2 v_uv;
 out vec4 frag_color;
 
+uniform sampler2D u_tex;
+
 void main() {
-    frag_color = vec4(v_color, 1.0);
+    frag_color = texture(u_tex, v_uv);
 }
 )";
+
+struct TileVertex {
+    float x{};
+    float y{};
+    float u{};
+    float v{};
+};
+
+struct DrawBatch {
+    GLuint texture{};
+    GLsizei first_vertex{};
+    GLsizei vertex_count{};
+};
+
+struct TileLayer {
+    std::string name;
+    int width{};
+    int height{};
+    std::vector<std::uint32_t> gids;
+    bool visible{true};
+};
+
+struct Tileset {
+    std::uint32_t first_gid{};
+    std::uint32_t tile_count{};
+    int columns{};
+    int tile_width{};
+    int tile_height{};
+    int image_width{};
+    int image_height{};
+    std::string path;
+    std::string image_path;
+    GLuint texture{};
+};
+
+struct TileMap {
+    int width{};
+    int height{};
+    int tile_width{};
+    int tile_height{};
+    std::vector<TileLayer> layers;
+    std::vector<Tileset> tilesets;
+};
 
 struct WebApp {
     SDL_Window* window{};
@@ -44,8 +110,14 @@ struct WebApp {
     GLuint program{};
     GLuint vao{};
     GLuint vbo{};
-    GLint time_uniform{-1};
-    Uint64 start_ticks{};
+    GLint canvas_size_uniform{-1};
+    GLint origin_uniform{-1};
+    GLint scale_uniform{-1};
+    GLint texture_uniform{-1};
+    int map_width_pixels{};
+    int map_height_pixels{};
+    std::vector<Tileset> tilesets;
+    std::vector<DrawBatch> batches;
     bool running{true};
 };
 
@@ -58,24 +130,492 @@ void logGlInfo() {
     std::printf("TinyFarmRPG GL version: %s\n", version ? version : "(unknown)");
 }
 
-void logPreloadedFile(const char* path) {
-    FILE* file = std::fopen(path, "rb");
+std::string readFileText(std::string_view path) {
+    const std::string path_string{path};
+    FILE* file = std::fopen(path_string.c_str(), "rb");
     if (file == nullptr) {
-        std::printf("preload missing: %s\n", path);
-        return;
+        std::fprintf(stderr, "Failed to open file: %s\n", path_string.c_str());
+        return {};
     }
 
     std::fseek(file, 0, SEEK_END);
     const long size = std::ftell(file);
+    if (size <= 0) {
+        std::fclose(file);
+        return {};
+    }
+    std::fseek(file, 0, SEEK_SET);
+
+    std::string text(static_cast<std::size_t>(size), '\0');
+    const std::size_t bytes_read = std::fread(text.data(), 1, text.size(), file);
     std::fclose(file);
-    std::printf("preload ok: %s (%ld bytes)\n", path, size);
+    text.resize(bytes_read);
+    return text;
 }
 
-void logPreloadSmoke() {
-    logPreloadedFile("/assets/data/resource_mapping.json");
-    logPreloadedFile("/config/window.json");
-    logPreloadedFile("/ui/rmlui/scenes/title.rml");
-    logPreloadedFile("/assets/maps/home_exterior.tmj");
+std::optional<std::uint32_t> parseUintAfter(std::string_view text,
+                                            std::string_view key,
+                                            std::size_t start = 0) {
+    const std::size_t key_pos = text.find(key, start);
+    if (key_pos == std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    std::size_t value_pos = text.find_first_of("0123456789", key_pos + key.size());
+    if (value_pos == std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    std::uint32_t value = 0;
+    const char* begin = text.data() + value_pos;
+    const char* end = text.data() + text.size();
+    const auto result = std::from_chars(begin, end, value);
+    if (result.ec != std::errc{}) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+std::optional<bool> parseBoolAfter(std::string_view text,
+                                   std::string_view key,
+                                   std::size_t start = 0) {
+    const std::size_t key_pos = text.find(key, start);
+    if (key_pos == std::string_view::npos) {
+        return std::nullopt;
+    }
+    const std::size_t value_pos = text.find_first_not_of(" \t\r\n:", key_pos + key.size());
+    if (value_pos == std::string_view::npos) {
+        return std::nullopt;
+    }
+    if (text.substr(value_pos, 4) == "true") {
+        return true;
+    }
+    if (text.substr(value_pos, 5) == "false") {
+        return false;
+    }
+    return std::nullopt;
+}
+
+std::string unescapeJsonString(std::string_view value) {
+    std::string output;
+    output.reserve(value.size());
+    for (std::size_t i = 0; i < value.size(); ++i) {
+        if (value[i] == '\\' && i + 1 < value.size()) {
+            output.push_back(value[i + 1]);
+            ++i;
+            continue;
+        }
+        output.push_back(value[i]);
+    }
+    return output;
+}
+
+std::optional<std::string> parseStringAfter(std::string_view text,
+                                            std::string_view key,
+                                            std::size_t start = 0) {
+    const std::size_t value_begin = text.find(key, start);
+    if (value_begin == std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    std::size_t cursor = value_begin + key.size();
+    std::string raw_value;
+    while (cursor < text.size()) {
+        const char ch = text[cursor];
+        if (ch == '\\' && cursor + 1 < text.size()) {
+            raw_value.push_back(ch);
+            raw_value.push_back(text[cursor + 1]);
+            cursor += 2;
+            continue;
+        }
+        if (ch == '"') {
+            return unescapeJsonString(raw_value);
+        }
+        raw_value.push_back(ch);
+        ++cursor;
+    }
+    return std::nullopt;
+}
+
+std::vector<std::uint32_t> parseUintArrayAfter(std::string_view text,
+                                               std::string_view key,
+                                               std::size_t start,
+                                               std::size_t& array_end) {
+    std::vector<std::uint32_t> values;
+    array_end = std::string_view::npos;
+
+    const std::size_t key_pos = text.find(key, start);
+    if (key_pos == std::string_view::npos) {
+        return values;
+    }
+    const std::size_t begin = text.find('[', key_pos + key.size());
+    if (begin == std::string_view::npos) {
+        return values;
+    }
+    const std::size_t end = text.find(']', begin + 1);
+    if (end == std::string_view::npos) {
+        return values;
+    }
+
+    std::size_t cursor = begin + 1;
+    while (cursor < end) {
+        const std::size_t value_pos = text.find_first_of("0123456789", cursor);
+        if (value_pos == std::string_view::npos || value_pos >= end) {
+            break;
+        }
+
+        std::uint32_t value = 0;
+        const char* parse_begin = text.data() + value_pos;
+        const char* parse_end = text.data() + end;
+        const auto result = std::from_chars(parse_begin, parse_end, value);
+        if (result.ec != std::errc{}) {
+            break;
+        }
+        values.push_back(value);
+        cursor = static_cast<std::size_t>(result.ptr - text.data());
+    }
+
+    array_end = end + 1;
+    return values;
+}
+
+std::string directoryOf(std::string_view path) {
+    const std::size_t slash = path.rfind('/');
+    if (slash == std::string_view::npos) {
+        return {};
+    }
+    return std::string{path.substr(0, slash)};
+}
+
+std::string normalizePath(std::string_view base_dir, std::string_view relative_path) {
+    std::string combined;
+    if (!relative_path.empty() && relative_path.front() == '/') {
+        combined = std::string{relative_path};
+    } else if (base_dir.empty()) {
+        combined = std::string{relative_path};
+    } else {
+        combined = std::string{base_dir} + "/" + std::string{relative_path};
+    }
+
+    const bool absolute = !combined.empty() && combined.front() == '/';
+    std::vector<std::string> parts;
+    std::size_t cursor = 0;
+    while (cursor <= combined.size()) {
+        const std::size_t slash = combined.find('/', cursor);
+        const std::size_t end = slash == std::string::npos ? combined.size() : slash;
+        const std::string_view part{combined.data() + cursor, end - cursor};
+        if (part == "..") {
+            if (!parts.empty()) {
+                parts.pop_back();
+            }
+        } else if (!part.empty() && part != ".") {
+            parts.emplace_back(part);
+        }
+        if (slash == std::string::npos) {
+            break;
+        }
+        cursor = slash + 1;
+    }
+
+    std::string normalized = absolute ? "/" : "";
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+        if (i > 0) {
+            normalized += "/";
+        }
+        normalized += parts[i];
+    }
+    return normalized;
+}
+
+bool loadTilesetMetadata(Tileset& tileset) {
+    const std::string text = readFileText(tileset.path);
+    if (text.empty()) {
+        return false;
+    }
+
+    const auto image = parseStringAfter(text, "\"image\":\"");
+    const auto image_width = parseUintAfter(text, "\"imagewidth\":");
+    const auto image_height = parseUintAfter(text, "\"imageheight\":");
+    const auto tile_width = parseUintAfter(text, "\"tilewidth\":");
+    const auto tile_height = parseUintAfter(text, "\"tileheight\":");
+    const auto columns = parseUintAfter(text, "\"columns\":");
+    const auto tile_count = parseUintAfter(text, "\"tilecount\":");
+    if (!image || !image_width || !image_height || !tile_width || !tile_height) {
+        std::printf("tileset skipped (no atlas image): %s\n", tileset.path.c_str());
+        return false;
+    }
+
+    tileset.image_width = static_cast<int>(*image_width);
+    tileset.image_height = static_cast<int>(*image_height);
+    tileset.tile_width = static_cast<int>(*tile_width);
+    tileset.tile_height = static_cast<int>(*tile_height);
+    tileset.columns = columns ? static_cast<int>(*columns) : tileset.image_width / tileset.tile_width;
+    tileset.tile_count = tile_count ? *tile_count : static_cast<std::uint32_t>(
+        (tileset.image_width / tileset.tile_width) * (tileset.image_height / tileset.tile_height));
+    tileset.image_path = normalizePath(directoryOf(tileset.path), *image);
+    return tileset.columns > 0 && tileset.tile_count > 0;
+}
+
+bool loadTexture(Tileset& tileset) {
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    unsigned char* pixels = stbi_load(tileset.image_path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+    if (pixels == nullptr) {
+        std::fprintf(stderr, "Failed to decode tileset image: %s (%s)\n",
+                     tileset.image_path.c_str(),
+                     stbi_failure_reason() ? stbi_failure_reason() : "unknown");
+        return false;
+    }
+
+    glGenTextures(1, &tileset.texture);
+    glBindTexture(GL_TEXTURE_2D, tileset.texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        engine::platform::gl::kTextureColorInternalFormat,
+        width,
+        height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    stbi_image_free(pixels);
+
+    if (tileset.texture == 0 || glGetError() != GL_NO_ERROR) {
+        std::fprintf(stderr, "Failed to upload tileset texture: %s\n", tileset.image_path.c_str());
+        return false;
+    }
+    return true;
+}
+
+std::vector<TileLayer> parseLayers(std::string_view map_text) {
+    std::vector<TileLayer> layers;
+    const std::size_t layers_begin = map_text.find("\"layers\"");
+    const std::size_t tilesets_begin = map_text.find("\"tilesets\"", layers_begin);
+    if (layers_begin == std::string_view::npos || tilesets_begin == std::string_view::npos) {
+        return layers;
+    }
+
+    std::size_t cursor = layers_begin;
+    while (cursor < tilesets_begin) {
+        const std::size_t data_pos = map_text.find("\"data\"", cursor);
+        if (data_pos == std::string_view::npos || data_pos >= tilesets_begin) {
+            break;
+        }
+
+        std::size_t data_end = std::string_view::npos;
+        TileLayer layer{};
+        layer.gids = parseUintArrayAfter(map_text, "\"data\"", data_pos, data_end);
+        if (layer.gids.empty() || data_end == std::string_view::npos) {
+            cursor = data_pos + 6;
+            continue;
+        }
+
+        const std::size_t name_pos = map_text.rfind("\"name\":\"", data_pos);
+        if (name_pos != std::string_view::npos) {
+            layer.name = parseStringAfter(map_text, "\"name\":\"", name_pos).value_or("tilelayer");
+        }
+        layer.width = static_cast<int>(parseUintAfter(map_text, "\"width\":", data_end).value_or(0));
+        layer.height = static_cast<int>(parseUintAfter(map_text, "\"height\":", data_end).value_or(0));
+        layer.visible = parseBoolAfter(map_text, "\"visible\":", data_end).value_or(true);
+
+        if (layer.width > 0 && layer.height > 0 && layer.visible) {
+            layers.push_back(std::move(layer));
+        }
+        cursor = data_end;
+    }
+    return layers;
+}
+
+std::vector<Tileset> parseTilesets(std::string_view map_text) {
+    std::vector<Tileset> tilesets;
+    const std::size_t tilesets_begin = map_text.find("\"tilesets\"");
+    if (tilesets_begin == std::string_view::npos) {
+        return tilesets;
+    }
+
+    const std::string map_dir = directoryOf(kMapPath);
+    std::size_t cursor = tilesets_begin;
+    while (true) {
+        const std::size_t first_gid_pos = map_text.find("\"firstgid\"", cursor);
+        if (first_gid_pos == std::string_view::npos) {
+            break;
+        }
+        const auto first_gid = parseUintAfter(map_text, "\"firstgid\":", first_gid_pos);
+        const auto source = parseStringAfter(map_text, "\"source\":\"", first_gid_pos);
+        if (!first_gid || !source) {
+            break;
+        }
+
+        Tileset tileset{};
+        tileset.first_gid = *first_gid;
+        tileset.path = normalizePath(map_dir, *source);
+        if (loadTilesetMetadata(tileset) && loadTexture(tileset)) {
+            tilesets.push_back(std::move(tileset));
+        }
+        cursor = first_gid_pos + 10;
+    }
+
+    std::sort(tilesets.begin(), tilesets.end(), [](const Tileset& lhs, const Tileset& rhs) {
+        return lhs.first_gid < rhs.first_gid;
+    });
+    return tilesets;
+}
+
+TileMap loadTileMap(std::string_view path) {
+    TileMap map{};
+    const std::string text = readFileText(path);
+    if (text.empty()) {
+        return map;
+    }
+
+    map.width = static_cast<int>(parseUintAfter(text, "\"width\":").value_or(0));
+    map.height = static_cast<int>(parseUintAfter(text, "\"height\":").value_or(0));
+    map.tile_width = static_cast<int>(parseUintAfter(text, "\"tilewidth\":").value_or(16));
+    map.tile_height = static_cast<int>(parseUintAfter(text, "\"tileheight\":").value_or(16));
+    map.layers = parseLayers(text);
+    map.tilesets = parseTilesets(text);
+    return map;
+}
+
+const Tileset* findTilesetForGid(const std::vector<Tileset>& tilesets, std::uint32_t gid) {
+    const Tileset* selected = nullptr;
+    for (const Tileset& tileset : tilesets) {
+        if (tileset.first_gid <= gid) {
+            selected = &tileset;
+        } else {
+            break;
+        }
+    }
+    if (selected == nullptr) {
+        return nullptr;
+    }
+
+    const std::uint32_t local_id = gid - selected->first_gid;
+    return local_id < selected->tile_count ? selected : nullptr;
+}
+
+void appendBatchVertex(std::vector<TileVertex>& vertices,
+                       std::vector<DrawBatch>& batches,
+                       GLuint texture,
+                       const TileVertex& vertex) {
+    if (batches.empty() || batches.back().texture != texture) {
+        batches.push_back(DrawBatch{
+            texture,
+            static_cast<GLsizei>(vertices.size()),
+            0,
+        });
+    }
+    vertices.push_back(vertex);
+    ++batches.back().vertex_count;
+}
+
+void appendTile(std::vector<TileVertex>& vertices,
+                std::vector<DrawBatch>& batches,
+                const Tileset& tileset,
+                std::uint32_t gid,
+                int tile_x,
+                int tile_y,
+                int map_tile_width,
+                int map_tile_height) {
+    const std::uint32_t local_id = gid - tileset.first_gid;
+    const int atlas_x = static_cast<int>(local_id % static_cast<std::uint32_t>(tileset.columns)) * tileset.tile_width;
+    const int atlas_y = static_cast<int>(local_id / static_cast<std::uint32_t>(tileset.columns)) * tileset.tile_height;
+    const float inv_w = 1.0F / static_cast<float>(tileset.image_width);
+    const float inv_h = 1.0F / static_cast<float>(tileset.image_height);
+
+    const float u0 = static_cast<float>(atlas_x) * inv_w;
+    const float v0 = static_cast<float>(atlas_y) * inv_h;
+    const float u1 = static_cast<float>(atlas_x + tileset.tile_width) * inv_w;
+    const float v1 = static_cast<float>(atlas_y + tileset.tile_height) * inv_h;
+
+    const float x0 = static_cast<float>(tile_x * map_tile_width);
+    const float y0 = static_cast<float>(tile_y * map_tile_height);
+    const float x1 = x0 + static_cast<float>(map_tile_width);
+    const float y1 = y0 + static_cast<float>(map_tile_height);
+
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x0, y0, u0, v0});
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x1, y0, u1, v0});
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x0, y1, u0, v1});
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x0, y1, u0, v1});
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x1, y0, u1, v0});
+    appendBatchVertex(vertices, batches, tileset.texture, TileVertex{x1, y1, u1, v1});
+}
+
+bool buildTileGeometry(WebApp& app, const TileMap& map, const std::vector<Tileset>& tilesets) {
+    std::vector<TileVertex> vertices;
+    std::vector<DrawBatch> batches;
+
+    for (const TileLayer& layer : map.layers) {
+        const int width = layer.width > 0 ? layer.width : map.width;
+        const int height = layer.height > 0 ? layer.height : map.height;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const std::size_t index = static_cast<std::size_t>(y * width + x);
+                if (index >= layer.gids.size()) {
+                    continue;
+                }
+
+                constexpr std::uint32_t tiled_gid_mask = 0x1FFFFFFFu;
+                const std::uint32_t gid = layer.gids[index] & tiled_gid_mask;
+                if (gid == 0) {
+                    continue;
+                }
+
+                const Tileset* tileset = findTilesetForGid(tilesets, gid);
+                if (tileset == nullptr || tileset->texture == 0) {
+                    continue;
+                }
+                appendTile(vertices, batches, *tileset, gid, x, y, map.tile_width, map.tile_height);
+            }
+        }
+    }
+
+    if (vertices.empty()) {
+        std::fprintf(stderr, "No renderable WebGL tile vertices were generated.\n");
+        return false;
+    }
+
+    app.batches = std::move(batches);
+    glGenVertexArrays(1, &app.vao);
+    glBindVertexArray(app.vao);
+
+    glGenBuffers(1, &app.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, app.vbo);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        static_cast<GLsizeiptr>(vertices.size() * sizeof(TileVertex)),
+        vertices.data(),
+        GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TileVertex), nullptr);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(
+        1,
+        2,
+        GL_FLOAT,
+        GL_FALSE,
+        sizeof(TileVertex),
+        reinterpret_cast<const void*>(2 * sizeof(float)));
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    std::printf(
+        "tile smoke: layers=%zu tilesets=%zu batches=%zu vertices=%zu\n",
+        map.layers.size(),
+        tilesets.size(),
+        app.batches.size(),
+        vertices.size());
+    return glGetError() == GL_NO_ERROR;
 }
 
 GLuint compileShader(GLenum type, const char* source) {
@@ -89,7 +629,7 @@ GLuint compileShader(GLenum type, const char* source) {
         return shader;
     }
 
-    std::array<char, 1024> log{};
+    std::vector<char> log(1024, '\0');
     GLsizei length = 0;
     glGetShaderInfoLog(shader, static_cast<GLsizei>(log.size()), &length, log.data());
     std::fprintf(stderr, "Shader compile failed: %.*s\n", length, log.data());
@@ -98,12 +638,12 @@ GLuint compileShader(GLenum type, const char* source) {
 }
 
 GLuint createProgram() {
-    const GLuint vertex_shader = compileShader(GL_VERTEX_SHADER, kVertexShader);
+    const GLuint vertex_shader = compileShader(GL_VERTEX_SHADER, kTileVertexShader);
     if (vertex_shader == 0) {
         return 0;
     }
 
-    const GLuint fragment_shader = compileShader(GL_FRAGMENT_SHADER, kFragmentShader);
+    const GLuint fragment_shader = compileShader(GL_FRAGMENT_SHADER, kTileFragmentShader);
     if (fragment_shader == 0) {
         glDeleteShader(vertex_shader);
         return 0;
@@ -123,40 +663,12 @@ GLuint createProgram() {
         return program;
     }
 
-    std::array<char, 1024> log{};
+    std::vector<char> log(1024, '\0');
     GLsizei length = 0;
     glGetProgramInfoLog(program, static_cast<GLsizei>(log.size()), &length, log.data());
     std::fprintf(stderr, "Program link failed: %.*s\n", length, log.data());
     glDeleteProgram(program);
     return 0;
-}
-
-bool createQuad(WebApp& app) {
-    const std::array<float, 30> vertices{
-        -0.72F, -0.44F, 0.26F, 0.74F, 0.54F,
-        0.72F, -0.44F, 0.91F, 0.77F, 0.36F,
-        -0.72F, 0.44F, 0.47F, 0.58F, 0.94F,
-        -0.72F, 0.44F, 0.47F, 0.58F, 0.94F,
-        0.72F, -0.44F, 0.91F, 0.77F, 0.36F,
-        0.72F, 0.44F, 0.98F, 0.42F, 0.60F,
-    };
-
-    glGenVertexArrays(1, &app.vao);
-    glBindVertexArray(app.vao);
-
-    glGenBuffers(1, &app.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, app.vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(float)), vertices.data(), GL_STATIC_DRAW);
-
-    constexpr GLsizei stride = 5 * static_cast<GLsizei>(sizeof(float));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, nullptr);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(2 * sizeof(float)));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-    return glGetError() == GL_NO_ERROR;
 }
 
 void shutdown(WebApp& app) {
@@ -168,6 +680,14 @@ void shutdown(WebApp& app) {
         glDeleteVertexArrays(1, &app.vao);
         app.vao = 0;
     }
+    for (Tileset& tileset : app.tilesets) {
+        if (tileset.texture != 0) {
+            glDeleteTextures(1, &tileset.texture);
+            tileset.texture = 0;
+        }
+    }
+    app.tilesets.clear();
+    app.batches.clear();
     if (app.program != 0) {
         glDeleteProgram(app.program);
         app.program = 0;
@@ -203,16 +723,35 @@ void frame(void* user_data) {
     int width = 0;
     int height = 0;
     SDL_GetWindowSizeInPixels(app->window, &width, &height);
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
     glViewport(0, 0, width, height);
-    glClearColor(0.10F, 0.14F, 0.19F, 1.0F);
+    glClearColor(0.08F, 0.12F, 0.16F, 1.0F);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    const float elapsed_seconds =
-        static_cast<float>(SDL_GetTicks() - app->start_ticks) / 1000.0F;
+    const float fit_scale = std::min(
+        static_cast<float>(width) / static_cast<float>(app->map_width_pixels),
+        static_cast<float>(height) / static_cast<float>(app->map_height_pixels));
+    const float scale = fit_scale * 0.92F;
+    const float origin_x = (static_cast<float>(width) - static_cast<float>(app->map_width_pixels) * scale) * 0.5F;
+    const float origin_y = (static_cast<float>(height) - static_cast<float>(app->map_height_pixels) * scale) * 0.5F;
+
     glUseProgram(app->program);
-    glUniform1f(app->time_uniform, elapsed_seconds);
+    glUniform2f(app->canvas_size_uniform, static_cast<float>(width), static_cast<float>(height));
+    glUniform2f(app->origin_uniform, origin_x, origin_y);
+    glUniform1f(app->scale_uniform, scale);
+    glUniform1i(app->texture_uniform, 0);
     glBindVertexArray(app->vao);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glActiveTexture(GL_TEXTURE0);
+    for (const DrawBatch& batch : app->batches) {
+        glBindTexture(GL_TEXTURE_2D, batch.texture);
+        glDrawArrays(GL_TRIANGLES, batch.first_vertex, batch.vertex_count);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
     glUseProgram(0);
 
@@ -229,9 +768,12 @@ bool initialize(WebApp& app) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+    SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 0);
 
     app.window = SDL_CreateWindow(
-        "TinyFarmRPG Web Walking Skeleton",
+        "TinyFarmRPG WebGL2 Tile Smoke",
         kWindowWidth,
         kWindowHeight,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -250,23 +792,40 @@ bool initialize(WebApp& app) {
 
     SDL_GL_MakeCurrent(app.window, app.gl_context);
     SDL_GL_SetSwapInterval(1);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     logGlInfo();
-    logPreloadSmoke();
+
+    TileMap map = loadTileMap(kMapPath);
+    if (map.width <= 0 || map.height <= 0 || map.layers.empty() || map.tilesets.empty()) {
+        std::fprintf(stderr, "Failed to load Web tile map resources.\n");
+        shutdown(app);
+        return false;
+    }
 
     app.program = createProgram();
     if (app.program == 0) {
         shutdown(app);
         return false;
     }
-    app.time_uniform = glGetUniformLocation(app.program, "u_time_seconds");
+    app.canvas_size_uniform = glGetUniformLocation(app.program, "u_canvas_size");
+    app.origin_uniform = glGetUniformLocation(app.program, "u_origin_pixels");
+    app.scale_uniform = glGetUniformLocation(app.program, "u_scale");
+    app.texture_uniform = glGetUniformLocation(app.program, "u_tex");
 
-    if (!createQuad(app)) {
-        std::fprintf(stderr, "Failed to create WebGL quad resources.\n");
+    app.map_width_pixels = map.width * map.tile_width;
+    app.map_height_pixels = map.height * map.tile_height;
+    app.tilesets = std::move(map.tilesets);
+
+    if (!buildTileGeometry(app, map, app.tilesets)) {
+        std::fprintf(stderr, "Failed to create WebGL tile geometry.\n");
         shutdown(app);
         return false;
     }
 
-    app.start_ticks = SDL_GetTicks();
     return true;
 }
 

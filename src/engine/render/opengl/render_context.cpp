@@ -12,9 +12,9 @@
  * - 实现上下文的完整和安全销毁逻辑
  */
 #include "render_context.h"
+#include "engine/platform/gl_platform.h"
 #include <fstream>
 #include <filesystem>
-#include <glad/glad.h>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
@@ -115,15 +115,20 @@ bool RenderContext::setAttributes() {
     if (!requireAttr(SDL_GL_CONTEXT_MAJOR_VERSION, params_.gl_major_version_) ||
         !requireAttr(SDL_GL_CONTEXT_MINOR_VERSION, params_.gl_minor_version_) ||
         !requireAttr(SDL_GL_CONTEXT_PROFILE_MASK, static_cast<int>(params_.profile_mask_)) ||
-        !requireAttr(SDL_GL_CONTEXT_FLAGS, static_cast<int>(params_.context_flags_)) ||
         !requireAttr(SDL_GL_DOUBLEBUFFER, params_.double_buffer_ ? 1 : 0) ||
         !requireAttr(SDL_GL_DEPTH_SIZE, params_.depth_bits_) ||
         !requireAttr(SDL_GL_STENCIL_SIZE, params_.stencil_bits_) ||
         !requireAttr(SDL_GL_MULTISAMPLEBUFFERS, params_.multi_sample_buffers_) ||
-        !requireAttr(SDL_GL_MULTISAMPLESAMPLES, params_.multi_sample_samples_) ||
+        !requireAttr(SDL_GL_MULTISAMPLESAMPLES, params_.multi_sample_samples_)) {
+        return false;
+    }
+
+#if !defined(__EMSCRIPTEN__)
+    if (!requireAttr(SDL_GL_CONTEXT_FLAGS, static_cast<int>(params_.context_flags_)) ||
         !requireAttr(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, params_.framebuffer_SRGB_capable_)) {
         return false;
     }
+#endif
 
     return true;
 }
@@ -142,6 +147,7 @@ bool RenderContext::createContext() {
         return false;
     }
 
+#if !defined(__EMSCRIPTEN__)
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
         spdlog::error("为 RenderContext 初始化 GLAD 失败");
         SDL_GL_MakeCurrent(window_, nullptr);
@@ -149,6 +155,7 @@ bool RenderContext::createContext() {
         context_ = nullptr;
         return false;
     }
+#endif
     // 此时上下文已当前且 GLAD 已加载。调用者现在可以安全地发出 OpenGL 命令。
 
     return true;

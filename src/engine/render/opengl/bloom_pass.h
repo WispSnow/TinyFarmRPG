@@ -4,7 +4,7 @@
  * @brief 负责将自发光纹理进行高斯模糊，生成泛光纹理。
  */
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <memory>
 #include "render_pass.h"

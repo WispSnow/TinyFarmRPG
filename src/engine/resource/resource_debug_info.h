@@ -4,7 +4,7 @@
 #include <string>
 #include <cstddef>
 #include <cstdint>
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <entt/core/fwd.hpp>
 
 namespace engine::resource {

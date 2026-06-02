@@ -1,5 +1,6 @@
 #include "texture_loader.h"
 
+#include "engine/platform/gl_platform.h"
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/resource/stb_image_mutex.h"
 
@@ -13,7 +14,6 @@
 #pragma clang diagnostic pop
 #endif
 
-#include <glad/glad.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
@@ -57,7 +57,7 @@ namespace {
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
-            GL_SRGB8_ALPHA8,
+            engine::platform::gl::kTextureColorInternalFormat,
             width,
             height,
             0,

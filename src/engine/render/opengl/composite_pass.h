@@ -7,7 +7,7 @@
 #include "engine/utils/math.h"
 #include "render_pass.h"
 #include <memory>
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec3.hpp>
 
 namespace engine::render::opengl {

@@ -5,7 +5,7 @@
 // 仅在相关数值发生变化时，标记需要重新计算，从而让 GLRenderer 可以延迟更新视口以优化性能。
 // -----------------------------------------------------------------------------
 #include "viewport_manager.h"
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/common.hpp>
 
 namespace engine::render::opengl {

@@ -7,7 +7,7 @@
  * 便于在如 ShaderLibrary 等容器中安全管理，避免内存泄漏。
  */
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <string>
 #include <string_view>
 #include <memory>

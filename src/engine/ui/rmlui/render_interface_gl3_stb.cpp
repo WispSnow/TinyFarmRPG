@@ -3,7 +3,7 @@
 #include "engine/resource/stb_image_mutex.h"
 #include "engine/ui/rmlui/rml_generated_image_registry.h"
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/Log.h>

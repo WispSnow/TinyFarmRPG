@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string_view>
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <spdlog/spdlog.h>
 
 namespace engine::render::opengl {

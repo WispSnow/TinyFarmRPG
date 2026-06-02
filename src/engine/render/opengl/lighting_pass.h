@@ -12,7 +12,7 @@
  *   以确保方向光的渐变遮罩不跟随相机移动；绘制完成后再恢复相机 `uViewProj`，避免影响后续光源。
  */
 
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <vector>

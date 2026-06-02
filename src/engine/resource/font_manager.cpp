@@ -1,7 +1,7 @@
 #include "font_manager.h"
 #include <spdlog/spdlog.h>
 #include <entt/core/hashed_string.hpp>
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <cmath>
 #include <cstring>
 #include <string>

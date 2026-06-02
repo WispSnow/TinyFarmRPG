@@ -1,5 +1,5 @@
 #pragma once
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 #include <optional>

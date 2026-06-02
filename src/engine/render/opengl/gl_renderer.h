@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <glad/glad.h>
+#include "engine/platform/gl_platform.h"
 #include <SDL3/SDL.h>
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
