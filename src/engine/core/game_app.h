@@ -7,6 +7,7 @@
 // 前向声明, 减少头文件的依赖，增加编译速度
 struct SDL_Window;
 struct SDL_Renderer;
+union SDL_Event;
 
 namespace engine::resource {
 class ResourceManager;
@@ -98,13 +99,42 @@ private:
     std::unique_ptr<engine::ui::rmlui::RmlUiRuntime> rmlui_runtime_;
 
 public:
+    enum class EventPumpMode {
+        Poll,
+        ExternalCallbacks,
+    };
+
     GameApp();
     ~GameApp();
 
     /**
-     * @brief 运行游戏应用程序，其中会调用init()，然后进入主循环，离开循环后自动调用close()。
+     * @brief 运行游戏应用程序，其中会调用 init()，然后使用桌面阻塞 driver 驱动 tickFrame()。
      */
     void run();
+
+    /**
+     * @brief 初始化应用生命周期对象；成功后可由 run() 或外部 callbacks 驱动每帧。
+     */
+    [[nodiscard]] bool init();
+
+    /**
+     * @brief 执行一帧游戏循环。
+     * @param event_pump_mode Poll 表示本帧主动从 SDL 队列采样事件；ExternalCallbacks 表示事件已由外部 driver 输入。
+     * @return 应用仍应继续运行时返回 true。
+     */
+    [[nodiscard]] bool tickFrame(EventPumpMode event_pump_mode = EventPumpMode::Poll);
+
+    /**
+     * @brief 处理外部 driver 已收到的单个 SDL 事件。
+     */
+    void handleSdlEvent(const SDL_Event& event);
+
+    /**
+     * @brief 关闭应用并释放资源。可重复调用。
+     */
+    void shutdown();
+
+    [[nodiscard]] bool isRunning() const;
 
     /**
      * @brief 注册用于设置初始游戏场景的函数。
@@ -121,14 +151,12 @@ public:
     GameApp& operator=(GameApp&&) = delete;
 
 private:
-    [[nodiscard]] bool init();      // nodiscard 表示该函数返回值不应该被忽略
-    void handleEvents();
+    void pollSdlEvents();
     void update(float delta_time);
     void updateFrame(float delta_time);
     void updateRmlUiFrame();
     void render(float interpolation_alpha);
     void drainMainThreadCommands();
-    void close();
 
     // 各模块的初始化/创建函数，在init()中调用
     [[nodiscard]] bool initDispatcher();

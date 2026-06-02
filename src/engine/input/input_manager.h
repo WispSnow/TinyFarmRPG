@@ -273,6 +273,13 @@ public:
     void sampleInputEvents();
 
     /**
+     * @brief 处理一个由外部 driver 提供的 SDL 事件。
+     *
+     * 用于 SDL main callbacks 等不应再次调用 SDL_PollEvent 的驱动路径。
+     */
+    void processSdlEvent(const SDL_Event& event);
+
+    /**
      * @brief 按当前动作状态分发回调（建议每个逻辑 tick 调用一次，且在逻辑更新前）。
      */
     void dispatchActionCallbacks();
@@ -330,7 +337,7 @@ private:
                  engine::core::GameState* game_state,
                  std::string_view config_path);
 
-    void processEvent(const SDL_Event& event);                      ///< @brief 处理 SDL 事件（将按键转换为动作状态）
+    void processEvent(const SDL_Event& event);                      ///< @brief 将已通过 UI 过滤的 SDL 事件转换为动作状态
     [[nodiscard]] bool loadConfig(std::string_view config_path);
     void initializeMappings(const std::map<std::string, std::vector<std::string>>& actions_to_keyname);
     void rebuildBindingCaches(bool reset_runtime_state = true);

@@ -15,13 +15,6 @@
 
 namespace {
 
-void initialize_environment() {
-#ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-#endif
-}
-
 void setupInitialScene(engine::core::Context& context) {
     auto title_scene = std::make_unique<game::scene::TitleScene>("TitleScene", context);
     context.getDispatcher().trigger<engine::utils::PushSceneEvent>(engine::utils::PushSceneEvent{std::move(title_scene)});
@@ -31,13 +24,25 @@ void setupInitialScene(engine::core::Context& context) {
 
 namespace game {
 
+void initializeEnvironment() {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+}
+
+std::unique_ptr<engine::core::GameApp> createApp() {
+    auto app = std::make_unique<engine::core::GameApp>();
+    app->registerSceneSetup(setupInitialScene);
+    return app;
+}
+
 int run() {
-    initialize_environment();
+    initializeEnvironment();
     spdlog::set_level(spdlog::level::info);
 
-    engine::core::GameApp app;
-    app.registerSceneSetup(setupInitialScene);
-    app.run();
+    auto app = createApp();
+    app->run();
     return 0;
 }
 

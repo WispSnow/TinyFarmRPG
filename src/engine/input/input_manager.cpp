@@ -184,41 +184,47 @@ void InputManager::update() {
 void InputManager::sampleInputEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (rebind_capture_.active) {
-            if (handleRebindCaptureEvent(event)) {
-                continue;
-            }
+        processSdlEvent(event);
+    }
+}
 
-            if (isSystemEventDuringInputCapture(event)) {
-                processEvent(event);
-            }
-            continue;
+void InputManager::processSdlEvent(const SDL_Event& input_event) {
+    SDL_Event event = input_event;
+
+    if (rebind_capture_.active) {
+        if (handleRebindCaptureEvent(event)) {
+            return;
         }
 
-        bool imgui_blocks_rmlui = false;
-        // Observer 必须先运行。GLRenderer 会在这里把事件喂给 ImGui，
-        // 这样后续 isImGuiBlockingRmlUi() 读取到的 WantCapture* 才对应当前事件后的状态。
-        if (sdl_event_observer_) {
-            sdl_event_observer_(event);
+        if (isSystemEventDuringInputCapture(event)) {
+            processEvent(event);
         }
+        return;
+    }
+
+    bool imgui_blocks_rmlui = false;
+    // Observer 必须先运行。GLRenderer 会在这里把事件喂给 ImGui，
+    // 这样后续 isImGuiBlockingRmlUi() 读取到的 WantCapture* 才对应当前事件后的状态。
+    if (sdl_event_observer_) {
+        sdl_event_observer_(event);
+    }
 #ifdef TF_ENABLE_DEBUG_UI
-        imgui_blocks_rmlui = isImGuiBlockingRmlUi(event);
+    imgui_blocks_rmlui = isImGuiBlockingRmlUi(event);
 #endif
 
-        bool should_propagate = true;
-        if (!imgui_blocks_rmlui && rmlui_event_callback_ &&
-            !shouldSuppressRmlUiKeyboardEvent(event, currentContext(), rmlui_suppressed_navigation_scancodes_)) {
-            should_propagate = rmlui_event_callback_(event);
-        }
-
-        const bool always_propagate = shouldAlwaysPropagateAfterUi(event, currentContext());
-
-        if (!should_propagate && !always_propagate) {
-            continue;
-        }
-
-        processEvent(event);
+    bool should_propagate = true;
+    if (!imgui_blocks_rmlui && rmlui_event_callback_ &&
+        !shouldSuppressRmlUiKeyboardEvent(event, currentContext(), rmlui_suppressed_navigation_scancodes_)) {
+        should_propagate = rmlui_event_callback_(event);
     }
+
+    const bool always_propagate = shouldAlwaysPropagateAfterUi(event, currentContext());
+
+    if (!should_propagate && !always_propagate) {
+        return;
+    }
+
+    processEvent(event);
 }
 
 void InputManager::dispatchActionCallbacks() {

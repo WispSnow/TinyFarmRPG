@@ -70,82 +70,20 @@ GameApp::GameApp() = default;
 GameApp::~GameApp() {
     if (is_running_) {
         spdlog::warn("GameApp 被销毁时没有显式关闭。现在关闭。 ...");
-        close();
+        shutdown();
     }
 }
 
 void GameApp::run() {
     if (!init()) {
         spdlog::error("GameApp 初始化失败，无法运行游戏。");
+        shutdown();
         return;
     }
 
-    while (is_running_) {
-        handleEvents();
-        time_->update();
+    while (tickFrame()) {}
 
-        const float fixed_delta_time = time_->getFixedDeltaTime();
-        while (is_running_ && time_->tryConsumeFixedTick()) {
-            input_manager_->dispatchActionCallbacks();
-
-            if (!is_running_) {
-                input_manager_->consumeTick();
-                break;
-            }
-
-            // 若 fixed update 引发场景切换（push/pop/replace），清空 accumulator，
-            // 防止新场景收到旧场景遗留时间片导致同帧“追赶爆发”。
-            const size_t stack_size_before = scene_manager_->getSceneStackSize();
-            auto* current_scene_before = scene_manager_->getCurrentScene();
-
-            update(fixed_delta_time);
-
-            const size_t stack_size_after = scene_manager_->getSceneStackSize();
-            auto* current_scene_after = scene_manager_->getCurrentScene();
-            if (stack_size_before != stack_size_after || current_scene_before != current_scene_after) {
-                time_->clearAccumulator();
-            }
-
-            input_manager_->consumeTick();
-        }
-
-        // 若 frame update 引发场景切换（常见于 UI 回调触发 push/pop/replace），
-        // 同样清空 accumulator，避免新场景继承旧场景残余时间片。
-        const size_t frame_stack_size_before = scene_manager_->getSceneStackSize();
-        auto* frame_current_scene_before = scene_manager_->getCurrentScene();
-
-        updateFrame(time_->getUnscaledDeltaTime());
-
-        const size_t frame_stack_size_after = scene_manager_->getSceneStackSize();
-        auto* frame_current_scene_after = scene_manager_->getCurrentScene();
-        if (frame_stack_size_before != frame_stack_size_after
-            || frame_current_scene_before != frame_current_scene_after) {
-            time_->clearAccumulator();
-        }
-
-        drainMainThreadCommands();
-
-        const float interpolation_alpha = config_->render_interpolation_enabled_
-            ? time_->getInterpolationAlpha()
-            : 1.0f;
-        render(interpolation_alpha);
-
-        // 给 tracer 提供一个作用域的标记，用于区分 immediate 和 queued 事件
-#ifdef TF_ENABLE_DEBUG_UI
-        if (debug_ui_manager_) {
-            debug_ui_manager_->onDispatcherUpdateBegin();
-        }
-#endif
-        // 分发 enqueue 的事件（在本项目中相当于“下一轮循环开始前”的事件结算点）
-        dispatcher_->update();
-#ifdef TF_ENABLE_DEBUG_UI
-        if (debug_ui_manager_) {
-            debug_ui_manager_->onDispatcherUpdateEnd();
-        }
-#endif
-    }
-
-    close();
+    shutdown();
 }
 
 void GameApp::registerSceneSetup(std::function<void(engine::core::Context&)> func)
@@ -156,6 +94,10 @@ void GameApp::registerSceneSetup(std::function<void(engine::core::Context&)> fun
 
 bool GameApp::init() {
     spdlog::trace("初始化 GameApp ...");
+    if (is_running_) {
+        spdlog::warn("GameApp::init: 应用已经在运行，忽略重复初始化。");
+        return true;
+    }
     if (!scene_setup_func_) {
         spdlog::error("未注册场景设置函数，无法初始化 GameApp。");
         return false;
@@ -200,7 +142,94 @@ bool GameApp::init() {
     return true;
 }
 
-void GameApp::handleEvents() {
+bool GameApp::tickFrame(const EventPumpMode event_pump_mode) {
+    if (!is_running_) {
+        return false;
+    }
+
+    if (event_pump_mode == EventPumpMode::Poll) {
+        pollSdlEvents();
+    }
+    if (!is_running_) {
+        return false;
+    }
+
+    time_->update();
+
+    const float fixed_delta_time = time_->getFixedDeltaTime();
+    while (is_running_ && time_->tryConsumeFixedTick()) {
+        input_manager_->dispatchActionCallbacks();
+
+        if (!is_running_) {
+            input_manager_->consumeTick();
+            break;
+        }
+
+        // 若 fixed update 引发场景切换（push/pop/replace），清空 accumulator，
+        // 防止新场景收到旧场景遗留时间片导致同帧“追赶爆发”。
+        const size_t stack_size_before = scene_manager_->getSceneStackSize();
+        auto* current_scene_before = scene_manager_->getCurrentScene();
+
+        update(fixed_delta_time);
+
+        const size_t stack_size_after = scene_manager_->getSceneStackSize();
+        auto* current_scene_after = scene_manager_->getCurrentScene();
+        if (stack_size_before != stack_size_after || current_scene_before != current_scene_after) {
+            time_->clearAccumulator();
+        }
+
+        input_manager_->consumeTick();
+    }
+
+    // 若 frame update 引发场景切换（常见于 UI 回调触发 push/pop/replace），
+    // 同样清空 accumulator，避免新场景继承旧场景残余时间片。
+    const size_t frame_stack_size_before = scene_manager_->getSceneStackSize();
+    auto* frame_current_scene_before = scene_manager_->getCurrentScene();
+
+    updateFrame(time_->getUnscaledDeltaTime());
+
+    const size_t frame_stack_size_after = scene_manager_->getSceneStackSize();
+    auto* frame_current_scene_after = scene_manager_->getCurrentScene();
+    if (frame_stack_size_before != frame_stack_size_after
+        || frame_current_scene_before != frame_current_scene_after) {
+        time_->clearAccumulator();
+    }
+
+    drainMainThreadCommands();
+
+    const float interpolation_alpha = config_->render_interpolation_enabled_
+        ? time_->getInterpolationAlpha()
+        : 1.0f;
+    render(interpolation_alpha);
+
+    // 给 tracer 提供一个作用域的标记，用于区分 immediate 和 queued 事件
+#ifdef TF_ENABLE_DEBUG_UI
+    if (debug_ui_manager_) {
+        debug_ui_manager_->onDispatcherUpdateBegin();
+    }
+#endif
+    // 分发 enqueue 的事件（在本项目中相当于“下一轮循环开始前”的事件结算点）
+    dispatcher_->update();
+#ifdef TF_ENABLE_DEBUG_UI
+    if (debug_ui_manager_) {
+        debug_ui_manager_->onDispatcherUpdateEnd();
+    }
+#endif
+
+    return is_running_;
+}
+
+void GameApp::handleSdlEvent(const SDL_Event& event) {
+    if (input_manager_) {
+        input_manager_->processSdlEvent(event);
+    }
+}
+
+bool GameApp::isRunning() const {
+    return is_running_;
+}
+
+void GameApp::pollSdlEvents() {
     // 每渲染帧采样一次 SDL 事件；固定 tick 内的分发/消费在 run() 中处理
     input_manager_->sampleInputEvents();
 }
@@ -270,12 +299,18 @@ void GameApp::drainMainThreadCommands() {
     }
 }
 
-void GameApp::close() {
+void GameApp::shutdown() {
+    if (!is_running_ && window_ == nullptr && dispatcher_ == nullptr && context_ == nullptr) {
+        return;
+    }
+
     spdlog::trace("关闭 GameApp ...");
 
     // 断开事件处理函数
-    dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
-    dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
+    if (dispatcher_) {
+        dispatcher_->sink<utils::QuitEvent>().disconnect<&GameApp::onQuitEvent>(this);
+        dispatcher_->sink<utils::WindowResizedEvent>().disconnect<&GameApp::onWindowResized>(this);
+    }
 
     // 先关闭场景管理器，确保所有场景都被清理
     if (scene_manager_) {
@@ -327,7 +362,9 @@ void GameApp::close() {
         SDL_DestroyWindow(window_);
         window_ = nullptr;
     }
-    SDL_Quit();
+    if (SDL_WasInit(0) != 0) {
+        SDL_Quit();
+    }
     is_running_ = false;
 }
 
