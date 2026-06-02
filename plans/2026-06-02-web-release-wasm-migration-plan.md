@@ -2,10 +2,11 @@
 
 ## 元信息
 - 目标分支：`web-release`
-- 状态：`Planned (Review Revised)`
+- 状态：`Phase 0-1 Implemented; baseline commit pending review`
 - 目标平台：浏览器 WebAssembly + WebGL2
 - 首版策略：单线程、WebGL2、资源包精简、基础玩法闭环
 - 当前工具链：`emsdk latest` 已安装到 `~/.local/emsdk`，当前解析版本为 `5.0.7`
+- Phase 0/1 实施记录：`plans/reports/2026-06-02-web-release-phase-0-1-report.md`
 
 ## 结论与范围收敛
 当前项目可以迁移到 WebAssembly/WebGL2，但不适合直接把桌面端构建一键搬到网页端。审阅后调整为“先在共享发布基线定版资源，再切 `web-release`，随后尽快点亮 Web walking skeleton”的路线：
@@ -35,12 +36,21 @@
 | SDL3_image | 顶层 CMake 当前硬链 `SDL3_image::SDL3_image`，但纹理与项目 RmlUi 接口已有 stb_image 路径 | Web 端优先确认是否可移除 SDL3_image 依赖，减少 cross-build 风险 |
 | wasm 环境 | `emsdk` 已安装并激活到本机 emsdk 配置 | 每个 shell 需 source `emsdk_env.sh`，尚未写入 shell profile |
 
-资源体积的当前粗略基线：
+计划制定时的资源体积粗略基线：
 
 | 路径 | 大小 |
 |------|------|
 | `assets` | 74M |
 | `ui` | 528K |
+| `scripts` | 64K |
+| `config` | 24K |
+
+Phase 1 清理后的资源体积基线：
+
+| 路径 | 大小 |
+|------|------|
+| `assets` | 29M |
+| `ui` | 288K |
 | `scripts` | 64K |
 | `config` | 24K |
 

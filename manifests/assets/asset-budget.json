@@ -1,0 +1,229 @@
+{
+  "used_assets": {
+    "files": 803,
+    "bytes": 28981510,
+    "by_root": {
+      "assets": {
+        "files": 731,
+        "bytes": 28794833
+      },
+      "config": {
+        "files": 6,
+        "bytes": 4913
+      },
+      "scripts": {
+        "files": 15,
+        "bytes": 19767
+      },
+      "ui": {
+        "files": 51,
+        "bytes": 161997
+      }
+    },
+    "by_extension": {
+      ".efkefc": {
+        "files": 5,
+        "bytes": 36742
+      },
+      ".efkmat": {
+        "files": 1,
+        "bytes": 2557
+      },
+      ".efkmodel": {
+        "files": 8,
+        "bytes": 282640
+      },
+      ".fbx": {
+        "files": 1,
+        "bytes": 15180
+      },
+      ".frag": {
+        "files": 7,
+        "bytes": 6467
+      },
+      ".json": {
+        "files": 33,
+        "bytes": 126514
+      },
+      ".lua": {
+        "files": 15,
+        "bytes": 19767
+      },
+      ".mp3": {
+        "files": 3,
+        "bytes": 3056869
+      },
+      ".ogg": {
+        "files": 6,
+        "bytes": 4164085
+      },
+      ".png": {
+        "files": 635,
+        "bytes": 3424850
+      },
+      ".rcss": {
+        "files": 31,
+        "bytes": 93622
+      },
+      ".rml": {
+        "files": 20,
+        "bytes": 68375
+      },
+      ".tmj": {
+        "files": 4,
+        "bytes": 117629
+      },
+      ".tsj": {
+        "files": 15,
+        "bytes": 243011
+      },
+      ".ttf": {
+        "files": 2,
+        "bytes": 15492244
+      },
+      ".vert": {
+        "files": 6,
+        "bytes": 1336
+      },
+      ".wav": {
+        "files": 10,
+        "bytes": 1829234
+      },
+      ".world": {
+        "files": 1,
+        "bytes": 388
+      }
+    },
+    "texture_count": 635,
+    "texture_pixels": 25441156,
+    "estimated_rgba8_bytes": 101764624,
+    "max_texture": {
+      "path": "assets/textures/UI/farm-rpg-bg.png",
+      "width": 1280,
+      "height": 800,
+      "pixels": 1024000
+    }
+  },
+  "orphan_assets": {
+    "files": 7,
+    "bytes": 12748,
+    "by_root": {
+      "assets": {
+        "files": 7,
+        "bytes": 12748
+      }
+    },
+    "by_extension": {
+      ".md": {
+        "files": 2,
+        "bytes": 7925
+      },
+      ".tiled-project": {
+        "files": 1,
+        "bytes": 3089
+      },
+      ".txt": {
+        "files": 4,
+        "bytes": 1734
+      }
+    },
+    "texture_count": 0,
+    "texture_pixels": 0,
+    "estimated_rgba8_bytes": 0,
+    "max_texture": {
+      "path": "",
+      "width": 0,
+      "height": 0,
+      "pixels": 0
+    }
+  },
+  "web_poc_assets": {
+    "files": 274,
+    "bytes": 21837871,
+    "by_root": {
+      "assets": {
+        "files": 223,
+        "bytes": 21769437
+      },
+      "config": {
+        "files": 6,
+        "bytes": 4913
+      },
+      "scripts": {
+        "files": 15,
+        "bytes": 19767
+      },
+      "ui": {
+        "files": 30,
+        "bytes": 43754
+      }
+    },
+    "by_extension": {
+      ".frag": {
+        "files": 7,
+        "bytes": 6467
+      },
+      ".json": {
+        "files": 33,
+        "bytes": 126514
+      },
+      ".lua": {
+        "files": 15,
+        "bytes": 19767
+      },
+      ".mp3": {
+        "files": 1,
+        "bytes": 8684
+      },
+      ".ogg": {
+        "files": 2,
+        "bytes": 4133295
+      },
+      ".png": {
+        "files": 158,
+        "bytes": 1567385
+      },
+      ".rcss": {
+        "files": 21,
+        "bytes": 35799
+      },
+      ".rml": {
+        "files": 9,
+        "bytes": 7955
+      },
+      ".tmj": {
+        "files": 2,
+        "bytes": 70418
+      },
+      ".tsj": {
+        "files": 15,
+        "bytes": 243011
+      },
+      ".ttf": {
+        "files": 2,
+        "bytes": 15492244
+      },
+      ".vert": {
+        "files": 6,
+        "bytes": 1336
+      },
+      ".wav": {
+        "files": 2,
+        "bytes": 124608
+      },
+      ".world": {
+        "files": 1,
+        "bytes": 388
+      }
+    },
+    "texture_count": 158,
+    "texture_pixels": 7437892,
+    "estimated_rgba8_bytes": 29751568,
+    "max_texture": {
+      "path": "assets/textures/UI/farm-rpg-bg.png",
+      "width": 1280,
+      "height": 800,
+      "pixels": 1024000
+    }
+  }
+}
