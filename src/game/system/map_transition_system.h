@@ -3,7 +3,9 @@
 #include <entt/entity/fwd.hpp>
 #include <entt/signal/fwd.hpp>
 #include <glm/vec2.hpp>
+#include <optional>
 #include <string>
+#include <string_view>
 #include "game/defs/commands_map.h"
 #include "game/component/map_component.h"
 #include "engine/utils/math.h"
@@ -46,6 +48,7 @@ class MapTransitionSystem {
         int target_trigger_id{0};
         glm::vec2 fallback_spawn_pos{0.0f, 0.0f};
         glm::vec2 warp_spawn_pos{0.0f, 0.0f};
+        std::string spawn_point{};
     };
 
     entt::registry& registry_;
@@ -79,6 +82,8 @@ private:
     
     // Compute safe spawn position, searching nearby if blocked
     glm::vec2 findSafeSpawnPosition(entt::entity player, glm::vec2 target_pos);
+    [[nodiscard]] std::optional<glm::vec2> findSpawnPointPosition(std::string_view spawn_point,
+                                                                  entt::id_type target_map_id) const;
 
     glm::vec2 computeEdgeSpawnPos(engine::spatial::Direction dir, const glm::vec2& pos, const glm::vec2& target_size) const;
     glm::vec2 computeOffsetPosition(const engine::utils::Rect& rect, game::component::StartOffset offset) const;

@@ -14,6 +14,7 @@ struct WarpToMapCommand {
     entt::entity player{entt::null};
     std::string map_id{};
     glm::vec2 position{0.0F, 0.0F};
+    std::string spawn_point{};     ///< 可选目标地图重生点 id；找到时优先于 position。
 };
 
 } // namespace game::defs

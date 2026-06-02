@@ -58,6 +58,15 @@ body, div, h1, h2, h3, h4, p, hr {
     background-color: #1a1b26c0;
 }
 
+#battle-defeat-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 640dp;
+    height: 256dp;
+    background-color: #1a1b26c0;
+}
+
 #battle-victory-panel {
     position: absolute;
     box-sizing: border-box;
@@ -65,6 +74,16 @@ body, div, h1, h2, h3, h4, p, hr {
     top: 6dp;
     width: 300dp;
     height: 244dp;
+    padding: 10dp;
+}
+
+#battle-defeat-panel {
+    position: absolute;
+    box-sizing: border-box;
+    left: 154dp;
+    top: 20dp;
+    width: 328dp;
+    height: 214dp;
     padding: 10dp;
 }
 
@@ -78,11 +97,53 @@ body, div, h1, h2, h3, h4, p, hr {
     font-effect: shadow(1dp 1dp #000000dd);
 }
 
+#battle-defeat-title {
+    width: 308dp;
+    height: 34dp;
+    line-height: 34dp;
+    color: #f7768eff;
+    font-size: 1.5rem;
+    text-align: center;
+    font-effect: shadow(1dp 1dp #000000dd);
+}
+
 #battle-victory-rewards {
     width: 280dp;
     height: 144dp;
     margin-top: 6dp;
     box-sizing: border-box;
+}
+
+#battle-defeat-summary {
+    width: 308dp;
+    height: 118dp;
+    margin-top: 8dp;
+    box-sizing: border-box;
+}
+
+.battle-defeat-message {
+    width: 288dp;
+    line-height: 16dp;
+    color: #2a1f17ff;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #ffffff44);
+    text-align: center;
+}
+
+.battle-defeat-body {
+    height: 32dp;
+    margin-top: 6dp;
+}
+
+.battle-defeat-losses {
+    height: 32dp;
+    color: #6f4f37cc;
+}
+
+.battle-defeat-recovery {
+    height: 32dp;
+    color: #9ece6aff;
+    font-effect: shadow(1dp 1dp #000000cc);
 }
 
 .battle-victory-row {
@@ -210,6 +271,12 @@ body, div, h1, h2, h3, h4, p, hr {
 #battle-victory-continue {
     width: 108dp;
     margin-left: 86dp;
+    margin-top: 8dp;
+}
+
+#battle-defeat-continue {
+    width: 108dp;
+    margin-left: 100dp;
     margin-top: 8dp;
 }
 

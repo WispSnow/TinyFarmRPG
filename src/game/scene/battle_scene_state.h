@@ -20,6 +20,7 @@ enum class BattleFlowState {
     AnimatingResult,    ///< 展示动作结果；当前以短计时占位。
     CheckVictory,       ///< 根据 BattleActionResult::outcome_after 判断是否结束战斗。
     VictoryFlow,        ///< 展示 Victory 结算流程，等待玩家确认后退出。
+    DefeatFlow,         ///< 展示 Defeat 说明流程，等待玩家确认后退出。
     NextTurn,           ///< 刷新到下一个行动者并路由到玩家输入或敌方自动行动。
     BattleEnd           ///< 发送结算事件并请求弹出场景。
 };

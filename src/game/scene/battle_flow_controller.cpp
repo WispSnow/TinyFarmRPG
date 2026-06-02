@@ -35,6 +35,8 @@ void BattleFlowController::run(const float delta_time, Delegate& delegate) {
                     state_ = BattleFlowState::NextTurn;
                 } else if (outcome == game::battle::BattleOutcome::Victory) {
                     startVictoryFlow(delegate);
+                } else if (outcome == game::battle::BattleOutcome::Defeat) {
+                    startDefeatFlow(delegate);
                 } else {
                     state_ = BattleFlowState::BattleEnd;
                 }
@@ -45,6 +47,14 @@ void BattleFlowController::run(const float delta_time, Delegate& delegate) {
                 delegate.updateVictoryFlow(delta_time);
                 if (delegate.victoryFlowFinished()) {
                     delegate.finishVictoryFlow();
+                    state_ = BattleFlowState::BattleEnd;
+                    keep_running = true;
+                }
+                break;
+            case BattleFlowState::DefeatFlow:
+                delegate.updateDefeatFlow(delta_time);
+                if (delegate.defeatFlowFinished()) {
+                    delegate.finishDefeatFlow();
                     state_ = BattleFlowState::BattleEnd;
                     keep_running = true;
                 }
@@ -64,6 +74,11 @@ void BattleFlowController::run(const float delta_time, Delegate& delegate) {
 void BattleFlowController::startVictoryFlow(Delegate& delegate) {
     state_ = BattleFlowState::VictoryFlow;
     delegate.beginVictoryFlow();
+}
+
+void BattleFlowController::startDefeatFlow(Delegate& delegate) {
+    state_ = BattleFlowState::DefeatFlow;
+    delegate.beginDefeatFlow();
 }
 
 void BattleFlowController::waitForInput() {

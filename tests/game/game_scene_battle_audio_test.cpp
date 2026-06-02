@@ -67,8 +67,8 @@ TEST(GameSceneBattleAudioTest, RestoresGameplayMusicByBattleOutcome) {
     EXPECT_NE(snippet.find("case game::battle::BattleOutcome::Victory:"), std::string::npos);
     EXPECT_NE(snippet.find("case game::battle::BattleOutcome::Escaped:"), std::string::npos);
     EXPECT_NE(snippet.find("case game::battle::BattleOutcome::Defeat:"), std::string::npos);
+    EXPECT_NE(snippet.find("warpPlayerToDefeatRespawn"), std::string::npos);
     EXPECT_NE(snippet.find("playGameplayMusicCue();"), std::string::npos);
-    EXPECT_NE(snippet.find("GameOver / Defeat scene"), std::string::npos);
 }
 
 } // namespace

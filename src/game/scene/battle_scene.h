@@ -153,6 +153,15 @@ class BattleScene final : public engine::scene::Scene,
     Rml::String victory_exp_text_{"0"};
     Rml::String victory_item_empty_text_{"!battle.victory.no_drops!"};
     Rml::String victory_prompt_text_{"!common.confirm!"};
+    bool defeat_overlay_visible_{false};
+    bool defeat_continue_enabled_{false};
+    bool defeat_continue_focus_dirty_{false};
+    bool defeat_flow_finished_{false};
+    Rml::String defeat_title_{"!battle.defeat.title!"};
+    Rml::String defeat_body_text_{"!battle.defeat.body!"};
+    Rml::String defeat_losses_text_{"!battle.defeat.losses!"};
+    Rml::String defeat_recovery_text_{"!battle.defeat.recovery!"};
+    Rml::String defeat_prompt_text_{"!battle.defeat.continue!"};
 
 public:
     /// @brief 构造战斗场景。
@@ -205,6 +214,7 @@ private:
     void rebuildTurnOrderView();
     void rebuildPartyStatusView();
     void rebuildVictoryView();
+    void rebuildDefeatView();
     void hideStateTooltip();
     void appendBattleLogLines(const std::vector<game::battle::BattleLogLine>& lines);
     void rebuildBattleLogView();
@@ -216,6 +226,7 @@ private:
     void syncMenuStateText();
     void syncMenuFocus();
     void syncVictoryContinueFocus();
+    void syncDefeatContinueFocus();
     [[nodiscard]] bool focusElementById(std::string_view element_id);
 
     /// @brief 当前玩家行动机会是否应先显示队伍命令层。
@@ -288,6 +299,10 @@ private:
     [[nodiscard]] bool victoryFlowFinished() const override;
     void finishVictoryFlow() override;
     void playVictoryAudioCue();
+    void beginDefeatFlow() override;
+    void updateDefeatFlow(float delta_time) override;
+    [[nodiscard]] bool defeatFlowFinished() const override;
+    void finishDefeatFlow() override;
     [[nodiscard]] std::vector<BattlePresentationUnitAnchor> collectBattlePresentationUnitAnchors() const;
     [[nodiscard]] BattleAnimationTimelineConfig animationConfigForPlan(
         const BattleActionPresentationPlan& plan) const;
