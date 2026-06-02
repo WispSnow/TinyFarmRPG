@@ -5,10 +5,12 @@
 #include "engine/component/name_component.h"
 #include "game/component/actor_identity_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/defs/party_ids.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_display_name.h"
 #include "game/ui/player_portrait_service.h"
 
 #include <entt/core/hashed_string.hpp>
@@ -23,6 +25,8 @@ namespace {
 
 constexpr std::string_view NONE_DECORATOR = "none";
 constexpr float NOTICE_SECONDS = 2.0F;
+constexpr entt::id_type DEFAULT_PLAYER_ACTOR_ID_HASH =
+    entt::hashed_string{game::defs::kDefaultPlayerActorId.data()}.value();
 
 [[nodiscard]] std::string portraitDecoratorForActor(const game::data::ActorData& actor) {
     if (actor.portrait_.decorator_.empty()) {
@@ -75,6 +79,7 @@ void DialoguePresentationController::update(const float delta_time) {
 void DialoguePresentationController::buildActorCaches() {
     portrait_by_actor_id_hash_.clear();
     portrait_by_map_actor_id_hash_.clear();
+    actor_id_by_map_actor_id_hash_.clear();
     display_name_key_by_map_actor_id_hash_.clear();
     if (!rpg_catalog_) {
         return;
@@ -84,8 +89,11 @@ void DialoguePresentationController::buildActorCaches() {
         if (!actor) {
             continue;
         }
-        if (actor->map_actor_id_hash_ != entt::null && !actor->display_name_.empty()) {
-            display_name_key_by_map_actor_id_hash_.insert_or_assign(actor->map_actor_id_hash_, actor->display_name_);
+        if (actor->map_actor_id_hash_ != entt::null) {
+            actor_id_by_map_actor_id_hash_.insert_or_assign(actor->map_actor_id_hash_, actor->id_);
+            if (!actor->display_name_.empty()) {
+                display_name_key_by_map_actor_id_hash_.insert_or_assign(actor->map_actor_id_hash_, actor->display_name_);
+            }
         }
         const std::string decorator = portraitDecoratorForActor(*actor);
         if (decorator == NONE_DECORATOR) {
@@ -209,8 +217,32 @@ glm::vec2 DialoguePresentationController::noticeAnchor(const entt::entity target
     return transform->position_ + offset;
 }
 
-std::string DialoguePresentationController::resolveActorNameKey(const std::string_view actor_id) const {
-    if (!localization_ || actor_id.empty()) {
+entt::entity DialoguePresentationController::resolvePlayerEntity(const entt::entity candidate) const {
+    if (candidate != entt::null && registry_.valid(candidate) &&
+        registry_.any_of<game::component::PlayerTag>(candidate)) {
+        return candidate;
+    }
+
+    auto players = registry_.view<game::component::PlayerTag>();
+    return players.begin() == players.end() ? entt::null : *players.begin();
+}
+
+std::string DialoguePresentationController::resolveActorNameKey(const std::string_view actor_id,
+                                                                const entt::entity target) const {
+    if (actor_id.empty()) {
+        return {};
+    }
+
+    if (actor_id == game::defs::kDefaultPlayerActorId) {
+        return game::ui::resolveActorDisplayName(
+            registry_,
+            resolvePlayerEntity(target),
+            actor_id,
+            rpg_catalog_,
+            localization_);
+    }
+
+    if (!localization_) {
         return {};
     }
 
@@ -221,8 +253,17 @@ std::string DialoguePresentationController::resolveActorNameKey(const std::strin
     return {};
 }
 
-std::string DialoguePresentationController::resolveCatalogActorName(const entt::id_type actor_id_hash) const {
-    if (!localization_ || !rpg_catalog_ || actor_id_hash == entt::null) {
+std::string DialoguePresentationController::resolveCatalogActorName(const entt::id_type actor_id_hash,
+                                                                    const entt::entity target) const {
+    if (actor_id_hash == entt::null) {
+        return {};
+    }
+
+    if (actor_id_hash == DEFAULT_PLAYER_ACTOR_ID_HASH) {
+        return resolveActorNameKey(game::defs::kDefaultPlayerActorId, target);
+    }
+
+    if (!localization_ || !rpg_catalog_) {
         return {};
     }
 
@@ -235,24 +276,30 @@ std::string DialoguePresentationController::resolveCatalogActorName(const entt::
 
 std::string DialoguePresentationController::resolveSpeakerName(
     const game::defs::DialogueShowEvent& evt) const {
-    if (std::string actor_name = resolveCatalogActorName(evt.speaker_actor_id_hash); !actor_name.empty()) {
+    if (std::string actor_name = resolveCatalogActorName(evt.speaker_actor_id_hash, evt.target); !actor_name.empty()) {
         return actor_name;
     }
-    if (std::string actor_name = resolveActorNameKey(evt.speaker_actor_id); !actor_name.empty()) {
+    if (std::string actor_name = resolveActorNameKey(evt.speaker_actor_id, evt.target); !actor_name.empty()) {
         return actor_name;
     }
 
     if (const auto* identity = registry_.try_get<game::component::ActorIdentityComponent>(evt.target)) {
-        if (std::string actor_name = resolveCatalogActorName(identity->actor_id_hash_); !actor_name.empty()) {
+        if (std::string actor_name = resolveCatalogActorName(identity->actor_id_hash_, evt.target); !actor_name.empty()) {
             return actor_name;
         }
-        if (std::string actor_name = resolveActorNameKey(identity->actor_id_); !actor_name.empty()) {
+        if (std::string actor_name = resolveActorNameKey(identity->actor_id_, evt.target); !actor_name.empty()) {
             return actor_name;
         }
     }
 
-    if (localization_) {
-        if (const auto* name = registry_.try_get<engine::component::NameComponent>(evt.target)) {
+    if (const auto* name = registry_.try_get<engine::component::NameComponent>(evt.target)) {
+        if (const auto actor_it = actor_id_by_map_actor_id_hash_.find(name->name_id_);
+            actor_it != actor_id_by_map_actor_id_hash_.end()) {
+            if (std::string actor_name = resolveActorNameKey(actor_it->second, evt.target); !actor_name.empty()) {
+                return actor_name;
+            }
+        }
+        if (localization_) {
             if (const auto it = display_name_key_by_map_actor_id_hash_.find(name->name_id_);
                 it != display_name_key_by_map_actor_id_hash_.end()) {
                 return game::ui::tryLocalize(localization_, it->second);

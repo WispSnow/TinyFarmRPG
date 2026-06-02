@@ -5,6 +5,7 @@
 #include "engine/component/transform_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/tags.h"
@@ -307,6 +308,55 @@ TEST_F(GameSceneBattleRewardWritebackTest, VictoryWritesExperienceAndLevelUpResu
     EXPECT_EQ(
         capture.shows[0].text,
         "Gained Gold 4\nGained EXP " + std::to_string(level_two_exp) + "\nAlex Lv.2 HP +1 MP +1\nGained Herb x1");
+
+    show_sink.disconnect<&DialogueCapture::onShow>(&capture);
+}
+
+TEST_F(GameSceneBattleRewardWritebackTest, VictoryLevelUpNotificationUsesCustomPlayerName) {
+    DialogueCapture capture;
+    auto show_sink = dispatcher_.sink<game::defs::DialogueShowEvent>();
+    show_sink.connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = createPlayer(10, 0);
+    registry_.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+    auto& runtime_stats = registry_.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 50,
+        .current_mp = 5,
+        .level = 1,
+        .total_exp = 0,
+    };
+
+    const auto* actor = rpg_catalog_->findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int level_two_exp =
+        game::domain::ActorProgressionService::expForLevel(*rpg_catalog_, *actor, 2);
+
+    auto reward_summary = slimeRewardSummary();
+    reward_summary.exp_total = level_two_exp;
+
+    game::defs::BattleEndedEvent evt{};
+    evt.outcome = game::battle::BattleOutcome::Victory;
+    evt.final_units = {
+        makeUnit(1, "Alex", game::battle::BattleSide::Player, 30, 30, std::nullopt, std::string{"actor.player"}),
+        makeUnit(101, "Slime", game::battle::BattleSide::Enemy, 0, 20, std::string{"enemy.slime"})};
+    evt.reward_summary = reward_summary;
+
+    game::system::helpers::NotificationTimer notification_state{};
+    processBattleEndedForGameScene(
+        registry_,
+        dispatcher_,
+        &services_,
+        active_battle_initial_item_stocks_,
+        has_active_battle_item_stocks_,
+        notification_state,
+        evt);
+
+    ASSERT_EQ(capture.shows.size(), 1U);
+    EXPECT_NE(capture.shows[0].text.find("Mina Lv.2"), std::string::npos);
+    EXPECT_EQ(capture.shows[0].text.find("Alex Lv.2"), std::string::npos);
 
     show_sink.disconnect<&DialogueCapture::onShow>(&capture);
 }

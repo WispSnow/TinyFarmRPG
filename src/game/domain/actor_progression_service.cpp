@@ -1,7 +1,9 @@
 #include "game/domain/actor_progression_service.h"
 
 #include "game/battle/actor_stats_resolver.h"
+#include "game/component/player_identity_component.h"
 #include "game/data/rpg_catalog.h"
+#include "game/defs/party_ids.h"
 
 #include <entt/entity/registry.hpp>
 
@@ -66,6 +68,21 @@ namespace {
         unique.push_back(actor_id);
     }
     return unique;
+}
+
+void applyCustomPlayerDisplayName(entt::registry& registry,
+                                  const entt::entity player,
+                                  PartyExperienceGrantResult& result) {
+    const auto* identity = registry.try_get<game::component::PlayerIdentityComponent>(player);
+    if (!identity || identity->display_name_.empty()) {
+        return;
+    }
+
+    for (auto& grant : result.actors) {
+        if (grant.actor_id == game::defs::kDefaultPlayerActorId) {
+            grant.display_name = identity->display_name_;
+        }
+    }
 }
 
 } // namespace
@@ -164,7 +181,8 @@ PartyExperienceGrantResult ActorProgressionService::previewExperience(
     const std::vector<std::string>& actor_ids,
     const std::unordered_map<std::string, game::component::ActorRuntimeState>& runtime_states,
     const std::unordered_map<std::string, game::component::ActorEquipmentLoadout>& actor_equipment,
-    const int exp_reward) {
+    const int exp_reward,
+    const std::unordered_map<std::string, std::string>& actor_display_name_overrides) {
     PartyExperienceGrantResult result{};
     result.exp_reward = std::max(0, exp_reward);
     if (result.exp_reward <= 0) {
@@ -203,9 +221,15 @@ PartyExperienceGrantResult ActorProgressionService::previewExperience(
         const int new_max_hp = paramValue(new_stats.params, game::data::ParamIndex::Mhp);
         const int new_max_mp = paramValue(new_stats.params, game::data::ParamIndex::Mmp);
 
+        const auto display_name_it = actor_display_name_overrides.find(actor->id_);
+        const std::string display_name =
+            display_name_it != actor_display_name_overrides.end() && !display_name_it->second.empty()
+                ? display_name_it->second
+                : (actor->display_name_.empty() ? actor->id_ : actor->display_name_);
+
         result.actors.push_back(ActorExperienceGrant{
             .actor_id = actor->id_,
-            .display_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_,
+            .display_name = display_name,
             .gained_exp = gained_exp,
             .old_level = old_level,
             .new_level = new_level,
@@ -235,6 +259,7 @@ PartyExperienceGrantResult ActorProgressionService::grantExperience(
     auto& runtime_stats = registry.get_or_emplace<game::component::PartyRuntimeStatsComponent>(player);
     PartyExperienceGrantResult result =
         previewExperience(catalog, actor_ids, runtime_stats.states_by_actor_id_, equipment_by_actor, exp_reward);
+    applyCustomPlayerDisplayName(registry, player, result);
 
     bool changed = false;
     for (const auto& grant : result.actors) {

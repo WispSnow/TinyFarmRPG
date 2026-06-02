@@ -4,6 +4,7 @@
 #include "appearance_test_fixture_utils.h"
 #include "game/battle/actor_stats_resolver.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
 #include "game/domain/actor_progression_service.h"
@@ -55,6 +56,7 @@ struct Fixture {
         data_root / "actors.json",
         R"json({
   "actors": [
+    { "id": "actor.player", "display_name": "Alex", "class_id": "class.hero", "initial_level": 1, "max_level": 99 },
     { "id": "actor.hero", "display_name": "Hero", "class_id": "class.hero", "initial_level": 1, "max_level": 99 },
     { "id": "actor.flat", "display_name": "Flat", "class_id": "class.flat", "initial_level": 1, "max_level": 99 }
   ]
@@ -130,6 +132,39 @@ TEST(ActorProgressionServiceTest, GrantsExperienceLevelsUpAndAddsMaxStatDelta) {
     EXPECT_EQ(stored.current_mp, 5 + result.actors[0].mp_max_delta);
 }
 
+TEST(ActorProgressionServiceTest, GrantExperienceUsesCustomPlayerDisplayNameForDefaultActor) {
+    const game::data::RpgCatalog catalog = loadCatalog();
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+    auto& runtime = registry.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 50,
+        .current_mp = 5,
+        .level = 1,
+        .total_exp = 0,
+    };
+
+    const auto* actor = catalog.findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+    const int level_two_exp = ActorProgressionService::expForLevel(catalog, *actor, 2);
+
+    const PartyExperienceGrantResult result = ActorProgressionService::grantExperience(
+        registry,
+        player,
+        catalog,
+        {"actor.player"},
+        level_two_exp);
+
+    ASSERT_EQ(result.actors.size(), 1U);
+    EXPECT_EQ(result.actors[0].actor_id, "actor.player");
+    EXPECT_EQ(result.actors[0].display_name, "Mina");
+    EXPECT_TRUE(result.actors[0].leveledUp());
+}
+
 TEST(ActorProgressionServiceTest, MaxLevelClampsTotalExp) {
     const game::data::RpgCatalog catalog = loadCatalog();
     entt::registry registry;
@@ -188,6 +223,37 @@ TEST(ActorProgressionServiceTest, PreviewExperienceClampsLargeRewardWithoutOverf
     ASSERT_EQ(result.actors.size(), 1U);
     EXPECT_EQ(result.actors[0].total_exp, max_exp);
     EXPECT_EQ(result.actors[0].gained_exp, 1);
+}
+
+TEST(ActorProgressionServiceTest, PreviewExperienceUsesDisplayNameOverrides) {
+    const game::data::RpgCatalog catalog = loadCatalog();
+    const auto* actor = catalog.findActor("actor.player");
+    ASSERT_NE(actor, nullptr);
+
+    const int level_two_exp = ActorProgressionService::expForLevel(catalog, *actor, 2);
+    std::unordered_map<std::string, game::component::ActorRuntimeState> runtime_states{};
+    runtime_states["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 50,
+        .current_mp = 5,
+        .level = 1,
+        .total_exp = 0,
+    };
+    const std::unordered_map<std::string, game::component::ActorEquipmentLoadout> equipment{};
+    const std::unordered_map<std::string, std::string> display_name_overrides{
+        {"actor.player", "Mina"},
+    };
+
+    const PartyExperienceGrantResult result = ActorProgressionService::previewExperience(
+        catalog,
+        {"actor.player"},
+        runtime_states,
+        equipment,
+        level_two_exp,
+        display_name_overrides);
+
+    ASSERT_EQ(result.actors.size(), 1U);
+    EXPECT_EQ(result.actors[0].display_name, "Mina");
+    EXPECT_TRUE(result.actors[0].leveledUp());
 }
 
 TEST(ActorProgressionServiceTest, NormalizePreservesZeroHp) {

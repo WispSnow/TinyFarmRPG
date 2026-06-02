@@ -2292,7 +2292,8 @@ void BattleScene::beginVictoryFlow() {
               actor_ids,
               presentation_options_.actor_runtime_states,
               presentation_options_.actor_equipment,
-              victory_reward_summary_->exp_total)
+              victory_reward_summary_->exp_total,
+              presentation_options_.actor_display_name_overrides)
         : game::domain::PartyExperienceGrantResult{};
     victory_flow_controller_.begin(*victory_reward_summary_, experience_preview);
     victory_continue_focus_dirty_ = false;

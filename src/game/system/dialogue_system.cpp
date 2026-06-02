@@ -4,6 +4,7 @@
 #include "game/component/merchant_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/state_component.h"
 #include "game/component/tags.h"
 #include "engine/utils/json_file_loader.h"
@@ -173,7 +174,21 @@ void DialogueSystem::showLine(entt::entity entity, const std::vector<std::string
     if (auto* name = registry_.try_get<engine::component::NameComponent>(entity)) {
         speaker = name->name_;
     }
-    helpers::emitDialogueShow(dispatcher_, DIALOGUE_CHANNEL, entity, std::move(speaker), lines[line_index]);
+    entt::id_type speaker_actor_id_hash = entt::null;
+    std::string speaker_actor_id{};
+    if (const auto* identity = registry_.try_get<game::component::ActorIdentityComponent>(entity)) {
+        speaker_actor_id_hash = identity->actor_id_hash_;
+        speaker_actor_id = identity->actor_id_;
+    }
+    helpers::emitDialogueShow(
+        dispatcher_,
+        DIALOGUE_CHANNEL,
+        entity,
+        std::move(speaker),
+        lines[line_index],
+        {0.0F, 0.0F},
+        speaker_actor_id_hash,
+        std::move(speaker_actor_id));
     registry_.emplace_or_replace<game::component::StateDirtyTag>(entity);
     if (auto* state = registry_.try_get<game::component::StateComponent>(entity)) {
         state->action_ = game::component::Action::Idle;
