@@ -1,6 +1,7 @@
 #include "game/scene/inventory_menu_character_panel.h"
 
 #include "game/battle/actor_stats_resolver.h"
+#include "game/component/inventory_component.h"
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
@@ -68,7 +69,33 @@ constexpr std::size_t kMaxPartyMembers = 4;
     return params[static_cast<std::size_t>(index)];
 }
 
+[[nodiscard]] int countOccupiedInventorySlots(const game::component::InventoryComponent& inventory) {
+    return static_cast<int>(std::count_if(inventory.slots_.begin(), inventory.slots_.end(), [](const auto& stack) {
+        return !stack.empty();
+    }));
+}
+
 } // namespace
+
+std::string buildInventoryMenuCapacityLabel(
+    const entt::registry& registry,
+    const entt::entity player,
+    const game::runtime::LocalizationService* localization) {
+    int used_slots = 0;
+    int total_slots = 0;
+    if (const auto* inventory = registry.try_get<game::component::InventoryComponent>(player)) {
+        used_slots = countOccupiedInventorySlots(*inventory);
+        total_slots = inventory->slotCount();
+    }
+
+    return game::ui::formatTextOrFallback(
+        localization,
+        "inventory.capacity_label",
+        {{"used", std::to_string(used_slots)}, {"total", std::to_string(total_slots)}},
+        [used_slots, total_slots] {
+            return fmt::format("Inventory {}/{}", used_slots, total_slots);
+        });
+}
 
 InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
     const entt::registry& registry,
@@ -85,7 +112,7 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
         [] {
             return std::string{"Gold: 0"};
         });
-    data.farm_label = "TinyFarm";
+    data.inventory_capacity_label = buildInventoryMenuCapacityLabel(registry, player, localization);
 
     if (const auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {
         data.gold_label = game::ui::formatTextOrFallback(

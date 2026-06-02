@@ -117,7 +117,7 @@
 
                     <div id="menu-footer">
                         <div id="gold-label">{{ gold_label }}</div>
-                        <div id="farm-label">{{ farm_label }}</div>
+                        <div id="inventory-capacity-label">{{ inventory_capacity_label }}</div>
                     </div>
                 </panel>
 

@@ -37,8 +37,13 @@ struct PartyMemberPanelViewModel {
 struct InventoryMenuPartyPanelData {
     std::vector<PartyMemberPanelViewModel> party_members;
     std::string gold_label;
-    std::string farm_label;
+    std::string inventory_capacity_label;
 };
+
+[[nodiscard]] std::string buildInventoryMenuCapacityLabel(
+    const entt::registry& registry,
+    entt::entity player,
+    const game::runtime::LocalizationService* localization = nullptr);
 
 [[nodiscard]] InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
     const entt::registry& registry,

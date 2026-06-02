@@ -964,7 +964,7 @@
     font-effect: shadow(1dp 1dp #000000cc);
 }
 
-#farm-label {
+#inventory-capacity-label {
     font-size: 0.625rem;
     color: #a9b1d6;
     text-align: right;

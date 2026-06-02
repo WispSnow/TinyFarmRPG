@@ -38,6 +38,7 @@ class WorldState;
 }
 
 namespace game::defs {
+struct InventoryChanged;
 struct LanguageChangedEvent;
 }
 
@@ -91,7 +92,7 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool actor_target_mode_{false};
     int pending_actor_target_inventory_slot_{-1};
     Rml::String gold_label_{"!common.gold!"};
-    Rml::String farm_label_{"TinyFarm"};
+    Rml::String inventory_capacity_label_{"!inventory.capacity_label!"};
 
 public:
     InventoryMenuScene(std::string_view name,
@@ -116,6 +117,7 @@ private:
     void shutdownUI();
     void disconnectRuntimeListeners();
     void syncPartyPanel();
+    void refreshInventoryCapacityLabel();
     void registerPartyPortraitImages(std::vector<PartyMemberPanelViewModel>& members);
     void clearPartyPortraitImages();
     void beginActorTargetSelection(int inventory_slot_index);
@@ -139,6 +141,7 @@ private:
     bool onQuestsTabShortcut();
     bool onMapTabShortcut();
     bool onOptionsTabShortcut();
+    void onInventoryChanged(const game::defs::InventoryChanged& event);
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 };
 

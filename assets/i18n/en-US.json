@@ -140,6 +140,7 @@
   "inventory.action.trash": "Trash",
   "inventory.action.unbind": "Unbind",
   "inventory.action.use": "Use",
+  "inventory.capacity_label": "Inventory {used}/{total}",
   "inventory.equipment.actor_summary": "{class} Lv.{level}  HP {hp}  MP {mp}  ATK {atk}  DEF {def}",
   "inventory.equipment.empty": "Empty",
   "inventory.equipment.no_candidates": "No candidates",
