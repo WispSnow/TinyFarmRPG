@@ -109,8 +109,9 @@ graph TD
 
 当前项目自带一份最小可玩的商店配置：
 
-- 基础 fallback：`shop.village.general`，保留完整通用商品列表，供非脚本路径和测试复用
+- 基础 fallback：`shop.village.general`，由地图上的 `MerchantComponent` 引用，供非脚本路径、地图标记和调试复用
 - Lua 商人 Josh 的静态预设：`shop.village.general.day`、`shop.village.general.night`、`shop.village.general.post_slime_cleanup`
+- 当前可通过 Josh 正常交互看到的日/夜预设会合起来覆盖全部装备；`shop.village.general` 不参与脚本化商人的日夜库存分摊
 - `scripts/npcs/merchant.lua` 根据 `lib.time.is_night()` 与 `tf.quest.status("quest.village.goblin_cleanup")` 选择预设，然后调用 `tf.shop.open`
 - sell rules：覆盖 `potion`、`material_timber`、作物与木制 / 铁制装备的卖出价
 

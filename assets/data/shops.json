@@ -13,54 +13,6 @@
                 {
                     "item_id": "strawberry_seed",
                     "buy_price": 12
-                },
-                {
-                    "item_id": "equip_wooden_sword",
-                    "buy_price": 60
-                },
-                {
-                    "item_id": "equip_wooden_staff",
-                    "buy_price": 60
-                },
-                {
-                    "item_id": "equip_wooden_helmet",
-                    "buy_price": 50
-                },
-                {
-                    "item_id": "equip_wooden_armor",
-                    "buy_price": 80
-                },
-                {
-                    "item_id": "equip_wooden_boots",
-                    "buy_price": 50
-                },
-                {
-                    "item_id": "equip_wooden_accessory",
-                    "buy_price": 70
-                },
-                {
-                    "item_id": "equip_iron_sword",
-                    "buy_price": 200
-                },
-                {
-                    "item_id": "equip_iron_staff",
-                    "buy_price": 200
-                },
-                {
-                    "item_id": "equip_iron_helmet",
-                    "buy_price": 180
-                },
-                {
-                    "item_id": "equip_iron_armor",
-                    "buy_price": 260
-                },
-                {
-                    "item_id": "equip_iron_boots",
-                    "buy_price": 180
-                },
-                {
-                    "item_id": "equip_iron_accessory",
-                    "buy_price": 240
                 }
             ]
         },
@@ -90,12 +42,20 @@
                     "buy_price": 60
                 },
                 {
-                    "item_id": "equip_iron_sword",
-                    "buy_price": 200
+                    "item_id": "equip_wooden_helmet",
+                    "buy_price": 50
                 },
                 {
-                    "item_id": "equip_iron_staff",
-                    "buy_price": 200
+                    "item_id": "equip_wooden_armor",
+                    "buy_price": 80
+                },
+                {
+                    "item_id": "equip_wooden_boots",
+                    "buy_price": 50
+                },
+                {
+                    "item_id": "equip_wooden_accessory",
+                    "buy_price": 70
                 }
             ]
         },
@@ -113,14 +73,6 @@
                     "buy_price": 12
                 },
                 {
-                    "item_id": "equip_wooden_sword",
-                    "buy_price": 60
-                },
-                {
-                    "item_id": "equip_wooden_staff",
-                    "buy_price": 60
-                },
-                {
                     "item_id": "equip_iron_sword",
                     "buy_price": 200
                 },
@@ -129,8 +81,20 @@
                     "buy_price": 200
                 },
                 {
-                    "item_id": "equip_wooden_boots",
-                    "buy_price": 55
+                    "item_id": "equip_iron_helmet",
+                    "buy_price": 180
+                },
+                {
+                    "item_id": "equip_iron_armor",
+                    "buy_price": 260
+                },
+                {
+                    "item_id": "equip_iron_boots",
+                    "buy_price": 180
+                },
+                {
+                    "item_id": "equip_iron_accessory",
+                    "buy_price": 240
                 }
             ]
         },
@@ -152,24 +116,16 @@
                     "buy_price": 8
                 },
                 {
-                    "item_id": "equip_wooden_sword",
-                    "buy_price": 60
-                },
-                {
-                    "item_id": "equip_wooden_staff",
-                    "buy_price": 60
-                },
-                {
-                    "item_id": "equip_iron_sword",
-                    "buy_price": 180
-                },
-                {
-                    "item_id": "equip_iron_staff",
-                    "buy_price": 180
-                },
-                {
                     "item_id": "equip_iron_armor",
                     "buy_price": 240
+                },
+                {
+                    "item_id": "equip_iron_boots",
+                    "buy_price": 160
+                },
+                {
+                    "item_id": "equip_iron_accessory",
+                    "buy_price": 220
                 }
             ]
         }

@@ -468,7 +468,7 @@ TEST(ShopTransactionServiceTest, BuyCommitWritesEquipmentInventoryAndGoldFromPro
     ShopTransactionService service(registry, item_catalog, shop_catalog, inventory_domain_service);
 
     const entt::entity player = createPlayer(registry, 300);
-    const auto result = service.commitBuy(player, "shop.village.general", "equip_wooden_sword"_hs, 1);
+    const auto result = service.commitBuy(player, "shop.village.general.day", "equip_wooden_sword"_hs, 1);
 
     EXPECT_TRUE(result.completed());
     EXPECT_EQ(result.total_price, 60);
