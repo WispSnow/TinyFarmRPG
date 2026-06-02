@@ -2,12 +2,6 @@
 
 这是一个农场 RPG 游戏的教学demo项目，参见 @docs/overview.md
 
-课程大纲参见 @lecture_plans/tinyfarmrpg-course-outline.md
-
-每一节课程的文本位于 `lecture_plans/lectures` 文件夹中
-
-我正在进行课程审阅修订
-
 ## Note
 
 - 此项目是一个开发中的程序，并未上线。尽量采用最优方案，不必考虑向后兼容。
