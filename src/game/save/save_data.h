@@ -94,6 +94,7 @@ struct PlayerStateSaveData {
 };
 
 struct PlayerSaveData {
+    std::string name{};
     std::string map_name{};
     Vec2f position{};
     PlayerStateSaveData state{};

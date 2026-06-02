@@ -13,6 +13,10 @@ img {
     display: block;
 }
 
+input {
+    display: block;
+}
+
 body {
     overflow: hidden;
     background-color: transparent;
@@ -51,6 +55,43 @@ body {
     color: #a9b1d6ff;
     font-size: 0.625rem;
     font-effect: shadow(1dp 1dp #000000cc);
+}
+
+#appearance-name-label {
+    position: absolute;
+    left: 42dp;
+    top: 58dp;
+    width: 44dp;
+    height: 20dp;
+    line-height: 20dp;
+    color: #6b4a3aff;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #ffffff44);
+}
+
+#appearance-name-input {
+    position: absolute;
+    left: 88dp;
+    top: 58dp;
+    width: 104dp;
+    height: 20dp;
+    padding-left: 5dp;
+    padding-right: 5dp;
+    line-height: 20dp;
+    color: #2a1f17ff;
+    background-color: #d9a88a33;
+    border: 1dp #d9a88aaa;
+    font-size: 0.625rem;
+    font-effect: shadow(1dp 1dp #ffffff44);
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+}
+
+#appearance-name-input:focus {
+    border-color: #7aa2f7;
 }
 
 /* ===== Preview frame (transparent fill so the character shows through) ===== */

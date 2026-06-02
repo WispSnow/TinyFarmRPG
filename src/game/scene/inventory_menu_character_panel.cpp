@@ -10,6 +10,7 @@
 #include "game/defs/party_ids.h"
 #include "game/domain/actor_progression_service.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_display_name.h"
 
 #include <entt/entity/registry.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -130,9 +131,8 @@ InventoryMenuPartyPanelData buildInventoryMenuPartyPanelData(
             spdlog::warn("InventoryMenuScene: actor_id='{}' 未在 RpgCatalog 中找到。", member.actor_id);
         }
 
-        member.display_name = actor && !actor->display_name_.empty()
-                                  ? game::ui::tryLocalize(localization, actor->display_name_)
-                                  : member.actor_id;
+        member.display_name =
+            game::ui::resolveActorDisplayName(registry, player, member.actor_id, rpg_catalog, localization);
         member.class_label = klass && !klass->display_name_.empty()
                                  ? game::ui::tryLocalize(localization, klass->display_name_)
                                  : game::ui::localizeTextOrFallback(localization, "inventory.party.class_fallback", "Adventurer");

@@ -12,7 +12,15 @@
     <div id="appearance-overlay" class="tf-modal-overlay"></div>
 
     <div id="appearance-title">{{ title_text }}</div>
-    <div id="appearance-subtitle">{{ subtitle_text }}</div>
+    <div id="appearance-name-label"
+         data-if="show_name_input"
+         data-i18n="appearance.name_label">Name:</div>
+    <input id="appearance-name-input"
+           type="text"
+           data-if="show_name_input"
+           data-value="player_name"
+           maxlength="16"/>
+    <div id="appearance-subtitle" data-if="!show_name_input">{{ subtitle_text }}</div>
 
     <div id="appearance-preview-frame">
         <img id="appearance-portrait-preview"

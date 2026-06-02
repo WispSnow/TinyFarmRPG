@@ -190,10 +190,11 @@ void TitleScene::syncErrorText(bool mark_dirty) {
 void TitleScene::onStartClicked() {
     auto* context = &context_;
     auto game_time = title_game_time_;
-    auto on_confirm = [context, game_time](game::scene::AppearanceSelection selection) mutable
+    auto on_confirm = [context, game_time](game::scene::NewGameCharacterSetup setup) mutable
         -> std::unique_ptr<engine::scene::Scene> {
         game::scene::NewGameOptions options{};
-        options.initial_appearance = std::move(selection);
+        options.initial_appearance = std::move(setup.appearance);
+        options.player_name = std::move(setup.player_name);
         return std::make_unique<game::scene::GameScene>(
             "GameScene",
             *context,

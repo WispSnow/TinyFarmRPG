@@ -111,7 +111,11 @@ bool buildBattleUnitsFromCatalog(const game::data::RpgCatalog& catalog,
         const int luk = clampPositiveStat(paramValue(resolved.params, game::data::ParamIndex::Luk));
         const int current_hp = std::clamp(actor_state.current_hp, 0, max_hp);
         const int current_mp = std::clamp(actor_state.current_mp, 0, max_mp);
-        const std::string actor_name = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+        const auto name_override_it = options.actor_display_name_overrides.find(actor->id_);
+        const std::string actor_name =
+            name_override_it != options.actor_display_name_overrides.end() && !name_override_it->second.empty()
+                ? name_override_it->second
+                : (actor->display_name_.empty() ? actor->id_ : actor->display_name_);
         player_units.push_back(BattleUnit{
             .id = next_player_id++,
             .name = actor_name,

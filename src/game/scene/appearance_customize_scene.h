@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <random>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -49,7 +50,7 @@ namespace game::scene {
 class AppearanceCustomizeScene final : public engine::scene::Scene {
 public:
     /// Builds the new-game customization scene. Confirm returns the selected look to the caller.
-    using SceneFactory = std::function<std::unique_ptr<engine::scene::Scene>(AppearanceSelection selection)>;
+    using SceneFactory = std::function<std::unique_ptr<engine::scene::Scene>(NewGameCharacterSetup setup)>;
 
     enum class Mode {
         NewGame,
@@ -78,6 +79,9 @@ private:
     Rml::String title_text_{};
     Rml::String subtitle_text_{};
     Rml::String portrait_src_{};
+    Rml::String player_name_{};
+    bool show_name_input_{false};
+    std::string default_player_name_{};
 
     entt::registry preview_registry_{};
     entt::dispatcher preview_dispatcher_{};
@@ -127,6 +131,7 @@ private:
     void connectRuntimeListeners();
     void disconnectRuntimeListeners();
     void syncLocalizedText(bool mark_dirty = true);
+    void syncDefaultPlayerName(bool mark_dirty = true);
     void syncSlotViewModels(bool mark_dirty = true);
     void syncPortraitPreview(bool mark_dirty = true);
     void rebuildPreviewCache();

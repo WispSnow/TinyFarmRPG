@@ -32,6 +32,7 @@
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/tags.h"
 #include "game/data/audio_cue_catalog.h"
@@ -40,6 +41,7 @@
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/party_ids.h"
 #include "game/domain/inventory_domain_service.h"
 #include "game/domain/actor_progression_service.h"
 #include "game/domain/party_rest_service.h"
@@ -55,6 +57,7 @@
 #include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
 #include "game/ui/menu_tab_content.h"
+#include "game/ui/player_display_name.h"
 #include "game/ui/player_portrait_service.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
@@ -180,6 +183,11 @@ void populateBattlePartyState(entt::registry& registry,
     }
     if (const auto* runtime_stats = registry.try_get<game::component::PartyRuntimeStatsComponent>(player)) {
         build_options.actor_runtime_states = runtime_stats->states_by_actor_id_;
+    }
+    if (const auto* identity = registry.try_get<game::component::PlayerIdentityComponent>(player);
+        identity && !identity->display_name_.empty()) {
+        build_options.actor_display_name_overrides[std::string{game::defs::kDefaultPlayerActorId}] =
+            identity->display_name_;
     }
 }
 
@@ -456,7 +464,7 @@ bool GameScene::init() {
     }
 
     if (const auto* new_game_options = std::get_if<NewGameOptions>(&launch_)) {
-        applyNewGameAppearance(*new_game_options);
+        applyNewGameOptions(*new_game_options);
         initializeNewGameWallet(registry_);
     }
 
@@ -778,19 +786,25 @@ bool GameScene::initUI() {
     return true;
 }
 
-void GameScene::applyNewGameAppearance(const NewGameOptions& options) {
-    if (!options.initial_appearance) {
-        return;
-    }
-
+void GameScene::applyNewGameOptions(const NewGameOptions& options) {
     auto player_view = registry_.view<game::component::PlayerTag>();
     if (player_view.empty()) {
-        spdlog::warn("GameScene: 新游戏外观应用失败，找不到玩家实体。");
+        spdlog::warn("GameScene: 新游戏角色设置应用失败，找不到玩家实体。");
         return;
     }
 
     const entt::entity player = *player_view.begin();
-    if (!applySelectionToEntity(registry_, context_.getDispatcher(), player, *options.initial_appearance)) {
+    std::string player_name = options.player_name;
+    if (player_name.empty()) {
+        const auto* localization = services_ ? services_->localization_service.get() : nullptr;
+        player_name = game::ui::defaultPlayerDisplayName(localization);
+    }
+    registry_.emplace_or_replace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = std::move(player_name)});
+
+    if (options.initial_appearance &&
+        !applySelectionToEntity(registry_, context_.getDispatcher(), player, *options.initial_appearance)) {
         spdlog::warn("GameScene: 新游戏外观应用失败，玩家缺少 AppearanceComponent。");
     }
 }

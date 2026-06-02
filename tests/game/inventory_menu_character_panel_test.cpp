@@ -5,6 +5,7 @@
 
 #include "game/component/party_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/domain/actor_progression_service.h"
@@ -105,6 +106,24 @@ TEST(InventoryMenuPartyPanelTest, BuildsStableFourCardSnapshotsForPartySizes) {
             EXPECT_FALSE(data.party_members[static_cast<std::size_t>(i)].targetable);
         }
     }
+}
+
+TEST(InventoryMenuPartyPanelTest, UsesCustomPlayerIdentityNameWhenPresent) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    setParty(registry, player, {"actor.player", "actor.lyria"});
+    registry.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+
+    const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
+    const InventoryMenuPartyPanelData data =
+        buildInventoryMenuPartyPanelData(registry, player, &catalog, "actor.player", false, &localization);
+
+    ASSERT_GE(data.party_members.size(), 2U);
+    EXPECT_EQ(data.party_members[0].display_name, "Mina");
+    EXPECT_EQ(data.party_members[1].display_name, "Lyria");
 }
 
 TEST(InventoryMenuPartyPanelTest, UsesRuntimeHpMpWhenPresent) {

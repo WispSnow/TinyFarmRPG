@@ -13,6 +13,7 @@
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_log_component.h"
 #include "game/component/recruitable_component.h"
@@ -29,7 +30,9 @@
 #include "game/defs/spatial_layers.h"
 #include "game/defs/events.h"
 #include "game/domain/actor_progression_service.h"
+#include "game/runtime/service_lookup.h"
 #include "game/script/script_state.h"
+#include "game/ui/player_display_name.h"
 
 #include "engine/component/auto_tile_component.h"
 #include "engine/component/render_component.h"
@@ -540,6 +543,13 @@ SaveData SaveService::capture(std::string& out_error) const {
 
     out.player.map_name = map_state->info.name;
     out.player.position = Vec2f{transform->position_.x, transform->position_.y};
+    if (const auto* identity = registry_.try_get<game::component::PlayerIdentityComponent>(player);
+        identity && !identity->display_name_.empty()) {
+        out.player.name = identity->display_name_;
+    } else {
+        out.player.name = game::ui::defaultPlayerDisplayName(game::runtime::findLocalizationService(registry_));
+        spdlog::warn("SaveService: 玩家缺少 PlayerIdentityComponent 或姓名为空，存档姓名将使用默认值。");
+    }
 
     if (const auto* state = registry_.try_get<game::component::StateComponent>(player)) {
         out.player.state.action = std::string(game::component::actionToString(state->action_));
@@ -892,6 +902,14 @@ bool SaveService::apply(const SaveData& data, std::string& out_error) {
         return false;
     }
     const entt::entity player = *player_view.begin();
+
+    std::string player_name = data.player.name;
+    if (player_name.empty()) {
+        player_name = game::ui::defaultPlayerDisplayName(game::runtime::findLocalizationService(registry_));
+    }
+    registry_.emplace_or_replace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = std::move(player_name)});
 
     // 读档可能发生在玩家“动作中/持物中/被锁定中”的任意一帧：
     // 这些状态不应该跨存档持久化，否则会出现“读档后卡动作/卡手持”的问题。

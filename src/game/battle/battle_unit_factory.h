@@ -23,6 +23,7 @@ struct BattleUnitBuildOptions {
     std::string troop_id{};                  ///< 指定敌方 troop id；为空时选择第一个有成员的 troop。
     std::unordered_map<std::string, game::component::ActorEquipmentLoadout> actor_equipment{};
     std::unordered_map<std::string, game::component::ActorRuntimeState> actor_runtime_states{};
+    std::unordered_map<std::string, std::string> actor_display_name_overrides{};
 };
 
 /// @brief 根据 RPG 目录中的 actor/class/enemy/troop 数据构建 BattleUnit 列表。

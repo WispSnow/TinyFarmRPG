@@ -3,6 +3,7 @@
 #include "game/battle/actor_stats_resolver.h"
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_data.h"
 #include "game/defs/party_ids.h"
@@ -117,7 +118,12 @@ constexpr int kFullRecoveryPercent = 100;
         : game::domain::ActorProgressionService::initialState(rpg_catalog, *actor, loadout);
     const auto resolved = game::battle::resolveActorStats(rpg_catalog, *actor, state.level, loadout);
 
-    member.display_name_key = actor->display_name_.empty() ? actor->id_ : actor->display_name_;
+    const auto* identity = actor_id == game::defs::kDefaultPlayerActorId
+        ? registry.try_get<game::component::PlayerIdentityComponent>(player)
+        : nullptr;
+    member.display_name_key = identity && !identity->display_name_.empty()
+        ? identity->display_name_
+        : (actor->display_name_.empty() ? actor->id_ : actor->display_name_);
     member.max_hp = std::max(1, paramValue(resolved.params, game::data::ParamIndex::Mhp));
     member.max_mp = std::max(1, paramValue(resolved.params, game::data::ParamIndex::Mmp));
     member.current_hp = std::clamp(state.current_hp, 0, member.max_hp);

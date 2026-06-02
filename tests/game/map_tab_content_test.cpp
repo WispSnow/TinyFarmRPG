@@ -3,6 +3,7 @@
 #include "appearance_test_fixture_utils.h"
 #include "engine/component/transform_component.h"
 #include "game/component/party_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/shop_catalog.h"
@@ -190,9 +191,37 @@ TEST(MapTabContentTest, LocalizesCurrentMapNameForMapTitleAndPlayerMarkerDescrip
 
     EXPECT_EQ(state.map_title, "家园外部");
     ASSERT_EQ(state.map_markers.size(), 1U);
-    EXPECT_EQ(state.map_markers[0].title, "当前位置");
+    EXPECT_EQ(state.map_markers[0].title, "亚历克斯");
     EXPECT_EQ(state.map_markers[0].description, "家园外部");
+    EXPECT_EQ(state.map_detail_title, "亚历克斯");
     EXPECT_EQ(state.map_detail_description, "家园外部");
+}
+
+TEST(MapTabContentTest, PlayerMarkerUsesCustomPlayerIdentityNameWhenPresent) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    registry.emplace<engine::component::TransformComponent>(player, glm::vec2{120.0F, 120.0F});
+    registry.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+    game::world::WorldState world_state = loadWorld();
+
+    const MapTabViewState state = buildMapTabViewState(
+        registry,
+        player,
+        &world_state,
+        world_state.getCurrentMap(),
+        MapTabPreviewInput{.source_uri = "generated://map-preview/home_exterior", .width = 560, .height = 400},
+        {},
+        {},
+        nullptr,
+        nullptr,
+        0);
+
+    ASSERT_EQ(state.map_markers.size(), 1U);
+    EXPECT_EQ(state.map_markers[0].title, "Mina");
+    EXPECT_EQ(state.map_detail_title, "Mina");
+    EXPECT_EQ(state.map_detail_type, "Player");
 }
 
 TEST(MapTabContentTest, BuildsPlayerMarkerAndClampsOutOfRangePositionToMapBounds) {
@@ -418,7 +447,7 @@ TEST(MapTabContentTest, PlayerOnlyMapShowsNoPlacesMarkedDetailAfterSelectionFall
     EXPECT_EQ(selected, 0);
     EXPECT_FALSE(state.has_place_markers);
     EXPECT_TRUE(state.has_map_detail);
-    EXPECT_EQ(state.map_detail_title, "Current Position");
+    EXPECT_EQ(state.map_detail_title, "Alex");
     EXPECT_EQ(state.map_detail_type, "Player");
 }
 

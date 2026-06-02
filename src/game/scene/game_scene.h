@@ -106,8 +106,8 @@ private:
     bool onHotbarToggle();
     bool onPauseToggle();
     bool onTogglePromptBar();
-    /// Applies pre-game appearance selection after the player entity exists and before Playing state.
-    void applyNewGameAppearance(const NewGameOptions& options);
+    /// Applies pre-game character setup after the player entity exists and before Playing state.
+    void applyNewGameOptions(const NewGameOptions& options);
     void onHotbarChanged(const game::defs::HotbarChanged& evt);
     void onHotbarSlotChanged(const game::defs::HotbarSlotChanged& evt);
     void onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd);

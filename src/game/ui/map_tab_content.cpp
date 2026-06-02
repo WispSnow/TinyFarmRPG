@@ -8,9 +8,11 @@
 #include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/data/shop_data.h"
+#include "game/defs/party_ids.h"
 #include "game/runtime/service_lookup.h"
 #include "game/ui/localized_text.h"
 #include "game/ui/map_coordinate_mapper.h"
+#include "game/ui/player_display_name.h"
 #include "game/ui/slot_grid_support.h"
 #include "game/ui/text_utils.h"
 #include "game/world/world_state.h"
@@ -234,6 +236,7 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
                                                            const glm::vec2 map_local_position,
                                                            const MapPreviewLayout& layout,
                                                            const std::string_view map_title,
+                                                           const std::string_view player_display_name,
                                                            const bool selected,
                                                            const game::runtime::LocalizationService* localization) {
     const float marker_size = selected ? MAP_TAB_MARKER_SELECTED_SIZE : MAP_TAB_MARKER_SIZE;
@@ -263,7 +266,7 @@ void populateObjectMarkerDetail(MapMarkerViewModel& marker,
         glm::vec2{MAP_TAB_PREVIEW_FRAME_WIDTH, MAP_TAB_PREVIEW_FRAME_HEIGHT},
         glm::vec2{MAP_TAB_MARKER_SELECTED_SIZE, MAP_TAB_MARKER_SELECTED_SIZE});
     marker.normal_z_index = 50;
-    marker.title = game::ui::localizeTextOrFallback(localization, "map.current_position", "Current Position");
+    marker.title = Rml::String{player_display_name.data(), player_display_name.size()};
     marker.type_label = game::ui::localizeTextOrFallback(localization, "map.type.player", "Player");
     marker.description = Rml::String{map_title.data(), map_title.size()};
     marker.is_selected = selected;
@@ -504,6 +507,12 @@ MapTabViewState buildMapTabViewState(const entt::registry& registry,
                 player_position,
                 layout,
                 std::string_view{state.map_title.data(), state.map_title.size()},
+                game::ui::resolveActorDisplayName(
+                    registry,
+                    player,
+                    game::defs::kDefaultPlayerActorId,
+                    rpg_catalog,
+                    localization),
                 marker_index == selected_marker_index,
                 localization));
             ++marker_index;

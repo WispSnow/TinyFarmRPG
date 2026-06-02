@@ -5,6 +5,7 @@
 #include "game/component/party_component.h"
 #include "game/component/party_equipment_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/data/rpg_catalog.h"
 #include "game/data/rpg_types.h"
 #include "game/defs/events.h"
@@ -151,6 +152,22 @@ TEST(PartyRestServiceTest, TenHoursFullyRecoversAndRevivesZeroHpActor) {
     const auto& stored = runtime.states_by_actor_id_.at("actor.player");
     EXPECT_EQ(stored.current_hp, 100);
     EXPECT_EQ(stored.current_mp, 20);
+}
+
+TEST(PartyRestServiceTest, PreviewUsesCustomPlayerIdentityNameWhenPresent) {
+    const auto catalog = loadCatalog();
+    entt::registry registry{};
+    const entt::entity player =
+        createPlayerWithParty(registry, {"actor.player", "actor.lyria"}, {"actor.player", "actor.lyria"});
+    registry.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+
+    const auto preview = PartyRestService::previewActivePartyRecovery(registry, player, catalog, 1);
+
+    ASSERT_EQ(preview.members.size(), 2U);
+    EXPECT_EQ(preview.members[0].display_name_key, "Mina");
+    EXPECT_EQ(preview.members[1].display_name_key, "Lyria");
 }
 
 TEST(PartyRestServiceTest, RecoversOnlyActivePartyMembers) {
