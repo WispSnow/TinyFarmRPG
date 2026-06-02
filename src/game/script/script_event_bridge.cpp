@@ -9,10 +9,12 @@
 #include "game/component/chest_component.h"
 #include "game/component/merchant_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/script_trigger_component.h"
 #include "game/component/script_zone_component.h"
+#include "game/component/tags.h"
 #include "game/defs/commands_interaction.h"
 #include "game/defs/events_battle.h"
 #include "game/defs/events_dialogue.h"
@@ -145,6 +147,24 @@ void setOptionalString(sol::table& payload, const char* key, const std::optional
         return;
     }
     payload[key] = *value;
+}
+
+[[nodiscard]] std::optional<std::string> entityDisplayName(const entt::registry& registry,
+                                                           const entt::entity entity) {
+    if (entity == entt::null || !registry.valid(entity)) {
+        return std::nullopt;
+    }
+    if (registry.any_of<game::component::PlayerTag>(entity)) {
+        if (const auto* identity = registry.try_get<game::component::PlayerIdentityComponent>(entity);
+            identity && !identity->display_name_.empty()) {
+            return identity->display_name_;
+        }
+    }
+    if (const auto* name = registry.try_get<engine::component::NameComponent>(entity);
+        name && !name->name_.empty()) {
+        return name->name_;
+    }
+    return std::nullopt;
 }
 
 void setOptionalUnitId(sol::table& payload,
@@ -405,8 +425,8 @@ void ScriptEventBridge::onInteract(const game::defs::InteractCommand& event) {
         payload["target_blueprint_id"] = sol::lua_nil;
     }
 
-    if (const auto* name = target_valid ? registry_.try_get<engine::component::NameComponent>(event.target) : nullptr) {
-        setOptionalString(payload, "target_name", name->name_);
+    if (const auto target_name = entityDisplayName(registry_, event.target)) {
+        setOptionalString(payload, "target_name", *target_name);
     } else {
         payload["target_name"] = sol::lua_nil;
     }

@@ -30,6 +30,8 @@
 #include "engine/resource/resource_manager.h"
 #include "engine/spatial/spatial_index_manager.h"
 #include "game/component/actor_identity_component.h"
+#include "game/component/player_identity_component.h"
+#include "game/component/tags.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/events.h"
 #include "game/runtime/localization_service.h"
@@ -424,6 +426,54 @@ TEST(DialoguePresentationControllerUnitTest, ConversationSpeakerUsesLocalizedScr
     dispatcher.trigger(show_evt);
 
     EXPECT_EQ(box.speaker, "乔希");
+}
+
+TEST(DialoguePresentationControllerUnitTest, NoticeSpeakerUsesCustomPlayerIdentityFromTarget) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+    FakeDialogueBoxView box;
+    FakeFloatingNoticeView notice;
+    FakeFloatingNoticeView item_notice;
+    FakeHotbarVisibility hotbar;
+    game::data::RpgCatalog catalog;
+    ASSERT_TRUE(catalog.loadActors(actorsPath()));
+    game::runtime::LocalizationService localization;
+    ASSERT_TRUE(localization.loadLanguageIndex(i18nManifestPath()));
+    ASSERT_TRUE(localization.setLanguage("zh-Hans"));
+
+    const entt::entity player = registry.create();
+    registry.emplace<game::component::PlayerTag>(player);
+    registry.emplace<game::component::PlayerIdentityComponent>(
+        player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+    registry.emplace<game::component::ActorIdentityComponent>(
+        player,
+        game::component::ActorIdentityComponent{
+            .actor_id_ = "actor.player",
+            .actor_id_hash_ = game::data::RpgCatalog::hashId("actor.player"),
+            .blueprint_id_ = "player",
+        });
+
+    game::ui::DialoguePresentationController controller(
+        dispatcher,
+        registry,
+        &box,
+        &notice,
+        &item_notice,
+        &hotbar,
+        &catalog,
+        {0.0F, -4.0F},
+        {0.0F, -56.0F},
+        nullptr,
+        &localization);
+
+    game::defs::DialogueShowEvent show_evt{};
+    show_evt.target = player;
+    show_evt.channel = game::defs::DialogueChannel::Notice;
+    show_evt.text = "今天农场小路很安静。出发前先检查宝箱吧。";
+    dispatcher.trigger(show_evt);
+
+    EXPECT_EQ(notice.text, "Mina:\n今天农场小路很安静。出发前先检查宝箱吧。");
 }
 
 TEST(DialoguePresentationControllerUnitTest, NoticeAutoHidesAfterDefaultDuration) {

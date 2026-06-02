@@ -74,7 +74,8 @@ public:
         const std::vector<std::string>& actor_ids,
         const std::unordered_map<std::string, game::component::ActorRuntimeState>& runtime_states,
         const std::unordered_map<std::string, game::component::ActorEquipmentLoadout>& actor_equipment,
-        int exp_reward);
+        int exp_reward,
+        const std::unordered_map<std::string, std::string>& actor_display_name_overrides = {});
 
     [[nodiscard]] static PartyExperienceGrantResult grantExperience(
         entt::registry& registry,

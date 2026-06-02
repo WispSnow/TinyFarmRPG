@@ -25,6 +25,7 @@
 #include "engine/system/light_system.h"
 #include "engine/system/render_system.h"
 #include "engine/system/ysort_system.h"
+#include "game/component/actor_identity_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/map_component.h"
@@ -56,6 +57,7 @@
 #include "game/ui/game_input_prompt_overlay.h"
 #include "game/ui/game_overlay.h"
 #include "game/ui/game_scene_ui_controller.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/menu_tab_content.h"
 #include "game/ui/player_display_name.h"
 #include "game/ui/player_portrait_service.h"
@@ -189,6 +191,66 @@ void populateBattlePartyState(entt::registry& registry,
         build_options.actor_display_name_overrides[std::string{game::defs::kDefaultPlayerActorId}] =
             identity->display_name_;
     }
+}
+
+[[nodiscard]] std::string resolveDialogueChoiceActorName(entt::registry& registry,
+                                                         const game::runtime::GameRuntimeServices* services,
+                                                         const std::string_view actor_id,
+                                                         const entt::entity target) {
+    if (actor_id.empty()) {
+        return {};
+    }
+
+    entt::entity player = findPlayer(registry);
+    if (target != entt::null && registry.valid(target) && registry.any_of<game::component::PlayerTag>(target)) {
+        player = target;
+    }
+
+    const game::runtime::LocalizationService* localization =
+        services && services->localization_service ? services->localization_service.get() : nullptr;
+
+    if (actor_id == game::defs::kDefaultPlayerActorId) {
+        const game::data::RpgCatalog* catalog = services && services->rpg_catalog ? services->rpg_catalog.get() : nullptr;
+        return game::ui::resolveActorDisplayName(registry, player, actor_id, catalog, localization);
+    }
+
+    const game::data::RpgCatalog* catalog = services && services->rpg_catalog ? services->rpg_catalog.get() : nullptr;
+    if (!catalog) {
+        return {};
+    }
+    return game::ui::resolveActorDisplayName(registry, player, actor_id, catalog, localization);
+}
+
+[[nodiscard]] std::string resolveDialogueChoiceSpeaker(entt::registry& registry,
+                                                       const game::runtime::GameRuntimeServices* services,
+                                                       const game::defs::DialogueChoiceRequestedEvent& evt) {
+    if (std::string actor_name =
+            resolveDialogueChoiceActorName(registry, services, evt.speaker_actor_id, evt.target);
+        !actor_name.empty()) {
+        return actor_name;
+    }
+
+    if (const auto* identity = registry.try_get<game::component::ActorIdentityComponent>(evt.target)) {
+        if (std::string actor_name =
+                resolveDialogueChoiceActorName(registry, services, identity->actor_id_, evt.target);
+            !actor_name.empty()) {
+            return actor_name;
+        }
+    }
+
+    if (services && services->rpg_catalog && evt.speaker_actor_id_hash != entt::null) {
+        if (const auto* actor = services->rpg_catalog->findActor(evt.speaker_actor_id_hash)) {
+            if (std::string actor_name =
+                    resolveDialogueChoiceActorName(registry, services, actor->id_, evt.target);
+                !actor_name.empty()) {
+                return actor_name;
+            }
+        }
+    }
+
+    const game::runtime::LocalizationService* localization =
+        services && services->localization_service ? services->localization_service.get() : nullptr;
+    return game::ui::tryLocalize(localization, evt.speaker);
 }
 
 [[nodiscard]] const game::component::ActorEquipmentLoadout* findActorLoadout(
@@ -990,6 +1052,8 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         populateBattlePartyState(registry_, party_state_options);
         presentation_options.actor_runtime_states = std::move(party_state_options.actor_runtime_states);
         presentation_options.actor_equipment = std::move(party_state_options.actor_equipment);
+        presentation_options.actor_display_name_overrides =
+            std::move(party_state_options.actor_display_name_overrides);
     }
     if (services_) {
         presentation_options.blueprint_manager = services_->blueprint_manager.get();
@@ -1030,10 +1094,13 @@ void GameScene::onDialogueChoiceRequested(const game::defs::DialogueChoiceReques
         return;
     }
 
+    auto request = evt;
+    request.speaker = resolveDialogueChoiceSpeaker(registry_, services_.get(), evt);
+
     requestPushScene(std::make_unique<game::scene::DialogueChoiceScene>(
         "DialogueChoiceScene",
         context_,
-        evt));
+        std::move(request)));
 }
 
 void GameScene::onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt) {

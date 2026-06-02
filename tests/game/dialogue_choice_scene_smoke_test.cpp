@@ -101,6 +101,7 @@ TEST(DialogueChoiceSceneSmokeTest, GameScenePushesDialogueChoiceSceneFromRequest
     EXPECT_NE(handler_block.find("DialogueChoiceScene"), std::string::npos);
     EXPECT_NE(handler_block.find("isPaused()"), std::string::npos);
     EXPECT_NE(handler_block.find("isTransitionActive()"), std::string::npos);
+    EXPECT_NE(handler_block.find("resolveDialogueChoiceSpeaker"), std::string::npos);
 }
 
 } // namespace

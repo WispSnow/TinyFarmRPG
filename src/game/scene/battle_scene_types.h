@@ -50,6 +50,7 @@ struct BattleScenePresentationOptions {
     std::vector<BattleSpriteSeed> sprite_seeds{};
     std::unordered_map<std::string, game::component::ActorRuntimeState> actor_runtime_states{};
     std::unordered_map<std::string, game::component::ActorEquipmentLoadout> actor_equipment{};
+    std::unordered_map<std::string, std::string> actor_display_name_overrides{};
     const game::factory::BlueprintManager* blueprint_manager{nullptr};
     const game::data::AppearanceCatalog* appearance_catalog{nullptr};
     engine::vfx::VfxService* vfx_service{nullptr};

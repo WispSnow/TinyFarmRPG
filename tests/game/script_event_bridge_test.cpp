@@ -7,6 +7,7 @@
 #include "game/component/chest_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/npc_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/recruitable_component.h"
 #include "game/component/script_trigger_component.h"
 #include "game/component/script_zone_component.h"
@@ -144,6 +145,48 @@ TEST(ScriptEventBridgeTest, EventCallbackQueuesCommandsUntilDrain) {
 
     env.bridge.drainDeferredCommands();
     EXPECT_EQ(countItem(env.registry, env.player, seed_item_id), 2);
+}
+
+TEST(ScriptEventBridgeTest, EntityNamePrefersCustomPlayerIdentity) {
+    ScriptEventBridgeTestEnv env{};
+    env.registry.emplace<engine::component::NameComponent>(
+        env.player,
+        engine::component::NameComponent{
+            .name_id_ = entt::hashed_string{"Alex"}.value(),
+            .name_ = "Alex",
+        });
+    env.registry.emplace<game::component::PlayerIdentityComponent>(
+        env.player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+    env.host.luaState()["test_player"] = env.host.makeHandle(env.player);
+
+    ASSERT_TRUE(env.host.exec(R"(
+        assert(tf.entity.name(test_player) == "Mina")
+    )"));
+}
+
+TEST(ScriptEventBridgeTest, InteractPayloadTargetNamePrefersCustomPlayerIdentity) {
+    ScriptEventBridgeTestEnv env{};
+    env.registry.emplace<engine::component::NameComponent>(
+        env.player,
+        engine::component::NameComponent{
+            .name_id_ = entt::hashed_string{"Alex"}.value(),
+            .name_ = "Alex",
+        });
+    env.registry.emplace<game::component::PlayerIdentityComponent>(
+        env.player,
+        game::component::PlayerIdentityComponent{.display_name_ = "Mina"});
+
+    ASSERT_TRUE(env.host.exec(R"(
+        seen_player_target_name = false
+        assert(tf.event.on("interact", function(evt)
+            assert(evt.target_name == "Mina")
+            seen_player_target_name = true
+        end) == true)
+    )"));
+
+    env.dispatcher.trigger(game::defs::InteractCommand{env.player, env.player});
+    ASSERT_TRUE(env.host.exec("assert(seen_player_target_name == true)"));
 }
 
 TEST(ScriptEventBridgeTest, FailedCallbackDiscardsQueuedCommands) {

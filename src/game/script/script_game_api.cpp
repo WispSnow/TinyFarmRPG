@@ -10,6 +10,7 @@
 #include "game/component/npc_component.h"
 #include "game/component/party_component.h"
 #include "game/component/party_runtime_stats_component.h"
+#include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/quest_giver_component.h"
 #include "game/component/quest_log_component.h"
@@ -316,6 +317,13 @@ std::optional<std::string> ScriptGameApi::entityName(
     entt::entity entity = entt::null;
     if (!host_.validateHandle(handle, entity, "tf.entity.name")) {
         return std::nullopt;
+    }
+
+    if (registry_.any_of<game::component::PlayerTag>(entity)) {
+        if (const auto* identity = registry_.try_get<game::component::PlayerIdentityComponent>(entity);
+            identity && !identity->display_name_.empty()) {
+            return identity->display_name_;
+        }
     }
 
     const auto* name = registry_.try_get<engine::component::NameComponent>(entity);
