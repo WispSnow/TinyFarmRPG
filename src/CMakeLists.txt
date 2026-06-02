@@ -13,7 +13,6 @@ target_sources(engine PRIVATE
     engine/platform/filesystem_paths.cpp
     engine/platform/web_persistent_storage.cpp
     # Async
-    engine/async/thread_pool.cpp
     engine/async/main_thread_command_queue.cpp
     # Audio
     engine/audio/audio_player.cpp
@@ -99,6 +98,12 @@ target_sources(engine PRIVATE
     engine/spatial/spatial_index_manager.cpp
     engine/spatial/collision_resolver.cpp
 )
+
+if(TF_ENABLE_RUNTIME_THREADS)
+    target_sources(engine PRIVATE
+        engine/async/thread_pool.cpp
+    )
+endif()
 
 # Engine Debug UI 源文件（仅在启用 Debug UI 时编译）
 if(ENABLE_DEBUG_UI)

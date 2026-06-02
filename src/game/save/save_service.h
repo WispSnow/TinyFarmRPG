@@ -4,9 +4,11 @@
 
 #include <atomic>
 #include <filesystem>
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include <optional>
-#include <string>
 #include <thread>
+#endif
+#include <string>
 
 #include <entt/entity/fwd.hpp>
 
@@ -38,7 +40,9 @@ private:
     game::factory::BlueprintManager& blueprint_manager_;
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
     std::atomic<bool> save_in_progress_{false};
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     std::optional<std::jthread> async_save_thread_{};
+#endif
 
 public:
     SaveService(engine::core::Context& context,

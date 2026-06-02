@@ -1,6 +1,7 @@
 #include "save_service.h"
 
 #include "engine/platform/filesystem_paths.h"
+#include "engine/platform/threading.h"
 
 #include "save_migrator.h"
 #include "game/world/map_snapshot_serializer.h"
@@ -85,6 +86,17 @@ constexpr std::array<Vec2i, 8> NEIGHBOR_OFFSETS{{
     {-1, 0},  // left
     {-1, -1}  // up-left
 }};
+
+void enqueueAsyncSaveCompleted(engine::async::MainThreadCommandQueue& main_thread_queue,
+                               entt::dispatcher& dispatcher,
+                               game::defs::AsyncSaveCompletedEvent event) {
+    auto* dispatcher_ptr = &dispatcher;
+    if (!main_thread_queue.enqueue([dispatcher_ptr, event = std::move(event)]() mutable {
+            dispatcher_ptr->enqueue<game::defs::AsyncSaveCompletedEvent>(std::move(event));
+        })) {
+        spdlog::warn("SaveService: 保存完成事件投递失败（主线程命令队列已满）。");
+    }
+}
 
 std::uint8_t computeAutoTileMask(const std::unordered_set<std::int64_t>& tiles, Vec2i tile) {
     std::uint8_t mask = 0;
@@ -403,6 +415,7 @@ bool SaveService::writeSaveFile(const SaveData& data,
 }
 
 void SaveService::cleanupCompletedSaveThread() {
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     if (!async_save_thread_) {
         return;
     }
@@ -413,6 +426,7 @@ void SaveService::cleanupCompletedSaveThread() {
         async_save_thread_->join();
     }
     async_save_thread_.reset();
+#endif
 }
 
 bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string& out_error) {
@@ -453,6 +467,21 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
     auto* main_thread_queue = &context_.getMainThreadCommandQueue();
     auto* dispatcher = &context_.getDispatcher();
 
+    if (!engine::platform::runtimeThreadingEnabled()) {
+        std::string write_error;
+        const bool success = writeSaveFile(data, file_path, write_error);
+
+        game::defs::AsyncSaveCompletedEvent event{};
+        event.file_path = file_path.string();
+        event.success = success;
+        event.error = std::move(write_error);
+
+        enqueueAsyncSaveCompleted(*main_thread_queue, *dispatcher, std::move(event));
+        save_in_progress_.store(false, std::memory_order_release);
+        return true;
+    }
+
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     async_save_thread_.emplace([this, data = std::move(data), file_path, main_thread_queue, dispatcher]() mutable {
         std::string write_error;
         const bool success = writeSaveFile(data, file_path, write_error);
@@ -462,16 +491,17 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         event.success = success;
         event.error = std::move(write_error);
 
-        if (!main_thread_queue->enqueue([dispatcher, event = std::move(event)]() mutable {
-                dispatcher->enqueue<game::defs::AsyncSaveCompletedEvent>(std::move(event));
-            })) {
-            spdlog::warn("SaveService: 异步保存完成事件投递失败（主线程命令队列已满）。");
-        }
+        enqueueAsyncSaveCompleted(*main_thread_queue, *dispatcher, std::move(event));
 
         save_in_progress_.store(false, std::memory_order_release);
     });
 
     return true;
+#else
+    save_in_progress_.store(false, std::memory_order_release);
+    out_error = "Runtime threads are disabled.";
+    return false;
+#endif
 }
 
 bool SaveService::loadFromFile(const std::filesystem::path& file_path, std::string& out_error) {

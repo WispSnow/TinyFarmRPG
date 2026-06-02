@@ -1,10 +1,13 @@
 #include "map_loading_settings.h"
 
+#include "engine/platform/threading.h"
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -100,6 +103,18 @@ template <typename T>
 }
 } // namespace
 
+MapLoadingSettings MapLoadingSettings::forCurrentPlatform(MapLoadingSettings settings) {
+    if (!engine::platform::runtimeThreadingEnabled()) {
+        settings.async_preload_enabled = false;
+        settings.async_wait_budget_ms = 0;
+        settings.async_submit_wait_ms = 0;
+        settings.async_command_wait_ms = 0;
+        settings.async_worker_count = 0;
+        settings.async_queue_capacity = 0;
+    }
+    return settings;
+}
+
 MapLoadingSettings MapLoadingSettings::loadFromFile(std::string_view path) {
     MapLoadingSettings settings{};
     settings.source_path = std::string(path);
@@ -107,7 +122,7 @@ MapLoadingSettings MapLoadingSettings::loadFromFile(std::string_view path) {
     std::ifstream file{std::string(path)};
     if (!file.is_open()) {
         spdlog::warn("MapLoadingSettings: 无法打开配置文件，使用默认值: {}", path);
-        return settings;
+        return forCurrentPlatform(std::move(settings));
     }
 
     const std::string file_content(
@@ -118,7 +133,7 @@ MapLoadingSettings MapLoadingSettings::loadFromFile(std::string_view path) {
     const nlohmann::json json = nlohmann::json::parse(file_content, nullptr, false);
     if (json.is_discarded() || !json.is_object()) {
         spdlog::warn("MapLoadingSettings: 解析配置失败，使用默认值: {}", path);
-        return settings;
+        return forCurrentPlatform(std::move(settings));
     }
 
     // preload.mode（优先）
@@ -141,7 +156,7 @@ MapLoadingSettings MapLoadingSettings::loadFromFile(std::string_view path) {
     }
 
     settings.log_timings = boolOr(json, "log_timings", settings.log_timings);
-    return settings;
+    return forCurrentPlatform(std::move(settings));
 }
 
 std::string_view MapLoadingSettings::toString(MapPreloadMode mode) {

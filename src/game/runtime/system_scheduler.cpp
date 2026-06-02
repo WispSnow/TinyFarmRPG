@@ -2,7 +2,9 @@
 
 #include "system_bundle.h"
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include "engine/async/thread_pool.h"
+#endif
 #include "engine/component/animation_component.h"
 #include "engine/component/audio_component.h"
 #include "engine/component/collider_component.h"
@@ -10,6 +12,7 @@
 #include "engine/component/tags.h"
 #include "engine/component/transform_component.h"
 #include "engine/component/velocity_component.h"
+#include "engine/platform/threading.h"
 #include "engine/render/lighting_state.h"
 #include "engine/system/animation_system.h"
 #include "engine/system/auto_tile_system.h"
@@ -863,20 +866,27 @@ const std::vector<SchedulerStage>& SystemScheduler::profileStages(const GameMode
     return exploration_profile();
 }
 
-engine::async::ThreadPool& SystemScheduler::parallelThreadPool() const {
+engine::async::ThreadPool* SystemScheduler::parallelThreadPool() const {
+    if (!engine::platform::runtimeThreadingEnabled()) {
+        return nullptr;
+    }
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     if (!parallel_thread_pool_) {
         parallel_thread_pool_ = std::make_unique<engine::async::ThreadPool>(engine::async::ThreadPool::Options{
             .name = "SystemSchedulerParallel"
         });
     }
-    return *parallel_thread_pool_;
+    return parallel_thread_pool_.get();
+#else
+    return nullptr;
+#endif
 }
 
 engine::system::ParallelWaveScheduler& SystemScheduler::midStageParallelIslandScheduler() const {
     if (!mid_stage_parallel_island_scheduler_) {
         mid_stage_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
             buildMidStageParallelIslandTasks(),
-            &parallelThreadPool());
+            parallelThreadPool());
     }
     return *mid_stage_parallel_island_scheduler_;
 }
@@ -885,7 +895,7 @@ engine::system::ParallelWaveScheduler& SystemScheduler::preMovementParallelIslan
     if (!pre_movement_parallel_island_scheduler_) {
         pre_movement_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
             buildPreMovementParallelIslandTasks(),
-            &parallelThreadPool());
+            parallelThreadPool());
     }
     return *pre_movement_parallel_island_scheduler_;
 }
@@ -894,7 +904,7 @@ engine::system::ParallelWaveScheduler& SystemScheduler::postGateParallelIslandSc
     if (!post_gate_parallel_island_scheduler_) {
         post_gate_parallel_island_scheduler_ = std::make_unique<engine::system::ParallelWaveScheduler>(
             buildPostGateParallelIslandTasks(),
-            &parallelThreadPool());
+            parallelThreadPool());
     }
     return *post_gate_parallel_island_scheduler_;
 }

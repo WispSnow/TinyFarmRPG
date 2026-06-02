@@ -2,7 +2,7 @@
 
 ## 元信息
 - 目标分支：`web-release`
-- 状态：`Phase 5 Persistent FS Smoke Implemented`
+- 状态：`Phase 6 Web Single-Thread Strategy Implemented`
 - 目标平台：浏览器 WebAssembly + WebGL2
 - 首版策略：单线程、WebGL2、资源包精简、基础玩法闭环
 - 当前工具链：`emsdk latest` 已安装到 `~/.local/emsdk`，当前解析版本为 `5.0.7`
@@ -11,6 +11,7 @@
 - Phase 3 实施记录：`plans/reports/2026-06-02-web-release-phase-3-report.md`
 - Phase 4 实施记录：`plans/reports/2026-06-02-web-release-phase-4-report.md`
 - Phase 5 实施记录：`plans/reports/2026-06-02-web-release-phase-5-report.md`
+- Phase 6 实施记录：`plans/reports/2026-06-02-web-release-phase-6-report.md`
 
 ## 结论与范围收敛
 当前项目可以迁移到 WebAssembly/WebGL2，但不适合直接把桌面端构建一键搬到网页端。审阅后调整为“先在共享发布基线定版资源，再切 `web-release`，随后尽快点亮 Web walking skeleton”的路线：

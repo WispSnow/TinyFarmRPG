@@ -1,7 +1,9 @@
 #include "game/world/async_preload_pipeline.h"
 
 #include "engine/async/main_thread_command_queue.h"
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include "engine/async/thread_pool.h"
+#endif
 #include "engine/core/context.h"
 #include "engine/loader/level_loader.h"
 #include "engine/resource/image_decode_service.h"
@@ -9,6 +11,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <utility>
 #include <vector>
 
 #include <spdlog/spdlog.h>
@@ -18,8 +21,10 @@ namespace game::world {
 AsyncPreloadPipeline::AsyncPreloadPipeline(engine::core::Context& context,
                                            game::world::MapLoadingSettings settings)
     : context_(context),
+#if defined(TF_ENABLE_RUNTIME_THREADS)
       owner_thread_id_(std::this_thread::get_id()),
-      loading_settings_(std::move(settings)) {
+#endif
+      loading_settings_(MapLoadingSettings::forCurrentPlatform(std::move(settings))) {
     recreateThreadPoolIfEnabled();
 }
 
@@ -34,7 +39,7 @@ void AsyncPreloadPipeline::setLoadingSettings(game::world::MapLoadingSettings se
         return;
     }
 
-    loading_settings_ = std::move(settings);
+    loading_settings_ = MapLoadingSettings::forCurrentPlatform(std::move(settings));
     clearTasksImpl(false);
     recreateThreadPoolIfEnabled();
 }
@@ -52,6 +57,9 @@ bool AsyncPreloadPipeline::schedule(entt::id_type map_id, std::string_view level
         return false;
     }
 
+#if !defined(TF_ENABLE_RUNTIME_THREADS)
+    return false;
+#else
     if (!preload_thread_pool_) {
         recreateThreadPoolIfEnabled();
     }
@@ -248,6 +256,7 @@ bool AsyncPreloadPipeline::schedule(entt::id_type map_id, std::string_view level
     }
 
     return submitted;
+#endif
 }
 
 MapPreloadTaskState AsyncPreloadPipeline::getTaskState(entt::id_type map_id) const {
@@ -276,12 +285,17 @@ void AsyncPreloadPipeline::markAppliedIfReady(entt::id_type map_id) {
 }
 
 bool AsyncPreloadPipeline::ensureOwnerThread(std::string_view api_name) const {
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     if (std::this_thread::get_id() == owner_thread_id_) {
         return true;
     }
 
     spdlog::warn("AsyncPreloadPipeline::{} called from non-owner thread", api_name);
     return false;
+#else
+    (void)api_name;
+    return true;
+#endif
 }
 
 void AsyncPreloadPipeline::clearTasksImpl(bool enforce_owner_thread) {
@@ -300,10 +314,12 @@ void AsyncPreloadPipeline::clearTasksImpl(bool enforce_owner_thread) {
     async_preload_tasks_.clear();
     preload_generation_counter_ = 0;
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     if (preload_thread_pool_) {
         preload_thread_pool_->stop();
         preload_thread_pool_.reset();
     }
+#endif
 }
 
 void AsyncPreloadPipeline::recreateThreadPoolIfEnabled() {
@@ -311,11 +327,15 @@ void AsyncPreloadPipeline::recreateThreadPoolIfEnabled() {
         return;
     }
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     preload_thread_pool_ = std::make_unique<engine::async::ThreadPool>(engine::async::ThreadPool::Options{
         .worker_count = std::max<std::size_t>(1, loading_settings_.async_worker_count),
         .queue_capacity = std::max<std::size_t>(1, loading_settings_.async_queue_capacity),
         .name = "MapPreloadThreadPool",
     });
+#else
+    loading_settings_.async_preload_enabled = false;
+#endif
 }
 
 } // namespace game::world

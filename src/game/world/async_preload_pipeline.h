@@ -5,15 +5,22 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include <thread>
+#endif
 #include <unordered_map>
 
 #include <entt/core/hashed_string.hpp>
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
+#include "engine/async/thread_pool.h"
+#endif
 #include "map_loading_settings.h"
 
 namespace engine::async {
+#if !defined(TF_ENABLE_RUNTIME_THREADS)
 class ThreadPool;
+#endif
 }
 
 namespace engine::core {
@@ -35,7 +42,7 @@ enum class MapPreloadTaskState : std::uint8_t {
 
 class AsyncPreloadPipeline final {
 public:
-    // 线程安全契约：以下 API 仅允许 owner thread（通常是主线程）调用。
+    // 多线程构建契约：以下 API 仅允许 owner thread（通常是主线程）调用。
     // - setLoadingSettings()
     // - clearTasks()
     // - schedule()
@@ -74,12 +81,19 @@ private:
     void clearTasksImpl(bool enforce_owner_thread);
     void recreateThreadPoolIfEnabled();
 
+#if !defined(TF_ENABLE_RUNTIME_THREADS)
+    [[maybe_unused]]
+#endif
     engine::core::Context& context_;
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     std::thread::id owner_thread_id_;
+#endif
     game::world::MapLoadingSettings loading_settings_{};
     std::unordered_map<entt::id_type, AsyncPreloadTask> async_preload_tasks_{};
     std::uint64_t preload_generation_counter_{0};
+#if defined(TF_ENABLE_RUNTIME_THREADS)
     std::unique_ptr<engine::async::ThreadPool> preload_thread_pool_;
+#endif
 };
 
 } // namespace game::world

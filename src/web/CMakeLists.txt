@@ -42,6 +42,19 @@ target_link_options(${TARGET}
         -lidbfs.js
 )
 
+if(TF_WEB_ENABLE_PTHREADS)
+    target_compile_options(${TARGET}
+        PRIVATE
+            -pthread
+    )
+    target_link_options(${TARGET}
+        PRIVATE
+            -pthread
+            -sUSE_PTHREADS=1
+            -sPTHREAD_POOL_SIZE=2
+    )
+endif()
+
 tf_target_web_preload(${TARGET} "${TF_WEB_PRELOAD_ARGS}")
 
 set_target_properties(${TARGET} PROPERTIES

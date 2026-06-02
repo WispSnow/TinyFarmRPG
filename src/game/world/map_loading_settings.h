@@ -24,6 +24,7 @@ struct MapLoadingSettings {
     std::size_t async_queue_capacity{32};
     std::string source_path{};
 
+    [[nodiscard]] static MapLoadingSettings forCurrentPlatform(MapLoadingSettings settings);
     [[nodiscard]] static MapLoadingSettings loadFromFile(std::string_view path);
     [[nodiscard]] static std::string_view toString(MapPreloadMode mode);
 };

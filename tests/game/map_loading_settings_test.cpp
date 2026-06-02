@@ -1,11 +1,13 @@
 // NOLINTBEGIN
 #include <gtest/gtest.h>
 
+#include "engine/platform/threading.h"
 #include "game/world/map_loading_settings.h"
 
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 
 #ifndef PROJECT_SOURCE_DIR
 #define PROJECT_SOURCE_DIR "."
@@ -89,6 +91,34 @@ TEST(MapLoadingSettingsTest, LoadsCheckedDefaultsFromRuntimeAssetConfig) {
     EXPECT_EQ(settings.async_worker_count, 1U);
     EXPECT_EQ(settings.async_queue_capacity, 32U);
     EXPECT_TRUE(settings.log_timings);
+}
+
+TEST(MapLoadingSettingsTest, PlatformPolicyMatchesRuntimeThreadingFlag) {
+    MapLoadingSettings settings{};
+    settings.async_preload_enabled = true;
+    settings.async_wait_budget_ms = 17;
+    settings.async_submit_wait_ms = 3;
+    settings.async_command_wait_ms = 33;
+    settings.async_worker_count = 2;
+    settings.async_queue_capacity = 128;
+
+    const auto adjusted = MapLoadingSettings::forCurrentPlatform(std::move(settings));
+
+    if (engine::platform::runtimeThreadingEnabled()) {
+        EXPECT_TRUE(adjusted.async_preload_enabled);
+        EXPECT_EQ(adjusted.async_wait_budget_ms, 17U);
+        EXPECT_EQ(adjusted.async_submit_wait_ms, 3U);
+        EXPECT_EQ(adjusted.async_command_wait_ms, 33U);
+        EXPECT_EQ(adjusted.async_worker_count, 2U);
+        EXPECT_EQ(adjusted.async_queue_capacity, 128U);
+    } else {
+        EXPECT_FALSE(adjusted.async_preload_enabled);
+        EXPECT_EQ(adjusted.async_wait_budget_ms, 0U);
+        EXPECT_EQ(adjusted.async_submit_wait_ms, 0U);
+        EXPECT_EQ(adjusted.async_command_wait_ms, 0U);
+        EXPECT_EQ(adjusted.async_worker_count, 0U);
+        EXPECT_EQ(adjusted.async_queue_capacity, 0U);
+    }
 }
 
 TEST(MapLoadingSettingsTest, InvalidJsonKeepsDefaults) {

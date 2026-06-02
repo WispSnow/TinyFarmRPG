@@ -117,6 +117,36 @@ TEST(ParallelWaveSchedulerTest, SubmitFailureFallsBackToInlineExecution) {
     EXPECT_EQ(counter_b.load(std::memory_order_relaxed), 1);
 }
 
+TEST(ParallelWaveSchedulerTest, NullThreadPoolRunsWorkerEligibleWaveInline) {
+    int counter_a = 0;
+    int counter_b = 0;
+
+    std::vector<SystemTaskDecl> tasks;
+    tasks.push_back(SystemTaskDecl{
+        .name = "TaskA",
+        .policy = ExecutionPolicy::WorkerEligible,
+        .run = [&](DeferredCommands&, TaskEventBuffer&) { ++counter_a; },
+        .rw_resources = {RES_A}
+    });
+    tasks.push_back(SystemTaskDecl{
+        .name = "TaskB",
+        .policy = ExecutionPolicy::WorkerEligible,
+        .run = [&](DeferredCommands&, TaskEventBuffer&) { ++counter_b; },
+        .rw_resources = {RES_B}
+    });
+
+    entt::registry registry;
+    ParallelWaveScheduler scheduler(std::move(tasks), nullptr);
+    ASSERT_TRUE(scheduler.valid());
+
+    const auto elapsed = scheduler.execute(registry);
+    ASSERT_EQ(elapsed.size(), 2U);
+    EXPECT_GE(elapsed[0], 0.0);
+    EXPECT_GE(elapsed[1], 0.0);
+    EXPECT_EQ(counter_a, 1);
+    EXPECT_EQ(counter_b, 1);
+}
+
 TEST(ParallelWaveSchedulerTest, WorkerEligibleWaveRunsOnMultipleWorkers) {
     std::atomic<int> entered{0};
     std::atomic<int> running{0};

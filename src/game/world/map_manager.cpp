@@ -7,6 +7,7 @@
 #include "engine/loader/tiled_conventions.h"
 #include "engine/loader/tiled_json_cache.h"
 #include "engine/loader/tiled_json_helpers.h"
+#include "engine/platform/threading.h"
 #include "engine/render/camera.h"
 #include "engine/core/context.h"
 #include "engine/spatial/spatial_index_manager.h"
@@ -38,7 +39,9 @@
 #include <algorithm>
 #include <chrono>
 #include <optional>
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include <thread>
+#endif
 #include <spdlog/spdlog.h>
 #include <iterator>
 #include <vector>
@@ -366,6 +369,9 @@ bool MapManager::scheduleAsyncPreloadTask(entt::id_type map_id, std::string_view
 }
 
 bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
+    if (!engine::platform::runtimeThreadingEnabled()) {
+        return false;
+    }
     if (loading_settings_.async_wait_budget_ms == 0) {
         return false;
     }
@@ -389,7 +395,11 @@ bool MapManager::waitForAsyncPreloadReady(entt::id_type map_id) {
         // 状态查询委托给 AsyncPreloadPipeline::getTaskState(map_id)。
         // 注意：如果异步任务在同一帧内提交且命令尚未被 drain，此处会超时并降级同步加载。
         // 典型用法（preloadAllMaps 预热 → 后续帧 loadMap）不受影响。
+#if defined(TF_ENABLE_RUNTIME_THREADS)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+#else
+        return false;
+#endif
     }
 
     return isAsyncReadyState(mapPreloadTaskState(map_id));

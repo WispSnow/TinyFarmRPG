@@ -1,6 +1,8 @@
 #include "engine/system/parallel_wave_scheduler.h"
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include "engine/async/thread_pool.h"
+#endif
 #include "engine/system/deferred_commands.h"
 #include "engine/system/task_event_buffer.h"
 
@@ -14,7 +16,9 @@
 #include <cassert>
 #include <chrono>
 #include <cstdint>
+#if defined(TF_ENABLE_RUNTIME_THREADS)
 #include <future>
+#endif
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -55,7 +59,12 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry, ent
         const bool all_worker_eligible = std::all_of(wave.task_indices.begin(), wave.task_indices.end(), [this](const std::size_t index) {
             return tasks_[index].policy == ExecutionPolicy::WorkerEligible;
         });
+#if defined(TF_ENABLE_RUNTIME_THREADS)
         const bool run_parallel = thread_pool_ != nullptr && all_worker_eligible && wave.task_indices.size() > 1;
+#else
+        const bool run_parallel = false;
+        (void)all_worker_eligible;
+#endif
 
         if (!run_parallel) {
             for (const std::size_t index : wave.task_indices) {
@@ -84,6 +93,7 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry, ent
             continue;
         }
 
+#if defined(TF_ENABLE_RUNTIME_THREADS)
         struct PendingFuture {
             std::size_t index{0};
             std::future<double> future{};
@@ -140,6 +150,7 @@ std::vector<double> ParallelWaveScheduler::execute(entt::registry& registry, ent
             spdlog::error("ParallelWaveScheduler::execute task event flush failed: dispatcher is null");
             assert(dispatcher != nullptr && "ParallelWaveScheduler requires dispatcher when task events are produced");
         }
+#endif
     }
 
     return stage_elapsed_ms;

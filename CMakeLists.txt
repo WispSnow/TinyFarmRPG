@@ -9,9 +9,14 @@ project(TinyFarmRPG VERSION 0.1.0 LANGUAGES C CXX)
 # ============================================
 
 option(TF_BUILD_WEB "构建 WebAssembly/WebGL2 walking skeleton" OFF)
+option(TF_WEB_ENABLE_PTHREADS "构建 Web pthreads 变体（需要 SharedArrayBuffer/COOP/COEP 发布环境）" OFF)
 
 if(TF_BUILD_WEB AND NOT EMSCRIPTEN)
     message(FATAL_ERROR "TF_BUILD_WEB=ON must be configured with emcmake.")
+endif()
+
+if(TF_WEB_ENABLE_PTHREADS AND NOT TF_BUILD_WEB)
+    message(FATAL_ERROR "TF_WEB_ENABLE_PTHREADS=ON requires TF_BUILD_WEB=ON.")
 endif()
 
 if(TF_BUILD_WEB)
@@ -23,6 +28,7 @@ if(TF_BUILD_WEB)
     set(TF_DEFAULT_BUILD_RMLUI_TESTER OFF)
     set(TF_DEFAULT_BUILD_LEARN OFF)
     set(TF_DEFAULT_BUILD_TESTING OFF)
+    set(TF_DEFAULT_ENABLE_RUNTIME_THREADS ${TF_WEB_ENABLE_PTHREADS})
 else()
     set(TF_DEFAULT_ENABLE_DEBUG_UI ON)
     set(TF_DEFAULT_ENABLE_RMLUI_DEBUGGER ON)
@@ -32,6 +38,7 @@ else()
     set(TF_DEFAULT_BUILD_RMLUI_TESTER ON)
     set(TF_DEFAULT_BUILD_LEARN ON)
     set(TF_DEFAULT_BUILD_TESTING ON)
+    set(TF_DEFAULT_ENABLE_RUNTIME_THREADS ON)
 endif()
 
 if(NOT EMSCRIPTEN)
@@ -57,6 +64,15 @@ option(BUILD_TOOLS "是否构建工具" ${TF_DEFAULT_BUILD_TOOLS})
 option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ${TF_DEFAULT_BUILD_RMLUI_TESTER})
 option(BUILD_LEARN "构建学习/实验目标" ${TF_DEFAULT_BUILD_LEARN})
 option(BUILD_TESTING "是否构建测试" ${TF_DEFAULT_BUILD_TESTING})
+option(TF_ENABLE_RUNTIME_THREADS "启用运行时 worker 线程（Web 默认关闭，pthreads 变体再打开）" ${TF_DEFAULT_ENABLE_RUNTIME_THREADS})
+
+if(TF_WEB_ENABLE_PTHREADS)
+    set(TF_ENABLE_RUNTIME_THREADS ON CACHE BOOL "启用运行时 worker 线程（Web 默认关闭，pthreads 变体再打开）" FORCE)
+endif()
+
+if(TF_BUILD_WEB AND TF_ENABLE_RUNTIME_THREADS AND NOT TF_WEB_ENABLE_PTHREADS)
+    message(FATAL_ERROR "Web runtime threads require TF_WEB_ENABLE_PTHREADS=ON.")
+endif()
 
 # EnTT 资源/哈希 ID 使用 64 位；并行 ECS worker 会跨线程访问 EnTT storage，
 # 因此启用 EnTT 文档建议的 atomic 内部状态。
@@ -64,6 +80,16 @@ add_compile_definitions(
     ENTT_ID_TYPE=std::uint64_t
     ENTT_USE_ATOMIC
 )
+
+if(TF_BUILD_WEB)
+    add_compile_definitions(TF_BUILD_WEB)
+endif()
+if(TF_ENABLE_RUNTIME_THREADS)
+    add_compile_definitions(TF_ENABLE_RUNTIME_THREADS)
+endif()
+if(TF_WEB_ENABLE_PTHREADS)
+    add_compile_definitions(TF_WEB_ENABLE_PTHREADS)
+endif()
 
 # ============================================
 # 引入模块化配置
