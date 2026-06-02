@@ -3,6 +3,7 @@
 
 #include <entt/entity/registry.hpp>
 
+#include "game/component/inventory_component.h"
 #include "game/component/party_component.h"
 #include "game/component/party_runtime_stats_component.h"
 #include "game/component/player_identity_component.h"
@@ -63,6 +64,9 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
     registry.emplace<game::component::PlayerWalletComponent>(
         player,
         game::component::PlayerWalletComponent{.gold_ = 345});
+    auto& inventory = registry.emplace<game::component::InventoryComponent>(player);
+    inventory.slot(0) = game::component::ItemStack{.item_id_ = 101, .count_ = 1};
+    inventory.slot(4) = game::component::ItemStack{.item_id_ = 202, .count_ = 3};
 
     const game::data::RpgCatalog catalog = loadProjectPartyCatalog();
     const game::runtime::LocalizationService localization = loadEnglishLocalization();
@@ -80,7 +84,15 @@ TEST(InventoryMenuPartyPanelTest, UsesWalletGoldAndCatalogActorData) {
     EXPECT_TRUE(data.party_members[0].selected);
     EXPECT_EQ(filledMemberCount(data), 1);
     EXPECT_EQ(data.gold_label, "Gold: 345");
-    EXPECT_EQ(data.farm_label, "TinyFarm");
+    EXPECT_EQ(data.inventory_capacity_label, "Inventory 2/40");
+}
+
+TEST(InventoryMenuPartyPanelTest, UsesZeroCapacityLabelWhenInventoryIsMissing) {
+    entt::registry registry;
+    const entt::entity player = registry.create();
+    const game::runtime::LocalizationService localization = loadEnglishLocalization();
+
+    EXPECT_EQ(buildInventoryMenuCapacityLabel(registry, player, &localization), "Inventory 0/0");
 }
 
 TEST(InventoryMenuPartyPanelTest, BuildsStableFourCardSnapshotsForPartySizes) {

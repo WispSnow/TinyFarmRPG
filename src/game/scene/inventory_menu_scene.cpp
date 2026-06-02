@@ -15,6 +15,7 @@
 #include "game/data/rpg_data.h"
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
+#include "game/defs/events_inventory.h"
 #include "game/defs/options_events.h"
 #include "game/defs/party_ids.h"
 #include "game/runtime/user_settings_service.h"
@@ -210,6 +211,8 @@ bool InventoryMenuScene::init() {
         .connect<&InventoryMenuScene::onMapTabShortcut>(this);
     context_.getInputManager().onAction("inventory_tab_options"_hs)
         .connect<&InventoryMenuScene::onOptionsTabShortcut>(this);
+    context_.getDispatcher().sink<game::defs::InventoryChanged>()
+        .connect<&InventoryMenuScene::onInventoryChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
         .connect<&InventoryMenuScene::onLanguageChanged>(this);
 
@@ -298,7 +301,7 @@ bool InventoryMenuScene::initUI() {
 
     constructor.Bind("party_members", &party_members_);
     constructor.Bind("gold_label", &gold_label_);
-    constructor.Bind("farm_label", &farm_label_);
+    constructor.Bind("inventory_capacity_label", &inventory_capacity_label_);
 
     if (!constructor.BindEventCallback(
             "switch_tab",
@@ -432,6 +435,8 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
         .disconnect<&InventoryMenuScene::onMapTabShortcut>(this);
     context_.getInputManager().onAction("inventory_tab_options"_hs)
         .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
+    context_.getDispatcher().sink<game::defs::InventoryChanged>()
+        .disconnect<&InventoryMenuScene::onInventoryChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
         .disconnect<&InventoryMenuScene::onLanguageChanged>(this);
 }
@@ -517,7 +522,7 @@ void InventoryMenuScene::syncPartyPanel() {
     registerPartyPortraitImages(data.party_members);
     party_members_ = data.party_members;
     gold_label_ = data.gold_label;
-    farm_label_ = data.farm_label;
+    inventory_capacity_label_ = data.inventory_capacity_label;
 
     if (selected_actor_id_.empty()) {
         for (const auto& member : party_members_) {
@@ -530,10 +535,15 @@ void InventoryMenuScene::syncPartyPanel() {
 
     document_controller_.markDirty("party_members");
     document_controller_.markDirty("gold_label");
-    document_controller_.markDirty("farm_label");
+    document_controller_.markDirty("inventory_capacity_label");
     if (equipment_tab_) {
         equipment_tab_->setSelectedActor(selected_actor_id_);
     }
+}
+
+void InventoryMenuScene::refreshInventoryCapacityLabel() {
+    inventory_capacity_label_ = buildInventoryMenuCapacityLabel(game_registry_, player_, localization());
+    document_controller_.markDirty("inventory_capacity_label");
 }
 
 void InventoryMenuScene::beginActorTargetSelection(int inventory_slot_index) {
@@ -690,6 +700,14 @@ void InventoryMenuScene::onLanguageChanged(const game::defs::LanguageChangedEven
         tab->onLanguageChanged();
     }
     hideTabShortcutTooltip();
+}
+
+void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& event) {
+    if (event.target != player_) {
+        return;
+    }
+
+    refreshInventoryCapacityLabel();
 }
 
 void InventoryMenuScene::cacheTabShortcutTooltipElements() {

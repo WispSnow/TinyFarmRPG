@@ -140,6 +140,7 @@
   "inventory.action.trash": "丢弃",
   "inventory.action.unbind": "解绑",
   "inventory.action.use": "使用",
+  "inventory.capacity_label": "物品栏 {used}/{total}",
   "inventory.equipment.actor_summary": "{class} Lv.{level}  HP {hp}  MP {mp}  ATK {atk}  DEF {def}",
   "inventory.equipment.empty": "空",
   "inventory.equipment.no_candidates": "没有可装备物品",
