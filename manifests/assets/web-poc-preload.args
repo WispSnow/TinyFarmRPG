@@ -258,6 +258,12 @@
 --preload-file ui/rmlui/hud/time_clock.rml@/ui/rmlui/hud/time_clock.rml
 --preload-file ui/rmlui/overlay/screen_fade.rcss@/ui/rmlui/overlay/screen_fade.rcss
 --preload-file ui/rmlui/overlay/screen_fade.rml@/ui/rmlui/overlay/screen_fade.rml
+--preload-file ui/rmlui/scenes/appearance_customize.rcss@/ui/rmlui/scenes/appearance_customize.rcss
+--preload-file ui/rmlui/scenes/appearance_customize.rml@/ui/rmlui/scenes/appearance_customize.rml
+--preload-file ui/rmlui/scenes/pause_menu.rcss@/ui/rmlui/scenes/pause_menu.rcss
+--preload-file ui/rmlui/scenes/pause_menu.rml@/ui/rmlui/scenes/pause_menu.rml
+--preload-file ui/rmlui/scenes/save_slot_select.rcss@/ui/rmlui/scenes/save_slot_select.rcss
+--preload-file ui/rmlui/scenes/save_slot_select.rml@/ui/rmlui/scenes/save_slot_select.rml
 --preload-file ui/rmlui/scenes/title.rcss@/ui/rmlui/scenes/title.rcss
 --preload-file ui/rmlui/scenes/title.rml@/ui/rmlui/scenes/title.rml
 --preload-file ui/rmlui/theme/animation.rcss@/ui/rmlui/theme/animation.rcss

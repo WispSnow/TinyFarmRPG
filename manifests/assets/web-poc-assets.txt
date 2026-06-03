@@ -258,6 +258,12 @@ ui/rmlui/hud/time_clock.rcss
 ui/rmlui/hud/time_clock.rml
 ui/rmlui/overlay/screen_fade.rcss
 ui/rmlui/overlay/screen_fade.rml
+ui/rmlui/scenes/appearance_customize.rcss
+ui/rmlui/scenes/appearance_customize.rml
+ui/rmlui/scenes/pause_menu.rcss
+ui/rmlui/scenes/pause_menu.rml
+ui/rmlui/scenes/save_slot_select.rcss
+ui/rmlui/scenes/save_slot_select.rml
 ui/rmlui/scenes/title.rcss
 ui/rmlui/scenes/title.rml
 ui/rmlui/theme/animation.rcss

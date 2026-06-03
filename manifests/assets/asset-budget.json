@@ -138,8 +138,8 @@
     }
   },
   "web_poc_assets": {
-    "files": 274,
-    "bytes": 21836865,
+    "files": 280,
+    "bytes": 21852624,
     "by_root": {
       "assets": {
         "files": 223,
@@ -154,8 +154,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 30,
-        "bytes": 43754
+        "files": 36,
+        "bytes": 59513
       }
     },
     "by_extension": {
@@ -184,12 +184,12 @@
         "bytes": 1567385
       },
       ".rcss": {
-        "files": 21,
-        "bytes": 35799
+        "files": 24,
+        "bytes": 42602
       },
       ".rml": {
-        "files": 9,
-        "bytes": 7955
+        "files": 12,
+        "bytes": 16911
       },
       ".tmj": {
         "files": 2,

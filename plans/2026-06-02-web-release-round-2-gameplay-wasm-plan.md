@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Phase 10 direct map boot implemented; Phase 11 RmlUi restore pending`
+- 计划状态：`Phase 11 RmlUi/title browser UI smoke passed under Codex CLI; Phase 12 pending`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -33,7 +33,7 @@ Claude 的审阅意见整体合理，尤其是 Phase 10 / Phase 11 顺序问题�
 - Web 单线程策略已存在，`SystemScheduler::parallelThreadPool()` 在无线程配置下返回 `nullptr`。
 - `MapManager` 已具备同步 preload 路线，可用于单线程 Web。
 - IDBFS smoke、WebGL2 shader 边界和 release gate 已建立。
-- `web-poc-assets` manifest 已稳定，当前首屏 `.data` 为 274 个文件。
+- `web-poc-assets` manifest 已稳定，当前首屏 `.data` 为 280 个文件。
 
 核心改造点：
 
@@ -296,13 +296,29 @@ flowchart TD
 
 执行记录（2026-06-03，Phase 10）：
 
-- 已新增 `TF_WEB_DIRECT_MAP_BOOT`，Web 默认绕过 `TitleScene`，由 `game_entry.cpp` 直接创建 `GameScene` 并进入 `home_exterior`；`src/main.cpp` 仍是唯一 SDL3 callback 入口。
+- 已新增可选 `TF_WEB_DIRECT_MAP_BOOT`，用于绕过 `TitleScene` 并由 `game_entry.cpp` 直接创建 `GameScene` 进入 `home_exterior`；`src/main.cpp` 仍是唯一 SDL3 callback 入口。
 - 已在 direct boot 下关闭 `GameApp` 的 RmlUi runtime 初始化，并让 `GameScene` 跳过 HUD、inventory menu、pause menu 等 RmlUi 依赖路径。
 - 已修复 `BlueprintManager` 在 `JSON_NOEXCEPTION` / Emscripten 下的 abort：蓝图解析改用 `engine::utils::json_helpers` 显式成员查找，不再依赖 `json.value(json_pointer, fallback)` 的异常回退。
-- 已让 `MapLoadingSettings::forCurrentPlatform()` 在 `TF_WEB_DIRECT_MAP_BOOT` 下把 `preload_mode` 降为 `off`，Phase 10 只加载当前 home map，避免 POC manifest 尚未包含 `town.tmj` 时的全图预加载警告。
+- 已让 `MapLoadingSettings::forCurrentPlatform()` 在 Phase 10 的 `TF_WEB_DIRECT_MAP_BOOT` 下把 `preload_mode` 降为 `off`，只加载当前 home map，避免 POC manifest 尚未包含 `town.tmj` 时的全图预加载警告。
 - 浏览器 smoke 已确认真实 `GameApp` 在 wasm 中启动、`home_exterior` 加载成功、真实 `GlRenderer` 画面非空，刷新后可重复进入地图；截图保存在 `build/web-gameplay-phase9/tinyfarm-web-phase10-preload-off.png`。
 - 输入 smoke 已确认短按 `W/A/S/D` 不触发 fatal；由于当前 Browser 控制环境无法稳定模拟“按住”键盘事件，玩家位移仍需后续通过运行时坐标 hook 或专用浏览器自动化补充机器验收。
 - 仍可见音频解码 / 缺失音效资源日志，按计划留到 Phase 12 的 MiniAudio Web Audio 与音频包恢复阶段处理。
+
+执行记录（2026-06-03，Phase 11）：
+
+- Web 默认入口已从 direct map boot 切回 `TitleScene`；`TF_WEB_DIRECT_MAP_BOOT` 保留为手动诊断选项，显式开启时仍跳过 RmlUi runtime。
+- `GameApp` 在默认 Web 路径恢复 RmlUi runtime；RmlUi GL3 backend、FreeType、HarfBuzz 已在 `build/web-gameplay-phase11` 下完成 Emscripten 编译和链接。
+- `web-poc-assets` / `web-poc-preload.args` 已加入 `appearance_customize`、`pause_menu`、`save_slot_select` 三组 RmlUi scene，首屏包从 274 个文件增至 280 个文件，`.data` 仍为 20.8 MiB。
+- Web 当前单包阶段把 `MapLoadingSettings::forCurrentPlatform()` 的 `preload_mode` 统一降为 `off`，避免标题页进入游戏后尝试加载后置地图包资源。
+- `tools/web_release/validate_web_release.py` 已兼容真实 gameplay target 的 preload stage 路径，并把 Phase 11 必需 UI 资源加入 release gate。
+- 已生成 `build/web-gameplay-phase11/TinyFarmRPG-Web.html/.js/.wasm/.data`；release gate 通过，产物为 `.wasm` 7.1 MiB、`.data` 20.8 MiB。
+- 本地 HTTP server 可正常提供 `.html/.js/.wasm/.data`，preload stage 中已确认存在 title、appearance、pause、save slot RmlUi 文件。
+- Codex CLI 环境下已通过本地 `chrome-headless-shell` + CDP 完成浏览器交互 smoke。此前阻断来自桌面 App / MCP 浏览器自动化环境限制，不是 wasm 或游戏代码阻塞。
+- 标题页 RmlUi 首屏渲染通过，截图：`build/web-gameplay-phase11/phase11-cdp-title.png`。
+- 标题页 `Start` 点击通过，进入 `AppearanceCustomizeScene`，截图：`build/web-gameplay-phase11/phase11-cdp-after-start.png`、`build/web-gameplay-phase11/phase11-cdp-appearance-wide.png`。
+- `AppearanceCustomizeScene` 的 `Confirm` 点击通过，进入 `home_exterior`，HUD 与 hotbar 可见，截图：`build/web-gameplay-phase11/phase11-cdp-after-confirm.png`。
+- 暂停菜单打开和 `Resume` 返回游戏通过，截图：`build/web-gameplay-phase11/phase11-cdp-pause-menu.png`、`build/web-gameplay-phase11/phase11-cdp-after-resume.png`。
+- 浏览器日志仍可见音频资源缺失、AudioContext 用户手势策略和少量 POC 子集资源警告，按计划留到 Phase 12 音频 / 存档闭环与 Phase 13 资源分包处理。
 
 ## 第二轮待办清单
 
@@ -317,8 +333,9 @@ flowchart TD
 - [x] 浏览器启动真实 `GameApp`，通过 direct map boot 进入 `home_exterior`。
 - [ ] 键盘输入和玩家移动在浏览器中可用。当前已完成短按 smoke 且无 fatal，仍缺按住移动的坐标级自动验收。
 - [x] 真实 `GlRenderer` 基础 pass 在 WebGL2 下运行且无 GL error flood。
-- [ ] RmlUi 标题页、hotbar、暂停菜单和存档 UI 基础恢复。
-- [ ] 标题页按钮可点击并进入真实游戏流程。
+- [x] RmlUi runtime、标题页、hotbar、暂停菜单和存档 UI 资源完成 Web 编译、链接与 preload gate。
+- [x] 标题页按钮可点击并进入真实游戏流程。
+- [x] 浏览器 UI smoke 已确认标题页、appearance、hotbar、暂停菜单打开与 `Resume` 返回游戏。
 - [ ] 音频用户手势解锁接入真实 `AudioPlayer` 路径。
 - [ ] 确认 MiniAudio Web Audio 后端在无 `-pthread` 下可初始化。
 - [ ] 保存 slot 写入 `/persistent` 并在刷新后读取。
@@ -344,4 +361,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 10 已完成 direct map boot 与真实渲染 bring-up；下一步进入 Phase 11 的 RmlUi runtime、标题页、hotbar 和暂停菜单恢复，同时补一个坐标级输入 smoke hook 关闭 Phase 10 的移动验收缺口。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 11 已完成 RmlUi runtime、标题页入口、本阶段 UI 资源的编译 / 链接 / release gate，并在 Codex CLI 环境下补齐标题页点击、hotbar / 暂停菜单截图和 Resume 返回游戏的浏览器交互验收。下一步进入 Phase 12 前，只剩坐标级输入 smoke hook 需要补齐机器验收；Phase 12 主线应转向音频用户手势解锁、MiniAudio Web Audio 初始化和 IDBFS 存档闭环。

@@ -33,6 +33,9 @@ REQUIRED_PRELOAD_PATHS = {
     "config/render.json",
     "scripts/bootstrap.lua",
     "ui/rmlui/hud/hotbar.rml",
+    "ui/rmlui/scenes/appearance_customize.rml",
+    "ui/rmlui/scenes/pause_menu.rml",
+    "ui/rmlui/scenes/save_slot_select.rml",
     "ui/rmlui/scenes/title.rml",
 }
 
@@ -315,9 +318,14 @@ def validate_preload_budget(
 
 
 def validate_staged_preload(build_dir: Path, entries: list[PreloadEntry], gate: Gate) -> dict[str, Any]:
-    stage_root = build_dir / "src" / "web" / "TinyFarmRPG-Web-preload-root"
+    stage_root_candidates = (
+        build_dir / "TinyFarmRPG-Web-preload-root",
+        build_dir / "src" / "web" / "TinyFarmRPG-Web-preload-root",
+    )
+    stage_root = next((candidate for candidate in stage_root_candidates if candidate.exists()), stage_root_candidates[0])
     if not stage_root.exists():
-        gate.fail(f"Staged preload root missing: {stage_root}")
+        candidates = ", ".join(str(candidate) for candidate in stage_root_candidates)
+        gate.fail(f"Staged preload root missing. Checked: {candidates}")
         return {"stage_root": str(stage_root), "files_checked": 0}
 
     checked = 0

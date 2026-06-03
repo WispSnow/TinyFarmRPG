@@ -33,7 +33,7 @@ TEST(WebGameplayTargetSourceTest, ReusesSharedSdlCallbackMain) {
     EXPECT_NE(root_cmake.find("if(TF_BUILD_WEB AND TF_BUILD_WEB_SKELETON)"), std::string::npos);
     EXPECT_NE(root_cmake.find("tf_configure_web_executable(${TARGET})"), std::string::npos);
     EXPECT_NE(root_cmake.find("option(TF_WEB_DIRECT_MAP_BOOT"), std::string::npos);
-    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_WEB_DIRECT_MAP_BOOT ON)"), std::string::npos);
+    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_WEB_DIRECT_MAP_BOOT OFF)"), std::string::npos);
     EXPECT_NE(root_cmake.find("add_compile_definitions(TF_WEB_DIRECT_MAP_BOOT)"), std::string::npos);
     EXPECT_NE(main_source.find("SDL_MAIN_USE_CALLBACKS"), std::string::npos);
     EXPECT_NE(main_source.find("SDL_AppInit"), std::string::npos);
@@ -136,8 +136,46 @@ TEST(WebGameplayTargetSourceTest, DirectMapBootBypassesTitleAndRmlUiRuntime) {
     EXPECT_NE(game_scene_source.find("inventory menu disabled because RmlUiRuntime is unavailable"), std::string::npos);
     EXPECT_NE(game_scene_source.find("pause menu disabled because RmlUiRuntime is unavailable"), std::string::npos);
 
-    EXPECT_NE(map_loading_source.find("#ifdef TF_WEB_DIRECT_MAP_BOOT"), std::string::npos);
+    EXPECT_NE(map_loading_source.find("#ifdef TF_BUILD_WEB"), std::string::npos);
     EXPECT_NE(map_loading_source.find("settings.preload_mode = MapPreloadMode::Off;"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, TitleBootRestoresRmlUiAndPhase11UiResources) {
+    const std::string root_cmake = readProjectFile("CMakeLists.txt");
+    const std::string game_entry_source = readProjectFile("src/game/game_entry.cpp");
+    const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
+    const std::string asset_audit_source = readProjectFile("tools/asset_audit/audit_assets.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+    const std::string preload_manifest = readProjectFile("manifests/assets/web-poc-preload.args");
+
+    ASSERT_FALSE(root_cmake.empty());
+    ASSERT_FALSE(game_entry_source.empty());
+    ASSERT_FALSE(game_app_source.empty());
+    ASSERT_FALSE(asset_audit_source.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+    ASSERT_FALSE(preload_manifest.empty());
+
+    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_WEB_DIRECT_MAP_BOOT OFF)"), std::string::npos);
+    EXPECT_NE(game_entry_source.find("#else"), std::string::npos);
+    EXPECT_NE(game_entry_source.find("std::make_unique<game::scene::TitleScene>"), std::string::npos);
+    EXPECT_NE(game_app_source.find("constexpr bool kEnableRmlUiRuntime = true;"), std::string::npos);
+
+    EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/appearance_customize.\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/pause_menu.\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/save_slot_select.\""), std::string::npos);
+
+    EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/appearance_customize.rml\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/pause_menu.rml\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/save_slot_select.rml\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("build_dir / \"TinyFarmRPG-Web-preload-root\""), std::string::npos);
+
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/title.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/appearance_customize.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/pause_menu.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/save_slot_select.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/hud/hotbar.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/fonts/VonwaonBitmap-16px.ttf"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/fonts/LXGWBright-Regular.ttf"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
