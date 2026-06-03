@@ -26,7 +26,7 @@ namespace {
     std::error_code ec{};
     const bool exists = std::filesystem::exists(std::filesystem::path{path}, ec);
     if (!exists || ec) {
-        spdlog::warn("ResourceManager: Web 音频资源未在当前 preload 包中，已注册但暂不解码: '{}'", path);
+        spdlog::debug("ResourceManager: Web 音频资源未在当前包中，已注册但暂不解码: '{}'", path);
         return true;
     }
 #else
@@ -113,6 +113,60 @@ void ResourceManager::preloadRegisteredResources() {
     asset_registry_->forEachFont([this](entt::id_type id, int pixel_size, std::string_view path) {
         (void)font_manager_->loadFont(id, pixel_size, path);
     });
+}
+
+void ResourceManager::preloadRegisteredAudioResources() {
+    if (!asset_registry_) {
+        return;
+    }
+
+    std::size_t loaded_sounds = 0;
+    std::size_t loaded_music = 0;
+    std::size_t already_loaded = 0;
+    std::size_t skipped_missing = 0;
+    std::size_t failed = 0;
+
+    asset_registry_->forEachSound([&](entt::id_type id, std::string_view path) {
+        if (audio_manager_->findSound(id)) {
+            ++already_loaded;
+            return;
+        }
+        const std::string path_string{path};
+        if (shouldSkipMissingWebPreloadedAudio(path_string)) {
+            ++skipped_missing;
+            return;
+        }
+        if (audio_manager_->loadSound(id, path)) {
+            ++loaded_sounds;
+        } else {
+            ++failed;
+        }
+    });
+
+    asset_registry_->forEachMusic([&](entt::id_type id, std::string_view path) {
+        if (audio_manager_->findMusic(id)) {
+            ++already_loaded;
+            return;
+        }
+        const std::string path_string{path};
+        if (shouldSkipMissingWebPreloadedAudio(path_string)) {
+            ++skipped_missing;
+            return;
+        }
+        if (audio_manager_->loadMusic(id, path)) {
+            ++loaded_music;
+        } else {
+            ++failed;
+        }
+    });
+
+    spdlog::info(
+        "ResourceManager: registered audio preload complete (sounds={}, music={}, already_loaded={}, skipped_missing={}, failed={}).",
+        loaded_sounds,
+        loaded_music,
+        already_loaded,
+        skipped_missing,
+        failed);
 }
 
 void ResourceManager::loadResources(std::string_view file_path) {

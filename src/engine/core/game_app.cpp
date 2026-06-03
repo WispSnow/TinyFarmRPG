@@ -12,6 +12,7 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
 #include "engine/input/mouse_cursor_service.h"
+#include "engine/platform/web_asset_package_registry.h"
 #include "engine/platform/web_persistent_storage.h"
 #include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
@@ -696,6 +697,20 @@ void GameApp::tryStartAudioFromUserGesture(const SDL_Event& event) {
     if (!audio_player_ || !isAudioUnlockGesture(event) || audio_player_->isPlaybackReady()) {
         return;
     }
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+    if (!web_audio_core_preloaded_) {
+        if (engine::platform::web::loadPackage(engine::platform::web::PACKAGE_AUDIO_CORE)) {
+            if (resource_manager_) {
+                resource_manager_->preloadRegisteredAudioResources();
+            }
+            web_audio_core_preloaded_ = true;
+        } else {
+            spdlog::warn(
+                "GameApp: Web audio-core package 加载失败，音频将以静音/缺资源状态继续: {}",
+                engine::platform::web::lastPackageError(engine::platform::web::PACKAGE_AUDIO_CORE));
+        }
+    }
+#endif
     [[maybe_unused]] const bool ready = audio_player_->startPlaybackAfterUserGesture();
 }
 

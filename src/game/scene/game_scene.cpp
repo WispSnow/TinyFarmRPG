@@ -20,7 +20,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/platform/web_asset_package.h"
+#include "engine/platform/web_asset_package_registry.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/system/light_system.h"
@@ -104,7 +104,8 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
 
 [[nodiscard]] bool ensureWebGameplayPackages() {
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
-    return engine::platform::web::loadAssetPackage("home-map", "web-packages/home-map.tfpack");
+    return engine::platform::web::loadPackage(engine::platform::web::PACKAGE_SHARED_UI)
+        && engine::platform::web::loadPackage(engine::platform::web::PACKAGE_HOME_MAP);
 #else
     return true;
 #endif

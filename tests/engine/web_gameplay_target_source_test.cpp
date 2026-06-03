@@ -248,6 +248,8 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     const std::string src_cmake = readProjectFile("src/CMakeLists.txt");
     const std::string package_loader_header = readProjectFile("src/engine/platform/web_asset_package.h");
     const std::string package_loader_source = readProjectFile("src/engine/platform/web_asset_package.cpp");
+    const std::string package_registry_header = readProjectFile("src/engine/platform/web_asset_package_registry.h");
+    const std::string package_registry_source = readProjectFile("src/engine/platform/web_asset_package_registry.cpp");
     const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
     const std::string map_manager_source = readProjectFile("src/game/world/map_manager.cpp");
     const std::string package_tool = readProjectFile("tools/web_release/package_web_assets.py");
@@ -258,6 +260,8 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     ASSERT_FALSE(src_cmake.empty());
     ASSERT_FALSE(package_loader_header.empty());
     ASSERT_FALSE(package_loader_source.empty());
+    ASSERT_FALSE(package_registry_header.empty());
+    ASSERT_FALSE(package_registry_source.empty());
     ASSERT_FALSE(game_scene_source.empty());
     ASSERT_FALSE(map_manager_source.empty());
     ASSERT_FALSE(package_tool.empty());
@@ -271,6 +275,7 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_EQ(runtime_cmake.find("-sFETCH=1"), std::string::npos);
 
     EXPECT_NE(src_cmake.find("engine/platform/web_asset_package.cpp"), std::string::npos);
+    EXPECT_NE(src_cmake.find("engine/platform/web_asset_package_registry.cpp"), std::string::npos);
     EXPECT_NE(package_loader_header.find("loadAssetPackage"), std::string::npos);
     EXPECT_NE(package_loader_source.find("XMLHttpRequest"), std::string::npos);
     EXPECT_NE(package_loader_source.find("overrideMimeType"), std::string::npos);
@@ -278,10 +283,18 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(package_loader_source.find("PACKAGE_MAGIC"), std::string::npos);
     EXPECT_NE(package_loader_source.find("'T', 'F', 'P', 'K'"), std::string::npos);
     EXPECT_NE(package_loader_source.find("std::filesystem::create_directories"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("loadPackage"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/home-map.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/audio-core.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("lastPackageError"), std::string::npos);
 
     EXPECT_NE(game_scene_source.find("ensureWebGameplayPackages"), std::string::npos);
-    EXPECT_NE(game_scene_source.find("web-packages/home-map.tfpack"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_SHARED_UI"), std::string::npos);
     EXPECT_NE(map_manager_source.find("ensureWebMapPackage"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_HOME_MAP"), std::string::npos);
 
     EXPECT_NE(package_tool.find("custom_sync_xhr_fs_writefile"), std::string::npos);
     EXPECT_NE(package_tool.find("\"boot\""), std::string::npos);
@@ -344,7 +357,7 @@ TEST(WebGameplayTargetSourceTest, Phase15BootOnlyPreloadCutoverIsPresent) {
     EXPECT_NE(release_validator_source.find("TF_WEB_BOOT_ONLY_PRELOAD"), std::string::npos);
 
     EXPECT_NE(title_scene_source.find("ensureWebSharedUiPackage"), std::string::npos);
-    EXPECT_NE(title_scene_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(title_scene_source.find("PACKAGE_SHARED_UI"), std::string::npos);
     EXPECT_NE(game_scene_source.find("std::holds_alternative<LoadGameOptions>(launch_)"), std::string::npos);
     EXPECT_NE(runtime_assembler_header.find("bool load_initial_map{true}"), std::string::npos);
     EXPECT_NE(runtime_service_factory.find("RuntimeServiceFactory: initial map load skipped."), std::string::npos);
@@ -384,7 +397,10 @@ TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     EXPECT_NE(web_smoke.find("SAVE_PATH = \"/persistent/saves/slot0.json\""), std::string::npos);
     EXPECT_NE(web_smoke.find("Player did not move far enough"), std::string::npos);
     EXPECT_NE(web_smoke.find("SaveService: 已载入存档 'home_exterior'"), std::string::npos);
+    EXPECT_NE(web_smoke.find("shared-ui.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("home-map.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("audio-core.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("WebAssetPackageRegistry: package 'audio-core' ready"), std::string::npos);
     EXPECT_NE(web_smoke.find("Single-thread preview must not require COOP/COEP headers"), std::string::npos);
 
     EXPECT_NE(release_server.find("\".wasm\": \"application/wasm\""), std::string::npos);
@@ -392,6 +408,61 @@ TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     EXPECT_NE(release_server.find("Cache-Control"), std::string::npos);
     EXPECT_NE(release_server.find("Cross-Origin-Opener-Policy"), std::string::npos);
     EXPECT_NE(release_server.find("Cross-Origin-Embedder-Policy"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePresent) {
+    const std::string package_registry_header = readProjectFile("src/engine/platform/web_asset_package_registry.h");
+    const std::string package_registry_source = readProjectFile("src/engine/platform/web_asset_package_registry.cpp");
+    const std::string game_app_header = readProjectFile("src/engine/core/game_app.h");
+    const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
+    const std::string resource_manager_header = readProjectFile("src/engine/resource/resource_manager.h");
+    const std::string resource_manager_source = readProjectFile("src/engine/resource/resource_manager.cpp");
+    const std::string title_scene_source = readProjectFile("src/game/scene/title_scene.cpp");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string map_manager_source = readProjectFile("src/game/world/map_manager.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string boot_manifest = readProjectFile("manifests/assets/web-release-boot.args");
+
+    ASSERT_FALSE(package_registry_header.empty());
+    ASSERT_FALSE(package_registry_source.empty());
+    ASSERT_FALSE(game_app_header.empty());
+    ASSERT_FALSE(game_app_source.empty());
+    ASSERT_FALSE(resource_manager_header.empty());
+    ASSERT_FALSE(resource_manager_source.empty());
+    ASSERT_FALSE(title_scene_source.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(map_manager_source.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(boot_manifest.empty());
+
+    EXPECT_NE(package_registry_header.find("PACKAGE_SHARED_UI"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: loading package"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: package '{}' ready"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("lastPackageError"), std::string::npos);
+
+    EXPECT_NE(title_scene_source.find("loadPackage(engine::platform::web::PACKAGE_SHARED_UI)"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("loadPackage(engine::platform::web::PACKAGE_SHARED_UI)"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("loadPackage(engine::platform::web::PACKAGE_HOME_MAP)"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("loadPackage(engine::platform::web::PACKAGE_HOME_MAP)"), std::string::npos);
+    EXPECT_EQ(title_scene_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
+    EXPECT_EQ(game_scene_source.find("web-packages/home-map.tfpack"), std::string::npos);
+    EXPECT_EQ(map_manager_source.find("web-packages/home-map.tfpack"), std::string::npos);
+
+    EXPECT_NE(game_app_header.find("web_audio_core_preloaded_"), std::string::npos);
+    EXPECT_NE(game_app_source.find("PACKAGE_AUDIO_CORE"), std::string::npos);
+    EXPECT_NE(game_app_source.find("preloadRegisteredAudioResources"), std::string::npos);
+    EXPECT_NE(resource_manager_header.find("preloadRegisteredAudioResources"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("registered audio preload complete"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("已注册但暂不解码"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("home-map.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("audio-core.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("Package responses missing from smoke"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("web-packages/audio-core.tfpack"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {

@@ -521,7 +521,9 @@ def validate_headers(headers: dict[str, dict[str, str]], cross_origin_isolated: 
         "/TinyFarmRPG-Web.js": "javascript",
         "/TinyFarmRPG-Web.wasm": "application/wasm",
         "/TinyFarmRPG-Web.data": "application/octet-stream",
+        "/web-packages/shared-ui.tfpack": "application/octet-stream",
         "/web-packages/home-map.tfpack": "application/octet-stream",
+        "/web-packages/audio-core.tfpack": "application/octet-stream",
     }
     for path, expected in expected_types.items():
         actual = headers.get(path, {})
@@ -645,6 +647,8 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     cdp.screenshot(screenshots["title"])
 
     cdp.click_logical(320, 213)
+    cdp.wait_for_log("audio core package", "WebAssetPackageRegistry: package 'audio-core' ready", 20000)
+    cdp.wait_for_log("shared UI package", "WebAssetPackageRegistry: package 'shared-ui' ready", 20000)
     cdp.wait_ms(1500)
     cdp.click_logical(374, 274)
     cdp.wait_for_log("home map package", "WebAssetPackage: package 'home-map' loaded", 20000)
@@ -687,8 +691,20 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         response for response in cdp.state.responses
         if str(response.get("url", "")).endswith(".tfpack")
     ]
-    if not any("home-map.tfpack" in str(response.get("url", "")) and response.get("status") == 200 for response in package_responses):
-        raise RuntimeError("home-map.tfpack was not observed as a 200 response.")
+    required_packages = {
+        "shared-ui.tfpack": False,
+        "home-map.tfpack": False,
+        "audio-core.tfpack": False,
+    }
+    for response in package_responses:
+        url_text = str(response.get("url", ""))
+        status = response.get("status")
+        for package_name in required_packages:
+            if package_name in url_text and status in {200, 304}:
+                required_packages[package_name] = True
+    missing_packages = sorted(name for name, seen in required_packages.items() if not seen)
+    if missing_packages:
+        raise RuntimeError(f"Package responses missing from smoke: {missing_packages}")
 
     errors = [
         entry for entry in cdp.state.logs
@@ -711,14 +727,20 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         "package_responses": package_responses,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
         "warning_count": sum(1 for entry in cdp.state.logs if entry.get("level") in {"warning", "warn"}),
+        "warning_logs": [
+            entry for entry in cdp.state.logs
+            if entry.get("level") in {"warning", "warn"}
+        ][-40:],
         "interesting_logs": [
             entry for entry in cdp.state.logs
             if any(
                 needle in str(entry.get("text", ""))
                 for needle in (
                     "WebAssetPackage",
+                    "WebAssetPackageRegistry",
                     "GameApp: Web persistent",
                     "AudioPlayer",
+                    "ResourceManager: registered audio preload",
                     "MapManager",
                     "SaveService",
                     "home_exterior",
@@ -811,7 +833,9 @@ def main() -> int:
                 "/TinyFarmRPG-Web.js",
                 "/TinyFarmRPG-Web.wasm",
                 "/TinyFarmRPG-Web.data",
+                "/web-packages/shared-ui.tfpack",
                 "/web-packages/home-map.tfpack",
+                "/web-packages/audio-core.tfpack",
             ]
             headers = served_headers(f"http://{args.host}:{port}", header_paths)
             header_failures = validate_headers(headers, cross_origin_isolated)

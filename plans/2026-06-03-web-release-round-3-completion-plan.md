@@ -23,13 +23,12 @@
 第三轮当前进展：
 
 - Phase 15 已完成 boot-only preload cutover：`TinyFarmRPG-Web.data` 已收敛到 2.9 MiB，link-time preload 使用 `web-release-boot.args`。
+- Phase 16 已完成 runtime package registry：`shared-ui`、`home-map`、`audio-core` 都通过统一 registry gate，并被 Chrome smoke 观测到 `.tfpack` 响应。
 - headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
 
 仍未完成的部分：
 
-- `shared-ui.tfpack` 已在标题页进入 appearance / load / menu 前加载，但尚未通过统一 package registry 管理。
-- `audio-core.tfpack` 已生成，但真实运行路径仍缺少 package ready gate。
-- package loader 仍以 `home-map` 硬编码为主，没有统一的 package registry / package id 到 URL 映射。
+- Phase 17 尚未扩展完整 gameplay coverage，目前自动 smoke 仍主要覆盖标题页、appearance、地图、移动、保存和刷新读档。
 - Chrome smoke 覆盖主路径，但尚未覆盖完整玩法面，例如室内外切图、inventory、dialogue、工具动作、战斗/商店/任务等。
 - Effekseer、Bloom / HDR emissive、高级后处理仍处于关闭或降级状态。
 - 发布说明、人工测试说明、产物打包、CI 接入和性能预算尚未形成最终版。
@@ -140,6 +139,8 @@ flowchart TD
 - 如果删除或改名完整 manifest，所有 CMake / tool / test 引用同步更新。
 
 ## Phase 16：shared-ui 与 audio-core 运行时包接入
+
+状态：`Completed`。报告见 `plans/reports/2026-06-03-web-release-phase-16-report.md`。
 
 目标：让 `shared-ui.tfpack` 和 `audio-core.tfpack` 不只是被生成，而是在真实运行时路径中有明确加载 gate。
 
@@ -328,15 +329,15 @@ flowchart TD
 
 ## 第三轮待办清单
 
-- [ ] 迁移 `web-poc-preload.args` 到 release manifest 命名。
-- [ ] 将 boot manifest 生成提前到 link-time preload 前。
-- [ ] Web release 默认使用 boot-only `.data`。
-- [ ] release gate 支持 boot preload 与 full package coverage 分离校验。
-- [ ] Chrome smoke 在 boot-only `.data` 下通过。
-- [ ] 建立 package registry，移除 `home-map` 散落硬编码。
-- [ ] `shared-ui.tfpack` 接入真实 UI scene transition gate。
-- [ ] `audio-core.tfpack` 接入用户手势后的音频加载 gate。
-- [ ] Chrome smoke 断言 `shared-ui`、`home-map`、`audio-core` 三个包的网络响应。
+- [x] 迁移 `web-poc-preload.args` 到 release manifest 命名。
+- [x] 将 boot manifest 生成提前到 link-time preload 前。
+- [x] Web release 默认使用 boot-only `.data`。
+- [x] release gate 支持 boot preload 与 full package coverage 分离校验。
+- [x] Chrome smoke 在 boot-only `.data` 下通过。
+- [x] 建立 package registry，移除 `home-map` 散落硬编码。
+- [x] `shared-ui.tfpack` 接入真实 UI scene transition gate。
+- [x] `audio-core.tfpack` 接入用户手势后的音频加载 gate。
+- [x] Chrome smoke 断言 `shared-ui`、`home-map`、`audio-core` 三个包的网络响应。
 - [ ] 建立 demo 主流程资源覆盖表。
 - [ ] 扩展 map package 覆盖室内外切图。
 - [ ] Chrome smoke 覆盖至少两个地图、一个交互、一个菜单、保存和刷新读档。

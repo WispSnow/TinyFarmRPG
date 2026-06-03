@@ -43,6 +43,7 @@ public:
 
     void clear();        ///< @brief 清空所有资源
     void preloadRegisteredResources();   ///< @brief 预加载 AssetRegistry 中已注册的所有资源
+    void preloadRegisteredAudioResources(); ///< @brief 预加载 AssetRegistry 中已注册的音频资源
 
     [[nodiscard]] AssetRegistry& getAssetRegistry();
     [[nodiscard]] const AssetRegistry& getAssetRegistry() const;

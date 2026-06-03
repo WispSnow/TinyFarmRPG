@@ -67,6 +67,9 @@ class GameApp final {   // final 表示该类不能被继承
 private:
     SDL_Window* window_ = nullptr;
     bool is_running_ = false;
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+    bool web_audio_core_preloaded_ = false;
+#endif
 
     /// @brief 游戏场景设置函数，用于在运行游戏前设置初始场景 (GameApp不再决定初始场景是什么)
     ///        设计意图：GameApp 属于引擎层，只负责初始化与主循环；

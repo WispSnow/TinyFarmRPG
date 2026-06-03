@@ -33,6 +33,28 @@ namespace {
     inline float clamp01(float value) {
         return glm::clamp(value, 0.0f, 1.0f);
     }
+
+    [[nodiscard]] bool isMissingFromCurrentWebPackage(std::string_view path) {
+#if defined(__EMSCRIPTEN__)
+        std::error_code ec{};
+        return !std::filesystem::exists(std::filesystem::path{path}, ec) || ec;
+#else
+        (void)path;
+        return false;
+#endif
+    }
+
+    void logRegisteredAudioNotLoaded(std::string_view kind, entt::id_type id, std::string_view path) {
+        if (isMissingFromCurrentWebPackage(path)) {
+            spdlog::debug(
+                "AudioPlayer: Web {} 资源未包含在当前已加载运行时包中，跳过播放 id={}, path='{}'",
+                kind,
+                id,
+                path);
+            return;
+        }
+        spdlog::warn("AudioPlayer: {} 资源已注册但未加载 id={}, path='{}'", kind, id, path);
+    }
 } // namespace
 
 struct AudioPlayer::Impl {
@@ -248,7 +270,7 @@ struct AudioPlayer::Impl {
             if (path.empty()) {
                 spdlog::error("AudioPlayer: 找不到音效资源 id={}", id);
             } else {
-                spdlog::warn("AudioPlayer: 音效资源已注册但未加载 id={}, path='{}'", id, path);
+                logRegisteredAudioNotLoaded("音效", id, path);
             }
             return false;
         }
@@ -262,7 +284,7 @@ struct AudioPlayer::Impl {
             if (path.empty()) {
                 spdlog::error("AudioPlayer: 找不到音效资源 id={} (2D)", id);
             } else {
-                spdlog::warn("AudioPlayer: 2D 音效资源已注册但未加载 id={}, path='{}'", id, path);
+                logRegisteredAudioNotLoaded("2D 音效", id, path);
             }
             return false;
         }
@@ -370,7 +392,7 @@ struct AudioPlayer::Impl {
             if (path.empty()) {
                 spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
             } else {
-                spdlog::warn("AudioPlayer: 音乐资源已注册但未加载 id={}, path='{}'", id, path);
+                logRegisteredAudioNotLoaded("音乐", id, path);
             }
             return false;
         }

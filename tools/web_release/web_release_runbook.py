@@ -43,7 +43,7 @@ SCRIPT_CHECKS = (
 MANUAL_CHECKLIST = (
     "Title page renders Start / Load / Exit without console errors.",
     "Start reaches player setup and then home_exterior.",
-    "Network shows shared-ui.tfpack and home-map.tfpack fetched on demand.",
+    "Network shows shared-ui.tfpack, audio-core.tfpack, and home-map.tfpack fetched on demand.",
     "Move the player, save slot0, reload the page, then Load slot0 back into home_exterior.",
     "Confirm TinyFarmRPG-Web.data stays boot-only sized and no COOP/COEP headers are required for single-thread builds.",
 )
@@ -95,9 +95,15 @@ def command_env() -> dict[str, str]:
 
     emsdk = Path.home() / ".local" / "emsdk"
     if emsdk.is_dir():
+        upstream = emsdk / "upstream"
         env.setdefault("EMSDK", str(emsdk))
-        env.setdefault("EM_CONFIG", str(Path.home() / ".emscripten"))
-        prepend_path(env, emsdk / "upstream" / "emscripten")
+        env.setdefault("EMSCRIPTEN", str(upstream / "emscripten"))
+        env.setdefault("BINARYEN_ROOT", str(upstream))
+        env.setdefault("LLVM_ROOT", str(upstream / "bin"))
+        if (Path.home() / ".emscripten").exists():
+            env.setdefault("EM_CONFIG", str(Path.home() / ".emscripten"))
+        prepend_path(env, upstream / "bin")
+        prepend_path(env, upstream / "emscripten")
 
         for node_bin in sorted((emsdk / "node").glob("*/bin"), reverse=True):
             prepend_path(env, node_bin)
@@ -106,6 +112,8 @@ def command_env() -> dict[str, str]:
 
         if "EMSDK_PYTHON" not in env:
             for candidate in sorted((emsdk / "python").glob("*/bin/python3*"), reverse=True):
+                if candidate.name.endswith("-config"):
+                    continue
                 if candidate.is_file() and os.access(candidate, os.X_OK):
                     env["EMSDK_PYTHON"] = str(candidate)
                     break

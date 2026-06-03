@@ -7,7 +7,7 @@
 #include "engine/loader/tiled_conventions.h"
 #include "engine/loader/tiled_json_cache.h"
 #include "engine/loader/tiled_json_helpers.h"
-#include "engine/platform/web_asset_package.h"
+#include "engine/platform/web_asset_package_registry.h"
 #include "engine/platform/threading.h"
 #include "engine/render/camera.h"
 #include "engine/core/context.h"
@@ -201,7 +201,7 @@ namespace {
         if (map_name.empty()) {
             return true;
         }
-        return engine::platform::web::loadAssetPackage("home-map", "web-packages/home-map.tfpack");
+        return engine::platform::web::loadPackage(engine::platform::web::PACKAGE_HOME_MAP);
 #else
         (void)map_name;
         return true;

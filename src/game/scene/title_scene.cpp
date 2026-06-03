@@ -17,7 +17,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
-#include "engine/platform/web_asset_package.h"
+#include "engine/platform/web_asset_package_registry.h"
 
 #include <spdlog/spdlog.h>
 
@@ -32,7 +32,7 @@ constexpr std::string_view MODEL_NAME = "title_scene";
 
 [[nodiscard]] bool ensureWebSharedUiPackage() {
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
-    return engine::platform::web::loadAssetPackage("shared-ui", "web-packages/shared-ui.tfpack");
+    return engine::platform::web::loadPackage(engine::platform::web::PACKAGE_SHARED_UI);
 #else
     return true;
 #endif
