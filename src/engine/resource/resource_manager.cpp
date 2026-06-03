@@ -17,8 +17,25 @@
 #include <tuple>
 #include <ranges>
 #include <vector>
- 
+
 namespace engine::resource {
+namespace {
+
+[[nodiscard]] bool shouldSkipMissingWebPreloadedAudio(const std::string& path) {
+#if defined(__EMSCRIPTEN__)
+    std::error_code ec{};
+    const bool exists = std::filesystem::exists(std::filesystem::path{path}, ec);
+    if (!exists || ec) {
+        spdlog::warn("ResourceManager: Web 音频资源未在当前 preload 包中，已注册但暂不解码: '{}'", path);
+        return true;
+    }
+#else
+    (void)path;
+#endif
+    return false;
+}
+
+} // namespace
 
 ResourceManager::~ResourceManager() = default;
 
@@ -82,10 +99,16 @@ void ResourceManager::preloadRegisteredResources() {
         (void)texture_manager_->loadTexture(id, path);
     });
     asset_registry_->forEachSound([this](entt::id_type id, std::string_view path) {
-        (void)audio_manager_->loadSound(id, path);
+        const std::string path_string{path};
+        if (!shouldSkipMissingWebPreloadedAudio(path_string)) {
+            (void)audio_manager_->loadSound(id, path);
+        }
     });
     asset_registry_->forEachMusic([this](entt::id_type id, std::string_view path) {
-        (void)audio_manager_->loadMusic(id, path);
+        const std::string path_string{path};
+        if (!shouldSkipMissingWebPreloadedAudio(path_string)) {
+            (void)audio_manager_->loadMusic(id, path);
+        }
     });
     asset_registry_->forEachFont([this](entt::id_type id, int pixel_size, std::string_view path) {
         (void)font_manager_->loadFont(id, pixel_size, path);
@@ -137,8 +160,18 @@ void ResourceManager::loadResources(std::string_view file_path) {
         }
     };
 
-    loadStringMap("sound", [this](entt::id_type id, const std::string& path_value) { loadSound(id, path_value); });
-    loadStringMap("music", [this](entt::id_type id, const std::string& path_value) { loadMusic(id, path_value); });
+    loadStringMap("sound", [this](entt::id_type id, const std::string& path_value) {
+        asset_registry_->registerSound(id, path_value);
+        if (!shouldSkipMissingWebPreloadedAudio(path_value)) {
+            (void)audio_manager_->loadSound(id, path_value);
+        }
+    });
+    loadStringMap("music", [this](entt::id_type id, const std::string& path_value) {
+        asset_registry_->registerMusic(id, path_value);
+        if (!shouldSkipMissingWebPreloadedAudio(path_value)) {
+            (void)audio_manager_->loadMusic(id, path_value);
+        }
+    });
     loadStringMap("texture", [this](entt::id_type id, const std::string& path_value) { loadTexture(id, path_value); });
 
     if (const auto it = json.find("font"); it != json.end()) {

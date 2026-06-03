@@ -105,6 +105,27 @@ public:
     [[nodiscard]] bool loadConfig(std::string_view config_path);
     [[nodiscard]] bool saveConfig(std::string_view config_path) const;
 
+    /**
+     * @brief 在用户手势后启动底层音频设备。
+     *
+     * WebAudio 需要用户手势后才能 resume；桌面平台初始化后通常已经处于 ready 状态。
+     *
+     * @return 音频设备已可用或成功启动时返回 true，否则返回 false。
+     */
+    [[nodiscard]] bool startPlaybackAfterUserGesture();
+
+    /**
+     * @brief 查询底层音频设备是否已经可播放。
+     */
+    [[nodiscard]] bool isPlaybackReady() const;
+
+    /**
+     * @brief 查询底层音频设备是否初始化成功。
+     *
+     * 资源管理与音量设置仍可在设备不可用时工作；实际播放会返回 false。
+     */
+    [[nodiscard]] bool isAudioDeviceAvailable() const;
+
     void setSpatialFalloffDistance(float value);
     [[nodiscard]] float getSpatialFalloffDistance() const;
 

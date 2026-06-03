@@ -22,6 +22,8 @@ ARTIFACTS = (
 )
 
 REQUIRED_PRELOAD_PATHS = {
+    "assets/audio/01_spring_journey.ogg",
+    "assets/audio/02_spring_fairy_tale.ogg",
     "assets/audio/pop.mp3",
     "assets/data/audio_cues.json",
     "assets/data/map_loading_config.json",
@@ -30,6 +32,7 @@ REQUIRED_PRELOAD_PATHS = {
     "assets/maps/farm-rpg.world",
     "assets/maps/home_exterior.tmj",
     "assets/maps/home_interior.tmj",
+    "config/audio.json",
     "config/render.json",
     "scripts/bootstrap.lua",
     "ui/rmlui/hud/hotbar.rml",

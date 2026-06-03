@@ -12,6 +12,7 @@
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/input/input_manager.h"
 #include "engine/input/mouse_cursor_service.h"
+#include "engine/platform/web_persistent_storage.h"
 #include "engine/ui/rmlui/rml_ui_render_backend_gl.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
@@ -63,6 +64,27 @@ constexpr bool kEnableRmlUiRuntime = true;
         .offset_y = static_cast<int>(std::round(viewport.pos.y)),
     };
 }
+
+[[nodiscard]] bool isAudioUnlockGesture(const SDL_Event& event) {
+    switch (event.type) {
+        case SDL_EVENT_KEY_DOWN:
+            return !event.key.repeat;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            return true;
+        default:
+            return false;
+    }
+}
+
+#if defined(__EMSCRIPTEN__)
+void onPersistentStorageInitialSync(bool success, void*) {
+    if (success) {
+        spdlog::info("GameApp: Web persistent storage is mounted and populated.");
+        return;
+    }
+    spdlog::warn("GameApp: Web persistent storage initial sync failed; saves may not persist this session.");
+}
+#endif
 
 } // namespace
 
@@ -123,6 +145,7 @@ bool GameApp::init() {
     if (!initGameState()) return false;
     if (!initTime()) return false;
     if (!initMainThreadCommandQueue()) return false;
+    if (!initPersistentStorage()) return false;
     if (!initResourceManager()) return false;
     if (!initAutoTileLibrary()) return false;
     if (!initAudioPlayer()) return false;
@@ -229,6 +252,7 @@ bool GameApp::tickFrame(const EventPumpMode event_pump_mode) {
 }
 
 void GameApp::handleSdlEvent(const SDL_Event& event) {
+    tryStartAudioFromUserGesture(event);
     if (input_manager_) {
         input_manager_->processSdlEvent(event);
     }
@@ -569,6 +593,13 @@ bool GameApp::initMainThreadCommandQueue() {
     return true;
 }
 
+bool GameApp::initPersistentStorage() {
+#if defined(__EMSCRIPTEN__)
+    engine::platform::web::syncPersistentStorageFromBrowser(&onPersistentStorageInitialSync, nullptr);
+#endif
+    return true;
+}
+
 bool GameApp::initResourceManager() {
     resource_manager_ = engine::resource::ResourceManager::create(dispatcher_.get());
     if (!resource_manager_) {
@@ -592,7 +623,11 @@ bool GameApp::initAudioPlayer()
         spdlog::error("初始化音频播放器失败。");
         return false;
     }
-    spdlog::trace("音频播放器初始化成功。");
+    if (!audio_player_->isAudioDeviceAvailable()) {
+        spdlog::warn("音频播放器设备不可用，将以静音模式继续。");
+    } else {
+        spdlog::trace("音频播放器初始化成功。");
+    }
     return true;
 }
 
@@ -655,6 +690,13 @@ bool GameApp::initSpatialIndexManager()
 {
     spatial_index_manager_ = std::make_unique<engine::spatial::SpatialIndexManager>();
     return true;
+}
+
+void GameApp::tryStartAudioFromUserGesture(const SDL_Event& event) {
+    if (!audio_player_ || !isAudioUnlockGesture(event) || audio_player_->isPlaybackReady()) {
+        return;
+    }
+    [[maybe_unused]] const bool ready = audio_player_->startPlaybackAfterUserGesture();
 }
 
 bool GameApp::initContext()

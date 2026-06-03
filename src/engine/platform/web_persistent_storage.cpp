@@ -4,6 +4,7 @@
 #include "filesystem_paths.h"
 
 #include <emscripten.h>
+#include <spdlog/spdlog.h>
 #endif
 
 namespace engine::platform::web {
@@ -13,6 +14,7 @@ namespace {
 struct PendingSync {
     PersistentSyncCallback callback{};
     void* user_data{};
+    bool in_progress{false};
 };
 
 PendingSync& pendingSync() {
@@ -32,8 +34,16 @@ void completePendingSync(bool success) {
 
 void startSync(bool populate, PersistentSyncCallback callback, void* user_data) {
     auto& sync = pendingSync();
+    if (sync.in_progress) {
+        spdlog::warn("TinyFarmRPG persistent FS sync is already in progress.");
+        if (callback != nullptr) {
+            callback(false, user_data);
+        }
+        return;
+    }
     sync.callback = callback;
     sync.user_data = user_data;
+    sync.in_progress = true;
 
 #if defined(__clang__)
 #pragma clang diagnostic push

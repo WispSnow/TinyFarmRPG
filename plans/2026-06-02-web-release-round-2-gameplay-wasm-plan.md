@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Phase 11 RmlUi/title browser UI smoke passed under Codex CLI; Phase 12 pending`
+- 计划状态：`Phase 12 audio/save/IDBFS browser smoke passed under Codex CLI; Phase 13 pending`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -320,6 +320,21 @@ flowchart TD
 - 暂停菜单打开和 `Resume` 返回游戏通过，截图：`build/web-gameplay-phase11/phase11-cdp-pause-menu.png`、`build/web-gameplay-phase11/phase11-cdp-after-resume.png`。
 - 浏览器日志仍可见音频资源缺失、AudioContext 用户手势策略和少量 POC 子集资源警告，按计划留到 Phase 12 音频 / 存档闭环与 Phase 13 资源分包处理。
 
+执行记录（2026-06-03，Phase 12）：
+
+- `AudioPlayer` 已接入 WebAudio 用户手势解锁：Emscripten 下初始化 miniaudio 时使用 `noAutoStart`，首次键盘或鼠标事件后调用 `ma_engine_start()`，桌面路径保持初始化后 ready。
+- `AudioPlayer` 在 WebAudio 初始化失败时不阻塞游戏主路径，进入静音模式；实际播放时会返回 false 并输出诊断。
+- 已确认 MiniAudio Web Audio 后端在当前单线程、无 `-pthread` 的 Web 构建下可初始化，并能在用户手势后启动。
+- `GameApp` 启动时执行 IDBFS initial sync，把浏览器持久化内容同步到 `/persistent`。
+- `SaveService` 的直接保存与无线程 async 保存路径已在写入成功后执行 `syncPersistentStorageToBrowser()`；async 保存完成事件等待 sync 回调后再发布，避免 UI 提前显示成功但刷新丢档。
+- `ResourceManager` 在 Web 下对未进入当前 preload 包的音频只注册资源路径、不尝试解码，旧的启动期 `AudioLoader: 无法解码音频文件` 噪音已降级为可定位的缺包 warning。
+- `validate_web_release.py` 已把 Phase 12 最小音频闭环资源纳入 preload gate：`assets/audio/pop.mp3`、`assets/audio/01_spring_journey.ogg`、`assets/audio/02_spring_fairy_tale.ogg`、`config/audio.json`。
+- Web 构建与 release gate 通过：`build/web-gameplay-phase11/TinyFarmRPG-Web.html/.js/.wasm/.data`，当前 `.wasm` 7.1 MiB、`.data` 20.8 MiB。
+- Codex CLI 下 Playwright 可正常控制本地 wasm 页面；已完成完整 Phase 12 浏览器 smoke：标题页 `Start`、appearance `Confirm`、进入 `home_exterior`、暂停菜单保存 slot0、刷新页面、标题页 `Load`、加载 slot0 回到地图。
+- 浏览器 smoke 结果：slot0 在刷新前、刷新后、加载后均存在，大小 11355 bytes；日志中 `AudioContext was not allowed to start` 为 0、旧音频解码失败为 0、音频设备启动 2 次、IDBFS mounted 2 次、`home_exterior` 加载 3 次、存档加载 1 次。
+- 关键截图保存在 `build/web-gameplay-phase11/phase12-playwright-title.png`、`phase12-playwright-after-save.png`、`phase12-playwright-load-slots.png`、`phase12-playwright-after-load.png`。
+- 仍可见未进入当前 preload 包的完整音频资源 warning，这是 Phase 13 `audio-core` / 资源分包需要收敛的范围，不再阻塞 Phase 12 gameplay 闭环。
+
 ## 第二轮待办清单
 
 - [x] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
@@ -336,9 +351,10 @@ flowchart TD
 - [x] RmlUi runtime、标题页、hotbar、暂停菜单和存档 UI 资源完成 Web 编译、链接与 preload gate。
 - [x] 标题页按钮可点击并进入真实游戏流程。
 - [x] 浏览器 UI smoke 已确认标题页、appearance、hotbar、暂停菜单打开与 `Resume` 返回游戏。
-- [ ] 音频用户手势解锁接入真实 `AudioPlayer` 路径。
-- [ ] 确认 MiniAudio Web Audio 后端在无 `-pthread` 下可初始化。
-- [ ] 保存 slot 写入 `/persistent` 并在刷新后读取。
+- [x] 音频用户手势解锁接入真实 `AudioPlayer` 路径。
+- [x] 确认 MiniAudio Web Audio 后端在无 `-pthread` 下可初始化。
+- [x] 保存 slot 写入 `/persistent` 并在刷新后读取。
+- [x] Phase 12 浏览器 smoke 覆盖标题页、新游戏、菜单保存、刷新、加载 slot 并回到地图。
 - [ ] 决定运行时资源包加载机制。
 - [ ] 拆分 boot / shared-ui / home-map / audio-core 资源包。
 - [ ] release gate 覆盖真实 gameplay target、分包 manifest 和浏览器 smoke。
@@ -361,4 +377,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 11 已完成 RmlUi runtime、标题页入口、本阶段 UI 资源的编译 / 链接 / release gate，并在 Codex CLI 环境下补齐标题页点击、hotbar / 暂停菜单截图和 Resume 返回游戏的浏览器交互验收。下一步进入 Phase 12 前，只剩坐标级输入 smoke hook 需要补齐机器验收；Phase 12 主线应转向音频用户手势解锁、MiniAudio Web Audio 初始化和 IDBFS 存档闭环。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 12 已完成音频用户手势解锁、MiniAudio Web Audio 单线程初始化、IDBFS initial/persist sync、保存后刷新加载闭环，并在 Codex CLI Playwright 环境下完成完整浏览器交互验收。下一步进入 Phase 13，应优先做运行时资源分包加载机制 spike，再拆分 boot / shared-ui / home-map / audio-core；同时保留 Phase 10 遗留的坐标级移动 smoke hook，作为后续自动 smoke 的补强项。

@@ -178,6 +178,69 @@ TEST(WebGameplayTargetSourceTest, TitleBootRestoresRmlUiAndPhase11UiResources) {
     EXPECT_NE(preload_manifest.find("assets/fonts/LXGWBright-Regular.ttf"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase12InitializesPersistentStorageAndUnlocksWebAudioFromUserGesture) {
+    const std::string game_app_header = readProjectFile("src/engine/core/game_app.h");
+    const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
+    const std::string audio_header = readProjectFile("src/engine/audio/audio_player.h");
+    const std::string audio_source = readProjectFile("src/engine/audio/audio_player.cpp");
+    const std::string runtime_cmake = readProjectFile("cmake/WebRuntime.cmake");
+
+    ASSERT_FALSE(game_app_header.empty());
+    ASSERT_FALSE(game_app_source.empty());
+    ASSERT_FALSE(audio_header.empty());
+    ASSERT_FALSE(audio_source.empty());
+    ASSERT_FALSE(runtime_cmake.empty());
+
+    EXPECT_NE(runtime_cmake.find("-lidbfs.js"), std::string::npos);
+    EXPECT_NE(game_app_header.find("initPersistentStorage"), std::string::npos);
+    EXPECT_NE(game_app_source.find("syncPersistentStorageFromBrowser"), std::string::npos);
+    EXPECT_NE(game_app_source.find("tryStartAudioFromUserGesture(event);"), std::string::npos);
+    EXPECT_NE(game_app_source.find("SDL_EVENT_MOUSE_BUTTON_DOWN"), std::string::npos);
+    EXPECT_NE(game_app_source.find("SDL_EVENT_KEY_DOWN"), std::string::npos);
+    EXPECT_NE(game_app_source.find("startPlaybackAfterUserGesture"), std::string::npos);
+
+    EXPECT_NE(audio_header.find("startPlaybackAfterUserGesture"), std::string::npos);
+    EXPECT_NE(audio_header.find("isPlaybackReady"), std::string::npos);
+    EXPECT_NE(audio_source.find("config.noAutoStart = MA_TRUE"), std::string::npos);
+    EXPECT_NE(audio_source.find("ma_engine_start(&engine_)"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentStorageSync) {
+    const std::string save_service_source = readProjectFile("src/game/save/save_service.cpp");
+    const std::string persistent_storage_source = readProjectFile("src/engine/platform/web_persistent_storage.cpp");
+
+    ASSERT_FALSE(save_service_source.empty());
+    ASSERT_FALSE(persistent_storage_source.empty());
+
+    EXPECT_NE(save_service_source.find("#include \"engine/platform/web_persistent_storage.h\""), std::string::npos);
+    EXPECT_NE(save_service_source.find("syncPersistentStorageToBrowser(&onAsyncSavePersistentSync"), std::string::npos);
+    EXPECT_NE(save_service_source.find("appendPersistentSyncError"), std::string::npos);
+    EXPECT_NE(save_service_source.find("completion->save_in_progress->store(false"), std::string::npos);
+    EXPECT_NE(save_service_source.find("enqueueAsyncSaveCompleted(*completion->main_thread_queue"), std::string::npos);
+    EXPECT_NE(save_service_source.find("syncPersistentStorageToBrowser(&onDirectSavePersistentSync"), std::string::npos);
+
+    EXPECT_NE(persistent_storage_source.find("bool in_progress{false}"), std::string::npos);
+    EXPECT_NE(persistent_storage_source.find("TinyFarmRPG persistent FS sync is already in progress."), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase12PreloadsMinimalAudioLoopResources) {
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+    const std::string preload_manifest = readProjectFile("manifests/assets/web-poc-preload.args");
+
+    ASSERT_FALSE(release_validator_source.empty());
+    ASSERT_FALSE(preload_manifest.empty());
+
+    EXPECT_NE(release_validator_source.find("\"assets/audio/pop.mp3\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"assets/audio/01_spring_journey.ogg\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"assets/audio/02_spring_fairy_tale.ogg\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"config/audio.json\""), std::string::npos);
+
+    EXPECT_NE(preload_manifest.find("assets/audio/pop.mp3"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/audio/02_spring_fairy_tale.ogg"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("config/audio.json"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
     const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
 

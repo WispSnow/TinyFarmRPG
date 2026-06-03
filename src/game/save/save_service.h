@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <filesystem>
+#include <memory>
 #if defined(TF_ENABLE_RUNTIME_THREADS)
 #include <optional>
 #include <thread>
@@ -39,7 +40,7 @@ private:
     game::world::MapManager& map_manager_;
     game::factory::BlueprintManager& blueprint_manager_;
     const game::data::RpgCatalog* rpg_catalog_{nullptr};
-    std::atomic<bool> save_in_progress_{false};
+    std::shared_ptr<std::atomic<bool>> save_in_progress_{std::make_shared<std::atomic<bool>>(false)};
 #if defined(TF_ENABLE_RUNTIME_THREADS)
     std::optional<std::jthread> async_save_thread_{};
 #endif
@@ -55,7 +56,7 @@ public:
 
     [[nodiscard]] bool saveToFile(const std::filesystem::path& file_path, std::string& out_error);
     [[nodiscard]] bool saveToFileAsync(const std::filesystem::path& file_path, std::string& out_error);
-    [[nodiscard]] bool isSaving() const { return save_in_progress_.load(std::memory_order_acquire); }
+    [[nodiscard]] bool isSaving() const { return save_in_progress_->load(std::memory_order_acquire); }
     [[nodiscard]] bool loadFromFile(const std::filesystem::path& file_path, std::string& out_error);
 
     [[nodiscard]] static std::filesystem::path slotPath(int slot);

@@ -157,6 +157,7 @@ private:
     void updateRmlUiFrame();
     void render(float interpolation_alpha);
     void drainMainThreadCommands();
+    void tryStartAudioFromUserGesture(const SDL_Event& event);
 
     // 各模块的初始化/创建函数，在init()中调用
     [[nodiscard]] bool initDispatcher();
@@ -171,6 +172,7 @@ private:
     [[nodiscard]] bool initGameState();
     [[nodiscard]] bool initTime();
     [[nodiscard]] bool initMainThreadCommandQueue();
+    [[nodiscard]] bool initPersistentStorage();
     [[nodiscard]] bool initResourceManager();
     [[nodiscard]] bool initAutoTileLibrary();
     [[nodiscard]] bool initAudioPlayer();

@@ -2,6 +2,7 @@
 
 #include "engine/platform/filesystem_paths.h"
 #include "engine/platform/threading.h"
+#include "engine/platform/web_persistent_storage.h"
 
 #include "save_migrator.h"
 #include "game/world/map_snapshot_serializer.h"
@@ -62,6 +63,7 @@
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <string_view>
 #include <unordered_set>
 #include <utility>
@@ -97,6 +99,63 @@ void enqueueAsyncSaveCompleted(engine::async::MainThreadCommandQueue& main_threa
         spdlog::warn("SaveService: 保存完成事件投递失败（主线程命令队列已满）。");
     }
 }
+
+#if defined(__EMSCRIPTEN__)
+struct WebPersistentSaveSync {
+    engine::async::MainThreadCommandQueue* main_thread_queue{};
+    entt::dispatcher* dispatcher{};
+    std::shared_ptr<std::atomic<bool>> save_in_progress{};
+    game::defs::AsyncSaveCompletedEvent event{};
+};
+
+void appendPersistentSyncError(game::defs::AsyncSaveCompletedEvent& event) {
+    event.success = false;
+    if (event.error.empty()) {
+        event.error = "Persistent storage sync failed.";
+        return;
+    }
+    event.error += "; persistent storage sync failed.";
+}
+
+void onDirectSavePersistentSync(bool success, void*) {
+    if (!success) {
+        spdlog::warn("SaveService: Web persistent storage sync failed after direct save.");
+    }
+}
+
+void onAsyncSavePersistentSync(bool success, void* user_data) {
+    std::unique_ptr<WebPersistentSaveSync> completion{static_cast<WebPersistentSaveSync*>(user_data)};
+    if (!completion) {
+        return;
+    }
+
+    if (!success) {
+        appendPersistentSyncError(completion->event);
+    }
+
+    if (completion->save_in_progress) {
+        completion->save_in_progress->store(false, std::memory_order_release);
+    }
+
+    if (completion->main_thread_queue != nullptr && completion->dispatcher != nullptr) {
+        enqueueAsyncSaveCompleted(*completion->main_thread_queue, *completion->dispatcher, std::move(completion->event));
+    }
+}
+
+void syncAsyncSaveToPersistentStorage(engine::async::MainThreadCommandQueue& main_thread_queue,
+                                      entt::dispatcher& dispatcher,
+                                      std::shared_ptr<std::atomic<bool>> save_in_progress,
+                                      game::defs::AsyncSaveCompletedEvent event) {
+    auto completion = std::make_unique<WebPersistentSaveSync>();
+    completion->main_thread_queue = &main_thread_queue;
+    completion->dispatcher = &dispatcher;
+    completion->save_in_progress = std::move(save_in_progress);
+    completion->event = std::move(event);
+
+    auto* completion_ptr = completion.release();
+    engine::platform::web::syncPersistentStorageToBrowser(&onAsyncSavePersistentSync, completion_ptr);
+}
+#endif
 
 std::uint8_t computeAutoTileMask(const std::unordered_set<std::int64_t>& tiles, Vec2i tile) {
     std::uint8_t mask = 0;
@@ -419,7 +478,7 @@ void SaveService::cleanupCompletedSaveThread() {
     if (!async_save_thread_) {
         return;
     }
-    if (save_in_progress_.load(std::memory_order_acquire)) {
+    if (save_in_progress_->load(std::memory_order_acquire)) {
         return;
     }
     if (async_save_thread_->joinable()) {
@@ -444,7 +503,13 @@ bool SaveService::saveToFile(const std::filesystem::path& file_path, std::string
         return false;
     }
 
-    return writeSaveFile(data, file_path, out_error);
+    const bool success = writeSaveFile(data, file_path, out_error);
+#if defined(__EMSCRIPTEN__)
+    if (success) {
+        engine::platform::web::syncPersistentStorageToBrowser(&onDirectSavePersistentSync, nullptr);
+    }
+#endif
+    return success;
 }
 
 bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::string& out_error) {
@@ -452,7 +517,7 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
     cleanupCompletedSaveThread();
 
     bool expected = false;
-    if (!save_in_progress_.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+    if (!save_in_progress_->compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
         out_error = "Save in progress, please try again later.";
         return false;
     }
@@ -460,7 +525,7 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
     map_manager_.snapshotCurrentMap();
     SaveData data = capture(out_error);
     if (!out_error.empty()) {
-        save_in_progress_.store(false, std::memory_order_release);
+        save_in_progress_->store(false, std::memory_order_release);
         return false;
     }
 
@@ -476,8 +541,14 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         event.success = success;
         event.error = std::move(write_error);
 
+#if defined(__EMSCRIPTEN__)
+        if (success) {
+            syncAsyncSaveToPersistentStorage(*main_thread_queue, *dispatcher, save_in_progress_, std::move(event));
+            return true;
+        }
+#endif
         enqueueAsyncSaveCompleted(*main_thread_queue, *dispatcher, std::move(event));
-        save_in_progress_.store(false, std::memory_order_release);
+        save_in_progress_->store(false, std::memory_order_release);
         return true;
     }
 
@@ -491,14 +562,31 @@ bool SaveService::saveToFileAsync(const std::filesystem::path& file_path, std::s
         event.success = success;
         event.error = std::move(write_error);
 
+#if defined(__EMSCRIPTEN__)
+        if (success) {
+            auto save_in_progress = save_in_progress_;
+            if (main_thread_queue->enqueue([main_thread_queue, dispatcher, save_in_progress, event = std::move(event)]() mutable {
+                    syncAsyncSaveToPersistentStorage(*main_thread_queue, *dispatcher, std::move(save_in_progress), std::move(event));
+                })) {
+                return;
+            }
+            game::defs::AsyncSaveCompletedEvent failed_event{};
+            failed_event.file_path = file_path.string();
+            failed_event.success = false;
+            failed_event.error = "Could not schedule persistent storage sync.";
+            enqueueAsyncSaveCompleted(*main_thread_queue, *dispatcher, std::move(failed_event));
+            save_in_progress_->store(false, std::memory_order_release);
+            return;
+        }
+#endif
         enqueueAsyncSaveCompleted(*main_thread_queue, *dispatcher, std::move(event));
 
-        save_in_progress_.store(false, std::memory_order_release);
+        save_in_progress_->store(false, std::memory_order_release);
     });
 
     return true;
 #else
-    save_in_progress_.store(false, std::memory_order_release);
+    save_in_progress_->store(false, std::memory_order_release);
     out_error = "Runtime threads are disabled.";
     return false;
 #endif

@@ -10,6 +10,7 @@
 #endif
 
 #include "audio_player.h"
+#include "engine/resource/asset_registry.h"
 #include "engine/resource/resource_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -60,6 +61,7 @@ struct AudioPlayer::Impl {
     engine::resource::ResourceManager* resource_manager_{nullptr};
     ma_engine engine_{};
     bool engine_initialized_{false};
+    bool playback_ready_{false};
 
     float sound_volume_{1.0f};
     float music_volume_{1.0f};
@@ -85,13 +87,29 @@ struct AudioPlayer::Impl {
 
         ma_engine_config config = ma_engine_config_init();
         config.listenerCount = 1;
+#if defined(__EMSCRIPTEN__)
+        config.noAutoStart = MA_TRUE;
+#endif
         if (ma_engine_init(&config, &engine_) != MA_SUCCESS) {
+#if defined(__EMSCRIPTEN__)
+            spdlog::warn("AudioPlayer: 初始化 miniaudio WebAudio 引擎失败，将以静音模式继续。");
+            engine_initialized_ = false;
+            playback_ready_ = false;
+            return true;
+#else
             spdlog::error("AudioPlayer: 无法初始化 miniaudio 引擎。");
             resource_manager_ = nullptr;
             return false;
+#endif
         }
         engine_initialized_ = true;
+#if defined(__EMSCRIPTEN__)
+        playback_ready_ = false;
+        spdlog::info("AudioPlayer: miniaudio WebAudio 引擎初始化完成，等待用户手势启动。");
+#else
+        playback_ready_ = true;
         spdlog::trace("AudioPlayer: miniaudio 引擎初始化完成");
+#endif
         return true;
     }
 
@@ -116,6 +134,10 @@ struct AudioPlayer::Impl {
     }
 
     [[nodiscard]] SoundPtr createSound(AudioBufferHandle buffer) {
+        if (!engine_initialized_) {
+            spdlog::warn("AudioPlayer: 音频设备不可用，跳过播放实例创建。");
+            return {};
+        }
         if (!buffer || buffer->empty()) {
             spdlog::error("AudioPlayer: 无效的音频缓冲区。无法创建播放实例。");
             return {};
@@ -154,6 +176,33 @@ struct AudioPlayer::Impl {
         }
 
         return SoundPtr(managed.release(), ManagedSoundDeleter{});
+    }
+
+    [[nodiscard]] bool startPlaybackAfterUserGesture() {
+        if (!engine_initialized_) {
+            return false;
+        }
+        if (playback_ready_) {
+            return true;
+        }
+
+        const ma_result result = ma_engine_start(&engine_);
+        if (result != MA_SUCCESS) {
+            spdlog::warn("AudioPlayer: 启动音频设备失败，错误码 {}", static_cast<int>(result));
+            return false;
+        }
+
+        playback_ready_ = true;
+        spdlog::info("AudioPlayer: 音频设备已启动。");
+        return true;
+    }
+
+    [[nodiscard]] bool isPlaybackReady() const {
+        return playback_ready_;
+    }
+
+    [[nodiscard]] bool isAudioDeviceAvailable() const {
+        return engine_initialized_;
     }
 
     void applyVolume(ManagedSound& sound, float volume_factor) {
@@ -195,7 +244,12 @@ struct AudioPlayer::Impl {
     [[nodiscard]] bool playSound(entt::id_type id) {
         auto buffer = resource_manager_->getSound(id);
         if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音效资源 id={}", id);
+            const std::string_view path = resource_manager_->getAssetRegistry().findSoundPath(id);
+            if (path.empty()) {
+                spdlog::error("AudioPlayer: 找不到音效资源 id={}", id);
+            } else {
+                spdlog::warn("AudioPlayer: 音效资源已注册但未加载 id={}, path='{}'", id, path);
+            }
             return false;
         }
         return playSoundInternal(buffer, 1.0f, std::nullopt);
@@ -204,7 +258,12 @@ struct AudioPlayer::Impl {
     [[nodiscard]] bool playSound2D(entt::id_type id, const glm::vec2& source, const glm::vec2& listener) {
         auto buffer = resource_manager_->getSound(id);
         if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音效资源 id={} (2D)", id);
+            const std::string_view path = resource_manager_->getAssetRegistry().findSoundPath(id);
+            if (path.empty()) {
+                spdlog::error("AudioPlayer: 找不到音效资源 id={} (2D)", id);
+            } else {
+                spdlog::warn("AudioPlayer: 2D 音效资源已注册但未加载 id={}, path='{}'", id, path);
+            }
             return false;
         }
         return playSoundSpatialInternal(buffer, source, listener);
@@ -307,7 +366,12 @@ struct AudioPlayer::Impl {
 
         auto buffer = resource_manager_->getMusic(id);
         if (!buffer) {
-            spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
+            const std::string_view path = resource_manager_->getAssetRegistry().findMusicPath(id);
+            if (path.empty()) {
+                spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
+            } else {
+                spdlog::warn("AudioPlayer: 音乐资源已注册但未加载 id={}, path='{}'", id, path);
+            }
             return false;
         }
 
@@ -555,6 +619,18 @@ bool AudioPlayer::saveConfig(std::string_view config_path) const {
     file << json.dump(2);
     spdlog::info("AudioPlayer: 已写入音频配置 '{}'", path.string());
     return true;
+}
+
+bool AudioPlayer::startPlaybackAfterUserGesture() {
+    return impl_->startPlaybackAfterUserGesture();
+}
+
+bool AudioPlayer::isPlaybackReady() const {
+    return impl_->isPlaybackReady();
+}
+
+bool AudioPlayer::isAudioDeviceAvailable() const {
+    return impl_->isAudioDeviceAvailable();
 }
 
 void AudioPlayer::setSpatialFalloffDistance(float value) {
