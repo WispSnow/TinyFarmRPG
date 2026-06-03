@@ -405,4 +405,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 14 已完成 Chromium 发布候选固定命令、移动坐标级验收和发布候选报告；Safari 手工 smoke 需要在启用 Safari remote automation 或人工浏览器会话后补验。下一步应进入发布收敛：boot-only `.data` cutover、`shared-ui` / `audio-core` 运行时 package gate、Safari 兼容补验和 CI 接入。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 14 已完成 Chromium 发布候选固定命令、移动坐标级验收和发布候选报告；Safari 手工 smoke 需要在启用 Safari remote automation 或人工浏览器会话后补验。下一步已拆分为第三轮发布收敛计划：`plans/2026-06-03-web-release-round-3-completion-plan.md`。第三轮按你的最新要求以 Chrome 单线程正式 Web demo 为完成范围，不把 Safari 作为阻塞项。
