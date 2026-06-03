@@ -20,21 +20,39 @@
 
 namespace game::runtime {
 
+namespace {
+
+void logWebDirectMapBootCatalogCheckpoint(const char* checkpoint) {
+#ifdef TF_WEB_DIRECT_MAP_BOOT
+    spdlog::info("Web direct map boot catalog checkpoint: {}", checkpoint);
+#else
+    (void)checkpoint;
+#endif
+}
+
+} // namespace
+
 bool ContentCatalogLoader::ensureBlueprintManager(GameRuntimeServices& services) {
     if (!services.blueprint_manager) {
         auto manager = std::make_shared<game::factory::BlueprintManager>();
+        logWebDirectMapBootCatalogCheckpoint("actor blueprints begin");
         if (!manager->loadActorBlueprints(GameContentManifest::ActorBlueprints)) {
             spdlog::error("加载角色蓝图失败");
             return false;
         }
+        logWebDirectMapBootCatalogCheckpoint("actor blueprints ready");
+        logWebDirectMapBootCatalogCheckpoint("animal blueprints begin");
         if (!manager->loadAnimalBlueprints(GameContentManifest::AnimalBlueprints)) {
             spdlog::error("加载动物蓝图失败");
             return false;
         }
+        logWebDirectMapBootCatalogCheckpoint("animal blueprints ready");
+        logWebDirectMapBootCatalogCheckpoint("crop blueprints begin");
         if (!manager->loadCropBlueprints(GameContentManifest::CropBlueprints)) {
             spdlog::error("加载作物蓝图失败");
             return false;
         }
+        logWebDirectMapBootCatalogCheckpoint("crop blueprints ready");
         services.blueprint_manager = std::move(manager);
     }
     return true;

@@ -32,6 +32,9 @@ TEST(WebGameplayTargetSourceTest, ReusesSharedSdlCallbackMain) {
     EXPECT_FALSE(std::filesystem::exists(projectPath("src/web/web_game_main.cpp")));
     EXPECT_NE(root_cmake.find("if(TF_BUILD_WEB AND TF_BUILD_WEB_SKELETON)"), std::string::npos);
     EXPECT_NE(root_cmake.find("tf_configure_web_executable(${TARGET})"), std::string::npos);
+    EXPECT_NE(root_cmake.find("option(TF_WEB_DIRECT_MAP_BOOT"), std::string::npos);
+    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_WEB_DIRECT_MAP_BOOT ON)"), std::string::npos);
+    EXPECT_NE(root_cmake.find("add_compile_definitions(TF_WEB_DIRECT_MAP_BOOT)"), std::string::npos);
     EXPECT_NE(main_source.find("SDL_MAIN_USE_CALLBACKS"), std::string::npos);
     EXPECT_NE(main_source.find("SDL_AppInit"), std::string::npos);
     EXPECT_NE(main_source.find("SDL_AppIterate"), std::string::npos);
@@ -82,6 +85,9 @@ TEST(WebGameplayTargetSourceTest, WebDependenciesAvoidDesktopGlAndImageLibraries
     EXPECT_NE(dependencies_cmake.find("function(tf_web_add_lua)"), std::string::npos);
     EXPECT_NE(dependencies_cmake.find("function(tf_web_add_sol2)"), std::string::npos);
     EXPECT_NE(dependencies_cmake.find("SPDLOG_NO_EXCEPTIONS"), std::string::npos);
+    EXPECT_NE(dependencies_cmake.find("function(tf_web_configure_thread_stubs)"), std::string::npos);
+    EXPECT_NE(dependencies_cmake.find("CMAKE_HAVE_LIBC_PTHREAD TRUE"), std::string::npos);
+    EXPECT_NE(dependencies_cmake.find("CMAKE_THREAD_LIBS_INIT \"\""), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, WebGlPlatformGuardsSrgbAndDepthClear) {
@@ -103,6 +109,47 @@ TEST(WebGameplayTargetSourceTest, WebGlPlatformGuardsSrgbAndDepthClear) {
     EXPECT_NE(renderer_source.find("bloom_enabled_ && bloom_pass_ && emissive_pass_"), std::string::npos);
     EXPECT_NE(renderer_source.find("engine::platform::gl::clearDepth(1.0f);"), std::string::npos);
     EXPECT_EQ(renderer_source.find("glClearDepth(1.0);"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, DirectMapBootBypassesTitleAndRmlUiRuntime) {
+    const std::string game_entry_source = readProjectFile("src/game/game_entry.cpp");
+    const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string map_loading_source = readProjectFile("src/game/world/map_loading_settings.cpp");
+
+    ASSERT_FALSE(game_entry_source.empty());
+    ASSERT_FALSE(game_app_source.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(map_loading_source.empty());
+
+    EXPECT_NE(game_entry_source.find("#ifdef TF_WEB_DIRECT_MAP_BOOT"), std::string::npos);
+    EXPECT_NE(game_entry_source.find("#include \"game/scene/game_scene.h\""), std::string::npos);
+    EXPECT_NE(game_entry_source.find("std::make_unique<game::scene::GameScene>"), std::string::npos);
+    EXPECT_NE(game_entry_source.find("Web direct map boot: pushing GameScene at home_exterior."), std::string::npos);
+    EXPECT_NE(game_entry_source.find("std::make_unique<game::scene::TitleScene>"), std::string::npos);
+
+    EXPECT_NE(game_app_source.find("constexpr bool kEnableRmlUiRuntime = false;"), std::string::npos);
+    EXPECT_NE(game_app_source.find("if constexpr (kEnableRmlUiRuntime)"), std::string::npos);
+    EXPECT_NE(game_app_source.find("GameApp: RmlUi runtime disabled for Web direct map boot."), std::string::npos);
+
+    EXPECT_NE(game_scene_source.find("GameScene: skipping RmlUi HUD for Web direct map boot."), std::string::npos);
+    EXPECT_NE(game_scene_source.find("inventory menu disabled because RmlUiRuntime is unavailable"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("pause menu disabled because RmlUiRuntime is unavailable"), std::string::npos);
+
+    EXPECT_NE(map_loading_source.find("#ifdef TF_WEB_DIRECT_MAP_BOOT"), std::string::npos);
+    EXPECT_NE(map_loading_source.find("settings.preload_mode = MapPreloadMode::Off;"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
+    const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
+
+    ASSERT_FALSE(blueprint_source.empty());
+
+    EXPECT_NE(blueprint_source.find("#include \"engine/utils/json_helpers.h\""), std::string::npos);
+    EXPECT_NE(blueprint_source.find("nestedNumberOr"), std::string::npos);
+    EXPECT_EQ(blueprint_source.find("_json_pointer"), std::string::npos);
+    EXPECT_EQ(blueprint_source.find(".value(\""), std::string::npos);
+    EXPECT_EQ(blueprint_source.find(".get<"), std::string::npos);
 }
 
 } // namespace

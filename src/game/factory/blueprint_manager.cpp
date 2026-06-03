@@ -1,8 +1,10 @@
 #include "blueprint_manager.h"
+#include "engine/utils/json_helpers.h"
 #include "engine/utils/json_file_loader.h"
 #include "game/defs/crop_defs.h"
 #include <string>
 #include <string_view>
+#include <vector>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <entt/core/hashed_string.hpp>
@@ -12,50 +14,93 @@ namespace game::factory {
 
 namespace { // anonymous namespace
 
+using engine::utils::json::boolOr;
+using engine::utils::json::findMember;
+using engine::utils::json::numberOr;
+using engine::utils::json::readNumber;
+using engine::utils::json::readString;
+using engine::utils::json::stringOr;
+
+[[nodiscard]] const nlohmann::json* objectMemberOrNull(const nlohmann::json& object, std::string_view key) {
+    const auto* value = findMember(object, key);
+    return value && value->is_object() ? value : nullptr;
+}
+
+template <typename T>
+[[nodiscard]] T nestedNumberOr(const nlohmann::json& object,
+                               std::string_view object_key,
+                               std::string_view value_key,
+                               T fallback) {
+    const auto* nested = objectMemberOrNull(object, object_key);
+    return nested ? numberOr(*nested, value_key, fallback) : fallback;
+}
+
+[[nodiscard]] std::vector<int> intArrayOr(const nlohmann::json& object,
+                                          std::string_view key,
+                                          std::vector<int> fallback) {
+    const auto* value = findMember(object, key);
+    if (!value || !value->is_array()) {
+        return fallback;
+    }
+
+    std::vector<int> result;
+    result.reserve(value->size());
+    for (const auto& entry : *value) {
+        int frame = 0;
+        if (readNumber(entry, frame)) {
+            result.push_back(frame);
+        }
+    }
+    return result.empty() ? fallback : result;
+}
+
 SpriteBlueprint parseSprite(const nlohmann::json& json) {
-    auto path_str = json.value("path", "");
+    auto path_str = stringOr(json, "path", "");
     auto path_id = entt::hashed_string(path_str.c_str());
-    auto width = json.value("/src_size/width"_json_pointer, 0.0f);
-    auto height = json.value("/src_size/height"_json_pointer, 0.0f);
+    auto width = nestedNumberOr(json, "src_size", "width", 0.0f);
+    auto height = nestedNumberOr(json, "src_size", "height", 0.0f);
     if (path_str.empty() || width == 0 || height == 0) {
         spdlog::error("Invalid sprite data: {}", json.dump());
         return SpriteBlueprint{};
     }
     // 可选部分：源矩形的起点默认值为 0,0，渲染目标大小默认值为 width,height
-    auto src_x = json.value("/position/x"_json_pointer, 0.0f);
-    auto src_y = json.value("/position/y"_json_pointer, 0.0f);
-    auto size_x = json.value("/dst_size/width"_json_pointer, width);
-    auto size_y = json.value("/dst_size/height"_json_pointer, height);
-    auto pivot_x = json.value("/pivot/x"_json_pointer, 0.0f);
-    auto pivot_y = json.value("/pivot/y"_json_pointer, 0.0f);
+    auto src_x = nestedNumberOr(json, "position", "x", 0.0f);
+    auto src_y = nestedNumberOr(json, "position", "y", 0.0f);
+    auto size_x = nestedNumberOr(json, "dst_size", "width", width);
+    auto size_y = nestedNumberOr(json, "dst_size", "height", height);
+    auto pivot_x = nestedNumberOr(json, "pivot", "x", 0.0f);
+    auto pivot_y = nestedNumberOr(json, "pivot", "y", 0.0f);
     // （如果指定，起点为 x,y，渲染目标大小为 size_x,size_y）
     return SpriteBlueprint{path_id,
                            path_str,
                            engine::utils::Rect{glm::vec2(src_x, src_y), glm::vec2(width, height)},
                            glm::vec2(size_x, size_y),
                            glm::vec2(pivot_x, pivot_y),
-                           json.value("flip_horizontal", false)};
+                           boolOr(json, "flip_horizontal", false)};
 }
 
 AnimationBlueprint parseOneAnimation(const nlohmann::json& json) {
-    auto texture_path = json.value("path", "");
+    auto texture_path = stringOr(json, "path", "");
     entt::id_type texture_id = entt::hashed_string(texture_path.c_str());
-    auto src_x = json.value("/position/x"_json_pointer, 0.0f);
-    auto src_y = json.value("/position/y"_json_pointer, 0.0f);
-    auto src_width = json.value("/src_size/width"_json_pointer, 0.0f);
-    auto src_height = json.value("/src_size/height"_json_pointer, 0.0f);
-    auto dst_width = json.value("/dst_size/width"_json_pointer, src_width);
-    auto dst_height = json.value("/dst_size/height"_json_pointer, src_height);
-    auto pivot_x = json.value("/pivot/x"_json_pointer, 0.0f);
-    auto pivot_y = json.value("/pivot/y"_json_pointer, 0.0f);
-    std::vector<int> frames = json.value("frames", std::vector<int>{0});
-    auto duration = json.value("duration", 100.0f);
-    auto row = json.value("row", 0);
+    auto src_x = nestedNumberOr(json, "position", "x", 0.0f);
+    auto src_y = nestedNumberOr(json, "position", "y", 0.0f);
+    auto src_width = nestedNumberOr(json, "src_size", "width", 0.0f);
+    auto src_height = nestedNumberOr(json, "src_size", "height", 0.0f);
+    auto dst_width = nestedNumberOr(json, "dst_size", "width", src_width);
+    auto dst_height = nestedNumberOr(json, "dst_size", "height", src_height);
+    auto pivot_x = nestedNumberOr(json, "pivot", "x", 0.0f);
+    auto pivot_y = nestedNumberOr(json, "pivot", "y", 0.0f);
+    std::vector<int> frames = intArrayOr(json, "frames", std::vector<int>{0});
+    auto duration = numberOr(json, "duration", 100.0f);
+    auto row = numberOr(json, "row", 0);
     src_y += row * src_height;
     std::unordered_map<int, entt::id_type> events;
-    if (json.contains("events")) {
-        for (auto& [event_name, event_frame] : json["events"].items()) {
-            events.emplace(event_frame.get<int>(), entt::hashed_string(event_name.c_str()));
+    if (const auto* event_json = findMember(json, "events"); event_json && event_json->is_object()) {
+        for (const auto& [event_name, event_frame] : event_json->items()) {
+            int frame = 0;
+            if (readNumber(event_frame, frame)) {
+                events.emplace(frame, entt::hashed_string(event_name.c_str()));
+            }
         }
     }
     AnimationBlueprint animation{"default",
@@ -68,7 +113,7 @@ AnimationBlueprint parseOneAnimation(const nlohmann::json& json) {
                                  glm::vec2(pivot_x, pivot_y),
                                  std::move(frames),
                                  std::move(events),
-                                 json.value("flip_horizontal", false)};
+                                 boolOr(json, "flip_horizontal", false)};
     return animation;
 }
 
@@ -78,13 +123,16 @@ std::unordered_map<entt::id_type, AnimationBlueprint> parseAnimationsMap(const n
         // 先解析单个动画
         auto base_animation = parseOneAnimation(anim_data);
         // 如果存在“direction”字段，则需要创建多个动画, 键名ID规则是 "<动画名>_<方向>"
-        if (anim_data.contains("direction") && anim_data["direction"].is_array()) {
+        if (const auto* directions = findMember(anim_data, "direction"); directions && directions->is_array()) {
             // 每个动画占一行，第一个动画起点不变，第二个动画开始依次下移一行。因此可以先让动画y坐标减一行
             base_animation.position_.y -= base_animation.src_size_.y;
             std::unordered_map<std::string, entt::id_type> inserted;
             std::size_t dir_index = 0;
-            for (auto& direction : anim_data["direction"]) {
-                std::string dir_name = direction.get<std::string>();
+            for (const auto& direction : *directions) {
+                std::string dir_name;
+                if (!readString(direction, dir_name)) {
+                    continue;
+                }
                 auto anim_id = entt::hashed_string((anim_name + "_" + dir_name).c_str());
                 auto animation = base_animation;
                 animation.name_ = anim_name + "_" + dir_name;
@@ -95,7 +143,7 @@ std::unordered_map<entt::id_type, AnimationBlueprint> parseAnimationsMap(const n
             }
             // 如果缺少左方向，自动使用右方向生成镜像动画
             if (!inserted.contains("left") && inserted.contains("right")) {
-                auto right_id = inserted.at("right");
+                auto right_id = inserted.find("right")->second;
                 if (auto it = animations.find(right_id); it != animations.end()) {
                     auto left_animation = it->second;
                     left_animation.name_ = anim_name + "_left";
@@ -106,7 +154,7 @@ std::unordered_map<entt::id_type, AnimationBlueprint> parseAnimationsMap(const n
             }
             // 类似的，如果缺少右方向，自动使用左方向生成镜像动画
             if (!inserted.contains("right") && inserted.contains("left")) {
-                auto left_id = inserted.at("left");
+                auto left_id = inserted.find("left")->second;
                 if (auto it = animations.find(left_id); it != animations.end()) {
                     auto right_animation = it->second;
                     right_animation.name_ = anim_name + "_right";
@@ -136,7 +184,7 @@ SoundBlueprint parseSound(const nlohmann::json& json) {
             continue;
         }
 
-        const std::string sound_key = trigger_json.value("sound", "");
+        const std::string sound_key = stringOr(trigger_json, "sound", "");
         if (sound_key.empty()) {
             spdlog::warn("Sound trigger '{}' missing 'sound' field", trigger_name);
             continue;
@@ -144,8 +192,8 @@ SoundBlueprint parseSound(const nlohmann::json& json) {
 
         SoundTriggerBlueprint trigger{};
         trigger.sound_id_ = entt::hashed_string(sound_key.c_str());
-        trigger.probability_ = trigger_json.value("probability", 1.0f);
-        trigger.cooldown_seconds_ = trigger_json.value("cooldown", 0.0f);
+        trigger.probability_ = numberOr(trigger_json, "probability", 1.0f);
+        trigger.cooldown_seconds_ = numberOr(trigger_json, "cooldown", 0.0f);
 
         const entt::id_type trigger_id = entt::hashed_string(trigger_name.c_str());
         result.triggers_.emplace(trigger_id, trigger);
@@ -155,22 +203,23 @@ SoundBlueprint parseSound(const nlohmann::json& json) {
 }
 
 CropStageBlueprint parseCropStage(const nlohmann::json& json, game::defs::GrowthStage growth_stage) {
-    int days_required = json.value("days_required", 0);
-    auto sprite_json = json.value("sprite", nlohmann::json());
-    return CropStageBlueprint{growth_stage, days_required, parseSprite(sprite_json)};
+    int days_required = numberOr(json, "days_required", 0);
+    const nlohmann::json empty_sprite = nlohmann::json::object();
+    const auto* sprite_json = objectMemberOrNull(json, "sprite");
+    return CropStageBlueprint{growth_stage, days_required, parseSprite(sprite_json ? *sprite_json : empty_sprite)};
 }
 
 std::vector<CropStageBlueprint> parseCropStages(const nlohmann::json& json, const std::string& crop_type_name) {
     std::vector<CropStageBlueprint> stages;
     for (const auto& stage_obj : json) {
-        std::string stage_str = stage_obj.value("stage", "");
+        std::string stage_str = stringOr(stage_obj, "stage", "");
         auto growth_stage = game::defs::growthStageFromString(stage_str);
         if (growth_stage == game::defs::GrowthStage::Unknown) {
             spdlog::warn("未知的生长阶段: {}，跳过", stage_str);
             continue;
         }
 
-        if (!stage_obj.contains("sprite") || !stage_obj["sprite"].is_object()) {
+        if (!objectMemberOrNull(stage_obj, "sprite")) {
             spdlog::warn("作物 {} 的阶段 {} 缺少 'sprite' 配置，跳过", crop_type_name, stage_str);
             continue;
         }
@@ -194,16 +243,20 @@ struct MobBlueprintCommon {
 
 MobBlueprintCommon parseMobBlueprintCommon(const nlohmann::json& json, float default_speed) {
     MobBlueprintCommon common{};
-    common.name = json.value("name", "");
-    common.description = json.value("description", "");
-    common.speed = json.value("speed", default_speed);
-    common.sprite = parseSprite(json.value("sprite", nlohmann::json()));
-    common.sounds = parseSound(json.value("sounds", nlohmann::json()));
-    common.animations = parseAnimationsMap(json.value("animations", nlohmann::json()));
-    common.wander_radius = json.value("wander_radius", 0.0f);
-    common.interact_distance = json.value("interact_distance", 80.0f);
+    const nlohmann::json empty_object = nlohmann::json::object();
+    common.name = stringOr(json, "name", "");
+    common.description = stringOr(json, "description", "");
+    common.speed = numberOr(json, "speed", default_speed);
+    const auto* sprite_json = objectMemberOrNull(json, "sprite");
+    common.sprite = parseSprite(sprite_json ? *sprite_json : empty_object);
+    const auto* sounds_json = objectMemberOrNull(json, "sounds");
+    common.sounds = parseSound(sounds_json ? *sounds_json : empty_object);
+    const auto* animations_json = objectMemberOrNull(json, "animations");
+    common.animations = parseAnimationsMap(animations_json ? *animations_json : empty_object);
+    common.wander_radius = numberOr(json, "wander_radius", 0.0f);
+    common.interact_distance = numberOr(json, "interact_distance", 80.0f);
 
-    const std::string dialogue_str = json.value("dialogue_id", "");
+    const std::string dialogue_str = stringOr(json, "dialogue_id", "");
     common.dialogue_id = dialogue_str.empty() ? entt::id_type{entt::null} : entt::hashed_string(dialogue_str.c_str()).value();
     return common;
 }
@@ -215,15 +268,15 @@ AppearanceBlueprint parseAppearanceBlueprint(const nlohmann::json& json) {
     }
 
     appearance.enabled_ = true;
-    appearance.profile_id_ = json.value("profile", std::string{});
-    appearance.gender_ = json.value("gender", std::string{"male"});
+    appearance.profile_id_ = stringOr(json, "profile", "");
+    appearance.gender_ = stringOr(json, "gender", "male");
 
-    if (const auto slots_it = json.find("slots"); slots_it != json.end() && slots_it->is_object()) {
-        for (const auto& [slot, variant] : slots_it->items()) {
-            if (!variant.is_string()) {
-                continue;
+    if (const auto* slots = objectMemberOrNull(json, "slots")) {
+        for (const auto& [slot, variant] : slots->items()) {
+            std::string variant_name;
+            if (readString(variant, variant_name)) {
+                appearance.slot_variants_.emplace(slot, variant_name);
             }
-            appearance.slot_variants_.emplace(slot, variant.get<std::string>());
         }
     }
 
@@ -249,6 +302,8 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
 
     actor_blueprints_.clear();
     for (auto& [actor_key, actor_obj] : json.items()) {
+        const nlohmann::json empty_object = nlohmann::json::object();
+        const auto* appearance_json = objectMemberOrNull(actor_obj, "appearance");
         const entt::id_type name_id = entt::hashed_string(actor_key.c_str());
         const auto common = parseMobBlueprintCommon(actor_obj, 100.0f);
         actor_blueprints_.emplace(name_id,
@@ -262,8 +317,8 @@ bool BlueprintManager::loadActorBlueprints(std::string_view file_path) {
                                                 common.wander_radius,
                                                 common.dialogue_id,
                                                 common.interact_distance,
-                                                parseAppearanceBlueprint(actor_obj.value("appearance", nlohmann::json{})),
-                                                actor_obj.value("scripted_interaction", false)});
+                                                parseAppearanceBlueprint(appearance_json ? *appearance_json : empty_object),
+                                                boolOr(actor_obj, "scripted_interaction", false)});
     }
     return true;
 }
@@ -289,8 +344,8 @@ bool BlueprintManager::loadAnimalBlueprints(std::string_view file_path) {
                                                    common.wander_radius,
                                                    common.dialogue_id,
                                                    common.interact_distance,
-                                                   animal_obj.value("sleep_at_night", true),
-                                                   animal_obj.value("scripted_interaction", false)});
+                                                   boolOr(animal_obj, "sleep_at_night", true),
+                                                   boolOr(animal_obj, "scripted_interaction", false)});
     }
 
     return true;
@@ -302,14 +357,15 @@ bool BlueprintManager::loadCropBlueprints(std::string_view file_path) {
         return false;
     }
 
-    if (!json.contains("crops") || !json["crops"].is_array()) {
+    const auto* crops_json = findMember(json, "crops");
+    if (!crops_json || !crops_json->is_array()) {
         spdlog::error("作物配置文件格式错误：缺少 'crops' 数组");
         return false;
     }
 
     crop_blueprints_.clear();
-    for (const auto& crop_obj : json["crops"]) {
-        std::string type_str = crop_obj.value("type", "");
+    for (const auto& crop_obj : *crops_json) {
+        std::string type_str = stringOr(crop_obj, "type", "");
         if (type_str.empty()) {
             spdlog::warn("跳过缺少类型的作物配置");
             continue;
@@ -321,18 +377,19 @@ bool BlueprintManager::loadCropBlueprints(std::string_view file_path) {
             continue;
         }
 
-        if (!crop_obj.contains("stages") || !crop_obj["stages"].is_array()) {
+        const auto* stages_json = findMember(crop_obj, "stages");
+        if (!stages_json || !stages_json->is_array()) {
             spdlog::warn("作物 {} 缺少 'stages' 数组，跳过", type_str);
             continue;
         }
 
-        auto stages = parseCropStages(crop_obj["stages"], type_str);
+        auto stages = parseCropStages(*stages_json, type_str);
         if (stages.empty()) {
             spdlog::warn("作物 {} 没有有效的生长阶段，跳过", type_str);
             continue;
         }
 
-        std::string harvest_item_str = crop_obj.value("harvest_item_id", "");
+        std::string harvest_item_str = stringOr(crop_obj, "harvest_item_id", "");
         entt::id_type harvest_item_id =
             harvest_item_str.empty() ? entt::id_type{entt::null} : entt::hashed_string(harvest_item_str.c_str()).value();
 

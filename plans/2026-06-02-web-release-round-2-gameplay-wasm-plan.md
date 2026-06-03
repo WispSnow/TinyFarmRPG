@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Phase 9 implemented; ready for Phase 10 direct map boot`
+- 计划状态：`Phase 10 direct map boot implemented; Phase 11 RmlUi restore pending`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -294,6 +294,16 @@ flowchart TD
 - 已为 WebGL2 平台 gate 掉默认 framebuffer sRGB、桌面 `glClearDepth`、以及需要 float color framebuffer 的 HDR Bloom / Emissive 默认路径。
 - 已生成 `build/web-gameplay-phase9/TinyFarmRPG-Web.html/.js/.wasm/.data`；尚未做浏览器内 direct map smoke，留到 Phase 10。
 
+执行记录（2026-06-03，Phase 10）：
+
+- 已新增 `TF_WEB_DIRECT_MAP_BOOT`，Web 默认绕过 `TitleScene`，由 `game_entry.cpp` 直接创建 `GameScene` 并进入 `home_exterior`；`src/main.cpp` 仍是唯一 SDL3 callback 入口。
+- 已在 direct boot 下关闭 `GameApp` 的 RmlUi runtime 初始化，并让 `GameScene` 跳过 HUD、inventory menu、pause menu 等 RmlUi 依赖路径。
+- 已修复 `BlueprintManager` 在 `JSON_NOEXCEPTION` / Emscripten 下的 abort：蓝图解析改用 `engine::utils::json_helpers` 显式成员查找，不再依赖 `json.value(json_pointer, fallback)` 的异常回退。
+- 已让 `MapLoadingSettings::forCurrentPlatform()` 在 `TF_WEB_DIRECT_MAP_BOOT` 下把 `preload_mode` 降为 `off`，Phase 10 只加载当前 home map，避免 POC manifest 尚未包含 `town.tmj` 时的全图预加载警告。
+- 浏览器 smoke 已确认真实 `GameApp` 在 wasm 中启动、`home_exterior` 加载成功、真实 `GlRenderer` 画面非空，刷新后可重复进入地图；截图保存在 `build/web-gameplay-phase9/tinyfarm-web-phase10-preload-off.png`。
+- 输入 smoke 已确认短按 `W/A/S/D` 不触发 fatal；由于当前 Browser 控制环境无法稳定模拟“按住”键盘事件，玩家位移仍需后续通过运行时坐标 hook 或专用浏览器自动化补充机器验收。
+- 仍可见音频解码 / 缺失音效资源日志，按计划留到 Phase 12 的 MiniAudio Web Audio 与音频包恢复阶段处理。
+
 ## 第二轮待办清单
 
 - [x] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
@@ -304,9 +314,9 @@ flowchart TD
 - [x] 让 `game` 在 `EMSCRIPTEN` 下编译，禁用 Debug UI / Effekseer / pthreads。
 - [x] 审计 ImGui include 和调用，确认全部在 Debug UI gate 后。
 - [x] 审计 `GL_FRAMEBUFFER_SRGB`、float framebuffer、Bloom、emissive pass 的 WebGL2 gate。
-- [ ] 浏览器启动真实 `GameApp`，通过 direct map boot 进入 `home_exterior`。
-- [ ] 键盘输入和玩家移动在浏览器中可用。
-- [ ] 真实 `GlRenderer` 基础 pass 在 WebGL2 下运行且无 GL error flood。
+- [x] 浏览器启动真实 `GameApp`，通过 direct map boot 进入 `home_exterior`。
+- [ ] 键盘输入和玩家移动在浏览器中可用。当前已完成短按 smoke 且无 fatal，仍缺按住移动的坐标级自动验收。
+- [x] 真实 `GlRenderer` 基础 pass 在 WebGL2 下运行且无 GL error flood。
 - [ ] RmlUi 标题页、hotbar、暂停菜单和存档 UI 基础恢复。
 - [ ] 标题页按钮可点击并进入真实游戏流程。
 - [ ] 音频用户手势解锁接入真实 `AudioPlayer` 路径。
@@ -334,4 +344,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。第二轮 Phase 9 的下一步应从 CMake Web 早退拆除和真实 `engine/game` wasm 编译链接开始。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 10 已完成 direct map boot 与真实渲染 bring-up；下一步进入 Phase 11 的 RmlUi runtime、标题页、hotbar 和暂停菜单恢复，同时补一个坐标级输入 smoke hook 关闭 Phase 10 的移动验收缺口。

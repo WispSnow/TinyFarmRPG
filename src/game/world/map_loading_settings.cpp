@@ -104,6 +104,9 @@ template <typename T>
 } // namespace
 
 MapLoadingSettings MapLoadingSettings::forCurrentPlatform(MapLoadingSettings settings) {
+#ifdef TF_WEB_DIRECT_MAP_BOOT
+    settings.preload_mode = MapPreloadMode::Off;
+#endif
     if (!engine::platform::runtimeThreadingEnabled()) {
         settings.async_preload_enabled = false;
         settings.async_wait_budget_ms = 0;

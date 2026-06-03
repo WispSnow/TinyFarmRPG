@@ -49,6 +49,11 @@ constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
 constexpr char DEFAULT_CURSOR_CONFIG_PATH[] = "assets/data/cursor_config.json";
 constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
 constexpr char FALLBACK_RMLUI_FONT_PATH[] = "assets/fonts/LXGWBright-Regular.ttf";
+#if defined(TF_WEB_DIRECT_MAP_BOOT)
+constexpr bool kEnableRmlUiRuntime = false;
+#else
+constexpr bool kEnableRmlUiRuntime = true;
+#endif
 
 [[nodiscard]] engine::ui::rmlui::RmlUiViewport toRmlUiViewport(const engine::utils::Rect& viewport) {
     return engine::ui::rmlui::RmlUiViewport{
@@ -107,7 +112,11 @@ bool GameApp::init() {
     if (!initSDL())  return false;
     if (!initMouseCursorService()) return false;
     if (!initGLRenderer()) return false;
-    if (!initRmlUi()) return false;
+    if constexpr (kEnableRmlUiRuntime) {
+        if (!initRmlUi()) return false;
+    } else {
+        spdlog::info("GameApp: RmlUi runtime disabled for Web direct map boot.");
+    }
 #ifdef TF_ENABLE_DEBUG_UI
     if (!initDebugUIManager()) return false;
 #endif

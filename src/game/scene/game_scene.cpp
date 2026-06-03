@@ -817,6 +817,17 @@ bool GameScene::registerDebugPanels() {
 #endif
 
 bool GameScene::initUI() {
+    auto* rml_runtime = context_.getRmlUi();
+    if (!rml_runtime) {
+#ifdef TF_WEB_DIRECT_MAP_BOOT
+        spdlog::info("GameScene: skipping RmlUi HUD for Web direct map boot.");
+        return true;
+#else
+        spdlog::error("GameScene: RmlUiRuntime 不可用，无法初始化游戏 UI。");
+        return false;
+#endif
+    }
+
     ui_controller_ = std::make_unique<game::ui::GameSceneUiController>(
         context_,
         registry_,
@@ -835,12 +846,12 @@ bool GameScene::initUI() {
     }
 
     game_overlay_ = std::make_unique<game::ui::GameOverlay>(
-        *context_.getRmlUi(),
+        *rml_runtime,
         instance_id_,
         [this]() { (void)onPauseToggle(); });
 
     input_prompt_overlay_ = std::make_unique<game::ui::GameInputPromptOverlay>(
-        *context_.getRmlUi(),
+        *rml_runtime,
         context_.getInputManager(),
         instance_id_);
 
@@ -872,6 +883,11 @@ void GameScene::applyNewGameOptions(const NewGameOptions& options) {
 }
 
 bool GameScene::openInventoryMenu(const game::ui::MenuTabId initial_tab) {
+    if (!context_.getRmlUi()) {
+        spdlog::info("GameScene: inventory menu disabled because RmlUiRuntime is unavailable.");
+        return false;
+    }
+
     if (context_.getGameState().isPaused()) {
         return false;
     }
@@ -938,6 +954,11 @@ bool GameScene::onHotbarToggle() {
 }
 
 bool GameScene::onPauseToggle() {
+    if (!context_.getRmlUi()) {
+        spdlog::info("GameScene: pause menu disabled because RmlUiRuntime is unavailable.");
+        return false;
+    }
+
     if (context_.getGameState().isPaused()) {
         return false;
     }

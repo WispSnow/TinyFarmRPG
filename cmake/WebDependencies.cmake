@@ -20,6 +20,14 @@ function(tf_web_add_sdl3_port)
     message(STATUS "  ✓ Web SDL3 uses Emscripten port (-sUSE_SDL=3)")
 endfunction()
 
+function(tf_web_configure_thread_stubs)
+    set(THREADS_PREFER_PTHREAD_FLAG OFF CACHE BOOL "Web build does not use pthread link flags" FORCE)
+    set(CMAKE_HAVE_LIBC_PTHREAD TRUE CACHE INTERNAL "Emscripten single-thread libc provides pthread stubs" FORCE)
+    set(CMAKE_THREAD_LIBS_INIT "" CACHE STRING "Web build uses no extra thread libraries" FORCE)
+    set(CMAKE_USE_PTHREADS_INIT TRUE CACHE BOOL "Web build exposes pthread-compatible stubs" FORCE)
+    message(STATUS "  ✓ Web Threads::Threads uses Emscripten single-thread stubs")
+endfunction()
+
 function(tf_web_fetch_dependency DEP_NAME GIT_REPO GIT_TAG LOCAL_PATH)
     set(_local_source_dir "${CMAKE_SOURCE_DIR}/${LOCAL_PATH}")
     if(EXISTS "${_local_source_dir}/CMakeLists.txt")
@@ -89,6 +97,7 @@ function(tf_web_setup_project_dependencies)
     endif()
 
     message(STATUS "Configuring WebAssembly dependencies")
+    tf_web_configure_thread_stubs()
     tf_web_add_sdl3_port()
 
     set(_saved_build_shared_libs "${BUILD_SHARED_LIBS}")

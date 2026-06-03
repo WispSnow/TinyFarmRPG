@@ -34,6 +34,14 @@
 
 namespace {
 
+void logWebDirectMapBootCheckpoint(const char* checkpoint) {
+#ifdef TF_WEB_DIRECT_MAP_BOOT
+    spdlog::info("Web direct map boot checkpoint: {}", checkpoint);
+#else
+    (void)checkpoint;
+#endif
+}
+
 [[nodiscard]] bool ensureGameTime(entt::registry& registry, std::shared_ptr<game::data::GameTime>& game_time) {
     if (!game_time) {
         game_time = game::data::GameTime::loadFromConfig(game::runtime::GameContentManifest::GameTime);
@@ -272,11 +280,13 @@ bool RuntimeServiceFactory::assemble(GameRuntimeAssembler::ServiceBuildParams pa
     auto& resource_manager = params.context.getResourceManager();
     auto& asset_registry = resource_manager.getAssetRegistry();
 
+    logWebDirectMapBootCheckpoint("assemble services begin");
     injectResourceManager(params.context, params.registry);
 
     if (!ContentCatalogLoader::ensureBlueprintManager(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("blueprint catalog ready");
     if (params.services.blueprint_manager) {
         AssetPreloadRegistrar::collectBlueprintAssets(*params.services.blueprint_manager, asset_registry);
     }
@@ -284,66 +294,84 @@ bool RuntimeServiceFactory::assemble(GameRuntimeAssembler::ServiceBuildParams pa
     if (!ContentCatalogLoader::ensureItemCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("item catalog ready");
     if (params.services.item_catalog) {
         AssetPreloadRegistrar::collectItemCatalogAssets(*params.services.item_catalog, asset_registry);
     }
     if (!ContentCatalogLoader::ensureAppearanceCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("appearance catalog ready");
     if (params.services.appearance_catalog) {
         AssetPreloadRegistrar::collectAppearanceAssets(*params.services.appearance_catalog, asset_registry);
     }
     if (!ContentCatalogLoader::ensureVfxCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("vfx catalog ready");
     if (!ContentCatalogLoader::ensureRpgCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("rpg catalog ready");
     if (!ContentCatalogLoader::ensureQuestCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("quest catalog ready");
     if (!ContentCatalogLoader::ensureShopCatalog(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("shop catalog ready");
     injectCatalogPointers(params.registry, params.services);
     initLocalization(params.registry, params.services);
     ContentCatalogLoader::ensureAudioCueCatalog(params.services, asset_registry);
+    logWebDirectMapBootCheckpoint("localization and audio cue catalogs ready");
 
     params.services.collision_resolver = std::make_unique<engine::spatial::CollisionResolver>(
         params.registry,
         params.context.getSpatialIndexManager());
+    logWebDirectMapBootCheckpoint("collision resolver ready");
 
     if (!ensureGameTime(params.registry, params.game_time)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("game time ready");
 
     initUserSettings(params.context, params.registry, params.services);
+    logWebDirectMapBootCheckpoint("user settings step complete");
 
     if (!initWorldState(params.registry, params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("world state ready");
 
     if (!initFactory(params.context, params.registry, params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("entity factory ready");
 
     if (!initMapManager(params.scene, params.context, params.registry, params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("map manager ready");
 
+    logWebDirectMapBootCheckpoint("resource preload begin");
     resource_manager.preloadRegisteredResources();
+    logWebDirectMapBootCheckpoint("resource preload complete");
 
     if (!initSaveService(params.context, params.registry, params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("save service ready");
 
     if (!loadInitialMap(params.services)) {
         return false;
     }
+    logWebDirectMapBootCheckpoint("initial map loaded");
 
     configureCamera(params.context);
     initVfxService(params.context, params.services);
     ScriptRuntimeFactory::tryInitScriptHost(params.registry, params.context, params.services);
+    logWebDirectMapBootCheckpoint("assemble services complete");
     return true;
 }
 
