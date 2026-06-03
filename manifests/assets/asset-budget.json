@@ -1,11 +1,11 @@
 {
   "used_assets": {
     "files": 803,
-    "bytes": 28981510,
+    "bytes": 28982404,
     "by_root": {
       "assets": {
         "files": 731,
-        "bytes": 28794833
+        "bytes": 28793827
       },
       "config": {
         "files": 6,
@@ -17,7 +17,7 @@
       },
       "ui": {
         "files": 51,
-        "bytes": 161997
+        "bytes": 163897
       }
     },
     "by_extension": {
@@ -43,7 +43,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 126514
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,
@@ -63,11 +63,11 @@
       },
       ".rcss": {
         "files": 31,
-        "bytes": 93622
+        "bytes": 94791
       },
       ".rml": {
         "files": 20,
-        "bytes": 68375
+        "bytes": 69106
       },
       ".tmj": {
         "files": 4,
@@ -139,11 +139,11 @@
   },
   "web_poc_assets": {
     "files": 274,
-    "bytes": 21837871,
+    "bytes": 21836865,
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21769437
+        "bytes": 21768431
       },
       "config": {
         "files": 6,
@@ -165,7 +165,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 126514
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,
