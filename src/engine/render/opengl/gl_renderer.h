@@ -85,8 +85,8 @@ private:
     bool point_lights_enabled_{true};
     bool spot_lights_enabled_{true};
     bool directional_lights_enabled_{true};
-    bool bloom_enabled_{true};
-    bool emissive_enabled_{true};
+    bool bloom_enabled_{engine::platform::gl::kEnableHdrPostProcessingByDefault};
+    bool emissive_enabled_{engine::platform::gl::kEnableHdrPostProcessingByDefault};
 #ifdef TF_ENABLE_DEBUG_UI
     bool debug_ui_enabled_{true};
 #endif
@@ -191,7 +191,7 @@ public:
     void setSpotLightsEnabled(bool enabled) { spot_lights_enabled_ = enabled; }
     void setDirectionalLightsEnabled(bool enabled) { directional_lights_enabled_ = enabled; }
     void setBloomEnabled(bool enabled);
-    void setEmissiveEnabled(bool enabled) { emissive_enabled_ = enabled; }
+    void setEmissiveEnabled(bool enabled);
     void setPixelSnapEnabled(bool enabled) { pixel_snap_enabled_ = enabled; }
     [[nodiscard]] bool isPointLightsEnabled() const { return point_lights_enabled_; }
     [[nodiscard]] bool isSpotLightsEnabled() const { return spot_lights_enabled_; }

@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Ready for Phase 9`
+- 计划状态：`Phase 9 implemented; ready for Phase 10 direct map boot`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -286,16 +286,24 @@ flowchart TD
 - 单线程 demo 不依赖 COOP / COEP。
 - 产物体积、加载耗时、禁用项和恢复路线全部记录。
 
+执行记录（2026-06-02）：
+
+- 已新增真实 gameplay Web 构建路径，`TF_BUILD_WEB=ON` 默认复用 `src/main.cpp` SDL3 callback 入口并链接 `engine` / `game`。
+- 已新增 `cmake/WebDependencies.cmake` 与 `cmake/WebRuntime.cmake`，隔离 Web 依赖、link flags、no-exception 策略和 pthread gate。
+- 已确认 Web 构建不链接 native OpenGL、GLAD、SDL3_image；Debug UI、Effekseer、runtime threads 在 Web 默认关闭。
+- 已为 WebGL2 平台 gate 掉默认 framebuffer sRGB、桌面 `glClearDepth`、以及需要 float color framebuffer 的 HDR Bloom / Emissive 默认路径。
+- 已生成 `build/web-gameplay-phase9/TinyFarmRPG-Web.html/.js/.wasm/.data`；尚未做浏览器内 direct map smoke，留到 Phase 10。
+
 ## 第二轮待办清单
 
-- [ ] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
-- [ ] 新增 `cmake/WebRuntime.cmake`，集中 Web link flags、异常策略和 runtime feature gates。
-- [ ] 保留 walking skeleton 为可选 smoke target，默认 Web target 改为真实 gameplay wasm。
-- [ ] 不新增 Web gameplay main，复用 `src/main.cpp` SDL3 callbacks 入口。
-- [ ] 让 `engine` 在 `EMSCRIPTEN` 下编译，不依赖 native OpenGL / GLAD / SDL3_image。
-- [ ] 让 `game` 在 `EMSCRIPTEN` 下编译，禁用 Debug UI / Effekseer / pthreads。
-- [ ] 审计 ImGui include 和调用，确认全部在 Debug UI gate 后。
-- [ ] 审计 `GL_FRAMEBUFFER_SRGB`、float framebuffer、Bloom、emissive pass 的 WebGL2 gate。
+- [x] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
+- [x] 新增 `cmake/WebRuntime.cmake`，集中 Web link flags、异常策略和 runtime feature gates。
+- [x] 保留 walking skeleton 为可选 smoke target，默认 Web target 改为真实 gameplay wasm。
+- [x] 不新增 Web gameplay main，复用 `src/main.cpp` SDL3 callbacks 入口。
+- [x] 让 `engine` 在 `EMSCRIPTEN` 下编译，不依赖 native OpenGL / GLAD / SDL3_image。
+- [x] 让 `game` 在 `EMSCRIPTEN` 下编译，禁用 Debug UI / Effekseer / pthreads。
+- [x] 审计 ImGui include 和调用，确认全部在 Debug UI gate 后。
+- [x] 审计 `GL_FRAMEBUFFER_SRGB`、float framebuffer、Bloom、emissive pass 的 WebGL2 gate。
 - [ ] 浏览器启动真实 `GameApp`，通过 direct map boot 进入 `home_exterior`。
 - [ ] 键盘输入和玩家移动在浏览器中可用。
 - [ ] 真实 `GlRenderer` 基础 pass 在 WebGL2 下运行且无 GL error flood。

@@ -8,7 +8,8 @@ project(TinyFarmRPG VERSION 0.1.0 LANGUAGES C CXX)
 # 基础配置
 # ============================================
 
-option(TF_BUILD_WEB "构建 WebAssembly/WebGL2 walking skeleton" OFF)
+option(TF_BUILD_WEB "构建 WebAssembly/WebGL2 gameplay target" OFF)
+option(TF_BUILD_WEB_SKELETON "构建第一轮 Web walking skeleton smoke target" OFF)
 option(TF_WEB_ENABLE_PTHREADS "构建 Web pthreads 变体（需要 SharedArrayBuffer/COOP/COEP 发布环境）" OFF)
 
 if(TF_BUILD_WEB AND NOT EMSCRIPTEN)
@@ -98,33 +99,39 @@ endif()
 # 编译器设置（C++标准、编译选项等）
 include(cmake/CompilerSettings.cmake)
 
-if(TF_BUILD_WEB)
+if(TF_BUILD_WEB AND TF_BUILD_WEB_SKELETON)
     include(cmake/WebPreload.cmake)
     add_subdirectory(src/web)
-    message(STATUS "TinyFarmRPG Web target configured: ${TARGET}")
+    message(STATUS "TinyFarmRPG Web skeleton target configured: ${TARGET}")
     return()
 endif()
 
-# 运行时路径配置（RPATH）
-include(cmake/RuntimePath.cmake)
+if(TF_BUILD_WEB)
+    include(cmake/WebRuntime.cmake)
+    include(cmake/WebDependencies.cmake)
+    include(cmake/RmlUiDependencies.cmake)
+else()
+    # 运行时路径配置（RPATH）
+    include(cmake/RuntimePath.cmake)
 
-# 依赖管理
-include(cmake/Dependencies.cmake)
+    # 依赖管理
+    include(cmake/Dependencies.cmake)
 
-# 脚本依赖管理（Lua / Sol2）
-include(cmake/ScriptingDependencies.cmake)
+    # 脚本依赖管理（Lua / Sol2）
+    include(cmake/ScriptingDependencies.cmake)
 
-# Effekseer 依赖管理（可选）
-include(cmake/EffekseerDependencies.cmake)
+    # Effekseer 依赖管理（可选）
+    include(cmake/EffekseerDependencies.cmake)
 
-# RmlUi 依赖管理（可选）
-include(cmake/RmlUiDependencies.cmake)
+    # RmlUi 依赖管理（可选）
+    include(cmake/RmlUiDependencies.cmake)
 
-# ImGui配置
-include(cmake/ImGui.cmake)
+    # ImGui配置
+    include(cmake/ImGui.cmake)
 
-# OpenGL配置
-include(cmake/OpenGL.cmake)
+    # OpenGL配置
+    include(cmake/OpenGL.cmake)
+endif()
 
 # 构建辅助函数
 include(cmake/BuildHelpers.cmake)
@@ -139,11 +146,15 @@ include(CTest)
 # 设置项目依赖
 # ============================================
 
-# 调用依赖配置函数（定义在Dependencies.cmake中）
-setup_project_dependencies()
-setup_scripting_dependencies()
-if(ENABLE_EFFEKSEER)
-    setup_effekseer_dependencies()
+if(TF_BUILD_WEB)
+    tf_web_setup_project_dependencies()
+else()
+    # 调用依赖配置函数（定义在Dependencies.cmake中）
+    setup_project_dependencies()
+    setup_scripting_dependencies()
+    if(ENABLE_EFFEKSEER)
+        setup_effekseer_dependencies()
+    endif()
 endif()
 setup_rmlui_dependencies()
 
@@ -168,16 +179,22 @@ endif()
 target_link_libraries(engine
     PUBLIC
         SDL3::SDL3
-        SDL3_image::SDL3_image
         glm::glm
         nlohmann_json::nlohmann_json
         spdlog::spdlog
         EnTT::EnTT
-        OpenGL::GL
-        glad
         Freetype::Freetype
         HarfBuzz::HarfBuzz
 )
+
+if(NOT TF_BUILD_WEB)
+    target_link_libraries(engine
+        PUBLIC
+            SDL3_image::SDL3_image
+            OpenGL::GL
+            glad
+    )
+endif()
 
 target_include_directories(engine
     PUBLIC
@@ -249,20 +266,26 @@ setup_compiler_options(engine)
 setup_compiler_options(game)
 setup_compiler_options(${TARGET})
 
-# 配置资源文件复制（定义在BuildHelpers.cmake中）
-setup_asset_copy(${TARGET})
+if(TF_BUILD_WEB)
+    tf_apply_web_compile_options(engine)
+    tf_apply_web_compile_options(game)
+    tf_configure_web_executable(${TARGET})
+else()
+    # 配置资源文件复制（定义在BuildHelpers.cmake中）
+    setup_asset_copy(${TARGET})
 
-# 配置 UI 资源复制（定义在BuildHelpers.cmake中）
-setup_ui_copy(${TARGET})
+    # 配置 UI 资源复制（定义在BuildHelpers.cmake中）
+    setup_ui_copy(${TARGET})
 
-# 配置脚本文件复制（定义在BuildHelpers.cmake中）
-setup_script_copy(${TARGET})
+    # 配置脚本文件复制（定义在BuildHelpers.cmake中）
+    setup_script_copy(${TARGET})
 
-# 配置配置文件复制（定义在BuildHelpers.cmake中）
-setup_config_copy(${TARGET})
+    # 配置配置文件复制（定义在BuildHelpers.cmake中）
+    setup_config_copy(${TARGET})
 
-# 配置Windows DLL复制（定义在BuildHelpers.cmake中）
-setup_windows_dll_copy(${TARGET})
+    # 配置Windows DLL复制（定义在BuildHelpers.cmake中）
+    setup_windows_dll_copy(${TARGET})
+endif()
 
 # ============================================
 # 工具配置

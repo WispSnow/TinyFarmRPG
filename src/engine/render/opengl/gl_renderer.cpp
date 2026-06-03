@@ -82,7 +82,7 @@ bool GLRenderer::init(SDL_Window* window,
     }
     shader_library_ = std::make_unique<ShaderLibrary>();
 
-    // 初始化各个通道：场景、光照、自发光、泛光、世界/叠加特效、合成
+    // 初始化各个通道：场景、光照、可选 HDR 后处理、世界/叠加特效、合成
     if (!initScenePass()) {
         spdlog::error("创建 ScenePass 失败。");
         return false;
@@ -91,13 +91,19 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("创建 LightingPass 失败。");
         return false;
     }
-    if (!initEmissivePass()) {
-        spdlog::error("创建 EmissivePass 失败。");
-        return false;
-    }
-    if (!initBloomPass()) {
-        spdlog::error("创建 BloomPass 失败。");
-        return false;
+    if constexpr (engine::platform::gl::kEnableHdrPostProcessingByDefault) {
+        if (!initEmissivePass()) {
+            spdlog::error("创建 EmissivePass 失败。");
+            return false;
+        }
+        if (!initBloomPass()) {
+            spdlog::error("创建 BloomPass 失败。");
+            return false;
+        }
+    } else {
+        emissive_enabled_ = false;
+        bloom_enabled_ = false;
+        spdlog::info("HDR post-processing disabled for this GL platform.");
     }
     if (!initWorldVfxPass()) {
         spdlog::error("创建 WorldVfxPass 失败。");
@@ -386,7 +392,7 @@ int GLRenderer::getSwapInterval() const {
 }
 
 void GLRenderer::clear() {
-    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !world_vfx_pass_) {
+    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !world_vfx_pass_) {
         return;
     }
     // 清空物理窗口（包括信箱区域）以及用于延迟管线的离屏渲染目标。
@@ -399,21 +405,23 @@ void GLRenderer::clear() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, static_cast<int>(std::round(window_size.x)), static_cast<int>(std::round(window_size.y)));
     glClearColor(clear_color_.r, clear_color_.g, clear_color_.b, clear_color_.a);
-    glClearDepth(1.0);
+    engine::platform::gl::clearDepth(1.0f);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // 清空场景FBO中的颜色附件
     scene_pass_->clear(clear_color_);
-    // 同时清空光照/发光缓冲
+    // 同时清空光照/可选发光缓冲
     lighting_pass_->clear();
-    emissive_pass_->clear();
+    if (emissive_pass_) {
+        emissive_pass_->clear();
+    }
     world_vfx_pass_->clear();
     logGlErrors("GLRenderer::clear");
 }
 
 void GLRenderer::present() {
-    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !emissive_pass_ || !bloom_pass_ || !composite_pass_ ||
-        !world_vfx_pass_ || !vfx_pass_ || !render_context_) {
+    if (!viewport_manager_ || !scene_pass_ || !lighting_pass_ || !composite_pass_ || !world_vfx_pass_ || !vfx_pass_ ||
+        !render_context_) {
         return;
     }
     if (viewport_manager_->dirty()) [[unlikely]] {
@@ -439,7 +447,7 @@ void GLRenderer::present() {
     // - RmlUi：绘制到默认帧缓冲的 letterbox viewport（@Window Pixels；文档坐标按 logical 设计映射到 viewport）
     // - ImGui：最后覆盖绘制到默认帧缓冲的整窗区域（@Window Pixels）
 
-    // 1) 刷新场景/光照/发光到各自的离屏 FBO（@Logical）
+    // 1) 刷新场景/光照/可选发光到各自的离屏 FBO（@Logical）
     scene_pass_->flush(logical_vp);
     pass_stats_[static_cast<size_t>(PassType::Scene)] = {
         scene_pass_->getLastDrawCallCount(),
@@ -457,17 +465,21 @@ void GLRenderer::present() {
         lighting_pass_->getLastVertexCount(),
         0u
     };
-    // 3) 刷新发光到发光 FBO（@Logical）
-    emissive_pass_->flush(logical_vp);
-    pass_stats_[static_cast<size_t>(PassType::Emissive)] = {
-        emissive_pass_->getLastDrawCallCount(),
-        emissive_pass_->getLastSpriteCount(),
-        emissive_pass_->getLastVertexCount(),
-        emissive_pass_->getLastIndexCount()
-    };
-    // 4) 执行泛光（@Logical）
-    if (bloom_enabled_) {
-        const bool has_emissive = emissive_pass_->getLastSpriteCount() > 0;
+    uint32_t emissive_sprite_count = 0;
+    // 3) 刷新可选发光到发光 FBO（@Logical）
+    if (emissive_enabled_ && emissive_pass_) {
+        emissive_pass_->flush(logical_vp);
+        emissive_sprite_count = emissive_pass_->getLastSpriteCount();
+        pass_stats_[static_cast<size_t>(PassType::Emissive)] = {
+            emissive_pass_->getLastDrawCallCount(),
+            emissive_sprite_count,
+            emissive_pass_->getLastVertexCount(),
+            emissive_pass_->getLastIndexCount()
+        };
+    }
+    // 4) 执行可选泛光（@Logical）
+    if (bloom_enabled_ && bloom_pass_ && emissive_pass_) {
+        const bool has_emissive = emissive_sprite_count > 0;
         if (has_emissive) {
             if (!bloom_pass_->process(emissive_color_tex_)) {
                 bloom_pass_->clear();
@@ -626,13 +638,17 @@ void GLRenderer::clean() {
 }
 
 void GLRenderer::setBloomEnabled(bool enabled) {
-    bloom_enabled_ = enabled;
+    bloom_enabled_ = enabled && bloom_pass_ != nullptr;
     if (composite_pass_) {
-        composite_pass_->setBloomEnabled(enabled);
+        composite_pass_->setBloomEnabled(bloom_enabled_);
     }
     if (!bloom_enabled_ && bloom_pass_) {
         bloom_pass_->clear();
     }
+}
+
+void GLRenderer::setEmissiveEnabled(bool enabled) {
+    emissive_enabled_ = enabled && emissive_pass_ != nullptr;
 }
 
 void GLRenderer::setAmbient(const glm::vec3& ambient) {
@@ -871,9 +887,14 @@ bool GLRenderer::initCompositePass() {
     // 设置各个输入纹理和参数
     composite_pass_->setSceneTexture(scene_color_tex_);
     composite_pass_->setLightTexture(light_color_tex_);
-    composite_pass_->setEmissiveTexture(emissive_color_tex_);
-    composite_pass_->setBloomTexture(bloom_tex_);
+    if (emissive_color_tex_ != 0) {
+        composite_pass_->setEmissiveTexture(emissive_color_tex_);
+    }
+    if (bloom_tex_ != 0) {
+        composite_pass_->setBloomTexture(bloom_tex_);
+    }
     composite_pass_->setWorldVfxTexture(world_vfx_tex_);
+    composite_pass_->setBloomEnabled(bloom_enabled_ && bloom_pass_ != nullptr);
     return true;
 }
 

@@ -29,6 +29,7 @@ set(TEST_SOURCES
     engine/core/source_no_exceptions_guard_test.cpp
     engine/core/tools_cmake_source_test.cpp
     engine/web_shell_ui_source_test.cpp
+    engine/web_gameplay_target_source_test.cpp
     engine/audio/audio_player_test.cpp
     engine/audio/audio_player_no_exceptions_test.cpp
     engine/input/input_manager_test.cpp

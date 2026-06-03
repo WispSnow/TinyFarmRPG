@@ -170,8 +170,13 @@ target_include_directories(engine PRIVATE
 
 target_compile_definitions(engine PRIVATE
     RMLUI_SDL_VERSION_MAJOR=3
-    RMLUI_GL3_CUSTOM_LOADER=<glad/glad.h>
 )
+
+if(NOT EMSCRIPTEN)
+    target_compile_definitions(engine PRIVATE
+        RMLUI_GL3_CUSTOM_LOADER=<glad/glad.h>
+    )
+endif()
 
 # ============================================
 # Game 源文件
