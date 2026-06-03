@@ -294,6 +294,32 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(release_validator_source.find("REQUIRED_AUDIO_CORE_PACKAGE_PATHS"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string release_server = readProjectFile("tools/web_release/serve_web_release.py");
+
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(release_server.empty());
+
+    EXPECT_NE(web_smoke.find("configure_web_build"), std::string::npos);
+    EXPECT_NE(web_smoke.find("validate_web_release.py"), std::string::npos);
+    EXPECT_NE(web_smoke.find("remote-debugging-port"), std::string::npos);
+    EXPECT_NE(web_smoke.find("Runtime.consoleAPICalled"), std::string::npos);
+    EXPECT_NE(web_smoke.find("Network.responseReceived"), std::string::npos);
+    EXPECT_NE(web_smoke.find("click_logical"), std::string::npos);
+    EXPECT_NE(web_smoke.find("SAVE_PATH = \"/persistent/saves/slot0.json\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("Player did not move far enough"), std::string::npos);
+    EXPECT_NE(web_smoke.find("SaveService: 已载入存档 'home_exterior'"), std::string::npos);
+    EXPECT_NE(web_smoke.find("home-map.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("Single-thread preview must not require COOP/COEP headers"), std::string::npos);
+
+    EXPECT_NE(release_server.find("\".wasm\": \"application/wasm\""), std::string::npos);
+    EXPECT_NE(release_server.find("\".tfpack\": \"application/octet-stream\""), std::string::npos);
+    EXPECT_NE(release_server.find("Cache-Control"), std::string::npos);
+    EXPECT_NE(release_server.find("Cross-Origin-Opener-Policy"), std::string::npos);
+    EXPECT_NE(release_server.find("Cross-Origin-Embedder-Policy"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
     const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
 

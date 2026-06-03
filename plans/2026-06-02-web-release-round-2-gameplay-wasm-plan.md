@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Phase 13 runtime package mechanism smoke passed under Codex CLI; Phase 14 pending`
+- 计划状态：`Phase 14 Chromium release-candidate smoke passed; Safari manual smoke blocked pending Safari remote automation/manual run`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -348,6 +348,20 @@ flowchart TD
 - 当前仍保留完整 `.data` 预载包；Phase 13 先验证运行时加载机制和分包 gate，不把 boot-only `.data` cutover 混入同一风险面。后续发布收敛应增加 boot-only 构建选项，并把 `shared-ui` / `audio-core` 的加载时序也接入真实 gate。
 - 同步 XHR 会阻塞主线程，适合作为当前同步引擎路径下的 Phase 13 bridge；若发布版要展示 loading UI 或加载大包，应改为异步 package loader + scene transition/loading screen。
 
+## Phase 14 执行记录
+
+- 已新增固定 Chromium Web smoke 入口 `tools/web_release/web_smoke.py`，串联 Web 构建、release gate、本地 preview server、header 检查和浏览器 gameplay smoke。
+- `tools/web_release/serve_web_release.py` 已补齐 `.wasm` / `.data` / `.tfpack` MIME，并为 preview 响应加 `Cache-Control: no-cache`；当前单线程 build 不注入 COOP / COEP。
+- `WebGameplayTargetSourceTest` 已增加 Phase 14 pipeline source guard，覆盖固定 smoke 命令关键路径、CDP 事件、保存路径、移动断言、读档日志、`home-map.tfpack` 与 COOP / COEP gate。
+- 固定命令已通过：`python3 tools/web_release/web_smoke.py --build-dir build/web-gameplay-phase11`。该命令执行 `cmake --build`、`validate_web_release.py`、本地 server、Chromium CDP smoke。
+- Chromium smoke 环境：`Google Chrome 147.0.7727.102`。
+- Chromium smoke 覆盖标题页、`Start`、appearance `Confirm`、`home_exterior`、键盘移动、暂停菜单、slot0 保存、移动后覆盖保存、刷新、标题页 `Load`、slot0 读档并回到地图。
+- 坐标级移动验收通过：`{"x": 311.0, "y": 307.8624267578125}` -> `{"x": 311.0, "y": 167.8624725341797}`，delta 为 `{"x": 0.0, "y": -139.9999542236328}`。
+- runtime package 网络验收通过：`web-packages/home-map.tfpack` 返回 200，MIME 为 `application/octet-stream`，日志显示 `WebAssetPackage: package 'home-map' loaded (81 files).`
+- 当前耗时记录：title interactive `715 ms`，new game to map `1981 ms`，reload load to map `12935 ms`。
+- Safari 已记录版本 `26.5` / `safaridriver` `Included with Safari 26.5 (21624.2.5.11.4)`；自动化 session 创建被系统设置阻塞，需要在 Safari Settings 的 Developer 区域启用 `Allow remote automation`，或执行人工手工 smoke。
+- Phase 14 报告已保存到 `plans/reports/2026-06-03-web-release-phase-14-report.md`，Chromium JSON 报告位于 `build/web-gameplay-phase11/web-smoke/chromium-smoke.json`。
+
 ## 第二轮待办清单
 
 - [x] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
@@ -359,7 +373,7 @@ flowchart TD
 - [x] 审计 ImGui include 和调用，确认全部在 Debug UI gate 后。
 - [x] 审计 `GL_FRAMEBUFFER_SRGB`、float framebuffer、Bloom、emissive pass 的 WebGL2 gate。
 - [x] 浏览器启动真实 `GameApp`，通过 direct map boot 进入 `home_exterior`。
-- [ ] 键盘输入和玩家移动在浏览器中可用。当前已完成短按 smoke 且无 fatal，仍缺按住移动的坐标级自动验收。
+- [x] 键盘输入和玩家移动在浏览器中可用，Phase 14 Chromium smoke 已完成坐标级移动验收。
 - [x] 真实 `GlRenderer` 基础 pass 在 WebGL2 下运行且无 GL error flood。
 - [x] RmlUi runtime、标题页、hotbar、暂停菜单和存档 UI 资源完成 Web 编译、链接与 preload gate。
 - [x] 标题页按钮可点击并进入真实游戏流程。
@@ -372,8 +386,8 @@ flowchart TD
 - [x] 拆分 boot / shared-ui / home-map / audio-core 资源包。
 - [x] release gate 覆盖真实 gameplay target 和分包 manifest。
 - [x] 浏览器 smoke 验证 `home-map` 运行时加载并进入 `home_exterior`。
-- [ ] Chromium 自动 smoke 覆盖标题页、地图、移动、菜单、保存、刷新加载。
-- [ ] Safari 手工 smoke 记录并形成发布候选报告。
+- [x] Chromium 自动 smoke 覆盖标题页、地图、移动、菜单、保存、刷新加载。
+- [x] Safari 版本与自动化阻塞已记录并形成发布候选报告；手工浏览器 smoke 待启用 Safari remote automation 或人工会话后补验。
 
 ## 风险与应对
 
@@ -391,4 +405,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 13 已完成运行时资源分包机制、package manifest / artifact gate 和 `home-map` 浏览器加载 smoke。下一步进入 Phase 14，应优先把 Chromium smoke 串成固定命令，并补齐 Safari 手工 smoke、boot-only 构建选项、移动坐标级验收和发布候选报告。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 14 已完成 Chromium 发布候选固定命令、移动坐标级验收和发布候选报告；Safari 手工 smoke 需要在启用 Safari remote automation 或人工浏览器会话后补验。下一步应进入发布收敛：boot-only `.data` cutover、`shared-ui` / `audio-core` 运行时 package gate、Safari 兼容补验和 CI 接入。

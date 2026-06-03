@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import http.server
+import mimetypes
 import os
 import socketserver
 from pathlib import Path
@@ -34,10 +35,18 @@ def cmake_bool(value: str | None) -> bool:
 
 def make_handler(directory: Path, cross_origin_isolated: bool) -> type[http.server.SimpleHTTPRequestHandler]:
     class ReleasePreviewHandler(http.server.SimpleHTTPRequestHandler):
+        extensions_map = {
+            **mimetypes.types_map,
+            ".data": "application/octet-stream",
+            ".tfpack": "application/octet-stream",
+            ".wasm": "application/wasm",
+        }
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=os.fspath(directory), **kwargs)
 
         def end_headers(self) -> None:
+            self.send_header("Cache-Control", "no-cache")
             if cross_origin_isolated:
                 self.send_header("Cross-Origin-Opener-Policy", "same-origin")
                 self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
