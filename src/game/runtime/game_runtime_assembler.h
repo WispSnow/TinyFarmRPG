@@ -28,6 +28,7 @@ public:
         entt::registry& registry;
         std::shared_ptr<game::data::GameTime>& game_time;
         GameRuntimeServices& services;
+        bool load_initial_map{true};
     };
 
     struct SystemBuildParams {

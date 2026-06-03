@@ -17,6 +17,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/platform/web_asset_package.h"
 
 #include <spdlog/spdlog.h>
 
@@ -28,6 +29,14 @@ namespace {
 constexpr int MUSIC_FADE_IN_MS = 200;
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/title.rml";
 constexpr std::string_view MODEL_NAME = "title_scene";
+
+[[nodiscard]] bool ensureWebSharedUiPackage() {
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+    return engine::platform::web::loadAssetPackage("shared-ui", "web-packages/shared-ui.tfpack");
+#else
+    return true;
+#endif
+}
 
 } // namespace
 
@@ -188,6 +197,12 @@ void TitleScene::syncErrorText(bool mark_dirty) {
 }
 
 void TitleScene::onStartClicked() {
+    spdlog::info("TitleScene: Start clicked.");
+    if (!ensureWebSharedUiPackage()) {
+        spdlog::error("TitleScene: Web shared-ui package 加载失败，无法进入外观创建。");
+        return;
+    }
+
     auto* context = &context_;
     auto game_time = title_game_time_;
     auto on_confirm = [context, game_time](game::scene::NewGameCharacterSetup setup) mutable
@@ -210,7 +225,14 @@ void TitleScene::onStartClicked() {
 }
 
 void TitleScene::onLoadClicked() {
+    spdlog::info("TitleScene: Load clicked.");
+    if (!ensureWebSharedUiPackage()) {
+        spdlog::error("TitleScene: Web shared-ui package 加载失败，无法打开存档选择。");
+        return;
+    }
+
     auto on_select = [this](int slot) {
+        spdlog::info("TitleScene: Loading save slot {}.", slot);
         auto next = std::make_unique<game::scene::GameScene>(
             "GameScene",
             context_,
@@ -229,6 +251,11 @@ void TitleScene::onLoadClicked() {
 }
 
 void TitleScene::onMenuClicked() {
+    if (!ensureWebSharedUiPackage()) {
+        spdlog::error("TitleScene: Web shared-ui package 加载失败，无法打开菜单。");
+        return;
+    }
+
     auto menu = std::make_unique<game::scene::PauseMenuScene>(
         "PauseMenu",
         context_,

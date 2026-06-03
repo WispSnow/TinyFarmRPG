@@ -23,10 +23,18 @@ AUDIO_CORE_PATHS = {
 }
 
 TITLE_BOOT_PATHS = {
+    "assets/farm-rpg/UI/button.png",
+    "assets/i18n/en-US.json",
+    "assets/i18n/languages.json",
+    "assets/i18n/zh-Hans.json",
     "assets/textures/UI/farm-rpg-bg.png",
     "assets/textures/UI/farm-rpg-logo.png",
+    "ui/rmlui/theme/base.rcss",
+    "ui/rmlui/theme/nav.rcss",
+    "ui/rmlui/theme/reset.rcss",
     "ui/rmlui/scenes/title.rcss",
     "ui/rmlui/scenes/title.rml",
+    "ui/rmlui/scenes/title_widgets.rcss",
 }
 
 BOOT_PATHS = {
@@ -242,7 +250,7 @@ def write_tfpack(package_id: str, entries: list[PreloadEntry], output_path: Path
 
 def build_index(
     packages: dict[str, list[PreloadEntry]],
-    artifacts: dict[str, bytes],
+    artifacts: dict[str, bytes | None],
     output_dir: Path,
     boot_preload_output: Path,
     manifest_path: Path,
@@ -261,12 +269,13 @@ def build_index(
             continue
 
         artifact_path = output_dir / f"{package_id}.tfpack"
+        artifact_bytes = artifacts.get(package_id)
         package_index[package_id] = {
             "delivery": "tfpack",
             "url": artifact_path.relative_to(output_parent).as_posix(),
             "artifact": artifact_path.relative_to(output_parent).as_posix(),
             "paths": entry_paths,
-            **package_stats(entries, artifacts[package_id]),
+            **package_stats(entries, artifact_bytes),
         }
 
     return {
@@ -285,10 +294,15 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
 def main() -> int:
     root = repo_root()
     parser = argparse.ArgumentParser(description="Generate TinyFarmRPG Web runtime asset packages.")
-    parser.add_argument("--manifest", type=Path, default=root / "manifests" / "assets" / "web-poc-preload.args")
+    parser.add_argument("--manifest", type=Path, default=root / "manifests" / "assets" / "web-release-full.args")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--boot-preload-output", type=Path, required=True)
     parser.add_argument("--json-output", type=Path, required=True)
+    parser.add_argument(
+        "--skip-artifacts",
+        action="store_true",
+        help="Only write the package plan and boot preload manifest; do not emit .tfpack artifacts.",
+    )
     args = parser.parse_args()
 
     manifest_path = args.manifest.resolve()
@@ -313,11 +327,15 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    artifacts: dict[str, bytes] = {}
+    artifacts: dict[str, bytes | None] = {}
     for package_id, package_entries in packages.items():
         if package_id == "boot":
             continue
-        artifacts[package_id] = write_tfpack(package_id, package_entries, output_dir / f"{package_id}.tfpack")
+        artifacts[package_id] = (
+            None
+            if args.skip_artifacts
+            else write_tfpack(package_id, package_entries, output_dir / f"{package_id}.tfpack")
+        )
 
     index = build_index(packages, artifacts, output_dir, boot_preload_output, manifest_path)
     write_json(json_output, index)

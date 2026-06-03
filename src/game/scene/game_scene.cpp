@@ -90,6 +90,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 using namespace entt::literals;
@@ -479,12 +480,14 @@ bool GameScene::init() {
         return false;
     }
 
+    const bool load_initial_map = !std::holds_alternative<LoadGameOptions>(launch_);
     if (!game::runtime::GameRuntimeAssembler::assembleServices({
             *this,
             context_,
             registry_,
             game_time_,
-            *services_})) {
+            *services_,
+            load_initial_map})) {
         return false;
     }
 
@@ -520,6 +523,7 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&GameScene::onRecruitOfferRequested>(this);
 
     if (const auto* load_options = std::get_if<LoadGameOptions>(&launch_)) {
+        spdlog::info("GameScene: loading save slot {}.", load_options->slot);
         std::string load_error;
         if (!services_->save_service->loadFromFile(game::save::SaveService::slotPath(load_options->slot), load_error)) {
             spdlog::error("GameScene: 读档失败 (slot {}): {}", load_options->slot, load_error);

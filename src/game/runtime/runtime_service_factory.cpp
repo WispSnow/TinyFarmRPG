@@ -363,10 +363,14 @@ bool RuntimeServiceFactory::assemble(GameRuntimeAssembler::ServiceBuildParams pa
     }
     logWebDirectMapBootCheckpoint("save service ready");
 
-    if (!loadInitialMap(params.services)) {
-        return false;
+    if (params.load_initial_map) {
+        if (!loadInitialMap(params.services)) {
+            return false;
+        }
+        logWebDirectMapBootCheckpoint("initial map loaded");
+    } else {
+        spdlog::info("RuntimeServiceFactory: initial map load skipped.");
     }
-    logWebDirectMapBootCheckpoint("initial map loaded");
 
     configureCamera(params.context);
     initVfxService(params.context, params.services);

@@ -120,7 +120,9 @@ void appendPersistentSyncError(game::defs::AsyncSaveCompletedEvent& event) {
 void onDirectSavePersistentSync(bool success, void*) {
     if (!success) {
         spdlog::warn("SaveService: Web persistent storage sync failed after direct save.");
+        return;
     }
+    spdlog::info("SaveService: Web persistent storage sync completed after direct save.");
 }
 
 void onAsyncSavePersistentSync(bool success, void* user_data) {
@@ -131,6 +133,8 @@ void onAsyncSavePersistentSync(bool success, void* user_data) {
 
     if (!success) {
         appendPersistentSyncError(completion->event);
+    } else {
+        spdlog::info("SaveService: Web persistent storage sync completed after async save.");
     }
 
     if (completion->save_in_progress) {

@@ -266,6 +266,7 @@ ui/rmlui/scenes/save_slot_select.rcss
 ui/rmlui/scenes/save_slot_select.rml
 ui/rmlui/scenes/title.rcss
 ui/rmlui/scenes/title.rml
+ui/rmlui/scenes/title_widgets.rcss
 ui/rmlui/theme/animation.rcss
 ui/rmlui/theme/base.rcss
 ui/rmlui/theme/battle_enemy_icons.rcss

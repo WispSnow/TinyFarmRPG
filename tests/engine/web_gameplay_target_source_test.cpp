@@ -146,7 +146,7 @@ TEST(WebGameplayTargetSourceTest, TitleBootRestoresRmlUiAndPhase11UiResources) {
     const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
     const std::string asset_audit_source = readProjectFile("tools/asset_audit/audit_assets.py");
     const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
-    const std::string preload_manifest = readProjectFile("manifests/assets/web-poc-preload.args");
+    const std::string preload_manifest = readProjectFile("manifests/assets/web-release-full.args");
 
     ASSERT_FALSE(root_cmake.empty());
     ASSERT_FALSE(game_entry_source.empty());
@@ -215,6 +215,7 @@ TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentSt
     EXPECT_NE(save_service_source.find("#include \"engine/platform/web_persistent_storage.h\""), std::string::npos);
     EXPECT_NE(save_service_source.find("syncPersistentStorageToBrowser(&onAsyncSavePersistentSync"), std::string::npos);
     EXPECT_NE(save_service_source.find("appendPersistentSyncError"), std::string::npos);
+    EXPECT_NE(save_service_source.find("Web persistent storage sync completed after async save"), std::string::npos);
     EXPECT_NE(save_service_source.find("completion->save_in_progress->store(false"), std::string::npos);
     EXPECT_NE(save_service_source.find("enqueueAsyncSaveCompleted(*completion->main_thread_queue"), std::string::npos);
     EXPECT_NE(save_service_source.find("syncPersistentStorageToBrowser(&onDirectSavePersistentSync"), std::string::npos);
@@ -225,7 +226,7 @@ TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentSt
 
 TEST(WebGameplayTargetSourceTest, Phase12PreloadsMinimalAudioLoopResources) {
     const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
-    const std::string preload_manifest = readProjectFile("manifests/assets/web-poc-preload.args");
+    const std::string preload_manifest = readProjectFile("manifests/assets/web-release-full.args");
 
     ASSERT_FALSE(release_validator_source.empty());
     ASSERT_FALSE(preload_manifest.empty());
@@ -294,6 +295,76 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(release_validator_source.find("REQUIRED_AUDIO_CORE_PACKAGE_PATHS"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase15BootOnlyPreloadCutoverIsPresent) {
+    const std::string root_cmake = readProjectFile("CMakeLists.txt");
+    const std::string runtime_cmake = readProjectFile("cmake/WebRuntime.cmake");
+    const std::string package_tool = readProjectFile("tools/web_release/package_web_assets.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+    const std::string release_manifest = readProjectFile("manifests/assets/web-release-full.args");
+    const std::string boot_manifest = readProjectFile("manifests/assets/web-release-boot.args");
+    const std::string title_scene_source = readProjectFile("src/game/scene/title_scene.cpp");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string runtime_assembler_header = readProjectFile("src/game/runtime/game_runtime_assembler.h");
+    const std::string runtime_service_factory = readProjectFile("src/game/runtime/runtime_service_factory.cpp");
+
+    ASSERT_FALSE(root_cmake.empty());
+    ASSERT_FALSE(runtime_cmake.empty());
+    ASSERT_FALSE(package_tool.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+    ASSERT_FALSE(release_manifest.empty());
+    ASSERT_FALSE(boot_manifest.empty());
+    ASSERT_FALSE(title_scene_source.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(runtime_assembler_header.empty());
+    ASSERT_FALSE(runtime_service_factory.empty());
+
+    EXPECT_NE(root_cmake.find("option(TF_WEB_BOOT_ONLY_PRELOAD"), std::string::npos);
+    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_WEB_BOOT_ONLY_PRELOAD ON)"), std::string::npos);
+    EXPECT_NE(root_cmake.find("TF_WEB_BOOT_ONLY_PRELOAD=ON requires TF_WEB_ENABLE_RUNTIME_PACKAGES=ON"),
+              std::string::npos);
+
+    EXPECT_NE(runtime_cmake.find("TF_WEB_FULL_PRELOAD_ARGS"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("manifests/assets/web-release-full.args"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("TF_WEB_BOOT_PRELOAD_ARGS"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("manifests/assets/web-release-boot.args"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("TF_WEB_GENERATED_BOOT_PRELOAD_ARGS"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("TF_WEB_PRELOAD_ARGS"), std::string::npos);
+    EXPECT_NE(runtime_cmake.find("tf_target_web_preload(${TARGET_NAME} \"${TF_WEB_PRELOAD_ARGS}\")"),
+              std::string::npos);
+
+    EXPECT_NE(package_tool.find("\"--skip-artifacts\""), std::string::npos);
+    EXPECT_NE(package_tool.find("web-release-full.args"), std::string::npos);
+
+    EXPECT_NE(release_validator_source.find("REQUIRED_BOOT_PRELOAD_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("FORBIDDEN_BOOT_PRELOAD_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("BOOT_DATA_BUDGET_BYTES"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("validate_full_manifest_budget"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("validate_boot_preload_budget"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("TF_WEB_FULL_PRELOAD_ARGS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("TF_WEB_BOOT_ONLY_PRELOAD"), std::string::npos);
+
+    EXPECT_NE(title_scene_source.find("ensureWebSharedUiPackage"), std::string::npos);
+    EXPECT_NE(title_scene_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("std::holds_alternative<LoadGameOptions>(launch_)"), std::string::npos);
+    EXPECT_NE(runtime_assembler_header.find("bool load_initial_map{true}"), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("RuntimeServiceFactory: initial map load skipped."), std::string::npos);
+
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/title.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/maps/home_exterior.tmj"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("ui/rmlui/scenes/title.rml"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("ui/rmlui/scenes/title_widgets.rcss"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("ui/rmlui/theme/base.rcss"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/farm-rpg/UI/button.png"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/i18n/languages.json"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/i18n/en-US.json"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/i18n/zh-Hans.json"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("assets/maps/home_exterior.tmj"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("ui/rmlui/scenes/appearance_customize.rml"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("ui/rmlui/theme/spritesheet.rcss"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
     const std::string release_server = readProjectFile("tools/web_release/serve_web_release.py");
@@ -304,6 +375,9 @@ TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     EXPECT_NE(web_smoke.find("configure_web_build"), std::string::npos);
     EXPECT_NE(web_smoke.find("validate_web_release.py"), std::string::npos);
     EXPECT_NE(web_smoke.find("remote-debugging-port"), std::string::npos);
+    EXPECT_NE(web_smoke.find("--headed"), std::string::npos);
+    EXPECT_NE(web_smoke.find("--no-sandbox"), std::string::npos);
+    EXPECT_NE(web_smoke.find("--use-angle=swiftshader"), std::string::npos);
     EXPECT_NE(web_smoke.find("Runtime.consoleAPICalled"), std::string::npos);
     EXPECT_NE(web_smoke.find("Network.responseReceived"), std::string::npos);
     EXPECT_NE(web_smoke.find("click_logical"), std::string::npos);

@@ -8,6 +8,7 @@ import base64
 import http.client
 import json
 import os
+import plistlib
 import shutil
 import socket
 import socketserver
@@ -418,32 +419,40 @@ class ReleaseServer:
 
 
 class Chromium:
-    def __init__(self, executable: Path, port: int, user_data_dir: Path) -> None:
+    def __init__(self, executable: Path, port: int, user_data_dir: Path, headless: bool) -> None:
         self.executable = executable
         self.port = port
         self.user_data_dir = user_data_dir
+        self.headless = headless
         self.process: subprocess.Popen[str] | None = None
 
     def __enter__(self) -> "Chromium":
+        launch_args = [
+            str(self.executable),
+            f"--remote-debugging-port={self.port}",
+            f"--user-data-dir={self.user_data_dir}",
+            "--disable-dev-shm-usage",
+            "--disable-background-networking",
+            "--disable-extensions",
+            "--disable-sync",
+            "--force-device-scale-factor=1",
+            "--hide-scrollbars",
+            "--mute-audio",
+            "--no-default-browser-check",
+            "--no-first-run",
+            "--remote-allow-origins=*",
+            "--window-size=1900,1120",
+            "about:blank",
+        ]
+        if self.executable.name == "chrome-headless-shell":
+            launch_args.insert(1, "--no-sandbox")
+            launch_args.insert(2, "--enable-unsafe-swiftshader")
+            launch_args.insert(3, "--use-angle=swiftshader")
+        elif self.headless:
+            launch_args.insert(1, "--headless=new")
+
         self.process = subprocess.Popen(
-            [
-                str(self.executable),
-                "--headless=new",
-                f"--remote-debugging-port={self.port}",
-                f"--user-data-dir={self.user_data_dir}",
-                "--disable-dev-shm-usage",
-                "--disable-background-networking",
-                "--disable-extensions",
-                "--disable-sync",
-                "--force-device-scale-factor=1",
-                "--hide-scrollbars",
-                "--mute-audio",
-                "--no-default-browser-check",
-                "--no-first-run",
-                "--remote-allow-origins=*",
-                "--window-size=1900,1120",
-                "about:blank",
-            ],
+            launch_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -574,6 +583,7 @@ def save_slot0(
     overwrite: bool = False,
     changed_from: dict[str, float] | None = None,
 ) -> dict[str, float]:
+    sync_log_start = len(cdp.state.logs)
     cdp.click_logical(616, 31)
     cdp.wait_ms(700)
     cdp.screenshot(output_dir / f"phase14-{label}-pause.png")
@@ -585,7 +595,14 @@ def save_slot0(
         cdp.wait_ms(500)
         cdp.screenshot(output_dir / f"phase14-{label}-overwrite.png")
         cdp.click_logical(240, 185)
-    return wait_for_save_position(cdp, 10000, changed_from=changed_from)
+    position = wait_for_save_position(cdp, 10000, changed_from=changed_from)
+    cdp.wait_for_new_log(
+        "persistent save sync",
+        "SaveService: Web persistent storage sync completed after async save.",
+        sync_log_start,
+        10000,
+    )
+    return position
 
 
 def move_player(cdp: CdpClient, code: str, key: str, windows_key_code: int, hold_ms: int = 1400) -> None:
@@ -656,8 +673,10 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         reload_log_start,
         30000,
     )
+    cdp.screenshot(output_dir / "phase14-reload-title.png")
     cdp.click_logical(320, 259)
     cdp.wait_ms(1500)
+    cdp.screenshot(output_dir / "phase14-reload-slot-select.png")
     cdp.click_logical(236, 75)
     cdp.wait_for_log("save load", "SaveService: 已载入存档 'home_exterior'", 20000)
     cdp.wait_for_log("home map after load", "MapManager: 已加载地图 'home_exterior'", 20000)
@@ -709,11 +728,40 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     }
 
 
+def mac_app_version(executable: Path) -> str | None:
+    parts = executable.resolve().parts
+    for index, part in enumerate(parts):
+        if part.endswith(".app"):
+            app_path = Path(*parts[: index + 1])
+            plist_path = app_path / "Contents" / "Info.plist"
+            if not plist_path.exists():
+                return None
+            try:
+                with plist_path.open("rb") as handle:
+                    info = plistlib.load(handle)
+            except (OSError, plistlib.InvalidFileException):
+                return None
+            name = str(info.get("CFBundleName") or app_path.stem)
+            version = info.get("CFBundleShortVersionString") or info.get("CFBundleVersion")
+            return f"{name} {version}" if version else name
+    return None
+
+
 def browser_version(executable: Path) -> str:
+    app_version = mac_app_version(executable)
+    if app_version is not None:
+        return app_version
     try:
         return subprocess.check_output([str(executable), "--version"], text=True, stderr=subprocess.STDOUT).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         return f"unavailable: {exc}"
+
+
+def chromium_profile_parent() -> Path | None:
+    private_tmp = Path("/private/tmp")
+    if private_tmp.is_dir() and os.access(private_tmp, os.W_OK):
+        return private_tmp
+    return None
 
 
 def main() -> int:
@@ -724,6 +772,7 @@ def main() -> int:
     parser.add_argument("--skip-build", action="store_true", help="Skip cmake --build.")
     parser.add_argument("--skip-gate", action="store_true", help="Skip validate_web_release.py.")
     parser.add_argument("--browser", type=Path, help="Chromium-family browser executable.")
+    parser.add_argument("--headed", action="store_true", help="Run a visible browser window instead of headless Chrome.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 8)
@@ -750,7 +799,12 @@ def main() -> int:
     browser = args.browser.resolve() if args.browser else default_browser()
     url = f"http://{args.host}:{port}/TinyFarmRPG-Web.html?phase14={int(time.time())}"
 
-    with tempfile.TemporaryDirectory(prefix="tinyfarm-web-smoke-") as profile_dir:
+    profile_parent = chromium_profile_parent()
+    temp_kwargs: dict[str, str] = {"prefix": "tinyfarm-web-smoke-"}
+    if profile_parent is not None:
+        temp_kwargs["dir"] = str(profile_parent)
+
+    with tempfile.TemporaryDirectory(**temp_kwargs) as profile_dir:
         with ReleaseServer(build_dir, args.host, port, cross_origin_isolated):
             header_paths = [
                 "/TinyFarmRPG-Web.html",
@@ -764,10 +818,29 @@ def main() -> int:
             if header_failures:
                 raise RuntimeError("; ".join(header_failures))
 
-            with Chromium(browser, find_free_port(), Path(profile_dir)) as chromium:
+            with Chromium(browser, find_free_port(), Path(profile_dir), headless=not args.headed) as chromium:
                 cdp = CdpClient(chromium.page_websocket_url())
                 try:
                     gameplay = run_gameplay_smoke(cdp, url, output_dir)
+                except Exception as exc:
+                    failure_output = output_dir / "chromium-smoke-failed.json"
+                    failure_output.write_text(
+                        json.dumps(
+                            {
+                                "status": "failed",
+                                "error": str(exc),
+                                "logs": cdp.state.logs,
+                                "responses": cdp.state.responses,
+                                "exceptions": cdp.state.exceptions,
+                            },
+                            indent=2,
+                            ensure_ascii=False,
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+                    print(f"Chromium smoke failure details: {failure_output}")
+                    raise
                 finally:
                     cdp.close()
 

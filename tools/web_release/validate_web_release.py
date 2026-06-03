@@ -21,7 +21,49 @@ ARTIFACTS = (
     "favicon.ico",
 )
 
-REQUIRED_PRELOAD_PATHS = {
+BOOT_DATA_BUDGET_BYTES = 4 * 1024 * 1024
+
+REQUIRED_BOOT_PRELOAD_PATHS = {
+    "assets/data/cursor_config.json",
+    "assets/data/resource_mapping.json",
+    "assets/fonts/VonwaonBitmap-16px.ttf",
+    "assets/shaders/composite.frag",
+    "assets/shaders/composite.vert",
+    "assets/shaders/texture.frag",
+    "assets/textures/UI/farm-rpg-bg.png",
+    "assets/textures/UI/farm-rpg-logo.png",
+    "assets/farm-rpg/UI/button.png",
+    "assets/i18n/en-US.json",
+    "assets/i18n/languages.json",
+    "assets/i18n/zh-Hans.json",
+    "config/audio.json",
+    "config/input.json",
+    "config/render.json",
+    "config/user_settings.default.json",
+    "config/window.json",
+    "ui/rmlui/scenes/title.rcss",
+    "ui/rmlui/scenes/title.rml",
+    "ui/rmlui/scenes/title_widgets.rcss",
+    "ui/rmlui/theme/base.rcss",
+    "ui/rmlui/theme/nav.rcss",
+    "ui/rmlui/theme/reset.rcss",
+}
+
+FORBIDDEN_BOOT_PRELOAD_PATHS = {
+    "assets/audio/01_spring_journey.ogg",
+    "assets/audio/02_spring_fairy_tale.ogg",
+    "assets/audio/pop.mp3",
+    "assets/maps/farm-rpg.world",
+    "assets/maps/home_exterior.tmj",
+    "assets/maps/home_interior.tmj",
+    "scripts/bootstrap.lua",
+    "ui/rmlui/hud/hotbar.rml",
+    "ui/rmlui/scenes/appearance_customize.rml",
+    "ui/rmlui/scenes/pause_menu.rml",
+    "ui/rmlui/scenes/save_slot_select.rml",
+}
+
+REQUIRED_FULL_PACKAGE_PATHS = {
     "assets/audio/01_spring_journey.ogg",
     "assets/audio/02_spring_fairy_tale.ogg",
     "assets/audio/pop.mp3",
@@ -228,7 +270,8 @@ def validate_artifacts(build_dir: Path, gate: Gate) -> dict[str, dict[str, int |
 
 def validate_cmake_cache(
     build_dir: Path,
-    manifest_path: Path,
+    full_manifest_path: Path,
+    boot_manifest_path: Path,
     allow_pthreads: bool,
     gate: Gate,
 ) -> dict[str, str]:
@@ -242,6 +285,8 @@ def validate_cmake_cache(
         "TF_BUILD_WEB": True,
         "TF_ENABLE_RUNTIME_THREADS": False,
         "TF_WEB_ENABLE_PTHREADS": False,
+        "TF_WEB_BOOT_ONLY_PRELOAD": True,
+        "TF_WEB_ENABLE_RUNTIME_PACKAGES": True,
     }
     if allow_pthreads:
         expected_values["TF_ENABLE_RUNTIME_THREADS"] = True
@@ -259,13 +304,23 @@ def validate_cmake_cache(
     if "Emscripten.cmake" not in toolchain:
         gate.fail(f"CMAKE_TOOLCHAIN_FILE does not look like Emscripten: {toolchain or '<missing>'}")
 
+    full_preload_cache = cache.get("TF_WEB_FULL_PRELOAD_ARGS")
+    if full_preload_cache is None:
+        gate.fail("TF_WEB_FULL_PRELOAD_ARGS missing from CMake cache")
+    else:
+        try:
+            if Path(full_preload_cache).resolve() != full_manifest_path.resolve():
+                gate.fail(f"TF_WEB_FULL_PRELOAD_ARGS does not match full manifest: {full_preload_cache}")
+        except OSError:
+            gate.fail(f"TF_WEB_FULL_PRELOAD_ARGS is not a valid path: {full_preload_cache}")
+
     preload_cache = cache.get("TF_WEB_PRELOAD_ARGS")
     if preload_cache is None:
         gate.fail("TF_WEB_PRELOAD_ARGS missing from CMake cache")
     else:
         try:
-            if Path(preload_cache).resolve() != manifest_path.resolve():
-                gate.fail(f"TF_WEB_PRELOAD_ARGS does not match manifest: {preload_cache}")
+            if Path(preload_cache).resolve() != boot_manifest_path.resolve():
+                gate.fail(f"TF_WEB_PRELOAD_ARGS must point at the boot preload manifest: {preload_cache}")
         except OSError:
             gate.fail(f"TF_WEB_PRELOAD_ARGS is not a valid path: {preload_cache}")
 
@@ -286,7 +341,7 @@ def validate_cmake_cache(
     return cache
 
 
-def validate_preload_budget(
+def validate_full_manifest_budget(
     entries: list[PreloadEntry],
     budget_path: Path,
     gate: Gate,
@@ -295,7 +350,7 @@ def validate_preload_budget(
     if not budget:
         return {}
 
-    web_budget = budget.get("web_poc_assets", {})
+    web_budget = budget.get("web_release_full_assets") or budget.get("web_poc_assets", {})
     used_budget = budget.get("used_assets", {})
     actual_bytes = sum(entry.source_path.stat().st_size for entry in entries if entry.source_path.exists())
     actual_files = len(entries)
@@ -303,9 +358,9 @@ def validate_preload_budget(
     expected_bytes = web_budget.get("bytes")
 
     if expected_files != actual_files:
-        gate.fail(f"web_poc_assets.files expected {expected_files}, manifest has {actual_files}")
+        gate.fail(f"web release full manifest files expected {expected_files}, manifest has {actual_files}")
     if expected_bytes != actual_bytes:
-        gate.fail(f"web_poc_assets.bytes expected {expected_bytes}, manifest has {actual_bytes}")
+        gate.fail(f"web release full manifest bytes expected {expected_bytes}, manifest has {actual_bytes}")
 
     used_files = used_budget.get("files")
     used_bytes = used_budget.get("bytes")
@@ -315,13 +370,13 @@ def validate_preload_budget(
         gate.fail(f"First-screen manifest is not smaller by byte count: {actual_bytes} >= {used_bytes}")
 
     source_paths = {entry.source_rel for entry in entries}
-    missing_required = sorted(REQUIRED_PRELOAD_PATHS - source_paths)
+    missing_required = sorted(REQUIRED_FULL_PACKAGE_PATHS - source_paths)
     for rel in missing_required:
-        gate.fail(f"Required first-screen preload asset missing: {rel}")
+        gate.fail(f"Required Web release full asset missing: {rel}")
 
     shader_assets = sorted(path for path in source_paths if path.startswith("assets/shaders/"))
     if not shader_assets:
-        gate.fail("No shader assets are included in the Web POC preload manifest")
+        gate.fail("No shader assets are included in the Web release full manifest")
 
     ratio = 0.0
     if isinstance(used_bytes, int) and used_bytes > 0:
@@ -336,6 +391,53 @@ def validate_preload_budget(
         "used_assets_size": human_size(used_bytes) if isinstance(used_bytes, int) else "",
         "ratio_of_used_assets": round(ratio, 4),
         "shader_assets": len(shader_assets),
+    }
+
+
+def validate_boot_preload_budget(
+    boot_entries: list[PreloadEntry],
+    full_entries: list[PreloadEntry],
+    artifacts: dict[str, dict[str, int | str]],
+    gate: Gate,
+) -> dict[str, Any]:
+    boot_paths = {entry.source_rel for entry in boot_entries}
+    full_paths = {entry.source_rel for entry in full_entries}
+    boot_bytes = sum(entry.source_path.stat().st_size for entry in boot_entries if entry.source_path.exists())
+    full_bytes = sum(entry.source_path.stat().st_size for entry in full_entries if entry.source_path.exists())
+
+    unknown_boot_paths = sorted(boot_paths - full_paths)
+    for path in unknown_boot_paths:
+        gate.fail(f"Boot preload path is outside the Web release full manifest: {path}")
+
+    missing_required = sorted(REQUIRED_BOOT_PRELOAD_PATHS - boot_paths)
+    for path in missing_required:
+        gate.fail(f"Required boot preload asset missing: {path}")
+
+    forbidden = sorted(FORBIDDEN_BOOT_PRELOAD_PATHS & boot_paths)
+    for path in forbidden:
+        gate.fail(f"Runtime package asset leaked into boot preload: {path}")
+
+    if full_bytes > 0 and boot_bytes >= full_bytes:
+        gate.fail(f"Boot preload is not smaller than the full manifest: {boot_bytes} >= {full_bytes}")
+
+    data_artifact = artifacts.get("TinyFarmRPG-Web.data", {})
+    data_bytes = data_artifact.get("bytes")
+    if isinstance(data_bytes, int) and data_bytes > BOOT_DATA_BUDGET_BYTES:
+        gate.fail(
+            "TinyFarmRPG-Web.data exceeds the boot-only budget: "
+            f"{human_size(data_bytes)} > {human_size(BOOT_DATA_BUDGET_BYTES)}"
+        )
+
+    return {
+        "files": len(boot_entries),
+        "bytes": boot_bytes,
+        "size": human_size(boot_bytes),
+        "full_manifest_files": len(full_entries),
+        "full_manifest_bytes": full_bytes,
+        "full_manifest_size": human_size(full_bytes),
+        "ratio_of_full_manifest": round(boot_bytes / full_bytes, 4) if full_bytes > 0 else 0.0,
+        "data_budget_bytes": BOOT_DATA_BUDGET_BYTES,
+        "data_budget_size": human_size(BOOT_DATA_BUDGET_BYTES),
     }
 
 
@@ -367,6 +469,7 @@ def validate_staged_preload(build_dir: Path, entries: list[PreloadEntry], gate: 
 def validate_runtime_packages(
     build_dir: Path,
     entries: list[PreloadEntry],
+    boot_entries: list[PreloadEntry],
     package_index_path: Path,
     gate: Gate,
 ) -> dict[str, Any]:
@@ -442,6 +545,17 @@ def validate_runtime_packages(
 
     boot = packages.get("boot", {})
     if isinstance(boot, dict):
+        if isinstance(boot.get("paths"), list):
+            boot_package_paths = set(boot["paths"])
+            boot_preload_paths = {entry.source_rel for entry in boot_entries}
+            if boot_package_paths != boot_preload_paths:
+                missing = sorted(boot_package_paths - boot_preload_paths)
+                extra = sorted(boot_preload_paths - boot_package_paths)
+                if missing:
+                    gate.fail(f"Boot package paths missing from boot preload manifest: {missing}")
+                if extra:
+                    gate.fail(f"Boot preload manifest contains paths outside boot package: {extra}")
+
         boot_bytes = boot.get("bytes")
         full_bytes = sum(entry.source_path.stat().st_size for entry in entries if entry.source_path.exists())
         if not isinstance(boot_bytes, int):
@@ -526,7 +640,9 @@ def main() -> int:
     root = repo_root()
     parser = argparse.ArgumentParser(description="Validate TinyFarmRPG Web release gate.")
     parser.add_argument("--build-dir", type=Path, default=root / "build" / "web-release")
-    parser.add_argument("--manifest", type=Path, default=root / "manifests" / "assets" / "web-poc-preload.args")
+    parser.add_argument("--manifest", type=Path, help="Alias for --full-manifest.")
+    parser.add_argument("--full-manifest", type=Path, default=root / "manifests" / "assets" / "web-release-full.args")
+    parser.add_argument("--boot-manifest", type=Path)
     parser.add_argument("--asset-budget", type=Path, default=root / "manifests" / "assets" / "asset-budget.json")
     parser.add_argument("--package-index", type=Path)
     parser.add_argument("--json-output", type=Path)
@@ -538,7 +654,13 @@ def main() -> int:
     args = parser.parse_args()
 
     build_dir = args.build_dir.resolve()
-    manifest_path = args.manifest.resolve()
+    full_manifest_path = (args.manifest or args.full_manifest).resolve()
+    cache_for_defaults = parse_cmake_cache(build_dir / "CMakeCache.txt")
+    boot_manifest_path = (
+        args.boot_manifest.resolve()
+        if args.boot_manifest is not None
+        else Path(cache_for_defaults.get("TF_WEB_PRELOAD_ARGS", build_dir / "web-boot-preload.args")).resolve()
+    )
     budget_path = args.asset_budget.resolve()
     package_index_path = (
         args.package_index.resolve()
@@ -547,16 +669,26 @@ def main() -> int:
     )
     gate = Gate()
 
-    entries = parse_preload_manifest(root, manifest_path, gate)
+    full_entries = parse_preload_manifest(root, full_manifest_path, gate)
+    boot_entries = parse_preload_manifest(root, boot_manifest_path, gate)
+    artifacts = validate_artifacts(build_dir, gate)
     summary: dict[str, Any] = {
         "build_dir": str(build_dir),
-        "manifest": str(manifest_path),
+        "full_manifest": str(full_manifest_path),
+        "boot_manifest": str(boot_manifest_path),
         "asset_budget": str(budget_path),
-        "artifacts": validate_artifacts(build_dir, gate),
-        "cmake": validate_cmake_cache(build_dir, manifest_path, args.allow_pthreads, gate),
-        "preload": validate_preload_budget(entries, budget_path, gate),
-        "staged_preload": validate_staged_preload(build_dir, entries, gate),
-        "runtime_packages": validate_runtime_packages(build_dir, entries, package_index_path, gate),
+        "artifacts": artifacts,
+        "cmake": validate_cmake_cache(
+            build_dir,
+            full_manifest_path,
+            boot_manifest_path,
+            args.allow_pthreads,
+            gate,
+        ),
+        "full_package_manifest": validate_full_manifest_budget(full_entries, budget_path, gate),
+        "preload": validate_boot_preload_budget(boot_entries, full_entries, artifacts, gate),
+        "staged_preload": validate_staged_preload(build_dir, boot_entries, gate),
+        "runtime_packages": validate_runtime_packages(build_dir, full_entries, boot_entries, package_index_path, gate),
         "shader_boundary": validate_shader_boundary(root, gate),
         "warnings": gate.warnings,
         "notes": gate.notes,
@@ -568,7 +700,15 @@ def main() -> int:
 
     print("TinyFarmRPG Web release gate")
     print(f"- build dir: {build_dir}")
-    print(f"- preload: {summary['preload'].get('files', 0)} files, {summary['preload'].get('size', '0 B')}")
+    print(
+        "- boot preload: "
+        f"{summary['preload'].get('files', 0)} files, {summary['preload'].get('size', '0 B')}"
+    )
+    print(
+        "- full package manifest: "
+        f"{summary['full_package_manifest'].get('files', 0)} files, "
+        f"{summary['full_package_manifest'].get('size', '0 B')}"
+    )
     if summary["runtime_packages"]:
         print(f"- runtime packages: {summary['runtime_packages'].get('strategy', '<missing>')}")
         for package_id, package in summary["runtime_packages"].get("packages", {}).items():

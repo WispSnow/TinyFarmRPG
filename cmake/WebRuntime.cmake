@@ -4,23 +4,48 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/WebPreload.cmake")
 
-set(TF_WEB_PRELOAD_ARGS
-    "${CMAKE_SOURCE_DIR}/manifests/assets/web-poc-preload.args"
+set(TF_WEB_FULL_PRELOAD_ARGS
+    "${CMAKE_SOURCE_DIR}/manifests/assets/web-release-full.args"
     CACHE FILEPATH
-    "Web POC preload argument manifest"
+    "Web release full asset manifest used to generate runtime packages"
 )
+
+set(TF_WEB_BOOT_PRELOAD_ARGS
+    "${CMAKE_SOURCE_DIR}/manifests/assets/web-release-boot.args"
+    CACHE FILEPATH
+    "Web release boot-only preload manifest used for link-time .data"
+)
+
+set(TF_WEB_GENERATED_BOOT_PRELOAD_ARGS
+    "${CMAKE_BINARY_DIR}/web-boot-preload.args"
+    CACHE FILEPATH
+    "Generated Web boot-only preload manifest copy recorded in the package index"
+)
+
+set(TF_WEB_PRELOAD_ARGS
+    "${TF_WEB_FULL_PRELOAD_ARGS}"
+    CACHE FILEPATH
+    "Web link-time preload manifest"
+)
+
+function(tf_web_runtime_package_paths OUT_PACKAGE_DIR OUT_PACKAGE_INDEX OUT_BOOT_PRELOAD)
+    set(_package_dir "${CMAKE_BINARY_DIR}/web-packages")
+    set(_package_index "${_package_dir}/web-package-index.json")
+    set(_boot_preload "${TF_WEB_GENERATED_BOOT_PRELOAD_ARGS}")
+
+    set(${OUT_PACKAGE_DIR} "${_package_dir}" PARENT_SCOPE)
+    set(${OUT_PACKAGE_INDEX} "${_package_index}" PARENT_SCOPE)
+    set(${OUT_BOOT_PRELOAD} "${_boot_preload}" PARENT_SCOPE)
+endfunction()
 
 function(tf_configure_web_runtime_packages TARGET_NAME)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-    set(_package_dir "${CMAKE_BINARY_DIR}/web-packages")
-    set(_package_index "${_package_dir}/web-package-index.json")
-    set(_boot_preload "${CMAKE_BINARY_DIR}/web-boot-preload.args")
+    tf_web_runtime_package_paths(_package_dir _package_index _boot_preload)
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/tools/web_release/package_web_assets.py"
-            "--manifest" "${TF_WEB_PRELOAD_ARGS}"
+            "--manifest" "${TF_WEB_FULL_PRELOAD_ARGS}"
             "--output-dir" "${_package_dir}"
             "--boot-preload-output" "${_boot_preload}"
             "--json-output" "${_package_index}"
@@ -77,6 +102,25 @@ function(tf_configure_web_executable TARGET_NAME)
                 -pthread
                 -sUSE_PTHREADS=1
                 -sPTHREAD_POOL_SIZE=2
+        )
+    endif()
+
+    if(TF_WEB_BOOT_ONLY_PRELOAD)
+        if(NOT TF_WEB_ENABLE_RUNTIME_PACKAGES)
+            message(FATAL_ERROR "TF_WEB_BOOT_ONLY_PRELOAD requires TF_WEB_ENABLE_RUNTIME_PACKAGES.")
+        endif()
+        set(TF_WEB_PRELOAD_ARGS
+            "${TF_WEB_BOOT_PRELOAD_ARGS}"
+            CACHE FILEPATH
+            "Web link-time preload manifest"
+            FORCE
+        )
+    else()
+        set(TF_WEB_PRELOAD_ARGS
+            "${TF_WEB_FULL_PRELOAD_ARGS}"
+            CACHE FILEPATH
+            "Web link-time preload manifest"
+            FORCE
         )
     endif()
 

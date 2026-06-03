@@ -274,6 +274,10 @@ void SaveSlotSelectScene::onLanguageChanged(const game::defs::LanguageChangedEve
 }
 
 void SaveSlotSelectScene::onSlotClicked(int slot) {
+    spdlog::info(
+        "SaveSlotSelectScene: slot {} clicked in {} mode.",
+        slot,
+        mode_ == Mode::Save ? "save" : "load");
     if (slot < 0 || slot >= SLOT_COUNT) {
         spdlog::warn("SaveSlotSelectScene: 非法 slot {}", slot);
         return;

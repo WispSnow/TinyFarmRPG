@@ -1,0 +1,91 @@
+@spritesheet title-buttons {
+    src: ../../../assets/farm-rpg/UI/button.png;
+
+    secondary-button:         0px 64px 48px 16px;
+    secondary-button-inner:   3px 69px 42px 6px;
+    secondary-button-pressed: 0px 80px 48px 16px;
+    secondary-button-pressed-inner: 3px 85px 42px 6px;
+
+    menu-icon:         432px 208px 16px 16px;
+    menu-icon-pressed: 432px 224px 16px 16px;
+}
+
+button {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-color: transparent;
+    color: #ffffffff;
+    font-family: "VonwaonBitmap 16px";
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+    font-effect: shadow(1dp 1dp #000000cc);
+}
+
+.tf-button-secondary,
+.tf-icon-button {
+    tab-index: auto;
+    nav-up: auto;
+    nav-down: auto;
+    nav-left: auto;
+    nav-right: auto;
+    transform: translateY(0);
+    transition: transform 0.08s cubic-out, color 0.08s cubic-out, image-color 0.08s cubic-out,
+        filter 0.08s cubic-out;
+}
+
+.tf-button-secondary {
+    height: 32dp;
+    line-height: 32dp;
+    decorator: ninepatch(secondary-button, secondary-button-inner, 1.0);
+}
+
+.tf-input-mouse .tf-button-secondary:hover,
+.tf-input-nav .tf-button-secondary:focus {
+    transform: translateY(-1dp);
+    color: #fce97fff;
+}
+
+.tf-input-mouse .tf-button-secondary:hover:active,
+.tf-input-nav .tf-button-secondary:focus:active,
+.tf-input-mouse .tf-button-secondary:active,
+.tf-input-nav .tf-button-secondary:active,
+.tf-button-secondary:active {
+    decorator: ninepatch(secondary-button-pressed, secondary-button-pressed-inner, 1.0);
+    transform: translateY(1dp);
+    color: #999999ff;
+}
+
+.tf-icon-button {
+    width: 32dp;
+    height: 32dp;
+    image-color: #d8dee9d8;
+    filter: saturate(0.75) brightness(0.95);
+}
+
+.tf-input-mouse .tf-icon-button:hover,
+.tf-input-nav .tf-icon-button:focus {
+    transform: translateY(-1dp);
+    image-color: #fce97fff;
+    filter: saturate(1.15) brightness(1.08);
+}
+
+.tf-input-mouse .tf-icon-button:hover:active,
+.tf-input-nav .tf-icon-button:focus:active,
+.tf-input-mouse .tf-icon-button:active,
+.tf-input-nav .tf-icon-button:active,
+.tf-icon-button:active {
+    transform: translateY(1dp);
+    image-color: #ffffffff;
+    filter: saturate(1.0) brightness(0.85);
+}
+
+.tf-icon-button.icon-menu {
+    decorator: image(menu-icon);
+}
+
+.tf-icon-button.icon-menu:active {
+    decorator: image(menu-icon-pressed);
+}

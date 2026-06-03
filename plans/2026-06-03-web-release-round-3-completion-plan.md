@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Draft`
+- 计划状态：`In Progress`
 - 前置基线：第二轮 Phase 9-14 已完成 Chromium 发布候选 smoke，真实 gameplay wasm target 可构建、运行、保存、刷新读档。
 - 第三轮目标：完成 Chrome 单线程 Web demo 的正式发布收敛，移除 POC preload 形态，补齐运行时资源包、玩法路径、发布文档和自动化验收。
 - 浏览器范围：Chrome / Chromium 为必须验收浏览器。Safari 暂不作为阻塞项。
@@ -20,10 +20,15 @@
 - `home-map.tfpack` 已可按需加载，并通过 Chrome 自动 smoke。
 - 保存 slot 可写入 `/persistent`，刷新后可从标题页 `Load` 回到地图。
 
+第三轮当前进展：
+
+- Phase 15 已完成 boot-only preload cutover：`TinyFarmRPG-Web.data` 已收敛到 2.9 MiB，link-time preload 使用 `web-release-boot.args`。
+- headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
+
 仍未完成的部分：
 
-- 当前 `.data` 仍使用完整 `web-poc-preload.args`，大小约 20.8 MiB；`boot` 包虽然已生成，但尚未成为真实 link-time preload。
-- `shared-ui.tfpack` 和 `audio-core.tfpack` 已生成，但真实运行路径仍主要依赖完整 `.data`，没有 package ready gate。
+- `shared-ui.tfpack` 已在标题页进入 appearance / load / menu 前加载，但尚未通过统一 package registry 管理。
+- `audio-core.tfpack` 已生成，但真实运行路径仍缺少 package ready gate。
 - package loader 仍以 `home-map` 硬编码为主，没有统一的 package registry / package id 到 URL 映射。
 - Chrome smoke 覆盖主路径，但尚未覆盖完整玩法面，例如室内外切图、inventory、dialogue、工具动作、战斗/商店/任务等。
 - Effekseer、Bloom / HDR emissive、高级后处理仍处于关闭或降级状态。
@@ -101,6 +106,8 @@ flowchart TD
 - 不把 pthreads 和 COOP / COEP 混入单线程正式发布路径。
 
 ## Phase 15：boot-only preload cutover
+
+状态：`Completed`。报告见 `plans/reports/2026-06-03-web-release-phase-15-report.md`。
 
 目标：让 Web release 的 `.data` 只包含 boot 必需资源，彻底结束当前完整 POC preload。
 

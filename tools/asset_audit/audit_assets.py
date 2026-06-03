@@ -559,6 +559,7 @@ def select_web_poc_assets(used: dict[str, set[str]], root: Path) -> list[str]:
         "ui/rmlui/scenes/pause_menu.",
         "ui/rmlui/scenes/save_slot_select.",
         "ui/rmlui/scenes/title.",
+        "ui/rmlui/scenes/title_widgets.",
         "ui/rmlui/theme/",
     )
     excluded_prefixes = (
@@ -621,10 +622,12 @@ def write_preload_args(path: Path, paths: Iterable[str]) -> None:
 
 
 def write_budget(path: Path, root: Path, used: list[str], orphan: list[str], web_poc: list[str]) -> None:
+    web_release_full = summarize(web_poc, root)
     budget = {
         "used_assets": summarize(used, root),
         "orphan_assets": summarize(orphan, root),
-        "web_poc_assets": summarize(web_poc, root),
+        "web_poc_assets": web_release_full,
+        "web_release_full_assets": web_release_full,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(budget, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -694,6 +697,7 @@ def write_report(
             "- `manifests/assets/orphan-assets.txt`",
             "- `manifests/assets/web-poc-assets.txt`",
             "- `manifests/assets/web-poc-preload.args`",
+            "- `manifests/assets/web-release-full.args`",
             "- `manifests/assets/asset-budget.json`",
             "",
         ]
@@ -725,6 +729,7 @@ def run(args: argparse.Namespace) -> int:
     write_lines(manifest_dir / "orphan-assets.txt", orphan)
     write_lines(manifest_dir / "web-poc-assets.txt", web_poc)
     write_preload_args(manifest_dir / "web-poc-preload.args", web_poc)
+    write_preload_args(manifest_dir / "web-release-full.args", web_poc)
     write_budget(manifest_dir / "asset-budget.json", root, used, orphan, web_poc)
     write_report(root / args.report, root, used, orphan, web_poc, state)
 

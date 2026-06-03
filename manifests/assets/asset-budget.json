@@ -1,7 +1,7 @@
 {
   "used_assets": {
-    "files": 803,
-    "bytes": 28982404,
+    "files": 804,
+    "bytes": 28984720,
     "by_root": {
       "assets": {
         "files": 731,
@@ -16,8 +16,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 51,
-        "bytes": 163897
+        "files": 52,
+        "bytes": 166213
       }
     },
     "by_extension": {
@@ -62,12 +62,12 @@
         "bytes": 3424850
       },
       ".rcss": {
-        "files": 31,
-        "bytes": 94791
+        "files": 32,
+        "bytes": 97177
       },
       ".rml": {
         "files": 20,
-        "bytes": 69106
+        "bytes": 69036
       },
       ".tmj": {
         "files": 4,
@@ -138,8 +138,8 @@
     }
   },
   "web_poc_assets": {
-    "files": 280,
-    "bytes": 21852624,
+    "files": 281,
+    "bytes": 21854940,
     "by_root": {
       "assets": {
         "files": 223,
@@ -154,8 +154,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 36,
-        "bytes": 59513
+        "files": 37,
+        "bytes": 61829
       }
     },
     "by_extension": {
@@ -184,12 +184,101 @@
         "bytes": 1567385
       },
       ".rcss": {
-        "files": 24,
-        "bytes": 42602
+        "files": 25,
+        "bytes": 44988
       },
       ".rml": {
         "files": 12,
-        "bytes": 16911
+        "bytes": 16841
+      },
+      ".tmj": {
+        "files": 2,
+        "bytes": 70418
+      },
+      ".tsj": {
+        "files": 15,
+        "bytes": 243011
+      },
+      ".ttf": {
+        "files": 2,
+        "bytes": 15492244
+      },
+      ".vert": {
+        "files": 6,
+        "bytes": 1336
+      },
+      ".wav": {
+        "files": 2,
+        "bytes": 124608
+      },
+      ".world": {
+        "files": 1,
+        "bytes": 388
+      }
+    },
+    "texture_count": 158,
+    "texture_pixels": 7437892,
+    "estimated_rgba8_bytes": 29751568,
+    "max_texture": {
+      "path": "assets/textures/UI/farm-rpg-bg.png",
+      "width": 1280,
+      "height": 800,
+      "pixels": 1024000
+    }
+  },
+  "web_release_full_assets": {
+    "files": 281,
+    "bytes": 21854940,
+    "by_root": {
+      "assets": {
+        "files": 223,
+        "bytes": 21768431
+      },
+      "config": {
+        "files": 6,
+        "bytes": 4913
+      },
+      "scripts": {
+        "files": 15,
+        "bytes": 19767
+      },
+      "ui": {
+        "files": 37,
+        "bytes": 61829
+      }
+    },
+    "by_extension": {
+      ".frag": {
+        "files": 7,
+        "bytes": 6467
+      },
+      ".json": {
+        "files": 33,
+        "bytes": 125508
+      },
+      ".lua": {
+        "files": 15,
+        "bytes": 19767
+      },
+      ".mp3": {
+        "files": 1,
+        "bytes": 8684
+      },
+      ".ogg": {
+        "files": 2,
+        "bytes": 4133295
+      },
+      ".png": {
+        "files": 158,
+        "bytes": 1567385
+      },
+      ".rcss": {
+        "files": 25,
+        "bytes": 44988
+      },
+      ".rml": {
+        "files": 12,
+        "bytes": 16841
       },
       ".tmj": {
         "files": 2,

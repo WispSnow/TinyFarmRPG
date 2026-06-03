@@ -788,6 +788,7 @@ ui/rmlui/scenes/shop_menu.rcss
 ui/rmlui/scenes/shop_menu.rml
 ui/rmlui/scenes/title.rcss
 ui/rmlui/scenes/title.rml
+ui/rmlui/scenes/title_widgets.rcss
 ui/rmlui/tests/05_data_binding.rml
 ui/rmlui/theme/animation.rcss
 ui/rmlui/theme/base.rcss
