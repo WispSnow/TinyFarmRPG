@@ -1,6 +1,7 @@
 #include "engine/platform/gl_platform.h"
 #include "engine/platform/filesystem_paths.h"
 #include "engine/platform/web_persistent_storage.h"
+#include "web_shell_ui.h"
 
 #include <SDL3/SDL.h>
 #include <emscripten/emscripten.h>
@@ -810,8 +811,11 @@ void frame(void* user_data) {
 }
 
 bool initialize(WebApp& app) {
+    tinyfarm::web::setShellStatus("Initializing WebGL");
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+        tinyfarm::web::setShellStatus("SDL init failed");
         return false;
     }
 
@@ -830,6 +834,7 @@ bool initialize(WebApp& app) {
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (app.window == nullptr) {
         std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        tinyfarm::web::setShellStatus("Window init failed");
         shutdown(app);
         return false;
     }
@@ -837,6 +842,7 @@ bool initialize(WebApp& app) {
     app.gl_context = SDL_GL_CreateContext(app.window);
     if (app.gl_context == nullptr) {
         std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
+        tinyfarm::web::setShellStatus("WebGL context failed");
         shutdown(app);
         return false;
     }
@@ -849,16 +855,19 @@ bool initialize(WebApp& app) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     logGlInfo();
+    tinyfarm::web::reportShellWebGlFeatures();
 
     TileMap map = loadTileMap(kMapPath);
     if (map.width <= 0 || map.height <= 0 || map.layers.empty() || map.tilesets.empty()) {
         std::fprintf(stderr, "Failed to load Web tile map resources.\n");
+        tinyfarm::web::setShellStatus("Map resources failed");
         shutdown(app);
         return false;
     }
 
     app.program = createProgram();
     if (app.program == 0) {
+        tinyfarm::web::setShellStatus("Shader init failed");
         shutdown(app);
         return false;
     }
@@ -873,10 +882,18 @@ bool initialize(WebApp& app) {
 
     if (!buildTileGeometry(app, map, app.tilesets)) {
         std::fprintf(stderr, "Failed to create WebGL tile geometry.\n");
+        tinyfarm::web::setShellStatus("Tile geometry failed");
         shutdown(app);
         return false;
     }
 
+    tinyfarm::web::setShellMapStats(
+        static_cast<int>(map.layers.size()),
+        static_cast<int>(app.tilesets.size()),
+        static_cast<int>(app.batches.size()),
+        app.map_width_pixels,
+        app.map_height_pixels);
+    tinyfarm::web::setShellStatus("Running");
     return true;
 }
 
@@ -913,6 +930,9 @@ void mainLoop(void* user_data) {
 void onPersistentSyncedToBrowser(bool success, void* user_data) {
     if (!success) {
         std::fprintf(stderr, "Persistent FS sync-to-browser failed; continuing with in-memory data.\n");
+        tinyfarm::web::setShellStatus("Storage flush failed; continuing");
+    } else {
+        tinyfarm::web::setShellStatus("Storage ready");
     }
 
     auto* app = static_cast<WebApp*>(user_data);
@@ -924,6 +944,7 @@ void onPersistentSyncedToBrowser(bool success, void* user_data) {
 void onPersistentSyncedFromBrowser(bool success, void* user_data) {
     if (!success) {
         std::fprintf(stderr, "Persistent FS sync-from-browser failed; continuing with in-memory data.\n");
+        tinyfarm::web::setShellStatus("Storage load failed; continuing");
         onPersistentSyncedToBrowser(false, user_data);
         return;
     }
@@ -932,6 +953,7 @@ void onPersistentSyncedFromBrowser(bool success, void* user_data) {
     const std::uint32_t next_boot_count = previous_boot_count + 1;
     if (!writePersistenceSmokeCounter(next_boot_count)) {
         std::fprintf(stderr, "Persistent FS smoke write failed; continuing without IDBFS smoke.\n");
+        tinyfarm::web::setShellStatus("Storage smoke failed; continuing");
         onPersistentSyncedToBrowser(false, user_data);
         return;
     }
@@ -949,6 +971,8 @@ void onPersistentSyncedFromBrowser(bool success, void* user_data) {
 
 int main() {
     static WebApp app{};
+    tinyfarm::web::installShellUi();
+    tinyfarm::web::setShellStatus("Syncing storage");
     engine::platform::web::syncPersistentStorageFromBrowser(onPersistentSyncedFromBrowser, &app);
     emscripten_set_main_loop_arg(mainLoop, &app, 0, true);
     return 0;

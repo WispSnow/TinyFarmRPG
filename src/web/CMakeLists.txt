@@ -10,6 +10,7 @@ set(TF_WEB_PRELOAD_ARGS
 
 add_executable(${TARGET}
     web_main.cpp
+    web_shell_ui.cpp
     ${CMAKE_SOURCE_DIR}/src/engine/platform/filesystem_paths.cpp
     ${CMAKE_SOURCE_DIR}/src/engine/platform/web_persistent_storage.cpp
 )
@@ -56,6 +57,11 @@ if(TF_WEB_ENABLE_PTHREADS)
 endif()
 
 tf_target_web_preload(${TARGET} "${TF_WEB_PRELOAD_ARGS}")
+
+add_custom_command(TARGET ${TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/favicon.ico"
+    COMMENT "Create empty favicon for local Web smoke"
+)
 
 set_target_properties(${TARGET} PROPERTIES
     OUTPUT_NAME "TinyFarmRPG-Web"
