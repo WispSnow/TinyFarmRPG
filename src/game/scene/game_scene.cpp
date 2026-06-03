@@ -20,6 +20,7 @@
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
+#include "engine/platform/web_asset_package.h"
 #include "engine/render/camera.h"
 #include "engine/render/opengl/gl_renderer.h"
 #include "engine/system/light_system.h"
@@ -99,6 +100,14 @@ constexpr int NEW_GAME_INITIAL_GOLD = 300;
 constexpr int DEFEAT_RECOVERY_HOURS = 24;
 constexpr std::string_view DEFEAT_RESPAWN_POINT_ID = "respawn";
 const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
+
+[[nodiscard]] bool ensureWebGameplayPackages() {
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+    return engine::platform::web::loadAssetPackage("home-map", "web-packages/home-map.tfpack");
+#else
+    return true;
+#endif
+}
 
 [[nodiscard]] std::unordered_map<entt::id_type, int> collectPlayerItemStocks(entt::registry& registry) {
     std::unordered_map<entt::id_type, int> stocks{};
@@ -465,6 +474,11 @@ GameScene::~GameScene() noexcept {
 }
 
 bool GameScene::init() {
+    if (!ensureWebGameplayPackages()) {
+        spdlog::error("GameScene: Web gameplay asset package loading failed.");
+        return false;
+    }
+
     if (!game::runtime::GameRuntimeAssembler::assembleServices({
             *this,
             context_,

@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Phase 12 audio/save/IDBFS browser smoke passed under Codex CLI; Phase 13 pending`
+- 计划状态：`Phase 13 runtime package mechanism smoke passed under Codex CLI; Phase 14 pending`
 - 前置基线：第一轮 Phase 0-8 已完成，Web POC walking skeleton 可重复构建、预览和 gate。
 - 第二轮目标：从 tile smoke / DOM shell 走向浏览器内可玩的真实 gameplay demo。
 - 首版策略：单线程、完整 `engine/game` 最小子集、真实地图渲染与移动、RmlUi 基础 UI、IDBFS 存档闭环。
@@ -226,7 +226,7 @@ flowchart TD
 实施步骤：
 
 1. 技术决策。
-   - 在独立 Emscripten data package 与自定义 `fetch` + `FS.writeFile` 之间做一次小型 spike。
+   - 在独立 Emscripten data package 与自定义同步 XHR + C++ filesystem 写入之间做一次小型 spike。
    - 选择标准是加载时序可控、错误可诊断、资源路径仍能被 C++ filesystem 读取。
    - 包就绪必须有明确 gate，地图或音频加载前先等待对应 package ready。
 2. 定义包边界。
@@ -235,7 +235,7 @@ flowchart TD
    - `home-map`: home exterior/interior 地图、tileset、角色基础贴图。
    - `audio-core`: pop、标题 BGM、地图 BGM。
 3. 生成包 manifest。
-   - `package_web_assets.py` 从 `web-poc-assets` 和资源引用关系生成分包清单。
+   - `package_web_assets.py` 从 `web-poc-preload.args` 和资源引用关系生成分包清单。
    - 输出原始大小、gzip、brotli 估算或实际文件。
 4. 实现懒加载。
    - 首屏只加载 boot 包。
@@ -335,6 +335,19 @@ flowchart TD
 - 关键截图保存在 `build/web-gameplay-phase11/phase12-playwright-title.png`、`phase12-playwright-after-save.png`、`phase12-playwright-load-slots.png`、`phase12-playwright-after-load.png`。
 - 仍可见未进入当前 preload 包的完整音频资源 warning，这是 Phase 13 `audio-core` / 资源分包需要收敛的范围，不再阻塞 Phase 12 gameplay 闭环。
 
+## Phase 13 执行记录
+
+- 已选择运行时分包机制：自定义 `.tfpack` 包 + 浏览器同步 XHR 读取 + C++ filesystem 写入 MEMFS。选择原因是 C++ 地图/资源读取路径仍保持同步，package ready gate 可以在 `GameScene` / `MapManager` 进入真实资源读取前完成。
+- spike 中验证过 Emscripten Fetch 的同步模式在当前主线程路径下返回空句柄；同步 XHR 不能使用 `responseType=arraybuffer`，因此 loader 使用 `overrideMimeType("text/plain; charset=x-user-defined")` 读取二进制字符串并复制进 wasm heap。
+- `tools/web_release/package_web_assets.py` 已从 `manifests/assets/web-poc-preload.args` 生成 `boot`、`shared-ui`、`home-map`、`audio-core` 分包计划和 `.tfpack` artifact。
+- 当前体积：`boot` 28 files / 2.8 MiB；`shared-ui` 166 files / 13.3 MiB，gzip 8.0 MiB；`home-map` 81 files / 687.1 KiB，gzip 279.6 KiB；`audio-core` 5 files / 4.1 MiB，gzip 4.0 MiB。
+- `cmake/WebRuntime.cmake` 已在 Web target post-build 生成 package index 和 `.tfpack`，`validate_web_release.py` 已校验 package strategy、包边界、artifact 存在性、路径覆盖和 boot 小于当前 20.8 MiB 单包。
+- `GameScene` 进入真实 gameplay 前加载 `home-map.tfpack`，`MapManager::loadMap` 也有地图级兜底 gate，资源缺包时日志能定位到 package 和 map。
+- 浏览器 smoke 已通过：`web-packages/home-map.tfpack` 返回 200，日志显示 `WebAssetPackage: package 'home-map' loaded (81 files).`，随后 `assets/maps/home_exterior.tmj` 加载成功并进入地图。
+- 关键截图保存在 `build/web-gameplay-phase11/phase13-runtime-package-smoke.png`。
+- 当前仍保留完整 `.data` 预载包；Phase 13 先验证运行时加载机制和分包 gate，不把 boot-only `.data` cutover 混入同一风险面。后续发布收敛应增加 boot-only 构建选项，并把 `shared-ui` / `audio-core` 的加载时序也接入真实 gate。
+- 同步 XHR 会阻塞主线程，适合作为当前同步引擎路径下的 Phase 13 bridge；若发布版要展示 loading UI 或加载大包，应改为异步 package loader + scene transition/loading screen。
+
 ## 第二轮待办清单
 
 - [x] 新增 `cmake/WebDependencies.cmake`，隔离 wasm 依赖来源。
@@ -355,9 +368,10 @@ flowchart TD
 - [x] 确认 MiniAudio Web Audio 后端在无 `-pthread` 下可初始化。
 - [x] 保存 slot 写入 `/persistent` 并在刷新后读取。
 - [x] Phase 12 浏览器 smoke 覆盖标题页、新游戏、菜单保存、刷新、加载 slot 并回到地图。
-- [ ] 决定运行时资源包加载机制。
-- [ ] 拆分 boot / shared-ui / home-map / audio-core 资源包。
-- [ ] release gate 覆盖真实 gameplay target、分包 manifest 和浏览器 smoke。
+- [x] 决定运行时资源包加载机制。
+- [x] 拆分 boot / shared-ui / home-map / audio-core 资源包。
+- [x] release gate 覆盖真实 gameplay target 和分包 manifest。
+- [x] 浏览器 smoke 验证 `home-map` 运行时加载并进入 `home_exterior`。
 - [ ] Chromium 自动 smoke 覆盖标题页、地图、移动、菜单、保存、刷新加载。
 - [ ] Safari 手工 smoke 记录并形成发布候选报告。
 
@@ -377,4 +391,4 @@ flowchart TD
 
 ## 当前无待澄清问题
 
-计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 12 已完成音频用户手势解锁、MiniAudio Web Audio 单线程初始化、IDBFS initial/persist sync、保存后刷新加载闭环，并在 Codex CLI Playwright 环境下完成完整浏览器交互验收。下一步进入 Phase 13，应优先做运行时资源分包加载机制 spike，再拆分 boot / shared-ui / home-map / audio-core；同时保留 Phase 10 遗留的坐标级移动 smoke hook，作为后续自动 smoke 的补强项。
+计划按“真实 gameplay wasm 最小可玩路径”推进。Phase 13 已完成运行时资源分包机制、package manifest / artifact gate 和 `home-map` 浏览器加载 smoke。下一步进入 Phase 14，应优先把 Chromium smoke 串成固定命令，并补齐 Safari 手工 smoke、boot-only 构建选项、移动坐标级验收和发布候选报告。

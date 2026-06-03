@@ -11,6 +11,7 @@
 target_sources(engine PRIVATE
     # Platform
     engine/platform/filesystem_paths.cpp
+    engine/platform/web_asset_package.cpp
     engine/platform/web_persistent_storage.cpp
     # Async
     engine/async/main_thread_command_queue.cpp

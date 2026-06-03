@@ -7,6 +7,7 @@
 #include "engine/loader/tiled_conventions.h"
 #include "engine/loader/tiled_json_cache.h"
 #include "engine/loader/tiled_json_helpers.h"
+#include "engine/platform/web_asset_package.h"
 #include "engine/platform/threading.h"
 #include "engine/render/camera.h"
 #include "engine/core/context.h"
@@ -193,6 +194,18 @@ namespace {
                 spatial_index.updateColliderEntity(entity);
             }
         }
+    }
+
+    [[nodiscard]] bool ensureWebMapPackage(std::string_view map_name) {
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+        if (map_name.empty()) {
+            return true;
+        }
+        return engine::platform::web::loadAssetPackage("home-map", "web-packages/home-map.tfpack");
+#else
+        (void)map_name;
+        return true;
+#endif
     }
 
     [[nodiscard]] std::optional<glm::vec3> loadAmbientOverride(std::string_view map_path) {
@@ -494,6 +507,10 @@ bool MapManager::loadMap(entt::id_type map_id) {
     const auto* map_state = world_state_.getMapState(map_id);
     if (!map_state) {
         spdlog::error("MapManager: 无法加载地图，未知ID {}", map_id);
+        return false;
+    }
+    if (!ensureWebMapPackage(map_state->info.name)) {
+        spdlog::error("MapManager: 地图资源包加载失败: map='{}'", map_state->info.name);
         return false;
     }
 

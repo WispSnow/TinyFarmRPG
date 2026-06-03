@@ -10,6 +10,25 @@ set(TF_WEB_PRELOAD_ARGS
     "Web POC preload argument manifest"
 )
 
+function(tf_configure_web_runtime_packages TARGET_NAME)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    set(_package_dir "${CMAKE_BINARY_DIR}/web-packages")
+    set(_package_index "${_package_dir}/web-package-index.json")
+    set(_boot_preload "${CMAKE_BINARY_DIR}/web-boot-preload.args")
+
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/tools/web_release/package_web_assets.py"
+            "--manifest" "${TF_WEB_PRELOAD_ARGS}"
+            "--output-dir" "${_package_dir}"
+            "--boot-preload-output" "${_boot_preload}"
+            "--json-output" "${_package_index}"
+        COMMENT "Generate Web runtime asset packages"
+        VERBATIM
+    )
+endfunction()
+
 function(tf_apply_web_compile_options TARGET_NAME)
     if(NOT EMSCRIPTEN)
         message(FATAL_ERROR "tf_apply_web_compile_options requires Emscripten.")
@@ -62,6 +81,10 @@ function(tf_configure_web_executable TARGET_NAME)
     endif()
 
     tf_target_web_preload(${TARGET_NAME} "${TF_WEB_PRELOAD_ARGS}")
+
+    if(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+        tf_configure_web_runtime_packages(${TARGET_NAME})
+    endif()
 
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/favicon.ico"

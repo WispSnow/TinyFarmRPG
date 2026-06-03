@@ -42,6 +42,25 @@ REQUIRED_PRELOAD_PATHS = {
     "ui/rmlui/scenes/title.rml",
 }
 
+REQUIRED_RUNTIME_PACKAGES = {
+    "boot",
+    "shared-ui",
+    "home-map",
+    "audio-core",
+}
+
+REQUIRED_HOME_MAP_PACKAGE_PATHS = {
+    "assets/maps/farm-rpg.world",
+    "assets/maps/home_exterior.tmj",
+    "assets/maps/home_interior.tmj",
+}
+
+REQUIRED_AUDIO_CORE_PACKAGE_PATHS = {
+    "assets/audio/01_spring_journey.ogg",
+    "assets/audio/02_spring_fairy_tale.ogg",
+    "assets/audio/pop.mp3",
+}
+
 FORBIDDEN_SINGLE_THREAD_FLAGS = (
     "-sUSE_PTHREADS=1",
     "-sPTHREAD_POOL_SIZE",
@@ -345,6 +364,110 @@ def validate_staged_preload(build_dir: Path, entries: list[PreloadEntry], gate: 
     return {"stage_root": str(stage_root), "files_checked": checked}
 
 
+def validate_runtime_packages(
+    build_dir: Path,
+    entries: list[PreloadEntry],
+    package_index_path: Path,
+    gate: Gate,
+) -> dict[str, Any]:
+    index = load_json(package_index_path, gate)
+    if not index:
+        return {}
+
+    if index.get("strategy") != "custom_sync_xhr_fs_writefile":
+        gate.fail(f"Runtime package strategy must be custom_sync_xhr_fs_writefile: {package_index_path}")
+
+    packages = index.get("packages")
+    if not isinstance(packages, dict):
+        gate.fail(f"Runtime package index missing packages object: {package_index_path}")
+        return index
+
+    missing_packages = sorted(REQUIRED_RUNTIME_PACKAGES - set(packages.keys()))
+    for package_id in missing_packages:
+        gate.fail(f"Runtime package missing from index: {package_id}")
+
+    source_paths = {entry.source_rel for entry in entries}
+    packaged_paths: set[str] = set()
+    package_summaries: dict[str, Any] = {}
+
+    for package_id, package in packages.items():
+        if not isinstance(package, dict):
+            gate.fail(f"Runtime package '{package_id}' must be an object")
+            continue
+
+        paths = package.get("paths")
+        if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+            gate.fail(f"Runtime package '{package_id}' missing string paths list")
+            continue
+        path_set = set(paths)
+        duplicate_count = len(paths) - len(path_set)
+        if duplicate_count:
+            gate.fail(f"Runtime package '{package_id}' contains {duplicate_count} duplicate paths")
+        packaged_paths.update(path_set)
+
+        unknown_paths = sorted(path_set - source_paths)
+        for path in unknown_paths:
+            gate.fail(f"Runtime package '{package_id}' references path outside preload manifest: {path}")
+
+        delivery = package.get("delivery")
+        if package_id == "boot":
+            if delivery != "emscripten-preload":
+                gate.fail("Runtime package 'boot' must use emscripten-preload delivery")
+            preload_manifest = package.get("preload_manifest")
+            if not isinstance(preload_manifest, str) or not (build_dir / preload_manifest).is_file():
+                gate.fail(f"Boot runtime preload manifest missing: {preload_manifest}")
+        else:
+            if delivery != "tfpack":
+                gate.fail(f"Runtime package '{package_id}' must use tfpack delivery")
+            artifact = package.get("artifact")
+            if not isinstance(artifact, str):
+                gate.fail(f"Runtime package '{package_id}' missing artifact path")
+            else:
+                artifact_path = build_dir / artifact
+                if not artifact_path.is_file():
+                    gate.fail(f"Runtime package artifact missing: {artifact_path}")
+                elif artifact_path.stat().st_size <= 12:
+                    gate.fail(f"Runtime package artifact too small: {artifact_path}")
+
+        package_summaries[package_id] = {
+            "files": package.get("files"),
+            "bytes": package.get("bytes"),
+            "size": package.get("size"),
+            "delivery": delivery,
+        }
+
+    missing_packaged_paths = sorted(source_paths - packaged_paths)
+    for path in missing_packaged_paths:
+        gate.fail(f"Preload manifest path is not assigned to a runtime package: {path}")
+
+    boot = packages.get("boot", {})
+    if isinstance(boot, dict):
+        boot_bytes = boot.get("bytes")
+        full_bytes = sum(entry.source_path.stat().st_size for entry in entries if entry.source_path.exists())
+        if not isinstance(boot_bytes, int):
+            gate.fail("Runtime package 'boot' missing byte count")
+        elif boot_bytes >= full_bytes:
+            gate.fail(f"Runtime boot package is not smaller than the current single package: {boot_bytes} >= {full_bytes}")
+
+    home_map = packages.get("home-map", {})
+    if isinstance(home_map, dict) and isinstance(home_map.get("paths"), list):
+        missing = sorted(REQUIRED_HOME_MAP_PACKAGE_PATHS - set(home_map["paths"]))
+        for path in missing:
+            gate.fail(f"home-map package missing required path: {path}")
+
+    audio_core = packages.get("audio-core", {})
+    if isinstance(audio_core, dict) and isinstance(audio_core.get("paths"), list):
+        missing = sorted(REQUIRED_AUDIO_CORE_PACKAGE_PATHS - set(audio_core["paths"]))
+        for path in missing:
+            gate.fail(f"audio-core package missing required path: {path}")
+
+    return {
+        "index": str(package_index_path),
+        "strategy": index.get("strategy"),
+        "packages": package_summaries,
+    }
+
+
 def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
     web_main = root / "src" / "web" / "web_main.cpp"
     gl_platform = root / "src" / "engine" / "platform" / "gl_platform.h"
@@ -405,6 +528,7 @@ def main() -> int:
     parser.add_argument("--build-dir", type=Path, default=root / "build" / "web-release")
     parser.add_argument("--manifest", type=Path, default=root / "manifests" / "assets" / "web-poc-preload.args")
     parser.add_argument("--asset-budget", type=Path, default=root / "manifests" / "assets" / "asset-budget.json")
+    parser.add_argument("--package-index", type=Path)
     parser.add_argument("--json-output", type=Path)
     parser.add_argument(
         "--allow-pthreads",
@@ -416,6 +540,11 @@ def main() -> int:
     build_dir = args.build_dir.resolve()
     manifest_path = args.manifest.resolve()
     budget_path = args.asset_budget.resolve()
+    package_index_path = (
+        args.package_index.resolve()
+        if args.package_index is not None
+        else build_dir / "web-packages" / "web-package-index.json"
+    )
     gate = Gate()
 
     entries = parse_preload_manifest(root, manifest_path, gate)
@@ -427,6 +556,7 @@ def main() -> int:
         "cmake": validate_cmake_cache(build_dir, manifest_path, args.allow_pthreads, gate),
         "preload": validate_preload_budget(entries, budget_path, gate),
         "staged_preload": validate_staged_preload(build_dir, entries, gate),
+        "runtime_packages": validate_runtime_packages(build_dir, entries, package_index_path, gate),
         "shader_boundary": validate_shader_boundary(root, gate),
         "warnings": gate.warnings,
         "notes": gate.notes,
@@ -439,6 +569,10 @@ def main() -> int:
     print("TinyFarmRPG Web release gate")
     print(f"- build dir: {build_dir}")
     print(f"- preload: {summary['preload'].get('files', 0)} files, {summary['preload'].get('size', '0 B')}")
+    if summary["runtime_packages"]:
+        print(f"- runtime packages: {summary['runtime_packages'].get('strategy', '<missing>')}")
+        for package_id, package in summary["runtime_packages"].get("packages", {}).items():
+            print(f"  - {package_id}: {package.get('files', 0)} files, {package.get('size', '0 B')}")
     for name, artifact in summary["artifacts"].items():
         print(f"- {name}: {artifact['size']} (gzip {human_size(int(artifact['gzip_bytes']))})")
     if gate.notes:
