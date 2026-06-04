@@ -24,12 +24,12 @@
 
 - Phase 15 已完成 boot-only preload cutover：`TinyFarmRPG-Web.data` 已收敛到 2.9 MiB，link-time preload 使用 `web-release-boot.args`。
 - Phase 16 已完成 runtime package registry：`shared-ui`、`home-map`、`audio-core` 都通过统一 registry gate，并被 Chrome smoke 观测到 `.tfpack` 响应。
+- Phase 17 已完成 gameplay coverage 扩展：Chrome smoke 覆盖 inventory / hotbar / pause、工具动作、`home_exterior` 与 `home_interior` 往返、商人对话、保存覆盖和刷新读档。报告见 `plans/reports/2026-06-04-web-release-phase-17-report.md`。
 - headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
 
 仍未完成的部分：
 
-- Phase 17 尚未扩展完整 gameplay coverage，目前自动 smoke 仍主要覆盖标题页、appearance、地图、移动、保存和刷新读档。
-- Chrome smoke 覆盖主路径，但尚未覆盖完整玩法面，例如室内外切图、inventory、dialogue、工具动作、战斗/商店/任务等。
+- Chrome smoke 尚未覆盖完整战斗、商店交易、任务领取/交付、招募、休息和外观衣柜等扩展玩法。
 - Effekseer、Bloom / HDR emissive、高级后处理仍处于关闭或降级状态。
 - 发布说明、人工测试说明、产物打包、CI 接入和性能预算尚未形成最终版。
 
@@ -174,6 +174,8 @@ flowchart TD
 - Chromium smoke 观察到三个 `.tfpack` 响应。
 
 ## Phase 17：玩法路径与资源覆盖扩展
+
+状态：`Completed`。报告见 `plans/reports/2026-06-04-web-release-phase-17-report.md`。
 
 目标：把 Chrome 验收从最小主路径扩展到教学 demo 的实际玩法面，避免“只会进图和保存”的 Web 版本。
 
@@ -338,9 +340,9 @@ flowchart TD
 - [x] `shared-ui.tfpack` 接入真实 UI scene transition gate。
 - [x] `audio-core.tfpack` 接入用户手势后的音频加载 gate。
 - [x] Chrome smoke 断言 `shared-ui`、`home-map`、`audio-core` 三个包的网络响应。
-- [ ] 建立 demo 主流程资源覆盖表。
-- [ ] 扩展 map package 覆盖室内外切图。
-- [ ] Chrome smoke 覆盖至少两个地图、一个交互、一个菜单、保存和刷新读档。
+- [x] 建立 demo 主流程资源覆盖表。
+- [x] 扩展 map package 覆盖室内外切图。
+- [x] Chrome smoke 覆盖至少两个地图、一个交互、一个菜单、保存和刷新读档。
 - [ ] WebGL2 capability 结果进入日志和 release report。
 - [ ] Bloom / emissive / Effekseer 给出恢复或正式降级结论。
 - [ ] 音频 warning 收敛，不再掩盖缺包错误。

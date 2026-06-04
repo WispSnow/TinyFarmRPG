@@ -556,6 +556,7 @@ def select_web_poc_assets(used: dict[str, set[str]], root: Path) -> list[str]:
         "ui/rmlui/hud/",
         "ui/rmlui/overlay/",
         "ui/rmlui/scenes/appearance_customize.",
+        "ui/rmlui/scenes/inventory_menu.",
         "ui/rmlui/scenes/pause_menu.",
         "ui/rmlui/scenes/save_slot_select.",
         "ui/rmlui/scenes/title.",

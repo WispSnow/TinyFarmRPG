@@ -161,16 +161,21 @@ TEST(WebGameplayTargetSourceTest, TitleBootRestoresRmlUiAndPhase11UiResources) {
     EXPECT_NE(game_app_source.find("constexpr bool kEnableRmlUiRuntime = true;"), std::string::npos);
 
     EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/appearance_customize.\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/inventory_menu.\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/pause_menu.\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/save_slot_select.\""), std::string::npos);
 
     EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/appearance_customize.rml\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/inventory_menu.rml\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/inventory_menu.rcss\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/pause_menu.rml\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("\"ui/rmlui/scenes/save_slot_select.rml\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("build_dir / \"TinyFarmRPG-Web-preload-root\""), std::string::npos);
 
     EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/title.rml"), std::string::npos);
     EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/appearance_customize.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/inventory_menu.rml"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/inventory_menu.rcss"), std::string::npos);
     EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/pause_menu.rml"), std::string::npos);
     EXPECT_NE(preload_manifest.find("ui/rmlui/scenes/save_slot_select.rml"), std::string::npos);
     EXPECT_NE(preload_manifest.find("ui/rmlui/hud/hotbar.rml"), std::string::npos);
@@ -402,6 +407,9 @@ TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     EXPECT_NE(web_smoke.find("audio-core.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("WebAssetPackageRegistry: package 'audio-core' ready"), std::string::npos);
     EXPECT_NE(web_smoke.find("Single-thread preview must not require COOP/COEP headers"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_home_round_trip"), std::string::npos);
+    EXPECT_NE(web_smoke.find("trigger_merchant_dialogue"), std::string::npos);
+    EXPECT_NE(web_smoke.find("covered_flows"), std::string::npos);
 
     EXPECT_NE(release_server.find("\".wasm\": \"application/wasm\""), std::string::npos);
     EXPECT_NE(release_server.find("\".tfpack\": \"application/octet-stream\""), std::string::npos);
@@ -463,6 +471,51 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     EXPECT_NE(web_smoke.find("Package responses missing from smoke"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("web-packages/audio-core.tfpack"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase17GameplayCoverageSmokeIsPresent) {
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string audit_tool = readProjectFile("tools/web_release/audit_web_resource_coverage.py");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string map_transition_source = readProjectFile("src/game/system/map_transition_system.cpp");
+    const std::string dialogue_presentation_source = readProjectFile("src/game/ui/dialogue_presentation_controller.cpp");
+    const std::string input_routing_source = readProjectFile("src/engine/input/input_event_routing.cpp");
+
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(audit_tool.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(map_transition_source.empty());
+    ASSERT_FALSE(dialogue_presentation_source.empty());
+    ASSERT_FALSE(input_routing_source.empty());
+
+    EXPECT_NE(web_smoke.find("phase17-home-interior.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase17-home-exterior-return.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase17-inventory-open.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase17-pause-open.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase17-merchant-approach.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase17-merchant-dialogue.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("package_web_assets(root, build_dir)"), std::string::npos);
+    EXPECT_NE(web_smoke.find("TinyFarmRPGSmokeState"), std::string::npos);
+    EXPECT_NE(web_smoke.find("move_player_to"), std::string::npos);
+    EXPECT_NE(web_smoke.find("home_exterior_to_home_interior_round_trip"), std::string::npos);
+    EXPECT_NE(web_smoke.find("primary_tool_action"), std::string::npos);
+    EXPECT_NE(web_smoke.find("scripted_merchant_dialogue"), std::string::npos);
+
+    EXPECT_NE(game_scene_source.find("GameScene: inventory menu opened."), std::string::npos);
+    EXPECT_NE(game_scene_source.find("GameScene: hotbar toggle accepted."), std::string::npos);
+    EXPECT_NE(game_scene_source.find("GameScene: pause menu opened."), std::string::npos);
+    EXPECT_NE(game_scene_source.find("GameScene: gameplay ready."), std::string::npos);
+    EXPECT_NE(game_scene_source.find("TinyFarmRPGSmokeState"), std::string::npos);
+    EXPECT_NE(map_transition_source.find("MapTransitionSystem: map transition"), std::string::npos);
+    EXPECT_NE(dialogue_presentation_source.find("DialoguePresentationController: conversation dialogue shown."), std::string::npos);
+    EXPECT_NE(input_routing_source.find("SDL_EVENT_KEY_DOWN && current_context == InputContextId::Gameplay"), std::string::npos);
+    EXPECT_NE(input_routing_source.find("SDL_EVENT_MOUSE_BUTTON_DOWN && current_context == InputContextId::Gameplay"), std::string::npos);
+
+    EXPECT_NE(audit_tool.find("REQUIRED_GAMEPLAY_SURFACES"), std::string::npos);
+    EXPECT_NE(audit_tool.find("ui/rmlui/scenes/inventory_menu.rml"), std::string::npos);
+    EXPECT_NE(audit_tool.find("home_interior"), std::string::npos);
+    EXPECT_NE(audit_tool.find("scripted interactions"), std::string::npos);
+    EXPECT_NE(audit_tool.find("missing_required_paths"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {

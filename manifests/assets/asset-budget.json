@@ -138,8 +138,8 @@
     }
   },
   "web_poc_assets": {
-    "files": 281,
-    "bytes": 21854940,
+    "files": 283,
+    "bytes": 21896934,
     "by_root": {
       "assets": {
         "files": 223,
@@ -154,8 +154,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 37,
-        "bytes": 61829
+        "files": 39,
+        "bytes": 103823
       }
     },
     "by_extension": {
@@ -184,12 +184,12 @@
         "bytes": 1567385
       },
       ".rcss": {
-        "files": 25,
-        "bytes": 44988
+        "files": 26,
+        "bytes": 65229
       },
       ".rml": {
-        "files": 12,
-        "bytes": 16841
+        "files": 13,
+        "bytes": 38594
       },
       ".tmj": {
         "files": 2,
@@ -227,8 +227,8 @@
     }
   },
   "web_release_full_assets": {
-    "files": 281,
-    "bytes": 21854940,
+    "files": 283,
+    "bytes": 21896934,
     "by_root": {
       "assets": {
         "files": 223,
@@ -243,8 +243,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 37,
-        "bytes": 61829
+        "files": 39,
+        "bytes": 103823
       }
     },
     "by_extension": {
@@ -273,12 +273,12 @@
         "bytes": 1567385
       },
       ".rcss": {
-        "files": 25,
-        "bytes": 44988
+        "files": 26,
+        "bytes": 65229
       },
       ".rml": {
-        "files": 12,
-        "bytes": 16841
+        "files": 13,
+        "bytes": 38594
       },
       ".tmj": {
         "files": 2,

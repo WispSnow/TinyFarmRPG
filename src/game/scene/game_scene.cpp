@@ -93,6 +93,10 @@
 #include <variant>
 #include <vector>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 using namespace entt::literals;
 
 namespace {
@@ -108,6 +112,45 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
         && engine::platform::web::loadPackage(engine::platform::web::PACKAGE_HOME_MAP);
 #else
     return true;
+#endif
+}
+
+void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRuntimeServices* services) {
+#if defined(__EMSCRIPTEN__)
+    auto players = registry.view<game::component::PlayerTag,
+                                 engine::component::TransformComponent,
+                                 game::component::MapId>();
+    if (players.begin() == players.end()) {
+        return;
+    }
+
+    const entt::entity player = *players.begin();
+    const auto& transform = players.get<engine::component::TransformComponent>(player);
+    const auto& map = players.get<game::component::MapId>(player);
+    std::string map_name{};
+    if (services != nullptr && services->world_state) {
+        if (const auto* map_state = services->world_state->getMapState(map.id_)) {
+            map_name = map_state->info.name;
+        }
+    }
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const state = globalThis.TinyFarmRPGSmokeState || (globalThis.TinyFarmRPGSmokeState = {});
+        const player = state.player || (state.player = {});
+        player.map = UTF8ToString($0);
+        player.x = $1;
+        player.y = $2;
+    }, map_name.c_str(), static_cast<double>(transform.position_.x), static_cast<double>(transform.position_.y));
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#else
+    (void)registry;
+    (void)services;
 #endif
 }
 
@@ -565,6 +608,7 @@ bool GameScene::init() {
     }
 
     playGameplayMusicCue();
+    spdlog::info("GameScene: gameplay ready.");
     return true;
 }
 
@@ -599,6 +643,7 @@ void GameScene::update(float delta_time) {
     // GameScene 的 frame update 仅承载 UI/表现层更新；
     // gameplay scheduler 已迁移到 fixedUpdate。
     if (!abort_to_title_) {
+        publishWebSmokeState(registry_, services_.get());
         updateBattleRewardNotification(delta_time);
     }
     if (!abort_to_title_ && services_ && services_->vfx_service) {
@@ -933,6 +978,7 @@ bool GameScene::openInventoryMenu(const game::ui::MenuTabId initial_tab) {
         services_->world_state.get(),
         services_->user_settings_service.get(),
         initial_tab));
+    spdlog::info("GameScene: inventory menu opened.");
     return true;
 }
 
@@ -966,7 +1012,11 @@ bool GameScene::onHotbarToggle() {
     }
 
     if (ui_controller_) {
-        return ui_controller_->toggleHotbar();
+        const bool handled = ui_controller_->toggleHotbar();
+        if (handled) {
+            spdlog::info("GameScene: hotbar toggle accepted.");
+        }
+        return handled;
     }
 
     return false;
@@ -995,6 +1045,7 @@ bool GameScene::onPauseToggle() {
         services_->user_settings_service.get(),
         services_->script_host.get());
     requestPushScene(std::move(menu));
+    spdlog::info("GameScene: pause menu opened.");
     return true;
 }
 

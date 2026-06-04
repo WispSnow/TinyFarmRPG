@@ -18,6 +18,7 @@
 #include <entt/signal/dispatcher.hpp>
 
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 #include <utility>
 
@@ -116,6 +117,7 @@ void DialoguePresentationController::onShow(const game::defs::DialogueShowEvent&
         conversation_box_->setText(evt.text);
         conversation_box_->setPortraitDecorator(resolvePortraitDecorator(evt));
         conversation_box_->setVisible(true);
+        spdlog::info("DialoguePresentationController: conversation dialogue shown.");
         return;
     }
 

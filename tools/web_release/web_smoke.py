@@ -30,6 +30,12 @@ from serve_web_release import cache_value, cmake_bool, make_handler
 LOGICAL_WIDTH = 640.0
 LOGICAL_HEIGHT = 360.0
 SAVE_PATH = "/persistent/saves/slot0.json"
+KEY_ESCAPE = ("Escape", "Escape", 27)
+KEY_INTERACT = ("KeyF", "f", 70)
+KEY_INVENTORY = ("KeyI", "i", 73)
+KEY_HOTBAR = ("Tab", "Tab", 9)
+KEY_PAUSE = ("KeyP", "p", 80)
+KEY_HOTBAR_1 = ("Digit1", "1", 49)
 
 
 def repo_root() -> Path:
@@ -82,6 +88,25 @@ def configure_web_build(root: Path, build_dir: Path, jobs: int) -> None:
 
 def build_web(root: Path, build_dir: Path, jobs: int) -> None:
     run_command(["cmake", "--build", str(build_dir), "-j", str(jobs)], root)
+
+
+def package_web_assets(root: Path, build_dir: Path) -> None:
+    package_dir = build_dir / "web-packages"
+    run_command(
+        [
+            sys.executable,
+            str(root / "tools" / "web_release" / "package_web_assets.py"),
+            "--manifest",
+            str(root / "manifests" / "assets" / "web-release-full.args"),
+            "--output-dir",
+            str(package_dir),
+            "--boot-preload-output",
+            str(build_dir / "web-boot-preload.args"),
+            "--json-output",
+            str(package_dir / "web-package-index.json"),
+        ],
+        root,
+    )
 
 
 def validate_web(root: Path, build_dir: Path, json_output: Path) -> None:
@@ -308,7 +333,7 @@ class CdpClient:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
 
-    def click_logical(self, x: float, y: float) -> None:
+    def click_logical(self, x: float, y: float, hold_ms: int = 0) -> None:
         point = self.evaluate(
             f"""(() => {{
                 const canvas = document.querySelector("canvas");
@@ -322,11 +347,13 @@ class CdpClient:
         )
         if not isinstance(point, dict):
             raise RuntimeError("Canvas is not available for logical click.")
-        self.click(float(point["x"]), float(point["y"]))
+        self.click(float(point["x"]), float(point["y"]), hold_ms=hold_ms)
 
-    def click(self, x: float, y: float) -> None:
+    def click(self, x: float, y: float, hold_ms: int = 0) -> None:
         params = {"x": x, "y": y, "button": "left", "clickCount": 1}
         self.call("Input.dispatchMouseEvent", {"type": "mousePressed", **params})
+        if hold_ms > 0:
+            self.wait_ms(hold_ms)
         self.call("Input.dispatchMouseEvent", {"type": "mouseReleased", **params})
 
     def key(self, code: str, key: str, windows_key_code: int, hold_ms: int = 0) -> None:
@@ -336,7 +363,10 @@ class CdpClient:
             "windowsVirtualKeyCode": windows_key_code,
             "nativeVirtualKeyCode": windows_key_code,
         }
-        self.call("Input.dispatchKeyEvent", {"type": "rawKeyDown", **base})
+        if len(key) == 1:
+            base["text"] = key
+            base["unmodifiedText"] = key
+        self.call("Input.dispatchKeyEvent", {"type": "keyDown", **base})
         if hold_ms > 0:
             self.wait_ms(hold_ms)
         self.call("Input.dispatchKeyEvent", {"type": "keyUp", **base})
@@ -544,7 +574,7 @@ def validate_headers(headers: dict[str, dict[str, str]], cross_origin_isolated: 
     return failures
 
 
-def read_save_position(cdp: CdpClient) -> dict[str, float] | None:
+def read_save_player(cdp: CdpClient) -> dict[str, Any] | None:
     return cdp.evaluate(
         f"""(() => {{
             if (typeof FS === "undefined") return null;
@@ -552,10 +582,47 @@ def read_save_position(cdp: CdpClient) -> dict[str, float] | None:
             if (!FS.analyzePath(path).exists) return null;
             const text = new TextDecoder("utf-8").decode(FS.readFile(path));
             const json = JSON.parse(text);
-            return json.player && json.player.position ? json.player.position : null;
+            if (!json.player) return null;
+            return {{
+                map_name: json.player.map_name || "",
+                position: json.player.position || null
+            }};
         }})()""",
         timeout=10.0,
     )
+
+
+def read_save_position(cdp: CdpClient) -> dict[str, float] | None:
+    player = read_save_player(cdp)
+    if not isinstance(player, dict):
+        return None
+    position = player.get("position")
+    return position if isinstance(position, dict) else None
+
+
+def read_runtime_player(cdp: CdpClient) -> dict[str, Any] | None:
+    player = cdp.evaluate(
+        """(() => {
+            const state = globalThis.TinyFarmRPGSmokeState;
+            if (!state || !state.player) return null;
+            return {
+                map: state.player.map || "",
+                x: Number(state.player.x),
+                y: Number(state.player.y)
+            };
+        })()"""
+    )
+    return player if isinstance(player, dict) else None
+
+
+def wait_for_runtime_player(cdp: CdpClient, map_name: str, timeout_ms: int) -> dict[str, Any]:
+    end = time.monotonic() + timeout_ms / 1000.0
+    while time.monotonic() < end:
+        player = read_runtime_player(cdp)
+        if isinstance(player, dict) and player.get("map") == map_name:
+            return player
+        cdp.wait_ms(100)
+    raise TimeoutError(f"Timed out waiting for runtime player on {map_name}")
 
 
 def position_distance(first: dict[str, float], second: dict[str, float]) -> float:
@@ -586,17 +653,19 @@ def save_slot0(
     changed_from: dict[str, float] | None = None,
 ) -> dict[str, float]:
     sync_log_start = len(cdp.state.logs)
-    cdp.click_logical(616, 31)
-    cdp.wait_ms(700)
+    pause_log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_PAUSE)
+    cdp.wait_for_new_log("save pause menu", "GameScene: pause menu opened.", pause_log_start, 10000)
+    cdp.wait_ms(500)
     cdp.screenshot(output_dir / f"phase14-{label}-pause.png")
-    cdp.click_logical(312, 91)
+    cdp.click_logical(312, 91, hold_ms=80)
     cdp.wait_ms(700)
     cdp.screenshot(output_dir / f"phase14-{label}-slot-select.png")
-    cdp.click_logical(236, 75)
+    cdp.click_logical(236, 75, hold_ms=80)
     if overwrite:
         cdp.wait_ms(500)
         cdp.screenshot(output_dir / f"phase14-{label}-overwrite.png")
-        cdp.click_logical(240, 185)
+        cdp.click_logical(240, 185, hold_ms=80)
     position = wait_for_save_position(cdp, 10000, changed_from=changed_from)
     cdp.wait_for_new_log(
         "persistent save sync",
@@ -605,6 +674,24 @@ def save_slot0(
         10000,
     )
     return position
+
+
+def press_game_key(
+    cdp: CdpClient,
+    code: str,
+    key: str,
+    windows_key_code: int,
+    hold_ms: int = 120,
+    settle_ms: int = 250,
+) -> None:
+    cdp.evaluate('document.querySelector("canvas")?.focus()')
+    cdp.key(code, key, windows_key_code, hold_ms=hold_ms)
+    cdp.wait_ms(settle_ms)
+
+
+def focus_gameplay_canvas(cdp: CdpClient) -> None:
+    cdp.click_logical(320, 180)
+    cdp.wait_ms(250)
 
 
 def move_player(cdp: CdpClient, code: str, key: str, windows_key_code: int, hold_ms: int = 1400) -> None:
@@ -619,6 +706,141 @@ def move_player_down(cdp: CdpClient, hold_ms: int = 1400) -> None:
 
 def move_player_up(cdp: CdpClient, hold_ms: int = 1400) -> None:
     move_player(cdp, "KeyW", "w", 87, hold_ms=hold_ms)
+
+
+def move_player_left(cdp: CdpClient, hold_ms: int = 1400) -> None:
+    move_player(cdp, "KeyA", "a", 65, hold_ms=hold_ms)
+
+
+def move_player_right(cdp: CdpClient, hold_ms: int = 1400) -> None:
+    move_player(cdp, "KeyD", "d", 68, hold_ms=hold_ms)
+
+
+def move_player_to(
+    cdp: CdpClient,
+    x: float,
+    y: float,
+    tolerance: float = 5.0,
+    timeout_ms: int = 12000,
+) -> dict[str, Any]:
+    end = time.monotonic() + timeout_ms / 1000.0
+    player = wait_for_runtime_player(cdp, "home_exterior", timeout_ms)
+    while time.monotonic() < end:
+        dx = x - float(player["x"])
+        dy = y - float(player["y"])
+        if abs(dx) <= tolerance and abs(dy) <= tolerance:
+            return player
+
+        if abs(dx) > tolerance:
+            hold_ms = max(70, min(180, int(abs(dx) * 6.0)))
+            if dx > 0.0:
+                move_player_right(cdp, hold_ms=hold_ms)
+            else:
+                move_player_left(cdp, hold_ms=hold_ms)
+        else:
+            hold_ms = max(70, min(180, int(abs(dy) * 6.0)))
+            if dy > 0.0:
+                move_player_down(cdp, hold_ms=hold_ms)
+            else:
+                move_player_up(cdp, hold_ms=hold_ms)
+
+        player = wait_for_runtime_player(cdp, "home_exterior", 3000)
+
+    raise TimeoutError(f"Timed out moving player to ({x:.1f}, {y:.1f}); last={player}")
+
+
+def exercise_menu_controls(cdp: CdpClient, output_dir: Path) -> None:
+    focus_gameplay_canvas(cdp)
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_INVENTORY)
+    cdp.wait_for_new_log("inventory menu", "GameScene: inventory menu opened.", log_start, 10000)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase17-inventory-open.png")
+    press_game_key(cdp, *KEY_ESCAPE, settle_ms=700)
+    cdp.screenshot(output_dir / "phase17-inventory-closed.png")
+
+    focus_gameplay_canvas(cdp)
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_HOTBAR)
+    cdp.wait_for_new_log("hotbar open", "GameScene: hotbar toggle accepted.", log_start, 5000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase17-hotbar-open.png")
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_HOTBAR)
+    cdp.wait_for_new_log("hotbar close", "GameScene: hotbar toggle accepted.", log_start, 5000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase17-hotbar-closed.png")
+
+    focus_gameplay_canvas(cdp)
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_PAUSE)
+    cdp.wait_for_new_log("pause menu", "GameScene: pause menu opened.", log_start, 10000)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase17-pause-open.png")
+    press_game_key(cdp, *KEY_ESCAPE, settle_ms=700)
+    cdp.screenshot(output_dir / "phase17-pause-closed.png")
+
+
+def trigger_tool_action(cdp: CdpClient, output_dir: Path) -> None:
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_HOTBAR_1)
+    cdp.wait_for_new_log("tool selection", "尝试切换工具: Hoe", log_start, 5000)
+
+    log_start = len(cdp.state.logs)
+    cdp.click_logical(320, 180, hold_ms=160)
+    cdp.wait_for_new_log("tool action", "触发工具动作", log_start, 5000)
+    cdp.wait_ms(900)
+    cdp.screenshot(output_dir / "phase17-tool-action.png")
+
+
+def exercise_home_round_trip(cdp: CdpClient, output_dir: Path) -> None:
+    transition_start = len(cdp.state.logs)
+    move_player_right(cdp, hold_ms=100)
+    move_player_up(cdp, hold_ms=350)
+    cdp.wait_for_new_log(
+        "home exterior to interior",
+        "MapTransitionSystem: map transition 'home_exterior' -> 'home_interior'.",
+        transition_start,
+        20000,
+    )
+    cdp.wait_for_new_log("home_interior loaded", "MapManager: 已加载地图 'home_interior'", transition_start, 20000)
+    cdp.wait_ms(900)
+    cdp.screenshot(output_dir / "phase17-home-interior.png")
+
+    transition_start = len(cdp.state.logs)
+    move_player_down(cdp, hold_ms=220)
+    cdp.wait_for_new_log(
+        "home interior to exterior",
+        "MapTransitionSystem: map transition 'home_interior' -> 'home_exterior'.",
+        transition_start,
+        20000,
+    )
+    cdp.wait_for_new_log("home_exterior reloaded", "MapManager: 已加载地图 'home_exterior'", transition_start, 20000)
+    cdp.wait_ms(900)
+    cdp.screenshot(output_dir / "phase17-home-exterior-return.png")
+
+
+def trigger_merchant_dialogue(cdp: CdpClient, output_dir: Path) -> None:
+    move_player_to(cdp, 350.0, 170.0)
+    move_player_to(cdp, 350.0, 206.0)
+    move_player_right(cdp, hold_ms=80)
+    cdp.wait_ms(300)
+    cdp.screenshot(output_dir / "phase17-merchant-approach.png")
+
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_INTERACT)
+    cdp.wait_for_new_log(
+        "scripted merchant dialogue",
+        "DialoguePresentationController: conversation dialogue shown.",
+        log_start,
+        10000,
+    )
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase17-merchant-dialogue.png")
+
+    move_player_left(cdp, hold_ms=900)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase17-after-dialogue-distance.png")
 
 
 def resume_gameplay(cdp: CdpClient, output_dir: Path, label: str) -> None:
@@ -653,8 +875,15 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     cdp.click_logical(374, 274)
     cdp.wait_for_log("home map package", "WebAssetPackage: package 'home-map' loaded", 20000)
     cdp.wait_for_log("home_exterior", "MapManager: 已加载地图 'home_exterior'", 20000)
+    cdp.wait_for_log("gameplay ready", "GameScene: gameplay ready.", 20000)
     map_ready = now_ms()
     cdp.screenshot(screenshots["map"])
+
+    exercise_menu_controls(cdp, output_dir)
+    trigger_tool_action(cdp, output_dir)
+    exercise_home_round_trip(cdp, output_dir)
+    trigger_merchant_dialogue(cdp, output_dir)
+    interaction_ready = now_ms()
 
     move_player_down(cdp)
     cdp.screenshot(output_dir / "phase14-chromium-after-dialogue-dismiss.png")
@@ -686,6 +915,9 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     cdp.wait_for_log("home map after load", "MapManager: 已加载地图 'home_exterior'", 20000)
     load_ready = now_ms()
     cdp.screenshot(screenshots["after_load"])
+    loaded_player = read_save_player(cdp)
+    if not isinstance(loaded_player, dict) or loaded_player.get("map_name") != "home_exterior":
+        raise RuntimeError(f"Loaded save did not report home_exterior: {loaded_player}")
 
     package_responses = [
         response for response in cdp.state.responses
@@ -717,6 +949,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         "timings_ms": {
             "title_interactive": human_ms(started, title_ready),
             "new_game_to_map": human_ms(title_ready, map_ready),
+            "gameplay_flow": human_ms(map_ready, interaction_ready),
             "reload_load_to_map": human_ms(map_ready, load_ready),
         },
         "positions": {
@@ -724,6 +957,17 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
             "after_move": moved_position,
             "delta": movement_delta,
         },
+        "covered_flows": [
+            "new_game_character_confirm",
+            "home_exterior_movement",
+            "home_exterior_to_home_interior_round_trip",
+            "inventory_open_close",
+            "hotbar_open_close",
+            "pause_open_close",
+            "primary_tool_action",
+            "scripted_merchant_dialogue",
+            "save_reload_load",
+        ],
         "package_responses": package_responses,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
         "warning_count": sum(1 for entry in cdp.state.logs if entry.get("level") in {"warning", "warn"}),
@@ -741,9 +985,18 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
                     "GameApp: Web persistent",
                     "AudioPlayer",
                     "ResourceManager: registered audio preload",
+                    "DialoguePresentationController",
+                    "GameScene: inventory menu opened",
+                    "GameScene: hotbar toggle accepted",
+                    "GameScene: pause menu opened",
+                    "GameScene: gameplay ready",
+                    "MapTransitionSystem",
+                    "触发工具动作",
+                    "尝试切换工具",
                     "MapManager",
                     "SaveService",
                     "home_exterior",
+                    "home_interior",
                 )
             )
         ][-80:],
@@ -806,11 +1059,16 @@ def main() -> int:
     output_dir = (args.output_dir or build_dir / "web-smoke").resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     json_output = (args.json_output or output_dir / "chromium-smoke.json").resolve()
+    stale_failure_output = output_dir / "chromium-smoke-failed.json"
+    if stale_failure_output.exists():
+        stale_failure_output.unlink()
 
     if args.configure:
         configure_web_build(root, build_dir, args.jobs)
     elif not args.skip_build:
         build_web(root, build_dir, args.jobs)
+
+    package_web_assets(root, build_dir)
 
     if not args.skip_gate:
         validate_web(root, build_dir, output_dir / "release-gate.json")

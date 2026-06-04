@@ -260,6 +260,8 @@ ui/rmlui/overlay/screen_fade.rcss
 ui/rmlui/overlay/screen_fade.rml
 ui/rmlui/scenes/appearance_customize.rcss
 ui/rmlui/scenes/appearance_customize.rml
+ui/rmlui/scenes/inventory_menu.rcss
+ui/rmlui/scenes/inventory_menu.rml
 ui/rmlui/scenes/pause_menu.rcss
 ui/rmlui/scenes/pause_menu.rml
 ui/rmlui/scenes/save_slot_select.rcss

@@ -535,6 +535,8 @@ void MapTransitionSystem::emitMapTransitionEvents(const entt::id_type previous_m
     const std::string previous_map_name = mapName(previous_map_id);
     const std::string next_map_name = mapName(next_map_id);
 
+    spdlog::info("MapTransitionSystem: map transition '{}' -> '{}'.", previous_map_name, next_map_name);
+
     if (previous_map_id != entt::null) {
         dispatcher_.trigger(game::defs::MapExitedEvent{
             .map_id = previous_map_id,

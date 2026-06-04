@@ -59,6 +59,7 @@ FORBIDDEN_BOOT_PRELOAD_PATHS = {
     "scripts/bootstrap.lua",
     "ui/rmlui/hud/hotbar.rml",
     "ui/rmlui/scenes/appearance_customize.rml",
+    "ui/rmlui/scenes/inventory_menu.rml",
     "ui/rmlui/scenes/pause_menu.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
 }
@@ -78,6 +79,8 @@ REQUIRED_FULL_PACKAGE_PATHS = {
     "config/render.json",
     "scripts/bootstrap.lua",
     "ui/rmlui/hud/hotbar.rml",
+    "ui/rmlui/scenes/inventory_menu.rcss",
+    "ui/rmlui/scenes/inventory_menu.rml",
     "ui/rmlui/scenes/appearance_customize.rml",
     "ui/rmlui/scenes/pause_menu.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
