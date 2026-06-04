@@ -38,6 +38,7 @@ TITLE_BOOT_PATHS = {
 }
 
 BOOT_PATHS = {
+    "assets/data/appearance_catalog.json",
     "assets/data/cursor_config.json",
     "assets/data/resource_mapping.json",
     "assets/fonts/VonwaonBitmap-16px.ttf",
@@ -82,6 +83,36 @@ GAMEPLAY_DATA_PATHS = {
     "assets/data/quests.json",
     "assets/data/shops.json",
     "assets/data/vfx_catalog.json",
+}
+
+BATTLE_UI_PREFIXES = (
+    "ui/rmlui/scenes/battle.",
+)
+
+SHARED_UI_PREFIXES = (
+    "ui/rmlui/hud/",
+    "ui/rmlui/overlay/",
+    "ui/rmlui/scenes/appearance_customize.",
+    "ui/rmlui/scenes/dialogue_choice.",
+    "ui/rmlui/scenes/inventory_menu.",
+    "ui/rmlui/scenes/pause_menu.",
+    "ui/rmlui/scenes/quest_offer.",
+    "ui/rmlui/scenes/recruit_offer.",
+    "ui/rmlui/scenes/rest_dialog.",
+    "ui/rmlui/scenes/save_slot_select.",
+    "ui/rmlui/scenes/shop_menu.",
+    "ui/rmlui/theme/",
+)
+
+PACKAGE_DEPENDENCIES = {
+    "boot": [],
+    "shared-ui": [],
+    "rpg-core": [],
+    "home-map": ["rpg-core"],
+    "town-map": ["home-map"],
+    "battle-core": ["shared-ui", "rpg-core", "town-map"],
+    "vfx-core": ["battle-core"],
+    "audio-core": [],
 }
 
 
@@ -162,14 +193,22 @@ def classify(entry: PreloadEntry) -> str:
         return "boot"
     if path in AUDIO_CORE_PATHS or path.startswith("assets/audio/"):
         return "audio-core"
+    if path.startswith("assets/vfx/"):
+        return "vfx-core"
+    if path.startswith("assets/textures/BattleBg/"):
+        return "battle-core"
+    if path.startswith(BATTLE_UI_PREFIXES):
+        return "battle-core"
+    if path == "assets/maps/town.tmj":
+        return "town-map"
     if path.startswith("assets/maps/"):
         return "home-map"
     if path.startswith("scripts/"):
-        return "home-map"
+        return "rpg-core"
     if path.startswith(GAMEPLAY_DATA_PREFIXES) or path in GAMEPLAY_DATA_PATHS:
-        return "home-map"
+        return "rpg-core"
     if path.startswith("assets/i18n/"):
-        return "home-map"
+        return "rpg-core"
     if path.startswith("assets/textures/Elements/"):
         return "home-map"
     if path.startswith("assets/farm-rpg/Exterior/"):
@@ -181,8 +220,8 @@ def classify(entry: PreloadEntry) -> str:
     if path.startswith("assets/farm-rpg/Farm/"):
         return "home-map"
     if path.startswith("assets/farm-rpg/Enemy/"):
-        return "home-map"
-    if path.startswith("ui/rmlui/"):
+        return "town-map"
+    if path.startswith(SHARED_UI_PREFIXES) or path.startswith("ui/rmlui/"):
         return "shared-ui"
     if path.startswith("assets/fonts/"):
         return "shared-ui"
@@ -263,6 +302,7 @@ def build_index(
             package_index[package_id] = {
                 "delivery": "emscripten-preload",
                 "preload_manifest": boot_preload_output.relative_to(output_parent).as_posix(),
+                "dependencies": PACKAGE_DEPENDENCIES.get(package_id, []),
                 "paths": entry_paths,
                 **package_stats(entries),
             }
@@ -274,6 +314,7 @@ def build_index(
             "delivery": "tfpack",
             "url": artifact_path.relative_to(output_parent).as_posix(),
             "artifact": artifact_path.relative_to(output_parent).as_posix(),
+            "dependencies": PACKAGE_DEPENDENCIES.get(package_id, []),
             "paths": entry_paths,
             **package_stats(entries, artifact_bytes),
         }
@@ -311,12 +352,7 @@ def main() -> int:
     json_output = args.json_output.resolve()
 
     entries = parse_preload_manifest(root, manifest_path)
-    packages: dict[str, list[PreloadEntry]] = {
-        "boot": [],
-        "shared-ui": [],
-        "home-map": [],
-        "audio-core": [],
-    }
+    packages: dict[str, list[PreloadEntry]] = {package_id: [] for package_id in PACKAGE_DEPENDENCIES}
     for entry in entries:
         packages[classify(entry)].append(entry)
 

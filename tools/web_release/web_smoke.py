@@ -561,7 +561,11 @@ def validate_headers(headers: dict[str, dict[str, str]], cross_origin_isolated: 
         "/TinyFarmRPG-Web.wasm": "application/wasm",
         "/TinyFarmRPG-Web.data": "application/octet-stream",
         "/web-packages/shared-ui.tfpack": "application/octet-stream",
+        "/web-packages/rpg-core.tfpack": "application/octet-stream",
         "/web-packages/home-map.tfpack": "application/octet-stream",
+        "/web-packages/town-map.tfpack": "application/octet-stream",
+        "/web-packages/battle-core.tfpack": "application/octet-stream",
+        "/web-packages/vfx-core.tfpack": "application/octet-stream",
         "/web-packages/audio-core.tfpack": "application/octet-stream",
     }
     for path, expected in expected_types.items():
@@ -1153,6 +1157,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     cdp.wait_for_log("shared UI package", "WebAssetPackageRegistry: package 'shared-ui' ready", 20000)
     cdp.wait_ms(1500)
     cdp.click_logical(374, 274)
+    cdp.wait_for_log("RPG core package", "WebAssetPackageRegistry: package 'rpg-core' ready", 20000)
     cdp.wait_for_log("home map package", "WebAssetPackage: package 'home-map' loaded", 20000)
     cdp.wait_for_log("home_exterior", "MapManager: 已加载地图 'home_exterior'", 20000)
     cdp.wait_for_log("gameplay ready", "GameScene: gameplay ready.", 20000)
@@ -1210,6 +1215,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     ]
     required_packages = {
         "shared-ui.tfpack": False,
+        "rpg-core.tfpack": False,
         "home-map.tfpack": False,
         "audio-core.tfpack": False,
     }
@@ -1435,7 +1441,11 @@ def main() -> int:
                 "/TinyFarmRPG-Web.wasm",
                 "/TinyFarmRPG-Web.data",
                 "/web-packages/shared-ui.tfpack",
+                "/web-packages/rpg-core.tfpack",
                 "/web-packages/home-map.tfpack",
+                "/web-packages/town-map.tfpack",
+                "/web-packages/battle-core.tfpack",
+                "/web-packages/vfx-core.tfpack",
                 "/web-packages/audio-core.tfpack",
             ]
             headers = served_headers(f"http://{args.host}:{port}", header_paths)

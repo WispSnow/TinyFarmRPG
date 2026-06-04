@@ -296,27 +296,48 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(package_loader_source.find("'T', 'F', 'P', 'K'"), std::string::npos);
     EXPECT_NE(package_loader_source.find("std::filesystem::create_directories"), std::string::npos);
     EXPECT_NE(package_registry_header.find("loadPackage"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("loadGroup"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_RPG_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/rpg-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/home-map.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/town-map.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/battle-core.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/vfx-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/audio-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("lastPackageError"), std::string::npos);
 
     EXPECT_NE(game_scene_source.find("ensureWebGameplayPackages"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(game_scene_source.find("PACKAGE_HOME_MAP"), std::string::npos);
     EXPECT_NE(game_scene_source.find("PACKAGE_SHARED_UI"), std::string::npos);
     EXPECT_NE(map_manager_source.find("ensureWebMapPackage"), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
 
     EXPECT_NE(package_tool.find("custom_sync_xhr_fs_writefile"), std::string::npos);
     EXPECT_NE(package_tool.find("\"boot\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"shared-ui\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"rpg-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"home-map\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"town-map\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"battle-core\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"vfx-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"audio-core\""), std::string::npos);
+    EXPECT_NE(package_tool.find("PACKAGE_DEPENDENCIES"), std::string::npos);
     EXPECT_NE(package_tool.find("write_tfpack"), std::string::npos);
 
     EXPECT_NE(release_validator_source.find("validate_runtime_packages"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_SHARED_UI_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_RPG_CORE_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_HOME_MAP_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_TOWN_MAP_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_BATTLE_CORE_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_VFX_CORE_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_AUDIO_CORE_PACKAGE_PATHS"), std::string::npos);
 }
 
@@ -410,6 +431,7 @@ TEST(WebGameplayTargetSourceTest, Phase14ChromiumSmokePipelineIsPresent) {
     EXPECT_NE(web_smoke.find("Player did not move far enough"), std::string::npos);
     EXPECT_NE(web_smoke.find("SaveService: 已载入存档 'home_exterior'"), std::string::npos);
     EXPECT_NE(web_smoke.find("shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("rpg-core.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("home-map.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("audio-core.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("WebAssetPackageRegistry: package 'audio-core' ready"), std::string::npos);
@@ -451,16 +473,30 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     ASSERT_FALSE(boot_manifest.empty());
 
     EXPECT_NE(package_registry_header.find("PACKAGE_SHARED_UI"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("loadGroup"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("packageFiles"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("packageBytes"), std::string::npos);
     EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: loading package"), std::string::npos);
     EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: package '{}' ready"), std::string::npos);
     EXPECT_NE(package_registry_source.find("lastPackageError"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("std::array<PackageDefinition, 7>"), std::string::npos);
+    EXPECT_EQ(package_registry_source.find("std::array<PackageDefinition, 3>"), std::string::npos);
 
     EXPECT_NE(title_scene_source.find("loadPackage(engine::platform::web::PACKAGE_SHARED_UI)"), std::string::npos);
-    EXPECT_NE(game_scene_source.find("loadPackage(engine::platform::web::PACKAGE_SHARED_UI)"), std::string::npos);
-    EXPECT_NE(game_scene_source.find("loadPackage(engine::platform::web::PACKAGE_HOME_MAP)"), std::string::npos);
-    EXPECT_NE(map_manager_source.find("loadPackage(engine::platform::web::PACKAGE_HOME_MAP)"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("loadGroup({"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_SHARED_UI"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_RPG_CORE"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("loadGroup({"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_RPG_CORE"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_HOME_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
     EXPECT_EQ(title_scene_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
     EXPECT_EQ(game_scene_source.find("web-packages/home-map.tfpack"), std::string::npos);
     EXPECT_EQ(map_manager_source.find("web-packages/home-map.tfpack"), std::string::npos);
@@ -473,6 +509,7 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     EXPECT_NE(resource_manager_source.find("已注册但暂不解码"), std::string::npos);
 
     EXPECT_NE(web_smoke.find("shared-ui.tfpack"), std::string::npos);
+    EXPECT_NE(web_smoke.find("rpg-core.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("home-map.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("audio-core.tfpack"), std::string::npos);
     EXPECT_NE(web_smoke.find("Package responses missing from smoke"), std::string::npos);
@@ -669,6 +706,77 @@ TEST(WebGameplayTargetSourceTest, Phase20ReleaseRunbookArtifactsDocsAndCiArePres
     EXPECT_NE(workflow.find("artifact-manifest.json"), std::string::npos);
     EXPECT_NE(workflow.find("release-report.md"), std::string::npos);
     EXPECT_NE(workflow.find("chromium-smoke"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
+    const std::string asset_audit_source = readProjectFile("tools/asset_audit/audit_assets.py");
+    const std::string package_tool = readProjectFile("tools/web_release/package_web_assets.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+    const std::string package_registry_header = readProjectFile("src/engine/platform/web_asset_package_registry.h");
+    const std::string package_registry_source = readProjectFile("src/engine/platform/web_asset_package_registry.cpp");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string map_manager_source = readProjectFile("src/game/world/map_manager.cpp");
+    const std::string release_manifest = readProjectFile("manifests/assets/web-release-full.args");
+    const std::string release_asset_list = readProjectFile("manifests/assets/web-release-full-assets.txt");
+    const std::string boot_manifest = readProjectFile("manifests/assets/web-release-boot.args");
+
+    ASSERT_FALSE(asset_audit_source.empty());
+    ASSERT_FALSE(package_tool.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+    ASSERT_FALSE(package_registry_header.empty());
+    ASSERT_FALSE(package_registry_source.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(map_manager_source.empty());
+    ASSERT_FALSE(release_manifest.empty());
+    ASSERT_FALSE(release_asset_list.empty());
+    ASSERT_FALSE(boot_manifest.empty());
+
+    EXPECT_NE(asset_audit_source.find("select_web_full_rpg_assets"), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("web-release-full-assets.txt"), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"assets/maps/town.tmj\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/dialogue_choice.\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"assets/maps/school.tmj\""), std::string::npos);
+
+    EXPECT_NE(release_manifest.find("assets/maps/town.tmj"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/battle.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/dialogue_choice.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/quest_offer.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/recruit_offer.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/rest_dialog.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/scenes/shop_menu.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/textures/BattleBg/battlebacks1/Grassland.png"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/vfx/effects/HitEffect.efkefc"), std::string::npos);
+    EXPECT_EQ(release_manifest.find("assets/maps/school.tmj"), std::string::npos);
+
+    EXPECT_NE(package_tool.find("\"rpg-core\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"town-map\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"battle-core\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"vfx-core\""), std::string::npos);
+    EXPECT_NE(package_tool.find("PACKAGE_DEPENDENCIES"), std::string::npos);
+    EXPECT_NE(package_tool.find("assets/vfx/"), std::string::npos);
+    EXPECT_NE(package_tool.find("assets/textures/BattleBg/"), std::string::npos);
+
+    EXPECT_NE(release_validator_source.find("REQUIRED_PACKAGE_DEPENDENCIES"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_TOWN_MAP_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_BATTLE_CORE_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_VFX_CORE_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("FORBIDDEN_FULL_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("must record a positive byte count"), std::string::npos);
+
+    EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("loadGroup"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("packageFiles"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("packageBytes"), std::string::npos);
+    EXPECT_EQ(package_registry_source.find("std::array<PackageDefinition, 3>"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("PACKAGE_RPG_CORE"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("map_name == \"town\""), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
+
+    EXPECT_EQ(boot_manifest.find("assets/maps/town.tmj"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("assets/vfx/effects/HitEffect.efkefc"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("ui/rmlui/scenes/battle.rml"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {

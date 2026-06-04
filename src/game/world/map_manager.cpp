@@ -201,7 +201,17 @@ namespace {
         if (map_name.empty()) {
             return true;
         }
-        return engine::platform::web::loadPackage(engine::platform::web::PACKAGE_HOME_MAP);
+        if (map_name == "town") {
+            return engine::platform::web::loadGroup({
+                engine::platform::web::PACKAGE_RPG_CORE,
+                engine::platform::web::PACKAGE_HOME_MAP,
+                engine::platform::web::PACKAGE_TOWN_MAP,
+            });
+        }
+        return engine::platform::web::loadGroup({
+            engine::platform::web::PACKAGE_RPG_CORE,
+            engine::platform::web::PACKAGE_HOME_MAP,
+        });
 #else
         (void)map_name;
         return true;

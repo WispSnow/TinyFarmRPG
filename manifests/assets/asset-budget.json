@@ -5,7 +5,7 @@
     "by_root": {
       "assets": {
         "files": 731,
-        "bytes": 28794060
+        "bytes": 28793827
       },
       "config": {
         "files": 6,
@@ -17,7 +17,7 @@
       },
       "ui": {
         "files": 52,
-        "bytes": 165980
+        "bytes": 166213
       }
     },
     "by_extension": {
@@ -43,7 +43,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125741
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,
@@ -67,7 +67,7 @@
       },
       ".rml": {
         "files": 20,
-        "bytes": 68803
+        "bytes": 69036
       },
       ".tmj": {
         "files": 4,
@@ -143,7 +143,7 @@
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21768664
+        "bytes": 21768431
       },
       "config": {
         "files": 6,
@@ -155,7 +155,7 @@
       },
       "ui": {
         "files": 39,
-        "bytes": 103590
+        "bytes": 103823
       }
     },
     "by_extension": {
@@ -165,7 +165,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125741
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,
@@ -189,7 +189,7 @@
       },
       ".rml": {
         "files": 13,
-        "bytes": 38361
+        "bytes": 38594
       },
       ".tmj": {
         "files": 2,
@@ -227,12 +227,12 @@
     }
   },
   "web_release_full_assets": {
-    "files": 283,
-    "bytes": 21896934,
+    "files": 381,
+    "bytes": 23663899,
     "by_root": {
       "assets": {
-        "files": 223,
-        "bytes": 21768664
+        "files": 309,
+        "bytes": 23474308
       },
       "config": {
         "files": 6,
@@ -243,18 +243,34 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 39,
-        "bytes": 103590
+        "files": 51,
+        "bytes": 164911
       }
     },
     "by_extension": {
+      ".efkefc": {
+        "files": 5,
+        "bytes": 36742
+      },
+      ".efkmat": {
+        "files": 1,
+        "bytes": 2557
+      },
+      ".efkmodel": {
+        "files": 8,
+        "bytes": 282640
+      },
+      ".fbx": {
+        "files": 1,
+        "bytes": 15180
+      },
       ".frag": {
         "files": 7,
         "bytes": 6467
       },
       ".json": {
         "files": 33,
-        "bytes": 125741
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,
@@ -269,20 +285,20 @@
         "bytes": 4133295
       },
       ".png": {
-        "files": 158,
-        "bytes": 1567385
+        "files": 228,
+        "bytes": 2898340
       },
       ".rcss": {
-        "files": 26,
-        "bytes": 65229
+        "files": 32,
+        "bytes": 97177
       },
       ".rml": {
-        "files": 13,
-        "bytes": 38361
+        "files": 19,
+        "bytes": 67734
       },
       ".tmj": {
-        "files": 2,
-        "bytes": 70418
+        "files": 3,
+        "bytes": 108221
       },
       ".tsj": {
         "files": 15,
@@ -305,9 +321,9 @@
         "bytes": 388
       }
     },
-    "texture_count": 158,
-    "texture_pixels": 7437892,
-    "estimated_rgba8_bytes": 29751568,
+    "texture_count": 228,
+    "texture_pixels": 12687236,
+    "estimated_rgba8_bytes": 50748944,
     "max_texture": {
       "path": "assets/textures/UI/farm-rpg-bg.png",
       "width": 1280,

@@ -110,8 +110,11 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
 
 [[nodiscard]] bool ensureWebGameplayPackages() {
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
-    return engine::platform::web::loadPackage(engine::platform::web::PACKAGE_SHARED_UI)
-        && engine::platform::web::loadPackage(engine::platform::web::PACKAGE_HOME_MAP);
+    return engine::platform::web::loadGroup({
+        engine::platform::web::PACKAGE_SHARED_UI,
+        engine::platform::web::PACKAGE_RPG_CORE,
+        engine::platform::web::PACKAGE_HOME_MAP,
+    });
 #else
     return true;
 #endif

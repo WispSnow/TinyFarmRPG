@@ -53,15 +53,25 @@ FORBIDDEN_BOOT_PRELOAD_PATHS = {
     "assets/audio/01_spring_journey.ogg",
     "assets/audio/02_spring_fairy_tale.ogg",
     "assets/audio/pop.mp3",
+    "assets/maps/town.tmj",
+    "assets/textures/BattleBg/battlebacks1/Grassland.png",
+    "assets/textures/BattleBg/battlebacks2/Grassland.png",
+    "assets/vfx/effects/HitEffect.efkefc",
     "assets/maps/farm-rpg.world",
     "assets/maps/home_exterior.tmj",
     "assets/maps/home_interior.tmj",
     "scripts/bootstrap.lua",
     "ui/rmlui/hud/hotbar.rml",
     "ui/rmlui/scenes/appearance_customize.rml",
+    "ui/rmlui/scenes/battle.rml",
+    "ui/rmlui/scenes/dialogue_choice.rml",
     "ui/rmlui/scenes/inventory_menu.rml",
     "ui/rmlui/scenes/pause_menu.rml",
+    "ui/rmlui/scenes/quest_offer.rml",
+    "ui/rmlui/scenes/recruit_offer.rml",
+    "ui/rmlui/scenes/rest_dialog.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
+    "ui/rmlui/scenes/shop_menu.rml",
 }
 
 REQUIRED_FULL_PACKAGE_PATHS = {
@@ -70,28 +80,75 @@ REQUIRED_FULL_PACKAGE_PATHS = {
     "assets/audio/pop.mp3",
     "assets/data/audio_cues.json",
     "assets/data/map_loading_config.json",
+    "assets/data/quests.json",
+    "assets/data/shops.json",
+    "assets/data/vfx_catalog.json",
     "assets/fonts/LXGWBright-Regular.ttf",
     "assets/fonts/VonwaonBitmap-16px.ttf",
     "assets/maps/farm-rpg.world",
     "assets/maps/home_exterior.tmj",
     "assets/maps/home_interior.tmj",
+    "assets/maps/town.tmj",
+    "assets/textures/BattleBg/battlebacks1/Grassland.png",
+    "assets/textures/BattleBg/battlebacks2/Grassland.png",
+    "assets/vfx/effects/HitEffect.efkefc",
     "config/audio.json",
     "config/render.json",
     "scripts/bootstrap.lua",
+    "ui/rmlui/scenes/battle.rcss",
+    "ui/rmlui/scenes/battle.rml",
+    "ui/rmlui/scenes/dialogue_choice.rcss",
+    "ui/rmlui/scenes/dialogue_choice.rml",
     "ui/rmlui/hud/hotbar.rml",
     "ui/rmlui/scenes/inventory_menu.rcss",
     "ui/rmlui/scenes/inventory_menu.rml",
     "ui/rmlui/scenes/appearance_customize.rml",
     "ui/rmlui/scenes/pause_menu.rml",
+    "ui/rmlui/scenes/quest_offer.rcss",
+    "ui/rmlui/scenes/quest_offer.rml",
+    "ui/rmlui/scenes/recruit_offer.rcss",
+    "ui/rmlui/scenes/recruit_offer.rml",
+    "ui/rmlui/scenes/rest_dialog.rcss",
+    "ui/rmlui/scenes/rest_dialog.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
+    "ui/rmlui/scenes/shop_menu.rcss",
+    "ui/rmlui/scenes/shop_menu.rml",
     "ui/rmlui/scenes/title.rml",
+}
+
+FORBIDDEN_FULL_PACKAGE_PATHS = {
+    "assets/maps/school.tmj",
 }
 
 REQUIRED_RUNTIME_PACKAGES = {
     "boot",
     "shared-ui",
+    "rpg-core",
     "home-map",
+    "town-map",
+    "battle-core",
+    "vfx-core",
     "audio-core",
+}
+
+REQUIRED_SHARED_UI_PACKAGE_PATHS = {
+    "ui/rmlui/scenes/appearance_customize.rml",
+    "ui/rmlui/scenes/dialogue_choice.rml",
+    "ui/rmlui/scenes/inventory_menu.rml",
+    "ui/rmlui/scenes/pause_menu.rml",
+    "ui/rmlui/scenes/quest_offer.rml",
+    "ui/rmlui/scenes/recruit_offer.rml",
+    "ui/rmlui/scenes/rest_dialog.rml",
+    "ui/rmlui/scenes/save_slot_select.rml",
+    "ui/rmlui/scenes/shop_menu.rml",
+}
+
+REQUIRED_RPG_CORE_PACKAGE_PATHS = {
+    "assets/data/actor_blueprint.json",
+    "assets/data/quests.json",
+    "assets/data/shops.json",
+    "assets/data/vfx_catalog.json",
+    "scripts/bootstrap.lua",
 }
 
 REQUIRED_HOME_MAP_PACKAGE_PATHS = {
@@ -100,10 +157,31 @@ REQUIRED_HOME_MAP_PACKAGE_PATHS = {
     "assets/maps/home_interior.tmj",
 }
 
+REQUIRED_TOWN_MAP_PACKAGE_PATHS = {
+    "assets/maps/town.tmj",
+}
+
+REQUIRED_BATTLE_CORE_PACKAGE_PATHS = {
+    "assets/textures/BattleBg/battlebacks1/Grassland.png",
+    "assets/textures/BattleBg/battlebacks2/Grassland.png",
+    "ui/rmlui/scenes/battle.rml",
+}
+
+REQUIRED_VFX_CORE_PACKAGE_PATHS = {
+    "assets/vfx/effects/HitEffect.efkefc",
+}
+
 REQUIRED_AUDIO_CORE_PACKAGE_PATHS = {
     "assets/audio/01_spring_journey.ogg",
     "assets/audio/02_spring_fairy_tale.ogg",
     "assets/audio/pop.mp3",
+}
+
+REQUIRED_PACKAGE_DEPENDENCIES = {
+    "home-map": {"rpg-core"},
+    "town-map": {"home-map"},
+    "battle-core": {"shared-ui", "rpg-core", "town-map"},
+    "vfx-core": {"battle-core"},
 }
 
 FORBIDDEN_SINGLE_THREAD_FLAGS = (
@@ -377,6 +455,10 @@ def validate_full_manifest_budget(
     for rel in missing_required:
         gate.fail(f"Required Web release full asset missing: {rel}")
 
+    forbidden_paths = sorted(FORBIDDEN_FULL_PACKAGE_PATHS & source_paths)
+    for rel in forbidden_paths:
+        gate.fail(f"Excluded WIP asset leaked into Web release full manifest: {rel}")
+
     shader_assets = sorted(path for path in source_paths if path.startswith("assets/shaders/"))
     if not shader_assets:
         gate.fail("No shader assets are included in the Web release full manifest")
@@ -515,6 +597,23 @@ def validate_runtime_packages(
         for path in unknown_paths:
             gate.fail(f"Runtime package '{package_id}' references path outside preload manifest: {path}")
 
+        files = package.get("files")
+        bytes_count = package.get("bytes")
+        if package_id != "boot":
+            if not isinstance(files, int) or files <= 0:
+                gate.fail(f"Runtime package '{package_id}' must record a positive file count")
+            if not isinstance(bytes_count, int) or bytes_count <= 0:
+                gate.fail(f"Runtime package '{package_id}' must record a positive byte count")
+
+        dependencies = package.get("dependencies")
+        if not isinstance(dependencies, list) or not all(isinstance(dependency, str) for dependency in dependencies):
+            gate.fail(f"Runtime package '{package_id}' missing string dependencies list")
+            dependencies = []
+        required_dependencies = REQUIRED_PACKAGE_DEPENDENCIES.get(package_id, set())
+        missing_dependencies = sorted(required_dependencies - set(dependencies))
+        for dependency in missing_dependencies:
+            gate.fail(f"Runtime package '{package_id}' missing required dependency: {dependency}")
+
         delivery = package.get("delivery")
         if package_id == "boot":
             if delivery != "emscripten-preload":
@@ -540,6 +639,7 @@ def validate_runtime_packages(
             "bytes": package.get("bytes"),
             "size": package.get("size"),
             "delivery": delivery,
+            "dependencies": dependencies,
         }
 
     missing_packaged_paths = sorted(source_paths - packaged_paths)
@@ -566,17 +666,21 @@ def validate_runtime_packages(
         elif boot_bytes >= full_bytes:
             gate.fail(f"Runtime boot package is not smaller than the current single package: {boot_bytes} >= {full_bytes}")
 
-    home_map = packages.get("home-map", {})
-    if isinstance(home_map, dict) and isinstance(home_map.get("paths"), list):
-        missing = sorted(REQUIRED_HOME_MAP_PACKAGE_PATHS - set(home_map["paths"]))
-        for path in missing:
-            gate.fail(f"home-map package missing required path: {path}")
-
-    audio_core = packages.get("audio-core", {})
-    if isinstance(audio_core, dict) and isinstance(audio_core.get("paths"), list):
-        missing = sorted(REQUIRED_AUDIO_CORE_PACKAGE_PATHS - set(audio_core["paths"]))
-        for path in missing:
-            gate.fail(f"audio-core package missing required path: {path}")
+    required_package_paths = {
+        "shared-ui": REQUIRED_SHARED_UI_PACKAGE_PATHS,
+        "rpg-core": REQUIRED_RPG_CORE_PACKAGE_PATHS,
+        "home-map": REQUIRED_HOME_MAP_PACKAGE_PATHS,
+        "town-map": REQUIRED_TOWN_MAP_PACKAGE_PATHS,
+        "battle-core": REQUIRED_BATTLE_CORE_PACKAGE_PATHS,
+        "vfx-core": REQUIRED_VFX_CORE_PACKAGE_PATHS,
+        "audio-core": REQUIRED_AUDIO_CORE_PACKAGE_PATHS,
+    }
+    for package_id, required_paths in required_package_paths.items():
+        package = packages.get(package_id, {})
+        if isinstance(package, dict) and isinstance(package.get("paths"), list):
+            missing = sorted(required_paths - set(package["paths"]))
+            for path in missing:
+                gate.fail(f"{package_id} package missing required path: {path}")
 
     return {
         "index": str(package_index_path),

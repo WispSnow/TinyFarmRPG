@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`Planned`
+- 计划状态：`In Progress`
 - 前置基线：第三轮 Phase 15-21 已完成 Chrome 单线程 Web demo，可启动、进 `home_exterior`、切 `home_interior`、基础交互、保存、刷新读档。
 - 本轮目标：把 Web 版本从“可发布 demo”推进到“完整 RPG 基础玩法可玩”，并恢复战斗必需的 Effekseer 与核心发光/后处理视觉能力。
 - 浏览器范围：Chrome / Chromium 为阻塞验收目标。Safari 仍不作为本轮阻塞项。
@@ -371,14 +371,14 @@ flowchart LR
 
 ## 第四轮待办清单
 
-- [ ] 新增 full RPG Web release asset audit profile。
-- [ ] 生成并提交覆盖完整玩法的 `web-release-full.args`。
-- [ ] 新增 `rpg-core`、`battle-core`、`vfx-core` runtime packages。
-- [ ] 新增 `town-map` runtime package 或等价的 full RPG map package。
-- [ ] `town.tmj` 纳入 Web release manifest，`school.tmj` 的排除原因写入报告。
-- [ ] release gate 校验 battle/shop/quest/recruit/rest/wardrobe/VFX/BattleBg 资源。
-- [ ] release gate 校验 `dialogue_choice.*` UI 进入 shared-ui。
-- [ ] package registry 支持 package group dependency 和 diagnostics。
+- [x] 新增 full RPG Web release asset audit profile。
+- [x] 生成并提交覆盖完整玩法的 `web-release-full.args`。
+- [x] 新增 `rpg-core`、`battle-core`、`vfx-core` runtime packages。
+- [x] 新增 `town-map` runtime package 或等价的 full RPG map package。
+- [x] `town.tmj` 纳入 Web release manifest，`school.tmj` 的排除原因写入报告。
+- [x] release gate 校验 battle/shop/quest/recruit/rest/wardrobe/VFX/BattleBg 资源。
+- [x] release gate 校验 `dialogue_choice.*` UI 进入 shared-ui。
+- [x] package registry 支持 package group dependency 和 diagnostics。
 - [ ] Web diagnostics 暴露 gameplay / package / vfx / render 状态。
 - [ ] runbook 和 smoke 支持 `demo` / `full-rpg` profile。
 - [ ] Web 构建启用 Effekseer。

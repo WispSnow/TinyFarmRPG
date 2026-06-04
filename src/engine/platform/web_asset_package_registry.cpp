@@ -6,6 +6,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -15,18 +16,28 @@ namespace {
 struct PackageDefinition {
     std::string_view id;
     std::string_view url;
+    std::array<std::string_view, 3> dependencies{};
+    std::size_t dependency_count{0};
+    int files{0};
+    std::uint64_t bytes{0};
 };
 
 struct PackageRuntimeStatus {
     bool loaded{false};
     int attempts{0};
     int last_load_ms{0};
+    int files{0};
+    std::uint64_t bytes{0};
     std::string last_error{};
 };
 
-constexpr std::array<PackageDefinition, 3> PACKAGE_DEFINITIONS{{
+constexpr std::array<PackageDefinition, 7> PACKAGE_DEFINITIONS{{
     {PACKAGE_SHARED_UI, "web-packages/shared-ui.tfpack"},
-    {PACKAGE_HOME_MAP, "web-packages/home-map.tfpack"},
+    {PACKAGE_RPG_CORE, "web-packages/rpg-core.tfpack"},
+    {PACKAGE_HOME_MAP, "web-packages/home-map.tfpack", {PACKAGE_RPG_CORE}, 1},
+    {PACKAGE_TOWN_MAP, "web-packages/town-map.tfpack", {PACKAGE_HOME_MAP}, 1},
+    {PACKAGE_BATTLE_CORE, "web-packages/battle-core.tfpack", {PACKAGE_SHARED_UI, PACKAGE_RPG_CORE, PACKAGE_TOWN_MAP}, 3},
+    {PACKAGE_VFX_CORE, "web-packages/vfx-core.tfpack", {PACKAGE_BATTLE_CORE}, 1},
     {PACKAGE_AUDIO_CORE, "web-packages/audio-core.tfpack"},
 }};
 
@@ -44,6 +55,13 @@ std::unordered_map<std::string, PackageRuntimeStatus>& packageStatuses() {
     return statuses;
 }
 
+PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
+    auto& status = packageStatuses()[std::string{definition.id}];
+    status.files = definition.files;
+    status.bytes = definition.bytes;
+    return status;
+}
+
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
 [[nodiscard]] int elapsedMillis(std::chrono::steady_clock::time_point started) {
     const auto elapsed = std::chrono::steady_clock::now() - started;
@@ -51,20 +69,10 @@ std::unordered_map<std::string, PackageRuntimeStatus>& packageStatuses() {
 }
 #endif
 
-} // namespace
-
-bool loadPackage(std::string_view package_id) {
-    const auto* definition = findPackage(package_id);
-    if (!definition) {
-        auto& status = packageStatuses()[std::string{package_id}];
-        status.last_error = "unknown package id";
-        spdlog::error("WebAssetPackageRegistry: unknown package '{}'.", package_id);
-        return false;
-    }
-
+[[nodiscard]] bool loadPackagePayload(const PackageDefinition& definition) {
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
-    auto& status = packageStatuses()[std::string{definition->id}];
-    if (status.loaded || isAssetPackageLoaded(definition->id)) {
+    auto& status = statusFor(definition);
+    if (status.loaded || isAssetPackageLoaded(definition.id)) {
         status.loaded = true;
         return true;
     }
@@ -73,35 +81,72 @@ bool loadPackage(std::string_view package_id) {
     const auto started = std::chrono::steady_clock::now();
     spdlog::info(
         "WebAssetPackageRegistry: loading package '{}' from '{}'.",
-        definition->id,
-        definition->url);
+        definition.id,
+        definition.url);
 
-    const bool loaded = loadAssetPackage(definition->id, definition->url);
+    const bool loaded = loadAssetPackage(definition.id, definition.url);
     status.last_load_ms = elapsedMillis(started);
-    status.loaded = loaded || isAssetPackageLoaded(definition->id);
+    status.loaded = loaded || isAssetPackageLoaded(definition.id);
     if (status.loaded) {
         status.last_error.clear();
         spdlog::info(
             "WebAssetPackageRegistry: package '{}' ready in {} ms.",
-            definition->id,
+            definition.id,
             status.last_load_ms);
         return true;
     }
 
-    status.last_error = "load failed from " + std::string{definition->url};
+    status.last_error = "load failed from " + std::string{definition.url};
     spdlog::error(
         "WebAssetPackageRegistry: package '{}' failed after {} ms url='{}'.",
-        definition->id,
+        definition.id,
         status.last_load_ms,
-        definition->url);
+        definition.url);
     return false;
 #else
-    auto& status = packageStatuses()[std::string{definition->id}];
+    auto& status = statusFor(definition);
     status.loaded = true;
     status.last_error.clear();
     status.last_load_ms = 0;
     return true;
 #endif
+}
+
+[[nodiscard]] bool loadPackageImpl(std::string_view package_id, std::size_t depth) {
+    const auto* definition = findPackage(package_id);
+    if (!definition) {
+        auto& status = packageStatuses()[std::string{package_id}];
+        status.last_error = "unknown package id";
+        spdlog::error("WebAssetPackageRegistry: unknown package '{}'.", package_id);
+        return false;
+    }
+
+    if (depth > PACKAGE_DEFINITIONS.size()) {
+        auto& status = statusFor(*definition);
+        status.last_error = "dependency cycle detected";
+        spdlog::error("WebAssetPackageRegistry: dependency cycle while loading package '{}'.", package_id);
+        return false;
+    }
+
+    bool dependencies_loaded = true;
+    for (std::size_t index = 0; index < definition->dependency_count; ++index) {
+        dependencies_loaded = loadPackageImpl(definition->dependencies[index], depth + 1) && dependencies_loaded;
+    }
+    return dependencies_loaded && loadPackagePayload(*definition);
+}
+
+} // namespace
+
+bool loadPackage(std::string_view package_id) {
+    return loadPackageImpl(package_id, 0);
+}
+
+bool loadGroup(std::initializer_list<std::string_view> package_ids) {
+    bool loaded = true;
+    for (const std::string_view package_id : package_ids) {
+        loaded = loadPackage(package_id) && loaded;
+    }
+    return loaded;
 }
 
 bool isPackageLoaded(std::string_view package_id) {
@@ -112,7 +157,7 @@ bool isPackageLoaded(std::string_view package_id) {
 
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
     if (isAssetPackageLoaded(definition->id)) {
-        auto& status = packageStatuses()[std::string{definition->id}];
+        auto& status = statusFor(*definition);
         status.loaded = true;
         return true;
     }
@@ -133,6 +178,26 @@ std::string lastPackageError(std::string_view package_id) {
 std::string_view packageUrl(std::string_view package_id) {
     const auto* definition = findPackage(package_id);
     return definition ? definition->url : std::string_view{};
+}
+
+int packageFiles(std::string_view package_id) {
+    const auto& statuses = packageStatuses();
+    const auto status_it = statuses.find(std::string{package_id});
+    if (status_it != statuses.end()) {
+        return status_it->second.files;
+    }
+    const auto* definition = findPackage(package_id);
+    return definition ? definition->files : 0;
+}
+
+std::uint64_t packageBytes(std::string_view package_id) {
+    const auto& statuses = packageStatuses();
+    const auto status_it = statuses.find(std::string{package_id});
+    if (status_it != statuses.end()) {
+        return status_it->second.bytes;
+    }
+    const auto* definition = findPackage(package_id);
+    return definition ? definition->bytes : 0;
 }
 
 } // namespace engine::platform::web

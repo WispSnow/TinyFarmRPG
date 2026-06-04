@@ -602,6 +602,55 @@ def select_web_poc_assets(used: dict[str, set[str]], root: Path) -> list[str]:
     return sorted(path for path in selected if (root / path).is_file())
 
 
+FULL_RPG_SCENE_PREFIXES = (
+    "ui/rmlui/scenes/battle.",
+    "ui/rmlui/scenes/dialogue_choice.",
+    "ui/rmlui/scenes/quest_offer.",
+    "ui/rmlui/scenes/recruit_offer.",
+    "ui/rmlui/scenes/rest_dialog.",
+    "ui/rmlui/scenes/shop_menu.",
+)
+
+FULL_RPG_REQUIRED_PATHS = {
+    "assets/maps/town.tmj",
+    "ui/rmlui/scenes/battle.rml",
+    "ui/rmlui/scenes/battle.rcss",
+    "ui/rmlui/scenes/dialogue_choice.rml",
+    "ui/rmlui/scenes/dialogue_choice.rcss",
+    "ui/rmlui/scenes/quest_offer.rml",
+    "ui/rmlui/scenes/quest_offer.rcss",
+    "ui/rmlui/scenes/recruit_offer.rml",
+    "ui/rmlui/scenes/recruit_offer.rcss",
+    "ui/rmlui/scenes/rest_dialog.rml",
+    "ui/rmlui/scenes/rest_dialog.rcss",
+    "ui/rmlui/scenes/shop_menu.rml",
+    "ui/rmlui/scenes/shop_menu.rcss",
+}
+
+
+def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[str]:
+    selected: set[str] = set(select_web_poc_assets(used, root))
+    excluded_prefixes = (
+        "assets/maps/school.tmj",
+        "assets/textures/school-",
+    )
+
+    for rel in FULL_RPG_REQUIRED_PATHS:
+        if (root / rel).is_file():
+            selected.add(rel)
+
+    for rel in used:
+        if rel.startswith(excluded_prefixes):
+            continue
+        if rel.startswith(("assets/vfx/", "assets/textures/BattleBg/")):
+            selected.add(rel)
+            continue
+        if rel.startswith(FULL_RPG_SCENE_PREFIXES):
+            selected.add(rel)
+
+    return sorted(path for path in selected if (root / path).is_file())
+
+
 def format_size(num_bytes: int) -> str:
     units = ("B", "KiB", "MiB", "GiB")
     value = float(num_bytes)
@@ -622,13 +671,19 @@ def write_preload_args(path: Path, paths: Iterable[str]) -> None:
     write_lines(path, lines)
 
 
-def write_budget(path: Path, root: Path, used: list[str], orphan: list[str], web_poc: list[str]) -> None:
-    web_release_full = summarize(web_poc, root)
+def write_budget(
+    path: Path,
+    root: Path,
+    used: list[str],
+    orphan: list[str],
+    web_poc: list[str],
+    web_release_full: list[str],
+) -> None:
     budget = {
         "used_assets": summarize(used, root),
         "orphan_assets": summarize(orphan, root),
-        "web_poc_assets": web_release_full,
-        "web_release_full_assets": web_release_full,
+        "web_poc_assets": summarize(web_poc, root),
+        "web_release_full_assets": summarize(web_release_full, root),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(budget, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -640,11 +695,13 @@ def write_report(
     used: list[str],
     orphan: list[str],
     web_poc: list[str],
+    web_release_full: list[str],
     state: AuditState,
 ) -> None:
     used_summary = summarize(used, root)
     orphan_summary = summarize(orphan, root)
     poc_summary = summarize(web_poc, root)
+    full_summary = summarize(web_release_full, root)
 
     def row(name: str, summary: dict[str, Any]) -> str:
         return (
@@ -670,6 +727,7 @@ def write_report(
         row("used-assets", used_summary),
         row("orphan-assets", orphan_summary),
         row("web-poc-assets", poc_summary),
+        row("web-release-full-assets", full_summary),
         "",
         "## Largest Used Assets",
         "",
@@ -684,6 +742,8 @@ def write_report(
             f"({used_summary['max_texture']['width']}x{used_summary['max_texture']['height']}).",
             f"- Web POC max texture: `{poc_summary['max_texture']['path']}` "
             f"({poc_summary['max_texture']['width']}x{poc_summary['max_texture']['height']}).",
+            f"- Web full RPG max texture: `{full_summary['max_texture']['path']}` "
+            f"({full_summary['max_texture']['width']}x{full_summary['max_texture']['height']}).",
             "- PNG disk size is not GPU memory size; RGBA8 memory is estimated as width * height * 4.",
             "",
             "## Reproducibility",
@@ -697,6 +757,7 @@ def write_report(
             "- `manifests/assets/used-assets.txt`",
             "- `manifests/assets/orphan-assets.txt`",
             "- `manifests/assets/web-poc-assets.txt`",
+            "- `manifests/assets/web-release-full-assets.txt`",
             "- `manifests/assets/web-poc-preload.args`",
             "- `manifests/assets/web-release-full.args`",
             "- `manifests/assets/asset-budget.json`",
@@ -724,19 +785,22 @@ def run(args: argparse.Namespace) -> int:
     all_files = all_resource_files(root)
     orphan = sorted(rel for rel in all_files if rel not in state.used)
     web_poc = select_web_poc_assets(state.used, root)
+    web_release_full = select_web_full_rpg_assets(state.used, root)
 
     manifest_dir = root / args.manifest_dir
     write_lines(manifest_dir / "used-assets.txt", used)
     write_lines(manifest_dir / "orphan-assets.txt", orphan)
     write_lines(manifest_dir / "web-poc-assets.txt", web_poc)
+    write_lines(manifest_dir / "web-release-full-assets.txt", web_release_full)
     write_preload_args(manifest_dir / "web-poc-preload.args", web_poc)
-    write_preload_args(manifest_dir / "web-release-full.args", web_poc)
-    write_budget(manifest_dir / "asset-budget.json", root, used, orphan, web_poc)
-    write_report(root / args.report, root, used, orphan, web_poc, state)
+    write_preload_args(manifest_dir / "web-release-full.args", web_release_full)
+    write_budget(manifest_dir / "asset-budget.json", root, used, orphan, web_poc, web_release_full)
+    write_report(root / args.report, root, used, orphan, web_poc, web_release_full, state)
 
     print(f"used-assets: {len(used)} files")
     print(f"orphan-assets: {len(orphan)} files")
     print(f"web-poc-assets: {len(web_poc)} files")
+    print(f"web-release-full-assets: {len(web_release_full)} files")
     if state.missing:
         print(f"missing references: {len(state.missing)}")
     return 0
