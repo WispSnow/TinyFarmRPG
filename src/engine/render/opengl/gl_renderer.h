@@ -150,6 +150,9 @@ public:
     void drawTexture(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
                      const engine::utils::ColorOptions* color = nullptr,
                      const engine::utils::TransformOptions* transform = nullptr);
+    void drawAlphaTexture(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
+                          const engine::utils::ColorOptions* color = nullptr,
+                          const engine::utils::TransformOptions* transform = nullptr);
     void drawTexture(GLuint texture, const glm::vec4& dst_rect,
                      const glm::vec2& texture_size_pixels,
                      const engine::utils::Rect& src_rect_pixels,

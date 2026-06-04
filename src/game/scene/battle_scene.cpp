@@ -59,6 +59,10 @@
 #include <variant>
 #include <vector>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/battle.rml";
@@ -82,6 +86,54 @@ constexpr float HP_BAR_DANGER_RATIO = 0.25F;
 constexpr std::size_t BATTLE_LOG_HISTORY_LIMIT = 24U;
 constexpr std::size_t BATTLE_LOG_VISIBLE_LIMIT = 3U;
 constexpr std::string_view BASIC_ATTACK_SKILL_ID = "skill.attack";
+
+#if defined(__EMSCRIPTEN__)
+[[nodiscard]] const char* battleMenuStateName(const game::scene::BattleMenuState state) {
+    switch (state) {
+        case game::scene::BattleMenuState::None:
+            return "None";
+        case game::scene::BattleMenuState::PartyCommand:
+            return "PartyCommand";
+        case game::scene::BattleMenuState::ActorCommand:
+            return "ActorCommand";
+        case game::scene::BattleMenuState::SkillList:
+            return "SkillList";
+        case game::scene::BattleMenuState::ItemList:
+            return "ItemList";
+        case game::scene::BattleMenuState::TargetSelect:
+            return "TargetSelect";
+    }
+    return "Unknown";
+}
+
+[[nodiscard]] const char* battleActionTypeName(const game::battle::BattleActionType type) {
+    switch (type) {
+        case game::battle::BattleActionType::Attack:
+            return "Attack";
+        case game::battle::BattleActionType::Skill:
+            return "Skill";
+        case game::battle::BattleActionType::Item:
+            return "Item";
+        case game::battle::BattleActionType::Guard:
+            return "Guard";
+        case game::battle::BattleActionType::Escape:
+            return "Escape";
+        case game::battle::BattleActionType::EndTurn:
+            return "EndTurn";
+    }
+    return "Unknown";
+}
+
+[[nodiscard]] const char* battleActionStatusName(const game::battle::BattleActionStatus status) {
+    switch (status) {
+        case game::battle::BattleActionStatus::Applied:
+            return "Applied";
+        case game::battle::BattleActionStatus::Rejected:
+            return "Rejected";
+    }
+    return "Unknown";
+}
+#endif
 
 enum class PartyCommandId : int {
     Fight = 1,
@@ -425,6 +477,7 @@ void BattleScene::update(float delta_time) {
     }
     updateCommandFocus(delta_time);
     refreshView();
+    publishWebBattleDiagnostics();
 }
 
 void BattleScene::render(float interpolation_alpha) {
@@ -3036,6 +3089,168 @@ void BattleScene::syncUserSettingsState() {
     cursor_memory_enabled_ = snapshot.cursor_memory;
     battle_damage_popup_controller_.setEnabled(snapshot.show_damage_popup);
     battle_enemy_hp_bar_controller_.setEnabled(snapshot.show_enemy_hp_bar);
+}
+
+void BattleScene::publishWebBattleDiagnostics() const {
+#if defined(__EMSCRIPTEN__)
+    int player_total = 0;
+    int enemy_total = 0;
+    int player_alive = 0;
+    int enemy_alive = 0;
+    for (const auto& unit : session_.units()) {
+        if (unit.side == game::battle::BattleSide::Player) {
+            ++player_total;
+            if (unit.isAlive()) {
+                ++player_alive;
+            }
+        } else {
+            ++enemy_total;
+            if (unit.isAlive()) {
+                ++enemy_alive;
+            }
+        }
+    }
+
+    int scheduled_vfx_events = 0;
+    for (const auto& event : scheduled_presentation_events_) {
+        if (std::holds_alternative<engine::vfx::PlayVfxCommand>(event.payload)) {
+            ++scheduled_vfx_events;
+        }
+    }
+
+    std::uint32_t last_draw_calls = 0;
+    std::uint32_t last_instances = 0;
+    int pending_vfx_requests = 0;
+    if (vfx_service_) {
+        pending_vfx_requests = static_cast<int>(vfx_service_->pendingRequestCount());
+        if (const auto* backend = vfx_service_->backend()) {
+            last_draw_calls = backend->getLastDrawCallCount();
+            last_instances = backend->getLastInstanceCount();
+        }
+    }
+
+    const auto* last_result = last_action_result_ ? &(*last_action_result_) : nullptr;
+    const char* last_action_type = last_result ? battleActionTypeName(last_result->action_type) : "None";
+    const char* last_action_status = last_result ? battleActionStatusName(last_result->status) : "None";
+    const char* last_outcome_after = last_result ? game::battle::toString(last_result->outcome_after) : "None";
+    const char* last_skill_id = last_result ? last_result->skill_id.c_str() : "";
+    const char* last_item_id = last_result ? last_result->item_id.c_str() : "";
+    const int last_actor_id = last_result ? static_cast<int>(last_result->actor_id) : 0;
+    const int last_target_id = last_result && last_result->target_id
+        ? static_cast<int>(*last_result->target_id)
+        : 0;
+    const int last_damage = last_result ? last_result->damage : 0;
+    const int last_hp_recovered = last_result ? last_result->hp_recovered : 0;
+    const int last_mp_spent = last_result ? last_result->mp_spent : 0;
+    const bool last_target_defeated = last_result ? last_result->target_defeated : false;
+    const bool last_escape_succeeded = last_result ? last_result->escape_succeeded : false;
+    const auto current_actor_id = session_.currentActorId();
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const gameplay = diagnostics.gameplay || (diagnostics.gameplay = {});
+        gameplay.currentScene = "BattleScene";
+
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        battle.scene = "BattleScene";
+        battle.currentScene = "BattleScene";
+        battle.menuState = UTF8ToString($0);
+        battle.outcome = UTF8ToString($1);
+        battle.roundIndex = $2;
+        battle.currentActorId = $3;
+        const player = battle.player || (battle.player = {});
+        player.total = $4;
+        player.alive = $5;
+        const enemy = battle.enemy || (battle.enemy = {});
+        enemy.total = $6;
+        enemy.alive = $7;
+    },
+    battleMenuStateName(menu_model_.state),
+    game::battle::toString(session_.outcome()),
+    static_cast<int>(session_.roundIndex()),
+    current_actor_id ? static_cast<int>(*current_actor_id) : 0,
+    player_total,
+    player_alive,
+    enemy_total,
+    enemy_alive);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const lastAction = battle.lastAction || (battle.lastAction = {});
+        lastAction.type = UTF8ToString($0);
+        lastAction.status = UTF8ToString($1);
+        lastAction.actorId = $2;
+        lastAction.targetId = $3;
+        lastAction.skillId = UTF8ToString($4);
+        lastAction.itemId = UTF8ToString($5);
+        lastAction.damage = $6;
+        lastAction.hpRecovered = $7;
+        lastAction.mpSpent = $8;
+    },
+    last_action_type,
+    last_action_status,
+    last_actor_id,
+    last_target_id,
+    last_skill_id,
+    last_item_id,
+    last_damage,
+    last_hp_recovered,
+    last_mp_spent);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const lastAction = battle.lastAction || (battle.lastAction = {});
+        lastAction.targetDefeated = !!$0;
+        lastAction.escapeSucceeded = !!$1;
+        lastAction.outcomeAfter = UTF8ToString($2);
+    },
+    last_target_defeated ? 1 : 0,
+    last_escape_succeeded ? 1 : 0,
+    last_outcome_after);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const vfx = battle.vfx || (battle.vfx = {});
+        vfx.scheduledEvents = $0;
+        vfx.pendingRequests = $1;
+        vfx.lastDrawCallCount = $2;
+        vfx.lastInstanceCount = $3;
+        const animation = battle.animation || (battle.animation = {});
+        animation.active = !!$4;
+        battle.victoryOverlayVisible = !!$5;
+        battle.defeatOverlayVisible = !!$6;
+        battle.victoryContinueEnabled = !!$7;
+        battle.lastUpdatedMs = Date.now();
+    },
+    scheduled_vfx_events,
+    pending_vfx_requests,
+    static_cast<int>(last_draw_calls),
+    static_cast<int>(last_instances),
+    battle_animation_director_.active() ? 1 : 0,
+    victory_overlay_visible_ ? 1 : 0,
+    defeat_overlay_visible_ ? 1 : 0,
+    victory_continue_enabled_ ? 1 : 0);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const cursors = battle.cursors || (battle.cursors = {});
+        cursors.partyCommand = $0;
+        cursors.actorCommand = $1;
+        cursors.listEntry = $2;
+        cursors.targetEntry = $3;
+    },
+    menu_model_.party_command_cursor,
+    menu_model_.actor_command_cursor,
+    menu_model_.list_entry_cursor,
+    menu_model_.target_entry_cursor);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#endif
 }
 
 void BattleScene::connectUserSettingsListeners() {

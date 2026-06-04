@@ -272,7 +272,7 @@
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                }, 
+                },
                 {
                  "height":0,
                  "id":2,
@@ -557,7 +557,7 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.lyria"
-                        }, 
+                        },
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -581,12 +581,12 @@
                          "name":"script_event",
                          "type":"string",
                          "value":"home_exterior.seed_cache"
-                        }, 
+                        },
                         {
                          "name":"script_once_key",
                          "type":"string",
                          "value":"map.home_exterior.seed_cache.opened"
-                        }, 
+                        },
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -962,6 +962,39 @@
                  "width":10.6667,
                  "x":317.16665,
                  "y":125.33335
+                },
+                {
+                 "height":48,
+                 "id":55,
+                 "name":"town_path",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"self_id",
+                         "type":"int",
+                         "value":2
+                        },
+                        {
+                         "name":"start_offset",
+                         "type":"string",
+                         "value":"left"
+                        },
+                        {
+                         "name":"target_id",
+                         "type":"int",
+                         "value":2
+                        },
+                        {
+                         "name":"target_map",
+                         "type":"string",
+                         "value":"town"
+                        }],
+                 "rotation":0,
+                 "type":"map_trigger",
+                 "visible":true,
+                 "width":12,
+                 "x":372,
+                 "y":128
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -970,7 +1003,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":55,
+ "nextobjectid":56,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

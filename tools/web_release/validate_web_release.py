@@ -148,6 +148,10 @@ REQUIRED_RPG_CORE_PACKAGE_PATHS = {
     "assets/data/quests.json",
     "assets/data/shops.json",
     "assets/data/vfx_catalog.json",
+    "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Idle.png",
+    "assets/farm-rpg/Enemy/Goblins/Spear Goblin/Walk.png",
+    "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png",
+    "assets/farm-rpg/Enemy/Slimes/Blue/Slime/Walk.png",
     "scripts/bootstrap.lua",
 }
 

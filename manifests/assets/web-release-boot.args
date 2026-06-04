@@ -2,6 +2,8 @@
 --preload-file assets/data/cursor_config.json@/assets/data/cursor_config.json
 --preload-file assets/data/resource_mapping.json@/assets/data/resource_mapping.json
 --preload-file assets/farm-rpg/UI/button.png@/assets/farm-rpg/UI/button.png
+--preload-file assets/farm-rpg/UI/Clock/Clock.png@/assets/farm-rpg/UI/Clock/Clock.png
+--preload-file assets/farm-rpg/UI/Clock/clock hand.png@/assets/farm-rpg/UI/Clock/clock hand.png
 --preload-file assets/fonts/VonwaonBitmap-16px.ttf@/assets/fonts/VonwaonBitmap-16px.ttf
 --preload-file assets/i18n/en-US.json@/assets/i18n/en-US.json
 --preload-file assets/i18n/languages.json@/assets/i18n/languages.json

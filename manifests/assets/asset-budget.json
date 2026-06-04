@@ -228,11 +228,11 @@
   },
   "web_release_full_assets": {
     "files": 381,
-    "bytes": 23663899,
+    "bytes": 23667492,
     "by_root": {
       "assets": {
         "files": 309,
-        "bytes": 23474308
+        "bytes": 23476473
       },
       "config": {
         "files": 6,
@@ -298,7 +298,7 @@
       },
       ".tmj": {
         "files": 3,
-        "bytes": 108221
+        "bytes": 110386
       },
       ".tsj": {
         "files": 15,

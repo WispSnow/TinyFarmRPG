@@ -93,7 +93,8 @@ void SpriteBatch::clean() {
 bool SpriteBatch::queueSprite(GLuint texture, bool use_texture, const glm::vec4& rect,
                               const glm::vec4& uv_rect,
                               const engine::utils::ColorOptions* color_options,
-                              const engine::utils::TransformOptions* transform_options) {
+                              const engine::utils::TransformOptions* transform_options,
+                              TextureMode texture_mode) {
     if (rect.z <= 0.0f || rect.w <= 0.0f) {
         return true;
     }
@@ -211,7 +212,8 @@ bool SpriteBatch::queueSprite(GLuint texture, bool use_texture, const glm::vec4&
     // 否则创建新的绘制命令
     if (!commands_.empty() &&
         commands_.back().texture_ == texture &&
-        commands_.back().use_texture_ == use_texture) {
+        commands_.back().use_texture_ == use_texture &&
+        commands_.back().texture_mode_ == texture_mode) {
         commands_.back().index_count_ += 6;
     } else {
         Command cmd;
@@ -219,6 +221,7 @@ bool SpriteBatch::queueSprite(GLuint texture, bool use_texture, const glm::vec4&
         cmd.index_offset_ = index_offset;
         cmd.index_count_ = 6;
         cmd.use_texture_ = use_texture;
+        cmd.texture_mode_ = texture_mode;
         commands_.push_back(cmd);
     }
     return true;
@@ -282,6 +285,9 @@ bool SpriteBatch::flush(const FlushParams& params) {
     if (params.u_use_texture_ >= 0) {
         glUniform1i(params.u_use_texture_, 0);
     }
+    if (params.u_texture_mode_ >= 0) {
+        glUniform1i(params.u_texture_mode_, 0);
+    }
 
     // 按纹理分组绘制，依次执行绘制命令
     glActiveTexture(GL_TEXTURE0);
@@ -294,6 +300,9 @@ bool SpriteBatch::flush(const FlushParams& params) {
         glBindTexture(GL_TEXTURE_2D, tex);
         if (params.u_use_texture_ >= 0) {
             glUniform1i(params.u_use_texture_, cmd.use_texture_ ? 1 : 0);
+        }
+        if (params.u_texture_mode_ >= 0) {
+            glUniform1i(params.u_texture_mode_, static_cast<GLint>(cmd.texture_mode_));
         }
         const void* offset = reinterpret_cast<const void*>(static_cast<uintptr_t>(cmd.index_offset_ * sizeof(uint32_t)));
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(cmd.index_count_), GL_UNSIGNED_INT, offset);

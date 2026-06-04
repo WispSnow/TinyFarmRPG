@@ -121,6 +121,18 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
 #endif
 }
 
+[[nodiscard]] bool ensureWebBattlePackages() {
+#if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
+    return engine::platform::web::loadGroup({
+        engine::platform::web::PACKAGE_BATTLE_CORE,
+        engine::platform::web::PACKAGE_VFX_CORE,
+    });
+#else
+    return true;
+#endif
+}
+
+#if defined(__EMSCRIPTEN__)
 [[nodiscard]] std::string joinForWebDiagnostics(const std::vector<std::string>& values) {
     std::string result{};
     for (const std::string& value : values) {
@@ -131,6 +143,7 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
     }
     return result;
 }
+#endif
 
 void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRuntimeServices* services) {
 #if defined(__EMSCRIPTEN__)
@@ -188,6 +201,42 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
         }
     }
 
+    int encounter_count = 0;
+    int available_encounter_count = 0;
+    std::string encounter_rows{};
+    auto encounters = registry.view<game::component::EnemyEncounterComponent,
+                                    engine::component::TransformComponent,
+                                    game::component::MapId>();
+    for (const entt::entity entity : encounters) {
+        const auto& [encounter, encounter_transform, encounter_map] =
+            encounters.get<game::component::EnemyEncounterComponent,
+                           engine::component::TransformComponent,
+                           game::component::MapId>(entity);
+        if (encounter_map.id_ != map.id_) {
+            continue;
+        }
+
+        ++encounter_count;
+        if (!encounter.defeated_ && !encounter.engaged_ && encounter.encounter_id_ > 0 && !encounter.troop_id_.empty()) {
+            ++available_encounter_count;
+        }
+
+        if (!encounter_rows.empty()) {
+            encounter_rows.push_back('\n');
+        }
+        encounter_rows += std::to_string(encounter.encounter_id_);
+        encounter_rows.push_back('\t');
+        encounter_rows += encounter.troop_id_;
+        encounter_rows.push_back('\t');
+        encounter_rows += std::to_string(encounter_transform.position_.x);
+        encounter_rows.push_back('\t');
+        encounter_rows += std::to_string(encounter_transform.position_.y);
+        encounter_rows.push_back('\t');
+        encounter_rows += encounter.defeated_ ? "1" : "0";
+        encounter_rows.push_back('\t');
+        encounter_rows += encounter.engaged_ ? "1" : "0";
+    }
+
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
@@ -238,6 +287,29 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
     active_quest_ids.c_str(),
     completed_quest_ids.c_str(),
     objective_progress_count);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const gameplay = diagnostics.gameplay || (diagnostics.gameplay = {});
+        const rows = UTF8ToString($0);
+        gameplay.encounterCount = $1;
+        gameplay.availableEncounterCount = $2;
+        gameplay.encounters = rows.length
+            ? rows.split("\n").filter(Boolean).map((row) => {
+                const parts = row.split("\t");
+                return {
+                    encounterId: Number(parts[0] || 0),
+                    troopId: parts[1] || "",
+                    x: Number(parts[2] || 0),
+                    y: Number(parts[3] || 0),
+                    defeated: parts[4] === "1",
+                    engaged: parts[5] === "1"
+                };
+            })
+            : [];
+    },
+    encounter_rows.c_str(),
+    encounter_count,
+    available_encounter_count);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -1175,6 +1247,14 @@ void GameScene::onEnterBattleCommand(const game::defs::EnterBattleCommand& cmd) 
         } else {
             spdlog::warn("GameScene: 收到战斗请求，但当前已有战斗流程未结束。");
         }
+        if (cmd.encounter_context) {
+            releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
+        }
+        return;
+    }
+
+    if (!ensureWebBattlePackages()) {
+        spdlog::error("GameScene: Web battle packages failed to load; aborting battle entry.");
         if (cmd.encounter_context) {
             releaseEnemyEncounterEntryFailure(*cmd.encounter_context);
         }

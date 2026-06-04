@@ -780,12 +780,12 @@ void TextRenderer::drawTextInternal(std::string_view text,
             glm::vec4 shadow_rect = dest_rect;
             shadow_rect.x += params.shadow.offset.x;
             shadow_rect.y += params.shadow.offset.y;
-            gl_renderer_->drawTexture(glyph->texture, shadow_rect, uv_rect,
-                                      &shadow_color_options);
+            gl_renderer_->drawAlphaTexture(glyph->texture, shadow_rect, uv_rect,
+                                           &shadow_color_options);
         }
 
-        gl_renderer_->drawTexture(glyph->texture, dest_rect, uv_rect,
-                                  &params.color);
+        gl_renderer_->drawAlphaTexture(glyph->texture, dest_rect, uv_rect,
+                                       &params.color);
     }
 }
 

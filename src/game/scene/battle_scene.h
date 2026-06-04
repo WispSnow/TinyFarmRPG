@@ -337,6 +337,7 @@ private:
 
     /// @brief 从 UserSettingsService 同步当前偏好到本地缓存与子控制器。
     void syncUserSettingsState();
+    void publishWebBattleDiagnostics() const;
     void connectUserSettingsListeners();
     void disconnectUserSettingsListeners();
     void onBattleAnimationSpeedChanged(const game::defs::BattleAnimationSpeedChangedEvent& evt);

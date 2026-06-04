@@ -35,6 +35,18 @@
             ]
         },
         {
+            "id": "troop.slime_single",
+            "display_name": "troop.slime.name",
+            "battle_background_id": "Grassland",
+            "members": [
+                {
+                    "enemy_id": "enemy.slime",
+                    "x": 408.0,
+                    "y": 436.0
+                }
+            ]
+        },
+        {
             "id": "troop.slime",
             "display_name": "troop.slime.name",
             "battle_background_id": "Grassland",

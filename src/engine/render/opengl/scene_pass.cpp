@@ -123,14 +123,15 @@ bool ScenePass::flush(const utils::Rect& viewport) {
 bool ScenePass::queueSprite(GLuint texture, bool use_texture, const glm::vec4& rect,
                      const glm::vec4& uv_rect,
                      const engine::utils::ColorOptions* color,
-                     const engine::utils::TransformOptions* transform) {
+                     const engine::utils::TransformOptions* transform,
+                     SpriteBatch::TextureMode texture_mode) {
     if (!sprite_batch_) {
         spdlog::error("ScenePass::queueSprite: 没有 sprite batch");
         return false;
     }
     const auto* resolved_color = color ? color : &default_color_options_;
     const auto* resolved_transform = transform ? transform : &default_transform_options_;
-    return sprite_batch_->queueSprite(texture, use_texture, rect, uv_rect, resolved_color, resolved_transform);
+    return sprite_batch_->queueSprite(texture, use_texture, rect, uv_rect, resolved_color, resolved_transform, texture_mode);
 }
 
 bool ScenePass::reload(ShaderLibrary& library) {
@@ -154,12 +155,14 @@ bool ScenePass::setupSpriteShaderState(ShaderProgram* program) {
     program->use();
     GLint u_view_proj = program->uniformLocation("uViewProj");
     GLint u_use_texture = program->uniformLocation("uUseTexture");
+    GLint u_texture_mode = program->uniformLocation("uTextureMode");
     GLint u_tex = program->uniformLocation("uTex");
     if (u_tex >= 0) glUniform1i(u_tex, 0);
     program->unuse();
 
     sprite_flush_params_.program_ = program->program();
     sprite_flush_params_.u_use_texture_ = u_use_texture;
+    sprite_flush_params_.u_texture_mode_ = u_texture_mode;
     sprite_flush_params_.u_tex_ = u_tex;
     sprite_flush_params_.u_view_proj_ = u_view_proj;
     return logGlErrors("ScenePass::setupSpriteShaderState");

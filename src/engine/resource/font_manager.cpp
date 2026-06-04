@@ -385,11 +385,13 @@ bool Font::createAtlasPage(int min_width, int min_height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#if !defined(__EMSCRIPTEN__)
     // Swizzle: 采样返回 vec4(1,1,1,r)，使 R8 alpha 图集对着色器透明兼容
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_ONE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_ONE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED);
+#endif
     glBindTexture(GL_TEXTURE_2D, 0);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 

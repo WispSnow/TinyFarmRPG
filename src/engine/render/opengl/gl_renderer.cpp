@@ -274,6 +274,15 @@ void GLRenderer::drawTexture(GLuint texture, const glm::vec4& dst_rect, const gl
     }
 }
 
+void GLRenderer::drawAlphaTexture(GLuint texture, const glm::vec4& dst_rect, const glm::vec4& uv_rect,
+                                  const ColorOptions* color,
+                                  const engine::utils::TransformOptions* transform) {
+    if (scene_pass_) {
+        scene_pass_->queueSprite(texture, true, dst_rect, uv_rect,
+                                 color, transform, SpriteBatch::TextureMode::RedAsAlpha);
+    }
+}
+
 void GLRenderer::drawTexture(GLuint texture, const glm::vec4& dst_rect,
                              const glm::vec2& texture_size_pixels,
                              const engine::utils::Rect& src_rect_pixels,

@@ -41,6 +41,8 @@ BOOT_PATHS = {
     "assets/data/appearance_catalog.json",
     "assets/data/cursor_config.json",
     "assets/data/resource_mapping.json",
+    "assets/farm-rpg/UI/Clock/Clock.png",
+    "assets/farm-rpg/UI/Clock/clock hand.png",
     "assets/fonts/VonwaonBitmap-16px.ttf",
     "assets/shaders/blur.frag",
     "assets/shaders/color.frag",
@@ -209,6 +211,8 @@ def classify(entry: PreloadEntry) -> str:
         return "rpg-core"
     if path.startswith("assets/i18n/"):
         return "rpg-core"
+    if path.startswith("assets/farm-rpg/Enemy/"):
+        return "rpg-core"
     if path.startswith("assets/textures/Elements/"):
         return "home-map"
     if path.startswith("assets/farm-rpg/Exterior/"):
@@ -219,8 +223,6 @@ def classify(entry: PreloadEntry) -> str:
         return "home-map"
     if path.startswith("assets/farm-rpg/Farm/"):
         return "home-map"
-    if path.startswith("assets/farm-rpg/Enemy/"):
-        return "town-map"
     if path.startswith(SHARED_UI_PREFIXES) or path.startswith("ui/rmlui/"):
         return "shared-ui"
     if path.startswith("assets/fonts/"):

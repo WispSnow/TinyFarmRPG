@@ -237,6 +237,8 @@ flowchart LR
 
 目标：Web 上战斗不只是能打开，而是完整可玩并与探索态、任务和存档正确衔接。
 
+状态（2026-06-04）：已完成 `home_exterior` → `town` 可达入口、`battle-core` / `vfx-core` 进战斗前加载、地图遭遇进入战斗、技能触发 Effekseer 诊断、胜利返回地图与金币奖励写回 smoke。Attack / Item / Guard / Escape、失败流程、`defeated encounter` 持久化和战后保存刷新恢复仍保留为后续战斗扩展项。
+
 实施步骤：
 
 1. 战斗入口。
@@ -385,12 +387,13 @@ flowchart LR
 - [x] runbook 和 smoke 支持 `demo` / `full-rpg` profile。
 - [x] Web 构建启用 Effekseer。
 - [x] Effekseer WebGL2 后端初始化成功。
-- [ ] `vfx-core` 中 Effekseer effect 及依赖资源可加载。
-- [ ] 战斗 smoke 断言 Effekseer active instance / draw call。
-- [ ] `home_exterior` 到 `town` 的 map transition 可人工和自动化触发。
-- [ ] 地图遭遇进入战斗并胜利返回地图。
-- [ ] 战斗覆盖 Attack / Skill / Item / Guard / Escape。
-- [ ] 战斗奖励、HP/MP、背包、金币、遭遇状态写回并可存档恢复。
+- [x] `vfx-core` 中 Effekseer effect 及依赖资源可加载。
+- [x] 战斗 smoke 断言 Effekseer active instance / draw call。
+- [x] `home_exterior` 到 `town` 的 map transition 可人工和自动化触发。
+- [x] 地图遭遇进入战斗并胜利返回地图。
+- [x] 战斗 Skill 胜利路径、VFX 截图和金币奖励写回 smoke 通过。
+- [ ] 战斗覆盖 Attack / Item / Guard / Escape 与失败流程。
+- [ ] HP/MP、背包、遭遇状态写回并可存档恢复。
 - [ ] 商店买入、卖出、失败反馈 smoke 通过。
 - [ ] 任务领取、目标推进、交付、奖励 smoke 通过。
 - [ ] 招募接受、队伍成员变化、后续战斗识别 smoke 通过。

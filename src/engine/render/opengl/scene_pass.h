@@ -66,7 +66,8 @@ public:
     bool queueSprite(GLuint texture, bool use_texture, const glm::vec4& rect,
                      const glm::vec4& uv_rect = {0.0f, 0.0f, 1.0f, 1.0f},
                      const engine::utils::ColorOptions* color = nullptr,
-                     const engine::utils::TransformOptions* transform = nullptr);
+                     const engine::utils::TransformOptions* transform = nullptr,
+                     SpriteBatch::TextureMode texture_mode = SpriteBatch::TextureMode::Normal);
     uint32_t getLastDrawCallCount() const { return sprite_batch_ ? sprite_batch_->getLastDrawCallCount() : 0; }
     uint32_t getLastVertexCount() const { return sprite_batch_ ? sprite_batch_->getLastVertexCount() : 0; }
     uint32_t getLastIndexCount() const { return sprite_batch_ ? sprite_batch_->getLastIndexCount() : 0; }

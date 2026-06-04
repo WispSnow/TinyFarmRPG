@@ -25,6 +25,13 @@
 namespace engine::render::opengl {
 
 class SpriteBatch final {
+public:
+    enum class TextureMode : uint8_t {
+        Normal = 0,
+        RedAsAlpha = 1,
+    };
+
+private:
     constexpr static size_t MIN_SPRITE_CAPACITY = 64;
     /* @brief 每个顶点的数据布局 */
     struct Vertex {
@@ -38,6 +45,7 @@ class SpriteBatch final {
         uint32_t index_offset_{0};
         uint32_t index_count_{0};
         bool use_texture_{false};
+        TextureMode texture_mode_{TextureMode::Normal};
     };
 
     GLuint vao_{0};
@@ -63,6 +71,7 @@ public:
     struct FlushParams {
         GLuint program_{0};
         GLint u_use_texture_{-1};
+        GLint u_texture_mode_{-1};
         GLint u_tex_{-1};
         GLint u_view_proj_{-1};
         std::function<void(GLint)> apply_view_projection_{};
@@ -74,7 +83,8 @@ public:
     bool queueSprite(GLuint texture, bool use_texture, const glm::vec4& rect,
                      const glm::vec4& uv_rect = {0.0f, 0.0f, 1.0f, 1.0f},
                      const engine::utils::ColorOptions* color = nullptr,
-                     const engine::utils::TransformOptions* transform = nullptr);
+                     const engine::utils::TransformOptions* transform = nullptr,
+                     TextureMode texture_mode = TextureMode::Normal);
 
     /* @brief 提交批处理，按纹理分组绘制 */
     bool flush(const FlushParams& params);

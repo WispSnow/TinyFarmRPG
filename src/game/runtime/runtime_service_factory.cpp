@@ -199,8 +199,8 @@ void configureCamera(engine::core::Context& context) {
     game::runtime::applyGameplayCameraDefaultZoom(camera);
 }
 
-void publishWebVfxDiagnostics(bool effekseer_enabled, const char* backend, const char* status) {
 #if defined(__EMSCRIPTEN__)
+void publishWebVfxDiagnostics(bool effekseer_enabled, const char* backend, const char* status) {
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
@@ -216,12 +216,8 @@ void publishWebVfxDiagnostics(bool effekseer_enabled, const char* backend, const
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
-#else
-    (void)effekseer_enabled;
-    (void)backend;
-    (void)status;
-#endif
 }
+#endif
 
 void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeServices& services) {
     if (!services.vfx_service) {

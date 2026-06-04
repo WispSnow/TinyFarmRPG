@@ -648,6 +648,79 @@ TEST(WebGameplayTargetSourceTest, Phase24EffekseerWebBackendIsEnabled) {
     EXPECT_NE(web_smoke.find("diagnostics.vfx.status expected enabled"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
+    const std::string home_map = readProjectFile("assets/maps/home_exterior.tmj");
+    const std::string town_map = readProjectFile("assets/maps/town.tmj");
+    const std::string game_scene = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string battle_scene_header = readProjectFile("src/game/scene/battle_scene.h");
+    const std::string battle_scene_source = readProjectFile("src/game/scene/battle_scene.cpp");
+    const std::string sprite_batch_header = readProjectFile("src/engine/render/opengl/sprite_batch.h");
+    const std::string texture_shader = readProjectFile("assets/shaders/texture.frag");
+    const std::string text_renderer = readProjectFile("src/engine/render/text_renderer.cpp");
+    const std::string font_manager = readProjectFile("src/engine/resource/font_manager.cpp");
+    const std::string encounter_system = readProjectFile("src/game/system/enemy_encounter_system.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string boot_manifest = readProjectFile("manifests/assets/web-release-boot.args");
+
+    ASSERT_FALSE(home_map.empty());
+    ASSERT_FALSE(town_map.empty());
+    ASSERT_FALSE(game_scene.empty());
+    ASSERT_FALSE(battle_scene_header.empty());
+    ASSERT_FALSE(battle_scene_source.empty());
+    ASSERT_FALSE(sprite_batch_header.empty());
+    ASSERT_FALSE(texture_shader.empty());
+    ASSERT_FALSE(text_renderer.empty());
+    ASSERT_FALSE(font_manager.empty());
+    ASSERT_FALSE(encounter_system.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(boot_manifest.empty());
+
+    EXPECT_NE(home_map.find("\"name\":\"town_path\""), std::string::npos);
+    EXPECT_NE(home_map.find("\"value\":\"town\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"name\":\"home_path\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"value\":\"home_exterior\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"battle_troop_id\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"value\":\"troop.slime\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"value\":\"troop.slime_single\""), std::string::npos);
+
+    EXPECT_NE(game_scene.find("ensureWebBattlePackages"), std::string::npos);
+    EXPECT_NE(game_scene.find("PACKAGE_BATTLE_CORE"), std::string::npos);
+    EXPECT_NE(game_scene.find("PACKAGE_VFX_CORE"), std::string::npos);
+    EXPECT_NE(game_scene.find("Web battle packages failed to load"), std::string::npos);
+    EXPECT_NE(game_scene.find("availableEncounterCount"), std::string::npos);
+    EXPECT_NE(game_scene.find("gameplay.encounters"), std::string::npos);
+    EXPECT_NE(encounter_system.find("EnemyEncounterSystem: triggering battle"), std::string::npos);
+
+    EXPECT_NE(battle_scene_header.find("publishWebBattleDiagnostics"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("battle.currentScene = \"BattleScene\""), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("const vfx = battle.vfx || (battle.vfx = {})"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("lastDrawCallCount"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("lastInstanceCount"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("victoryContinueEnabled"), std::string::npos);
+
+    EXPECT_NE(sprite_batch_header.find("RedAsAlpha"), std::string::npos);
+    EXPECT_NE(texture_shader.find("uTextureMode"), std::string::npos);
+    EXPECT_NE(texture_shader.find("texColor = vec4(1.0, 1.0, 1.0, texColor.r);"), std::string::npos);
+    EXPECT_NE(text_renderer.find("drawAlphaTexture"), std::string::npos);
+    EXPECT_NE(font_manager.find("#if !defined(__EMSCRIPTEN__)"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("FULL_RPG_RUNTIME_PACKAGE_IDS"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_battle_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("trigger_town_encounter_from_diagnostics"), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase25-encounter-approach.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("home_exterior_to_town"), std::string::npos);
+    EXPECT_NE(web_smoke.find("town_enemy_encounter"), std::string::npos);
+    EXPECT_NE(web_smoke.find("battle_skill_vfx"), std::string::npos);
+    EXPECT_NE(web_smoke.find("battle_victory_return_to_map"), std::string::npos);
+    EXPECT_NE(web_smoke.find("battle_reward_writeback"), std::string::npos);
+    EXPECT_NE(web_smoke.find("GameScene: Battle ended, outcome=Victory"), std::string::npos);
+    EXPECT_NE(web_smoke.find("victoryContinueEnabled"), std::string::npos);
+    EXPECT_NE(web_smoke.find("expected_diagnostic_map = \"town\" if profile == \"full-rpg\" else \"home_exterior\""), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/farm-rpg/UI/Clock/Clock.png"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/farm-rpg/UI/Clock/clock hand.png"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndStorageHardeningIsPresent) {
     const std::string engine_events = readProjectFile("src/engine/utils/events.h");
     const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
@@ -799,6 +872,9 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_NE(package_tool.find("\"battle-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"vfx-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("PACKAGE_DEPENDENCIES"), std::string::npos);
+    EXPECT_NE(package_tool.find("assets/farm-rpg/UI/Clock/Clock.png"), std::string::npos);
+    EXPECT_NE(package_tool.find("assets/farm-rpg/Enemy/"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("assets/farm-rpg/Enemy/Slimes/Blue/Slime/Idle.png"), std::string::npos);
     EXPECT_NE(package_tool.find("assets/vfx/"), std::string::npos);
     EXPECT_NE(package_tool.find("assets/textures/BattleBg/"), std::string::npos);
 

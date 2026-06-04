@@ -243,7 +243,7 @@ TEST(BlueprintManagerTest, ProjectTownKeepsOnePersistentSlimeAndRespawningGoblin
     EXPECT_EQ(slime_count, 1);
     EXPECT_TRUE(found_goblin);
     EXPECT_FALSE(found_encounter_once);
-    EXPECT_EQ(root.value("nextobjectid", 0), 29);
+    EXPECT_EQ(root.value("nextobjectid", 0), 31);
 }
 
 TEST(BlueprintManagerTest, LoadActorBlueprints_MissingFileReturnsFalse) {

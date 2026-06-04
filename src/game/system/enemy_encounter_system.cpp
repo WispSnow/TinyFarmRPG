@@ -107,6 +107,9 @@ void EnemyEncounterSystem::update(float delta_time) {
             encounter.respawn_on_map_reload_,
             encounter.home_position_,
         };
+        spdlog::info("EnemyEncounterSystem: triggering battle encounter_id={} troop_id='{}'.",
+                     encounter.encounter_id_,
+                     encounter.troop_id_);
         dispatcher_.trigger(command);
         return;
     }
