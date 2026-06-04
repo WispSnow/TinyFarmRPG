@@ -31,12 +31,64 @@
 #include <utility>
 #include <glm/geometric.hpp>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 using namespace entt::literals;
 
 namespace engine::render::opengl {
 
 using engine::utils::FColor;
 using engine::utils::ColorOptions;
+
+namespace {
+
+[[nodiscard]] GLint queryGlInteger(const GLenum pname) {
+    GLint value = 0;
+    glGetIntegerv(pname, &value);
+    return value;
+}
+
+void publishWebReleaseRenderCapabilities(const GLRenderer::RenderCapabilitySnapshot& snapshot) {
+#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const render = diagnostics.renderCapabilities || (diagnostics.renderCapabilities = {});
+        render.platform = UTF8ToString($0);
+        render.defaultFramebufferSrgb = !!$1;
+        render.floatColorFramebuffers = !!$2;
+        render.linearFloatFiltering = !!$3;
+        render.hdrPostProcessing = !!$4;
+        render.bloom = !!$5;
+        render.emissive = !!$6;
+        render.maxTextureSize = $7;
+        render.maxRenderbufferSize = $8;
+        render.maxSamples = $9;
+    },
+           snapshot.platform.c_str(),
+           snapshot.default_framebuffer_srgb ? 1 : 0,
+           snapshot.float_color_framebuffers ? 1 : 0,
+           snapshot.linear_float_filtering ? 1 : 0,
+           snapshot.hdr_post_processing ? 1 : 0,
+           snapshot.bloom_enabled ? 1 : 0,
+           snapshot.emissive_enabled ? 1 : 0,
+           snapshot.max_texture_size,
+           snapshot.max_renderbuffer_size,
+           snapshot.max_samples);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#else
+    (void)snapshot;
+#endif
+}
+
+} // namespace
 
 std::unique_ptr<GLRenderer> GLRenderer::create(SDL_Window* window, 
                                                const glm::vec2& logical_size, 
@@ -122,6 +174,7 @@ bool GLRenderer::init(SDL_Window* window,
     // 启用透明混合
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    captureRenderCapabilities();
     return logGlErrors("GLRenderer::init");
 }
 
@@ -688,6 +741,43 @@ uint32_t GLRenderer::getBloomLevelCount() const {
 
 const GLRenderer::PassStats& GLRenderer::getPassStats(PassType pass) const {
     return pass_stats_[static_cast<size_t>(pass)];
+}
+
+void GLRenderer::captureRenderCapabilities() {
+    render_capabilities_.platform = engine::platform::gl::kIsWebGL ? "webgl2" : "desktop-gl";
+    render_capabilities_.default_framebuffer_srgb = engine::platform::gl::kSupportsDefaultFramebufferSrgb;
+    render_capabilities_.float_color_framebuffers = engine::platform::gl::kSupportsFloatColorFramebuffers;
+    render_capabilities_.linear_float_filtering = engine::platform::gl::kSupportsLinearFloatFiltering;
+    render_capabilities_.hdr_post_processing = engine::platform::gl::kEnableHdrPostProcessingByDefault;
+    render_capabilities_.bloom_enabled = bloom_enabled_;
+    render_capabilities_.emissive_enabled = emissive_enabled_;
+    render_capabilities_.max_texture_size = queryGlInteger(GL_MAX_TEXTURE_SIZE);
+    render_capabilities_.max_renderbuffer_size = queryGlInteger(GL_MAX_RENDERBUFFER_SIZE);
+#if defined(GL_MAX_SAMPLES)
+    render_capabilities_.max_samples = queryGlInteger(GL_MAX_SAMPLES);
+#else
+    render_capabilities_.max_samples = 0;
+#endif
+
+#if defined(__EMSCRIPTEN__)
+    spdlog::info(
+        "GLRenderer: Web release render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} max_texture_size={} max_renderbuffer_size={} max_samples={}.",
+#else
+    spdlog::debug(
+        "GLRenderer: render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} max_texture_size={} max_renderbuffer_size={} max_samples={}.",
+#endif
+        render_capabilities_.platform,
+        render_capabilities_.default_framebuffer_srgb,
+        render_capabilities_.float_color_framebuffers,
+        render_capabilities_.linear_float_filtering,
+        render_capabilities_.hdr_post_processing,
+        render_capabilities_.bloom_enabled,
+        render_capabilities_.emissive_enabled,
+        render_capabilities_.max_texture_size,
+        render_capabilities_.max_renderbuffer_size,
+        render_capabilities_.max_samples);
+
+    publishWebReleaseRenderCapabilities(render_capabilities_);
 }
 
 void GLRenderer::setVfxBackend(engine::vfx::VfxBackend* backend) {

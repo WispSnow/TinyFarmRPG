@@ -25,12 +25,13 @@
 - Phase 15 已完成 boot-only preload cutover：`TinyFarmRPG-Web.data` 已收敛到 2.9 MiB，link-time preload 使用 `web-release-boot.args`。
 - Phase 16 已完成 runtime package registry：`shared-ui`、`home-map`、`audio-core` 都通过统一 registry gate，并被 Chrome smoke 观测到 `.tfpack` 响应。
 - Phase 17 已完成 gameplay coverage 扩展：Chrome smoke 覆盖 inventory / hotbar / pause、工具动作、`home_exterior` 与 `home_interior` 往返、商人对话、保存覆盖和刷新读档。报告见 `plans/reports/2026-06-04-web-release-phase-17-report.md`。
+- Phase 18 已完成渲染、音频与 VFX parity 收敛：WebGL2 capability 进入日志和 smoke JSON；Bloom / HDR emissive 正式降级到 LDR / no-bloom；Effekseer 正式保留 `null_vfx_backend`；音频 warning 可解释。报告见 `plans/reports/2026-06-04-web-release-phase-18-report.md`。
 - headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
 
 仍未完成的部分：
 
 - Chrome smoke 尚未覆盖完整战斗、商店交易、任务领取/交付、招募、休息和外观衣柜等扩展玩法。
-- Effekseer、Bloom / HDR emissive、高级后处理仍处于关闭或降级状态。
+- Effekseer、Bloom / HDR emissive、高级后处理已作为首版正式降级项，后续可作为增强项恢复。
 - 发布说明、人工测试说明、产物打包、CI 接入和性能预算尚未形成最终版。
 
 ## 完成定义
@@ -215,6 +216,8 @@ flowchart TD
 
 目标：恢复或正式降级第二轮中关闭的渲染和 VFX 能力，让 Web 版本的视觉策略稳定。
 
+状态：已完成。Chrome smoke 已验证 WebGL2 capability gate、LDR / no-bloom fallback、NullVFX fallback、音频 package policy 和性能预算。详见 `plans/reports/2026-06-04-web-release-phase-18-report.md`。
+
 实施步骤：
 
 1. WebGL2 capability gate。
@@ -343,9 +346,9 @@ flowchart TD
 - [x] 建立 demo 主流程资源覆盖表。
 - [x] 扩展 map package 覆盖室内外切图。
 - [x] Chrome smoke 覆盖至少两个地图、一个交互、一个菜单、保存和刷新读档。
-- [ ] WebGL2 capability 结果进入日志和 release report。
-- [ ] Bloom / emissive / Effekseer 给出恢复或正式降级结论。
-- [ ] 音频 warning 收敛，不再掩盖缺包错误。
+- [x] WebGL2 capability 结果进入日志和 release report。
+- [x] Bloom / emissive / Effekseer 给出恢复或正式降级结论。
+- [x] 音频 warning 收敛，不再掩盖缺包错误。
 - [ ] 保存、设置、slot 操作和错误恢复完成硬化。
 - [ ] 固定 Web release 命令输出 artifact manifest 和报告。
 - [ ] Web release 产物生成 gzip / brotli 尺寸摘要。

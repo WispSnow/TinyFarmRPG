@@ -588,11 +588,19 @@ def validate_runtime_packages(
 def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
     web_main = root / "src" / "web" / "web_main.cpp"
     gl_platform = root / "src" / "engine" / "platform" / "gl_platform.h"
+    gl_renderer = root / "src" / "engine" / "render" / "opengl" / "gl_renderer.cpp"
     shader_program = root / "src" / "engine" / "render" / "opengl" / "shader_program.cpp"
+    resource_manager = root / "src" / "engine" / "resource" / "resource_manager.cpp"
+    runtime_service_factory = root / "src" / "game" / "runtime" / "runtime_service_factory.cpp"
+    web_smoke = root / "tools" / "web_release" / "web_smoke.py"
 
     web_main_text = web_main.read_text(encoding="utf-8", errors="ignore")
     gl_platform_text = gl_platform.read_text(encoding="utf-8", errors="ignore")
+    gl_renderer_text = gl_renderer.read_text(encoding="utf-8", errors="ignore")
     shader_program_text = shader_program.read_text(encoding="utf-8", errors="ignore")
+    resource_manager_text = resource_manager.read_text(encoding="utf-8", errors="ignore")
+    runtime_service_factory_text = runtime_service_factory.read_text(encoding="utf-8", errors="ignore")
+    web_smoke_text = web_smoke.read_text(encoding="utf-8", errors="ignore")
 
     inline_es_versions = len(re.findall(r"#version\s+300\s+es", web_main_text))
     if inline_es_versions < 2:
@@ -600,6 +608,10 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
 
     required_gl_platform_snippets = (
         "TF_GL_PLATFORM_WEBGL",
+        "kSupportsDefaultFramebufferSrgb = !kIsWebGL",
+        "kSupportsFloatColorFramebuffers = !kIsWebGL",
+        "kSupportsLinearFloatFiltering = !kIsWebGL",
+        "kEnableHdrPostProcessingByDefault = kSupportsFloatColorFramebuffers",
         "kTextureColorInternalFormat = kIsWebGL ? GL_RGBA8 : GL_SRGB8_ALPHA8",
         'kIsWebGL ? "#version 300 es" : "#version 330 core"',
     )
@@ -619,6 +631,20 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
         if snippet not in shader_program_text:
             gate.fail(f"shader_program.cpp missing Web shader conversion snippet: {snippet}")
 
+    required_phase18_snippets = (
+        (gl_renderer_text, "gl_renderer.cpp", "GLRenderer: Web release render capabilities"),
+        (gl_renderer_text, "gl_renderer.cpp", "TinyFarmRPGWebReleaseDiagnostics"),
+        (gl_renderer_text, "gl_renderer.cpp", "captureRenderCapabilities"),
+        (resource_manager_text, "resource_manager.cpp", "Web audio release policy"),
+        (runtime_service_factory_text, "runtime_service_factory.cpp", "Web release VFX policy"),
+        (web_smoke_text, "web_smoke.py", "render_capabilities"),
+        (web_smoke_text, "web_smoke.py", "performance_budget"),
+        (web_smoke_text, "web_smoke.py", "collect_webgl_error_logs"),
+    )
+    for text, source_name, snippet in required_phase18_snippets:
+        if snippet not in text:
+            gate.fail(f"{source_name} missing Phase 18 diagnostic snippet: {snippet}")
+
     shader_sources = sorted((root / "assets" / "shaders").glob("*"))
     desktop_shader_count = 0
     for shader_path in shader_sources:
@@ -631,6 +657,7 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
     return {
         "web_inline_300_es_shaders": inline_es_versions,
         "desktop_shader_assets_rewritten_at_runtime": desktop_shader_count,
+        "render_capability_gate": True,
     }
 
 

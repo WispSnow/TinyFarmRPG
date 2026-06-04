@@ -37,6 +37,13 @@ KEY_HOTBAR = ("Tab", "Tab", 9)
 KEY_PAUSE = ("KeyP", "p", 80)
 KEY_HOTBAR_1 = ("Digit1", "1", 49)
 
+PERFORMANCE_BUDGET_MS = {
+    "title_interactive": 45000,
+    "new_game_to_map": 30000,
+    "gameplay_flow": 120000,
+    "reload_load_to_map": 30000,
+}
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -851,6 +858,125 @@ def resume_gameplay(cdp: CdpClient, output_dir: Path, label: str) -> None:
     cdp.evaluate('document.querySelector("canvas")?.focus()')
 
 
+def read_render_capabilities(cdp: CdpClient) -> dict[str, Any] | None:
+    capabilities = cdp.evaluate(
+        """(() => {
+            const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics;
+            const render = diagnostics && diagnostics.renderCapabilities;
+            if (!render) return null;
+            return {
+                platform: String(render.platform || ""),
+                defaultFramebufferSrgb: !!render.defaultFramebufferSrgb,
+                floatColorFramebuffers: !!render.floatColorFramebuffers,
+                linearFloatFiltering: !!render.linearFloatFiltering,
+                hdrPostProcessing: !!render.hdrPostProcessing,
+                bloom: !!render.bloom,
+                emissive: !!render.emissive,
+                maxTextureSize: Number(render.maxTextureSize || 0),
+                maxRenderbufferSize: Number(render.maxRenderbufferSize || 0),
+                maxSamples: Number(render.maxSamples || 0)
+            };
+        })()""",
+        timeout=10.0,
+    )
+    return capabilities if isinstance(capabilities, dict) else None
+
+
+def validate_render_capabilities(capabilities: dict[str, Any] | None) -> list[str]:
+    if not capabilities:
+        return ["Web release render capabilities were not published to JS diagnostics."]
+
+    failures: list[str] = []
+    expected_false = {
+        "defaultFramebufferSrgb": capabilities.get("defaultFramebufferSrgb"),
+        "floatColorFramebuffers": capabilities.get("floatColorFramebuffers"),
+        "linearFloatFiltering": capabilities.get("linearFloatFiltering"),
+        "hdrPostProcessing": capabilities.get("hdrPostProcessing"),
+        "bloom": capabilities.get("bloom"),
+        "emissive": capabilities.get("emissive"),
+    }
+    if capabilities.get("platform") != "webgl2":
+        failures.append(f"render platform expected webgl2, got {capabilities.get('platform')!r}")
+    for key, actual in expected_false.items():
+        if actual is not False:
+            failures.append(f"{key} expected false for the current Web release policy, got {actual!r}")
+    if int(capabilities.get("maxTextureSize") or 0) < 1024:
+        failures.append(f"maxTextureSize is unexpectedly low: {capabilities.get('maxTextureSize')!r}")
+    if int(capabilities.get("maxRenderbufferSize") or 0) < 1024:
+        failures.append(f"maxRenderbufferSize is unexpectedly low: {capabilities.get('maxRenderbufferSize')!r}")
+    return failures
+
+
+def latest_log_text(logs: list[dict[str, Any]], needle: str) -> str | None:
+    for entry in reversed(logs):
+        text = str(entry.get("text", ""))
+        if needle in text:
+            return text
+    return None
+
+
+def collect_webgl_error_logs(logs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for entry in logs:
+        text = str(entry.get("text", ""))
+        lower = text.lower()
+        if "gl_invalid" in lower or "invalid_framebuffer_operation" in lower:
+            result.append(entry)
+        elif "webgl" in lower and ("invalid" in lower or "error" in lower):
+            result.append(entry)
+        elif "opengl" in lower and "error" in lower:
+            result.append(entry)
+    return result
+
+
+def summarize_warnings(logs: list[dict[str, Any]]) -> dict[str, Any]:
+    warnings = [entry for entry in logs if entry.get("level") in {"warning", "warn"}]
+    categories = {
+        "font_fallback": 0,
+        "audio": 0,
+        "optional_assets": 0,
+        "other": 0,
+    }
+    unknown: list[dict[str, Any]] = []
+    for entry in warnings:
+        text = str(entry.get("text", ""))
+        lower = text.lower()
+        if "font" in lower or "字体" in text:
+            categories["font_fallback"] += 1
+        elif "audio" in lower or "音频" in text or "miniaudio" in lower:
+            categories["audio"] += 1
+        elif "optional" in lower or "town.tmj" in lower or "资源映射" in text:
+            categories["optional_assets"] += 1
+        else:
+            categories["other"] += 1
+            unknown.append(entry)
+    return {
+        "total": len(warnings),
+        "categories": categories,
+        "unknown_tail": unknown[-20:],
+    }
+
+
+def summarize_performance_budget(timings: dict[str, int]) -> dict[str, Any]:
+    results: dict[str, Any] = {}
+    exceeded: list[str] = []
+    for name, budget in PERFORMANCE_BUDGET_MS.items():
+        actual = int(timings.get(name, 0))
+        passed = actual <= budget
+        results[name] = {
+            "actual_ms": actual,
+            "budget_ms": budget,
+            "status": "passed" if passed else "warning",
+        }
+        if not passed:
+            exceeded.append(name)
+    return {
+        "status": "passed" if not exceeded else "warning",
+        "results": results,
+        "exceeded": exceeded,
+    }
+
+
 def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, Any]:
     started = now_ms()
     screenshots = {
@@ -865,11 +991,17 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     cdp.call("Page.navigate", {"url": url}, timeout=5.0)
     cdp.wait_for("canvas", lambda: bool(cdp.evaluate('!!document.querySelector("canvas")')), 120000)
     cdp.wait_for_log("persistent storage", "GameApp: Web persistent storage is mounted and populated.", 30000)
+    cdp.wait_for("render capabilities", lambda: read_render_capabilities(cdp) is not None, 30000)
+    render_capabilities = read_render_capabilities(cdp)
+    render_failures = validate_render_capabilities(render_capabilities)
+    if render_failures:
+        raise RuntimeError(f"WebGL2 render capability gate failed: {render_failures}")
     title_ready = now_ms()
     cdp.screenshot(screenshots["title"])
 
     cdp.click_logical(320, 213)
     cdp.wait_for_log("audio core package", "WebAssetPackageRegistry: package 'audio-core' ready", 20000)
+    cdp.wait_for_log("registered audio preload", "ResourceManager: registered audio preload complete", 20000)
     cdp.wait_for_log("shared UI package", "WebAssetPackageRegistry: package 'shared-ui' ready", 20000)
     cdp.wait_ms(1500)
     cdp.click_logical(374, 274)
@@ -899,6 +1031,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         raise RuntimeError(f"Player did not move far enough: {first_position} -> {moved_position}")
 
     reload_log_start = len(cdp.state.logs)
+    reload_started = now_ms()
     cdp.call("Page.reload", {"ignoreCache": True}, timeout=5.0)
     cdp.wait_for_new_log(
         "persistent storage after reload",
@@ -938,6 +1071,27 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     if missing_packages:
         raise RuntimeError(f"Package responses missing from smoke: {missing_packages}")
 
+    render_capabilities = read_render_capabilities(cdp) or render_capabilities
+    render_failures = validate_render_capabilities(render_capabilities)
+    if render_failures:
+        raise RuntimeError(f"WebGL2 render capability gate failed after reload: {render_failures}")
+
+    webgl_errors = collect_webgl_error_logs(cdp.state.logs)
+    if webgl_errors:
+        raise RuntimeError(f"Browser smoke saw WebGL error logs: {webgl_errors[-20:]}")
+
+    vfx_policy_log = latest_log_text(cdp.state.logs, "Web release VFX policy")
+    if not vfx_policy_log or "backend=" not in vfx_policy_log:
+        raise RuntimeError("Web release VFX policy log is missing or malformed.")
+
+    audio_preload_log = latest_log_text(cdp.state.logs, "ResourceManager: registered audio preload complete")
+    if not audio_preload_log or "failed=0" not in audio_preload_log:
+        raise RuntimeError(f"Registered audio preload did not converge cleanly: {audio_preload_log!r}")
+
+    audio_policy_log = latest_log_text(cdp.state.logs, "Web audio release policy")
+    if not audio_policy_log:
+        raise RuntimeError("Web audio release policy log is missing.")
+
     errors = [
         entry for entry in cdp.state.logs
         if entry.get("level") in {"error", "pageerror"} and "favicon.ico" not in str(entry.get("text", ""))
@@ -945,12 +1099,27 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     if errors or cdp.state.exceptions:
         raise RuntimeError(f"Browser smoke saw console errors: {errors} exceptions={cdp.state.exceptions}")
 
+    timings = {
+        "title_interactive": human_ms(started, title_ready),
+        "new_game_to_map": human_ms(title_ready, map_ready),
+        "gameplay_flow": human_ms(map_ready, interaction_ready),
+        "reload_load_to_map": human_ms(reload_started, load_ready),
+    }
+    warning_summary = summarize_warnings(cdp.state.logs)
+    performance_budget = summarize_performance_budget(timings)
+
     return {
-        "timings_ms": {
-            "title_interactive": human_ms(started, title_ready),
-            "new_game_to_map": human_ms(title_ready, map_ready),
-            "gameplay_flow": human_ms(map_ready, interaction_ready),
-            "reload_load_to_map": human_ms(map_ready, load_ready),
+        "timings_ms": timings,
+        "performance_budget": performance_budget,
+        "render_capabilities": render_capabilities,
+        "vfx_policy": {
+            "log": vfx_policy_log,
+            "effekseer": "effekseer_enabled=true" in vfx_policy_log,
+            "backend": "null_vfx_backend" if "backend=null_vfx_backend" in vfx_policy_log else "effekseer",
+        },
+        "audio_policy": {
+            "preload_log": audio_preload_log,
+            "deferred_log": audio_policy_log,
         },
         "positions": {
             "before_move": first_position,
@@ -971,6 +1140,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         "package_responses": package_responses,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
         "warning_count": sum(1 for entry in cdp.state.logs if entry.get("level") in {"warning", "warn"}),
+        "warning_summary": warning_summary,
         "warning_logs": [
             entry for entry in cdp.state.logs
             if entry.get("level") in {"warning", "warn"}
@@ -985,6 +1155,10 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
                     "GameApp: Web persistent",
                     "AudioPlayer",
                     "ResourceManager: registered audio preload",
+                    "Web audio release policy",
+                    "GLRenderer: Web release render capabilities",
+                    "Web release VFX policy",
+                    "HDR post-processing disabled",
                     "DialoguePresentationController",
                     "GameScene: inventory menu opened",
                     "GameScene: hotbar toggle accepted",
@@ -1144,6 +1318,7 @@ def main() -> int:
     print(f"- browser: {summary['browser']['version']}")
     print(f"- title interactive: {gameplay['timings_ms']['title_interactive']} ms")
     print(f"- new game to map: {gameplay['timings_ms']['new_game_to_map']} ms")
+    print(f"- performance budget: {gameplay['performance_budget']['status']}")
     print(f"- movement delta: {gameplay['positions']['delta']}")
     print(f"- report: {json_output}")
     return 0

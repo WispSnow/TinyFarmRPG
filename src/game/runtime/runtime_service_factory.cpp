@@ -203,8 +203,16 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
         if (!backend) {
             spdlog::warn("EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
         }
+#if defined(__EMSCRIPTEN__)
+        spdlog::info("Web release VFX policy: effekseer_enabled=true backend={} status={}.",
+                     backend ? "effekseer" : "null_vfx_backend",
+                     backend ? "enabled" : "fallback");
+#endif
 #else
         spdlog::info("Effekseer VFX 后端未启用，将使用 NullVfxBackend。");
+#if defined(__EMSCRIPTEN__)
+        spdlog::info("Web release VFX policy: effekseer_enabled=false backend=null_vfx_backend status=deferred.");
+#endif
 #endif
         if (!backend) {
             backend = std::make_unique<engine::vfx::NullVfxBackend>();

@@ -92,21 +92,28 @@ TEST(WebGameplayTargetSourceTest, WebDependenciesAvoidDesktopGlAndImageLibraries
 
 TEST(WebGameplayTargetSourceTest, WebGlPlatformGuardsSrgbAndDepthClear) {
     const std::string platform_header = readProjectFile("src/engine/platform/gl_platform.h");
+    const std::string renderer_header = readProjectFile("src/engine/render/opengl/gl_renderer.h");
     const std::string renderer_source = readProjectFile("src/engine/render/opengl/gl_renderer.cpp");
 
     ASSERT_FALSE(platform_header.empty());
+    ASSERT_FALSE(renderer_header.empty());
     ASSERT_FALSE(renderer_source.empty());
 
     EXPECT_NE(platform_header.find("TF_GL_PLATFORM_WEBGL"), std::string::npos);
     EXPECT_NE(platform_header.find("kSupportsDefaultFramebufferSrgb = !kIsWebGL"), std::string::npos);
     EXPECT_NE(platform_header.find("kSupportsFloatColorFramebuffers = !kIsWebGL"), std::string::npos);
+    EXPECT_NE(platform_header.find("kSupportsLinearFloatFiltering = !kIsWebGL"), std::string::npos);
     EXPECT_NE(platform_header.find("kEnableHdrPostProcessingByDefault = kSupportsFloatColorFramebuffers"), std::string::npos);
     EXPECT_NE(platform_header.find("glClearDepthf(depth);"), std::string::npos);
     EXPECT_NE(platform_header.find("glClearDepth(static_cast<GLdouble>(depth));"), std::string::npos);
+    EXPECT_NE(renderer_header.find("RenderCapabilitySnapshot"), std::string::npos);
+    EXPECT_NE(renderer_header.find("getRenderCapabilitySnapshot"), std::string::npos);
     EXPECT_NE(renderer_source.find("engine::platform::gl::kSupportsDefaultFramebufferSrgb"), std::string::npos);
     EXPECT_NE(renderer_source.find("if constexpr (engine::platform::gl::kEnableHdrPostProcessingByDefault)"),
               std::string::npos);
     EXPECT_NE(renderer_source.find("bloom_enabled_ && bloom_pass_ && emissive_pass_"), std::string::npos);
+    EXPECT_NE(renderer_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(renderer_source.find("GLRenderer: Web release render capabilities"), std::string::npos);
     EXPECT_NE(renderer_source.find("engine::platform::gl::clearDepth(1.0f);"), std::string::npos);
     EXPECT_EQ(renderer_source.find("glClearDepth(1.0);"), std::string::npos);
 }
@@ -516,6 +523,46 @@ TEST(WebGameplayTargetSourceTest, Phase17GameplayCoverageSmokeIsPresent) {
     EXPECT_NE(audit_tool.find("home_interior"), std::string::npos);
     EXPECT_NE(audit_tool.find("scripted interactions"), std::string::npos);
     EXPECT_NE(audit_tool.find("missing_required_paths"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
+    const std::string renderer_header = readProjectFile("src/engine/render/opengl/gl_renderer.h");
+    const std::string renderer_source = readProjectFile("src/engine/render/opengl/gl_renderer.cpp");
+    const std::string resource_manager_source = readProjectFile("src/engine/resource/resource_manager.cpp");
+    const std::string runtime_service_factory = readProjectFile("src/game/runtime/runtime_service_factory.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+
+    ASSERT_FALSE(renderer_header.empty());
+    ASSERT_FALSE(renderer_source.empty());
+    ASSERT_FALSE(resource_manager_source.empty());
+    ASSERT_FALSE(runtime_service_factory.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+
+    EXPECT_NE(renderer_header.find("RenderCapabilitySnapshot"), std::string::npos);
+    EXPECT_NE(renderer_header.find("default_framebuffer_srgb"), std::string::npos);
+    EXPECT_NE(renderer_header.find("float_color_framebuffers"), std::string::npos);
+    EXPECT_NE(renderer_header.find("linear_float_filtering"), std::string::npos);
+    EXPECT_NE(renderer_source.find("captureRenderCapabilities"), std::string::npos);
+    EXPECT_NE(renderer_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(renderer_source.find("GLRenderer: Web release render capabilities"), std::string::npos);
+
+    EXPECT_NE(runtime_service_factory.find("Web release VFX policy"), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("backend=null_vfx_backend status=deferred"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("Web audio release policy"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("failed=0"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("read_render_capabilities"), std::string::npos);
+    EXPECT_NE(web_smoke.find("validate_render_capabilities"), std::string::npos);
+    EXPECT_NE(web_smoke.find("collect_webgl_error_logs"), std::string::npos);
+    EXPECT_NE(web_smoke.find("performance_budget"), std::string::npos);
+    EXPECT_NE(web_smoke.find("vfx_policy"), std::string::npos);
+    EXPECT_NE(web_smoke.find("audio_policy"), std::string::npos);
+
+    EXPECT_NE(release_validator_source.find("Web audio release policy"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("Web release VFX policy"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("render_capability_gate"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {

@@ -61,6 +61,19 @@ public:
         uint32_t index_count{0};
     };
 
+    struct RenderCapabilitySnapshot {
+        std::string platform{"unknown"};
+        bool default_framebuffer_srgb{false};
+        bool float_color_framebuffers{false};
+        bool linear_float_filtering{false};
+        bool hdr_post_processing{false};
+        bool bloom_enabled{false};
+        bool emissive_enabled{false};
+        int max_texture_size{0};
+        int max_renderbuffer_size{0};
+        int max_samples{0};
+    };
+
 private:
     std::unique_ptr<RenderContext> render_context_;
     std::unique_ptr<ViewportManager> viewport_manager_;
@@ -106,6 +119,7 @@ private:
 
     // 保存各个通道绘制的统计信息(DebugPanel需要)
     std::array<PassStats, static_cast<size_t>(PassType::Count)> pass_stats_{};
+    RenderCapabilitySnapshot render_capabilities_{};
 
 public:
     [[nodiscard]] static std::unique_ptr<GLRenderer> create(SDL_Window* window,
@@ -216,6 +230,7 @@ public:
     [[nodiscard]] float getBloomSigma() const;
     [[nodiscard]] uint32_t getBloomLevelCount() const;
     [[nodiscard]] const PassStats& getPassStats(PassType pass) const;
+    [[nodiscard]] const RenderCapabilitySnapshot& getRenderCapabilitySnapshot() const { return render_capabilities_; }
     void setVfxBackend(engine::vfx::VfxBackend* backend);
 
     // 调试：渲染中间纹理预览（DebugPanel 使用）
@@ -254,6 +269,7 @@ private:
     [[nodiscard]] bool initScenePass();
     [[nodiscard]] bool initWorldVfxPass();
     [[nodiscard]] bool initCompositePass();
+    void captureRenderCapabilities();
 
     glm::mat4 computeViewProjection(const Camera& camera);      ///< @brief 计算视图投影矩阵
     void applyViewProjection(GLint location);                    ///< @brief 应用视图投影矩阵

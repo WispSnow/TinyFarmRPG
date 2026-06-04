@@ -167,6 +167,13 @@ void ResourceManager::preloadRegisteredAudioResources() {
         already_loaded,
         skipped_missing,
         failed);
+#if defined(__EMSCRIPTEN__)
+    if (skipped_missing > 0 && failed == 0) {
+        spdlog::info(
+            "ResourceManager: Web audio release policy deferred {} registered audio assets outside audio-core; failed=0.",
+            skipped_missing);
+    }
+#endif
 }
 
 void ResourceManager::loadResources(std::string_view file_path) {
