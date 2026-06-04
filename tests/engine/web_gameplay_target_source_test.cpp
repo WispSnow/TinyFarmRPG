@@ -629,6 +629,45 @@ TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndDeleteSlotHardenin
     EXPECT_NE(zh_hans.find("\"save_slot.confirm.delete\""), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase20ReleaseRunbookArtifactsDocsAndCiArePresent) {
+    const std::string runbook = readProjectFile("tools/web_release/web_release_runbook.py");
+    const std::string release_docs = readProjectFile("docs/web_release.md");
+    const std::string docs_index = readProjectFile("docs/README.md");
+    const std::string workflow = readProjectFile(".github/workflows/web-release.yml");
+
+    ASSERT_FALSE(runbook.empty());
+    ASSERT_FALSE(release_docs.empty());
+    ASSERT_FALSE(docs_index.empty());
+    ASSERT_FALSE(workflow.empty());
+
+    EXPECT_NE(runbook.find("artifact-manifest.json"), std::string::npos);
+    EXPECT_NE(runbook.find("release-report.md"), std::string::npos);
+    EXPECT_NE(runbook.find("sha256_file"), std::string::npos);
+    EXPECT_NE(runbook.find("gzip_file_bytes"), std::string::npos);
+    EXPECT_NE(runbook.find("brotli_file_bytes"), std::string::npos);
+    EXPECT_NE(runbook.find("application/wasm"), std::string::npos);
+    EXPECT_NE(runbook.find("application/octet-stream"), std::string::npos);
+    EXPECT_NE(runbook.find("not required for the default single-thread build"), std::string::npos);
+    EXPECT_NE(runbook.find("write_release_markdown"), std::string::npos);
+
+    EXPECT_NE(release_docs.find("python3 tools/web_release/web_release_runbook.py auto"), std::string::npos);
+    EXPECT_NE(release_docs.find("artifact-manifest.json"), std::string::npos);
+    EXPECT_NE(release_docs.find("release-report.md"), std::string::npos);
+    EXPECT_NE(release_docs.find("application/wasm"), std::string::npos);
+    EXPECT_NE(release_docs.find("application/octet-stream"), std::string::npos);
+    EXPECT_NE(release_docs.find("Clear site data"), std::string::npos);
+    EXPECT_NE(release_docs.find("默认单线程发布不需要"), std::string::npos);
+    EXPECT_NE(docs_index.find("web_release.md"), std::string::npos);
+
+    EXPECT_NE(workflow.find("web-release-gate"), std::string::npos);
+    EXPECT_NE(workflow.find("setup-emsdk@v14"), std::string::npos);
+    EXPECT_NE(workflow.find("version: 5.0.7"), std::string::npos);
+    EXPECT_NE(workflow.find("--skip-smoke"), std::string::npos);
+    EXPECT_NE(workflow.find("artifact-manifest.json"), std::string::npos);
+    EXPECT_NE(workflow.find("release-report.md"), std::string::npos);
+    EXPECT_NE(workflow.find("chromium-smoke"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
     const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
 

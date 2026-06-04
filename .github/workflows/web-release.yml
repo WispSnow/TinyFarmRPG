@@ -1,0 +1,105 @@
+name: Web Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_chromium_smoke:
+        description: "Run the optional headless Chromium smoke job"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  push:
+    branches:
+      - web-release
+  pull_request:
+    paths:
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "src/**"
+      - "assets/**"
+      - "config/**"
+      - "scripts/**"
+      - "ui/**"
+      - "manifests/assets/**"
+      - "tools/web_release/**"
+      - ".github/workflows/web-release.yml"
+
+jobs:
+  web-release-gate:
+    name: Build and release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build brotli
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 5.0.7
+
+      - name: Build and validate Web release
+        run: >
+          python3 tools/web_release/web_release_runbook.py auto
+          --configure
+          --skip-smoke
+          --build-dir build/web-release
+          --output-dir build/web-release/web-release-gate
+
+      - name: Upload release gate outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-release-gate
+          path: |
+            build/web-release/web-release-gate/auto-check.json
+            build/web-release/web-release-gate/auto-check.log
+            build/web-release/web-release-gate/artifact-manifest.json
+            build/web-release/web-release-gate/release-report.md
+            build/web-release/web-release-gate/release-gate.json
+
+  chromium-smoke:
+    name: Optional Chromium smoke
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.run_chromium_smoke == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build brotli
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 5.0.7
+
+      - name: Build, gate, and run Chromium smoke
+        run: >
+          python3 tools/web_release/web_release_runbook.py auto
+          --configure
+          --headless
+          --build-dir build/web-release
+          --output-dir build/web-release/web-release-smoke
+
+      - name: Upload Chromium smoke outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-release-chromium-smoke
+          path: |
+            build/web-release/web-release-smoke/auto-check.json
+            build/web-release/web-release-smoke/auto-check.log
+            build/web-release/web-release-smoke/artifact-manifest.json
+            build/web-release/web-release-smoke/release-report.md
+            build/web-release/web-release-smoke/chromium-smoke.json
+            build/web-release/web-release-smoke/smoke/*.png

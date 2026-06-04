@@ -47,6 +47,7 @@ flowchart TD
 | 我想做什么 | 先读 |
 |------------|------|
 | 把项目跑起来 | [构建与运行](build_and_run.md) |
+| 构建和测试 Web 版 | [Web Release 构建与测试](web_release.md) |
 | 理解程序怎么启动 | [启动到第一帧](engine/entry_to_first_frame.md) |
 | 理解 Scene 栈 | [场景系统](engine/scenes.md) |
 | 理解输入如何到玩家移动 | [输入系统](engine/input_system.md) / [玩家控制](game/player_control.md) |

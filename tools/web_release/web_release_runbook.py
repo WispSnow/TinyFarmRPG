@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import gzip
+import hashlib
 import json
 import os
 import plistlib
@@ -30,6 +32,28 @@ ARTIFACTS = (
     "TinyFarmRPG-Web.data",
     "favicon.ico",
 )
+
+METADATA_ARTIFACTS = (
+    "web-boot-preload.args",
+    "web-packages/web-package-index.json",
+)
+
+MIME_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript",
+    ".wasm": "application/wasm",
+    ".data": "application/octet-stream",
+    ".tfpack": "application/octet-stream",
+    ".json": "application/json",
+    ".args": "text/plain; charset=utf-8",
+    ".ico": "image/vnd.microsoft.icon",
+}
+
+PRODUCTION_CACHE_POLICY = {
+    "entry": "no-cache",
+    "binary": "public, max-age=31536000, immutable when deployed under a versioned release directory; otherwise no-cache",
+    "metadata": "no-cache",
+}
 
 SCRIPT_CHECKS = (
     "tools/web_release/package_web_assets.py",
@@ -68,6 +92,65 @@ def human_size(value: int) -> str:
             return f"{size:.1f} {unit}" if unit != "B" else f"{value} B"
         size /= 1024.0
     return f"{value} B"
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def gzip_file_bytes(path: Path) -> int:
+    return len(gzip.compress(path.read_bytes(), compresslevel=9, mtime=0))
+
+
+def brotli_file_bytes(path: Path, env: dict[str, str]) -> int | None:
+    try:
+        import brotli  # type: ignore[import-not-found]
+    except ImportError:
+        brotli = None
+    if brotli is not None:
+        return len(brotli.compress(path.read_bytes(), quality=11))
+
+    brotli_cli = shutil.which("brotli", path=env.get("PATH"))
+    if brotli_cli is None:
+        return None
+    try:
+        completed = subprocess.run(
+            [brotli_cli, "--stdout", "--quality=11", str(path)],
+            env=env,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+    return len(completed.stdout)
+
+
+def artifact_mime(path: Path) -> str:
+    return MIME_TYPES.get(path.suffix, "application/octet-stream")
+
+
+def artifact_kind(relative_path: str) -> str:
+    if relative_path in ARTIFACTS:
+        return "entry" if relative_path.endswith(".html") else "core"
+    if relative_path.endswith(".tfpack"):
+        return "runtime_package"
+    if relative_path.endswith("web-package-index.json"):
+        return "release_manifest"
+    return "build_metadata"
+
+
+def artifact_cache_policy(kind: str) -> str:
+    if kind == "entry":
+        return PRODUCTION_CACHE_POLICY["entry"]
+    if kind in {"runtime_package", "core"}:
+        return PRODUCTION_CACHE_POLICY["binary"]
+    return PRODUCTION_CACHE_POLICY["metadata"]
 
 
 def default_build_dir(root: Path) -> Path:
@@ -211,6 +294,238 @@ def collect_artifacts(build_dir: Path) -> dict[str, Any]:
     if index.exists():
         artifacts["runtime_package_index"] = str(index)
     return artifacts
+
+
+def release_artifact_paths(build_dir: Path) -> list[tuple[Path, bool]]:
+    paths: list[tuple[Path, bool]] = []
+    for name in ARTIFACTS:
+        paths.append((build_dir / name, True))
+    for path in sorted((build_dir / "web-packages").glob("*.tfpack")):
+        paths.append((path, True))
+    for name in METADATA_ARTIFACTS:
+        paths.append((build_dir / name, name.endswith("web-package-index.json")))
+    return paths
+
+
+def artifact_entry(build_dir: Path, path: Path, deploy: bool, env: dict[str, str]) -> dict[str, Any]:
+    try:
+        relative = path.relative_to(build_dir).as_posix()
+    except ValueError:
+        relative = path.as_posix()
+    kind = artifact_kind(relative)
+    if not path.exists():
+        return {
+            "path": relative,
+            "deploy": deploy,
+            "kind": kind,
+            "missing": True,
+        }
+
+    size = path.stat().st_size
+    gzip_bytes = gzip_file_bytes(path)
+    brotli_bytes = brotli_file_bytes(path, env)
+    return {
+        "path": relative,
+        "deploy": deploy,
+        "kind": kind,
+        "mime": artifact_mime(path),
+        "cache_control": artifact_cache_policy(kind),
+        "bytes": size,
+        "size": human_size(size),
+        "gzip_bytes": gzip_bytes,
+        "gzip_size": human_size(gzip_bytes),
+        "brotli_bytes": brotli_bytes,
+        "brotli_size": human_size(brotli_bytes) if brotli_bytes is not None else None,
+        "sha256": sha256_file(path),
+    }
+
+
+def build_artifact_manifest(root: Path, build_dir: Path, output_dir: Path, env: dict[str, str]) -> dict[str, Any]:
+    files = [artifact_entry(build_dir, path, deploy, env) for path, deploy in release_artifact_paths(build_dir)]
+    present = [file for file in files if not file.get("missing")]
+    deploy_files = [file for file in present if file.get("deploy")]
+    brotli_available = any(file.get("brotli_bytes") is not None for file in present)
+
+    def total(key: str, rows: list[dict[str, Any]]) -> int | None:
+        values = [row.get(key) for row in rows]
+        if not values or any(not isinstance(value, int) for value in values):
+            return None
+        return int(sum(values))
+
+    by_kind: dict[str, dict[str, Any]] = {}
+    for file in present:
+        kind = str(file.get("kind", "unknown"))
+        bucket = by_kind.setdefault(kind, {"files": 0, "bytes": 0, "gzip_bytes": 0, "brotli_bytes": 0})
+        bucket["files"] += 1
+        bucket["bytes"] += int(file.get("bytes", 0))
+        bucket["gzip_bytes"] += int(file.get("gzip_bytes", 0))
+        if isinstance(file.get("brotli_bytes"), int):
+            bucket["brotli_bytes"] += int(file["brotli_bytes"])
+    for bucket in by_kind.values():
+        bucket["size"] = human_size(int(bucket["bytes"]))
+        bucket["gzip_size"] = human_size(int(bucket["gzip_bytes"]))
+        bucket["brotli_size"] = human_size(int(bucket["brotli_bytes"])) if brotli_available else None
+
+    deploy_bytes = total("bytes", deploy_files) or 0
+    deploy_gzip_bytes = total("gzip_bytes", deploy_files) or 0
+    deploy_brotli_bytes = total("brotli_bytes", deploy_files)
+    package_index = read_json(build_dir / "web-packages" / "web-package-index.json")
+    return {
+        "schema_version": 1,
+        "generated_at": now_iso(),
+        "repo_root": str(root),
+        "build_dir": str(build_dir),
+        "output_dir": str(output_dir),
+        "git": collect_git(root),
+        "deployment": {
+            "root": str(build_dir),
+            "entry": "TinyFarmRPG-Web.html",
+            "required_files": [file["path"] for file in deploy_files],
+            "local_preview_headers": {
+                "Cache-Control": "no-cache",
+                "Cross-Origin-Opener-Policy": "not required for the default single-thread build",
+                "Cross-Origin-Embedder-Policy": "not required for the default single-thread build",
+            },
+            "production_cache_policy": PRODUCTION_CACHE_POLICY,
+        },
+        "summary": {
+            "files": len(present),
+            "deploy_files": len(deploy_files),
+            "bytes": sum(int(file.get("bytes", 0)) for file in present),
+            "size": human_size(sum(int(file.get("bytes", 0)) for file in present)),
+            "deploy_bytes": deploy_bytes,
+            "deploy_size": human_size(deploy_bytes),
+            "deploy_gzip_bytes": deploy_gzip_bytes,
+            "deploy_gzip_size": human_size(deploy_gzip_bytes),
+            "deploy_brotli_bytes": deploy_brotli_bytes,
+            "deploy_brotli_size": human_size(deploy_brotli_bytes) if deploy_brotli_bytes is not None else None,
+            "brotli_available": brotli_available,
+            "by_kind": by_kind,
+        },
+        "files": files,
+        "runtime_package_index": package_index,
+    }
+
+
+def smoke_screenshots(output_dir: Path) -> list[str]:
+    smoke_dir = output_dir / "smoke"
+    if not smoke_dir.exists():
+        return []
+    return [path.relative_to(output_dir).as_posix() for path in sorted(smoke_dir.glob("*.png"))]
+
+
+def markdown_table(rows: list[list[str]]) -> str:
+    if not rows:
+        return ""
+    header = rows[0]
+    separator = ["---"] * len(header)
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join(separator) + " |",
+    ]
+    for row in rows[1:]:
+        lines.append("| " + " | ".join(row) + " |")
+    return "\n".join(lines)
+
+
+def write_release_markdown(path: Path, report: dict[str, Any], manifest: dict[str, Any]) -> None:
+    summary = manifest.get("summary", {})
+    release_gate = report.get("release_gate") or {}
+    smoke = report.get("smoke") or {}
+    gameplay = smoke.get("gameplay", {}) if isinstance(smoke, dict) else {}
+    if not isinstance(smoke, dict) or not smoke:
+        smoke_status = "n/a"
+    elif smoke.get("skipped"):
+        smoke_status = "skipped"
+    else:
+        smoke_status = str(smoke.get("status", "passed"))
+    files = [file for file in manifest.get("files", []) if not file.get("missing") and file.get("deploy")]
+    artifact_rows = [["Path", "Kind", "Size", "Gzip", "Brotli", "MIME"]]
+    for file in files:
+        artifact_rows.append([
+            str(file.get("path", "")),
+            str(file.get("kind", "")),
+            str(file.get("size", "")),
+            str(file.get("gzip_size", "")),
+            str(file.get("brotli_size") or "n/a"),
+            str(file.get("mime", "")),
+        ])
+
+    timing_rows = [["Metric", "Actual", "Budget", "Status"]]
+    budget = gameplay.get("performance_budget", {}) if isinstance(gameplay, dict) else {}
+    for name, result in (budget.get("results", {}) if isinstance(budget, dict) else {}).items():
+        timing_rows.append([
+            str(name),
+            f"{result.get('actual_ms', 0)} ms",
+            f"{result.get('budget_ms', 0)} ms",
+            str(result.get("status", "")),
+        ])
+
+    screenshots = smoke_screenshots(Path(str(report.get("output_dir", ""))))
+    screenshot_lines = "\n".join(f"- `{item}`" for item in screenshots) if screenshots else "- n/a"
+    lines = [
+        "# TinyFarmRPG Web Release Report",
+        "",
+        f"- Status: `{report.get('status', '<unknown>')}`",
+        f"- Generated at: `{manifest.get('generated_at', '')}`",
+        f"- Build dir: `{manifest.get('build_dir', '')}`",
+        f"- Deploy entry: `{manifest.get('deployment', {}).get('entry', '')}`",
+        f"- Release gate failures: `{len(release_gate.get('failures', [])) if isinstance(release_gate, dict) else 'n/a'}`",
+        f"- Smoke status: `{smoke_status}`",
+        "",
+        "## Size Summary",
+        "",
+        f"- Deploy files: `{summary.get('deploy_files', 0)}`",
+        f"- Deploy size: `{summary.get('deploy_size', '0 B')}`",
+        f"- Deploy gzip size: `{summary.get('deploy_gzip_size', '0 B')}`",
+        f"- Deploy brotli size: `{summary.get('deploy_brotli_size') or 'n/a'}`",
+        "",
+        "## Deployment Files",
+        "",
+        markdown_table(artifact_rows),
+        "",
+        "## Performance Budget",
+        "",
+        markdown_table(timing_rows) if len(timing_rows) > 1 else "n/a",
+        "",
+        "## Screenshots",
+        "",
+        screenshot_lines,
+        "",
+        "## Commands",
+        "",
+    ]
+    for command in report.get("commands", []):
+        lines.append("- `" + quote_command(command.get("command", [])) + f"` -> `{command.get('exit_code')}`")
+    lines.append("")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_release_outputs(report: dict[str, Any], root: Path, build_dir: Path, output_dir: Path, env: dict[str, str]) -> None:
+    artifact_manifest_path = output_dir / "artifact-manifest.json"
+    release_report_path = output_dir / "release-report.md"
+    artifact_manifest = build_artifact_manifest(root, build_dir, output_dir, env)
+    write_json(artifact_manifest_path, artifact_manifest)
+    report["artifact_manifest"] = str(artifact_manifest_path)
+    report["release_report"] = str(release_report_path)
+    report["artifact_summary"] = artifact_manifest.get("summary", {})
+    write_release_markdown(release_report_path, report, artifact_manifest)
+
+
+def try_write_release_outputs(
+    report: dict[str, Any],
+    root: Path,
+    build_dir: Path,
+    output_dir: Path,
+    env: dict[str, str],
+) -> bool:
+    try:
+        write_release_outputs(report, root, build_dir, output_dir, env)
+    except Exception as exc:
+        report["release_output_error"] = str(exc)
+        return False
+    return True
 
 
 def mac_app_version(executable: Path) -> str | None:
@@ -509,10 +824,18 @@ def run_auto(args: argparse.Namespace) -> int:
         finish_report(report, "failed", runner, build_dir, str(exc))
     finally:
         runner.close()
+        if not try_write_release_outputs(report, root, build_dir, output_dir, env):
+            exit_code = 1
+            if report.get("status") == "passed":
+                report["status"] = "failed"
         write_json(report_path, report)
 
     print("")
     print(f"Auto check {report['status']}: {report_path}")
+    if "artifact_manifest" in report:
+        print(f"Artifact manifest: {report['artifact_manifest']}")
+    if "release_report" in report:
+        print(f"Release report: {report['release_report']}")
     print(f"Log: {log_path}")
     return exit_code
 
@@ -565,15 +888,27 @@ def run_manual(args: argparse.Namespace) -> int:
         }
         report["release_gate"] = read_json(gate_json)
         finish_report(report, "prepared", runner, build_dir)
+        if not try_write_release_outputs(report, root, build_dir, output_dir, env):
+            report["status"] = "failed"
         write_json(report_path, report)
+        if report["status"] == "failed":
+            runner.close()
+            print("")
+            print(f"Manual preview failed: {report_path}")
+            print(f"Log: {log_path}")
+            return 1
 
         if args.check_only:
             runner.note(f"Manual preview prepared: {url}")
             runner.close()
             print("")
             print(f"Manual preview report: {report_path}")
+            if "artifact_manifest" in report:
+                print(f"Artifact manifest: {report['artifact_manifest']}")
+            if "release_report" in report:
+                print(f"Release report: {report['release_report']}")
             print(f"Log: {log_path}")
-            return 0
+            return 0 if report["status"] == "prepared" else 1
 
         handler_base = make_handler(build_dir, cross_origin_isolated)
 
@@ -604,6 +939,7 @@ def run_manual(args: argparse.Namespace) -> int:
             write_json(report_path, report)
     except Exception as exc:
         finish_report(report, "failed", runner, build_dir, str(exc))
+        try_write_release_outputs(report, root, build_dir, output_dir, env)
         write_json(report_path, report)
         runner.close()
         print("")
@@ -614,6 +950,10 @@ def run_manual(args: argparse.Namespace) -> int:
     runner.close()
     print("")
     print(f"Manual preview report: {report_path}")
+    if "artifact_manifest" in report:
+        print(f"Artifact manifest: {report['artifact_manifest']}")
+    if "release_report" in report:
+        print(f"Release report: {report['release_report']}")
     print(f"Log: {log_path}")
     return 0
 
