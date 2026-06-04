@@ -26,6 +26,7 @@
 - Phase 16 已完成 runtime package registry：`shared-ui`、`home-map`、`audio-core` 都通过统一 registry gate，并被 Chrome smoke 观测到 `.tfpack` 响应。
 - Phase 17 已完成 gameplay coverage 扩展：Chrome smoke 覆盖 inventory / hotbar / pause、工具动作、`home_exterior` 与 `home_interior` 往返、商人对话、保存覆盖和刷新读档。报告见 `plans/reports/2026-06-04-web-release-phase-17-report.md`。
 - Phase 18 已完成渲染、音频与 VFX parity 收敛：WebGL2 capability 进入日志和 smoke JSON；Bloom / HDR emissive 正式降级到 LDR / no-bloom；Effekseer 正式保留 `null_vfx_backend`；音频 warning 可解释。报告见 `plans/reports/2026-06-04-web-release-phase-18-report.md`。
+- Phase 19 已完成持久化、设置与错误恢复硬化：IDBFS sync 诊断进入日志和 smoke JSON；设置刷新后从 `/persistent` 恢复；保存、覆盖、加载、删除 slot 均经过 sync 验证；损坏 slot 可跳过。报告见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
 - headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
 
 仍未完成的部分：
@@ -247,6 +248,8 @@ flowchart TD
 
 目标：把 IDBFS 和用户设置从“主路径可用”推进到“发布可依赖”。
 
+状态：已完成。Chrome smoke 已验证设置修改刷新恢复、损坏存档 slot 跳过、保存覆盖刷新加载、删除 slot sync 后刷新缺失。详见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
+
 实施步骤：
 
 1. 保存系统硬化。
@@ -349,7 +352,7 @@ flowchart TD
 - [x] WebGL2 capability 结果进入日志和 release report。
 - [x] Bloom / emissive / Effekseer 给出恢复或正式降级结论。
 - [x] 音频 warning 收敛，不再掩盖缺包错误。
-- [ ] 保存、设置、slot 操作和错误恢复完成硬化。
+- [x] 保存、设置、slot 操作和错误恢复完成硬化。
 - [ ] 固定 Web release 命令输出 artifact manifest 和报告。
 - [ ] Web release 产物生成 gzip / brotli 尺寸摘要。
 - [ ] Chromium smoke 接入 CI 或 release job。

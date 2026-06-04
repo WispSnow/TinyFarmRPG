@@ -15,6 +15,10 @@
 #include <optional>
 #include <unordered_map>
 
+namespace engine::utils {
+struct WebPersistentStorageReadyEvent;
+}
+
 namespace game::data {
     struct GameTime;
     struct MusicCueData;
@@ -115,6 +119,7 @@ private:
     void onDialogueChoiceRequested(const game::defs::DialogueChoiceRequestedEvent& evt);
     void onQuestOfferRequested(const game::defs::QuestOfferRequestedEvent& evt);
     void onRecruitOfferRequested(const game::defs::RecruitOfferRequestedEvent& evt);
+    void onWebPersistentStorageReady(const engine::utils::WebPersistentStorageReadyEvent& evt);
     void playGameplayMusicCue();
     void playBattleMusicCue();
     void playMusicCue(const game::data::MusicCueData& cue);

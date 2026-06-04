@@ -30,6 +30,8 @@ from serve_web_release import cache_value, cmake_bool, make_handler
 LOGICAL_WIDTH = 640.0
 LOGICAL_HEIGHT = 360.0
 SAVE_PATH = "/persistent/saves/slot0.json"
+CORRUPT_SAVE_PATH = "/persistent/saves/slot1.json"
+USER_SETTINGS_PATH = "/persistent/config/user_settings.json"
 KEY_ESCAPE = ("Escape", "Escape", 27)
 KEY_INTERACT = ("KeyF", "f", 70)
 KEY_INVENTORY = ("KeyI", "i", 73)
@@ -42,6 +44,8 @@ PERFORMANCE_BUDGET_MS = {
     "new_game_to_map": 30000,
     "gameplay_flow": 120000,
     "reload_load_to_map": 30000,
+    "delete_slot_sync": 30000,
+    "delete_reload_verify": 30000,
 }
 
 
@@ -599,6 +603,78 @@ def read_save_player(cdp: CdpClient) -> dict[str, Any] | None:
     )
 
 
+def persistent_file_exists(cdp: CdpClient, path: str) -> bool:
+    return bool(
+        cdp.evaluate(
+            f"""(() => {{
+                if (typeof FS === "undefined") return false;
+                return FS.analyzePath({json.dumps(path)}).exists;
+            }})()""",
+            timeout=10.0,
+        )
+    )
+
+
+def read_json_file(cdp: CdpClient, path: str) -> dict[str, Any] | None:
+    data = cdp.evaluate(
+        f"""(() => {{
+            if (typeof FS === "undefined") return null;
+            const path = {json.dumps(path)};
+            if (!FS.analyzePath(path).exists) return null;
+            const text = new TextDecoder("utf-8").decode(FS.readFile(path));
+            return JSON.parse(text);
+        }})()""",
+        timeout=10.0,
+    )
+    return data if isinstance(data, dict) else None
+
+
+def read_user_settings_file(cdp: CdpClient) -> dict[str, Any] | None:
+    return read_json_file(cdp, USER_SETTINGS_PATH)
+
+
+def read_user_settings_diagnostics(cdp: CdpClient) -> dict[str, Any] | None:
+    diagnostics = cdp.evaluate(
+        """(() => {
+            const value = globalThis.TinyFarmRPGWebReleaseDiagnostics?.userSettings;
+            return value ? {...value} : null;
+        })()""",
+        timeout=10.0,
+    )
+    return diagnostics if isinstance(diagnostics, dict) else None
+
+
+def read_persistent_storage_diagnostics(cdp: CdpClient) -> dict[str, Any] | None:
+    diagnostics = cdp.evaluate(
+        """(() => {
+            const value = globalThis.TinyFarmRPGWebReleaseDiagnostics?.persistentStorage;
+            return value ? {...value} : null;
+        })()""",
+        timeout=10.0,
+    )
+    return diagnostics if isinstance(diagnostics, dict) else None
+
+
+def write_corrupt_save_slot(cdp: CdpClient) -> None:
+    result = cdp.evaluate(
+        f"""(() => new Promise((resolve) => {{
+            if (typeof FS === "undefined") {{
+                resolve({{success: false, error: "FS unavailable"}});
+                return;
+            }}
+            const path = {json.dumps(CORRUPT_SAVE_PATH)};
+            FS.mkdirTree("/persistent/saves");
+            FS.writeFile(path, "{{ invalid save json");
+            FS.syncfs(false, (err) => {{
+                resolve({{success: !err, error: err ? String(err) : ""}});
+            }});
+        }}))()""",
+        timeout=15000,
+    )
+    if not isinstance(result, dict) or not result.get("success"):
+        raise RuntimeError(f"Failed to write corrupt save slot: {result}")
+
+
 def read_save_position(cdp: CdpClient) -> dict[str, float] | None:
     player = read_save_player(cdp)
     if not isinstance(player, dict):
@@ -858,6 +934,75 @@ def resume_gameplay(cdp: CdpClient, output_dir: Path, label: str) -> None:
     cdp.evaluate('document.querySelector("canvas")?.focus()')
 
 
+def exercise_settings_persistence(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    focus_gameplay_canvas(cdp)
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_PAUSE)
+    cdp.wait_for_new_log("settings pause menu", "GameScene: pause menu opened.", log_start, 10000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase19-settings-before.png")
+
+    cdp.click_logical(247, 291, hold_ms=80)
+    cdp.wait_ms(400)
+    cdp.screenshot(output_dir / "phase19-settings-music-down.png")
+    press_game_key(cdp, *KEY_ESCAPE, settle_ms=700)
+    cdp.wait_for_new_log(
+        "user settings persistent sync",
+        "UserSettingsService: Web persistent settings sync completed.",
+        log_start,
+        10000,
+    )
+    settings = read_user_settings_file(cdp)
+    if not isinstance(settings, dict):
+        raise RuntimeError("User settings file was not written to persistent storage.")
+    music = float(settings.get("audio", {}).get("music_volume", 1.0))
+    if music >= 0.5:
+        raise RuntimeError(f"Music volume setting did not decrease: {settings}")
+    return settings
+
+
+def verify_user_settings_restored(cdp: CdpClient, expected: dict[str, Any]) -> dict[str, Any]:
+    cdp.wait_for("user settings diagnostics", lambda: read_user_settings_diagnostics(cdp) is not None, 10000)
+    restored = read_user_settings_file(cdp)
+    diagnostics = read_user_settings_diagnostics(cdp)
+    if not isinstance(restored, dict) or not isinstance(diagnostics, dict):
+        raise RuntimeError(f"User settings were not restored after reload: file={restored} diagnostics={diagnostics}")
+
+    expected_music = float(expected.get("audio", {}).get("music_volume", -1.0))
+    restored_music = float(restored.get("audio", {}).get("music_volume", -2.0))
+    diagnostic_music = float(diagnostics.get("musicVolume", -3.0))
+    if abs(restored_music - expected_music) > 0.001 or abs(diagnostic_music - expected_music) > 0.001:
+        raise RuntimeError(
+            "User settings music volume did not survive reload: "
+            f"expected={expected_music} restored={restored_music} diagnostics={diagnostics}"
+        )
+    return {"file": restored, "diagnostics": diagnostics}
+
+
+def delete_slot0_via_pause_menu(cdp: CdpClient, output_dir: Path) -> None:
+    focus_gameplay_canvas(cdp)
+    log_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_PAUSE)
+    cdp.wait_for_new_log("delete pause menu", "GameScene: pause menu opened.", log_start, 10000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase19-delete-pause.png")
+    cdp.click_logical(312, 160, hold_ms=80)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase19-delete-slot-select.png")
+    cdp.click_logical(236, 75, hold_ms=80)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase19-delete-confirm.png")
+    cdp.click_logical(240, 185, hold_ms=80)
+    cdp.wait_for_new_log(
+        "delete slot persistent sync",
+        "SaveService: Web persistent storage sync completed after slot delete.",
+        log_start,
+        10000,
+    )
+    if persistent_file_exists(cdp, SAVE_PATH):
+        raise RuntimeError(f"Save slot still exists after delete: {SAVE_PATH}")
+
+
 def read_render_capabilities(cdp: CdpClient) -> dict[str, Any] | None:
     capabilities = cdp.evaluate(
         """(() => {
@@ -957,6 +1102,38 @@ def summarize_warnings(logs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def summarize_persistent_storage_logs(logs: list[dict[str, Any]]) -> dict[str, Any]:
+    summary = {
+        "sync_started": 0,
+        "sync_completed": 0,
+        "sync_failed": 0,
+        "from_browser_completed": 0,
+        "to_browser_completed": 0,
+        "settings_sync_completed": 0,
+        "save_sync_completed": 0,
+        "slot_delete_sync_completed": 0,
+    }
+    for entry in logs:
+        text = str(entry.get("text", ""))
+        if "TinyFarmRPG persistent FS sync started" in text:
+            summary["sync_started"] += 1
+        if "TinyFarmRPG persistent FS sync completed" in text:
+            summary["sync_completed"] += 1
+            if "success=false" in text:
+                summary["sync_failed"] += 1
+            if "direction=from_browser" in text and "success=true" in text:
+                summary["from_browser_completed"] += 1
+            if "direction=to_browser" in text and "success=true" in text:
+                summary["to_browser_completed"] += 1
+        if "UserSettingsService: Web persistent settings sync completed." in text:
+            summary["settings_sync_completed"] += 1
+        if "SaveService: Web persistent storage sync completed after async save." in text:
+            summary["save_sync_completed"] += 1
+        if "SaveService: Web persistent storage sync completed after slot delete." in text:
+            summary["slot_delete_sync_completed"] += 1
+    return summary
+
+
 def summarize_performance_budget(timings: dict[str, int]) -> dict[str, Any]:
     results: dict[str, Any] = {}
     exceeded: list[str] = []
@@ -1011,6 +1188,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     map_ready = now_ms()
     cdp.screenshot(screenshots["map"])
 
+    saved_settings = exercise_settings_persistence(cdp, output_dir)
     exercise_menu_controls(cdp, output_dir)
     trigger_tool_action(cdp, output_dir)
     exercise_home_round_trip(cdp, output_dir)
@@ -1040,7 +1218,10 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         30000,
     )
     cdp.screenshot(output_dir / "phase14-reload-title.png")
+    restored_settings = verify_user_settings_restored(cdp, saved_settings)
+    write_corrupt_save_slot(cdp)
     cdp.click_logical(320, 259)
+    cdp.wait_for_new_log("corrupt save slot skipped", "SaveSlotSelectScene: slot 1 summary 读取失败", reload_log_start, 10000)
     cdp.wait_ms(1500)
     cdp.screenshot(output_dir / "phase14-reload-slot-select.png")
     cdp.click_logical(236, 75)
@@ -1051,6 +1232,21 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     loaded_player = read_save_player(cdp)
     if not isinstance(loaded_player, dict) or loaded_player.get("map_name") != "home_exterior":
         raise RuntimeError(f"Loaded save did not report home_exterior: {loaded_player}")
+
+    delete_started = now_ms()
+    delete_slot0_via_pause_menu(cdp, output_dir)
+    delete_ready = now_ms()
+    delete_reload_log_start = len(cdp.state.logs)
+    cdp.call("Page.reload", {"ignoreCache": True}, timeout=5.0)
+    cdp.wait_for_new_log(
+        "persistent storage after delete reload",
+        "GameApp: Web persistent storage is mounted and populated.",
+        delete_reload_log_start,
+        30000,
+    )
+    cdp.wait_for("slot0 deleted after reload", lambda: not persistent_file_exists(cdp, SAVE_PATH), 10000)
+    delete_verified = now_ms()
+    cdp.screenshot(output_dir / "phase19-delete-reload-title.png")
 
     package_responses = [
         response for response in cdp.state.responses
@@ -1104,14 +1300,30 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
         "new_game_to_map": human_ms(title_ready, map_ready),
         "gameplay_flow": human_ms(map_ready, interaction_ready),
         "reload_load_to_map": human_ms(reload_started, load_ready),
+        "delete_slot_sync": human_ms(delete_started, delete_ready),
+        "delete_reload_verify": human_ms(delete_ready, delete_verified),
     }
     warning_summary = summarize_warnings(cdp.state.logs)
     performance_budget = summarize_performance_budget(timings)
+    persistent_storage = read_persistent_storage_diagnostics(cdp)
+    persistent_storage_logs = summarize_persistent_storage_logs(cdp.state.logs)
+    if persistent_storage_logs["save_sync_completed"] < 2:
+        raise RuntimeError(f"Expected at least two async save sync completions: {persistent_storage_logs}")
+    if persistent_storage_logs["settings_sync_completed"] < 1:
+        raise RuntimeError(f"Expected user settings sync completion: {persistent_storage_logs}")
+    if persistent_storage_logs["slot_delete_sync_completed"] < 1:
+        raise RuntimeError(f"Expected slot delete sync completion: {persistent_storage_logs}")
 
     return {
         "timings_ms": timings,
         "performance_budget": performance_budget,
         "render_capabilities": render_capabilities,
+        "persistent_storage": persistent_storage,
+        "persistent_storage_logs": persistent_storage_logs,
+        "user_settings": {
+            "saved": saved_settings,
+            "restored": restored_settings,
+        },
         "vfx_policy": {
             "log": vfx_policy_log,
             "effekseer": "effekseer_enabled=true" in vfx_policy_log,
@@ -1133,9 +1345,12 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
             "inventory_open_close",
             "hotbar_open_close",
             "pause_open_close",
+            "settings_change_reload_restore",
             "primary_tool_action",
             "scripted_merchant_dialogue",
             "save_reload_load",
+            "corrupt_save_slot_skip",
+            "delete_slot_sync_reload_absent",
         ],
         "package_responses": package_responses,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
@@ -1153,6 +1368,8 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
                     "WebAssetPackage",
                     "WebAssetPackageRegistry",
                     "GameApp: Web persistent",
+                    "TinyFarmRPG persistent FS sync",
+                    "UserSettingsService",
                     "AudioPlayer",
                     "ResourceManager: registered audio preload",
                     "Web audio release policy",
@@ -1169,6 +1386,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
                     "尝试切换工具",
                     "MapManager",
                     "SaveService",
+                    "SaveSlotSelectScene",
                     "home_exterior",
                     "home_interior",
                 )

@@ -48,6 +48,7 @@
 #include "game/domain/actor_progression_service.h"
 #include "game/domain/party_rest_service.h"
 #include "game/runtime/game_content_manifest.h"
+#include "game/runtime/user_settings_service.h"
 #include "game/save/save_service.h"
 #include "engine/script/script_host.h"
 #include "game/scene/battle_scene_entry.h"
@@ -64,6 +65,7 @@
 #include "game/ui/player_portrait_service.h"
 #include "game/world/map_manager.h"
 #include "game/world/world_state.h"
+#include "engine/utils/events.h"
 #include "engine/vfx/vfx_service.h"
 #ifdef TF_ENABLE_DEBUG_UI
 #include "engine/debug/debug_ui_manager.h"
@@ -516,6 +518,9 @@ GameScene::~GameScene() noexcept {
         .disconnect<&GameScene::onDialogueChoiceRequested>(this);
     context_.getDispatcher().sink<game::defs::QuestOfferRequestedEvent>().disconnect<&GameScene::onQuestOfferRequested>(this);
     context_.getDispatcher().sink<game::defs::RecruitOfferRequestedEvent>().disconnect<&GameScene::onRecruitOfferRequested>(this);
+    context_.getDispatcher()
+        .sink<engine::utils::WebPersistentStorageReadyEvent>()
+        .disconnect<&GameScene::onWebPersistentStorageReady>(this);
 }
 
 bool GameScene::init() {
@@ -565,6 +570,7 @@ bool GameScene::init() {
     dispatcher.sink<game::defs::DialogueChoiceRequestedEvent>().connect<&GameScene::onDialogueChoiceRequested>(this);
     dispatcher.sink<game::defs::QuestOfferRequestedEvent>().connect<&GameScene::onQuestOfferRequested>(this);
     dispatcher.sink<game::defs::RecruitOfferRequestedEvent>().connect<&GameScene::onRecruitOfferRequested>(this);
+    dispatcher.sink<engine::utils::WebPersistentStorageReadyEvent>().connect<&GameScene::onWebPersistentStorageReady>(this);
 
     if (const auto* load_options = std::get_if<LoadGameOptions>(&launch_)) {
         spdlog::info("GameScene: loading save slot {}.", load_options->slot);
@@ -1288,6 +1294,16 @@ void GameScene::onBattleEnded(const game::defs::BattleEndedEvent& evt) {
             break;
         case game::battle::BattleOutcome::Ongoing:
             break;
+    }
+}
+
+void GameScene::onWebPersistentStorageReady(const engine::utils::WebPersistentStorageReadyEvent& evt) {
+    if (!evt.success || abort_to_title_ || !services_ || !services_->user_settings_service) {
+        return;
+    }
+    if (services_->user_settings_service->loadFromFileOrFallback()) {
+        services_->user_settings_service->applyAll();
+        spdlog::info("GameScene: Web persistent settings reloaded after storage sync.");
     }
 }
 

@@ -591,6 +591,9 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
     gl_renderer = root / "src" / "engine" / "render" / "opengl" / "gl_renderer.cpp"
     shader_program = root / "src" / "engine" / "render" / "opengl" / "shader_program.cpp"
     resource_manager = root / "src" / "engine" / "resource" / "resource_manager.cpp"
+    persistent_storage = root / "src" / "engine" / "platform" / "web_persistent_storage.cpp"
+    save_service = root / "src" / "game" / "save" / "save_service.cpp"
+    user_settings_service = root / "src" / "game" / "runtime" / "user_settings_service.cpp"
     runtime_service_factory = root / "src" / "game" / "runtime" / "runtime_service_factory.cpp"
     web_smoke = root / "tools" / "web_release" / "web_smoke.py"
 
@@ -599,6 +602,9 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
     gl_renderer_text = gl_renderer.read_text(encoding="utf-8", errors="ignore")
     shader_program_text = shader_program.read_text(encoding="utf-8", errors="ignore")
     resource_manager_text = resource_manager.read_text(encoding="utf-8", errors="ignore")
+    persistent_storage_text = persistent_storage.read_text(encoding="utf-8", errors="ignore")
+    save_service_text = save_service.read_text(encoding="utf-8", errors="ignore")
+    user_settings_service_text = user_settings_service.read_text(encoding="utf-8", errors="ignore")
     runtime_service_factory_text = runtime_service_factory.read_text(encoding="utf-8", errors="ignore")
     web_smoke_text = web_smoke.read_text(encoding="utf-8", errors="ignore")
 
@@ -640,6 +646,14 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
         (web_smoke_text, "web_smoke.py", "render_capabilities"),
         (web_smoke_text, "web_smoke.py", "performance_budget"),
         (web_smoke_text, "web_smoke.py", "collect_webgl_error_logs"),
+        (persistent_storage_text, "web_persistent_storage.cpp", "persistentStorage"),
+        (persistent_storage_text, "web_persistent_storage.cpp", "from_browser"),
+        (persistent_storage_text, "web_persistent_storage.cpp", "to_browser"),
+        (save_service_text, "save_service.cpp", "Web persistent storage sync completed after slot delete"),
+        (user_settings_service_text, "user_settings_service.cpp", "Web persistent settings sync"),
+        (web_smoke_text, "web_smoke.py", "exercise_settings_persistence"),
+        (web_smoke_text, "web_smoke.py", "delete_slot0_via_pause_menu"),
+        (web_smoke_text, "web_smoke.py", "persistent_storage_logs"),
     )
     for text, source_name, snippet in required_phase18_snippets:
         if snippet not in text:

@@ -1,6 +1,7 @@
 #include "game/runtime/user_settings_service.h"
 
 #include "engine/platform/filesystem_paths.h"
+#include "engine/platform/web_persistent_storage.h"
 
 #include "game/data/game_time.h"
 #include "game/defs/options_events.h"
@@ -20,7 +21,64 @@
 #include <fstream>
 #include <string>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 namespace game::runtime {
+namespace {
+
+#if defined(__EMSCRIPTEN__)
+void publishWebReleaseUserSettingsDiagnostics(const UserSettings& settings,
+                                              std::string_view event,
+                                              std::string_view path,
+                                              bool success,
+                                              bool dirty) {
+    const std::string event_text{event};
+    const std::string path_text{path};
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const userSettings = diagnostics.userSettings || (diagnostics.userSettings = {});
+        userSettings.lastEvent = UTF8ToString($0);
+        userSettings.lastPath = UTF8ToString($1);
+        userSettings.success = !!$2;
+        userSettings.dirty = !!$3;
+        userSettings.musicVolume = $4;
+        userSettings.soundVolume = $5;
+        userSettings.globalTimeScale = $6;
+        userSettings.languageTag = UTF8ToString($7);
+    },
+           event_text.c_str(),
+           path_text.c_str(),
+           success ? 1 : 0,
+           dirty ? 1 : 0,
+           settings.music_volume,
+           settings.sound_volume,
+           settings.global_time_scale,
+           settings.language_tag.c_str());
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+}
+
+void onUserSettingsPersistentSync(bool success, void*) {
+    spdlog::log(success ? spdlog::level::info : spdlog::level::warn,
+                "UserSettingsService: Web persistent settings sync {}.",
+                success ? "completed" : "failed");
+}
+#else
+void publishWebReleaseUserSettingsDiagnostics(const UserSettings&,
+                                              std::string_view,
+                                              std::string_view,
+                                              bool,
+                                              bool) {}
+#endif
+
+} // namespace
 
 UserSettingsService::UserSettingsService(entt::dispatcher& dispatcher,
                                          engine::audio::AudioPlayer& audio_player,
@@ -62,6 +120,7 @@ bool UserSettingsService::loadFromFile(std::string_view path) {
     }
     settings_.language_tag = localization_.resolveSupportedLanguageTag(settings_.language_tag);
     spdlog::info("UserSettingsService: 已加载 '{}'", fs_path.string());
+    publishWebReleaseUserSettingsDiagnostics(settings_, "load", fs_path.string(), true, dirty_);
     return true;
 }
 
@@ -87,9 +146,17 @@ bool UserSettingsService::saveToFile(std::string_view path) const {
     std::ofstream file(fs_path);
     if (!file.is_open()) {
         spdlog::warn("UserSettingsService: 无法写入偏好配置 '{}'", fs_path.string());
+        publishWebReleaseUserSettingsDiagnostics(settings_, "save", fs_path.string(), false, dirty_);
         return false;
     }
     file << serializeUserSettings(settings_).dump(2);
+    if (!file.good()) {
+        spdlog::warn("UserSettingsService: 写入偏好配置 '{}' 失败", fs_path.string());
+        publishWebReleaseUserSettingsDiagnostics(settings_, "save", fs_path.string(), false, dirty_);
+        return false;
+    }
+    spdlog::info("UserSettingsService: 已保存 '{}'", fs_path.string());
+    publishWebReleaseUserSettingsDiagnostics(settings_, "save", fs_path.string(), true, dirty_);
     return true;
 }
 
@@ -101,6 +168,10 @@ bool UserSettingsService::flushIfDirty(std::string_view path) {
         return false;
     }
     dirty_ = false;
+    publishWebReleaseUserSettingsDiagnostics(settings_, "flush", engine::platform::writableConfigPath(path).string(), true, dirty_);
+#if defined(__EMSCRIPTEN__)
+    engine::platform::web::syncPersistentStorageToBrowser(&onUserSettingsPersistentSync, nullptr);
+#endif
     return true;
 }
 
@@ -109,6 +180,7 @@ void UserSettingsService::applyAll() {
     applyTimeScale();
     applyUiFontScale();
     (void)applyLanguage();
+    publishWebReleaseUserSettingsDiagnostics(settings_, "apply", "", true, dirty_);
 }
 
 void UserSettingsService::applyAudio() {

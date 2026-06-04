@@ -565,6 +565,70 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
     EXPECT_NE(release_validator_source.find("render_capability_gate"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndDeleteSlotHardeningIsPresent) {
+    const std::string engine_events = readProjectFile("src/engine/utils/events.h");
+    const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
+    const std::string persistent_storage_source = readProjectFile("src/engine/platform/web_persistent_storage.cpp");
+    const std::string save_service_header = readProjectFile("src/game/save/save_service.h");
+    const std::string save_service_source = readProjectFile("src/game/save/save_service.cpp");
+    const std::string user_settings_source = readProjectFile("src/game/runtime/user_settings_service.cpp");
+    const std::string title_scene_source = readProjectFile("src/game/scene/title_scene.cpp");
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string pause_menu_source = readProjectFile("src/game/scene/pause_menu_scene.cpp");
+    const std::string save_slot_source = readProjectFile("src/game/scene/save_slot_select_scene.cpp");
+    const std::string pause_menu_rml = readProjectFile("ui/rmlui/scenes/pause_menu.rml");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string en_us = readProjectFile("assets/i18n/en-US.json");
+    const std::string zh_hans = readProjectFile("assets/i18n/zh-Hans.json");
+
+    ASSERT_FALSE(engine_events.empty());
+    ASSERT_FALSE(game_app_source.empty());
+    ASSERT_FALSE(persistent_storage_source.empty());
+    ASSERT_FALSE(save_service_header.empty());
+    ASSERT_FALSE(save_service_source.empty());
+    ASSERT_FALSE(user_settings_source.empty());
+    ASSERT_FALSE(title_scene_source.empty());
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(pause_menu_source.empty());
+    ASSERT_FALSE(save_slot_source.empty());
+    ASSERT_FALSE(pause_menu_rml.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(en_us.empty());
+    ASSERT_FALSE(zh_hans.empty());
+
+    EXPECT_NE(persistent_storage_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(persistent_storage_source.find("persistentStorage"), std::string::npos);
+    EXPECT_NE(persistent_storage_source.find("from_browser"), std::string::npos);
+    EXPECT_NE(persistent_storage_source.find("to_browser"), std::string::npos);
+    EXPECT_NE(engine_events.find("WebPersistentStorageReadyEvent"), std::string::npos);
+    EXPECT_NE(game_app_source.find("trigger(utils::WebPersistentStorageReadyEvent"), std::string::npos);
+    EXPECT_NE(title_scene_source.find("onWebPersistentStorageReady"), std::string::npos);
+    EXPECT_NE(title_scene_source.find("Web persistent settings reloaded after storage sync"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("onWebPersistentStorageReady"), std::string::npos);
+
+    EXPECT_NE(save_service_header.find("deleteSlot"), std::string::npos);
+    EXPECT_NE(save_service_source.find("SaveService: Web persistent storage sync completed after slot delete"), std::string::npos);
+    EXPECT_NE(user_settings_source.find("UserSettingsService: Web persistent settings sync"), std::string::npos);
+    EXPECT_NE(user_settings_source.find("userSettings"), std::string::npos);
+
+    EXPECT_NE(pause_menu_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
+    EXPECT_NE(pause_menu_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
+    EXPECT_NE(save_slot_source.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_NE(pause_menu_rml.find("data-event-click=\"delete_save\""), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("exercise_settings_persistence"), std::string::npos);
+    EXPECT_NE(web_smoke.find("verify_user_settings_restored"), std::string::npos);
+    EXPECT_NE(web_smoke.find("write_corrupt_save_slot"), std::string::npos);
+    EXPECT_NE(web_smoke.find("delete_slot0_via_pause_menu"), std::string::npos);
+    EXPECT_NE(web_smoke.find("persistent_storage_logs"), std::string::npos);
+    EXPECT_NE(web_smoke.find("delete_slot_sync_reload_absent"), std::string::npos);
+
+    EXPECT_NE(en_us.find("\"common.delete\""), std::string::npos);
+    EXPECT_NE(en_us.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_NE(zh_hans.find("\"common.delete\""), std::string::npos);
+    EXPECT_NE(zh_hans.find("\"save_slot.confirm.delete\""), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
     const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
 

@@ -8,6 +8,10 @@
 #include <string_view>
 #include <unordered_map>
 
+namespace engine::utils {
+struct WebPersistentStorageReadyEvent;
+}
+
 namespace game::data {
 struct GameTime;
 }
@@ -63,6 +67,7 @@ private:
     void onMenuClicked();
     void onExitClicked();
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
+    void onWebPersistentStorageReady(const engine::utils::WebPersistentStorageReadyEvent& event);
 };
 
 } // namespace game::scene

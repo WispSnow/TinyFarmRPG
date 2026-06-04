@@ -67,6 +67,26 @@ TEST(SaveSlotSelectSceneEnableStateTest, DynamicLabelsUseLocalizationKeys) {
         << "Overwrite confirmation text should be generated from an i18n key.";
 }
 
+TEST(SaveSlotSelectSceneEnableStateTest, DeleteModeConfirmsAndAllowsInvalidSlots) {
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/save_slot_select_scene.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/save_slot_select_scene.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string header = readTextFile(header_path);
+    const std::string source = readTextFile(source_path);
+    ASSERT_FALSE(header.empty());
+    ASSERT_FALSE(source.empty());
+
+    EXPECT_NE(header.find("Delete, ///< 删除模式"), std::string::npos);
+    EXPECT_NE(source.find("mode_ == Mode::Save || mode_ == Mode::Delete"), std::string::npos);
+    EXPECT_NE(source.find("mode_ == Mode::Delete"), std::string::npos);
+    EXPECT_NE(source.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_NE(source.find("Delete slot "), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

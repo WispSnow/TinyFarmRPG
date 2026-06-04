@@ -139,6 +139,34 @@ TEST(PauseMenuSceneAsyncSaveUiTest, ExposesLanguageStepper) {
     EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_change_language\""), std::string::npos);
 }
 
+TEST(PauseMenuSceneAsyncSaveUiTest, ExposesDeleteSlotAction) {
+    const std::filesystem::path scene_source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.h").lexically_normal();
+    const std::filesystem::path rml_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "ui/rmlui/scenes/pause_menu.rml").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(scene_source_path)) << scene_source_path;
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(rml_path)) << rml_path;
+
+    const std::string scene_source = readTextFile(scene_source_path);
+    const std::string header_source = readTextFile(header_path);
+    const std::string rml_source = readTextFile(rml_path);
+    ASSERT_FALSE(scene_source.empty());
+    ASSERT_FALSE(header_source.empty());
+    ASSERT_FALSE(rml_source.empty());
+
+    EXPECT_NE(header_source.find("bool can_delete_"), std::string::npos);
+    EXPECT_NE(header_source.find("void onDeleteClicked()"), std::string::npos);
+    EXPECT_NE(scene_source.find("constructor.Bind(\"can_delete\""), std::string::npos);
+    EXPECT_NE(scene_source.find("bindSimpleEvent(constructor, \"delete_save\""), std::string::npos);
+    EXPECT_NE(scene_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
+    EXPECT_NE(scene_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
+    EXPECT_NE(rml_source.find("data-event-click=\"delete_save\""), std::string::npos);
+    EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_delete\""), std::string::npos);
+}
+
 } // namespace
 } // namespace game::scene
 // NOLINTEND

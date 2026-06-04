@@ -190,6 +190,10 @@ private:
     [[nodiscard]] bool registerDebugPanels();
 #endif
     void syncRmlUiViewport();
+#if defined(__EMSCRIPTEN__)
+    static void onPersistentStorageInitialSync(bool success, void* user_data);
+    void handlePersistentStorageInitialSync(bool success);
+#endif
 
     // 事件处理函数
     void onQuitEvent();

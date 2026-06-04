@@ -18,6 +18,7 @@
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
 #include "engine/platform/web_asset_package_registry.h"
+#include "engine/utils/events.h"
 
 #include <spdlog/spdlog.h>
 
@@ -125,6 +126,9 @@ void TitleScene::connectRuntimeListeners() {
         return;
     }
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&TitleScene::onLanguageChanged>(this);
+    context_.getDispatcher()
+        .sink<engine::utils::WebPersistentStorageReadyEvent>()
+        .connect<&TitleScene::onWebPersistentStorageReady>(this);
     runtime_listeners_connected_ = true;
 }
 
@@ -133,6 +137,9 @@ void TitleScene::disconnectRuntimeListeners() {
         return;
     }
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&TitleScene::onLanguageChanged>(this);
+    context_.getDispatcher()
+        .sink<engine::utils::WebPersistentStorageReadyEvent>()
+        .disconnect<&TitleScene::onWebPersistentStorageReady>(this);
     runtime_listeners_connected_ = false;
 }
 
@@ -272,6 +279,17 @@ void TitleScene::onExitClicked() {
 
 void TitleScene::onLanguageChanged(const game::defs::LanguageChangedEvent&) {
     syncErrorText(true);
+}
+
+void TitleScene::onWebPersistentStorageReady(const engine::utils::WebPersistentStorageReadyEvent& event) {
+    if (!event.success || !user_settings_service_) {
+        return;
+    }
+    if (user_settings_service_->loadFromFileOrFallback()) {
+        user_settings_service_->applyAll();
+        syncErrorText(true);
+        spdlog::info("TitleScene: Web persistent settings reloaded after storage sync.");
+    }
 }
 
 } // namespace game::scene

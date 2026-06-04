@@ -77,16 +77,6 @@ constexpr bool kEnableRmlUiRuntime = true;
     }
 }
 
-#if defined(__EMSCRIPTEN__)
-void onPersistentStorageInitialSync(bool success, void*) {
-    if (success) {
-        spdlog::info("GameApp: Web persistent storage is mounted and populated.");
-        return;
-    }
-    spdlog::warn("GameApp: Web persistent storage initial sync failed; saves may not persist this session.");
-}
-#endif
-
 } // namespace
 
 using namespace entt::literals;
@@ -596,10 +586,30 @@ bool GameApp::initMainThreadCommandQueue() {
 
 bool GameApp::initPersistentStorage() {
 #if defined(__EMSCRIPTEN__)
-    engine::platform::web::syncPersistentStorageFromBrowser(&onPersistentStorageInitialSync, nullptr);
+    engine::platform::web::syncPersistentStorageFromBrowser(&GameApp::onPersistentStorageInitialSync, this);
 #endif
     return true;
 }
+
+#if defined(__EMSCRIPTEN__)
+void GameApp::onPersistentStorageInitialSync(bool success, void* user_data) {
+    auto* app = static_cast<GameApp*>(user_data);
+    if (app != nullptr) {
+        app->handlePersistentStorageInitialSync(success);
+    }
+}
+
+void GameApp::handlePersistentStorageInitialSync(bool success) {
+    if (success) {
+        spdlog::info("GameApp: Web persistent storage is mounted and populated.");
+    } else {
+        spdlog::warn("GameApp: Web persistent storage initial sync failed; saves may not persist this session.");
+    }
+    if (dispatcher_) {
+        dispatcher_->trigger(utils::WebPersistentStorageReadyEvent{.success = success});
+    }
+}
+#endif
 
 bool GameApp::initResourceManager() {
     resource_manager_ = engine::resource::ResourceManager::create(dispatcher_.get());

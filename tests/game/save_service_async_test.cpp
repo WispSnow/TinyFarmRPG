@@ -905,7 +905,7 @@ TEST(SaveServiceAsyncTest, SaveToFileReusesExtractedWriteHelper) {
 
     EXPECT_NE(source.find("bool SaveService::writeSaveFile"), std::string::npos)
         << "SaveService should extract JSON dump + tmp write + rename into writeSaveFile.";
-    EXPECT_NE(source.find("return writeSaveFile(data, file_path, out_error);"), std::string::npos)
+    EXPECT_NE(source.find("writeSaveFile(data, file_path, out_error);"), std::string::npos)
         << "saveToFile should reuse writeSaveFile to keep sync/async behavior consistent.";
 }
 

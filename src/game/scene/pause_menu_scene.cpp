@@ -175,12 +175,14 @@ bool PauseMenuScene::initUI() {
     constructor.Bind("language_text", &language_text_);
     constructor.Bind("can_save", &can_save_);
     constructor.Bind("can_load", &can_load_);
+    constructor.Bind("can_delete", &can_delete_);
     constructor.Bind("can_back_title", &can_back_title_);
     constructor.Bind("can_change_language", &can_change_language_);
 
     if (!document_controller_.bindSimpleEvent(constructor, "resume", [this] { onResumeClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "save", [this] { onSaveClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "load", [this] { onLoadClicked(); }) ||
+        !document_controller_.bindSimpleEvent(constructor, "delete_save", [this] { onDeleteClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "back_to_title", [this] { onBackToTitleClicked(); }) ||
         !document_controller_.bindSimpleEvent(constructor, "speed_down", [this] { adjustTimeScale(-1); }) ||
         !document_controller_.bindSimpleEvent(constructor, "speed_up", [this] { adjustTimeScale(1); }) ||
@@ -279,6 +281,9 @@ void PauseMenuScene::refreshSaveActionButtons() {
     }
     if (updateBoundBool(can_load_, has_save_service && !saving)) {
         document_controller_.markDirty("can_load");
+    }
+    if (updateBoundBool(can_delete_, has_save_service && !saving)) {
+        document_controller_.markDirty("can_delete");
     }
     if (updateBoundBool(can_back_title_, !saving)) {
         document_controller_.markDirty("can_back_title");
@@ -442,6 +447,43 @@ void PauseMenuScene::onLoadClicked() {
         context_,
         std::move(on_select),
         game::scene::SaveSlotSelectScene::Mode::Load,
+        localization());
+    requestPushScene(std::move(select));
+}
+
+void PauseMenuScene::onDeleteClicked() {
+    clearMessage();
+
+    if (!save_service_) {
+        setLocalizedMessage("pause.message.save_service_unavailable", true, {}, "SaveService unavailable");
+        return;
+    }
+    if (save_service_->isSaving()) {
+        setLocalizedMessage("pause.message.save_in_progress", true, {}, "Save in progress");
+        return;
+    }
+
+    auto on_select = [this](int slot) {
+        std::string error;
+        if (!game::save::SaveService::deleteSlot(slot, error)) {
+            setLocalizedMessage("pause.message.delete_failed_detail",
+                                true,
+                                {{"error", error}},
+                                "Delete failed: " + error);
+            requestPopScene();
+            return;
+        }
+
+        setLocalizedMessage("pause.message.deleted", false, {}, "Deleted");
+        refreshSaveActionButtons();
+        requestPopScene();
+    };
+
+    auto select = std::make_unique<game::scene::SaveSlotSelectScene>(
+        "SaveSlotSelect",
+        context_,
+        std::move(on_select),
+        game::scene::SaveSlotSelectScene::Mode::Delete,
         localization());
     requestPushScene(std::move(select));
 }

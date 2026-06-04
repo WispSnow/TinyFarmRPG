@@ -52,6 +52,13 @@ struct WindowResizedEvent {
     bool pixel_size{false}; // true 表示像素大小(高DPI)，false 表示窗口坐标大小
 };
 
+// --- Web 持久化存储相关事件 ---
+
+/// @brief Web IDBFS 初始 populate 完成事件（推荐 trigger<T>()）
+struct WebPersistentStorageReadyEvent {
+    bool success{false};
+};
+
 // --- 动画/音频等反馈事件（通常推荐 enqueue + dispatcher.update()） ---
 
 /// @brief 播放动画事件（通常 enqueue，避免在更新链路中递归触发）
