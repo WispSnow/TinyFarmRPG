@@ -197,7 +197,7 @@ flowchart LR
 
 ## Phase 24：Effekseer Web 恢复
 
-目标：让正式 Web full RPG 构建使用真实 Effekseer 后端，战斗 VFX 可见。
+目标：让正式 Web full RPG 构建使用真实 Effekseer 后端，并为 Phase 25 的战斗 VFX 可见性验证扫清编译、链接和初始化风险。
 
 实施步骤：
 
@@ -209,10 +209,11 @@ flowchart LR
 2. WebGL2 backend 适配。
    - 当前后端固定 `EffekseerRendererGL::OpenGLDeviceType::OpenGL3`；Web 构建必须切换为 `OpenGLES3`。
    - 上游已有 `OpenGLES3` 与 Emscripten/GLES include 路径，本轮优先做 CMake/macro 与 runtime device type 适配，不预设需要重写并行后端。
+   - WebGL2 不支持 CPU map-buffer 路径；`__EMSCRIPTEN__` 下必须禁用 Effekseer buffer range/map buffer support，走 `glBufferSubData` fallback，避免链接或运行时调用 `glMapBufferRange` / `glUnmapBuffer`。
    - 修正 shader version、precision、VAO/FBO/state restore 差异。
    - 渲染前后记录 GL error，禁止 error flood。
 3. 资源加载适配。
-   - `vfx-core.tfpack` 加载后再初始化或播放 Effekseer。
+   - `vfx-core.tfpack` 加载后再播放 Effekseer；实际 effect 资源解析与战斗 draw call 验证归 Phase 25。
    - 确认 `.efkefc` 引用的 texture/model/material 路径在 MEMFS 中可解析。
    - 失败日志必须包含 effect path 与依赖 path。
 4. Runtime policy 更新。
@@ -223,12 +224,13 @@ flowchart LR
    - 在战斗中触发 Hit / Fire / Thunder / Heal 至少一个 effect。
    - 断言 active instance 或 draw call 计数变化。
    - 截图检查特效通道非空，并确认后续帧能清理实例。
+   - 该项依赖 Phase 25 建立 town/battle 入口；Phase 24 只要求浏览器诊断证明 backend 初始化成功。
 
 验收标准：
 
 - Web build 在 `ENABLE_EFFEKSEER=ON` 下通过。
-- Chrome battle smoke 中 Effekseer backend 初始化成功。
-- 至少一个战斗特效在截图和 diagnostics 中可见。
+- Chrome smoke 中 Effekseer backend 初始化成功。
+- 至少一个战斗特效在截图和 diagnostics 中可见，此项随 Phase 25 战斗闭环一起验收。
 - 无 WebGL error flood，无资源依赖缺失 warning。
 
 ## Phase 25：完整战斗闭环
@@ -381,8 +383,8 @@ flowchart LR
 - [x] package registry 支持 package group dependency 和 diagnostics。
 - [x] Web diagnostics 暴露 gameplay / package / vfx / render 状态。
 - [x] runbook 和 smoke 支持 `demo` / `full-rpg` profile。
-- [ ] Web 构建启用 Effekseer。
-- [ ] Effekseer WebGL2 后端初始化成功。
+- [x] Web 构建启用 Effekseer。
+- [x] Effekseer WebGL2 后端初始化成功。
 - [ ] `vfx-core` 中 Effekseer effect 及依赖资源可加载。
 - [ ] 战斗 smoke 断言 Effekseer active instance / draw call。
 - [ ] `home_exterior` 到 `town` 的 map transition 可人工和自动化触发。

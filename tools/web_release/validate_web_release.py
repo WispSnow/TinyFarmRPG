@@ -368,6 +368,7 @@ def validate_cmake_cache(
         "TF_WEB_ENABLE_PTHREADS": False,
         "TF_WEB_BOOT_ONLY_PRELOAD": True,
         "TF_WEB_ENABLE_RUNTIME_PACKAGES": True,
+        "ENABLE_EFFEKSEER": True,
     }
     if allow_pthreads:
         expected_values["TF_ENABLE_RUNTIME_THREADS"] = True

@@ -44,6 +44,12 @@ function(setup_effekseer_dependencies)
     set(USE_DSOUND OFF CACHE BOOL "Effekseer: disable DirectSound" FORCE)
     set(USE_OSM OFF CACHE BOOL "Effekseer: disable OpenSoundMixer" FORCE)
 
+    if(EMSCRIPTEN)
+        set(USE_OPENGLES2 OFF CACHE BOOL "Effekseer: disable GLES2 for WebGL2 release" FORCE)
+        set(USE_OPENGLES3 ON CACHE BOOL "Effekseer: use GLES3 for WebGL2 release" FORCE)
+        set(USE_OPENGL3 OFF CACHE BOOL "Effekseer: disable desktop OpenGL3 for Web" FORCE)
+    endif()
+
     if(APPLE)
         set(_saved_has_osx_deployment_target OFF)
         if(DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
@@ -74,6 +80,11 @@ function(setup_effekseer_dependencies)
     endif()
     if(NOT TARGET EffekseerRendererGL)
         message(FATAL_ERROR "EffekseerRendererGL 目标创建失败")
+    endif()
+
+    if(EMSCRIPTEN)
+        target_compile_definitions(EffekseerRendererGL PUBLIC __EFFEKSEER_RENDERER_GLES3__)
+        target_compile_definitions(Effekseer PUBLIC __EFFEKSEER_RENDERER_GLES3__)
     endif()
 
     set(_includes

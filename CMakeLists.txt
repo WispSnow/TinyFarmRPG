@@ -23,7 +23,7 @@ endif()
 if(TF_BUILD_WEB)
     set(TF_DEFAULT_ENABLE_DEBUG_UI OFF)
     set(TF_DEFAULT_ENABLE_RMLUI_DEBUGGER OFF)
-    set(TF_DEFAULT_ENABLE_EFFEKSEER OFF)
+    set(TF_DEFAULT_ENABLE_EFFEKSEER ON)
     set(TF_DEFAULT_ENABLE_TSAN OFF)
     set(TF_DEFAULT_BUILD_TOOLS OFF)
     set(TF_DEFAULT_BUILD_RMLUI_TESTER OFF)
@@ -96,6 +96,10 @@ if(TF_BUILD_WEB AND TF_ENABLE_RUNTIME_THREADS AND NOT TF_WEB_ENABLE_PTHREADS)
     message(FATAL_ERROR "Web runtime threads require TF_WEB_ENABLE_PTHREADS=ON.")
 endif()
 
+if(TF_BUILD_WEB)
+    set(ENABLE_EFFEKSEER ON CACHE BOOL "Web full RPG release requires Effekseer VFX backend" FORCE)
+endif()
+
 # EnTT 资源/哈希 ID 使用 64 位；并行 ECS worker 会跨线程访问 EnTT storage，
 # 因此启用 EnTT 文档建议的 atomic 内部状态。
 add_compile_definitions(
@@ -136,6 +140,7 @@ endif()
 if(TF_BUILD_WEB)
     include(cmake/WebRuntime.cmake)
     include(cmake/WebDependencies.cmake)
+    include(cmake/EffekseerDependencies.cmake)
     include(cmake/RmlUiDependencies.cmake)
 else()
     # 运行时路径配置（RPATH）
@@ -175,6 +180,9 @@ include(CTest)
 
 if(TF_BUILD_WEB)
     tf_web_setup_project_dependencies()
+    if(ENABLE_EFFEKSEER)
+        setup_effekseer_dependencies()
+    endif()
 else()
     # 调用依赖配置函数（定义在Dependencies.cmake中）
     setup_project_dependencies()

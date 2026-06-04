@@ -431,7 +431,11 @@ bool Initialize(OpenGLDeviceType deviceType, bool isExtensionsEnabled)
 	if (deviceType == OpenGLDeviceType::OpenGL3 || deviceType == OpenGLDeviceType::OpenGLES3)
 	{
 		g_isSupportedVertexArray = true;
+#if defined(__EMSCRIPTEN__)
+		g_isSurrpotedBufferRange = false;
+#else
 		g_isSurrpotedBufferRange = true;
+#endif
 	}
 	if (deviceType == OpenGLDeviceType::OpenGL3)
 	{
@@ -835,6 +839,8 @@ void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitf
 	return g_glMapBufferRange(target, offset, length, access);
 #elif defined(__EFFEKSEER_RENDERER_GLES2__)
 	return g_glMapBufferRangeEXT(target, offset, length, access);
+#elif defined(__EMSCRIPTEN__)
+	return nullptr;
 #else
 
 #if defined(__APPLE__)
@@ -858,6 +864,8 @@ GLboolean glUnmapBuffer(GLenum target)
 	return g_glUnmapBuffer(target);
 #elif defined(__EFFEKSEER_RENDERER_GLES2__)
 	return g_glUnmapBufferOES(target);
+#elif defined(__EMSCRIPTEN__)
+	return GL_FALSE;
 #else
 	return ::glUnmapBuffer(target);
 #endif

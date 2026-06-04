@@ -16,6 +16,11 @@ constexpr int32_t kMaxSpriteCount = 4096;
 constexpr float kFramesPerSecond = 60.0f;
 constexpr int32_t kWorldLayer = 0;
 constexpr int32_t kOverlayLayer = 1;
+#if defined(__EMSCRIPTEN__)
+constexpr auto kOpenGlDeviceType = EffekseerRendererGL::OpenGLDeviceType::OpenGLES3;
+#else
+constexpr auto kOpenGlDeviceType = EffekseerRendererGL::OpenGLDeviceType::OpenGL3;
+#endif
 
 [[nodiscard]] std::u16string toUtf16Path(std::string_view path) {
     return std::filesystem::path(std::string(path)).u16string();
@@ -72,7 +77,7 @@ std::unique_ptr<EffekseerBackend> EffekseerBackend::create() {
 bool EffekseerBackend::init() {
     renderer_ = EffekseerRendererGL::Renderer::Create(
         kMaxSpriteCount,
-        EffekseerRendererGL::OpenGLDeviceType::OpenGL3);
+        kOpenGlDeviceType);
     if (renderer_.Get() == nullptr) {
         spdlog::error("EffekseerBackend: 创建 EffekseerRendererGL::Renderer 失败");
         return false;

@@ -586,6 +586,7 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
     EXPECT_NE(renderer_source.find("GLRenderer: Web release render capabilities"), std::string::npos);
 
     EXPECT_NE(runtime_service_factory.find("Web release VFX policy"), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("publishWebVfxDiagnostics"), std::string::npos);
     EXPECT_NE(runtime_service_factory.find("backend=null_vfx_backend status=deferred"), std::string::npos);
     EXPECT_NE(resource_manager_source.find("Web audio release policy"), std::string::npos);
     EXPECT_NE(resource_manager_source.find("failed=0"), std::string::npos);
@@ -595,11 +596,56 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
     EXPECT_NE(web_smoke.find("collect_webgl_error_logs"), std::string::npos);
     EXPECT_NE(web_smoke.find("performance_budget"), std::string::npos);
     EXPECT_NE(web_smoke.find("vfx_policy"), std::string::npos);
+    EXPECT_NE(web_smoke.find("diagnostics.vfx.backend expected effekseer"), std::string::npos);
     EXPECT_NE(web_smoke.find("audio_policy"), std::string::npos);
 
     EXPECT_NE(release_validator_source.find("Web audio release policy"), std::string::npos);
     EXPECT_NE(release_validator_source.find("Web release VFX policy"), std::string::npos);
     EXPECT_NE(release_validator_source.find("render_capability_gate"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase24EffekseerWebBackendIsEnabled) {
+    const std::string root_cmake = readProjectFile("CMakeLists.txt");
+    const std::string effekseer_cmake = readProjectFile("cmake/EffekseerDependencies.cmake");
+    const std::string effekseer_backend = readProjectFile("src/engine/vfx/effekseer_backend.cpp");
+    const std::string effekseer_gl_extension =
+        readProjectFile("external/Effekseer-1.7.3.0/Dev/Cpp/EffekseerRendererGL/EffekseerRenderer/EffekseerRendererGL.GLExtension.cpp");
+    const std::string runtime_service_factory = readProjectFile("src/game/runtime/runtime_service_factory.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+
+    ASSERT_FALSE(root_cmake.empty());
+    ASSERT_FALSE(effekseer_cmake.empty());
+    ASSERT_FALSE(effekseer_backend.empty());
+    ASSERT_FALSE(effekseer_gl_extension.empty());
+    ASSERT_FALSE(runtime_service_factory.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+
+    EXPECT_NE(root_cmake.find("set(TF_DEFAULT_ENABLE_EFFEKSEER ON)"), std::string::npos);
+    EXPECT_NE(root_cmake.find("set(ENABLE_EFFEKSEER ON CACHE BOOL \"Web full RPG release requires Effekseer VFX backend\" FORCE)"),
+              std::string::npos);
+    EXPECT_NE(root_cmake.find("include(cmake/EffekseerDependencies.cmake)"), std::string::npos);
+    EXPECT_NE(root_cmake.find("setup_effekseer_dependencies()"), std::string::npos);
+
+    EXPECT_NE(effekseer_cmake.find("set(USE_OPENGLES3 ON CACHE BOOL"), std::string::npos);
+    EXPECT_NE(effekseer_cmake.find("__EFFEKSEER_RENDERER_GLES3__"), std::string::npos);
+
+    EXPECT_NE(effekseer_backend.find("OpenGLDeviceType::OpenGLES3"), std::string::npos);
+    EXPECT_NE(effekseer_backend.find("OpenGLDeviceType::OpenGL3"), std::string::npos);
+
+    EXPECT_NE(effekseer_gl_extension.find("#if defined(__EMSCRIPTEN__)\n\t\tg_isSurrpotedBufferRange = false;"), std::string::npos);
+    EXPECT_NE(effekseer_gl_extension.find("#elif defined(__EMSCRIPTEN__)\n\treturn nullptr;"), std::string::npos);
+    EXPECT_NE(effekseer_gl_extension.find("#elif defined(__EMSCRIPTEN__)\n\treturn GL_FALSE;"), std::string::npos);
+
+    EXPECT_NE(runtime_service_factory.find("publishWebVfxDiagnostics("), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("backend ? \"effekseer\" : \"null_vfx_backend\""), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("backend ? \"enabled\" : \"fallback\""), std::string::npos);
+
+    EXPECT_NE(release_validator_source.find("\"ENABLE_EFFEKSEER\": True"), std::string::npos);
+    EXPECT_NE(web_smoke.find("diagnostics.vfx.effekseerEnabled expected true"), std::string::npos);
+    EXPECT_NE(web_smoke.find("diagnostics.vfx.backend expected effekseer"), std::string::npos);
+    EXPECT_NE(web_smoke.find("diagnostics.vfx.status expected enabled"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndStorageHardeningIsPresent) {

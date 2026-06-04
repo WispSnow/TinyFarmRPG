@@ -727,12 +727,12 @@ def validate_web_release_diagnostics(diagnostics: dict[str, Any] | None) -> list
     if not isinstance(vfx, dict):
         failures.append("diagnostics.vfx is missing.")
     else:
-        if not isinstance(vfx.get("effekseerEnabled"), bool):
-            failures.append("diagnostics.vfx.effekseerEnabled is missing.")
-        if not vfx.get("backend"):
-            failures.append("diagnostics.vfx.backend is missing.")
-        if not vfx.get("status"):
-            failures.append("diagnostics.vfx.status is missing.")
+        if vfx.get("effekseerEnabled") is not True:
+            failures.append(f"diagnostics.vfx.effekseerEnabled expected true, got {vfx.get('effekseerEnabled')!r}.")
+        if vfx.get("backend") != "effekseer":
+            failures.append(f"diagnostics.vfx.backend expected effekseer, got {vfx.get('backend')!r}.")
+        if vfx.get("status") != "enabled":
+            failures.append(f"diagnostics.vfx.status expected enabled, got {vfx.get('status')!r}.")
 
     if not isinstance(diagnostics.get("persistentStorage"), dict):
         failures.append("diagnostics.persistentStorage is missing.")
