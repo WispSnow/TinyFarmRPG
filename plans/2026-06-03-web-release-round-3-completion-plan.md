@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`In Progress`
+- 计划状态：`Completed`
 - 前置基线：第二轮 Phase 9-14 已完成 Chromium 发布候选 smoke，真实 gameplay wasm target 可构建、运行、保存、刷新读档。
 - 第三轮目标：完成 Chrome 单线程 Web demo 的正式发布收敛，移除 POC preload 形态，补齐运行时资源包、玩法路径、发布文档和自动化验收。
 - 浏览器范围：Chrome / Chromium 为必须验收浏览器。Safari 暂不作为阻塞项。
@@ -28,13 +28,14 @@
 - Phase 18 已完成渲染、音频与 VFX parity 收敛：WebGL2 capability 进入日志和 smoke JSON；Bloom / HDR emissive 正式降级到 LDR / no-bloom；Effekseer 正式保留 `null_vfx_backend`；音频 warning 可解释。报告见 `plans/reports/2026-06-04-web-release-phase-18-report.md`。
 - Phase 19 已完成持久化、设置与错误恢复硬化：IDBFS sync 诊断进入日志和 smoke JSON；设置刷新后从 `/persistent` 恢复；保存、覆盖、加载、删除 slot 均经过 sync 验证；损坏 slot 可跳过。报告见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
 - Phase 20 已完成发布产物与交付流程固化：runbook 输出 artifact manifest、gzip / brotli 尺寸和 release report；新增 `docs/web_release.md`；新增 Web release workflow，基础 job 跑 build/gate，Chromium smoke 可手动触发。报告见 `plans/reports/2026-06-04-web-release-phase-20-report.md`。
-- headed Chrome smoke 已在 boot-only `.data` 下通过，覆盖标题页、appearance、地图、移动、保存、刷新读档。
+- Phase 21 已完成最终验收：全新 `build/web-release-final` 目录完成 configure / build / gate / headed Chrome smoke；artifact manifest、release report、截图和最终完成报告均已生成。报告见 `plans/reports/2026-06-04-web-release-phase-21-final-report.md`。
+- Web 移植完成范围明确为 Chrome 单线程正式 Web demo：WebGL2、IDBFS、boot-only preload、runtime packages、headed Chrome smoke 和发布文档。
 
-仍未完成的部分：
+首版完成范围之外的后续增强项：
 
-- Chrome smoke 尚未覆盖完整战斗、商店交易、任务领取/交付、招募、休息和外观衣柜等扩展玩法。
+- Chrome smoke 尚未覆盖完整战斗、商店交易、任务领取/交付、招募、休息和外观衣柜等扩展玩法；这些不阻塞首版 Chrome Web demo。
 - Effekseer、Bloom / HDR emissive、高级后处理已作为首版正式降级项，后续可作为增强项恢复。
-- 发布说明、人工测试说明、产物打包、CI 接入和性能预算尚未形成最终版。
+- Safari 和 pthreads / COOP / COEP 变体不属于本轮完成范围。
 
 ## 完成定义
 
@@ -360,8 +361,8 @@ flowchart TD
 - [x] Web release 产物生成 gzip / brotli 尺寸摘要。
 - [x] Chromium smoke 接入 CI 或 release job。
 - [x] 新增 `docs/web_release.md`。
-- [ ] clean checkout 最终验收通过。
-- [ ] 新增 Web 移植完成报告。
+- [x] clean checkout 最终验收通过。
+- [x] 新增 Web 移植完成报告。
 
 ## 风险与应对
 
