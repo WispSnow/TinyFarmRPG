@@ -139,7 +139,7 @@ TEST(PauseMenuSceneAsyncSaveUiTest, ExposesLanguageStepper) {
     EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_change_language\""), std::string::npos);
 }
 
-TEST(PauseMenuSceneAsyncSaveUiTest, ExposesDeleteSlotAction) {
+TEST(PauseMenuSceneAsyncSaveUiTest, DoesNotExposeDeleteSlotAction) {
     const std::filesystem::path scene_source_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/game/scene/pause_menu_scene.cpp").lexically_normal();
     const std::filesystem::path header_path =
@@ -157,14 +157,14 @@ TEST(PauseMenuSceneAsyncSaveUiTest, ExposesDeleteSlotAction) {
     ASSERT_FALSE(header_source.empty());
     ASSERT_FALSE(rml_source.empty());
 
-    EXPECT_NE(header_source.find("bool can_delete_"), std::string::npos);
-    EXPECT_NE(header_source.find("void onDeleteClicked()"), std::string::npos);
-    EXPECT_NE(scene_source.find("constructor.Bind(\"can_delete\""), std::string::npos);
-    EXPECT_NE(scene_source.find("bindSimpleEvent(constructor, \"delete_save\""), std::string::npos);
-    EXPECT_NE(scene_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
-    EXPECT_NE(scene_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
-    EXPECT_NE(rml_source.find("data-event-click=\"delete_save\""), std::string::npos);
-    EXPECT_NE(rml_source.find("data-attrif-disabled=\"!can_delete\""), std::string::npos);
+    EXPECT_EQ(header_source.find("bool can_delete_"), std::string::npos);
+    EXPECT_EQ(header_source.find("void onDeleteClicked()"), std::string::npos);
+    EXPECT_EQ(scene_source.find("constructor.Bind(\"can_delete\""), std::string::npos);
+    EXPECT_EQ(scene_source.find("bindSimpleEvent(constructor, \"delete_save\""), std::string::npos);
+    EXPECT_EQ(scene_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
+    EXPECT_EQ(scene_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
+    EXPECT_EQ(rml_source.find("data-event-click=\"delete_save\""), std::string::npos);
+    EXPECT_EQ(rml_source.find("data-attrif-disabled=\"!can_delete\""), std::string::npos);
 }
 
 } // namespace

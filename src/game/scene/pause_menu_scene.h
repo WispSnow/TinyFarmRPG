@@ -58,7 +58,6 @@ private:
     bool message_is_error_{true};
     bool can_save_{false};
     bool can_load_{false};
-    bool can_delete_{false};
     bool can_back_title_{true};
     bool can_change_language_{false};
     std::string message_key_{};
@@ -103,7 +102,6 @@ private:
     void onResumeClicked();
     void onSaveClicked();
     void onLoadClicked();
-    void onDeleteClicked();
     void onBackToTitleClicked();
 
     void adjustMusicVolume(int step);

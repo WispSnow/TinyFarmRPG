@@ -1,11 +1,11 @@
 {
   "used_assets": {
     "files": 804,
-    "bytes": 28985123,
+    "bytes": 28984720,
     "by_root": {
       "assets": {
         "files": 731,
-        "bytes": 28794230
+        "bytes": 28794060
       },
       "config": {
         "files": 6,
@@ -17,7 +17,7 @@
       },
       "ui": {
         "files": 52,
-        "bytes": 166213
+        "bytes": 165980
       }
     },
     "by_extension": {
@@ -43,7 +43,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125911
+        "bytes": 125741
       },
       ".lua": {
         "files": 15,
@@ -67,7 +67,7 @@
       },
       ".rml": {
         "files": 20,
-        "bytes": 69036
+        "bytes": 68803
       },
       ".tmj": {
         "files": 4,
@@ -139,11 +139,11 @@
   },
   "web_poc_assets": {
     "files": 283,
-    "bytes": 21897337,
+    "bytes": 21896934,
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21768834
+        "bytes": 21768664
       },
       "config": {
         "files": 6,
@@ -155,7 +155,7 @@
       },
       "ui": {
         "files": 39,
-        "bytes": 103823
+        "bytes": 103590
       }
     },
     "by_extension": {
@@ -165,7 +165,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125911
+        "bytes": 125741
       },
       ".lua": {
         "files": 15,
@@ -189,7 +189,7 @@
       },
       ".rml": {
         "files": 13,
-        "bytes": 38594
+        "bytes": 38361
       },
       ".tmj": {
         "files": 2,
@@ -228,11 +228,11 @@
   },
   "web_release_full_assets": {
     "files": 283,
-    "bytes": 21897337,
+    "bytes": 21896934,
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21768834
+        "bytes": 21768664
       },
       "config": {
         "files": 6,
@@ -244,7 +244,7 @@
       },
       "ui": {
         "files": 39,
-        "bytes": 103823
+        "bytes": 103590
       }
     },
     "by_extension": {
@@ -254,7 +254,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125911
+        "bytes": 125741
       },
       ".lua": {
         "files": 15,
@@ -278,7 +278,7 @@
       },
       ".rml": {
         "files": 13,
-        "bytes": 38594
+        "bytes": 38361
       },
       ".tmj": {
         "files": 2,

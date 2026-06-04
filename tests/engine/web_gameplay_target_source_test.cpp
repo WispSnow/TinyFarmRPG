@@ -565,7 +565,7 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
     EXPECT_NE(release_validator_source.find("render_capability_gate"), std::string::npos);
 }
 
-TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndDeleteSlotHardeningIsPresent) {
+TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndStorageHardeningIsPresent) {
     const std::string engine_events = readProjectFile("src/engine/utils/events.h");
     const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
     const std::string persistent_storage_source = readProjectFile("src/engine/platform/web_persistent_storage.cpp");
@@ -606,27 +606,30 @@ TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndDeleteSlotHardenin
     EXPECT_NE(title_scene_source.find("Web persistent settings reloaded after storage sync"), std::string::npos);
     EXPECT_NE(game_scene_source.find("onWebPersistentStorageReady"), std::string::npos);
 
-    EXPECT_NE(save_service_header.find("deleteSlot"), std::string::npos);
-    EXPECT_NE(save_service_source.find("SaveService: Web persistent storage sync completed after slot delete"), std::string::npos);
+    EXPECT_EQ(save_service_header.find("deleteSlot"), std::string::npos);
+    EXPECT_EQ(save_service_source.find("after slot delete"), std::string::npos);
     EXPECT_NE(user_settings_source.find("UserSettingsService: Web persistent settings sync"), std::string::npos);
     EXPECT_NE(user_settings_source.find("userSettings"), std::string::npos);
 
-    EXPECT_NE(pause_menu_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
-    EXPECT_NE(pause_menu_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
-    EXPECT_NE(save_slot_source.find("\"save_slot.confirm.delete\""), std::string::npos);
-    EXPECT_NE(pause_menu_rml.find("data-event-click=\"delete_save\""), std::string::npos);
+    EXPECT_EQ(pause_menu_source.find("SaveSlotSelectScene::Mode::Delete"), std::string::npos);
+    EXPECT_EQ(pause_menu_source.find("game::save::SaveService::deleteSlot"), std::string::npos);
+    EXPECT_EQ(save_slot_source.find("Mode::Delete"), std::string::npos);
+    EXPECT_EQ(save_slot_source.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_EQ(pause_menu_rml.find("data-event-click=\"delete_save\""), std::string::npos);
+    EXPECT_EQ(pause_menu_rml.find("\"common.delete\""), std::string::npos);
 
     EXPECT_NE(web_smoke.find("exercise_settings_persistence"), std::string::npos);
     EXPECT_NE(web_smoke.find("verify_user_settings_restored"), std::string::npos);
     EXPECT_NE(web_smoke.find("write_corrupt_save_slot"), std::string::npos);
-    EXPECT_NE(web_smoke.find("delete_slot0_via_pause_menu"), std::string::npos);
     EXPECT_NE(web_smoke.find("persistent_storage_logs"), std::string::npos);
-    EXPECT_NE(web_smoke.find("delete_slot_sync_reload_absent"), std::string::npos);
+    EXPECT_EQ(web_smoke.find("delete_slot0_via_pause_menu"), std::string::npos);
+    EXPECT_EQ(web_smoke.find("delete_slot_sync_reload_absent"), std::string::npos);
+    EXPECT_EQ(web_smoke.find("slot_delete_sync_completed"), std::string::npos);
 
-    EXPECT_NE(en_us.find("\"common.delete\""), std::string::npos);
-    EXPECT_NE(en_us.find("\"save_slot.confirm.delete\""), std::string::npos);
-    EXPECT_NE(zh_hans.find("\"common.delete\""), std::string::npos);
-    EXPECT_NE(zh_hans.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_EQ(en_us.find("\"common.delete\""), std::string::npos);
+    EXPECT_EQ(en_us.find("\"save_slot.confirm.delete\""), std::string::npos);
+    EXPECT_EQ(zh_hans.find("\"common.delete\""), std::string::npos);
+    EXPECT_EQ(zh_hans.find("\"save_slot.confirm.delete\""), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase20ReleaseRunbookArtifactsDocsAndCiArePresent) {

@@ -60,7 +60,6 @@ public:
     [[nodiscard]] bool loadFromFile(const std::filesystem::path& file_path, std::string& out_error);
 
     [[nodiscard]] static std::filesystem::path slotPath(int slot);
-    [[nodiscard]] static bool deleteSlot(int slot, std::string& out_error);
 
 private:
     [[nodiscard]] static bool writeSaveFile(const SaveData& data,

@@ -649,10 +649,8 @@ def validate_shader_boundary(root: Path, gate: Gate) -> dict[str, Any]:
         (persistent_storage_text, "web_persistent_storage.cpp", "persistentStorage"),
         (persistent_storage_text, "web_persistent_storage.cpp", "from_browser"),
         (persistent_storage_text, "web_persistent_storage.cpp", "to_browser"),
-        (save_service_text, "save_service.cpp", "Web persistent storage sync completed after slot delete"),
         (user_settings_service_text, "user_settings_service.cpp", "Web persistent settings sync"),
         (web_smoke_text, "web_smoke.py", "exercise_settings_persistence"),
-        (web_smoke_text, "web_smoke.py", "delete_slot0_via_pause_menu"),
         (web_smoke_text, "web_smoke.py", "persistent_storage_logs"),
     )
     for text, source_name, snippet in required_phase18_snippets:

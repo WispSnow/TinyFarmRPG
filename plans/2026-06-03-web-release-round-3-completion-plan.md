@@ -26,7 +26,7 @@
 - Phase 16 已完成 runtime package registry：`shared-ui`、`home-map`、`audio-core` 都通过统一 registry gate，并被 Chrome smoke 观测到 `.tfpack` 响应。
 - Phase 17 已完成 gameplay coverage 扩展：Chrome smoke 覆盖 inventory / hotbar / pause、工具动作、`home_exterior` 与 `home_interior` 往返、商人对话、保存覆盖和刷新读档。报告见 `plans/reports/2026-06-04-web-release-phase-17-report.md`。
 - Phase 18 已完成渲染、音频与 VFX parity 收敛：WebGL2 capability 进入日志和 smoke JSON；Bloom / HDR emissive 正式降级到 LDR / no-bloom；Effekseer 正式保留 `null_vfx_backend`；音频 warning 可解释。报告见 `plans/reports/2026-06-04-web-release-phase-18-report.md`。
-- Phase 19 已完成持久化、设置与错误恢复硬化：IDBFS sync 诊断进入日志和 smoke JSON；设置刷新后从 `/persistent` 恢复；保存、覆盖、加载、删除 slot 均经过 sync 验证；损坏 slot 可跳过。报告见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
+- Phase 19 已完成持久化、设置与错误恢复硬化：IDBFS sync 诊断进入日志和 smoke JSON；设置刷新后从 `/persistent` 恢复；保存、覆盖、加载均经过 sync 验证；损坏 slot 可跳过。报告见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
 - Phase 20 已完成发布产物与交付流程固化：runbook 输出 artifact manifest、gzip / brotli 尺寸和 release report；新增 `docs/web_release.md`；新增 Web release workflow，基础 job 跑 build/gate，Chromium smoke 可手动触发。报告见 `plans/reports/2026-06-04-web-release-phase-20-report.md`。
 - Phase 21 已完成最终验收：全新 `build/web-release-final` 目录完成 configure / build / gate / headed Chrome smoke；artifact manifest、release report、截图和最终完成报告均已生成。报告见 `plans/reports/2026-06-04-web-release-phase-21-final-report.md`。
 - Web 移植完成范围明确为 Chrome 单线程正式 Web demo：WebGL2、IDBFS、boot-only preload、runtime packages、headed Chrome smoke 和发布文档。
@@ -250,12 +250,12 @@ flowchart TD
 
 目标：把 IDBFS 和用户设置从“主路径可用”推进到“发布可依赖”。
 
-状态：已完成。Chrome smoke 已验证设置修改刷新恢复、损坏存档 slot 跳过、保存覆盖刷新加载、删除 slot sync 后刷新缺失。详见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
+状态：已完成。Chrome smoke 已验证设置修改刷新恢复、损坏存档 slot 跳过、保存覆盖刷新加载。详见 `plans/reports/2026-06-04-web-release-phase-19-report.md`。
 
 实施步骤：
 
 1. 保存系统硬化。
-   - 保存、覆盖、加载、删除 slot 都经过 IDBFS sync 验证。
+   - 保存、覆盖、加载都经过 IDBFS sync 验证。
    - 保存失败要有 UI 或 debug overlay 反馈。
 2. 用户设置持久化。
    - 语言、音量、窗口/画布相关设置写入 `/persistent`。

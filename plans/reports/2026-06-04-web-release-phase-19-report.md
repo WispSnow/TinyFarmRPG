@@ -2,7 +2,7 @@
 
 ## 结论
 
-Phase 19 已完成。Chrome smoke 已覆盖设置修改刷新恢复、保存覆盖刷新加载、损坏 slot 跳过、删除 slot 后 IDBFS sync 与刷新缺失验证。期间发现并修复了一个真实时序问题：Web 初始 `syncfs(true)` 是异步的，`UserSettingsService` 可能先按默认配置加载；现在 `GameApp` 会在 IDBFS populate 完成后派发 `WebPersistentStorageReadyEvent`，标题页和 gameplay 场景收到后重新 load/apply 设置。
+Phase 19 已完成。Chrome smoke 已覆盖设置修改刷新恢复、保存覆盖刷新加载、损坏 slot 跳过。期间发现并修复了一个真实时序问题：Web 初始 `syncfs(true)` 是异步的，`UserSettingsService` 可能先按默认配置加载；现在 `GameApp` 会在 IDBFS populate 完成后派发 `WebPersistentStorageReadyEvent`，标题页和 gameplay 场景收到后重新 load/apply 设置。
 
 ```mermaid
 flowchart LR
@@ -19,10 +19,8 @@ flowchart LR
 - `GameApp` 在 Web 初始持久化 sync 完成后派发 `engine::utils::WebPersistentStorageReadyEvent`。
 - `TitleScene` 与 `GameScene` 监听该事件，成功后重新 `loadFromFileOrFallback()` 并 `applyAll()`，消除设置恢复竞态。
 - `UserSettingsService` 将保存、flush、load、apply 状态写入 `TinyFarmRPGWebReleaseDiagnostics.userSettings`，并在 Web flush 后执行 IDBFS sync。
-- `SaveService` 新增 `deleteSlot()`，删除 slot 及 sidecar 后执行 IDBFS sync。
-- Pause menu 新增 Delete 入口，`SaveSlotSelectScene` 新增 Delete mode，删除前确认。
-- `web_smoke.py` 扩展 Phase 19 覆盖：设置变更刷新恢复、损坏 slot 写入与跳过、slot 删除后刷新验证缺失、persistent storage 日志汇总。
-- source guard 覆盖事件派发、settings reload、delete slot、smoke helper 和 i18n key。
+- `web_smoke.py` 扩展 Phase 19 覆盖：设置变更刷新恢复、损坏 slot 写入与跳过、persistent storage 日志汇总。
+- source guard 覆盖事件派发、settings reload、smoke helper 和 i18n key。
 
 ## Smoke 证据
 
@@ -40,7 +38,6 @@ flowchart LR
 | to-browser completed | 4 |
 | async save sync completed | 2 |
 | settings sync completed | 1 |
-| slot delete sync completed | 1 |
 
 设置恢复验证：
 
@@ -56,7 +53,6 @@ flowchart LR
 - `settings_change_reload_restore`
 - `save_reload_load`
 - `corrupt_save_slot_skip`
-- `delete_slot_sync_reload_absent`
 - 继续覆盖 Phase 17 的 inventory、hotbar、pause、工具动作、室内外切图和商人对话。
 
 ## 性能预算
@@ -67,8 +63,6 @@ flowchart LR
 | New game to map | 2354 ms | 30000 ms | passed |
 | Gameplay flow | 23854 ms | 120000 ms | passed |
 | Reload load to map | 2698 ms | 30000 ms | passed |
-| Delete slot sync | 3032 ms | 30000 ms | passed |
-| Delete reload verify | 219 ms | 30000 ms | passed |
 
 ## 验证
 

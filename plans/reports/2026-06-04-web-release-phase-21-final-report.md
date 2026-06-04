@@ -20,8 +20,8 @@ flowchart LR
 - 线程模型：单线程，无 pthreads，无 COOP / COEP 要求。
 - 启动资源：`TinyFarmRPG-Web.data` 只包含 boot 必需资源。
 - 运行时资源包：`shared-ui.tfpack`、`home-map.tfpack`、`audio-core.tfpack`。
-- 存储：IDBFS `/persistent`，保存、覆盖、加载、删除 slot 和用户设置刷新恢复均经过 smoke 验证。
-- 玩法 smoke：标题页、appearance、`home_exterior`、`home_interior` 往返、移动、inventory、hotbar、pause、工具动作、商人对话、保存覆盖、刷新读档、损坏 slot 跳过、删除 slot。
+- 存储：IDBFS `/persistent`，保存、覆盖、加载和用户设置刷新恢复均经过 smoke 验证。
+- 玩法 smoke：标题页、appearance、`home_exterior`、`home_interior` 往返、移动、inventory、hotbar、pause、工具动作、商人对话、保存覆盖、刷新读档、损坏 slot 跳过。
 - 发布工程：固定 runbook、artifact manifest、gzip / brotli 尺寸、release report、文档、GitHub workflow。
 
 ## 最终验收
@@ -95,8 +95,6 @@ python3 tools/web_release/web_release_runbook.py auto \
 | New game to map | 2575 ms | 30000 ms | passed |
 | Gameplay flow | 23850 ms | 120000 ms | passed |
 | Reload load to map | 2680 ms | 30000 ms | passed |
-| Delete slot sync | 2987 ms | 30000 ms | passed |
-| Delete reload verify | 212 ms | 30000 ms | passed |
 
 IDBFS 诊断：
 
@@ -109,7 +107,6 @@ IDBFS 诊断：
 | to-browser completed | 4 |
 | async save sync completed | 2 |
 | settings sync completed | 1 |
-| slot delete sync completed | 1 |
 
 Chrome warnings：3 条，均归类为 audio，未出现 unknown console tail。
 

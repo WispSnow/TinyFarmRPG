@@ -125,14 +125,6 @@ void onDirectSavePersistentSync(bool success, void*) {
     spdlog::info("SaveService: Web persistent storage sync completed after direct save.");
 }
 
-void onDeleteSlotPersistentSync(bool success, void*) {
-    if (!success) {
-        spdlog::warn("SaveService: Web persistent storage sync failed after slot delete.");
-        return;
-    }
-    spdlog::info("SaveService: Web persistent storage sync completed after slot delete.");
-}
-
 void onAsyncSavePersistentSync(bool success, void* user_data) {
     std::unique_ptr<WebPersistentSaveSync> completion{static_cast<WebPersistentSaveSync*>(user_data)};
     if (!completion) {
@@ -444,47 +436,6 @@ SaveService::SaveService(engine::core::Context& context,
 std::filesystem::path SaveService::slotPath(int slot) {
     slot = std::clamp(slot, 0, 9);
     return engine::platform::saveRoot() / ("slot" + std::to_string(slot) + ".json");
-}
-
-bool SaveService::deleteSlot(int slot, std::string& out_error) {
-    out_error.clear();
-    slot = std::clamp(slot, 0, 9);
-    const auto path = slotPath(slot);
-
-    std::error_code exists_ec{};
-    const bool exists = std::filesystem::exists(path, exists_ec);
-    if (exists_ec) {
-        out_error = "Failed to inspect save slot: " + exists_ec.message();
-        return false;
-    }
-
-    if (exists) {
-        std::error_code remove_ec{};
-        std::filesystem::remove(path, remove_ec);
-        if (remove_ec) {
-            out_error = "Failed to delete save slot: " + remove_ec.message();
-            return false;
-        }
-    }
-
-    for (const char* suffix : {".tmp", ".bak"}) {
-        auto sidecar_path = path;
-        sidecar_path += suffix;
-        std::error_code sidecar_ec{};
-        std::filesystem::remove(sidecar_path, sidecar_ec);
-        if (sidecar_ec) {
-            spdlog::warn("SaveService: 无法删除存档槽 {} 的临时文件 '{}': {}",
-                         slot,
-                         sidecar_path.string(),
-                         sidecar_ec.message());
-        }
-    }
-
-    spdlog::info("SaveService: deleted save slot {} at '{}'.", slot, path.string());
-#if defined(__EMSCRIPTEN__)
-    engine::platform::web::syncPersistentStorageToBrowser(&onDeleteSlotPersistentSync, nullptr);
-#endif
-    return true;
 }
 
 bool SaveService::writeSaveFile(const SaveData& data,

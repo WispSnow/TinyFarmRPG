@@ -69,7 +69,6 @@ constexpr std::string_view MODEL_NAME = "save_slot_select";
 [[nodiscard]] std::string_view modeName(game::scene::SaveSlotSelectScene::Mode mode) noexcept {
     switch (mode) {
         case game::scene::SaveSlotSelectScene::Mode::Save: return "save";
-        case game::scene::SaveSlotSelectScene::Mode::Delete: return "delete";
         case game::scene::SaveSlotSelectScene::Mode::Load:
         default: return "load";
     }
@@ -242,7 +241,7 @@ void SaveSlotSelectScene::refreshSlotButtons() {
                 }
             } else {
                 label_text = game::ui::localizeTextOrFallback(localization_, "save_slot.status.invalid", "Invalid");
-                enabled = (mode_ == Mode::Save || mode_ == Mode::Delete);
+                enabled = (mode_ == Mode::Save);
                 spdlog::warn("SaveSlotSelectScene: slot {} summary 读取失败: {}", i, summary_error);
             }
         }
@@ -268,13 +267,12 @@ void SaveSlotSelectScene::refreshOverwriteConfirmText() {
     }
 
     const auto slot_text = std::to_string(*pending_overwrite_slot_ + 1);
-    const bool delete_mode = mode_ == Mode::Delete;
     const auto text = game::ui::formatTextOrFallback(
         localization_,
-        delete_mode ? "save_slot.confirm.delete" : "save_slot.confirm.overwrite",
+        "save_slot.confirm.overwrite",
         {{"slot", slot_text}},
         [&] {
-            return delete_mode ? "Delete slot " + slot_text + "?" : "Overwrite slot " + slot_text + "?";
+            return "Overwrite slot " + slot_text + "?";
         });
     if (updateBoundString(confirm_text_, text)) {
         document_controller_.markDirty("confirm_text");
@@ -300,11 +298,6 @@ void SaveSlotSelectScene::onSlotClicked(int slot) {
         if (index < slots_.size() && !slots_[index].enabled) {
             return;
         }
-    }
-
-    if (mode_ == Mode::Delete) {
-        showOverwriteConfirm(slot);
-        return;
     }
 
     if (mode_ == Mode::Save) {

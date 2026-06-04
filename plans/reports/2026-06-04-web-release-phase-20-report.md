@@ -99,8 +99,6 @@ python3 tools/web_release/web_release_runbook.py auto \
 | New game to map | 2353 ms |
 | Gameplay flow | 23949 ms |
 | Reload load to map | 2695 ms |
-| Delete slot sync | 3029 ms |
-| Delete reload verify | 219 ms |
 
 覆盖流程继续包含：
 
@@ -113,7 +111,6 @@ python3 tools/web_release/web_release_runbook.py auto \
 - `scripted_merchant_dialogue`
 - `save_reload_load`
 - `corrupt_save_slot_skip`
-- `delete_slot_sync_reload_absent`
 
 ## 验证
 

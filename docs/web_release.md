@@ -30,13 +30,13 @@ python3 tools/web_release/web_release_runbook.py auto \
   --output-dir build/web-release/web-release-auto
 ```
 
-已有 Web build 目录只想复验当前产物：
+已有 Web build 目录只想复验当前产物，可以把 `--build-dir` 换成你的现有目录。第三轮最终验收目录示例：
 
 ```bash
 python3 tools/web_release/web_release_runbook.py auto \
   --skip-build \
-  --build-dir build/web-gameplay-phase11 \
-  --output-dir build/web-gameplay-phase11/web-release-auto
+  --build-dir build/web-release-final \
+  --output-dir build/web-release-final/web-release-auto
 ```
 
 CI 或无浏览器环境只跑 build + release gate：
@@ -76,8 +76,8 @@ python3 tools/web_release/web_release_runbook.py manual \
 python3 tools/web_release/web_release_runbook.py manual \
   --skip-build \
   --check-only \
-  --build-dir build/web-gameplay-phase11 \
-  --output-dir build/web-gameplay-phase11/web-release-manual
+  --build-dir build/web-release-final \
+  --output-dir build/web-release-final/web-release-manual
 ```
 
 只启动静态服务器的底层入口：
@@ -96,7 +96,6 @@ python3 tools/web_release/serve_web_release.py \
 - 移动玩家，打开并关闭 inventory / hotbar / pause。
 - 修改一次音量设置，刷新页面后确认设置恢复。
 - 保存 slot0，刷新页面，从标题页 Load slot0 回到 `home_exterior`。
-- 删除 slot0，刷新页面后确认 slot0 不再可加载。
 
 ## 发布目录结构
 
