@@ -32,6 +32,10 @@
 
 #include <memory>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 namespace {
 
 void logWebDirectMapBootCheckpoint(const char* checkpoint) {
@@ -195,6 +199,30 @@ void configureCamera(engine::core::Context& context) {
     game::runtime::applyGameplayCameraDefaultZoom(camera);
 }
 
+void publishWebVfxDiagnostics(bool effekseer_enabled, const char* backend, const char* status) {
+#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const vfx = diagnostics.vfx || (diagnostics.vfx = {});
+        vfx.effekseerEnabled = !!$0;
+        vfx.backend = UTF8ToString($1);
+        vfx.status = UTF8ToString($2);
+        vfx.lastUpdatedMs = Date.now();
+    }, effekseer_enabled ? 1 : 0, backend, status);
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#else
+    (void)effekseer_enabled;
+    (void)backend;
+    (void)status;
+#endif
+}
+
 void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeServices& services) {
     if (!services.vfx_service) {
         std::unique_ptr<engine::vfx::VfxBackend> backend{};
@@ -204,6 +232,10 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
             spdlog::warn("EffekseerBackend 初始化失败，将回退到 NullVfxBackend。");
         }
 #if defined(__EMSCRIPTEN__)
+        publishWebVfxDiagnostics(
+            true,
+            backend ? "effekseer" : "null_vfx_backend",
+            backend ? "enabled" : "fallback");
         spdlog::info("Web release VFX policy: effekseer_enabled=true backend={} status={}.",
                      backend ? "effekseer" : "null_vfx_backend",
                      backend ? "enabled" : "fallback");
@@ -211,6 +243,7 @@ void initVfxService(engine::core::Context& context, game::runtime::GameRuntimeSe
 #else
         spdlog::info("Effekseer VFX 后端未启用，将使用 NullVfxBackend。");
 #if defined(__EMSCRIPTEN__)
+        publishWebVfxDiagnostics(false, "null_vfx_backend", "deferred");
         spdlog::info("Web release VFX policy: effekseer_enabled=false backend=null_vfx_backend status=deferred.");
 #endif
 #endif

@@ -779,6 +779,47 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_EQ(boot_manifest.find("ui/rmlui/scenes/battle.rml"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase23WebDiagnosticsAndSmokeProfilesArePresent) {
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string package_registry_source = readProjectFile("src/engine/platform/web_asset_package_registry.cpp");
+    const std::string runtime_service_factory = readProjectFile("src/game/runtime/runtime_service_factory.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string runbook = readProjectFile("tools/web_release/web_release_runbook.py");
+
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(package_registry_source.empty());
+    ASSERT_FALSE(runtime_service_factory.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(runbook.empty());
+
+    EXPECT_NE(game_scene_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("diagnostics.gameplay"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("currentScene = \"GameScene\""), std::string::npos);
+    EXPECT_NE(game_scene_source.find("occupiedSlots"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("activeQuestIds"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("recruitedCount"), std::string::npos);
+
+    EXPECT_NE(package_registry_source.find("diagnostics.packages"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("entry.dependencies = dependencyText.length"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("lastLoadMs"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("lastError"), std::string::npos);
+
+    EXPECT_NE(runtime_service_factory.find("publishWebVfxDiagnostics"), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("diagnostics.vfx"), std::string::npos);
+    EXPECT_NE(runtime_service_factory.find("effekseerEnabled"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("\"--profile\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"full-rpg\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("read_web_release_diagnostics"), std::string::npos);
+    EXPECT_NE(web_smoke.find("validate_web_release_diagnostics"), std::string::npos);
+    EXPECT_NE(web_smoke.find("full_rpg_profile_diagnostics_gate"), std::string::npos);
+    EXPECT_NE(web_smoke.find("web_release_diagnostics_snapshot"), std::string::npos);
+
+    EXPECT_NE(runbook.find("--smoke-profile"), std::string::npos);
+    EXPECT_NE(runbook.find("args.smoke_profile"), std::string::npos);
+    EXPECT_NE(runbook.find("\"--profile\""), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, BlueprintManagerAvoidsJsonExceptionPaths) {
     const std::string blueprint_source = readProjectFile("src/game/factory/blueprint_manager.cpp");
 

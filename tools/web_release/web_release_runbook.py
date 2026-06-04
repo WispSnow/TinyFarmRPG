@@ -802,6 +802,8 @@ def run_auto(args: argparse.Namespace) -> int:
                 str(smoke_dir),
                 "--json-output",
                 str(smoke_json),
+                "--profile",
+                args.smoke_profile,
             ]
             if args.configure:
                 command.append("--configure")
@@ -981,6 +983,7 @@ def parse_args() -> argparse.Namespace:
     auto.add_argument("--skip-smoke", action="store_true", help="Only run checks/build/gate; do not launch Chrome.")
     auto.add_argument("--headless", action="store_true", help="Use headless Chromium. Default is headed Chrome when available.")
     auto.add_argument("--browser", type=Path, help="Chromium-family browser executable.")
+    auto.add_argument("--smoke-profile", choices=("demo", "full-rpg"), default="demo")
     auto.add_argument("--host", default="127.0.0.1")
     auto.add_argument("--port", type=int, default=0)
     auto.set_defaults(func=run_auto)

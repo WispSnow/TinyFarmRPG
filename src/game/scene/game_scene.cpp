@@ -37,6 +37,7 @@
 #include "game/component/player_identity_component.h"
 #include "game/component/player_wallet_component.h"
 #include "game/component/tags.h"
+#include "game/component/quest_log_component.h"
 #include "game/data/audio_cue_catalog.h"
 #include "game/data/battle_background_id.h"
 #include "game/data/game_time.h"
@@ -120,6 +121,17 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
 #endif
 }
 
+[[nodiscard]] std::string joinForWebDiagnostics(const std::vector<std::string>& values) {
+    std::string result{};
+    for (const std::string& value : values) {
+        if (!result.empty()) {
+            result.push_back('\n');
+        }
+        result += value;
+    }
+    return result;
+}
+
 void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRuntimeServices* services) {
 #if defined(__EMSCRIPTEN__)
     auto players = registry.view<game::component::PlayerTag,
@@ -132,6 +144,43 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
     const entt::entity player = *players.begin();
     const auto& transform = players.get<engine::component::TransformComponent>(player);
     const auto& map = players.get<game::component::MapId>(player);
+
+    int gold = 0;
+    if (const auto* wallet = registry.try_get<game::component::PlayerWalletComponent>(player)) {
+        gold = wallet->gold_;
+    }
+
+    int occupied_slots = 0;
+    int total_items = 0;
+    if (const auto* inventory = registry.try_get<game::component::InventoryComponent>(player)) {
+        for (const auto& slot : inventory->slots_) {
+            if (!slot.empty()) {
+                ++occupied_slots;
+                total_items += slot.count_;
+            }
+        }
+    }
+
+    int active_party_count = 0;
+    int recruited_party_count = 0;
+    if (const auto* party = registry.try_get<game::component::PartyComponent>(player)) {
+        active_party_count = static_cast<int>(party->active_actor_ids_.size());
+        recruited_party_count = static_cast<int>(party->recruited_actor_ids_.size());
+    }
+
+    int active_quest_count = 0;
+    int completed_quest_count = 0;
+    int objective_progress_count = 0;
+    std::string active_quest_ids{};
+    std::string completed_quest_ids{};
+    if (const auto* quest_log = registry.try_get<game::component::QuestLogComponent>(player)) {
+        active_quest_count = static_cast<int>(quest_log->active_quests.size());
+        completed_quest_count = static_cast<int>(quest_log->completed_quests.size());
+        objective_progress_count = static_cast<int>(quest_log->objective_progress.size());
+        active_quest_ids = joinForWebDiagnostics(quest_log->active_quests);
+        completed_quest_ids = joinForWebDiagnostics(quest_log->completed_quests);
+    }
+
     std::string map_name{};
     if (services != nullptr && services->world_state) {
         if (const auto* map_state = services->world_state->getMapState(map.id_)) {
@@ -149,7 +198,46 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
         player.map = UTF8ToString($0);
         player.x = $1;
         player.y = $2;
-    }, map_name.c_str(), static_cast<double>(transform.position_.x), static_cast<double>(transform.position_.y));
+
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const gameplay = diagnostics.gameplay || (diagnostics.gameplay = {});
+        const activeQuestIdsText = UTF8ToString($10);
+        const completedQuestIdsText = UTF8ToString($11);
+        gameplay.scene = "GameScene";
+        gameplay.currentScene = "GameScene";
+        gameplay.map = UTF8ToString($0);
+        const diagnosticPlayer = gameplay.player || (gameplay.player = {});
+        diagnosticPlayer.map = gameplay.map;
+        diagnosticPlayer.x = $1;
+        diagnosticPlayer.y = $2;
+        diagnosticPlayer.gold = $3;
+        const inventory = diagnosticPlayer.inventory || (diagnosticPlayer.inventory = {});
+        inventory.occupiedSlots = $4;
+        inventory.totalItems = $5;
+        const party = diagnosticPlayer.party || (diagnosticPlayer.party = {});
+        party.activeCount = $6;
+        party.recruitedCount = $7;
+        const quests = diagnosticPlayer.quests || (diagnosticPlayer.quests = {});
+        quests.activeCount = $8;
+        quests.completedCount = $9;
+        quests.objectiveProgressCount = $12;
+        quests.activeQuestIds = activeQuestIdsText.length ? activeQuestIdsText.split("\n") : [];
+        quests.completedQuestIds = completedQuestIdsText.length ? completedQuestIdsText.split("\n") : [];
+        gameplay.lastUpdatedMs = Date.now();
+    },
+    map_name.c_str(),
+    static_cast<double>(transform.position_.x),
+    static_cast<double>(transform.position_.y),
+    gold,
+    occupied_slots,
+    total_items,
+    active_party_count,
+    recruited_party_count,
+    active_quest_count,
+    completed_quest_count,
+    active_quest_ids.c_str(),
+    completed_quest_ids.c_str(),
+    objective_progress_count);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

@@ -379,8 +379,8 @@ flowchart LR
 - [x] release gate 校验 battle/shop/quest/recruit/rest/wardrobe/VFX/BattleBg 资源。
 - [x] release gate 校验 `dialogue_choice.*` UI 进入 shared-ui。
 - [x] package registry 支持 package group dependency 和 diagnostics。
-- [ ] Web diagnostics 暴露 gameplay / package / vfx / render 状态。
-- [ ] runbook 和 smoke 支持 `demo` / `full-rpg` profile。
+- [x] Web diagnostics 暴露 gameplay / package / vfx / render 状态。
+- [x] runbook 和 smoke 支持 `demo` / `full-rpg` profile。
 - [ ] Web 构建启用 Effekseer。
 - [ ] Effekseer WebGL2 后端初始化成功。
 - [ ] `vfx-core` 中 Effekseer effect 及依赖资源可加载。

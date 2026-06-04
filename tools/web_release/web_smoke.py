@@ -39,6 +39,13 @@ KEY_HOTBAR = ("Tab", "Tab", 9)
 KEY_PAUSE = ("KeyP", "p", 80)
 KEY_HOTBAR_1 = ("Digit1", "1", 49)
 
+DEMO_RUNTIME_PACKAGE_IDS = (
+    "audio-core",
+    "shared-ui",
+    "rpg-core",
+    "home-map",
+)
+
 PERFORMANCE_BUDGET_MS = {
     "title_interactive": 45000,
     "new_game_to_map": 30000,
@@ -657,6 +664,84 @@ def read_persistent_storage_diagnostics(cdp: CdpClient) -> dict[str, Any] | None
     return diagnostics if isinstance(diagnostics, dict) else None
 
 
+def read_web_release_diagnostics(cdp: CdpClient) -> dict[str, Any] | None:
+    diagnostics = cdp.evaluate(
+        """(() => {
+            const value = globalThis.TinyFarmRPGWebReleaseDiagnostics;
+            return value ? JSON.parse(JSON.stringify(value)) : null;
+        })()""",
+        timeout=10.0,
+    )
+    return diagnostics if isinstance(diagnostics, dict) else None
+
+
+def validate_web_release_diagnostics(diagnostics: dict[str, Any] | None) -> list[str]:
+    if not isinstance(diagnostics, dict):
+        return ["TinyFarmRPGWebReleaseDiagnostics is missing."]
+
+    failures: list[str] = []
+    render_failures = validate_render_capabilities(diagnostics.get("renderCapabilities"))
+    failures.extend(render_failures)
+
+    gameplay = diagnostics.get("gameplay")
+    if not isinstance(gameplay, dict):
+        failures.append("diagnostics.gameplay is missing.")
+    else:
+        player = gameplay.get("player")
+        if gameplay.get("currentScene") != "GameScene":
+            failures.append(f"diagnostics.gameplay.currentScene expected GameScene, got {gameplay.get('currentScene')!r}")
+        if gameplay.get("map") != "home_exterior":
+            failures.append(f"diagnostics.gameplay.map expected home_exterior, got {gameplay.get('map')!r}")
+        if not isinstance(player, dict):
+            failures.append("diagnostics.gameplay.player is missing.")
+        else:
+            if not isinstance(player.get("gold"), (int, float)):
+                failures.append("diagnostics.gameplay.player.gold is missing.")
+            inventory = player.get("inventory")
+            if not isinstance(inventory, dict) or not isinstance(inventory.get("occupiedSlots"), (int, float)):
+                failures.append("diagnostics.gameplay.player.inventory.occupiedSlots is missing.")
+            party = player.get("party")
+            if not isinstance(party, dict) or int(party.get("activeCount", 0)) <= 0:
+                failures.append(f"diagnostics.gameplay.player.party.activeCount is invalid: {party!r}")
+            quests = player.get("quests")
+            if not isinstance(quests, dict) or not isinstance(quests.get("activeQuestIds"), list):
+                failures.append("diagnostics.gameplay.player.quests.activeQuestIds is missing.")
+
+    packages = diagnostics.get("packages")
+    if not isinstance(packages, dict):
+        failures.append("diagnostics.packages is missing.")
+    else:
+        for package_id in DEMO_RUNTIME_PACKAGE_IDS:
+            package = packages.get(package_id)
+            if not isinstance(package, dict):
+                failures.append(f"diagnostics.packages.{package_id} is missing.")
+                continue
+            if package.get("loaded") is not True:
+                failures.append(f"diagnostics.packages.{package_id}.loaded expected true, got {package.get('loaded')!r}")
+            if not isinstance(package.get("attempts"), (int, float)):
+                failures.append(f"diagnostics.packages.{package_id}.attempts is missing.")
+            if not isinstance(package.get("dependencies"), list):
+                failures.append(f"diagnostics.packages.{package_id}.dependencies is missing.")
+
+    vfx = diagnostics.get("vfx")
+    if not isinstance(vfx, dict):
+        failures.append("diagnostics.vfx is missing.")
+    else:
+        if not isinstance(vfx.get("effekseerEnabled"), bool):
+            failures.append("diagnostics.vfx.effekseerEnabled is missing.")
+        if not vfx.get("backend"):
+            failures.append("diagnostics.vfx.backend is missing.")
+        if not vfx.get("status"):
+            failures.append("diagnostics.vfx.status is missing.")
+
+    if not isinstance(diagnostics.get("persistentStorage"), dict):
+        failures.append("diagnostics.persistentStorage is missing.")
+    if not isinstance(diagnostics.get("userSettings"), dict):
+        failures.append("diagnostics.userSettings is missing.")
+
+    return failures
+
+
 def write_corrupt_save_slot(cdp: CdpClient) -> None:
     result = cdp.evaluate(
         f"""(() => new Promise((resolve) => {{
@@ -1129,7 +1214,7 @@ def summarize_performance_budget(timings: dict[str, int]) -> dict[str, Any]:
     }
 
 
-def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, Any]:
+def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str) -> dict[str, Any]:
     started = now_ms()
     screenshots = {
         "title": output_dir / "phase14-chromium-title.png",
@@ -1272,10 +1357,53 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
     if persistent_storage_logs["settings_sync_completed"] < 1:
         raise RuntimeError(f"Expected user settings sync completion: {persistent_storage_logs}")
 
+    diagnostics = read_web_release_diagnostics(cdp)
+    diagnostic_failures = validate_web_release_diagnostics(diagnostics)
+    if diagnostic_failures:
+        raise RuntimeError(f"Web release diagnostics gate failed: {diagnostic_failures}")
+
+    covered_flows = [
+        "new_game_character_confirm",
+        "home_exterior_movement",
+        "home_exterior_to_home_interior_round_trip",
+        "inventory_open_close",
+        "hotbar_open_close",
+        "pause_open_close",
+        "settings_change_reload_restore",
+        "primary_tool_action",
+        "scripted_merchant_dialogue",
+        "save_reload_load",
+        "corrupt_save_slot_skip",
+        "web_release_diagnostics_snapshot",
+    ]
+    full_rpg_profile: dict[str, Any] | None = None
+    if profile == "full-rpg":
+        covered_flows.append("full_rpg_profile_diagnostics_gate")
+        full_rpg_profile = {
+            "status": "diagnostics-ready",
+            "pending_flows": [
+                "reach_town",
+                "battle_flow",
+                "shop_flow",
+                "quest_flow",
+                "recruit_flow",
+                "rest_flow",
+                "wardrobe_flow",
+                "save_reload_verify_full_rpg",
+            ],
+        }
+
     return {
+        "profile": profile,
         "timings_ms": timings,
         "performance_budget": performance_budget,
         "render_capabilities": render_capabilities,
+        "diagnostics": diagnostics,
+        "diagnostic_gate": {
+            "status": "passed",
+            "required_packages": list(DEMO_RUNTIME_PACKAGE_IDS),
+        },
+        "full_rpg_profile": full_rpg_profile,
         "persistent_storage": persistent_storage,
         "persistent_storage_logs": persistent_storage_logs,
         "user_settings": {
@@ -1296,19 +1424,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path) -> dict[str, 
             "after_move": moved_position,
             "delta": movement_delta,
         },
-        "covered_flows": [
-            "new_game_character_confirm",
-            "home_exterior_movement",
-            "home_exterior_to_home_interior_round_trip",
-            "inventory_open_close",
-            "hotbar_open_close",
-            "pause_open_close",
-            "settings_change_reload_restore",
-            "primary_tool_action",
-            "scripted_merchant_dialogue",
-            "save_reload_load",
-            "corrupt_save_slot_skip",
-        ],
+        "covered_flows": covered_flows,
         "package_responses": package_responses,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
         "warning_count": sum(1 for entry in cdp.state.logs if entry.get("level") in {"warning", "warn"}),
@@ -1395,6 +1511,7 @@ def main() -> int:
     parser.add_argument("--configure", action="store_true", help="Run emcmake configure before building.")
     parser.add_argument("--skip-build", action="store_true", help="Skip cmake --build.")
     parser.add_argument("--skip-gate", action="store_true", help="Skip validate_web_release.py.")
+    parser.add_argument("--profile", choices=("demo", "full-rpg"), default="demo")
     parser.add_argument("--browser", type=Path, help="Chromium-family browser executable.")
     parser.add_argument("--headed", action="store_true", help="Run a visible browser window instead of headless Chrome.")
     parser.add_argument("--host", default="127.0.0.1")
@@ -1456,7 +1573,7 @@ def main() -> int:
             with Chromium(browser, find_free_port(), Path(profile_dir), headless=not args.headed) as chromium:
                 cdp = CdpClient(chromium.page_websocket_url())
                 try:
-                    gameplay = run_gameplay_smoke(cdp, url, output_dir)
+                    gameplay = run_gameplay_smoke(cdp, url, output_dir, args.profile)
                 except Exception as exc:
                     failure_output = output_dir / "chromium-smoke-failed.json"
                     failure_output.write_text(
@@ -1489,12 +1606,14 @@ def main() -> int:
         },
         "headers": headers,
         "cross_origin_isolated": cross_origin_isolated,
+        "profile": args.profile,
         "gameplay": gameplay,
     }
     json_output.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     print("TinyFarmRPG Chromium Web smoke passed")
     print(f"- browser: {summary['browser']['version']}")
+    print(f"- profile: {summary['profile']}")
     print(f"- title interactive: {gameplay['timings_ms']['title_interactive']} ms")
     print(f"- new game to map: {gameplay['timings_ms']['new_game_to_map']} ms")
     print(f"- performance budget: {gameplay['performance_budget']['status']}")

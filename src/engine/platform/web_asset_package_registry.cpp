@@ -10,6 +10,10 @@
 #include <string>
 #include <unordered_map>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
+
 namespace engine::platform::web {
 namespace {
 
@@ -62,6 +66,59 @@ PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
     return status;
 }
 
+#if defined(__EMSCRIPTEN__)
+[[nodiscard]] std::string dependencyListForDiagnostics(const PackageDefinition& definition) {
+    std::string result{};
+    for (std::size_t index = 0; index < definition.dependency_count; ++index) {
+        if (!result.empty()) {
+            result.push_back('\n');
+        }
+        result += definition.dependencies[index];
+    }
+    return result;
+}
+#endif
+
+void publishPackageDiagnostics(const PackageDefinition& definition, const PackageRuntimeStatus& status) {
+#if defined(__EMSCRIPTEN__)
+    const std::string id{definition.id};
+    const std::string url{definition.url};
+    const std::string dependencies = dependencyListForDiagnostics(definition);
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const packages = diagnostics.packages || (diagnostics.packages = {});
+        const id = UTF8ToString($0);
+        const dependencyText = UTF8ToString($6);
+        const entry = packages[id] || (packages[id] = {});
+        entry.id = id;
+        entry.url = UTF8ToString($1);
+        entry.loaded = !!$2;
+        entry.attempts = $3;
+        entry.lastLoadMs = $4;
+        entry.lastError = UTF8ToString($5);
+        entry.dependencies = dependencyText.length ? dependencyText.split("\n") : [];
+        entry.lastUpdatedMs = Date.now();
+    },
+    id.c_str(),
+    url.c_str(),
+    status.loaded ? 1 : 0,
+    status.attempts,
+    status.last_load_ms,
+    status.last_error.c_str(),
+    dependencies.c_str());
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#else
+    (void)definition;
+    (void)status;
+#endif
+}
+
 #if defined(__EMSCRIPTEN__) && defined(TF_WEB_ENABLE_RUNTIME_PACKAGES)
 [[nodiscard]] int elapsedMillis(std::chrono::steady_clock::time_point started) {
     const auto elapsed = std::chrono::steady_clock::now() - started;
@@ -74,6 +131,7 @@ PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
     auto& status = statusFor(definition);
     if (status.loaded || isAssetPackageLoaded(definition.id)) {
         status.loaded = true;
+        publishPackageDiagnostics(definition, status);
         return true;
     }
 
@@ -89,6 +147,7 @@ PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
     status.loaded = loaded || isAssetPackageLoaded(definition.id);
     if (status.loaded) {
         status.last_error.clear();
+        publishPackageDiagnostics(definition, status);
         spdlog::info(
             "WebAssetPackageRegistry: package '{}' ready in {} ms.",
             definition.id,
@@ -97,6 +156,7 @@ PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
     }
 
     status.last_error = "load failed from " + std::string{definition.url};
+    publishPackageDiagnostics(definition, status);
     spdlog::error(
         "WebAssetPackageRegistry: package '{}' failed after {} ms url='{}'.",
         definition.id,
@@ -108,6 +168,7 @@ PackageRuntimeStatus& statusFor(const PackageDefinition& definition) {
     status.loaded = true;
     status.last_error.clear();
     status.last_load_ms = 0;
+    publishPackageDiagnostics(definition, status);
     return true;
 #endif
 }
@@ -159,6 +220,7 @@ bool isPackageLoaded(std::string_view package_id) {
     if (isAssetPackageLoaded(definition->id)) {
         auto& status = statusFor(*definition);
         status.loaded = true;
+        publishPackageDiagnostics(*definition, status);
         return true;
     }
     const auto& statuses = packageStatuses();
