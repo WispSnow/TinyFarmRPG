@@ -106,6 +106,7 @@ void RestSystem::onRestConfirmRequest(const game::defs::RestConfirmRequest& even
     }
 
     dispatcher_.enqueue(game::defs::AdvanceTimeRequest{event.hours});
+    spdlog::info("RestSystem: rest confirmed hours={}.", event.hours);
 }
 
 } // namespace game::system

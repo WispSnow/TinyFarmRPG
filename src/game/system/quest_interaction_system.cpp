@@ -276,6 +276,7 @@ void QuestInteractionSystem::onAcceptQuestCommand(const game::defs::AcceptQuestC
     if (!game::domain::quest_log_ops::tryAcceptQuest(*quest_log, *quest)) {
         return;
     }
+    spdlog::info("QuestInteractionSystem: quest accepted quest_id='{}'.", quest->id_);
     dispatcher_.trigger(game::defs::QuestAcceptedEvent{
         .player = player,
         .giver = command.giver,
@@ -341,6 +342,10 @@ void QuestInteractionSystem::turnInQuest(const entt::entity player,
         .quest_id_hash = quest.id_hash_,
         .quest_id = quest.id_,
     });
+    spdlog::info(
+        "QuestInteractionSystem: quest completed quest_id='{}' gold_reward={}.",
+        quest.id_,
+        turn_in_result.gold_reward);
     if (!helpers::isScriptedInteraction(registry_, giver)) {
         showText(giver, formatTurnInSuccessText(quest, turn_in_result, game::runtime::findLocalizationService(registry_)));
     }

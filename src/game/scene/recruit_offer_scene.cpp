@@ -145,11 +145,14 @@ void RecruitOfferScene::shutdownUI() {
 }
 
 void RecruitOfferScene::connectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_confirm"_hs).connect<&RecruitOfferScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&RecruitOfferScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&RecruitOfferScene::onLanguageChanged>(this);
+    spdlog::info("RecruitOfferScene: opened actor_id='{}'.", actor_.id_);
 }
 
 void RecruitOfferScene::disconnectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_confirm"_hs).disconnect<&RecruitOfferScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&RecruitOfferScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&RecruitOfferScene::onLanguageChanged>(this);
 }
@@ -193,6 +196,11 @@ void RecruitOfferScene::focusDefaultAction() {
     }
 }
 
+bool RecruitOfferScene::onMenuConfirmPressed() {
+    onAccept();
+    return true;
+}
+
 bool RecruitOfferScene::onMenuCancelPressed() {
     onDecline();
     return true;
@@ -207,6 +215,11 @@ void RecruitOfferScene::onLanguageChanged(const game::defs::LanguageChangedEvent
 }
 
 void RecruitOfferScene::onAccept() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
+    spdlog::info("RecruitOfferScene: accepted actor_id='{}'.", actor_.id_);
     context_.getDispatcher().trigger(game::defs::RecruitPartyMemberCommand{
         .player = player_,
         .recruiter = recruiter_,
@@ -216,6 +229,10 @@ void RecruitOfferScene::onAccept() {
 }
 
 void RecruitOfferScene::onDecline() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
     requestPopScene();
 }
 

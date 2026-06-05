@@ -130,6 +130,7 @@ void PartyRecruitmentSystem::onRecruitPartyMemberCommand(const game::defs::Recru
         actor->id_,
         game::domain::ActorProgressionService::initialState(rpg_catalog_, *actor, nullptr));
     ++runtime_stats.revision_;
+    spdlog::info("PartyRecruitmentSystem: recruited actor_id='{}'.", actor->id_);
 
     showNotification(
         player,

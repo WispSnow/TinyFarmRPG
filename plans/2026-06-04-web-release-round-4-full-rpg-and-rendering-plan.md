@@ -18,6 +18,14 @@
 - 战斗视觉依赖：Effekseer 不能作为最终发布降级项；`null_vfx_backend` 只能作为开发期 fallback。
 - 渲染视觉恢复：Bloom / HDR emissive / 高级后处理应在 Chrome WebGL2 支持条件下恢复；fallback 只允许在能力缺失时触发，并必须可诊断。
 
+Claude 审阅意见中以下结论采纳为本轮执行约束：
+
+- `town.tmj` 是战斗遭遇和战斗驱动任务的阻塞入口，不是可选补丁；Phase 22/25 必须把 `town.tmj` 的打包和 home → town 可达路径作为前置工作。
+- Phase 25 的战斗 smoke 可以先验证 `troop.slime_single` 技能胜利路径，但 Phase 26 的任务闭环必须使用能推进 `village_goblin_cleanup` 的真实任务目标遭遇，例如 `troop.slime`。
+- Effekseer Web 恢复优先处理 CMake/macro、`OpenGLES3` device type 和 native-only gate；不预设需要重写一套 Web VFX backend。
+- Bloom/HDR 恢复必须显式处理 WebGL2 FBO 格式和运行时 capability gate：`GL_RGB16F` 转换不是“必要时”，而是 WebGL2 下的阻塞项。
+- `full_rpg_smoke` 是本轮最大测试工程项，必须按玩法 flow 拆分、保留诊断快照和复跑入口，不能继续堆在单个长流程里。
+
 ```mermaid
 flowchart TD
   A["Round 3<br/>Chrome Web demo"]
@@ -44,22 +52,22 @@ flowchart TD
 
 ## 实现原则
 
-- 先修资源覆盖，再扩玩法 smoke。当前 `web-release-full.args` 还未覆盖 battle/shop/quest/recruit/rest UI 与 VFX 资源，不能直接扩浏览器流程。
+- 先修资源覆盖，再扩玩法 smoke。第四轮启动时 `web-release-full.args` 还未覆盖 battle/shop/quest/recruit/rest UI 与 VFX 资源，不能直接扩浏览器流程。
 - 用诊断状态断言替代纯坐标猜测。RmlUi 运行在 canvas 内，自动化仍可点击/按键，但成功判断必须来自 C++/JS diagnostics、日志和截图。
 - Effekseer 是战斗系统依赖，不再作为可选增强处理。阶段中可短期保留 fallback，但最终 full release gate 必须要求真实后端。
 - Bloom / HDR emissive 的恢复必须走 WebGL2 capability gate，避免用桌面 GL 假设制造黑屏或 GL error flood。
 - 不新增第二个 Web main，继续使用 `src/main.cpp` 与 SDL3 callbacks。
 - 不把 Safari、pthreads 和 COOP / COEP 混入本轮阻塞目标。
 
-## 已确认的当前内容缺口
+## 已确认的基线内容缺口
 
-当前不是“可能缺入口”，而是已经确认存在以下结构性缺口：
+第四轮启动时不是“可能缺入口”，而是已经确认存在以下结构性缺口：
 
-| 内容 | 当前落点 | Web release 状态 | 本轮处理 |
+| 内容 | 当前落点 | 第四轮启动时 Web release 状态 | 本轮处理 |
 |---|---|---|---|
 | 商店、招募、脚本交互 | `home_exterior.tmj` | 已在现有 home package 覆盖范围内 | Phase 26 扩 smoke 与状态断言 |
 | 休息、衣柜 | `home_interior.tmj` | 已在现有 home package 覆盖范围内 | Phase 26 扩 smoke 与状态断言 |
-| 战斗遭遇 `battle_troop_id` | `town.tmj` | 当前被 asset audit 排除，未进入 `web-release-full.args`，且从 `home_exterior` 不可达 | Phase 22 打包，Phase 25 编写 home → town 入口并验证遭遇 |
+| 战斗遭遇 `battle_troop_id` | `town.tmj` | 启动时被 asset audit 排除，未进入 `web-release-full.args`，且从 `home_exterior` 不可达 | Phase 22 打包，Phase 25 编写 home → town 入口并验证遭遇 |
 | `school.tmj` | WIP 地图，当前不在主流程 | 当前被排除 | 本轮默认继续排除，除非 Phase 25 明确需要 town → school 流程 |
 
 这意味着 Phase 25 的第一步不是“确认地图里有遭遇”，而是必须先建立可玩的战斗入口：把 `town.tmj` 纳入 Web release，并在 `home_exterior` 与 `town` 之间补齐可人工和自动化访问的 map transition。
@@ -75,8 +83,9 @@ flowchart TD
 - `tools/web_release/web_smoke.py`
   - 拆分/扩展 full gameplay smoke，覆盖完整 RPG 基础玩法。
 - `src/engine/platform/web_asset_package_registry.*`
-  - 当前是 3 个 package 的 hardcoded registry；本轮按 package index / definition table 重写为可扩展 registry。
+  - 第四轮启动时是 3 个 package 的 hardcoded registry；本轮按 package index / definition table 重写为可扩展 registry。
   - 增加 package dependency / load group / diagnostics；必要时支持按 scene id 声明依赖包。
+  - package diagnostics 必须暴露真实 file count / byte count；如果暂时仍来自 static definition，Phase 28 前必须与 artifact manifest 或 package index 对齐，不能长期保持 0。
 - `src/engine/vfx/effekseer_backend.*`
   - 增加 Emscripten / WebGL2 后端适配、文件加载路径和 diagnostics。
 - `cmake/EffekseerDependencies.cmake`
@@ -92,7 +101,7 @@ flowchart TD
 
 ## 目标资源包拓扑
 
-当前 `boot / shared-ui / home-map / audio-core` 不足以表达完整 RPG Web 运行时。目标拓扑：
+第四轮启动时的 `boot / shared-ui / home-map / audio-core` 不足以表达完整 RPG Web 运行时。目标拓扑：
 
 | package | 内容 | 加载时机 |
 |---|---|---|
@@ -181,6 +190,7 @@ flowchart LR
    - 新增 `full_rpg_smoke`，覆盖完整玩法。
    - runbook 增加 `--profile demo|full-rpg`。
    - 将 full smoke 拆成可独立复跑的阶段函数：`start_new_game`、`reach_town`、`battle_flow`、`shop_flow`、`quest_flow`、`recruit_flow`、`rest_flow`、`wardrobe_flow`、`save_reload_verify`。
+   - full smoke 需要支持按单个 flow 复跑，至少通过脚本参数、环境变量或报告中记录的复跑步骤实现，避免一次失败只能重跑完整长流程。
    - 每个阶段输出截图、diagnostics snapshot 和可读步骤日志，失败时能定位到具体玩法。
 4. 增加 source guard。
    - 防止新增基础玩法 UI 没有进入 full RPG package gate。
@@ -273,6 +283,8 @@ flowchart LR
 
 目标：覆盖除战斗外的基础 RPG 玩法，使 Web 版本达到教学 demo 的实际可玩边界。
 
+状态（2026-06-05）：已完成 Chrome `full-rpg` smoke 的 RPG 基础玩法闭环。覆盖商店买入/卖出/失败反馈、任务领取、3 次真实 slime 战斗推进、任务交付与奖励、Lyria 招募与后续战斗识别、休息恢复与时间推进、衣柜换装、最终保存刷新读档恢复。Lyria 地图 NPC 已固定站位，避免关键招募入口因随机游走导致人工和自动化交互不稳定。
+
 实施步骤：
 
 1. 商店交易。
@@ -282,7 +294,7 @@ flowchart LR
    - 覆盖库存不足、金币不足或背包满的失败反馈至少一类。
 2. 任务领取/交付。
    - 打开 `QuestOfferScene` 并接受任务。
-   - 通过战斗推进任务目标。
+   - 通过 `town.tmj` 的真实任务目标遭遇推进任务目标；`village_goblin_cleanup` 需要击败 3 个 slime，不能只复用 Phase 25 的 `troop.slime_single` 冒烟路径。
    - 回到 NPC 交付任务，领取奖励。
    - 验证 quest log 状态和 reward。
 3. 招募。
@@ -351,6 +363,7 @@ flowchart LR
 1. Runbook profile。
    - `web_release_runbook.py auto --profile full-rpg`：build、gate、full smoke、artifact report。
    - `--profile demo` 保留为快速 smoke，但不能作为完整移植完成依据。
+   - full profile 的报告必须列出 package file count / byte count、实际加载耗时和 fallback 状态；runtime diagnostics 与 artifact manifest 不一致时视为 release gate 风险。
 2. CI。
    - 基础 job：configure + build + release gate。
    - 浏览器 job：Chrome full RPG smoke，可手动或 nightly。
@@ -394,15 +407,15 @@ flowchart LR
 - [x] 战斗 Skill 胜利路径、VFX 截图和金币奖励写回 smoke 通过。
 - [ ] 战斗覆盖 Attack / Item / Guard / Escape 与失败流程。
 - [ ] HP/MP、背包、遭遇状态写回并可存档恢复。
-- [ ] 商店买入、卖出、失败反馈 smoke 通过。
-- [ ] 任务领取、目标推进、交付、奖励 smoke 通过。
-- [ ] 招募接受、队伍成员变化、后续战斗识别 smoke 通过。
-- [ ] 休息恢复 HP/MP、推进时间、保存恢复 smoke 通过。
-- [ ] 衣柜修改外观、地图 sprite 更新、保存恢复 smoke 通过。
+- [x] 商店买入、卖出、失败反馈 smoke 通过。
+- [x] 任务领取、目标推进、交付、奖励 smoke 通过。
+- [x] 招募接受、队伍成员变化、后续战斗识别 smoke 通过。
+- [x] 休息恢复 HP/MP、推进时间、保存恢复 smoke 通过。
+- [x] 衣柜修改外观、地图 sprite 更新、保存恢复 smoke 通过。
 - [ ] Chrome WebGL2 下 HDR emissive 恢复。
 - [ ] Chrome WebGL2 下 Bloom 恢复。
 - [ ] 后处理 fallback 只在 capability 缺失时触发，并写入具体原因。
-- [ ] full RPG Chrome smoke 通过。
+- [x] full RPG Chrome smoke 通过。
 - [ ] `docs/web_release.md` 更新为完整 Web 移植说明。
 - [ ] 新增 Phase 22-28 报告和最终 full RPG Web release 报告。
 

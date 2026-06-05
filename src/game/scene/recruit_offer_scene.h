@@ -36,6 +36,7 @@ class RecruitOfferScene final : public engine::scene::Scene {
 
     engine::core::State previous_state_{};
     bool context_pushed_{false};
+    bool resolved_{false};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
 
@@ -64,6 +65,7 @@ private:
     void disconnectRuntimeListeners();
     void refreshBindings();
     void focusDefaultAction();
+    bool onMenuConfirmPressed();
     bool onMenuCancelPressed();
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void onAccept();

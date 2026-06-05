@@ -41,6 +41,8 @@ KEY_HOTBAR_1 = ("Digit1", "1", 49)
 KEY_MENU_CONFIRM = ("Enter", "Enter", 13)
 KEY_MENU_UP = ("KeyW", "w", 87)
 KEY_MENU_DOWN = ("KeyS", "s", 83)
+KEY_MENU_LEFT = ("KeyA", "a", 65)
+KEY_MENU_RIGHT = ("KeyD", "d", 68)
 
 DEMO_RUNTIME_PACKAGE_IDS = (
     "audio-core",
@@ -703,6 +705,116 @@ def read_gameplay_diagnostics(cdp: CdpClient) -> dict[str, Any] | None:
     return gameplay if isinstance(gameplay, dict) else None
 
 
+def gameplay_player(gameplay: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(gameplay, dict):
+        return {}
+    player = gameplay.get("player")
+    return player if isinstance(player, dict) else {}
+
+
+def inventory_count(gameplay: dict[str, Any] | None, item_id: str) -> int:
+    inventory = gameplay_player(gameplay).get("inventory")
+    if not isinstance(inventory, dict):
+        return 0
+    items = inventory.get("items")
+    if not isinstance(items, dict):
+        return 0
+    return int(items.get(item_id) or 0)
+
+
+def player_gold(gameplay: dict[str, Any] | None) -> int:
+    return int(gameplay_player(gameplay).get("gold") or 0)
+
+
+def quest_progress(gameplay: dict[str, Any] | None, key: str) -> int:
+    quests = gameplay_player(gameplay).get("quests")
+    if not isinstance(quests, dict):
+        return 0
+    progress = quests.get("objectiveProgress")
+    if not isinstance(progress, dict):
+        return 0
+    return int(progress.get(key) or 0)
+
+
+def active_quest_ids(gameplay: dict[str, Any] | None) -> list[str]:
+    quests = gameplay_player(gameplay).get("quests")
+    if not isinstance(quests, dict):
+        return []
+    values = quests.get("activeQuestIds")
+    return [str(value) for value in values] if isinstance(values, list) else []
+
+
+def completed_quest_ids(gameplay: dict[str, Any] | None) -> list[str]:
+    quests = gameplay_player(gameplay).get("quests")
+    if not isinstance(quests, dict):
+        return []
+    values = quests.get("completedQuestIds")
+    return [str(value) for value in values] if isinstance(values, list) else []
+
+
+def party_actor_ids(gameplay: dict[str, Any] | None, field: str) -> list[str]:
+    party = gameplay_player(gameplay).get("party")
+    if not isinstance(party, dict):
+        return []
+    values = party.get(field)
+    return [str(value) for value in values] if isinstance(values, list) else []
+
+
+def actor_runtime_state(gameplay: dict[str, Any] | None, actor_id: str) -> dict[str, int]:
+    party = gameplay_player(gameplay).get("party")
+    if not isinstance(party, dict):
+        return {}
+    states = party.get("runtimeStates")
+    if not isinstance(states, dict):
+        return {}
+    state = states.get(actor_id)
+    if not isinstance(state, dict):
+        return {}
+    return {
+        "currentHp": int(state.get("currentHp") or 0),
+        "currentMp": int(state.get("currentMp") or 0),
+        "level": int(state.get("level") or 0),
+        "totalExp": int(state.get("totalExp") or 0),
+    }
+
+
+def gameplay_time_minutes(gameplay: dict[str, Any] | None) -> int:
+    if not isinstance(gameplay, dict):
+        return 0
+    time_state = gameplay.get("time")
+    if not isinstance(time_state, dict):
+        return 0
+    day = int(time_state.get("day") or 0)
+    hour = float(time_state.get("hour") or 0.0)
+    minute = float(time_state.get("minute") or 0.0)
+    return day * 24 * 60 + int(hour * 60.0 + minute)
+
+
+def appearance_signature(gameplay: dict[str, Any] | None) -> str:
+    appearance = gameplay_player(gameplay).get("appearance")
+    if not isinstance(appearance, dict):
+        return ""
+    return str(appearance.get("signature") or "")
+
+
+def wait_for_gameplay_condition(
+    cdp: CdpClient,
+    label: str,
+    predicate,
+    timeout_ms: int = 10000,
+) -> dict[str, Any]:
+    end = time.monotonic() + timeout_ms / 1000.0
+    last_gameplay: dict[str, Any] | None = None
+    while time.monotonic() < end:
+        gameplay = read_gameplay_diagnostics(cdp)
+        if isinstance(gameplay, dict):
+            last_gameplay = gameplay
+            if predicate(gameplay):
+                return gameplay
+        cdp.wait_ms(100)
+    raise TimeoutError(f"Timed out waiting for {label}; last={last_gameplay}")
+
+
 def validate_web_release_diagnostics(
     diagnostics: dict[str, Any] | None,
     expected_map: str = "home_exterior",
@@ -837,14 +949,18 @@ def wait_for_save_position(
     changed_from: dict[str, float] | None = None,
 ) -> dict[str, float]:
     end = time.monotonic() + timeout_ms / 1000.0
+    last_position: dict[str, float] | None = None
     while time.monotonic() < end:
         position = read_save_position(cdp)
         if isinstance(position, dict) and "x" in position and "y" in position:
             normalized = {"x": float(position["x"]), "y": float(position["y"])}
+            last_position = normalized
             if changed_from is None or position_distance(changed_from, normalized) >= 1.0:
                 return normalized
         cdp.wait_ms(200)
-    raise TimeoutError(f"Timed out waiting for {SAVE_PATH}")
+    if last_position is None:
+        raise TimeoutError(f"Timed out waiting for {SAVE_PATH}")
+    raise TimeoutError(f"Timed out waiting for {SAVE_PATH} to change from {changed_from}; last={last_position}")
 
 
 def save_slot0(
@@ -952,6 +1068,28 @@ def move_player_to(
     raise TimeoutError(f"Timed out moving player on {map_name} to ({x:.1f}, {y:.1f}); last={player}")
 
 
+def move_player_through_home_exterior(cdp: CdpClient, waypoints: list[tuple[float, float]], timeout_ms: int = 24000) -> None:
+    for x, y in waypoints:
+        move_player_to(cdp, x, y, map_name="home_exterior", tolerance=10.0, timeout_ms=timeout_ms)
+
+
+def approach_home_exterior_quest_giver(cdp: CdpClient, timeout_ms: int = 30000) -> None:
+    wait_for_runtime_player(cdp, "home_exterior", timeout_ms)
+    move_player_through_home_exterior(cdp, [(296.0, 206.0)], timeout_ms=timeout_ms)
+
+
+def approach_home_exterior_recruit(cdp: CdpClient, timeout_ms: int = 30000) -> None:
+    move_player_through_home_exterior(cdp, [(248.0, 168.0)], timeout_ms=timeout_ms)
+
+
+def approach_home_exterior_town_gate(cdp: CdpClient, timeout_ms: int = 30000) -> None:
+    player = wait_for_runtime_player(cdp, "home_exterior", timeout_ms)
+    if float(player["y"]) <= 170.0:
+        move_player_through_home_exterior(cdp, [(360.0, 138.0)], timeout_ms=timeout_ms)
+        return
+    move_player_through_home_exterior(cdp, [(350.0, 138.0), (360.0, 138.0)], timeout_ms=timeout_ms)
+
+
 def has_new_log(cdp: CdpClient, needle: str, first_index: int) -> bool:
     return any(needle in str(entry.get("text", "")) for entry in cdp.state.logs[first_index:])
 
@@ -968,6 +1106,30 @@ def wait_for_new_log_optional(
         return True
     except TimeoutError:
         return False
+
+
+def is_web_package_loaded(cdp: CdpClient, package_id: str) -> bool:
+    diagnostics = read_web_release_diagnostics(cdp) or {}
+    packages = diagnostics.get("packages") if isinstance(diagnostics.get("packages"), dict) else {}
+    package = packages.get(package_id) if isinstance(packages, dict) else None
+    return isinstance(package, dict) and package.get("loaded") is True
+
+
+def wait_for_web_package_loaded(
+    cdp: CdpClient,
+    package_id: str,
+    label: str,
+    loaded_log: str,
+    first_index: int,
+    timeout_ms: int = 30000,
+) -> None:
+    if is_web_package_loaded(cdp, package_id):
+        return
+    if wait_for_new_log_optional(cdp, label, loaded_log, first_index, timeout_ms):
+        return
+    if is_web_package_loaded(cdp, package_id):
+        return
+    raise RuntimeError(f"Timed out waiting for web package '{package_id}' to load.")
 
 
 def available_gameplay_encounters(gameplay: dict[str, Any]) -> list[dict[str, Any]]:
@@ -998,7 +1160,7 @@ def available_gameplay_encounters(gameplay: dict[str, Any]) -> list[dict[str, An
     return normalized
 
 
-def select_nearest_encounter(gameplay: dict[str, Any]) -> dict[str, Any]:
+def select_nearest_encounter(gameplay: dict[str, Any], preferred_troop_id: str | None = "troop.slime_single") -> dict[str, Any]:
     encounters = available_gameplay_encounters(gameplay)
     if not encounters:
         raise RuntimeError(f"No available encounters in gameplay diagnostics: {gameplay}")
@@ -1006,7 +1168,7 @@ def select_nearest_encounter(gameplay: dict[str, Any]) -> dict[str, Any]:
     player = gameplay.get("player") if isinstance(gameplay.get("player"), dict) else {}
     player_x = float(player.get("x") or 0.0)
     player_y = float(player.get("y") or 0.0)
-    preferred = [encounter for encounter in encounters if encounter.get("troopId") == "troop.slime_single"]
+    preferred = [encounter for encounter in encounters if encounter.get("troopId") == preferred_troop_id] if preferred_troop_id else []
     candidates = preferred or encounters
     return min(candidates, key=lambda encounter: abs(float(encounter["x"]) - player_x) + abs(float(encounter["y"]) - player_y))
 
@@ -1015,27 +1177,29 @@ def trigger_town_encounter_from_diagnostics(
     cdp: CdpClient,
     output_dir: Path,
     battle_start: int,
+    preferred_troop_id: str | None = "troop.slime_single",
+    screenshot_prefix: str = "phase25",
 ) -> dict[str, Any]:
     gameplay = read_gameplay_diagnostics(cdp) or {}
     if gameplay.get("map") != "town":
         raise RuntimeError(f"Expected town gameplay diagnostics before battle, got: {gameplay}")
 
-    encounter = select_nearest_encounter(gameplay)
+    encounter = select_nearest_encounter(gameplay, preferred_troop_id)
     approach_x = max(0.0, float(encounter["x"]) - 14.0)
     approach_y = float(encounter["y"])
     try:
         move_player_to(cdp, approach_x, approach_y, map_name="town", tolerance=10.0, timeout_ms=24000)
     except TimeoutError:
         if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
-            cdp.screenshot(output_dir / "phase25-encounter-approach.png")
+            cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
             return encounter
         battle = read_battle_diagnostics(cdp)
         if isinstance(battle, dict) and battle.get("currentScene") == "BattleScene":
-            cdp.screenshot(output_dir / "phase25-encounter-approach.png")
+            cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
             return encounter
         raise
     cdp.wait_ms(400)
-    cdp.screenshot(output_dir / "phase25-encounter-approach.png")
+    cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
 
     movement_sweep = (
         move_player_right,
@@ -1151,52 +1315,17 @@ def move_battle_cursor_to(cdp: CdpClient, state: str, target_index: int, timeout
     raise TimeoutError(f"Timed out moving {state} cursor to {target_index}; last={battle}")
 
 
-def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -> tuple[dict[str, Any], bool]:
-    battle = wait_for_battle_player_input(cdp)
-    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
-        return battle, False
-    if battle.get("menuState") == "PartyCommand":
-        move_battle_cursor_to(cdp, "PartyCommand", 0)
-        press_game_key(cdp, *KEY_MENU_CONFIRM)
-        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect"}, 10000)
-    if battle.get("menuState") == "TargetSelect":
-        if battle_cursor_for_state(battle, "TargetSelect") < 0:
-            raise RuntimeError(f"TargetSelect cursor is unavailable before confirming direct attack target: {battle}")
-        action_start = time.monotonic()
-        press_game_key(cdp, *KEY_MENU_CONFIRM)
-        end = time.monotonic() + 30000 / 1000.0
-        last_battle: dict[str, Any] | None = None
-        while time.monotonic() < end:
-            battle = read_battle_diagnostics(cdp)
-            if isinstance(battle, dict):
-                last_battle = battle
-                last_action = battle.get("lastAction")
-                if isinstance(last_action, dict) and last_action.get("type") == "Skill" and last_action.get("status") == "Applied":
-                    return battle, False
-                if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
-                    return battle, False
-            cdp.wait_ms(100)
-        raise TimeoutError(f"Timed out waiting for direct attack after {time.monotonic() - action_start:.1f}s; last={last_battle}")
-    if battle.get("menuState") == "ActorCommand":
-        move_battle_cursor_to(cdp, "ActorCommand", 1)
-        press_game_key(cdp, *KEY_MENU_CONFIRM)
-        battle = wait_for_battle_menu_any(cdp, {"SkillList", "TargetSelect"}, 10000)
-        if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
-            return battle, False
-
-    if battle.get("menuState") != "SkillList":
-        raise RuntimeError(f"Expected ActorCommand before skill action, got {battle}")
-
-    move_battle_cursor_to(cdp, "SkillList", 0)
-    press_game_key(cdp, *KEY_MENU_CONFIRM)
-    battle = wait_for_battle_menu_any(cdp, {"TargetSelect", "PartyCommand", "ActorCommand", "SkillList"}, 10000)
-    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
-        return battle, False
-    if battle.get("menuState") != "TargetSelect":
-        return battle, False
-
+def confirm_battle_target_selection(
+    cdp: CdpClient,
+    battle: dict[str, Any],
+    output_dir: Path | None = None,
+    capture_vfx: bool = False,
+) -> tuple[dict[str, Any], bool]:
     if battle_cursor_for_state(battle, "TargetSelect") < 0:
-        raise RuntimeError(f"TargetSelect cursor is unavailable before confirming skill target: {battle}")
+        raise RuntimeError(f"TargetSelect cursor is unavailable before confirming target: {battle}")
+
+    actor_id = battle.get("currentActorId")
+    expected_actor_id = int(actor_id) if isinstance(actor_id, (int, float)) else None
     action_start = time.monotonic()
     press_game_key(cdp, *KEY_MENU_CONFIRM)
     end = time.monotonic() + 30000 / 1000.0
@@ -1208,7 +1337,7 @@ def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -
         if isinstance(battle, dict):
             last_battle = battle
             vfx = battle.get("vfx")
-            if isinstance(vfx, dict) and (
+            if capture_vfx and isinstance(vfx, dict) and (
                 int(vfx.get("scheduledEvents") or 0) > 0 or
                 int(vfx.get("pendingRequests") or 0) > 0 or
                 int(vfx.get("lastDrawCallCount") or 0) > 0 or
@@ -1220,11 +1349,46 @@ def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -
                     captured_vfx = True
             last_action = battle.get("lastAction")
             if isinstance(last_action, dict) and last_action.get("type") == "Skill" and last_action.get("status") == "Applied":
-                return battle, saw_vfx
+                action_actor_id = last_action.get("actorId")
+                if expected_actor_id is None or action_actor_id == expected_actor_id:
+                    return battle, saw_vfx
             if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
                 return battle, saw_vfx
         cdp.wait_ms(100)
-    raise TimeoutError(f"Timed out waiting for skill action after {time.monotonic() - action_start:.1f}s; last={last_battle}")
+    raise TimeoutError(f"Timed out waiting for target action after {time.monotonic() - action_start:.1f}s; last={last_battle}")
+
+
+def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -> tuple[dict[str, Any], bool]:
+    battle = wait_for_battle_player_input(cdp)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle, False
+    if battle.get("menuState") == "PartyCommand":
+        move_battle_cursor_to(cdp, "PartyCommand", 0)
+        press_game_key(cdp, *KEY_MENU_CONFIRM)
+        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect"}, 10000)
+    if battle.get("menuState") == "TargetSelect":
+        return confirm_battle_target_selection(cdp, battle)
+    if battle.get("menuState") == "ActorCommand":
+        move_battle_cursor_to(cdp, "ActorCommand", 1)
+        press_game_key(cdp, *KEY_MENU_CONFIRM)
+        battle = wait_for_battle_menu_any(cdp, {"SkillList", "TargetSelect"}, 10000)
+        if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+            return battle, False
+
+    if battle.get("menuState") == "TargetSelect":
+        return confirm_battle_target_selection(cdp, battle)
+    if battle.get("menuState") != "SkillList":
+        raise RuntimeError(f"Expected SkillList before skill action, got {battle}")
+
+    move_battle_cursor_to(cdp, "SkillList", 0)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    battle = wait_for_battle_menu_any(cdp, {"TargetSelect", "PartyCommand", "ActorCommand", "SkillList"}, 10000)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle, False
+    if battle.get("menuState") != "TargetSelect":
+        return battle, False
+
+    return confirm_battle_target_selection(cdp, battle, output_dir, capture_vfx=True)
 
 
 def run_battle_to_victory(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
@@ -1321,29 +1485,8 @@ def trigger_tool_action(cdp: CdpClient, output_dir: Path) -> None:
 
 
 def exercise_home_round_trip(cdp: CdpClient, output_dir: Path) -> None:
-    transition_start = len(cdp.state.logs)
-    move_player_right(cdp, hold_ms=100)
-    move_player_up(cdp, hold_ms=350)
-    cdp.wait_for_new_log(
-        "home exterior to interior",
-        "MapTransitionSystem: map transition 'home_exterior' -> 'home_interior'.",
-        transition_start,
-        20000,
-    )
-    cdp.wait_for_new_log("home_interior loaded", "MapManager: 已加载地图 'home_interior'", transition_start, 20000)
-    cdp.wait_ms(900)
-    cdp.screenshot(output_dir / "phase17-home-interior.png")
-
-    transition_start = len(cdp.state.logs)
-    move_player_down(cdp, hold_ms=220)
-    cdp.wait_for_new_log(
-        "home interior to exterior",
-        "MapTransitionSystem: map transition 'home_interior' -> 'home_exterior'.",
-        transition_start,
-        20000,
-    )
-    cdp.wait_for_new_log("home_exterior reloaded", "MapManager: 已加载地图 'home_exterior'", transition_start, 20000)
-    cdp.wait_ms(900)
+    enter_home_interior(cdp, output_dir, "phase17")
+    leave_home_interior(cdp, output_dir, "phase17")
     cdp.screenshot(output_dir / "phase17-home-exterior-return.png")
 
 
@@ -1365,49 +1508,320 @@ def trigger_merchant_dialogue(cdp: CdpClient, output_dir: Path) -> None:
     cdp.wait_ms(700)
     cdp.screenshot(output_dir / "phase17-merchant-dialogue.png")
 
+    shop_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_INTERACT, settle_ms=700)
+    cdp.wait_for_new_log("scripted merchant shop", "ShopMenuScene: opened", shop_start, 10000)
+    cdp.screenshot(output_dir / "phase17-merchant-shop-open.png")
+    press_game_key(cdp, *KEY_ESCAPE, settle_ms=700)
+
     move_player_left(cdp, hold_ms=900)
     cdp.wait_ms(700)
     cdp.screenshot(output_dir / "phase17-after-dialogue-distance.png")
 
 
-def exercise_full_rpg_battle_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+def press_interact_until_log(
+    cdp: CdpClient,
+    label: str,
+    expected_log: str,
+    presses: int,
+    timeout_ms: int = 15000,
+) -> None:
+    log_start = len(cdp.state.logs)
+    for _ in range(presses):
+        press_game_key(cdp, *KEY_INTERACT, settle_ms=450)
+        if has_new_log(cdp, expected_log, log_start):
+            return
+    cdp.wait_for_new_log(label, expected_log, log_start, timeout_ms)
+
+
+def ensure_home_exterior_from_town(cdp: CdpClient, output_dir: Path, label: str) -> None:
+    if (read_gameplay_diagnostics(cdp) or {}).get("map") == "home_exterior":
+        return
+    transition_start = len(cdp.state.logs)
+    move_player_to(cdp, 20.0, 200.0, map_name="town", tolerance=10.0, timeout_ms=60000)
+    move_player_left(cdp, hold_ms=700)
+    cdp.wait_for_new_log(
+        f"{label} town to home exterior",
+        "MapTransitionSystem: map transition 'town' -> 'home_exterior'.",
+        transition_start,
+        30000,
+    )
+    cdp.wait_for_new_log("home_exterior loaded", "MapManager: 已加载地图 'home_exterior'", transition_start, 30000)
+    wait_for_runtime_player(cdp, "home_exterior", 20000)
+    cdp.wait_ms(800)
+    cdp.screenshot(output_dir / f"{label}-home-exterior-return.png")
+
+
+def ensure_town_from_home_exterior(cdp: CdpClient, output_dir: Path, label: str) -> None:
+    if (read_gameplay_diagnostics(cdp) or {}).get("map") == "town":
+        return
+    approach_home_exterior_town_gate(cdp, timeout_ms=30000)
+    transition_start = len(cdp.state.logs)
+    move_player_right(cdp, hold_ms=500)
+    cdp.wait_for_new_log(
+        f"{label} home exterior to town",
+        "MapTransitionSystem: map transition 'home_exterior' -> 'town'.",
+        transition_start,
+        30000,
+    )
+    wait_for_web_package_loaded(
+        cdp,
+        "town-map",
+        "town package",
+        "WebAssetPackage: package 'town-map' loaded",
+        transition_start,
+        30000,
+    )
+    cdp.wait_for_new_log("town loaded", "MapManager: 已加载地图 'town'", transition_start, 30000)
+    wait_for_runtime_player(cdp, "town", 20000)
+    cdp.wait_ms(900)
+    cdp.screenshot(output_dir / f"{label}-town-entry.png")
+
+
+def enter_home_interior(cdp: CdpClient, output_dir: Path, label: str) -> None:
+    if (read_gameplay_diagnostics(cdp) or {}).get("map") == "home_interior":
+        return
+    move_player_to(cdp, 323.0, 142.0, map_name="home_exterior", tolerance=3.0, timeout_ms=18000)
+    cdp.screenshot(output_dir / f"{label}-home-exterior-entry.png")
+    transition_start = len(cdp.state.logs)
+    move_player_up(cdp, hold_ms=520)
+    cdp.wait_for_new_log(
+        f"{label} home exterior to interior",
+        "MapTransitionSystem: map transition 'home_exterior' -> 'home_interior'.",
+        transition_start,
+        30000,
+    )
+    cdp.wait_for_new_log("home_interior loaded", "MapManager: 已加载地图 'home_interior'", transition_start, 30000)
+    wait_for_runtime_player(cdp, "home_interior", 20000)
+    cdp.wait_ms(800)
+    cdp.screenshot(output_dir / f"{label}-home-interior.png")
+
+
+def leave_home_interior(cdp: CdpClient, output_dir: Path, label: str) -> None:
+    current_map = (read_gameplay_diagnostics(cdp) or {}).get("map")
+    if current_map == "home_exterior":
+        return
+    if current_map != "home_interior":
+        raise RuntimeError(f"Expected home_interior before leaving house, got {current_map!r}")
+
+    transition_start = len(cdp.state.logs)
+    move_player_down(cdp, hold_ms=260)
+    cdp.wait_for_new_log(
+        f"{label} home interior to exterior",
+        "MapTransitionSystem: map transition 'home_interior' -> 'home_exterior'.",
+        transition_start,
+        30000,
+    )
+    cdp.wait_for_new_log("home_exterior loaded", "MapManager: 已加载地图 'home_exterior'", transition_start, 30000)
+    wait_for_runtime_player(cdp, "home_exterior", 20000)
+    cdp.wait_ms(800)
+    cdp.screenshot(output_dir / f"{label}-home-exterior.png")
+
+
+def reset_home_exterior_via_home_interior(cdp: CdpClient, output_dir: Path, label: str) -> None:
+    if (read_gameplay_diagnostics(cdp) or {}).get("map") == "home_exterior":
+        enter_home_interior(cdp, output_dir, label)
+    leave_home_interior(cdp, output_dir, label)
+
+
+def open_scripted_shop(cdp: CdpClient, output_dir: Path) -> None:
+    focus_gameplay_canvas(cdp)
+    move_player_to(cdp, 350.0, 206.0, map_name="home_exterior", tolerance=10.0, timeout_ms=24000)
+    move_player_right(cdp, hold_ms=80)
+    cdp.wait_ms(300)
+    cdp.screenshot(output_dir / "phase26-shop-merchant-approach.png")
+    press_interact_until_log(cdp, "shop menu opened", "ShopMenuScene: opened", presses=2, timeout_ms=15000)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase26-shop-open.png")
+
+
+def close_shop_for_diagnostics(cdp: CdpClient) -> None:
+    press_game_key(cdp, *KEY_ESCAPE, settle_ms=900)
+    focus_gameplay_canvas(cdp)
+
+
+def exercise_full_rpg_shop_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    gameplay_before = read_gameplay_diagnostics(cdp) or {}
+    gold_before = player_gold(gameplay_before)
+    potion_before = inventory_count(gameplay_before, "potion")
+
+    open_scripted_shop(cdp, output_dir)
+
+    buy_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log("shop buy completed", "ShopMenuScene: buy completed", buy_start, 10000)
+    close_shop_for_diagnostics(cdp)
+    gameplay_after_buy = wait_for_gameplay_condition(
+        cdp,
+        "shop buy diagnostics",
+        lambda gameplay: player_gold(gameplay) < gold_before and inventory_count(gameplay, "potion") == potion_before + 1,
+        10000,
+    )
+
+    open_scripted_shop(cdp, output_dir)
+    sell_start = len(cdp.state.logs)
+    for key in (
+        KEY_MENU_LEFT,
+        KEY_MENU_UP,
+        KEY_MENU_RIGHT,
+        KEY_MENU_DOWN,
+        KEY_MENU_DOWN,
+    ):
+        press_game_key(cdp, *key)
+    for _ in range(5):
+        press_game_key(cdp, *KEY_MENU_DOWN, settle_ms=120)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log("shop sell completed", "ShopMenuScene: sell completed", sell_start, 10000)
+    close_shop_for_diagnostics(cdp)
+    gold_after_buy = player_gold(gameplay_after_buy)
+    gameplay_after_sell = wait_for_gameplay_condition(
+        cdp,
+        "shop sell diagnostics",
+        lambda gameplay: player_gold(gameplay) > gold_after_buy and inventory_count(gameplay, "potion") == potion_before,
+        10000,
+    )
+
+    open_scripted_shop(cdp, output_dir)
+    fail_start = len(cdp.state.logs)
+    for key in (
+        KEY_MENU_RIGHT,
+    ):
+        press_game_key(cdp, *key)
+    for _ in range(9):
+        press_game_key(cdp, *KEY_MENU_RIGHT, settle_ms=120)
+    press_game_key(cdp, *KEY_MENU_DOWN)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log("shop buy failed", "ShopMenuScene: buy failed", fail_start, 10000)
+    close_shop_for_diagnostics(cdp)
+    gameplay_after_failure = read_gameplay_diagnostics(cdp) or {}
+    if player_gold(gameplay_after_failure) != player_gold(gameplay_after_sell):
+        raise RuntimeError(
+            f"Shop failed buy changed gold: before={player_gold(gameplay_after_sell)} after={player_gold(gameplay_after_failure)}"
+        )
+
+    cdp.screenshot(output_dir / "phase26-shop-after-transactions.png")
+    return {
+        "gold_before": gold_before,
+        "potion_before": potion_before,
+        "gold_after_buy": player_gold(gameplay_after_buy),
+        "potion_after_buy": inventory_count(gameplay_after_buy, "potion"),
+        "gold_after_sell": player_gold(gameplay_after_sell),
+        "potion_after_sell": inventory_count(gameplay_after_sell, "potion"),
+        "failure_checked": True,
+    }
+
+
+def exercise_full_rpg_quest_accept_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    focus_gameplay_canvas(cdp)
+    approach_home_exterior_quest_giver(cdp, timeout_ms=30000)
+    move_player_down(cdp, hold_ms=80)
+    cdp.wait_ms(300)
+    cdp.screenshot(output_dir / "phase26-quest-giver-approach.png")
+    press_interact_until_log(cdp, "quest offer opened", "QuestOfferScene: opened", presses=3, timeout_ms=15000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase26-quest-offer-open.png")
+    accept_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log(
+        "quest accepted",
+        "QuestInteractionSystem: quest accepted quest_id='quest.village.goblin_cleanup'.",
+        accept_start,
+        10000,
+    )
+    gameplay = wait_for_gameplay_condition(
+        cdp,
+        "accepted quest diagnostics",
+        lambda state: "quest.village.goblin_cleanup" in active_quest_ids(state),
+        10000,
+    )
+    return {
+        "accepted": True,
+        "progress": quest_progress(gameplay, "quest.village.goblin_cleanup::kill_slimes"),
+    }
+
+
+def exercise_full_rpg_recruit_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    focus_gameplay_canvas(cdp)
+    approach_home_exterior_recruit(cdp, timeout_ms=30000)
+    move_player_down(cdp, hold_ms=80)
+    cdp.wait_ms(300)
+    cdp.screenshot(output_dir / "phase26-recruit-approach.png")
+    press_interact_until_log(cdp, "recruit offer opened", "RecruitOfferScene: opened", presses=5, timeout_ms=20000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase26-recruit-offer-open.png")
+    recruit_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log(
+        "party recruited",
+        "PartyRecruitmentSystem: recruited actor_id='actor.lyria'.",
+        recruit_start,
+        10000,
+    )
+    gameplay = wait_for_gameplay_condition(
+        cdp,
+        "recruit diagnostics",
+        lambda state: "actor.lyria" in party_actor_ids(state, "recruitedActorIds"),
+        10000,
+    )
+    return {
+        "recruited_actor": "actor.lyria",
+        "active_actor_ids": party_actor_ids(gameplay, "activeActorIds"),
+        "recruited_actor_ids": party_actor_ids(gameplay, "recruitedActorIds"),
+    }
+
+
+def exercise_full_rpg_battle_flow(
+    cdp: CdpClient,
+    output_dir: Path,
+    preferred_troop_id: str | None = "troop.slime_single",
+    screenshot_prefix: str = "phase25",
+) -> dict[str, Any]:
     focus_gameplay_canvas(cdp)
     gameplay_before = read_gameplay_diagnostics(cdp) or {}
     player_before = gameplay_before.get("player") if isinstance(gameplay_before.get("player"), dict) else {}
     gold_before = int(player_before.get("gold") or 0) if isinstance(player_before, dict) else 0
 
-    move_player_to(cdp, 360.0, 138.0, map_name="home_exterior", tolerance=8.0, timeout_ms=18000)
-    transition_start = len(cdp.state.logs)
-    move_player_right(cdp, hold_ms=500)
-    cdp.wait_for_new_log(
-        "home exterior to town",
-        "MapTransitionSystem: map transition 'home_exterior' -> 'town'.",
-        transition_start,
-        30000,
-    )
-    cdp.wait_for_new_log("town package", "WebAssetPackage: package 'town-map' loaded", transition_start, 30000)
-    cdp.wait_for_new_log("town loaded", "MapManager: 已加载地图 'town'", transition_start, 30000)
-    wait_for_runtime_player(cdp, "town", 20000)
-    cdp.wait_ms(1000)
-    cdp.screenshot(output_dir / "phase25-town-entry.png")
+    ensure_town_from_home_exterior(cdp, output_dir, screenshot_prefix)
 
     battle_start = len(cdp.state.logs)
-    encounter = trigger_town_encounter_from_diagnostics(cdp, output_dir, battle_start)
+    encounter = trigger_town_encounter_from_diagnostics(
+        cdp,
+        output_dir,
+        battle_start,
+        preferred_troop_id=preferred_troop_id,
+        screenshot_prefix=screenshot_prefix,
+    )
     cdp.wait_for_new_log("battle encounter trigger", "EnemyEncounterSystem: triggering battle", battle_start, 30000)
-    cdp.wait_for_new_log("battle core package", "WebAssetPackage: package 'battle-core' loaded", battle_start, 30000)
-    cdp.wait_for_new_log("vfx core package", "WebAssetPackage: package 'vfx-core' loaded", battle_start, 30000)
+    wait_for_web_package_loaded(
+        cdp,
+        "battle-core",
+        "battle core package",
+        "WebAssetPackage: package 'battle-core' loaded",
+        battle_start,
+        30000,
+    )
+    wait_for_web_package_loaded(
+        cdp,
+        "vfx-core",
+        "vfx core package",
+        "WebAssetPackage: package 'vfx-core' loaded",
+        battle_start,
+        30000,
+    )
     battle = wait_for_battle_diagnostics(cdp, 30000)
     enemy = battle.get("enemy")
     if not isinstance(enemy, dict) or int(enemy.get("total") or 0) <= 0:
         raise RuntimeError(f"Battle diagnostics did not report enemies: {battle}")
     cdp.wait_ms(1000)
-    cdp.screenshot(output_dir / "phase25-battle-entry.png")
+    cdp.screenshot(output_dir / f"{screenshot_prefix}-battle-entry.png")
 
     victory_battle = run_battle_to_victory(cdp, output_dir)
     cdp.wait_for_new_log("battle returned to town", "GameScene: Battle ended, outcome=Victory", battle_start, 30000)
     wait_for_runtime_player(cdp, "town", 30000)
     cdp.wait_ms(1000)
-    cdp.screenshot(output_dir / "phase25-town-after-victory.png")
+    cdp.screenshot(output_dir / f"{screenshot_prefix}-town-after-victory.png")
 
     gameplay_after = read_gameplay_diagnostics(cdp) or {}
     player_after = gameplay_after.get("player") if isinstance(gameplay_after.get("player"), dict) else {}
@@ -1423,6 +1837,210 @@ def exercise_full_rpg_battle_flow(cdp: CdpClient, output_dir: Path) -> dict[str,
         "gold_before": gold_before,
         "gold_after": gold_after,
         "last_battle": victory_battle,
+    }
+
+
+def exercise_full_rpg_quest_battle_and_turn_in_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    before = read_gameplay_diagnostics(cdp) or {}
+    if "quest.village.goblin_cleanup" not in active_quest_ids(before):
+        raise RuntimeError(f"Quest battle flow requires accepted quest: {before}")
+
+    required_slime_kills = 3
+    battle_flows: list[dict[str, Any]] = []
+    gameplay_after_battle = before
+    for battle_index in range(required_slime_kills):
+        if quest_progress(gameplay_after_battle, "quest.village.goblin_cleanup::kill_slimes") >= required_slime_kills:
+            break
+        preferred_troop_id = "troop.slime" if battle_index == 0 else "troop.slime_single"
+        battle_flows.append(
+            exercise_full_rpg_battle_flow(
+                cdp,
+                output_dir,
+                preferred_troop_id=preferred_troop_id,
+                screenshot_prefix=f"phase26-quest-battle-{battle_index + 1}",
+            )
+        )
+        gameplay_after_battle = wait_for_gameplay_condition(
+            cdp,
+            "quest battle progress",
+            lambda state: quest_progress(state, "quest.village.goblin_cleanup::kill_slimes") >= battle_index + 1,
+            10000,
+        )
+        if quest_progress(gameplay_after_battle, "quest.village.goblin_cleanup::kill_slimes") < required_slime_kills:
+            ensure_home_exterior_from_town(cdp, output_dir, f"phase26-quest-battle-{battle_index + 1}-reload")
+    if quest_progress(gameplay_after_battle, "quest.village.goblin_cleanup::kill_slimes") < required_slime_kills:
+        raise RuntimeError(f"Quest battle flow did not reach kill_slimes target: {gameplay_after_battle}")
+
+    ensure_home_exterior_from_town(cdp, output_dir, "phase26-quest")
+    focus_gameplay_canvas(cdp)
+    approach_home_exterior_quest_giver(cdp, timeout_ms=30000)
+    move_player_down(cdp, hold_ms=80)
+    cdp.wait_ms(300)
+    cdp.screenshot(output_dir / "phase26-quest-turn-in-approach.png")
+    press_interact_until_log(
+        cdp,
+        "quest completed",
+        "QuestInteractionSystem: quest completed quest_id='quest.village.goblin_cleanup'",
+        presses=3,
+        timeout_ms=15000,
+    )
+    gameplay_after_turn_in = wait_for_gameplay_condition(
+        cdp,
+        "completed quest diagnostics",
+        lambda state: "quest.village.goblin_cleanup" in completed_quest_ids(state),
+        10000,
+    )
+    return {
+        "battle_flows": battle_flows,
+        "progress_after_battle": quest_progress(gameplay_after_battle, "quest.village.goblin_cleanup::kill_slimes"),
+        "completed": True,
+        "gold_after_turn_in": player_gold(gameplay_after_turn_in),
+        "potion_after_turn_in": inventory_count(gameplay_after_turn_in, "potion"),
+    }
+
+
+def exercise_full_rpg_rest_and_wardrobe_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    enter_home_interior(cdp, output_dir, "phase26-rest")
+
+    gameplay_before_rest = read_gameplay_diagnostics(cdp) or {}
+    player_before_rest = actor_runtime_state(gameplay_before_rest, "actor.player")
+    time_before_rest = gameplay_time_minutes(gameplay_before_rest)
+
+    move_player_to(cdp, 193.0, 215.0, map_name="home_interior", tolerance=6.0, timeout_ms=24000)
+    move_player_right(cdp, hold_ms=90)
+    rest_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_INTERACT)
+    cdp.wait_for_new_log("rest dialog opened", "RestDialogScene: opened.", rest_start, 10000)
+    cdp.wait_ms(500)
+    cdp.screenshot(output_dir / "phase26-rest-open.png")
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    cdp.wait_for_new_log("rest confirmed", "RestSystem: rest confirmed hours=", rest_start, 10000)
+    gameplay_after_rest = wait_for_gameplay_condition(
+        cdp,
+        "rest diagnostics",
+        lambda state: gameplay_time_minutes(state) > time_before_rest,
+        10000,
+    )
+    player_after_rest = actor_runtime_state(gameplay_after_rest, "actor.player")
+    if player_before_rest and player_after_rest:
+        if player_after_rest["currentHp"] < player_before_rest["currentHp"]:
+            raise RuntimeError(f"Rest reduced player HP: before={player_before_rest} after={player_after_rest}")
+        if player_after_rest["currentMp"] < player_before_rest["currentMp"]:
+            raise RuntimeError(f"Rest reduced player MP: before={player_before_rest} after={player_after_rest}")
+
+    gameplay_before_wardrobe = read_gameplay_diagnostics(cdp) or {}
+    signature_before = appearance_signature(gameplay_before_wardrobe)
+    move_player_to(cdp, 181.0, 72.0, map_name="home_interior", tolerance=10.0, timeout_ms=24000)
+    move_player_up(cdp, hold_ms=90)
+    wardrobe_start = len(cdp.state.logs)
+    press_game_key(cdp, *KEY_INTERACT)
+    cdp.wait_for_new_log("wardrobe opened", "AppearanceCustomizeScene: opened mode=closet.", wardrobe_start, 10000)
+    cdp.wait_ms(700)
+    cdp.screenshot(output_dir / "phase26-wardrobe-open.png")
+    cdp.click_logical(373, 248, hold_ms=80)
+    cdp.wait_for_new_log("wardrobe randomized", "AppearanceCustomizeScene: randomized closet appearance.", wardrobe_start, 10000)
+    cdp.wait_ms(300)
+    cdp.click_logical(373, 283, hold_ms=80)
+    cdp.wait_for_new_log("wardrobe confirmed", "AppearanceCustomizeScene: confirmed closet appearance.", wardrobe_start, 10000)
+    gameplay_after_wardrobe = wait_for_gameplay_condition(
+        cdp,
+        "wardrobe appearance diagnostics",
+        lambda state: appearance_signature(state) and appearance_signature(state) != signature_before,
+        10000,
+    )
+    cdp.wait_ms(800)
+    cdp.screenshot(output_dir / "phase26-wardrobe-after-confirm.png")
+
+    return {
+        "time_before_rest": time_before_rest,
+        "time_after_rest": gameplay_time_minutes(gameplay_after_rest),
+        "player_before_rest": player_before_rest,
+        "player_after_rest": player_after_rest,
+        "appearance_before": signature_before,
+        "appearance_after": appearance_signature(gameplay_after_wardrobe),
+    }
+
+
+def exercise_full_rpg_save_reload_verify(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    gameplay_before_save = read_gameplay_diagnostics(cdp) or {}
+    pre_reload_diagnostics = read_web_release_diagnostics(cdp)
+    expected_signature = appearance_signature(gameplay_before_save)
+    expected_completed = completed_quest_ids(gameplay_before_save)
+    expected_recruited = party_actor_ids(gameplay_before_save, "recruitedActorIds")
+    expected_map = str(gameplay_before_save.get("map") or "home_interior")
+
+    pre_reload_failures = validate_web_release_diagnostics(
+        pre_reload_diagnostics,
+        expected_map=expected_map,
+        required_package_ids=FULL_RPG_RUNTIME_PACKAGE_IDS,
+    )
+    if pre_reload_failures:
+        raise RuntimeError(f"Full RPG diagnostics gate failed before save reload: {pre_reload_failures}")
+
+    save_slot0(cdp, output_dir, "phase26-full-rpg-save", overwrite=True)
+
+    reload_log_start = len(cdp.state.logs)
+    cdp.call("Page.reload", {"ignoreCache": True}, timeout=5.0)
+    cdp.wait_for_new_log(
+        "phase26 persistent storage after reload",
+        "GameApp: Web persistent storage is mounted and populated.",
+        reload_log_start,
+        30000,
+    )
+    cdp.wait_ms(800)
+    cdp.screenshot(output_dir / "phase26-reload-title.png")
+    cdp.click_logical(320, 259)
+    cdp.wait_ms(1400)
+    cdp.screenshot(output_dir / "phase26-reload-slot-select.png")
+    cdp.click_logical(236, 75)
+    cdp.wait_for_log("phase26 save load", f"SaveService: 已载入存档 '{expected_map}'", 20000)
+    cdp.wait_for_log("phase26 map after load", f"MapManager: 已加载地图 '{expected_map}'", 20000)
+    wait_for_runtime_player(cdp, expected_map, 20000)
+    cdp.wait_ms(1000)
+    cdp.screenshot(output_dir / "phase26-reload-after-load.png")
+
+    gameplay_after_load = wait_for_gameplay_condition(
+        cdp,
+        "phase26 save reload diagnostics",
+        lambda state: (
+            state.get("map") == expected_map and
+            appearance_signature(state) == expected_signature and
+            "quest.village.goblin_cleanup" in completed_quest_ids(state) and
+            "actor.lyria" in party_actor_ids(state, "recruitedActorIds")
+        ),
+        15000,
+    )
+    return {
+        "map": expected_map,
+        "appearance_signature": appearance_signature(gameplay_after_load),
+        "completed_quests": completed_quest_ids(gameplay_after_load),
+        "recruited_actor_ids": party_actor_ids(gameplay_after_load, "recruitedActorIds"),
+        "expected_completed_quests": expected_completed,
+        "expected_recruited_actor_ids": expected_recruited,
+        "pre_reload_diagnostic_gate": {
+            "status": "passed",
+            "required_packages": list(FULL_RPG_RUNTIME_PACKAGE_IDS),
+        },
+    }
+
+
+def exercise_full_rpg_basic_flows(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    reset_home_exterior_via_home_interior(cdp, output_dir, "phase26-rpg-reset")
+    shop_flow = exercise_full_rpg_shop_flow(cdp, output_dir)
+    quest_accept_flow = exercise_full_rpg_quest_accept_flow(cdp, output_dir)
+    reset_home_exterior_via_home_interior(cdp, output_dir, "phase26-rpg-post-quest-reset")
+    recruit_flow = exercise_full_rpg_recruit_flow(cdp, output_dir)
+    quest_turn_in_flow = exercise_full_rpg_quest_battle_and_turn_in_flow(cdp, output_dir)
+    rest_wardrobe_flow = exercise_full_rpg_rest_and_wardrobe_flow(cdp, output_dir)
+    save_reload_flow = exercise_full_rpg_save_reload_verify(cdp, output_dir)
+    return {
+        "status": "full-rpg-basic-flows-passed",
+        "shop_flow": shop_flow,
+        "quest_accept_flow": quest_accept_flow,
+        "recruit_flow": recruit_flow,
+        "quest_turn_in_flow": quest_turn_in_flow,
+        "rest_wardrobe_flow": rest_wardrobe_flow,
+        "save_reload_flow": save_reload_flow,
     }
 
 
@@ -1669,11 +2287,12 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
     trigger_merchant_dialogue(cdp, output_dir)
     interaction_ready = now_ms()
 
-    move_player_down(cdp)
+    move_player_down(cdp, hold_ms=250)
     cdp.screenshot(output_dir / "phase14-chromium-after-dialogue-dismiss.png")
     first_position = save_slot0(cdp, output_dir, "initial-save", overwrite=False)
     resume_gameplay(cdp, output_dir, "initial-save")
-    move_player_up(cdp)
+    approach_home_exterior_town_gate(cdp, timeout_ms=30000)
+    cdp.screenshot(output_dir / "phase14-moved-save-position.png")
     moved_position = save_slot0(cdp, output_dir, "moved-save", overwrite=True, changed_from=first_position)
     movement_delta = {
         "x": moved_position["x"] - first_position["x"],
@@ -1707,13 +2326,13 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
     if not isinstance(loaded_player, dict) or loaded_player.get("map_name") != "home_exterior":
         raise RuntimeError(f"Loaded save did not report home_exterior: {loaded_player}")
 
-    full_rpg_battle_flow: dict[str, Any] | None = None
-    full_rpg_battle_started: int | None = None
-    full_rpg_battle_finished: int | None = None
+    full_rpg_basic_flows: dict[str, Any] | None = None
+    full_rpg_started: int | None = None
+    full_rpg_finished: int | None = None
     if profile == "full-rpg":
-        full_rpg_battle_started = now_ms()
-        full_rpg_battle_flow = exercise_full_rpg_battle_flow(cdp, output_dir)
-        full_rpg_battle_finished = now_ms()
+        full_rpg_started = now_ms()
+        full_rpg_basic_flows = exercise_full_rpg_basic_flows(cdp, output_dir)
+        full_rpg_finished = now_ms()
 
     package_responses = [
         response for response in cdp.state.responses
@@ -1775,8 +2394,8 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
         "gameplay_flow": human_ms(map_ready, interaction_ready),
         "reload_load_to_map": human_ms(reload_started, load_ready),
     }
-    if full_rpg_battle_started is not None and full_rpg_battle_finished is not None:
-        timings["full_rpg_battle_flow"] = human_ms(full_rpg_battle_started, full_rpg_battle_finished)
+    if full_rpg_started is not None and full_rpg_finished is not None:
+        timings["full_rpg_basic_flows"] = human_ms(full_rpg_started, full_rpg_finished)
     warning_summary = summarize_warnings(cdp.state.logs)
     performance_budget = summarize_performance_budget(timings)
     persistent_storage = read_persistent_storage_diagnostics(cdp)
@@ -1787,8 +2406,9 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
         raise RuntimeError(f"Expected user settings sync completion: {persistent_storage_logs}")
 
     diagnostics = read_web_release_diagnostics(cdp)
-    expected_diagnostic_map = "town" if profile == "full-rpg" else "home_exterior"
-    required_diagnostic_packages = FULL_RPG_RUNTIME_PACKAGE_IDS if profile == "full-rpg" else DEMO_RUNTIME_PACKAGE_IDS
+    current_gameplay = read_gameplay_diagnostics(cdp) or {}
+    expected_diagnostic_map = str(current_gameplay.get("map") or "home_exterior")
+    required_diagnostic_packages = DEMO_RUNTIME_PACKAGE_IDS
     diagnostic_failures = validate_web_release_diagnostics(
         diagnostics,
         expected_map=expected_diagnostic_map,
@@ -1820,17 +2440,20 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
             "battle_skill_vfx",
             "battle_victory_return_to_map",
             "battle_reward_writeback",
+            "shop_buy_sell_failure_feedback",
+            "quest_accept_progress_turn_in_reward",
+            "recruit_accept_party_writeback",
+            "rest_recovery_time_advance",
+            "wardrobe_appearance_change",
+            "full_rpg_save_reload_verify",
         ])
         full_rpg_profile = {
-            "status": "battle-ready",
-            "battle_flow": full_rpg_battle_flow,
+            "status": "basic-rpg-flows-ready",
+            "basic_flows": full_rpg_basic_flows,
             "pending_flows": [
-                "shop_flow",
-                "quest_flow",
-                "recruit_flow",
-                "rest_flow",
-                "wardrobe_flow",
-                "save_reload_verify_full_rpg",
+                "battle_attack_item_guard_escape_matrix",
+                "battle_defeat_flow",
+                "battle_defeated_encounter_save_reload_matrix",
             ],
         }
 

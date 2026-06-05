@@ -237,11 +237,14 @@ void QuestOfferScene::shutdownUI() {
 }
 
 void QuestOfferScene::connectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_confirm"_hs).connect<&QuestOfferScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&QuestOfferScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&QuestOfferScene::onLanguageChanged>(this);
+    spdlog::info("QuestOfferScene: opened quest_id='{}'.", quest_.id_);
 }
 
 void QuestOfferScene::disconnectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_confirm"_hs).disconnect<&QuestOfferScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&QuestOfferScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().disconnect<&QuestOfferScene::onLanguageChanged>(this);
 }
@@ -268,6 +271,11 @@ void QuestOfferScene::focusDefaultAction() {
     }
 }
 
+bool QuestOfferScene::onMenuConfirmPressed() {
+    onAccept();
+    return true;
+}
+
 bool QuestOfferScene::onMenuCancelPressed() {
     onDecline();
     return true;
@@ -284,6 +292,11 @@ void QuestOfferScene::onLanguageChanged(const game::defs::LanguageChangedEvent&)
 }
 
 void QuestOfferScene::onAccept() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
+    spdlog::info("QuestOfferScene: accepted quest_id='{}'.", quest_.id_);
     context_.getDispatcher().trigger(game::defs::AcceptQuestCommand{
         .player = player_,
         .giver = giver_,
@@ -293,6 +306,10 @@ void QuestOfferScene::onAccept() {
 }
 
 void QuestOfferScene::onDecline() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
     requestPopScene();
 }
 

@@ -285,7 +285,7 @@
                  "width":0,
                  "x":311,
                  "y":167.862478777589
-                }, 
+                },
                 {
                  "gid":2840,
                  "height":48,
@@ -559,16 +559,16 @@
                          "value":"actor.lyria"
                         },
                         {
-                         "name":"scripted_interaction",
-                         "type":"bool",
-                         "value":true
+                         "name":"wander_radius_override",
+                         "type":"float",
+                         "value":0
                         }],
                  "rotation":0,
                  "type":"actor",
                  "visible":true,
                  "width":0,
-                 "x":95,
-                 "y":274.5
+                 "x":248,
+                 "y":184
                 }, 
                 {
                  "gid":2952,
@@ -654,8 +654,8 @@
                  "type":"actor",
                  "visible":true,
                  "width":0,
-                 "x":503,
-                 "y":175.5
+                 "x":296,
+                 "y":220
                 }, 
                 {
                  "height":0,

@@ -146,6 +146,7 @@ bool ShopMenuScene::init() {
     }
 
     connectRuntimeListeners();
+    spdlog::info("ShopMenuScene: opened shop_id='{}'.", shop_id_);
     return true;
 }
 
@@ -1092,6 +1093,10 @@ void ShopMenuScene::confirmBuy() {
             .mode = ShopMenuMode::Buy,
             .failure_reason = active_buy_preview_.failure_reason};
         refreshStatusText();
+        spdlog::info(
+            "ShopMenuScene: buy failed shop_id='{}' reason={}.",
+            shop_id_,
+            static_cast<int>(active_buy_preview_.failure_reason));
         return;
     }
 
@@ -1108,11 +1113,20 @@ void ShopMenuScene::confirmBuy() {
             .item_name_key = itemNameKey(*item),
             .item_name_fallback = itemNameFallback(*item, buy_entry->item_id_),
             .quantity = result.resolved_quantity};
+        spdlog::info(
+            "ShopMenuScene: buy completed shop_id='{}' item_id='{}' quantity={}.",
+            shop_id_,
+            buy_entry->item_id_,
+            result.resolved_quantity);
     } else {
         status_override_ = StatusOverride{
             .kind = StatusOverrideKind::Failure,
             .mode = ShopMenuMode::Buy,
             .failure_reason = result.failure_reason};
+        spdlog::info(
+            "ShopMenuScene: buy failed shop_id='{}' reason={}.",
+            shop_id_,
+            static_cast<int>(result.failure_reason));
     }
 
     markTradeListsDirty();
@@ -1135,6 +1149,10 @@ void ShopMenuScene::confirmSell() {
             .mode = ShopMenuMode::Sell,
             .failure_reason = active_sell_preview_.failure_reason};
         refreshStatusText();
+        spdlog::info(
+            "ShopMenuScene: sell failed shop_id='{}' reason={}.",
+            shop_id_,
+            static_cast<int>(active_sell_preview_.failure_reason));
         return;
     }
 
@@ -1151,11 +1169,20 @@ void ShopMenuScene::confirmSell() {
             .item_name_key = itemNameKey(*item),
             .item_name_fallback = itemNameFallback(*item, item->id_str_),
             .quantity = result.resolved_quantity};
+        spdlog::info(
+            "ShopMenuScene: sell completed shop_id='{}' item_id='{}' quantity={}.",
+            shop_id_,
+            item->id_str_,
+            result.resolved_quantity);
     } else {
         status_override_ = StatusOverride{
             .kind = StatusOverrideKind::Failure,
             .mode = ShopMenuMode::Sell,
             .failure_reason = result.failure_reason};
+        spdlog::info(
+            "ShopMenuScene: sell failed shop_id='{}' reason={}.",
+            shop_id_,
+            static_cast<int>(result.failure_reason));
     }
 
     markTradeListsDirty();

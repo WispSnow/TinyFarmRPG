@@ -27,6 +27,7 @@
 #include "engine/system/render_system.h"
 #include "engine/system/ysort_system.h"
 #include "game/component/actor_identity_component.h"
+#include "game/component/appearance_component.h"
 #include "game/component/inventory_component.h"
 #include "game/component/enemy_encounter_component.h"
 #include "game/component/map_component.h"
@@ -41,6 +42,7 @@
 #include "game/data/audio_cue_catalog.h"
 #include "game/data/battle_background_id.h"
 #include "game/data/game_time.h"
+#include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
@@ -143,6 +145,91 @@ const glm::vec2 DEFEAT_RESPAWN_FALLBACK_POSITION{179.75F, 201.0F};
     }
     return result;
 }
+
+[[nodiscard]] std::string makeKeyValueRowsForWebDiagnostics(const std::unordered_map<std::string, int>& values) {
+    std::vector<std::string> rows{};
+    rows.reserve(values.size());
+    for (const auto& [key, value] : values) {
+        rows.push_back(key + "\t" + std::to_string(value));
+    }
+    std::sort(rows.begin(), rows.end());
+    return joinForWebDiagnostics(rows);
+}
+
+[[nodiscard]] std::string makeInventoryRowsForWebDiagnostics(
+    entt::registry& registry,
+    const entt::entity player,
+    const game::data::ItemCatalog* item_catalog) {
+    const auto* inventory = registry.try_get<game::component::InventoryComponent>(player);
+    if (!inventory) {
+        return {};
+    }
+
+    std::unordered_map<std::string, int> counts{};
+    for (const auto& slot : inventory->slots_) {
+        if (slot.empty()) {
+            continue;
+        }
+        std::string item_id = "hash:" + std::to_string(slot.item_id_);
+        if (item_catalog) {
+            if (const auto* item = item_catalog->findItem(slot.item_id_); item && !item->id_str_.empty()) {
+                item_id = item->id_str_;
+            }
+        }
+        counts[item_id] += slot.count_;
+    }
+    return makeKeyValueRowsForWebDiagnostics(counts);
+}
+
+[[nodiscard]] std::string makeRuntimeStateRowsForWebDiagnostics(
+    const game::component::PartyRuntimeStatsComponent* runtime_stats) {
+    if (!runtime_stats) {
+        return {};
+    }
+
+    std::vector<std::string> rows{};
+    rows.reserve(runtime_stats->states_by_actor_id_.size());
+    for (const auto& [actor_id, state] : runtime_stats->states_by_actor_id_) {
+        rows.push_back(
+            actor_id + "\t" +
+            std::to_string(state.current_hp) + "\t" +
+            std::to_string(state.current_mp) + "\t" +
+            std::to_string(state.level) + "\t" +
+            std::to_string(state.total_exp));
+    }
+    std::sort(rows.begin(), rows.end());
+    return joinForWebDiagnostics(rows);
+}
+
+[[nodiscard]] std::string makeAppearanceRowsForWebDiagnostics(
+    const game::component::AppearanceComponent* appearance) {
+    if (!appearance) {
+        return {};
+    }
+
+    std::vector<std::string> rows{};
+    rows.reserve(appearance->slot_variants_.size());
+    for (const auto& [slot, variant] : appearance->slot_variants_) {
+        rows.push_back(slot + "\t" + variant);
+    }
+    std::sort(rows.begin(), rows.end());
+    return joinForWebDiagnostics(rows);
+}
+
+[[nodiscard]] std::string makeAppearanceSignatureForWebDiagnostics(
+    const game::component::AppearanceComponent* appearance,
+    const std::string& appearance_rows) {
+    if (!appearance) {
+        return {};
+    }
+
+    std::string signature = appearance->profile_id_ + "|" + appearance->gender_;
+    if (!appearance_rows.empty()) {
+        signature.push_back('|');
+        signature += appearance_rows;
+    }
+    return signature;
+}
 #endif
 
 void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRuntimeServices* services) {
@@ -176,9 +263,13 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
 
     int active_party_count = 0;
     int recruited_party_count = 0;
+    std::string active_party_ids{};
+    std::string recruited_party_ids{};
     if (const auto* party = registry.try_get<game::component::PartyComponent>(player)) {
         active_party_count = static_cast<int>(party->active_actor_ids_.size());
         recruited_party_count = static_cast<int>(party->recruited_actor_ids_.size());
+        active_party_ids = joinForWebDiagnostics(party->active_actor_ids_);
+        recruited_party_ids = joinForWebDiagnostics(party->recruited_actor_ids_);
     }
 
     int active_quest_count = 0;
@@ -186,13 +277,24 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
     int objective_progress_count = 0;
     std::string active_quest_ids{};
     std::string completed_quest_ids{};
+    std::string objective_progress_rows{};
     if (const auto* quest_log = registry.try_get<game::component::QuestLogComponent>(player)) {
         active_quest_count = static_cast<int>(quest_log->active_quests.size());
         completed_quest_count = static_cast<int>(quest_log->completed_quests.size());
         objective_progress_count = static_cast<int>(quest_log->objective_progress.size());
         active_quest_ids = joinForWebDiagnostics(quest_log->active_quests);
         completed_quest_ids = joinForWebDiagnostics(quest_log->completed_quests);
+        objective_progress_rows = makeKeyValueRowsForWebDiagnostics(quest_log->objective_progress);
     }
+
+    const auto* item_catalog = services && services->item_catalog ? services->item_catalog.get() : nullptr;
+    const std::string inventory_rows = makeInventoryRowsForWebDiagnostics(registry, player, item_catalog);
+    const auto* runtime_stats = registry.try_get<game::component::PartyRuntimeStatsComponent>(player);
+    const std::string runtime_state_rows = makeRuntimeStateRowsForWebDiagnostics(runtime_stats);
+    const auto* appearance = registry.try_get<game::component::AppearanceComponent>(player);
+    const std::string appearance_rows = makeAppearanceRowsForWebDiagnostics(appearance);
+    const std::string appearance_signature = makeAppearanceSignatureForWebDiagnostics(appearance, appearance_rows);
+    const auto* game_time = registry.ctx().find<game::data::GameTime>();
 
     std::string map_name{};
     if (services != nullptr && services->world_state) {
@@ -310,6 +412,86 @@ void publishWebSmokeState(entt::registry& registry, const game::runtime::GameRun
     encounter_rows.c_str(),
     encounter_count,
     available_encounter_count);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const gameplay = diagnostics.gameplay || (diagnostics.gameplay = {});
+        const diagnosticPlayer = gameplay.player || (gameplay.player = {});
+        const inventory = diagnosticPlayer.inventory || (diagnosticPlayer.inventory = {});
+        const party = diagnosticPlayer.party || (diagnosticPlayer.party = {});
+        const quests = diagnosticPlayer.quests || (diagnosticPlayer.quests = {});
+        const appearance = diagnosticPlayer.appearance || (diagnosticPlayer.appearance = {});
+        const time = gameplay.time || (gameplay.time = {});
+
+        const parseCounts = (text) => {
+            const values = {};
+            if (!text.length) {
+                return values;
+            }
+            for (const row of text.split("\n").filter(Boolean)) {
+                const parts = row.split("\t");
+                if (parts.length >= 2) {
+                    values[parts[0]] = Number(parts[1] || 0);
+                }
+            }
+            return values;
+        };
+        const parseRuntimeStates = (text) => {
+            const values = {};
+            if (!text.length) {
+                return values;
+            }
+            for (const row of text.split("\n").filter(Boolean)) {
+                const parts = row.split("\t");
+                if (parts.length >= 5) {
+                    const state = {};
+                    state.currentHp = Number(parts[1] || 0);
+                    state.currentMp = Number(parts[2] || 0);
+                    state.level = Number(parts[3] || 0);
+                    state.totalExp = Number(parts[4] || 0);
+                    values[parts[0]] = state;
+                }
+            }
+            return values;
+        };
+        const parseAppearanceSlots = (text) => {
+            const values = {};
+            if (!text.length) {
+                return values;
+            }
+            for (const row of text.split("\n").filter(Boolean)) {
+                const parts = row.split("\t");
+                if (parts.length >= 2) {
+                    values[parts[0]] = parts[1];
+                }
+            }
+            return values;
+        };
+
+        inventory.items = parseCounts(UTF8ToString($0));
+        party.activeActorIds = UTF8ToString($1).length ? UTF8ToString($1).split("\n") : [];
+        party.recruitedActorIds = UTF8ToString($2).length ? UTF8ToString($2).split("\n") : [];
+        party.runtimeStates = parseRuntimeStates(UTF8ToString($3));
+        quests.objectiveProgress = parseCounts(UTF8ToString($4));
+        appearance.profileId = UTF8ToString($5);
+        appearance.gender = UTF8ToString($6);
+        appearance.slots = parseAppearanceSlots(UTF8ToString($7));
+        appearance.signature = UTF8ToString($8);
+        time.day = $9;
+        time.hour = $10;
+        time.minute = $11;
+    },
+    inventory_rows.c_str(),
+    active_party_ids.c_str(),
+    recruited_party_ids.c_str(),
+    runtime_state_rows.c_str(),
+    objective_progress_rows.c_str(),
+    appearance ? appearance->profile_id_.c_str() : "",
+    appearance ? appearance->gender_.c_str() : "",
+    appearance_rows.c_str(),
+    appearance_signature.c_str(),
+    game_time ? static_cast<int>(game_time->day_) : 0,
+    game_time ? static_cast<double>(game_time->hour_) : 0.0,
+    game_time ? static_cast<double>(game_time->minute_) : 0.0);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

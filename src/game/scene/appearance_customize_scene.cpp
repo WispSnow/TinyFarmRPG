@@ -318,6 +318,9 @@ bool AppearanceCustomizeScene::init() {
 
     suspendSceneLighting();
     connectRuntimeListeners();
+    if (mode_ == Mode::Closet) {
+        spdlog::info("AppearanceCustomizeScene: opened mode=closet.");
+    }
     return Scene::init();
 }
 
@@ -691,6 +694,9 @@ void AppearanceCustomizeScene::onRandomize() {
     if (!catalog_ || !randomizeSelection(draft_selection_, *catalog_, rng_, mode_ == Mode::NewGame)) {
         return;
     }
+    if (mode_ == Mode::Closet) {
+        spdlog::info("AppearanceCustomizeScene: randomized closet appearance.");
+    }
     syncSlotViewModels();
     rebuildPreviewCache();
     syncPortraitPreview();
@@ -709,6 +715,8 @@ void AppearanceCustomizeScene::onConfirm() {
     if (mode_ == Mode::Closet) {
         if (!game_registry_ || !applySelectionToEntity(*game_registry_, context_.getDispatcher(), player_, draft_selection_)) {
             spdlog::warn("AppearanceCustomizeScene: 无法提交衣柜外观。");
+        } else {
+            spdlog::info("AppearanceCustomizeScene: confirmed closet appearance.");
         }
         requestPopScene();
         return;

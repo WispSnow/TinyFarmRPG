@@ -708,7 +708,8 @@ TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
     EXPECT_NE(web_smoke.find("FULL_RPG_RUNTIME_PACKAGE_IDS"), std::string::npos);
     EXPECT_NE(web_smoke.find("exercise_full_rpg_battle_flow"), std::string::npos);
     EXPECT_NE(web_smoke.find("trigger_town_encounter_from_diagnostics"), std::string::npos);
-    EXPECT_NE(web_smoke.find("phase25-encounter-approach.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("preferred_troop_id"), std::string::npos);
+    EXPECT_NE(web_smoke.find("screenshot_prefix"), std::string::npos);
     EXPECT_NE(web_smoke.find("home_exterior_to_town"), std::string::npos);
     EXPECT_NE(web_smoke.find("town_enemy_encounter"), std::string::npos);
     EXPECT_NE(web_smoke.find("battle_skill_vfx"), std::string::npos);
@@ -716,9 +717,74 @@ TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
     EXPECT_NE(web_smoke.find("battle_reward_writeback"), std::string::npos);
     EXPECT_NE(web_smoke.find("GameScene: Battle ended, outcome=Victory"), std::string::npos);
     EXPECT_NE(web_smoke.find("victoryContinueEnabled"), std::string::npos);
-    EXPECT_NE(web_smoke.find("expected_diagnostic_map = \"town\" if profile == \"full-rpg\" else \"home_exterior\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("expected_diagnostic_map = str(current_gameplay.get(\"map\") or \"home_exterior\")"), std::string::npos);
     EXPECT_NE(boot_manifest.find("assets/farm-rpg/UI/Clock/Clock.png"), std::string::npos);
     EXPECT_NE(boot_manifest.find("assets/farm-rpg/UI/Clock/clock hand.png"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase26FullRpgBasicGameplayFlowsArePresent) {
+    const std::string game_scene_source = readProjectFile("src/game/scene/game_scene.cpp");
+    const std::string shop_scene_source = readProjectFile("src/game/scene/shop_menu_scene.cpp");
+    const std::string quest_offer_source = readProjectFile("src/game/scene/quest_offer_scene.cpp");
+    const std::string recruit_offer_source = readProjectFile("src/game/scene/recruit_offer_scene.cpp");
+    const std::string rest_scene_source = readProjectFile("src/game/scene/rest_dialog_scene.cpp");
+    const std::string appearance_scene_source = readProjectFile("src/game/scene/appearance_customize_scene.cpp");
+    const std::string quest_system_source = readProjectFile("src/game/system/quest_interaction_system.cpp");
+    const std::string recruitment_system_source = readProjectFile("src/game/system/party_recruitment_system.cpp");
+    const std::string rest_system_source = readProjectFile("src/game/system/rest_system.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+
+    ASSERT_FALSE(game_scene_source.empty());
+    ASSERT_FALSE(shop_scene_source.empty());
+    ASSERT_FALSE(quest_offer_source.empty());
+    ASSERT_FALSE(recruit_offer_source.empty());
+    ASSERT_FALSE(rest_scene_source.empty());
+    ASSERT_FALSE(appearance_scene_source.empty());
+    ASSERT_FALSE(quest_system_source.empty());
+    ASSERT_FALSE(recruitment_system_source.empty());
+    ASSERT_FALSE(rest_system_source.empty());
+    ASSERT_FALSE(web_smoke.empty());
+
+    EXPECT_NE(game_scene_source.find("inventory.items = parseCounts"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("party.activeActorIds"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("party.runtimeStates"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("quests.objectiveProgress"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("appearance.signature"), std::string::npos);
+    EXPECT_NE(game_scene_source.find("time.day"), std::string::npos);
+
+    EXPECT_NE(shop_scene_source.find("ShopMenuScene: opened"), std::string::npos);
+    EXPECT_NE(shop_scene_source.find("ShopMenuScene: buy completed"), std::string::npos);
+    EXPECT_NE(shop_scene_source.find("ShopMenuScene: sell completed"), std::string::npos);
+    EXPECT_NE(shop_scene_source.find("ShopMenuScene: buy failed"), std::string::npos);
+    EXPECT_NE(quest_offer_source.find("onMenuConfirmPressed"), std::string::npos);
+    EXPECT_NE(recruit_offer_source.find("onMenuConfirmPressed"), std::string::npos);
+    EXPECT_NE(rest_scene_source.find("RestDialogScene: opened."), std::string::npos);
+    EXPECT_NE(rest_scene_source.find("RestDialogScene: confirmed hours="), std::string::npos);
+    EXPECT_NE(appearance_scene_source.find("AppearanceCustomizeScene: opened mode=closet."), std::string::npos);
+    EXPECT_NE(appearance_scene_source.find("AppearanceCustomizeScene: confirmed closet appearance."), std::string::npos);
+    EXPECT_NE(quest_system_source.find("QuestInteractionSystem: quest accepted"), std::string::npos);
+    EXPECT_NE(quest_system_source.find("QuestInteractionSystem: quest completed"), std::string::npos);
+    EXPECT_NE(recruitment_system_source.find("PartyRecruitmentSystem: recruited actor_id="), std::string::npos);
+    EXPECT_NE(rest_system_source.find("RestSystem: rest confirmed hours="), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_basic_flows"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_shop_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_quest_accept_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_recruit_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_quest_battle_and_turn_in_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_rest_and_wardrobe_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_save_reload_verify"), std::string::npos);
+    EXPECT_NE(web_smoke.find("quest.village.goblin_cleanup::kill_slimes"), std::string::npos);
+    EXPECT_NE(web_smoke.find("required_slime_kills = 3"), std::string::npos);
+    EXPECT_NE(web_smoke.find("preferred_troop_id = \"troop.slime\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"troop.slime_single\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("phase26-quest-battle-"), std::string::npos);
+    EXPECT_NE(web_smoke.find("shop_buy_sell_failure_feedback"), std::string::npos);
+    EXPECT_NE(web_smoke.find("quest_accept_progress_turn_in_reward"), std::string::npos);
+    EXPECT_NE(web_smoke.find("recruit_accept_party_writeback"), std::string::npos);
+    EXPECT_NE(web_smoke.find("rest_recovery_time_advance"), std::string::npos);
+    EXPECT_NE(web_smoke.find("wardrobe_appearance_change"), std::string::npos);
+    EXPECT_NE(web_smoke.find("full_rpg_save_reload_verify"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndStorageHardeningIsPresent) {

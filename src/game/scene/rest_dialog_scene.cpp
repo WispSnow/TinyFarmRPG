@@ -66,8 +66,10 @@ bool RestDialogScene::init() {
     if (!initUI()) {
         return false;
     }
+    context_.getInputManager().onAction("menu_confirm"_hs).connect<&RestDialogScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).connect<&RestDialogScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>().connect<&RestDialogScene::onLanguageChanged>(this);
+    spdlog::info("RestDialogScene: opened.");
     if (!Scene::init()) {
         return false;
     }
@@ -168,6 +170,7 @@ void RestDialogScene::shutdownUI() {
 }
 
 void RestDialogScene::disconnectRuntimeListeners() {
+    context_.getInputManager().onAction("menu_confirm"_hs).disconnect<&RestDialogScene::onMenuConfirmPressed>(this);
     context_.getInputManager().onAction("menu_cancel"_hs).disconnect<&RestDialogScene::onMenuCancelPressed>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
         .disconnect<&RestDialogScene::onLanguageChanged>(this);
@@ -270,12 +273,22 @@ void RestDialogScene::adjustHours(int delta) {
     refreshRecoveryPreview();
 }
 
+bool RestDialogScene::onMenuConfirmPressed() {
+    onConfirm();
+    return true;
+}
+
 bool RestDialogScene::onMenuCancelPressed() {
     onCancel();
     return true;
 }
 
 void RestDialogScene::onConfirm() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
+    spdlog::info("RestDialogScene: confirmed hours={}.", selected_hours_);
     context_.getDispatcher().trigger(game::defs::RestConfirmRequest{
         .player = player_,
         .hours = selected_hours_,
@@ -284,6 +297,10 @@ void RestDialogScene::onConfirm() {
 }
 
 void RestDialogScene::onCancel() {
+    if (resolved_) {
+        return;
+    }
+    resolved_ = true;
     requestPopScene();
 }
 

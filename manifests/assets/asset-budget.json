@@ -228,11 +228,11 @@
   },
   "web_release_full_assets": {
     "files": 381,
-    "bytes": 23667492,
+    "bytes": 23667850,
     "by_root": {
       "assets": {
         "files": 309,
-        "bytes": 23476473
+        "bytes": 23476646
       },
       "config": {
         "files": 6,
@@ -270,7 +270,7 @@
       },
       ".json": {
         "files": 33,
-        "bytes": 125508
+        "bytes": 125504
       },
       ".lua": {
         "files": 15,
@@ -298,7 +298,7 @@
       },
       ".tmj": {
         "files": 3,
-        "bytes": 110386
+        "bytes": 110563
       },
       ".tsj": {
         "files": 15,

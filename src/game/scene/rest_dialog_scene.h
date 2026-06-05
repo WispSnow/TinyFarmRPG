@@ -49,6 +49,7 @@ private:
     const game::runtime::LocalizationService* localization_{nullptr};
     bool context_pushed_{false};
     bool data_types_registered_{false};
+    bool resolved_{false};
 
     engine::ui::rmlui::RmlDocumentController document_controller_{};
     Rml::DataTypeRegister type_register_{};
@@ -85,6 +86,7 @@ private:
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
     void adjustHours(int delta);
     [[nodiscard]] const game::domain::RestRecoveryPreview* currentRecoveryPreview() const;
+    bool onMenuConfirmPressed();
     bool onMenuCancelPressed();
     void onConfirm();
     void onCancel();
