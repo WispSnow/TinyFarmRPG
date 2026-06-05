@@ -218,6 +218,8 @@ TEST(WebGameplayTargetSourceTest, Phase12InitializesPersistentStorageAndUnlocksW
     EXPECT_NE(audio_header.find("isPlaybackReady"), std::string::npos);
     EXPECT_NE(audio_source.find("config.noAutoStart = MA_TRUE"), std::string::npos);
     EXPECT_NE(audio_source.find("ma_engine_start(&engine_)"), std::string::npos);
+    EXPECT_NE(audio_source.find("pending_music_"), std::string::npos);
+    EXPECT_NE(audio_source.find("playPendingMusicAfterPlaybackStart"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentStorageSync) {
@@ -239,7 +241,7 @@ TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentSt
     EXPECT_NE(persistent_storage_source.find("TinyFarmRPG persistent FS sync is already in progress."), std::string::npos);
 }
 
-TEST(WebGameplayTargetSourceTest, Phase12PreloadsMinimalAudioLoopResources) {
+TEST(WebGameplayTargetSourceTest, Phase12PreloadsFullAudioCoreResources) {
     const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
     const std::string preload_manifest = readProjectFile("manifests/assets/web-release-full.args");
 
@@ -249,11 +251,17 @@ TEST(WebGameplayTargetSourceTest, Phase12PreloadsMinimalAudioLoopResources) {
     EXPECT_NE(release_validator_source.find("\"assets/audio/pop.mp3\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("\"assets/audio/01_spring_journey.ogg\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("\"assets/audio/02_spring_fairy_tale.ogg\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"assets/audio/shovel-stab.wav\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"assets/audio/chop-wood.wav\""), std::string::npos);
+    EXPECT_NE(release_validator_source.find("\"assets/audio/Damage1.ogg\""), std::string::npos);
     EXPECT_NE(release_validator_source.find("\"config/audio.json\""), std::string::npos);
 
     EXPECT_NE(preload_manifest.find("assets/audio/pop.mp3"), std::string::npos);
     EXPECT_NE(preload_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
     EXPECT_NE(preload_manifest.find("assets/audio/02_spring_fairy_tale.ogg"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/audio/shovel-stab.wav"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/audio/chop-wood.wav"), std::string::npos);
+    EXPECT_NE(preload_manifest.find("assets/audio/Damage1.ogg"), std::string::npos);
     EXPECT_NE(preload_manifest.find("config/audio.json"), std::string::npos);
 }
 

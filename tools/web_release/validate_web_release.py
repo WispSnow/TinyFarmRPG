@@ -74,10 +74,30 @@ FORBIDDEN_BOOT_PRELOAD_PATHS = {
     "ui/rmlui/scenes/shop_menu.rml",
 }
 
-REQUIRED_FULL_PACKAGE_PATHS = {
+REQUIRED_AUDIO_ASSET_PATHS = {
     "assets/audio/01_spring_journey.ogg",
     "assets/audio/02_spring_fairy_tale.ogg",
+    "assets/audio/BATTLE BOSS 2.mp3",
+    "assets/audio/Damage1.ogg",
+    "assets/audio/Fantasy_UI (1).wav",
+    "assets/audio/Fantasy_UI (10).wav",
+    "assets/audio/Fire1.ogg",
+    "assets/audio/Heal1.ogg",
+    "assets/audio/Thunder1.ogg",
+    "assets/audio/UI_button11.wav",
+    "assets/audio/calf-and-cow.wav",
+    "assets/audio/chop-wood.wav",
+    "assets/audio/pick-axe-striking.mp3",
+    "assets/audio/plant_harvest.wav",
+    "assets/audio/planting-sounds.wav",
     "assets/audio/pop.mp3",
+    "assets/audio/sheep-baaing-3.wav",
+    "assets/audio/shovel-stab.wav",
+    "assets/audio/water_splash.wav",
+}
+
+REQUIRED_FULL_PACKAGE_PATHS = {
+    *REQUIRED_AUDIO_ASSET_PATHS,
     "assets/data/audio_cues.json",
     "assets/data/map_loading_config.json",
     "assets/data/quests.json",
@@ -185,11 +205,7 @@ REQUIRED_VFX_CORE_PACKAGE_PATHS = {
     "assets/vfx/effects/HitEffect.efkefc",
 }
 
-REQUIRED_AUDIO_CORE_PACKAGE_PATHS = {
-    "assets/audio/01_spring_journey.ogg",
-    "assets/audio/02_spring_fairy_tale.ogg",
-    "assets/audio/pop.mp3",
-}
+REQUIRED_AUDIO_CORE_PACKAGE_PATHS = REQUIRED_AUDIO_ASSET_PATHS
 
 REQUIRED_PACKAGE_DEPENDENCIES = {
     "home-map": {"rpg-core"},

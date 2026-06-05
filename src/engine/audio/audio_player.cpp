@@ -67,6 +67,13 @@ struct AudioPlayer::Impl {
         float base_volume{1.0f};
     };
 
+    struct PendingMusicRequest {
+        entt::id_type id{};
+        bool loop{true};
+        int fade_in_ms{0};
+        float volume_scale{1.0f};
+    };
+
     struct ManagedSoundDeleter {
         void operator()(ManagedSound* sound) const {
             if (!sound) {
@@ -96,6 +103,7 @@ struct AudioPlayer::Impl {
     entt::id_type current_music_id_{};
     float current_music_volume_scale_{1.0f};
     bool music_paused_{false};
+    std::optional<PendingMusicRequest> pending_music_;
 
     Impl() = default;
 
@@ -216,6 +224,7 @@ struct AudioPlayer::Impl {
 
         playback_ready_ = true;
         spdlog::info("AudioPlayer: 音频设备已启动。");
+        playPendingMusicAfterPlaybackStart();
         return true;
     }
 
@@ -392,15 +401,64 @@ struct AudioPlayer::Impl {
             if (path.empty()) {
                 spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
             } else {
+#if defined(__EMSCRIPTEN__)
+                if (isMissingFromCurrentWebPackage(path)) {
+                    pending_music_ = PendingMusicRequest{
+                        .id = id,
+                        .loop = loop,
+                        .fade_in_ms = fade_in_ms,
+                        .volume_scale = base_volume,
+                    };
+                    logRegisteredAudioNotLoaded("音乐", id, path);
+                    return true;
+                }
+#endif
                 logRegisteredAudioNotLoaded("音乐", id, path);
             }
             return false;
         }
 
+#if defined(__EMSCRIPTEN__)
+        if (!playback_ready_) {
+            pending_music_ = PendingMusicRequest{
+                .id = id,
+                .loop = loop,
+                .fade_in_ms = fade_in_ms,
+                .volume_scale = base_volume,
+            };
+            spdlog::debug("AudioPlayer: WebAudio 尚未由用户手势启动，延迟播放音乐 id={}", id);
+            return true;
+        }
+#endif
+
         return playMusicInternal(buffer, id, loop, fade_in_ms, base_volume);
     }
 
+    void playPendingMusicAfterPlaybackStart() {
+        if (!pending_music_) {
+            return;
+        }
+        const PendingMusicRequest request = *pending_music_;
+        pending_music_.reset();
+
+        auto buffer = resource_manager_->getMusic(request.id);
+        if (!buffer) {
+            const std::string_view path = resource_manager_->getAssetRegistry().findMusicPath(request.id);
+            if (path.empty()) {
+                spdlog::warn("AudioPlayer: 待播放音乐 id={} 未注册，启动后无法恢复播放。", request.id);
+            } else {
+                logRegisteredAudioNotLoaded("待播放音乐", request.id, path);
+            }
+            return;
+        }
+
+        if (!playMusicInternal(buffer, request.id, request.loop, request.fade_in_ms, request.volume_scale)) {
+            spdlog::warn("AudioPlayer: WebAudio 启动后恢复待播放音乐失败 id={}", request.id);
+        }
+    }
+
     void stopMusic(int fade_out_ms) {
+        pending_music_.reset();
         if (!music_sound_) {
             return;
         }

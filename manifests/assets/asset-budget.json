@@ -227,12 +227,12 @@
     }
   },
   "web_release_full_assets": {
-    "files": 786,
-    "bytes": 24178092,
+    "files": 800,
+    "bytes": 28961693,
     "by_root": {
       "assets": {
-        "files": 714,
-        "bytes": 23988501
+        "files": 728,
+        "bytes": 28772102
       },
       "config": {
         "files": 6,
@@ -277,12 +277,12 @@
         "bytes": 19767
       },
       ".mp3": {
-        "files": 1,
-        "bytes": 8684
+        "files": 3,
+        "bytes": 3056869
       },
       ".ogg": {
-        "files": 2,
-        "bytes": 4133295
+        "files": 6,
+        "bytes": 4164085
       },
       ".png": {
         "files": 633,
@@ -313,8 +313,8 @@
         "bytes": 1336
       },
       ".wav": {
-        "files": 2,
-        "bytes": 124608
+        "files": 10,
+        "bytes": 1829234
       },
       ".world": {
         "files": 1,

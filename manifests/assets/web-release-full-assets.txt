@@ -1,8 +1,22 @@
 assets/audio/01_spring_journey.ogg
 assets/audio/02_spring_fairy_tale.ogg
+assets/audio/BATTLE BOSS 2.mp3
+assets/audio/Damage1.ogg
 assets/audio/Fantasy_UI (1).wav
 assets/audio/Fantasy_UI (10).wav
+assets/audio/Fire1.ogg
+assets/audio/Heal1.ogg
+assets/audio/Thunder1.ogg
+assets/audio/UI_button11.wav
+assets/audio/calf-and-cow.wav
+assets/audio/chop-wood.wav
+assets/audio/pick-axe-striking.mp3
+assets/audio/plant_harvest.wav
+assets/audio/planting-sounds.wav
 assets/audio/pop.mp3
+assets/audio/sheep-baaing-3.wav
+assets/audio/shovel-stab.wav
+assets/audio/water_splash.wav
 assets/data/actor_blueprint.json
 assets/data/animal_blueprint.json
 assets/data/appearance_catalog.json

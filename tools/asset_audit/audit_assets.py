@@ -650,6 +650,9 @@ def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[st
         if reasons & WEB_FULL_APPEARANCE_REASONS:
             selected.add(rel)
             continue
+        if rel.startswith("assets/audio/"):
+            selected.add(rel)
+            continue
         if rel.startswith(("assets/vfx/", "assets/textures/BattleBg/")):
             selected.add(rel)
             continue
