@@ -11,6 +11,14 @@ on:
         options:
           - "false"
           - "true"
+      smoke_profile:
+        description: "Smoke profile for the optional Chromium job"
+        required: false
+        default: "full-rpg"
+        type: choice
+        options:
+          - "full-rpg"
+          - "demo"
   push:
     branches:
       - web-release
@@ -64,6 +72,7 @@ jobs:
             build/web-release/web-release-gate/artifact-manifest.json
             build/web-release/web-release-gate/release-report.md
             build/web-release/web-release-gate/release-gate.json
+            build/web-release/web-packages/web-package-index.json
 
   chromium-smoke:
     name: Optional Chromium smoke
@@ -88,6 +97,7 @@ jobs:
           python3 tools/web_release/web_release_runbook.py auto
           --configure
           --headless
+          --profile ${{ inputs.smoke_profile }}
           --build-dir build/web-release
           --output-dir build/web-release/web-release-smoke
 
@@ -102,4 +112,7 @@ jobs:
             build/web-release/web-release-smoke/artifact-manifest.json
             build/web-release/web-release-smoke/release-report.md
             build/web-release/web-release-smoke/chromium-smoke.json
+            build/web-release/web-release-smoke/release-gate.json
+            build/web-release/web-release-smoke/smoke/chromium-smoke-failed.json
             build/web-release/web-release-smoke/smoke/*.png
+            build/web-release/web-packages/web-package-index.json

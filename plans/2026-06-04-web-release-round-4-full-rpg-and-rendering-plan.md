@@ -3,7 +3,7 @@
 ## 元信息
 
 - 目标分支：`web-release`
-- 计划状态：`In Progress`
+- 计划状态：`Completed for Chrome full RPG basic Web release`
 - 前置基线：第三轮 Phase 15-21 已完成 Chrome 单线程 Web demo，可启动、进 `home_exterior`、切 `home_interior`、基础交互、保存、刷新读档。
 - 本轮目标：把 Web 版本从“可发布 demo”推进到“完整 RPG 基础玩法可玩”，并恢复战斗必需的 Effekseer 与核心发光/后处理视觉能力。
 - 浏览器范围：Chrome / Chromium 为阻塞验收目标。Safari 仍不作为本轮阻塞项。
@@ -392,6 +392,15 @@ flowchart LR
 - 人工 checklist 通过并有记录。
 - docs、release report、artifact manifest、screenshots 完整。
 
+执行结果（2026-06-05）：
+
+- 已完成。`web_release_runbook.py auto --profile full-rpg` 已作为完整验收入口固化，`--profile demo` 保留为快速 smoke。
+- `release-report.md` 已记录 package file count / byte count、runtime package responses、实际 package ready time、render fallback 状态、VFX policy、gameplay coverage、截图列表和 manual checklist。
+- CI 的可选 Chromium job 默认 `full-rpg` profile，并上传 full report、screenshots、package index、logs 和 failure diagnostics。
+- `docs/web_release.md` 已更新为完整 Web 移植说明，不再把 Effekseer / Bloom / HDR emissive 写成正式降级项。
+- 最终报告见 `plans/reports/2026-06-05-web-release-final-full-rpg-report.md`。
+- 当前剩余的未勾选战斗项是非基础 battle-depth 扩展：Attack / Item / Guard / Escape 矩阵、失败流程、defeated encounter 存档矩阵；它们不再阻塞 full RPG basic Web release。
+
 ## 第四轮待办清单
 
 - [x] 新增 full RPG Web release asset audit profile。
@@ -422,8 +431,8 @@ flowchart LR
 - [x] Chrome WebGL2 下 Bloom 恢复。
 - [x] 后处理 fallback 只在 capability 缺失时触发，并写入具体原因。
 - [x] full RPG Chrome smoke 通过。
-- [ ] `docs/web_release.md` 更新为完整 Web 移植说明。
-- [ ] 新增 Phase 22-28 报告和最终 full RPG Web release 报告。
+- [x] `docs/web_release.md` 更新为完整 Web 移植说明。
+- [x] 新增 Phase 22-28 报告和最终 full RPG Web release 报告。
 
 ## 风险与处理
 

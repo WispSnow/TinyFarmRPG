@@ -941,6 +941,56 @@ TEST(WebGameplayTargetSourceTest, Phase20ReleaseRunbookArtifactsDocsAndCiArePres
     EXPECT_NE(workflow.find("chromium-smoke"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAreCurrent) {
+    const std::string runbook = readProjectFile("tools/web_release/web_release_runbook.py");
+    const std::string release_docs = readProjectFile("docs/web_release.md");
+    const std::string workflow = readProjectFile(".github/workflows/web-release.yml");
+    const std::string web_shell = readProjectFile("src/web/web_shell_ui.cpp");
+    const std::string phase28_report = readProjectFile("plans/reports/2026-06-05-web-release-phase-28-report.md");
+    const std::string final_report = readProjectFile("plans/reports/2026-06-05-web-release-final-full-rpg-report.md");
+
+    ASSERT_FALSE(runbook.empty());
+    ASSERT_FALSE(release_docs.empty());
+    ASSERT_FALSE(workflow.empty());
+    ASSERT_FALSE(web_shell.empty());
+    ASSERT_FALSE(phase28_report.empty());
+    ASSERT_FALSE(final_report.empty());
+
+    EXPECT_NE(runbook.find("\"--profile\""), std::string::npos);
+    EXPECT_NE(runbook.find("\"--smoke-profile\""), std::string::npos);
+    EXPECT_NE(runbook.find("smoke_profile"), std::string::npos);
+    EXPECT_NE(runbook.find("Runtime Package Index"), std::string::npos);
+    EXPECT_NE(runbook.find("Runtime Package Responses"), std::string::npos);
+    EXPECT_NE(runbook.find("Render Capabilities"), std::string::npos);
+    EXPECT_NE(runbook.find("Gameplay Coverage"), std::string::npos);
+    EXPECT_NE(runbook.find("package_load_events"), std::string::npos);
+
+    EXPECT_NE(release_docs.find("--profile full-rpg"), std::string::npos);
+    EXPECT_NE(release_docs.find("Effekseer WebGL2 后端"), std::string::npos);
+    EXPECT_NE(release_docs.find("HDR emissive 与 Bloom"), std::string::npos);
+    EXPECT_NE(release_docs.find("battle-core.tfpack"), std::string::npos);
+    EXPECT_NE(release_docs.find("vfx-core.tfpack"), std::string::npos);
+    EXPECT_NE(release_docs.find("IDBFS"), std::string::npos);
+    EXPECT_EQ(release_docs.find("no-bloom"), std::string::npos);
+    EXPECT_EQ(release_docs.find("后续增强项"), std::string::npos);
+
+    EXPECT_NE(workflow.find("smoke_profile"), std::string::npos);
+    EXPECT_NE(workflow.find("default: \"full-rpg\""), std::string::npos);
+    EXPECT_NE(workflow.find("--profile ${{ inputs.smoke_profile }}"), std::string::npos);
+    EXPECT_NE(workflow.find("web-packages/web-package-index.json"), std::string::npos);
+    EXPECT_NE(workflow.find("chromium-smoke-failed.json"), std::string::npos);
+
+    EXPECT_NE(web_shell.find("Full RPG profile reports RmlUi, Effekseer, and Bloom through runtime diagnostics."),
+              std::string::npos);
+    EXPECT_EQ(web_shell.find("remain deferred"), std::string::npos);
+
+    EXPECT_NE(phase28_report.find("web_release_runbook.py auto --skip-build --profile full-rpg"), std::string::npos);
+    EXPECT_NE(final_report.find("Effekseer"), std::string::npos);
+    EXPECT_NE(final_report.find("Bloom"), std::string::npos);
+    EXPECT_NE(final_report.find("Uncovered non-basic flows"), std::string::npos);
+    EXPECT_EQ(final_report.find("基础 RPG 玩法列为后续增强"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     const std::string asset_audit_source = readProjectFile("tools/asset_audit/audit_assets.py");
     const std::string package_tool = readProjectFile("tools/web_release/package_web_assets.py");

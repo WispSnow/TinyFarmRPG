@@ -1,5 +1,5 @@
 # ============================================
-# WebAssembly walking skeleton
+# WebAssembly shell target
 # ============================================
 
 set(TF_WEB_PRELOAD_ARGS

@@ -165,7 +165,7 @@ EM_JS(void, tf_web_shell_install_ui, (), {
                     <button type="button" data-tf-diagnostics>Details</button>
                 </div>
             </div>
-            <div class="tf-shell-drawer" data-tf-drawer>RmlUi, Effekseer, and Bloom remain deferred in this walking skeleton.</div>
+            <div class="tf-shell-drawer" data-tf-drawer>Full RPG profile reports RmlUi, Effekseer, and Bloom through runtime diagnostics.</div>
         </section>
         <button type="button" class="tf-shell-tab" data-tf-show>UI</button>
     `;

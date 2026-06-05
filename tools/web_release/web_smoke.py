@@ -9,6 +9,7 @@ import http.client
 import json
 import os
 import plistlib
+import re
 import shutil
 import socket
 import socketserver
@@ -2332,6 +2333,39 @@ def summarize_persistent_storage_logs(logs: list[dict[str, Any]]) -> dict[str, A
     return summary
 
 
+def summarize_package_load_events(logs: list[dict[str, Any]]) -> dict[str, Any]:
+    loaded_pattern = re.compile(r"WebAssetPackage: package '([^']+)' loaded \((\d+) files\)")
+    ready_pattern = re.compile(r"WebAssetPackageRegistry: package '([^']+)' ready in (\d+) ms")
+    loaded_files: dict[str, int] = {}
+    events: list[dict[str, Any]] = []
+    latest_by_package: dict[str, dict[str, Any]] = {}
+
+    for entry in logs:
+        text = str(entry.get("text", ""))
+        loaded_match = loaded_pattern.search(text)
+        if loaded_match:
+            loaded_files[loaded_match.group(1)] = int(loaded_match.group(2))
+            continue
+
+        ready_match = ready_pattern.search(text)
+        if not ready_match:
+            continue
+        package_id = ready_match.group(1)
+        event = {
+            "package": package_id,
+            "ready_ms": int(ready_match.group(2)),
+            "files": loaded_files.get(package_id),
+            "log": text,
+        }
+        events.append(event)
+        latest_by_package[package_id] = event
+
+    return {
+        "events": events,
+        "latest_by_package": latest_by_package,
+    }
+
+
 def summarize_performance_budget(timings: dict[str, int]) -> dict[str, Any]:
     results: dict[str, Any] = {}
     exceeded: list[str] = []
@@ -2507,6 +2541,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
     performance_budget = summarize_performance_budget(timings)
     persistent_storage = read_persistent_storage_diagnostics(cdp)
     persistent_storage_logs = summarize_persistent_storage_logs(cdp.state.logs)
+    package_load_events = summarize_package_load_events(cdp.state.logs)
     if persistent_storage_logs["save_sync_completed"] < 2:
         raise RuntimeError(f"Expected at least two async save sync completions: {persistent_storage_logs}")
     if persistent_storage_logs["settings_sync_completed"] < 1:
@@ -2598,6 +2633,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
         },
         "covered_flows": covered_flows,
         "package_responses": package_responses,
+        "package_load_events": package_load_events,
         "screenshots": {key: str(path) for key, path in screenshots.items()},
         "warning_count": sum(1 for entry in cdp.state.logs if entry.get("level") in {"warning", "warn"}),
         "warning_summary": warning_summary,

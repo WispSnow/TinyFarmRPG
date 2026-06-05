@@ -67,8 +67,12 @@ SCRIPT_CHECKS = (
 MANUAL_CHECKLIST = (
     "Title page renders Start / Load / Exit without console errors.",
     "Start reaches player setup and then home_exterior.",
-    "Network shows shared-ui.tfpack, audio-core.tfpack, and home-map.tfpack fetched on demand.",
-    "Move the player, save slot0, reload the page, then Load slot0 back into home_exterior.",
+    "Network shows shared-ui, rpg-core, home-map, town-map, battle-core, vfx-core, and audio-core packages fetched on demand.",
+    "Travel home_exterior -> home_interior -> home_exterior -> town and trigger a battle encounter.",
+    "Win a skill-based battle and confirm Effekseer VFX diagnostics report the effekseer backend.",
+    "Complete shop buy/sell/failure feedback, quest accept/turn-in, recruit, rest, and wardrobe flows.",
+    "Save slot0, reload the page, then Load slot0 and confirm quest, party, appearance, settings, and map state persist.",
+    "Confirm render diagnostics show HDR/Bloom enabled, or concrete fallback reasons on unsupported WebGL2 devices.",
     "Confirm TinyFarmRPG-Web.data stays boot-only sized and no COOP/COEP headers are required for single-thread builds.",
 )
 
@@ -428,11 +432,190 @@ def markdown_table(rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
+def table_or_na(rows: list[list[str]]) -> str:
+    return markdown_table(rows) if len(rows) > 1 else "n/a"
+
+
+def bool_text(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "n/a"
+    return str(value)
+
+
+def runtime_package_rows(manifest: dict[str, Any]) -> list[list[str]]:
+    package_index = manifest.get("runtime_package_index")
+    packages = package_index.get("packages") if isinstance(package_index, dict) else None
+    rows = [["Package", "Delivery", "Files", "Bytes", "Artifact", "Dependencies"]]
+    if not isinstance(packages, dict):
+        return rows
+    for package_id in sorted(packages):
+        package = packages.get(package_id)
+        if not isinstance(package, dict):
+            continue
+        dependencies = package.get("dependencies")
+        rows.append([
+            str(package_id),
+            str(package.get("delivery", "")),
+            str(package.get("files", "n/a")),
+            str(package.get("size") or human_size(int(package.get("bytes") or 0))),
+            str(package.get("artifact") or package.get("preload_manifest") or "n/a"),
+            ", ".join(str(item) for item in dependencies) if isinstance(dependencies, list) and dependencies else "-",
+        ])
+    return rows
+
+
+def smoke_gameplay(report: dict[str, Any]) -> dict[str, Any]:
+    smoke = report.get("smoke")
+    gameplay = smoke.get("gameplay") if isinstance(smoke, dict) else None
+    return gameplay if isinstance(gameplay, dict) else {}
+
+
+def smoke_profile_status(report: dict[str, Any]) -> str:
+    smoke = report.get("smoke")
+    if not isinstance(smoke, dict) or not smoke:
+        return "n/a"
+    if smoke.get("skipped"):
+        return "skipped"
+    return str(smoke.get("profile") or report.get("smoke_profile") or "demo")
+
+
+def smoke_timing_rows(gameplay: dict[str, Any]) -> list[list[str]]:
+    timings = gameplay.get("timings_ms")
+    rows = [["Metric", "Actual"]]
+    if not isinstance(timings, dict):
+        return rows
+    for name in sorted(timings):
+        rows.append([str(name), f"{timings.get(name, 0)} ms"])
+    return rows
+
+
+def package_response_rows(gameplay: dict[str, Any]) -> list[list[str]]:
+    rows = [["Package", "Status", "MIME"]]
+    responses = gameplay.get("package_responses")
+    if not isinstance(responses, list):
+        return rows
+    seen: set[str] = set()
+    for response in responses:
+        if not isinstance(response, dict):
+            continue
+        url = str(response.get("url", ""))
+        package_name = url.rsplit("/", 1)[-1]
+        if not package_name.endswith(".tfpack") or package_name in seen:
+            continue
+        seen.add(package_name)
+        rows.append([
+            package_name,
+            str(response.get("status", "n/a")),
+            str(response.get("mimeType", "n/a")),
+        ])
+    return rows
+
+
+def diagnostic_package_rows(gameplay: dict[str, Any]) -> list[list[str]]:
+    rows = [["Package", "Files", "Ready time", "Source"]]
+    load_events = gameplay.get("package_load_events")
+    latest = load_events.get("latest_by_package") if isinstance(load_events, dict) else None
+    if isinstance(latest, dict) and latest:
+        for package_id in sorted(latest):
+            event = latest.get(package_id)
+            if not isinstance(event, dict):
+                continue
+            rows.append([
+                str(package_id),
+                str(event.get("files", "n/a")),
+                f"{event.get('ready_ms', 'n/a')} ms",
+                "smoke log",
+            ])
+        return rows
+
+    rows = [["Package", "Loaded", "Attempts", "Last load", "Last error"]]
+    diagnostics = gameplay.get("diagnostics")
+    packages = diagnostics.get("packages") if isinstance(diagnostics, dict) else None
+    if not isinstance(packages, dict):
+        return rows
+    for package_id in sorted(packages):
+        package = packages.get(package_id)
+        if not isinstance(package, dict):
+            continue
+        rows.append([
+            str(package_id),
+            bool_text(package.get("loaded")),
+            str(package.get("attempts", "n/a")),
+            f"{package.get('lastLoadMs', 'n/a')} ms",
+            str(package.get("lastError") or "-"),
+        ])
+    return rows
+
+
+def render_rows(gameplay: dict[str, Any]) -> list[list[str]]:
+    diagnostics = gameplay.get("diagnostics")
+    capabilities = gameplay.get("render_capabilities")
+    if not isinstance(capabilities, dict) and isinstance(diagnostics, dict):
+        capabilities = diagnostics.get("renderCapabilities")
+    rows = [["Capability", "Value"]]
+    if not isinstance(capabilities, dict):
+        return rows
+    for key in (
+        "platform",
+        "floatColorFramebuffers",
+        "rgba16fColorRenderable",
+        "linearFloatFiltering",
+        "hdrPostProcessing",
+        "emissive",
+        "bloom",
+        "hdrFallbackReason",
+        "emissiveFallbackReason",
+        "bloomFallbackReason",
+        "emissiveDrawCalls",
+        "emissiveSprites",
+        "bloomDrawCalls",
+        "bloomLevels",
+    ):
+        value = capabilities.get(key)
+        rows.append([key, bool_text(value) if value not in {"", None} else "-"])
+    return rows
+
+
+def vfx_rows(gameplay: dict[str, Any]) -> list[list[str]]:
+    rows = [["Field", "Value"]]
+    policy = gameplay.get("vfx_policy")
+    diagnostics = gameplay.get("diagnostics")
+    vfx = diagnostics.get("vfx") if isinstance(diagnostics, dict) else None
+    if isinstance(policy, dict):
+        rows.append(["policy_backend", str(policy.get("backend", "n/a"))])
+        rows.append(["policy_effekseer", bool_text(policy.get("effekseer"))])
+        rows.append(["policy_log", str(policy.get("log", ""))])
+    if isinstance(vfx, dict):
+        for key in ("backend", "status", "effekseerEnabled", "lastDrawCallCount", "lastInstanceCount"):
+            rows.append([key, bool_text(vfx.get(key))])
+    return rows
+
+
+def gameplay_coverage_lines(gameplay: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    covered = gameplay.get("covered_flows")
+    if isinstance(covered, list) and covered:
+        lines.append("Covered flows:")
+        lines.extend(f"- `{item}`" for item in covered)
+    full_profile = gameplay.get("full_rpg_profile")
+    if isinstance(full_profile, dict):
+        lines.append("")
+        lines.append(f"Full RPG profile status: `{full_profile.get('status', 'n/a')}`")
+        pending = full_profile.get("pending_flows")
+        if isinstance(pending, list) and pending:
+            lines.append("")
+            lines.append("Uncovered non-basic flows:")
+            lines.extend(f"- `{item}`" for item in pending)
+    return lines or ["n/a"]
+
+
 def write_release_markdown(path: Path, report: dict[str, Any], manifest: dict[str, Any]) -> None:
     summary = manifest.get("summary", {})
     release_gate = report.get("release_gate") or {}
     smoke = report.get("smoke") or {}
-    gameplay = smoke.get("gameplay", {}) if isinstance(smoke, dict) else {}
+    gameplay = smoke_gameplay(report)
     if not isinstance(smoke, dict) or not smoke:
         smoke_status = "n/a"
     elif smoke.get("skipped"):
@@ -463,6 +646,7 @@ def write_release_markdown(path: Path, report: dict[str, Any], manifest: dict[st
 
     screenshots = smoke_screenshots(Path(str(report.get("output_dir", ""))))
     screenshot_lines = "\n".join(f"- `{item}`" for item in screenshots) if screenshots else "- n/a"
+    checklist_lines = "\n".join(f"- {item}" for item in MANUAL_CHECKLIST)
     lines = [
         "# TinyFarmRPG Web Release Report",
         "",
@@ -472,6 +656,7 @@ def write_release_markdown(path: Path, report: dict[str, Any], manifest: dict[st
         f"- Deploy entry: `{manifest.get('deployment', {}).get('entry', '')}`",
         f"- Release gate failures: `{len(release_gate.get('failures', [])) if isinstance(release_gate, dict) else 'n/a'}`",
         f"- Smoke status: `{smoke_status}`",
+        f"- Smoke profile: `{smoke_profile_status(report)}`",
         "",
         "## Size Summary",
         "",
@@ -484,9 +669,41 @@ def write_release_markdown(path: Path, report: dict[str, Any], manifest: dict[st
         "",
         markdown_table(artifact_rows),
         "",
+        "## Runtime Package Index",
+        "",
+        table_or_na(runtime_package_rows(manifest)),
+        "",
+        "## Runtime Package Responses",
+        "",
+        table_or_na(package_response_rows(gameplay)),
+        "",
+        "## Runtime Package Load Diagnostics",
+        "",
+        table_or_na(diagnostic_package_rows(gameplay)),
+        "",
         "## Performance Budget",
         "",
         markdown_table(timing_rows) if len(timing_rows) > 1 else "n/a",
+        "",
+        "## Smoke Timings",
+        "",
+        table_or_na(smoke_timing_rows(gameplay)),
+        "",
+        "## Render Capabilities",
+        "",
+        table_or_na(render_rows(gameplay)),
+        "",
+        "## VFX Policy",
+        "",
+        table_or_na(vfx_rows(gameplay)),
+        "",
+        "## Gameplay Coverage",
+        "",
+        "\n".join(gameplay_coverage_lines(gameplay)),
+        "",
+        "## Manual Checklist",
+        "",
+        checklist_lines,
         "",
         "## Screenshots",
         "",
@@ -762,6 +979,7 @@ def run_auto(args: argparse.Namespace) -> int:
     browser = None if args.skip_smoke else (args.browser.resolve() if args.browser else default_browser(args.headless))
     runner = CommandRunner(root, log_path)
     report = base_report("auto", root, build_dir, output_dir, env)
+    report["smoke_profile"] = args.smoke_profile
     if browser is not None:
         report["browser"] = {
             "path": str(browser),
@@ -983,7 +1201,14 @@ def parse_args() -> argparse.Namespace:
     auto.add_argument("--skip-smoke", action="store_true", help="Only run checks/build/gate; do not launch Chrome.")
     auto.add_argument("--headless", action="store_true", help="Use headless Chromium. Default is headed Chrome when available.")
     auto.add_argument("--browser", type=Path, help="Chromium-family browser executable.")
-    auto.add_argument("--smoke-profile", choices=("demo", "full-rpg"), default="demo")
+    auto.add_argument(
+        "--profile",
+        "--smoke-profile",
+        dest="smoke_profile",
+        choices=("demo", "full-rpg"),
+        default="demo",
+        help="Smoke profile: demo is quick; full-rpg is the complete Web migration acceptance profile.",
+    )
     auto.add_argument("--host", default="127.0.0.1")
     auto.add_argument("--port", type=int, default=0)
     auto.set_defaults(func=run_auto)
