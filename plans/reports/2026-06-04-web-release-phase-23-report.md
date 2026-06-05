@@ -35,7 +35,7 @@ flowchart TD
   - 新增 `--profile demo|full-rpg`。
   - 新增 `read_web_release_diagnostics()` 与 `validate_web_release_diagnostics()`。
   - demo profile 继续覆盖当前已稳定的 home gameplay。
-  - full-rpg profile 当前执行同一基础流程并额外输出 `full_rpg_profile.status=diagnostics-ready` 与后续 pending flows。
+  - full-rpg profile 在 Phase 23 时执行同一基础流程并额外输出 `full_rpg_profile.status=diagnostics-ready`；该 diagnostics scaffold 已由后续 Phase 25-28 与 battle-depth completion 扩展为完整 full-rpg smoke。
 - `tools/web_release/web_release_runbook.py`
   - `auto` 新增 `--smoke-profile demo|full-rpg` 并传递给 smoke。
 - `tests/engine/web_gameplay_target_source_test.cpp`
@@ -60,7 +60,7 @@ python3 tools/web_release/web_smoke.py --build-dir build/web-release-final --ski
 - release gate 通过。
 - `WebGameplayTargetSourceTest.*` 20 项通过。
 - `demo` Chromium smoke 通过。
-- `full-rpg` Chromium smoke 通过，输出 `full_rpg_profile.status=diagnostics-ready`。
+- `full-rpg` Chromium smoke 通过，Phase 23 输出 `full_rpg_profile.status=diagnostics-ready`。当前最终 full-rpg smoke 已升级为 `full-rpg-flows-ready`，详见 `2026-06-05-web-release-final-full-rpg-report.md` 与 `2026-06-05-web-release-battle-depth-completion-report.md`。
 
 抽查 full-rpg smoke diagnostics：
 

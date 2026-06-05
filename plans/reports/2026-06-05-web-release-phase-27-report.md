@@ -82,4 +82,4 @@ Fallback reason 均为空：`hdrFallbackReason=""`、`bloomFallbackReason=""`、
 ## 后续
 
 - Phase 28：完整发布验收、文档与 CI。
-- 战斗增强项仍待后续覆盖：Attack / Item / Guard / Escape、失败流程、defeated encounter 保存刷新恢复矩阵。
+- Battle-depth 扩展已在 `2026-06-05-web-release-battle-depth-completion-report.md` 中完成：Attack / Item / Guard / Escape、失败流程、HP/MP 与背包写回、defeated encounter 保存刷新恢复矩阵。

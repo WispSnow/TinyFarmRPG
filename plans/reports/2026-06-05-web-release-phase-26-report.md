@@ -6,7 +6,7 @@
 
 Phase 26 已完成 Web `full-rpg` profile 的基础 RPG 玩法闭环。Chrome smoke 覆盖商店买入/卖出/失败反馈、任务领取、3 次真实 slime 战斗推进、任务交付奖励、Lyria 招募与后续战斗识别、休息恢复与时间推进、衣柜换装、保存刷新读档恢复。
 
-本阶段不声明完整战斗命令矩阵完成。Attack / Item / Guard / Escape、失败流程、defeated encounter 存档矩阵仍保留为后续战斗扩展项。
+本阶段不声明完整战斗命令矩阵完成。Attack / Item / Guard / Escape、失败流程、defeated encounter 存档矩阵在 Phase 26 时作为后续战斗扩展项记录。该扩展项已在 `2026-06-05-web-release-battle-depth-completion-report.md` 中补齐。
 
 ## 主要变更
 
@@ -71,4 +71,4 @@ git diff --check
 ## 后续
 
 - Phase 27：恢复 Bloom / HDR emissive / 高级后处理。
-- 后续战斗扩展：Attack / Item / Guard / Escape、失败流程、defeated encounter 保存刷新恢复矩阵。
+- Battle-depth 扩展已在 `2026-06-05-web-release-battle-depth-completion-report.md` 中完成：Attack / Item / Guard / Escape、失败流程、HP/MP 与背包写回、defeated encounter 保存刷新恢复矩阵。

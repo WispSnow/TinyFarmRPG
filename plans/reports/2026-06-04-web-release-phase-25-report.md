@@ -6,7 +6,7 @@
 
 Phase 25 已完成 Web 上的战斗入口与胜利闭环：`home_exterior` 可以进入 `town`，`town-map` 按需加载，训练遭遇触发后加载 `battle-core` 与 `vfx-core`，战斗中技能路径可触发 Effekseer 诊断并截图，胜利后返回 `town` 且金币奖励写回。
 
-本阶段尚未覆盖完整战斗命令矩阵。Attack / Item / Guard / Escape、失败流程、`defeated encounter` 持久化、战后保存刷新恢复仍保留为后续战斗扩展项，不计入本次已完成范围。
+本阶段尚未覆盖完整战斗命令矩阵。Attack / Item / Guard / Escape、失败流程、`defeated encounter` 持久化、战后保存刷新恢复在 Phase 25 时作为后续战斗扩展项记录，不计入本阶段完成范围。该扩展项已在 `2026-06-05-web-release-battle-depth-completion-report.md` 中补齐。
 
 ```mermaid
 flowchart TD
@@ -92,7 +92,5 @@ python3 tools/web_release/web_smoke.py --build-dir build/web-release-final --ski
 
 ## 后续
 
-- 扩展 BattleScene Web smoke，覆盖 Attack / Item / Guard / Escape 和失败流程。
-- 验证 HP/MP、背包、`respawn_on_map_reload=false` 遭遇状态写回。
-- 增加战后保存、刷新、读档恢复 smoke。
+- Battle-depth 扩展已在 `2026-06-05-web-release-battle-depth-completion-report.md` 中完成：Attack / Item / Guard / Escape、失败流程、HP/MP 与背包写回、`respawn_on_map_reload=false` 遭遇状态保存刷新恢复均已进入 full-rpg smoke。
 - 进入 Phase 26，覆盖商店、任务、招募、休息和衣柜基础 RPG 闭环。
