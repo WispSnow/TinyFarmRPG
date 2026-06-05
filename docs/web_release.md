@@ -38,8 +38,8 @@ python3 tools/web_release/web_release_runbook.py auto \
 python3 tools/web_release/web_release_runbook.py auto \
   --skip-build \
   --profile full-rpg \
-  --build-dir build/web-release-final \
-  --output-dir build/web-release-final/web-release-auto
+  --build-dir build/web-release \
+  --output-dir build/web-release/web-release-auto
 ```
 
 CI 或无浏览器环境只跑 build + release gate：
@@ -58,8 +58,8 @@ python3 tools/web_release/web_release_runbook.py auto \
 python3 tools/web_release/web_release_runbook.py auto \
   --skip-build \
   --profile demo \
-  --build-dir build/web-release-final \
-  --output-dir build/web-release-final/web-release-demo-smoke
+  --build-dir build/web-release \
+  --output-dir build/web-release/web-release-demo-smoke
 ```
 
 自动验收输出：
@@ -73,7 +73,45 @@ python3 tools/web_release/web_release_runbook.py auto \
 
 ## 人工测试预览
 
-构建、gate 并启动本地预览：
+日常人工测试优先使用 shell 脚本。它固定使用 `build/web-release`，只执行人工测试需要的构建、release gate 和本地服务，不会运行 Chromium 自动 smoke。
+
+一键构建、打包并生成 manual report：
+
+```bash
+tools/web_release/web_release_manual.sh build
+```
+
+启动已有 `build/web-release` 的本地测试站点：
+
+```bash
+tools/web_release/web_release_manual.sh serve
+```
+
+默认地址：
+
+```text
+http://127.0.0.1:8787/TinyFarmRPG-Web.html
+```
+
+构建后立即启动本地测试站点：
+
+```bash
+tools/web_release/web_release_manual.sh rebuild-serve
+```
+
+启动本地测试站点并打开默认浏览器：
+
+```bash
+tools/web_release/web_release_manual.sh open
+```
+
+可用环境变量覆盖默认路径和端口：
+
+```bash
+PORT=8799 BUILD_DIR=build/web-release tools/web_release/web_release_manual.sh serve
+```
+
+底层 runbook 入口仍可直接使用。构建、gate 并启动本地预览：
 
 ```bash
 python3 tools/web_release/web_release_runbook.py manual \
@@ -89,8 +127,8 @@ python3 tools/web_release/web_release_runbook.py manual \
 python3 tools/web_release/web_release_runbook.py manual \
   --skip-build \
   --check-only \
-  --build-dir build/web-release-final \
-  --output-dir build/web-release-final/web-release-manual
+  --build-dir build/web-release \
+  --output-dir build/web-release/web-release-manual
 ```
 
 只启动静态服务器的底层入口：
