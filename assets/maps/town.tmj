@@ -285,7 +285,7 @@
                  "width":80,
                  "x":205.166666666667,
                  "y":337.833333333333
-                },
+                }, 
                 {
                  "gid":1739,
                  "height":128,
@@ -607,35 +607,6 @@
                  "width":0,
                  "x":532,
                  "y":296
-                },
-                {
-                 "height":0,
-                 "id":30,
-                 "name":"slime",
-                 "opacity":1,
-                 "point":true,
-                 "properties":[
-                        {
-                         "name":"battle_troop_id",
-                         "type":"string",
-                         "value":"troop.slime_single"
-                        },
-                        {
-                         "name":"encounter_id",
-                         "type":"int",
-                         "value":1101
-                        },
-                        {
-                         "name":"respawn_on_map_reload",
-                         "type":"bool",
-                         "value":true
-                        }],
-                 "rotation":0,
-                 "type":"actor",
-                 "visible":true,
-                 "width":0,
-                 "x":136,
-                 "y":200
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -658,17 +629,17 @@
                          "name":"self_id",
                          "type":"int",
                          "value":1
-                        },
+                        }, 
                         {
                          "name":"start_offset",
                          "type":"string",
                          "value":"bottom"
-                        },
+                        }, 
                         {
                          "name":"target_id",
                          "type":"int",
                          "value":1
-                        },
+                        }, 
                         {
                          "name":"target_map",
                          "type":"string",
@@ -680,39 +651,6 @@
                  "width":10.6667,
                  "x":226.66665,
                  "y":331.833333333333
-                },
-                {
-                 "height":48,
-                 "id":29,
-                 "name":"home_path",
-                 "opacity":1,
-                 "properties":[
-                        {
-                         "name":"self_id",
-                         "type":"int",
-                         "value":2
-                        },
-                        {
-                         "name":"start_offset",
-                         "type":"string",
-                         "value":"right"
-                        },
-                        {
-                         "name":"target_id",
-                         "type":"int",
-                         "value":2
-                        },
-                        {
-                         "name":"target_map",
-                         "type":"string",
-                         "value":"home_exterior"
-                        }],
-                 "rotation":0,
-                 "type":"map_trigger",
-                 "visible":true,
-                 "width":12,
-                 "x":4,
-                 "y":176
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -721,7 +659,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":31,
+ "nextobjectid":29,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

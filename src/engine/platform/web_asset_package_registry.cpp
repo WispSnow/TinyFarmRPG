@@ -35,11 +35,12 @@ struct PackageRuntimeStatus {
     std::string last_error{};
 };
 
-constexpr std::array<PackageDefinition, 7> PACKAGE_DEFINITIONS{{
+constexpr std::array<PackageDefinition, 8> PACKAGE_DEFINITIONS{{
     {PACKAGE_SHARED_UI, "web-packages/shared-ui.tfpack"},
     {PACKAGE_RPG_CORE, "web-packages/rpg-core.tfpack"},
     {PACKAGE_HOME_MAP, "web-packages/home-map.tfpack", {PACKAGE_RPG_CORE}, 1},
     {PACKAGE_TOWN_MAP, "web-packages/town-map.tfpack", {PACKAGE_HOME_MAP}, 1},
+    {PACKAGE_SCHOOL_MAP, "web-packages/school-map.tfpack", {PACKAGE_TOWN_MAP}, 1},
     {PACKAGE_BATTLE_CORE, "web-packages/battle-core.tfpack", {PACKAGE_SHARED_UI, PACKAGE_RPG_CORE, PACKAGE_TOWN_MAP}, 3},
     {PACKAGE_VFX_CORE, "web-packages/vfx-core.tfpack", {PACKAGE_BATTLE_CORE}, 1},
     {PACKAGE_AUDIO_CORE, "web-packages/audio-core.tfpack"},

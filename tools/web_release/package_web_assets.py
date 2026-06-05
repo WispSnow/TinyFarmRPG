@@ -112,6 +112,7 @@ PACKAGE_DEPENDENCIES = {
     "rpg-core": [],
     "home-map": ["rpg-core"],
     "town-map": ["home-map"],
+    "school-map": ["town-map"],
     "battle-core": ["shared-ui", "rpg-core", "town-map"],
     "vfx-core": ["battle-core"],
     "audio-core": [],
@@ -201,6 +202,8 @@ def classify(entry: PreloadEntry) -> str:
         return "battle-core"
     if path.startswith(BATTLE_UI_PREFIXES):
         return "battle-core"
+    if path == "assets/maps/school.tmj" or path.startswith("assets/textures/school-"):
+        return "school-map"
     if path == "assets/maps/town.tmj":
         return "town-map"
     if path.startswith("assets/maps/"):

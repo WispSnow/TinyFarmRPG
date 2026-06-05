@@ -21,6 +21,9 @@ from typing import Any, Iterable
 
 
 RESOURCE_ROOTS = ("assets", "ui", "scripts", "config")
+EXCLUDED_RESOURCE_PATHS = {
+    "config/user_settings.json",
+}
 TEXT_EXTENSIONS = {
     ".cpp",
     ".h",
@@ -80,6 +83,8 @@ class AuditState:
             return
 
         rel = self.project_path(resolved)
+        if rel in EXCLUDED_RESOURCE_PATHS:
+            return
         if resolved.is_file():
             first_seen = rel not in self.used
             self.used[rel].add(reason)
@@ -612,7 +617,10 @@ FULL_RPG_SCENE_PREFIXES = (
 )
 
 FULL_RPG_REQUIRED_PATHS = {
+    "assets/maps/school.tmj",
     "assets/maps/town.tmj",
+    "assets/textures/school-bg.png",
+    "assets/textures/school-fg.png",
     "ui/rmlui/scenes/battle.rml",
     "ui/rmlui/scenes/battle.rcss",
     "ui/rmlui/scenes/dialogue_choice.rml",
@@ -635,18 +643,12 @@ WEB_FULL_APPEARANCE_REASONS = {
 
 def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[str]:
     selected: set[str] = set(select_web_poc_assets(used, root))
-    excluded_prefixes = (
-        "assets/maps/school.tmj",
-        "assets/textures/school-",
-    )
 
     for rel in FULL_RPG_REQUIRED_PATHS:
         if (root / rel).is_file():
             selected.add(rel)
 
     for rel, reasons in used.items():
-        if rel.startswith(excluded_prefixes):
-            continue
         if reasons & WEB_FULL_APPEARANCE_REASONS:
             selected.add(rel)
             continue
@@ -792,8 +794,8 @@ def run(args: argparse.Namespace) -> int:
     collect_seed_assets(state)
     process_queue(state)
 
-    used = sorted(rel for rel in state.used if (root / rel).is_file())
-    all_files = all_resource_files(root)
+    used = sorted(rel for rel in state.used if (root / rel).is_file() and rel not in EXCLUDED_RESOURCE_PATHS)
+    all_files = sorted(rel for rel in all_resource_files(root) if rel not in EXCLUDED_RESOURCE_PATHS)
     orphan = sorted(rel for rel in all_files if rel not in state.used)
     web_poc = select_web_poc_assets(state.used, root)
     web_release_full = select_web_full_rpg_assets(state.used, root)

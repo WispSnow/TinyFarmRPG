@@ -606,6 +606,7 @@
 --preload-file assets/maps/farm-rpg.world@/assets/maps/farm-rpg.world
 --preload-file assets/maps/home_exterior.tmj@/assets/maps/home_exterior.tmj
 --preload-file assets/maps/home_interior.tmj@/assets/maps/home_interior.tmj
+--preload-file assets/maps/school.tmj@/assets/maps/school.tmj
 --preload-file assets/maps/tileset/ALL props seasons.tsj@/assets/maps/tileset/ALL props seasons.tsj
 --preload-file assets/maps/tileset/Birch Tree Animation.tsj@/assets/maps/tileset/Birch Tree Animation.tsj
 --preload-file assets/maps/tileset/Fence Wood.tsj@/assets/maps/tileset/Fence Wood.tsj
@@ -643,6 +644,8 @@
 --preload-file assets/textures/UI/farm-rpg-bg.png@/assets/textures/UI/farm-rpg-bg.png
 --preload-file assets/textures/UI/farm-rpg-logo.png@/assets/textures/UI/farm-rpg-logo.png
 --preload-file assets/textures/UI/pixel_style4.png@/assets/textures/UI/pixel_style4.png
+--preload-file assets/textures/school-bg.png@/assets/textures/school-bg.png
+--preload-file assets/textures/school-fg.png@/assets/textures/school-fg.png
 --preload-file assets/vfx/00_Basic/Laser01.efkefc@/assets/vfx/00_Basic/Laser01.efkefc
 --preload-file assets/vfx/00_Basic/Material/Emissive.efkmat@/assets/vfx/00_Basic/Material/Emissive.efkmat
 --preload-file assets/vfx/00_Basic/Model/Arrow.efkmodel@/assets/vfx/00_Basic/Model/Arrow.efkmodel

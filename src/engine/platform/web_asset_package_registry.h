@@ -11,6 +11,7 @@ inline constexpr std::string_view PACKAGE_SHARED_UI{"shared-ui"};
 inline constexpr std::string_view PACKAGE_RPG_CORE{"rpg-core"};
 inline constexpr std::string_view PACKAGE_HOME_MAP{"home-map"};
 inline constexpr std::string_view PACKAGE_TOWN_MAP{"town-map"};
+inline constexpr std::string_view PACKAGE_SCHOOL_MAP{"school-map"};
 inline constexpr std::string_view PACKAGE_BATTLE_CORE{"battle-core"};
 inline constexpr std::string_view PACKAGE_VFX_CORE{"vfx-core"};
 inline constexpr std::string_view PACKAGE_AUDIO_CORE{"audio-core"};

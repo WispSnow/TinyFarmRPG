@@ -13,7 +13,12 @@ from typing import Any
 PACKAGE_SCOPE = {
     "boot": "Boot shell: title scene, core config, shaders, cursor, i18n, and title-only UI.",
     "shared-ui": "Runtime UI: RmlUi documents, menu/HUD skins, fonts, icons, portraits, and character UI assets.",
-    "home-map": "Gameplay content for the teaching demo: home maps, data catalogs, Lua scripts, tilesets, and map textures.",
+    "rpg-core": "Gameplay catalogs, Lua bootstrap, enemy sprites, quest/shop/VFX data, and RPG-specific i18n.",
+    "home-map": "Home gameplay maps, shared world file, tilesets, and home map textures.",
+    "town-map": "Town map content, including encounter entry points.",
+    "school-map": "School map content loaded after the town-to-school transition.",
+    "battle-core": "Battle scene UI and battle background textures.",
+    "vfx-core": "Effekseer effects and dependent VFX resources.",
     "audio-core": "Audio cues loaded after the first user gesture.",
 }
 
@@ -33,9 +38,26 @@ REQUIRED_GAMEPLAY_SURFACES = {
         "home_exterior",
         "home_interior",
         "map transitions",
+    ],
+    "town-map": [
+        "town",
+        "battle encounters",
+    ],
+    "school-map": [
+        "school map",
+        "school background and foreground textures",
+    ],
+    "rpg-core": [
         "scripted interactions",
         "item/shop/quest/RPG catalogs",
         "Lua bootstrap and map/NPC scripts",
+    ],
+    "battle-core": [
+        "battle UI",
+        "battle backgrounds",
+    ],
+    "vfx-core": [
+        "Effekseer combat effects",
     ],
     "audio-core": [
         "music cues",
@@ -51,20 +73,47 @@ REQUIRED_PATHS = {
     },
     "shared-ui": {
         "ui/rmlui/scenes/appearance_customize.rml",
+        "ui/rmlui/scenes/dialogue_choice.rml",
         "ui/rmlui/scenes/inventory_menu.rcss",
         "ui/rmlui/scenes/inventory_menu.rml",
         "ui/rmlui/scenes/pause_menu.rml",
+        "ui/rmlui/scenes/quest_offer.rml",
+        "ui/rmlui/scenes/recruit_offer.rml",
+        "ui/rmlui/scenes/rest_dialog.rml",
         "ui/rmlui/scenes/save_slot_select.rml",
+        "ui/rmlui/scenes/shop_menu.rml",
         "ui/rmlui/hud/hotbar.rml",
         "ui/rmlui/hud/dialogue_box.rml",
+    },
+    "rpg-core": {
+        "assets/data/actor_blueprint.json",
+        "assets/data/dialogue_script.json",
+        "assets/data/quests.json",
+        "assets/data/shops.json",
+        "assets/data/vfx_catalog.json",
+        "scripts/bootstrap.lua",
+        "scripts/maps/home_exterior.lua",
     },
     "home-map": {
         "assets/maps/farm-rpg.world",
         "assets/maps/home_exterior.tmj",
         "assets/maps/home_interior.tmj",
-        "assets/data/dialogue_script.json",
-        "scripts/bootstrap.lua",
-        "scripts/maps/home_exterior.lua",
+    },
+    "town-map": {
+        "assets/maps/town.tmj",
+    },
+    "school-map": {
+        "assets/maps/school.tmj",
+        "assets/textures/school-bg.png",
+        "assets/textures/school-fg.png",
+    },
+    "battle-core": {
+        "assets/textures/BattleBg/battlebacks1/Grassland.png",
+        "assets/textures/BattleBg/battlebacks2/Grassland.png",
+        "ui/rmlui/scenes/battle.rml",
+    },
+    "vfx-core": {
+        "assets/vfx/effects/HitEffect.efkefc",
     },
     "audio-core": {
         "assets/audio/01_spring_journey.ogg",

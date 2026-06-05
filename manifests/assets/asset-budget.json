@@ -1,11 +1,11 @@
 {
   "used_assets": {
     "files": 804,
-    "bytes": 28988687,
+    "bytes": 28985194,
     "by_root": {
       "assets": {
         "files": 731,
-        "bytes": 28797794
+        "bytes": 28794306
       },
       "config": {
         "files": 6,
@@ -17,7 +17,7 @@
       },
       "ui": {
         "files": 52,
-        "bytes": 166213
+        "bytes": 166208
       }
     },
     "by_extension": {
@@ -63,7 +63,7 @@
       },
       ".rcss": {
         "files": 32,
-        "bytes": 97177
+        "bytes": 97172
       },
       ".rml": {
         "files": 20,
@@ -71,7 +71,7 @@
       },
       ".tmj": {
         "files": 4,
-        "bytes": 121117
+        "bytes": 117629
       },
       ".tsj": {
         "files": 15,
@@ -105,12 +105,12 @@
     }
   },
   "orphan_assets": {
-    "files": 7,
-    "bytes": 12748,
+    "files": 10,
+    "bytes": 33235,
     "by_root": {
       "assets": {
-        "files": 7,
-        "bytes": 12748
+        "files": 10,
+        "bytes": 33235
       }
     },
     "by_extension": {
@@ -122,9 +122,17 @@
         "files": 1,
         "bytes": 3089
       },
+      ".tiled-session": {
+        "files": 1,
+        "bytes": 8191
+      },
       ".txt": {
         "files": 4,
         "bytes": 1734
+      },
+      "[none]": {
+        "files": 2,
+        "bytes": 12296
       }
     },
     "texture_count": 0,
@@ -139,11 +147,11 @@
   },
   "web_poc_assets": {
     "files": 283,
-    "bytes": 21898854,
+    "bytes": 21897408,
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21770351
+        "bytes": 21768910
       },
       "config": {
         "files": 6,
@@ -155,7 +163,7 @@
       },
       "ui": {
         "files": 39,
-        "bytes": 103823
+        "bytes": 103818
       }
     },
     "by_extension": {
@@ -185,7 +193,7 @@
       },
       ".rcss": {
         "files": 26,
-        "bytes": 65229
+        "bytes": 65224
       },
       ".rml": {
         "files": 13,
@@ -193,7 +201,7 @@
       },
       ".tmj": {
         "files": 2,
-        "bytes": 71859
+        "bytes": 70418
       },
       ".tsj": {
         "files": 15,
@@ -227,12 +235,12 @@
     }
   },
   "web_release_full_assets": {
-    "files": 800,
-    "bytes": 28961693,
+    "files": 803,
+    "bytes": 28983892,
     "by_root": {
       "assets": {
-        "files": 728,
-        "bytes": 28772102
+        "files": 731,
+        "bytes": 28794306
       },
       "config": {
         "files": 6,
@@ -244,7 +252,7 @@
       },
       "ui": {
         "files": 51,
-        "bytes": 164911
+        "bytes": 164906
       }
     },
     "by_extension": {
@@ -285,20 +293,20 @@
         "bytes": 4164085
       },
       ".png": {
-        "files": 633,
-        "bytes": 3408566
+        "files": 635,
+        "bytes": 3424850
       },
       ".rcss": {
         "files": 32,
-        "bytes": 97177
+        "bytes": 97172
       },
       ".rml": {
         "files": 19,
         "bytes": 67734
       },
       ".tmj": {
-        "files": 3,
-        "bytes": 111709
+        "files": 4,
+        "bytes": 117629
       },
       ".tsj": {
         "files": 15,
@@ -321,9 +329,9 @@
         "bytes": 388
       }
     },
-    "texture_count": 633,
-    "texture_pixels": 25180036,
-    "estimated_rgba8_bytes": 100720144,
+    "texture_count": 635,
+    "texture_pixels": 25441156,
+    "estimated_rgba8_bytes": 101764624,
     "max_texture": {
       "path": "assets/textures/UI/farm-rpg-bg.png",
       "width": 1280,

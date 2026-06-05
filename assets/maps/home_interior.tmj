@@ -123,19 +123,6 @@
                  "width":0,
                  "x":179.75,
                  "y":201
-                },
-                {
-                 "height":0,
-                 "id":27,
-                 "name":"player",
-                 "opacity":1,
-                 "point":true,
-                 "rotation":0,
-                 "type":"actor",
-                 "visible":true,
-                 "width":0,
-                 "x":179.75,
-                 "y":201
                 }],
          "opacity":1,
          "properties":[

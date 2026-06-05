@@ -67,8 +67,8 @@ SCRIPT_CHECKS = (
 MANUAL_CHECKLIST = (
     "Title page renders Start / Load / Exit without console errors.",
     "Start reaches player setup and then home_exterior.",
-    "Network shows shared-ui, rpg-core, home-map, town-map, battle-core, vfx-core, and audio-core packages fetched on demand.",
-    "Travel home_exterior -> home_interior -> home_exterior -> town and trigger a battle encounter.",
+    "Network shows shared-ui, rpg-core, home-map, town-map, school-map, battle-core, vfx-core, and audio-core packages fetched on demand.",
+    "Travel home_exterior -> home_interior -> home_exterior -> town -> school, then return to town and trigger a battle encounter.",
     "Win a skill-based battle and confirm Effekseer VFX diagnostics report the effekseer backend.",
     "Complete shop buy/sell/failure feedback, quest accept/turn-in, recruit, rest, and wardrobe flows.",
     "Save slot0, reload the page, then Load slot0 and confirm quest, party, appearance, settings, and map state persist.",
@@ -875,6 +875,10 @@ def run_script_check(root: Path, runner: CommandRunner, env: dict[str, str]) -> 
     runner.run([sys.executable, "-m", "py_compile", *[str(root / path) for path in SCRIPT_CHECKS]], env)
 
 
+def run_asset_audit(root: Path, runner: CommandRunner, env: dict[str, str]) -> None:
+    runner.run([sys.executable, str(root / "tools" / "asset_audit" / "audit_assets.py")], env)
+
+
 def configure_web(root: Path, build_dir: Path, runner: CommandRunner, env: dict[str, str]) -> None:
     emcmake = resolve_executable("emcmake", env)
     if not emcmake:
@@ -901,6 +905,24 @@ def configure_web(root: Path, build_dir: Path, runner: CommandRunner, env: dict[
 
 def build_web(root: Path, build_dir: Path, jobs: int, runner: CommandRunner, env: dict[str, str]) -> None:
     runner.run(["cmake", "--build", str(build_dir), "-j", str(jobs)], env)
+
+
+def package_web_assets(root: Path, build_dir: Path, runner: CommandRunner, env: dict[str, str]) -> None:
+    runner.run(
+        [
+            sys.executable,
+            str(root / "tools" / "web_release" / "package_web_assets.py"),
+            "--manifest",
+            str(root / "manifests" / "assets" / "web-release-full.args"),
+            "--output-dir",
+            str(build_dir / "web-packages"),
+            "--boot-preload-output",
+            str(build_dir / "web-boot-preload.args"),
+            "--json-output",
+            str(build_dir / "web-packages" / "web-package-index.json"),
+        ],
+        env,
+    )
 
 
 def validate_web(root: Path, build_dir: Path, output: Path, runner: CommandRunner, env: dict[str, str]) -> None:
@@ -994,12 +1016,15 @@ def run_auto(args: argparse.Namespace) -> int:
     try:
         if not args.skip_script_check:
             run_script_check(root, runner, env)
+        if not args.skip_build:
+            run_asset_audit(root, runner, env)
 
         if args.skip_smoke:
             if args.configure:
                 configure_web(root, build_dir, runner, env)
             if not args.skip_build:
                 build_web(root, build_dir, args.jobs, runner, env)
+                package_web_assets(root, build_dir, runner, env)
             if not args.skip_gate:
                 validate_web(root, build_dir, gate_json, runner, env)
         else:
@@ -1087,10 +1112,13 @@ def run_manual(args: argparse.Namespace) -> int:
     try:
         if not args.skip_script_check:
             run_script_check(root, runner, env)
+        if not args.skip_build:
+            run_asset_audit(root, runner, env)
         if args.configure:
             configure_web(root, build_dir, runner, env)
         if not args.skip_build:
             build_web(root, build_dir, args.jobs, runner, env)
+            package_web_assets(root, build_dir, runner, env)
         if not args.skip_gate:
             validate_web(root, build_dir, gate_json, runner, env)
         required_artifacts_present(build_dir)

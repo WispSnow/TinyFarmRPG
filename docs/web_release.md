@@ -81,6 +81,8 @@ python3 tools/web_release/web_release_runbook.py auto \
 tools/web_release/web_release_manual.sh build
 ```
 
+`build` 和 `rebuild-serve` 会在编译前自动运行 `tools/asset_audit/audit_assets.py`，同步 `manifests/assets/web-release-full.args`、`web-release-full-assets.txt`、`asset-budget.json` 和审计报告。随后脚本会显式重新生成 `.tfpack` 运行时资源包，即使 Ninja 判断 C++ 目标无需重编译也会更新包索引。修改地图、RmlUi、资源引用后通常直接重新运行脚本即可；`serve` 和 `open` 只启动已有构建，不会改动资源清单。
+
 启动已有 `build/web-release` 的本地测试站点：
 
 ```bash
@@ -143,8 +145,8 @@ python3 tools/web_release/serve_web_release.py \
 
 - 标题页显示正常，Start / Load / Exit 可见，控制台没有 fatal error。
 - 点击 Start，进入角色创建，再进入 `home_exterior`。
-- Network 面板能看到 `shared-ui.tfpack`、`rpg-core.tfpack`、`home-map.tfpack`、`town-map.tfpack`、`battle-core.tfpack`、`vfx-core.tfpack`、`audio-core.tfpack` 按需请求，状态为 200 或 304，MIME 为 `application/octet-stream`。
-- 从 `home_exterior` 进入 `home_interior`，再回到 `home_exterior`，然后进入 `town`。
+- Network 面板能看到 `shared-ui.tfpack`、`rpg-core.tfpack`、`home-map.tfpack`、`town-map.tfpack`、`school-map.tfpack`、`battle-core.tfpack`、`vfx-core.tfpack`、`audio-core.tfpack` 按需请求，状态为 200 或 304，MIME 为 `application/octet-stream`。
+- 从 `home_exterior` 进入 `home_interior`，再回到 `home_exterior`，然后通过 world 邻接进入 `town`，再通过 `town` 的 school 入口进入 `school`。
 - 在 `town` 触发遭遇，进入战斗，覆盖 `Fight` 下的 Attack / Guard / Item / Escape；逃跑后应回到地图且 potion 消耗写回。
 - 再触发一次遭遇，使用 Guard 等待失败流程，确认失败后回到 `home_interior` 且 HP 恢复为可继续游戏状态。
 - 再触发任务目标遭遇，使用技能胜利并返回地图；日志或 diagnostics 中 `Web release VFX policy` 应为 `backend=effekseer status=enabled`。
@@ -172,6 +174,7 @@ web-packages/
   battle-core.tfpack
   home-map.tfpack
   rpg-core.tfpack
+  school-map.tfpack
   shared-ui.tfpack
   town-map.tfpack
   vfx-core.tfpack
@@ -187,6 +190,7 @@ flowchart LR
   RPG["rpg-core"]
   HOME["home-map"]
   TOWN["town-map"]
+  SCHOOL["school-map"]
   BATTLE["battle-core"]
   VFX["vfx-core"]
   AUDIO["audio-core"]
@@ -195,6 +199,7 @@ flowchart LR
   UI --> RPG
   RPG --> HOME
   HOME --> TOWN
+  TOWN --> SCHOOL
   RPG --> BATTLE
   TOWN --> BATTLE
   BATTLE --> VFX

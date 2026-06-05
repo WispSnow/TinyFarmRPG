@@ -606,6 +606,7 @@ assets/i18n/zh-Hans.json
 assets/maps/farm-rpg.world
 assets/maps/home_exterior.tmj
 assets/maps/home_interior.tmj
+assets/maps/school.tmj
 assets/maps/tileset/ALL props seasons.tsj
 assets/maps/tileset/Birch Tree Animation.tsj
 assets/maps/tileset/Fence Wood.tsj
@@ -643,6 +644,8 @@ assets/textures/UI/circle.png
 assets/textures/UI/farm-rpg-bg.png
 assets/textures/UI/farm-rpg-logo.png
 assets/textures/UI/pixel_style4.png
+assets/textures/school-bg.png
+assets/textures/school-fg.png
 assets/vfx/00_Basic/Laser01.efkefc
 assets/vfx/00_Basic/Material/Emissive.efkmat
 assets/vfx/00_Basic/Model/Arrow.efkmodel

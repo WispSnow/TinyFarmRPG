@@ -208,6 +208,14 @@ namespace {
                 engine::platform::web::PACKAGE_TOWN_MAP,
             });
         }
+        if (map_name == "school") {
+            return engine::platform::web::loadGroup({
+                engine::platform::web::PACKAGE_RPG_CORE,
+                engine::platform::web::PACKAGE_HOME_MAP,
+                engine::platform::web::PACKAGE_TOWN_MAP,
+                engine::platform::web::PACKAGE_SCHOOL_MAP,
+            });
+        }
         return engine::platform::web::loadGroup({
             engine::platform::web::PACKAGE_RPG_CORE,
             engine::platform::web::PACKAGE_HOME_MAP,

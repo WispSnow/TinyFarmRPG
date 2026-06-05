@@ -4,4 +4,7 @@ assets/farm-rpg/CHANGELOG.txt
 assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt
 assets/farm-rpg/Documentation.txt
 assets/farm-rpg/Paletta.txt
+assets/maps/.DS_Store
 assets/maps/farm-rpg.tiled-project
+assets/maps/farm-rpg.tiled-session
+assets/maps/tileset/.DS_Store

@@ -272,7 +272,7 @@
                  "width":128,
                  "x":272.333333333333,
                  "y":130.666666666667
-                },
+                }, 
                 {
                  "height":0,
                  "id":2,
@@ -285,7 +285,7 @@
                  "width":0,
                  "x":311,
                  "y":167.862478777589
-                },
+                }, 
                 {
                  "gid":2840,
                  "height":48,
@@ -557,18 +557,18 @@
                          "name":"recruit_actor_id",
                          "type":"string",
                          "value":"actor.lyria"
-                        },
+                        }, 
                         {
-                         "name":"wander_radius_override",
-                         "type":"float",
-                         "value":0
+                         "name":"scripted_interaction",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"actor",
                  "visible":true,
                  "width":0,
-                 "x":248,
-                 "y":184
+                 "x":95,
+                 "y":274.5
                 }, 
                 {
                  "gid":2952,
@@ -581,12 +581,12 @@
                          "name":"script_event",
                          "type":"string",
                          "value":"home_exterior.seed_cache"
-                        },
+                        }, 
                         {
                          "name":"script_once_key",
                          "type":"string",
                          "value":"map.home_exterior.seed_cache.opened"
-                        },
+                        }, 
                         {
                          "name":"scripted_interaction",
                          "type":"bool",
@@ -654,8 +654,8 @@
                  "type":"actor",
                  "visible":true,
                  "width":0,
-                 "x":296,
-                 "y":220
+                 "x":503,
+                 "y":175.5
                 }, 
                 {
                  "height":0,
@@ -962,39 +962,6 @@
                  "width":10.6667,
                  "x":317.16665,
                  "y":125.33335
-                },
-                {
-                 "height":48,
-                 "id":55,
-                 "name":"town_path",
-                 "opacity":1,
-                 "properties":[
-                        {
-                         "name":"self_id",
-                         "type":"int",
-                         "value":2
-                        },
-                        {
-                         "name":"start_offset",
-                         "type":"string",
-                         "value":"left"
-                        },
-                        {
-                         "name":"target_id",
-                         "type":"int",
-                         "value":2
-                        },
-                        {
-                         "name":"target_map",
-                         "type":"string",
-                         "value":"town"
-                        }],
-                 "rotation":0,
-                 "type":"map_trigger",
-                 "visible":true,
-                 "width":12,
-                 "x":372,
-                 "y":128
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -1003,7 +970,7 @@
          "y":0
         }],
  "nextlayerid":12,
- "nextobjectid":56,
+ "nextobjectid":55,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",

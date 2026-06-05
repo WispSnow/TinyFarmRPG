@@ -311,12 +311,14 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/rpg-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/home-map.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/town-map.tfpack"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("web-packages/school-map.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/battle-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/vfx-core.tfpack"), std::string::npos);
     EXPECT_NE(package_registry_source.find("web-packages/audio-core.tfpack"), std::string::npos);
@@ -329,6 +331,7 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(map_manager_source.find("ensureWebMapPackage"), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_HOME_MAP"), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
 
     EXPECT_NE(package_tool.find("custom_sync_xhr_fs_writefile"), std::string::npos);
     EXPECT_NE(package_tool.find("\"boot\""), std::string::npos);
@@ -336,6 +339,7 @@ TEST(WebGameplayTargetSourceTest, Phase13RuntimePackagePipelineIsPresent) {
     EXPECT_NE(package_tool.find("\"rpg-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"home-map\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"town-map\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"school-map\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"battle-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"vfx-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"audio-core\""), std::string::npos);
@@ -487,6 +491,7 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     EXPECT_NE(package_registry_header.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_HOME_MAP"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_AUDIO_CORE"), std::string::npos);
@@ -496,7 +501,7 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: loading package"), std::string::npos);
     EXPECT_NE(package_registry_source.find("WebAssetPackageRegistry: package '{}' ready"), std::string::npos);
     EXPECT_NE(package_registry_source.find("lastPackageError"), std::string::npos);
-    EXPECT_NE(package_registry_source.find("std::array<PackageDefinition, 7>"), std::string::npos);
+    EXPECT_NE(package_registry_source.find("std::array<PackageDefinition, 8>"), std::string::npos);
     EXPECT_EQ(package_registry_source.find("std::array<PackageDefinition, 3>"), std::string::npos);
 
     EXPECT_NE(title_scene_source.find("loadPackage(engine::platform::web::PACKAGE_SHARED_UI)"), std::string::npos);
@@ -508,6 +513,7 @@ TEST(WebGameplayTargetSourceTest, Phase16RuntimePackageRegistryAndAudioGateArePr
     EXPECT_NE(map_manager_source.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_HOME_MAP"), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
     EXPECT_EQ(title_scene_source.find("web-packages/shared-ui.tfpack"), std::string::npos);
     EXPECT_EQ(game_scene_source.find("web-packages/home-map.tfpack"), std::string::npos);
     EXPECT_EQ(map_manager_source.find("web-packages/home-map.tfpack"), std::string::npos);
@@ -543,7 +549,8 @@ TEST(WebGameplayTargetSourceTest, Phase17GameplayCoverageSmokeIsPresent) {
     ASSERT_FALSE(dialogue_presentation_source.empty());
     ASSERT_FALSE(input_routing_source.empty());
 
-    EXPECT_NE(web_smoke.find("phase17-home-interior.png"), std::string::npos);
+    EXPECT_NE(web_smoke.find("enter_home_interior(cdp, output_dir, \"phase17\")"), std::string::npos);
+    EXPECT_NE(web_smoke.find("{label}-home-interior.png"), std::string::npos);
     EXPECT_NE(web_smoke.find("phase17-home-exterior-return.png"), std::string::npos);
     EXPECT_NE(web_smoke.find("phase17-inventory-open.png"), std::string::npos);
     EXPECT_NE(web_smoke.find("phase17-pause-open.png"), std::string::npos);
@@ -665,6 +672,7 @@ TEST(WebGameplayTargetSourceTest, Phase24EffekseerWebBackendIsEnabled) {
 }
 
 TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
+    const std::string world_file = readProjectFile("assets/maps/farm-rpg.world");
     const std::string home_map = readProjectFile("assets/maps/home_exterior.tmj");
     const std::string town_map = readProjectFile("assets/maps/town.tmj");
     const std::string game_scene = readProjectFile("src/game/scene/game_scene.cpp");
@@ -678,6 +686,7 @@ TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
     const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
     const std::string boot_manifest = readProjectFile("manifests/assets/web-release-boot.args");
 
+    ASSERT_FALSE(world_file.empty());
     ASSERT_FALSE(home_map.empty());
     ASSERT_FALSE(town_map.empty());
     ASSERT_FALSE(game_scene.empty());
@@ -691,13 +700,13 @@ TEST(WebGameplayTargetSourceTest, Phase25FullRpgBattleFlowIsReachableOnWeb) {
     ASSERT_FALSE(web_smoke.empty());
     ASSERT_FALSE(boot_manifest.empty());
 
-    EXPECT_NE(home_map.find("\"name\":\"town_path\""), std::string::npos);
-    EXPECT_NE(home_map.find("\"value\":\"town\""), std::string::npos);
-    EXPECT_NE(town_map.find("\"name\":\"home_path\""), std::string::npos);
-    EXPECT_NE(town_map.find("\"value\":\"home_exterior\""), std::string::npos);
+    EXPECT_NE(world_file.find("home_exterior.tmj"), std::string::npos);
+    EXPECT_NE(world_file.find("town.tmj"), std::string::npos);
+    EXPECT_NE(world_file.find("\"x\": 0"), std::string::npos);
+    EXPECT_NE(world_file.find("\"x\": 560"), std::string::npos);
     EXPECT_NE(town_map.find("\"battle_troop_id\""), std::string::npos);
     EXPECT_NE(town_map.find("\"value\":\"troop.slime\""), std::string::npos);
-    EXPECT_NE(town_map.find("\"value\":\"troop.slime_single\""), std::string::npos);
+    EXPECT_NE(town_map.find("\"value\":\"school\""), std::string::npos);
 
     EXPECT_NE(game_scene.find("ensureWebBattlePackages"), std::string::npos);
     EXPECT_NE(game_scene.find("PACKAGE_BATTLE_CORE"), std::string::npos);
@@ -1055,6 +1064,7 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_NE(asset_audit_source.find("select_web_full_rpg_assets"), std::string::npos);
     EXPECT_NE(asset_audit_source.find("web-release-full-assets.txt"), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"assets/maps/town.tmj\""), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("\"assets/textures/school-bg.png\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/dialogue_choice.\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"assets/maps/school.tmj\""), std::string::npos);
 
@@ -1077,10 +1087,13 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
               std::string::npos);
     EXPECT_NE(release_manifest.find("assets/textures/BattleBg/battlebacks1/Grassland.png"), std::string::npos);
     EXPECT_NE(release_manifest.find("assets/vfx/effects/HitEffect.efkefc"), std::string::npos);
-    EXPECT_EQ(release_manifest.find("assets/maps/school.tmj"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/maps/school.tmj"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/textures/school-bg.png"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/textures/school-fg.png"), std::string::npos);
 
     EXPECT_NE(package_tool.find("\"rpg-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"town-map\""), std::string::npos);
+    EXPECT_NE(package_tool.find("\"school-map\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"battle-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"vfx-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("PACKAGE_DEPENDENCIES"), std::string::npos);
@@ -1092,12 +1105,14 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
 
     EXPECT_NE(release_validator_source.find("REQUIRED_PACKAGE_DEPENDENCIES"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_TOWN_MAP_PACKAGE_PATHS"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("REQUIRED_SCHOOL_MAP_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_BATTLE_CORE_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_VFX_CORE_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("FORBIDDEN_FULL_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("must record a positive byte count"), std::string::npos);
 
     EXPECT_NE(package_registry_header.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(package_registry_header.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_BATTLE_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("PACKAGE_VFX_CORE"), std::string::npos);
     EXPECT_NE(package_registry_header.find("loadGroup"), std::string::npos);
@@ -1106,9 +1121,12 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_EQ(package_registry_source.find("std::array<PackageDefinition, 3>"), std::string::npos);
     EXPECT_NE(game_scene_source.find("PACKAGE_RPG_CORE"), std::string::npos);
     EXPECT_NE(map_manager_source.find("map_name == \"town\""), std::string::npos);
+    EXPECT_NE(map_manager_source.find("map_name == \"school\""), std::string::npos);
     EXPECT_NE(map_manager_source.find("PACKAGE_TOWN_MAP"), std::string::npos);
+    EXPECT_NE(map_manager_source.find("PACKAGE_SCHOOL_MAP"), std::string::npos);
 
     EXPECT_EQ(boot_manifest.find("assets/maps/town.tmj"), std::string::npos);
+    EXPECT_EQ(boot_manifest.find("assets/maps/school.tmj"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("assets/vfx/effects/HitEffect.efkefc"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("ui/rmlui/scenes/battle.rml"), std::string::npos);
 }
