@@ -102,7 +102,7 @@ bool EmissivePass::createFBO(int width, int height) {
     GLColorAttachmentDesc desc{};
     desc.internal_format = GL_RGBA16F;
     desc.format = GL_RGBA;
-    desc.type = GL_FLOAT;
+    desc.type = GL_HALF_FLOAT;
     desc.min_filter = GL_LINEAR;
     desc.mag_filter = GL_LINEAR;
     desc.unpack_alignment = 4;

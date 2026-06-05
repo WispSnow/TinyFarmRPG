@@ -80,6 +80,38 @@ def human_ms(start: int, end: int) -> int:
     return max(0, end - start)
 
 
+def prepend_path(env: dict[str, str], path: Path) -> None:
+    if path.is_dir():
+        env["PATH"] = f"{path}{os.pathsep}{env.get('PATH', '')}"
+
+
+def command_env() -> dict[str, str]:
+    env = os.environ.copy()
+    emsdk = Path.home() / ".local" / "emsdk"
+    if emsdk.is_dir():
+        upstream = emsdk / "upstream"
+        env.setdefault("EMSDK", str(emsdk))
+        env.setdefault("EMSCRIPTEN", str(upstream / "emscripten"))
+        env.setdefault("BINARYEN_ROOT", str(upstream))
+        env.setdefault("LLVM_ROOT", str(upstream / "bin"))
+        if (Path.home() / ".emscripten").exists():
+            env.setdefault("EM_CONFIG", str(Path.home() / ".emscripten"))
+        prepend_path(env, upstream / "bin")
+        prepend_path(env, upstream / "emscripten")
+        for node_bin in sorted((emsdk / "node").glob("*/bin"), reverse=True):
+            prepend_path(env, node_bin)
+        for python_bin in sorted((emsdk / "python").glob("*/bin"), reverse=True):
+            prepend_path(env, python_bin)
+        if "EMSDK_PYTHON" not in env:
+            for candidate in sorted((emsdk / "python").glob("*/bin/python3*"), reverse=True):
+                if candidate.name.endswith("-config"):
+                    continue
+                if candidate.is_file() and os.access(candidate, os.X_OK):
+                    env["EMSDK_PYTHON"] = str(candidate)
+                    break
+    return env
+
+
 def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.bind(("127.0.0.1", 0))
@@ -92,7 +124,8 @@ def run_command(command: list[str], cwd: Path, env: dict[str, str] | None = None
 
 
 def configure_web_build(root: Path, build_dir: Path, jobs: int) -> None:
-    emcmake = shutil.which("emcmake")
+    env = command_env()
+    emcmake = shutil.which("emcmake", path=env.get("PATH"))
     if not emcmake:
         raise RuntimeError("emcmake not found. Source emsdk_env.sh before running --configure.")
     run_command(
@@ -112,12 +145,13 @@ def configure_web_build(root: Path, build_dir: Path, jobs: int) -> None:
             "-DBUILD_LEARN=OFF",
         ],
         root,
+        env=env,
     )
-    build_web(root, build_dir, jobs)
+    build_web(root, build_dir, jobs, env=env)
 
 
-def build_web(root: Path, build_dir: Path, jobs: int) -> None:
-    run_command(["cmake", "--build", str(build_dir), "-j", str(jobs)], root)
+def build_web(root: Path, build_dir: Path, jobs: int, env: dict[str, str] | None = None) -> None:
+    run_command(["cmake", "--build", str(build_dir), "-j", str(jobs)], root, env=env or command_env())
 
 
 def package_web_assets(root: Path, build_dir: Path) -> None:
@@ -1365,7 +1399,7 @@ def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -
     if battle.get("menuState") == "PartyCommand":
         move_battle_cursor_to(cdp, "PartyCommand", 0)
         press_game_key(cdp, *KEY_MENU_CONFIRM)
-        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect"}, 10000)
+        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect", "SkillList"}, 10000)
     if battle.get("menuState") == "TargetSelect":
         return confirm_battle_target_selection(cdp, battle)
     if battle.get("menuState") == "ActorCommand":
@@ -1382,7 +1416,7 @@ def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -
 
     move_battle_cursor_to(cdp, "SkillList", 0)
     press_game_key(cdp, *KEY_MENU_CONFIRM)
-    battle = wait_for_battle_menu_any(cdp, {"TargetSelect", "PartyCommand", "ActorCommand", "SkillList"}, 10000)
+    battle = wait_for_battle_menu_any(cdp, {"TargetSelect", "PartyCommand", "ActorCommand"}, 10000)
     if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
         return battle, False
     if battle.get("menuState") != "TargetSelect":
@@ -1950,6 +1984,7 @@ def exercise_full_rpg_rest_and_wardrobe_flow(cdp: CdpClient, output_dir: Path) -
     )
     cdp.wait_ms(800)
     cdp.screenshot(output_dir / "phase26-wardrobe-after-confirm.png")
+    postprocessing_smoke = wait_for_render_postprocessing_activity(cdp)
 
     return {
         "time_before_rest": time_before_rest,
@@ -1958,6 +1993,7 @@ def exercise_full_rpg_rest_and_wardrobe_flow(cdp: CdpClient, output_dir: Path) -
         "player_after_rest": player_after_rest,
         "appearance_before": signature_before,
         "appearance_after": appearance_signature(gameplay_after_wardrobe),
+        "postprocessing_smoke": postprocessing_smoke,
     }
 
 
@@ -2107,13 +2143,21 @@ def read_render_capabilities(cdp: CdpClient) -> dict[str, Any] | None:
                 platform: String(render.platform || ""),
                 defaultFramebufferSrgb: !!render.defaultFramebufferSrgb,
                 floatColorFramebuffers: !!render.floatColorFramebuffers,
+                rgba16fColorRenderable: !!render.rgba16fColorRenderable,
                 linearFloatFiltering: !!render.linearFloatFiltering,
                 hdrPostProcessing: !!render.hdrPostProcessing,
                 bloom: !!render.bloom,
                 emissive: !!render.emissive,
+                hdrFallbackReason: String(render.hdrFallbackReason || ""),
+                bloomFallbackReason: String(render.bloomFallbackReason || ""),
+                emissiveFallbackReason: String(render.emissiveFallbackReason || ""),
                 maxTextureSize: Number(render.maxTextureSize || 0),
                 maxRenderbufferSize: Number(render.maxRenderbufferSize || 0),
-                maxSamples: Number(render.maxSamples || 0)
+                maxSamples: Number(render.maxSamples || 0),
+                emissiveDrawCalls: Number(render.emissiveDrawCalls || 0),
+                emissiveSprites: Number(render.emissiveSprites || 0),
+                bloomDrawCalls: Number(render.bloomDrawCalls || 0),
+                bloomLevels: Number(render.bloomLevels || 0)
             };
         })()""",
         timeout=10.0,
@@ -2126,24 +2170,87 @@ def validate_render_capabilities(capabilities: dict[str, Any] | None) -> list[st
         return ["Web release render capabilities were not published to JS diagnostics."]
 
     failures: list[str] = []
-    expected_false = {
-        "defaultFramebufferSrgb": capabilities.get("defaultFramebufferSrgb"),
-        "floatColorFramebuffers": capabilities.get("floatColorFramebuffers"),
-        "linearFloatFiltering": capabilities.get("linearFloatFiltering"),
-        "hdrPostProcessing": capabilities.get("hdrPostProcessing"),
-        "bloom": capabilities.get("bloom"),
-        "emissive": capabilities.get("emissive"),
-    }
     if capabilities.get("platform") != "webgl2":
         failures.append(f"render platform expected webgl2, got {capabilities.get('platform')!r}")
-    for key, actual in expected_false.items():
-        if actual is not False:
-            failures.append(f"{key} expected false for the current Web release policy, got {actual!r}")
+    if capabilities.get("defaultFramebufferSrgb") is not False:
+        failures.append(
+            "defaultFramebufferSrgb expected false for WebGL2 default framebuffer, "
+            f"got {capabilities.get('defaultFramebufferSrgb')!r}"
+        )
+    supports_hdr = (
+        capabilities.get("floatColorFramebuffers") is True and
+        capabilities.get("rgba16fColorRenderable") is True and
+        capabilities.get("linearFloatFiltering") is True
+    )
+    if supports_hdr:
+        if capabilities.get("hdrPostProcessing") is not True:
+            failures.append("hdrPostProcessing expected true when WebGL2 HDR capabilities are present.")
+        if capabilities.get("emissive") is not True:
+            failures.append("emissive expected true when WebGL2 HDR capabilities are present.")
+        if capabilities.get("bloom") is not True:
+            failures.append("bloom expected true when WebGL2 HDR capabilities are present.")
+        for key in ("hdrFallbackReason", "emissiveFallbackReason", "bloomFallbackReason"):
+            if str(capabilities.get(key) or ""):
+                failures.append(f"{key} expected empty when HDR post-processing is enabled, got {capabilities.get(key)!r}")
+    else:
+        missing_reasons = [
+            key for key in ("hdrFallbackReason", "emissiveFallbackReason", "bloomFallbackReason")
+            if not str(capabilities.get(key) or "")
+        ]
+        if missing_reasons:
+            failures.append(
+                "HDR fallback must publish concrete reason fields when capability gate fails: "
+                f"{missing_reasons}"
+            )
+        if capabilities.get("hdrPostProcessing") is not False:
+            failures.append("hdrPostProcessing expected false when HDR capability gate fails.")
     if int(capabilities.get("maxTextureSize") or 0) < 1024:
         failures.append(f"maxTextureSize is unexpectedly low: {capabilities.get('maxTextureSize')!r}")
     if int(capabilities.get("maxRenderbufferSize") or 0) < 1024:
         failures.append(f"maxRenderbufferSize is unexpectedly low: {capabilities.get('maxRenderbufferSize')!r}")
     return failures
+
+
+def wait_for_render_postprocessing_activity(cdp: CdpClient, timeout_ms: int = 12000) -> dict[str, Any]:
+    def supports_hdr(capabilities: dict[str, Any] | None) -> bool:
+        return bool(
+            capabilities and
+            capabilities.get("floatColorFramebuffers") is True and
+            capabilities.get("rgba16fColorRenderable") is True and
+            capabilities.get("linearFloatFiltering") is True
+        )
+
+    end = time.monotonic() + timeout_ms / 1000.0
+    last_capabilities: dict[str, Any] | None = None
+    while time.monotonic() < end:
+        capabilities = read_render_capabilities(cdp)
+        if isinstance(capabilities, dict):
+            last_capabilities = capabilities
+            failures = validate_render_capabilities(capabilities)
+            if failures:
+                raise RuntimeError(f"WebGL2 render capability gate failed during postprocessing smoke: {failures}")
+            if not supports_hdr(capabilities):
+                return {
+                    "status": "fallback",
+                    "hdr_fallback_reason": capabilities.get("hdrFallbackReason"),
+                    "bloom_fallback_reason": capabilities.get("bloomFallbackReason"),
+                    "emissive_fallback_reason": capabilities.get("emissiveFallbackReason"),
+                }
+            if (
+                int(capabilities.get("emissiveSprites") or 0) > 0 and
+                int(capabilities.get("emissiveDrawCalls") or 0) > 0 and
+                int(capabilities.get("bloomDrawCalls") or 0) > 0 and
+                int(capabilities.get("bloomLevels") or 0) > 0
+            ):
+                return {
+                    "status": "active",
+                    "emissive_sprites": int(capabilities.get("emissiveSprites") or 0),
+                    "emissive_draw_calls": int(capabilities.get("emissiveDrawCalls") or 0),
+                    "bloom_draw_calls": int(capabilities.get("bloomDrawCalls") or 0),
+                    "bloom_levels": int(capabilities.get("bloomLevels") or 0),
+                }
+        cdp.wait_ms(100)
+    raise TimeoutError(f"Timed out waiting for Bloom/Emissive render activity; last={last_capabilities}")
 
 
 def latest_log_text(logs: list[dict[str, Any]], needle: str) -> str | None:
@@ -2445,6 +2552,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
             "recruit_accept_party_writeback",
             "rest_recovery_time_advance",
             "wardrobe_appearance_change",
+            "hdr_bloom_postprocessing_smoke",
             "full_rpg_save_reload_verify",
         ])
         full_rpg_profile = {
@@ -2512,7 +2620,7 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
                     "Web audio release policy",
                     "GLRenderer: Web release render capabilities",
                     "Web release VFX policy",
-                    "HDR post-processing disabled",
+                    "HDR post-processing",
                     "DialoguePresentationController",
                     "GameScene: inventory menu opened",
                     "GameScene: hotbar toggle accepted",

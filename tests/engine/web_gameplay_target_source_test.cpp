@@ -103,14 +103,17 @@ TEST(WebGameplayTargetSourceTest, WebGlPlatformGuardsSrgbAndDepthClear) {
     EXPECT_NE(platform_header.find("kSupportsDefaultFramebufferSrgb = !kIsWebGL"), std::string::npos);
     EXPECT_NE(platform_header.find("kSupportsFloatColorFramebuffers = !kIsWebGL"), std::string::npos);
     EXPECT_NE(platform_header.find("kSupportsLinearFloatFiltering = !kIsWebGL"), std::string::npos);
-    EXPECT_NE(platform_header.find("kEnableHdrPostProcessingByDefault = kSupportsFloatColorFramebuffers"), std::string::npos);
     EXPECT_NE(platform_header.find("glClearDepthf(depth);"), std::string::npos);
     EXPECT_NE(platform_header.find("glClearDepth(static_cast<GLdouble>(depth));"), std::string::npos);
     EXPECT_NE(renderer_header.find("RenderCapabilitySnapshot"), std::string::npos);
     EXPECT_NE(renderer_header.find("getRenderCapabilitySnapshot"), std::string::npos);
     EXPECT_NE(renderer_source.find("engine::platform::gl::kSupportsDefaultFramebufferSrgb"), std::string::npos);
-    EXPECT_NE(renderer_source.find("if constexpr (engine::platform::gl::kEnableHdrPostProcessingByDefault)"),
+    EXPECT_NE(renderer_source.find("detectRenderCapabilities"), std::string::npos);
+    EXPECT_NE(renderer_source.find("queryWebGlExtension(\"EXT_color_buffer_float\")"), std::string::npos);
+    EXPECT_NE(renderer_source.find("queryWebGlExtension(\"OES_texture_float_linear\")"), std::string::npos);
+    EXPECT_NE(renderer_source.find("probeColorRenderableFormat(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT)"),
               std::string::npos);
+    EXPECT_EQ(renderer_source.find("kEnableHdrPostProcessingByDefault"), std::string::npos);
     EXPECT_NE(renderer_source.find("bloom_enabled_ && bloom_pass_ && emissive_pass_"), std::string::npos);
     EXPECT_NE(renderer_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
     EXPECT_NE(renderer_source.find("GLRenderer: Web release render capabilities"), std::string::npos);
@@ -580,8 +583,12 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
     EXPECT_NE(renderer_header.find("RenderCapabilitySnapshot"), std::string::npos);
     EXPECT_NE(renderer_header.find("default_framebuffer_srgb"), std::string::npos);
     EXPECT_NE(renderer_header.find("float_color_framebuffers"), std::string::npos);
+    EXPECT_NE(renderer_header.find("rgba16f_color_renderable"), std::string::npos);
     EXPECT_NE(renderer_header.find("linear_float_filtering"), std::string::npos);
+    EXPECT_NE(renderer_header.find("hdr_fallback_reason"), std::string::npos);
     EXPECT_NE(renderer_source.find("captureRenderCapabilities"), std::string::npos);
+    EXPECT_NE(renderer_source.find("detectRenderCapabilities"), std::string::npos);
+    EXPECT_NE(renderer_source.find("publishRenderCapabilities"), std::string::npos);
     EXPECT_NE(renderer_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
     EXPECT_NE(renderer_source.find("GLRenderer: Web release render capabilities"), std::string::npos);
 
@@ -593,6 +600,7 @@ TEST(WebGameplayTargetSourceTest, Phase18RenderAudioVfxDiagnosticsArePresent) {
 
     EXPECT_NE(web_smoke.find("read_render_capabilities"), std::string::npos);
     EXPECT_NE(web_smoke.find("validate_render_capabilities"), std::string::npos);
+    EXPECT_NE(web_smoke.find("wait_for_render_postprocessing_activity"), std::string::npos);
     EXPECT_NE(web_smoke.find("collect_webgl_error_logs"), std::string::npos);
     EXPECT_NE(web_smoke.find("performance_budget"), std::string::npos);
     EXPECT_NE(web_smoke.find("vfx_policy"), std::string::npos);
@@ -785,6 +793,46 @@ TEST(WebGameplayTargetSourceTest, Phase26FullRpgBasicGameplayFlowsArePresent) {
     EXPECT_NE(web_smoke.find("rest_recovery_time_advance"), std::string::npos);
     EXPECT_NE(web_smoke.find("wardrobe_appearance_change"), std::string::npos);
     EXPECT_NE(web_smoke.find("full_rpg_save_reload_verify"), std::string::npos);
+}
+
+TEST(WebGameplayTargetSourceTest, Phase27HdrBloomRuntimeGateIsPresent) {
+    const std::string renderer_header = readProjectFile("src/engine/render/opengl/gl_renderer.h");
+    const std::string renderer_source = readProjectFile("src/engine/render/opengl/gl_renderer.cpp");
+    const std::string bloom_pass_source = readProjectFile("src/engine/render/opengl/bloom_pass.cpp");
+    const std::string emissive_pass_source = readProjectFile("src/engine/render/opengl/emissive_pass.cpp");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
+    const std::string release_validator_source = readProjectFile("tools/web_release/validate_web_release.py");
+
+    ASSERT_FALSE(renderer_header.empty());
+    ASSERT_FALSE(renderer_source.empty());
+    ASSERT_FALSE(bloom_pass_source.empty());
+    ASSERT_FALSE(emissive_pass_source.empty());
+    ASSERT_FALSE(web_smoke.empty());
+    ASSERT_FALSE(release_validator_source.empty());
+
+    EXPECT_NE(renderer_header.find("rgba16f_color_renderable"), std::string::npos);
+    EXPECT_NE(renderer_header.find("hdr_fallback_reason"), std::string::npos);
+    EXPECT_NE(renderer_header.find("emissive_draw_calls"), std::string::npos);
+    EXPECT_NE(renderer_header.find("bloom_levels"), std::string::npos);
+
+    EXPECT_NE(renderer_source.find("detectRenderCapabilities"), std::string::npos);
+    EXPECT_NE(renderer_source.find("queryWebGlExtension(\"EXT_color_buffer_float\")"), std::string::npos);
+    EXPECT_NE(renderer_source.find("queryWebGlExtension(\"OES_texture_float_linear\")"), std::string::npos);
+    EXPECT_NE(renderer_source.find("probeColorRenderableFormat(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT)"),
+              std::string::npos);
+    EXPECT_NE(renderer_source.find("HDR post-processing fallback: reason="), std::string::npos);
+    EXPECT_EQ(renderer_source.find("kEnableHdrPostProcessingByDefault"), std::string::npos);
+
+    EXPECT_NE(bloom_pass_source.find("GL_RGBA16F"), std::string::npos);
+    EXPECT_NE(bloom_pass_source.find("GL_HALF_FLOAT"), std::string::npos);
+    EXPECT_EQ(bloom_pass_source.find("GL_RGB16F"), std::string::npos);
+    EXPECT_NE(emissive_pass_source.find("desc.type = GL_HALF_FLOAT"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("rgba16fColorRenderable"), std::string::npos);
+    EXPECT_NE(web_smoke.find("wait_for_render_postprocessing_activity"), std::string::npos);
+    EXPECT_NE(web_smoke.find("hdr_bloom_postprocessing_smoke"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("probeColorRenderableFormat(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT)"),
+              std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase19PersistentSettingsAndStorageHardeningIsPresent) {

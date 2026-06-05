@@ -18,7 +18,6 @@ inline constexpr bool kIsWebGL = TF_GL_PLATFORM_WEBGL != 0;
 inline constexpr bool kSupportsDefaultFramebufferSrgb = !kIsWebGL;
 inline constexpr bool kSupportsFloatColorFramebuffers = !kIsWebGL;
 inline constexpr bool kSupportsLinearFloatFiltering = !kIsWebGL;
-inline constexpr bool kEnableHdrPostProcessingByDefault = kSupportsFloatColorFramebuffers;
 inline constexpr GLenum kTextureColorInternalFormat = kIsWebGL ? GL_RGBA8 : GL_SRGB8_ALPHA8;
 inline constexpr const char* kGlslVersion =
     kIsWebGL ? "#version 300 es" : "#version 330 core";

@@ -354,6 +354,12 @@ flowchart LR
 - 无 WebGL error flood。
 - Bloom / emissive visual smoke 通过。
 
+执行结果（2026-06-05）：
+
+- 已完成。Chrome 148 WebGL2 报告 `EXT_color_buffer_float`、`GL_RGBA16F` color-renderable、float linear filtering 均满足。
+- `renderCapabilities` 显示 `hdrPostProcessing=true`、`emissive=true`、`bloom=true`，fallback reason 为空。
+- full-rpg smoke 的 postprocessing activity 断言通过：`emissive_sprites=12`、`emissive_draw_calls=1`、`bloom_draw_calls=11`、`bloom_levels=4`。
+
 ## Phase 28：完整发布验收、文档与 CI
 
 目标：把 full RPG Web release 固化为可重复构建、可自动验收、可人工测试的正式交付形态。
@@ -412,9 +418,9 @@ flowchart LR
 - [x] 招募接受、队伍成员变化、后续战斗识别 smoke 通过。
 - [x] 休息恢复 HP/MP、推进时间、保存恢复 smoke 通过。
 - [x] 衣柜修改外观、地图 sprite 更新、保存恢复 smoke 通过。
-- [ ] Chrome WebGL2 下 HDR emissive 恢复。
-- [ ] Chrome WebGL2 下 Bloom 恢复。
-- [ ] 后处理 fallback 只在 capability 缺失时触发，并写入具体原因。
+- [x] Chrome WebGL2 下 HDR emissive 恢复。
+- [x] Chrome WebGL2 下 Bloom 恢复。
+- [x] 后处理 fallback 只在 capability 缺失时触发，并写入具体原因。
 - [x] full RPG Chrome smoke 通过。
 - [ ] `docs/web_release.md` 更新为完整 Web 移植说明。
 - [ ] 新增 Phase 22-28 报告和最终 full RPG Web release 报告。

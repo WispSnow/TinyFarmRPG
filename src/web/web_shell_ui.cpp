@@ -296,7 +296,7 @@ EM_JS(void, tf_web_shell_report_webgl_features, (), {
     }
     if (drawer) {
         drawer.textContent =
-            "RmlUi deferred. Effekseer off. Bloom off. Float RT: " +
+            "RmlUi, Effekseer, and Bloom use runtime diagnostics. Float RT: " +
             (features.colorBufferFloat ? "yes" : "no") +
             ". Float linear: " +
             (features.textureFloatLinear ? "yes" : "no") +

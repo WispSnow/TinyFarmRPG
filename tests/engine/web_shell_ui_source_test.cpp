@@ -34,14 +34,14 @@ TEST(WebShellUiSourceTest, AudioContextIsCreatedFromClickHandler) {
     EXPECT_GT(click_listener, context_create);
 }
 
-TEST(WebShellUiSourceTest, KeepsWebGlFeatureProbeForDeferredPostProcessing) {
+TEST(WebShellUiSourceTest, KeepsWebGlFeatureProbeForRuntimePostProcessingGate) {
     const std::string source = readWebShellUiSource();
     ASSERT_FALSE(source.empty());
 
     EXPECT_NE(source.find("tf_web_shell_report_webgl_features"), std::string::npos);
     EXPECT_NE(source.find("getExtension(\"EXT_color_buffer_float\")"), std::string::npos);
     EXPECT_NE(source.find("getExtension(\"OES_texture_float_linear\")"), std::string::npos);
-    EXPECT_NE(source.find("Bloom off"), std::string::npos);
+    EXPECT_NE(source.find("Bloom use runtime diagnostics"), std::string::npos);
 }
 
 } // namespace

@@ -65,13 +65,21 @@ public:
         std::string platform{"unknown"};
         bool default_framebuffer_srgb{false};
         bool float_color_framebuffers{false};
+        bool rgba16f_color_renderable{false};
         bool linear_float_filtering{false};
         bool hdr_post_processing{false};
         bool bloom_enabled{false};
         bool emissive_enabled{false};
+        std::string hdr_fallback_reason{};
+        std::string bloom_fallback_reason{};
+        std::string emissive_fallback_reason{};
         int max_texture_size{0};
         int max_renderbuffer_size{0};
         int max_samples{0};
+        uint32_t emissive_draw_calls{0};
+        uint32_t emissive_sprites{0};
+        uint32_t bloom_draw_calls{0};
+        uint32_t bloom_levels{0};
     };
 
 private:
@@ -98,8 +106,8 @@ private:
     bool point_lights_enabled_{true};
     bool spot_lights_enabled_{true};
     bool directional_lights_enabled_{true};
-    bool bloom_enabled_{engine::platform::gl::kEnableHdrPostProcessingByDefault};
-    bool emissive_enabled_{engine::platform::gl::kEnableHdrPostProcessingByDefault};
+    bool bloom_enabled_{false};
+    bool emissive_enabled_{false};
 #ifdef TF_ENABLE_DEBUG_UI
     bool debug_ui_enabled_{true};
 #endif
@@ -273,6 +281,8 @@ private:
     [[nodiscard]] bool initWorldVfxPass();
     [[nodiscard]] bool initCompositePass();
     void captureRenderCapabilities();
+    void publishRenderCapabilities();
+    void updateRenderPassCapabilityStats();
 
     glm::mat4 computeViewProjection(const Camera& camera);      ///< @brief 计算视图投影矩阵
     void applyViewProjection(GLint location);                    ///< @brief 应用视图投影矩阵

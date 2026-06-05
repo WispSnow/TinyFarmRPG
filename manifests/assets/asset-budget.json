@@ -1,11 +1,11 @@
 {
   "used_assets": {
     "files": 804,
-    "bytes": 28984720,
+    "bytes": 28984732,
     "by_root": {
       "assets": {
         "files": 731,
-        "bytes": 28793827
+        "bytes": 28793839
       },
       "config": {
         "files": 6,
@@ -39,7 +39,7 @@
       },
       ".frag": {
         "files": 7,
-        "bytes": 6467
+        "bytes": 6479
       },
       ".json": {
         "files": 33,
@@ -139,11 +139,11 @@
   },
   "web_poc_assets": {
     "files": 283,
-    "bytes": 21896934,
+    "bytes": 21896946,
     "by_root": {
       "assets": {
         "files": 223,
-        "bytes": 21768431
+        "bytes": 21768443
       },
       "config": {
         "files": 6,
@@ -161,7 +161,7 @@
     "by_extension": {
       ".frag": {
         "files": 7,
-        "bytes": 6467
+        "bytes": 6479
       },
       ".json": {
         "files": 33,
@@ -228,11 +228,11 @@
   },
   "web_release_full_assets": {
     "files": 381,
-    "bytes": 23667850,
+    "bytes": 23667866,
     "by_root": {
       "assets": {
         "files": 309,
-        "bytes": 23476646
+        "bytes": 23476662
       },
       "config": {
         "files": 6,
@@ -266,11 +266,11 @@
       },
       ".frag": {
         "files": 7,
-        "bytes": 6467
+        "bytes": 6479
       },
       ".json": {
         "files": 33,
-        "bytes": 125504
+        "bytes": 125508
       },
       ".lua": {
         "files": 15,

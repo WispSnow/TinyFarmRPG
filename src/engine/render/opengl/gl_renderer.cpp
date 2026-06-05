@@ -50,6 +50,83 @@ namespace {
     return value;
 }
 
+#if defined(__EMSCRIPTEN__)
+[[nodiscard]] bool queryWebGlExtension(std::string_view extension) {
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif
+    const int supported = EM_ASM_INT({
+        const name = UTF8ToString($0);
+        const context = (typeof GL !== "undefined" && GL.currentContext) ? GL.currentContext.GLctx : null;
+        if (!context || typeof context.getExtension !== "function") {
+            return 0;
+        }
+        return context.getExtension(name) ? 1 : 0;
+    }, extension.data());
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+    return supported != 0;
+}
+#endif
+
+[[nodiscard]] bool probeColorRenderableFormat(GLenum internal_format, GLenum format, GLenum type) {
+    GLint previous_framebuffer = 0;
+    GLint previous_texture = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous_framebuffer);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_texture);
+
+    GLuint fbo = 0;
+    GLuint texture = 0;
+    glGenFramebuffers(1, &fbo);
+    glGenTextures(1, &texture);
+    if (fbo == 0 || texture == 0) {
+        if (texture != 0) {
+            glDeleteTextures(1, &texture);
+        }
+        if (fbo != 0) {
+            glDeleteFramebuffers(1, &fbo);
+        }
+        return false;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(internal_format), 2, 2, 0, format, type, nullptr);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previous_framebuffer));
+    glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(previous_texture));
+    glDeleteTextures(1, &texture);
+    glDeleteFramebuffers(1, &fbo);
+    const bool no_gl_errors = logGlErrors("GLRenderer::probeColorRenderableFormat");
+    return status == GL_FRAMEBUFFER_COMPLETE && no_gl_errors;
+}
+
+[[nodiscard]] GLRenderer::RenderCapabilitySnapshot detectRenderCapabilities() {
+    GLRenderer::RenderCapabilitySnapshot snapshot{};
+    snapshot.platform = engine::platform::gl::kIsWebGL ? "webgl2" : "desktop-gl";
+    snapshot.default_framebuffer_srgb = engine::platform::gl::kSupportsDefaultFramebufferSrgb;
+#if defined(__EMSCRIPTEN__)
+    snapshot.float_color_framebuffers = queryWebGlExtension("EXT_color_buffer_float");
+    snapshot.linear_float_filtering = queryWebGlExtension("OES_texture_float_linear");
+#else
+    snapshot.float_color_framebuffers = engine::platform::gl::kSupportsFloatColorFramebuffers;
+    snapshot.linear_float_filtering = engine::platform::gl::kSupportsLinearFloatFiltering;
+#endif
+    snapshot.rgba16f_color_renderable =
+        snapshot.float_color_framebuffers &&
+        probeColorRenderableFormat(GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT);
+    return snapshot;
+}
+
 void publishWebReleaseRenderCapabilities(const GLRenderer::RenderCapabilitySnapshot& snapshot) {
 #if defined(__EMSCRIPTEN__)
 #if defined(__clang__)
@@ -62,24 +139,38 @@ void publishWebReleaseRenderCapabilities(const GLRenderer::RenderCapabilitySnaps
         render.platform = UTF8ToString($0);
         render.defaultFramebufferSrgb = !!$1;
         render.floatColorFramebuffers = !!$2;
-        render.linearFloatFiltering = !!$3;
-        render.hdrPostProcessing = !!$4;
-        render.bloom = !!$5;
-        render.emissive = !!$6;
-        render.maxTextureSize = $7;
-        render.maxRenderbufferSize = $8;
-        render.maxSamples = $9;
+        render.rgba16fColorRenderable = !!$3;
+        render.linearFloatFiltering = !!$4;
+        render.hdrPostProcessing = !!$5;
+        render.bloom = !!$6;
+        render.emissive = !!$7;
+        render.hdrFallbackReason = UTF8ToString($8);
+        render.bloomFallbackReason = UTF8ToString($8);
+        render.emissiveFallbackReason = UTF8ToString($8);
+        render.maxTextureSize = $9;
+        render.maxRenderbufferSize = $10;
+        render.maxSamples = $11;
+        render.emissiveDrawCalls = $12;
+        render.emissiveSprites = $13;
+        render.bloomDrawCalls = $14;
+        render.bloomLevels = $15;
     },
            snapshot.platform.c_str(),
            snapshot.default_framebuffer_srgb ? 1 : 0,
            snapshot.float_color_framebuffers ? 1 : 0,
+           snapshot.rgba16f_color_renderable ? 1 : 0,
            snapshot.linear_float_filtering ? 1 : 0,
            snapshot.hdr_post_processing ? 1 : 0,
            snapshot.bloom_enabled ? 1 : 0,
            snapshot.emissive_enabled ? 1 : 0,
+           snapshot.hdr_fallback_reason.c_str(),
            snapshot.max_texture_size,
            snapshot.max_renderbuffer_size,
-           snapshot.max_samples);
+           snapshot.max_samples,
+           snapshot.emissive_draw_calls,
+           snapshot.emissive_sprites,
+           snapshot.bloom_draw_calls,
+           snapshot.bloom_levels);
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
@@ -143,19 +234,41 @@ bool GLRenderer::init(SDL_Window* window,
         spdlog::error("创建 LightingPass 失败。");
         return false;
     }
-    if constexpr (engine::platform::gl::kEnableHdrPostProcessingByDefault) {
+
+    render_capabilities_ = detectRenderCapabilities();
+    const bool can_init_hdr =
+        render_capabilities_.float_color_framebuffers &&
+        render_capabilities_.rgba16f_color_renderable &&
+        render_capabilities_.linear_float_filtering;
+    if (can_init_hdr) {
         if (!initEmissivePass()) {
             spdlog::error("创建 EmissivePass 失败。");
             return false;
         }
+        emissive_enabled_ = true;
         if (!initBloomPass()) {
             spdlog::error("创建 BloomPass 失败。");
             return false;
         }
+        bloom_enabled_ = true;
+        spdlog::info("HDR post-processing enabled: emissive=true bloom=true.");
     } else {
+        std::string reason;
+        if (!render_capabilities_.float_color_framebuffers) {
+            reason = "missing EXT_color_buffer_float";
+        } else if (!render_capabilities_.rgba16f_color_renderable) {
+            reason = "GL_RGBA16F framebuffer is not color-renderable";
+        } else if (!render_capabilities_.linear_float_filtering) {
+            reason = "missing OES_texture_float_linear";
+        } else {
+            reason = "runtime capability gate rejected HDR post-processing";
+        }
         emissive_enabled_ = false;
         bloom_enabled_ = false;
-        spdlog::info("HDR post-processing disabled for this GL platform.");
+        render_capabilities_.hdr_fallback_reason = reason;
+        render_capabilities_.emissive_fallback_reason = reason;
+        render_capabilities_.bloom_fallback_reason = reason;
+        spdlog::info("HDR post-processing fallback: reason='{}'.", reason);
     }
     if (!initWorldVfxPass()) {
         spdlog::error("创建 WorldVfxPass 失败。");
@@ -634,6 +747,8 @@ void GLRenderer::present() {
     }
 #endif
 
+    updateRenderPassCapabilityStats();
+    publishRenderCapabilities();
     render_context_->swapWindow();
 }
 
@@ -707,10 +822,12 @@ void GLRenderer::setBloomEnabled(bool enabled) {
     if (!bloom_enabled_ && bloom_pass_) {
         bloom_pass_->clear();
     }
+    publishRenderCapabilities();
 }
 
 void GLRenderer::setEmissiveEnabled(bool enabled) {
     emissive_enabled_ = enabled && emissive_pass_ != nullptr;
+    publishRenderCapabilities();
 }
 
 void GLRenderer::setAmbient(const glm::vec3& ambient) {
@@ -753,13 +870,10 @@ const GLRenderer::PassStats& GLRenderer::getPassStats(PassType pass) const {
 }
 
 void GLRenderer::captureRenderCapabilities() {
-    render_capabilities_.platform = engine::platform::gl::kIsWebGL ? "webgl2" : "desktop-gl";
-    render_capabilities_.default_framebuffer_srgb = engine::platform::gl::kSupportsDefaultFramebufferSrgb;
-    render_capabilities_.float_color_framebuffers = engine::platform::gl::kSupportsFloatColorFramebuffers;
-    render_capabilities_.linear_float_filtering = engine::platform::gl::kSupportsLinearFloatFiltering;
-    render_capabilities_.hdr_post_processing = engine::platform::gl::kEnableHdrPostProcessingByDefault;
-    render_capabilities_.bloom_enabled = bloom_enabled_;
-    render_capabilities_.emissive_enabled = emissive_enabled_;
+    if (render_capabilities_.platform == "unknown") {
+        render_capabilities_ = detectRenderCapabilities();
+    }
+    updateRenderPassCapabilityStats();
     render_capabilities_.max_texture_size = queryGlInteger(GL_MAX_TEXTURE_SIZE);
     render_capabilities_.max_renderbuffer_size = queryGlInteger(GL_MAX_RENDERBUFFER_SIZE);
 #if defined(GL_MAX_SAMPLES)
@@ -770,23 +884,46 @@ void GLRenderer::captureRenderCapabilities() {
 
 #if defined(__EMSCRIPTEN__)
     spdlog::info(
-        "GLRenderer: Web release render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} max_texture_size={} max_renderbuffer_size={} max_samples={}.",
+        "GLRenderer: Web release render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} rgba16f_color_renderable={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} hdr_fallback='{}' bloom_fallback='{}' emissive_fallback='{}' max_texture_size={} max_renderbuffer_size={} max_samples={}.",
 #else
     spdlog::debug(
-        "GLRenderer: render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} max_texture_size={} max_renderbuffer_size={} max_samples={}.",
+        "GLRenderer: render capabilities platform={} default_framebuffer_srgb={} float_color_framebuffers={} rgba16f_color_renderable={} linear_float_filtering={} hdr_post_processing={} bloom={} emissive={} hdr_fallback='{}' bloom_fallback='{}' emissive_fallback='{}' max_texture_size={} max_renderbuffer_size={} max_samples={}.",
 #endif
         render_capabilities_.platform,
         render_capabilities_.default_framebuffer_srgb,
         render_capabilities_.float_color_framebuffers,
+        render_capabilities_.rgba16f_color_renderable,
         render_capabilities_.linear_float_filtering,
         render_capabilities_.hdr_post_processing,
         render_capabilities_.bloom_enabled,
         render_capabilities_.emissive_enabled,
+        render_capabilities_.hdr_fallback_reason,
+        render_capabilities_.bloom_fallback_reason,
+        render_capabilities_.emissive_fallback_reason,
         render_capabilities_.max_texture_size,
         render_capabilities_.max_renderbuffer_size,
         render_capabilities_.max_samples);
 
+    publishRenderCapabilities();
+}
+
+void GLRenderer::publishRenderCapabilities() {
+    render_capabilities_.hdr_post_processing = emissive_enabled_ || bloom_enabled_;
+    render_capabilities_.bloom_enabled = bloom_enabled_;
+    render_capabilities_.emissive_enabled = emissive_enabled_;
     publishWebReleaseRenderCapabilities(render_capabilities_);
+}
+
+void GLRenderer::updateRenderPassCapabilityStats() {
+    render_capabilities_.hdr_post_processing = emissive_enabled_ || bloom_enabled_;
+    render_capabilities_.bloom_enabled = bloom_enabled_;
+    render_capabilities_.emissive_enabled = emissive_enabled_;
+    const auto& emissive_stats = pass_stats_[static_cast<size_t>(PassType::Emissive)];
+    const auto& bloom_stats = pass_stats_[static_cast<size_t>(PassType::Bloom)];
+    render_capabilities_.emissive_draw_calls = emissive_stats.draw_calls;
+    render_capabilities_.emissive_sprites = emissive_stats.sprite_count;
+    render_capabilities_.bloom_draw_calls = bloom_stats.draw_calls;
+    render_capabilities_.bloom_levels = bloom_pass_ ? bloom_pass_->getLastLevelCount() : 0u;
 }
 
 void GLRenderer::setVfxBackend(engine::vfx::VfxBackend* backend) {
