@@ -1057,6 +1057,16 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_NE(release_manifest.find("ui/rmlui/scenes/recruit_offer.rml"), std::string::npos);
     EXPECT_NE(release_manifest.find("ui/rmlui/scenes/rest_dialog.rml"), std::string::npos);
     EXPECT_NE(release_manifest.find("ui/rmlui/scenes/shop_menu.rml"), std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Purple.png"),
+              std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Black.png"),
+              std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Wizard.png"),
+              std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Black.png"),
+              std::string::npos);
+    EXPECT_NE(release_manifest.find("assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Wizard.png"),
+              std::string::npos);
     EXPECT_NE(release_manifest.find("assets/textures/BattleBg/battlebacks1/Grassland.png"), std::string::npos);
     EXPECT_NE(release_manifest.find("assets/vfx/effects/HitEffect.efkefc"), std::string::npos);
     EXPECT_EQ(release_manifest.find("assets/maps/school.tmj"), std::string::npos);

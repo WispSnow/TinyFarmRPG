@@ -627,6 +627,11 @@ FULL_RPG_REQUIRED_PATHS = {
     "ui/rmlui/scenes/shop_menu.rcss",
 }
 
+WEB_FULL_APPEARANCE_REASONS = {
+    "appearance-runtime",
+    "appearance-portrait-runtime",
+}
+
 
 def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[str]:
     selected: set[str] = set(select_web_poc_assets(used, root))
@@ -639,8 +644,11 @@ def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[st
         if (root / rel).is_file():
             selected.add(rel)
 
-    for rel in used:
+    for rel, reasons in used.items():
         if rel.startswith(excluded_prefixes):
+            continue
+        if reasons & WEB_FULL_APPEARANCE_REASONS:
+            selected.add(rel)
             continue
         if rel.startswith(("assets/vfx/", "assets/textures/BattleBg/")):
             selected.add(rel)

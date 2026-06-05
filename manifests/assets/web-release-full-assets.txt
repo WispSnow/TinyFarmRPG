@@ -27,94 +27,424 @@ assets/data/rpg/states.json
 assets/data/rpg/troops.json
 assets/data/shops.json
 assets/data/vfx_catalog.json
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Leprechaun.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Santa hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Wizard.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/pirate eye patch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Skins/4.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Leprechaun.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Santa Hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/Wizard.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Acc/pirate eye patch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/13.4 Carrying - Throwing items/Skins/4.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Leprechaun.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Santa Hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/Wizard.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Acc/pirate eye patch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/2. Walk/Skins/4.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Leprechaun.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Pirate eyepatch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Santa Hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Acc/Wizard.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Skins/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Weapons/Hoe/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/4. Pickaxe, Hoe and Catching insects/Weapons/Pickaxe/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Leprechaun.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Pirate eyepatch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Santa hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Acc/Wizard.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Skins/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Weapons/Axe/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/5. Axe and Sickle/Weapons/Sickle/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Elf/1.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Elf/2.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Elf/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Elf/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Leprechaun.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Santa hat.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/Wizard.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Acc/pirate eye patch.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Clothers/Farm/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Clothers/Farm/Green.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Clothers/Farm/Pink.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Clothers/Farm/Purple.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Clothers/Farm/Red.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Female/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Female/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Female/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Male/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Male/Blue.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Male/Brown.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Eyes/Male/Green.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Lyria/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Silvermist/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Standard/Black.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Standard/Blonde.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Standard/Brown.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Hair's/Standard/Ginger.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Skins/1.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Skins/2.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Skins/3.png
+assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Skins/4.png
 assets/farm-rpg/Character and Portrait/Character/PNG/7. Watering/Weapons/Watering/1.png
 assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Axe.png
 assets/farm-rpg/Character and Portrait/Character/Pre-made/Alex/Hoe.png
@@ -132,11 +462,86 @@ assets/farm-rpg/Character and Portrait/Character/Pre-made/Manu/Idle.png
 assets/farm-rpg/Character and Portrait/Character/Pre-made/Manu/Walk.png
 assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Idle.png
 assets/farm-rpg/Character and Portrait/Character/Pre-made/Tori/Walk.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Beard/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Beard/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Beard/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Beard/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Beret.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Butterfly/Blue.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Butterfly/Green.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Butterfly/Pink.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Butterfly/Purple.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Butterfly/Red.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Chicken.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Cook.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Cow.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Deer.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Farm.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Frog.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Leprechaun.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Pirate eyepatch.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Pirate.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Santa Hat.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Wizard.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Female/Blue.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Female/Green.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Female/Pink.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Female/Purple.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Female/Red.png
 assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Male/Blue.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Male/Green.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Male/Pink.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Male/Purple.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Clothers/Male/Red.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Eyes/Black.png
 assets/farm-rpg/Character and Portrait/Portrait/PNG/Eyes/Blue.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Eyes/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Eyes/Green.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/FX.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Iridessa/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Iridessa/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Iridessa/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Iridessa/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Josh/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Josh/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Josh/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Josh/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Lyria/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Lyria/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Lyria/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Lyria/blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Sebastian/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Sebastian/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Sebastian/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Sebastian/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Silvermist/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Silvermist/Blonde.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Silvermist/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Silvermist/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Standart/Black.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Standart/Blonde.png
 assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Standart/Brown.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Standart/Ginger.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Elf/1.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Elf/2.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Elf/3.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Elf/4.png
 assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Human/1.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Human/2.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Human/3.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Ears/Human/4.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Female/1.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Female/2.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Female/3.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Female/4.png
 assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Male/1.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Male/2.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Male/3.png
+assets/farm-rpg/Character and Portrait/Portrait/PNG/Skins/Male/4.png
 assets/farm-rpg/Character and Portrait/Portrait/Premade/1.png
 assets/farm-rpg/Character and Portrait/Portrait/Premade/2.png
 assets/farm-rpg/Character and Portrait/Portrait/Premade/9.png

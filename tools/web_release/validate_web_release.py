@@ -83,6 +83,11 @@ REQUIRED_FULL_PACKAGE_PATHS = {
     "assets/data/quests.json",
     "assets/data/shops.json",
     "assets/data/vfx_catalog.json",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Wizard.png",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Purple.png",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Black.png",
+    "assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Wizard.png",
+    "assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Black.png",
     "assets/fonts/LXGWBright-Regular.ttf",
     "assets/fonts/VonwaonBitmap-16px.ttf",
     "assets/maps/farm-rpg.world",
@@ -132,6 +137,11 @@ REQUIRED_RUNTIME_PACKAGES = {
 }
 
 REQUIRED_SHARED_UI_PACKAGE_PATHS = {
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Acc/Wizard.png",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Clothers/Farm/Purple.png",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/1. Idle/Hair's/Fawn/Black.png",
+    "assets/farm-rpg/Character and Portrait/Portrait/PNG/Acc/Wizard.png",
+    "assets/farm-rpg/Character and Portrait/Portrait/PNG/Hair/Fawn/Black.png",
     "ui/rmlui/scenes/appearance_customize.rml",
     "ui/rmlui/scenes/dialogue_choice.rml",
     "ui/rmlui/scenes/inventory_menu.rml",
