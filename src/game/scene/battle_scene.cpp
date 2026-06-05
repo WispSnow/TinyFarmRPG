@@ -747,6 +747,7 @@ void BattleScene::executePendingAction() {
     const auto before_units = session_.units();
     const std::uint32_t round_index = session_.roundIndex();
     last_action_result_ = session_.submitAction(*pending_action_);
+    ++last_action_sequence_;
     emitBattleActionScriptEvents(*last_action_result_, before_units, round_index);
     appendBattleLogLines(game::battle::formatBattleLogLines(
         *last_action_result_,
@@ -3204,6 +3205,17 @@ void BattleScene::publishWebBattleDiagnostics() const {
         const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
         const battle = diagnostics.battle || (diagnostics.battle = {});
         const lastAction = battle.lastAction || (battle.lastAction = {});
+        lastAction.sequence = $0;
+        if ($0 === 0) {
+            battle.lastActionHistory = [];
+            battle.lastActionHistorySequence = 0;
+        }
+    },
+    static_cast<int>(last_action_sequence_));
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const lastAction = battle.lastAction || (battle.lastAction = {});
         lastAction.targetDefeated = !!$0;
         lastAction.escapeSucceeded = !!$1;
         lastAction.outcomeAfter = UTF8ToString($2);
@@ -3211,6 +3223,21 @@ void BattleScene::publishWebBattleDiagnostics() const {
     last_target_defeated ? 1 : 0,
     last_escape_succeeded ? 1 : 0,
     last_outcome_after);
+    EM_ASM({
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const battle = diagnostics.battle || (diagnostics.battle = {});
+        const lastAction = battle.lastAction || {};
+        const sequence = $0;
+        if (sequence > 0 && battle.lastActionHistorySequence !== sequence) {
+            const history = battle.lastActionHistory || (battle.lastActionHistory = []);
+            history.push(Object.assign({}, lastAction));
+            while (history.length > 12) {
+                history.shift();
+            }
+            battle.lastActionHistorySequence = sequence;
+        }
+    },
+    static_cast<int>(last_action_sequence_));
     EM_ASM({
         const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
         const battle = diagnostics.battle || (diagnostics.battle = {});

@@ -107,14 +107,16 @@ python3 tools/web_release/serve_web_release.py \
 - 点击 Start，进入角色创建，再进入 `home_exterior`。
 - Network 面板能看到 `shared-ui.tfpack`、`rpg-core.tfpack`、`home-map.tfpack`、`town-map.tfpack`、`battle-core.tfpack`、`vfx-core.tfpack`、`audio-core.tfpack` 按需请求，状态为 200 或 304，MIME 为 `application/octet-stream`。
 - 从 `home_exterior` 进入 `home_interior`，再回到 `home_exterior`，然后进入 `town`。
-- 在 `town` 触发遭遇，进入战斗，使用技能胜利并返回地图；日志或 diagnostics 中 `Web release VFX policy` 应为 `backend=effekseer status=enabled`。
+- 在 `town` 触发遭遇，进入战斗，覆盖 `Fight` 下的 Attack / Guard / Item / Escape；逃跑后应回到地图且 potion 消耗写回。
+- 再触发一次遭遇，使用 Guard 等待失败流程，确认失败后回到 `home_interior` 且 HP 恢复为可继续游戏状态。
+- 再触发任务目标遭遇，使用技能胜利并返回地图；日志或 diagnostics 中 `Web release VFX policy` 应为 `backend=effekseer status=enabled`。
 - 打开商店，完成一次买入、一次卖出，并确认一次金币不足或库存限制反馈不会错误改动金币。
 - 领取 `village_goblin_cleanup`，击败 3 个 slime，回 NPC 交付任务并领取奖励。
 - 招募 Lyria，确认队伍数据中出现 `actor.lyria`，并能在后续战斗 factory 中识别。
 - 进入室内休息，确认 HP/MP 恢复且时间推进。
 - 打开衣柜，修改外观，返回地图后确认 sprite/appearance 状态变化。
 - 修改一次音量设置，刷新页面后确认设置恢复。
-- 保存 slot0，刷新页面，从标题页 Load slot0，确认地图、任务完成状态、队伍、外观和设置保持。
+- 保存 slot0，刷新页面，从标题页 Load slot0，确认地图、任务完成状态、队伍、外观、HP/MP、背包和设置保持；若已击败 `town` 的非重生遭遇 `1001`，回到 `town` 后该遭遇不应重新可触发。
 - DevTools console 中没有 WebGL error flood；`renderCapabilities` 应显示 HDR/Bloom enabled，或给出具体 `hdrFallbackReason` / `bloomFallbackReason` / `emissiveFallbackReason`。
 
 ## 发布目录结构

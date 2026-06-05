@@ -85,8 +85,9 @@ Results:
 
 ## Notes
 
-The release report now explicitly lists uncovered non-basic flows instead of treating basic RPG gameplay as future work. The remaining uncovered items are battle matrix extensions, not blockers for the full RPG basic release:
+This report records the Phase 28 baseline. The battle matrix extensions that were outside the Phase 28 baseline were completed in the subsequent battle-depth pass and are now covered by the final full RPG report:
 
 - `battle_attack_item_guard_escape_matrix`
 - `battle_defeat_flow`
+- `battle_hp_mp_inventory_writeback`
 - `battle_defeated_encounter_save_reload_matrix`

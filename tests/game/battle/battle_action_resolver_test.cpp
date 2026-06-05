@@ -672,6 +672,28 @@ TEST(BattleActionResolverTest, EscapeSuccessEndsBattle) {
     EXPECT_EQ(turn_core.outcome(), BattleOutcome::Escaped);
 }
 
+TEST(BattleActionResolverTest, EscapeBecomesGuaranteedAfterFirstFailure) {
+    TurnCore turn_core(makeUnits());
+    BattleRuntimeState runtime_state = makeRuntimeState(turn_core);
+    BattleActionResolver resolver{[] { return 80; }};
+
+    BattleActionResult first = resolver.resolve(BattleAction{
+        .type = BattleActionType::Escape,
+        .actor_id = 1
+    }, turn_core, runtime_state);
+    EXPECT_EQ(first.status, BattleActionStatus::Applied);
+    EXPECT_FALSE(first.escape_succeeded);
+    ASSERT_EQ(turn_core.currentActorId(), std::optional<BattleUnitId>{2});
+
+    BattleActionResult second = resolver.resolve(BattleAction{
+        .type = BattleActionType::Escape,
+        .actor_id = 2
+    }, turn_core, runtime_state);
+    EXPECT_EQ(second.status, BattleActionStatus::Applied);
+    EXPECT_TRUE(second.escape_succeeded);
+    EXPECT_EQ(turn_core.outcome(), BattleOutcome::Escaped);
+}
+
 } // namespace
 } // namespace game::battle
 // NOLINTEND

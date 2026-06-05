@@ -813,6 +813,50 @@ def actor_runtime_state(gameplay: dict[str, Any] | None, actor_id: str) -> dict[
     }
 
 
+def party_runtime_states(gameplay: dict[str, Any] | None) -> dict[str, dict[str, int]]:
+    party = gameplay_player(gameplay).get("party")
+    if not isinstance(party, dict):
+        return {}
+    states = party.get("runtimeStates")
+    if not isinstance(states, dict):
+        return {}
+    result: dict[str, dict[str, int]] = {}
+    for actor_id, state in states.items():
+        if not isinstance(state, dict):
+            continue
+        result[str(actor_id)] = {
+            "currentHp": int(state.get("currentHp") or 0),
+            "currentMp": int(state.get("currentMp") or 0),
+            "level": int(state.get("level") or 0),
+            "totalExp": int(state.get("totalExp") or 0),
+        }
+    return result
+
+
+def inventory_items(gameplay: dict[str, Any] | None) -> dict[str, int]:
+    inventory = gameplay_player(gameplay).get("inventory")
+    if not isinstance(inventory, dict):
+        return {}
+    items = inventory.get("items")
+    if not isinstance(items, dict):
+        return {}
+    return {str(item_id): int(count or 0) for item_id, count in items.items()}
+
+
+def defeated_encounters_from_save(save_json: dict[str, Any] | None, map_name: str) -> list[int]:
+    if not isinstance(save_json, dict):
+        return []
+    maps = save_json.get("maps")
+    if not isinstance(maps, list):
+        return []
+    for map_entry in maps:
+        if not isinstance(map_entry, dict) or map_entry.get("map_name") != map_name:
+            continue
+        values = map_entry.get("defeated_encounters")
+        return [int(value) for value in values] if isinstance(values, list) else []
+    return []
+
+
 def gameplay_time_minutes(gameplay: dict[str, Any] | None) -> int:
     if not isinstance(gameplay, dict):
         return 0
@@ -1129,6 +1173,10 @@ def has_new_log(cdp: CdpClient, needle: str, first_index: int) -> bool:
     return any(needle in str(entry.get("text", "")) for entry in cdp.state.logs[first_index:])
 
 
+def new_log_texts(cdp: CdpClient, first_index: int) -> list[str]:
+    return [str(entry.get("text", "")) for entry in cdp.state.logs[first_index:]]
+
+
 def wait_for_new_log_optional(
     cdp: CdpClient,
     label: str,
@@ -1141,6 +1189,24 @@ def wait_for_new_log_optional(
         return True
     except TimeoutError:
         return False
+
+
+def expected_encounter_log(encounter: dict[str, Any]) -> str:
+    return (
+        f"EnemyEncounterSystem: triggering battle encounter_id={int(encounter.get('encounterId') or 0)} "
+        f"troop_id='{str(encounter.get('troopId') or '')}'"
+    )
+
+
+def wait_for_expected_encounter_log(cdp: CdpClient, encounter: dict[str, Any], first_index: int, timeout_ms: int) -> None:
+    expected = expected_encounter_log(encounter)
+    try:
+        cdp.wait_for_new_log("expected battle encounter trigger", expected, first_index, timeout_ms)
+    except TimeoutError as exc:
+        battle_logs = [
+            text for text in new_log_texts(cdp, first_index) if "EnemyEncounterSystem: triggering battle" in text
+        ]
+        raise RuntimeError(f"Expected encounter log '{expected}', got battle logs: {battle_logs}") from exc
 
 
 def is_web_package_loaded(cdp: CdpClient, package_id: str) -> bool:
@@ -1203,8 +1269,14 @@ def select_nearest_encounter(gameplay: dict[str, Any], preferred_troop_id: str |
     player = gameplay.get("player") if isinstance(gameplay.get("player"), dict) else {}
     player_x = float(player.get("x") or 0.0)
     player_y = float(player.get("y") or 0.0)
-    preferred = [encounter for encounter in encounters if encounter.get("troopId") == preferred_troop_id] if preferred_troop_id else []
-    candidates = preferred or encounters
+    if preferred_troop_id:
+        candidates = [encounter for encounter in encounters if encounter.get("troopId") == preferred_troop_id]
+        if not candidates:
+            raise RuntimeError(
+                f"Preferred encounter troop '{preferred_troop_id}' is not available: encounters={encounters}"
+            )
+    else:
+        candidates = encounters
     return min(candidates, key=lambda encounter: abs(float(encounter["x"]) - player_x) + abs(float(encounter["y"]) - player_y))
 
 
@@ -1219,17 +1291,134 @@ def trigger_town_encounter_from_diagnostics(
     if gameplay.get("map") != "town":
         raise RuntimeError(f"Expected town gameplay diagnostics before battle, got: {gameplay}")
 
+    def gameplay_reports_battle_scene() -> bool:
+        latest = read_gameplay_diagnostics(cdp) or {}
+        return latest.get("currentScene") == "BattleScene"
+
     encounter = select_nearest_encounter(gameplay, preferred_troop_id)
-    approach_x = max(0.0, float(encounter["x"]) - 14.0)
+    if preferred_troop_id == "troop.slime":
+        player = wait_for_runtime_player(cdp, "town", 10000)
+        safe_x = max(0.0, float(encounter["x"]) - 34.0)
+        contact_x = max(0.0, float(encounter["x"]) - 14.0)
+        contact_y = float(encounter["y"])
+        try:
+            move_player_to(cdp, float(player["x"]), 250.0, map_name="town", tolerance=10.0, timeout_ms=30000)
+            move_player_to(cdp, safe_x, 250.0, map_name="town", tolerance=10.0, timeout_ms=60000)
+            move_player_to(cdp, safe_x, contact_y, map_name="town", tolerance=10.0, timeout_ms=24000)
+            move_player_to(cdp, contact_x, contact_y, map_name="town", tolerance=8.0, timeout_ms=12000)
+        except TimeoutError:
+            if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
+                cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                return encounter
+            if gameplay_reports_battle_scene():
+                cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                return encounter
+            raise
+
+        cdp.wait_ms(250)
+        cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+        for move, hold_ms in (
+            (move_player_right, 160),
+            (move_player_left, 120),
+            (move_player_right, 260),
+            (move_player_down, 120),
+            (move_player_up, 120),
+        ):
+            move(cdp, hold_ms=hold_ms)
+            if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
+                return encounter
+            if wait_for_new_log_optional(
+                cdp,
+                "battle encounter trigger",
+                "EnemyEncounterSystem: triggering battle",
+                battle_start,
+                800,
+            ):
+                return encounter
+            if gameplay_reports_battle_scene():
+                return encounter
+
+        latest_gameplay = read_gameplay_diagnostics(cdp) or {}
+        if latest_gameplay.get("currentScene") == "BattleScene":
+            return encounter
+        raise TimeoutError(f"Timed out triggering town encounter {encounter}; gameplay={latest_gameplay}")
+
+    if preferred_troop_id == "troop.goblin_pair":
+        player = wait_for_runtime_player(cdp, "town", 10000)
+        try:
+            move_player_to(cdp, float(player["x"]), 250.0, map_name="town", tolerance=10.0, timeout_ms=30000)
+            move_player_to(cdp, 552.0, 250.0, map_name="town", tolerance=10.0, timeout_ms=60000)
+        except TimeoutError:
+            if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
+                cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                return encounter
+            if gameplay_reports_battle_scene():
+                cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                return encounter
+            raise
+
+        for _ in range(8):
+            latest_gameplay = read_gameplay_diagnostics(cdp) or {}
+            encounter = select_nearest_encounter(latest_gameplay, preferred_troop_id)
+            target_points = (
+                (float(encounter["x"]), float(encounter["y"])),
+                (min(555.0, float(encounter["x"]) + 10.0), float(encounter["y"])),
+                (max(0.0, float(encounter["x"]) - 10.0), float(encounter["y"])),
+                (float(encounter["x"]), min(390.0, float(encounter["y"]) + 10.0)),
+                (float(encounter["x"]), max(0.0, float(encounter["y"]) - 10.0)),
+            )
+            for target_x, target_y in target_points:
+                try:
+                    move_player_to(cdp, target_x, target_y, map_name="town", tolerance=8.0, timeout_ms=12000)
+                except TimeoutError:
+                    if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
+                        cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                        return encounter
+                    if gameplay_reports_battle_scene():
+                        cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                        return encounter
+                    continue
+                cdp.wait_ms(250)
+                cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
+                if gameplay_reports_battle_scene():
+                    return encounter
+                movement_sweep = (move_player_left, move_player_right, move_player_up, move_player_down)
+                for move in movement_sweep:
+                    move(cdp, hold_ms=260)
+                    if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
+                        return encounter
+                    if wait_for_new_log_optional(
+                        cdp,
+                        "battle encounter trigger",
+                        "EnemyEncounterSystem: triggering battle",
+                        battle_start,
+                        800,
+                    ):
+                        return encounter
+                    if gameplay_reports_battle_scene():
+                        return encounter
+
+        latest_gameplay = read_gameplay_diagnostics(cdp) or {}
+        if latest_gameplay.get("currentScene") == "BattleScene":
+            return encounter
+        raise TimeoutError(f"Timed out triggering town encounter {encounter}; gameplay={latest_gameplay}")
+
+    if preferred_troop_id == "troop.goblin_pair":
+        approach_x = min(552.0, float(encounter["x"]) + 14.0)
+    else:
+        approach_x = max(0.0, float(encounter["x"]) - 14.0)
     approach_y = float(encounter["y"])
     try:
+        if preferred_troop_id == "troop.goblin_pair":
+            player = wait_for_runtime_player(cdp, "town", 10000)
+            move_player_to(cdp, float(player["x"]), 250.0, map_name="town", tolerance=10.0, timeout_ms=30000)
+            move_player_to(cdp, approach_x, 250.0, map_name="town", tolerance=10.0, timeout_ms=60000)
         move_player_to(cdp, approach_x, approach_y, map_name="town", tolerance=10.0, timeout_ms=24000)
     except TimeoutError:
         if has_new_log(cdp, "EnemyEncounterSystem: triggering battle", battle_start):
             cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
             return encounter
-        battle = read_battle_diagnostics(cdp)
-        if isinstance(battle, dict) and battle.get("currentScene") == "BattleScene":
+        if gameplay_reports_battle_scene():
             cdp.screenshot(output_dir / f"{screenshot_prefix}-encounter-approach.png")
             return encounter
         raise
@@ -1251,11 +1440,12 @@ def trigger_town_encounter_from_diagnostics(
             return encounter
         if wait_for_new_log_optional(cdp, "battle encounter trigger", "EnemyEncounterSystem: triggering battle", battle_start, 1200):
             return encounter
-        battle = read_battle_diagnostics(cdp)
-        if isinstance(battle, dict) and battle.get("currentScene") == "BattleScene":
+        if gameplay_reports_battle_scene():
             return encounter
 
     latest_gameplay = read_gameplay_diagnostics(cdp) or {}
+    if latest_gameplay.get("currentScene") == "BattleScene":
+        return encounter
     raise TimeoutError(f"Timed out triggering town encounter {encounter}; gameplay={latest_gameplay}")
 
 
@@ -1310,10 +1500,79 @@ def wait_for_battle_player_input(cdp: CdpClient, timeout_ms: int = 30000) -> dic
             last_battle = battle
             if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
                 return battle
-            if battle.get("menuState") in {"PartyCommand", "ActorCommand", "SkillList", "TargetSelect"}:
+            if battle.get("menuState") in {"PartyCommand", "ActorCommand", "SkillList", "ItemList", "TargetSelect"}:
                 return battle
         cdp.wait_ms(100)
     raise TimeoutError(f"Timed out waiting for battle player input; last={last_battle}")
+
+
+def battle_action_sequence(battle: dict[str, Any] | None) -> int:
+    if not isinstance(battle, dict):
+        return 0
+    last_action = battle.get("lastAction")
+    sequences: list[int] = []
+    if isinstance(last_action, dict):
+        sequences.append(int(last_action.get("sequence") or 0))
+    history = battle.get("lastActionHistory")
+    if isinstance(history, list):
+        for entry in history:
+            if isinstance(entry, dict):
+                sequences.append(int(entry.get("sequence") or 0))
+    return max(sequences) if sequences else 0
+
+
+def matching_battle_action(
+    battle: dict[str, Any],
+    expected_type: str,
+    min_sequence: int,
+    expected_actor_id: int | None = None,
+) -> dict[str, Any] | None:
+    candidates: list[dict[str, Any]] = []
+    history = battle.get("lastActionHistory")
+    if isinstance(history, list):
+        candidates.extend(entry for entry in history if isinstance(entry, dict))
+    last_action = battle.get("lastAction")
+    if isinstance(last_action, dict):
+        candidates.append(last_action)
+    for action in sorted(candidates, key=lambda entry: int(entry.get("sequence") or 0), reverse=True):
+        sequence = int(action.get("sequence") or 0)
+        actor_id = action.get("actorId")
+        if (
+            sequence > min_sequence and
+            action.get("type") == expected_type and
+            action.get("status") == "Applied" and
+            (expected_actor_id is None or actor_id == expected_actor_id)
+        ):
+            return action
+    return None
+
+
+def wait_for_battle_action_result(
+    cdp: CdpClient,
+    expected_type: str,
+    min_sequence: int,
+    expected_actor_id: int | None = None,
+    timeout_ms: int = 30000,
+) -> dict[str, Any]:
+    end = time.monotonic() + timeout_ms / 1000.0
+    last_battle: dict[str, Any] | None = None
+    while time.monotonic() < end:
+        battle = read_battle_diagnostics(cdp)
+        if isinstance(battle, dict):
+            last_battle = battle
+            action = matching_battle_action(battle, expected_type, min_sequence, expected_actor_id)
+            if action is not None:
+                battle["lastAction"] = action
+                return battle
+            if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+                action = matching_battle_action(battle, expected_type, min_sequence, expected_actor_id)
+                if action is not None:
+                    battle["lastAction"] = action
+                    return battle
+        cdp.wait_ms(100)
+    raise TimeoutError(
+        f"Timed out waiting for battle action {expected_type} after sequence {min_sequence}; last={last_battle}"
+    )
 
 
 def battle_cursor_for_state(battle: dict[str, Any], state: str) -> int:
@@ -1355,12 +1614,14 @@ def confirm_battle_target_selection(
     battle: dict[str, Any],
     output_dir: Path | None = None,
     capture_vfx: bool = False,
+    expected_type: str = "Skill",
 ) -> tuple[dict[str, Any], bool]:
     if battle_cursor_for_state(battle, "TargetSelect") < 0:
         raise RuntimeError(f"TargetSelect cursor is unavailable before confirming target: {battle}")
 
     actor_id = battle.get("currentActorId")
     expected_actor_id = int(actor_id) if isinstance(actor_id, (int, float)) else None
+    min_sequence = battle_action_sequence(battle)
     action_start = time.monotonic()
     press_game_key(cdp, *KEY_MENU_CONFIRM)
     end = time.monotonic() + 30000 / 1000.0
@@ -1382,27 +1643,28 @@ def confirm_battle_target_selection(
                 if output_dir is not None and not captured_vfx:
                     cdp.screenshot(output_dir / "phase25-battle-skill-vfx.png")
                     captured_vfx = True
-            last_action = battle.get("lastAction")
-            if isinstance(last_action, dict) and last_action.get("type") == "Skill" and last_action.get("status") == "Applied":
-                action_actor_id = last_action.get("actorId")
-                if expected_actor_id is None or action_actor_id == expected_actor_id:
+            action = matching_battle_action(battle, expected_type, min_sequence, expected_actor_id)
+            if action is not None:
+                battle["lastAction"] = action
+                return battle, saw_vfx
+            if expected_type == "Skill":
+                fallback_action = matching_battle_action(battle, "Attack", min_sequence, expected_actor_id)
+                if fallback_action is not None:
+                    battle["lastAction"] = fallback_action
                     return battle, saw_vfx
             if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
                 return battle, saw_vfx
         cdp.wait_ms(100)
-    raise TimeoutError(f"Timed out waiting for target action after {time.monotonic() - action_start:.1f}s; last={last_battle}")
+    raise TimeoutError(
+        f"Timed out waiting for target action {expected_type} after {time.monotonic() - action_start:.1f}s; "
+        f"last={last_battle}"
+    )
 
 
 def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -> tuple[dict[str, Any], bool]:
-    battle = wait_for_battle_player_input(cdp)
+    battle = enter_battle_actor_command(cdp)
     if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
         return battle, False
-    if battle.get("menuState") == "PartyCommand":
-        move_battle_cursor_to(cdp, "PartyCommand", 0)
-        press_game_key(cdp, *KEY_MENU_CONFIRM)
-        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect", "SkillList"}, 10000)
-    if battle.get("menuState") == "TargetSelect":
-        return confirm_battle_target_selection(cdp, battle)
     if battle.get("menuState") == "ActorCommand":
         move_battle_cursor_to(cdp, "ActorCommand", 1)
         press_game_key(cdp, *KEY_MENU_CONFIRM)
@@ -1424,6 +1686,143 @@ def submit_battle_skill_action(cdp: CdpClient, output_dir: Path | None = None) -
         return battle, False
 
     return confirm_battle_target_selection(cdp, battle, output_dir, capture_vfx=True)
+
+
+def enter_battle_actor_command(cdp: CdpClient) -> dict[str, Any]:
+    battle = wait_for_battle_player_input(cdp)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle
+    if battle.get("menuState") in {"TargetSelect", "SkillList", "ItemList"}:
+        press_game_key(cdp, *KEY_ESCAPE, settle_ms=400)
+        battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "PartyCommand"}, 10000)
+    if battle.get("menuState") == "PartyCommand":
+        for _ in range(3):
+            move_battle_cursor_to(cdp, "PartyCommand", 0)
+            press_game_key(cdp, *KEY_MENU_CONFIRM)
+            try:
+                battle = wait_for_battle_menu_any(cdp, {"ActorCommand", "TargetSelect", "SkillList", "ItemList"}, 4000)
+                break
+            except TimeoutError:
+                battle = wait_for_battle_player_input(cdp, 4000)
+                if battle.get("menuState") != "PartyCommand":
+                    break
+    return battle
+
+
+def submit_battle_attack_action(cdp: CdpClient) -> dict[str, Any]:
+    battle = enter_battle_actor_command(cdp)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle
+    if battle.get("menuState") == "TargetSelect":
+        result, _ = confirm_battle_target_selection(cdp, battle, expected_type="Attack")
+        return result
+    if battle.get("menuState") != "ActorCommand":
+        raise RuntimeError(f"Expected ActorCommand before Attack, got {battle}")
+
+    actor_id = int(battle.get("currentActorId") or 0)
+    min_sequence = battle_action_sequence(battle)
+    move_battle_cursor_to(cdp, "ActorCommand", 0)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    end = time.monotonic() + 10000 / 1000.0
+    last_battle: dict[str, Any] | None = None
+    while time.monotonic() < end:
+        battle = read_battle_diagnostics(cdp)
+        if isinstance(battle, dict):
+            last_battle = battle
+            action = matching_battle_action(battle, "Attack", min_sequence, actor_id)
+            if action is not None:
+                battle["lastAction"] = action
+                return battle
+            if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+                return battle
+            if battle.get("menuState") == "TargetSelect":
+                result, _ = confirm_battle_target_selection(cdp, battle, expected_type="Attack")
+                return result
+        cdp.wait_ms(100)
+    raise RuntimeError(f"Expected Attack action or TargetSelect after Attack command, got {last_battle}")
+
+
+def submit_battle_guard_action(cdp: CdpClient) -> dict[str, Any]:
+    battle: dict[str, Any] | None = None
+    for _ in range(3):
+        battle = enter_battle_actor_command(cdp)
+        if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+            return battle
+        if battle.get("menuState") == "ActorCommand":
+            break
+        if battle.get("menuState") in {"TargetSelect", "SkillList", "ItemList"}:
+            press_game_key(cdp, *KEY_ESCAPE, settle_ms=400)
+            continue
+    if not isinstance(battle, dict) or battle.get("menuState") != "ActorCommand":
+        raise RuntimeError(f"Expected ActorCommand before Guard, got {battle}")
+
+    actor_id = int(battle.get("currentActorId") or 0)
+    min_sequence = battle_action_sequence(battle)
+    move_battle_cursor_to(cdp, "ActorCommand", 2)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    return wait_for_battle_action_result(cdp, "Guard", min_sequence, actor_id)
+
+
+def submit_battle_item_action(cdp: CdpClient, target_index: int = 0) -> dict[str, Any]:
+    battle = enter_battle_actor_command(cdp)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle
+    if battle.get("menuState") != "ActorCommand":
+        raise RuntimeError(f"Expected ActorCommand before Item, got {battle}")
+
+    move_battle_cursor_to(cdp, "ActorCommand", 3)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    battle = wait_for_battle_menu_any(cdp, {"ItemList", "TargetSelect", "PartyCommand", "ActorCommand"}, 10000)
+    if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+        return battle
+    if battle.get("menuState") == "ItemList":
+        move_battle_cursor_to(cdp, "ItemList", 0)
+        press_game_key(cdp, *KEY_MENU_CONFIRM)
+        battle = wait_for_battle_menu_any(cdp, {"TargetSelect", "PartyCommand", "ActorCommand"}, 10000)
+        if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+            return battle
+    if battle.get("menuState") != "TargetSelect":
+        raise RuntimeError(f"Expected TargetSelect before Item target confirmation, got {battle}")
+    move_battle_cursor_to(cdp, "TargetSelect", target_index)
+    result, _ = confirm_battle_target_selection(cdp, battle, expected_type="Item")
+    return result
+
+
+def submit_battle_escape_action(cdp: CdpClient) -> dict[str, Any]:
+    battle = wait_for_battle_menu(cdp, "PartyCommand", 30000)
+    actor_id = int(battle.get("currentActorId") or 0)
+    min_sequence = battle_action_sequence(battle)
+    move_battle_cursor_to(cdp, "PartyCommand", 1)
+    press_game_key(cdp, *KEY_MENU_CONFIRM)
+    return wait_for_battle_action_result(cdp, "Escape", min_sequence, actor_id)
+
+
+def run_battle_escape_until_finished(cdp: CdpClient, output_dir: Path, label: str) -> dict[str, Any]:
+    last_battle = wait_for_battle_diagnostics(cdp)
+    escape_attempts: list[dict[str, Any]] = []
+    for attempt in range(4):
+        if last_battle.get("outcome") == "Escaped":
+            break
+        if last_battle.get("outcome") in {"Victory", "Defeat"}:
+            raise RuntimeError(f"Battle ended before Escape completed: {last_battle}")
+        result = submit_battle_escape_action(cdp)
+        last_action = result.get("lastAction") if isinstance(result.get("lastAction"), dict) else {}
+        escape_attempts.append({
+            "attempt": attempt + 1,
+            "escape_succeeded": bool(last_action.get("escapeSucceeded")),
+            "outcome_after": last_action.get("outcomeAfter"),
+        })
+        cdp.wait_ms(900)
+        last_battle = wait_for_battle_diagnostics(cdp, 12000)
+        if last_battle.get("outcome") == "Escaped":
+            break
+    if last_battle.get("outcome") != "Escaped":
+        raise RuntimeError(f"Escape did not end battle after repeated attempts: attempts={escape_attempts} last={last_battle}")
+    cdp.screenshot(output_dir / f"{label}-battle-escaped.png")
+    return {
+        "battle": last_battle,
+        "attempts": escape_attempts,
+    }
 
 
 def run_battle_to_victory(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
@@ -1573,7 +1972,10 @@ def ensure_home_exterior_from_town(cdp: CdpClient, output_dir: Path, label: str)
     if (read_gameplay_diagnostics(cdp) or {}).get("map") == "home_exterior":
         return
     transition_start = len(cdp.state.logs)
-    move_player_to(cdp, 20.0, 200.0, map_name="town", tolerance=10.0, timeout_ms=60000)
+    player = wait_for_runtime_player(cdp, "town", 30000)
+    move_player_to(cdp, float(player["x"]), 250.0, map_name="town", tolerance=10.0, timeout_ms=30000)
+    move_player_to(cdp, 24.0, 250.0, map_name="town", tolerance=10.0, timeout_ms=60000)
+    move_player_to(cdp, 24.0, 200.0, map_name="town", tolerance=10.0, timeout_ms=30000)
     move_player_left(cdp, hold_ms=700)
     cdp.wait_for_new_log(
         f"{label} town to home exterior",
@@ -1639,6 +2041,7 @@ def leave_home_interior(cdp: CdpClient, output_dir: Path, label: str) -> None:
     if current_map != "home_interior":
         raise RuntimeError(f"Expected home_interior before leaving house, got {current_map!r}")
 
+    move_player_to(cdp, 112.0, 220.0, map_name="home_interior", tolerance=8.0, timeout_ms=20000)
     transition_start = len(cdp.state.logs)
     move_player_down(cdp, hold_ms=260)
     cdp.wait_for_new_log(
@@ -1807,17 +2210,12 @@ def exercise_full_rpg_recruit_flow(cdp: CdpClient, output_dir: Path) -> dict[str
     }
 
 
-def exercise_full_rpg_battle_flow(
+def start_town_battle(
     cdp: CdpClient,
     output_dir: Path,
-    preferred_troop_id: str | None = "troop.slime_single",
-    screenshot_prefix: str = "phase25",
-) -> dict[str, Any]:
-    focus_gameplay_canvas(cdp)
-    gameplay_before = read_gameplay_diagnostics(cdp) or {}
-    player_before = gameplay_before.get("player") if isinstance(gameplay_before.get("player"), dict) else {}
-    gold_before = int(player_before.get("gold") or 0) if isinstance(player_before, dict) else 0
-
+    preferred_troop_id: str | None,
+    screenshot_prefix: str,
+) -> tuple[int, dict[str, Any], dict[str, Any]]:
     ensure_town_from_home_exterior(cdp, output_dir, screenshot_prefix)
 
     battle_start = len(cdp.state.logs)
@@ -1828,7 +2226,18 @@ def exercise_full_rpg_battle_flow(
         preferred_troop_id=preferred_troop_id,
         screenshot_prefix=screenshot_prefix,
     )
-    cdp.wait_for_new_log("battle encounter trigger", "EnemyEncounterSystem: triggering battle", battle_start, 30000)
+    if not wait_for_new_log_optional(
+        cdp,
+        "battle encounter trigger",
+        "EnemyEncounterSystem: triggering battle",
+        battle_start,
+        30000,
+    ):
+        gameplay = read_gameplay_diagnostics(cdp) or {}
+        if gameplay.get("currentScene") != "BattleScene":
+            raise TimeoutError(f"Timed out waiting for battle encounter trigger; gameplay={gameplay}")
+    if preferred_troop_id:
+        wait_for_expected_encounter_log(cdp, encounter, battle_start, 5000)
     wait_for_web_package_loaded(
         cdp,
         "battle-core",
@@ -1849,8 +2258,26 @@ def exercise_full_rpg_battle_flow(
     enemy = battle.get("enemy")
     if not isinstance(enemy, dict) or int(enemy.get("total") or 0) <= 0:
         raise RuntimeError(f"Battle diagnostics did not report enemies: {battle}")
+    if preferred_troop_id == "troop.goblin_pair" and int(enemy.get("total") or 0) < 2:
+        raise RuntimeError(f"Expected goblin pair battle, got: encounter={encounter} battle={battle}")
     cdp.wait_ms(1000)
     cdp.screenshot(output_dir / f"{screenshot_prefix}-battle-entry.png")
+    return battle_start, encounter, battle
+
+
+def exercise_full_rpg_battle_flow(
+    cdp: CdpClient,
+    output_dir: Path,
+    preferred_troop_id: str | None = "troop.slime_single",
+    screenshot_prefix: str = "phase25",
+) -> dict[str, Any]:
+    focus_gameplay_canvas(cdp)
+    gameplay_before = read_gameplay_diagnostics(cdp) or {}
+    player_before = gameplay_before.get("player") if isinstance(gameplay_before.get("player"), dict) else {}
+    gold_before = int(player_before.get("gold") or 0) if isinstance(player_before, dict) else 0
+    runtime_before = party_runtime_states(gameplay_before)
+
+    battle_start, encounter, _battle = start_town_battle(cdp, output_dir, preferred_troop_id, screenshot_prefix)
 
     victory_battle = run_battle_to_victory(cdp, output_dir)
     cdp.wait_for_new_log("battle returned to town", "GameScene: Battle ended, outcome=Victory", battle_start, 30000)
@@ -1863,6 +2290,16 @@ def exercise_full_rpg_battle_flow(
     gold_after = int(player_after.get("gold") or 0) if isinstance(player_after, dict) else 0
     if gold_after <= gold_before:
         raise RuntimeError(f"Battle victory did not increase gold: before={gold_before} after={gold_after}")
+    runtime_after = party_runtime_states(gameplay_after)
+    last_action = victory_battle.get("lastAction") if isinstance(victory_battle.get("lastAction"), dict) else {}
+    if int(last_action.get("actorId") or 0) == 1 and int(last_action.get("mpSpent") or 0) > 0 and runtime_before and runtime_after:
+        player_runtime_before = runtime_before.get("actor.player")
+        player_runtime_after = runtime_after.get("actor.player")
+        if player_runtime_before and player_runtime_after and player_runtime_after["currentMp"] >= player_runtime_before["currentMp"]:
+            raise RuntimeError(
+                f"Battle MP writeback did not reduce player MP after skill use: before={player_runtime_before} "
+                f"after={player_runtime_after}"
+            )
 
     return {
         "town_reached": True,
@@ -1871,7 +2308,139 @@ def exercise_full_rpg_battle_flow(
         "battle_outcome": victory_battle.get("outcome"),
         "gold_before": gold_before,
         "gold_after": gold_after,
+        "runtime_before": runtime_before,
+        "runtime_after": runtime_after,
         "last_battle": victory_battle,
+    }
+
+
+def wait_for_next_battle_input_after_action(cdp: CdpClient, min_sequence: int, timeout_ms: int = 45000) -> dict[str, Any]:
+    end = time.monotonic() + timeout_ms / 1000.0
+    last_battle: dict[str, Any] | None = None
+    while time.monotonic() < end:
+        battle = read_battle_diagnostics(cdp)
+        if isinstance(battle, dict):
+            last_battle = battle
+            if battle.get("outcome") in {"Victory", "Defeat", "Escaped"}:
+                return battle
+            if battle_action_sequence(battle) > min_sequence and battle.get("menuState") in {"PartyCommand", "ActorCommand"}:
+                return battle
+        cdp.wait_ms(100)
+    raise TimeoutError(f"Timed out waiting for next battle input after action sequence {min_sequence}; last={last_battle}")
+
+
+def run_battle_to_defeat(cdp: CdpClient, output_dir: Path, label: str) -> dict[str, Any]:
+    last_battle = wait_for_battle_diagnostics(cdp)
+    for _ in range(24):
+        if last_battle.get("outcome") == "Defeat":
+            break
+        if last_battle.get("outcome") in {"Victory", "Escaped"}:
+            raise RuntimeError(f"Battle ended before Defeat flow: {last_battle}")
+        result = submit_battle_guard_action(cdp)
+        cdp.wait_ms(900)
+        last_battle = wait_for_battle_diagnostics(cdp, 12000)
+        if result.get("outcome") == "Defeat" or last_battle.get("outcome") == "Defeat":
+            break
+
+    end = time.monotonic() + 45000 / 1000.0
+    while time.monotonic() < end:
+        battle = read_battle_diagnostics(cdp)
+        if isinstance(battle, dict):
+            last_battle = battle
+            if battle.get("outcome") == "Defeat":
+                if not battle.get("defeatOverlayVisible"):
+                    cdp.wait_ms(200)
+                    continue
+                cdp.screenshot(output_dir / f"{label}-battle-defeat.png")
+                press_game_key(cdp, *KEY_MENU_CONFIRM, settle_ms=1200)
+                return battle
+            if battle.get("outcome") in {"Victory", "Escaped"}:
+                raise RuntimeError(f"Battle ended before Defeat flow: {battle}")
+        cdp.wait_ms(200)
+    raise TimeoutError(f"Timed out waiting for battle Defeat; last={last_battle}")
+
+
+def exercise_full_rpg_battle_depth_flow(cdp: CdpClient, output_dir: Path) -> dict[str, Any]:
+    focus_gameplay_canvas(cdp)
+    gameplay_before = read_gameplay_diagnostics(cdp) or {}
+    potion_before = inventory_count(gameplay_before, "potion")
+    runtime_before = party_runtime_states(gameplay_before)
+
+    battle_start, _encounter, _battle = start_town_battle(
+        cdp,
+        output_dir,
+        preferred_troop_id="troop.goblin_pair",
+        screenshot_prefix="phase29-action-matrix",
+    )
+
+    attack_result = submit_battle_attack_action(cdp)
+    attack_action = attack_result.get("lastAction") if isinstance(attack_result.get("lastAction"), dict) else {}
+    if attack_action.get("type") != "Attack" or int(attack_action.get("damage") or 0) <= 0:
+        raise RuntimeError(f"Attack action was not applied with damage: {attack_result}")
+    attack_sequence = int(attack_action.get("sequence") or 0)
+    after_attack_input = wait_for_next_battle_input_after_action(cdp, attack_sequence)
+    enemy_after_attack = after_attack_input.get("lastAction") if isinstance(after_attack_input.get("lastAction"), dict) else {}
+    if int(enemy_after_attack.get("actorId") or 0) < 1000 or int(enemy_after_attack.get("damage") or 0) <= 0:
+        raise RuntimeError(f"Enemy did not damage player before item flow: {after_attack_input}")
+
+    guard_result = submit_battle_guard_action(cdp)
+    guard_action = guard_result.get("lastAction") if isinstance(guard_result.get("lastAction"), dict) else {}
+    if guard_action.get("type") != "Guard":
+        raise RuntimeError(f"Guard action was not applied: {guard_result}")
+    guard_sequence = int(guard_action.get("sequence") or 0)
+    wait_for_next_battle_input_after_action(cdp, guard_sequence)
+
+    item_result = submit_battle_item_action(cdp, target_index=0)
+    item_action = item_result.get("lastAction") if isinstance(item_result.get("lastAction"), dict) else {}
+    if item_action.get("type") != "Item" or item_action.get("itemId") != "potion" or int(item_action.get("hpRecovered") or 0) <= 0:
+        raise RuntimeError(f"Potion item action did not recover HP: {item_result}")
+
+    escape_result = run_battle_escape_until_finished(cdp, output_dir, "phase29-action-matrix")
+    cdp.wait_for_new_log("battle escaped to town", "GameScene: Battle ended, outcome=Escaped", battle_start, 30000)
+    wait_for_runtime_player(cdp, "town", 30000)
+    cdp.wait_ms(900)
+    gameplay_after_escape = read_gameplay_diagnostics(cdp) or {}
+    potion_after_escape = inventory_count(gameplay_after_escape, "potion")
+    if potion_after_escape != potion_before - 1:
+        raise RuntimeError(
+            f"Battle item stock writeback failed after Escape: before={potion_before} after={potion_after_escape}"
+        )
+    runtime_after_escape = party_runtime_states(gameplay_after_escape)
+
+    battle_start, _defeat_encounter, _defeat_battle = start_town_battle(
+        cdp,
+        output_dir,
+        preferred_troop_id=None,
+        screenshot_prefix="phase29-defeat",
+    )
+    defeat_battle = run_battle_to_defeat(cdp, output_dir, "phase29-defeat")
+    cdp.wait_for_new_log("battle defeat returned home", "GameScene: Battle ended, outcome=Defeat", battle_start, 30000)
+    wait_for_runtime_player(cdp, "home_interior", 30000)
+    cdp.wait_ms(1000)
+    cdp.screenshot(output_dir / "phase29-defeat-home-interior.png")
+    gameplay_after_defeat = read_gameplay_diagnostics(cdp) or {}
+    runtime_after_defeat = party_runtime_states(gameplay_after_defeat)
+    player_after_defeat = runtime_after_defeat.get("actor.player")
+    if not player_after_defeat or player_after_defeat["currentHp"] <= 0:
+        raise RuntimeError(f"Defeat recovery did not restore player HP: {gameplay_after_defeat}")
+    if inventory_count(gameplay_after_defeat, "potion") != potion_after_escape:
+        raise RuntimeError(
+            "Defeat flow changed potion count unexpectedly: "
+            f"after_escape={potion_after_escape} after_defeat={inventory_count(gameplay_after_defeat, 'potion')}"
+        )
+
+    return {
+        "attack_action": attack_action,
+        "guard_action": guard_action,
+        "item_action": item_action,
+        "escape_flow": escape_result,
+        "defeat_battle": defeat_battle,
+        "potion_before": potion_before,
+        "potion_after_escape": potion_after_escape,
+        "potion_after_defeat": inventory_count(gameplay_after_defeat, "potion"),
+        "runtime_before": runtime_before,
+        "runtime_after_escape": runtime_after_escape,
+        "runtime_after_defeat": runtime_after_defeat,
     }
 
 
@@ -1965,6 +2534,8 @@ def exercise_full_rpg_rest_and_wardrobe_flow(cdp: CdpClient, output_dir: Path) -
 
     gameplay_before_wardrobe = read_gameplay_diagnostics(cdp) or {}
     signature_before = appearance_signature(gameplay_before_wardrobe)
+    move_player_to(cdp, 150.0, 156.0, map_name="home_interior", tolerance=10.0, timeout_ms=12000)
+    move_player_to(cdp, 150.0, 72.0, map_name="home_interior", tolerance=10.0, timeout_ms=16000)
     move_player_to(cdp, 181.0, 72.0, map_name="home_interior", tolerance=10.0, timeout_ms=24000)
     move_player_up(cdp, hold_ms=90)
     wardrobe_start = len(cdp.state.logs)
@@ -2004,6 +2575,8 @@ def exercise_full_rpg_save_reload_verify(cdp: CdpClient, output_dir: Path) -> di
     expected_signature = appearance_signature(gameplay_before_save)
     expected_completed = completed_quest_ids(gameplay_before_save)
     expected_recruited = party_actor_ids(gameplay_before_save, "recruitedActorIds")
+    expected_runtime_states = party_runtime_states(gameplay_before_save)
+    expected_inventory_items = inventory_items(gameplay_before_save)
     expected_map = str(gameplay_before_save.get("map") or "home_interior")
 
     pre_reload_failures = validate_web_release_diagnostics(
@@ -2015,6 +2588,10 @@ def exercise_full_rpg_save_reload_verify(cdp: CdpClient, output_dir: Path) -> di
         raise RuntimeError(f"Full RPG diagnostics gate failed before save reload: {pre_reload_failures}")
 
     save_slot0(cdp, output_dir, "phase26-full-rpg-save", overwrite=True)
+    save_json = read_json_file(cdp, SAVE_PATH)
+    defeated_town_encounters = defeated_encounters_from_save(save_json, "town")
+    if 1001 not in defeated_town_encounters:
+        raise RuntimeError(f"Save file did not persist defeated town encounter 1001: {defeated_town_encounters}")
 
     reload_log_start = len(cdp.state.logs)
     cdp.call("Page.reload", {"ignoreCache": True}, timeout=5.0)
@@ -2043,17 +2620,39 @@ def exercise_full_rpg_save_reload_verify(cdp: CdpClient, output_dir: Path) -> di
             state.get("map") == expected_map and
             appearance_signature(state) == expected_signature and
             "quest.village.goblin_cleanup" in completed_quest_ids(state) and
-            "actor.lyria" in party_actor_ids(state, "recruitedActorIds")
+            "actor.lyria" in party_actor_ids(state, "recruitedActorIds") and
+            party_runtime_states(state) == expected_runtime_states and
+            inventory_items(state) == expected_inventory_items
         ),
         15000,
     )
+    leave_home_interior(cdp, output_dir, "phase29-save-reload-encounter-check")
+    ensure_town_from_home_exterior(cdp, output_dir, "phase29-save-reload-encounter-check")
+    gameplay_town_after_load = wait_for_gameplay_condition(
+        cdp,
+        "phase29 defeated encounter restored diagnostics",
+        lambda state: state.get("map") == "town",
+        15000,
+    )
+    restored_encounters = gameplay_town_after_load.get("encounters")
+    if isinstance(restored_encounters, list):
+        for encounter in restored_encounters:
+            if not isinstance(encounter, dict) or int(encounter.get("encounterId") or 0) != 1001:
+                continue
+            if encounter.get("defeated") is not True:
+                raise RuntimeError(f"Defeated encounter 1001 was restored as available after load: {encounter}")
     return {
         "map": expected_map,
         "appearance_signature": appearance_signature(gameplay_after_load),
         "completed_quests": completed_quest_ids(gameplay_after_load),
         "recruited_actor_ids": party_actor_ids(gameplay_after_load, "recruitedActorIds"),
+        "runtime_states": party_runtime_states(gameplay_after_load),
+        "inventory_items": inventory_items(gameplay_after_load),
+        "defeated_town_encounters": defeated_town_encounters,
         "expected_completed_quests": expected_completed,
         "expected_recruited_actor_ids": expected_recruited,
+        "expected_runtime_states": expected_runtime_states,
+        "expected_inventory_items": expected_inventory_items,
         "pre_reload_diagnostic_gate": {
             "status": "passed",
             "required_packages": list(FULL_RPG_RUNTIME_PACKAGE_IDS),
@@ -2065,6 +2664,7 @@ def exercise_full_rpg_basic_flows(cdp: CdpClient, output_dir: Path) -> dict[str,
     reset_home_exterior_via_home_interior(cdp, output_dir, "phase26-rpg-reset")
     shop_flow = exercise_full_rpg_shop_flow(cdp, output_dir)
     quest_accept_flow = exercise_full_rpg_quest_accept_flow(cdp, output_dir)
+    battle_depth_flow = exercise_full_rpg_battle_depth_flow(cdp, output_dir)
     reset_home_exterior_via_home_interior(cdp, output_dir, "phase26-rpg-post-quest-reset")
     recruit_flow = exercise_full_rpg_recruit_flow(cdp, output_dir)
     quest_turn_in_flow = exercise_full_rpg_quest_battle_and_turn_in_flow(cdp, output_dir)
@@ -2074,6 +2674,7 @@ def exercise_full_rpg_basic_flows(cdp: CdpClient, output_dir: Path) -> dict[str,
         "status": "full-rpg-basic-flows-passed",
         "shop_flow": shop_flow,
         "quest_accept_flow": quest_accept_flow,
+        "battle_depth_flow": battle_depth_flow,
         "recruit_flow": recruit_flow,
         "quest_turn_in_flow": quest_turn_in_flow,
         "rest_wardrobe_flow": rest_wardrobe_flow,
@@ -2579,25 +3180,25 @@ def run_gameplay_smoke(cdp: CdpClient, url: str, output_dir: Path, profile: str)
             "full_rpg_profile_diagnostics_gate",
             "home_exterior_to_town",
             "town_enemy_encounter",
+            "battle_attack_item_guard_escape_matrix",
             "battle_skill_vfx",
             "battle_victory_return_to_map",
             "battle_reward_writeback",
+            "battle_defeat_flow",
+            "battle_hp_mp_inventory_writeback",
             "shop_buy_sell_failure_feedback",
             "quest_accept_progress_turn_in_reward",
             "recruit_accept_party_writeback",
             "rest_recovery_time_advance",
             "wardrobe_appearance_change",
             "hdr_bloom_postprocessing_smoke",
+            "battle_defeated_encounter_save_reload_matrix",
             "full_rpg_save_reload_verify",
         ])
         full_rpg_profile = {
-            "status": "basic-rpg-flows-ready",
+            "status": "full-rpg-flows-ready",
             "basic_flows": full_rpg_basic_flows,
-            "pending_flows": [
-                "battle_attack_item_guard_escape_matrix",
-                "battle_defeat_flow",
-                "battle_defeated_encounter_save_reload_matrix",
-            ],
+            "pending_flows": [],
         }
 
     return {

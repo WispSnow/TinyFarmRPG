@@ -247,7 +247,7 @@ flowchart LR
 
 目标：Web 上战斗不只是能打开，而是完整可玩并与探索态、任务和存档正确衔接。
 
-状态（2026-06-04）：已完成 `home_exterior` → `town` 可达入口、`battle-core` / `vfx-core` 进战斗前加载、地图遭遇进入战斗、技能触发 Effekseer 诊断、胜利返回地图与金币奖励写回 smoke。Attack / Item / Guard / Escape、失败流程、`defeated encounter` 持久化和战后保存刷新恢复仍保留为后续战斗扩展项。
+状态（2026-06-05）：已完成 `home_exterior` → `town` 可达入口、`battle-core` / `vfx-core` 进战斗前加载、地图遭遇进入战斗、技能触发 Effekseer 诊断、胜利返回地图与金币奖励写回 smoke。Chrome full-rpg smoke 已补齐 Attack / Item / Guard / Escape、失败流程、HP/MP 与背包写回、`defeated encounter` 持久化和刷新读档恢复矩阵。
 
 实施步骤：
 
@@ -399,7 +399,7 @@ flowchart LR
 - CI 的可选 Chromium job 默认 `full-rpg` profile，并上传 full report、screenshots、package index、logs 和 failure diagnostics。
 - `docs/web_release.md` 已更新为完整 Web 移植说明，不再把 Effekseer / Bloom / HDR emissive 写成正式降级项。
 - 最终报告见 `plans/reports/2026-06-05-web-release-final-full-rpg-report.md`。
-- 当前剩余的未勾选战斗项是非基础 battle-depth 扩展：Attack / Item / Guard / Escape 矩阵、失败流程、defeated encounter 存档矩阵；它们不再阻塞 full RPG basic Web release。
+- Battle-depth 扩展已于 2026-06-05 补齐：Attack / Item / Guard / Escape 矩阵、失败流程、HP/MP 与背包写回、defeated encounter 存档矩阵均已进入 full-rpg smoke 覆盖。
 
 ## 第四轮待办清单
 
@@ -420,8 +420,8 @@ flowchart LR
 - [x] `home_exterior` 到 `town` 的 map transition 可人工和自动化触发。
 - [x] 地图遭遇进入战斗并胜利返回地图。
 - [x] 战斗 Skill 胜利路径、VFX 截图和金币奖励写回 smoke 通过。
-- [ ] 战斗覆盖 Attack / Item / Guard / Escape 与失败流程。
-- [ ] HP/MP、背包、遭遇状态写回并可存档恢复。
+- [x] 战斗覆盖 Attack / Item / Guard / Escape 与失败流程。
+- [x] HP/MP、背包、遭遇状态写回并可存档恢复。
 - [x] 商店买入、卖出、失败反馈 smoke 通过。
 - [x] 任务领取、目标推进、交付、奖励 smoke 通过。
 - [x] 招募接受、队伍成员变化、后续战斗识别 smoke 通过。

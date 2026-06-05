@@ -143,6 +143,7 @@ class BattleScene final : public engine::scene::Scene,
     std::vector<BattleLogEntryViewModel> battle_log_entries_{};
     std::vector<VictoryRewardItemViewModel> victory_reward_items_{};
     std::vector<VictoryLevelUpViewModel> victory_level_ups_{};
+    std::uint32_t last_action_sequence_{0}; ///< 每次 BattleAction 结算后递增，用于 Web diagnostics 等待新动作。
     bool victory_overlay_visible_{false};
     bool victory_continue_enabled_{false};
     bool victory_continue_focus_dirty_{false};

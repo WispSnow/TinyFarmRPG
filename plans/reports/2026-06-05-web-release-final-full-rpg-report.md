@@ -4,14 +4,14 @@
 
 Full RPG Web release is complete for the Chrome single-thread target.
 
-The release covers the playable teaching-demo loop: title, character creation, home exterior/interior, town travel, battle victory, Effekseer VFX, shop buy/sell/failure feedback, quest accept/progress/turn-in/reward, recruit, rest, wardrobe appearance change, settings persistence, save, refresh, and load.
+The release covers the playable teaching-demo loop: title, character creation, home exterior/interior, town travel, battle Attack / Item / Guard / Escape, battle victory, battle defeat recovery, Effekseer VFX, shop buy/sell/failure feedback, quest accept/progress/turn-in/reward, recruit, rest, wardrobe appearance change, settings persistence, save, refresh, and load.
 
 ## Build And Acceptance
 
 Primary acceptance command:
 
 ```bash
-python3 tools/web_release/web_release_runbook.py auto --skip-build --profile full-rpg --build-dir build/web-release-final --output-dir /private/tmp/tinyfarm-phase28-auto-final
+python3 tools/web_release/web_release_runbook.py auto --profile full-rpg --build-dir build/web-release-final --output-dir /private/tmp/tinyfarm-battle-depth-auto-final-20
 ```
 
 Result:
@@ -21,23 +21,23 @@ Result:
 - Release gate failures: `0`.
 - Smoke profile: `full-rpg`.
 - Manual checklist record: `/private/tmp/tinyfarm-phase28-manual-check/manual-preview.json`.
-- Release report: `/private/tmp/tinyfarm-phase28-auto-final/release-report.md`.
-- Artifact manifest: `/private/tmp/tinyfarm-phase28-auto-final/artifact-manifest.json`.
-- Smoke JSON: `/private/tmp/tinyfarm-phase28-auto-final/chromium-smoke.json`.
-- Screenshots: `72` files in `/private/tmp/tinyfarm-phase28-auto-final/smoke`.
+- Release report: `/private/tmp/tinyfarm-battle-depth-auto-final-20/release-report.md`.
+- Artifact manifest: `/private/tmp/tinyfarm-battle-depth-auto-final-20/artifact-manifest.json`.
+- Smoke JSON: `/private/tmp/tinyfarm-battle-depth-auto-final-20/chromium-smoke.json`.
+- Screenshots: `70` files in `/private/tmp/tinyfarm-battle-depth-auto-final-20/smoke`.
 
 ## Package Summary
 
 | Package | Files | Size | Artifact | Ready time |
 |---|---:|---:|---:|---:|
 | boot | 38 | 2.9 MiB | web-boot-preload.args | boot preload |
-| audio-core | 5 | 4.1 MiB | 4.1 MiB | 32 ms |
-| shared-ui | 172 | 13.3 MiB | 13.3 MiB | 81 ms |
-| rpg-core | 40 | 95.9 KiB | 103.2 KiB | 8 ms |
-| home-map | 38 | 553.0 KiB | 561.1 KiB | 10 ms |
-| town-map | 1 | 38.9 KiB | 39.2 KiB | 20 ms |
-| battle-core | 4 | 434.0 KiB | 434.9 KiB | 20 ms |
-| vfx-core | 83 | 1.2 MiB | 1.2 MiB | 26 ms |
+| audio-core | 5 | 4.1 MiB | 4.1 MiB | 30 ms |
+| shared-ui | 172 | 13.3 MiB | 13.3 MiB | 75 ms |
+| rpg-core | 40 | 95.9 KiB | 103.2 KiB | 7 ms |
+| home-map | 38 | 553.0 KiB | 561.1 KiB | 11 ms |
+| town-map | 1 | 38.9 KiB | 39.2 KiB | 13 ms |
+| battle-core | 4 | 434.0 KiB | 434.9 KiB | 21 ms |
+| vfx-core | 83 | 1.2 MiB | 1.2 MiB | 28 ms |
 
 Deploy summary:
 
@@ -51,11 +51,11 @@ Deploy summary:
 
 | Metric | Actual | Budget | Status |
 |---|---:|---:|---|
-| title_interactive | 579 ms | 45000 ms | passed |
-| new_game_to_map | 2349 ms | 30000 ms | passed |
-| gameplay_flow | 26890 ms | 120000 ms | passed |
-| reload_load_to_map | 2876 ms | 30000 ms | passed |
-| full_rpg_basic_flows | 197750 ms | tracked | passed |
+| title_interactive | 424 ms | 45000 ms | passed |
+| new_game_to_map | 2602 ms | 30000 ms | passed |
+| gameplay_flow | 27588 ms | 120000 ms | passed |
+| reload_load_to_map | 2677 ms | 30000 ms | passed |
+| full_rpg_basic_flows | 310279 ms | tracked | passed |
 
 ## Rendering And VFX
 
@@ -89,24 +89,22 @@ Covered flows:
 - `full_rpg_profile_diagnostics_gate`
 - `home_exterior_to_town`
 - `town_enemy_encounter`
+- `battle_attack_item_guard_escape_matrix`
 - `battle_skill_vfx`
 - `battle_victory_return_to_map`
 - `battle_reward_writeback`
+- `battle_defeat_flow`
+- `battle_hp_mp_inventory_writeback`
 - `shop_buy_sell_failure_feedback`
 - `quest_accept_progress_turn_in_reward`
 - `recruit_accept_party_writeback`
 - `rest_recovery_time_advance`
 - `wardrobe_appearance_change`
 - `hdr_bloom_postprocessing_smoke`
+- `battle_defeated_encounter_save_reload_matrix`
 - `full_rpg_save_reload_verify`
 
-Uncovered non-basic flows:
-
-- `battle_attack_item_guard_escape_matrix`
-- `battle_defeat_flow`
-- `battle_defeated_encounter_save_reload_matrix`
-
-These are battle-depth extensions. They are not listed as future work for basic RPG gameplay because the full RPG teaching-demo loop is already covered by the Chrome full-rpg smoke.
+Battle-depth validation now records Attack, Guard, Item, Escape, defeat recovery, HP/MP writeback, potion stock writeback, and save/reload restoration of non-respawning defeated encounter `1001`.
 
 ## Current Release Procedure
 

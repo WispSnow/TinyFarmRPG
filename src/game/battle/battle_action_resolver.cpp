@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,6 +17,7 @@ namespace game::battle {
 namespace {
 
 constexpr int kEscapeSuccessChancePercent = 50;
+constexpr int kEscapeRetryBonusPercent = 50;
 
 BattleActionResult makeInitialResult(const BattleAction& action) {
     BattleActionResult result{};
@@ -32,6 +34,11 @@ BattleActionResult makeInitialResult(const BattleAction& action) {
 
 [[nodiscard]] int clampPercent(const int value) {
     return std::clamp(value, 0, 100);
+}
+
+[[nodiscard]] int escapeChanceForAttempt(const std::uint32_t attempt_count) {
+    const auto retry_count = static_cast<int>(attempt_count > 0 ? attempt_count - 1U : 0U);
+    return clampPercent(kEscapeSuccessChancePercent + retry_count * kEscapeRetryBonusPercent);
 }
 
 void appendUnique(std::vector<std::string>& out_values, const std::string& value) {
@@ -346,7 +353,7 @@ BattleActionResult BattleActionResolver::resolve(const BattleAction& action,
             result.status = BattleActionStatus::Applied;
             ++runtime_state.escape_attempt_count;
             const int roll = nextEscapeRoll();
-            result.escape_succeeded = roll <= kEscapeSuccessChancePercent;
+            result.escape_succeeded = roll <= escapeChanceForAttempt(runtime_state.escape_attempt_count);
             if (result.escape_succeeded) {
                 turn_core.forceOutcome(BattleOutcome::Escaped);
             } else {

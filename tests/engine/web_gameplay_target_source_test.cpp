@@ -943,15 +943,21 @@ TEST(WebGameplayTargetSourceTest, Phase20ReleaseRunbookArtifactsDocsAndCiArePres
 
 TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAreCurrent) {
     const std::string runbook = readProjectFile("tools/web_release/web_release_runbook.py");
+    const std::string web_smoke = readProjectFile("tools/web_release/web_smoke.py");
     const std::string release_docs = readProjectFile("docs/web_release.md");
     const std::string workflow = readProjectFile(".github/workflows/web-release.yml");
+    const std::string battle_scene_header = readProjectFile("src/game/scene/battle_scene.h");
+    const std::string battle_scene_source = readProjectFile("src/game/scene/battle_scene.cpp");
     const std::string web_shell = readProjectFile("src/web/web_shell_ui.cpp");
     const std::string phase28_report = readProjectFile("plans/reports/2026-06-05-web-release-phase-28-report.md");
     const std::string final_report = readProjectFile("plans/reports/2026-06-05-web-release-final-full-rpg-report.md");
 
     ASSERT_FALSE(runbook.empty());
+    ASSERT_FALSE(web_smoke.empty());
     ASSERT_FALSE(release_docs.empty());
     ASSERT_FALSE(workflow.empty());
+    ASSERT_FALSE(battle_scene_header.empty());
+    ASSERT_FALSE(battle_scene_source.empty());
     ASSERT_FALSE(web_shell.empty());
     ASSERT_FALSE(phase28_report.empty());
     ASSERT_FALSE(final_report.empty());
@@ -968,6 +974,7 @@ TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAre
     EXPECT_NE(release_docs.find("--profile full-rpg"), std::string::npos);
     EXPECT_NE(release_docs.find("Effekseer WebGL2 后端"), std::string::npos);
     EXPECT_NE(release_docs.find("HDR emissive 与 Bloom"), std::string::npos);
+    EXPECT_NE(release_docs.find("Attack / Guard / Item / Escape"), std::string::npos);
     EXPECT_NE(release_docs.find("battle-core.tfpack"), std::string::npos);
     EXPECT_NE(release_docs.find("vfx-core.tfpack"), std::string::npos);
     EXPECT_NE(release_docs.find("IDBFS"), std::string::npos);
@@ -980,6 +987,25 @@ TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAre
     EXPECT_NE(workflow.find("web-packages/web-package-index.json"), std::string::npos);
     EXPECT_NE(workflow.find("chromium-smoke-failed.json"), std::string::npos);
 
+    EXPECT_NE(battle_scene_header.find("last_action_sequence_"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("lastAction.sequence"), std::string::npos);
+    EXPECT_NE(battle_scene_source.find("lastActionHistory"), std::string::npos);
+
+    EXPECT_NE(web_smoke.find("exercise_full_rpg_battle_depth_flow"), std::string::npos);
+    EXPECT_NE(web_smoke.find("matching_battle_action"), std::string::npos);
+    EXPECT_NE(web_smoke.find("submit_battle_attack_action"), std::string::npos);
+    EXPECT_NE(web_smoke.find("submit_battle_guard_action"), std::string::npos);
+    EXPECT_NE(web_smoke.find("submit_battle_item_action"), std::string::npos);
+    EXPECT_NE(web_smoke.find("run_battle_escape_until_finished"), std::string::npos);
+    EXPECT_NE(web_smoke.find("run_battle_to_defeat"), std::string::npos);
+    EXPECT_NE(web_smoke.find("party_runtime_states"), std::string::npos);
+    EXPECT_NE(web_smoke.find("defeated_encounters_from_save"), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"battle_attack_item_guard_escape_matrix\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"battle_defeat_flow\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"battle_hp_mp_inventory_writeback\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"battle_defeated_encounter_save_reload_matrix\""), std::string::npos);
+    EXPECT_NE(web_smoke.find("\"pending_flows\": []"), std::string::npos);
+
     EXPECT_NE(web_shell.find("Full RPG profile reports RmlUi, Effekseer, and Bloom through runtime diagnostics."),
               std::string::npos);
     EXPECT_EQ(web_shell.find("remain deferred"), std::string::npos);
@@ -987,7 +1013,11 @@ TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAre
     EXPECT_NE(phase28_report.find("web_release_runbook.py auto --skip-build --profile full-rpg"), std::string::npos);
     EXPECT_NE(final_report.find("Effekseer"), std::string::npos);
     EXPECT_NE(final_report.find("Bloom"), std::string::npos);
-    EXPECT_NE(final_report.find("Uncovered non-basic flows"), std::string::npos);
+    EXPECT_NE(final_report.find("battle_attack_item_guard_escape_matrix"), std::string::npos);
+    EXPECT_NE(final_report.find("battle_defeat_flow"), std::string::npos);
+    EXPECT_NE(final_report.find("battle_hp_mp_inventory_writeback"), std::string::npos);
+    EXPECT_NE(final_report.find("battle_defeated_encounter_save_reload_matrix"), std::string::npos);
+    EXPECT_EQ(final_report.find("Uncovered non-basic flows"), std::string::npos);
     EXPECT_EQ(final_report.find("基础 RPG 玩法列为后续增强"), std::string::npos);
 }
 
