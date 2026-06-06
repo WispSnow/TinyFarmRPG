@@ -24,4 +24,15 @@ body {
 
 #game-menu-button {
     pointer-events: auto;
+    tab-index: none;
+    nav-up: none;
+    nav-down: none;
+    nav-left: none;
+    nav-right: none;
+}
+
+.tf-input-nav #game-menu-button:focus {
+    transform: translateY(0);
+    image-color: #d8dee9d8;
+    filter: saturate(0.75) brightness(0.95);
 }
