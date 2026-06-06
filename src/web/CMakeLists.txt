@@ -8,6 +8,12 @@ set(TF_WEB_PRELOAD_ARGS
     "Web POC preload argument manifest"
 )
 
+set(TF_WEB_HTML_SHELL
+    "${CMAKE_SOURCE_DIR}/src/web/tinyfarm_web_shell.html"
+    CACHE FILEPATH
+    "Minimal Web HTML shell"
+)
+
 add_executable(${TARGET}
     web_main.cpp
     web_shell_ui.cpp
@@ -41,7 +47,9 @@ target_link_options(${TARGET}
         -sFORCE_FILESYSTEM=1
         -sEXIT_RUNTIME=0
         -lidbfs.js
+        "--shell-file=${TF_WEB_HTML_SHELL}"
 )
+set_property(TARGET ${TARGET} APPEND PROPERTY LINK_DEPENDS "${TF_WEB_HTML_SHELL}")
 
 if(TF_WEB_ENABLE_PTHREADS)
     target_compile_options(${TARGET}

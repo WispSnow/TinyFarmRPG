@@ -28,6 +28,12 @@ set(TF_WEB_PRELOAD_ARGS
     "Web link-time preload manifest"
 )
 
+set(TF_WEB_HTML_SHELL
+    "${CMAKE_SOURCE_DIR}/src/web/tinyfarm_web_shell.html"
+    CACHE FILEPATH
+    "Minimal Web release HTML shell"
+)
+
 function(tf_web_runtime_package_paths OUT_PACKAGE_DIR OUT_PACKAGE_INDEX OUT_BOOT_PRELOAD)
     set(_package_dir "${CMAKE_BINARY_DIR}/web-packages")
     set(_package_index "${_package_dir}/web-package-index.json")
@@ -90,7 +96,9 @@ function(tf_configure_web_executable TARGET_NAME)
             -sEXIT_RUNTIME=0
             -sDISABLE_EXCEPTION_CATCHING=1
             -lidbfs.js
+            "--shell-file=${TF_WEB_HTML_SHELL}"
     )
+    set_property(TARGET ${TARGET_NAME} APPEND PROPERTY LINK_DEPENDS "${TF_WEB_HTML_SHELL}")
 
     if(TF_WEB_ENABLE_PTHREADS)
         target_compile_options(${TARGET_NAME}

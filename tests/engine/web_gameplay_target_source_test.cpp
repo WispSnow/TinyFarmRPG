@@ -1048,6 +1048,34 @@ TEST(WebGameplayTargetSourceTest, Phase28FullRpgReleaseDocsRunbookCiAndReportAre
     EXPECT_EQ(final_report.find("基础 RPG 玩法列为后续增强"), std::string::npos);
 }
 
+TEST(WebGameplayTargetSourceTest, WebReleaseUsesCleanCanvasOnlyHtmlShell) {
+    const std::string web_runtime_cmake = readProjectFile("cmake/WebRuntime.cmake");
+    const std::string skeleton_cmake = readProjectFile("src/web/CMakeLists.txt");
+    const std::string html_shell = readProjectFile("src/web/tinyfarm_web_shell.html");
+
+    ASSERT_FALSE(web_runtime_cmake.empty());
+    ASSERT_FALSE(skeleton_cmake.empty());
+    ASSERT_FALSE(html_shell.empty());
+
+    EXPECT_NE(web_runtime_cmake.find("--shell-file=${TF_WEB_HTML_SHELL}"), std::string::npos);
+    EXPECT_NE(web_runtime_cmake.find("LINK_DEPENDS \"${TF_WEB_HTML_SHELL}\""), std::string::npos);
+    EXPECT_NE(skeleton_cmake.find("--shell-file=${TF_WEB_HTML_SHELL}"), std::string::npos);
+
+    EXPECT_NE(html_shell.find("<canvas id=\"canvas\""), std::string::npos);
+    EXPECT_NE(html_shell.find("var Module = {"), std::string::npos);
+    EXPECT_NE(html_shell.find("{{{ SCRIPT }}}"), std::string::npos);
+    EXPECT_NE(html_shell.find("print: (...args) => console.log(...args)"), std::string::npos);
+    EXPECT_NE(html_shell.find("printErr: (...args) => console.error(...args)"), std::string::npos);
+
+    EXPECT_EQ(html_shell.find("emscripten_logo"), std::string::npos);
+    EXPECT_EQ(html_shell.find("<textarea"), std::string::npos);
+    EXPECT_EQ(html_shell.find("id=\"output\""), std::string::npos);
+    EXPECT_EQ(html_shell.find("id=\"status\""), std::string::npos);
+    EXPECT_EQ(html_shell.find("id=\"progress\""), std::string::npos);
+    EXPECT_EQ(html_shell.find("id=\"controls\""), std::string::npos);
+    EXPECT_EQ(html_shell.find("spinner"), std::string::npos);
+}
+
 TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     const std::string asset_audit_source = readProjectFile("tools/asset_audit/audit_assets.py");
     const std::string package_tool = readProjectFile("tools/web_release/package_web_assets.py");
