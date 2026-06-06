@@ -32,14 +32,185 @@
             outline: 0;
             background: #000;
         }
+
+        .debug-toolbar {
+            position: fixed;
+            top: max(10px, env(safe-area-inset-top));
+            right: max(10px, env(safe-area-inset-right));
+            z-index: 10;
+            display: flex;
+            gap: 6px;
+            padding: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 6px;
+            background: rgba(16, 18, 22, 0.76);
+            color: #fff;
+            font: 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .debug-toolbar[hidden] {
+            display: none;
+        }
+
+        .debug-toolbar button {
+            min-width: 58px;
+            height: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .debug-toolbar button:hover,
+        .debug-toolbar button:focus-visible {
+            background: rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body>
+    <div id="debug-toolbar" class="debug-toolbar" hidden>
+        <button type="button" data-debug-panel="0" aria-label="Toggle engine debug panels">Engine</button>
+        <button type="button" data-debug-panel="1" aria-label="Toggle game debug panels">Game</button>
+    </div>
     <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
     <script>
         "use strict";
 
         const canvasElement = document.getElementById("canvas");
+        const debugToolbarElement = document.getElementById("debug-toolbar");
+        const debugToolbarButtons = Array.from(debugToolbarElement.querySelectorAll("[data-debug-panel]"));
+        let webDebugApiDetected = false;
+        let webDebugStartupApplied = false;
+        let webDebugPollHandle = 0;
+
+        function getWebDebugApi() {
+            const module = typeof Module !== "undefined" ? Module : window.Module;
+            if (typeof module === "undefined") {
+                return null;
+            }
+
+            const available = module._tf_web_debug_ui_available;
+            const togglePanel = module._tf_web_debug_toggle_panel;
+            const setPanelVisible = module._tf_web_debug_set_panel_visible;
+            if (typeof available !== "function" ||
+                typeof togglePanel !== "function" ||
+                typeof setPanelVisible !== "function") {
+                return null;
+            }
+
+            webDebugApiDetected = true;
+            return { available, togglePanel, setPanelVisible };
+        }
+
+        function isWebDebugAvailable() {
+            const api = getWebDebugApi();
+            return api !== null && api.available() !== 0;
+        }
+
+        function toggleWebDebugPanel(category) {
+            const api = getWebDebugApi();
+            if (api === null || api.available() === 0) {
+                return false;
+            }
+
+            const toggled = api.togglePanel(category) !== 0;
+            if (toggled) {
+                canvasElement.focus();
+            }
+            return toggled;
+        }
+
+        function setWebDebugPanelVisible(category, visible) {
+            const api = getWebDebugApi();
+            if (api === null || api.available() === 0) {
+                return false;
+            }
+
+            return api.setPanelVisible(category, visible ? 1 : 0) !== 0;
+        }
+
+        function applyWebDebugStartupState() {
+            if (webDebugStartupApplied) {
+                return;
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            const requested = (params.get("debug-ui") || "").toLowerCase();
+            if (requested === "engine" || requested === "all") {
+                setWebDebugPanelVisible(0, true);
+            }
+            if (requested === "game" || requested === "all") {
+                setWebDebugPanelVisible(1, true);
+            }
+            webDebugStartupApplied = true;
+        }
+
+        function refreshWebDebugToolbar() {
+            if (!isWebDebugAvailable()) {
+                return false;
+            }
+
+            debugToolbarElement.hidden = false;
+            applyWebDebugStartupState();
+            return true;
+        }
+
+        function startWebDebugUiPolling() {
+            if (webDebugPollHandle !== 0 || refreshWebDebugToolbar()) {
+                return;
+            }
+
+            let attempts = 0;
+            webDebugPollHandle = window.setInterval(() => {
+                attempts += 1;
+                if (refreshWebDebugToolbar() || attempts >= 120) {
+                    window.clearInterval(webDebugPollHandle);
+                    webDebugPollHandle = 0;
+                }
+            }, 100);
+        }
+
+        function debugCategoryForKey(event) {
+            if (event.code === "F5") {
+                return 0;
+            }
+            if (event.code === "F6") {
+                return 1;
+            }
+            if (event.ctrlKey && event.shiftKey && !event.altKey) {
+                if (event.code === "Digit5" || event.key === "5") {
+                    return 0;
+                }
+                if (event.code === "Digit6" || event.key === "6") {
+                    return 1;
+                }
+            }
+            return null;
+        }
+
+        function shouldCaptureWebDebugShortcut() {
+            return getWebDebugApi() !== null || webDebugApiDetected || !debugToolbarElement.hidden;
+        }
+
+        window.addEventListener("keydown", (event) => {
+            const category = debugCategoryForKey(event);
+            if (category === null || !shouldCaptureWebDebugShortcut()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            toggleWebDebugPanel(category);
+        }, { capture: true });
+
+        debugToolbarButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                toggleWebDebugPanel(Number(button.dataset.debugPanel));
+            });
+        });
+
         canvasElement.addEventListener("webglcontextlost", (event) => {
             console.warn("TinyFarmRPG WebGL context lost. Reload the page to recover.");
             event.preventDefault();
@@ -59,7 +230,13 @@
                     console.log("[TinyFarmRPG] All downloads complete.");
                 }
             },
+            postRun: [
+                () => {
+                    startWebDebugUiPolling();
+                },
+            ],
         };
+        window.Module = Module;
 
         window.addEventListener("load", () => {
             canvasElement.focus();

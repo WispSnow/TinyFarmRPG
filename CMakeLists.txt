@@ -158,12 +158,12 @@ else()
     # RmlUi 依赖管理（可选）
     include(cmake/RmlUiDependencies.cmake)
 
-    # ImGui配置
-    include(cmake/ImGui.cmake)
-
     # OpenGL配置
     include(cmake/OpenGL.cmake)
 endif()
+
+# ImGui 配置。Web 默认不启用 Debug UI；显式打开 ENABLE_DEBUG_UI 时才会加入源文件和头文件路径。
+include(cmake/ImGui.cmake)
 
 # 构建辅助函数
 include(cmake/BuildHelpers.cmake)
@@ -202,6 +202,9 @@ add_library(engine STATIC ${IMGUI_SOURCES})
 
 if(ENABLE_DEBUG_UI)
     target_compile_definitions(engine PUBLIC TF_ENABLE_DEBUG_UI)
+    if(TF_BUILD_WEB)
+        target_compile_definitions(engine PRIVATE IMGUI_IMPL_OPENGL_ES3)
+    endif()
 endif()
 if(ENABLE_RMLUI_DEBUGGER)
     target_compile_definitions(engine PUBLIC TF_ENABLE_RMLUI_DEBUGGER)

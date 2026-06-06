@@ -76,6 +76,15 @@ MANUAL_CHECKLIST = (
     "Confirm TinyFarmRPG-Web.data stays boot-only sized and no COOP/COEP headers are required for single-thread builds.",
 )
 
+DEBUG_CHECKLIST = (
+    "Confirm the debug toolbar appears in the top-right corner after the runtime starts.",
+    "Press F5 and confirm Engine Debug Panels opens without reloading the browser page.",
+    "Press F6 after entering gameplay and confirm Game Debug Panels opens.",
+    "Confirm Ctrl+Shift+5 and Ctrl+Shift+6 toggle the same panels.",
+    "Open with ?debug-ui=all and confirm both debug hubs start visible.",
+    "Interact with ImGui controls and confirm RmlUi/game input is not double-triggered while captured.",
+)
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -879,7 +888,20 @@ def run_asset_audit(root: Path, runner: CommandRunner, env: dict[str, str]) -> N
     runner.run([sys.executable, str(root / "tools" / "asset_audit" / "audit_assets.py")], env)
 
 
-def configure_web(root: Path, build_dir: Path, runner: CommandRunner, env: dict[str, str]) -> None:
+def cmake_on_off(value: bool) -> str:
+    return "ON" if value else "OFF"
+
+
+def configure_web(
+    root: Path,
+    build_dir: Path,
+    runner: CommandRunner,
+    env: dict[str, str],
+    *,
+    build_type: str = "Release",
+    enable_debug_ui: bool = False,
+    enable_rmlui_debugger: bool = False,
+) -> None:
     emcmake = resolve_executable("emcmake", env)
     if not emcmake:
         raise RuntimeError("emcmake not found. Source emsdk_env.sh or install emsdk before using --configure.")
@@ -893,8 +915,14 @@ def configure_web(root: Path, build_dir: Path, runner: CommandRunner, env: dict[
             str(build_dir),
             "-G",
             "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release",
+            f"-DCMAKE_BUILD_TYPE={build_type}",
             "-DTF_BUILD_WEB=ON",
+            "-DTF_WEB_ENABLE_RUNTIME_PACKAGES=ON",
+            "-DTF_WEB_BOOT_ONLY_PRELOAD=ON",
+            "-DTF_WEB_ENABLE_PTHREADS=OFF",
+            "-DTF_ENABLE_RUNTIME_THREADS=OFF",
+            f"-DENABLE_DEBUG_UI={cmake_on_off(enable_debug_ui)}",
+            f"-DENABLE_RMLUI_DEBUGGER={cmake_on_off(enable_rmlui_debugger)}",
             "-DBUILD_TOOLS=OFF",
             "-DBUILD_TESTING=OFF",
             "-DBUILD_LEARN=OFF",
@@ -1206,15 +1234,147 @@ def run_manual(args: argparse.Namespace) -> int:
     return 0
 
 
-def add_common_build_args(parser: argparse.ArgumentParser) -> None:
+def debug_output_dir(args: argparse.Namespace, build_dir: Path) -> Path:
+    return (args.output_dir or build_dir / "web-debug-manual").resolve()
+
+
+def run_debug(args: argparse.Namespace) -> int:
+    root = repo_root()
+    build_dir = (args.build_dir or root / "build" / "web-debug").resolve()
+    output_dir = debug_output_dir(args, build_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    report_path = output_dir / "web-debug-preview.json"
+    log_path = output_dir / "web-debug-preview.log"
+    env = command_env()
+    runner = CommandRunner(root, log_path)
+    report = base_report("debug", root, build_dir, output_dir, env)
+    report["log"] = str(log_path)
+    report["checklist"] = list(DEBUG_CHECKLIST)
+    report["release_gate"] = {
+        "skipped": True,
+        "reason": "Web debug builds intentionally use RelWithDebInfo and ENABLE_DEBUG_UI=ON.",
+    }
+
+    try:
+        if not args.skip_script_check:
+            run_script_check(root, runner, env)
+        if not args.skip_build:
+            run_asset_audit(root, runner, env)
+        if args.configure:
+            configure_web(
+                root,
+                build_dir,
+                runner,
+                env,
+                build_type="RelWithDebInfo",
+                enable_debug_ui=True,
+                enable_rmlui_debugger=True,
+            )
+        if not args.skip_build:
+            build_web(root, build_dir, args.jobs, runner, env)
+            package_web_assets(root, build_dir, runner, env)
+        required_artifacts_present(build_dir)
+
+        cache_path = build_dir / "CMakeCache.txt"
+        cross_origin_isolated = args.cross_origin_isolated or cmake_bool(cache_value(cache_path, "TF_WEB_ENABLE_PTHREADS"))
+        port = args.port if args.port != 0 else find_free_port()
+        display_host = "127.0.0.1" if args.host in {"0.0.0.0", "::"} else args.host
+        query = f"debug={int(time.time())}"
+        if args.debug_ui_start != "none":
+            query = f"debug-ui={args.debug_ui_start}&{query}"
+        url = f"http://{display_host}:{port}/TinyFarmRPG-Web.html?{query}"
+        report["server"] = {
+            "url": url,
+            "host": args.host,
+            "port": port,
+            "cross_origin_isolated": cross_origin_isolated,
+        }
+        finish_report(report, "prepared", runner, build_dir)
+        if not try_write_release_outputs(report, root, build_dir, output_dir, env):
+            report["status"] = "failed"
+        write_json(report_path, report)
+        if report["status"] == "failed":
+            runner.close()
+            print("")
+            print(f"Web debug preview failed: {report_path}")
+            print(f"Log: {log_path}")
+            return 1
+
+        if args.check_only:
+            runner.note(f"Web debug preview prepared: {url}")
+            runner.close()
+            print("")
+            print(f"Web debug preview report: {report_path}")
+            if "artifact_manifest" in report:
+                print(f"Artifact manifest: {report['artifact_manifest']}")
+            if "release_report" in report:
+                print(f"Release report: {report['release_report']}")
+            print(f"Log: {log_path}")
+            return 0 if report["status"] == "prepared" else 1
+
+        handler_base = make_handler(build_dir, cross_origin_isolated)
+
+        class LoggingHandler(handler_base):
+            def log_message(self, fmt: str, *values: object) -> None:
+                runner.note("HTTP " + (fmt % values))
+
+        socketserver.TCPServer.allow_reuse_address = True
+        with socketserver.TCPServer((args.host, port), LoggingHandler) as httpd:
+            report["status"] = "serving"
+            write_json(report_path, report)
+            runner.note("")
+            runner.note(f"Serving Web debug build {build_dir}")
+            runner.note(f"Open {url}")
+            runner.note("Web debug checklist:")
+            for item in DEBUG_CHECKLIST:
+                runner.note(f"- {item}")
+            runner.note(f"Report: {report_path}")
+            runner.note(f"Log: {log_path}")
+            if args.open:
+                webbrowser.open(url)
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                runner.note("Stopped.")
+            report["status"] = "stopped"
+            report["finished_at"] = now_iso()
+            write_json(report_path, report)
+    except Exception as exc:
+        finish_report(report, "failed", runner, build_dir, str(exc))
+        try_write_release_outputs(report, root, build_dir, output_dir, env)
+        write_json(report_path, report)
+        runner.close()
+        print("")
+        print(f"Web debug preview failed: {report_path}")
+        print(f"Log: {log_path}")
+        return 1
+
+    runner.close()
+    print("")
+    print(f"Web debug preview report: {report_path}")
+    if "artifact_manifest" in report:
+        print(f"Artifact manifest: {report['artifact_manifest']}")
+    if "release_report" in report:
+        print(f"Release report: {report['release_report']}")
+    print(f"Log: {log_path}")
+    return 0
+
+
+def add_common_build_args(
+    parser: argparse.ArgumentParser,
+    *,
+    include_gate: bool = True,
+    build_dir_help: str = "Build directory. Defaults to existing build/web-gameplay-phase11, otherwise build/web-release.",
+) -> None:
     parser.add_argument(
         "--build-dir",
         type=Path,
-        help="Build directory. Defaults to existing build/web-gameplay-phase11, otherwise build/web-release.",
+        help=build_dir_help,
     )
     parser.add_argument("--configure", action="store_true", help="Run emcmake CMake configure before building.")
     parser.add_argument("--skip-build", action="store_true", help="Skip cmake --build.")
-    parser.add_argument("--skip-gate", action="store_true", help="Skip validate_web_release.py.")
+    if include_gate:
+        parser.add_argument("--skip-gate", action="store_true", help="Skip validate_web_release.py.")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 8)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-script-check", action="store_true", help="Skip Python py_compile checks.")
@@ -1249,6 +1409,21 @@ def parse_args() -> argparse.Namespace:
     manual.add_argument("--open", action="store_true", help="Open the preview URL in the default browser.")
     manual.add_argument("--check-only", action="store_true", help="Prepare and record the preview without starting the server.")
     manual.set_defaults(func=run_manual)
+
+    debug = subparsers.add_parser("debug", help="Build and serve a Web debug preview with ImGui Debug UI enabled.")
+    add_common_build_args(debug, include_gate=False, build_dir_help="Build directory. Defaults to build/web-debug.")
+    debug.add_argument("--host", default="127.0.0.1")
+    debug.add_argument("--port", type=int, default=8787)
+    debug.add_argument("--cross-origin-isolated", action="store_true", help="Force COOP/COEP preview headers.")
+    debug.add_argument("--open", action="store_true", help="Open the preview URL in the default browser.")
+    debug.add_argument("--check-only", action="store_true", help="Prepare and record the preview without starting the server.")
+    debug.add_argument(
+        "--debug-ui-start",
+        choices=("none", "engine", "game", "all"),
+        default="none",
+        help="Add a debug-ui query parameter so selected ImGui hubs start visible.",
+    )
+    debug.set_defaults(func=run_debug)
 
     return parser.parse_args()
 

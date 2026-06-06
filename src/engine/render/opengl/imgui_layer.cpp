@@ -1,5 +1,7 @@
 #include "imgui_layer.h"
 
+#include "engine/platform/gl_platform.h"
+
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_opengl3.h>
@@ -27,7 +29,9 @@ bool ImGuiLayer::init(SDL_Window* window, SDL_GLContext context, std::string_vie
 
     window_ = window;
     context_ = context;
-    glsl_version_ = glsl_version.empty() ? "#version 330" : std::string(glsl_version);
+    glsl_version_ = glsl_version.empty()
+        ? engine::platform::gl::kGlslVersion
+        : std::string(glsl_version);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

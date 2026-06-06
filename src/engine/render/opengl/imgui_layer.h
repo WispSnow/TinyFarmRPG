@@ -1,5 +1,7 @@
 #pragma once
 
+#include "engine/platform/gl_platform.h"
+
 #include <SDL3/SDL.h>
 #include <functional>
 #include <string>
@@ -24,7 +26,7 @@ class ImGuiLayer final {
 public:
     [[nodiscard]] static std::unique_ptr<ImGuiLayer> create(SDL_Window* window,
                                                             SDL_GLContext context,
-                                                            std::string_view glsl_version = "#version 330");
+                                                            std::string_view glsl_version = engine::platform::gl::kGlslVersion);
     ~ImGuiLayer();
 
     ImGuiLayer(const ImGuiLayer&) = delete;
@@ -58,7 +60,9 @@ private:
      * @param glsl_version 传递给 OpenGL 后端的 GLSL 版本字符串。
      * @return 成功返回 true，否则返回 false。
      */
-    [[nodiscard]] bool init(SDL_Window* window, SDL_GLContext context, std::string_view glsl_version = "#version 330");
+    [[nodiscard]] bool init(SDL_Window* window,
+                            SDL_GLContext context,
+                            std::string_view glsl_version = engine::platform::gl::kGlslVersion);
 
     void configureStyle();
     void configureFonts();

@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <functional>
+#include <cstddef>
 #include <entt/signal/fwd.hpp>
 #include "engine/utils/events.h"
 
@@ -138,6 +139,28 @@ public:
     void shutdown();
 
     [[nodiscard]] bool isRunning() const;
+
+#ifdef TF_ENABLE_DEBUG_UI
+    /**
+     * @brief 返回 Debug UI 是否已初始化且可被外部入口控制。
+     */
+    [[nodiscard]] bool isDebugUIAvailable() const;
+
+    /**
+     * @brief 切换指定分类的 Debug 面板。
+     * @param category DebugUIManager::PanelCategory 的序号。
+     * @return 分类有效且切换成功时返回 true。
+     */
+    [[nodiscard]] bool toggleDebugPanel(std::size_t category);
+
+    /**
+     * @brief 设置指定分类 Debug 面板的可见性。
+     * @param category DebugUIManager::PanelCategory 的序号。
+     * @param visible 是否显示。
+     * @return 分类有效且设置成功时返回 true。
+     */
+    [[nodiscard]] bool setDebugPanelVisible(std::size_t category, bool visible);
+#endif
 
     /**
      * @brief 注册用于设置初始游戏场景的函数。

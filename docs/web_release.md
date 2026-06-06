@@ -143,6 +143,79 @@ python3 tools/web_release/serve_web_release.py \
   --port 8787
 ```
 
+## Web Debug 预览
+
+Web Debug 预览用于移植期调试 ImGui 面板，不属于正式发布验收路径。`build/web-release` 仍保持 `ENABLE_DEBUG_UI=OFF` 并继续使用 release gate；Debug 预览默认使用独立目录 `build/web-debug`，配置为 `RelWithDebInfo`、`ENABLE_DEBUG_UI=ON`、`ENABLE_RMLUI_DEBUGGER=ON`。
+
+```mermaid
+flowchart LR
+  A["debug configure<br/>ENABLE_DEBUG_UI=ON"] --> B["ninja build<br/>build/web-debug"]
+  B --> C["local debug server"]
+  C --> D["Chrome manual debug<br/>toolbar / F5 / F6"]
+```
+
+一键构建并打开 Web Debug 预览：
+
+```bash
+tools/web_release/web_debug_manual.sh build
+tools/web_release/web_debug_manual.sh open
+```
+
+启动已有 `build/web-debug` 的本地 Debug 站点：
+
+```bash
+tools/web_release/web_debug_manual.sh serve
+```
+
+构建后立即启动 Debug 站点：
+
+```bash
+tools/web_release/web_debug_manual.sh rebuild-serve
+```
+
+可用环境变量覆盖默认路径、端口和启动面板：
+
+```bash
+PORT=8799 DEBUG_UI_START=engine tools/web_release/web_debug_manual.sh open
+```
+
+底层 runbook 入口也可直接使用：
+
+```bash
+python3 tools/web_release/web_release_runbook.py debug \
+  --configure \
+  --build-dir build/web-debug \
+  --output-dir build/web-debug/web-debug-manual \
+  --open
+```
+
+只构建并生成 Debug 预览报告，不启动服务器：
+
+```bash
+python3 tools/web_release/web_release_runbook.py debug \
+  --configure \
+  --check-only \
+  --build-dir build/web-debug \
+  --output-dir build/web-debug/web-debug-manual
+```
+
+启动时自动打开调试面板：
+
+```bash
+python3 tools/web_release/web_release_runbook.py debug \
+  --skip-build \
+  --build-dir build/web-debug \
+  --debug-ui-start all \
+  --open
+```
+
+Web Debug 入口：
+
+- 页面右上角 Debug toolbar：`Engine` 对应引擎面板，`Game` 对应游戏面板。
+- 快捷键：`F5` / `Ctrl+Shift+5` 切换 Engine Debug Panels，`F6` / `Ctrl+Shift+6` 切换 Game Debug Panels。
+- URL 参数：`?debug-ui=engine`、`?debug-ui=game`、`?debug-ui=all` 可在启动后自动显示指定面板。
+- Debug 构建会跳过正式 `validate_web_release.py` gate；发布验收仍使用 `auto` 或 `manual` 模式。
+
 人工测试 checklist：
 
 - 标题页显示正常，Start / Load / Exit 可见，控制台没有 fatal error。

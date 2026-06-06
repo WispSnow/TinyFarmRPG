@@ -255,6 +255,32 @@ bool GameApp::isRunning() const {
     return is_running_;
 }
 
+#ifdef TF_ENABLE_DEBUG_UI
+bool GameApp::isDebugUIAvailable() const {
+    return debug_ui_manager_ != nullptr
+        && gl_renderer_ != nullptr
+        && gl_renderer_->isDebugUIEnabled();
+}
+
+bool GameApp::toggleDebugPanel(std::size_t category) {
+    if (!isDebugUIAvailable() || category >= engine::debug::DebugUIManager::getCategoryCount()) {
+        return false;
+    }
+
+    debug_ui_manager_->toggleVisible(static_cast<engine::debug::PanelCategory>(category));
+    return true;
+}
+
+bool GameApp::setDebugPanelVisible(std::size_t category, bool visible) {
+    if (!isDebugUIAvailable() || category >= engine::debug::DebugUIManager::getCategoryCount()) {
+        return false;
+    }
+
+    debug_ui_manager_->setVisible(visible, static_cast<engine::debug::PanelCategory>(category));
+    return true;
+}
+#endif
+
 void GameApp::pollSdlEvents() {
     // 每渲染帧采样一次 SDL 事件；固定 tick 内的分发/消费在 run() 中处理
     input_manager_->sampleInputEvents();
