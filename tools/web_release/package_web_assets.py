@@ -41,6 +41,7 @@ BOOT_PATHS = {
     "assets/data/appearance_catalog.json",
     "assets/data/cursor_config.json",
     "assets/data/resource_mapping.json",
+    "assets/farm-rpg/UI/HUD.png",
     "assets/farm-rpg/UI/Clock/Clock.png",
     "assets/farm-rpg/UI/Clock/clock hand.png",
     "assets/fonts/VonwaonBitmap-16px.ttf",

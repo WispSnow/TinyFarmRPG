@@ -32,6 +32,7 @@ REQUIRED_BOOT_PRELOAD_PATHS = {
     "assets/shaders/texture.frag",
     "assets/textures/UI/farm-rpg-bg.png",
     "assets/textures/UI/farm-rpg-logo.png",
+    "assets/farm-rpg/UI/HUD.png",
     "assets/farm-rpg/UI/button.png",
     "assets/i18n/en-US.json",
     "assets/i18n/languages.json",
@@ -158,11 +159,10 @@ NON_RUNTIME_ASSET_ALLOWLIST = {
     "assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt",
     "assets/farm-rpg/Documentation.txt",
     "assets/farm-rpg/Paletta.txt",
-    "assets/maps/.DS_Store",
     "assets/maps/farm-rpg.tiled-project",
     "assets/maps/farm-rpg.tiled-session",
-    "assets/maps/tileset/.DS_Store",
 }
+NON_RUNTIME_ASSET_FILENAMES = {".DS_Store"}
 
 REQUIRED_RUNTIME_PACKAGES = {
     "boot",
@@ -527,11 +527,15 @@ def validate_full_manifest_budget(
 
     all_asset_paths = sorted(path.relative_to(root).as_posix() for path in (root / "assets").rglob("*") if path.is_file())
     source_asset_paths = {path for path in source_paths if path.startswith("assets/")}
-    unpackaged_assets = sorted(set(all_asset_paths) - source_asset_paths - NON_RUNTIME_ASSET_ALLOWLIST)
+    filename_allowlist = {
+        rel for rel in all_asset_paths if Path(rel).name in NON_RUNTIME_ASSET_FILENAMES
+    }
+    non_runtime_asset_allowlist = NON_RUNTIME_ASSET_ALLOWLIST | filename_allowlist
+    unpackaged_assets = sorted(set(all_asset_paths) - source_asset_paths - non_runtime_asset_allowlist)
     for rel in unpackaged_assets:
         gate.fail(f"Asset file is neither packaged nor allowlisted as non-runtime: {rel}")
 
-    packaged_non_runtime = sorted(source_asset_paths & NON_RUNTIME_ASSET_ALLOWLIST)
+    packaged_non_runtime = sorted(source_asset_paths & non_runtime_asset_allowlist)
     for rel in packaged_non_runtime:
         gate.fail(f"Non-runtime allowlisted asset leaked into Web release package: {rel}")
 
@@ -556,7 +560,7 @@ def validate_full_manifest_budget(
         "used_assets_size": human_size(used_bytes) if isinstance(used_bytes, int) else "",
         "ratio_of_used_assets": round(ratio, 4),
         "asset_files_total": len(all_asset_paths),
-        "non_runtime_allowlist_files": len(NON_RUNTIME_ASSET_ALLOWLIST),
+        "non_runtime_allowlist_files": len(non_runtime_asset_allowlist),
         "unpackaged_asset_files": len(unpackaged_assets),
         "shader_assets": len(shader_assets),
     }
