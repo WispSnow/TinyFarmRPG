@@ -1,11 +1,15 @@
 #include "quest_offer_scene.h"
 
+#include "game/component/actor_identity_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/quest_data.h"
+#include "game/data/rpg_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/options_events.h"
+#include "game/defs/party_ids.h"
 #include "game/runtime/service_lookup.h"
 #include "game/ui/localized_text.h"
+#include "game/ui/player_display_name.h"
 
 #include "engine/component/name_component.h"
 #include "engine/core/context.h"
@@ -41,11 +45,60 @@ void appendSeparated(std::string& text, const std::string_view part) {
     text.append(part);
 }
 
+[[nodiscard]] const game::data::RpgCatalog* findRpgCatalog(entt::registry& registry) {
+    auto** catalog = registry.ctx().find<game::data::RpgCatalog*>();
+    return catalog ? *catalog : nullptr;
+}
+
+[[nodiscard]] std::string resolveActorIdDisplayName(entt::registry& registry,
+                                                    const entt::entity player,
+                                                    const std::string_view actor_id,
+                                                    const entt::id_type actor_id_hash,
+                                                    const game::data::RpgCatalog* rpg_catalog,
+                                                    const game::runtime::LocalizationService* localization) {
+    if (actor_id.empty() && actor_id_hash == entt::null) {
+        return {};
+    }
+
+    if (actor_id == game::defs::kDefaultPlayerActorId) {
+        return game::ui::resolveActorDisplayName(registry, player, actor_id, rpg_catalog, localization);
+    }
+
+    const auto* actor = rpg_catalog && actor_id_hash != entt::null ? rpg_catalog->findActor(actor_id_hash) : nullptr;
+    if (!actor && rpg_catalog && !actor_id.empty()) {
+        actor = rpg_catalog->findActor(actor_id);
+    }
+    if (actor) {
+        return actor->display_name_.empty()
+                   ? actor->id_
+                   : game::ui::tryLocalize(localization, actor->display_name_);
+    }
+
+    return actor_id.empty() ? std::string{} : game::ui::localizeIdName(localization, actor_id);
+}
+
 [[nodiscard]] std::string findSpeakerName(entt::registry& registry,
+                                          const entt::entity player,
                                           const entt::entity entity,
                                           const game::runtime::LocalizationService* localization) {
-    if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
-        return name->name_;
+    const game::data::RpgCatalog* rpg_catalog = findRpgCatalog(registry);
+    if (entity != entt::null && registry.valid(entity)) {
+        if (const auto* identity = registry.try_get<game::component::ActorIdentityComponent>(entity)) {
+            const std::string actor_name = resolveActorIdDisplayName(
+                registry,
+                player,
+                identity->actor_id_,
+                identity->actor_id_hash_,
+                rpg_catalog,
+                localization);
+            if (!actor_name.empty()) {
+                return actor_name;
+            }
+        }
+
+        if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
+            return game::ui::tryLocalize(localization, name->name_);
+        }
     }
     return game::ui::localizeTextOrFallback(localization, "quest_offer.speaker.default", "Quest");
 }
@@ -247,7 +300,7 @@ void QuestOfferScene::disconnectRuntimeListeners() {
 }
 
 void QuestOfferScene::refreshBindings() {
-    speaker_text_ = makeRmlString(findSpeakerName(registry_, giver_, localization_));
+    speaker_text_ = makeRmlString(findSpeakerName(registry_, player_, giver_, localization_));
     offer_text_ = makeRmlString(resolveOfferText(quest_, localization_));
     quest_title_ = makeRmlString(
         quest_.title_.empty() ? quest_.id_ : game::ui::tryLocalize(localization_, quest_.title_));

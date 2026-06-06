@@ -66,6 +66,8 @@ TEST(QuestOfferSceneSmokeTest, QuestOfferSceneOwnsConfirmationUiAndAcceptCommand
     EXPECT_NE(source.find("document_controller_.markDirty(\"rewards_text\")"), std::string::npos);
     EXPECT_NE(source.find("quest_offer.objective.defeat_enemy_count"), std::string::npos);
     EXPECT_NE(source.find("game::ui::localizeIdName(localization, objective.enemy_id_)"), std::string::npos);
+    EXPECT_NE(source.find("game::component::ActorIdentityComponent"), std::string::npos);
+    EXPECT_NE(source.find("game::ui::localizeIdName(localization, actor_id)"), std::string::npos);
     EXPECT_EQ(source.find("{{\"enemy\", objective.enemy_id_}"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
     EXPECT_NE(source.find("QuestOfferScene::uiCoverage()"), std::string::npos);

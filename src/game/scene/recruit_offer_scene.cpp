@@ -8,7 +8,6 @@
 #include "game/ui/localized_text.h"
 #include "game/ui/player_portrait_service.h"
 
-#include "engine/component/name_component.h"
 #include "engine/core/context.h"
 #include "engine/core/game_state.h"
 #include "engine/input/input_manager.h"
@@ -29,15 +28,6 @@ constexpr std::string_view MODEL_NAME = "recruit_offer";
 
 [[nodiscard]] Rml::String makeRmlString(const std::string_view value) {
     return Rml::String{value.data(), value.size()};
-}
-
-[[nodiscard]] std::string findSpeakerName(entt::registry& registry,
-                                          const entt::entity entity,
-                                          const game::runtime::LocalizationService* localization) {
-    if (const auto* name = registry.try_get<engine::component::NameComponent>(entity)) {
-        return name->name_;
-    }
-    return game::ui::localizeTextOrFallback(localization, "recruit_offer.speaker.default", "Recruit");
 }
 
 [[nodiscard]] std::string displayName(const game::data::ActorData& actor,
@@ -156,7 +146,7 @@ void RecruitOfferScene::disconnectRuntimeListeners() {
 
 void RecruitOfferScene::refreshBindings() {
     const std::string name = displayName(actor_, localization_);
-    speaker_text_ = makeRmlString(findSpeakerName(registry_, recruiter_, localization_));
+    speaker_text_ = makeRmlString(name);
     actor_name_ = makeRmlString(name);
     offer_text_ = makeRmlString(game::ui::formatTextOrFallback(
         localization_,
