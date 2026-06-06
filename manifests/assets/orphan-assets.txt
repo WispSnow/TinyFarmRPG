@@ -1,5 +1,7 @@
+assets/.DS_Store
 assets/data/dialogue_script_readme.md
 assets/data/light_config_readme.md
+assets/farm-rpg/.DS_Store
 assets/farm-rpg/CHANGELOG.txt
 assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt
 assets/farm-rpg/Documentation.txt

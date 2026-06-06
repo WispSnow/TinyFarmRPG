@@ -105,12 +105,12 @@
     }
   },
   "orphan_assets": {
-    "files": 10,
-    "bytes": 33235,
+    "files": 12,
+    "bytes": 45531,
     "by_root": {
       "assets": {
-        "files": 10,
-        "bytes": 33235
+        "files": 12,
+        "bytes": 45531
       }
     },
     "by_extension": {
@@ -131,8 +131,8 @@
         "bytes": 1734
       },
       "[none]": {
-        "files": 2,
-        "bytes": 12296
+        "files": 4,
+        "bytes": 24592
       }
     },
     "texture_count": 0,
