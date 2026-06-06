@@ -51,6 +51,8 @@ constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
 constexpr char DEFAULT_CURSOR_CONFIG_PATH[] = "assets/data/cursor_config.json";
 constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
 constexpr char FALLBACK_RMLUI_FONT_PATH[] = "assets/fonts/LXGWBright-Regular.ttf";
+constexpr entt::hashed_string UI_HOVER_SOUND_ID{"ui_hover"};
+constexpr entt::hashed_string UI_PRESS_SOUND_ID{"ui_click"};
 #if defined(TF_WEB_DIRECT_MAP_BOOT)
 constexpr bool kEnableRmlUiRuntime = false;
 #else
@@ -633,6 +635,18 @@ bool GameApp::initAudioPlayer()
     if (!audio_player_) {
         spdlog::error("初始化音频播放器失败。");
         return false;
+    }
+    if (rmlui_runtime_) {
+        rmlui_runtime_->setUiSoundCallback([this](engine::ui::rmlui::RmlUiRuntime::UiSoundCue cue) {
+            if (!audio_player_) {
+                return;
+            }
+
+            const entt::id_type sound_id = cue == engine::ui::rmlui::RmlUiRuntime::UiSoundCue::Hover
+                ? UI_HOVER_SOUND_ID.value()
+                : UI_PRESS_SOUND_ID.value();
+            [[maybe_unused]] const bool played = audio_player_->playSound(sound_id);
+        });
     }
     if (!audio_player_->isAudioDeviceAvailable()) {
         spdlog::warn("音频播放器设备不可用，将以静音模式继续。");

@@ -3,6 +3,7 @@
 #include "engine/ui/rmlui/rml_generated_image_registry.h"
 #include "engine/ui/rmlui/rml_ui_viewport.h"
 
+#include <RmlUi/Core/EventListener.h>
 #include <SDL3/SDL.h>
 
 #include <cstdint>
@@ -14,7 +15,9 @@
 
 namespace Rml {
 class Context;
+class Element;
 class ElementDocument;
+class Event;
 }
 
 namespace engine::input {
@@ -30,10 +33,16 @@ class RmlSystemInterfaceSdl;
 ///
 /// 负责全局 RmlUi 初始化/关闭、主 `Rml::Context`、文档管理、SDL 事件处理，
 /// 以及显式的 `Update()` 阶段。渲染细节不在这里处理。
-class RmlUiRuntime final {
+class RmlUiRuntime final : private Rml::EventListener {
 public:
     using DocumentLoadedCallback =
         std::function<void(Rml::ElementDocument&, uint64_t owner_scene_id, const std::string& path)>;
+
+    enum class UiSoundCue : std::uint8_t {
+        Hover,
+        Press,
+    };
+    using UiSoundCallback = std::function<void(UiSoundCue)>;
 
     enum class InputMode : std::uint8_t {
         Mouse,
@@ -71,6 +80,8 @@ public:
     ///        同时记录为"默认字号 class"，新加载的文档会自动应用该 class，无需对单一服务句柄
     ///        保留任何引用（避免外部 service 销毁后产生悬空 lambda）。
     void applyBodyFontScaleClassToAllDocuments(std::string_view next_class);
+    /// @brief 设置 RmlUi 按钮交互音效回调。传空 callback 可禁用音效。
+    void setUiSoundCallback(UiSoundCallback callback);
     /// @brief 设置文档加载回调。owner_scene_id 是 Scene 实例 id，path 是 RML 文档路径。
     void setDocumentLoadedCallback(DocumentLoadedCallback callback);
     void unloadDocumentsByOwner(uint64_t owner_scene_id);
@@ -129,6 +140,11 @@ private:
     void applyInputModeClass(Rml::ElementDocument* doc);
     void applyInputModeClasses();
     void applyFontScaleClassToBody(Rml::ElementDocument* doc, std::string_view next_class);
+    void installInteractionSoundListeners();
+    void removeInteractionSoundListeners();
+    void resetInteractionSoundState();
+    void ProcessEvent(Rml::Event& event) override;
+    void playUiSound(UiSoundCue cue) const;
 
     [[nodiscard]] bool ensureDebuggerInitialized();
 
@@ -150,6 +166,10 @@ private:
     uint64_t active_scene_id_{0};
     InputMode input_mode_{InputMode::Mouse};
     std::string body_font_scale_class_{"tf-font-normal"};
+    UiSoundCallback ui_sound_callback_{};
+    Rml::Element* hovered_sound_button_{nullptr};
+    Rml::Element* mouse_down_sound_button_{nullptr};
+    bool interaction_sound_listeners_installed_{false};
 };
 
 } // namespace engine::ui::rmlui

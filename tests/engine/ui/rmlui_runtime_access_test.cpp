@@ -82,6 +82,46 @@ TEST(RmlUiRuntimeAccessTest, RuntimeHeaderAndSourceExposeInputModeClassSync) {
               std::string::npos);
 }
 
+TEST(RmlUiRuntimeAccessTest, RuntimeInstallsButtonInteractionSoundCallbacks) {
+    const std::filesystem::path game_app_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/core/game_app.cpp").lexically_normal();
+    const std::filesystem::path header_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.h").lexically_normal();
+    const std::filesystem::path source_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.cpp").lexically_normal();
+    ASSERT_TRUE(std::filesystem::exists(game_app_path)) << game_app_path;
+    ASSERT_TRUE(std::filesystem::exists(header_path)) << header_path;
+    ASSERT_TRUE(std::filesystem::exists(source_path)) << source_path;
+
+    const std::string game_app = test_source_utils::readTextFile(game_app_path);
+    const std::string header = test_source_utils::readTextFile(header_path);
+    const std::string source = test_source_utils::readTextFile(source_path);
+    ASSERT_FALSE(game_app.empty()) << "无法读取: " << game_app_path;
+    ASSERT_FALSE(header.empty()) << "无法读取: " << header_path;
+    ASSERT_FALSE(source.empty()) << "无法读取: " << source_path;
+
+    EXPECT_NE(header.find("class RmlUiRuntime final : private Rml::EventListener"), std::string::npos);
+    EXPECT_NE(header.find("enum class UiSoundCue : std::uint8_t"), std::string::npos);
+    EXPECT_NE(header.find("void setUiSoundCallback(UiSoundCallback callback);"), std::string::npos);
+    EXPECT_NE(header.find("void ProcessEvent(Rml::Event& event) override;"), std::string::npos);
+
+    EXPECT_NE(source.find("context_->AddEventListener(Rml::String{MOUSEOVER_EVENT}, this, true);"), std::string::npos);
+    EXPECT_NE(source.find("context_->AddEventListener(Rml::String{MOUSEDOWN_EVENT}, this, true);"), std::string::npos);
+    EXPECT_NE(source.find("context_->RemoveEventListener(Rml::String{CLICK_EVENT}, this, true);"), std::string::npos);
+    EXPECT_NE(source.find("findNearestSoundButton"), std::string::npos);
+    EXPECT_NE(source.find("!button.HasAttribute(DISABLED_ATTR) && !button.IsClassSet(DISABLED_CLASS)"),
+              std::string::npos);
+    EXPECT_NE(source.find("isPrimaryMouseButton(event.GetParameter<int>(\"button\", kPrimaryMouseButton))"),
+              std::string::npos);
+    EXPECT_NE(source.find("playUiSound(UiSoundCue::Hover);"), std::string::npos);
+    EXPECT_NE(source.find("playUiSound(UiSoundCue::Press);"), std::string::npos);
+
+    EXPECT_NE(game_app.find("constexpr entt::hashed_string UI_HOVER_SOUND_ID{\"ui_hover\"};"), std::string::npos);
+    EXPECT_NE(game_app.find("constexpr entt::hashed_string UI_PRESS_SOUND_ID{\"ui_click\"};"), std::string::npos);
+    EXPECT_NE(game_app.find("rmlui_runtime_->setUiSoundCallback("), std::string::npos);
+    EXPECT_NE(game_app.find("audio_player_->playSound(sound_id)"), std::string::npos);
+}
+
 TEST(RmlUiRuntimeAccessTest, RuntimeTracksRequestedVisibilitySeparatelyFromSceneVisibility) {
     const std::filesystem::path header_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "src/engine/ui/rmlui/rml_ui_runtime.h").lexically_normal();

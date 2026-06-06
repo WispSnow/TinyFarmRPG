@@ -69,6 +69,7 @@ TEST(RecruitOfferSceneSmokeTest, RecruitOfferSceneOwnsConfirmationUiAndRecruitCo
     EXPECT_NE(source.find("LanguageChangedEvent"), std::string::npos);
     EXPECT_NE(source.find("void RecruitOfferScene::onLanguageChanged"), std::string::npos);
     EXPECT_NE(source.find("recruit_offer.prompt"), std::string::npos);
+    EXPECT_NE(source.find("speaker_text_ = makeRmlString(name);"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"offer_text\")"), std::string::npos);
     EXPECT_NE(source.find("document_controller_.markDirty(\"actor_name\")"), std::string::npos);
     EXPECT_NE(source.find("Focus(true)"), std::string::npos);
