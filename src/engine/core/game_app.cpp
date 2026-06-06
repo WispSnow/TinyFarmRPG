@@ -50,7 +50,9 @@ constexpr std::chrono::microseconds MAIN_THREAD_DRAIN_BUDGET_US{2000};
 constexpr std::uint64_t MAIN_THREAD_DRAIN_WARN_THRESHOLD_US = 4000;
 constexpr char DEFAULT_CURSOR_CONFIG_PATH[] = "assets/data/cursor_config.json";
 constexpr char DEFAULT_RMLUI_FONT_PATH[] = "assets/fonts/VonwaonBitmap-16px.ttf";
+#if !defined(__EMSCRIPTEN__)
 constexpr char FALLBACK_RMLUI_FONT_PATH[] = "assets/fonts/LXGWBright-Regular.ttf";
+#endif
 constexpr entt::hashed_string UI_HOVER_SOUND_ID{"ui_hover"};
 constexpr entt::hashed_string UI_PRESS_SOUND_ID{"ui_click"};
 #if defined(TF_WEB_DIRECT_MAP_BOOT)
@@ -523,9 +525,11 @@ bool GameApp::initRmlUi() {
     if (!rmlui_runtime_->loadFontFace(DEFAULT_RMLUI_FONT_PATH)) {
         spdlog::warn("GameApp::initRmlUi failed to load default font {}.", DEFAULT_RMLUI_FONT_PATH);
     }
+#if !defined(__EMSCRIPTEN__)
     if (!rmlui_runtime_->loadFontFace(FALLBACK_RMLUI_FONT_PATH, true)) {
         spdlog::warn("GameApp::initRmlUi failed to load fallback font {}.", FALLBACK_RMLUI_FONT_PATH);
     }
+#endif
 
     // GLRenderer 只知道“在 present() 的 retained UI 阶段执行渲染”。
     // runtime update / document lifecycle 仍由 GameApp 与 Context 协调，不经 renderer 回传。

@@ -151,7 +151,7 @@ Web Debug 预览用于移植期调试 ImGui 面板，不属于正式发布验收
 flowchart LR
   A["debug configure<br/>ENABLE_DEBUG_UI=ON"] --> B["ninja build<br/>build/web-debug"]
   B --> C["local debug server"]
-  C --> D["Chrome manual debug<br/>toolbar / F5 / F6"]
+  C --> D["Chrome manual debug<br/>F5 / F6 / URL parameter"]
 ```
 
 一键构建并打开 Web Debug 预览：
@@ -211,9 +211,9 @@ python3 tools/web_release/web_release_runbook.py debug \
 
 Web Debug 入口：
 
-- 页面右上角 Debug toolbar：`Engine` 对应引擎面板，`Game` 对应游戏面板。
 - 快捷键：`F5` / `Ctrl+Shift+5` 切换 Engine Debug Panels，`F6` / `Ctrl+Shift+6` 切换 Game Debug Panels。
 - URL 参数：`?debug-ui=engine`、`?debug-ui=game`、`?debug-ui=all` 可在启动后自动显示指定面板。
+- `tools/web_release/web_debug_manual.sh open` 默认不自动显示 ImGui 面板；需要启动即打开时设置 `DEBUG_UI_START=engine`、`game` 或 `all`。
 - Debug 构建会跳过正式 `validate_web_release.py` gate；发布验收仍使用 `auto` 或 `manual` 模式。
 
 人工测试 checklist：

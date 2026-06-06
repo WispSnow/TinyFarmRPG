@@ -14,7 +14,11 @@ inline constexpr entt::id_type CIRCLE_TEXTURE_ID{
 };
 
 inline constexpr std::string_view UI_DEFAULT_FONT_KEY{"engine/font/ui_default"};
+#if defined(__EMSCRIPTEN__)
+inline constexpr std::string_view UI_DEFAULT_FONT_PATH{"assets/fonts/VonwaonBitmap-16px.ttf"};
+#else
 inline constexpr std::string_view UI_DEFAULT_FONT_PATH{"assets/fonts/LXGWBright-Regular.ttf"};
+#endif
 inline constexpr int UI_DEFAULT_FONT_SIZE_PX{16};
 inline constexpr entt::id_type UI_DEFAULT_FONT_ID{
     entt::hashed_string{UI_DEFAULT_FONT_KEY.data(), UI_DEFAULT_FONT_KEY.size()}.value()

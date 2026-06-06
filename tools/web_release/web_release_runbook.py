@@ -77,7 +77,7 @@ MANUAL_CHECKLIST = (
 )
 
 DEBUG_CHECKLIST = (
-    "Confirm the debug toolbar appears in the top-right corner after the runtime starts.",
+    "Confirm no persistent Debug UI toolbar is visible after the runtime starts.",
     "Press F5 and confirm Engine Debug Panels opens without reloading the browser page.",
     "Press F6 after entering gameplay and confirm Game Debug Panels opens.",
     "Confirm Ctrl+Shift+5 and Ctrl+Shift+6 toggle the same panels.",

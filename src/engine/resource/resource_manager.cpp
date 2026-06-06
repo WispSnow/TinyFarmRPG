@@ -43,6 +43,17 @@ namespace {
 #endif
 }
 
+[[nodiscard]] std::string normalizeFontPathForPlatform(entt::id_type id, std::string font_path) {
+#if defined(__EMSCRIPTEN__)
+    if (id == defaults::UI_DEFAULT_FONT_ID) {
+        return std::string{defaults::UI_DEFAULT_FONT_PATH};
+    }
+#else
+    (void)id;
+#endif
+    return font_path;
+}
+
 } // namespace
 
 ResourceManager::~ResourceManager() = default;
@@ -341,6 +352,7 @@ void ResourceManager::loadResources(std::string_view file_path) {
                     continue;
                 }
 
+                font_path = normalizeFontPathForPlatform(id, font_path);
                 for (const int point_size : point_sizes) {
                     loadFont(id, point_size, font_path);
                 }

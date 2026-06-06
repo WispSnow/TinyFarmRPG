@@ -6,7 +6,7 @@ BUILD_DIR="${BUILD_DIR:-"${ROOT_DIR}/build/web-debug"}"
 OUTPUT_DIR="${OUTPUT_DIR:-"${BUILD_DIR}/web-debug-manual"}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8788}"
-DEBUG_UI_START="${DEBUG_UI_START:-all}"
+DEBUG_UI_START="${DEBUG_UI_START:-none}"
 
 detect_jobs() {
   if command -v getconf >/dev/null 2>&1; then
