@@ -1,11 +1,13 @@
 #include "engine/ui/rmlui/rml_ui_runtime.h"
 
 #include "engine/ui/rmlui/render_interface_gl3_stb.h"
+#include "engine/ui/rmlui/rml_mouse_buttons.h"
 #include "engine/ui/rmlui/rml_system_interface_sdl.h"
 
 #include "RmlUi_Platform_SDL.h"
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -26,11 +28,43 @@ namespace {
 
 constexpr char INPUT_MODE_MOUSE_CLASS[] = "tf-input-mouse";
 constexpr char INPUT_MODE_NAV_CLASS[] = "tf-input-nav";
+constexpr char BUTTON_TAG[] = "button";
+constexpr char DISABLED_ATTR[] = "disabled";
+constexpr char DISABLED_CLASS[] = "disabled";
+constexpr char CLICK_EVENT[] = "click";
+constexpr char MOUSEDOWN_EVENT[] = "mousedown";
+constexpr char MOUSEOUT_EVENT[] = "mouseout";
+constexpr char MOUSEOVER_EVENT[] = "mouseover";
 
 [[nodiscard]] RmlUiViewport sanitizeViewport(RmlUiViewport viewport) {
     viewport.width = std::max(viewport.width, 1);
     viewport.height = std::max(viewport.height, 1);
     return viewport;
+}
+
+[[nodiscard]] bool isButtonElement(const Rml::Element& element) {
+    return element.GetTagName() == BUTTON_TAG;
+}
+
+[[nodiscard]] bool isButtonSoundEnabled(const Rml::Element& button) {
+    return !button.HasAttribute(DISABLED_ATTR) && !button.IsClassSet(DISABLED_CLASS);
+}
+
+[[nodiscard]] Rml::Element* findNearestButton(Rml::Element* element) {
+    for (auto* current = element; current != nullptr; current = current->GetParentNode()) {
+        if (isButtonElement(*current)) {
+            return current;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] Rml::Element* findNearestSoundButton(Rml::Element* element) {
+    auto* button = findNearestButton(element);
+    if (!button || !isButtonSoundEnabled(*button)) {
+        return nullptr;
+    }
+    return button;
 }
 
 } // namespace
@@ -91,19 +125,23 @@ bool RmlUiRuntime::init(SDL_Window* window,
         return false;
     }
 
+    installInteractionSoundListeners();
     applyContextDimensions();
     spdlog::trace("RmlUiRuntime initialized.");
     return true;
 }
 
 void RmlUiRuntime::clean() {
+    removeInteractionSoundListeners();
     for (auto& entry : documents_) {
         if (entry.doc) {
             entry.doc->Close();
         }
     }
+    resetInteractionSoundState();
     documents_.clear();
     document_loaded_callback_ = {};
+    ui_sound_callback_ = {};
     visible_scene_owners_.clear();
     active_scene_id_ = 0;
     input_mode_ = InputMode::Mouse;
@@ -316,6 +354,7 @@ Rml::ElementDocument* RmlUiRuntime::reloadDocument(Rml::ElementDocument* doc) {
     Rml::ElementDocument* old_doc = entry.doc;
     entry.doc = replacement;
     entry.currently_visible = true;
+    resetInteractionSoundState();
 
     applyInputModeClass(replacement);
     applyFontScaleClassToBody(replacement, body_font_scale_class_);
@@ -337,6 +376,7 @@ void RmlUiRuntime::unloadDocument(Rml::ElementDocument* doc) {
         return;
     }
 
+    resetInteractionSoundState();
     auto it = std::find_if(documents_.begin(), documents_.end(), [doc](const DocumentEntry& entry) {
         return entry.doc == doc;
     });
@@ -348,6 +388,7 @@ void RmlUiRuntime::unloadDocument(Rml::ElementDocument* doc) {
 }
 
 void RmlUiRuntime::unloadDocumentsByOwner(uint64_t owner_scene_id) {
+    resetInteractionSoundState();
     std::vector<Rml::ElementDocument*> documents_to_close;
     for (const auto& entry : documents_) {
         if (entry.owner == owner_scene_id) {
@@ -570,6 +611,13 @@ void RmlUiRuntime::applyBodyFontScaleClassToAllDocuments(std::string_view next_c
     }
 }
 
+void RmlUiRuntime::setUiSoundCallback(UiSoundCallback callback) {
+    ui_sound_callback_ = std::move(callback);
+    if (!ui_sound_callback_) {
+        resetInteractionSoundState();
+    }
+}
+
 void RmlUiRuntime::setDocumentLoadedCallback(DocumentLoadedCallback callback) {
     document_loaded_callback_ = std::move(callback);
 }
@@ -585,6 +633,97 @@ void RmlUiRuntime::applyFontScaleClassToBody(Rml::ElementDocument* doc, std::str
     constexpr std::string_view kAllClasses[] = {"tf-font-small", "tf-font-normal", "tf-font-large"};
     for (const auto& cls : kAllClasses) {
         root->SetClass(Rml::String{cls.data(), cls.size()}, cls == next_class);
+    }
+}
+
+void RmlUiRuntime::installInteractionSoundListeners() {
+    if (!context_ || interaction_sound_listeners_installed_) {
+        return;
+    }
+
+    context_->AddEventListener(Rml::String{MOUSEOVER_EVENT}, this, true);
+    context_->AddEventListener(Rml::String{MOUSEOUT_EVENT}, this, true);
+    context_->AddEventListener(Rml::String{MOUSEDOWN_EVENT}, this, true);
+    context_->AddEventListener(Rml::String{CLICK_EVENT}, this, true);
+    interaction_sound_listeners_installed_ = true;
+}
+
+void RmlUiRuntime::removeInteractionSoundListeners() {
+    if (!context_ || !interaction_sound_listeners_installed_) {
+        return;
+    }
+
+    context_->RemoveEventListener(Rml::String{MOUSEOVER_EVENT}, this, true);
+    context_->RemoveEventListener(Rml::String{MOUSEOUT_EVENT}, this, true);
+    context_->RemoveEventListener(Rml::String{MOUSEDOWN_EVENT}, this, true);
+    context_->RemoveEventListener(Rml::String{CLICK_EVENT}, this, true);
+    interaction_sound_listeners_installed_ = false;
+}
+
+void RmlUiRuntime::resetInteractionSoundState() {
+    hovered_sound_button_ = nullptr;
+    mouse_down_sound_button_ = nullptr;
+}
+
+void RmlUiRuntime::ProcessEvent(Rml::Event& event) {
+    if (event == Rml::EventId::Mouseover) {
+        auto* button = findNearestSoundButton(event.GetTargetElement());
+        if (!button || button == hovered_sound_button_) {
+            return;
+        }
+
+        hovered_sound_button_ = button;
+        playUiSound(UiSoundCue::Hover);
+        return;
+    }
+
+    if (event == Rml::EventId::Mouseout) {
+        auto* button = findNearestButton(event.GetTargetElement());
+        if (button != hovered_sound_button_) {
+            return;
+        }
+
+        auto* current_hover_button = context_ ? findNearestButton(context_->GetHoverElement()) : nullptr;
+        if (current_hover_button != hovered_sound_button_) {
+            hovered_sound_button_ = nullptr;
+        }
+        return;
+    }
+
+    if (event == Rml::EventId::Mousedown) {
+        if (!isPrimaryMouseButton(event.GetParameter<int>("button", kPrimaryMouseButton))) {
+            return;
+        }
+
+        auto* button = findNearestSoundButton(event.GetTargetElement());
+        if (!button) {
+            return;
+        }
+
+        mouse_down_sound_button_ = button;
+        playUiSound(UiSoundCue::Press);
+        return;
+    }
+
+    if (event == Rml::EventId::Click) {
+        auto* button = findNearestSoundButton(event.GetTargetElement());
+        if (!button) {
+            mouse_down_sound_button_ = nullptr;
+            return;
+        }
+
+        if (button == mouse_down_sound_button_) {
+            mouse_down_sound_button_ = nullptr;
+            return;
+        }
+
+        playUiSound(UiSoundCue::Press);
+    }
+}
+
+void RmlUiRuntime::playUiSound(UiSoundCue cue) const {
+    if (ui_sound_callback_) {
+        ui_sound_callback_(cue);
     }
 }
 
