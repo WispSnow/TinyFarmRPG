@@ -34,7 +34,7 @@ TEST(GameTimeConfigTest, InvalidConfigFileReturnsDefaultInstance) {
 
     const auto game_time = GameTime::loadFromConfig(path.string());
     ASSERT_NE(game_time, nullptr);
-    EXPECT_FLOAT_EQ(game_time->config_.minutes_per_real_second_, 1.0F);
+    EXPECT_FLOAT_EQ(game_time->config_.minutes_per_real_second_, 10.0F);
     EXPECT_EQ(game_time->day_, 1U);
     EXPECT_FLOAT_EQ(game_time->hour_, 6.0F);
 

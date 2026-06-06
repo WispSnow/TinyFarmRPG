@@ -1,5 +1,6 @@
 --preload-file assets/data/appearance_catalog.json@/assets/data/appearance_catalog.json
 --preload-file assets/data/cursor_config.json@/assets/data/cursor_config.json
+--preload-file assets/data/game_time_config.json@/assets/data/game_time_config.json
 --preload-file assets/data/resource_mapping.json@/assets/data/resource_mapping.json
 --preload-file assets/farm-rpg/UI/HUD.png@/assets/farm-rpg/UI/HUD.png
 --preload-file assets/farm-rpg/UI/button.png@/assets/farm-rpg/UI/button.png

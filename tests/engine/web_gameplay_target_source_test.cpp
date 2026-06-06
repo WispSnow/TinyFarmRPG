@@ -405,6 +405,7 @@ TEST(WebGameplayTargetSourceTest, Phase15BootOnlyPreloadCutoverIsPresent) {
 
     EXPECT_NE(package_tool.find("\"--skip-artifacts\""), std::string::npos);
     EXPECT_NE(package_tool.find("web-release-full.args"), std::string::npos);
+    EXPECT_NE(package_tool.find("\"assets/data/game_time_config.json\""), std::string::npos);
 
     EXPECT_NE(release_validator_source.find("REQUIRED_BOOT_PRELOAD_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("FORBIDDEN_BOOT_PRELOAD_PATHS"), std::string::npos);
@@ -430,6 +431,7 @@ TEST(WebGameplayTargetSourceTest, Phase15BootOnlyPreloadCutoverIsPresent) {
     EXPECT_NE(boot_manifest.find("assets/i18n/languages.json"), std::string::npos);
     EXPECT_NE(boot_manifest.find("assets/i18n/en-US.json"), std::string::npos);
     EXPECT_NE(boot_manifest.find("assets/i18n/zh-Hans.json"), std::string::npos);
+    EXPECT_NE(boot_manifest.find("assets/data/game_time_config.json"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("assets/maps/home_exterior.tmj"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("assets/audio/01_spring_journey.ogg"), std::string::npos);
     EXPECT_EQ(boot_manifest.find("ui/rmlui/scenes/appearance_customize.rml"), std::string::npos);

@@ -22,7 +22,7 @@ enum class TimeOfDay : std::uint8_t {
  * @brief 时间配置结构，用于从配置文件加载
  */
 struct TimeConfig {
-    float minutes_per_real_second_{1.0f};    ///< 每秒游戏时间流逝的分钟数
+    float minutes_per_real_second_{10.0f};   ///< 每秒游戏时间流逝的分钟数
     float dawn_start_hour_{4.0f};            ///< 黎明开始时间（小时）
     float dawn_end_hour_{8.0f};              ///< 黎明结束时间（小时）
     float day_start_hour_{8.0f};             ///< 白天开始时间（小时）

@@ -25,6 +25,7 @@ BOOT_DATA_BUDGET_BYTES = 4 * 1024 * 1024
 
 REQUIRED_BOOT_PRELOAD_PATHS = {
     "assets/data/cursor_config.json",
+    "assets/data/game_time_config.json",
     "assets/data/resource_mapping.json",
     "assets/fonts/VonwaonBitmap-16px.ttf",
     "assets/shaders/composite.frag",
