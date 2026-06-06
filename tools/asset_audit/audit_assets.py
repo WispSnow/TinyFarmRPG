@@ -24,6 +24,18 @@ RESOURCE_ROOTS = ("assets", "ui", "scripts", "config")
 EXCLUDED_RESOURCE_PATHS = {
     "config/user_settings.json",
 }
+NON_RUNTIME_RESOURCE_ALLOWLIST = {
+    "assets/data/dialogue_script_readme.md",
+    "assets/data/light_config_readme.md",
+    "assets/farm-rpg/CHANGELOG.txt",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt",
+    "assets/farm-rpg/Documentation.txt",
+    "assets/farm-rpg/Paletta.txt",
+    "assets/maps/.DS_Store",
+    "assets/maps/farm-rpg.tiled-project",
+    "assets/maps/farm-rpg.tiled-session",
+    "assets/maps/tileset/.DS_Store",
+}
 TEXT_EXTENSIONS = {
     ".cpp",
     ".h",
@@ -642,26 +654,11 @@ WEB_FULL_APPEARANCE_REASONS = {
 
 
 def select_web_full_rpg_assets(used: dict[str, set[str]], root: Path) -> list[str]:
-    selected: set[str] = set(select_web_poc_assets(used, root))
-
-    for rel in FULL_RPG_REQUIRED_PATHS:
-        if (root / rel).is_file():
-            selected.add(rel)
-
-    for rel, reasons in used.items():
-        if reasons & WEB_FULL_APPEARANCE_REASONS:
-            selected.add(rel)
-            continue
-        if rel.startswith("assets/audio/"):
-            selected.add(rel)
-            continue
-        if rel.startswith(("assets/vfx/", "assets/textures/BattleBg/")):
-            selected.add(rel)
-            continue
-        if rel.startswith(FULL_RPG_SCENE_PREFIXES):
-            selected.add(rel)
-
-    return sorted(path for path in selected if (root / path).is_file())
+    return sorted(
+        rel
+        for rel in used
+        if (root / rel).is_file() and rel not in NON_RUNTIME_RESOURCE_ALLOWLIST
+    )
 
 
 def format_size(num_bytes: int) -> str:

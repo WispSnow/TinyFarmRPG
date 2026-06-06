@@ -789,6 +789,7 @@
 --preload-file ui/rmlui/scenes/title.rcss@/ui/rmlui/scenes/title.rcss
 --preload-file ui/rmlui/scenes/title.rml@/ui/rmlui/scenes/title.rml
 --preload-file ui/rmlui/scenes/title_widgets.rcss@/ui/rmlui/scenes/title_widgets.rcss
+--preload-file ui/rmlui/tests/05_data_binding.rml@/ui/rmlui/tests/05_data_binding.rml
 --preload-file ui/rmlui/theme/animation.rcss@/ui/rmlui/theme/animation.rcss
 --preload-file ui/rmlui/theme/base.rcss@/ui/rmlui/theme/base.rcss
 --preload-file ui/rmlui/theme/battle_enemy_icons.rcss@/ui/rmlui/theme/battle_enemy_icons.rcss

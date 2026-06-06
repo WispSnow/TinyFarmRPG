@@ -235,8 +235,8 @@
     }
   },
   "web_release_full_assets": {
-    "files": 803,
-    "bytes": 28983892,
+    "files": 804,
+    "bytes": 28985194,
     "by_root": {
       "assets": {
         "files": 731,
@@ -251,8 +251,8 @@
         "bytes": 19767
       },
       "ui": {
-        "files": 51,
-        "bytes": 164906
+        "files": 52,
+        "bytes": 166208
       }
     },
     "by_extension": {
@@ -301,8 +301,8 @@
         "bytes": 97172
       },
       ".rml": {
-        "files": 19,
-        "bytes": 67734
+        "files": 20,
+        "bytes": 69036
       },
       ".tmj": {
         "files": 4,

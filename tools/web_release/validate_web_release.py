@@ -75,6 +75,7 @@ FORBIDDEN_BOOT_PRELOAD_PATHS = {
     "ui/rmlui/scenes/rest_dialog.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
     "ui/rmlui/scenes/shop_menu.rml",
+    "ui/rmlui/tests/05_data_binding.rml",
 }
 
 REQUIRED_AUDIO_ASSET_PATHS = {
@@ -145,9 +146,23 @@ REQUIRED_FULL_PACKAGE_PATHS = {
     "ui/rmlui/scenes/shop_menu.rcss",
     "ui/rmlui/scenes/shop_menu.rml",
     "ui/rmlui/scenes/title.rml",
+    "ui/rmlui/tests/05_data_binding.rml",
 }
 
 FORBIDDEN_FULL_PACKAGE_PATHS: set[str] = set()
+
+NON_RUNTIME_ASSET_ALLOWLIST = {
+    "assets/data/dialogue_script_readme.md",
+    "assets/data/light_config_readme.md",
+    "assets/farm-rpg/CHANGELOG.txt",
+    "assets/farm-rpg/Character and Portrait/Character/PNG/Important notice.txt",
+    "assets/farm-rpg/Documentation.txt",
+    "assets/farm-rpg/Paletta.txt",
+    "assets/maps/.DS_Store",
+    "assets/maps/farm-rpg.tiled-project",
+    "assets/maps/farm-rpg.tiled-session",
+    "assets/maps/tileset/.DS_Store",
+}
 
 REQUIRED_RUNTIME_PACKAGES = {
     "boot",
@@ -176,6 +191,7 @@ REQUIRED_SHARED_UI_PACKAGE_PATHS = {
     "ui/rmlui/scenes/rest_dialog.rml",
     "ui/rmlui/scenes/save_slot_select.rml",
     "ui/rmlui/scenes/shop_menu.rml",
+    "ui/rmlui/tests/05_data_binding.rml",
 }
 
 REQUIRED_RPG_CORE_PACKAGE_PATHS = {
@@ -466,6 +482,7 @@ def validate_cmake_cache(
 
 
 def validate_full_manifest_budget(
+    root: Path,
     entries: list[PreloadEntry],
     budget_path: Path,
     gate: Gate,
@@ -494,10 +511,10 @@ def validate_full_manifest_budget(
 
     used_files = used_budget.get("files")
     used_bytes = used_budget.get("bytes")
-    if isinstance(used_files, int) and used_files <= actual_files:
-        gate.fail(f"First-screen manifest is not smaller by file count: {actual_files} >= {used_files}")
-    if isinstance(used_bytes, int) and used_bytes <= actual_bytes:
-        gate.fail(f"First-screen manifest is not smaller by byte count: {actual_bytes} >= {used_bytes}")
+    if isinstance(used_files, int) and actual_files > used_files:
+        gate.fail(f"Web release full manifest has more files than used-assets: {actual_files} > {used_files}")
+    if isinstance(used_bytes, int) and actual_bytes > used_bytes:
+        gate.fail(f"Web release full manifest has more bytes than used-assets: {actual_bytes} > {used_bytes}")
 
     source_paths = {entry.source_rel for entry in entries}
     missing_required = sorted(REQUIRED_FULL_PACKAGE_PATHS - source_paths)
@@ -507,6 +524,20 @@ def validate_full_manifest_budget(
     forbidden_paths = sorted(FORBIDDEN_FULL_PACKAGE_PATHS & source_paths)
     for rel in forbidden_paths:
         gate.fail(f"Excluded WIP asset leaked into Web release full manifest: {rel}")
+
+    all_asset_paths = sorted(path.relative_to(root).as_posix() for path in (root / "assets").rglob("*") if path.is_file())
+    source_asset_paths = {path for path in source_paths if path.startswith("assets/")}
+    unpackaged_assets = sorted(set(all_asset_paths) - source_asset_paths - NON_RUNTIME_ASSET_ALLOWLIST)
+    for rel in unpackaged_assets:
+        gate.fail(f"Asset file is neither packaged nor allowlisted as non-runtime: {rel}")
+
+    packaged_non_runtime = sorted(source_asset_paths & NON_RUNTIME_ASSET_ALLOWLIST)
+    for rel in packaged_non_runtime:
+        gate.fail(f"Non-runtime allowlisted asset leaked into Web release package: {rel}")
+
+    stale_allowlist = sorted(rel for rel in NON_RUNTIME_ASSET_ALLOWLIST if not (root / rel).is_file())
+    for rel in stale_allowlist:
+        gate.warn(f"Non-runtime asset allowlist entry no longer exists: {rel}")
 
     shader_assets = sorted(path for path in source_paths if path.startswith("assets/shaders/"))
     if not shader_assets:
@@ -524,6 +555,9 @@ def validate_full_manifest_budget(
         "used_assets_bytes": used_bytes,
         "used_assets_size": human_size(used_bytes) if isinstance(used_bytes, int) else "",
         "ratio_of_used_assets": round(ratio, 4),
+        "asset_files_total": len(all_asset_paths),
+        "non_runtime_allowlist_files": len(NON_RUNTIME_ASSET_ALLOWLIST),
+        "unpackaged_asset_files": len(unpackaged_assets),
         "shader_assets": len(shader_assets),
     }
 
@@ -886,7 +920,7 @@ def main() -> int:
             args.allow_pthreads,
             gate,
         ),
-        "full_package_manifest": validate_full_manifest_budget(full_entries, budget_path, gate),
+        "full_package_manifest": validate_full_manifest_budget(root, full_entries, budget_path, gate),
         "preload": validate_boot_preload_budget(boot_entries, full_entries, artifacts, gate),
         "staged_preload": validate_staged_preload(build_dir, boot_entries, gate),
         "runtime_packages": validate_runtime_packages(build_dir, full_entries, boot_entries, package_index_path, gate),

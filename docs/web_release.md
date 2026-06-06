@@ -83,6 +83,8 @@ tools/web_release/web_release_manual.sh build
 
 `build` 和 `rebuild-serve` 会在编译前自动运行 `tools/asset_audit/audit_assets.py`，同步 `manifests/assets/web-release-full.args`、`web-release-full-assets.txt`、`asset-budget.json` 和审计报告。随后脚本会显式重新生成 `.tfpack` 运行时资源包，即使 Ninja 判断 C++ 目标无需重编译也会更新包索引。修改地图、RmlUi、资源引用后通常直接重新运行脚本即可；`serve` 和 `open` 只启动已有构建，不会改动资源清单。
 
+Full Web release 的资源策略是：打包全部 `used-assets`，只允许 `tools/asset_audit/audit_assets.py` 与 `tools/web_release/validate_web_release.py` 中的 non-runtime allowlist 保留在 `assets/` 但不进入 Web 包。当前 allowlist 仅用于 README、Tiled 编辑器元数据和 `.DS_Store` 等非运行期文件；新增地图、贴图、音频、VFX 或 RmlUi 文件后，如果被运行时引用，就应自动进入 `web-release-full.args`。
+
 启动已有 `build/web-release` 的本地测试站点：
 
 ```bash

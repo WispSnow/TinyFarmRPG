@@ -82,6 +82,7 @@ REQUIRED_PATHS = {
         "ui/rmlui/scenes/rest_dialog.rml",
         "ui/rmlui/scenes/save_slot_select.rml",
         "ui/rmlui/scenes/shop_menu.rml",
+        "ui/rmlui/tests/05_data_binding.rml",
         "ui/rmlui/hud/hotbar.rml",
         "ui/rmlui/hud/dialogue_box.rml",
     },

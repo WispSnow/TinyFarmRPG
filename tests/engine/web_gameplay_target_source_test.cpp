@@ -1063,6 +1063,8 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
 
     EXPECT_NE(asset_audit_source.find("select_web_full_rpg_assets"), std::string::npos);
     EXPECT_NE(asset_audit_source.find("web-release-full-assets.txt"), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("NON_RUNTIME_RESOURCE_ALLOWLIST"), std::string::npos);
+    EXPECT_NE(asset_audit_source.find("rel not in NON_RUNTIME_RESOURCE_ALLOWLIST"), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"assets/maps/town.tmj\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"assets/textures/school-bg.png\""), std::string::npos);
     EXPECT_NE(asset_audit_source.find("\"ui/rmlui/scenes/dialogue_choice.\""), std::string::npos);
@@ -1090,6 +1092,9 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_NE(release_manifest.find("assets/maps/school.tmj"), std::string::npos);
     EXPECT_NE(release_manifest.find("assets/textures/school-bg.png"), std::string::npos);
     EXPECT_NE(release_manifest.find("assets/textures/school-fg.png"), std::string::npos);
+    EXPECT_NE(release_manifest.find("ui/rmlui/tests/05_data_binding.rml"), std::string::npos);
+    EXPECT_NE(release_asset_list.find("ui/rmlui/tests/05_data_binding.rml"), std::string::npos);
+    EXPECT_EQ(release_manifest.find("assets/farm-rpg/Documentation.txt"), std::string::npos);
 
     EXPECT_NE(package_tool.find("\"rpg-core\""), std::string::npos);
     EXPECT_NE(package_tool.find("\"town-map\""), std::string::npos);
@@ -1104,6 +1109,8 @@ TEST(WebGameplayTargetSourceTest, Phase22FullRpgResourceTopologyIsPresent) {
     EXPECT_NE(package_tool.find("assets/textures/BattleBg/"), std::string::npos);
 
     EXPECT_NE(release_validator_source.find("REQUIRED_PACKAGE_DEPENDENCIES"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("NON_RUNTIME_ASSET_ALLOWLIST"), std::string::npos);
+    EXPECT_NE(release_validator_source.find("Asset file is neither packaged nor allowlisted as non-runtime"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_TOWN_MAP_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_SCHOOL_MAP_PACKAGE_PATHS"), std::string::npos);
     EXPECT_NE(release_validator_source.find("REQUIRED_BATTLE_CORE_PACKAGE_PATHS"), std::string::npos);
