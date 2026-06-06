@@ -198,12 +198,14 @@ TEST(WebGameplayTargetSourceTest, Phase12InitializesPersistentStorageAndUnlocksW
     const std::string game_app_source = readProjectFile("src/engine/core/game_app.cpp");
     const std::string audio_header = readProjectFile("src/engine/audio/audio_player.h");
     const std::string audio_source = readProjectFile("src/engine/audio/audio_player.cpp");
+    const std::string resource_manager_source = readProjectFile("src/engine/resource/resource_manager.cpp");
     const std::string runtime_cmake = readProjectFile("cmake/WebRuntime.cmake");
 
     ASSERT_FALSE(game_app_header.empty());
     ASSERT_FALSE(game_app_source.empty());
     ASSERT_FALSE(audio_header.empty());
     ASSERT_FALSE(audio_source.empty());
+    ASSERT_FALSE(resource_manager_source.empty());
     ASSERT_FALSE(runtime_cmake.empty());
 
     EXPECT_NE(runtime_cmake.find("-lidbfs.js"), std::string::npos);
@@ -220,6 +222,14 @@ TEST(WebGameplayTargetSourceTest, Phase12InitializesPersistentStorageAndUnlocksW
     EXPECT_NE(audio_source.find("ma_engine_start(&engine_)"), std::string::npos);
     EXPECT_NE(audio_source.find("pending_music_"), std::string::npos);
     EXPECT_NE(audio_source.find("playPendingMusicAfterPlaybackStart"), std::string::npos);
+    EXPECT_NE(audio_source.find("tf_web_bgm_play"), std::string::npos);
+    EXPECT_NE(audio_source.find("globalThis.AudioContext || globalThis.webkitAudioContext"), std::string::npos);
+    EXPECT_NE(audio_source.find("FS.readFile(path)"), std::string::npos);
+    EXPECT_NE(audio_source.find("decodeAudioData"), std::string::npos);
+    EXPECT_NE(audio_source.find("TinyFarmRPGWebReleaseDiagnostics"), std::string::npos);
+    EXPECT_NE(audio_source.find("return playWebMusic(id, loop, fade_in_ms, base_volume);"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("Web native BGM backend defers music decode"), std::string::npos);
+    EXPECT_NE(resource_manager_source.find("web_deferred_music"), std::string::npos);
 }
 
 TEST(WebGameplayTargetSourceTest, Phase12AsyncSaveCompletionWaitsForPersistentStorageSync) {

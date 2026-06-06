@@ -35,6 +35,14 @@ namespace {
     return false;
 }
 
+[[nodiscard]] bool shouldUseWebNativeMusicBackend() {
+#if defined(__EMSCRIPTEN__)
+    return true;
+#else
+    return false;
+#endif
+}
+
 } // namespace
 
 ResourceManager::~ResourceManager() = default;
@@ -105,6 +113,13 @@ void ResourceManager::preloadRegisteredResources() {
         }
     });
     asset_registry_->forEachMusic([this](entt::id_type id, std::string_view path) {
+        if (shouldUseWebNativeMusicBackend()) {
+            spdlog::debug(
+                "ResourceManager: Web native BGM backend keeps music registered but skips MiniAudio decode id={}, path='{}'",
+                id,
+                path);
+            return;
+        }
         const std::string path_string{path};
         if (!shouldSkipMissingWebPreloadedAudio(path_string)) {
             (void)audio_manager_->loadMusic(id, path);
@@ -124,6 +139,7 @@ void ResourceManager::preloadRegisteredAudioResources() {
     std::size_t loaded_music = 0;
     std::size_t already_loaded = 0;
     std::size_t skipped_missing = 0;
+    std::size_t deferred_web_music = 0;
     std::size_t failed = 0;
 
     asset_registry_->forEachSound([&](entt::id_type id, std::string_view path) {
@@ -144,6 +160,14 @@ void ResourceManager::preloadRegisteredAudioResources() {
     });
 
     asset_registry_->forEachMusic([&](entt::id_type id, std::string_view path) {
+        if (shouldUseWebNativeMusicBackend()) {
+            ++deferred_web_music;
+            spdlog::debug(
+                "ResourceManager: Web native BGM backend defers music decode id={}, path='{}'",
+                id,
+                path);
+            return;
+        }
         if (audio_manager_->findMusic(id)) {
             ++already_loaded;
             return;
@@ -161,11 +185,12 @@ void ResourceManager::preloadRegisteredAudioResources() {
     });
 
     spdlog::info(
-        "ResourceManager: registered audio preload complete (sounds={}, music={}, already_loaded={}, skipped_missing={}, failed={}).",
+        "ResourceManager: registered audio preload complete (sounds={}, music={}, already_loaded={}, skipped_missing={}, web_deferred_music={}, failed={}).",
         loaded_sounds,
         loaded_music,
         already_loaded,
         skipped_missing,
+        deferred_web_music,
         failed);
 #if defined(__EMSCRIPTEN__)
     if (skipped_missing > 0 && failed == 0) {
@@ -229,6 +254,13 @@ void ResourceManager::loadResources(std::string_view file_path) {
     });
     loadStringMap("music", [this](entt::id_type id, const std::string& path_value) {
         asset_registry_->registerMusic(id, path_value);
+        if (shouldUseWebNativeMusicBackend()) {
+            spdlog::debug(
+                "ResourceManager: Web native BGM backend registered music without MiniAudio decode id={}, path='{}'",
+                id,
+                path_value);
+            return;
+        }
         if (!shouldSkipMissingWebPreloadedAudio(path_value)) {
             (void)audio_manager_->loadMusic(id, path_value);
         }

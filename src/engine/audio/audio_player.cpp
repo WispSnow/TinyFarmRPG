@@ -21,14 +21,292 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
+
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 
 namespace engine::audio {
 
 namespace {
     constexpr float DEFAULT_SPATIAL_FALLOFF_DISTANCE = 600.0f;
     constexpr float DEFAULT_SPATIAL_PAN_RANGE = 300.0f;
+
+#if defined(__EMSCRIPTEN__)
+    EM_JS(int, tf_web_bgm_init, (), {
+        globalThis.TinyFarmRPGWebAudioBgmEnsure = globalThis.TinyFarmRPGWebAudioBgmEnsure || (() => {
+            const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+            const audio = diagnostics.audio || (diagnostics.audio = {});
+            audio.bgmBackend = "webaudio";
+            audio.lastError = audio.lastError || "";
+
+            const state = globalThis.TinyFarmRPGWebAudioBgm || (globalThis.TinyFarmRPGWebAudioBgm = {
+                context: null,
+                buffers: new Map(),
+                current: null,
+                requestSeq: 0,
+                musicVolume: 1,
+                playRequestCount: 0,
+                decodeCount: 0,
+                currentPath: ""
+            });
+
+            if (state.context) {
+                return true;
+            }
+
+            const ContextCtor = globalThis.AudioContext || globalThis.webkitAudioContext;
+            if (!ContextCtor) {
+                audio.lastError = "AudioContext unavailable";
+                return false;
+            }
+
+            state.context = new ContextCtor();
+            audio.contextState = state.context.state;
+            return true;
+        });
+        return globalThis.TinyFarmRPGWebAudioBgmEnsure() ? 1 : 0;
+    });
+
+    EM_JS(int, tf_web_bgm_resume, (), {
+        if (!globalThis.TinyFarmRPGWebAudioBgm &&
+            (!globalThis.TinyFarmRPGWebAudioBgmEnsure || !globalThis.TinyFarmRPGWebAudioBgmEnsure())) {
+            return 0;
+        }
+
+        const state = globalThis.TinyFarmRPGWebAudioBgm;
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const audio = diagnostics.audio || (diagnostics.audio = {});
+        audio.bgmBackend = "webaudio";
+
+        if (!state || !state.context) {
+            audio.lastError = "AudioContext unavailable";
+            return 0;
+        }
+
+        if (state.context.state === "suspended") {
+            const resumeResult = state.context.resume();
+            if (resumeResult && resumeResult.then) {
+                resumeResult.then(
+                    () => {
+                        audio.contextState = state.context.state;
+                        audio.lastError = "";
+                    },
+                    (error) => {
+                        audio.contextState = state.context.state;
+                        audio.lastError = String(error);
+                    });
+            }
+        }
+
+        audio.contextState = state.context.state;
+        return 1;
+    });
+
+    EM_JS(int, tf_web_bgm_play, (const char* path_ptr, int loop, int fade_ms, double track_volume, double music_volume), {
+        if (!globalThis.TinyFarmRPGWebAudioBgm &&
+            (!globalThis.TinyFarmRPGWebAudioBgmEnsure || !globalThis.TinyFarmRPGWebAudioBgmEnsure())) {
+            return 0;
+        }
+
+        const path = UTF8ToString(path_ptr);
+        const state = globalThis.TinyFarmRPGWebAudioBgm;
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const audio = diagnostics.audio || (diagnostics.audio = {});
+        audio.bgmBackend = "webaudio";
+        audio.playRequestCount = (audio.playRequestCount || 0) + 1;
+
+        const reportError = (message) => {
+            audio.lastError = message;
+            audio.currentPath = state ? (state.currentPath || "") : "";
+        };
+
+        if (!state || !state.context) {
+            reportError("AudioContext unavailable");
+            return 0;
+        }
+
+        state.playRequestCount = audio.playRequestCount;
+        state.musicVolume = Number(music_volume);
+
+        if (!path) {
+            reportError("empty music path");
+            return 0;
+        }
+        if (typeof FS === "undefined" || !FS.analyzePath(path).exists) {
+            reportError("music file unavailable: " + path);
+            return 0;
+        }
+
+        const targetGain = Math.max(0, Math.min(1, Number(track_volume))) * Math.max(0, Math.min(1, Number(music_volume)));
+        const fadeSeconds = Math.max(0, Number(fade_ms)) / 1000;
+
+        const stopEntry = (entry, fadeOutSeconds, scheduleTime) => {
+            if (!entry || !entry.source || entry.stopped) {
+                return;
+            }
+            entry.stopped = true;
+            if (fadeOutSeconds > 0 && entry.gain) {
+                entry.gain.gain.cancelScheduledValues(scheduleTime);
+                entry.gain.gain.setValueAtTime(entry.gain.gain.value, scheduleTime);
+                entry.gain.gain.linearRampToValueAtTime(0, scheduleTime + fadeOutSeconds);
+                entry.source.stop(scheduleTime + fadeOutSeconds + 0.02);
+            } else {
+                entry.source.stop(scheduleTime);
+            }
+        };
+
+        const startBuffer = (buffer, sequence) => {
+            if (sequence !== state.requestSeq) {
+                return;
+            }
+
+            const scheduleTime = state.context.currentTime;
+            if (state.current && state.current.path === path && !state.current.stopped) {
+                state.current.trackVolume = Number(track_volume);
+                state.current.loop = loop !== 0;
+                state.current.source.loop = loop !== 0;
+                state.current.gain.gain.cancelScheduledValues(scheduleTime);
+                state.current.gain.gain.setValueAtTime(targetGain, scheduleTime);
+                state.currentPath = path;
+                audio.currentPath = path;
+                audio.lastError = "";
+                return;
+            }
+
+            const previous = state.current;
+            const source = state.context.createBufferSource();
+            const gain = state.context.createGain();
+            source.buffer = buffer;
+            source.loop = loop !== 0;
+            gain.gain.setValueAtTime(fadeSeconds > 0 ? 0 : targetGain, scheduleTime);
+            if (fadeSeconds > 0) {
+                gain.gain.linearRampToValueAtTime(targetGain, scheduleTime + fadeSeconds);
+            }
+            source.connect(gain);
+            gain.connect(state.context.destination);
+
+            const entry = {
+                source,
+                gain,
+                path,
+                trackVolume: Number(track_volume),
+                loop: loop !== 0,
+                stopped: false
+            };
+            source.onended = () => {
+                if (state.current && state.current.source === source) {
+                    state.current = null;
+                    state.currentPath = "";
+                    audio.currentPath = "";
+                }
+            };
+
+            state.current = entry;
+            state.currentPath = path;
+            audio.currentPath = path;
+            audio.lastError = "";
+            stopEntry(previous, fadeSeconds, scheduleTime);
+            source.start(scheduleTime);
+        };
+
+        state.requestSeq += 1;
+        const sequence = state.requestSeq;
+
+        if (state.buffers.has(path)) {
+            startBuffer(state.buffers.get(path), sequence);
+            return 1;
+        }
+
+        const bytes = FS.readFile(path);
+        const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        state.context.decodeAudioData(arrayBuffer).then(
+            (buffer) => {
+                state.buffers.set(path, buffer);
+                state.decodeCount += 1;
+                audio.decodeCount = state.decodeCount;
+                startBuffer(buffer, sequence);
+            },
+            (error) => {
+                reportError("decodeAudioData failed for " + path + ": " + String(error));
+            });
+        return 1;
+    });
+
+    EM_JS(void, tf_web_bgm_stop, (int fade_ms), {
+        const state = globalThis.TinyFarmRPGWebAudioBgm;
+        if (!state || !state.context) {
+            return;
+        }
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const audio = diagnostics.audio || (diagnostics.audio = {});
+        const entry = state.current;
+        state.requestSeq += 1;
+        state.current = null;
+        state.currentPath = "";
+        audio.currentPath = "";
+        if (!entry || !entry.source || entry.stopped) {
+            return;
+        }
+        entry.stopped = true;
+        const now = state.context.currentTime;
+        const fadeSeconds = Math.max(0, Number(fade_ms)) / 1000;
+        if (fadeSeconds > 0 && entry.gain) {
+            entry.gain.gain.cancelScheduledValues(now);
+            entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+            entry.gain.gain.linearRampToValueAtTime(0, now + fadeSeconds);
+            entry.source.stop(now + fadeSeconds + 0.02);
+        } else {
+            entry.source.stop(now);
+        }
+    });
+
+    EM_JS(int, tf_web_bgm_pause, (), {
+        const state = globalThis.TinyFarmRPGWebAudioBgm;
+        if (!state || !state.context) {
+            return 0;
+        }
+        const suspendResult = state.context.suspend();
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const audio = diagnostics.audio || (diagnostics.audio = {});
+        if (suspendResult && suspendResult.then) {
+            suspendResult.then(
+                () => {
+                    audio.contextState = state.context.state;
+                    audio.lastError = "";
+                },
+                (error) => {
+                    audio.contextState = state.context.state;
+                    audio.lastError = String(error);
+                });
+        }
+        audio.contextState = state.context.state;
+        return 1;
+    });
+
+    EM_JS(void, tf_web_bgm_set_music_volume, (double music_volume), {
+        const state = globalThis.TinyFarmRPGWebAudioBgm;
+        if (!state) {
+            return;
+        }
+        state.musicVolume = Number(music_volume);
+        const diagnostics = globalThis.TinyFarmRPGWebReleaseDiagnostics || (globalThis.TinyFarmRPGWebReleaseDiagnostics = {});
+        const audio = diagnostics.audio || (diagnostics.audio = {});
+        audio.bgmBackend = "webaudio";
+        audio.musicVolume = state.musicVolume;
+        if (!state.context || !state.current || !state.current.gain) {
+            return;
+        }
+        const gain = Math.max(0, Math.min(1, Number(state.current.trackVolume))) *
+            Math.max(0, Math.min(1, Number(music_volume)));
+        const now = state.context.currentTime;
+        state.current.gain.gain.cancelScheduledValues(now);
+        state.current.gain.gain.setValueAtTime(gain, now);
+    });
+#endif
 
     inline float clamp01(float value) {
         return glm::clamp(value, 0.0f, 1.0f);
@@ -91,6 +369,9 @@ struct AudioPlayer::Impl {
     ma_engine engine_{};
     bool engine_initialized_{false};
     bool playback_ready_{false};
+#if defined(__EMSCRIPTEN__)
+    bool web_bgm_available_{false};
+#endif
 
     float sound_volume_{1.0f};
     float music_volume_{1.0f};
@@ -114,6 +395,12 @@ struct AudioPlayer::Impl {
         }
 
         resource_manager_ = resource_manager;
+#if defined(__EMSCRIPTEN__)
+        web_bgm_available_ = tf_web_bgm_init() != 0;
+        if (!web_bgm_available_) {
+            spdlog::warn("AudioPlayer: WebAudio BGM backend 初始化失败，背景音乐将不可用。");
+        }
+#endif
 
         ma_engine_config config = ma_engine_config_init();
         config.listenerCount = 1;
@@ -153,6 +440,11 @@ struct AudioPlayer::Impl {
 
     ~Impl() {
         // 先清理所有声音，再释放引擎
+#if defined(__EMSCRIPTEN__)
+        if (web_bgm_available_) {
+            tf_web_bgm_stop(0);
+        }
+#endif
         active_sounds_.clear();
         music_sound_.reset();
         fading_music_sounds_.clear();
@@ -209,6 +501,34 @@ struct AudioPlayer::Impl {
     }
 
     [[nodiscard]] bool startPlaybackAfterUserGesture() {
+#if defined(__EMSCRIPTEN__)
+        bool ready = false;
+        if (web_bgm_available_) {
+            ready = tf_web_bgm_resume() != 0;
+        }
+
+        if (!engine_initialized_) {
+            playback_ready_ = ready;
+            if (playback_ready_) {
+                playPendingMusicAfterPlaybackStart();
+            }
+            return playback_ready_;
+        }
+
+        if (!playback_ready_) {
+            const ma_result result = ma_engine_start(&engine_);
+            if (result != MA_SUCCESS) {
+                spdlog::warn("AudioPlayer: 启动音频设备失败，错误码 {}", static_cast<int>(result));
+            } else {
+                ready = true;
+                spdlog::info("AudioPlayer: 音频设备已启动。");
+            }
+        }
+
+        playback_ready_ = playback_ready_ || ready;
+        playPendingMusicAfterPlaybackStart();
+        return playback_ready_;
+#else
         if (!engine_initialized_) {
             return false;
         }
@@ -226,6 +546,7 @@ struct AudioPlayer::Impl {
         spdlog::info("AudioPlayer: 音频设备已启动。");
         playPendingMusicAfterPlaybackStart();
         return true;
+#endif
     }
 
     [[nodiscard]] bool isPlaybackReady() const {
@@ -383,8 +704,65 @@ struct AudioPlayer::Impl {
         return true;
     }
 
+#if defined(__EMSCRIPTEN__)
+    [[nodiscard]] bool playWebMusic(entt::id_type id, bool loop, int fade_in_ms, float volume_scale) {
+        const std::string_view path = resource_manager_->getAssetRegistry().findMusicPath(id);
+        if (path.empty()) {
+            spdlog::error("AudioPlayer: 找不到音乐资源 id={}", id);
+            return false;
+        }
+
+        if (isMissingFromCurrentWebPackage(path)) {
+            pending_music_ = PendingMusicRequest{
+                .id = id,
+                .loop = loop,
+                .fade_in_ms = fade_in_ms,
+                .volume_scale = volume_scale,
+            };
+            spdlog::debug(
+                "AudioPlayer: WebAudio BGM 资源未包含在当前已加载运行时包中，延迟播放 id={}, path='{}'",
+                id,
+                path);
+            return true;
+        }
+
+        if (!playback_ready_) {
+            pending_music_ = PendingMusicRequest{
+                .id = id,
+                .loop = loop,
+                .fade_in_ms = fade_in_ms,
+                .volume_scale = volume_scale,
+            };
+            spdlog::debug("AudioPlayer: WebAudio 尚未由用户手势启动，延迟播放音乐 id={}", id);
+            return true;
+        }
+
+        if (!web_bgm_available_) {
+            web_bgm_available_ = tf_web_bgm_init() != 0;
+            if (!web_bgm_available_) {
+                spdlog::warn("AudioPlayer: WebAudio BGM backend 不可用，无法播放音乐 id={}", id);
+                return false;
+            }
+        }
+
+        const std::string path_string{path};
+        if (tf_web_bgm_play(path_string.c_str(), loop ? 1 : 0, std::max(0, fade_in_ms), volume_scale, music_volume_) == 0) {
+            spdlog::warn("AudioPlayer: WebAudio BGM 播放请求失败 id={}, path='{}'", id, path);
+            return false;
+        }
+
+        current_music_id_ = id;
+        current_music_volume_scale_ = volume_scale;
+        music_paused_ = false;
+        return true;
+    }
+#endif
+
     [[nodiscard]] bool playMusic(entt::id_type id, bool loop, int fade_in_ms, float volume_scale) {
         const float base_volume = clamp01(volume_scale);
+#if defined(__EMSCRIPTEN__)
+        return playWebMusic(id, loop, fade_in_ms, base_volume);
+#else
         if (id == current_music_id_ && music_sound_ && ma_sound_is_playing(&music_sound_->handle) == MA_TRUE) {
             ma_sound_set_looping(&music_sound_->handle, loop ? MA_TRUE : MA_FALSE);
             if (base_volume != current_music_volume_scale_) {
@@ -432,6 +810,7 @@ struct AudioPlayer::Impl {
 #endif
 
         return playMusicInternal(buffer, id, loop, fade_in_ms, base_volume);
+#endif
     }
 
     void playPendingMusicAfterPlaybackStart() {
@@ -441,6 +820,11 @@ struct AudioPlayer::Impl {
         const PendingMusicRequest request = *pending_music_;
         pending_music_.reset();
 
+#if defined(__EMSCRIPTEN__)
+        if (!playWebMusic(request.id, request.loop, request.fade_in_ms, request.volume_scale)) {
+            spdlog::warn("AudioPlayer: WebAudio 启动后恢复待播放音乐失败 id={}", request.id);
+        }
+#else
         auto buffer = resource_manager_->getMusic(request.id);
         if (!buffer) {
             const std::string_view path = resource_manager_->getAssetRegistry().findMusicPath(request.id);
@@ -455,10 +839,20 @@ struct AudioPlayer::Impl {
         if (!playMusicInternal(buffer, request.id, request.loop, request.fade_in_ms, request.volume_scale)) {
             spdlog::warn("AudioPlayer: WebAudio 启动后恢复待播放音乐失败 id={}", request.id);
         }
+#endif
     }
 
     void stopMusic(int fade_out_ms) {
         pending_music_.reset();
+#if defined(__EMSCRIPTEN__)
+        if (web_bgm_available_) {
+            tf_web_bgm_stop(std::max(0, fade_out_ms));
+        }
+        current_music_id_ = {};
+        current_music_volume_scale_ = 1.0f;
+        music_paused_ = false;
+        spdlog::trace("AudioPlayer: 停止 WebAudio BGM");
+#else
         if (!music_sound_) {
             return;
         }
@@ -477,9 +871,19 @@ struct AudioPlayer::Impl {
         current_music_volume_scale_ = 1.0f;
         music_paused_ = false;
         spdlog::trace("AudioPlayer: 停止音乐");
+#endif
     }
 
     void pauseMusic() {
+#if defined(__EMSCRIPTEN__)
+        if (current_music_id_ == entt::id_type{} || music_paused_) {
+            return;
+        }
+        if (web_bgm_available_ && tf_web_bgm_pause() != 0) {
+            music_paused_ = true;
+            spdlog::trace("AudioPlayer: 暂停 WebAudio BGM");
+        }
+#else
         if (!music_sound_) {
             return;
         }
@@ -489,9 +893,19 @@ struct AudioPlayer::Impl {
             music_paused_ = true;
             spdlog::trace("AudioPlayer: 暂停音乐");
         }
+#endif
     }
 
     void resumeMusic() {
+#if defined(__EMSCRIPTEN__)
+        if (current_music_id_ == entt::id_type{} || !music_paused_) {
+            return;
+        }
+        if (web_bgm_available_ && tf_web_bgm_resume() != 0) {
+            music_paused_ = false;
+            spdlog::trace("AudioPlayer: 恢复 WebAudio BGM");
+        }
+#else
         if (!music_sound_ || !music_paused_) {
             return;
         }
@@ -503,6 +917,7 @@ struct AudioPlayer::Impl {
         } else {
             spdlog::error("AudioPlayer: 恢复音乐失败");
         }
+#endif
     }
 
     void setSoundVolume(float volume) {
@@ -518,6 +933,11 @@ struct AudioPlayer::Impl {
 
     void setMusicVolume(float volume) {
         music_volume_ = clamp01(volume);
+#if defined(__EMSCRIPTEN__)
+        if (web_bgm_available_) {
+            tf_web_bgm_set_music_volume(music_volume_);
+        }
+#endif
         if (music_sound_) {
             ma_sound_set_volume(&music_sound_->handle, music_sound_->base_volume * music_volume_);
         }
