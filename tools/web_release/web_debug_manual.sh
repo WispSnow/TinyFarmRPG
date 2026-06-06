@@ -38,7 +38,7 @@ Environment overrides:
   JOBS=${JOBS}
   DEBUG_UI_START=${DEBUG_UI_START}  # none, engine, game, or all
 
-Debug builds use RelWithDebInfo, ENABLE_DEBUG_UI=ON, and ENABLE_RMLUI_DEBUGGER=ON.
+Debug UI builds use Release optimization, ENABLE_DEBUG_UI=ON, and ENABLE_RMLUI_DEBUGGER=OFF.
 They intentionally skip the official Web release gate.
 EOF
 }

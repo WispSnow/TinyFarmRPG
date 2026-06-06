@@ -145,7 +145,7 @@ python3 tools/web_release/serve_web_release.py \
 
 ## Web Debug 预览
 
-Web Debug 预览用于移植期调试 ImGui 面板，不属于正式发布验收路径。`build/web-release` 仍保持 `ENABLE_DEBUG_UI=OFF` 并继续使用 release gate；Debug 预览默认使用独立目录 `build/web-debug`，配置为 `RelWithDebInfo`、`ENABLE_DEBUG_UI=ON`、`ENABLE_RMLUI_DEBUGGER=ON`。
+Web Debug 预览用于移植期调试 ImGui 面板，不属于正式发布验收路径。`build/web-release` 仍保持 `ENABLE_DEBUG_UI=OFF` 并继续使用 release gate；Debug 预览默认使用独立目录 `build/web-debug`，配置为 `Release`、`ENABLE_DEBUG_UI=ON`、`ENABLE_RMLUI_DEBUGGER=OFF`。
 
 ```mermaid
 flowchart LR

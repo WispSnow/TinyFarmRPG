@@ -1252,7 +1252,7 @@ def run_debug(args: argparse.Namespace) -> int:
     report["checklist"] = list(DEBUG_CHECKLIST)
     report["release_gate"] = {
         "skipped": True,
-        "reason": "Web debug builds intentionally use RelWithDebInfo and ENABLE_DEBUG_UI=ON.",
+        "reason": "Web debug UI builds intentionally use Release optimization with ENABLE_DEBUG_UI=ON.",
     }
 
     try:
@@ -1266,9 +1266,9 @@ def run_debug(args: argparse.Namespace) -> int:
                 build_dir,
                 runner,
                 env,
-                build_type="RelWithDebInfo",
+                build_type="Release",
                 enable_debug_ui=True,
-                enable_rmlui_debugger=True,
+                enable_rmlui_debugger=False,
             )
         if not args.skip_build:
             build_web(root, build_dir, args.jobs, runner, env)
