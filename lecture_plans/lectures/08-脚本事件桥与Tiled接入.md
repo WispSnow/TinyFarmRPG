@@ -1,31 +1,29 @@
-# L08 脚本事件桥与 Tiled 接入
+# 第8课 脚本事件桥与 Tiled 接入
 
-L06 讲了"Lua 写什么内容"，L07 讲了"C++ 怎么把 API 安全暴露给 Lua"。但还剩一块拼图：**Lua 端 `tf.event.on("interact", function(evt) ... end)` 这种回调，C++ 是怎么知道"该把哪条事件递过去"的？**
+前面两节课分别讲了"Lua 写什么内容"和"C++ 怎么把 API 安全暴露给 Lua"。但还剩一块拼图：**Lua 端 `tf.event.on("interact", function(evt) ... end)` 这种回调，C++ 是怎么知道"该把哪条事件递过去"的？**
 
-打开任意一份 NPC 脚本，会看到几乎所有内容都建立在三件事上：
+打开任意一份 NPC 脚本，会看到几乎所有内容都建立在三个动作上：
 
-- 监听一个事件名（`interact` / `map_enter` / `zone_enter` / `battle_ended` ...）
+- 监听一个事件名（`interact` / `map_enter` / `zone_enter` / `battle_ended` …）
 - 用 `evt.target_actor_id` / `evt.target_script_event` / `evt.zone_id` 这种**稳定身份字段**判断"这事跟我有关吗"
 - 决定要不要 `evt.dialogue_handled = true` 把这次交互"认领"下来
 
-本讲讲清楚这套机制——**C++ system 触发的 typed event 怎么被翻译成 Lua payload、Tiled 地图上那几个 magic 属性怎么把对象交给 Lua 控制、对话选项又怎么完成"Lua 推选项 → C++ 弹场景 → 选择结果回 Lua" 的环形流转**。
+这节课讲清楚这套机制——**C++ system 触发的 typed event 怎么被翻译成 Lua payload、Tiled 地图上那几个 magic 属性怎么把对象交给 Lua 控制、对话选项怎么完成"Lua 推选项 → C++ 弹场景 → 选择结果回 Lua"的环形流转**。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 一个 Tiled 对象同时配了 `scripted_interaction=true`、`actor_id`（脚本身份）和默认 C++ 交互组件（如 `DialogueComponent`）时，谁优先响应？为什么？
-2. 区域触发器（`script_zone`）的 "一次性" 语义是写在 C++ 系统里还是 Lua 里？哪种更合理？
-3. `tf.dialogue.choice(...)` 和 `lib.dialogue.choice(...)` 分别负责哪一层？玩家选了第 2 个后，结果怎么找到原 Lua 回调？
+2. 区域触发器（`script_zone`）的"一次性"语义是写在 C++ 系统里还是 Lua 里？哪种更合理？
+3. `tf.dialogue.choice(...)` 和 `lib.dialogue.choice(...)` 分别负责哪一层？玩家选了第 2 个选项后，结果怎么找到原 Lua 回调？
 4. 写一个新的脚本化 NPC，最少要动几个文件？
 
 ---
 
-## 👁️ 先看再讲：拆一个真实的 interact 事件
+## 先看再讲：拆一个真实的 interact 事件
 
-打开 [`scripts/npcs/greeter.lua`](../../scripts/npcs/greeter.lua)（33 行）。重点看 `interact` 回调里 `evt` 这个 table 上有什么字段——这些字段来自 C++ 通过 `ScriptEventBridge` 递给 Lua 的 payload，以及同一次 `emitEvent()` 内 Lua 回调之间共享 table 后追加的协调标志：
+打开 [`scripts/npcs/greeter.lua`](../../scripts/npcs/greeter.lua)（33 行）。重点看 `interact` 回调里 `evt` 这个 table 上有什么字段——这些字段来自 C++ 通过 `ScriptEventBridge` 递给 Lua 的 payload：
 
 ```lua
 tf.event.on("interact", function(evt)
@@ -48,11 +46,11 @@ tf.event.on("interact", function(evt)
 end)
 ```
 
-**关键观察**：所有"该不该处理这次交互"的判断**全都基于稳定身份字段**（`actor_id` / `script_event` / `target_kind`），从来不依赖显示名 / 槽位 ID 之类的易变字段。`evt.dialogue_handled` 不是 C++ payload 字段，而是 Lua 侧在共享 table 上形成的协作约定。
+**关键观察**：所有"该不该处理这次交互"的判断**全都基于稳定身份字段**（`actor_id` / `script_event` / `target_kind`），从来不依赖显示名 / 槽位 ID 之类的易变字段。`evt.dialogue_handled` 不是 C++ payload 字段，而是 Lua 侧在共享 table 上形成的协作约定——谁先处理谁标记，后面的回调看到标记就跳过。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TD
@@ -74,7 +72,7 @@ flowchart TD
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. `scripted_interaction=true`：默认 C++ 交互"早退"
 
@@ -117,7 +115,7 @@ flowchart LR
     Q -- "false" --> C["C++ 默认系统正常处理"]
 ```
 
-如果默认 C++ 系统 **不** 早退，会发生什么？玩家按 F 交互 NPC：
+如果默认 C++ 系统**不**早退，会发生什么？玩家按 F 交互 NPC：
 
 1. **DialogueSystem** 看到 `DialogueComponent` → 弹默认对话气泡。
 2. **Lua greeter.lua** 看到 `interact` 事件 → 同时弹一段自定义对话。
@@ -140,9 +138,9 @@ flowchart LR
 | `script_once_key` | `ScriptTriggerComponent::once_key_` | 一次性触发的 `tf.state` key | `"map.home_exterior.seed_cache.opened"` |
 | `zone_id` | `ScriptZoneComponent::zone_id_` | 区域触发器的稳定身份 | `"zone.home.seed_hint"` |
 
-注意：Tiled actor object 的 **`name` 字段是 blueprint 查找 key**，例如 `name="npc.greeter"`；`actor_id` 是脚本看到的实例身份覆盖，不影响 blueprint lookup。项目里没有 `blueprint_id` 这个 Tiled 属性。
+注意：Tiled actor object 的**`name` 字段是 blueprint 查找 key**，例如 `name="npc.greeter"`；`actor_id` 是脚本看到的实例身份覆盖，不影响 blueprint lookup。
 
-还有几个**辅助字段**（详深留 L10–L12）：
+还有几个**辅助字段**（细节留到后续课程）：
 
 - `quest_offer_id` → `QuestGiverComponent`（让 NPC 成为任务发布者，可与 Lua 共存）
 - `shop_id` → `MerchantComponent`（让 NPC 成为商人）
@@ -163,7 +161,7 @@ flowchart LR
 | **交互** | `InteractCommand` | `interact` |
 | **对话** | `DialogueHideEvent` / `DialogueChoiceSelectedEvent` | `dialogue_closed` / `dialogue_choice_selected` |
 | **物品** | `InventoryChanged` / `ItemUsedEvent` | `inventory_changed` / `item_used` |
-| **战斗** | `BattleStartedEvent` / `BattleEndedEvent` / `BattleTurnStartedEvent` / `BattleUnitDiedEvent` ... | `battle_started` / `battle_ended` / `battle_turn_started` / `battle_unit_died` ... |
+| **战斗** | `BattleStartedEvent` / `BattleEndedEvent` / `BattleTurnStartedEvent` / `BattleUnitDiedEvent` … | `battle_started` / `battle_ended` / `battle_turn_started` / `battle_unit_died` … |
 | **地图** | `MapEnteredEvent` / `MapExitedEvent` | `map_enter` / `map_exit` |
 | **区域** | `ZoneEnteredEvent` / `ZoneExitedEvent` | `zone_enter` / `zone_exit` |
 | **时间** | `DayChangedEvent` / `TimeOfDayChangedEvent` | `day_changed` / `time_of_day_changed` |
@@ -251,11 +249,11 @@ end)
 
 **为什么 Lua 更合理？**
 
-- "首次提示 / 总是提示 / 每天提示一次" 是**内容编排**决策，不是规则真相。
+- "首次提示 / 总是提示 / 每天提示一次"是**内容编排**决策，不是规则真相。
 - C++ 写死会失去灵活性——某些 zone 可能确实需要每次都触发（"进入禁地警告"）。
 - `tf.state` 已经提供了通用持久化通道，`lib.once` 一行就完成。
 
-> **回到自测题 2**：边沿触发（一次性进入事件）放在 C++ 系统里、剧情一次性（永久只触发一次）放在 Lua 里——**两个 "一次性" 是不同维度**。
+> **回到自测题 2**：边沿触发（一次性进入事件）放在 C++ 系统里、剧情一次性（永久只触发一次）放在 Lua 里——**两个"一次性"是不同维度**。
 
 ### 5. DialogueChoice：Lua 推 → C++ 弹 → 回 Lua 的环形流转
 
@@ -295,7 +293,7 @@ sequenceDiagram
 **关键设计点**：
 
 - **`request_id` 是关键**：`lib.dialogue` 用它把"原回调"与"返回事件"对上号。多个并发的 `tf.dialogue.choice` 调用各自有不同 request_id，互不干扰。
-- **回调存在 `lib.dialogue` 内部 map**：[`scripts/lib/dialogue.lua`](../../scripts/lib/dialogue.lua) 第 5 行 `local choice_callbacks = {}` ——`request_id` → `function`。`tf.event.on("dialogue_choice_selected", ...)` 内部根据 request_id 取出回调调用。
+- **回调存在 `lib.dialogue` 内部 map**：[`scripts/lib/dialogue.lua`](../../scripts/lib/dialogue.lua) 中 `local choice_callbacks = {}` —— `request_id` → `function`。`tf.event.on("dialogue_choice_selected", ...)` 内部根据 request_id 取出回调调用。
 - **结果带三种 id**：`choice_index`（1-based）/ `choice_zero_index`（0-based）/ `choice_id`（用户自定义字符串如 `"potato"`）。**推荐用 `choice_id` 而不是 index**——增删选项时 index 会错位、`choice_id` 是稳定的。
 - **取消也走同一通道**：玩家按 Esc 关闭选项窗 → `DialogueChoiceSelectedEvent{cancelled=true}` → helper callback 收到 `result.cancelled = true`，同时 `result.index` / `result.zero_index` / `result.id` / `result.label` 都是 `nil`。
 
@@ -344,7 +342,7 @@ flowchart LR
     ENT --> SYS["各 C++ system / Lua 脚本<br/>按 component 各自响应"]
 ```
 
-**详深留 L09**——下一讲讲 catalog 体系时，会把 Blueprint / ItemCatalog / RpgCatalog / AppearanceCatalog 一起讲透。
+细节留到 [数据目录与 RPG Catalog](09-数据目录与RPG-Catalog.md)——下一节课讲 catalog 体系时，会把 Blueprint / ItemCatalog / RpgCatalog / AppearanceCatalog 一起讲透。
 
 ### 7. 完整新增清单：一个新的脚本化 NPC
 
@@ -371,15 +369,15 @@ flowchart LR
 4. **加载脚本**：在 [`scripts/bootstrap.lua`](../../scripts/bootstrap.lua) 加一行 `tf.script.require("npcs.farmer")`。
 5. **本地化文本**（如果用 `tf.i18n.tr`）：在 i18n 资源加 key。
 
-**注意：C++ 没动一行**。这就是 Lua 内容层的工程价值。
+**注意：C++ 没动一行**。这就是 Lua 内容层的工程价值——内容迭代不需要重编译。
 
 ---
 
-## 📋 阅读清单
+## 配合阅读
 
 | 顺序 | 文件 / 章节 | 关注点 |
 | :---: | --- | --- |
-| 1 | [`docs/game/interaction_and_dialogue.md`](../../docs/game/interaction_and_dialogue.md) | **本讲核心阅读材料**——`InteractCommand` 总线扩展点、各订阅者优先级 |
+| 1 | [`docs/game/interaction_and_dialogue.md`](../../docs/game/interaction_and_dialogue.md) | **本节课核心阅读材料**——`InteractCommand` 总线扩展点、各订阅者优先级 |
 | 2 | [`docs/game/blueprints.md`](../../docs/game/blueprints.md) | Blueprint 与脚本化字段的协同 |
 | 3 | [`docs/game/map_data_pipeline.md`](../../docs/game/map_data_pipeline.md) | Tiled object `type/name/properties` 到 component 的加载约定 |
 | 4 | [`docs/tutorial/lua-content-authoring.md`](../../docs/tutorial/lua-content-authoring.md)（§4 Tiled 接入 + §5 配方） | 完整 Tiled 字段约定 + 8 个常用配方 |
@@ -387,7 +385,7 @@ flowchart LR
 
 ---
 
-## 🔑 源码入口
+## 从这几个文件开始看
 
 | 顺序 | 文件 | 你会看到什么 |
 | :---: | --- | --- |
@@ -401,7 +399,7 @@ flowchart LR
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. **早退优先级**：一个 Tiled 对象同时配 `scripted_interaction=true` 和 `dialogue_id="default.greeter"`——玩家按 F 时会发生什么？两段对话会不会都出现？
 2. **稳定身份**：脚本里为什么不直接用 `evt.target.entity_id` 做判断而要用 `evt.target_actor_id`？entity_id 在什么场景下会失效？
@@ -411,7 +409,7 @@ flowchart LR
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：在 `home_exterior` 加一个新的区域触发点，进入时弹一行 floating notice。
 
@@ -439,23 +437,25 @@ flowchart LR
 
 **进阶**：
 
-- 把它改成 **只触发一次** 版本（用 `lib.once`）。
-- 再改成 **每天第一次进入** 版本（自测题 3 的需求；提示：key 里嵌入 `tf.time.day()`）。
+- 把它改成**只触发一次**版本（用 `lib.once`）。
+- 再改成**每天第一次进入**版本（提示：key 里嵌入 `tf.time.day()`）。
 
-完成后回答：**改"一次性"和"每天一次"，整个过程动了几个 C++ 文件？**
+**完成后回答**：改"一次性"和"每天一次"，整个过程动了几个 C++ 文件？
 
 ---
 
-## 📌 小结
+## 小结
 
 - **`scripted_interaction=true`** 是一个标签——挂上之后所有默认 C++ 交互系统主动早退，让 Lua 独占处理。
 - **Tiled magic 属性**通过 `EntityBuilder` 解析成 component，常用的是 `actor_id`（脚本身份）、`scripted_interaction`（C++ 让位）、`script_module` / `script_event` / `script_once_key`（进入 payload 供脚本过滤）和 `zone_id`（区域身份）。
 - **`ScriptEventBridge`** 订阅 19+ 个 C++ typed event，逐个翻译成 Lua table 后 `emitEvent`——payload 总是带稳定身份字段（actor_id / kind / map_id）。
 - **`ZoneTriggerSystem`** 用 `active_zones_` 集合实现**边沿触发**（进入 / 离开各一次），"全局一次性 / 每天一次"等剧情语义留给 Lua 用 `tf.state` / `lib.once` 决定。
-- **DialogueChoice** 的低层 `tf.dialogue.choice()` 返回 `request_id`，常规脚本用 `lib.dialogue.choice()` 保存 callback 并路由结果；Lua 回调收到 `{ id, label, index, zero_index, cancelled }`，取消时这些选择字段为 `nil`，正常选择时推荐用稳定的 `id` 判断分支。
-- **Blueprint + Tiled magic 属性**分工：Blueprint 提供默认组件组合，Tiled actor object 的 `name` 是 blueprint key，属性挂额外组件（脚本身份 / 商店 / 招募）。
+- **DialogueChoice** 的底层 `tf.dialogue.choice()` 返回 `request_id`，常规脚本用 `lib.dialogue.choice()` 保存 callback 并路由结果；推荐用稳定的 `choice_id` 判断分支而非 index。
+- **Blueprint + Tiled magic 属性**分工：Blueprint 提供默认组件组合，Tiled actor object 的 `name` 是 blueprint key，属性挂额外组件。
 - **新增脚本化 NPC** 通常只动 Tiled、`scripts/npcs/xxx.lua`、`bootstrap.lua` 三处——**C++ 不动**。
 
-## 🚀 下节课预告
+---
 
-**Stage III Lua 内容层完整收尾**。从下一讲开始进入 **Stage IV — RPG 数据与探索玩法**。**L09 数据目录全景与 RPG Catalog** 会回答："agora、村庄、装备、敌人、技能"这些 JRPG 静态规则放在哪里？为什么 RPG 数据要拆到 `assets/data/rpg/` 单独的目录？字符串 id 与 hash id 为什么并存？我们下讲见。
+## 下节课预告
+
+Stage III（Lua 内容层）完整收尾。从下节课开始进入 Stage IV——RPG 数据与探索玩法。**[数据目录与 RPG Catalog](09-数据目录与RPG-Catalog.md)** 会回答："角色、村庄、装备、敌人、技能"这些 JRPG 静态规则放在哪里？为什么 RPG 数据要拆到 `assets/data/rpg/` 单独的目录？字符串 id 与 hash id 为什么并存？我们下节课见。

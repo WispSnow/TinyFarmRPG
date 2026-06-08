@@ -1,25 +1,23 @@
-# L07 ScriptHost 与 Sol2 绑定
+# 第7课 ScriptHost 与 Sol2 绑定
 
-L06 我们把 Lua 内容层从"使用者视角"讲透了——边界、目录、`tf.*` API、幂等规约。但还剩一个反方向的问题没回答：**`tf.dialogue.show(...)` 这种 API 是谁、怎么、在什么时机暴露给 Lua 的？**
+上节课我们把 Lua 内容层从"使用者视角"讲透了——边界、目录、`tf.*` API、幂等规约。但还剩一个反方向的问题没回答：**`tf.dialogue.show(...)` 这种 API 是谁、怎么、在什么时机暴露给 Lua 的？**
 
-这一讲翻到 C++ 一侧。看 `ScriptHost` 怎么嵌入 Lua VM、Sol2 怎么把 C++ 函数变成 Lua 可调用对象、`ScriptEntityHandle` 怎么防止脚本拿到已销毁实体、安全沙箱怎么阻止恶意脚本读写文件 / 跑死循环。
+这节课翻到 C++ 一侧。看 `ScriptHost` 怎么嵌入 Lua VM、Sol2 怎么把 C++ 函数变成 Lua 可调用对象、`ScriptEntityHandle` 怎么防止脚本拿到已销毁实体、安全沙箱怎么阻止恶意脚本。
 
-> **范围说明**：本讲讲"绑定基础设施 + 暴露 API 的方法论"。**具体每个 `tf.*` 子命名空间提供了什么** 已在 L06 列表中给出，**Tiled 与事件桥的接入** 留 L08。
+> **范围说明**：这节课讲"绑定基础设施 + 暴露 API 的方法论"。**具体每个 `tf.*` 子命名空间提供了什么** 已在 [Lua 内容层总览](06-Lua内容层总览.md) 中列出，**Tiled 与事件桥的接入** 留到 [脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md)。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 如果脚本里保存了一个 entity 然后该 entity 被销毁，会发生什么？`ScriptEntityHandle` 的两层校验是如何工作的？
 2. 给 Lua 暴露一个新 API 需要改哪几个文件？最少改 1 个、最多改几个？
 3. 脚本里 `error("...")` 抛出后，C++ 侧如何感知与恢复？为什么不会让游戏崩溃？
-4. 项目阻止恶意脚本"删文件 / 死循环" 的具体技术手段有哪些？
+4. 项目阻止恶意脚本"删文件 / 死循环"的具体技术手段有哪些？
 
 ---
 
-## 👁️ 先看再讲：在调试控制台跑一段脚本
+## 先看再讲：在调试控制台跑一段脚本
 
 如果项目支持调试控制台，可以试着输入：
 
@@ -27,18 +25,18 @@ L06 我们把 Lua 内容层从"使用者视角"讲透了——边界、目录、
 tf.player.gold()
 ```
 
-你会看到返回值是当前金币数（如 `300`）。这一行简单调用背后发生的事情：
+你会看到返回值是当前金币数（如 `300`）。这一行简单调用背后发生了 4 件事：
 
 1. Lua 引擎查 `tf.player.gold` 是不是一个可调用值。
 2. Sol2 把 lua 栈上的调用翻译成 C++ lambda 调用。
 3. lambda 通过 `ScriptGameApi::playerGold()` 查 `PlayerWalletComponent`。
 4. Sol2 把 `int` 返回值压回 Lua 栈。
 
-每个 `tf.*` API 都走这条路径。本讲拆开这条路径的每一段。
+每个 `tf.*` API 都走这条路径。这节课拆开这条路径的每一段。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TB
@@ -58,7 +56,7 @@ flowchart TB
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. `ScriptHost`：Lua VM 的 RAII 宿主 + 软失败模式
 
@@ -91,11 +89,11 @@ private:
 };
 ```
 
-> **`sol::state` 是关键**——它是 RAII 封装的 `lua_State*`，**析构时自动释放 VM**。这就是 L06 提到的"每次 `GameScene::init` 重建 Lua VM"在 C++ 一侧的体现：构造新 `ScriptHost` → 旧 `sol::state` 析构 → 全部 Lua 状态丢弃。暂停菜单在同一 `GameScene` 内读档时不会重建 VM，而是调用 `reload()`：清掉事件回调、deferred command、`tf.script.require` 模块缓存，推进 `scene_token_`，再重新执行上次成功 `loadFile()` 的脚本。
+> **`sol::state` 是关键**——它是 RAII 封装的 `lua_State*`，**析构时自动释放 VM**。这就是 [Lua 内容层总览](06-Lua内容层总览.md) 提到的"每次 `GameScene::init` 重建 Lua VM"在 C++ 一侧的体现：构造新 `ScriptHost` → 旧 `sol::state` 析构 → 全部 Lua 状态丢弃。暂停菜单在同一 `GameScene` 内读档时不会重建 VM，而是调用 `reload()`：清掉事件回调、deferred command、`tf.script.require` 模块缓存，推进 `scene_token_`，再重新执行上次成功 `loadFile()` 的脚本。
 
 ### 2. Sol2 是什么：Lua C API 的现代 C++ 封装
 
-Lua 本体是用 C 写的，原生 API 是栈式的（push/pop），用起来繁琐：
+Lua 本体是用 C 写的，原生 API 是栈式的（push/pop），用起来很繁琐：
 
 ```c
 // Lua 原生 C API（演示，项目不这么写）
@@ -136,7 +134,7 @@ Sol2 自动做了 3 件事：
 
 ### 3. `ScriptEntityHandle`：跨场景代际 + ABA 双层校验
 
-这是 L07 最值得讲透的工程细节。看一个反例先：
+这是本节课最值得讲透的工程细节。先看一个反例：
 
 **❌ 反例**：Lua 直接保存 `entt::entity`
 
@@ -147,7 +145,7 @@ local target = evt.target   -- 实体 ID 8（version 0）
 tf.entity.position(target)  -- 实体可能已经被销毁，或它的槽位被新实体复用！
 ```
 
-`entt::entity` 是 `uint32_t`，**槽位会被复用**——一个实体死了，下个实体很可能拿到同一个槽位。Lua 拿着"陈旧 id" 调任何查询都会出 bug：要么取到错误的实体数据（ABA 问题）、要么遇到 dangling reference。
+`entt::entity` 是 `uint32_t`，**槽位会被复用**——一个实体死了，下个实体很可能拿到同一个槽位。Lua 拿着"陈旧 id"调任何查询都会出 bug：要么取到错误的实体数据（ABA 问题）、要么遇到 dangling reference。
 
 **✅ 正解**：暴露给 Lua 的不是 raw entity，而是 `ScriptEntityHandle`：
 
@@ -219,7 +217,7 @@ tf.player.gold = function() return 999999 end  -- 改写 API，整个游戏挂�
 
 **`ScriptGameApi` 是 C++ facade**：所有 lambda 捕获 `api: std::shared_ptr<ScriptGameApi>`，函数体只做一件事——把 Lua 参数翻译成 `api` 的成员调用。**`api` 内部该查询的查询、该发 command / event 的就走 dispatcher；若当前正在 Lua 回调中，还会通过 ScriptHost 的 deferred queue 避免重入**。
 
-**关键约定**：`ScriptGameApi` 不直接承载新玩法规则。只有当操作需要多步原子写入或共享校验时，它才委托给 domain service。其余都是简单的"查 component / 发 command" 转译。
+**关键约定**：`ScriptGameApi` 不直接承载新玩法规则。只有当操作需要多步原子写入或共享校验时，它才委托给 domain service。其余都是简单的"查 component / 发 command"转译。
 
 ### 5. 安全沙箱：脚本能做什么 + 不能做什么
 
@@ -264,10 +262,10 @@ static void onInstructionLimitReached(lua_State* L, lua_Debug*) {
 }
 ```
 
-**实测语义**：Lua VM 每执行约 20 万条 VM 指令会触发一次回调；回调里 `luaL_error` 会被 Sol2 的 `protected_function` 捕获 → 错误日志而不是整个游戏挂掉。**写出 `while true do end` 这种死循环不会让游戏卡死**，会被打断并报错。
+**实测语义**：Lua VM 每执行约 20 万条 VM 指令会触发一次回调；回调里 `luaL_error` 会被 Sol2 的 `protected_function` 捕获 → 输出错误日志而不是整个游戏挂掉。**写出 `while true do end` 这种死循环不会让游戏卡死**，会被打断并报错。
 
 > **三层防御**总结：
-> - 第一层：库不加载 → 没接口。
+> - 第一层：库不加载 → 根本没有接口。
 > - 第二层：危险全局变量 → 设为 nil，覆盖原有。
 > - 第三层：指令上限 → 不让脚本永远跑下去。
 
@@ -288,13 +286,13 @@ bool ScriptHost::runResult(sol::protected_function_result&& result, std::string_
 
 `sol::protected_function` 是 Sol2 对 Lua `pcall` 的封装——**Lua 脚本里 `error("...")` 抛出后被 Sol2 捕获、转成 C++ 端可读的 `sol::error`**，绝不让异常穿透到 C++ stack 引发 crash。
 
-**这就是为什么 L06 反例中"脚本写错"也不会让游戏崩溃**——只会在 spdlog 看到错误日志，C++ 继续往下跑。
+**这就是为什么上节课反例中"脚本写错"也不会让游戏崩溃**——只会在 spdlog 看到错误日志，C++ 继续往下跑。
 
-**事件回调也一样**——`event_callbacks_` 里存的是 `sol::protected_function`，[`emitEvent`](../../src/engine/script/script_host.cpp) 内部循环调用每个回调时用 `runResult` 兜底，**某个 NPC 脚本写错不会拖累其他 NPC**。
+**事件回调也一样**——`event_callbacks_` 里存的是 `sol::protected_function`，`emitEvent` 内部循环调用每个回调时用 `runResult` 兜底，**某个 NPC 脚本写错不会拖累其他 NPC 的回调**。
 
 ### 7. 模块加载：`tf.script.require` 的白名单实现
 
-Lua 原生 `require` 没加载（前面提到）。项目自己实现了 `tf.script.require`：
+Lua 原生 `require` 没加载（前面提到了）。项目自己实现了 `tf.script.require`：
 
 ```mermaid
 flowchart LR
@@ -324,7 +322,7 @@ flowchart LR
 | `script_quest_flow_test.cpp` | `tf.quest.status` / `offer` / `turn_in` |
 | `script_shop_flow_test.cpp` | `tf.shop.open` 触发对应 command |
 | `script_recruitment_flow_test.cpp` | `tf.party.offer_recruit` |
-| `script_event_bridge_test.cpp` | C++ 事件转 Lua payload（L08 主题） |
+| `script_event_bridge_test.cpp` | C++ 事件转 Lua payload（下节课主题） |
 | `script_dialogue_helper_test.cpp` | `lib.dialogue` 的状态机 |
 | `script_phase2_api_test.cpp` | 综合 API 测试 |
 
@@ -350,16 +348,16 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 
 ---
 
-## 📋 阅读清单
+## 配合阅读
 
 | 顺序 | 文件 / 章节 | 关注点 |
 | :---: | --- | --- |
-| 1 | [`docs/tutorial/lua-binding-guide.md`](../../docs/tutorial/lua-binding-guide.md) | **本讲核心阅读材料**——Sol2 三层关系、绑定模式、错误处理、完整数据流 |
-| 2 | L06（上一讲） | 内容编排者视角，结合本讲反向理解 |
+| 1 | [`docs/tutorial/lua-binding-guide.md`](../../docs/tutorial/lua-binding-guide.md) | **本节课核心阅读材料**——Sol2 三层关系、绑定模式、错误处理、完整数据流 |
+| 2 | [Lua 内容层总览](06-Lua内容层总览.md)（上节课） | 内容编排者视角，结合本节课反向理解 |
 
 ---
 
-## 🔑 源码入口
+## 从这几个文件开始看
 
 | 顺序 | 文件 | 你会看到什么 |
 | :---: | --- | --- |
@@ -371,9 +369,9 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
-1. **handle 校验**：脚本在第 1 天保存了一个 `npc_handle` 局部变量，玩家睡觉到第 2 天（同一 `GameScene`，不 reload bootstrap）—— handle 还能用吗？暂停菜单在同一 `GameScene` 内读档并触发 `ScriptHost::reload()` 后呢？玩家退到标题再读档进同一存档呢？为什么？
+1. **handle 校验**：脚本在第 1 天保存了一个 `npc_handle` 局部变量，玩家睡觉到第 2 天（同一 `GameScene`，不 reload bootstrap）——handle 还能用吗？暂停菜单在同一 `GameScene` 内读档并触发 `ScriptHost::reload()` 后呢？玩家退到标题再读档进同一存档呢？为什么？
 2. **加新 API 工作量**：要新增 `tf.weather.is_raining()`，最少改几个文件？最多改几个（包含测试）？
 3. **沙箱**：以下脚本在项目里能成功执行吗？为什么？
    - `os.execute("ls /")`
@@ -385,9 +383,9 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
-**目标**：给 Lua 加一个 `tf.debug.echo(msg)` 这种最简 API，验证完整数据流通了。
+**目标**：给 Lua 加一个 `tf.debug.echo(msg)` 这种最简 API，验证完整数据流。
 
 操作步骤：
 
@@ -414,7 +412,7 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 
 ---
 
-## 📌 小结
+## 小结
 
 - `ScriptHost` 用 `sol::state` RAII 持有 Lua VM；两阶段 init + 软失败模式让脚本错误不传染 C++。
 - `ScriptEntityHandle` 用 **scene_token（跨代际） + entity version（防 ABA）** 双层校验，所有 `tf.*` API 接收 handle 时强制走 `validateHandle`。
@@ -423,6 +421,8 @@ TEST(ScriptHostSmokeTest, LoadAndRunInlineScript) {
 - `sol::protected_function` 把 Lua 异常翻译成 C++ 端的 `sol::error`，脚本错误只产生日志，**不会让游戏崩溃**。
 - 测试通过最小 fixture（registry + dispatcher + ScriptHost + installer）覆盖几乎所有绑定，**不需要拉起 GameScene**。
 
-## 🚀 下节课预告
+---
 
-到这一讲为止，**Lua 与 C++ 的双向桥已经搭好**：API 安全暴露、句柄安全校验、错误安全捕获。下一讲（**L08 脚本事件桥与 Tiled 接入**）讲剩下的最后一块——**地图对象、NPC、区域触发、对话选项怎么把事件递给 Lua？** `scripted_interaction=true` 的 Tiled 字段背后是什么机制？`script_event` / `actor_id` / `script_once_key` 这三个 Tiled 属性各自承担什么？这是把"内容层 + 绑定"真正变成"游戏内可触发剧情"的最后一公里。
+## 下节课预告
+
+到这节课为止，**Lua 与 C++ 的双向桥已经搭好**：API 安全暴露、句柄安全校验、错误安全捕获。下节课 **[脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md)** 讲剩下的最后一块——**地图对象、NPC、区域触发、对话选项怎么把事件递给 Lua？** `scripted_interaction=true` 的 Tiled 字段背后是什么机制？`script_event` / `actor_id` / `script_once_key` 这三个 Tiled 属性各自承担什么？这是把"内容层 + 绑定"真正变成"游戏内可触发剧情"的最后一公里。
