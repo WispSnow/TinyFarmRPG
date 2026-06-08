@@ -1,16 +1,14 @@
-# L18 战斗 Action 生成（玩家菜单 + 敌方 AI）
+# 第18节课 · 战斗 Action 生成（玩家菜单 + 敌方 AI）
 
-L17 讲透了"一个 `BattleAction` 怎么被结算"，但留了个根本问题：**这个 `BattleAction` 是谁造出来的？**
+[上节课](17-战斗动作解析.md)讲透了"一个 `BattleAction` 怎么被结算"，但留了个根本问题：**这个 `BattleAction` 是谁造出来的？**
 
-答案有两个来源：**玩家**在菜单里一步步选"攻击 → 火球术 → 那只史莱姆"，和**敌人**每回合自动决策。本讲的关键视角是——**把这两者看成同一个抽象：`BattleAction` 的生产者**。它们路径天差地别（一个是多层菜单 + 键鼠输入 + 光标记忆，一个是纯函数按 rating 挑技能），但**终点完全一样**：吐出一个 `BattleAction`，塞进 `pending_action_`，汇进 L17 那条解算管线。
+答案有两个来源：**玩家**在菜单里一步步选"攻击 → 火球术 → 那只史莱姆"，和**敌人**每回合自动决策。这节课的关键视角是——**把这两者看成同一个抽象：`BattleAction` 的生产者**。它们路径天差地别（一个是多层菜单 + 键鼠输入 + 光标记忆，一个是纯函数按 rating 挑技能），但**终点完全一样**：吐出一个 `BattleAction`，塞进 `pending_action_`，汇进[上节课](17-战斗动作解析.md)那条解算管线。
 
-> ⚠️ 本讲负载较重（玩家菜单 + AI 双侧）。建议这样消化：先抓住"对称视角"这条主线（§1），再分两次读——先把玩家侧的双层状态机 + 光标（§2-4）吃透，再单独看 AI Planner（§5-6）。两侧的共性已被 §1 压扁，剩下的都是各自的差异细节。
+> ⚠️ 这节课负载较重（玩家菜单 + AI 双侧）。建议这样消化：先抓住"对称视角"这条主线（§1），再分两次读——先把玩家侧的双层状态机 + 光标（§2-4）吃透，再单独看 AI Planner（§5-6）。两侧的共性已被 §1 压扁，剩下的都是各自的差异细节。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 把"玩家菜单"和"敌方 AI"看作同一个 action 生产者，它们共享的接口契约到底是什么？汇流点在哪一行代码？
 2. 玩家选一个行动要穿过 PartyCommand→ActorCommand→SkillList→TargetSelect 好几层。这套流程为什么需要 `FlowState` 和 `MenuState` **两层**状态机，而不是一层？
@@ -19,7 +17,7 @@ L17 讲透了"一个 `BattleAction` 怎么被结算"，但留了个根本问题�
 
 ---
 
-## 👁️ 先看再讲：AI 是一组可确定性回归的纯函数
+## 先看再讲：AI 是一组可确定性回归的纯函数
 
 玩家菜单要进游戏点；但 AI 这一侧，最好的观察入口又是测试——因为 `BattleAiPlanner` 是**纯函数 + 可注入随机源**，能确定性复现：
 
@@ -43,11 +41,11 @@ ctest --test-dir build/debug -R BattleAiPlannerTest --output-on-failure
 | `AllAlliesMpRecoveryUsesMpDeficitInsteadOfHp` | 回 MP 技按 MP 缺口选目标 |
 | `FallsBackToEndTurnWhenNoOpponentsAreAlive` | 没活敌人 → EndTurn 兜底 |
 
-玩家侧也有可单测的纯逻辑核——`resolveCursorMemoryDefaultIndex`（光标记忆落点）。本讲就讲：这两个生产者各自怎么造出一个 `BattleAction`。
+玩家侧也有可单测的纯逻辑核——`resolveCursorMemoryDefaultIndex`（光标记忆落点）。这节课就讲：这两个生产者各自怎么造出一个 `BattleAction`。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TD
@@ -68,14 +66,14 @@ flowchart TD
     CONV["BattleScene::submitAction(action)"] --> PEND["pending_action_"]
     PEND --> FLOW["BattleFlowController<br/>ExecutingAction"]
     FLOW --> EXEC["executePendingAction()"]
-    EXEC --> SESS["BattleSession::submitAction()<br/>(L17 解算管线)"]
+    EXEC --> SESS["BattleSession::submitAction()<br/>(上节课的解算管线)"]
 ```
 
 一句话：**两个生产者，殊途同归到 `submitAction(action)` → `pending_action_` → `session_.submitAction()`**。Flow controller 根本不关心是谁造的。
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. 对称视角：两个生产者，一个汇流点
 
@@ -101,7 +99,7 @@ void BattleScene::submitAction(game::battle::BattleAction action) {
 }
 ```
 
-这就是自测题 1 的答案：**两个生产者共享的契约就是"产出一个 `BattleAction` 交给 `submitAction`"**；汇流点是 `pending_action_ = std::move(action)` 这一行。之后 `BattleFlowController` 进入 `ExecutingAction`，调 `executePendingAction()` → `session_.submitAction(*pending_action_)`（注意：这里有两个同名 `submitAction`——**场景的**那个只是"暂存意图"，**会话的**那个才是 L17 的真结算）。把"谁产出"和"怎么结算"彻底解耦，正是这套设计的价值。
+这就是问题 1 的答案：**两个生产者共享的契约就是"产出一个 `BattleAction` 交给 `submitAction`"**；汇流点是 `pending_action_ = std::move(action)` 这一行。之后 `BattleFlowController` 进入 `ExecutingAction`，调 `executePendingAction()` → `session_.submitAction(*pending_action_)`（注意：这里有两个同名 `submitAction`——**场景的**那个只是"暂存意图"，**会话的**那个才是[上节课](17-战斗动作解析.md)的真结算）。把"谁产出"和"怎么结算"彻底解耦，正是这套设计的价值。
 
 ### 2. 玩家侧：FlowState × MenuState 双层状态机
 
@@ -117,7 +115,7 @@ enum class BattleMenuState {   // ② 菜单内部上下文：只在 WaitingForI
 };
 ```
 
-为什么要两层（自测题 2）？因为它们的**生命周期和职责不同**：
+为什么要两层（问题 2）？因为它们的**生命周期和职责不同**：
 
 - `BattleFlowState` 管"这一帧战斗该干嘛"——等输入？执行动作？播结果？判胜负？它是**整场战斗**的节拍器，敌我回合都走它。
 - `BattleMenuState` 只在 `FlowState == WaitingForInput` **内部**才有意义——它管"玩家现在站在哪一层菜单"。敌方回合根本不进菜单，这层状态对 AI 不存在。
@@ -143,7 +141,7 @@ struct BattleActionDraft {
 战斗菜单同时支持两种操作，但它们**操纵的是同一个状态**（`BattleMenuModel` 的游标 + `action_draft_`）：
 
 - **鼠标**：`battle.rml` 里 `data-event-click="actor_command_select(command.entry_index)"` 直接把点击送到处理函数。
-- **键盘 / 手柄**：方向键不走 RmlUi，而是经 `BattleInputRouter`——它监听 `menu_up/down/left/right/confirm/cancel` 这些**输入动作**（L05 的输入上下文），转成游标移动，还自带按键重复（`RepeatDirection` + 计时器）：
+- **键盘 / 手柄**：方向键不走 RmlUi，而是经 `BattleInputRouter`——它监听 `menu_up/down/left/right/confirm/cancel` 这些**输入动作**（[输入上下文课](05-输入上下文与菜单导航.md)的输入上下文），转成游标移动，还自带按键重复（`RepeatDirection` + 计时器）：
 
 ```cpp
 class BattleInputRouter::Delegate {        // 路由器只认这四个语义
@@ -154,7 +152,7 @@ class BattleInputRouter::Delegate {        // 路由器只认这四个语义
 };
 ```
 
-**为什么不用 RmlUi 原生方向键 focus 导航**（自测题 3）？因为战斗菜单的需求是 RmlUi 原生 focus 模型表达不了的：多层菜单的 cancel 要"弹回上一层"而不是"丢焦点"、每层要**记住上次光标位置**（cursor memory）、TargetSelect 时光标要联动高亮战场上的精灵和敌方 HP 条。这些是"游戏菜单语义"，不是"网页 tab 顺序"。所以项目自己持有光标状态，再**程序化地把焦点同步给 RmlUi**——`BattleMenuModel::focus_dirty` 标志正是为此：状态变了置脏，下一帧把 DOM 焦点对齐到当前光标项。RmlUi 在这里只当"渲染器 + 鼠标命中测试"，导航主权在游戏侧。
+**为什么不用 RmlUi 原生方向键 focus 导航**（问题 3）？因为战斗菜单的需求是 RmlUi 原生 focus 模型表达不了的：多层菜单的 cancel 要"弹回上一层"而不是"丢焦点"、每层要**记住上次光标位置**（cursor memory）、TargetSelect 时光标要联动高亮战场上的精灵和敌方 HP 条。这些是"游戏菜单语义"，不是"网页 tab 顺序"。所以项目自己持有光标状态，再**程序化地把焦点同步给 RmlUi**——`BattleMenuModel::focus_dirty` 标志正是为此：状态变了置脏，下一帧把 DOM 焦点对齐到当前光标项。RmlUi 在这里只当"渲染器 + 鼠标命中测试"，导航主权在游戏侧。
 
 ### 4. 玩家侧：cursor memory 与 cancel/back
 
@@ -173,7 +171,7 @@ int resolveCursorMemoryDefaultIndex(int remembered_index,
 }
 ```
 
-这就是自测题 3 后半的答案：**记住的目标若已死、或对应项已禁用、或列表缩短到越界，就安全回退到 fallback**，绝不把光标停在一个非法格子上。把这个判断抽成无副作用的纯函数，4 行就能覆盖所有边界、还能单测——actor command / skill list / item list / target select 四个菜单层全调它（`battle_scene.cpp` 里能看到四处调用点）。cancel/back 则由 `BattleMenuState` 的层级回退表达：在 SkillList 按 cancel 回 ActorCommand，而不是退出整个菜单。
+这就是问题 3 后半的答案：**记住的目标若已死、或对应项已禁用、或列表缩短到越界，就安全回退到 fallback**，绝不把光标停在一个非法格子上。把这个判断抽成无副作用的纯函数，4 行就能覆盖所有边界、还能单测——actor command / skill list / item list / target select 四个菜单层全调它（`battle_scene.cpp` 里能看到四处调用点）。cancel/back 则由 `BattleMenuState` 的层级回退表达：在 SkillList 按 cancel 回 ActorCommand，而不是退出整个菜单。
 
 ### 5. AI 侧：按 rating 选技、按 scope 选目标、按缺口选治疗
 
@@ -222,23 +220,23 @@ flowchart TD
 
 `planEnemyAction` 任何一步走不通（没目录、没 `source_enemy_id`、没可用技能），都回退到 `planFallbackAction`——一次随机目标的普攻；连活敌人都没有就 `EndTurn`。`buildEnemyAction`（场景侧）层层设防，每个缺失分支都 warn + fallback，保证 AI **永远能产出一个合法 `BattleAction`**，不会卡住回合。
 
-为什么 AI 这么好测（自测题 4 的回归策略）？因为两个 planner 函数都接受 `std::mt19937*` 随机源参数——测试注入固定 seed，随机就变确定，于是"rating 选择""目标随机""恢复优先""未选中候选不消耗随机源"全都能写成稳定断言。**改了 AI 配置或逻辑后，最小回归就是跑 `BattleAiPlannerTest` 那 10 个 case**：它们用裸 `BattleUnit` 数组 + 固定 seed，不开 BattleScene，几毫秒覆盖全部决策分支。
+为什么 AI 这么好测（问题 4 的回归策略）？因为两个 planner 函数都接受 `std::mt19937*` 随机源参数——测试注入固定 seed，随机就变确定，于是"rating 选择""目标随机""恢复优先""未选中候选不消耗随机源"全都能写成稳定断言。**改了 AI 配置或逻辑后，最小回归就是跑 `BattleAiPlannerTest` 那 10 个 case**：它们用裸 `BattleUnit` 数组 + 固定 seed，不开 BattleScene，几毫秒覆盖全部决策分支。
 
 ---
 
-## 📋 阅读清单
+## 阅读清单
 
 | 资源 | 为什么读 |
 | --- | --- |
 | [`ui/rmlui/scenes/battle.rml`](../../ui/rmlui/scenes/battle.rml) + `battle.rcss` | 看 `data-model`/`data-for`/`data-event-click` 怎么把菜单数据和鼠标路径绑上去 |
 | [`learn/lectures/rmlui/L14-jrpg-battle.md`](../../learn/lectures/rmlui/L14-jrpg-battle.md) | RmlUi 子教程对应实战课：战斗 UI 的数据绑定与 focus 同步细节 |
-| L05《输入上下文与菜单导航》 | `BattleInputRouter` 监听的 menu_* 动作、为什么不用原生导航的上游背景 |
-| L17《战斗动作解析》 | 两个生产者的下游：`BattleAction` 产出后怎么被 resolver 结算 |
-| [`tests/game/battle/battle_ai_planner_test.cpp`](../../tests/game/battle/battle_ai_planner_test.cpp) | AI 行为规格书；最小练习/回归素材 |
+| [输入上下文与菜单导航](05-输入上下文与菜单导航.md) | `BattleInputRouter` 监听的 menu_* 动作、为什么不用原生导航的上游背景 |
+| [战斗动作解析](17-战斗动作解析.md) | 两个生产者的下游：`BattleAction` 产出后怎么被 resolver 结算 |
+| [`tests/game/battle/battle_ai_planner_test.cpp`](../../tests/game/battle/battle_ai_planner_test.cpp) | AI 行为规格书；动手练习/回归素材 |
 
 ---
 
-## 🔑 源码入口
+## 源码入口
 
 | 文件 | 看什么 |
 | --- | --- |
@@ -250,7 +248,7 @@ flowchart TD
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. 玩家在菜单里选完和敌方 AI 决策完，产出物最终都汇到哪一行代码？为什么说"场景的 `submitAction`"和"会话的 `submitAction`"是两回事？
 2. 如果硬要把 `BattleFlowState` 和 `BattleMenuState` 合成一层枚举，你会遇到什么具体的表达困境？举一个"两个正交状态"的例子。
@@ -259,7 +257,7 @@ flowchart TD
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：改一个数字，观察 AI 选技偏好的变化——**只改 JSON**。
 
@@ -274,16 +272,16 @@ flowchart TD
 
 ---
 
-## 📌 小结
+## 小结
 
-- **对称视角**：玩家菜单与敌方 AI 是同一抽象——`BattleAction` 生产者；契约是"产出 action 交给 `BattleScene::submitAction`"，汇流于 `pending_action_`，再统一进 `session_.submitAction()`（L17）。
+- **对称视角**：玩家菜单与敌方 AI 是同一抽象——`BattleAction` 生产者；契约是"产出 action 交给 `BattleScene::submitAction`"，汇流于 `pending_action_`，再统一进 `session_.submitAction()`（[上节课](17-战斗动作解析.md)）。
 - **双层状态机**：`BattleFlowState` 管整场战斗节拍（敌我共用），`BattleMenuState` 只在等输入时管玩家在哪层菜单；`BattleActionDraft` 是逐层填写的行动草稿，确认时翻译成 `BattleAction`。
 - **键鼠双路径、不走原生导航**：鼠标走 `data-event-click`，方向键走 `BattleInputRouter`→游标；多层 cancel、cursor memory、目标高亮等游戏菜单语义 RmlUi 原生 focus 表达不了，故游戏侧持有光标、`focus_dirty` 程序化同步焦点。
 - **cursor memory 是纯函数**：`resolveCursorMemoryDefaultIndex` 处理"开关关/越界/已禁用"三类边界，统一回退 fallback，四个菜单层共用、可单测。
 - **AI = rating 选技 + scope 选目标 + 恢复意图**：rating/skill/scope 来自 catalog 数据，"随机选敌/选最缺血友军/满血放弃/fallback"是硬编码策略；只有最终候选会消耗随机源；纯函数 + 注入 seed → 10 个 case 确定性回归。
 
-## 🚀 下节课预告
+---
 
 action 怎么产生、怎么结算都清楚了——但战斗到现在还是一堆数字在跳。该让它**好看**了。
 
-下一讲 **L19 战斗表现与动画导演**：side-view 精灵（复用 L14 的分层外观 + 战斗 anchor）、`BattleActionPresentationPlan`（把领域结果翻成可播放的步骤序列）、`BattleAnimationDirector`（把步骤翻成动画/音效/特效请求）、伤害飘字与敌方 HP 条的状态机，以及"表现只消费快照、不改规则真相"如何呼应 L16。VFX 命令讲到"提交即返"，后端留 L23。下讲见。
+下节课讲战斗表现与动画导演：side-view 精灵（复用[外观课](14-分层角色外观与头像.md)的分层外观 + 战斗 anchor）、`BattleActionPresentationPlan`（把领域结果翻成可播放的步骤序列）、`BattleAnimationDirector`（把步骤翻成动画/音效/特效请求）、伤害飘字与敌方 HP 条的状态机，以及"表现只消费快照、不改规则真相"如何呼应[战斗核心课](16-回合制战斗领域核心.md)。VFX 命令讲到"提交即返"，后端留后续 VFX 课程。下节课见。

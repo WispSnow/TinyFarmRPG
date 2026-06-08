@@ -1,14 +1,12 @@
-# L25 SystemScheduler 与并行岛
+# 第25节课 · SystemScheduler 与并行岛
 
-上一套教程里，`GameScene` 的 gameplay 系统是"挨个 `new`、固定顺序 `update`"的——清晰，但僵硬：系统之间谁依赖谁藏在调用顺序里看不见，互不相干的系统也只能一个接一个串行跑。本讲讲项目怎么把它升级成一个**声明式、可观察、可裁剪、可并行**的调度器 `SystemScheduler`。
+上一套教程里，`GameScene` 的 gameplay 系统是"挨个 `new`、固定顺序 `update`"的——清晰，但僵硬：系统之间谁依赖谁藏在调用顺序里看不见，互不相干的系统也只能一个接一个串行跑。这节课讲项目怎么把它升级成一个**声明式、可观察、可裁剪、可并行**的调度器 `SystemScheduler`。
 
-它干四件事：① 用 26 个 `SchedulerStage` 钉死系统的执行顺序（少数 stage 是复合入口，会顺序调用多个系统）；② 按 `GameMode` 裁剪这一帧要跑哪些阶段；③ 把数据**无冲突**的系统抽成"并行岛"，用 `entt::flow` 从每个系统声明的"读写哪些资源"自动推导出哪些能并行；④ 地图过渡期用两道 Gate 提前终止 tick，避免在"半个地图"上跑逻辑。本讲也终于把 L04 / L15 反复提到却一直没展开的 `GameMode` 收口。并行的底层原理（线程池、依赖图、拓扑分层）外链多线程子教程，主线只讲项目这套调度器怎么搭、怎么看。
+它干四件事：① 用 26 个 `SchedulerStage` 钉死系统的执行顺序（少数 stage 是复合入口，会顺序调用多个系统）；② 按 `GameMode` 裁剪这一帧要跑哪些阶段；③ 把数据**无冲突**的系统抽成"并行岛"，用 `entt::flow` 从每个系统声明的"读写哪些资源"自动推导出哪些能并行；④ 地图过渡期用两道 Gate 提前终止 tick，避免在"半个地图"上跑逻辑。这节课也终于把 [HUD 课](04-HUD与覆盖式场景.md)、[战斗过渡课](15-探索与战斗的过渡.md)反复提到却一直没展开的 `GameMode` 收口。并行的底层原理（线程池、依赖图、拓扑分层）外链多线程子教程，主线只讲项目这套调度器怎么搭、怎么看。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 为什么光凭每个系统"声明自己读写哪些资源"，就足以**自动**推导出哪些系统能并行？声明漏了会出什么事？
 2. `GameMode` 从 Exploration 切到 Battle，调度器内部具体做什么？（以及一个反转：这个切换在当前项目里**真的会发生吗**？）
@@ -17,7 +15,7 @@
 
 ---
 
-## 👁️ 先看再讲：导出一张调度图，看三个系统为什么能并排
+## 先看再讲：导出一张调度图，看三个系统为什么能并排
 
 构建并运行 `scheduler_dot_dump` 工具，它把 **post-gate 并行岛**导成一张 graphviz DOT：
 
@@ -28,11 +26,11 @@ ninja scheduler_dot_dump          # 在你的 build 目录构建该 target
 
 打开 `post_gate.dot`（或 `dot -Tpng post_gate.dot -o post_gate.png` 渲染），你会看到三个 box 节点——`SpatialIndex`、`CameraFollow`、`Animation`——**彼此之间没有任何连线**。没有连线，意味着 `entt::flow` 根据它们声明的读写资源**推不出任何依赖边**，于是三者落进同一个 wave，可以并行执行。
 
-再按 `F6` 打开 **Game Debug Panels → Scheduler**，能实时看到当前 `GameMode`、Gate 是否触发、最新一帧阶段耗时和近期 avg/max。注意：Debug Panel **不显示 wave 拓扑**；wave 结构要看 `scheduler_dot_dump` 导出的 DOT，或读 `ParallelWaveScheduler::waves()` 相关测试。这张"没有边的图"就是本讲的核心命题：**依赖不是写在代码顺序里，而是从资源声明里算出来的**。
+再按 `F6` 打开 **Game Debug Panels → Scheduler**，能实时看到当前 `GameMode`、Gate 是否触发、最新一帧阶段耗时和近期 avg/max。注意：Debug Panel **不显示 wave 拓扑**；wave 结构要看 `scheduler_dot_dump` 导出的 DOT，或读 `ParallelWaveScheduler::waves()` 相关测试。这张"没有边的图"就是这节课的核心命题：**依赖不是写在代码顺序里，而是从资源声明里算出来的**。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TD
@@ -53,7 +51,7 @@ flowchart TD
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. 从"直接 new + 顺序 update"到声明式调度器
 
@@ -68,7 +66,7 @@ flowchart TD
 
 ### 2. 资源读写声明 → `entt::flow` → 并行 wave（核心机制）
 
-这是自测题 1，也是整讲的技术核心。每个并行任务用 [`SystemTaskDecl`](../../src/engine/system/system_task_decl.h) 声明自己**读哪些、写哪些**资源：
+这是问题 1，也是整节课的技术核心。每个并行任务用 [`SystemTaskDecl`](../../src/engine/system/system_task_decl.h) 声明自己**读哪些、写哪些**资源：
 
 ```cpp
 struct SystemTaskDecl {
@@ -113,7 +111,7 @@ matrix_ = builder.graph();         // flow 按冲突规则自动连依赖边
 
 ### 4. 并行安全四件套 + EnTT 构建前提
 
-worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线程安全操作会炸（自测题 3）。代码层靠四个机制兜住：
+worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线程安全操作会炸（问题 3）。代码层靠四个机制兜住：
 
 1. **Registry storage 预热**：每个岛执行前，主线程先调 `prepare_*_parallel_island_registry()` 强制初始化 EnTT 的惰性 component storage，避免 worker 首次访问触发隐式创建导致竞态。
 2. **`DeferredCommands`**：worker 不直接改 registry，把"建/删实体、增/删组件"推进线程安全队列，wave 结束后**主线程** `drain(registry)` 统一落地。
@@ -135,7 +133,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 ### 6. GameMode 裁剪：设计已就位，但运行时当前休眠
 
-自测题 2，也是 L04 / L15 那个 `GameMode` 的收口。`profileStages(mode)` 按模式返回不同的阶段列表：
+问题 2，也是 [HUD 课](04-HUD与覆盖式场景.md)、[战斗过渡课](15-探索与战斗的过渡.md)那个 `GameMode` 的收口。`profileStages(mode)` 按模式返回不同的阶段列表：
 
 | GameMode | 跑哪些阶段 |
 | --- | --- |
@@ -145,25 +143,24 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 非 Exploration 模式直接顺序跑该列表，**不触发并行岛、不查 Gate**。所以"切到 Battle"的**设计动作** = 调度器每 tick 只跑 `RemoveEntity`，gameplay 全停。
 
-**但这里有个必须诚实说明的反转**（呼应 L15）：`game_mode_` 默认 `Exploration`，而它的 setter `setGameMode` **当前没有任何调用者**——运行时 `game_mode_` 永远是 `Exploration`。真正的探索↔战斗切换走的是 **Scene 栈**（L15 push `BattleScene`、L04 覆盖式场景）：`BattleScene` 一压栈，`GameScene::fixedUpdate` 就不再被调用，它的 scheduler 自然 idle，根本不需要翻 mode。
+**但这里有个必须诚实说明的反转**（呼应[战斗过渡课](15-探索与战斗的过渡.md)）：`game_mode_` 默认 `Exploration`，而它的 setter `setGameMode` **当前没有任何调用者**——运行时 `game_mode_` 永远是 `Exploration`。真正的探索↔战斗切换走的是 **Scene 栈**（[战斗过渡课](15-探索与战斗的过渡.md) push `BattleScene`、[HUD 课](04-HUD与覆盖式场景.md)覆盖式场景）：`BattleScene` 一压栈，`GameScene::fixedUpdate` 就不再被调用，它的 scheduler 自然 idle，根本不需要翻 mode。
 
 那这套 GameMode 裁剪是死代码吗？**不是**——它被单元测试覆盖（`system_scheduler_profile_test` / `invariant_test`），`SchedulerDebugPanel` 也读 `game_mode_` 来显示当前模式。它是**就位、但当前由测试驱动**的基础设施：哪天想把战斗改成"原地不切场景、只翻 mode 复用同一个 scheduler"，`profileStages` 已经准备好了。这就是 GameMode 的完整收口——**枚举真实存在、裁剪逻辑真实可用、但 live 路径暂时另走 Scene 栈**。
 
 ---
 
-## 📋 阅读清单
+## 阅读清单
 
 | 资源 | 为什么读 |
 | --- | --- |
 | [`docs/game/system_scheduler.md`](../../docs/game/system_scheduler.md) | 调度器全景：26 阶段表、Gate 时序图、三并行岛资源声明、安全四件套、惰性初始化 |
 | [`docs/engine/loop_timing_contract.md`](../../docs/engine/loop_timing_contract.md) | fixed/render 循环拆分契约：fixedUpdate 固定步、tick 在哪跑、dispatcher 刷新时机 |
-| 上一套 part-26 游戏场景与系统编排 | 升级前"直接 new + 顺序 update"的基线，对照看声明式调度改了什么 |
 | 多线程子教程 10 ECS 并行调度 + 13 entt 多线程与调度器 | 并行 wave / `entt::flow` / 线程池的底层原理 |
 | [`tests/engine/system/parallel_wave_scheduler_test.cpp`](../../tests/engine/system/parallel_wave_scheduler_test.cpp) | 用最小例子正反验证 wave 推导 / 降级 / drain 顺序 / DOT |
 
 ---
 
-## 🔑 源码入口
+## 源码入口
 
 | 文件 | 看什么 |
 | --- | --- |
@@ -175,7 +172,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. "资源读写声明足以推导并行 wave"背后的冲突规则是什么（rw / ro 怎么组合算冲突）？如果一个系统实际写了某资源却漏声明 `rw`，会发生什么？用 `entt::flow` 的视角解释。
 2. 把 `GameMode` 切到 Battle，`profileStages` 返回什么、tick 怎么退化？再答：当前项目里这个切换真的会在运行时发生吗？如果不会，战斗时 `GameScene` 的 scheduler 为什么自然就停了？
@@ -184,7 +181,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：导出调度图，读出并行 wave 结构，再亲手制造一条依赖看 wave 怎么裂开。
 
@@ -195,7 +192,7 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 
 ---
 
-## 📌 小结
+## 小结
 
 - **从顺序 update 到声明式调度**：`SystemScheduler` 不拥有系统（`GameSystemBundle` 持有）、`tick()` 是 const；26 个 `SchedulerStage` 定义顺序，无 System 基类、靠函数指针分发 + 空指针保护。
 - **资源声明 → `entt::flow` → wave**：每个任务声明 `ro`/`rw` 资源，flow 按"写与任意访问冲突、读读不冲突"连依赖边，拓扑分层成 wave，同 wave 可并行。**声明是契约，漏声明 = 数据竞争**。
@@ -204,8 +201,8 @@ worker 线程不能随便碰 `registry` / `dispatcher`，否则 EnTT 的非线�
 - **两道 Gate**：`RemoveEntity` 永远先跑；Gate1 起始查过渡、Gate2 Movement 后查过渡，过渡中提前返回，避免在"半个地图"上跑逻辑。
 - **GameMode 收口**：`profileStages` 按模式裁剪阶段（Battle 仅 RemoveEntity）——但 `setGameMode` 当前无调用者，runtime 恒为 Exploration，真正切换靠 Scene 栈；这套裁剪是就位、被测试驱动、随时可启用的基础设施。
 
-## 🚀 下节课预告
+---
 
-调度器是工程化主体的最后一块。下一讲收官。
+调度器是工程化主体的最后一块。下节课收官。
 
-下一讲 **L26 调试、测试与课程收尾**：把 TinyFarmRPG 的"工程化保护网"汇总成一张地图——调试面板全景（Battle / Quest / Shop / Inventory / Map / Save / Scheduler / RmlUi / VFX）、测试层级与选择标准（domain test / system test / scene smoke / source guard）、工具链（`visual_tester` / `rmlui_tester` / `battle_tester` / `scheduler_dot_dump` / `rpg_importer`），以及最实用的一份 checklist：**给一个新玩法，你该先写哪一层测试**。读完这讲，你就能在 TinyFarmRPG 上独立加玩法、加内容、加 UI，而不把工程改散。课程到此收官。
+下节课讲调试、测试与课程收尾：把 TinyFarmRPG 的"工程化保护网"汇总成一张地图——调试面板全景（Battle / Quest / Shop / Inventory / Map / Save / Scheduler / RmlUi / VFX）、测试层级与选择标准（domain test / system test / scene smoke / source guard）、工具链（`visual_tester` / `rmlui_tester` / `battle_tester` / `scheduler_dot_dump` / `rpg_importer`），以及最实用的一份 checklist：**给一个新玩法，你该先写哪一层测试**。读完这节课，你就能在 TinyFarmRPG 上独立加玩法、加内容、加 UI，而不把工程改散。课程到此收官。

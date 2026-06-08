@@ -1,16 +1,14 @@
-# L21 存档系统与 Schema 迁移
+# 第21节课 · 存档系统与 Schema 迁移
 
 Stage V 把战斗闭环讲完了。现在进入 **Stage VI 工程化收尾**——让这个长大的项目"扛得住"。第一站是存档。
 
-战斗、探索、背包、队伍、任务、商店、世界、甚至 Lua 的剧情 flag……所有这些状态，怎么**存下来、读回来**，还要能在你不断加新功能时不崩？本讲的核心视角是：**把存档当成"全项目最大的一次原子写入"**——它要么完整地落盘，要么干脆不动旧档，绝不留下半个损坏的存档。
+战斗、探索、背包、队伍、任务、商店、世界、甚至 Lua 的剧情 flag……所有这些状态，怎么**存下来、读回来**，还要能在你不断加新功能时不崩？这节课的核心视角是：**把存档当成"全项目最大的一次原子写入"**——它要么完整地落盘，要么干脆不动旧档，绝不留下半个损坏的存档。
 
-围绕这个视角，本讲讲六件事：存档涵盖哪些状态、原子替换怎么做、迁移链怎么把旧档升到新版、坏 JSON 如何被拒绝、新增组件时存档的接入 checklist、以及后台异步保存。还有一条贯穿的取舍——**项目未上线，开发期可以直接删档重来，但一旦 bump schema，仍要走迁移的流程**，这道边界本讲会说清楚。
+围绕这个视角，这节课讲六件事：存档涵盖哪些状态、原子替换怎么做、迁移链怎么把旧档升到新版、坏 JSON 如何被拒绝、新增组件时存档的接入 checklist、以及后台异步保存。还有一条贯穿的取舍——**项目未上线，开发期可以直接删档重来，但一旦 bump schema，仍要走迁移的流程**，这道边界这节课会说清楚。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. "原子替换"在文件系统层面具体怎么做？为什么不能直接往原存档文件里写？
 2. schema 从 v7 升到 v8，旧档加载时会发生什么？什么情况下必须写迁移代码、什么情况下可以省？
@@ -20,7 +18,7 @@ Stage V 把战斗闭环讲完了。现在进入 **Stage VI 工程化收尾**—�
 
 ---
 
-## 👁️ 先看再讲：打开一个存档文件
+## 先看再讲：打开一个存档文件
 
 存一次档（暂停菜单 → 保存到某个槽），然后用编辑器打开 `saves/slot0.json`。你会看到一棵清清楚楚的状态树：
 
@@ -39,13 +37,13 @@ Stage V 把战斗闭环讲完了。现在进入 **Stage VI 工程化收尾**—�
 }
 ```
 
-这棵树就是**整个项目某一刻的全状态快照**。注意几个呼应前面讲次的字段：`party_runtime_state` 里 `total_exp` 是等级真源（L13）；`script_state` 是 Lua `tf.state`（L06）。本讲就讲这棵树怎么被安全地写下去、读回来、以及版本演进时怎么升级。
+这棵树就是**整个项目某一刻的全状态快照**。注意几个呼应前面课程的字段：`party_runtime_state` 里 `total_exp` 是等级真源（[装备成长课](13-装备成长与休息.md)）；`script_state` 是 Lua `tf.state`（[Lua 内容层总览](06-Lua内容层总览.md)）。这节课就讲这棵树怎么被安全地写下去、读回来、以及版本演进时怎么升级。
 
 > 顺手观察：保存的一瞬间，`saves/` 目录里会闪过一个 `slot0.json.tmp`——这就是原子替换的临时文件。下面 §2 讲它为什么存在。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart LR
@@ -73,7 +71,7 @@ flowchart LR
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. 存档 = 全项目状态快照，`SaveData` 只管格式
 
@@ -84,7 +82,7 @@ flowchart LR
 - `capture()`：从 `registry` / `WorldState` 读出当前状态 → 填进 `SaveData`。
 - `apply()`：把 `SaveData` 写回 `registry` / `WorldState`。
 
-这层隔离的价值是：**序列化格式的演进（schema）和游戏内部表示（ECS 组件）解耦**。组件怎么改是游戏的事，`SaveData` 只负责"长成 JSON 该有的样子"。几个值得记的字段语义：`party_runtime_state.actor_states` 存 `current_hp/current_mp/level/total_exp`，读档时 **`total_exp` 是等级真源、`level` 按 actor 曲线重新推导**（L13）；`script_state` 存 Lua `tf.state` 的 JSON 基元，承载一次性宝箱、剧情 flag 等内容层状态（L06）。
+这层隔离的价值是：**序列化格式的演进（schema）和游戏内部表示（ECS 组件）解耦**。组件怎么改是游戏的事，`SaveData` 只负责"长成 JSON 该有的样子"。几个值得记的字段语义：`party_runtime_state.actor_states` 存 `current_hp/current_mp/level/total_exp`，读档时 **`total_exp` 是等级真源、`level` 按 actor 曲线重新推导**（[装备成长课](13-装备成长与休息.md)）；`script_state` 存 Lua `tf.state` 的 JSON 基元，承载一次性宝箱、剧情 flag 等内容层状态（[Lua 内容层总览](06-Lua内容层总览.md)）。
 
 ### 2. 原子替换：写临时文件，再 rename 覆盖
 
@@ -103,7 +101,7 @@ if (!replaceSaveFile(tmp_path, file_path, out_error)) {      // 原子替换或 
 }
 ```
 
-这是自测题 1 的答案：**完整内容先写进 `slotX.json.tmp`，确认写成功后，再用 `rename` 一步把它覆盖到 `slotX.json`。** 文件系统层面 `rename` 是原子的——任何时刻 `slotX.json` 要么是**完整的旧档**、要么是**完整的新档**，永远不会是"写了一半"的状态。如果直接往原文件写，写到一半断电，真档就成了垃圾。代价只是多一个临时文件和一次 rename，换来的是"存档永不半写"的强保证。
+这是问题 1 的答案：**完整内容先写进 `slotX.json.tmp`，确认写成功后，再用 `rename` 一步把它覆盖到 `slotX.json`。** 文件系统层面 `rename` 是原子的——任何时刻 `slotX.json` 要么是**完整的旧档**、要么是**完整的新档**，永远不会是"写了一半"的状态。如果直接往原文件写，写到一半断电，真档就成了垃圾。代价只是多一个临时文件和一次 rename，换来的是"存档永不半写"的强保证。
 
 这里的 fallback 也要保护旧档：`replaceSaveFile()` 会先尝试 `rename(tmp, target)`；如果平台不允许覆盖已存在目标，它会把旧档移到 `slotX.json.bak`，再把 `.tmp` 改名为真档。第二次 rename 若失败，会尝试把 `.bak` 恢复回 `slotX.json`。所以兜底策略不是"删掉旧档再试一次"，而是**尽量让旧档在失败路径上还有恢复机会**。
 
@@ -140,7 +138,7 @@ if (json[KEY_SCHEMA_VERSION] == 7u) { migrateV7ToV8(json, out_error); }
 
 精髓是：**每个 `migrateVNToVN+1` 只懂"从 N 到 N+1"这一步**，链式调用就能把任意中间版本一路升到最新。一个 v4 的旧档会依次流过 v4→v5→v6→v7→v8。两道护栏也很关键：`schema_version == 0`（缺失）拒载、`> SAVE_SCHEMA_VERSION`（来自未来的版本）拒载——**宁可拒绝，也不误读成更坏的状态**。注意链条从 v2 起步，更早的版本不支持——这正是"未上线项目可重置"的边界：只维护一个近期版本窗口，太老的直接弃。
 
-这是自测题 2 的答案：v7 升 v8，`migrateV7ToV8` 会跑，给 `party_state.max_active_members` 补默认 4，再 deserialize。**什么时候必须写迁移代码？** 当 schema 变化是**破坏性**的（字段改名、删除、结构重组）——旧档的 JSON 形状对不上新 `deserialize`，必须用迁移函数把它转换过来。**什么时候能省？** 当变化是**纯加性**的——只新增一个带合理默认值的字段，`deserialize` 用默认值读不到就取默认，旧档照样能加载；本项目仍倾向 bump schema，把"版本号"和"格式"保持对应。
+这是问题 2 的答案：v7 升 v8，`migrateV7ToV8` 会跑，给 `party_state.max_active_members` 补默认 4，再 deserialize。**什么时候必须写迁移代码？** 当 schema 变化是**破坏性**的（字段改名、删除、结构重组）——旧档的 JSON 形状对不上新 `deserialize`，必须用迁移函数把它转换过来。**什么时候能省？** 当变化是**纯加性**的——只新增一个带合理默认值的字段，`deserialize` 用默认值读不到就取默认，旧档照样能加载；本项目仍倾向 bump schema，把"版本号"和"格式"保持对应。
 
 ### 5. 反序列化护栏：类型错就是坏档，不让异常漏出来
 
@@ -152,12 +150,12 @@ if (json[KEY_SCHEMA_VERSION] == 7u) { migrateV7ToV8(json, out_error); }
 
 ### 6. 新增组件接入存档的 checklist
 
-把一个新组件纳入存档，接入点是固定的几处（自测题 3）：
+把一个新组件纳入存档，接入点是固定的几处（问题 3）：
 
 1. **格式**：在 `save_data.h` 给 `SaveData` 加字段 + 在 `json_keys` 加键名。
 2. **序列化**：在 `save_data.cpp` 的 `serialize` / `deserialize` 里加这个字段的读写；`deserialize` 使用现有 typed read helper 给默认值并返回错误，而不是直接依赖 `json.value<T>()`。
 3. **抓取**：在 `save_service.cpp` 的 `capture()` 里从 ECS / WorldState 读出来填进 `SaveData`。
-4. **应用**：在 `apply()` 里写回 ECS，**并触发必要的 sync 命令**——`apply` 不只是填组件，还要发 `InventorySyncCommand` / `RefreshAppearanceCommand` / `HotbarSyncCommand` 之类，让 HUD/UI 跟着刷新（这和 L20 写回后发 `PartyRuntimeStatsChanged` 是同一个道理：改了真相要通知表现）。
+4. **应用**：在 `apply()` 里写回 ECS，**并触发必要的 sync 命令**——`apply` 不只是填组件，还要发 `InventorySyncCommand` / `RefreshAppearanceCommand` / `HotbarSyncCommand` 之类，让 HUD/UI 跟着刷新（这和[战斗结算课](20-战斗结算与探索态写回.md)写回后发 `PartyRuntimeStatsChanged` 是同一个道理：改了真相要通知表现）。
 5. **版本**：破坏性改动则 bump `SAVE_SCHEMA_VERSION` 并加一个 `migrateV8ToV9` 步骤；纯加性字段也可以 bump，以保持版本号和格式对应。
 6. **地图实体**：若新组件挂在地图动态实体上，确认它进了 `snapshotCurrentMap`（§3）。
 
@@ -174,7 +172,7 @@ dispatcher.trigger(game::defs::HotbarActivateCommand{player, hotbar->active_slot
 
 ### 7. 后台异步保存：主线程抓取，worker 写盘
 
-存档文件可能不小，写盘是 IO 阻塞操作——放主线程会卡帧。`saveToFileAsync`（[`save_service.cpp`](../../src/game/save/save_service.cpp)）把它拆成两段（自测题 4）：
+存档文件可能不小，写盘是 IO 阻塞操作——放主线程会卡帧。`saveToFileAsync`（[`save_service.cpp`](../../src/game/save/save_service.cpp)）把它拆成两段（问题 4）：
 
 ```cpp
 if (!save_in_progress_.compare_exchange_strong(expected, true, ...)) { /* 已在保存，拒绝重入 */ }
@@ -187,29 +185,28 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 });
 ```
 
-为什么必须这样分？**`capture()` 读 ECS registry，必须在主线程同步做**——registry 不是线程安全的，worker 线程碰它就是数据竞争。而 `SaveData` 是一份纯数据副本，`std::move` 进 worker 线程后，写盘就和主线程彻底无关了。完成后，worker **不能直接碰 dispatcher**，而是把"完成事件"塞进 `main_thread_queue`，由主线程取出再派发 `AsyncSaveCompletedEvent`。`PauseMenuScene` 订阅这个事件，成功就显示保存完成，失败就显示错误；不是每帧轮询一个结果对象。`save_in_progress_` 这个 atomic 标志防止重入（保存中再点保存会被拒）。这套"主线程抓数据、worker 干 IO、命令队列回主线程"正是 L24 异步管线的预演（细节见多线程子教程 09）。
+为什么必须这样分？**`capture()` 读 ECS registry，必须在主线程同步做**——registry 不是线程安全的，worker 线程碰它就是数据竞争。而 `SaveData` 是一份纯数据副本，`std::move` 进 worker 线程后，写盘就和主线程彻底无关了。完成后，worker **不能直接碰 dispatcher**，而是把"完成事件"塞进 `main_thread_queue`，由主线程取出再派发 `AsyncSaveCompletedEvent`。`PauseMenuScene` 订阅这个事件，成功就显示保存完成，失败就显示错误；不是每帧轮询一个结果对象。`save_in_progress_` 这个 atomic 标志防止重入（保存中再点保存会被拒）。这套"主线程抓数据、worker 干 IO、命令队列回主线程"正是后续异步课程异步管线的预演。
 
 顺带一提槽位摘要：存档槽选择界面不会去全量加载每个档，而是用 `tryReadSlotSummary` 只读出 `SlotSummary{ day, timestamp }` 两个字段来显示——读个标题不必读整本书。摘要读取失败时，Load 模式把槽位置灰，Save 模式允许覆盖。
 
 ---
 
-## 📋 阅读清单
+## 阅读清单
 
 | 资源 | 为什么读 |
 | --- | --- |
-| [`docs/game/save_and_flow.md`](../../docs/game/save_and_flow.md) | 存档全景：数据闭环图、snapshot 不变量、typed read 与排错 checklist——本讲的权威底稿 |
+| [`docs/game/save_and_flow.md`](../../docs/game/save_and_flow.md) | 存档全景：数据闭环图、snapshot 不变量、typed read 与排错 checklist——本节课的权威底稿 |
 | [`docs/tutorial/multi-thread/09-background-save-io.md`](../../docs/tutorial/multi-thread/09-background-save-io.md) | 后台异步保存的多线程细节（主线程抓取 / worker 写盘 / 主线程队列回派完成事件） |
-| L13《装备、成长与休息》 | `party_runtime_state` 里 `total_exp` 作为等级真源的来历 |
-| L06《Lua 内容层总览》 | `script_state` 就是 `tf.state`，为什么剧情 flag 要进存档 |
-| 上一套 part-32《存档与流程收尾》 | 升级前的存档基线，对照领域服务集中写入与 schema 迁移的新增 |
+| [装备、成长与休息](13-装备成长与休息.md) | `party_runtime_state` 里 `total_exp` 作为等级真源的来历 |
+| [Lua 内容层总览](06-Lua内容层总览.md) | `script_state` 就是 `tf.state`，为什么剧情 flag 要进存档 |
 
 ---
 
-## 🔑 源码入口
+## 源码入口
 
 | 文件 | 看什么 |
 | --- | --- |
-| [`src/game/save/save_service.cpp`](../../src/game/save/save_service.cpp) | `writeSaveFile` / `replaceSaveFile`、`capture`/`apply`、`saveToFileAsync`——**本讲主入口** |
+| [`src/game/save/save_service.cpp`](../../src/game/save/save_service.cpp) | `writeSaveFile` / `replaceSaveFile`、`capture`/`apply`、`saveToFileAsync`——**本节课主入口** |
 | [`src/game/save/save_data.h`](../../src/game/save/save_data.h) / `.cpp` | `SAVE_SCHEMA_VERSION`、`json_keys`、`SaveData` 结构、`serialize`/`deserialize` 与 typed read helper |
 | [`src/game/save/save_migrator.cpp`](../../src/game/save/save_migrator.cpp) | `migrateToLatest` 迁移链、`migrateVNToVN+1` 步骤、版本与类型护栏 |
 | [`src/game/save/save_slot_summary.h`](../../src/game/save/save_slot_summary.h) / `.cpp` | `SlotSummary{day,timestamp}`、`tryReadSlotSummary` 轻量读取 |
@@ -217,7 +214,7 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. 用一句话说清"临时文件 + rename"为什么能保证存档永不半写。如果某平台 `rename` 在目标已存在时会失败，代码怎么兜底？
 2. schema 从 v7 升 v8，`migrateToLatest` 里发生了什么？现在你想给某组件加一个带默认值的新字段——必须写迁移函数吗？如果改成把某字段改名，又必须吗？
@@ -227,7 +224,7 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：给某组件加一个新字段，bump schema 并写最简迁移，验证旧档能加载。
 
@@ -242,17 +239,17 @@ async_save_thread_.emplace([this, data = std::move(data), ...]() mutable {
 
 ---
 
-## 📌 小结
+## 小结
 
 - **存档 = 全项目状态快照**：schema v8 涵盖 quest/skill/appearance/party/equipment/party_runtime/combat/script_state；`party_state.max_active_members` 保存队伍上限；`SaveData` 只管格式，`capture`/`apply` 在它与 ECS 之间翻译；`total_exp` 是等级真源、`script_state` 即 `tf.state`。
 - **原子替换**：写 `.tmp` → `rename` 覆盖，真档永远非旧即新；目标平台不能覆盖 rename 时走 `.bak` 备份和失败恢复；直接写原文件会在崩溃时尽毁存档。
 - **不变量**：保存前必须 `snapshotCurrentMap`，否则静默丢当前地图的动态实体变化。
 - **迁移与类型护栏**：`migrateToLatest` 顺序累积、每步只管 N→N+1；缺失/未来版本一律拒载；scalar 类型和范围显式校验；加性字段可靠 deserialize 默认值省迁移，破坏性改动必须写迁移 + bump。
 - **接入 checklist**：SaveData 字段+键 → serialize/deserialize typed read → capture → apply（含发 sync 命令）→ (破坏性则 bump+迁移) → (地图实体则 snapshot 覆盖)。
-- **异步保存**：主线程 `capture`（读 ECS 不可上 worker）、worker 写 IO、`main_thread_queue` 回派 `AsyncSaveCompletedEvent`、`save_in_progress_` 防重入；预演 L24 异步管线。
+- **异步保存**：主线程 `capture`（读 ECS 不可上 worker）、worker 写 IO、`main_thread_queue` 回派 `AsyncSaveCompletedEvent`、`save_in_progress_` 防重入；后续异步管线的预演。
 
-## 🚀 下节课预告
+---
 
 存档解决了"状态怎么跨会话存活"。但还有一类状态**不该进存档、要跨所有存档共享**——用户偏好（语言、战斗速度、各种开关）。
 
-下一讲 **L22 本地化、用户设置与 UI 文案管线**：把 i18n 与用户偏好作为一组"跨场景全局服务"讲清楚——`LocalizationService` 的 manifest/fallback/`tr`、RmlUi `data-i18n` 静态绑定 vs C++ ViewModel 动态文案 vs Lua `tf.i18n` 三条路径、`UserSettingsService` 作为偏好唯一真源、以及"偏好为什么不入存档、要跨 save slot 共享"的设计取舍。下讲见。
+下节课讲本地化、用户设置与 UI 文案管线：把 i18n 与用户偏好作为一组"跨场景全局服务"讲清楚——`LocalizationService` 的 manifest/fallback/`tr`、RmlUi `data-i18n` 静态绑定 vs C++ ViewModel 动态文案 vs Lua `tf.i18n` 三条路径、`UserSettingsService` 作为偏好唯一真源、以及"偏好为什么不入存档、要跨 save slot 共享"的设计取舍。下节课见。
