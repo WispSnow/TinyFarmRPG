@@ -1,23 +1,21 @@
-# L06 Lua 内容层总览
+# 第6课 Lua 内容层总览
 
-到这一讲为止，我们走完了 **Stage I 项目接续** 与 **Stage II UI 与输入**。从本讲开始进入 **Stage III — Lua 内容层**。
+到这节课为止，我们走完了项目接续（Stage I）和 UI 与输入（Stage II）。从这节课开始进入 Stage III——Lua 内容层。
 
-你可能会奇怪：**项目都已经有 C++ + ECS + domain service 这套架构了，为什么还要一个 Lua 层？**
+你可能会奇怪：**项目已经有 C++ + ECS + domain service 这套架构了，为什么还要一个 Lua 层？**
 
-直观回答：**因为 C++ 改一句对白要重编译 10 秒**。但更深层的答案，是 TinyFarmRPG 想清晰地把"**规则真相**"与"**内容编排**"分到两个不同抽象层级。
+最直观的回答：**因为 C++ 改一句对白要重编译 10 秒**。但更深层的答案，是 TinyFarmRPG 想清晰地把"**规则真相**"与"**内容编排**"分到两个不同的抽象层级。
 
-- "拾取物品要不要给经验" 是规则真相——**这种事必须 C++ 守**。
-- "村口的老人在第 3 天会说什么、玩家选了 A 选项后给哪种种子、招募小猫之前必须先完成一个任务" 是内容编排——**这种事让 Lua 写**。
+- "拾取物品要不要给经验"是规则真相——**这种事必须 C++ 守**。
+- "村口的老人在第 3 天会说什么、玩家选了 A 选项后给哪种种子、招募小猫之前必须先完成一个任务"是内容编排——**这种事让 Lua 写**。
 
-本讲讲清楚这条边界，以及围绕它建立的两条核心规约。
+这节课讲清楚这条边界，以及围绕它建立的两条核心规约。
 
-> **范围说明**：本讲只讲"Lua 这一层做什么、目录怎么组织、规约是什么"。**C++ 如何用 Sol2 把 API 安全地暴露给 Lua** 留到 L07，**Tiled 与脚本事件桥的接入** 留到 L08。
+> **范围说明**：这节课只讲"Lua 这一层做什么、目录怎么组织、规约是什么"。**C++ 如何用 Sol2 把 API 安全地暴露给 Lua** 留到 [ScriptHost 与 Sol2 绑定](07-ScriptHost与Sol2绑定.md)，**Tiled 与脚本事件桥的接入** 留到 [脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md)。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 为什么 `bootstrap.lua` 必须**顶层幂等**？什么样的写法会破坏幂等？
 2. `tf.state` 与 Lua module-local 变量在"读档后存活"上有什么差异？
@@ -26,7 +24,7 @@
 
 ---
 
-## 👁️ 先看再讲：在项目里读一份现成的 NPC 脚本
+## 先看再讲：在项目里读一份现成的 NPC 脚本
 
 打开 [`scripts/npcs/greeter.lua`](../../scripts/npcs/greeter.lua)——一个最简单的 NPC，约 30 行：
 
@@ -70,7 +68,7 @@ return greeter
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TD
@@ -108,7 +106,7 @@ sequenceDiagram
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. 边界定义：内容编排 vs 规则真相
 
@@ -142,7 +140,7 @@ flowchart LR
 | 改背包 / 装备 / 任务状态 / 商店库存 / 角色 HP | **C++**（走 domain service） |
 | 把一组对白按"白天 / 晚上 / 雨天"分支 | **Lua** |
 | 让某宝箱只能开一次 | **Lua**（`lib.once`） |
-| 在"第 3 天 + 完成任务 X" 时让 NPC 说不同的话 | **Lua** |
+| 在"第 3 天 + 完成任务 X"时让 NPC 说不同的话 | **Lua** |
 | 临时生成一套商店库存 | **不允许**——`shops.json` 静态预设里加，Lua 切 `shop_id` |
 | 写战斗结算公式 | **C++**（`BattleFormulaEvaluator`） |
 | 在战斗胜利后播一段剧情 | **Lua**（`tf.event.on("battle_ended", ...)` 或 `lib.event.on_battle_end`） |
@@ -175,7 +173,7 @@ flowchart LR
 | C++ | 加一个 `FirstEntryComponent`、写 system 监听 map_enter、加 flag 序列化到存档、再写 UI 弹窗 |
 | Lua | 一行 `once.run("map.home.first_enter", function() dialogue.show(...) end)` |
 
-**关键洞察**：JRPG 内容的"高频迭代"特性几乎全部集中在 **条件分支、对白文案、剧情触发** 这三件事上。把它们丢给 Lua 后，C++ 工程师可以专心维护 **规则真相 + 性能热路径**，内容创作者（甚至策划）可以独立改剧本而不破坏架构。
+**关键洞察**：JRPG 内容的"高频迭代"特性几乎全部集中在**条件分支、对白文案、剧情触发**这三件事上。把它们丢给 Lua 后，C++ 工程师可以专心维护**规则真相 + 性能热路径**，内容创作者（甚至策划）可以独立改剧本而不破坏架构。
 
 ### 3. `scripts/` 目录组织
 
@@ -209,7 +207,7 @@ tf.script.require("quests.village_goblin_cleanup")
 
 ### 4. `tf.*` API 能力地图
 
-打开 [`tinyfarm_script_module.cpp`](../../src/game/script/tinyfarm_script_module.cpp)（详深 L07 讲），里面 `tf` 顶层下挂了 15 个只读子命名空间：
+`tf` 顶层下挂了 15 个只读子命名空间（C++ 绑定细节留到 [ScriptHost 与 Sol2 绑定](07-ScriptHost与Sol2绑定.md)）：
 
 | 命名空间 | 能力 | 典型用法 |
 | --- | --- | --- |
@@ -231,7 +229,7 @@ tf.script.require("quests.village_goblin_cleanup")
 
 日夜判断没有直接挂在 `tf.time` 上，而是由 [`scripts/lib/time.lua`](../../scripts/lib/time.lua) 包成 `time.is_night()` / `time.is_day()`。战斗结束也不在 `tf.battle` 下提供专门的 ended 注册函数；要么直接 `tf.event.on("battle_ended", fn)`，要么通过 `lib.event.on_battle_end(fn)`。
 
-**记住这个地图的捷径**：写新内容前问自己 "我要触发什么"（dialogue / quest / shop / battle / map）、"我要查什么"（time / entity / quest.status / player）、"我要持久化什么"（state / once）。三个问题答出来，对应的 `tf.*` 调用基本就能挑齐。
+**记住这个地图的捷径**：写新内容前问自己三个问题——"我要触发什么"（dialogue / quest / shop / battle / map）、"我要查什么"（time / entity / quest.status / player）、"我要持久化什么"（state / once）。三个问题答出来，对应的 `tf.*` 调用基本就能挑齐。
 
 ### 5. 关键规约 ①：脚本顶层必须幂等
 
@@ -299,7 +297,7 @@ function state.unset(key) return tf.state.unset(key) end
 -- ...
 ```
 
-**`tf.state` 背后的 C++ 实现** 是一个 `ScriptStateStore`（[`script_state.h`](../../src/game/script/script_state.h)）——本质上是一个 `unordered_map<string, variant<nullptr_t, bool, double, string>>`。这个 map 会被**存档系统**写入 / 读出，作为存档 schema 的一部分（详深 L21）。
+**`tf.state` 背后的 C++ 实现**是一个 `ScriptStateStore`（[`script_state.h`](../../src/game/script/script_state.h)）——本质上是一个 `unordered_map<string, variant<nullptr_t, bool, double, string>>`。这个 map 会被**存档系统**写入 / 读出，作为存档 schema 的一部分（细节留到后续存档课程）。
 
 `lib.once` 是 `tf.state` 的一个常用包装，专门处理"一次性"语义：
 
@@ -343,41 +341,41 @@ state.set(visit_key, visits)
 
 | 文件 | 职责 | 详深何时讲 |
 | --- | --- | --- |
-| `dialogue.lua` | 多行对话状态机、选项推进、远离关闭协调 | L08 脚本事件桥（dialogue payload） |
-| `event.lua` | `on_day_changed` / `on_battle_end` 等事件注册的语法糖 | L08 |
-| `quest.lua` | quest id → module path 转换（例：`quest.village.goblin_cleanup` → `quests.village_goblin_cleanup`） | L10 任务系统 |
-| `recruit_npc.lua` | 招募 NPC 的"对话 → 选项 → 入队"标准流程 | L12 队伍与招募 |
-| `time.lua` | 日夜判断、时间窗口检测 | L11 商店系统（按时间切 shop_id） |
+| `dialogue.lua` | 多行对话状态机、选项推进、远离关闭协调 | [脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md)（dialogue payload） |
+| `event.lua` | `on_day_changed` / `on_battle_end` 等事件注册的语法糖 | [脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md) |
+| `quest.lua` | quest id → module path 转换（例：`quest.village.goblin_cleanup` → `quests.village_goblin_cleanup`） | [任务系统](10-任务系统.md) |
+| `recruit_npc.lua` | 招募 NPC 的"对话 → 选项 → 入队"标准流程 | [队伍与招募](12-队伍与招募.md) |
+| `time.lua` | 日夜判断、时间窗口检测 | [商店系统](11-商店系统.md)（按时间切 shop_id） |
 
 **这些 helper 的存在让 NPC 脚本变得很短**——一个普通 NPC 30 行、一个商人 40 行、一个招募角色 60 行。每个新内容主要工作是"选一组 helper + 串起来"。
 
 ---
 
-## 📋 阅读清单
+## 配合阅读
 
 | 顺序 | 文件 / 章节 | 关注点 |
 | :---: | --- | --- |
-| 1 | [`docs/tutorial/lua-content-authoring.md`](../../docs/tutorial/lua-content-authoring.md) | **本讲核心阅读材料**——能力地图、目录约定、Tiled 接入、常用配方 |
+| 1 | [`docs/tutorial/lua-content-authoring.md`](../../docs/tutorial/lua-content-authoring.md) | **本节课核心阅读材料**——能力地图、目录约定、Tiled 接入、常用配方 |
 | 2 | [`scripts/bootstrap.lua`](../../scripts/bootstrap.lua) | 组合根本身。注意顶层 require 与事件注册都必须幂等 |
-| 3 | [`scripts/lib/state.lua`](../../scripts/lib/state.lua) + [`scripts/lib/once.lua`](../../scripts/lib/once.lua) | **本讲重点**——持久化语义对比 |
-| 4 | [`scripts/lib/dialogue.lua`](../../scripts/lib/dialogue.lua) / `event.lua` / `quest.lua` / `recruit_npc.lua` / `time.lua` | helper 集，本讲只通览，详深在后续讲次 |
+| 3 | [`scripts/lib/state.lua`](../../scripts/lib/state.lua) + [`scripts/lib/once.lua`](../../scripts/lib/once.lua) | **本节课重点**——持久化语义对比 |
+| 4 | [`scripts/lib/dialogue.lua`](../../scripts/lib/dialogue.lua) / `event.lua` / `quest.lua` / `recruit_npc.lua` / `time.lua` | helper 集，本节课只通览，详深在后续课程 |
 | 5 | [`scripts/npcs/greeter.lua`](../../scripts/npcs/greeter.lua)（约 30 行） | 最简 NPC 脚本模板 |
 
 ---
 
-## 🔑 源码入口
+## 从这几个文件开始看
 
 | 顺序 | 文件 | 你会看到什么 |
 | :---: | --- | --- |
 | 1 | [`src/game/script/script_state.h`](../../src/game/script/script_state.h) | `ScriptStateStore`——`tf.state` 背后的 C++ 实现，约 60 行，本质是个 typed variant map |
-| 2 | [`src/game/script/tinyfarm_script_module.cpp`](../../src/game/script/tinyfarm_script_module.cpp)（搜 `// ── tf.`） | 15 个只读子命名空间的注册——只看分块标记，**详深留 L07** |
+| 2 | [`src/game/script/tinyfarm_script_module.cpp`](../../src/game/script/tinyfarm_script_module.cpp)（搜 `// ── tf.`） | 15 个只读子命名空间的注册——只看分块标记，**详深留到 [ScriptHost 与 Sol2 绑定](07-ScriptHost与Sol2绑定.md)** |
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. **幂等性**：把 `tf.command.add_item("apple", 5)` 放在 `bootstrap.lua` 顶层，**不**用 `tf.state` 或 `once` 保护——读 5 次存档会发生什么？
-2. **state vs once**：要让 "玩家第一次见到 NPC 时多说一句开场白"——你会用 `state` 还是 `once`？为什么？
+2. **state vs once**：要让"玩家第一次见到 NPC 时多说一句开场白"——你会用 `state` 还是 `once`？为什么？
 3. **该写哪边**：以下需求分别归 Lua 还是 C++？
    - 战斗胜利后给经验值
    - 战斗胜利后播一段剧情对白
@@ -389,7 +387,7 @@ state.set(visit_key, visits)
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：读懂 `state` 与 `once` 的语义差别。
 
@@ -397,14 +395,14 @@ state.set(visit_key, visits)
 
 1. 打开 [`scripts/lib/state.lua`](../../scripts/lib/state.lua)（约 40 行）和 [`scripts/lib/once.lua`](../../scripts/lib/once.lua)（约 30 行）。
 2. 列出至少 **3 个**两者在"调用方式"上的差异。
-3. 找到 `once.run` 里 `state.set(key, true)` **在 `fn()` 之前** 的那一行——用一句话解释**为什么是这个顺序而不是反过来**。
+3. 找到 `once.run` 里 `state.set(key, true)` **在 `fn()` 之前**的那一行——用一句话解释**为什么是这个顺序而不是反过来**。
 4. 在 [`scripts/maps/home_exterior.lua`](../../scripts/maps/home_exterior.lua) 找一处 `once.run` 的真实用法，跟踪它的 `key` 在 `bootstrap.lua` 重新加载或 `ScriptHost::reload()` 后如何被"记住"。
 
 **完成后回答**：如果某天需求要求"宝箱开一次后 5 天恢复，又能再开一次"——`once` 还能用吗？应该改用 `state` 怎么实现？
 
 ---
 
-## 📌 小结
+## 小结
 
 - TinyFarmRPG 的 Lua 内容层负责"**内容编排**"（对白、剧情、条件分支），C++ 负责"**规则真相**"（写入、解算、存档）。
 - `scripts/` 按 `bootstrap.lua` → `lib/` → `maps/` / `npcs/` / `quests/` 组织；新增脚本必须在 `bootstrap.lua` 里 `tf.script.require`。
@@ -414,6 +412,8 @@ state.set(visit_key, visits)
   - **持久剧情状态走 `tf.state`**——它是 Lua 与存档系统之间的唯一通道。
 - `lib.once` 提供"at-most-once"语义包装；`state` 提供任意 typed 持久状态；按"是否需要 hook fn"和"值是否仅作 flag"选择。
 
-## 🚀 下节课预告
+---
 
-本讲讲完了"Lua 这一层做什么"。下一讲（**L07 ScriptHost 与 Sol2 绑定**）会**翻到 C++ 一侧**：`ScriptHost` 怎么嵌入 Lua VM？Sol2 怎么把 `tf.*` API 安全地暴露给脚本？`ScriptEntityHandle` 又是怎么防止 Lua 拿到悬空 entity 的？这是把"Lua 内容层"落地的工程底座。
+## 下节课预告
+
+这节课讲完了"Lua 这一层做什么"。下节课 **[ScriptHost 与 Sol2 绑定](07-ScriptHost与Sol2绑定.md)** 会翻到 C++ 一侧：`ScriptHost` 怎么嵌入 Lua VM？Sol2 怎么把 `tf.*` API 安全地暴露给脚本？`ScriptEntityHandle` 又是怎么防止 Lua 拿到悬空 entity 的？这是把"Lua 内容层"落地的工程底座。

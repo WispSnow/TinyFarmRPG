@@ -1,16 +1,14 @@
-# L09 数据目录全景与 RPG Catalog
+# 第9课 数据目录全景与 RPG Catalog
 
-Stage III 我们把"内容编排"交给了 Lua。但 Lua 脚本里出现的 `tf.battle.start("troop.goblin_pair")`、`tf.quest.accept("...")`、招募对白里引用的 `actor.lyria`——这些 **id 背后的"真相"到底存在哪里**？哥布林有多少血、用什么技能、掉什么东西、长什么样？
+前面三节课我们把"内容编排"交给了 Lua。但 Lua 脚本里出现的 `tf.battle.start("troop.goblin_pair")`、`tf.quest.accept("...")`、招募对白里引用的 `actor.lyria`——这些 **id 背后的"真相"到底存在哪里**？哥布林有多少血、用什么技能、掉什么东西、长什么样？
 
 答案是：**不在 Lua、不在 C++ 系统、不在某个 system 的成员变量里，而是在 `assets/data/` 下的一堆 JSON 里**，由 C++ catalog 加载成**只读查询结构**。
 
-这正是 L06 那句边界的另一半：**Lua 表达内容编排，JSON 表达静态真相，domain service 表达原子写入**。前两讲讲透了"编排"，本讲讲透"真相"——项目里到底有哪些 catalog、JRPG 规则为什么要单独拆到 `assets/data/rpg/`、几百个 id 之间的引用怎么保证不写错，以及为什么每个 id 都同时以"字符串"和"哈希"两种形态存在。
+这正是 [Lua 内容层总览](06-Lua内容层总览.md) 中那条边界的另一半：**Lua 表达内容编排，JSON 表达静态真相，domain service 表达原子写入**。前面讲透了"编排"，这节课讲透"真相"——项目里到底有哪些 catalog、JRPG 规则为什么要单独拆到 `assets/data/rpg/`、几百个 id 之间的引用怎么保证不写错，以及为什么每个 id 都同时以"字符串"和"哈希"两种形态存在。
 
 ---
 
-## 🎯 本讲目标
-
-读完之后，你应该能回答：
+## 读完这节课，你应该能回答
 
 1. 项目里一共有哪几个 catalog？各自管什么？为什么不把这些规则直接写死在 system 里？
 2. 一个 actor 引用了不存在的 skill id，校验会在**什么时候**报错？是运行到战斗里才崩，还是更早？
@@ -20,7 +18,7 @@ Stage III 我们把"内容编排"交给了 Lua。但 Lua 脚本里出现的 `tf.
 
 ---
 
-## 👁️ 先看再讲：RPG 数据目录长什么样
+## 先看再讲：RPG 数据目录长什么样
 
 打开 [`assets/data/rpg/`](../../assets/data/rpg/) 目录，一共 8 个文件：
 
@@ -53,14 +51,14 @@ assets/data/rpg/
 
 - `class_id: "class.swordsman"` → 必须在 `classes.json` 里存在
 - `skill_ids: [...]` → 每个都必须在 `skills.json` 里存在
-- `display_name: "actor.player.name"` → 这是个 **i18n key**，不是直接的显示名（留 L22）
-- `battle_visual.sprite_blueprint_id: "player"` → 指向 blueprint（L08 讲过）
+- `display_name: "actor.player.name"` → 这是个 **i18n key**，不是直接的显示名（细节留到后续本地化课程）
+- `battle_visual.sprite_blueprint_id: "player"` → 指向 blueprint（[脚本事件桥与 Tiled 接入](08-脚本事件桥与Tiled接入.md) 讲过）
 
-整个 RPG 数据就是一张 **id 引用网**。一旦某个 id 写错一个字母，引用就断了。本讲的核心，就是讲清楚这张网怎么被加载、怎么被校验、怎么被高效查询。
+整个 RPG 数据就是一张 **id 引用网**。一旦某个 id 写错一个字母，引用就断了。这节课的核心，就是讲清楚这张网怎么被加载、怎么被校验、怎么被高效查询。
 
 ---
 
-## 🗺️ 关键链路
+## 关键链路
 
 ```mermaid
 flowchart TD
@@ -80,7 +78,7 @@ flowchart TD
 
 ---
 
-## 💡 核心知识点
+## 核心知识点
 
 ### 1. Catalog 全景：项目的"静态真相"都集中在哪
 
@@ -89,14 +87,14 @@ flowchart TD
 | Catalog | 源文件 | 管什么 | 主要消费者 |
 | --- | --- | --- | --- |
 | `ItemCatalog` | `item_config.json` + `icon_config.json` | 物品身份：名字、图标、类别、堆叠上限、使用效果 | 背包 / 快捷栏 / 商店 / 战斗物品 |
-| `AppearanceCatalog` | `appearance_catalog.json` | 分层外观部件、profile、slot | `AppearanceSystem` / 换装 / 头像（L14） |
+| `AppearanceCatalog` | `appearance_catalog.json` | 分层外观部件、profile、slot | `AppearanceSystem` / 换装 / 头像 |
 | `RpgCatalog` | `assets/data/rpg/*.json` | JRPG 规则：actor/class/skill/state/equipment/enemy/troop | 队伍 / 装备 / 战斗 / 任务引用 |
-| `QuestCatalog` | `quests.json` | 任务 objective / reward | 任务系统 / 任务 UI（L10） |
-| `ShopCatalog` | `shops.json` | 商店买入条目 / 卖出规则 | 商店交互 / 交易服务（L11） |
+| `QuestCatalog` | `quests.json` | 任务 objective / reward | 任务系统 / 任务 UI |
+| `ShopCatalog` | `shops.json` | 商店买入条目 / 卖出规则 | 商店交互 / 交易服务 |
 | `AudioCueCatalog` | `audio_cues.json` | 场景默认音乐 cue | 场景音频 |
-| `VfxCatalog` | `vfx_catalog.json` | 特效语义 id | `PlayVfxCommand`（L23） |
+| `VfxCatalog` | `vfx_catalog.json` | 特效语义 id | `PlayVfxCommand` |
 
-还有 blueprint（L08）、time/light config、map loading、i18n 等也走同一套"JSON → loader → 只读结构"的模式。
+还有 blueprint、time/light config、map loading、i18n 等也走同一套"JSON → loader → 只读结构"的模式。
 
 **为什么不直接写死在 system 里？** 三个理由，整套 catalog 设计都围绕它们：
 
@@ -110,7 +108,7 @@ flowchart LR
     E -->|"启动统一校验"| H["断引用 fail-fast"]
 ```
 
-> **回到自测题 1**：catalog 解决的不是"能不能写规则"，而是"规则只有一份、谁都引用它、写错能被自动抓住"。
+> catalog 解决的不是"能不能写规则"，而是**"规则只有一份、谁都引用它、写错能被自动抓住"**。
 
 ### 2. RPG manifest：用一个清单驱动 7 个文件的拆分加载
 
@@ -149,11 +147,11 @@ flowchart TD
 **关键设计点**：
 
 - **manifest 只是"间接层"**：代码从不写死 `"actors.json"` 这个文件名，而是查 `manifest.files_["actors"]`。想换文件名只改 manifest。
-- **schema_version 必须非零**：[`RpgCatalog::loadManifest`](../../src/game/data/rpg_catalog.cpp) 里 `schema_version == 0` 直接拒绝加载——防止加载到一个格式未知的旧档。
-- **`files` 必须 7 个全齐**：[`loadRpgCatalogFromManifest`](../../src/game/runtime/rpg_catalog_loader.cpp) 要求 classes / actors / skills / states / equipment / enemies / troops 任一映射都不能缺。这是"宁可起不来，也不要带着残缺数据跑"。
-- `content_versions` / `features` 也会被解析进 `manifest_`（见 [`RpgManifest`](../../src/game/data/rpg_data.h)），目前是内容版本号 / 前瞻开关，留作演化用途。
+- **schema_version 必须非零**：`RpgCatalog::loadManifest` 里 `schema_version == 0` 直接拒绝加载——防止加载到一个格式未知的旧档。
+- **`files` 必须 7 个全齐**：`loadRpgCatalogFromManifest` 要求 classes / actors / skills / states / equipment / enemies / troops 任一映射都不能缺。这是"宁可起不来，也不要带着残缺数据跑"。
+- `content_versions` / `features` 也会被解析进 `manifest_`，目前是内容版本号 / 前瞻开关，留作演化用途。
 
-还有一个阶段 2 后新增的关键点：**加载是原子提交的**。`loadRpgCatalogFromManifest` 不会一边加载一边污染传进来的 catalog，而是先创建一个临时对象：
+还有一个关键点：**加载是原子提交的**。`loadRpgCatalogFromManifest` 不会一边加载一边污染传进来的 catalog，而是先创建一个临时对象：
 
 ```cpp
 game::data::RpgCatalog loaded_catalog{};
@@ -172,7 +170,7 @@ catalog = std::move(loaded_catalog);  // 只有完整成功后才替换外部 ca
 
 ### 3. validateReferences：那道"启动时 fail-fast"的闸门
 
-这是本讲最该看懂的一段代码。打开 [`RpgCatalog::validateReferences`](../../src/game/data/rpg_catalog.cpp)，它在**所有 7 个文件加载完之后**，把整张引用网走一遍：
+这是本节课最该看懂的一段代码。打开 [`RpgCatalog::validateReferences`](../../src/game/data/rpg_catalog.cpp)，它在**所有 7 个文件加载完之后**，把整张引用网走一遍：
 
 | 检查对象 | 校验内容 | 失败信息样例 |
 | --- | --- | --- |
@@ -183,7 +181,7 @@ catalog = std::move(loaded_catalog);  // 只有完整成功后才替换外部 ca
 | `skills` → `states` | `add_state`/`remove_state` 效果的 `target_id` 存在 | `Skill '...' references missing state '...'` |
 | `equipment` → `items` / `classes` / `actors` | item 存在且类别为 equipment、stack=1、无使用效果；可装备职业/角色存在 | `Equipment '...' references missing class '...'` |
 
-**它在什么时候跑？** 看调用链 [`loadRpgCatalogFromManifest`](../../src/game/runtime/rpg_catalog_loader.cpp)：
+**它在什么时候跑？** 看调用链 `loadRpgCatalogFromManifest`：
 
 ```cpp
 // loadRpgCatalogFromManifest 最后一步
@@ -196,7 +194,7 @@ if (!loaded_catalog.validateReferences(reference_error, options.item_catalog)) {
 catalog = std::move(loaded_catalog);
 ```
 
-再往上，[`ContentCatalogLoader::ensureRpgCatalog`](../../src/game/runtime/content_catalog_loader.cpp) 也先把 catalog 放在局部 `shared_ptr` 里，只有 `loadRpgCatalogFromManifest` 成功才写入 `services.rpg_catalog`。如果 RPG 引用断了，错误会被 `spdlog::error` 打出来，内容加载阶段直接失败，`GameRuntimeServices` 不会拿到一个半初始化的 `RpgCatalog`。
+再往上，`ContentCatalogLoader::ensureRpgCatalog` 也先把 catalog 放在局部 `shared_ptr` 里，只有 `loadRpgCatalogFromManifest` 成功才写入 `services.rpg_catalog`。如果 RPG 引用断了，错误会被 `spdlog::error` 打出来，内容加载阶段直接失败，`GameRuntimeServices` 不会拿到一个半初始化的 `RpgCatalog`。
 
 > **回到自测题 2**：actor 引用了不存在的 skill，**校验在游戏启动、RPG 文件全部加载完、catalog 交给任何系统之前就报错**——不是等你进了战斗菜单点开技能列表才崩。这就是 fail-fast 的价值：断引用永远在最早、最集中、错误信息最清晰（带 actor id + 缺失 skill id）的地方暴露。
 
@@ -210,7 +208,7 @@ TEST(RpgCatalogTest, ValidateFailsOnMissingActorSkillReference) {
 }
 ```
 
-阶段 2 还补了两类"失败边界"测试：
+还补了两类"失败边界"测试：
 
 - `LoadFromManifestFailureKeepsExistingCatalogData`：先成功加载完整 manifest，再删掉 `equipment` 映射并重新加载，断言失败后旧 actor / equipment 仍然可查。
 - `LoadClassesFailureKeepsExistingCatalogData` 与 `ItemCatalogTest` 的重复 id 用例：单文件解析失败、重复 id 或非法 battle_use 都不会清掉旧数据，也不会留下部分新数据。
@@ -227,13 +225,13 @@ struct SkillData {
 };
 ```
 
-而 catalog 内部的存储，**全部用 hash 当 key**（见 [`RpgCatalog`](../../src/game/data/rpg_catalog.h) 的成员 map）：
+而 catalog 内部的存储，**全部用 hash 当 key**：
 
 ```cpp
 std::unordered_map<entt::id_type, SkillData> skills_{};   // key 是 id_hash，不是字符串
 ```
 
-哈希怎么算的？就一行（见 [`RpgCatalog::hashId`](../../src/game/data/rpg_catalog.cpp)）：
+哈希怎么算的？就一行：
 
 ```cpp
 entt::id_type RpgCatalog::hashId(std::string_view id) {
@@ -261,10 +259,10 @@ flowchart LR
 ```
 
 - **字符串的存活范围**：JSON 源文件、spdlog 日志、`validateReferences` 错误信息、存档文件、面向玩家的 i18n key。凡是"人要读、要跨进程稳定"的地方。
-- **哈希的存活范围**：运行时的 map 查询、战斗/技能解算里每帧可能跑的比较、事件 payload（L08 的 `target_actor_id_hash`）。凡是"机器要快"的地方。
+- **哈希的存活范围**：运行时的 map 查询、战斗/技能解算里每帧可能跑的比较、事件 payload（[脚本事件桥](08-脚本事件桥与Tiled接入.md) 里的 `target_actor_id_hash`）。凡是"机器要快"的地方。
 - **哈希只在加载时算一次**：解析 JSON 时就把 `id_hash_` 填好，运行时再不碰字符串比较。
 
-> **回到自测题 4**：不是"二选一"，而是"同一个 id 的两副面孔"——给人看的那副和给机器查的那副，加载时一次性对齐。
+> 不是"二选一"，而是**"同一个 id 的两副面孔"**——给人看的那副和给机器查的那副，加载时一次性对齐。
 
 ### 5. 一个 item id，两个 catalog：equipment ⊗ item_config
 
@@ -292,9 +290,9 @@ flowchart LR
 
 为什么不合成一个？因为一件装备**在背包里**是个普通物品（要图标、要能放进格子、要能在商店买卖），**穿到身上**才有 RPG 语义。让它共享 item id，背包/商店系统就能像对待任何物品一样对待它，而不必知道"装备"这个概念。
 
-这也解释了 [`validateReferences`](../../src/game/data/rpg_catalog.cpp) 里那段对 equipment 的严格校验：装备引用的 item 必须 `category == Equipment`、`stack_limit == 1`、且**没有** `on_use`/`battle_use`——保证两个 catalog 对同一 id 的理解不打架。
+这也解释了 `validateReferences` 里那段对 equipment 的严格校验：装备引用的 item 必须 `category == Equipment`、`stack_limit == 1`、且**没有** `on_use`/`battle_use`——保证两个 catalog 对同一 id 的理解不打架。
 
-**这种跨 catalog 引用，决定了加载顺序不能乱。** 看 [`content_catalog_loader.cpp`](../../src/game/runtime/content_catalog_loader.cpp) 的 `ensure*` 顺序：
+**这种跨 catalog 引用，决定了加载顺序不能乱。** 看 `ContentCatalogLoader` 的 `ensure*` 顺序：
 
 ```mermaid
 flowchart LR
@@ -307,7 +305,7 @@ flowchart LR
     SHOP --> AUDIO["AudioCueCatalog<br/>(要 AssetRegistry)"]
 ```
 
-**Item 必须在 Rpg 之前、Rpg+Item 必须在 Quest 之前**——因为后者的 `validateReferences` 要拿前者的指针去查引用。这正是 [`data-catalogs.md`](../../docs/game/data-catalogs.md) 里说的"为什么 RuntimeServiceFactory 先加载 Item/RPG，再加载 Quest/Shop"。
+**Item 必须在 Rpg 之前、Rpg+Item 必须在 Quest 之前**——因为后者的 `validateReferences` 要拿前者的指针去查引用。
 
 这个顺序还配合了"成功后发布"的提交边界：`ContentCatalogLoader::ensureItemCatalog / ensureRpgCatalog / ensureQuestCatalog / ensureShopCatalog` 都先构造局部 catalog，加载和引用校验通过后才写入 `GameRuntimeServices`。`VfxCatalog` 和 `AudioCueCatalog` 是更温和的内容：加载失败会记录日志并保持指针为空，调用方看到空 catalog 就跳过 catalog 驱动播放。
 
@@ -330,12 +328,12 @@ flowchart LR
 **为什么连"场景放什么背景音乐"这种小事也要独立成 catalog，不直接在场景代码里写 `playMusic("scene-bg-music")`？** 同样是那三个理由的具体化：
 
 - **数据驱动**：换默认 BGM 只改 JSON，不动场景代码、不重编译。
-- **可校验**：[`AudioCueCatalog::validateReferences`](../../src/game/data/audio_cue_catalog.h) 会拿 `AssetRegistry` 检查 cue 引用的 `music_id` 是否真的注册了资源——写错音乐 id 会在装配期打出明确日志，catalog 不发布，场景侧早退不播放，而不是把错误藏到某个场景里。
+- **可校验**：`AudioCueCatalog::validateReferences` 会拿 `AssetRegistry` 检查 cue 引用的 `music_id` 是否真的注册了资源——写错音乐 id 会在装配期打出明确日志，catalog 不发布，场景侧早退不播放，而不是把错误藏到某个场景里。
 - **语义层**：cue 是"语义"（`cue.music.battle.default`），music_id 是"资源"。中间隔一层，将来想给某场景换 cue、或给 cue 加淡入参数，都不碰资源路径。
 
-> **回到自测题 2 的延伸**：这是整个 catalog 体系的统一哲学——**凡是"会变的内容"和"要校验的引用"，都从代码里抽出来变成可加载、可校验的数据**。
+> 这是整个 catalog 体系的统一哲学——**凡是"会变的内容"和"要校验的引用"，都从代码里抽出来变成可加载、可校验的数据**。
 
-最后回到 L06 那条边界。**Lua 只"选择和触发"catalog 里的规则，绝不临时伪造第二套**：
+最后回到 [Lua 内容层总览](06-Lua内容层总览.md) 那条边界。**Lua 只"选择和触发"catalog 里的规则，绝不临时伪造第二套**：
 
 ```lua
 tf.battle.start("troop.goblin_pair")   -- 选一个已存在的 troop id，规则在 troops.json
@@ -345,18 +343,18 @@ Lua 不会、也不应该在脚本里凭空写一个"哥布林有 200 血、用 
 
 ---
 
-## 📋 阅读清单
+## 配合阅读
 
 | 顺序 | 文件 / 章节 | 关注点 |
 | :---: | --- | --- |
-| 1 | [`docs/game/data-catalogs.md`](../../docs/game/data-catalogs.md) | **本讲核心阅读材料**——全套 catalog 清单、引用校验、加载顺序、"新增静态数据放哪"决策表 |
+| 1 | [`docs/game/data-catalogs.md`](../../docs/game/data-catalogs.md) | **本节课核心阅读材料**——全套 catalog 清单、引用校验、加载顺序、"新增静态数据放哪"决策表 |
 | 2 | [`assets/data/rpg/*.json`](../../assets/data/rpg/) | 7 个 RPG 文件通读一遍，建立"id 引用网"的直觉 |
 | 3 | [`docs/game/audio_cue_catalog.md`](../../docs/game/audio_cue_catalog.md) | AudioCueCatalog 作为"小而完整"的 catalog 范例 |
 | 4 | [`tools/rpg_importer/README.md`](../../tools/rpg_importer/README.md) | 可选工具阅读：RPG Maker → 项目格式 + 语义 id 别名；不进入运行时加载链路 |
 
 ---
 
-## 🔑 源码入口
+## 从这几个文件开始看
 
 | 顺序 | 文件 | 你会看到什么 |
 | :---: | --- | --- |
@@ -371,7 +369,7 @@ Lua 不会、也不应该在脚本里凭空写一个"哥布林有 200 血、用 
 
 ---
 
-## ❓ 自测问题
+## 检查你的理解
 
 1. **校验时机**：在 `actors.json` 给某 actor 的 `skill_ids` 加一个 `"skill.does_not_exist"`，启动游戏会发生什么？错误信息里会包含哪些信息帮你定位？这个错误是在加载阶段、还是进战斗后才出现？
 2. **AudioCue 独立性**：如果把"场景默认音乐"直接 `playMusic("xxx")` 写死在 `GameScene` 里，相比走 `AudioCueCatalog`，会失去哪三样东西（提示：迭代、校验、语义层）？
@@ -382,7 +380,7 @@ Lua 不会、也不应该在脚本里凭空写一个"哥布林有 200 血、用 
 
 ---
 
-## 🧪 最小练习
+## 动手试试
 
 **目标**：亲手制造一次引用校验失败，观察错误信息精确指向哪里。
 
@@ -396,30 +394,32 @@ Lua 不会、也不应该在脚本里凭空写一个"哥布林有 200 血、用 
    ```
    RPG reference validation failed: Actor 'actor.lyria' references missing skill 'skill.fire_1'
    ```
-   注意它**在内容加载阶段就报错**，错误信息直接给出了"谁引用了谁"。如果你跑的是上面的 CTest，这个用例此时应该失败；这正是我们故意制造的断引用被测试拦住了。
+   注意它**在内容加载阶段就报错**，错误信息直接给出了"谁引用了谁"。如果你跑的是上面的 CTest，这个用例此时应该失败——这正是我们故意制造的断引用被测试拦住了。
    - **顺便观察校验顺序**：`validateReferences` 是按 enemies → troops → actors → skills → equipment 的顺序走的。如果你改的是同时被敌人和角色引用的 `skill.bash`，先报错的会是 **Enemy** 而不是 Actor——因为 enemy 循环跑在前面。
 3. **改回去**：把 id 改回 `skill.fire_1`，确认游戏正常加载。
 4. **观察测试视角**：`ProjectAssetsExposeSlimeTroopForMapEncounter` 这个用例会加载**真实** `assets/data/rpg` 资源，它会在断引用时直接失败——这就是 CI 能拦住你"提交一个断引用"的原因。
 
 **进阶**：
 
-- 阅读 [`tools/rpg_importer/README.md`](../../tools/rpg_importer/README.md)。这个离线工具从 `for_agent/ref/data`（RPG Maker 原始 JSON）导入并生成 `validation_report.json` 做**导入期**的基础引用校验——和运行时的 `validateReferences` 是**两道不同的关卡**（导入期 vs 启动期）。想试工具时请输出到临时目录，例如 `--output-dir /tmp/tinyfarmrpg_import_check`，不要直接覆盖 `assets/data/rpg`。想想：为什么离线导入做一遍校验、运行时还要再做一遍？
+- 阅读 [`tools/rpg_importer/README.md`](../../tools/rpg_importer/README.md)。这个离线工具从 RPG Maker 原始 JSON 导入并生成 `validation_report.json` 做**导入期**的基础引用校验——和运行时的 `validateReferences` 是**两道不同的关卡**（导入期 vs 启动期）。想试工具时请输出到临时目录，不要直接覆盖 `assets/data/rpg`。想想：为什么离线导入做一遍校验、运行时还要再做一遍？
 - 试着回答：上面 step 1 如果改的是 `enemy.goblin` 掉落的 `item_id`，错误信息会变成什么？（提示：这条校验只在 `ItemCatalog` 被传入时才跑。）
 
-完成后回答：**整个过程，你改了几个 C++ 文件？**（答案应该是 0——这正是数据驱动的意义。）
+**完成后回答**：整个过程，你改了几个 C++ 文件？（答案应该是 0——这正是数据驱动的意义。）
 
 ---
 
-## 📌 小结
+## 小结
 
 - **静态规则集中到 catalog**：项目有 ItemCatalog / AppearanceCatalog / RpgCatalog / QuestCatalog / ShopCatalog / AudioCueCatalog / VfxCatalog 等，统一走"JSON → loader → 只读结构"。理由是热迭代、单一真相、断引用 fail-fast。
 - **RPG 数据由 manifest 驱动拆分加载**：`manifest.json` 的 `files` 映射声明 7 个文件名，`RpgCatalogLoader` 间接拼路径加载，最后调 `validateReferences`。
-- **加载成功后才发布**：`RpgCatalogLoader`、RPG 子 loader、`ItemCatalog` 和 `ContentCatalogLoader` 都先写临时对象，完整成功后才替换旧数据或 service 指针；失败不会暴露半初始化 catalog。
+- **加载成功后才发布**：所有 loader 都先写临时对象，完整成功后才替换旧数据或 service 指针；失败不会暴露半初始化 catalog。
 - **`validateReferences` 是启动期的引用闸门**：在所有文件加载完、catalog 交给系统之前，把 enemy→skill/item、troop→enemy、actor→class/skill、skill→state、equipment→item/class/actor 全走一遍，错误信息精确到具体 id。一排反向测试守住它。
 - **每个 id 双形态并存**：`std::string id_`（人读 / 日志 / 存档）+ `entt::id_type id_hash_`（机器查 / 比较 / map key），加载时算一次哈希，运行时只比整数。
 - **一个 item id 跨两个 catalog**：身份归 `ItemCatalog`、战斗语义归 `RpgCatalog`，加载顺序（Item 先于 Rpg、Rpg+Item 先于 Quest）保证后者能校验前者。
 - **Lua 只选不造**：脚本传 catalog 里已存在的 id 去触发规则，绝不在脚本里伪造第二套数值——这是校验能成为安全网的前提。
 
-## 🚀 下节课预告
+---
 
-数据真相打通了，从下一讲开始我们用具体玩法把这些 catalog **跑起来**。**L10 任务系统**会把 L02 留下的"领域服务"模式第一次讲透：`QuestCatalog` 的静态目标/奖励、`QuestLogComponent` 的运行时进度、`QuestTurnInService` 的"preflight → 原子写入 → 奖励事件"完整闭环，并看脚本化任务 NPC 与 C++ fallback 如何协作。command → service → event → UI 的回路，下讲见。
+## 下节课预告
+
+数据真相打通了，从下节课开始我们用具体玩法把这些 catalog **跑起来**。**[任务系统](10-任务系统.md)** 会把 [领域服务概览](02-领域服务与命令事件边界.md) 留下的"领域服务"模式第一次完整讲透：`QuestCatalog` 的静态目标/奖励、`QuestLogComponent` 的运行时进度、`QuestTurnInService` 的"preflight → 原子写入 → 奖励事件"完整闭环，并看脚本化任务 NPC 与 C++ fallback 如何协作。command → service → event → UI 的回路，下节课见。
