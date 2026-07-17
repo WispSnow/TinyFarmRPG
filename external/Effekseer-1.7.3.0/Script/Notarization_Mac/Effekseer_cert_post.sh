@@ -1,1 +1,0 @@
-xcrun stapler staple "Effekseer.dmg"

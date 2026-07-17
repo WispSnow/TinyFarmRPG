@@ -1,1 +1,0 @@
-dotnet-format -f ./../Dev/Editor/
