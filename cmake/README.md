@@ -11,7 +11,7 @@
 - 设置C++标准（C++20）
 - 配置编译选项和警告级别
 - 处理不同平台的字符编码（UTF-8）
-- Windows子系统设置
+- 为 MSVC 启用 UTF-8、并行编译和警告级别
 
 **主要函数**：
 - `setup_compiler_options(TARGET_NAME)` - 为指定目标设置编译选项
@@ -44,9 +44,9 @@
 - `setup_project_dependencies()` - 配置所有项目依赖（SDL3、GLM、spdlog等）
 
 **依赖获取优先级**：
-1. 系统已安装的包（find_package）
-2. 本地external/目录的源码
-3. 在线从GitHub获取
+
+- 默认（`TF_USE_SYSTEM_DEPS=OFF`）：本地 `external/` 源码 → 在线获取
+- 显式开启：系统包 → 本地 `external/` 源码 → 在线获取
 
 ---
 
@@ -77,19 +77,21 @@
 
 **主要函数**：
 - `setup_asset_copy(TARGET_NAME)` - 配置资源文件复制
+- `setup_ui_copy(TARGET_NAME)` - 配置 UI 文件复制
+- `setup_script_copy(TARGET_NAME)` - 配置 Lua 脚本复制
 - `setup_config_copy(TARGET_NAME)` - 配置配置文件复制
 - `setup_windows_dll_copy(TARGET_NAME)` - 配置Windows DLL复制
 
 **特点**：
 - 使用独立的脚本模块（`scripts/`目录）
-- 基于文件大小/MD5的智能比对
+- 使用 `copy_if_different` 做逐文件增量同步
+- 清理同步清单中已从 source 删除的文件，同时保留运行时生成文件
 - 避免不必要的文件复制
 - 减少编译时间
 - 脚本可单独测试和调试
 
 **相关文件**：
-- `scripts/CopyAssets.cmake` - 资源复制脚本
-- `scripts/CopyConfig.cmake` - 配置文件复制脚本
+- `scripts/SyncDirectory.cmake` - assets / ui / scripts / config 通用同步脚本
 - `scripts/CopyDLLs.cmake` - DLL复制脚本
 
 ---

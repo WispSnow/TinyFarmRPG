@@ -41,10 +41,16 @@ macro(find_or_fetch_dependency DEP_NAME PACKAGE_NAME GIT_REPO GIT_TAG LOCAL_PATH
         endif()
     endif()
     
-    # 首先尝试查找本地已安装的包
-    find_package(${PACKAGE_NAME} QUIET)
-    
-    if(${PACKAGE_NAME}_FOUND OR ${DEP_NAME}_FOUND)
+    # 可选地优先使用系统包；关闭时直接进入 external -> 在线下载流程。
+    set(_TF_SYSTEM_DEP_FOUND OFF)
+    if(TF_USE_SYSTEM_DEPS)
+        find_package(${PACKAGE_NAME} QUIET)
+        if(${PACKAGE_NAME}_FOUND OR ${DEP_NAME}_FOUND)
+            set(_TF_SYSTEM_DEP_FOUND ON)
+        endif()
+    endif()
+
+    if(_TF_SYSTEM_DEP_FOUND)
         message(STATUS "  ✓ 找到本地安装的 ${PACKAGE_NAME}")
         
         # 打印包的路径信息（尝试多种可能的变量）
@@ -110,20 +116,6 @@ macro(find_or_fetch_dependency DEP_NAME PACKAGE_NAME GIT_REPO GIT_TAG LOCAL_PATH
         set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(BUILD_DOCS OFF CACHE BOOL "" FORCE)
         
-        # SDL_image特定选项：禁用可能导致构建问题的格式支持
-        if("${DEP_NAME}" STREQUAL "SDL3_image")
-            # 禁用AVIF格式（需要NASM、Meson等复杂工具链）
-            set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
-            set(SDLIMAGE_AVIF_SHARED OFF CACHE BOOL "" FORCE)
-            set(SDLIMAGE_AVIF_SAVE OFF CACHE BOOL "" FORCE)
-            # 禁用AVIF的依赖库
-            set(SDLIMAGE_AVIF_VENDORED OFF CACHE BOOL "" FORCE)
-            set(SDLIMAGE_DAV1D OFF CACHE BOOL "" FORCE)
-            set(SDLIMAGE_AOM OFF CACHE BOOL "" FORCE)
-            # 可选：禁用其他可能有构建问题的格式
-            # set(SDLIMAGE_JXL OFF CACHE BOOL "" FORCE)  # JPEG XL
-        endif()
-
         # HarfBuzz：启用 FreeType 互操作以提供 hb_ft_* API
         if("${DEP_NAME}" STREQUAL "harfbuzz")
             set(HB_HAVE_FREETYPE ON CACHE BOOL "" FORCE)
@@ -208,6 +200,12 @@ macro(find_or_fetch_dependency DEP_NAME PACKAGE_NAME GIT_REPO GIT_TAG LOCAL_PATH
             set(BUILD_SHARED_LIBS ${_SAVED_BUILD_SHARED_LIBS} CACHE BOOL "" FORCE)
         endif()
 
+        # FreeType 源码工程导出小写 freetype 目标，统一为项目使用的命名空间目标。
+        if("${PACKAGE_NAME}" STREQUAL "Freetype" AND TARGET freetype AND NOT TARGET Freetype::Freetype)
+            message(STATUS "     创建别名: Freetype::Freetype -> freetype")
+            add_library(Freetype::Freetype ALIAS freetype)
+        endif()
+
         # 恢复主工程开关
         if(_SAVED_BUILD_TESTING_DEFINED)
             set(BUILD_TESTING "${_SAVED_BUILD_TESTING_VALUE}" CACHE BOOL "" FORCE)
@@ -238,21 +236,6 @@ function(setup_project_dependencies)
         "https://github.com/libsdl-org/SDL.git"
         "release-3.2.24"
         "external/SDL-release-3.2.24"
-        AUTO  # 使用全局BUILD_SHARED_LIBS设置
-    )
-
-    # SDL3_image
-    # 注意：已自动禁用AVIF格式支持（需要NASM、Meson等复杂工具链）
-    # 如需启用AVIF，请修改宏中的SDLIMAGE_AVIF选项，并安装所需工具：
-    #   - NASM: https://www.nasm.us/
-    #   - Meson: pip install meson ninja
-    #   - Perl: https://strawberryperl.com/
-    find_or_fetch_dependency(
-        SDL3_image
-        SDL3_image
-        "https://github.com/libsdl-org/SDL_image.git"
-        "release-3.2.4"
-        "external/SDL_image-release-3.2.4"
         AUTO  # 使用全局BUILD_SHARED_LIBS设置
     )
 
@@ -323,14 +306,16 @@ function(setup_project_dependencies)
         ${_HB_LINK}
     )
 
-    # GoogleTest
-    find_or_fetch_dependency(
-        GTest
-        GTest
-        "https://github.com/google/googletest.git"
-        "v1.17.0"
-        "external/googletest-1.17.0"
-        STATIC  # 使用静态链接，避免运行时依赖
-    )
+    if(BUILD_TESTING)
+        # GoogleTest 仅在测试目标启用时解析和构建。
+        find_or_fetch_dependency(
+            GTest
+            GTest
+            "https://github.com/google/googletest.git"
+            "v1.17.0"
+            "external/googletest-1.17.0"
+            STATIC  # 使用静态链接，避免运行时依赖
+        )
+    endif()
 
 endfunction()

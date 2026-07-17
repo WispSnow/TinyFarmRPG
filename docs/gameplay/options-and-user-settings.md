@@ -24,9 +24,9 @@ flowchart LR
 ```
 
 关键约束：
-- `config/user_settings.default.json` 是出厂模板，进 source repo；`CopyConfig.cmake` 会自动复制到 build 目录。
+- `config/user_settings.default.json` 是出厂模板，进 source repo；运行时目录同步任务会自动复制到 build 目录。
 - `config/user_settings.json` 由 runtime 写入，**不**进 source repo（已加入 `.gitignore`）。
-- `CopyConfig.cmake` 无需修改：source 中不存在用户文件，复制脚本不会覆盖玩家修改。
+- 同步清单只记录 source 中存在的文件，因此不会覆盖或删除玩家生成的 `user_settings.json`。
 - 重新构建后，build 目录的 `user_settings.json` MD5 保持不变。
 
 ## 四项 Options 偏好

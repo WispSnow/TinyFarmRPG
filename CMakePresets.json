@@ -10,7 +10,13 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "BUILD_TESTING": "OFF",
+        "BUILD_TOOLS": "OFF",
+        "BUILD_LEARN": "OFF",
+        "TF_USE_SYSTEM_DEPS": "OFF"
+      }
     },
     {
       "name": "debug",
@@ -19,6 +25,25 @@
       "description": "标准 Debug 构建，保留符号信息，无优化",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": "debug",
+      "displayName": "Developer Debug",
+      "description": "Debug 构建 + 测试 + 开发工具",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "BUILD_TOOLS": "ON"
+      }
+    },
+    {
+      "name": "dev-full",
+      "inherits": "dev",
+      "displayName": "Developer Full",
+      "description": "完整开发构建，额外包含所有学习/实验目标",
+      "cacheVariables": {
+        "BUILD_LEARN": "ON"
       }
     },
     {
@@ -31,7 +56,8 @@
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -g",
         "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer -g",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address"
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
+        "BUILD_TESTING": "ON"
       },
       "condition": {
         "type": "notEquals",
@@ -46,7 +72,8 @@
       "description": "Debug 构建 + ThreadSanitizer，检测多线程数据竞争",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_TSAN": "ON"
+        "ENABLE_TSAN": "ON",
+        "BUILD_TESTING": "ON"
       },
       "condition": {
         "type": "notEquals",
@@ -60,7 +87,9 @@
       "displayName": "Release",
       "description": "优化构建，用于性能测试和发布",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_DEBUG_UI": "OFF",
+        "ENABLE_RMLUI_DEBUGGER": "OFF"
       }
     },
     {
@@ -69,7 +98,9 @@
       "displayName": "Release + 调试信息",
       "description": "优化构建但保留调试符号，用于生产环境崩溃定位",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_DEBUG_UI": "OFF",
+        "ENABLE_RMLUI_DEBUGGER": "OFF"
       }
     }
   ],
@@ -77,6 +108,14 @@
     {
       "name": "debug",
       "configurePreset": "debug"
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "dev-full",
+      "configurePreset": "dev-full"
     },
     {
       "name": "debug-asan",

@@ -26,7 +26,11 @@ function(print_project_info TARGET_NAME)
         endif()
     endif()
     
-    message(STATUS "  智能依赖获取: 预编译(prebuilt目录) > 系统库 > 本地源码(external目录) > 在线获取")
+    if(TF_USE_SYSTEM_DEPS)
+        message(STATUS "  依赖获取顺序: 系统库 > 本地源码(external目录) > 在线获取")
+    else()
+        message(STATUS "  依赖获取顺序: 本地源码(external目录) > 在线获取（系统库已禁用）")
+    endif()
     
     if(BUILD_SHARED_LIBS)
         message(STATUS "  依赖库默认链接: 动态链接 (Shared)")
@@ -48,4 +52,3 @@ function(print_project_info TARGET_NAME)
     message(STATUS "==============================================")
     message(STATUS "")
 endfunction()
-

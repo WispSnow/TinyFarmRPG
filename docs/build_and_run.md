@@ -33,7 +33,11 @@ build\debug\TinyFarmRPG-Windows.exe  # Windows
 | Python | 3 | 部分依赖构建脚本需要 |
 | Git | 任意 | 拉取项目和子模块 |
 
-依赖库本身（SDL3 / RmlUi / Lua / Effekseer 等）由 CMake 在配置阶段自行拉取或链接，多数情况下**不需要手动安装**。
+依赖库本身（SDL3 / RmlUi / Lua / Effekseer 等）由 CMake 在配置阶段自行拉取或链接，多数情况下**不需要手动安装**。默认按 `external/` 本地源码 → 在线下载的顺序解析，以保证不同开发机上的依赖版本一致。若显式打开 `TF_USE_SYSTEM_DEPS`，优先级变为系统库 → `external/` → 在线下载：
+
+```bash
+cmake --preset debug -DTF_USE_SYSTEM_DEPS=ON
+```
 
 ```mermaid
 flowchart LR
@@ -51,11 +55,13 @@ flowchart LR
 
 | 预设 | `CMAKE_BUILD_TYPE` | 额外开关 | 用途 |
 |------|--------------------|----------|------|
-| `debug` | Debug | — | 日常开发调试 |
-| `debug-asan` | Debug | `-fsanitize=address`（macOS / Linux） | 怀疑内存错误（越界 / use-after-free） |
-| `debug-tsan` | Debug | `ENABLE_TSAN=ON`（macOS / Linux） | 怀疑多线程竞争 |
-| `release` | Release | — | 性能测试 |
-| `relwithdebinfo` | RelWithDebInfo | — | 生产构建的崩溃定位 |
+| `debug` | Debug | 仅游戏目标 | 快速编译、日常运行调试 |
+| `dev` | Debug | 测试 + 调试工具 | 日常开发与自动化验证 |
+| `dev-full` | Debug | 测试 + 工具 + 学习目标 | 需要验证全部教学/实验目标 |
+| `debug-asan` | Debug | ASan + 测试（macOS / Linux） | 怀疑内存错误（越界 / use-after-free） |
+| `debug-tsan` | Debug | TSan + 测试（macOS / Linux） | 怀疑多线程竞争 |
+| `release` | Release | 关闭调试 UI | 性能测试 |
+| `relwithdebinfo` | RelWithDebInfo | 关闭调试 UI | 优化构建的崩溃定位 |
 
 > `debug-asan` 和 `debug-tsan` 在 Windows 上不可用（`condition` 跳过）。Windows 用 `debug` 配合 Visual Studio 调试器。
 
@@ -71,10 +77,11 @@ flowchart LR
 | `ENABLE_DEBUG_UI` | ON | ImGui 调试面板（定义 `TF_ENABLE_DEBUG_UI` 宏） |
 | `ENABLE_RMLUI_DEBUGGER` | ON | RmlUi 内置 inspector |
 | `ENABLE_TSAN` | OFF | ThreadSanitizer（`debug-tsan` 预设自动打开） |
-| `BUILD_TOOLS` | ON | 编译 `tools/` 下的调试工具（需要 `ENABLE_DEBUG_UI=ON`） |
+| `TF_USE_SYSTEM_DEPS` | OFF | 是否优先查找系统依赖；关闭时使用 `external/` → 在线下载 |
+| `BUILD_TOOLS` | OFF | 编译 `tools/` 下的调试工具；`dev` 预设自动打开 |
 | `BUILD_RMLUI_TESTER` | ON | 单独控制 `rmlui_tester` |
-| `BUILD_LEARN` | ON | 编译 `learn/` 下的实验目标（与课程子教程对应） |
-| `BUILD_TESTING` | ON | 编译 `tests/` 下的 GoogleTest |
+| `BUILD_LEARN` | OFF | 编译 `learn/` 下的实验目标；`dev-full` 预设自动打开 |
+| `BUILD_TESTING` | OFF | 编译 `tests/` 下的 GoogleTest；`dev` 预设自动打开 |
 
 显式覆盖示例：
 
@@ -98,7 +105,7 @@ build/debug/
 └── learn/                            # 学习实验目标（若 BUILD_LEARN=ON）
 ```
 
-资源 / UI / 脚本 / 配置都是**构建后复制**到 build 目录，因此修改 `assets/data/*.json` 或 `scripts/*.lua` 等内容文件**通常**需要重新 `cmake --build` 才能在已编译的二进制里看到（看 `cmake/BuildHelpers.cmake` 中的 dependency 规则；常见做法是再跑一次构建命令，Ninja 会增量复制）。
+资源 / UI / 脚本 / 配置通过游戏目标依赖的同步任务写入 build 目录。修改 `assets/data/*.json`、`scripts/*.lua`、RML 或配置后，再执行一次 `cmake --build --preset <name>` 即会增量同步，不会因此重链接 C++ 可执行文件。源目录中删除的文件也会从 build 副本中清理；运行时生成、未被同步清单记录的文件（例如 `config/user_settings.json`）会保留。
 
 Windows 上还有 `setup_windows_dll_copy`（`CMakeLists.txt:185`）负责把动态库 DLL 复制到可执行文件旁。
 
@@ -170,12 +177,13 @@ flowchart TD
 测试用 GoogleTest（`tests/` 下按 `engine/game/shared/data/scripts` 分层）：
 
 ```bash
-cmake --build --preset debug --target test         # 构建测试
-ctest --preset debug                                # 跑全部测试
-ctest --preset debug -R "Battle"                    # 跑名字含 "Battle" 的测试
+cmake --preset dev
+cmake --build --preset dev --target engine_tests game_tests
+ctest --test-dir build/dev --output-on-failure
+ctest --test-dir build/dev -R "Battle" --output-on-failure
 ```
 
-或者直接跑单个测试二进制（在 `build/debug/tests/<dir>/<name>`）。
+或者直接跑单个测试二进制（在 `build/dev/tests/<dir>/<name>`）。
 
 ## 九、常见错误
 
@@ -190,11 +198,12 @@ ctest --preset debug -R "Battle"                    # 跑名字含 "Battle" 的�
 
 ## 十、推荐工作流
 
-- **日常迭代**：`debug` 预设
+- **只运行游戏**：`debug` 预设，默认不编译测试、工具和学习目标
+- **日常开发与验证**：`dev` 预设，包含测试和调试工具
+- **验证全部教学目标**：`dev-full` 预设
 - **要试性能影响**：`relwithdebinfo`（保留符号但优化）
 - **遇到崩溃**：先用 `debug-asan` 跑一次，多数情况下能定位到行号
 - **怀疑数据竞争**：`debug-tsan`
-- **CI / 教师批改**：`release` + `ctest --preset release`
 
 更细的崩溃定位（LLDB / sanitizer 输出格式 / 给 AI 报错模板）见 [调试与崩溃定位](tutorial/debugging.md)。
 

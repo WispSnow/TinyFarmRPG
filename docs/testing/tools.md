@@ -4,27 +4,27 @@
 
 ## 构建
 
-工具目标由 `tools/CMakeLists.txt` 定义。默认 `BUILD_TOOLS=ON` 时会加入工具目录。
+工具目标由 `tools/CMakeLists.txt` 定义。顶层默认关闭 `BUILD_TOOLS`，`dev` 和 `dev-full` 预设会自动打开。
 
 - `visual_tester` 依赖 Debug UI，只有 `ENABLE_DEBUG_UI=ON` 时构建。
 - `rmlui_tester` 依赖 Debug UI，且需要 `BUILD_RMLUI_TESTER=ON`。
 - `battle_tester` 与 `scheduler_dot_dump` 不依赖 Debug UI；`ENABLE_DEBUG_UI=OFF` 时仍应构建。
 
 ```bash
-cmake --preset debug
-cmake --build --preset debug --target visual_tester
-cmake --build --preset debug --target rmlui_tester
-cmake --build --preset debug --target battle_tester
-cmake --build --preset debug --target scheduler_dot_dump
+cmake --preset dev
+cmake --build --preset dev --target visual_tester
+cmake --build --preset dev --target rmlui_tester
+cmake --build --preset dev --target battle_tester
+cmake --build --preset dev --target scheduler_dot_dump
 ```
 
 macOS/Linux 下，工具通常位于：
 
 ```bash
-./build/debug/tools/visual_tester
-./build/debug/tools/rmlui_tester
-./build/debug/tools/battle_tester
-./build/debug/tools/scheduler_dot_dump
+./build/dev/tools/visual_tester
+./build/dev/tools/rmlui_tester
+./build/dev/tools/battle_tester
+./build/dev/tools/scheduler_dot_dump
 ```
 
 ## visual_tester
@@ -32,7 +32,7 @@ macOS/Linux 下，工具通常位于：
 用途：打开一组 engine 视觉测试场景，用肉眼检查 tile、auto-tile、YSort、相机、VFX 等表现。
 
 ```bash
-./build/debug/tools/visual_tester
+./build/dev/tools/visual_tester
 ```
 
 入口文件：
@@ -52,7 +52,7 @@ macOS/Linux 下，工具通常位于：
 用途：独立打开 `ui/rmlui` 下的 RML 文档，支持文件列表、手动输入路径和热重载。
 
 ```bash
-./build/debug/tools/rmlui_tester
+./build/dev/tools/rmlui_tester
 ```
 
 操作：
@@ -72,9 +72,9 @@ macOS/Linux 下，工具通常位于：
 用途：用指定 actor、troop、背景和药水数量直接打开战斗场景。
 
 ```bash
-./build/debug/tools/battle_tester
-./build/debug/tools/battle_tester --troop troop.slime
-./build/debug/tools/battle_tester --actors actor.player,actor.lyria,actor.tori --troop troop.gnome_pair --battle-background Grassland
+./build/dev/tools/battle_tester
+./build/dev/tools/battle_tester --troop troop.slime
+./build/dev/tools/battle_tester --actors actor.player,actor.lyria,actor.tori --troop troop.gnome_pair --battle-background Grassland
 ```
 
 常用参数：
@@ -97,8 +97,8 @@ macOS/Linux 下，工具通常位于：
 用途：导出 SystemScheduler 中 post-gate parallel island 的 DOT 图。当前工具只导出这一座岛，不是完整 tick 时序图。
 
 ```bash
-./build/debug/tools/scheduler_dot_dump
-./build/debug/tools/scheduler_dot_dump docs/tmp/post_gate_parallel_island.dot
+./build/dev/tools/scheduler_dot_dump
+./build/dev/tools/scheduler_dot_dump docs/tmp/post_gate_parallel_island.dot
 ```
 
 默认输出 `post_gate_parallel_island.dot`。可以用 Graphviz 渲染：

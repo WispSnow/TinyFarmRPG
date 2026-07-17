@@ -62,7 +62,7 @@ flowchart LR
 
 - **构建系统**: CMake 3.13+
 - **语言标准**: C++20
-- **窗口与输入**: SDL3（CMake 依赖链路也接入 SDL3_image）
+- **窗口与输入**: SDL3
 - **ECS 框架**: EnTT 3.16.0
 - **图形渲染**: OpenGL + GLAD
 - **UI 框架**: RmlUi 6.2（生产 UI） + ImGui（调试 UI）

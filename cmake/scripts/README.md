@@ -1,181 +1,74 @@
 # CMake 构建脚本模块
 
-本目录包含在构建过程中执行的独立CMake脚本，这些脚本被`BuildHelpers.cmake`调用。
+本目录包含由 `cmake/BuildHelpers.cmake` 调用的独立 CMake 脚本。
 
-## 📁 脚本说明
+## SyncDirectory.cmake
 
-### CopyAssets.cmake
-**用途**：复制资源文件到可执行文件目录
+`SyncDirectory.cmake` 将 source 目录增量同步到可执行文件的运行目录，统一处理 `assets/`、`ui/`、`scripts/` 和 `config/`。
 
-**参数**：
-- `SOURCE_DIR` - 源资源目录（必需）
-- `TARGET_DIR` - 目标资源目录（必需）
-- `IMGUI_INI_SOURCE` - imgui.ini源文件路径（可选）
+必需参数：
 
-**调用示例**：
+- `SOURCE_DIR`：源目录
+- `TARGET_DIR`：目标目录
+
+可选参数：
+
+- `EXTRA_SOURCE_FILE`：额外复制的单个文件
+- `EXTRA_TARGET_FILE`：额外文件的目标路径，必须与 `EXTRA_SOURCE_FILE` 一起传入
+
+调用示例：
+
 ```bash
 cmake -DSOURCE_DIR=/path/to/assets \
       -DTARGET_DIR=/path/to/build/assets \
-      -DIMGUI_INI_SOURCE=/path/to/imgui.ini \
-      -P CopyAssets.cmake
+      -DEXTRA_SOURCE_FILE=/path/to/imgui.ini \
+      -DEXTRA_TARGET_FILE=/path/to/build/imgui.ini \
+      -P cmake/scripts/SyncDirectory.cmake
 ```
 
-**功能**：
-- 智能比对源和目标目录的文件大小
-- 仅在文件有变化时才复制（节省构建时间）
-- 可选复制imgui.ini配置文件
+同步规则：
 
----
+- 使用 `cmake -E copy_if_different`，内容未变化的文件不会重写。
+- 在目标目录写入 `.tf_source_manifest`，只记录 source 中的相对路径。
+- source 中删除的文件会从目标目录删除。
+- 未被清单记录的运行时生成文件会保留，例如 `config/user_settings.json`。
+- 同一输出目录上的并行同步通过进程锁串行化。
 
-### CopyDLLs.cmake
-**用途**：复制Windows DLL文件到可执行文件目录
+`BuildHelpers.cmake` 将同步任务设为可执行目标的依赖。因此再次构建目标即可同步内容文件，无需触发 C++ 重链接。
 
-**使用方式**：通过 `include()` 调用（不是独立运行）
+## CopyDLLs.cmake
 
-**需要的变量**：
-- `DLL_LIST` - DLL文件列表（CMake列表，分号分隔）
-- `TARGET_DIR` - 目标目录
+`CopyDLLs.cmake` 在 Windows 上复制目标的运行时 DLL，以及存在的 PDB 调试符号。脚本通过配置阶段生成的 wrapper 使用 `include()` 调用，因为 `$<TARGET_RUNTIME_DLLS:...>` 需要在生成阶段展开。
 
-**调用示例**：
+wrapper 需要设置：
+
+- `DLL_LIST`：DLL 文件列表
+- `TARGET_DIR`：可执行文件目录
+
+示例：
+
 ```cmake
-# 在wrapper脚本中
 set(DLL_LIST "C:/path/SDL3.dll;C:/path/other.dll")
 set(TARGET_DIR "C:/path/to/build")
-include("path/to/CopyDLLs.cmake")
-```
-
-**功能**：
-- 基于MD5哈希智能检测文件是否需要更新
-- 自动复制对应的.pdb调试符号文件
-- 仅在实际复制时输出信息（避免构建日志污染）
-
-**注意**：此脚本通过 `include()` 而非 `-P` 调用，避免Windows命令行参数传递问题
-
----
-
-## 🔧 调试技巧
-
-### 单独测试资源复制脚本
-```bash
-cd /path/to/project
-cmake -DSOURCE_DIR=assets \
-      -DTARGET_DIR=build/test_assets \
-      -P cmake/scripts/CopyAssets.cmake
-```
-
-### 测试DLL复制脚本
-由于CopyDLLs.cmake通过 `include()` 调用，需要创建测试包装脚本：
-
-```cmake
-# test_copy_dlls.cmake
-set(DLL_LIST "C:/path/to/SDL3.dll;C:/path/to/other.dll")
-set(TARGET_DIR "build/test_dlls")
 include("cmake/scripts/CopyDLLs.cmake")
 ```
 
-```bash
-cmake -P test_copy_dlls.cmake
-```
+脚本逐个比较 DLL 的 MD5，仅复制发生变化的文件。游戏、`engine_tests` 和 `game_tests` 都通过 `setup_windows_dll_copy` 接入该流程。
 
-### 查看生成的wrapper脚本
-```bash
-# 配置项目后
-cat build/copy_dlls_wrapper_Debug.cmake    # Windows: type
-```
+## 故障排查
 
----
+资源未同步时：
 
-## 📊 性能优化
+1. 检查 `SOURCE_DIR` 与 `TARGET_DIR` 是否正确。
+2. 直接按上面的示例运行 `SyncDirectory.cmake`，查看脚本报错。
+3. 确认正在构建实际依赖同步任务的可执行目标。
 
-### 智能增量复制
+Windows DLL 未复制时：
 
-两个脚本都实现了智能增量复制：
+1. 确认目标使用动态库，并且 CMake 版本支持 `$<TARGET_RUNTIME_DLLS>`。
+2. 查看 `build/<preset>/copy_dlls_wrapper_<target>_<config>.cmake`。
+3. 确认依赖以 CMake target 的形式链接到该可执行目标。
 
-**CopyAssets.cmake**：
-- 计算源和目标目录的总文件大小
-- 仅当大小不同时才复制
-- 避免不必要的文件IO操作
+## 添加新的脚本
 
-**CopyDLLs.cmake**：
-- 计算每个DLL的MD5哈希值
-- 仅复制哈希值不同的文件
-- 更精确，但计算开销略高
-
-### 性能对比
-
-| 场景 | 传统方式 | 智能复制 | 提升 |
-|------|---------|---------|------|
-| 无变化时 | ~500ms | ~10ms | **50倍** |
-| 小变化时 | ~500ms | ~50ms | **10倍** |
-| 全部变化 | ~500ms | ~500ms | 相同 |
-
----
-
-## 🔍 故障排查
-
-### 问题：资源文件没有复制
-**解决**：
-1. 检查 `SOURCE_DIR` 路径是否正确
-2. 确认 `assets` 目录存在且包含文件
-3. 手动运行脚本查看错误信息
-
-### 问题：DLL没有复制
-**解决**：
-1. 确认是Windows平台（`WIN32` 为真）
-2. 检查CMake版本 >= 3.21
-3. 查看生成的wrapper脚本内容：`type build\copy_dlls_wrapper_Debug.cmake`
-4. 确认目标实际使用了动态库
-5. 检查是否有CMake语法警告（可能是参数传递问题）
-
-### 问题：编译时脚本报错
-**解决**：
-1. 检查参数拼写是否正确
-2. 确认路径中没有特殊字符或空格
-3. 使用 `VERBATIM` 选项避免参数解析问题
-
----
-
-## 💡 扩展示例
-
-### 添加新的构建脚本
-
-1. **创建脚本**：`cmake/scripts/CustomTask.cmake`
-```cmake
-# 自定义任务脚本
-if(NOT DEFINED MY_PARAM)
-    message(FATAL_ERROR "需要参数: MY_PARAM")
-endif()
-
-# 执行自定义任务
-message(STATUS "执行自定义任务: ${MY_PARAM}")
-# ... 任务逻辑 ...
-```
-
-2. **在BuildHelpers.cmake中添加函数**：
-```cmake
-function(setup_custom_task TARGET_NAME)
-    set(SCRIPT ${CMAKE_SOURCE_DIR}/cmake/scripts/CustomTask.cmake)
-    
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND}
-            -DMY_PARAM=value
-            -P ${SCRIPT}
-        COMMENT "执行自定义任务"
-        VERBATIM
-    )
-endfunction()
-```
-
-3. **在主CMakeLists.txt中调用**：
-```cmake
-setup_custom_task(${TARGET})
-```
-
----
-
-## 📚 参考资源
-
-- [CMake Script Mode](https://cmake.org/cmake/help/latest/manual/cmake.1.html#script-mode)
-- [Generator Expressions](https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html)
-- [add_custom_command](https://cmake.org/cmake/help/latest/command/add_custom_command.html)
-
+脚本应先验证必需参数，再由 `BuildHelpers.cmake` 通过 `add_custom_target` 或 `add_custom_command` 接入，并为命令设置 `VERBATIM`。内容同步类任务应优先复用 `SyncDirectory.cmake`，避免重复实现复制和清理逻辑。

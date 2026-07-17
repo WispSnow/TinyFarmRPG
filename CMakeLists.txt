@@ -8,9 +8,11 @@ project(TinyFarmRPG VERSION 0.1.0 LANGUAGES C CXX)
 # 基础配置
 # ============================================
 
-# 指定搜索路径（用于find_package在编译期查找库）
-set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/prebuilt)
-list(APPEND CMAKE_PREFIX_PATH $ENV{HOME}/.local)
+# 指定搜索路径（用于 find_package 在编译期查找库），保留调用方传入的路径。
+list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/prebuilt")
+if(DEFINED ENV{HOME})
+    list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local")
+endif()
 
 # 指定目标名称
 set(TARGET ${PROJECT_NAME}-${CMAKE_SYSTEM_NAME})
@@ -22,6 +24,13 @@ option(ENABLE_DEBUG_UI "启用 ImGui 调试面板" ON)
 option(ENABLE_RMLUI_DEBUGGER "启用 RmlUi Debugger" ON)
 option(ENABLE_EFFEKSEER "启用 Effekseer VFX 后端" ON)
 option(ENABLE_TSAN "启用 ThreadSanitizer（支持 Clang/GCC/AppleClang，且通常用于 Debug）" OFF)
+option(TF_USE_SYSTEM_DEPS "优先使用系统依赖；关闭时按 external -> 在线下载解析" OFF)
+
+# 默认构建仅包含游戏目标；开发、全量构建由 CMakePresets 显式开启。
+option(BUILD_TOOLS "是否构建工具" OFF)
+option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
+option(BUILD_LEARN "构建学习/实验目标" OFF)
+option(BUILD_TESTING "是否构建测试" OFF)
 
 # EnTT 资源/哈希 ID 使用 64 位；并行 ECS worker 会跨线程访问 EnTT storage，
 # 因此启用 EnTT 文档建议的 atomic 内部状态。
@@ -100,7 +109,6 @@ endif()
 target_link_libraries(engine
     PUBLIC
         SDL3::SDL3
-        SDL3_image::SDL3_image
         glm::glm
         nlohmann_json::nlohmann_json
         spdlog::spdlog
@@ -156,8 +164,12 @@ if(ENABLE_RMLUI_DEBUGGER)
     )
 endif()
 
-# 创建可执行文件
-add_executable(${TARGET})
+# 创建可执行文件。WIN32 属性只应用于游戏本体，测试和命令行工具保持控制台程序。
+if(WIN32)
+    add_executable(${TARGET} WIN32)
+else()
+    add_executable(${TARGET})
+endif()
 
 target_link_libraries(${TARGET}
     PRIVATE
@@ -200,9 +212,6 @@ setup_windows_dll_copy(${TARGET})
 # 工具配置
 # ============================================
 
-option(BUILD_TOOLS "是否构建工具" ON)
-option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
-
 if(BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
@@ -211,8 +220,6 @@ endif()
 # 学习/实验配置
 # ============================================
 
-option(BUILD_LEARN "构建学习/实验目标" ON)
-
 if(BUILD_LEARN)
     add_subdirectory(learn)
 endif()
@@ -220,8 +227,6 @@ endif()
 # ============================================
 # 测试配置
 # ============================================
-
-option(BUILD_TESTING "是否构建测试" ON)
 
 if(BUILD_TESTING)
     enable_testing()

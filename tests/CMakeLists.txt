@@ -127,6 +127,7 @@ target_compile_definitions(engine_tests
 )
 
 setup_compiler_options(engine_tests)
+setup_windows_dll_copy(engine_tests)
 
 if(TF_ASAN_ENABLED)
     gtest_add_tests(TARGET engine_tests TEST_LIST ENGINE_TEST_LIST)
@@ -311,6 +312,7 @@ target_compile_definitions(game_tests
 )
 
 setup_compiler_options(game_tests)
+setup_windows_dll_copy(game_tests)
 
 if(TF_ASAN_ENABLED)
     gtest_add_tests(TARGET game_tests TEST_LIST GAME_TEST_LIST)

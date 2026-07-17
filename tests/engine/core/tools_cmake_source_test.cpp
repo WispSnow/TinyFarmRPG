@@ -61,4 +61,54 @@ TEST(ToolsCMakeSourceTest, OnlyImguiDrivenToolsRequireDebugUi) {
     EXPECT_LT(battle_target, scheduler_target);
 }
 
+TEST(ToolsCMakeSourceTest, DefaultBuildOnlyEnablesGameTargets) {
+    const std::filesystem::path cmake_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "CMakeLists.txt").lexically_normal();
+    const std::string source = readTextFile(cmake_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << cmake_path;
+
+    EXPECT_NE(source.find("option(BUILD_TOOLS \"是否构建工具\" OFF)"), std::string::npos);
+    EXPECT_NE(source.find("option(BUILD_LEARN \"构建学习/实验目标\" OFF)"), std::string::npos);
+    EXPECT_NE(source.find("option(BUILD_TESTING \"是否构建测试\" OFF)"), std::string::npos);
+}
+
+TEST(ToolsCMakeSourceTest, WindowsSubsystemOnlyAppliesToGameExecutable) {
+    const std::filesystem::path root_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "CMakeLists.txt").lexically_normal();
+    const std::filesystem::path compiler_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "cmake/CompilerSettings.cmake")
+            .lexically_normal();
+    const std::string root_source = readTextFile(root_path);
+    const std::string compiler_source = readTextFile(compiler_path);
+    ASSERT_FALSE(root_source.empty()) << "无法读取: " << root_path;
+    ASSERT_FALSE(compiler_source.empty()) << "无法读取: " << compiler_path;
+
+    EXPECT_NE(root_source.find("add_executable(${TARGET} WIN32)"), std::string::npos);
+    EXPECT_EQ(compiler_source.find("/SUBSYSTEM:WINDOWS"), std::string::npos);
+    EXPECT_EQ(compiler_source.find("/ENTRY:mainCRTStartup"), std::string::npos);
+    EXPECT_NE(compiler_source.find("/MP"), std::string::npos);
+}
+
+TEST(ToolsCMakeSourceTest, RuntimeFilesAreBuildDependencies) {
+    const std::filesystem::path cmake_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "cmake/BuildHelpers.cmake")
+            .lexically_normal();
+    const std::string source = readTextFile(cmake_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << cmake_path;
+
+    EXPECT_NE(source.find("add_custom_target(${SYNC_TARGET}"), std::string::npos);
+    EXPECT_NE(source.find("add_dependencies(${TARGET_NAME} ${SYNC_TARGET})"), std::string::npos);
+    EXPECT_EQ(source.find("PRE_BUILD"), std::string::npos);
+}
+
+TEST(ToolsCMakeSourceTest, TestExecutablesDeployWindowsRuntimeDlls) {
+    const std::filesystem::path cmake_path =
+        (std::filesystem::path{PROJECT_SOURCE_DIR} / "tests/CMakeLists.txt").lexically_normal();
+    const std::string source = readTextFile(cmake_path);
+    ASSERT_FALSE(source.empty()) << "无法读取: " << cmake_path;
+
+    EXPECT_NE(source.find("setup_windows_dll_copy(engine_tests)"), std::string::npos);
+    EXPECT_NE(source.find("setup_windows_dll_copy(game_tests)"), std::string::npos);
+}
+
 // NOLINTEND
