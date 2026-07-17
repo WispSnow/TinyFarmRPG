@@ -104,7 +104,6 @@ endif()
 target_link_libraries(engine
     PUBLIC
         SDL3::SDL3
-        SDL3_image::SDL3_image
         glm::glm
         nlohmann_json::nlohmann_json
         spdlog::spdlog

@@ -128,6 +128,12 @@ macro(find_or_fetch_dependency DEP_NAME PACKAGE_NAME GIT_REPO GIT_TAG LOCAL_PATH
         if("${DEP_NAME}" STREQUAL "harfbuzz")
             set(HB_HAVE_FREETYPE ON CACHE BOOL "" FORCE)
         endif()
+
+        # GoogleTest：MSVC 下默认强制静态 CRT（/MT），与主工程默认的 /MD 混用
+        # 会在链接测试时报 LNK2038 RuntimeLibrary 不匹配，强制其跟随动态 CRT。
+        if("${DEP_NAME}" STREQUAL "GTest")
+            set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        endif()
         
         # 智能选择：优先本地源码，否则在线获取
         set(LOCAL_SOURCE_DIR ${CMAKE_SOURCE_DIR}/${LOCAL_PATH})
@@ -247,14 +253,14 @@ function(setup_project_dependencies)
     #   - NASM: https://www.nasm.us/
     #   - Meson: pip install meson ninja
     #   - Perl: https://strawberryperl.com/
-    find_or_fetch_dependency(
-        SDL3_image
-        SDL3_image
-        "https://github.com/libsdl-org/SDL_image.git"
-        "release-3.2.4"
-        "external/SDL_image-release-3.2.4"
-        AUTO  # 使用全局BUILD_SHARED_LIBS设置
-    )
+    # find_or_fetch_dependency(
+    #     SDL3_image
+    #     SDL3_image
+    #     "https://github.com/libsdl-org/SDL_image.git"
+    #     "release-3.2.4"
+    #     "external/SDL_image-release-3.2.4"
+    #     AUTO  # 使用全局BUILD_SHARED_LIBS设置
+    # )
 
     # GLM
     find_or_fetch_dependency(
@@ -297,9 +303,11 @@ function(setup_project_dependencies)
         STATIC  # header-only库，实际不影响
     )
 
-    # FreeType
+    # FreeType：DEP_NAME 必须与子项目实际目标名一致（add_library(freetype ...)，小写，
+    # 且其 CMakeLists 不自带命名空间别名），否则宏内 TARGET ${DEP_NAME} 为假，
+    # 无法创建 Freetype::Freetype 别名，Windows/Linux 从源码构建时 RmlUi 会报找不到 Freetype。
     find_or_fetch_dependency(
-        Freetype
+        freetype
         Freetype
         "https://github.com/freetype/freetype.git"
         "VER-2-14-1"

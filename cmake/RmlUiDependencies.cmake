@@ -97,6 +97,16 @@ function(setup_rmlui_dependencies)
         _tf_save_var(CMAKE_OSX_DEPLOYMENT_TARGET)
     endif()
 
+    # RmlUi 的 freetype 字体引擎要求存在 Freetype::Freetype 目标。
+    # 从源码构建的 FreeType 只定义小写 freetype 目标（无命名空间别名），这里兜底补齐；
+    # 若目标仍缺失，提前给出明确错误，避免 RmlUi 内部报出难定位的 find_package 失败。
+    if(NOT TARGET Freetype::Freetype AND TARGET freetype)
+        add_library(Freetype::Freetype ALIAS freetype)
+    endif()
+    if(NOT TARGET Freetype::Freetype)
+        message(FATAL_ERROR "RmlUi 需要 Freetype::Freetype 目标：请确认 Dependencies.cmake 的 Freetype 步骤已成功（系统安装或 external/freetype 源码构建）。")
+    endif()
+
     # 仅在本模块作用域中覆盖 RmlUi 选项
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "RmlUi: force static libs" FORCE)
     set(RMLUI_FONT_ENGINE freetype CACHE STRING "RmlUi: use freetype font engine" FORCE)
