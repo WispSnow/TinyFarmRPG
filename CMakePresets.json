@@ -7,10 +7,15 @@
   },
   "configurePresets": [
     {
+      "name": "base-common",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
       "name": "base",
       "hidden": true,
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "inherits": "base-common",
+      "generator": "Ninja"
     },
     {
       "name": "debug",
@@ -71,6 +76,24 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
+    },
+    {
+      "name": "debug-fallback",
+      "inherits": "base-common",
+      "displayName": "Debug（备用生成器）",
+      "description": "未安装 Ninja 时的备用：使用 CMake 默认生成器（Windows=Visual Studio 多配置，Linux/macOS=Unix Makefiles）",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release-fallback",
+      "inherits": "base-common",
+      "displayName": "Release（备用生成器）",
+      "description": "未安装 Ninja 时的备用：使用 CMake 默认生成器（Windows=Visual Studio 多配置，Linux/macOS=Unix Makefiles）",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -93,6 +116,57 @@
     {
       "name": "relwithdebinfo",
       "configurePreset": "relwithdebinfo"
+    },
+    {
+      "name": "debug-fallback",
+      "configurePreset": "debug-fallback",
+      "configuration": "Debug",
+      "jobs": 8
+    },
+    {
+      "name": "release-fallback",
+      "configurePreset": "release-fallback",
+      "configuration": "Release",
+      "jobs": 8
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "relwithdebinfo",
+      "configurePreset": "relwithdebinfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-fallback",
+      "configurePreset": "debug-fallback",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release-fallback",
+      "configurePreset": "release-fallback",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ]
 }

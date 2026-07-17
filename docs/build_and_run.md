@@ -28,7 +28,7 @@ build\debug\TinyFarmRPG-Windows.exe  # Windows
 | 工具 | 最低版本 | 说明 |
 |------|----------|------|
 | CMake | 3.21+ | `CMakePresets.json` 用 v6 schema，要求 3.21 |
-| Ninja | 任意现代版本 | 所有预设强制使用 Ninja 生成器 |
+| Ninja | 任意现代版本 | 推荐（构建最快）。未安装时用 `debug-fallback` / `release-fallback` 预设改走系统默认生成器 |
 | C++ 编译器 | C++20 | macOS: AppleClang（Xcode 15+）；Linux: **GCC 13+** / Clang 17+（源码使用 `std::format`，libstdc++ 需 13 代）；Windows: MSVC（Visual Studio 2022），MinGW 未验证 |
 | Python | 3 | 部分依赖构建脚本需要 |
 | Git | 任意 | 拉取项目和子模块 |
@@ -77,8 +77,18 @@ flowchart LR
 | `debug-tsan` | Debug | `ENABLE_TSAN=ON`（macOS / Linux） | 怀疑多线程竞争 |
 | `release` | Release | — | 性能测试 |
 | `relwithdebinfo` | RelWithDebInfo | — | 生产构建的崩溃定位 |
+| `debug-fallback` | Debug | 不指定生成器 | **没装 Ninja 时的备用**：Windows 走 Visual Studio，Linux/macOS 走 Unix Makefiles |
+| `release-fallback` | Release | 不指定生成器 | 同上的 Release 版 |
 
 > `debug-asan` 和 `debug-tsan` 在 Windows 上不可用（`condition` 跳过）。Windows 用 `debug` 配合 Visual Studio 调试器。
+
+**备用预设（fallback）说明**：`*-fallback` 预设不指定生成器，由 CMake 按平台选择默认生成器。在 Windows 上是 Visual Studio（多配置生成器），产物会多一层配置子目录：可执行文件在 `build/debug-fallback/Debug/TinyFarmRPG-Windows.exe`，资源也随之复制到该目录，直接从那里运行即可；也可以用生成的 `.sln` 在 VS 里打开调试。在 Linux/macOS 上是 Unix Makefiles，目录结构与 Ninja 预设相同。构建命令一致：
+
+```bash
+cmake --preset debug-fallback
+cmake --build --preset debug-fallback     # 默认并行 8，可用 -j N 覆盖
+ctest --preset debug-fallback             # 跑测试
+```
 
 每个 preset 对应一个独立 `build/` 目录，预设之间互不干扰。**第一次切换预设后**也无需 clean，直接 `cmake --preset <name>` + `cmake --build --preset <name>` 即可。
 
@@ -202,7 +212,7 @@ ctest --preset debug -R "Battle"                    # 跑名字含 "Battle" 的�
 
 | 现象 | 原因 / 处理 |
 |------|-------------|
-| `Could not find Ninja` | 装 Ninja。macOS `brew install ninja`，Linux `apt install ninja-build`，Windows 通过 winget / chocolatey |
+| `Could not find Ninja` / `CMAKE_MAKE_PROGRAM is not set` | 装 Ninja（macOS `brew install ninja`，Linux `apt install ninja-build`，Windows `winget install Ninja-build.Ninja`），**或改用 `debug-fallback` 预设**（无需 Ninja） |
 | `cmake too old` | 升级 CMake 到 3.21+ |
 | `assets/data/xxx.json not found` | 直接从 `build/<preset>/` 启动可执行文件，不是从仓库根目录 |
 | 修改了 JSON / Lua 看不到效果 | `cmake --build --preset <name>` 重新触发资源复制（也可手动 cp 进 build 目录验证） |

@@ -35,6 +35,13 @@ config/user_settings.json
 # prebuilt
 prebuilt/
 
+# external
+external/*
+!external/glad/
+!external/imgui/
+!external/miniaudio/
+!external/stb/
+
 # Prerequisites
 *.d
 

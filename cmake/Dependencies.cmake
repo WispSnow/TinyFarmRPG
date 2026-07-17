@@ -236,8 +236,8 @@ function(setup_project_dependencies)
         SDL3
         SDL3
         "https://github.com/libsdl-org/SDL.git"
-        "release-3.2.24"
-        "external/SDL-release-3.2.24"
+        "release-3.4.12"
+        "external/SDL-release-3.4.12"
         AUTO  # 使用全局BUILD_SHARED_LIBS设置
     )
 

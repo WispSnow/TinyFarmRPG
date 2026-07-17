@@ -130,10 +130,16 @@ setup_compiler_options(engine_tests)
 # Windows 上 harfbuzz 等动态依赖需复制到测试可执行文件旁，否则测试无法启动
 setup_windows_dll_copy(engine_tests)
 
+# 工作目录设为主程序输出目录：assets/ui/scripts/config 复制在那里。
+# 单配置生成器下等价于原先测试自行向上查找的结果；
+# 多配置生成器（Visual Studio）下资源位于 <build>/<Config>/，必须显式指定。
+# 依赖主程序目标：保证该目录及其中的资源在测试（及构建期用例发现）前就绪。
+add_dependencies(engine_tests ${TARGET})
 if(TF_ASAN_ENABLED)
-    gtest_add_tests(TARGET engine_tests TEST_LIST ENGINE_TEST_LIST)
+    gtest_add_tests(TARGET engine_tests TEST_LIST ENGINE_TEST_LIST
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:${TARGET}>)
 else()
-    gtest_discover_tests(engine_tests)
+    gtest_discover_tests(engine_tests WORKING_DIRECTORY $<TARGET_FILE_DIR:${TARGET}>)
 endif()
 
 # Game unit tests
@@ -315,8 +321,10 @@ target_compile_definitions(game_tests
 setup_compiler_options(game_tests)
 setup_windows_dll_copy(game_tests)
 
+add_dependencies(game_tests ${TARGET})
 if(TF_ASAN_ENABLED)
-    gtest_add_tests(TARGET game_tests TEST_LIST GAME_TEST_LIST)
+    gtest_add_tests(TARGET game_tests TEST_LIST GAME_TEST_LIST
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:${TARGET}>)
 else()
-    gtest_discover_tests(game_tests)
+    gtest_discover_tests(game_tests WORKING_DIRECTORY $<TARGET_FILE_DIR:${TARGET}>)
 endif()
