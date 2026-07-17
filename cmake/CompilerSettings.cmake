@@ -12,12 +12,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # 用法：setup_compiler_options(目标名称)
 function(setup_compiler_options TARGET_NAME)
     if(MSVC)
-        # Visual Studio: 启用所有警告 + UTF-8编码支持
-        target_compile_options(${TARGET_NAME} PRIVATE /W4 /utf-8)
-        # 添加并行编译支持
-        add_compile_options(/MP)
-        # 不要弹出控制台窗口
-        target_link_options(${TARGET_NAME} PRIVATE "/SUBSYSTEM:WINDOWS" "/ENTRY:mainCRTStartup")
+        # Visual Studio: 启用所有警告 + UTF-8编码支持 + 并行编译
+        # /bigobj：sol2 绑定与大型场景 TU 的 COFF 节数会超过默认上限（C1128）
+        target_compile_options(${TARGET_NAME} PRIVATE /W4 /utf-8 /MP /bigobj)
     elseif(WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
         # MinGW/Clang on Windows: 设置UTF-8编码
         target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -Wpedantic -finput-charset=utf-8 -fexec-charset=utf-8)

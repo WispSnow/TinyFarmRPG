@@ -20,6 +20,12 @@ function(setup_effekseer_dependencies)
     message(STATUS "正在处理依赖: Effekseer")
     message(STATUS "  → 使用本地源码: ${EFFEKSEER_SOURCE_DIR}")
 
+    # MSVC：Effekseer 默认用静态 CRT（/MT），与主工程及其他依赖默认的 /MD 混用
+    # 会在链接时报 LNK2038 RuntimeLibrary 不匹配，强制其改用动态 CRT。
+    if(MSVC)
+        set(USE_MSVC_RUNTIME_LIBRARY_DLL ON CACHE BOOL "Effekseer: use dynamic CRT (/MD) to match the project" FORCE)
+    endif()
+
     # 顶层模块开关（external/Effekseer-1.7.3.0/CMakeLists.txt）
     set(BUILD_VIEWER OFF CACHE BOOL "Effekseer: disable viewer" FORCE)
     set(BUILD_EDITOR OFF CACHE BOOL "Effekseer: disable editor" FORCE)

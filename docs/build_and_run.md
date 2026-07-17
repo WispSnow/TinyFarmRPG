@@ -29,11 +29,32 @@ build\debug\TinyFarmRPG-Windows.exe  # Windows
 |------|----------|------|
 | CMake | 3.21+ | `CMakePresets.json` 用 v6 schema，要求 3.21 |
 | Ninja | 任意现代版本 | 所有预设强制使用 Ninja 生成器 |
-| C++ 编译器 | C++20 | macOS: AppleClang；Linux: GCC 10+ / Clang 12+；Windows: MSVC 2022 |
+| C++ 编译器 | C++20 | macOS: AppleClang（Xcode 15+）；Linux: **GCC 13+** / Clang 17+（源码使用 `std::format`，libstdc++ 需 13 代）；Windows: MSVC（Visual Studio 2022），MinGW 未验证 |
 | Python | 3 | 部分依赖构建脚本需要 |
 | Git | 任意 | 拉取项目和子模块 |
 
 依赖库本身（SDL3 / RmlUi / Lua / Effekseer 等）由 CMake 在配置阶段自行拉取或链接，多数情况下**不需要手动安装**。
+
+> **首次 configure 需要联网**：`external/` 只内置了一部分依赖源码；SDL3 / SDL3_image / glm / nlohmann-json / spdlog 这五个依赖在本机没有安装时，会由 FetchContent 在配置阶段从 GitHub 在线克隆。离线环境可预先把对应源码放进 `external/`（目录命名见 `cmake/Dependencies.cmake` 中各依赖的 `LOCAL_PATH`）。
+
+### Linux 额外系统包
+
+主流发行版暂无 SDL3 官方包，SDL3 会从源码构建。SDL 的 CMake **只启用配置时能找到的后端**：缺少 X11 / Wayland 开发头时，SDL 会"成功"编译出一个没有视频后端的库，运行时才报 `No available video device`。因此 configure 之前先装齐（Ubuntu / Debian 示例）：
+
+```bash
+sudo apt install build-essential ninja-build cmake \
+    libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev \
+    libwayland-dev libxkbcommon-dev libegl1-mesa-dev libgl1-mesa-dev \
+    libasound2-dev libpulse-dev
+```
+
+音频在运行时由 miniaudio 通过 dlopen 使用系统 ALSA / PulseAudio，无需额外构建依赖。无显示环境（SSH / CI）下测试会自动 `GTEST_SKIP`，需要真跑时用 xvfb 或 `SDL_VIDEODRIVER=dummy`。
+
+### Windows 说明
+
+- 仅支持 MSVC（Visual Studio 2022）工具链。预设使用 Ninja 生成器，需在 **x64 Native Tools Command Prompt**（或 VS 内置终端）里执行 preset 命令，让 `cl.exe` 在 PATH 上。
+- 主游戏可执行是 GUI 子系统（不弹控制台，spdlog 输出不可见）；`tools/` 与 `tests/` 下的可执行保持控制台子系统，方便查看输出。
+- 依赖的 DLL（如 harfbuzz）构建后会自动复制到 exe 旁（`setup_windows_dll_copy`）。
 
 ```mermaid
 flowchart LR
@@ -100,7 +121,7 @@ build/debug/
 
 资源 / UI / 脚本 / 配置都是**构建后复制**到 build 目录，因此修改 `assets/data/*.json` 或 `scripts/*.lua` 等内容文件**通常**需要重新 `cmake --build` 才能在已编译的二进制里看到（看 `cmake/BuildHelpers.cmake` 中的 dependency 规则；常见做法是再跑一次构建命令，Ninja 会增量复制）。
 
-Windows 上还有 `setup_windows_dll_copy`（`CMakeLists.txt:185`）负责把动态库 DLL 复制到可执行文件旁。
+Windows 上还有 `setup_windows_dll_copy`（`cmake/BuildHelpers.cmake`）负责把动态库 DLL 复制到可执行文件旁。
 
 ## 六、CMake 模块布局
 
@@ -187,6 +208,9 @@ ctest --preset debug -R "Battle"                    # 跑名字含 "Battle" 的�
 | 修改了 JSON / Lua 看不到效果 | `cmake --build --preset <name>` 重新触发资源复制（也可手动 cp 进 build 目录验证） |
 | ASan / TSan 在 Windows 编译失败 | 预设条件已自动跳过，确认你用的是 `debug-asan` / `debug-tsan` 而非默认 `debug` |
 | 重新切换分支后构建怪异 | 删 `build/<preset>/` 后重 configure；不要混合不同分支的 build 目录 |
+| Linux 运行时报 `No available video device` | configure 时缺 X11 / Wayland 开发包，SDL3 编成了无视频后端的库。安装上文 Linux 系统包后删 `build/<preset>/` 重新 configure |
+| Linux / GCC 报找不到 `<format>` / `std::format` | GCC 需 13+。`g++ --version` 确认；必要时 `apt install g++-13` 并 `CXX=g++-13 cmake --preset debug` |
+| 首次 configure 卡在克隆依赖 | FetchContent 在线拉取 SDL3 等依赖，确认能访问 GitHub；或把源码预置到 `external/` |
 
 ## 十、推荐工作流
 

@@ -3,14 +3,15 @@
 #include "engine/render/opengl/gl_helper.h"
 #include "engine/resource/stb_image_mutex.h"
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
+// __GNUC__ 同时覆盖 GCC 与 Clang；Clang 也接受 GCC 拼写的 diagnostic pragma
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#if defined(__clang__)
-#pragma clang diagnostic pop
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
 #endif
 
 #include <glad/glad.h>

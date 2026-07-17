@@ -71,6 +71,10 @@ include(CTest)
 # 设置项目依赖
 # ============================================
 
+# 线程库（engine 的 std::jthread / std::thread 依赖；Linux 上需显式链接 pthread）
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # 调用依赖配置函数（定义在Dependencies.cmake中）
 setup_project_dependencies()
 setup_scripting_dependencies()
@@ -109,6 +113,7 @@ target_link_libraries(engine
         glad
         Freetype::Freetype
         HarfBuzz::HarfBuzz
+        Threads::Threads
 )
 
 target_include_directories(engine
@@ -157,7 +162,10 @@ if(ENABLE_RMLUI_DEBUGGER)
 endif()
 
 # 创建可执行文件
-add_executable(${TARGET})
+# WIN32：Windows 上标记为 GUI 子系统（不弹控制台），入口由 SDL_main.h 提供的
+# WinMain 承接；非 Windows 平台忽略该标志。控制台工具与测试不加此标志，
+# 否则它们的 stdout 在 Windows 交互终端中不可见。
+add_executable(${TARGET} WIN32)
 
 target_link_libraries(${TARGET}
     PRIVATE
