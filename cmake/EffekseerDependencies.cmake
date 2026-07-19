@@ -18,6 +18,8 @@ endif()
 
 set(EFFEKSEER_VERSION "1.80.6")
 set(EFFEKSEER_RELEASE_TAG "1806")
+set(EFFEKSEER_LOCAL_SOURCE_DIR
+    "${CMAKE_SOURCE_DIR}/external/EffekseerForCpp${EFFEKSEER_VERSION}")
 set(EFFEKSEER_ARCHIVE_URL
     "https://github.com/effekseer/Effekseer/releases/download/${EFFEKSEER_RELEASE_TAG}/EffekseerForCpp${EFFEKSEER_VERSION}.zip")
 set(EFFEKSEER_ARCHIVE_SHA256
@@ -29,16 +31,38 @@ function(setup_effekseer_dependencies)
     endif()
 
     message(STATUS "正在处理依赖: Effekseer ${EFFEKSEER_VERSION}")
-    message(STATUS "  → 获取官方 C++ Runtime 发布包（SHA-256 校验）")
+    set(_effekseer_binary_dir "${CMAKE_BINARY_DIR}/_deps/effekseer_runtime-build")
 
-    FetchContent_Declare(
-        effekseer_runtime
-        URL "${EFFEKSEER_ARCHIVE_URL}"
-        URL_HASH "SHA256=${EFFEKSEER_ARCHIVE_SHA256}"
-    )
-    FetchContent_GetProperties(effekseer_runtime)
-    if(NOT effekseer_runtime_POPULATED)
-        FetchContent_Populate(effekseer_runtime)
+    # 与项目其他依赖保持一致：优先使用 external 中的固定版本源码，
+    # 本地不存在时才下载经过 SHA-256 校验的官方 C++ Runtime 发布包。
+    if(IS_DIRECTORY "${EFFEKSEER_LOCAL_SOURCE_DIR}")
+        foreach(_required_file
+                CMakeLists.txt
+                src/Effekseer/CMakeLists.txt
+                src/EffekseerRendererGL/CMakeLists.txt)
+            if(NOT EXISTS "${EFFEKSEER_LOCAL_SOURCE_DIR}/${_required_file}")
+                message(FATAL_ERROR
+                    "Effekseer 本地源码目录不完整，缺少: "
+                    "${EFFEKSEER_LOCAL_SOURCE_DIR}/${_required_file}")
+            endif()
+        endforeach()
+
+        set(_effekseer_source_dir "${EFFEKSEER_LOCAL_SOURCE_DIR}")
+        message(STATUS "  → 使用本地源码: ${_effekseer_source_dir}")
+    else()
+        message(STATUS "  → 本地源码不存在，获取官方 C++ Runtime 发布包（SHA-256 校验）")
+
+        FetchContent_Declare(
+            effekseer_runtime
+            URL "${EFFEKSEER_ARCHIVE_URL}"
+            URL_HASH "SHA256=${EFFEKSEER_ARCHIVE_SHA256}"
+        )
+        FetchContent_GetProperties(effekseer_runtime)
+        if(NOT effekseer_runtime_POPULATED)
+            FetchContent_Populate(effekseer_runtime)
+        endif()
+
+        set(_effekseer_source_dir "${effekseer_runtime_SOURCE_DIR}")
     endif()
 
     # MSVC：Effekseer 默认用静态 CRT（/MT），与主工程及其他依赖默认的 /MD 混用
@@ -81,8 +105,8 @@ function(setup_effekseer_dependencies)
     endif()
 
     add_subdirectory(
-        "${effekseer_runtime_SOURCE_DIR}"
-        "${effekseer_runtime_BINARY_DIR}"
+        "${_effekseer_source_dir}"
+        "${_effekseer_binary_dir}"
         EXCLUDE_FROM_ALL
     )
 

@@ -33,7 +33,7 @@ TEST(VfxOptionalBackendSourceTest, CMakeGuardsEffekseerBackendBehindOption) {
     EXPECT_NE(src_cmake.find("engine/vfx/effekseer_backend.cpp"), std::string::npos);
 }
 
-TEST(VfxOptionalBackendSourceTest, UsesPinnedVerifiedOfficialRuntimeArchive) {
+TEST(VfxOptionalBackendSourceTest, PrefersLocalRuntimeBeforePinnedVerifiedOfficialArchive) {
     const auto dependency_cmake_path =
         (std::filesystem::path{PROJECT_SOURCE_DIR} / "cmake/EffekseerDependencies.cmake").lexically_normal();
     ASSERT_TRUE(std::filesystem::exists(dependency_cmake_path)) << dependency_cmake_path;
@@ -45,6 +45,16 @@ TEST(VfxOptionalBackendSourceTest, UsesPinnedVerifiedOfficialRuntimeArchive) {
     EXPECT_NE(dependency_cmake.find("set(EFFEKSEER_RELEASE_TAG \"1806\")"), std::string::npos);
     EXPECT_NE(
         dependency_cmake.find(
+            "\"${CMAKE_SOURCE_DIR}/external/EffekseerForCpp${EFFEKSEER_VERSION}\""),
+        std::string::npos);
+    EXPECT_NE(
+        dependency_cmake.find("if(IS_DIRECTORY \"${EFFEKSEER_LOCAL_SOURCE_DIR}\")"),
+        std::string::npos);
+    EXPECT_NE(
+        dependency_cmake.find("set(_effekseer_source_dir \"${EFFEKSEER_LOCAL_SOURCE_DIR}\")"),
+        std::string::npos);
+    EXPECT_NE(
+        dependency_cmake.find(
             "https://github.com/effekseer/Effekseer/releases/download/${EFFEKSEER_RELEASE_TAG}/"
             "EffekseerForCpp${EFFEKSEER_VERSION}.zip"),
         std::string::npos);
@@ -53,6 +63,9 @@ TEST(VfxOptionalBackendSourceTest, UsesPinnedVerifiedOfficialRuntimeArchive) {
             "b0004a4961f549aa44031956196388aa07125aaa7e2a364670f03a3602727c70"),
         std::string::npos);
     EXPECT_NE(dependency_cmake.find("URL_HASH \"SHA256=${EFFEKSEER_ARCHIVE_SHA256}\""), std::string::npos);
+    EXPECT_LT(
+        dependency_cmake.find("if(IS_DIRECTORY \"${EFFEKSEER_LOCAL_SOURCE_DIR}\")"),
+        dependency_cmake.find("FetchContent_Declare("));
     EXPECT_EQ(dependency_cmake.find("external/Effekseer-1.7.3.0"), std::string::npos);
 }
 
