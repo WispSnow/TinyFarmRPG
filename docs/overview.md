@@ -60,7 +60,7 @@ flowchart LR
 
 ## 技术栈
 
-- **构建系统**: CMake 3.13+
+- **构建系统**: CMake 3.21+
 - **语言标准**: C++20
 - **窗口与输入**: SDL3（CMake 依赖链路也接入 SDL3_image）
 - **ECS 框架**: EnTT 3.16.0
@@ -73,7 +73,7 @@ flowchart LR
 - **日志**: spdlog 1.15.3
 - **JSON 解析**: nlohmann-json 3.12.0
 - **脚本宿主**: Lua 5.4.8 + Sol2 v3.5.0（project version 4.0.0）
-- **粒子特效**: Effekseer 1.7.3.0 + EffekseerRendererGL（通过 `engine::vfx::VfxBackend` 接口接入）
+- **粒子特效**: Effekseer 1.80.6 + EffekseerRendererGL（通过 `engine::vfx::VfxBackend` 接口接入）
 - **测试框架**: GoogleTest 1.17.0
 - **地图编辑**: Tiled（生成 .tmj/.tsj/.world 资源）
 

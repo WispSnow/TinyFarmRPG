@@ -533,22 +533,30 @@ flowchart TD
     A["CMakeLists.txt<br/>ENABLE_EFFEKSEER=ON"] --> B["setup_effekseer_dependencies()"]
     B --> C{"Effekseer target<br/>已存在?"}
     C -- Yes --> D["复用已有 target"]
-    C -- No --> E["add_subdirectory<br/>external/Effekseer-1.7.3.0<br/>EXCLUDE_FROM_ALL"]
-    E --> F["配置选项"]
+    C -- No --> E["FetchContent<br/>下载官方 C++ Runtime 1.80.6"]
+    E --> V["SHA-256 校验"]
+    V --> F["add_subdirectory<br/>EXCLUDE_FROM_ALL"]
 
-    subgraph F["CMake 配置"]
+    subgraph O["CMake 配置"]
         direction TB
-        F1["BUILD_GL=ON<br/>其余图形后端 OFF"]
-        F2["音频全部 OFF"]
-        F3["Viewer/Editor/Test OFF"]
+        O1["BUILD_GL=ON<br/>其余图形后端 OFF"]
+        O2["音频全部 OFF"]
+        O3["Examples/Viewer/Editor/Test OFF"]
     end
 
-    F --> G["link: Effekseer + EffekseerRendererGL"]
+    F --> O1
+    F --> O2
+    F --> O3
+    O1 --> G["link: Effekseer + EffekseerRendererGL"]
+    O2 --> G
+    O3 --> G
     D --> G
     G --> H["compile define:<br/>TF_ENABLE_EFFEKSEER"]
 ```
 
-- 使用本地源码树 `external/Effekseer-1.7.3.0`（版本 1.7.3.0）
+- 使用 Effekseer 官方 C++ Runtime 发布包（版本 1.80.6，tag `1806`）
+- 下载 URL 与 SHA-256 固定在 `cmake/EffekseerDependencies.cmake`，校验失败时配置立即终止
+- 源码解压和构建位于构建目录的 `_deps` 下，不写入仓库的 `external/` 目录
 - macOS 上保存/恢复 `CMAKE_OSX_DEPLOYMENT_TARGET` 避免被 Effekseer CMake 覆盖
 
 ---

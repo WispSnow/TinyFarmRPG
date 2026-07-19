@@ -3,52 +3,74 @@
 # ============================================
 # 功能：管理 Effekseer Runtime（仅接入 C++ Runtime + OpenGL 渲染后端）
 
+include(FetchContent)
+
+# CMake 3.30+ 对 FetchContent_Populate 的兼容策略。
+# 保留显式 Populate + add_subdirectory，以便继续使用 EXCLUDE_FROM_ALL。
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
+# URL 归档应使用解压时间，避免上游文件时间戳影响增量构建。
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+set(EFFEKSEER_VERSION "1.80.6")
+set(EFFEKSEER_RELEASE_TAG "1806")
+set(EFFEKSEER_ARCHIVE_URL
+    "https://github.com/effekseer/Effekseer/releases/download/${EFFEKSEER_RELEASE_TAG}/EffekseerForCpp${EFFEKSEER_VERSION}.zip")
+set(EFFEKSEER_ARCHIVE_SHA256
+    "b0004a4961f549aa44031956196388aa07125aaa7e2a364670f03a3602727c70")
+
 function(setup_effekseer_dependencies)
     if(TARGET Effekseer AND TARGET EffekseerRendererGL)
-        set(_includes
-            "${CMAKE_SOURCE_DIR}/external/Effekseer-1.7.3.0/Dev/Cpp/Effekseer"
-            "${CMAKE_SOURCE_DIR}/external/Effekseer-1.7.3.0/Dev/Cpp/EffekseerRendererGL")
-        set(EFFEKSEER_RUNTIME_INCLUDE_DIRS "${_includes}" PARENT_SCOPE)
         return()
     endif()
 
-    set(EFFEKSEER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/Effekseer-1.7.3.0")
-    if(NOT EXISTS "${EFFEKSEER_SOURCE_DIR}/CMakeLists.txt")
-        message(FATAL_ERROR "Effekseer 源码目录不存在: ${EFFEKSEER_SOURCE_DIR}")
-    endif()
+    message(STATUS "正在处理依赖: Effekseer ${EFFEKSEER_VERSION}")
+    message(STATUS "  → 获取官方 C++ Runtime 发布包（SHA-256 校验）")
 
-    message(STATUS "正在处理依赖: Effekseer")
-    message(STATUS "  → 使用本地源码: ${EFFEKSEER_SOURCE_DIR}")
+    FetchContent_Declare(
+        effekseer_runtime
+        URL "${EFFEKSEER_ARCHIVE_URL}"
+        URL_HASH "SHA256=${EFFEKSEER_ARCHIVE_SHA256}"
+    )
+    FetchContent_GetProperties(effekseer_runtime)
+    if(NOT effekseer_runtime_POPULATED)
+        FetchContent_Populate(effekseer_runtime)
+    endif()
 
     # MSVC：Effekseer 默认用静态 CRT（/MT），与主工程及其他依赖默认的 /MD 混用
     # 会在链接时报 LNK2038 RuntimeLibrary 不匹配，强制其改用动态 CRT。
     if(MSVC)
-        set(USE_MSVC_RUNTIME_LIBRARY_DLL ON CACHE BOOL "Effekseer: use dynamic CRT (/MD) to match the project" FORCE)
+        set(USE_MSVC_RUNTIME_LIBRARY_DLL ON)
     endif()
 
-    # 顶层模块开关（external/Effekseer-1.7.3.0/CMakeLists.txt）
-    set(BUILD_VIEWER OFF CACHE BOOL "Effekseer: disable viewer" FORCE)
-    set(BUILD_EDITOR OFF CACHE BOOL "Effekseer: disable editor" FORCE)
-    set(BUILD_TEST OFF CACHE BOOL "Effekseer: disable tests" FORCE)
-    set(BUILD_EXAMPLES OFF CACHE BOOL "Effekseer: disable examples" FORCE)
-    set(BUILD_UNITYPLUGIN OFF CACHE BOOL "Effekseer: disable unity plugin" FORCE)
-    set(BUILD_UNITYPLUGIN_FOR_IOS OFF CACHE BOOL "Effekseer: disable unity plugin ios" FORCE)
-    set(BUILD_WITH_EASY_PROFILER OFF CACHE BOOL "Effekseer: disable profiler" FORCE)
-    set(NETWORK_ENABLED OFF CACHE BOOL "Effekseer: disable network module" FORCE)
+    # 仅在当前函数/子目录作用域覆盖上游选项，避免污染主工程的通用 CACHE 变量。
+    set(BUILD_EXAMPLES OFF)
+    set(BUILD_TEST OFF)
+    set(BUILD_VIEWER OFF)
+    set(BUILD_EDITOR OFF)
+    set(BUILD_WITH_EASY_PROFILER OFF)
+    set(NETWORK_ENABLED OFF)
 
     # 图形后端：仅保留 OpenGL
-    set(BUILD_GL ON CACHE BOOL "Effekseer: build OpenGL renderer" FORCE)
-    set(BUILD_VULKAN OFF CACHE BOOL "Effekseer: disable Vulkan renderer" FORCE)
-    set(BUILD_DX9 OFF CACHE BOOL "Effekseer: disable DX9 renderer" FORCE)
-    set(BUILD_DX11 OFF CACHE BOOL "Effekseer: disable DX11 renderer" FORCE)
-    set(BUILD_DX12 OFF CACHE BOOL "Effekseer: disable DX12 renderer" FORCE)
-    set(BUILD_METAL OFF CACHE BOOL "Effekseer: disable Metal renderer" FORCE)
+    set(BUILD_GL ON)
+    set(BUILD_VULKAN OFF)
+    set(BUILD_DX9 OFF)
+    set(BUILD_DX11 OFF)
+    set(BUILD_DX12 OFF)
+    set(BUILD_METAL OFF)
+    set(USE_OPENGLES2 OFF)
+    set(USE_OPENGLES3 OFF)
+    set(USE_OPENGL3 ON)
 
-    # 音频后端：首版不接入
-    set(USE_OPENAL OFF CACHE BOOL "Effekseer: disable OpenAL" FORCE)
-    set(USE_XAUDIO2 OFF CACHE BOOL "Effekseer: disable XAudio2" FORCE)
-    set(USE_DSOUND OFF CACHE BOOL "Effekseer: disable DirectSound" FORCE)
-    set(USE_OSM OFF CACHE BOOL "Effekseer: disable OpenSoundMixer" FORCE)
+    # 音频仍由项目自身的 MiniAudio 管理。
+    set(USE_OPENAL OFF)
+    set(USE_XAUDIO2 OFF)
+    set(USE_DSOUND OFF)
+    set(USE_OSM OFF)
 
     if(APPLE)
         set(_saved_has_osx_deployment_target OFF)
@@ -59,8 +81,8 @@ function(setup_effekseer_dependencies)
     endif()
 
     add_subdirectory(
-        "${EFFEKSEER_SOURCE_DIR}"
-        "${CMAKE_BINARY_DIR}/_deps/effekseer-build"
+        "${effekseer_runtime_SOURCE_DIR}"
+        "${effekseer_runtime_BINARY_DIR}"
         EXCLUDE_FROM_ALL
     )
 
@@ -82,10 +104,5 @@ function(setup_effekseer_dependencies)
         message(FATAL_ERROR "EffekseerRendererGL 目标创建失败")
     endif()
 
-    set(_includes
-        "${EFFEKSEER_SOURCE_DIR}/Dev/Cpp/Effekseer"
-        "${EFFEKSEER_SOURCE_DIR}/Dev/Cpp/EffekseerRendererGL")
-    set(EFFEKSEER_RUNTIME_INCLUDE_DIRS "${_includes}" PARENT_SCOPE)
-
-    message(STATUS "  ✓ Effekseer Runtime 已接入（Effekseer + EffekseerRendererGL）")
+    message(STATUS "  ✓ Effekseer ${EFFEKSEER_VERSION} Runtime 已接入（Effekseer + EffekseerRendererGL）")
 endfunction()
