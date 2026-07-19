@@ -247,28 +247,13 @@ function(setup_project_dependencies)
         AUTO  # 使用全局BUILD_SHARED_LIBS设置
     )
 
-    # SDL3_image
-    # 注意：已自动禁用AVIF格式支持（需要NASM、Meson等复杂工具链）
-    # 如需启用AVIF，请修改宏中的SDLIMAGE_AVIF选项，并安装所需工具：
-    #   - NASM: https://www.nasm.us/
-    #   - Meson: pip install meson ninja
-    #   - Perl: https://strawberryperl.com/
-    # find_or_fetch_dependency(
-    #     SDL3_image
-    #     SDL3_image
-    #     "https://github.com/libsdl-org/SDL_image.git"
-    #     "release-3.2.4"
-    #     "external/SDL_image-release-3.2.4"
-    #     AUTO  # 使用全局BUILD_SHARED_LIBS设置
-    # )
-
     # GLM
     find_or_fetch_dependency(
         glm
         glm
         "https://github.com/g-truc/glm.git"
-        "1.0.1"
-        "external/glm-1.0.1"
+        "1.0.3"
+        "external/glm-1.0.3"
         STATIC  # GLM通常使用静态链接，动态很可能出错
     )
 

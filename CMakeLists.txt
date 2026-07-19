@@ -207,8 +207,8 @@ setup_windows_dll_copy(${TARGET})
 # 工具配置
 # ============================================
 
-option(BUILD_TOOLS "是否构建工具" ON)
-option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" ON)
+option(BUILD_TOOLS "是否构建工具" OFF)
+option(BUILD_RMLUI_TESTER "是否构建 rmlui_tester 工具" OFF)
 
 if(BUILD_TOOLS)
     add_subdirectory(tools)
@@ -218,7 +218,7 @@ endif()
 # 学习/实验配置
 # ============================================
 
-option(BUILD_LEARN "构建学习/实验目标" ON)
+option(BUILD_LEARN "构建学习/实验目标" OFF)
 
 if(BUILD_LEARN)
     add_subdirectory(learn)
@@ -228,7 +228,7 @@ endif()
 # 测试配置
 # ============================================
 
-option(BUILD_TESTING "是否构建测试" ON)
+option(BUILD_TESTING "是否构建测试" OFF)
 
 if(BUILD_TESTING)
     enable_testing()
