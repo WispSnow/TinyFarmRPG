@@ -52,6 +52,39 @@ using game::system::detail::stackLimitOrDefault;
     return params[static_cast<std::size_t>(index)];
 }
 
+/// @brief 依据实际生效的恢复量组织提示文案；没有任何恢复时退回到通用“已使用”。
+[[nodiscard]] std::string battleUseNotificationText(const game::runtime::LocalizationService* localization,
+                                                    const int hp_gain,
+                                                    const int mp_gain) {
+    std::vector<std::string> lines;
+    if (hp_gain > 0) {
+        lines.push_back(game::ui::formatTextOrFallback(
+            localization,
+            "item.use.recovered_hp",
+            {{"amount", std::to_string(hp_gain)}},
+            [hp_gain] { return "Recovered " + std::to_string(hp_gain) + " HP"; }));
+    }
+    if (mp_gain > 0) {
+        lines.push_back(game::ui::formatTextOrFallback(
+            localization,
+            "item.use.recovered_mp",
+            {{"amount", std::to_string(mp_gain)}},
+            [mp_gain] { return "Recovered " + std::to_string(mp_gain) + " MP"; }));
+    }
+    if (lines.empty()) {
+        return game::ui::localizeTextOrFallback(localization, "item.use.used", "Used");
+    }
+
+    std::ostringstream oss;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        if (i > 0) {
+            oss << "\n";
+        }
+        oss << lines[i];
+    }
+    return oss.str();
+}
+
 } // namespace
 
 ItemUseSystem::ItemUseSystem(entt::registry& registry,
@@ -93,18 +126,25 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
     const auto* item = catalog_.findItem(stack.item_id_);
     if (!item) return;
 
-    if (item->battle_use_ && evt.actor_target_id.has_value()) {
+    if (item->battle_use_) {
         const auto* localization = game::runtime::findLocalizationService(registry_);
         const auto& use_cfg = *item->battle_use_;
         if (use_cfg.scope != game::data::Scope::OneAlly || !rpg_catalog_) {
             return;
         }
-        const std::string& actor_id = *evt.actor_target_id;
+        const auto* party = registry_.try_get<game::component::PartyComponent>(evt.target);
+        if (!party) {
+            return;
+        }
+        // 命令未指定目标时（HUD 快捷栏快速使用、脚本调用）回退到队伍首位出战角色，
+        // 避免道具在这些入口上静默失效。
+        const std::string actor_id = evt.actor_target_id.has_value() && !evt.actor_target_id->empty()
+            ? *evt.actor_target_id
+            : (party->active_actor_ids_.empty() ? std::string{} : party->active_actor_ids_.front());
         if (actor_id.empty() || !rpg_catalog_->findActor(actor_id)) {
             return;
         }
-        const auto* party = registry_.try_get<game::component::PartyComponent>(evt.target);
-        if (!party || !containsString(party->recruited_actor_ids_, actor_id)) {
+        if (!containsString(party->recruited_actor_ids_, actor_id)) {
             return;
         }
 
@@ -131,6 +171,8 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
             state.current_mp = max_mp;
         }
 
+        const int hp_before = state.current_hp;
+        const int mp_before = state.current_mp;
         for (const auto& effect : use_cfg.effects) {
             const int amount = effect.amount * use_times;
             if (effect.type == game::data::BattleItemEffectType::RecoverHp) {
@@ -139,6 +181,8 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 state.current_mp = std::clamp(state.current_mp + amount, 0, max_mp);
             }
         }
+        const int hp_gain = state.current_hp - hp_before;
+        const int mp_gain = state.current_mp - mp_before;
         ++runtime_stats.revision_;
 
         (void)inventory_domain_service_.removeItem(
@@ -154,7 +198,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
             .item_id = used_item_id,
             .inventory_slot_index = evt.inventory_slot_index,
             .count = use_times,
-            .actor_target_id = evt.actor_target_id,
+            .actor_target_id = actor_id,
         });
 
         if (evt.show_prompt) {
@@ -165,7 +209,7 @@ void ItemUseSystem::onUseItem(const game::defs::UseItemCommand& evt) {
                 notification_,
                 evt.target,
                 std::string{},
-                game::ui::localizeTextOrFallback(localization, "item.use.used", "Used"),
+                battleUseNotificationText(localization, hp_gain, mp_gain),
                 NOTIFICATION_SECONDS);
         }
         return;

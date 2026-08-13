@@ -90,6 +90,21 @@
     pointer-events: none;
 }
 
+/* --- 目标选择提示 / 使用结果反馈 --- */
+
+#party-hint {
+    position: fixed;
+    left: 140dp;
+    top: 310dp;
+    width: 360dp;
+    text-align: center;
+    font-size: 0.5625rem;
+    color: #9ece6a;
+    font-effect: shadow(1dp 1dp #000000cc);
+    z-index: 20;
+    pointer-events: none;
+}
+
 /* --- Menu Panel --- */
 
 #menu-panel {
@@ -881,10 +896,6 @@
     border: 1dp #7aa2f7;
 }
 
-.party-targetable {
-    border: 1dp #9ece6a;
-}
-
 .party-empty {
     opacity: 0.45;
 }
@@ -892,6 +903,13 @@
 .tf-input-mouse .party-card:hover,
 .tf-input-nav .party-card:focus {
     border: 1dp #e0af68;
+}
+
+/* 目标选择态必须压过 selected/hover 描边，否则“选谁”这一步在视觉上会被吃掉。 */
+.party-targetable,
+.tf-input-mouse .party-card.party-targetable:hover,
+.tf-input-nav .party-card.party-targetable:focus {
+    border: 2dp #9ece6a;
 }
 
 .tf-input-mouse .party-card:hover:active,

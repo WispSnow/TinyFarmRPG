@@ -9,6 +9,7 @@
 #include "engine/ui/rmlui/rml_generated_image_registry.h"
 #include "engine/ui/rmlui/rml_ui_texture_filter_mode.h"
 #include "engine/ui/rmlui/rml_ui_runtime.h"
+#include "game/component/party_runtime_stats_component.h"
 #include "game/data/item_catalog.h"
 #include "game/data/quest_catalog.h"
 #include "game/data/rpg_catalog.h"
@@ -24,6 +25,7 @@
 #include "game/ui/equipment_tab_content.h"
 #include "game/ui/inventory_menu_tab_shortcuts.h"
 #include "game/ui/inventory_tab_content.h"
+#include "game/ui/localized_text.h"
 #include "game/ui/map_tab_content.h"
 #include "game/ui/options_tab_content.h"
 #include "game/ui/player_portrait_service.h"
@@ -57,6 +59,7 @@ namespace {
 
 constexpr std::string_view DOCUMENT_PATH = "ui/rmlui/scenes/inventory_menu.rml";
 constexpr std::string_view MODEL_NAME = "inventory_menu";
+constexpr float HINT_FEEDBACK_SECONDS = 2.0F; ///< 使用结果反馈的停留时长。
 using SlotGridViewModels = std::vector<game::ui::SlotGridViewModel>;
 using PartyMemberPanelViewModels = std::vector<game::scene::PartyMemberPanelViewModel>;
 using engine::ui::rmlui::setPixelProperty;
@@ -215,6 +218,8 @@ bool InventoryMenuScene::init() {
         .connect<&InventoryMenuScene::onOptionsTabShortcut>(this);
     context_.getDispatcher().sink<game::defs::InventoryChanged>()
         .connect<&InventoryMenuScene::onInventoryChanged>(this);
+    context_.getDispatcher().sink<game::defs::ItemUsedEvent>()
+        .connect<&InventoryMenuScene::onItemUsed>(this);
     context_.getDispatcher().sink<game::defs::PartyRuntimeStatsChanged>()
         .connect<&InventoryMenuScene::onPartyRuntimeStatsChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
@@ -227,6 +232,7 @@ void InventoryMenuScene::update(float delta_time) {
     if (auto* tab = activeTab()) {
         tab->update(delta_time);
     }
+    updatePartyHint(delta_time);
     updateTabShortcutTooltipPosition();
     Scene::update(delta_time);
 }
@@ -314,6 +320,8 @@ bool InventoryMenuScene::initUI() {
     constructor.Bind("party_members", &party_members_);
     constructor.Bind("gold_label", &gold_label_);
     constructor.Bind("inventory_capacity_label", &inventory_capacity_label_);
+    constructor.Bind("party_hint_text", &party_hint_text_);
+    constructor.Bind("party_hint_visible", &party_hint_visible_);
 
     if (!constructor.BindEventCallback(
             "switch_tab",
@@ -449,6 +457,8 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
         .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
     context_.getDispatcher().sink<game::defs::InventoryChanged>()
         .disconnect<&InventoryMenuScene::onInventoryChanged>(this);
+    context_.getDispatcher().sink<game::defs::ItemUsedEvent>()
+        .disconnect<&InventoryMenuScene::onItemUsed>(this);
     context_.getDispatcher().sink<game::defs::PartyRuntimeStatsChanged>()
         .disconnect<&InventoryMenuScene::onPartyRuntimeStatsChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
@@ -578,6 +588,9 @@ void InventoryMenuScene::beginActorTargetSelection(int inventory_slot_index) {
     actor_target_mode_ = true;
     pending_actor_target_inventory_slot_ = inventory_slot_index;
     party_panel_refresh_pending_ = true;
+    // 选目标是一个独立步骤：没有这条提示，玩家会以为点了“使用”就已经用掉道具。
+    showPartyHint(game::ui::localizeTextOrFallback(
+        localization(), "inventory.item_use.select_target", "Select a character to use it on"));
 }
 
 void InventoryMenuScene::cancelActorTargetSelection() {
@@ -587,6 +600,7 @@ void InventoryMenuScene::cancelActorTargetSelection() {
     actor_target_mode_ = false;
     pending_actor_target_inventory_slot_ = -1;
     party_panel_refresh_pending_ = true;
+    hidePartyHint();
 }
 
 void InventoryMenuScene::onPartyMemberClick(int party_slot_index) {
@@ -605,6 +619,10 @@ void InventoryMenuScene::onPartyMemberClick(int party_slot_index) {
         actor_target_mode_ = false;
         pending_actor_target_inventory_slot_ = -1;
         if (inventory_slot >= 0) {
+            // UseItemCommand 是同步派发的：命令返回后 onItemUsed 已经跑完，
+            // 这里可以直接用前后 HP 差值组织反馈文案。
+            const auto hp_before = findActorCurrentHp(selected_actor_id_);
+            item_used_this_click_ = false;
             context_.getDispatcher().trigger(game::defs::UseItemCommand{
                 .target = player_,
                 .inventory_slot_index = inventory_slot,
@@ -612,10 +630,77 @@ void InventoryMenuScene::onPartyMemberClick(int party_slot_index) {
                 .show_prompt = false,
                 .actor_target_id = selected_actor_id_,
             });
+
+            if (!item_used_this_click_) {
+                hidePartyHint();
+            } else {
+                const auto hp_after = findActorCurrentHp(selected_actor_id_);
+                const int hp_gain = (hp_before && hp_after) ? (*hp_after - *hp_before) : 0;
+                showTimedPartyHint(
+                    hp_gain > 0
+                        ? game::ui::formatTextOrFallback(
+                              localization(),
+                              "item.use.recovered_hp",
+                              {{"amount", std::to_string(hp_gain)}},
+                              [hp_gain] { return "Recovered " + std::to_string(hp_gain) + " HP"; })
+                        : game::ui::localizeTextOrFallback(localization(), "item.use.used", "Used"),
+                    HINT_FEEDBACK_SECONDS);
+            }
+        } else {
+            hidePartyHint();
         }
     }
 
     party_panel_refresh_pending_ = true;
+}
+
+std::optional<int> InventoryMenuScene::findActorCurrentHp(std::string_view actor_id) const {
+    if (actor_id.empty() || player_ == entt::null || !game_registry_.valid(player_)) {
+        return std::nullopt;
+    }
+    const auto* runtime = game_registry_.try_get<game::component::PartyRuntimeStatsComponent>(player_);
+    if (!runtime) {
+        return std::nullopt;
+    }
+    const auto it = runtime->states_by_actor_id_.find(std::string{actor_id});
+    if (it == runtime->states_by_actor_id_.end()) {
+        return std::nullopt;
+    }
+    return it->second.current_hp;
+}
+
+void InventoryMenuScene::showPartyHint(std::string_view text) {
+    party_hint_text_ = Rml::String{text.data(), text.size()};
+    party_hint_visible_ = true;
+    party_hint_seconds_left_ = 0.0F;
+    document_controller_.markDirty("party_hint_text");
+    document_controller_.markDirty("party_hint_visible");
+}
+
+void InventoryMenuScene::showTimedPartyHint(std::string_view text, float seconds) {
+    showPartyHint(text);
+    party_hint_seconds_left_ = std::max(0.0F, seconds);
+}
+
+void InventoryMenuScene::hidePartyHint() {
+    if (!party_hint_visible_ && party_hint_text_.empty()) {
+        return;
+    }
+    party_hint_text_.clear();
+    party_hint_visible_ = false;
+    party_hint_seconds_left_ = 0.0F;
+    document_controller_.markDirty("party_hint_text");
+    document_controller_.markDirty("party_hint_visible");
+}
+
+void InventoryMenuScene::updatePartyHint(float delta_time) {
+    if (party_hint_seconds_left_ <= 0.0F) {
+        return;
+    }
+    party_hint_seconds_left_ -= delta_time;
+    if (party_hint_seconds_left_ <= 0.0F) {
+        hidePartyHint();
+    }
 }
 
 bool InventoryMenuScene::onMenuCancelPressed() {
@@ -733,6 +818,14 @@ void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& 
     }
 
     inventory_capacity_refresh_pending_ = true;
+}
+
+void InventoryMenuScene::onItemUsed(const game::defs::ItemUsedEvent& event) {
+    if (event.target != player_) {
+        return;
+    }
+
+    item_used_this_click_ = true;
 }
 
 void InventoryMenuScene::onPartyRuntimeStatsChanged(const game::defs::PartyRuntimeStatsChanged& event) {

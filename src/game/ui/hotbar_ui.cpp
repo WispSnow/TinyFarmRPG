@@ -383,12 +383,14 @@ void HotbarUI::onSlotMouseUp(int slot_index, Rml::Event& event) {
     bool can_use = false;
     if (item_catalog_) {
         if (const auto* data = item_catalog_->findItem(slot_item->item_id)) {
-            can_use = data->on_use_.has_value();
+            // battle_use 道具（药水等）在快捷栏上按“对队首快速使用”处理，由 ItemUseSystem 解析默认目标。
+            can_use = data->on_use_.has_value() || data->battle_use_.has_value();
         }
     }
 
     if (can_use) {
-        context_.getDispatcher().trigger(game::defs::UseItemCommand{target_, inventory_index, 1, false});
+        // HUD 上没有别的反馈渠道，快捷栏使用必须弹提示，否则玩家看不出道具是否生效。
+        context_.getDispatcher().trigger(game::defs::UseItemCommand{target_, inventory_index, 1, true});
     }
 }
 

@@ -13,6 +13,7 @@
 #include <glm/vec2.hpp>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -39,6 +40,7 @@ class WorldState;
 
 namespace game::defs {
 struct InventoryChanged;
+struct ItemUsedEvent;
 struct LanguageChangedEvent;
 struct PartyRuntimeStatsChanged;
 }
@@ -97,6 +99,12 @@ class InventoryMenuScene final : public engine::scene::Scene {
     bool party_panel_refresh_pending_{false};
     bool inventory_capacity_refresh_pending_{false};
 
+    // 目标选择提示 / 使用结果反馈（共用同一条横幅）
+    Rml::String party_hint_text_{};
+    bool party_hint_visible_{false};
+    float party_hint_seconds_left_{0.0F}; ///< > 0 表示这是限时反馈，倒计时结束后自动隐藏。
+    bool item_used_this_click_{false};    ///< onPartyMemberClick 内同步捕获 ItemUsedEvent 用。
+
 public:
     InventoryMenuScene(std::string_view name,
                        engine::core::Context& context,
@@ -128,6 +136,14 @@ private:
     void beginActorTargetSelection(int inventory_slot_index);
     void cancelActorTargetSelection();
     void onPartyMemberClick(int party_slot_index);
+    /// 显示常驻提示（目标选择态），不自动消失。
+    void showPartyHint(std::string_view text);
+    /// 显示限时反馈（使用结果），倒计时结束后自动隐藏。
+    void showTimedPartyHint(std::string_view text, float seconds);
+    void hidePartyHint();
+    void updatePartyHint(float delta_time);
+    /// 读取角色当前 HP；runtime state 不存在时返回 nullopt。
+    [[nodiscard]] std::optional<int> findActorCurrentHp(std::string_view actor_id) const;
     void switchTab(game::ui::MenuTabId new_tab);
     void switchTabFromTabsetIndex(int tab_index);
     [[nodiscard]] bool activateRmlTab(game::ui::MenuTabId tab_id);
@@ -147,6 +163,7 @@ private:
     bool onMapTabShortcut();
     bool onOptionsTabShortcut();
     void onInventoryChanged(const game::defs::InventoryChanged& event);
+    void onItemUsed(const game::defs::ItemUsedEvent& event);
     void onPartyRuntimeStatsChanged(const game::defs::PartyRuntimeStatsChanged& event);
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 };

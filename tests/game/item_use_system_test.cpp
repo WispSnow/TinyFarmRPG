@@ -275,4 +275,84 @@ TEST(ItemUseSystemTest, UseBattleItemOnActor_RecoversFromExistingRuntimeHp) {
     EXPECT_EQ(runtime_stats.states_by_actor_id_.at("actor.player").current_mp, 10);
 }
 
+// HUD 快捷栏与脚本调用不会携带 actor_target_id，此时应回退到队首出战角色而不是静默失效。
+TEST(ItemUseSystemTest, UseBattleItemWithoutActorTarget_FallsBackToLeadPartyMember) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto rpg_catalog = loadProjectActorCatalog();
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service, &rpg_catalog);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    inv.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inv.slot(0).count_ = 2;
+
+    registry.emplace<game::component::PartyComponent>(
+        player,
+        game::component::PartyComponent{
+            .recruited_actor_ids_ = {"actor.player"},
+            .active_actor_ids_ = {"actor.player"},
+            .max_active_members_ = 4,
+        });
+    auto& runtime_stats = registry.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 12,
+        .current_mp = 10,
+    };
+
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, false});
+
+    EXPECT_EQ(inv.slot(0).count_, 1);
+    EXPECT_EQ(runtime_stats.states_by_actor_id_.at("actor.player").current_hp, 62);
+}
+
+TEST(ItemUseSystemTest, UseBattleItemShowPrompt_ReportsRecoveredAmount) {
+    entt::registry registry;
+    entt::dispatcher dispatcher;
+
+    game::data::ItemCatalog catalog;
+    ASSERT_TRUE(catalog.loadItemConfig(projectItemConfigPath()));
+    auto rpg_catalog = loadProjectActorCatalog();
+    auto localization = loadLocalization("en-US");
+    registry.ctx().emplace<game::runtime::LocalizationService*>(&localization);
+    game::domain::InventoryDomainService inventory_domain_service(registry, dispatcher, catalog);
+
+    InventorySystem inventory_system(registry, dispatcher, inventory_domain_service);
+    ItemUseSystem item_use_system(registry, dispatcher, catalog, inventory_domain_service, &rpg_catalog);
+
+    DialogueCapture capture{};
+    dispatcher.sink<game::defs::DialogueShowEvent>().connect<&DialogueCapture::onShow>(&capture);
+
+    const entt::entity player = registry.create();
+    auto& inv = registry.emplace<game::component::InventoryComponent>(player);
+    inv.slot(0).item_id_ = entt::hashed_string{"potion"}.value();
+    inv.slot(0).count_ = 1;
+
+    registry.emplace<game::component::PartyComponent>(
+        player,
+        game::component::PartyComponent{
+            .recruited_actor_ids_ = {"actor.player"},
+            .active_actor_ids_ = {"actor.player"},
+            .max_active_members_ = 4,
+        });
+    auto& runtime_stats = registry.emplace<game::component::PartyRuntimeStatsComponent>(player);
+    runtime_stats.states_by_actor_id_["actor.player"] = game::component::ActorRuntimeState{
+        .current_hp = 1,
+        .current_mp = 10,
+    };
+
+    dispatcher.trigger(game::defs::UseItemCommand{player, 0, 1, true});
+    dispatcher.update();
+
+    ASSERT_EQ(capture.shows.size(), 1u);
+    EXPECT_EQ(capture.shows[0].channel, game::defs::DialogueChannel::ItemNotice);
+    EXPECT_EQ(capture.shows[0].text, "Recovered 50 HP");
+}
+
 } // namespace game::system

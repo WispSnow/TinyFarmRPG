@@ -16,6 +16,9 @@
         <div id="tab-shortcut-tooltip-text"></div>
     </div>
 
+    <!-- 目标选择提示 / 使用结果反馈：置于主面板下方，避免挤占角色卡布局 -->
+    <div id="party-hint" data-if="party_hint_visible">{{ party_hint_text }}</div>
+
     <div id="menu-panel">
 
         <!-- Two-column content -->
