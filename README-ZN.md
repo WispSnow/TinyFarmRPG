@@ -24,6 +24,9 @@
 - 游戏层调试UI：`F6`
 - 支持手柄操作：左摇杆/十字键移动，`A` 确认/使用，`B` 取消，`X` 交互，`Y` 快捷栏，`LB/RB` 切换快捷栏槽位，`Start` 暂停，`Back` 菜单
 
+## 网页版试玩
+[TinyFarm](https://wispsnow.github.io/TinyFarmRPG-preview/)
+
 ## 游戏截图
 <img src="https://theorhythm.top/gamedev/TFR/screen_shot_tfr1.webp" style='width: 640px;'/>
 <img src="https://theorhythm.top/gamedev/TFR/screen_shot_tfr2.webp" style='width: 640px;'/>

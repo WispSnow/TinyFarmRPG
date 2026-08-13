@@ -24,6 +24,9 @@ Building on TinyFarm (the previous episode), this project extends a 2D farming d
 - Game Layer Debug UI: `F6`
 - Gamepad is supported: Left Stick/D-Pad to move, `A` Confirm/Use, `B` Cancel, `X` Interact, `Y` Hotbar, `LB/RB` Switch Hotbar Slot, `Start` Pause, `Back` Menu
 
+## Web Demo
+[TinyFarm](https://wispsnow.github.io/TinyFarmRPG-preview/)
+
 ## Game Screenshots
 <img src="https://theorhythm.top/gamedev/TFR/screen_shot_tfr1.webp" style='width: 640px;'/>
 <img src="https://theorhythm.top/gamedev/TFR/screen_shot_tfr2.webp" style='width: 640px;'/>
