@@ -16,6 +16,7 @@
 #include "game/data/shop_catalog.h"
 #include "game/defs/commands.h"
 #include "game/defs/events_inventory.h"
+#include "game/defs/events_party.h"
 #include "game/defs/options_events.h"
 #include "game/defs/party_ids.h"
 #include "game/runtime/user_settings_service.h"
@@ -47,6 +48,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 using namespace entt::literals;
@@ -213,6 +215,8 @@ bool InventoryMenuScene::init() {
         .connect<&InventoryMenuScene::onOptionsTabShortcut>(this);
     context_.getDispatcher().sink<game::defs::InventoryChanged>()
         .connect<&InventoryMenuScene::onInventoryChanged>(this);
+    context_.getDispatcher().sink<game::defs::PartyRuntimeStatsChanged>()
+        .connect<&InventoryMenuScene::onPartyRuntimeStatsChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
         .connect<&InventoryMenuScene::onLanguageChanged>(this);
 
@@ -225,6 +229,14 @@ void InventoryMenuScene::update(float delta_time) {
     }
     updateTabShortcutTooltipPosition();
     Scene::update(delta_time);
+}
+
+void InventoryMenuScene::prepareUi(float interpolation_alpha) {
+    Scene::prepareUi(interpolation_alpha);
+    flushPendingUiRefreshes();
+    if (auto* tab = activeTab()) {
+        tab->prepareUi();
+    }
 }
 
 void InventoryMenuScene::clean() {
@@ -437,6 +449,8 @@ void InventoryMenuScene::disconnectRuntimeListeners() {
         .disconnect<&InventoryMenuScene::onOptionsTabShortcut>(this);
     context_.getDispatcher().sink<game::defs::InventoryChanged>()
         .disconnect<&InventoryMenuScene::onInventoryChanged>(this);
+    context_.getDispatcher().sink<game::defs::PartyRuntimeStatsChanged>()
+        .disconnect<&InventoryMenuScene::onPartyRuntimeStatsChanged>(this);
     context_.getDispatcher().sink<game::defs::LanguageChangedEvent>()
         .disconnect<&InventoryMenuScene::onLanguageChanged>(this);
 }
@@ -546,13 +560,24 @@ void InventoryMenuScene::refreshInventoryCapacityLabel() {
     document_controller_.markDirty("inventory_capacity_label");
 }
 
+void InventoryMenuScene::flushPendingUiRefreshes() {
+    if (std::exchange(party_panel_refresh_pending_, false)) {
+        inventory_capacity_refresh_pending_ = false;
+        syncPartyPanel();
+        return;
+    }
+    if (std::exchange(inventory_capacity_refresh_pending_, false)) {
+        refreshInventoryCapacityLabel();
+    }
+}
+
 void InventoryMenuScene::beginActorTargetSelection(int inventory_slot_index) {
     if (inventory_slot_index < 0) {
         return;
     }
     actor_target_mode_ = true;
     pending_actor_target_inventory_slot_ = inventory_slot_index;
-    syncPartyPanel();
+    party_panel_refresh_pending_ = true;
 }
 
 void InventoryMenuScene::cancelActorTargetSelection() {
@@ -561,7 +586,7 @@ void InventoryMenuScene::cancelActorTargetSelection() {
     }
     actor_target_mode_ = false;
     pending_actor_target_inventory_slot_ = -1;
-    syncPartyPanel();
+    party_panel_refresh_pending_ = true;
 }
 
 void InventoryMenuScene::onPartyMemberClick(int party_slot_index) {
@@ -590,7 +615,7 @@ void InventoryMenuScene::onPartyMemberClick(int party_slot_index) {
         }
     }
 
-    syncPartyPanel();
+    party_panel_refresh_pending_ = true;
 }
 
 bool InventoryMenuScene::onMenuCancelPressed() {
@@ -695,7 +720,7 @@ const game::runtime::LocalizationService* InventoryMenuScene::localization() con
 }
 
 void InventoryMenuScene::onLanguageChanged(const game::defs::LanguageChangedEvent& /*event*/) {
-    syncPartyPanel();
+    party_panel_refresh_pending_ = true;
     if (auto* tab = activeTab()) {
         tab->onLanguageChanged();
     }
@@ -707,7 +732,15 @@ void InventoryMenuScene::onInventoryChanged(const game::defs::InventoryChanged& 
         return;
     }
 
-    refreshInventoryCapacityLabel();
+    inventory_capacity_refresh_pending_ = true;
+}
+
+void InventoryMenuScene::onPartyRuntimeStatsChanged(const game::defs::PartyRuntimeStatsChanged& event) {
+    if (event.player != player_) {
+        return;
+    }
+
+    party_panel_refresh_pending_ = true;
 }
 
 void InventoryMenuScene::cacheTabShortcutTooltipElements() {

@@ -219,7 +219,7 @@
   "item.potato_item.name": "土豆",
   "item.potato_seed.description": "用于种出土豆的种子。",
   "item.potato_seed.name": "土豆种子",
-  "item.potion.description": "在战斗中恢复少量 HP。",
+  "item.potion.description": "为一名伙伴恢复 50 HP。",
   "item.potion.name": "药水",
   "item.strawberry_item.description": "从草莓植株收获，使用后获得 3 颗草莓种子。",
   "item.strawberry_item.name": "草莓",

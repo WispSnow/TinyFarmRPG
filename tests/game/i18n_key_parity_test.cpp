@@ -121,3 +121,38 @@ TEST(I18nKeyParityTest, EveryProjectMapHasDisplayNameKey) {
         return out.str();
     }();
 }
+
+TEST(I18nKeyParityTest, BattleItemDescriptionsIncludeConfiguredRecoveryAmounts) {
+    const nlohmann::json item_config = parseJsonFile(projectRoot() / "assets" / "data" / "item_config.json");
+    const nlohmann::json manifest = parseJsonFile(projectRoot() / "assets" / "i18n" / "languages.json");
+    ASSERT_TRUE(item_config.contains("items"));
+    ASSERT_TRUE(item_config["items"].is_array());
+    ASSERT_TRUE(manifest.contains("languages"));
+    ASSERT_TRUE(manifest["languages"].is_array());
+
+    for (const auto& item : item_config["items"]) {
+        if (!item.contains("battle_use")) {
+            continue;
+        }
+
+        const std::string description_key = item.value("description", "");
+        ASSERT_FALSE(description_key.empty()) << item.dump();
+        const auto& effects = item["battle_use"]["effects"];
+        ASSERT_TRUE(effects.is_array()) << item.dump();
+
+        for (const auto& language : manifest["languages"]) {
+            const std::string tag = language.value("tag", "");
+            const nlohmann::json table = parseJsonFile(resolveProjectPath(language.value("file", "")));
+            ASSERT_TRUE(table.contains(description_key)) << tag << " is missing " << description_key;
+            const std::string description = table[description_key].get<std::string>();
+
+            for (const auto& effect : effects) {
+                const int amount = effect.value("amount", 0);
+                ASSERT_GT(amount, 0) << item.dump();
+                EXPECT_NE(description.find(std::to_string(amount)), std::string::npos)
+                    << tag << " description for " << item.value("id", "")
+                    << " must include the configured recovery amount";
+            }
+        }
+    }
+}

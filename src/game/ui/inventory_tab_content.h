@@ -102,6 +102,8 @@ private:
     // --- 操作菜单状态 ---
     InventoryActionMenuModel action_menu_model_{};
     bool listeners_connected_{false}; ///< 防止重复连接 ECS 事件监听器。
+    bool model_refresh_pending_{false}; ///< 在 RmlUi::Update 前提交 ECS 变更，避免在事件回调中修改 data-for 数组。
+    bool close_action_menu_on_refresh_{false};
     ActorTargetRequestHandler actor_target_request_handler_{};
 
 public:
@@ -120,6 +122,8 @@ public:
     /// 标签页停用时：断开 ECS 事件监听器，关闭操作菜单、提示框，清除选中与拖拽状态。
     void onDeactivated() override;
     void update(float delta_time) override;
+    /// 在 RmlUi::Update 前提交事件驱动的背包 / 快捷栏 ViewModel 变更。
+    void prepareUi() override;
     /// 若操作菜单开启则关闭并消费取消事件，否则返回 false 交由上层处理。
     [[nodiscard]] bool onCancel() override;
     void onLanguageChanged() override;
@@ -150,8 +154,8 @@ private:
     void syncFromInventory();
     /// 将 HotbarComponent（间接引用 InventoryComponent）写入 hotbar_slots_ ViewModel。
     void syncHotbarFromInventory();
-    /// 增量刷新单个背包槽位（由 InventoryChanged 事件驱动）。
-    void refreshSlot(int slot_index);
+    /// 在 RmlUi::Update 前将已合并的 ECS 变更写入 ViewModel。
+    void flushPendingModelRefresh();
     void markSlotsDirty();
 
     // --- 提示框 ---

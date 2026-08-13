@@ -40,6 +40,7 @@ class WorldState;
 namespace game::defs {
 struct InventoryChanged;
 struct LanguageChangedEvent;
+struct PartyRuntimeStatsChanged;
 }
 
 namespace game::ui {
@@ -93,6 +94,8 @@ class InventoryMenuScene final : public engine::scene::Scene {
     int pending_actor_target_inventory_slot_{-1};
     Rml::String gold_label_{"!common.gold!"};
     Rml::String inventory_capacity_label_{"!inventory.capacity_label!"};
+    bool party_panel_refresh_pending_{false};
+    bool inventory_capacity_refresh_pending_{false};
 
 public:
     InventoryMenuScene(std::string_view name,
@@ -110,6 +113,7 @@ public:
 
     bool init() override;
     void update(float delta_time) override;
+    void prepareUi(float interpolation_alpha) override;
     void clean() override;
 
 private:
@@ -118,6 +122,7 @@ private:
     void disconnectRuntimeListeners();
     void syncPartyPanel();
     void refreshInventoryCapacityLabel();
+    void flushPendingUiRefreshes();
     void registerPartyPortraitImages(std::vector<PartyMemberPanelViewModel>& members);
     void clearPartyPortraitImages();
     void beginActorTargetSelection(int inventory_slot_index);
@@ -142,6 +147,7 @@ private:
     bool onMapTabShortcut();
     bool onOptionsTabShortcut();
     void onInventoryChanged(const game::defs::InventoryChanged& event);
+    void onPartyRuntimeStatsChanged(const game::defs::PartyRuntimeStatsChanged& event);
     void onLanguageChanged(const game::defs::LanguageChangedEvent& event);
 };
 

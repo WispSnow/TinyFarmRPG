@@ -219,7 +219,7 @@
   "item.potato_item.name": "Potato",
   "item.potato_seed.description": "A seed for producing potatoes",
   "item.potato_seed.name": "Potato Seed",
-  "item.potion.description": "Restores a small amount of HP in battle",
+  "item.potion.description": "Restores 50 HP to one ally.",
   "item.potion.name": "Potion",
   "item.strawberry_item.description": "harvested from strawberry plants, consume to get 3 strawberry seeds",
   "item.strawberry_item.name": "Strawberry",

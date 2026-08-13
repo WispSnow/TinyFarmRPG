@@ -24,6 +24,8 @@ public:
     virtual void onActivated() = 0;
     virtual void onDeactivated() = 0;
     virtual void update(float delta_time) = 0;
+    /// 在全局 RmlUi::Update 前提交本标签页的 retained UI 数据。
+    virtual void prepareUi() {}
     [[nodiscard]] virtual bool onCancel() = 0;
     virtual void onLanguageChanged() {}
 };
