@@ -72,9 +72,9 @@ build\debug\TinyFarmRPG-Windows.exe  # Windows
 
 > 注意：本项目使用了付费素材 [farm-rpg](https://emanuelledev.itch.io/farm-rpg)，因版权原因，仓库中不提供原始素材文件，只有图片占位符可确保程序正常运行（用于游戏开发学习已足够）。
 
-> 如果你想要实现演示项目中的效果，可购买该素材后，将所有内容复制到 `assets/farm-rpg` 文件夹中（覆盖原始文件）即可。
+> 如果你想要实现演示项目中的效果，~~可购买该素材后，将所有内容复制到 `assets/farm-rpg` 文件夹中（覆盖原始文件）即可~~。由于素材作者经常更新整理素材文件，直接复制粘贴已不可用。可从百度网盘中获取**只用于此演示项目**的素材部分，若想继续拓展内容，请购买素材支持原作者
 
-如果你在下载此项目时遇到问题（尤其是在中国大陆网络环境下），可从 [百度网盘](https://pan.baidu.com/s/xxxxxx) 中下载全部源码（包含第三方库）进行编译；也可以将依赖库源码预先放入 `external/` 文件夹（目录命名参见 `cmake/Dependencies.cmake` 中各依赖的 `LOCAL_PATH`）。
+如果你在下载此项目时遇到问题（尤其是在中国大陆网络环境下），可从 [百度网盘](https://pan.baidu.com/s/1-PfgIdlaxOTR5n5TqWk_Kw?pwd=bi7u) 中下载全部源码（包含第三方库）进行编译；也可以将依赖库源码预先放入 `external/` 文件夹。
 
 # 致谢
 - sprite & UI

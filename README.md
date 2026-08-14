@@ -72,9 +72,9 @@ build\debug\TinyFarmRPG-Windows.exe  # Windows
 
 > Note: This project uses paid assets from [farm-rpg](https://emanuelledev.itch.io/farm-rpg). Due to copyright reasons, the repository does not include the original asset files, only image placeholders to ensure the program runs properly (sufficient for game development learning purposes).
 
-> If you want to achieve the effects shown in the demo project, you can purchase the asset pack and copy all contents to the `assets/farm-rpg` folder (overwriting the original files).
+> If you want to achieve the effects shown in the demo project, ~~you can purchase the asset pack and copy all contents to the `assets/farm-rpg` folder (overwriting the original files).~~ Because the asset author frequently updates and reorganizes the asset files, direct copy-paste is no longer reliable. You can obtain the portions needed for this demo from Baidu Netdisk; if you want to continue expanding the project, please support the original author by purchasing the asset pack.
 
-If you encounter problems downloading this project (especially in mainland China network environment), you can download the complete source code (including third-party libraries) from [Baidu Netdisk](https://pan.baidu.com/s/xxxxxx) for compilation, or pre-place the dependency sources into the `external/` folder (see the `LOCAL_PATH` of each dependency in `cmake/Dependencies.cmake` for directory naming).
+If you encounter problems downloading this project (especially in mainland China network environment), you can download the complete source code (including third-party libraries) from [Baidu Netdisk](https://pan.baidu.com/s/1-PfgIdlaxOTR5n5TqWk_Kw?pwd=bi7u) for compilation, or pre-place the dependency sources into the `external/` folder.
 
 # Acknowledgements
 - sprite & UI
